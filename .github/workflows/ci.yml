@@ -53,6 +53,8 @@ jobs:
       # to pin any version we like.
       - name: Install pinned ormolu
         run: |
+          # unzip -d creates only the final directory, not missing parents.
+          mkdir -p "$HOME/.local/bin"
           curl -sSfL -o /tmp/ormolu.zip \
             "https://github.com/tweag/ormolu/releases/download/${ORMOLU_VERSION}/${ORMOLU_ASSET}"
           unzip -q /tmp/ormolu.zip -d "$HOME/.local/bin"
