@@ -1,0 +1,18 @@
+# Stack / GHC build products
+.stack-work/
+dist-newstyle/
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+
+# Golden-test output written when a test fails; never committed
+*.actual.svg
+
+# Editor / OS
+.DS_Store
+*.swp
+.vscode/
+
+# Output of `make examples`
+build/

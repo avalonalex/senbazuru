@@ -1,0 +1,57 @@
+# Runs the same gates as `make check`, split into jobs so a formatting failure
+# does not hide a test failure.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Provides the GHC that stack.yaml's `system-ghc: true` expects. Keep the
+      # version in step with the snapshot in stack.yaml (lts-22.44 => 9.6.7).
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          enable-stack: true
+          stack-version: 'latest'
+
+      # Building aeson from source on every run takes minutes; the snapshot only
+      # changes when stack.yaml does, so key the cache on it.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml', 'senbazuru.cabal') }}
+          restore-keys: ${{ runner.os }}-stack-
+
+      - run: stack build --test --no-run-tests
+      - run: stack test
+
+  format:
+    name: ormolu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/run-ormolu@v17
+        with:
+          pattern: |
+            src/**/*.hs
+            app/**/*.hs
+            test/**/*.hs
+
+  lint:
+    name: hlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/hlint-setup@v2
+      - uses: haskell-actions/hlint-run@v2
+        with:
+          path: '["src/", "app/", "test/"]'
+          fail-on: warning

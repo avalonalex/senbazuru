@@ -1,0 +1,112 @@
+cabal-version:      3.0
+name:               senbazuru
+version:            0.1.0.0
+synopsis:           Render FOLD origami files as step-by-step diagram SVGs
+description:
+  Senbazuru reads the FOLD file format (https://github.com/edemaine/FOLD)
+  and renders it to SVG using the line and arrow conventions of printed
+  origami instruction books (the Yoshizawa-Randlett system).
+
+homepage:           https://github.com/avalonalex/senbazuru
+license:            MIT
+license-file:       LICENSE
+author:             Yuhan Hao
+maintainer:         1143520+avalonalex@users.noreply.github.com
+copyright:          (c) 2026 Yuhan Hao
+category:           Graphics
+build-type:         Simple
+tested-with:        GHC ==9.6.7
+
+extra-doc-files:
+  README.md
+  CLAUDE.md
+
+extra-source-files:
+  test/fixtures/*.fold
+  test/golden/*.svg
+
+source-repository head
+  type:     git
+  location: https://github.com/avalonalex/senbazuru
+
+-- Shared settings. Every stanza below inherits these so the warning set can
+-- never drift between the library, the executable and the tests.
+common warnings
+  default-language: GHC2021
+
+  -- Enabled everywhere so no module has to repeat a LANGUAGE pragma.
+  --   DerivingStrategies: forces every `deriving` to say stock/newtype/anyclass,
+  --     which removes a real class of surprises. Not part of GHC2021.
+  --   LambdaCase:         `\case` instead of naming an argument only to match on it.
+  --   OverloadedStrings:  string literals become Text; unavoidable once aeson
+  --     and Data.Text are in play.
+  --   RecordWildCards:    lets a decoder bind `fieldName <- ...` and then say
+  --     `pure Frame{..}`, so field names line up 1:1 with FOLD keys.
+  default-extensions:
+    DerivingStrategies
+    LambdaCase
+    OverloadedStrings
+    RecordWildCards
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-export-lists
+    -Wpartial-fields
+    -Wredundant-constraints
+
+library
+  import:          warnings
+  hs-source-dirs:  src
+  exposed-modules:
+    Senbazuru.Diagram
+    Senbazuru.Diagram.Style
+    Senbazuru.Fold.Load
+    Senbazuru.Fold.Query
+    Senbazuru.Fold.Types
+    Senbazuru.Geometry
+    Senbazuru.Render.CreasePattern
+    Senbazuru.Render.Svg
+
+  build-depends:
+    , aeson       >=2.1  && <2.3
+    , base        >=4.17 && <4.20
+    , bytestring  >=0.11 && <0.13
+    , containers  >=0.6  && <0.8
+    , text        >=2.0  && <2.2
+
+executable senbazuru
+  import:         warnings
+  hs-source-dirs: app
+  main-is:        Main.hs
+  other-modules:  Senbazuru.Cli
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    , base
+    , optparse-applicative  >=0.17 && <0.19
+    , senbazuru
+    , text
+
+test-suite senbazuru-test
+  import:             warnings
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  main-is:            Spec.hs
+  other-modules:
+    Senbazuru.Fold.TypesSpec
+    Senbazuru.GeometrySpec
+    Senbazuru.Render.SvgSpec
+    Test.Golden
+
+  build-tool-depends: hspec-discover:hspec-discover
+  build-depends:
+    , base
+    , bytestring
+    , directory   >=1.3 && <1.4
+    , filepath    >=1.4 && <1.5
+    , hspec       >=2.10 && <2.12
+    , QuickCheck  >=2.14 && <2.16
+    , senbazuru
+    , text

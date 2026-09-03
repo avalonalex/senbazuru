@@ -1,0 +1,12 @@
+# Stackage LTS 22.44 pins GHC 9.6.7 and a curated, mutually-compatible set of
+# package versions. Picking a snapshot whose GHC matches the one already on this
+# machine means Stack reuses it instead of downloading a second compiler.
+snapshot: lts-22.44
+
+packages:
+  - .
+
+# Use the GHC already on $PATH (ghcup's 9.6.7) rather than installing a private
+# copy under ~/.stack/programs. If you ever get "GHC version mismatch", either
+# `ghcup install ghc 9.6.7` or delete this line to let Stack manage its own.
+system-ghc: true

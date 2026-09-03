@@ -1,0 +1,41 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (hand-written)",
+  "file_title": "Unit square with a cross of creases",
+  "file_classes": ["singleModel"],
+  "frame_title": "Preliminary creases",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "vertices_coords": [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [1.0, 1.0],
+    [0.0, 1.0],
+    [0.5, 0.0],
+    [1.0, 0.5],
+    [0.5, 1.0],
+    [0.0, 0.5]
+  ],
+  "edges_vertices": [
+    [0, 4], [4, 1], [1, 5], [5, 2],
+    [2, 6], [6, 3], [3, 7], [7, 0],
+    [4, 6],
+    [7, 5],
+    [0, 2]
+  ],
+  "edges_assignment": [
+    "B", "B", "B", "B",
+    "B", "B", "B", "B",
+    "V",
+    "M",
+    "F"
+  ],
+  "edges_foldAngle": [
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    180,
+    -180,
+    0
+  ]
+}
