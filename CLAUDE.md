@@ -215,11 +215,39 @@ Deliberate omissions, so nobody thinks they are bugs:
   step-by-step diagram.
 - No FOLD *output* (`ToJSON`), which the authoring-tools goal will need.
 
+## Workflow
+
+`main` is protected. Changes reach it through pull requests, and all three CI
+checks must be green before merge. Do not push to `main` directly.
+
+```bash
+git switch -c feat/fold-arrows     # feat/ fix/ docs/ chore/ test/
+# work; commit as you go
+git push -u origin HEAD
+gh pr create --fill                # then fill in the three sections
+```
+
+Issues track work before it starts, using the templates in
+`.github/ISSUE_TEMPLATE/`:
+
+| Template | For |
+| --- | --- |
+| **Task** | A piece of work — a feature, a refactor, a doc |
+| **Bug** | Something renders wrong, crashes, or rejects a valid file |
+| **Study note** | Something to understand, then write up in `docs/notes/` |
+
+Reference the issue from the PR body (`Closes #12`) so merging closes it.
+
+Merges are squash-only and history is linear, so the squashed commit message is
+what survives — write it as carefully as the PR description. Branches are
+deleted on merge.
+
 ## Pull requests
 
-Keep PRs small and single-purpose. Every PR description must contain these three
-sections, and all of them must be **succinct** — a few sentences or a short list
-each, not an essay:
+Keep PRs small and single-purpose — one idea per PR, the same rule as
+`docs/notes/`. Every PR description must contain these three sections, and all
+of them must be **succinct** — a few sentences or a short list each, not an
+essay:
 
 ```markdown
 ## Why this way

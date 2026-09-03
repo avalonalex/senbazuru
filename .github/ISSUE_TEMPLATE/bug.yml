@@ -1,0 +1,32 @@
+name: Bug
+description: Something renders wrong, crashes, or rejects a file it should accept
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fold
+    attributes:
+      label: The .fold file
+      description: >
+        The smallest file that reproduces it. Most rendering bugs turn out to be
+        decoding bugs, and the file is the quickest way to find out which.
+      render: json
+
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: senbazuru render foo.fold -o foo.svg --hide-flat
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The generated SVG, the error message, or a screenshot.

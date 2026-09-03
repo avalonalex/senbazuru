@@ -1,0 +1,23 @@
+name: Study note
+description: Something to understand, then write up in docs/notes/
+labels: ["study note"]
+body:
+  - type: input
+    id: idea
+    attributes:
+      label: The idea
+      placeholder: Rotating calipers, for the minimum-area enclosing rectangle
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it is worth knowing here
+      description: What it unlocks, or what it would have stopped us getting wrong.
+
+  - type: textarea
+    id: refs
+    attributes:
+      label: References
+      description: Papers, books, links. One idea per note — split it if there are two.
