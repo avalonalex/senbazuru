@@ -80,73 +80,33 @@ data Box = Box
   }
   deriving stock (Eq, Show)
 
--- | The tightest axis-aligned box containing every given point.
+-- | The tightest axis-aligned box containing every given point: all of them
+-- inside, boundary included, and each of the four sides touched by at least
+-- one point.
 --
--- Precisely: every point lies inside it, boundary included, and each of the
--- four sides is touched by at least one point -- so no smaller box would still
--- contain them all. Among axis-aligned boxes, minimal-by-inclusion and
--- minimal-by-area coincide, and the answer is unique.
+-- \"Axis-aligned\" is load-bearing. Let the rectangle rotate and this becomes
+-- the /minimum-area enclosing rectangle/, a harder problem needing a convex
+-- hull and rotating calipers, whose answer is often strictly smaller.
 --
--- \"Axis-aligned\" is not a throwaway qualifier. Let the rectangle rotate and
--- this becomes the /minimum-area enclosing rectangle/, a different and much
--- harder problem whose answer is often strictly smaller: think of points
--- strung along a diagonal, where the upright box is mostly empty air. Solving
--- that one needs the convex hull and rotating calipers, which is why it is not
--- what this function does.
+-- 'Nothing' for an empty list: a FOLD file with no @vertices_coords@ is legal
+-- and has no sensible box. Seeding the fold from the first point is what forces
+-- that case into the type, and it keeps the accumulator a valid box at every
+-- step -- the textbook @+infinity@ seed is an inverted box that breaks the
+-- invariant.
 --
--- Returns 'Nothing' for an empty list. That is not pedantry: a FOLD file with
--- no @vertices_coords@ is legal, and there is genuinely no sensible box for it.
--- Making the caller handle the case is cheaper than debugging an @infinity@
--- that has leaked into an SVG @viewBox@.
---
--- == Why the fold starts at a point, not at infinity
---
--- The textbook version seeds the accumulator with @minX = +infinity@ and
--- @maxX = -infinity@ and then folds over every point. It works, but that
--- starting value is an /inverted/ box whose minimum exceeds its maximum, which
--- breaks the invariant the rest of this module relies on. Peeling the first
--- point off with a pattern match and seeding with @Box p p@ keeps the
--- accumulator a valid box at every step, including the first.
---
--- The peeling is also what forces the 'Maybe' into the type: with an empty
--- list there is no first point to start from. Taking a @NonEmpty V2@ instead
--- would make the function total and move the check to the one caller that
--- knows what to do about it.
---
--- == Why @foldl'@ and strict fields, together
---
--- These are two halves of one decision, and neither works without the other.
---
--- @foldl'@ forces the accumulator at every step, but only to /weak head normal
--- form/ -- far enough to know which constructor it is, and no further. For a
--- 'Box' that means the @Box@ constructor alone. Were its fields lazy, each
--- would still hold an unevaluated chain of @min@ and @max@ thunks, growing by
--- one link per point: exactly the leak that @foldl'@ is normally reached for
--- to prevent.
---
--- The strictness annotations on 'V2' and 'Box' are what make forcing the
--- constructor force the numbers inside it. Measured over one million points at
--- @-O0@: 44 KB peak residency as written here, against 198 MB for the same
--- @foldl'@ over a record with lazy fields.
---
--- At @-O2@ the strictness analyser closes that gap completely, so the bangs
--- are not buying speed in an optimised build. What they buy is the guarantee:
--- the space behaviour becomes a property of the type rather than something the
--- optimiser has to notice. The difference is easy to feel in @make repl@,
--- where there is no strictness analysis at all.
---
--- == Why one fold rather than four traversals
---
--- @Box (V2 (minimum xs) (minimum ys)) (V2 (maximum xs) (maximum ys))@ reads
--- more declaratively and is worse in two ways: it walks the input four times
--- instead of once, and @minimum@ and @maximum@ are partial, so the empty case
--- becomes an exception rather than the 'Nothing' above.
+-- The strict fields on 'V2' and 'Box' are load-bearing too. @foldl'@ forces
+-- only to weak head normal form, so with lazy fields this would still pile up
+-- @min@ and @max@ thunks; see @docs\/notes\/strict-fields.md@ for the numbers.
 boxFromPoints :: [V2] -> Maybe Box
 boxFromPoints [] = Nothing
 boxFromPoints (p : ps) = Just (foldl' grow (Box p p) ps)
   where
-    grow (Box (V2 lo'x lo'y) (V2 hi'x hi'y)) (V2 x y) =
-      Box (V2 (min lo'x x) (min lo'y y)) (V2 (max hi'x x) (max hi'y y))
+    -- Widen each of the four bounds outward, just far enough to admit the new
+    -- point. It never shrinks: if the point is already inside, every min and
+    -- max keeps the bound it had. The four bounds do not interact, which is
+    -- what makes one pass enough.
+    grow (Box (V2 minX minY) (V2 maxX maxY)) (V2 x y) =
+      Box (V2 (min minX x) (min minY y)) (V2 (max maxX x) (max maxY y))
 
 -- | Width and height, packed into a 'V2'. Never negative, given the invariant.
 boxSize :: Box -> V2
@@ -184,92 +144,43 @@ applyTransform (Transform (V2 sx sy) (V2 ox oy)) (V2 x y) =
 -- | @fitBox src dst@ builds the transform that maps model-space box @src@ into
 -- page-space box @dst@.
 --
--- Three things happen at once, and each is a decision:
+-- Three decisions:
 --
--- 1. __Uniform scale.__ The same factor is used for @x@ and @y@, so a square
---    sheet of paper stays square. Anything else would distort the model.
+-- 1. __Uniform scale__, so a square sheet stays square. One factor serves both
+--    axes, and it must be the /smaller/ of @dstW \/ srcW@ and @dstH \/ srcH@ --
+--    the binding constraint. Take the larger and the other axis overflows.
 --
--- 2. __Centring.__ Since the scale is uniform, @src@ generally cannot fill
---    @dst@ exactly; the leftover slack is split evenly, so the drawing sits in
---    the middle of the page.
+-- 2. __Centring.__ A uniform scale generally cannot fill both axes, so the
+--    leftover slack is split evenly.
 --
--- 3. __Y flip.__ The @y@ scale is negated to convert mathematical @y@-up
---    coordinates into SVG @y@-down ones.
+-- 3. __Y flip.__ Model @y@ increases upwards and SVG @y@ downwards, hence the
+--    negated @y@ scale.
 --
--- == What makes the arithmetic easy
+-- 'Transform' is only a per-axis scale and a translation, so applying it is
+-- @x' = sx*x + ox@ and @y' = sy*y + oy@: two independent one-dimensional
+-- problems. Requiring the centre of @src@ to land on the centre of @dst@ then
+-- determines the offset outright, one equation per axis:
 --
--- 'Transform' is restricted to a per-axis scale and a translation, so applying
--- it is
+-- >    scale  * srcCx + ox == dstCx   =>   ox = dstCx - scale * srcCx
+-- > (-scale) * srcCy + oy == dstCy   =>   oy = dstCy + scale * srcCy
 --
--- > x' = sx * x + ox
--- > y' = sy * y + oy
+-- The asymmetric minus and plus below reads as a typo and is not. Same
+-- derivation both times; the sign differs only because the minus on the @y@
+-- scale crosses the equals sign.
 --
--- Those are two independent one-dimensional problems, each with one unknown
--- once the scale is fixed. A general affine matrix would need composition and
--- inversion machinery to buy nothing that is needed here.
+-- Degenerate axes are filtered out rather than divided by. A collinear crease
+-- pattern has zero height, and while @minimum [180, Infinity]@ happens to give
+-- the right answer, /two/ zero extents give @Infinity * 0 = NaN@ in the offset
+-- -- and a @NaN@ reaches an SVG attribute, where it draws nothing and reports
+-- no error.
 --
--- == Choosing the scale
+-- A unit square onto a 200-by-200 page with a 10-unit margin (content box 10
+-- to 190):
 --
--- Filling the width alone would want @dstW \/ srcW@, and filling the height
--- alone @dstH \/ srcH@. Using each on its own axis fills the page perfectly and
--- draws a square sheet as a rectangle, so one number has to serve both -- and
--- it must be the /smaller/ of the two. That is the binding constraint, the
--- axis on which the model is tightest relative to the page; take the larger
--- and the other axis overflows.
+-- > (0,0) -> (10,190)    (1,1) -> (190,10)    (0.5,0.5) -> (100,100)
 --
--- A 4-by-1 model dropped into a 180-by-180 content box gives ratios of 45 and
--- 180. The scale is 45, and the drawing ends up 180 wide by 45 tall.
---
--- == Degenerate boxes
---
--- > ratios = [dstW / srcW | srcW > 0] ++ [dstH / srcH | srcH > 0]
---
--- Each of those is a list comprehension with a guard and no generator, which
--- is worth recognising as an idiom: @[e | cond]@ means @if cond then [e] else
--- []@. So an axis contributes a ratio only when it actually has extent.
---
--- That is not fussiness. A crease pattern whose vertices are all collinear has
--- @srcH == 0@, and @dstH \/ 0@ is @Infinity@. Relying on IEEE semantics almost
--- works -- @minimum [180, Infinity]@ is @180@ -- but when /both/ extents are
--- zero you get @minimum [Infinity, Infinity]@, then @Infinity * 0 = NaN@ in
--- the offset, and a @NaN@ reaches an SVG attribute, where it renders as
--- nothing at all and reports no error.
---
--- The empty-list branch of the @case@ is the every-vertex-at-one-point case:
--- nothing constrains the scale, so 1 is as good as any answer. It is not
--- defensive padding either, since @minimum []@ throws.
---
--- == Solving for the offset
---
--- With the scale fixed there is one unknown per axis and one requirement --
--- the centre of @src@ must land on the centre of @dst@ -- so each is
--- determined rather than chosen.
---
--- For @x@, solving @scale * srcCx + ox == dstCx@ gives
--- @ox = dstCx - scale * srcCx@.
---
--- For @y@ the map is @y' = (-scale) * y + oy@, so solving
--- @(-scale) * srcCy + oy == dstCy@ gives @oy = dstCy + scale * srcCy@.
---
--- That asymmetric minus and plus in @offset@ below is the line that looks like
--- a typo and is not. It is the same derivation both times; the sign differs
--- only because the minus on the @y@ scale moves across the equals sign.
---
--- == Worked example
---
--- A unit square into a 200-by-200 page with a 10-unit margin, so the content
--- box runs from 10 to 190:
---
--- > tScale  = V2 180 (-180)
--- > tOffset = V2 10 190
--- >
--- > (0,0) -> (10,190)     (1,1) -> (190,10)
--- > (0,1) -> (10,10)      (1,0) -> (190,190)
--- > (0.5,0.5) -> (100,100)
---
--- The first of those is the whole y flip in one line: the origin of the model
--- sits at the bottom of the page, which in page coordinates is the /largest/
--- @y@.
+-- The first is the y flip in one line: the origin of the model sits at the
+-- bottom of the page, which in page coordinates is the /largest/ @y@.
 fitBox :: Box -> Box -> Transform
 fitBox src dst = Transform (V2 scale (negate scale)) offset
   where
