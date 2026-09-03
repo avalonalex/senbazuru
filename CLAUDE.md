@@ -95,6 +95,20 @@ One direction of flow, no cycles:
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`.
 
+## Docs
+
+| Where | What |
+| --- | --- |
+| Haddock module headers | Why a module exists and what a newcomer would get wrong in it. The primary place explanation lives. |
+| `README.md` | What the tool is and how to run it. |
+| `docs/fold-primer.md` | The domain, for someone new to origami and geometry. |
+| `docs/notes/` | Background and direction. **One idea per file**, a few minutes to read, with references. |
+
+When you learn something worth keeping — a theorem, an algorithm, a technique —
+add a note to `docs/notes/` and link it from that directory's `README.md`. Keep
+it to one idea; a note that needs two headings is two notes. This is the same
+material as a PR's "Interesting bits" section, promoted to somewhere findable.
+
 ## Conventions
 
 **Errors are values.** Return `Either SomeError a`. Do not throw, do not `error`,

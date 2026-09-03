@@ -87,27 +87,39 @@ app/                       the command-line interface
 test/                      property, example and golden tests
 examples/                  sample .fold files, including three from upstream
 docs/fold-primer.md        background on FOLD and on origami diagram notation
+docs/notes/                one idea per file, with references
 ```
 
-`docs/fold-primer.md` is the place to start if origami or the FOLD format are
-new to you. [`CLAUDE.md`](CLAUDE.md) holds the working conventions.
+[`docs/fold-primer.md`](docs/fold-primer.md) is the place to start if origami or
+the FOLD format are new to you. [`docs/notes/`](docs/notes/) collects short
+single-idea notes on the theorems, algorithms and techniques this project leans
+on or is heading towards. [`CLAUDE.md`](CLAUDE.md) holds the working
+conventions.
 
 ## Roadmap
 
 Roughly in order:
 
+0. **A flat-foldability checker.** Maekawa's and Kawasaki's theorems decide
+   whether each vertex can fold flat. Small, needs no new geometry, and it makes
+   senbazuru understand origami rather than only draw it.
+   → [maekawa](docs/notes/maekawa.md), [kawasaki](docs/notes/kawasaki.md)
 1. **Fold arrows.** A crease pattern is not yet instructions; the arrow showing
-   *which way* the paper moves is what makes a diagram teachable. The usual
-   approach is to take the convex hull of the sheet, find a segment across it
-   perpendicular to the fold line, and draw a curved arrow along that segment —
-   so this needs a convex hull and polygon clipping first.
+   *which way* the paper moves is what makes a diagram teachable. Needs a convex
+   hull, and therefore needs to care about floating point.
+   → [convex-hull](docs/notes/convex-hull.md),
+   [robust-predicates](docs/notes/robust-predicates.md)
 2. **Faces.** Decode `faces_vertices` into filled polygons, so a sheet reads as
    paper rather than as a wireframe.
+   → [half-edge](docs/notes/half-edge.md)
 3. **Multi-frame sequences.** Lay out a `file_frames` sequence as a numbered
    grid of steps at a single shared scale.
+   → [envelopes](docs/notes/envelopes.md)
 4. **Folded forms.** `faceOrders` and layer-correct rendering, which is where
    the real computational geometry starts.
+   → [layer-ordering](docs/notes/layer-ordering.md)
 5. **Authoring tools.** FOLD output, and operations on crease patterns.
+   → [huzita-hatori](docs/notes/huzita-hatori.md)
 
 ## Credits and licence
 
