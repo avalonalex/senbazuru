@@ -27,6 +27,7 @@ read the Haddock module headers; for the domain, start with
 | [phantom-units.md](phantom-units.md) | Turning the model-units/page-units rule from a comment into a type error |
 | [envelopes.md](envelopes.md) | A support function beats a bounding box for laying out a step sequence |
 | [shrinking.md](shrinking.md) | A property test is only as useful as its counterexample is small |
+| [strict-fields.md](strict-fields.md) | `foldl'` forces to WHNF, so lazy fields leak anyway — measured |
 
 ## Where to start
 
