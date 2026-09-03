@@ -12,7 +12,7 @@ jobs:
     name: build and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Provides the GHC that stack.yaml's `system-ghc: true` expects. Keep the
       # version in step with the snapshot in stack.yaml (lts-22.44 => 9.6.7).
@@ -37,9 +37,14 @@ jobs:
     name: ormolu
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: haskell-actions/run-ormolu@v17
+      - uses: actions/checkout@v5
+      - uses: haskell-actions/run-ormolu@v21
         with:
+          # Pinned deliberately. The action defaults to "latest", which means a
+          # new ormolu release reformats the world and breaks CI on a day nobody
+          # touched the code. This must match the ormolu used locally by
+          # `make fmt` -- bump both together, in a commit that does nothing else.
+          version: 0.7.2.0
           pattern: |
             src/**/*.hs
             app/**/*.hs
@@ -49,7 +54,7 @@ jobs:
     name: hlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: haskell-actions/hlint-setup@v2
       - uses: haskell-actions/hlint-run@v2
         with:
