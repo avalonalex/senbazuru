@@ -36,19 +36,35 @@ jobs:
   format:
     name: ormolu
     runs-on: ubuntu-latest
+    env:
+      # Must match the ormolu that `make fmt` runs locally -- check with
+      # `ormolu --version`. Ormolu's output changes between releases, so an
+      # unpinned formatter fails CI on a day nobody touched the code.
+      ORMOLU_VERSION: 0.7.2.0
+      # Ormolu renamed its release assets at 0.8.0.0: "ormolu-Linux.zip" became
+      # "ormolu-x86_64-linux.zip". Bump this alongside ORMOLU_VERSION.
+      ORMOLU_ASSET: ormolu-Linux.zip
     steps:
       - uses: actions/checkout@v5
-      - uses: haskell-actions/run-ormolu@v21
-        with:
-          # Pinned deliberately. The action defaults to "latest", which means a
-          # new ormolu release reformats the world and breaks CI on a day nobody
-          # touched the code. This must match the ormolu used locally by
-          # `make fmt` -- bump both together, in a commit that does nothing else.
-          version: 0.7.2.0
-          pattern: |
-            src/**/*.hs
-            app/**/*.hs
-            test/**/*.hs
+
+      # Downloaded directly rather than via haskell-actions/run-ormolu, which
+      # only knows the post-0.8.0.0 asset naming and so cannot fetch a pinned
+      # older version at all. Five lines of curl is a fair trade for being able
+      # to pin any version we like.
+      - name: Install pinned ormolu
+        run: |
+          curl -sSfL -o /tmp/ormolu.zip \
+            "https://github.com/tweag/ormolu/releases/download/${ORMOLU_VERSION}/${ORMOLU_ASSET}"
+          unzip -q /tmp/ormolu.zip -d "$HOME/.local/bin"
+          chmod +x "$HOME/.local/bin/ormolu"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Same file set as the Makefile's fmt-check target. Ormolu picks up
+      # default-extensions from senbazuru.cabal on its own.
+      - name: Check formatting
+        run: |
+          ormolu --version
+          ormolu --mode check $(find src app test -name '*.hs')
 
   lint:
     name: hlint

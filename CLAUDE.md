@@ -120,11 +120,15 @@ is not FOLD", never "this is FOLD we do not support yet". Refinement happens in
 `make fmt`. `hlint` must be clean. Warnings in `senbazuru.cabal`'s `common
 warnings` stanza apply everywhere; keep the build warning-free.
 
-The ormolu version is **pinned in `.github/workflows/ci.yml`** (currently
-`0.7.2.0`) and must match the one on your `PATH`. Ormolu changes its output
-between releases, so an unpinned formatter fails CI on a day nobody touched the
-code. Check with `ormolu --version`; if you upgrade, bump the pin and reformat
-in a commit that does nothing else.
+The ormolu version is **pinned in `.github/workflows/ci.yml`** (`ORMOLU_VERSION`,
+currently `0.7.2.0`) and must match the one on your `PATH`. Ormolu changes its
+output between releases, so an unpinned formatter fails CI on a day nobody
+touched the code. Check with `ormolu --version`.
+
+To upgrade: bump `ORMOLU_VERSION` *and* `ORMOLU_ASSET` (the release asset was
+renamed from `ormolu-Linux.zip` to `ormolu-x86_64-linux.zip` at 0.8.0.0),
+install the same version locally, and run `make fmt` — all in a commit that does
+nothing else.
 
 **Extensions** are set once in the cabal file (`DerivingStrategies`,
 `LambdaCase`, `OverloadedStrings`, `RecordWildCards`) on top of `GHC2021`.
