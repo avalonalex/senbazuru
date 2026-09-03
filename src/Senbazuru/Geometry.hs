@@ -96,7 +96,8 @@ data Box = Box
 --
 -- The strict fields on 'V2' and 'Box' are load-bearing too. @foldl'@ forces
 -- only to weak head normal form, so with lazy fields this would still pile up
--- @min@ and @max@ thunks; see @docs\/notes\/strict-fields.md@ for the numbers.
+-- @min@ and @max@ thunks. See @docs\/notes\/strict-fields.md@ for the numbers
+-- and @docs\/notes\/folds.md@ for @foldl@ versus @foldl'@ generally.
 boxFromPoints :: [V2] -> Maybe Box
 boxFromPoints [] = Nothing
 boxFromPoints (p : ps) = Just (foldl' grow (Box p p) ps)
