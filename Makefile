@@ -4,10 +4,15 @@
 
 HS_FILES := $(shell find src app test -name '*.hs')
 
-.PHONY: build test fmt fmt-check lint check examples clean
+.PHONY: build repl test fmt fmt-check lint check examples clean
 
 build:
 	stack build
+
+# REPL with the library loaded. Picks up ./.ghci, which quiets the
+# compiled-code warning set that is unhelpful at a prompt.
+repl:
+	stack ghci senbazuru:lib
 
 test:
 	stack test

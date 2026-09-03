@@ -1,0 +1,27 @@
+-- Interactive-only settings, picked up by `stack ghci` / `make repl`.
+--
+-- The package's warning set in senbazuru.cabal is tuned for compiled code, and
+-- it is far too loud in a REPL: every `let Right x = ...` trips
+-- -Wincomplete-uni-patterns, and each interactive block trips
+-- -Wmissing-export-lists. Neither tells you anything useful at a prompt.
+:set -Wno-missing-export-lists
+:set -Wno-incomplete-uni-patterns
+:set -Wno-type-defaults
+
+-- Matches default-extensions in the cabal file, so pasted code behaves the same
+-- here as it does in a module.
+:set -XOverloadedStrings
+:set -XLambdaCase
+:set -XRecordWildCards
+
+:set prompt "senbazuru> "
+
+-- Paste this to get everything in scope:
+--   import Senbazuru.Fold.Load
+--   import Senbazuru.Fold.Types
+--   import Senbazuru.Fold.Query
+--   import Senbazuru.Geometry
+--   import Senbazuru.Diagram
+--   import Senbazuru.Diagram.Style
+--   import Senbazuru.Render.CreasePattern
+--   import Senbazuru.Render.Svg
