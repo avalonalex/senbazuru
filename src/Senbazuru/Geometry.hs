@@ -80,7 +80,19 @@ data Box = Box
   }
   deriving stock (Eq, Show)
 
--- | The tightest box containing every given point.
+-- | The tightest axis-aligned box containing every given point.
+--
+-- Precisely: every point lies inside it, boundary included, and each of the
+-- four sides is touched by at least one point -- so no smaller box would still
+-- contain them all. Among axis-aligned boxes, minimal-by-inclusion and
+-- minimal-by-area coincide, and the answer is unique.
+--
+-- \"Axis-aligned\" is not a throwaway qualifier. Let the rectangle rotate and
+-- this becomes the /minimum-area enclosing rectangle/, a different and much
+-- harder problem whose answer is often strictly smaller: think of points
+-- strung along a diagonal, where the upright box is mostly empty air. Solving
+-- that one needs the convex hull and rotating calipers, which is why it is not
+-- what this function does.
 --
 -- Returns 'Nothing' for an empty list. That is not pedantry: a FOLD file with
 -- no @vertices_coords@ is legal, and there is genuinely no sensible box for it.

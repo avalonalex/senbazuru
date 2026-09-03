@@ -55,13 +55,24 @@ spec = do
           Nothing -> False
           Just b -> all (boxContains b) ps
 
-    it "is tight: shrinking it at all leaves some point outside" $
+    it "is tight: every one of the four sides is touched by a point" $
       forAll (listOf1 genPoint) $ \ps ->
         case boxFromPoints ps of
           Nothing -> False
-          -- Some point must sit exactly on each side of a tight box, so pulling
-          -- the sides inwards has to exclude at least one of them.
-          Just b -> not (all (boxContains (padBox (-0.001) b)) ps)
+          Just (Box (V2 lx ly) (V2 hx hy)) ->
+            -- Checking all four sides individually matters. An earlier version
+            -- of this property shrank the box and asserted that some point fell
+            -- outside, which a box correct in x and slack in y passes happily:
+            -- the excluded point only has to be near *one* side.
+            --
+            -- Exact equality is right here. min and max select one of their
+            -- arguments rather than computing a new value, so a bound is always
+            -- literally one of the input coordinates -- no arithmetic, no
+            -- rounding, nothing to tolerate.
+            any ((== lx) . v2x) ps
+              && any ((== hx) . v2x) ps
+              && any ((== ly) . v2y) ps
+              && any ((== hy) . v2y) ps
 
   describe "fitBox" $ do
     it "keeps everything in the source box on the page" $
