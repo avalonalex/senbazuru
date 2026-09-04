@@ -40,7 +40,7 @@ works.
 Senbazuru renders sequences rather than solving for them, and FOLD is built for
 that: a multi-frame file *is* the sequence.
 
-One catch, covered in `docs/fold-reference.md`: FOLD stores states, not
+One catch, covered in [../fold-reference.md](../fold-reference.md): FOLD stores states, not
 transitions, so even an authored sequence needs its arrows inferred by diffing
 consecutive frames. That is well-posed — you have both endpoints, so you are
 subtracting rather than searching.

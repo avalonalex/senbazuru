@@ -108,7 +108,9 @@ Worth stating plainly, because the absences are easy to assume away.
   diffing consecutive frames for creases whose `edges_foldAngle` changed.
 - **No folding sequence semantics beyond array order.** `file_classes:
   ["diagrams"]` declares intent — *"a sequence of frames representing folding
-  steps"* — and `file_frames[i]` is frame `i+1`. That is the whole of it.
+  steps"* — and `file_frames[i]` is frame `i+1`. That is the whole of it. Nor
+  could a tool derive the steps for you: see
+  [notes/no-sequence-solver.md](notes/no-sequence-solver.md).
 - **No layer ordering unless supplied.** `faceOrders` is data the file carries
   because recomputing it is hard, not a derived convenience.
 - **No units on the geometry itself.** `frame_unit` labels the whole frame;
