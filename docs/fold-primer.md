@@ -66,15 +66,50 @@ object id. Ids are simply **zero-based indices into those arrays** — there is 
 
 ```jsonc
 {
-  "vertices_coords":  [[0,0], [1,0], [1,1], [0,1]],   // vertex 0 is at (0,0)
+  // COORDINATES. Vertex 0 is at (0,0), vertex 1 at (1,0), and so on.
+  // This is the only array here that holds positions.
+  "vertices_coords":  [[0,0], [1,0], [1,1], [0,1]],
+
+  // INDICES into the array above -- not positions.
+  // [3,1] means "the edge from vertex 3 to vertex 1", i.e. from (0,1)
+  // to (1,0): the diagonal. It does NOT mean the point (3,1).
   "edges_vertices":   [[0,1], [1,2], [2,3], [3,0], [3,1]],
-  "edges_assignment": ["B",   "B",   "B",   "B",   "V"],  // edge 4 is a valley
+
+  // Edge 4, the diagonal, is a valley fold. The other four are the
+  // border of the paper.
+  "edges_assignment": ["B",   "B",   "B",   "B",   "V"],
+
+  // INDICES again. The diagonal cuts the square into two triangles.
   "faces_vertices":   [[0,1,3], [1,2,3]]
 }
 ```
 
-So edge 4 runs from vertex 3 to vertex 1, and it is a valley fold. That is the
-entire mental model.
+Everything in that file lies inside the unit square. This is worth dwelling on,
+because it is the first thing that trips people up: **`vertices_coords` holds
+positions, and every other `_vertices` array holds indices into it.** They are
+all written as `[a, b]` pairs and look identical. Read `[3,1]` as a point and
+the shape appears to spill outside the paper; read it as a pair of vertex ids
+and it is the diagonal.
+
+### What a face is
+
+A **face** is a region of paper bounded by edges — a polygon.
+`faces_vertices[i]` lists the vertices around face `i`, counterclockwise. Above,
+the diagonal splits the square into two triangles:
+
+| Face | Vertices | Positions |
+| --- | --- | --- |
+| 0 | `[0,1,3]` | `(0,0)`, `(1,0)`, `(0,1)` — lower-left triangle |
+| 1 | `[1,2,3]` | `(1,0)`, `(1,1)`, `(0,1)` — upper-right triangle |
+
+Those two triangles are the flaps: fold along the valley diagonal and one lands
+on the other.
+
+Faces carry three things edges alone cannot. They are what you *fill* to draw
+paper as paper rather than as a wireframe. They are what gets stacked in a
+folded model, which is what `faceOrders` orders. And their counterclockwise
+winding defines which way the face points — which is precisely why mountain and
+valley depend on the side you are viewing from.
 
 ### The parts that catch people out
 
