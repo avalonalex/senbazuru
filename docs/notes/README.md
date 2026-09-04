@@ -19,6 +19,7 @@ read the Haddock module headers; for the domain, start with
 | [half-edge.md](half-edge.md) | The structure FOLD's array format is already shaped for |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
+| [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
 
 ## Haskell
 
