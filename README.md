@@ -22,7 +22,15 @@ stack run -- render examples/unit-square.fold -o unit-square.svg
 ```
 
 produces a unit square with a valley fold down the middle, a mountain fold
-across it, and a faint diagonal reference crease.
+across it, and a faint diagonal reference crease. Folded forms take a viewing
+angle:
+
+```bash
+stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
+```
+
+The bare `--` matters: without it Stack tries to interpret `--view` as one of its
+own options.
 
 There is also a summary command for poking at unfamiliar files:
 
@@ -61,6 +69,14 @@ the compiler, delete that line.
 ```
 senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
 senbazuru info FILE.fold
+```
+
+Working from source, reach the executable in any of three ways:
+
+```bash
+stack run -- render FILE.fold          # everything after -- goes to senbazuru
+stack exec -- senbazuru render FILE.fold   # after a stack build
+make install                           # puts senbazuru on your PATH, then use it directly
 ```
 
 | Option | Meaning |
