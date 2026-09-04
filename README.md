@@ -94,11 +94,13 @@ make install                           # puts senbazuru on your PATH, then use i
 ```
 src/Senbazuru/
   Geometry.hs              points, boxes, the model→page transform
+  Geometry/V3.hs           points in space, for 3D input
   Fold/Types.hs            the FOLD document model + JSON decoding
   Fold/Load.hs             reading files (the only I/O in the library)
   Fold/Query.hs            validating a frame into geometry you can trust
   Diagram.hs               backend-independent drawing IR
   Diagram/Style.hs         the origami line conventions
+  Render/Camera.hs         orthographic projection, 3D → the page
   Render/CreasePattern.hs  FOLD frame → Diagram
   Render/Svg.hs            Diagram → SVG text
 app/                       the command-line interface

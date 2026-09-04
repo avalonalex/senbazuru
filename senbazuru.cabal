@@ -100,6 +100,7 @@ test-suite senbazuru-test
     Senbazuru.Fold.TypesSpec
     Senbazuru.GeometrySpec
     Senbazuru.Render.CameraSpec
+    Senbazuru.Render.CreasePatternSpec
     Senbazuru.Render.SvgSpec
     Test.Golden
 

@@ -38,6 +38,7 @@ the non-obvious thing a newcomer would get wrong here.
 stack build                 # build library + executable
 stack test                  # build everything and run the test suite
 stack run -- render examples/unit-square.fold -o out.svg
+stack run -- render examples/squaretwist.fold --view iso -o out.svg
 stack run -- info examples/squaretwist.fold
 stack ghci senbazuru:lib    # REPL with the library loaded
 
@@ -62,8 +63,9 @@ One direction of flow, no cycles:
      |                               a faithful, permissive mirror of the format
      |  Senbazuru.Fold.Query         validate + refine: indices become real points
      v
- [Crease]                            geometry that cannot be structurally wrong
+ [Crease]                            3D geometry that cannot be structurally wrong
      |  Senbazuru.Render.CreasePattern
+     |  + Senbazuru.Render.Camera    orthographic projection to the page
      |  + Senbazuru.Diagram.Style    origami line conventions
      v
  Diagram                             Senbazuru.Diagram
@@ -76,12 +78,14 @@ One direction of flow, no cycles:
 | Module | Holds |
 | --- | --- |
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
+| `Senbazuru.Geometry.V3` | Points in space, and the algebra a camera needs. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
-| `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`. |
+| `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
+| `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
@@ -193,9 +197,12 @@ negative zero).
 - **Ids are array indices, zero-based.** There is no `"id"` field anywhere. An
   edge is `edges_vertices[i]`, its assignment is `edges_assignment[i]`.
 - **Parallel arrays are not guaranteed to line up.** Check lengths.
-- **Coordinates may be 2D or 3D.** `frameVertices` drops z, which is correct for
-  a crease pattern and an orthographic top view for a folded form. A top view of
-  a folded model is *not* a correct picture of it.
+- **Coordinates may be 2D or 3D.** `frameVertices` returns `V3` and keeps z;
+  2D vertices get `z = 0`. Projection is the camera's job, in
+  `Senbazuru.Render.Camera`, not the query layer's.
+- **A folded form is not necessarily 3D.** The traditional crane folds *flat*,
+  so its folded frame lies in a plane. Choose a view from the coordinates
+  (`defaultBasisFor`), never from `frame_classes`.
 - **Real files carry vendor keys** like `"cpedit:page"`. Ignore unknown keys.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.

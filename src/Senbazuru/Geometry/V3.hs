@@ -17,7 +17,6 @@
 module Senbazuru.Geometry.V3
   ( V3 (..),
     addV3,
-    subV3,
     scaleV3,
     dotV3,
     crossV3,
@@ -37,10 +36,6 @@ data V3 = V3
 -- | Componentwise addition.
 addV3 :: V3 -> V3 -> V3
 addV3 (V3 ax ay az) (V3 bx by bz) = V3 (ax + bx) (ay + by) (az + bz)
-
--- | Componentwise subtraction.
-subV3 :: V3 -> V3 -> V3
-subV3 (V3 ax ay az) (V3 bx by bz) = V3 (ax - bx) (ay - by) (az - bz)
 
 -- | Scale by a number.
 scaleV3 :: Double -> V3 -> V3
@@ -66,11 +61,16 @@ crossV3 (V3 ax ay az) (V3 bx by bz) =
 normV3 :: V3 -> Double
 normV3 v = sqrt (dotV3 v v)
 
--- | Scale to unit length. 'Nothing' for the zero vector, which has no
--- direction to preserve.
+-- | Scale to unit length. 'Nothing' when there is no unit vector to return.
+--
+-- The guard rejects more than the zero vector. @n == 0@ alone would let a
+-- non-finite input through, because @NaN == 0@ is 'False' — and the result
+-- would be a @Just@ full of NaNs claiming to be a unit vector. Downstream that
+-- is silent: NaN page coordinates are collapsed to @0@ by the number formatter,
+-- so every point stacks at one spot and nothing reports an error.
 normalizeV3 :: V3 -> Maybe V3
 normalizeV3 v
-  | n == 0 = Nothing
-  | otherwise = Just (scaleV3 (1 / n) v)
+  | n > 0, not (isInfinite n) = Just (scaleV3 (1 / n) v)
+  | otherwise = Nothing
   where
     n = normV3 v

@@ -3,14 +3,14 @@
   <title>fixture</title>
   <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 162.549 62.121 L 27.308 137.879" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
-    <path d="M 162.549 62.121 L 94.928 10" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
-    <path d="M 94.928 10 L 27.308 137.879" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
-    <path d="M 27.308 137.879 L 172.692 132.939" stroke="#1a1a1a" stroke-width="1.6"/>
-    <path d="M 162.549 62.121 L 172.692 132.939" stroke="#1a1a1a" stroke-width="1.6"/>
-    <path d="M 94.928 10 L 94.928 190" stroke="#1a1a1a" stroke-width="1.6"/>
-    <path d="M 94.928 10 L 94.928 190" stroke="#1a1a1a" stroke-width="1.6"/>
-    <path d="M 162.549 62.121 L 94.928 190" stroke="#1a1a1a" stroke-width="1.6"/>
-    <path d="M 27.308 137.879 L 94.928 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 177.942 55 L 22.058 145" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 177.942 55 L 100 10" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 100 10 L 22.058 145" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 22.058 145 L 177.942 145" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 177.942 55 L 177.942 145" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 100 10 L 100 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 100 10 L 100 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 177.942 55 L 100 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 22.058 145 L 100 190" stroke="#1a1a1a" stroke-width="1.6"/>
   </g>
 </svg>

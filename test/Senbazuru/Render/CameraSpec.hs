@@ -48,6 +48,14 @@ spec = do
     it "refuses a zero direction" $
       basisFrom (V3 0 0 0) (V3 0 1 0) `shouldSatisfy` isNothing
 
+    it "refuses a non-finite direction rather than returning NaNs" $ do
+      -- normalizeV3 guarding only on `n == 0` would let these through, because
+      -- NaN == 0 is False. The result would be a Basis of NaNs that satisfies
+      -- no invariant, and NaN page coordinates format as "0", so every point
+      -- would silently stack in one place.
+      basisFrom (V3 (0 / 0) 0 0) (V3 0 1 0) `shouldSatisfy` isNothing
+      basisFrom (V3 (1 / 0) 0 0) (V3 0 1 0) `shouldSatisfy` isNothing
+
     it "produces three mutually perpendicular unit vectors" $
       forAll genBasis $ \b ->
         let r = basisRight b
@@ -59,6 +67,16 @@ spec = do
               && all (near 1) [normV3 r, normV3 u, normV3 f]
 
   describe "topDown" $ do
+    it "is orthonormal like any other basis" $
+      -- topDown is written by hand rather than generated, so the property test
+      -- over random bases never reaches it. A typo in one component would
+      -- otherwise change which world axis maps to the page, silently.
+      let r = basisRight topDown
+          u = basisUp topDown
+          f = basisForward topDown
+       in all (near 0) [dotV3 r u, dotV3 r f, dotV3 u f]
+            && all (near 1) [normV3 r, normV3 u, normV3 f]
+
     it "keeps x and y exactly, so crease patterns cannot drift" $
       -- Exact equality on purpose. The basis is the coordinate axes themselves,
       -- so projecting multiplies by one and adds zero. If this ever becomes
@@ -95,6 +113,17 @@ spec = do
             V2 bx by = project b (addV3 p along)
          in near (sqrt ((bx - ax) ** 2 + (by - ay) ** 2)) 3
 
+  describe "isometric" $ do
+    it "really is isometric: all three world axes foreshorten equally" $
+      -- The property that distinguishes isometric from a merely pleasing angle.
+      -- Any (+-1, +-1, +-1) direction gives sqrt(2/3); an arbitrary one does not,
+      -- and then lengths along different axes stop being comparable on the page.
+      let lengthOf (V3 x y z) =
+            let V2 px py = project isometric (V3 x y z)
+             in sqrt (px * px + py * py)
+          ls = map lengthOf [V3 1 0 0, V3 0 1 0, V3 0 0 1]
+       in all (near (sqrt (2 / 3))) ls
+
   describe "namedView" $ do
     it "resolves every name it advertises" $
       all (isJust . namedView) viewNames
@@ -104,6 +133,11 @@ spec = do
 
     it "maps top to the same basis as topDown" $
       namedView "top" `shouldBe` Just topDown
+
+    it "advertises exactly the views it can resolve" $
+      -- views is the single source; this catches the list and the lookup
+      -- drifting apart, which would leave a view undiscoverable in --help.
+      map fst views `shouldBe` viewNames
 
   describe "the named views" $
     it "are all well formed, so the total fallback never fires" $

@@ -14,7 +14,6 @@ module Senbazuru.Cli
   )
 where
 
-import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -32,14 +31,8 @@ import Senbazuru.Fold.Types
     allFrames,
     assignmentCode,
   )
-import Senbazuru.Render.Camera
-  ( Basis,
-    isometric,
-    namedView,
-    topDown,
-    viewNames,
-  )
-import Senbazuru.Render.CreasePattern (creasePatternFrom)
+import Senbazuru.Render.Camera (Basis, namedView, viewNames)
+import Senbazuru.Render.CreasePattern (creasePatternAuto, creasePatternFrom)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -61,8 +54,9 @@ data RenderOptions = RenderOptions
     roMargin :: Double,
     roTransparent :: Bool,
     roHideFlat :: Bool,
-    -- | 'Nothing' means choose from the frame's own declared class.
-    roView :: Maybe Text
+    -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
+    -- argument parsing, so an unknown name never reaches this record.
+    roView :: Maybe Basis
   }
   deriving stock (Eq, Show)
 
@@ -132,13 +126,18 @@ renderOptions =
     <*> switch
       (long "hide-flat" <> help "Do not draw flat (F) or unassigned (U) creases")
     <*> optional
-      ( strOption
+      ( option
+          -- Resolved during parsing, so a bad name is rejected with optparse's
+          -- own usage text before any file is opened, and roView carries a
+          -- Basis rather than an unvalidated string.
+          (maybeReader (namedView . T.pack))
           ( long "view"
               <> metavar "NAME"
               <> help
                 ( "Viewing angle: "
                     <> T.unpack (T.intercalate ", " viewNames)
-                    <> " (default: top for crease patterns, iso for folded forms)"
+                    <> " (default: chosen from the geometry -- flat models are"
+                    <> " viewed from above, solid ones isometrically)"
                 )
           )
       )
@@ -165,29 +164,13 @@ renderFile o f = do
           <> tshow (roFrame o)
           <> "; this file has "
           <> tshow (length (allFrames f))
-  basis <- resolveView frame
-  case creasePatternFrom theme basis frame of
+  let rendered = case roView o of
+        Nothing -> creasePatternAuto theme frame
+        Just basis -> creasePatternFrom theme basis frame
+  case rendered of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
     Right d -> emit (renderSvg (page frame) d)
   where
-    -- With no --view, take the frame at its word. A foldedForm sits in space and
-    -- looks like nothing much from directly above; anything else is flat, where
-    -- a three-quarter view would only skew it. Files declaring no class fall
-    -- back to top, so their output never changes.
-    resolveView :: Frame -> IO Basis
-    resolveView frame = case roView o of
-      Nothing
-        | "foldedForm" `elem` frameClasses frame -> pure isometric
-        | otherwise -> pure topDown
-      Just name -> case namedView name of
-        Just b -> pure b
-        Nothing ->
-          die $
-            "unknown view "
-              <> tshow name
-              <> "; expected one of "
-              <> T.intercalate ", " viewNames
-
     theme
       | roHideFlat o = defaultTheme {themeShowFlat = False, themeShowUnassigned = False}
       | otherwise = defaultTheme
