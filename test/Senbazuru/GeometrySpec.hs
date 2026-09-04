@@ -43,8 +43,34 @@ epsilon = 1e-6
 closeTo :: Double -> Double -> Bool
 closeTo a b = abs (a - b) < epsilon
 
+nearV2 :: V2 -> V2 -> Bool
+nearV2 (V2 ax ay) (V2 bx by) = closeTo ax bx && closeTo ay by
+
 spec :: Spec
 spec = do
+  describe "the VectorSpace instance for V2" $ do
+    it "gives V2 a dot product it never had before" $
+      -- Shared with V3 through the class, so 2D angle work -- Kawasaki's
+      -- theorem, for one -- gets it without a second implementation.
+      dot (V2 3 4) (V2 2 1) `shouldBe` 10
+
+    it "derives norm from dot" $
+      norm (V2 3 4) `shouldBe` 5
+
+    it "derives normalize, and refuses the zero vector" $ do
+      -- Compared with a tolerance, not exactly. normalize scales by the
+      -- reciprocal, so this computes 3 * (1/5); 1/5 is not exact in binary and
+      -- the product lands one ulp off 0.6. Dividing componentwise would hit it
+      -- exactly, at the cost of a division per component -- the usual
+      -- reciprocal-versus-divide trade, and worth knowing it is being made.
+      normalize (V2 3 4) `shouldSatisfy` maybe False (nearV2 (V2 0.6 0.8))
+      normalize (V2 0 0) `shouldBe` Nothing
+
+    it "refuses non-finite input, the default method's whole point" $
+      -- The guard lives once in the class default, so V2 and V3 cannot disagree
+      -- about it -- which is what the old per-type functions risked.
+      normalize (V2 (0 / 0) 1) `shouldBe` Nothing
+
   describe "boxFromPoints" $ do
     it "has no answer for no points" $
       boxFromPoints [] `shouldBe` Nothing

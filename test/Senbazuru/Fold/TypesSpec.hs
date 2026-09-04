@@ -14,7 +14,7 @@ import Data.Either (isLeft)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.V3 (V3 (..))
 import Test.Hspec
 
 -- | Decode or fail the test with the decoder's own message.
@@ -84,12 +84,15 @@ spec = do
       length (facesVertices fr) `shouldBe` 2
 
   describe "frameVertices" $ do
-    it "keeps x and y" $
-      frameVertices (frameOf [[1, 2]] [] []) `shouldBe` Right [V2 1 2]
+    it "gives a 2D vertex z = 0, the plane a flat sheet lies in" $
+      frameVertices (frameOf [[1, 2]] [] []) `shouldBe` Right [V3 1 2 0]
 
-    it "projects 3D coordinates by dropping z" $
-      -- Documented behaviour, not an accident: it is an orthographic top view.
-      frameVertices (frameOf [[1, 2, 99]] [] []) `shouldBe` Right [V2 1 2]
+    it "keeps z when the file supplies it" $
+      -- Query no longer projects. Flattening is the camera's job now.
+      frameVertices (frameOf [[1, 2, 99]] [] []) `shouldBe` Right [V3 1 2 99]
+
+    it "ignores components beyond the third" $
+      frameVertices (frameOf [[1, 2, 3, 4]] [] []) `shouldBe` Right [V3 1 2 3]
 
     it "rejects a vertex with fewer than two coordinates" $
       frameVertices (frameOf [[1]] [] [])
@@ -99,7 +102,7 @@ spec = do
     it "resolves edges to their endpoints" $ do
       let fr = frameOf [[0, 0], [1, 1]] [(0, 1)] [Valley]
       fmap (map (\c -> (creaseStart c, creaseEnd c, creaseAssignment c))) (frameCreases fr)
-        `shouldBe` Right [(V2 0 0, V2 1 1, Valley)]
+        `shouldBe` Right [(V3 0 0 0, V3 1 1 0, Valley)]
 
     it "reports which edge refers to a vertex that does not exist" $ do
       let fr = frameOf [[0, 0]] [(0, 7)] [Valley]

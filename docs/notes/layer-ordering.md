@@ -17,10 +17,9 @@ passing through itself.
 
 ## Why it matters here
 
-`Senbazuru.Fold.Query.frameVertices` projects folded forms straight down onto
-the xy plane, and its documentation says plainly that a top-down view of a
-folded model is not a correct picture of it. Everything past that honest
-disclaimer needs this. It is the deep end of the roadmap, and worth knowing the
+`Senbazuru.Render.Camera` can now look at a folded form from any angle, but it
+draws every edge regardless of what is in front of what — a wireframe, with no
+paper. Everything past that needs this. It is the deep end of the roadmap, and worth knowing the
 shape of before wading in.
 
 ## References

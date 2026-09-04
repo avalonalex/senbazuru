@@ -67,6 +67,9 @@ library
     Senbazuru.Fold.Query
     Senbazuru.Fold.Types
     Senbazuru.Geometry
+    Senbazuru.Geometry.V3
+    Senbazuru.Geometry.VectorSpace
+    Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
     Senbazuru.Render.Svg
 
@@ -97,6 +100,8 @@ test-suite senbazuru-test
   other-modules:
     Senbazuru.Fold.TypesSpec
     Senbazuru.GeometrySpec
+    Senbazuru.Render.CameraSpec
+    Senbazuru.Render.CreasePatternSpec
     Senbazuru.Render.SvgSpec
     Test.Golden
 

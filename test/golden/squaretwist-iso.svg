@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <title>fixture</title>
+  <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 34.712 116.93 L 84.135 88.396" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 84.135 88.396 L 59.423 74.128" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 130.293 157.755 L 80.87 129.221" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 80.87 129.221 L 56.158 143.488" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 115.865 111.604 L 140.577 125.871" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 165.288 83.07 L 115.865 111.604" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 69.707 42.245 L 119.13 70.779" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 119.13 70.779 L 143.842 56.512" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 84.135 88.396 L 80.87 129.221" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 80.87 129.221 L 115.865 111.604" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 115.865 111.604 L 119.13 70.779" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 119.13 70.779 L 84.135 88.396" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 10 102.663 L 34.712 116.93" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 59.423 74.128 L 10 102.663" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 56.158 143.488 L 105.581 172.022" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 105.581 172.022 L 130.293 157.755" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 140.577 125.871 L 190 97.337" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 190 97.337 L 165.288 83.07" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 94.419 27.978 L 69.707 42.245" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 143.842 56.512 L 94.419 27.978" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 59.423 74.128 L 69.707 42.245" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 34.712 116.93 L 56.158 143.488" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 130.293 157.755 L 140.577 125.871" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 165.288 83.07 L 143.842 56.512" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

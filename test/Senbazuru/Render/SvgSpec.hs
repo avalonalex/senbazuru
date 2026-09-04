@@ -16,7 +16,8 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry
-import Senbazuru.Render.CreasePattern (creasePattern)
+import Senbazuru.Render.Camera (Basis, isometric, topDown)
+import Senbazuru.Render.CreasePattern (creasePatternFrom)
 import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
@@ -24,10 +25,14 @@ import Test.Hspec
 -- | Render a fixture the same way the CLI would, with a fixed page so the
 -- output does not depend on defaults changing.
 renderFixture :: FilePath -> IO Text
-renderFixture path = do
+renderFixture = renderFixtureFrom topDown
+
+-- | Render a fixture through a given viewing basis.
+renderFixtureFrom :: Basis -> FilePath -> IO Text
+renderFixtureFrom basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
-  d <- case creasePattern defaultTheme (keyFrame f) of
+  d <- case creasePatternFrom defaultTheme basis (keyFrame f) of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -119,3 +124,14 @@ spec = do
     it "renders diagonal-cp.fold exactly as recorded" $
       renderFixture "test/fixtures/diagonal-cp.fold"
         >>= goldenText "test/golden/diagonal-cp.svg"
+
+    -- These two are 3D folded forms. Before the camera existed they rendered as
+    -- flattened top-down projections; these goldens pin the isometric view that
+    -- replaced that.
+    it "renders simple.fold from the isometric view" $
+      renderFixtureFrom isometric "test/fixtures/simple.fold"
+        >>= goldenText "test/golden/simple-iso.svg"
+
+    it "renders squaretwist.fold from the isometric view" $
+      renderFixtureFrom isometric "test/fixtures/squaretwist.fold"
+        >>= goldenText "test/golden/squaretwist-iso.svg"

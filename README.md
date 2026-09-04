@@ -5,9 +5,10 @@ visual style of step-by-step origami instruction books.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
-> **Status: early.** Crease patterns render correctly. Folding arrows, face
-> filling and folded-form shading — the things that make a diagram a *diagram* —
-> are not built yet. See [Roadmap](#roadmap).
+> **Status: early.** Crease patterns render correctly, and folded forms render
+> as wireframes from a choice of viewing angles. Folding arrows, face filling and
+> layer-correct shading — the things that make a diagram a *diagram* — are not
+> built yet. See [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -21,7 +22,15 @@ stack run -- render examples/unit-square.fold -o unit-square.svg
 ```
 
 produces a unit square with a valley fold down the middle, a mountain fold
-across it, and a faint diagonal reference crease.
+across it, and a faint diagonal reference crease. Folded forms take a viewing
+angle:
+
+```bash
+stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
+```
+
+The bare `--` matters: without it Stack tries to interpret `--view` as one of its
+own options.
 
 There is also a summary command for poking at unfamiliar files:
 
@@ -62,12 +71,21 @@ senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
 senbazuru info FILE.fold
 ```
 
+Working from source, reach the executable in any of three ways:
+
+```bash
+stack run -- render FILE.fold          # everything after -- goes to senbazuru
+stack exec -- senbazuru render FILE.fold   # after a stack build
+make install                           # puts senbazuru on your PATH, then use it directly
+```
+
 | Option | Meaning |
 | --- | --- |
 | `-o, --output FILE` | Write to a file instead of stdout |
 | `--frame N` | Which frame to render (default `0`, the key frame) |
 | `--width`, `--height` | Page size in points (default `400`) |
 | `--margin` | Blank border in points (default `16`) |
+| `--view NAME` | Viewing angle: `top`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and `iso` for folded forms |
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 
@@ -76,11 +94,14 @@ senbazuru info FILE.fold
 ```
 src/Senbazuru/
   Geometry.hs              points, boxes, the model→page transform
+  Geometry/VectorSpace.hs  the arithmetic 2D and 3D points share
+  Geometry/V3.hs           points in space, for 3D input
   Fold/Types.hs            the FOLD document model + JSON decoding
   Fold/Load.hs             reading files (the only I/O in the library)
   Fold/Query.hs            validating a frame into geometry you can trust
   Diagram.hs               backend-independent drawing IR
   Diagram/Style.hs         the origami line conventions
+  Render/Camera.hs         orthographic projection, 3D → the page
   Render/CreasePattern.hs  FOLD frame → Diagram
   Render/Svg.hs            Diagram → SVG text
 app/                       the command-line interface

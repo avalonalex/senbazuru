@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <title>Rigidly folded square twist</title>
+  <rect x="0" y="0" width="400" height="400" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 69.813 236.331 L 163.402 183.905" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 163.402 183.905 L 109.589 161.112" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 270.938 306.429 L 163.311 260.841" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 163.311 260.841 L 116.517 287.054" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 236.598 216.094 L 290.411 238.888" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 330.187 163.668 L 236.598 216.094" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 129.062 93.571 L 236.689 139.159" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 236.689 139.159 L 283.483 112.946" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 163.402 183.905 L 163.311 260.841" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 163.311 260.841 L 236.598 216.094" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 236.598 216.094 L 236.689 139.159" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 236.689 139.159 L 163.402 183.905" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 16 213.537 L 69.813 236.331" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 109.589 161.112 L 16 213.537" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 116.517 287.054 L 224.144 332.642" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 224.144 332.642 L 270.938 306.429" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 290.411 238.888 L 384 186.462" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 384 186.462 L 330.187 163.668" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 175.856 67.358 L 129.062 93.571" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 283.483 112.946 L 175.856 67.358" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 109.589 161.112 L 129.062 93.571" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 69.813 236.331 L 116.517 287.054" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 270.938 306.429 L 290.411 238.888" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 330.187 163.668 L 283.483 112.946" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

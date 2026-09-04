@@ -21,7 +21,9 @@
 --   import Senbazuru.Fold.Types
 --   import Senbazuru.Fold.Query
 --   import Senbazuru.Geometry
+--   import Senbazuru.Geometry.V3
 --   import Senbazuru.Diagram
 --   import Senbazuru.Diagram.Style
+--   import Senbazuru.Render.Camera
 --   import Senbazuru.Render.CreasePattern
 --   import Senbazuru.Render.Svg

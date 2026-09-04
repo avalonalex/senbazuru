@@ -4,7 +4,7 @@
 
 HS_FILES := $(shell find src app test -name '*.hs')
 
-.PHONY: build repl test fmt fmt-check lint check examples clean
+.PHONY: build repl install test fmt fmt-check lint check examples clean
 
 build:
 	stack build
@@ -13,6 +13,11 @@ build:
 # compiled-code warning set that is unhelpful at a prompt.
 repl:
 	stack ghci senbazuru:lib
+
+# Put the senbazuru executable on your PATH (~/.local/bin by default), so it
+# can be run without the `stack run --` dance.
+install:
+	stack install
 
 test:
 	stack test

@@ -14,6 +14,9 @@
 -- for the output type.
 module Senbazuru.Render.CreasePattern
   ( creasePattern,
+    creasePatternFrom,
+    creasePatternAuto,
+    defaultBasisFor,
     paintOrder,
   )
 where
@@ -30,24 +33,72 @@ import Senbazuru.Fold.Query
   )
 import Senbazuru.Fold.Types (Assignment (..), Frame)
 import Senbazuru.Geometry (boxFromPoints)
+import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Render.Camera (Basis, isometric, project, topDown)
 
--- | Render one frame as a crease pattern.
+-- | Render one frame as a crease pattern, seen from directly above.
 --
--- The page extent is the bounding box of /all/ vertices, not of the lines that
--- end up drawn. Those differ whenever the theme suppresses some assignment: with
--- @themeShowFlat = False@ a pattern whose outermost creases are all flat would
--- otherwise silently crop itself.
+-- Equivalent to @'creasePatternFrom' theme 'topDown'@, and the right choice for
+-- a @creasePattern@ frame, which is flat in the @z = 0@ plane and has nothing
+-- to see from any other angle.
 creasePattern :: Theme -> Frame -> Either FoldError Diagram
-creasePattern theme fr = do
+creasePattern theme = creasePatternFrom theme topDown
+
+-- | Render one frame as seen through the given viewing basis.
+--
+-- The page extent is the bounding box of /all/ projected vertices, not of the
+-- lines that end up drawn. Those differ whenever the theme suppresses some
+-- assignment: with @themeShowFlat = False@ a pattern whose outermost creases
+-- are all flat would otherwise silently crop itself.
+--
+-- Projection happens here rather than in "Senbazuru.Fold.Query" so that the
+-- geometry stays true to the file until the moment a page demands a flat
+-- answer. Note the extent is measured /after/ projecting: how much page a model
+-- needs depends on the angle it is viewed from.
+creasePatternFrom :: Theme -> Basis -> Frame -> Either FoldError Diagram
+creasePatternFrom theme basis fr = do
   verts <- frameVertices fr
-  extent <- maybe (Left NoVertices) Right (boxFromPoints verts)
+  extent <- maybe (Left NoVertices) Right (boxFromPoints (map flatten verts))
   creases <- frameCreases fr
   let shapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
   pure (diagramWithExtent extent shapes)
   where
+    flatten = project basis
+
     toShape c = do
       stroke <- strokeFor theme (creaseAssignment c)
-      pure (Polyline stroke [creaseStart c, creaseEnd c])
+      pure (Polyline stroke [flatten (creaseStart c), flatten (creaseEnd c)])
+
+-- | Render one frame, choosing the viewing angle from the geometry itself.
+creasePatternAuto :: Theme -> Frame -> Either FoldError Diagram
+creasePatternAuto theme fr = do
+  verts <- frameVertices fr
+  creasePatternFrom theme (defaultBasisFor verts) fr
+
+-- | Pick a viewing basis for geometry we know nothing else about.
+--
+-- Flat means 'topDown'; anything with real thickness means 'isometric'.
+--
+-- The test is the geometry, deliberately, not @frame_classes@. A folded form is
+-- not necessarily three-dimensional: the traditional crane folds /flat/, so its
+-- folded form lies in a plane, and viewing it isometrically would shear a
+-- correct picture into a wrong one. Asking the coordinates cannot get that
+-- wrong, and it also works for the many files that declare no class at all.
+--
+-- Flatness is judged relative to the sheet's own size, since \"small\" only means
+-- anything next to something else. A model a thousand units wide with a
+-- thousandth of a unit of relief is flat; one a thousandth of a unit wide with
+-- the same relief is not.
+defaultBasisFor :: [V3] -> Basis
+defaultBasisFor verts
+  | zSpan <= 1e-9 * max 1 planeSpan = topDown
+  | otherwise = isometric
+  where
+    spanOf f = case map f verts of
+      [] -> 0
+      cs -> maximum cs - minimum cs
+    zSpan = spanOf v3z
+    planeSpan = max (spanOf v3x) (spanOf v3y)
 
 -- | Painting order, lowest first.
 --

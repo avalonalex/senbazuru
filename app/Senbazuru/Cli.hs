@@ -14,7 +14,6 @@ module Senbazuru.Cli
   )
 where
 
-import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -32,7 +31,8 @@ import Senbazuru.Fold.Types
     allFrames,
     assignmentCode,
   )
-import Senbazuru.Render.CreasePattern (creasePattern)
+import Senbazuru.Render.Camera (Basis, namedView, viewNames)
+import Senbazuru.Render.CreasePattern (creasePatternAuto, creasePatternFrom)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -53,7 +53,10 @@ data RenderOptions = RenderOptions
     roHeight :: Double,
     roMargin :: Double,
     roTransparent :: Bool,
-    roHideFlat :: Bool
+    roHideFlat :: Bool,
+    -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
+    -- argument parsing, so an unknown name never reaches this record.
+    roView :: Maybe Basis
   }
   deriving stock (Eq, Show)
 
@@ -122,6 +125,22 @@ renderOptions =
       (long "transparent" <> help "Omit the white background rectangle")
     <*> switch
       (long "hide-flat" <> help "Do not draw flat (F) or unassigned (U) creases")
+    <*> optional
+      ( option
+          -- Resolved during parsing, so a bad name is rejected with optparse's
+          -- own usage text before any file is opened, and roView carries a
+          -- Basis rather than an unvalidated string.
+          (maybeReader (namedView . T.pack))
+          ( long "view"
+              <> metavar "NAME"
+              <> help
+                ( "Viewing angle: "
+                    <> T.unpack (T.intercalate ", " viewNames)
+                    <> " (default: chosen from the geometry -- flat models are"
+                    <> " viewed from above, solid ones isometrically)"
+                )
+          )
+      )
 
 run :: Command -> IO ()
 run = \case
@@ -145,7 +164,10 @@ renderFile o f = do
           <> tshow (roFrame o)
           <> "; this file has "
           <> tshow (length (allFrames f))
-  case creasePattern theme frame of
+  let rendered = case roView o of
+        Nothing -> creasePatternAuto theme frame
+        Just basis -> creasePatternFrom theme basis frame
+  case rendered of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
     Right d -> emit (renderSvg (page frame) d)
   where

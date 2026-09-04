@@ -10,9 +10,8 @@
 -- The pattern is sometimes called \"parse, don't validate\": rather than
 -- scattering @if index < length vs@ checks through the renderer, we do the
 -- checks once, here, and hand back a type that no longer /can/ be wrong. A
--- 'Crease' holds two actual 'V2' points, not two integers that we hope are
--- valid indices, so no code downstream needs an error path for a dangling
--- reference.
+-- 'Crease' holds two actual points, not two integers that we hope are valid
+-- indices, so no code downstream needs an error path for a dangling reference.
 module Senbazuru.Fold.Query
   ( -- * Errors
     FoldError (..),
@@ -34,7 +33,7 @@ import Senbazuru.Fold.Types
     Frame (..),
     VertexId (..),
   )
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.V3 (V3 (..))
 
 -- | Everything that can be structurally wrong with an otherwise well-formed
 -- FOLD frame.
@@ -92,28 +91,34 @@ renderFoldError = \case
     tshow = T.pack . show
 
 -- | One edge of the crease pattern, resolved to actual endpoints.
+--
+-- Endpoints are 'V3' because that is what the file holds. Flattening them onto
+-- a page is the camera's job, not this module's — see
+-- "Senbazuru.Render.Camera".
 data Crease = Crease
   { creaseId :: !EdgeId,
-    creaseStart :: !V2,
-    creaseEnd :: !V2,
+    creaseStart :: !V3,
+    creaseEnd :: !V3,
     creaseAssignment :: !Assignment
   }
   deriving stock (Eq, Show)
 
--- | Vertex positions, projected onto the xy plane.
+-- | Vertex positions, as points in space.
 --
--- FOLD coordinates may have three components. This function keeps @x@ and @y@
--- and discards @z@, which is exactly right for a @creasePattern@ frame (where
--- @z@ is zero anyway) and is a plain orthographic top-down view for a
--- @foldedForm@ frame. A top-down view of a folded model is /not/ a correct
--- picture of it — that needs a real camera and layer ordering — but it is a
--- well-defined projection, and it is honest about what it does rather than
--- silently refusing 3D input.
-frameVertices :: Frame -> Either FoldError [V2]
-frameVertices fr = traverse toV2 (zip (map VertexId [0 ..]) (verticesCoords fr))
+-- FOLD coordinates may have two or three components. Two-component vertices
+-- get @z = 0@, which is not a fudge: a @creasePattern@ frame really is flat,
+-- and the plane it lies in is @z = 0@. Anything beyond the third component is
+-- ignored, since nothing here can draw a fourth dimension.
+--
+-- No projection happens at this stage. This module answers \"where is the paper
+-- in space?\"; deciding how to look at it belongs to
+-- "Senbazuru.Render.Camera".
+frameVertices :: Frame -> Either FoldError [V3]
+frameVertices fr = traverse toV3 (zip (map VertexId [0 ..]) (verticesCoords fr))
   where
-    toV2 (vid, coords) = case coords of
-      (x : y : _) -> Right (V2 x y)
+    toV3 (vid, coords) = case coords of
+      (x : y : z : _) -> Right (V3 x y z)
+      [x, y] -> Right (V3 x y 0)
       shorter -> Left (VertexCoordTooShort vid (length shorter))
 
 -- | Every edge of the frame as a line segment with its fold assignment.
