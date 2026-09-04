@@ -19,23 +19,34 @@ NP-hard, and that is the easy cousin. Plain
 [flat-foldability](flat-foldability-is-hard.md) is already NP-hard before anyone
 asks for an ordering.
 
+This third reason is the **weakest** of the three, and it is worth saying so.
+NP-hardness implies little about real instance sizes: layer ordering is also
+NP-hard and is solved *completely*, in a browser, by branch-and-propagate search.
+Compute is not the scarce resource here. The barrier is the first reason — you
+cannot search a move set nobody has defined, and if you substitute the nearest
+well-defined one (all simple folds) the search returns valid sequences that fold
+through forty layers and no human could execute.
+
 ## The one that works
 
-ReferenceFinder solves a deliberately narrow version well: given a target point
-or line on the square, it searches combinations of the
-[Huzita-Hatori axioms](huzita-hatori.md) for a short fold sequence locating it,
-ranked by accuracy and fold count. It answers "how do I find the point one third
-along this edge", not "how do I fold this crane". TreeMaker, by the same author,
-goes stick-figure-to-crease-pattern and likewise does not say how to fold it.
+ReferenceFinder searches combinations of the
+[Huzita-Hatori axioms](huzita-hatori.md) for a short fold sequence locating a
+target point or line on the square, ranked by accuracy and fold count. It
+answers "how do I find the point one third along this edge", not "how do I fold
+this crane" — a defined move set and a bounded depth, which is exactly why it
+works.
 
 ## Why it matters here
 
 Senbazuru renders sequences rather than solving for them, and FOLD is built for
-that: a multi-frame file *is* the sequence. Knowing no general solver exists is
-what makes consuming `file_frames` the right target rather than a stopgap.
+that: a multi-frame file *is* the sequence.
 
-A ReferenceFinder-style search would be in scope, though: a bounded search over
-seven axioms to a depth of four or five folds is tractable and self-contained.
+With one catch. FOLD stores the *states*, not the transitions — there is no key
+anywhere in the format for an arrow, an operation, or a step caption. So even a
+hand-authored sequence needs its arrows inferred by diffing consecutive frames
+for creases whose fold angle changed. That is a well-posed problem, unlike the
+one this note is about: you have both endpoints, so you are subtracting rather
+than searching.
 
 ## References
 
