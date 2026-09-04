@@ -141,9 +141,12 @@ Roughly in order:
    grid of steps at a single shared scale. Note that every published FOLD
    example is single-frame, so this needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-4. **Folded forms.** `faceOrders` and layer-correct rendering, which is where
-   the real computational geometry starts.
-   → [layer-ordering](docs/notes/layer-ordering.md)
+4. **Folded forms.** Fold a crease pattern into 3D, then render it
+   layer-correctly. The folding itself is cheap; the layer ordering is where the
+   real computational geometry starts.
+   → [folding-by-transforms](docs/notes/folding-by-transforms.md),
+   [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
+   [layer-ordering](docs/notes/layer-ordering.md)
 5. **Authoring tools.** FOLD output, and operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)
 
