@@ -87,11 +87,14 @@ app/                       the command-line interface
 test/                      property, example and golden tests
 examples/                  sample .fold files, including three from upstream
 docs/fold-primer.md        background on FOLD and on origami diagram notation
+docs/fold-reference.md     every FOLD key, and what we do with it
 docs/notes/                one idea per file, with references
 ```
 
 [`docs/fold-primer.md`](docs/fold-primer.md) is the place to start if origami or
-the FOLD format are new to you. [`docs/notes/`](docs/notes/) collects short
+the FOLD format are new to you, and
+[`docs/fold-reference.md`](docs/fold-reference.md) is the key-by-key reference
+with our coverage status. [`docs/notes/`](docs/notes/) collects short
 single-idea notes on the theorems, algorithms and techniques this project leans
 on or is heading towards. [`CLAUDE.md`](CLAUDE.md) holds the working
 conventions.
@@ -105,7 +108,8 @@ Roughly in order:
    senbazuru understand origami rather than only draw it.
    → [maekawa](docs/notes/maekawa.md), [kawasaki](docs/notes/kawasaki.md)
 1. **Fold arrows.** A crease pattern is not yet instructions; the arrow showing
-   *which way* the paper moves is what makes a diagram teachable. Needs a convex
+   *which way* the paper moves is what makes a diagram teachable. FOLD stores no
+   arrows, so they are inferred by diffing consecutive frames. Needs a convex
    hull, and therefore needs to care about floating point.
    → [convex-hull](docs/notes/convex-hull.md),
    [robust-predicates](docs/notes/robust-predicates.md)
@@ -113,7 +117,8 @@ Roughly in order:
    paper rather than as a wireframe.
    → [half-edge](docs/notes/half-edge.md)
 3. **Multi-frame sequences.** Lay out a `file_frames` sequence as a numbered
-   grid of steps at a single shared scale.
+   grid of steps at a single shared scale. Note that every published FOLD
+   example is single-frame, so this needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
 4. **Folded forms.** `faceOrders` and layer-correct rendering, which is where
    the real computational geometry starts.
