@@ -14,6 +14,7 @@
 -- for the output type.
 module Senbazuru.Render.CreasePattern
   ( creasePattern,
+    creasePatternFrom,
     paintOrder,
   )
 where
@@ -30,24 +31,40 @@ import Senbazuru.Fold.Query
   )
 import Senbazuru.Fold.Types (Assignment (..), Frame)
 import Senbazuru.Geometry (boxFromPoints)
+import Senbazuru.Render.Camera (Basis, project, topDown)
 
--- | Render one frame as a crease pattern.
+-- | Render one frame as a crease pattern, seen from directly above.
 --
--- The page extent is the bounding box of /all/ vertices, not of the lines that
--- end up drawn. Those differ whenever the theme suppresses some assignment: with
--- @themeShowFlat = False@ a pattern whose outermost creases are all flat would
--- otherwise silently crop itself.
+-- Equivalent to @'creasePatternFrom' theme 'topDown'@, and the right choice for
+-- a @creasePattern@ frame, which is flat in the @z = 0@ plane and has nothing
+-- to see from any other angle.
 creasePattern :: Theme -> Frame -> Either FoldError Diagram
-creasePattern theme fr = do
+creasePattern theme = creasePatternFrom theme topDown
+
+-- | Render one frame as seen through the given viewing basis.
+--
+-- The page extent is the bounding box of /all/ projected vertices, not of the
+-- lines that end up drawn. Those differ whenever the theme suppresses some
+-- assignment: with @themeShowFlat = False@ a pattern whose outermost creases
+-- are all flat would otherwise silently crop itself.
+--
+-- Projection happens here rather than in "Senbazuru.Fold.Query" so that the
+-- geometry stays true to the file until the moment a page demands a flat
+-- answer. Note the extent is measured /after/ projecting: how much page a model
+-- needs depends on the angle it is viewed from.
+creasePatternFrom :: Theme -> Basis -> Frame -> Either FoldError Diagram
+creasePatternFrom theme basis fr = do
   verts <- frameVertices fr
-  extent <- maybe (Left NoVertices) Right (boxFromPoints verts)
+  extent <- maybe (Left NoVertices) Right (boxFromPoints (map flatten verts))
   creases <- frameCreases fr
   let shapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
   pure (diagramWithExtent extent shapes)
   where
+    flatten = project basis
+
     toShape c = do
       stroke <- strokeFor theme (creaseAssignment c)
-      pure (Polyline stroke [creaseStart c, creaseEnd c])
+      pure (Polyline stroke [flatten (creaseStart c), flatten (creaseEnd c)])
 
 -- | Painting order, lowest first.
 --

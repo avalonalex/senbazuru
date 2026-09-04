@@ -5,9 +5,10 @@ visual style of step-by-step origami instruction books.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
-> **Status: early.** Crease patterns render correctly. Folding arrows, face
-> filling and folded-form shading — the things that make a diagram a *diagram* —
-> are not built yet. See [Roadmap](#roadmap).
+> **Status: early.** Crease patterns render correctly, and folded forms render
+> as wireframes from a choice of viewing angles. Folding arrows, face filling and
+> layer-correct shading — the things that make a diagram a *diagram* — are not
+> built yet. See [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -68,6 +69,7 @@ senbazuru info FILE.fold
 | `--frame N` | Which frame to render (default `0`, the key frame) |
 | `--width`, `--height` | Page size in points (default `400`) |
 | `--margin` | Blank border in points (default `16`) |
+| `--view NAME` | Viewing angle: `top`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and `iso` for folded forms |
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 
