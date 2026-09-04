@@ -118,8 +118,13 @@ Worth stating plainly, because the absences are easy to assume away.
 
 ## A caveat before building on the sequence half
 
-Every example in the reference repository — `box`, `diagonal-cp`,
-`diagonal-folded`, `simple`, `squaretwist` — is **single-frame**. The
-multi-frame half of the format has essentially no published test data, so
-anything we build on it needs fixtures we author ourselves, and we will be
-deciding what correct looks like.
+Every example in the reference FOLD repository — `box`, `diagonal-cp`,
+`diagonal-folded`, `simple`, `squaretwist` — is **single-frame**, so nothing we
+can vendor exercises `file_frames` at all.
+
+Multi-frame files do exist elsewhere, including one with 33 frames, but the
+substantial collections are GPL-licensed and therefore off-limits to this
+MIT-licensed repo — see the third-party rules in `CLAUDE.md`. They are useful
+for *checking understanding*, not for copying.
+
+So multi-frame support needs fixtures we author ourselves.
