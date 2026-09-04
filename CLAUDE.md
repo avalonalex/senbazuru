@@ -109,6 +109,34 @@ add a note to `docs/notes/` and link it from that directory's `README.md`. Keep
 it to one idea; a note that needs two headings is two notes. This is the same
 material as a PR's "Interesting bits" section, promoted to somewhere findable.
 
+## Third-party material
+
+senbazuru is MIT. Anything vendored into this repo must be compatible with that,
+and its provenance goes in `examples/README.md`.
+
+**Reference implementations in this space are often GPL-licensed.** Read them to
+understand the domain and never copy from them. That applies to test data as
+much as to source: fixture files are part of the licensed work.
+
+The line is expression versus idea. "They propagate fold transforms over a
+spanning tree of the face graph" is an idea, and reimplementing it from
+understanding is fine — so are published theorems and standard terminology,
+which belong to the literature rather than to any implementation. Their
+functions are expression, and those stay where they are.
+
+| Source | Licence | Use |
+| --- | --- | --- |
+| `edemaine/FOLD` examples | MIT | vendored, attributed in `examples/README.md` |
+| Origami Simulator box-pleat `.fold` | MIT | usable with attribution |
+| GPL reference implementations | GPL-3.0 | research only, never vendored |
+| Patterns we generate ourselves | ours | preferred |
+
+One further trap: **a repository licence is not a design licence.** A crease
+pattern for an original model is its designer's creative work, and an MIT repo
+that happens to contain one does not clearly grant rights to the design. Prefer
+procedurally generated patterns (Miura-ori, pleats, box-pleat tessellations) and
+traditional bases, which have no single author.
+
 ## Conventions
 
 **Errors are values.** Return `Either SomeError a`. Do not throw, do not `error`,
