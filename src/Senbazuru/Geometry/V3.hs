@@ -2,28 +2,20 @@
 -- Module      : Senbazuru.Geometry.V3
 -- Description : Points in space, and the little algebra a camera needs.
 --
--- Kept apart from "Senbazuru.Geometry", which is deliberately 2D. Only the
--- operations a viewing basis actually requires live here; this is not a general
--- linear algebra library and should not grow into one.
+-- Kept apart from "Senbazuru.Geometry", which is deliberately 2D. The
+-- arithmetic both types share lives in "Senbazuru.Geometry.VectorSpace", so
+-- @^+^@, @dot@ and friends work here through the instance below and mean the
+-- same thing in either dimension.
 --
--- == Why named functions instead of operators
---
--- "Senbazuru.Geometry" already exports @^+^@, @^-^@ and @*^@ for its 2D point
--- type. Defining
--- the same operators for 'V3' would collide the moment a module imported both
--- unqualified, which the renderer does. The usual fix is a @VectorSpace@ class
--- over both types; that is a fair amount of machinery for six functions, so the
--- verbose names are the deliberate trade.
+-- What remains here is what does not generalise: the type itself, and the cross
+-- product.
 module Senbazuru.Geometry.V3
   ( V3 (..),
-    addV3,
-    scaleV3,
-    dotV3,
-    crossV3,
-    normV3,
-    normalizeV3,
+    cross,
   )
 where
+
+import Senbazuru.Geometry.VectorSpace
 
 -- | A point, or a displacement, in space.
 data V3 = V3
@@ -33,44 +25,22 @@ data V3 = V3
   }
   deriving stock (Eq, Show)
 
--- | Componentwise addition.
-addV3 :: V3 -> V3 -> V3
-addV3 (V3 ax ay az) (V3 bx by bz) = V3 (ax + bx) (ay + by) (az + bz)
+instance VectorSpace V3 where
+  V3 ax ay az ^+^ V3 bx by bz = V3 (ax + bx) (ay + by) (az + bz)
+  V3 ax ay az ^-^ V3 bx by bz = V3 (ax - bx) (ay - by) (az - bz)
+  k *^ V3 x y z = V3 (k * x) (k * y) (k * z)
+  dot (V3 ax ay az) (V3 bx by bz) = ax * bx + ay * by + az * bz
 
--- | Scale by a number.
-scaleV3 :: Double -> V3 -> V3
-scaleV3 k (V3 x y z) = V3 (k * x) (k * y) (k * z)
-
--- | The scalar product. Geometrically, how far @a@ reaches along @b@ when @b@
--- is a unit vector — which is exactly what projecting onto an axis means, and
--- the only reason this module exists.
-dotV3 :: V3 -> V3 -> Double
-dotV3 (V3 ax ay az) (V3 bx by bz) = ax * bx + ay * by + az * bz
-
--- | The vector product: a vector perpendicular to both arguments, whose length
--- is zero exactly when they are parallel.
+-- | The vector product: perpendicular to both arguments, with length zero
+-- exactly when they are parallel.
 --
--- That degenerate case is not a curiosity here. It is how a caller discovers
--- that a requested view direction is parallel to its "up" vector, which does
--- not determine a viewing basis — see "Senbazuru.Render.Camera".
-crossV3 :: V3 -> V3 -> V3
-crossV3 (V3 ax ay az) (V3 bx by bz) =
+-- Not a 'VectorSpace' method, because it does not generalise. The 2D analogue
+-- @ax*by - ay*bx@ returns a scalar rather than a vector, so the two have
+-- different types and no class can cover both.
+--
+-- The degenerate case is not a curiosity here. It is how a caller discovers
+-- that a view direction is parallel to its \"up\" vector, which does not
+-- determine a viewing basis — see "Senbazuru.Render.Camera".
+cross :: V3 -> V3 -> V3
+cross (V3 ax ay az) (V3 bx by bz) =
   V3 (ay * bz - az * by) (az * bx - ax * bz) (ax * by - ay * bx)
-
--- | Euclidean length.
-normV3 :: V3 -> Double
-normV3 v = sqrt (dotV3 v v)
-
--- | Scale to unit length. 'Nothing' when there is no unit vector to return.
---
--- The guard rejects more than the zero vector. @n == 0@ alone would let a
--- non-finite input through, because @NaN == 0@ is 'False' — and the result
--- would be a @Just@ full of NaNs claiming to be a unit vector. Downstream that
--- is silent: NaN page coordinates are collapsed to @0@ by the number formatter,
--- so every point stacks at one spot and nothing reports an error.
-normalizeV3 :: V3 -> Maybe V3
-normalizeV3 v
-  | n > 0, not (isInfinite n) = Just (scaleV3 (1 / n) v)
-  | otherwise = Nothing
-  where
-    n = normV3 v

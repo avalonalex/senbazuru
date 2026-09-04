@@ -56,6 +56,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3
+import Senbazuru.Geometry.VectorSpace
 
 -- | Three perpendicular unit vectors defining how space maps onto the page.
 --
@@ -81,11 +82,11 @@ data Basis = Basis
 -- direction, so callers can pass a world axis and not think about it.
 basisFrom :: V3 -> V3 -> Maybe Basis
 basisFrom direction up = do
-  forward <- normalizeV3 direction
-  right <- normalizeV3 (crossV3 forward up)
+  forward <- normalize direction
+  right <- normalize (cross forward up)
   -- Exactly perpendicular to both, and already unit length since the two
   -- arguments are perpendicular unit vectors.
-  let trueUp = crossV3 right forward
+  let trueUp = cross right forward
   pure (Basis right trueUp forward)
 
 -- | Looking straight down at the @xy@ plane, @y@ up the page.
@@ -151,7 +152,7 @@ viewNames = map fst views
 
 -- | Flatten a point onto the page.
 project :: Basis -> V3 -> V2
-project b p = V2 (dotV3 p (basisRight b)) (dotV3 p (basisUp b))
+project b p = V2 (dot p (basisRight b)) (dot p (basisUp b))
 
 -- | How far along the view direction a point lies. Larger is further away.
 --
@@ -159,4 +160,4 @@ project b p = V2 (dotV3 p (basisRight b)) (dotV3 p (basisUp b))
 -- is what face filling will need, and it costs one dot product to expose here
 -- rather than rediscover later.
 depth :: Basis -> V3 -> Double
-depth b p = dotV3 p (basisForward b)
+depth b p = dot p (basisForward b)

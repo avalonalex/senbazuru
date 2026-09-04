@@ -10,6 +10,7 @@ module Senbazuru.Render.CameraSpec (spec) where
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3
+import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Render.Camera
 import Test.Hspec
 import Test.QuickCheck
@@ -49,7 +50,7 @@ spec = do
       basisFrom (V3 0 0 0) (V3 0 1 0) `shouldSatisfy` isNothing
 
     it "refuses a non-finite direction rather than returning NaNs" $ do
-      -- normalizeV3 guarding only on `n == 0` would let these through, because
+      -- normalize guarding only on `n == 0` would let these through, because
       -- NaN == 0 is False. The result would be a Basis of NaNs that satisfies
       -- no invariant, and NaN page coordinates format as "0", so every point
       -- would silently stack in one place.
@@ -63,8 +64,8 @@ spec = do
             f = basisForward b
          in all
               (near 0)
-              [dotV3 r u, dotV3 r f, dotV3 u f]
-              && all (near 1) [normV3 r, normV3 u, normV3 f]
+              [dot r u, dot r f, dot u f]
+              && all (near 1) [norm r, norm u, norm f]
 
   describe "topDown" $ do
     it "is orthonormal like any other basis" $
@@ -74,8 +75,8 @@ spec = do
       let r = basisRight topDown
           u = basisUp topDown
           f = basisForward topDown
-       in all (near 0) [dotV3 r u, dotV3 r f, dotV3 u f]
-            && all (near 1) [normV3 r, normV3 u, normV3 f]
+       in all (near 0) [dot r u, dot r f, dot u f]
+            && all (near 1) [norm r, norm u, norm f]
 
     it "keeps x and y exactly, so crease patterns cannot drift" $
       -- Exact equality on purpose. The basis is the coordinate axes themselves,
@@ -93,24 +94,24 @@ spec = do
       -- towards or away from the camera does not move it on the page.
       forAll ((,,) <$> genBasis <*> genV3 <*> choose (-50, 50)) $ \(b, p, t) ->
         let V2 ax ay = project b p
-            V2 bx by = project b (addV3 p (scaleV3 t (basisForward b)))
+            V2 bx by = project b (p ^+^ (t *^ basisForward b))
          in near ax bx && near ay by
 
     it "preserves collinearity" $
       forAll ((,,,) <$> genBasis <*> genV3 <*> genDir <*> choose (-20, 20)) $
         \(b, p, d, t) ->
           let V2 ax ay = project b p
-              V2 bx by = project b (addV3 p d)
-              V2 cx cy = project b (addV3 p (scaleV3 t d))
+              V2 bx by = project b (p ^+^ d)
+              V2 cx cy = project b (p ^+^ (t *^ d))
               -- Twice the signed area of the triangle; zero iff collinear.
               cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
            in abs cross < 1e-6 * (1 + abs t)
 
     it "preserves distance for displacements across the view direction" $
       forAll ((,) <$> genBasis <*> genV3) $ \(b, p) ->
-        let along = scaleV3 3 (basisRight b)
+        let along = 3 *^ basisRight b
             V2 ax ay = project b p
-            V2 bx by = project b (addV3 p along)
+            V2 bx by = project b (p ^+^ along)
          in near (sqrt ((bx - ax) ** 2 + (by - ay) ** 2)) 3
 
   describe "isometric" $ do

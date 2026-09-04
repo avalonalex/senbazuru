@@ -23,9 +23,10 @@
 module Senbazuru.Geometry
   ( -- * Points and vectors
     V2 (..),
-    (^+^),
-    (^-^),
-    (*^),
+    -- | Arithmetic comes from 'VectorSpace', shared with
+    -- "Senbazuru.Geometry.V3", and is re-exported here so importing this
+    -- module is enough to work with 'V2'.
+    module Senbazuru.Geometry.VectorSpace,
 
     -- * Axis-aligned bounding boxes
     Box (..),
@@ -43,6 +44,7 @@ module Senbazuru.Geometry
 where
 
 import Data.List (foldl')
+import Senbazuru.Geometry.VectorSpace
 
 -- | A point, or equivalently a displacement, in the plane.
 --
@@ -54,21 +56,11 @@ data V2 = V2
   }
   deriving stock (Eq, Show)
 
-infixl 6 ^+^, ^-^
-
-infixl 7 *^
-
--- | Componentwise addition.
-(^+^) :: V2 -> V2 -> V2
-V2 ax ay ^+^ V2 bx by = V2 (ax + bx) (ay + by)
-
--- | Componentwise subtraction.
-(^-^) :: V2 -> V2 -> V2
-V2 ax ay ^-^ V2 bx by = V2 (ax - bx) (ay - by)
-
--- | Scale a vector by a number.
-(*^) :: Double -> V2 -> V2
-k *^ V2 x y = V2 (k * x) (k * y)
+instance VectorSpace V2 where
+  V2 ax ay ^+^ V2 bx by = V2 (ax + bx) (ay + by)
+  V2 ax ay ^-^ V2 bx by = V2 (ax - bx) (ay - by)
+  k *^ V2 x y = V2 (k * x) (k * y)
+  dot (V2 ax ay) (V2 bx by) = ax * bx + ay * by
 
 -- | An axis-aligned rectangle, given by two opposite corners.
 --

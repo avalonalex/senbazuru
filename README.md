@@ -94,6 +94,7 @@ make install                           # puts senbazuru on your PATH, then use i
 ```
 src/Senbazuru/
   Geometry.hs              points, boxes, the model→page transform
+  Geometry/VectorSpace.hs  the arithmetic 2D and 3D points share
   Geometry/V3.hs           points in space, for 3D input
   Fold/Types.hs            the FOLD document model + JSON decoding
   Fold/Load.hs             reading files (the only I/O in the library)

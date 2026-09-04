@@ -68,6 +68,7 @@ library
     Senbazuru.Fold.Types
     Senbazuru.Geometry
     Senbazuru.Geometry.V3
+    Senbazuru.Geometry.VectorSpace
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
     Senbazuru.Render.Svg
