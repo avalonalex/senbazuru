@@ -19,7 +19,11 @@ passing through itself.
 
 `Senbazuru.Render.Camera` can now look at a folded form from any angle, but it
 draws every edge regardless of what is in front of what — a wireframe, with no
-paper. Everything past that needs this. It is the deep end of the roadmap, and worth knowing the
+paper. Everything past that needs this.
+
+Note the two halves are independent: computing *where* the paper goes is
+[folding-by-transforms.md](folding-by-transforms.md) and is cheap; deciding
+*which layer is on top* is this, and is not. It is the deep end of the roadmap, and worth knowing the
 shape of before wading in.
 
 ## References

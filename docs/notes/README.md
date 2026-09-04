@@ -5,7 +5,8 @@ a few minutes to read, each with references if you want to go deeper.
 
 These are background and direction, not documentation of the code. For the code,
 read the Haddock module headers; for the domain, start with
-[../fold-primer.md](../fold-primer.md).
+[../fold-primer.md](../fold-primer.md); for any term you do not recognise, see
+[../glossary.md](../glossary.md).
 
 ## Origami and geometry
 
@@ -17,6 +18,8 @@ read the Haddock module headers; for the domain, start with
 | [robust-predicates.md](robust-predicates.md) | Why `Double` gets the left-of-line test *wrong*, not just imprecise |
 | [convex-hull.md](convex-hull.md) | Andrew's monotone chain, in four steps |
 | [half-edge.md](half-edge.md) | The structure FOLD's array format is already shaped for |
+| [folding-by-transforms.md](folding-by-transforms.md) | How angles become positions: one rigid matrix per face, over a spanning tree |
+| [fold-angles-are-the-state.md](fold-angles-are-the-state.md) | Positions are derived from angles, and neither can be naively interpolated |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
