@@ -109,6 +109,7 @@ test/                      property, example and golden tests
 examples/                  sample .fold files, including three from upstream
 docs/fold-primer.md        background on FOLD and on origami diagram notation
 docs/fold-reference.md     every FOLD key, and what we do with it
+docs/glossary.md           every term the docs and code assume
 docs/notes/                one idea per file, with references
 ```
 

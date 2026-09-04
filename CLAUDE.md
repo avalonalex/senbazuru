@@ -203,21 +203,9 @@ negative zero).
 
 ## Domain glossary
 
-| Term | Meaning |
-| --- | --- |
-| **Crease pattern** | The flat, unfolded sheet with all creases marked. Coordinates are already page coordinates — nothing to simulate. |
-| **Folded form** | The same graph with vertices moved to where they end up after folding, usually in 3D. |
-| **Mountain fold** (`M`) | Crease that rises towards the viewer. Drawn dash-dot-dot. |
-| **Valley fold** (`V`) | Crease that sinks away from the viewer. Drawn dashed. |
-| **Border** (`B`) | Edge of the paper, not a fold. Drawn solid. |
-| **Flat** (`F`) | A crease line that is not folded (angle 0). |
-| **Unassigned** (`U`) | A crease whose direction is not yet decided. |
-| **Cut** (`C`) / **Join** (`J`) | A slit in the paper / two faces that are really one piece. |
-| **Fold angle** | Dihedral angle in degrees, `[-180, 180]`. Negative is mountain, positive is valley. |
-| **Frame** | One state of the paper. A multi-frame FOLD file is how a diagram sequence is stored. |
-| **Yoshizawa–Randlett** | The standard origami diagram notation. The line vocabulary is documented in `Senbazuru.Diagram.Style`. |
-| **Assignment colour convention** | The *other* convention, used by on-screen crease-pattern editors: red mountains, blue valleys, uniform weight. We target the printed-book line vocabulary instead; see `Senbazuru.Diagram.Style`. |
-| **Face ordering** | Which sheet of paper is on top where. Needed for folded forms; not implemented yet. |
+Moved to [`docs/glossary.md`](docs/glossary.md) — origami, FOLD, geometry, graph
+and project terms in one place. Kept there rather than here so that readers who
+are not contributors can find it, and so there is only one copy to keep true.
 
 ## Gotchas
 

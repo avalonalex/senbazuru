@@ -5,8 +5,8 @@ described by one angle per crease. Vertex positions are *derived* from those
 angles, by the algorithm in
 [folding-by-transforms.md](folding-by-transforms.md), not the other way round.
 
-Assumes the vocabulary in [../fold-primer.md](../fold-primer.md): crease, face,
-fold angle, crease pattern and folded form.
+Terms used here are defined in [../glossary.md](../glossary.md); the ideas
+behind them are in [../fold-primer.md](../fold-primer.md).
 
 The consequence bites immediately. To show a model half folded, you cannot
 interpolate vertex positions between the flat and folded forms. Paper does not
@@ -16,9 +16,8 @@ Interpolating the *angles* is the right instinct and still not enough.
 
 ## Why the angles are constrained
 
-Walk around an *interior vertex* — one away from the edge of the paper, with
-creases going all the way round it — crossing each crease in turn, and you
-arrive back where you started. The rotations must therefore compose to nothing:
+Walk around an interior vertex, crossing each crease in turn, and you arrive
+back where you started. The rotations must therefore compose to nothing:
 
 ```
 R(e₁, θ₁) · R(e₂, θ₂) · … · R(eₙ, θₙ) = I
@@ -42,8 +41,7 @@ at a glance and is wrong.
 
 ## The tractable corner
 
-A vertex's *degree* is how many creases meet at it. A degree-4 vertex has one
-degree of freedom: fix any one of its four angles and the other three follow, by
+A degree-4 vertex — four creases meeting — has one degree of freedom: fix any one of its four angles and the other three follow, by
 formulas you can write down. That is why the literature singles them out — the
 one case where a continuous folding motion has an explicit answer rather than
 needing to be solved for.

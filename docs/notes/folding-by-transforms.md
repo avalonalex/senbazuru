@@ -3,8 +3,8 @@
 Given a crease pattern and a fold angle for every crease, where do the vertices
 end up in space?
 
-Assumes the vocabulary in [../fold-primer.md](../fold-primer.md): crease
-pattern, face, fold angle, mountain and valley.
+Terms used here are defined in [../glossary.md](../glossary.md); the ideas
+behind them are in [../fold-primer.md](../fold-primer.md).
 
 Paper does not stretch, so **every face moves rigidly** — it may rotate and
 translate, never bend or scale. The whole folded state is therefore captured by
@@ -25,18 +25,11 @@ foldedPositions(creasePattern, foldAngles, rootFace):
         folded[v] = M[any face containing v] · flat[v]
 ```
 
-Three terms in that sketch:
-
-- **Face-adjacency graph** — faces as nodes, shared creases as links.
-- **Spanning tree** — a way of reaching every face from a starting one without
-  revisiting any; breadth-first search produces one. Having no cycles is the
-  point, and later the catch.
-- **Root face** — the face held still, at the identity transform; everything
-  else is placed relative to it. The choice moves the model in space but never
-  changes its shape.
-
-*Flat coordinates* throughout means positions as the crease pattern gives them,
-before folding.
+The **spanning tree** walks the face-adjacency graph, reaching every face
+without revisiting one; the **root face** is held still at the identity, and
+everything else is placed relative to it — a choice that moves the model in
+space but never changes its shape. *Flat coordinates* means positions as the
+crease pattern gives them, before folding.
 
 One pass over the faces and one over the vertices. Rotation about an arbitrary line is the usual
 translate-to-origin / rotate / translate-back sandwich, with Rodrigues' formula
@@ -73,10 +66,9 @@ FOLD's convention — negative for mountain, positive for valley — is relative
 the direction a face's vertices are listed in, its *winding*. Orient creases
 consistently or half the model folds backwards.
 
-**The tree cuts loops.** Around an *interior vertex* — one away from the edge of
-the paper, with creases going all the way round it — the faces form a cycle,
-which a tree cannot. So a vertex shared by several faces gets a position from
-each of them, and they agree only under a condition the tree never checks. See
+**The tree cuts loops.** Around an interior vertex the faces form a cycle, which
+a tree cannot. So a vertex shared by several faces gets a position from each of
+them, and they agree only under a condition the tree never checks. See
 [fold-angles-are-the-state.md](fold-angles-are-the-state.md).
 
 ## The flat case is much easier

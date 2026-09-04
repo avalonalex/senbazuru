@@ -5,7 +5,8 @@ a few minutes to read, each with references if you want to go deeper.
 
 These are background and direction, not documentation of the code. For the code,
 read the Haddock module headers; for the domain, start with
-[../fold-primer.md](../fold-primer.md).
+[../fold-primer.md](../fold-primer.md); for any term you do not recognise, see
+[../glossary.md](../glossary.md).
 
 ## Origami and geometry
 
