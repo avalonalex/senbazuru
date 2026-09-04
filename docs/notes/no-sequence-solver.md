@@ -11,7 +11,7 @@ there is no agreed formalisation of the vocabulary to emit.
 
 **Many crease patterns are not folded sequentially.** Tessellations and most
 Lang-style designs are *collapsed*: precrease everything, then bring it together
-at once. Ask a folder for the sequence and often there is not one.
+at once. Often there simply is no sequence to find.
 
 **The formalised restrictions are NP-hard.** *Simple foldability* — can the
 sheet be folded by repeatedly folding along one line through all layers? — is
@@ -19,13 +19,12 @@ NP-hard, and that is the easy cousin. Plain
 [flat-foldability](flat-foldability-is-hard.md) is already NP-hard before anyone
 asks for an ordering.
 
-This third reason is the **weakest** of the three, and it is worth saying so.
-NP-hardness implies little about real instance sizes: layer ordering is also
-NP-hard and is solved *completely*, in a browser, by branch-and-propagate search.
-Compute is not the scarce resource here. The barrier is the first reason — you
-cannot search a move set nobody has defined, and if you substitute the nearest
-well-defined one (all simple folds) the search returns valid sequences that fold
-through forty layers and no human could execute.
+This third reason is the **weakest** of the three. NP-hardness implies little
+about real instance sizes — layer ordering is also NP-hard and gets solved
+completely, in a browser, by branch-and-propagate search. Compute is not the
+scarce resource. The real barrier is the first reason: you cannot search a move
+set nobody has defined, and substituting the nearest well-defined one returns
+sequences that fold through forty layers at once.
 
 ## The one that works
 
@@ -41,12 +40,10 @@ works.
 Senbazuru renders sequences rather than solving for them, and FOLD is built for
 that: a multi-frame file *is* the sequence.
 
-With one catch. FOLD stores the *states*, not the transitions — there is no key
-anywhere in the format for an arrow, an operation, or a step caption. So even a
-hand-authored sequence needs its arrows inferred by diffing consecutive frames
-for creases whose fold angle changed. That is a well-posed problem, unlike the
-one this note is about: you have both endpoints, so you are subtracting rather
-than searching.
+One catch, covered in `docs/fold-reference.md`: FOLD stores states, not
+transitions, so even an authored sequence needs its arrows inferred by diffing
+consecutive frames. That is well-posed — you have both endpoints, so you are
+subtracting rather than searching.
 
 ## References
 
