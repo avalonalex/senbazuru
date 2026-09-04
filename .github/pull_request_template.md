@@ -23,3 +23,4 @@
 - [ ] `make check` passes
 - [ ] Haddock updated wherever the reasoning changed
 - [ ] Golden diffs read, not just accepted
+- [ ] Any prose reread cold: terms defined or in the glossary, no step on faith

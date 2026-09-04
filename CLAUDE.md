@@ -32,6 +32,36 @@ Haddock module headers are the main place this lives. A module header should
 answer: what is this for, why does it exist as a separate module, and what is
 the non-obvious thing a newcomer would get wrong here.
 
+### Writing an explanation
+
+Every rule below was earned by getting it wrong in this repo.
+
+- **Start from what the reader has and build.** Do not join the argument
+  halfway. A paragraph that only parses once you already know the answer is
+  notes to yourself, not an explanation.
+- **Define every term on first use, or link
+  [the glossary](docs/glossary.md).** Prefer the glossary: a word defined in
+  four notes will be defined four different ways within a year. A note that
+  assumes vocabulary should say so in its first lines and link.
+- **Prefer the plain word.** "A curved surface in a space with one dimension per
+  crease" beats "a variety" — six words longer, no glossary entry needed, and
+  the reader keeps moving.
+- **Concrete before abstract.** Three lines of real coordinates do more work
+  than a paragraph about projection. Worked examples are not padding, and
+  numbers in them should come from a command that was actually run.
+- **Name the line that looks like a typo** before the reader reaches it. The
+  asymmetric sign in `fitBox`'s offset and `M[parent] · R_flat` in the folding
+  algorithm both read as mistakes and are both correct; saying so is most of the
+  value of the surrounding text.
+- **If an example can be misread, fix the example.** A clarifying sentence
+  nearby does not work. `fold-primer.md` stated "ids are indices" directly above
+  an example that looked like coordinates, and readers believed the example.
+
+**Before merging any doc**, reread it as someone who knows Haskell and has never
+folded anything. Every word you would have to look up must be in the glossary or
+defined on the spot; every step you would have to take on faith needs its reason
+given.
+
 ## Commands
 
 ```bash
@@ -107,7 +137,11 @@ One direction of flow, no cycles:
 | Haddock module headers | Why a module exists and what a newcomer would get wrong in it. The primary place explanation lives. |
 | `README.md` | What the tool is and how to run it. |
 | `docs/fold-primer.md` | The domain, for someone new to origami and geometry. |
+| `docs/glossary.md` | Every term the docs and code assume. The one place a definition lives. |
+| `docs/fold-reference.md` | Every FOLD key, its type, and our support status. |
 | `docs/notes/` | Background and direction. **One idea per file**, a few minutes to read, with references. |
+
+How to write these is in [Writing an explanation](#writing-an-explanation).
 
 When you learn something worth keeping — a theorem, an algorithm, a technique —
 add a note to `docs/notes/` and link it from that directory's `README.md`. Keep
