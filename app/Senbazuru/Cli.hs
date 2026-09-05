@@ -32,7 +32,7 @@ import Senbazuru.Fold.Types
     assignmentCode,
   )
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
-import Senbazuru.Render.CreasePattern (creasePatternAuto, creasePatternFrom)
+import Senbazuru.Render.CreasePattern (creasePatternAuto)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -164,9 +164,7 @@ renderFile o f = do
           <> tshow (roFrame o)
           <> "; this file has "
           <> tshow (length (allFrames f))
-  let rendered = case roView o of
-        Nothing -> creasePatternAuto theme frame
-        Just basis -> creasePatternFrom theme basis frame
+  let rendered = creasePatternAuto theme (roView o) frame
   case rendered of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
     Right d -> emit (renderSvg (page frame) d)

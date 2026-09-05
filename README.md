@@ -15,7 +15,9 @@ visual style of step-by-step origami instruction books.
 Given a `.fold` file, it draws every edge using the standard
 Yoshizawa–Randlett line vocabulary: solid for the edge of the paper, dashed for
 valley folds, dash-dot-dot for mountain folds, and a light line for creases that
-exist but are not folded.
+exist but are not folded. Those dashes are instructions, so they belong to crease
+patterns. A folded form is drawn the way a book draws the model itself, with
+every edge solid.
 
 ```bash
 stack run -- render examples/unit-square.fold -o unit-square.svg

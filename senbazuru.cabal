@@ -98,6 +98,7 @@ test-suite senbazuru-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   other-modules:
+    Senbazuru.Diagram.StyleSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.GeometrySpec
     Senbazuru.Render.CameraSpec
