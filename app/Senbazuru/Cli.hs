@@ -78,6 +78,7 @@ data RenderOptions = RenderOptions
     roMargin :: Double,
     roTransparent :: Bool,
     roHideFlat :: Bool,
+    roNoFill :: Bool,
     -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
     -- argument parsing, so an unknown name never reaches this record.
     roView :: Maybe Basis
@@ -194,6 +195,8 @@ renderOptions =
       (long "transparent" <> help "Omit the white background rectangle")
     <*> switch
       (long "hide-flat" <> help "Do not draw flat (F) or unassigned (U) creases")
+    <*> switch
+      (long "no-fill" <> help "Draw the sheet as a wireframe, with faces left unfilled")
     <*> optional
       ( option
           -- Resolved during parsing, so a bad name is rejected with optparse's
@@ -249,9 +252,18 @@ renderFile o f = do
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
     Right d -> emit (renderSvg (page frame) d)
   where
-    theme
-      | roHideFlat o = defaultTheme {themeShowFlat = False, themeShowUnassigned = False}
-      | otherwise = defaultTheme
+    -- Each flag only ever subtracts from the default. Written as guards rather
+    -- than as assignments so that a flag left off defers to whatever
+    -- defaultTheme says, instead of asserting today's value of it.
+    theme = hideFlat (noFill defaultTheme)
+
+    hideFlat t
+      | roHideFlat o = t {themeShowFlat = False, themeShowUnassigned = False}
+      | otherwise = t
+
+    noFill t
+      | roNoFill o = t {themePaper = Nothing}
+      | otherwise = t
 
     page frame =
       defaultPage

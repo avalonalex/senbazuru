@@ -31,11 +31,13 @@ import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Senbazuru.Diagram (Diagram, Shape (..), diagramWithExtent)
-import Senbazuru.Diagram.Style (Notation (..), Theme, strokeFor)
+import Senbazuru.Diagram.Style (Notation (..), Theme, fillFor, strokeFor)
 import Senbazuru.Fold.Query
   ( Crease (..),
+    Face (..),
     FoldError (..),
     frameCreases,
+    frameFaces,
     frameVertices,
   )
 import Senbazuru.Fold.Types (Assignment (..), Frame (..))
@@ -71,8 +73,24 @@ creasePatternFrom theme notation basis fr = do
   verts <- frameVertices fr
   extent <- maybe (Left NoVertices) Right (boxFromPoints (map flatten verts))
   creases <- frameCreases fr
-  let shapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
-  pure (diagramWithExtent extent shapes)
+  -- Faces are resolved only when they are going to be drawn, so a renderer
+  -- refuses a file for something it was going to put on the page and never for
+  -- anything else. The first version validated them always, on the grounds that
+  -- a flag should not decide which files are acceptable; that turned a
+  -- malformed face on a *folded form* -- whose faces this never draws -- into a
+  -- hard failure on a file that used to render. Complaining about data nobody
+  -- looked at is a validator's job, and senbazuru has a separate verb for that.
+  faceShapes <- case fillFor theme notation of
+    Nothing -> pure []
+    Just colour -> do
+      faces <- frameFaces fr
+      pure [Polygon colour (map flatten (faceCorners f)) | f <- faces]
+  let creaseShapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
+  -- Faces first, and not through paintOrder: they are not creases and there is
+  -- nothing to sort them by. Every face goes under every line, which is what
+  -- makes the fill a background for the drawing rather than a coat of paint
+  -- over it.
+  pure (diagramWithExtent extent (faceShapes <> creaseShapes))
   where
     flatten = project basis
 
@@ -134,7 +152,11 @@ defaultNotationFor classes verts
   | "foldedForm" `elem` classes = FoldedFormNotation
   | otherwise = CreasePatternNotation
 
--- | Painting order, lowest first.
+-- | Painting order for creases, lowest first.
+--
+-- Faces are not in this ordering. They are painted before every crease, by
+-- 'creasePatternFrom', because a fill that covered a line would defeat the
+-- point of drawing the line.
 --
 -- SVG paints in document order, so later shapes cover earlier ones. Creases in
 -- a crease pattern frequently share endpoints and sometimes overlap, and it

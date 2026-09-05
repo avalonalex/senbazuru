@@ -82,18 +82,29 @@ solid c w = Stroke c w (Dash [])
 
 -- | A drawable primitive.
 --
--- Only open polylines exist so far, which is all a crease pattern needs: every
--- crease is a segment, and a segment is a two-point polyline. Filled faces and
--- the curved arrows of a folding step will be added as further constructors,
--- and the compiler will then point at every place that has to handle them.
+-- The curved arrows of a folding step will be a further constructor, and the
+-- compiler will then point at every place that has to handle them — which is
+-- how 'Polygon' was added to 'Polyline'.
+--
+-- A 'Polygon' carries a fill and no stroke, which looks like an omission and is
+-- not. A face and the creases bounding it are separate things in FOLD, and they
+-- are separate things here: the outline of a filled face is drawn by the border
+-- and crease edges that happen to run along it, each with the weight its own
+-- assignment calls for. Stroking the polygon as well would double every line
+-- and would draw the edge of the sheet at the wrong weight.
 data Shape
   = -- | An open polyline through the given model-space points.
     Polyline !Stroke ![V2]
+  | -- | A closed polygon, filled with the given colour and not stroked. The
+    -- closing edge back to the first point is implied.
+    Polygon !Colour ![V2]
   deriving stock (Eq, Show)
 
 -- | The model-space points a shape passes through.
 shapePoints :: Shape -> [V2]
-shapePoints (Polyline _ ps) = ps
+shapePoints = \case
+  Polyline _ ps -> ps
+  Polygon _ ps -> ps
 
 -- | The tightest box containing every point of every shape, or 'Nothing' if
 -- there is nothing to draw.

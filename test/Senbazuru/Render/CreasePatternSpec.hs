@@ -11,14 +11,97 @@
 -- @frame_classes@, and the tests below say exactly when.
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
-import Senbazuru.Diagram.Style (Notation (..))
+import Senbazuru.Diagram (Diagram (..), Shape (..))
+import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme)
+import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Types
+  ( Assignment (..),
+    FaceId (..),
+    Frame (..),
+    VertexId (..),
+    emptyFrame,
+  )
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Render.Camera (isometric, topDown)
-import Senbazuru.Render.CreasePattern (defaultBasisFor, defaultNotationFor)
+import Senbazuru.Render.CreasePattern
+  ( creasePatternFrom,
+    defaultBasisFor,
+    defaultNotationFor,
+  )
 import Test.Hspec
+
+-- | 'twoFaceSquare' with a face pointing at a vertex that does not exist.
+broken :: Frame
+broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
+
+-- | A unit square split into two triangles by a valley along the diagonal.
+twoFaceSquare :: Frame
+twoFaceSquare =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1]],
+      edgesVertices =
+        [ (VertexId 0, VertexId 1),
+          (VertexId 1, VertexId 2),
+          (VertexId 2, VertexId 3),
+          (VertexId 3, VertexId 0),
+          (VertexId 0, VertexId 2)
+        ],
+      edgesAssignment = [Border, Border, Border, Border, Valley],
+      facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3]]
+    }
+
+-- | The shapes of a rendered frame, or the error, as a list of tags in order.
+shapeKinds :: Theme -> Notation -> Frame -> Either FoldError [String]
+shapeKinds theme notation fr =
+  map kind . diagramShapes <$> creasePatternFrom theme notation topDown fr
+  where
+    kind = \case
+      Polygon _ _ -> "fill"
+      Polyline _ _ -> "line"
 
 spec :: Spec
 spec = do
+  describe "filling faces" $ do
+    it "paints every face before every line" $
+      -- Not a detail of taste: SVG paints in document order, so a fill emitted
+      -- after a crease would cover it.
+      shapeKinds defaultTheme CreasePatternNotation twoFaceSquare
+        `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
+
+    it "leaves a folded form as a wireframe even though it has faces" $
+      shapeKinds defaultTheme FoldedFormNotation twoFaceSquare
+        `shouldBe` Right (replicate 5 "line")
+
+    it "draws only lines when the theme has no paper" $
+      shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation twoFaceSquare
+        `shouldBe` Right (replicate 5 "line")
+
+    it "rejects a corrupt face when it was going to draw it" $
+      shapeKinds defaultTheme CreasePatternNotation broken
+        `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
+
+    it "draws a folded form whose faces are corrupt, having never looked" $
+      -- A folded form's faces are not drawn, so they are not resolved either. An
+      -- earlier version validated them anyway and turned a file that had always
+      -- rendered into a hard failure over data it was going to discard.
+      shapeKinds defaultTheme FoldedFormNotation broken
+        `shouldBe` Right (replicate 5 "line")
+
+    it "draws a wireframe whose faces are corrupt, for the same reason" $
+      shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation broken
+        `shouldBe` Right (replicate 5 "line")
+
+    it "fills a flat-folded model that declares no class -- a known limitation" $ do
+      -- Pinned rather than fixed. A flat-folded model and a crease pattern have
+      -- identical coordinates, so defaultNotationFor can only tell them apart by
+      -- asking frame_classes, and a file that declares nothing has been drawn as
+      -- a crease pattern since long before faces existed. Telling them apart for
+      -- real means asking whether the faces overlap, which is layer ordering.
+      -- See docs/notes/layer-ordering.md.
+      let flatFolded = twoFaceSquare {frameClasses = []}
+      shapeKinds defaultTheme (defaultNotationFor [] flatSquare) flatFolded
+        `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
+
   describe "defaultBasisFor" $ do
     it "views a flat sheet from above" $
       defaultBasisFor flatSquare `shouldBe` topDown

@@ -81,12 +81,22 @@ order a half-edge structure needs — see
 
 | Key | Type | Meaning | Status |
 | --- | --- | --- | --- |
-| `faces_vertices` | int[][] | Vertices around the face, counterclockwise | decoded |
+| `faces_vertices` | int[][] | Vertices around the face, counterclockwise | used |
 | `faces_edges` | int[][] | Edges around the face, counterclockwise | — |
 | `faces_faces` | int[][] | Adjacent faces, may contain nulls | — |
 
 Counterclockwise winding is what defines a face's normal direction, and
 therefore which side is "up".
+
+Faces of a crease pattern are filled with the paper colour; a folded form is
+left as a wireframe, because filling it would mean knowing which face is in
+front and `faceOrders` is not decoded. `--no-fill` turns filling off entirely.
+
+Note that senbazuru does **not** trust the stated winding, and does not need to:
+filling a simple closed polygon covers the same region whichever way round its
+corners are listed, and real files disagree with the spec often enough that
+relying on it would be a bug waiting to happen. Anything that comes to need a
+face's normal has to work the orientation out for itself.
 
 ## Layer ordering
 

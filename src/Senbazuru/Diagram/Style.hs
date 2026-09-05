@@ -69,10 +69,12 @@ module Senbazuru.Diagram.Style
     -- * Mapping fold semantics to ink
     Notation (..),
     strokeFor,
+    fillFor,
 
     -- * Palette
     ink,
     ghost,
+    paper,
   )
 where
 
@@ -88,6 +90,17 @@ ink = Colour "#1a1a1a"
 -- with the folds being taught.
 ghost :: Colour
 ghost = Colour "#bdbdbd"
+
+-- | A faint warm off-white, for the sheet itself.
+--
+-- A printed book fills faces with nothing at all: the paper in the diagram is
+-- the paper of the page, and the sheet reads as an object because the reader is
+-- holding one. On a screen there is no such luck — a white sheet on a white
+-- background is invisible, and the drawing is lines floating in a void. This is
+-- the smallest tint that gives the sheet a silhouette without turning it into
+-- a coloured shape competing with the creases.
+paper :: Colour
+paper = Colour "#faf8f3"
 
 -- | The knobs that control how a diagram looks.
 --
@@ -109,7 +122,10 @@ data Theme = Theme
     -- | Draw @F@ creases (a crease line that is not folded)?
     themeShowFlat :: !Bool,
     -- | Draw @U@ creases (direction not yet decided)?
-    themeShowUnassigned :: !Bool
+    themeShowUnassigned :: !Bool,
+    -- | Fill faces with this colour, or 'Nothing' to leave the sheet as a
+    -- wireframe. See 'fillFor', which has the final say.
+    themePaper :: !(Maybe Colour)
   }
   deriving stock (Eq, Show)
 
@@ -130,7 +146,8 @@ defaultTheme =
       -- generic centreline.
       themeMountainDash = Dash [9, 3, 1.2, 3, 1.2, 3],
       themeShowFlat = True,
-      themeShowUnassigned = True
+      themeShowUnassigned = True,
+      themePaper = Just paper
     }
 
 -- | Which kind of picture the lines belong to.
@@ -181,3 +198,35 @@ strokeFor theme notation = \case
     crease dash = case notation of
       CreasePatternNotation -> Stroke (themeInk theme) (themeCreaseWidth theme) dash
       FoldedFormNotation -> solid (themeInk theme) (themeCreaseWidth theme)
+
+-- | The colour to fill a face with, or 'Nothing' if faces are not to be filled.
+--
+-- The theme offers a colour; the notation can refuse it, and for folded forms it
+-- does. The reason is that filling depends on something drawing a crease pattern
+-- never has to think about: __which face is in front__.
+--
+-- A crease pattern is a flat subdivision of one sheet. Its faces tile the paper
+-- and never overlap, so they can be painted in any order at all and the picture
+-- is the same. Fold that sheet and the faces land on top of one another, and the
+-- order they are painted in becomes the whole answer — paint them as they happen
+-- to appear in the file and the result is a confident picture of the wrong
+-- thing. Which face is on top is recorded in FOLD's @faceOrders@, which we do
+-- not decode, and computing it when the file does not say is NP-hard in general.
+-- See @docs\/notes\/layer-ordering.md@.
+--
+-- So a drawing in 'FoldedFormNotation' stays a wireframe. A wireframe is honest
+-- about not knowing; a filled one would not be.
+--
+-- __That is a weaker guarantee than \"folded forms are never filled\",__ and the
+-- difference is worth knowing. The notation is chosen by
+-- 'Senbazuru.Render.CreasePattern.defaultNotationFor', which can only tell a
+-- flat-folded model from a crease pattern by asking @frame_classes@, because
+-- their coordinates are identical. A flat-folded model that declares no class
+-- is therefore drawn as a crease pattern — with the fill, and with the
+-- crease-pattern dashes it has been getting since long before faces existed.
+-- Closing that needs a test on the data, which means asking whether faces
+-- overlap, which is the same geometry as layer ordering.
+fillFor :: Theme -> Notation -> Maybe Colour
+fillFor theme = \case
+  CreasePatternNotation -> themePaper theme
+  FoldedFormNotation -> Nothing

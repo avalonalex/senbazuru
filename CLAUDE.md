@@ -116,7 +116,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library. |
-| `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`. |
+| `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
@@ -276,7 +276,13 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.
 - **SVG paints in document order**, so later shapes cover earlier ones. See
-  `paintOrder` in `Senbazuru.Render.CreasePattern`.
+  `paintOrder` in `Senbazuru.Render.CreasePattern`. Faces sit outside that
+  ordering: every fill is emitted before every line.
+- **Face winding is not to be trusted.** FOLD specifies counterclockwise and
+  real files disagree. Filling does not care — a simple closed polygon covers
+  the same region either way round — so nothing currently depends on it.
+  Anything that comes to need a face's *normal* must compute the orientation
+  rather than read it.
 - **`-0.0 == 0.0` is `True`** but they format differently. A y-flip produces
   negative zeros. `formatNumber` normalises them.
 
@@ -286,7 +292,9 @@ Deliberate omissions, so nobody thinks they are bugs:
 
 - Frame inheritance (`frame_inherit` / `frame_parent`) is decoded but not resolved.
 - `faceOrders` / `edgeOrders` are not decoded at all.
-- No face filling, so folded forms render as wireframes.
+- Folded forms render as wireframes. Crease-pattern faces are filled; a folded
+  form's are not, because its faces overlap and which one is in front is
+  `faceOrders`, which is not decoded.
 - No fold arrows, which is the main thing standing between this and a real
   step-by-step diagram.
 - No FOLD *output* (`ToJSON`), which the authoring-tools goal will need.
