@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <title>fixture</title>
+  <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 46 190 L 100 190 L 100 10 L 46 10 Z" fill="#faf8f3"/>
+    <path d="M 100 190 L 64 190 L 64 10 L 100 10 Z" fill="#faf8f3"/>
+    <path d="M 64 190 L 154 190 L 154 10 L 64 10 Z" fill="#faf8f3"/>
+    <path d="M 100 190 L 100 10" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 64 190 L 64 10" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 46 190 L 100 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 100 190 L 64 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 64 190 L 154 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 154 190 L 154 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 154 10 L 64 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 64 10 L 100 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 100 10 L 46 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 46 10 L 46 190" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

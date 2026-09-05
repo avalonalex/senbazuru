@@ -26,10 +26,17 @@ module Senbazuru.Fold.Query
     frameCreases,
     frameFaces,
     frameFaceOrders,
+
+    -- * The sheet as a graph
+    EdgeKey,
+    edgeKey,
+    ringEdges,
+    facesAlongEdges,
   )
 where
 
 import Data.IntMap.Strict qualified as IM
+import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Fold.Types
@@ -83,6 +90,21 @@ data FoldError
     -- itself. Raised by "Senbazuru.Origami.Layers" and carried here so that
     -- everything a frame can be wrong about reaches a caller as one type.
     ImpossibleStacking FaceId
+  | -- | More than two faces meet along one edge, so the sheet is not a
+    -- surface and \"the face on the other side\" has no answer. Carries the
+    -- two vertices and how many faces there are.
+    NonManifoldEdge VertexId VertexId Int
+  | -- | Two faces share an edge of a folded form, but their windings cannot
+    -- both be right. A face's winding says which side of the paper is its top,
+    -- and the paper is one sheet: folded flat across a crease the two faces
+    -- must wind opposite ways, and continuing flat across it they must wind
+    -- the same way. Raised by "Senbazuru.Origami.Stacking".
+    WindingClash FaceId FaceId
+  | -- | No order of the layers satisfies every constraint: whichever way
+    -- these faces are stacked, some paper has to pass through some other
+    -- paper. Carries the faces of the constraint that could not be met.
+    -- Raised by "Senbazuru.Origami.Stacking".
+    Unstackable [FaceId]
   | -- | Two frames that should describe the same paper disagree about how much
     -- of it there is. Carries the key and the two lengths.
     FramesDiffer Text Int Int
@@ -136,7 +158,28 @@ renderFoldError = \case
   ImpossibleStacking (FaceId f) ->
     "the faceOrders run in a circle through face "
       <> tshow f
-      <> "; no stack of paper is in front of itself"
+      <> ", and painting faces one after another needs an order with no circle"
+      <> " in it"
+  NonManifoldEdge (VertexId a) (VertexId b) n ->
+    "the crease from vertex "
+      <> tshow a
+      <> " to "
+      <> tshow b
+      <> " has "
+      <> tshow n
+      <> " faces along it; a sheet of paper has at most two"
+  WindingClash (FaceId f) (FaceId g) ->
+    "faces "
+      <> tshow f
+      <> " and "
+      <> tshow g
+      <> " share an edge, but their faces_vertices wind so that the same side"
+      <> " of the paper faces both ways at once"
+  Unstackable fs ->
+    "the layers cannot be stacked without the paper passing through itself;"
+      <> " the constraint between faces "
+      <> T.intercalate ", " (map (\(FaceId f) -> tshow f) fs)
+      <> " is the one that could not be met"
   FramesDisagree what i ->
     "these two frames are not two states of one model: their "
       <> what
@@ -383,3 +426,45 @@ frameFaceOrders fr = traverse check (faceOrders fr)
     inRange fid@(FaceId i)
       | i >= 0 && i < nFaces = Right ()
       | otherwise = Left (FaceOrderOutOfRange fid nFaces)
+
+-- | An edge named by the two vertices it joins, whichever way round a face
+-- happens to walk it.
+--
+-- A face lists its corners in order, so the edge from corner 3 to corner 8 is
+-- written @(3, 8)@ by the face on one side and @(8, 3)@ by the face on the
+-- other. Sorting the pair makes them the same key, which is what lets anything
+-- ask \"who else is along this edge?\" with a single lookup.
+type EdgeKey = (Int, Int)
+
+-- | The key for the edge between two vertices.
+edgeKey :: VertexId -> VertexId -> EdgeKey
+edgeKey (VertexId a) (VertexId b) = (min a b, max a b)
+
+-- | The consecutive pairs around a closed ring: each element with the next,
+-- and the last with the first. For a face's corners, these are its edges.
+ringEdges :: [a] -> [(a, a)]
+ringEdges xs = zip xs (drop 1 xs <> take 1 xs)
+
+-- | For each edge of the sheet, the faces that lie along it.
+--
+-- One face means the edge is on the border of the sheet; two means it is a
+-- crease with paper on both sides. More than two is refused, because the sheet
+-- is then not a surface: whatever is being asked about \"the face across this
+-- crease\" — how it folds, which layer it lands in — has no single answer.
+--
+-- Shared by "Senbazuru.Origami.Folding" and "Senbazuru.Origami.Stacking",
+-- which both need it and must not disagree about it.
+facesAlongEdges :: [Face] -> Either FoldError (M.Map EdgeKey [FaceId])
+facesAlongEdges faces = M.traverseWithKey atMostTwo byEdge
+  where
+    byEdge =
+      M.fromListWith
+        (<>)
+        [ (edgeKey a b, [faceId f])
+          | f <- faces,
+            (a, b) <- ringEdges (faceVertexIds f)
+        ]
+
+    atMostTwo (a, b) fs
+      | length fs <= 2 = Right fs
+      | otherwise = Left (NonManifoldEdge (VertexId a) (VertexId b) (length fs))

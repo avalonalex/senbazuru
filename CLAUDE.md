@@ -104,6 +104,9 @@ One direction of flow, no cycles:
      |                               +--> Senbazuru.Origami.Layers
      |                               |    which face is in front, given where
      |                               |    the viewer is standing
+     |                               +--> Senbazuru.Origami.Stacking
+     |                               |    which face is on top of which, when
+     |                               |    the file does not say: faceOrders out
      |                               +--> Senbazuru.Origami.Step
      |                                    subtract two frames: which paper moved
      |                                    and where it went, i.e. the arrow
@@ -124,6 +127,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
 | `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform. |
+| `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
@@ -134,6 +138,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
+| `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
@@ -315,14 +320,24 @@ are not contributors can find it, and so there is only one copy to keep true.
   outside that ordering entirely — every fill is emitted before every line, and
   the order of the fills among themselves is
   `Senbazuru.Origami.Layers.paintOrder`.
-- **Face winding is not to be trusted — except in `faceOrders`.** FOLD specifies
-  counterclockwise and real files disagree. Filling does not care, and folding
-  measures the winding from the coordinates. But `faceOrders`'s signs are read
-  against a face's *normal*, which is *defined* by its winding, so the two were
-  written against each other: a file with backwards windings has backwards
-  signs, and they cancel. Recomputing the winding there would uncancel them and
-  turn the model inside out. `Senbazuru.Origami.Layers` takes the file's winding
-  exactly as written, and is the only place that does.
+- **Face winding is not to be trusted — except in a folded form's layers.** FOLD
+  specifies counterclockwise and real files disagree. Filling does not care, and
+  folding measures the winding from the coordinates. But `faceOrders`'s signs
+  are read against a face's *normal*, which is *defined* by its winding, so the
+  two were written against each other: a file with backwards windings has
+  backwards signs, and they cancel. Recomputing the winding there would uncancel
+  them and turn the model inside out. `Senbazuru.Origami.Layers` takes the
+  file's winding exactly as written, and so does `Senbazuru.Origami.Stacking`,
+  which reads it to tell a face lying top-up from one lying top-down and checks
+  it against itself across every crease. `foldFrame` therefore writes its faces
+  counterclockwise as measured on the pattern, so the folded frames it produces
+  are frames whose winding can be trusted.
+- **A layer order need not be a painting order.** The solver forbids a circle
+  only among three faces that share a patch of paper. Three faces can overlap
+  pairwise with no point under all three — the flaps of a twist do — and then
+  their pairwise orders may legitimately run in a circle. `paintOrder` still
+  needs one global order and reports `ImpossibleStacking` on such a model; that
+  is a limit of painting faces whole, not a fault in the file.
 - **A page of steps is drawn through one camera**, chosen from every frame
   together. Asking each frame what view suits it moves the reader around the
   model between figures, and makes the shared extent a union of boxes measured
@@ -355,9 +370,13 @@ Deliberate omissions, so nobody thinks they are bugs:
 - Frame inheritance (`frame_inherit` / `frame_parent`) is decoded but not
   resolved, so every frame of a multi-frame file must repeat the whole graph.
 - `edgeOrders` is not decoded at all.
-- No solver for layer order. `faceOrders` is read and used when a file supplies
-  one; nothing computes one, so a folded form senbazuru folded itself is drawn
-  as a wireframe.
+- Layer order is solved only for models folded flat, with convex faces. A
+  folded form with paper still in the air and no `faceOrders` is drawn as a
+  wireframe, and a face that is not convex declines the whole model. Both are
+  reported by `info`.
+- A face that overlaps another is painted whole, so a model whose pairwise
+  layer order runs in a circle — a twist — cannot be painted even when its
+  `faceOrders` are right.
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.

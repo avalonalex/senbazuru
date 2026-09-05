@@ -52,9 +52,10 @@ A **folded form** is the model after folding — the same vertices and edges, bu
 with coordinates moved to where they end up, usually in 3D. Drawing this properly
 is much harder, because paper is opaque and layers overlap. You need to know
 which layer is on top of which, and hide what is behind. FOLD stores that
-information in `faceOrders`, and senbazuru does not use it yet: it currently
-projects a folded form straight down onto the xy plane, which gives a
-well-defined but flattened picture rather than a correct one.
+information in `faceOrders`, and senbazuru paints faces in the order it gives.
+A flat-folded form that arrives without one has its order worked out from the
+creases, which is a small constraint problem — see
+[notes/taco-taco.md](notes/taco-taco.md).
 
 ## 3. FOLD in one page
 

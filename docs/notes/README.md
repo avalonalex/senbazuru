@@ -23,6 +23,8 @@ read the Haddock module headers; for the domain, start with
 | [folding-by-transforms.md](folding-by-transforms.md) | How angles become positions: one rigid matrix per face, over a spanning tree |
 | [fold-angles-are-the-state.md](fold-angles-are-the-state.md) | Positions are derived from angles, and neither can be naively interpolated |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
+| [taco-taco.md](taco-taco.md) | Every constraint on the layer order is one of four local rules |
+| [convex-clipping.md](convex-clipping.md) | Test whether two faces overlap by clipping them, not with predicates |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
 

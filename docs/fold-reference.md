@@ -89,8 +89,10 @@ Counterclockwise winding is what defines a face's normal direction, and
 therefore which side is "up".
 
 Faces of a crease pattern are filled with the paper colour. So are a folded
-form's, but only when the file records a `faceOrders` saying which is in front;
-without one it stays a wireframe. `--no-fill` turns filling off entirely.
+form's, in the order a `faceOrders` says; a flat-folded form without one has
+its order worked out by `Senbazuru.Origami.Stacking`, and one with paper in
+the air and no `faceOrders` stays a wireframe. `--no-fill` turns filling off
+entirely.
 
 Note that senbazuru does **not** trust the stated winding for filling, and does
 not need to: a simple closed polygon covers the same region whichever way round
@@ -109,11 +111,12 @@ inside out. Here the file's winding is taken exactly as written.
 
 | Key | Type | Meaning | Status |
 | --- | --- | --- | --- |
-| `faceOrders` | [int, int, int][] | `[f, g, s]`: face `f` is above (`+1`), below (`-1`), or unordered (`0`) relative to `g` | used |
+| `faceOrders` | [int, int, int][] | `[f, g, s]`: face `f` is above (`+1`), below (`-1`), or unordered (`0`) relative to `g` | used; computed for flat-folded frames that lack it |
 | `edgeOrders` | [int, int, int][] | Same, for edges, 2D only | — |
 
 See [notes/layer-ordering.md](notes/layer-ordering.md) for why this is stored
-rather than computed.
+rather than left to the reader, and [notes/taco-taco.md](notes/taco-taco.md)
+for how it is computed when a flat-folded frame arrives without it.
 
 ## What FOLD does **not** contain
 
@@ -134,7 +137,9 @@ Worth stating plainly, because the absences are easy to assume away.
   could a tool derive the steps for you: see
   [notes/no-sequence-solver.md](notes/no-sequence-solver.md).
 - **No layer ordering unless supplied.** `faceOrders` is data the file carries
-  because recomputing it is hard, not a derived convenience.
+  because recomputing it is hard in general, not a derived convenience.
+  senbazuru recomputes it for flat-folded frames all the same, because a folded
+  form it computed itself has nowhere else to get one.
 - **No units on the geometry itself.** `frame_unit` labels the whole frame;
   individual coordinates are bare numbers.
 

@@ -26,6 +26,9 @@ For the ideas rather than the definitions, start with
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
 | **Fold arrow** | The curved mark saying which paper moves where. Drawn on the step *before* the fold. FOLD records none, so senbazuru subtracts one frame from the next — see `Senbazuru.Origami.Step`. |
+| **Layer order** | Which face is on top of which, wherever a folded model overlaps itself. Stored as `faceOrders`, or worked out by `Senbazuru.Origami.Stacking` when the file has none. See [notes/taco-taco.md](notes/taco-taco.md). |
+| **Taco** | Two faces joined along an edge of a folded form that lie on the *same* side of it: the paper folded back on itself. Nothing may lie between them that runs across their fold line. |
+| **Tortilla** | Two faces joined along an edge that lie on *opposite* sides of it: the paper continuing flat across the line. Nothing may pass through it. |
 | **Step** | One picture of a diagram sequence: the paper as it is, plus the instruction for reaching the next. Stored in FOLD as consecutive frames of `file_frames`. |
 | **Figure** | One drawing on a page of several. `Senbazuru.Diagram.Layout` arranges figures at one shared scale, so a folded model is drawn smaller than the sheet it came from. |
 | **Yoshizawa–Randlett** | The standard diagram notation: solid paper edges, dashed valleys, dash-dot-dot mountains. The dashes mark folds still to be made, so a folded form is drawn with solid edges only. See `Senbazuru.Diagram.Style`. |
@@ -59,6 +62,7 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | **Isometric** | An orthographic view whose direction has equal magnitude on all three axes, so all three foreshorten equally. |
 | **Basis** | Three perpendicular unit vectors defining a view: right, up, and forward. |
 | **Convex hull** | The smallest convex polygon containing a set of points. See [notes/convex-hull.md](notes/convex-hull.md). |
+| **Convex** | Of a polygon: turns the same way at every corner, so it is the intersection of the half-planes of its edges. What lets two polygons be clipped against each other in one pass. See [notes/convex-clipping.md](notes/convex-clipping.md). |
 | **Orientation predicate** | The test for whether a point lies left of, right of, or on a line. See [notes/robust-predicates.md](notes/robust-predicates.md). |
 
 ## Graphs

@@ -39,6 +39,21 @@ import Test.Hspec
 broken :: Frame
 broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
 
+-- | 'broken' with one corner lifted out of the plane, so that it is a folded
+-- form with paper in the air.
+brokenInTheAir :: Frame
+brokenInTheAir = broken {verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]]}
+
+-- | The square folded along its diagonal: the top-left triangle has landed on
+-- the bottom-right one, and no @faceOrders@ says which is in front.
+foldedDiagonal :: Frame
+foldedDiagonal =
+  twoFaceSquare
+    { frameClasses = ["foldedForm"],
+      verticesCoords = [[0, 0], [1, 0], [1, 1], [1, 0]],
+      edgesFoldAngle = [0, 0, 0, 0, 180]
+    }
+
 -- | A unit square split into two triangles by a valley along the diagonal.
 twoFaceSquare :: Frame
 twoFaceSquare =
@@ -64,6 +79,7 @@ shapeKinds theme notation fr =
       Polygon _ _ -> "fill"
       Polyline _ _ -> "line"
       Arrow _ -> "arrow"
+      Label {} -> "label"
 
 -- | The last element, if there is one.
 lastOf :: [a] -> Maybe a
@@ -79,10 +95,31 @@ spec = do
       shapeKinds defaultTheme CreasePatternNotation twoFaceSquare
         `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
 
-    it "leaves a folded form as a wireframe when nothing says which face is in front" $
-      -- Its faces overlap, so drawing them in file order would be a confident
-      -- picture of the wrong thing. A wireframe says only what is known.
+    it "fills a flat folded form that supplies no ordering, having worked one out" $
+      -- The faces overlap and the file says nothing about which is in front,
+      -- so the answer comes from Senbazuru.Origami.Stacking. Two fills, and
+      -- the diagonal drawn over both.
+      shapeKinds defaultTheme FoldedFormNotation foldedDiagonal
+        `shouldBe` Right (["fill", "fill"] <> replicate 5 "line")
+
+    it "fills the face that folded over last, seen from above" $ do
+      -- Face 1 is the triangle that moved, over a valley, so it is on top.
+      -- Asserted on the fill's corners because the shapes carry no face ids.
+      d <- either (fail . show) pure (creasePatternFrom defaultTheme FoldedFormNotation topDown foldedDiagonal)
+      [c | Polygon _ c <- diagramShapes d]
+        `shouldBe` [[V2 0 0, V2 1 0, V2 1 1], [V2 0 0, V2 1 1, V2 1 0]]
+
+    it "fills a flat folded form whose faces do not overlap, having found nothing to order" $
+      -- Two triangles tiling a square are declared folded. Nothing is on top of
+      -- anything, so an empty ordering is the right answer and every fill order
+      -- draws the same picture.
       shapeKinds defaultTheme FoldedFormNotation twoFaceSquare
+        `shouldBe` Right (["fill", "fill"] <> replicate 5 "line")
+
+    it "leaves a folded form in the air as a wireframe" $
+      -- Ordering layers is only worked out for flat models. With paper still
+      -- in the air and no faceOrders, a wireframe says only what is known.
+      shapeKinds defaultTheme FoldedFormNotation (twoFaceSquare {verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]]})
         `shouldBe` Right (replicate 5 "line")
 
     it "fills a folded form once the file supplies an ordering" $ do
@@ -110,13 +147,19 @@ spec = do
       shapeKinds defaultTheme CreasePatternNotation broken
         `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
 
-    it "draws a folded form whose faces are corrupt, having never looked" $
-      -- With no ordering there is nothing to fill, so the faces are never
-      -- resolved. An earlier version validated them anyway and turned a file
-      -- that had always rendered into a hard failure over data it was going to
-      -- discard.
-      shapeKinds defaultTheme FoldedFormNotation broken
+    it "draws a folded form in the air whose faces are corrupt, having never looked" $
+      -- With no ordering and none to be worked out there is nothing to fill,
+      -- so the faces are never resolved. An earlier version validated them
+      -- anyway and turned a file that had always rendered into a hard failure
+      -- over data it was going to discard.
+      shapeKinds defaultTheme FoldedFormNotation brokenInTheAir
         `shouldBe` Right (replicate 5 "line")
+
+    it "rejects a corrupt face in a flat folded form, because it was going to fill it" $
+      -- The same file lying flat has its layers worked out and its faces
+      -- painted, so now the corrupt face is data that was going to be drawn.
+      shapeKinds defaultTheme FoldedFormNotation broken
+        `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
 
     it "draws a wireframe whose faces are corrupt, for the same reason" $
       shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation broken

@@ -49,7 +49,15 @@ where
 import Data.List (foldl', sortOn)
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
-import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaces, frameVertices)
+import Senbazuru.Fold.Query
+  ( EdgeKey,
+    Face (..),
+    FoldError (..),
+    edgeKey,
+    frameFaces,
+    frameVertices,
+    ringEdges,
+  )
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -160,20 +168,16 @@ zip4 :: [a] -> [b] -> [c] -> [d] -> [(a, b, c, d)]
 zip4 (a : as) (b : bs) (c : cs) (d : ds) = (a, b, c, d) : zip4 as bs cs ds
 zip4 _ _ _ _ = []
 
--- | The unordered pair identifying an edge between two vertices.
-edgeKey :: VertexId -> VertexId -> (Int, Int)
-edgeKey (VertexId a) (VertexId b) = (min a b, max a b)
-
 -- | The edges around a face's boundary, as unordered vertex pairs.
-ringKeys :: [VertexId] -> S.Set (Int, Int)
-ringKeys vs = S.fromList (zipWith edgeKey vs (drop 1 vs <> take 1 vs))
+ringKeys :: [VertexId] -> S.Set EdgeKey
+ringKeys vs = S.fromList [edgeKey a b | (a, b) <- ringEdges vs]
 
 -- | Split faces into groups that are joined to each other through shared edges.
 --
 -- Restricted to the faces given, so two flaps that move together but touch only
 -- through paper that stayed still come out as two groups — which is right, and
 -- is the whole reason this is not one arrow per step.
-connectedGroups :: [(Face, S.Set (Int, Int))] -> [[(Face, S.Set (Int, Int))]]
+connectedGroups :: [(Face, S.Set EdgeKey)] -> [[(Face, S.Set EdgeKey)]]
 connectedGroups = go
   where
     go [] = []
