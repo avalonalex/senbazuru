@@ -122,3 +122,30 @@ spec = do
 
     it "has no vertices to draw for an empty frame" $
       frameVertices emptyFrame `shouldBe` Right []
+
+  describe "frameFaces" $ do
+    it "resolves a face to the points that bound it" $ do
+      let fr = (frameOf [[0, 0], [1, 0], [1, 1]] [] []) {facesVertices = [map VertexId [0, 1, 2]]}
+      fmap (map faceCorners) (frameFaces fr)
+        `shouldBe` Right [[V3 0 0 0, V3 1 0 0, V3 1 1 0]]
+
+    it "keeps the vertex ids beside the points" $ do
+      -- Which faces share an edge is a question about ids, and recovering it
+      -- from coordinates would mean comparing Doubles for equality.
+      let fr = (frameOf [[0, 0], [1, 0], [1, 1]] [] []) {facesVertices = [map VertexId [2, 0, 1]]}
+      fmap (map faceVertexIds) (frameFaces fr)
+        `shouldBe` Right [map VertexId [2, 0, 1]]
+
+    it "has no faces for a frame that records none, which is not an error" $
+      -- faces_vertices is optional and plenty of real crease patterns omit it.
+      frameFaces (frameOf [[0, 0], [1, 1]] [(0, 1)] [Valley]) `shouldBe` Right []
+
+    it "reports which face refers to a vertex that does not exist" $ do
+      let fr = (frameOf [[0, 0], [1, 0]] [] []) {facesVertices = [map VertexId [0, 1, 9]]}
+      frameFaces fr `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 2)
+
+    it "rejects a face with fewer than three corners" $ do
+      -- Two corners enclose no paper. Skipping it quietly would draw a sheet
+      -- with a hole in it and say nothing.
+      let fr = (frameOf [[0, 0], [1, 0], [1, 1]] [] []) {facesVertices = [map VertexId [0, 1]]}
+      frameFaces fr `shouldBe` Left (FaceTooFewCorners (FaceId 0) 2)

@@ -131,7 +131,22 @@ renderSvg page d =
 
 -- | One shape as a @\<path\>@ element, or nothing at all if it has no
 -- extent to draw.
+--
+-- Both kinds set the attribute the enclosing group does not want: the group
+-- carries @fill=\"none\"@ so that stroked paths are not flooded, and a filled
+-- polygon overrides it. Neither kind sets the other attribute, so a polygon is
+-- unstroked (SVG's initial @stroke@ is @none@, and the group does not change
+-- it) and a polyline is unfilled.
 shapeToSvg :: Transform -> Shape -> Builder
+shapeToSvg toPage (Polygon (Colour c) pts)
+  -- Two points enclose no area, so a fill would paint nothing. 'frameFaces'
+  -- rejects such a face outright; this guard is for diagrams built by hand.
+  | length pts < 3 = mempty
+  | otherwise =
+      "    <path"
+        <> attr "d" (closedPathData (map (applyTransform toPage) pts))
+        <> attr "fill" c
+        <> "/>\n"
 shapeToSvg toPage (Polyline stroke pts)
   -- A polyline of fewer than two points has no length. Emitting it would
   -- produce a stray dot under a round line cap.
@@ -146,6 +161,15 @@ shapeToSvg toPage (Polyline stroke pts)
   where
     dashAttr (Dash []) = mempty
     dashAttr (Dash ds) = attr "stroke-dasharray" (T.unwords (map formatNumber ds))
+
+-- | An SVG path closed with @Z@, so the fill has a boundary all the way round.
+--
+-- Closing with @Z@ rather than by repeating the first point matters for a
+-- stroked path, where the join at the seam is mitred rather than left as two
+-- overlapping ends. It costs nothing here and keeps the two agreeing if
+-- polygons ever gain a stroke.
+closedPathData :: [V2] -> Text
+closedPathData pts = pathData pts <> " Z"
 
 -- | An SVG path: move to the first point, then draw straight lines to the rest.
 pathData :: [V2] -> Text

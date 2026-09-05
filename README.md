@@ -5,10 +5,11 @@ visual style of step-by-step origami instruction books.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
-> **Status: early.** Crease patterns render correctly, and folded forms render
-> as wireframes from a choice of viewing angles. There is also a flat-foldability
-> checker. Folding arrows, face filling and layer-correct shading — the things
-> that make a diagram a *diagram* — are not built yet. See [Roadmap](#roadmap).
+> **Status: early.** Crease patterns render correctly, with their faces filled,
+> and folded forms render as wireframes from a choice of viewing angles. There is
+> also a flat-foldability checker. Folding arrows and layer-correct shading — the
+> things that make a diagram a *diagram* — are not built yet. See
+> [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -24,8 +25,13 @@ stack run -- render examples/unit-square.fold -o unit-square.svg
 ```
 
 produces a unit square with a valley fold down the middle, a mountain fold
-across it, and a faint diagonal reference crease. Folded forms take a viewing
-angle:
+across it, and a faint diagonal reference crease. Where a file records
+`faces_vertices`, the faces are filled with a paper tint so the sheet reads as
+an object rather than as lines on the page; `--no-fill` leaves it a wireframe.
+A folded form is always a wireframe, because filling one means knowing which
+face is in front and senbazuru does not work that out yet.
+
+Folded forms take a viewing angle:
 
 ```bash
 stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
@@ -131,6 +137,7 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--view NAME` | Viewing angle: `top`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and `iso` for folded forms |
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
+| `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |
 
 `check` takes `--frame` too, and one option of its own:
 
@@ -185,16 +192,12 @@ issues are the detail.
    needs to care about floating point.
    → [convex-hull](docs/notes/convex-hull.md),
    [robust-predicates](docs/notes/robust-predicates.md)
-1. **[Faces.](https://github.com/avalonalex/senbazuru/issues/15)** Decode
-   `faces_vertices` into filled polygons, so a sheet reads as paper rather than
-   as a wireframe.
-   → [half-edge](docs/notes/half-edge.md)
-2. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
+1. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
    Lay out a `file_frames` sequence as a numbered grid of steps at a single
    shared scale. Note that every published FOLD example is single-frame, so this
    needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-3. **Folded forms.** Fold a crease pattern into 3D
+2. **Folded forms.** Fold a crease pattern into 3D
    ([#17](https://github.com/avalonalex/senbazuru/issues/17)), then render it
    layer-correctly ([#18](https://github.com/avalonalex/senbazuru/issues/18)).
    The folding itself is cheap; the layer ordering is where the real
@@ -202,7 +205,7 @@ issues are the detail.
    → [folding-by-transforms](docs/notes/folding-by-transforms.md),
    [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
    [layer-ordering](docs/notes/layer-ordering.md)
-4. **Authoring tools.** FOLD output
+3. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)

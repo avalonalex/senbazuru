@@ -109,6 +109,26 @@ spec = do
       -- it must land at page y = 190, not 10.
       renderSvg testPage square `shouldSatisfy` T.isInfixOf "M 10 190 L 190 190"
 
+    it "fills a polygon and closes its path" $ do
+      let tri =
+            diagramWithExtent
+              (Box (V2 0 0) (V2 1 1))
+              [Polygon (Colour "#abcdef") [V2 0 0, V2 1 0, V2 0 1]]
+          out = renderSvg testPage tri
+      out `shouldSatisfy` T.isInfixOf "M 10 190 L 190 190 L 10 10 Z"
+      out `shouldSatisfy` T.isInfixOf "fill=\"#abcdef\""
+      -- No stroke on the path: the group sets fill="none" and leaves stroke at
+      -- its initial "none", so a polygon that names only a fill is unstroked.
+      -- The outline of a face comes from the crease edges that run along it.
+      T.count "stroke=" out `shouldBe` 0
+
+    it "skips a polygon with fewer than three points" $ do
+      let sliver =
+            diagramWithExtent
+              (Box (V2 0 0) (V2 1 1))
+              [Polygon (Colour "#abcdef") [V2 0 0, V2 1 1]]
+      T.count "<path" (renderSvg testPage sliver) `shouldBe` 0
+
     it "skips a polyline with fewer than two points" $ do
       let dot =
             diagramWithExtent
@@ -129,6 +149,13 @@ spec = do
     it "renders diagonal-cp.fold exactly as recorded" $
       renderFixture "test/fixtures/diagonal-cp.fold"
         >>= goldenText "test/golden/diagonal-cp.svg"
+
+    -- Four faces meeting at one vertex, which is what pins the ordering: every
+    -- fill comes before every crease, so the creases radiating from the centre
+    -- are not painted over by the face next door.
+    it "renders quarter-fold.fold, whose four faces meet at a point" $
+      renderFixture "test/fixtures/quarter-fold.fold"
+        >>= goldenText "test/golden/quarter-fold.svg"
 
     -- These two are 3D folded forms. Before the camera existed they rendered as
     -- flattened top-down projections; these goldens pin the isometric view that

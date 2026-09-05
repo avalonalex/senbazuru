@@ -11,14 +11,77 @@
 -- @frame_classes@, and the tests below say exactly when.
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
-import Senbazuru.Diagram.Style (Notation (..))
+import Senbazuru.Diagram (Diagram (..), Shape (..))
+import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme)
+import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Types
+  ( Assignment (..),
+    FaceId (..),
+    Frame (..),
+    VertexId (..),
+    emptyFrame,
+  )
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Render.Camera (isometric, topDown)
-import Senbazuru.Render.CreasePattern (defaultBasisFor, defaultNotationFor)
+import Senbazuru.Render.CreasePattern
+  ( creasePatternFrom,
+    defaultBasisFor,
+    defaultNotationFor,
+  )
 import Test.Hspec
+
+-- | A unit square split into two triangles by a valley along the diagonal.
+twoFaceSquare :: Frame
+twoFaceSquare =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1]],
+      edgesVertices =
+        [ (VertexId 0, VertexId 1),
+          (VertexId 1, VertexId 2),
+          (VertexId 2, VertexId 3),
+          (VertexId 3, VertexId 0),
+          (VertexId 0, VertexId 2)
+        ],
+      edgesAssignment = [Border, Border, Border, Border, Valley],
+      facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3]]
+    }
+
+-- | The shapes of a rendered frame, or the error, as a list of tags in order.
+shapeKinds :: Theme -> Notation -> Frame -> Either FoldError [String]
+shapeKinds theme notation fr =
+  map kind . diagramShapes <$> creasePatternFrom theme notation topDown fr
+  where
+    kind = \case
+      Polygon _ _ -> "fill"
+      Polyline _ _ -> "line"
 
 spec :: Spec
 spec = do
+  describe "filling faces" $ do
+    it "paints every face before every line" $
+      -- Not a detail of taste: SVG paints in document order, so a fill emitted
+      -- after a crease would cover it.
+      shapeKinds defaultTheme CreasePatternNotation twoFaceSquare
+        `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
+
+    it "leaves a folded form as a wireframe even though it has faces" $
+      shapeKinds defaultTheme FoldedFormNotation twoFaceSquare
+        `shouldBe` Right (replicate 5 "line")
+
+    it "draws only lines when the theme has no paper" $
+      shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation twoFaceSquare
+        `shouldBe` Right (replicate 5 "line")
+
+    it "rejects a corrupt face even when nothing would be filled" $ do
+      -- A flag that decides how a drawing looks must not also decide which
+      -- files are acceptable, so the faces are resolved either way.
+      let broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
+          wireframe = defaultTheme {themePaper = Nothing}
+      shapeKinds defaultTheme CreasePatternNotation broken
+        `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
+      shapeKinds wireframe CreasePatternNotation broken
+        `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
+
   describe "defaultBasisFor" $ do
     it "views a flat sheet from above" $
       defaultBasisFor flatSquare `shouldBe` topDown

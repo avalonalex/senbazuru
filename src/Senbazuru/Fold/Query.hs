@@ -19,8 +19,10 @@ module Senbazuru.Fold.Query
 
     -- * Refined views of a frame
     Crease (..),
+    Face (..),
     frameVertices,
     frameCreases,
+    frameFaces,
   )
 where
 
@@ -30,6 +32,7 @@ import Data.Text qualified as T
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
+    FaceId (..),
     Frame (..),
     VertexId (..),
   )
@@ -51,6 +54,12 @@ data FoldError
   | -- | An edge refers to a vertex id that has no entry in @vertices_coords@.
     -- Carries the edge, the bad vertex id, and how many vertices exist.
     VertexIndexOutOfRange EdgeId VertexId Int
+  | -- | A face refers to a vertex id that has no entry in @vertices_coords@.
+    -- Carries the face, the bad vertex id, and how many vertices exist.
+    FaceVertexOutOfRange FaceId VertexId Int
+  | -- | A face with fewer than three corners, which bounds no area and so is
+    -- not a face. Carries the face and how many corners it has.
+    FaceTooFewCorners FaceId Int
   | -- | Two parallel arrays that must agree in length do not. Carries the name
     -- and length of each.
     ArrayLengthMismatch Text Int Text Int
@@ -77,6 +86,22 @@ renderFoldError = \case
       <> " entries (valid ids are 0.."
       <> tshow (n - 1)
       <> ")"
+  FaceVertexOutOfRange (FaceId f) (VertexId v) n ->
+    "face "
+      <> tshow f
+      <> " refers to vertex "
+      <> tshow v
+      <> ", but vertices_coords only has "
+      <> tshow n
+      <> " entries (valid ids are 0.."
+      <> tshow (n - 1)
+      <> ")"
+  FaceTooFewCorners (FaceId f) n ->
+    "face "
+      <> tshow f
+      <> " has "
+      <> tshow n
+      <> " corner(s); a face needs at least 3 to enclose any paper"
   ArrayLengthMismatch a na b nb ->
     a
       <> " has "
@@ -176,3 +201,53 @@ frameCreases fr = do
               nEdges
               "edges_assignment"
               (length (edgesAssignment fr))
+
+-- | One face of the sheet, resolved to the points that bound it.
+--
+-- The vertex ids are kept beside the coordinates for the same reason 'Crease'
+-- keeps its endpoints: a consumer reasoning about the /graph/ — which faces
+-- share an edge, which is what folding a pattern needs — cannot recover them
+-- from coordinates without comparing floating-point numbers for equality.
+data Face = Face
+  { faceId :: !FaceId,
+    -- | @faces_vertices[i]@, in the order the file gives them.
+    faceVertexIds :: ![VertexId],
+    -- | The same corners as points, in the same order.
+    faceCorners :: ![V3]
+  }
+  deriving stock (Eq, Show)
+
+-- | Every face of the frame as a closed ring of corners.
+--
+-- A frame with no @faces_vertices@ has no faces, which is not an error: the key
+-- is optional, plenty of real crease patterns omit it, and \"there are no
+-- faces\" is a perfectly good answer to give a renderer.
+--
+-- What /is/ an error is a face that cannot be a face. Two vertices enclose no
+-- paper, and a corner pointing at a vertex that does not exist is a corrupt
+-- file. Both are rejected here rather than skipped, on the same grounds
+-- 'frameCreases' rejects a mismatched @edges_assignment@: while the project is
+-- young a loud failure teaches us what real files look like, where a quiet skip
+-- would draw a sheet with a hole in it and say nothing.
+--
+-- __Winding is not consulted, and does not need to be.__ FOLD specifies
+-- counterclockwise, real files disagree, and it makes no difference to the one
+-- thing this feeds: filling a simple closed polygon covers the same region
+-- whichever way round its corners are listed. Anything that needs a face's
+-- /normal/ — which side is up, which is what a folded form will care about —
+-- must work the orientation out for itself rather than trusting the file.
+frameFaces :: Frame -> Either FoldError [Face]
+frameFaces fr = do
+  verts <- frameVertices fr
+  let byId = IM.fromList (zip [0 ..] verts)
+      nVerts = length verts
+
+      resolve fid vid@(VertexId i) = case IM.lookup i byId of
+        Just p -> Right p
+        Nothing -> Left (FaceVertexOutOfRange fid vid nVerts)
+
+      toFace (fid, corners)
+        | length corners < 3 = Left (FaceTooFewCorners fid (length corners))
+        | otherwise = Face fid corners <$> traverse (resolve fid) corners
+
+  traverse toFace (zip (map FaceId [0 ..]) (facesVertices fr))

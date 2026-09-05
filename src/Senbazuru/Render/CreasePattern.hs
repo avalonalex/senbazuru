@@ -31,11 +31,13 @@ import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Senbazuru.Diagram (Diagram, Shape (..), diagramWithExtent)
-import Senbazuru.Diagram.Style (Notation (..), Theme, strokeFor)
+import Senbazuru.Diagram.Style (Notation (..), Theme, fillFor, strokeFor)
 import Senbazuru.Fold.Query
   ( Crease (..),
+    Face (..),
     FoldError (..),
     frameCreases,
+    frameFaces,
     frameVertices,
   )
 import Senbazuru.Fold.Types (Assignment (..), Frame (..))
@@ -71,8 +73,19 @@ creasePatternFrom theme notation basis fr = do
   verts <- frameVertices fr
   extent <- maybe (Left NoVertices) Right (boxFromPoints (map flatten verts))
   creases <- frameCreases fr
-  let shapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
-  pure (diagramWithExtent extent shapes)
+  -- Resolved even when nothing will be filled, so that a file with a corrupt
+  -- face fails the same way with and without the fill. A flag that decides how
+  -- a drawing looks should not also decide which files are acceptable.
+  faces <- frameFaces fr
+  let faceShapes = case fillFor theme notation of
+        Nothing -> []
+        Just colour -> [Polygon colour (map flatten (faceCorners f)) | f <- faces]
+      creaseShapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
+  -- Faces first, and not through paintOrder: they are not creases and there is
+  -- nothing to sort them by. Every face goes under every line, which is what
+  -- makes the fill a background for the drawing rather than a coat of paint
+  -- over it.
+  pure (diagramWithExtent extent (faceShapes <> creaseShapes))
   where
     flatten = project basis
 
@@ -134,7 +147,11 @@ defaultNotationFor classes verts
   | "foldedForm" `elem` classes = FoldedFormNotation
   | otherwise = CreasePatternNotation
 
--- | Painting order, lowest first.
+-- | Painting order for creases, lowest first.
+--
+-- Faces are not in this ordering. They are painted before every crease, by
+-- 'creasePatternFrom', because a fill that covered a line would defeat the
+-- point of drawing the line.
 --
 -- SVG paints in document order, so later shapes cover earlier ones. Creases in
 -- a crease pattern frequently share endpoints and sometimes overlap, and it

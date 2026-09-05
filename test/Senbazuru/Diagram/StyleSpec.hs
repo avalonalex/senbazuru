@@ -14,23 +14,38 @@ import Senbazuru.Fold.Types (Assignment (..))
 import Test.Hspec
 
 spec :: Spec
-spec = describe "strokeFor" $ do
-  it "never dashes an edge of a folded form" $
-    map strokeDash (strokesUnder FoldedFormNotation) `shouldSatisfy` all (== Dash [])
+spec = do
+  describe "fillFor" $ do
+    it "fills a crease pattern with the theme's paper" $
+      fillFor defaultTheme CreasePatternNotation `shouldBe` themePaper defaultTheme
 
-  it "dashes exactly the mountains and valleys of a crease pattern" $
-    forM_ everyAssignment $ \a ->
-      case strokeFor defaultTheme CreasePatternNotation a of
-        Nothing -> pure ()
-        Just s -> (a, strokeDash s /= Dash []) `shouldBe` (a, a `elem` [Mountain, Valley])
+    it "refuses to fill a folded form, whatever the theme offers" $
+      -- Not a style preference. A folded form's faces overlap, and which one is
+      -- in front is exactly what we cannot work out yet, so a filled one would
+      -- be a confident picture of the wrong thing. See docs/notes/layer-ordering.md.
+      fillFor defaultTheme FoldedFormNotation `shouldBe` Nothing
 
-  it "differs between the notations only in the dashes" $
-    -- Same colours, same widths, same set of edges drawn at all. The
-    -- folded-form picture of a frame is its crease-pattern picture with the
-    -- instructions removed, nothing more.
-    forM_ everyAssignment $ \a ->
-      fmap undashed (strokeFor defaultTheme CreasePatternNotation a)
-        `shouldBe` fmap undashed (strokeFor defaultTheme FoldedFormNotation a)
+    it "fills nothing when the theme has no paper" $
+      fillFor (defaultTheme {themePaper = Nothing}) CreasePatternNotation
+        `shouldBe` Nothing
+
+  describe "strokeFor" $ do
+    it "never dashes an edge of a folded form" $
+      map strokeDash (strokesUnder FoldedFormNotation) `shouldSatisfy` all (== Dash [])
+
+    it "dashes exactly the mountains and valleys of a crease pattern" $
+      forM_ everyAssignment $ \a ->
+        case strokeFor defaultTheme CreasePatternNotation a of
+          Nothing -> pure ()
+          Just s -> (a, strokeDash s /= Dash []) `shouldBe` (a, a `elem` [Mountain, Valley])
+
+    it "differs between the notations only in the dashes" $
+      -- Same colours, same widths, same set of edges drawn at all. The
+      -- folded-form picture of a frame is its crease-pattern picture with the
+      -- instructions removed, nothing more.
+      forM_ everyAssignment $ \a ->
+        fmap undashed (strokeFor defaultTheme CreasePatternNotation a)
+          `shouldBe` fmap undashed (strokeFor defaultTheme FoldedFormNotation a)
   where
     everyAssignment = [minBound .. maxBound] :: [Assignment]
     strokesUnder notation = mapMaybe (strokeFor defaultTheme notation) everyAssignment

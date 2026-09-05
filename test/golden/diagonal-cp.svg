@@ -3,6 +3,8 @@
   <title>fixture</title>
   <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 190 L 190 190 L 10 10 Z" fill="#faf8f3"/>
+    <path d="M 190 190 L 190 10 L 10 10 Z" fill="#faf8f3"/>
     <path d="M 10 10 L 190 190" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
     <path d="M 10 190 L 190 190" stroke="#1a1a1a" stroke-width="1.6"/>
     <path d="M 190 190 L 190 10" stroke="#1a1a1a" stroke-width="1.6"/>
