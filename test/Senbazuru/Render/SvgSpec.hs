@@ -11,7 +11,7 @@ import Data.ByteString qualified as BS
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
-import Senbazuru.Diagram.Layout (defaultGrid, gridOf)
+import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Notation (..), arrowFor, defaultTheme)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
@@ -291,10 +291,20 @@ spec = do
     -- Computed geometry rather than geometry read from a file: the quarter fold
     -- collapses to one quadrant with four layers, so the golden is a small
     -- square of coincident edges. If the sign convention ever flips, half the
-    -- model lands somewhere else and this file changes.
+    -- model lands somewhere else and this file changes. The four fills all
+    -- cover the same square; what the golden pins is their order, worked out
+    -- from the creases, which reads bottom-left, bottom-right, top-right,
+    -- top-left quadrant.
     it "renders quarter-fold.fold after folding it" $
       renderFolded topDown "test/fixtures/quarter-fold.fold"
         >>= goldenText "test/golden/quarter-fold-folded.svg"
+
+    -- Three panels of different widths, so the layer order is visible: the
+    -- long third panel is painted last and covers most of the other two. Fold
+    -- a strip of paper in three and look.
+    it "renders letter-fold.fold after folding it" $
+      renderFolded topDown "test/fixtures/letter-fold.fold"
+        >>= goldenText "test/golden/letter-fold-folded.svg"
 
     it "renders simple.fold from the isometric view" $
       renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"

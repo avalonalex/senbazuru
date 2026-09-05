@@ -68,12 +68,14 @@ library
     Senbazuru.Fold.Query
     Senbazuru.Fold.Types
     Senbazuru.Geometry
+    Senbazuru.Geometry.Polygon
     Senbazuru.Geometry.Rigid
     Senbazuru.Geometry.V3
     Senbazuru.Geometry.VectorSpace
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
     Senbazuru.Origami.Layers
+    Senbazuru.Origami.Stacking
     Senbazuru.Origami.Step
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
@@ -108,12 +110,14 @@ test-suite senbazuru-test
     Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
     Senbazuru.Fold.TypesSpec
+    Senbazuru.Geometry.PolygonSpec
     Senbazuru.Geometry.RigidSpec
     Senbazuru.Geometry.V3Spec
     Senbazuru.GeometrySpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
     Senbazuru.Origami.LayersSpec
+    Senbazuru.Origami.StackingSpec
     Senbazuru.Origami.StepSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec

@@ -27,7 +27,7 @@ import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile, renderLoadError)
-import Senbazuru.Fold.Query (FoldError, frameVertices, renderFoldError)
+import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
   ( Assignment,
     FoldFile (..),
@@ -45,6 +45,7 @@ import Senbazuru.Origami.FlatFold
     reportViolations,
   )
 import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
+import Senbazuru.Origami.Stacking (renderStackingError, solveStacking)
 import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
@@ -453,7 +454,7 @@ summarise path f =
         -- Reported because it is the difference between a folded form drawn as
         -- paper and one drawn as a wireframe, and there is otherwise no way to
         -- find that out short of opening the JSON.
-        "    layers:   " <> stacking (faceOrders fr)
+        "    layers:   " <> stacking fr
       ]
 
     histogram as
@@ -464,8 +465,26 @@ summarise path f =
         count :: Assignment -> [Assignment] -> Int
         count a = length . filter (== a)
 
-    stacking [] = "(no faceOrders, so a folded form is drawn as a wireframe)"
-    stacking os = tshow (length os) <> " faceOrders"
+    -- A folded form with no faceOrders has its layers worked out at render
+    -- time, and this is the one place to find out whether that will succeed
+    -- and, if not, why -- the renderer falls back to a wireframe without a
+    -- word when the solver does not cover a model.
+    stacking fr = case faceOrders fr of
+      os@(_ : _) -> tshow (length os) <> " faceOrders"
+      [] -> case frameVertices fr of
+        -- Said as such, rather than falling through to the crease-pattern
+        -- line: a frame whose vertices cannot be read is not a crease pattern,
+        -- and this would be the one line of the summary to hide that.
+        Left err -> "(none; the vertices cannot be read: " <> renderFoldError err <> ")"
+        Right verts
+          | frameKind (frameClasses fr) verts == FoldedForm -> case solveStacking fr of
+              Right os ->
+                "(none in the file; "
+                  <> tshow (length os)
+                  <> " overlapping pairs worked out from the geometry)"
+              Left err ->
+                "(none in the file, and none worked out: " <> renderStackingError err <> ")"
+          | otherwise -> "(none, and a crease pattern needs none)"
 
     commas [] = "(none)"
     commas xs = T.intercalate ", " xs

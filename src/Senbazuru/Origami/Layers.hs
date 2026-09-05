@@ -8,10 +8,10 @@
 -- every layer sits in the same plane, so there is no depth to compare at all.
 --
 -- FOLD records the answer in @faceOrders@, and this module turns it into an
--- order to draw in. It does not /compute/ an order — a file that supplies none
--- gets none, because working it out is
--- @docs\/notes\/layer-ordering.md@'s NP-hard problem and this is the half that
--- is free.
+-- order to draw in. It does not /compute/ an order: that is
+-- "Senbazuru.Origami.Stacking"'s job, for the flat-folded frames it covers,
+-- and its answer arrives here as a @faceOrders@ like any other. This is the
+-- half that is free.
 --
 -- == Two directions, and only one of them is the viewer's
 --

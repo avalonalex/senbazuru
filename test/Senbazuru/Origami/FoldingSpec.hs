@@ -139,6 +139,16 @@ spec = do
       flipped <- foldOrFail cw
       verticesCoords flipped `shouldBe` verticesCoords folded
 
+    it "writes every face counterclockwise, whichever way the file listed it" $ do
+      -- The winding it measured is written out, so the folded frame's normals
+      -- mean what FOLD says they mean: which side of the paper is up. That is
+      -- what the layer solver reads, and what every faceOrders sign is written
+      -- against.
+      let ccw = halfSheet Valley 90
+          cw = ccw {facesVertices = map reverse (facesVertices ccw)}
+      folded <- foldOrFail cw
+      facesVertices folded `shouldBe` facesVertices ccw
+
   describe "which way it turns" $ do
     it "lifts the moving face towards the viewer for a valley" $ do
       -- A valley opens towards you. The left half is held still in the plane,
@@ -327,5 +337,5 @@ spec = do
                   ]
               }
       case foldFrame threeFaced of
-        Left (NonManifoldEdge _ _ n) -> n `shouldBe` 3
+        Left (FrameGeometry (NonManifoldEdge _ _ n)) -> n `shouldBe` 3
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))

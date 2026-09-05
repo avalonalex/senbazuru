@@ -7,9 +7,10 @@ visual style of step-by-step origami instruction books.
 
 > **Status: early.** Crease patterns render correctly and are filled with paper.
 > A pattern can be *folded* along its own fold angles and the result drawn from a
-> choice of viewing angles, layer-correctly where the file says which face is in
-> front. A multi-frame file lays out as one numbered page of steps, each with the
-> arrow showing the fold it asks for. There is also a flat-foldability checker.
+> choice of viewing angles, layer-correctly: where the file says which face is
+> in front, and for a flat-folded model, where it does not. A multi-frame file
+> lays out as one numbered page of steps, each with the arrow showing the fold it
+> asks for. There is also a flat-foldability checker.
 > See [Roadmap](#roadmap).
 
 ## What it does today
@@ -48,10 +49,10 @@ stack run -- render examples/simple.fold --view iso -o simple.svg
 The stacking is a fact about the paper rather than about the picture — it says a
 face lies on the side another face's *normal* points to — so the drawing order
 depends on where you are looking from, and the same model seen from behind
-stacks the other way up. A folded form with no `faceOrders` stays a wireframe:
-painting its faces in the order they happen to appear in the file would be a
-confident picture of the wrong thing, and working the order out instead is
-NP-hard in general.
+stacks the other way up. A folded form with no `faceOrders` gets one worked out,
+if it lies flat; see [What it stacks](#what-it-stacks). One with paper still in
+the air stays a wireframe: painting its faces in the order they happen to appear
+in the file would be a confident picture of the wrong thing.
 
 Folded forms take a viewing angle:
 
@@ -101,8 +102,54 @@ that are a fraction of a degree short of closing are refused too — the message
 quotes the distance, which is how you tell a tear from a typo in the fourth
 decimal place.
 
-Layers are not ordered yet, so a folded form is drawn as a wireframe: senbazuru
-knows where every face went, not which one is in front.
+## What it stacks
+
+Folding says where every face went and nothing about which is in front, and in
+a model folded flat every face lies in the same plane, so the coordinates cannot
+say either. FOLD keeps the answer in `faceOrders`, which a computed folded form
+does not have. So senbazuru works one out.
+
+Deciding which layer is on top is a constraint problem, and in general a hard
+one, but every constraint the paper imposes is local. Two faces joined along an
+edge of the folded form are either a *taco* — the paper folded back on itself,
+both faces on one side of the edge — or a *tortilla*, paper continuing flat
+across the line. A face that runs across a taco's fold line cannot lie between
+the taco's two faces; two tacos on one line must nest or stay apart; two
+tortillas cannot cross each other; and a valley puts the face that turned over
+on top where a mountain puts it underneath. Generate those rules for every pair
+of faces that share a patch of paper, satisfy them, and the result is a
+`faceOrders` the renderer already knows how to draw. The rules are written up in
+[docs/notes/taco-taco.md](docs/notes/taco-taco.md).
+
+```bash
+stack run -- render examples/letter-fold.fold --fold -o letter-folded.svg
+```
+
+folds a square in three like a letter, with panels of different widths so the
+order shows: the long third panel is painted last and covers most of the other
+two. Fold a strip of paper the same way and look. The quarter fold above comes
+out four layers deep in the one order its three mountains and one valley allow.
+
+Not every set of creases has a stacking. Make both of the letter fold's creases
+valleys and the third panel has to slide between the first two, but it is longer
+than the pocket and the pocket is closed at the far end:
+
+```console
+$ senbazuru render rolled.fold --fold
+senbazuru: cannot render rolled.fold: the layers cannot be stacked without the
+paper passing through itself; the constraint between faces 0, 1, 2 is the one
+that could not be met
+```
+
+Folding cannot see this — the coordinates are identical to the accordion's — and
+neither can `check`, whose theorems are about one vertex at a time.
+`examples/big-little-big.fold` passes `check` and is refused here, for exactly
+the reason [its note](docs/notes/big-little-big.md) gives.
+
+Two limits, both deliberate. The solver covers models folded *flat*; a folded
+form with paper in the air and no `faceOrders` is still drawn as a wireframe,
+and `info` says so. And every face has to be convex, which the faces of a
+flat-foldable pattern are whenever the sheet is.
 
 ## What it instructs
 
@@ -201,8 +248,12 @@ examples/unit-square.fold
     edges:    11
     faces:    0
     creases:  B=8 M=1 V=1 F=1
-    layers:   (no faceOrders, so a folded form is drawn as a wireframe)
+    layers:   (none, and a crease pattern needs none)
 ```
+
+The `layers` line is where to look when a folded form comes out as a wireframe:
+it reports the `faceOrders` the file carries, or, for a folded form without any,
+whether one could be worked out and if not why.
 
 ## Building
 
@@ -264,6 +315,7 @@ src/Senbazuru/
   Geometry/VectorSpace.hs  the arithmetic 2D and 3D points share
   Geometry/V3.hs           points in space, for 3D input
   Geometry/Rigid.hs        motions that turn and slide without deforming
+  Geometry/Polygon.hs      convex polygons in the plane: area, clipping, overlap
   Fold/Types.hs            the FOLD document model + JSON decoding
   Fold/Load.hs             reading files (the only I/O in the library)
   Fold/Query.hs            validating a frame into geometry you can trust
@@ -273,6 +325,7 @@ src/Senbazuru/
   Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
   Origami/Folding.hs       crease pattern + fold angles -> folded form
   Origami/Layers.hs        faceOrders + a viewing direction -> a drawing order
+  Origami/Stacking.hs      a flat-folded form -> its faceOrders, when the file has none
   Origami/Step.hs          two frames -> what moved between them
   Render/Camera.hs         orthographic projection, 3D → the page
   Render/CreasePattern.hs  FOLD frame → Diagram
@@ -301,11 +354,6 @@ Roughly in order. Each item is an issue, tagged
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
-0. **[Solving for layer order.](https://github.com/avalonalex/senbazuru/issues/25)**
-   A folded form senbazuru folded itself carries no `faceOrders`, so it is still
-   drawn as a wireframe. Working one out is a constraint problem and NP-hard in
-   general — the deep end.
-   → [layer-ordering](docs/notes/layer-ordering.md)
 1. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.

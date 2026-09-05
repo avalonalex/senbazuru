@@ -9,9 +9,10 @@
 -- no layer ordering, no hidden-line removal.
 --
 -- Since "Senbazuru.Render.Camera" arrived this module also draws folded forms,
--- as wireframes seen from a chosen angle. The name has stayed, because the work
--- is the same: every edge becomes one line. What differs is which lines, and
--- that is a 'Notation', chosen by 'defaultNotationFor'.
+-- seen from a chosen angle and filled face by face where the layer order is
+-- known. The name has stayed, because the work is the same: every edge becomes
+-- one line. What differs is which lines, and that is a 'Notation', chosen by
+-- 'defaultNotationFor'.
 --
 -- This module is deliberately short. All it does is join three pieces that are
 -- each tested on their own: "Senbazuru.Fold.Query" for validated geometry,
@@ -51,6 +52,7 @@ import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Layers (paintOrder)
+import Senbazuru.Origami.Stacking (StackingError (..), solveStacking)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
 
@@ -179,33 +181,41 @@ defaultNotationFor classes verts = case frameKind classes verts of
 --
 -- A folded model does overlap itself, and then the order /is/ the picture.
 -- Which face is in front is not in the coordinates — in a flat-folded model
--- every layer sits in the same plane — it is in @faceOrders@ or it is nowhere.
--- A file that supplies one gets its faces filled in that order; a file that
--- does not stays a wireframe, because a wireframe is honest about not knowing
--- and a fill in file order would be a confident picture of the wrong thing.
--- Computing an order ourselves is NP-hard in general; see
--- @docs\/notes\/layer-ordering.md@.
+-- every layer sits in the same plane — so it has to come from somewhere else.
+-- A file that supplies @faceOrders@ gets its faces filled in that order. A
+-- file that does not gets one worked out by "Senbazuru.Origami.Stacking",
+-- which is what a folded form senbazuru computed itself always needs.
 --
--- An ordering that /contradicts itself/ is refused rather than dropped, and the
--- drawing fails. That is a change from the version before @faceOrders@ was
--- read, where such a file rendered as a wireframe because nothing looked. It is
--- deliberate and it is the rule stated above rather than an exception to it:
--- these faces were going to be drawn, and the file's own account of how to
--- stack them is impossible. Quietly drawing something else instead is the
--- failure mode this module keeps being written to avoid. @--no-fill@ still
+-- The solver covers flat-folded models with convex faces. Outside that it
+-- declines, having attempted nothing, and the frame stays a wireframe — as
+-- every folded form without an ordering was drawn before the solver existed.
+-- A wireframe is honest about not knowing, where a fill in file order would be
+-- a confident picture of the wrong thing.
+--
+-- An ordering that /contradicts itself/ — a file's that runs in a circle, or
+-- a model whose layers cannot be stacked at all — is refused rather than
+-- dropped, and the drawing fails. That is the rule stated above rather than an
+-- exception to it: these faces were going to be drawn, and the only account of
+-- how to stack them is impossible. Quietly drawing something else instead is
+-- the failure mode this module keeps being written to avoid. @--no-fill@ still
 -- renders it, for the same reason it renders a file with a broken face.
--- The faces are resolved inside each branch rather than passed in, so that a
+--
+-- The faces are resolved only once it is known they will be drawn, so that a
 -- corrupt face is only ever a reason to refuse a drawing that was going to
--- contain it. A folded form with no ordering draws no faces and so never looks
--- at them.
+-- contain it. The solver keeps that promise too: it declines a model with paper
+-- in the air on its vertices alone, before looking at a face.
 facesToFill :: Basis -> Notation -> Frame -> Either FoldError [Face]
 facesToFill basis notation fr = case notation of
   CreasePatternNotation -> frameFaces fr
   FoldedFormNotation -> do
-    orders <- frameFaceOrders fr
-    if null orders
-      then Right []
-      else do
+    supplied <- frameFaceOrders fr
+    ordering <-
+      if null supplied
+        then computed
+        else Right (Just supplied)
+    case ordering of
+      Nothing -> Right []
+      Just orders -> do
         faces <- frameFaces fr
         ids <- paintOrder towardsViewer faces orders
         -- Total by construction: paintOrder returns every face exactly once, so
@@ -213,6 +223,15 @@ facesToFill basis notation fr = case notation of
         let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
         traverse (\fid -> maybe (Left (FaceOrderOutOfRange fid (length faces))) Right (IM.lookup (unFaceId fid) byId)) ids
   where
+    -- An ordering worked out from the geometry, or Nothing when the solver
+    -- does not cover this model. An empty list is a real answer -- no two faces
+    -- overlap, so any order draws the same picture -- and is filled.
+    computed = case solveStacking fr of
+      Right orders -> Right (Just orders)
+      Left NotFlat {} -> Right Nothing
+      Left NonConvexFace {} -> Right Nothing
+      Left (StackingRefused err) -> Left err
+
     -- 'basisForward' points the way the camera looks, so the viewer is the
     -- other way. Getting this backwards draws every model inside out.
     towardsViewer = (-1) *^ basisForward basis

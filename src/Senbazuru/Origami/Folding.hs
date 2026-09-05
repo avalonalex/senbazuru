@@ -81,13 +81,17 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
 import Senbazuru.Fold.Query
-  ( Face (..),
+  ( EdgeKey,
+    Face (..),
     FoldError (..),
     FrameKind (..),
+    edgeKey,
+    facesAlongEdges,
     frameFaces,
     frameKind,
     frameVertices,
     renderFoldError,
+    ringEdges,
   )
 import Senbazuru.Fold.Types
   ( Assignment (..),
@@ -120,9 +124,6 @@ data FoldingError
   | -- | Two entries of @edges_vertices@ join the same pair of vertices. Which
     -- fold angle applies is then a coin toss, so neither is used.
     DuplicateEdge !EdgeId !EdgeId
-  | -- | More than two faces meet along one crease, so the sheet is not a
-    -- surface and \"the face on the other side\" has no answer.
-    NonManifoldEdge !VertexId !VertexId !Int
   | -- | A face no chain of creases connects to the rest, so nothing places it
     -- relative to the others.
     DisconnectedFace !FaceId
@@ -157,14 +158,6 @@ renderFoldingError = \case
       <> " that edges_vertices does not list, so it has no fold angle"
   DuplicateEdge (EdgeId a) (EdgeId b) ->
     "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
-  NonManifoldEdge (VertexId a) (VertexId b) n ->
-    "the crease from vertex "
-      <> tshow a
-      <> " to "
-      <> tshow b
-      <> " has "
-      <> tshow n
-      <> " faces along it; folding needs at most two"
   NonFiniteAngle (EdgeId e) d ->
     "edge " <> tshow e <> " has a fold angle of " <> num d <> ", which is not a number of degrees"
   DisconnectedFace (FaceId f) ->
@@ -189,6 +182,16 @@ renderFoldingError = \case
 --
 -- The root face is held still, which places the model somewhere particular in
 -- space without changing its shape.
+--
+-- One thing about the graph does change: every face comes back wound
+-- __counterclockwise as it lay in the crease pattern__, whichever way the file
+-- listed it. That is the winding FOLD asks for, and it is not cosmetic. A
+-- face's winding defines its normal, and the normal is how a folded form says
+-- which side of the paper is which: "Senbazuru.Origami.Stacking" reads it to
+-- decide which face a mountain fold puts underneath, and @faceOrders@ signs
+-- are written against it. This module already measures the true winding
+-- because the direction of every fold depends on it, so writing it out costs
+-- nothing and makes the result a frame whose winding can be trusted.
 foldFrame :: Frame -> Either FoldingError Frame
 foldFrame fr = do
   flat <- first FrameGeometry (frameVertices fr)
@@ -207,6 +210,7 @@ foldFrame fr = do
   pure
     fr
       { verticesCoords = [[x, y, z] | V3 x y z <- folded],
+        facesVertices = map faceVertexIds faces,
         frameClasses = foldedClasses (frameClasses fr),
         frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr)
       }
@@ -231,12 +235,6 @@ foldedAttributes solid attrs
   | otherwise = "2D" : without
   where
     without = filter (`notElem` ["2D", "3D"]) attrs
-
--- | An identifier for a crease, independent of which way round it is written.
-type CreaseKey = (Int, Int)
-
-creaseKey :: VertexId -> VertexId -> CreaseKey
-creaseKey (VertexId a) (VertexId b) = (min a b, max a b)
 
 -- | Put a face's corners in counterclockwise order as seen from @+z@.
 --
@@ -280,7 +278,7 @@ orientCcw f
 -- mountain folds to @-180°@ and a valley to @+180°@. That is what an assignment
 -- on its own can say — it names a direction and not an amount — and a flat fold
 -- is the only amount consistent with naming no number at all.
-creaseIndex :: Frame -> Either FoldingError (M.Map CreaseKey (EdgeId, Double))
+creaseIndex :: Frame -> Either FoldingError (M.Map EdgeKey (EdgeId, Double))
 creaseIndex fr = do
   angles <- foldAngles
   foldr add (Right M.empty) (zip3 (map EdgeId [0 ..]) (edgesVertices fr) angles)
@@ -318,7 +316,7 @@ creaseIndex fr = do
 
     add (eid, (a, b), angle) acc = do
       m <- acc
-      let key = creaseKey a b
+      let key = edgeKey a b
       case M.lookup key m of
         Just (other, _) -> Left (DuplicateEdge other eid)
         Nothing -> Right (M.insert key (eid, angle) m)
@@ -326,31 +324,16 @@ creaseIndex fr = do
 -- | For each crease, the faces that meet along it.
 --
 -- A crease with one face is on the edge of the sheet and folds nothing; two is
--- an interior crease; more than two is not a surface.
-faceNeighbours :: [Face] -> Either FoldingError (M.Map CreaseKey [FaceId])
-faceNeighbours faces = M.traverseWithKey atMostTwo byCrease
-  where
-    byCrease =
-      M.fromListWith
-        (<>)
-        [ (creaseKey a b, [faceId f])
-          | f <- faces,
-            (a, b) <- ringEdges (faceVertexIds f)
-        ]
-
-    atMostTwo (a, b) fs
-      | length fs <= 2 = Right fs
-      | otherwise = Left (NonManifoldEdge (VertexId a) (VertexId b) (length fs))
-
--- | The consecutive pairs around a closed ring.
-ringEdges :: [a] -> [(a, a)]
-ringEdges vs = zip vs (drop 1 vs <> take 1 vs)
+-- an interior crease; more than two is not a surface, and 'facesAlongEdges'
+-- refuses it.
+faceNeighbours :: [Face] -> Either FoldingError (M.Map EdgeKey [FaceId])
+faceNeighbours = first FrameGeometry . facesAlongEdges
 
 -- | Walk the face graph from the first face, composing one turn per crease.
 spanningWalk ::
   [Face] ->
-  M.Map CreaseKey (EdgeId, Double) ->
-  M.Map CreaseKey [FaceId] ->
+  M.Map EdgeKey (EdgeId, Double) ->
+  M.Map EdgeKey [FaceId] ->
   Either FoldingError (IM.IntMap Rigid)
 spanningWalk faces creases neighbours = do
   placed <- go (IM.singleton root identity) [root]
@@ -403,7 +386,7 @@ spanningWalk faces creases neighbours = do
 
     -- Crossing one edge of a face: who is on the other side, and what turn puts
     -- them there.
-    crossing f (a, b) = case M.lookup (creaseKey a b) creases of
+    crossing f (a, b) = case M.lookup (edgeKey a b) creases of
       Nothing -> Left (FaceEdgeMissing (faceId f) a b)
       Just (_, angle) -> case others of
         [] -> Right Nothing
@@ -411,7 +394,7 @@ spanningWalk faces creases neighbours = do
       where
         others =
           [ unFaceId other
-            | other <- M.findWithDefault [] (creaseKey a b) neighbours,
+            | other <- M.findWithDefault [] (edgeKey a b) neighbours,
               other /= faceId f
           ]
 
