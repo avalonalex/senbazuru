@@ -5,11 +5,12 @@ visual style of step-by-step origami instruction books.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
-> **Status: early.** Crease patterns render correctly, and are filled with paper
-> where the file records faces. A pattern can be *folded* along its own fold
-> angles and the result drawn from a choice of viewing angles. There is also a
-> flat-foldability checker. Folding arrows and layer-correct shading — the things
-> that make a diagram a *diagram* — are not built yet. See [Roadmap](#roadmap).
+> **Status: early.** Crease patterns render correctly and are filled with paper.
+> A pattern can be *folded* along its own fold angles and the result drawn from a
+> choice of viewing angles, layer-correctly where the file says which face is in
+> front. There is also a flat-foldability checker. Folding arrows — the thing
+> that makes a diagram a *diagram* — are not built yet. See
+> [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -35,9 +36,22 @@ tint, so the sheet reads as an object rather than as lines floating on the page:
 stack run -- render examples/quarter-fold.fold -o quarter-fold.svg
 ```
 
-`--no-fill` turns that off. A drawing in the folded-form style is never filled,
-because filling one means knowing which face is in front, and senbazuru does not
-work that out yet.
+`--no-fill` turns that off.
+
+A folded form is filled too, but only when the file says which face is in front.
+FOLD records that in `faceOrders`, and `examples/simple.fold` carries one:
+
+```bash
+stack run -- render examples/simple.fold --view iso -o simple.svg
+```
+
+The stacking is a fact about the paper rather than about the picture — it says a
+face lies on the side another face's *normal* points to — so the drawing order
+depends on where you are looking from, and the same model seen from behind
+stacks the other way up. A folded form with no `faceOrders` stays a wireframe:
+painting its faces in the order they happen to appear in the file would be a
+confident picture of the wrong thing, and working the order out instead is
+NP-hard in general.
 
 Folded forms take a viewing angle:
 
@@ -250,10 +264,9 @@ issues are the detail.
    shared scale. Note that every published FOLD example is single-frame, so this
    needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-2. **[Layer ordering.](https://github.com/avalonalex/senbazuru/issues/18)** A
-   folded form is drawn as a wireframe because nothing works out which face is
-   in front. Folding itself was cheap; this is where the real computational
-   geometry starts.
+2. **Solving for layer order.** A folded form senbazuru folded itself carries no
+   `faceOrders`, so it is still drawn as a wireframe. Working one out is a
+   constraint problem and NP-hard in general — the deep end.
    → [layer-ordering](docs/notes/layer-ordering.md)
 3. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since

@@ -23,7 +23,7 @@ module Senbazuru.Render.CreasePattern
     creasePatternAuto,
     defaultBasisFor,
     defaultNotationFor,
-    paintOrder,
+    creaseOrder,
   )
 where
 
@@ -31,13 +31,14 @@ import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Senbazuru.Diagram (Diagram, Shape (..), diagramWithExtent)
-import Senbazuru.Diagram.Style (Notation (..), Theme, fillFor, strokeFor)
+import Senbazuru.Diagram.Style (Notation (..), Theme (..), strokeFor)
 import Senbazuru.Fold.Query
   ( Crease (..),
     Face (..),
     FoldError (..),
     FrameKind (..),
     frameCreases,
+    frameFaceOrders,
     frameFaces,
     frameKind,
     frameVertices,
@@ -45,7 +46,9 @@ import Senbazuru.Fold.Query
 import Senbazuru.Fold.Types (Assignment (..), Frame (..))
 import Senbazuru.Geometry (boxFromPoints)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
-import Senbazuru.Render.Camera (Basis, isometric, project, topDown)
+import Senbazuru.Geometry.VectorSpace ((*^))
+import Senbazuru.Origami.Layers (LayerError (..), paintOrder)
+import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
 
 -- | Render one frame as a crease pattern, seen from directly above.
 --
@@ -82,12 +85,12 @@ creasePatternFrom theme notation basis fr = do
   -- malformed face on a *folded form* -- whose faces this never draws -- into a
   -- hard failure on a file that used to render. Complaining about data nobody
   -- looked at is a validator's job, and senbazuru has a separate verb for that.
-  faceShapes <- case fillFor theme notation of
+  faceShapes <- case themePaper theme of
     Nothing -> pure []
     Just colour -> do
-      faces <- frameFaces fr
-      pure [Polygon colour (map flatten (faceCorners f)) | f <- faces]
-  let creaseShapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
+      ordered <- facesToFill basis notation fr
+      pure [Polygon colour (map flatten (faceCorners f)) | f <- ordered]
+  let creaseShapes = mapMaybe toShape (sortOn (creaseOrder . creaseAssignment) creases)
   -- Faces first, and not through paintOrder: they are not creases and there is
   -- nothing to sort them by. Every face goes under every line, which is what
   -- makes the fill a background for the drawing rather than a coat of paint
@@ -153,6 +156,50 @@ defaultNotationFor classes verts = case frameKind classes verts of
   FoldedForm -> FoldedFormNotation
   CreasePattern -> CreasePatternNotation
 
+-- | The faces to fill, furthest from the viewer first, or none at all.
+--
+-- The two kinds of picture want different things here, for one reason: whether
+-- the faces overlap.
+--
+-- A crease pattern is a flat subdivision of one sheet. Its faces tile the paper
+-- and never cover one another, so every order draws the same picture and file
+-- order will do.
+--
+-- A folded model does overlap itself, and then the order /is/ the picture.
+-- Which face is in front is not in the coordinates — in a flat-folded model
+-- every layer sits in the same plane — it is in @faceOrders@ or it is nowhere.
+-- A file that supplies one gets its faces filled in that order; a file that
+-- does not stays a wireframe, because a wireframe is honest about not knowing
+-- and a fill in file order would be a confident picture of the wrong thing.
+-- Computing an order ourselves is NP-hard in general; see
+-- @docs\/notes\/layer-ordering.md@.
+-- The faces are resolved inside each branch rather than passed in, so that a
+-- corrupt face is only ever a reason to refuse a drawing that was going to
+-- contain it. A folded form with no ordering draws no faces and so never looks
+-- at them.
+facesToFill :: Basis -> Notation -> Frame -> Either FoldError [Face]
+facesToFill basis notation fr = case notation of
+  CreasePatternNotation -> frameFaces fr
+  FoldedFormNotation -> do
+    orders <- frameFaceOrders fr
+    if null orders
+      then Right []
+      else do
+        faces <- frameFaces fr
+        ids <- asFoldError (length faces) (paintOrder towardsViewer faces orders)
+        Right (mapMaybe (`lookup` [(faceId f, f) | f <- faces]) ids)
+  where
+    -- 'basisForward' points the way the camera looks, so the viewer is the
+    -- other way. Getting this backwards draws every model inside out.
+    towardsViewer = (-1) *^ basisForward basis
+
+    -- A stacking that cannot be drawn is a fact about the frame, so it reaches
+    -- the caller as the one type everything else wrong with a frame uses.
+    asFoldError n = \case
+      Left (CyclicStacking f) -> Left (ImpossibleStacking f)
+      Left (UnknownFace f) -> Left (FaceOrderOutOfRange f n)
+      Right ids -> Right ids
+
 -- | Painting order for creases, lowest first.
 --
 -- Faces are not in this ordering. They are painted before every crease, by
@@ -167,8 +214,8 @@ defaultNotationFor classes verts = case frameKind classes verts of
 --
 -- 'sortOn' is a stable sort, so edges with equal order keep their file order
 -- and the generated SVG stays byte-for-byte reproducible.
-paintOrder :: Assignment -> Int
-paintOrder = \case
+creaseOrder :: Assignment -> Int
+creaseOrder = \case
   Flat -> 0
   Unassigned -> 0
   Mountain -> 1

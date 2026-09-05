@@ -38,7 +38,7 @@ For the ideas rather than the definitions, start with
 | **Flat** (`F`) | A crease line that exists but is not folded. |
 | **Unassigned** (`U`) | A crease whose direction is not yet decided. |
 | **Cut** (`C`) / **Join** (`J`) | A slit in the paper / two faces that are really one piece. |
-| **Face ordering** | Which sheet of paper is on top where, stored in `faceOrders`. See [notes/layer-ordering.md](notes/layer-ordering.md). |
+| **Face ordering** | Which sheet of paper is on top where, stored in `faceOrders` as `[f, g, s]`. The sign is read against *`g`'s normal*, so it describes the paper and not the picture: turning it into a drawing order needs a viewing direction too. See [notes/layer-ordering.md](notes/layer-ordering.md). |
 
 Every key with its type and our support status: [fold-reference.md](fold-reference.md).
 

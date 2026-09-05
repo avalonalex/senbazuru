@@ -11,7 +11,7 @@ format:
 | File                | What it exercises                                              |
 | ------------------- | -------------------------------------------------------------- |
 | `diagonal-cp.fold`  | A 2D crease pattern; `file_spec` of `1.1`; the vendor key `cpedit:page` |
-| `simple.fold`       | 3D `foldedForm` coordinates, `faceOrders`, mountain and valley edges |
+| `simple.fold`       | 3D `foldedForm` coordinates, mountain and valley edges, and the only `faceOrders` in the repo — so it is the fixture for layer-correct drawing |
 | `squaretwist.fold`  | A larger rigidly-folded 3D model                                |
 
 The rest are hand-written here, so they carry no third-party design and no

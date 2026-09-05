@@ -15,6 +15,7 @@ module Senbazuru.Geometry.V3
     cross,
     zSpan,
     hasRelief,
+    polygonNormal,
   )
 where
 
@@ -74,3 +75,28 @@ hasRelief verts = zSpan verts > 1e-9 * max 1 planeSpan
       [] -> 0
       cs -> maximum cs - minimum cs
     planeSpan = max (spanOf v3x) (spanOf v3y)
+
+-- | Which way a polygon faces, from the order its corners are listed in.
+--
+-- Counterclockwise as seen from the tip of the result, by the right-hand rule:
+-- a square listed counterclockwise in the plane @z = 0@ gives @+z@. Listing the
+-- same square backwards gives @-z@, which is the whole point — this is a
+-- question about the /order/, not about the shape.
+--
+-- The length is twice the polygon's area, which is useful for spotting a
+-- degenerate face and is why the result is left unnormalised.
+--
+-- Newell's method, rather than the cross product of two edges. For a triangle
+-- they agree; for anything else the cross product picks two edges arbitrarily
+-- and gets a wrong answer on a polygon that is not quite planar, which a folded
+-- form's faces routinely are not once rounding has been through them. Newell's
+-- averages over every edge instead, and reduces to the cross product when the
+-- polygon really is flat.
+polygonNormal :: [V3] -> V3
+polygonNormal corners = foldr add (V3 0 0 0) (zip corners (drop 1 corners <> take 1 corners))
+  where
+    add (V3 xi yi zi, V3 xj yj zj) (V3 nx ny nz) =
+      V3
+        (nx + (yi - yj) * (zi + zj))
+        (ny + (zi - zj) * (xi + xj))
+        (nz + (xi - xj) * (yi + yj))
