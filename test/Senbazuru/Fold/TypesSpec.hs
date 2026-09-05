@@ -144,6 +144,19 @@ spec = do
       let fr = (frameOf [[0, 0], [1, 0]] [] []) {facesVertices = [map VertexId [0, 1, 9]]}
       frameFaces fr `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 2)
 
+    it "rejects a ring that closes itself explicitly" $ do
+      -- FOLD closes the ring implicitly, so a repeated first corner is one
+      -- corner listed twice. Harmless to a fill, but faceVertexIds is what a
+      -- consumer pairs up into edges, and this would give it a self-loop.
+      let fr = (frameOf [[0, 0], [1, 0], [1, 1]] [] []) {facesVertices = [map VertexId [0, 1, 2, 0]]}
+      frameFaces fr `shouldBe` Left (FaceRingClosed (FaceId 0))
+
+    it "rejects a closed ring before counting its corners" $ do
+      -- [0, 1, 0] has three entries and encloses nothing. Checking the length
+      -- first would let it through as a face.
+      let fr = (frameOf [[0, 0], [1, 0]] [] []) {facesVertices = [map VertexId [0, 1, 0]]}
+      frameFaces fr `shouldBe` Left (FaceRingClosed (FaceId 0))
+
     it "rejects a face with fewer than three corners" $ do
       -- Two corners enclose no paper. Skipping it quietly would draw a sheet
       -- with a hole in it and say nothing.

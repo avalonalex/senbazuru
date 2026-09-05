@@ -214,8 +214,18 @@ strokeFor theme notation = \case
 -- not decode, and computing it when the file does not say is NP-hard in general.
 -- See @docs\/notes\/layer-ordering.md@.
 --
--- So a folded form stays a wireframe. A wireframe is honest about not knowing;
--- a filled one would not be.
+-- So a drawing in 'FoldedFormNotation' stays a wireframe. A wireframe is honest
+-- about not knowing; a filled one would not be.
+--
+-- __That is a weaker guarantee than \"folded forms are never filled\",__ and the
+-- difference is worth knowing. The notation is chosen by
+-- 'Senbazuru.Render.CreasePattern.defaultNotationFor', which can only tell a
+-- flat-folded model from a crease pattern by asking @frame_classes@, because
+-- their coordinates are identical. A flat-folded model that declares no class
+-- is therefore drawn as a crease pattern — with the fill, and with the
+-- crease-pattern dashes it has been getting since long before faces existed.
+-- Closing that needs a test on the data, which means asking whether faces
+-- overlap, which is the same geometry as layer ordering.
 fillFor :: Theme -> Notation -> Maybe Colour
 fillFor theme = \case
   CreasePatternNotation -> themePaper theme

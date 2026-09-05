@@ -252,12 +252,18 @@ renderFile o f = do
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
     Right d -> emit (renderSvg (page frame) d)
   where
-    theme =
-      defaultTheme
-        { themeShowFlat = not (roHideFlat o),
-          themeShowUnassigned = not (roHideFlat o),
-          themePaper = if roNoFill o then Nothing else themePaper defaultTheme
-        }
+    -- Each flag only ever subtracts from the default. Written as guards rather
+    -- than as assignments so that a flag left off defers to whatever
+    -- defaultTheme says, instead of asserting today's value of it.
+    theme = hideFlat (noFill defaultTheme)
+
+    hideFlat t
+      | roHideFlat o = t {themeShowFlat = False, themeShowUnassigned = False}
+      | otherwise = t
+
+    noFill t
+      | roNoFill o = t {themePaper = Nothing}
+      | otherwise = t
 
     page frame =
       defaultPage

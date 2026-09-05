@@ -5,11 +5,11 @@ visual style of step-by-step origami instruction books.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
-> **Status: early.** Crease patterns render correctly, with their faces filled,
-> and folded forms render as wireframes from a choice of viewing angles. There is
-> also a flat-foldability checker. Folding arrows and layer-correct shading — the
-> things that make a diagram a *diagram* — are not built yet. See
-> [Roadmap](#roadmap).
+> **Status: early.** Crease patterns render correctly, and are filled with paper
+> where the file records faces. Folded forms render as wireframes from a choice
+> of viewing angles. There is also a flat-foldability checker. Folding arrows and
+> layer-correct shading — the things that make a diagram a *diagram* — are not
+> built yet. See [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -25,11 +25,19 @@ stack run -- render examples/unit-square.fold -o unit-square.svg
 ```
 
 produces a unit square with a valley fold down the middle, a mountain fold
-across it, and a faint diagonal reference crease. Where a file records
-`faces_vertices`, the faces are filled with a paper tint so the sheet reads as
-an object rather than as lines on the page; `--no-fill` leaves it a wireframe.
-A folded form is always a wireframe, because filling one means knowing which
-face is in front and senbazuru does not work that out yet.
+across it, and a faint diagonal reference crease. That file records no faces, so
+what comes out is exactly those lines on a blank page.
+
+A file that *does* record `faces_vertices` gets its faces filled with a paper
+tint, so the sheet reads as an object rather than as lines floating on the page:
+
+```bash
+stack run -- render examples/quarter-fold.fold -o quarter-fold.svg
+```
+
+`--no-fill` turns that off. A drawing in the folded-form style is never filled,
+because filling one means knowing which face is in front, and senbazuru does not
+work that out yet.
 
 Folded forms take a viewing angle:
 

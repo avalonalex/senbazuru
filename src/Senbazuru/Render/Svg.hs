@@ -163,11 +163,6 @@ shapeToSvg toPage (Polyline stroke pts)
     dashAttr (Dash ds) = attr "stroke-dasharray" (T.unwords (map formatNumber ds))
 
 -- | An SVG path closed with @Z@, so the fill has a boundary all the way round.
---
--- Closing with @Z@ rather than by repeating the first point matters for a
--- stroked path, where the join at the seam is mitred rather than left as two
--- overlapping ends. It costs nothing here and keeps the two agreeing if
--- polygons ever gain a stroke.
 closedPathData :: [V2] -> Text
 closedPathData pts = pathData pts <> " Z"
 

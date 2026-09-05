@@ -47,7 +47,7 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | Term | Meaning |
 | --- | --- |
 | **Face** | A region of paper bounded by edges — a polygon. |
-| **Winding** | The direction a face's vertices are listed in. Counterclockwise in FOLD, which is what defines the face's normal and therefore which side is up. |
+| **Winding** | The direction a face's vertices are listed in. FOLD specifies counterclockwise, which would define the face's normal and therefore which side is up — but real files disagree, so senbazuru does not trust the stated winding. Filling does not care; anything needing a normal must compute the orientation. |
 | **Normal** | The direction perpendicular to a face, pointing out of the side the winding defines. |
 | **Rigid transform** | A motion that rotates and translates but never bends, stretches or scales. What a face undergoes when paper folds. |
 | **Orthographic projection** | Flattening 3D onto a page along parallel lines, with no perspective. Parallel edges stay parallel. |

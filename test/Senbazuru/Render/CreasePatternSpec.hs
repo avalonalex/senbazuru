@@ -30,6 +30,10 @@ import Senbazuru.Render.CreasePattern
   )
 import Test.Hspec
 
+-- | 'twoFaceSquare' with a face pointing at a vertex that does not exist.
+broken :: Frame
+broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
+
 -- | A unit square split into two triangles by a valley along the diagonal.
 twoFaceSquare :: Frame
 twoFaceSquare =
@@ -72,15 +76,31 @@ spec = do
       shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation twoFaceSquare
         `shouldBe` Right (replicate 5 "line")
 
-    it "rejects a corrupt face even when nothing would be filled" $ do
-      -- A flag that decides how a drawing looks must not also decide which
-      -- files are acceptable, so the faces are resolved either way.
-      let broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
-          wireframe = defaultTheme {themePaper = Nothing}
+    it "rejects a corrupt face when it was going to draw it" $
       shapeKinds defaultTheme CreasePatternNotation broken
         `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
-      shapeKinds wireframe CreasePatternNotation broken
-        `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
+
+    it "draws a folded form whose faces are corrupt, having never looked" $
+      -- A folded form's faces are not drawn, so they are not resolved either. An
+      -- earlier version validated them anyway and turned a file that had always
+      -- rendered into a hard failure over data it was going to discard.
+      shapeKinds defaultTheme FoldedFormNotation broken
+        `shouldBe` Right (replicate 5 "line")
+
+    it "draws a wireframe whose faces are corrupt, for the same reason" $
+      shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation broken
+        `shouldBe` Right (replicate 5 "line")
+
+    it "fills a flat-folded model that declares no class -- a known limitation" $ do
+      -- Pinned rather than fixed. A flat-folded model and a crease pattern have
+      -- identical coordinates, so defaultNotationFor can only tell them apart by
+      -- asking frame_classes, and a file that declares nothing has been drawn as
+      -- a crease pattern since long before faces existed. Telling them apart for
+      -- real means asking whether the faces overlap, which is layer ordering.
+      -- See docs/notes/layer-ordering.md.
+      let flatFolded = twoFaceSquare {frameClasses = []}
+      shapeKinds defaultTheme (defaultNotationFor [] flatSquare) flatFolded
+        `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
 
   describe "defaultBasisFor" $ do
     it "views a flat sheet from above" $

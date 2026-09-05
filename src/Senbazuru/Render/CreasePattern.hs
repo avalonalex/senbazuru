@@ -73,14 +73,19 @@ creasePatternFrom theme notation basis fr = do
   verts <- frameVertices fr
   extent <- maybe (Left NoVertices) Right (boxFromPoints (map flatten verts))
   creases <- frameCreases fr
-  -- Resolved even when nothing will be filled, so that a file with a corrupt
-  -- face fails the same way with and without the fill. A flag that decides how
-  -- a drawing looks should not also decide which files are acceptable.
-  faces <- frameFaces fr
-  let faceShapes = case fillFor theme notation of
-        Nothing -> []
-        Just colour -> [Polygon colour (map flatten (faceCorners f)) | f <- faces]
-      creaseShapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
+  -- Faces are resolved only when they are going to be drawn, so a renderer
+  -- refuses a file for something it was going to put on the page and never for
+  -- anything else. The first version validated them always, on the grounds that
+  -- a flag should not decide which files are acceptable; that turned a
+  -- malformed face on a *folded form* -- whose faces this never draws -- into a
+  -- hard failure on a file that used to render. Complaining about data nobody
+  -- looked at is a validator's job, and senbazuru has a separate verb for that.
+  faceShapes <- case fillFor theme notation of
+    Nothing -> pure []
+    Just colour -> do
+      faces <- frameFaces fr
+      pure [Polygon colour (map flatten (faceCorners f)) | f <- faces]
+  let creaseShapes = mapMaybe toShape (sortOn (paintOrder . creaseAssignment) creases)
   -- Faces first, and not through paintOrder: they are not creases and there is
   -- nothing to sort them by. Every face goes under every line, which is what
   -- makes the fill a background for the drawing rather than a coat of paint

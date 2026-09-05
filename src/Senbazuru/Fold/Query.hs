@@ -60,6 +60,10 @@ data FoldError
   | -- | A face with fewer than three corners, which bounds no area and so is
     -- not a face. Carries the face and how many corners it has.
     FaceTooFewCorners FaceId Int
+  | -- | A face whose corner list repeats its first vertex at the end. The ring
+    -- is closed implicitly, so this is one corner listed twice, and it makes a
+    -- face look as though it has an edge from a vertex to itself.
+    FaceRingClosed FaceId
   | -- | Two parallel arrays that must agree in length do not. Carries the name
     -- and length of each.
     ArrayLengthMismatch Text Int Text Int
@@ -77,31 +81,20 @@ renderFoldError = \case
       <> tshow n
       <> " coordinate(s); at least 2 (x, y) are required"
   VertexIndexOutOfRange (EdgeId e) (VertexId v) n ->
-    "edge "
-      <> tshow e
-      <> " refers to vertex "
-      <> tshow v
-      <> ", but vertices_coords only has "
-      <> tshow n
-      <> " entries (valid ids are 0.."
-      <> tshow (n - 1)
-      <> ")"
+    "edge " <> tshow e <> " refers to vertex " <> tshow v <> ", but " <> validIds n
   FaceVertexOutOfRange (FaceId f) (VertexId v) n ->
-    "face "
-      <> tshow f
-      <> " refers to vertex "
-      <> tshow v
-      <> ", but vertices_coords only has "
-      <> tshow n
-      <> " entries (valid ids are 0.."
-      <> tshow (n - 1)
-      <> ")"
+    "face " <> tshow f <> " refers to vertex " <> tshow v <> ", but " <> validIds n
   FaceTooFewCorners (FaceId f) n ->
     "face "
       <> tshow f
       <> " has "
       <> tshow n
       <> " corner(s); a face needs at least 3 to enclose any paper"
+  FaceRingClosed (FaceId f) ->
+    "face "
+      <> tshow f
+      <> " ends on the corner it starts with; faces_vertices lists each corner"
+      <> " once and the ring closes on its own"
   ArrayLengthMismatch a na b nb ->
     a
       <> " has "
@@ -112,8 +105,29 @@ renderFoldError = \case
       <> tshow nb
       <> "; FOLD requires parallel arrays to line up"
   where
+    -- Spelled out for the empty case, which would otherwise read "valid ids are
+    -- 0..-1" -- a backwards interval, which is not a range and not a hint.
+    validIds 0 = "vertices_coords is empty"
+    validIds n =
+      "vertices_coords only has "
+        <> tshow n
+        <> " entries (valid ids are 0.."
+        <> tshow (n - 1)
+        <> ")"
+
     tshow :: (Show a) => a -> Text
     tshow = T.pack . show
+
+-- | Look vertices up by id.
+--
+-- An 'IM.IntMap' gives @O(log n)@ lookup. Indexing the list with @(!!)@ instead
+-- would make every caller quadratic, which starts to matter on real crease
+-- patterns with thousands of vertices — so this is a shared function rather
+-- than a line each caller is free to write the slow way.
+vertexIndex :: [V3] -> (VertexId -> Maybe V3)
+vertexIndex verts = \(VertexId i) -> IM.lookup i byId
+  where
+    byId = IM.fromList (zip [0 ..] verts)
 
 -- | One edge of the crease pattern, resolved to actual endpoints.
 --
@@ -162,15 +176,11 @@ frameCreases :: Frame -> Either FoldError [Crease]
 frameCreases fr = do
   verts <- frameVertices fr
   assignments <- resolveAssignments
-  let -- An IntMap gives O(log n) lookup by vertex id. Indexing the list with
-      -- (!!) instead would make the whole function quadratic, which starts to
-      -- matter on real crease patterns with thousands of vertices.
-      byId = IM.fromList (zip [0 ..] verts)
-      nVerts = length verts
+  let lookupVertex = vertexIndex verts
 
-      resolve eid vid@(VertexId i) = case IM.lookup i byId of
+      resolve eid vid = case lookupVertex vid of
         Just p -> Right p
-        Nothing -> Left (VertexIndexOutOfRange eid vid nVerts)
+        Nothing -> Left (VertexIndexOutOfRange eid vid (length verts))
 
       toCrease (eid, (a, b), asg) = do
         pa <- resolve eid a
@@ -239,15 +249,23 @@ data Face = Face
 frameFaces :: Frame -> Either FoldError [Face]
 frameFaces fr = do
   verts <- frameVertices fr
-  let byId = IM.fromList (zip [0 ..] verts)
-      nVerts = length verts
+  let lookupVertex = vertexIndex verts
 
-      resolve fid vid@(VertexId i) = case IM.lookup i byId of
+      resolve fid vid = case lookupVertex vid of
         Just p -> Right p
-        Nothing -> Left (FaceVertexOutOfRange fid vid nVerts)
+        Nothing -> Left (FaceVertexOutOfRange fid vid (length verts))
 
       toFace (fid, corners)
+        | closedRing corners = Left (FaceRingClosed fid)
         | length corners < 3 = Left (FaceTooFewCorners fid (length corners))
         | otherwise = Face fid corners <$> traverse (resolve fid) corners
+
+      -- The ring is implicitly closed, so a file that also closes it explicitly
+      -- has said the first corner twice. Checked before the length, because
+      -- @[0, 1, 0]@ would otherwise pass as a three-corner face enclosing no
+      -- area at all.
+      closedRing corners = case (corners, reverse corners) of
+        (first : _ : _, final : _) -> first == final
+        _ -> False
 
   traverse toFace (zip (map FaceId [0 ..]) (facesVertices fr))
