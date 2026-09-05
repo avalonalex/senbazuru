@@ -46,7 +46,7 @@ import Senbazuru.Origami.FlatFold
 import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
-import Senbazuru.Render.CreasePattern (creasePatternAuto, defaultBasisFor, withArrows)
+import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -295,9 +295,11 @@ renderFile o f = do
       else pure []
   case creasePatternAuto theme (roView o) frame of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
-    Right d -> do
-      basis <- arrowBasis frame
-      emit (renderSvg (page frame) (withArrows theme basis motions d))
+    Right d
+      | null motions -> emit (renderSvg (page frame) d)
+      | otherwise -> do
+          basis <- arrowBasis frame
+          emit (renderSvg (page frame) (withArrows theme basis motions d))
   where
     -- Each flag only ever subtracts from the default. Written as guards rather
     -- than as assignments so that a flag left off defers to whatever
@@ -322,13 +324,12 @@ renderFile o f = do
           pageTitle = frameTitle frame <|> fileTitle f
         }
 
-    -- The arrows have to be projected the same way the drawing was, so this
-    -- repeats the choice creasePatternAuto made rather than guessing again.
-    arrowBasis frame = case roView o of
-      Just b -> pure b
-      Nothing -> case frameVertices frame of
-        Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
-        Right verts -> pure (defaultBasisFor verts)
+    -- The arrows have to be projected the same way the drawing was. 'basisFor'
+    -- is the decision creasePatternAuto makes, asked again rather than
+    -- reimplemented, so the two cannot drift apart.
+    arrowBasis frame = case frameVertices frame of
+      Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
+      Right verts -> pure (basisFor (roView o) verts)
 
     emit = maybe TIO.putStr TIO.writeFile (roOutput o)
 

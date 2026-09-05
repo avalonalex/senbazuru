@@ -94,6 +94,14 @@ loadFixture path = do
     Left err -> fail ("decode failed: " <> err)
     Right f -> pure (keyFrame f)
 
+-- | Is this point in the quadrant the quarter fold collapses into?
+--
+-- Written over a list because that is what verticesCoords holds; anything that
+-- is not a plane coordinate is not in the quadrant.
+inTheQuadrant :: [Double] -> Bool
+inTheQuadrant [x, y] = x >= 0.5 - 1e-9 && y <= 0.5 + 1e-9
+inTheQuadrant _ = False
+
 -- | Rounded, so that a coordinate landing on 6e-17 compares as the zero it is.
 rounded :: Double -> Double
 rounded x = fromIntegral (round (x * 1e9) :: Integer) / 1e9
@@ -165,7 +173,7 @@ spec = do
       take 4 coords `shouldBe` replicate 4 [1, 0, 0]
       -- And the result occupies one quadrant.
       map (take 2) coords
-        `shouldSatisfy` all (\[x, y] -> x >= 0.5 - 1e-9 && y <= 0.5 + 1e-9)
+        `shouldSatisfy` all inTheQuadrant
 
     it "folds the diagonal crease pattern into a triangle" $ do
       -- A square with a valley along the diagonal from (0,1) to (1,0). The
@@ -234,8 +242,8 @@ spec = do
       -- gives it away. Folding one a second time returns the crease pattern it
       -- came from, still labelled a folded form, with no complaint.
       flat <- loadFixture "test/fixtures/quarter-fold.fold"
-      once <- foldOrFail flat
-      case foldFrame once of
+      folded <- foldOrFail flat
+      case foldFrame folded of
         Left (AlreadyFolded _) -> pure ()
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
 

@@ -115,6 +115,14 @@ spec = do
       motionsBetween flapsApart smaller
         `shouldBe` Left (FramesDiffer "faces_vertices" 3 2)
 
+    it "refuses two frames whose faces are joined up differently" $ do
+      -- Same count, different paper. Matching face i to face i across them would
+      -- take the centre of one flap and the centre of an unrelated one as the
+      -- two ends of a motion, and draw an arrow between them.
+      let shuffled = flapsApart {facesVertices = reverse (facesVertices flapsApart)}
+      motionsBetween flapsApart shuffled
+        `shouldBe` Left (FramesDisagree "faces_vertices" 0)
+
     it "still finds the motion when neither frame records a fold angle" $ do
       -- Positions are what the reader is looking at. A frame may record no
       -- angles at all, and the paper has still moved.

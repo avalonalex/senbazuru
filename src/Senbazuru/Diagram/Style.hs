@@ -80,7 +80,7 @@ where
 
 import Senbazuru.Diagram (ArrowPath (..), Colour (..), Dash (..), Stroke (..), solid)
 import Senbazuru.Fold.Types (Assignment (..))
-import Senbazuru.Geometry (V2 (..), normalize, (*^), (^+^))
+import Senbazuru.Geometry (V2 (..), norm, normalize, perpendicular, (*^), (^+^), (^-^))
 
 -- | Near-black, as used for the drawing itself. Not pure black: printed
 -- diagrams and screen rendering both read slightly softer ink as cleaner.
@@ -129,8 +129,9 @@ data Theme = Theme
     themeArrowWidth :: !Double,
     -- | Page units, tip to base.
     themeArrowHead :: !Double,
-    -- | How far the arrow bows, as a fraction of the distance it spans. Zero
-    -- would be a straight arrow, which reads as \"slide\" rather than \"fold\".
+    -- | How far the arc's midpoint stands off the straight line between the
+    -- arrow's ends, as a fraction of the distance it spans. Zero would be a
+    -- straight arrow, which reads as \"slide\" rather than \"fold\".
     themeArrowBow :: !Double,
     -- | Fill faces with this colour, or 'Nothing' to leave the sheet as a
     -- wireframe.
@@ -164,9 +165,9 @@ defaultTheme =
       themeShowUnassigned = True,
       themeArrowWidth = 1.8,
       themeArrowHead = 11,
-      -- A quarter of the span. Enough to read as a turn through the air rather
+      -- An eighth of the span. Enough to read as a turn through the air rather
       -- than a slide along the page, without the arc wandering off the paper.
-      themeArrowBow = 0.25,
+      themeArrowBow = 0.125,
       themePaper = Just paper
     }
 
@@ -235,18 +236,19 @@ arrowFor theme from to =
   ArrowPath
     { arrowStroke = solid (themeInk theme) (themeArrowWidth theme),
       arrowFrom = from,
-      arrowVia = midpoint ^+^ (bow *^ sideways),
+      arrowVia = midpoint ^+^ (offset *^ sideways),
       arrowTo = to,
       arrowHead = themeArrowHead theme
     }
   where
     midpoint = 0.5 *^ (from ^+^ to)
-    span' = to ^+^ ((-1) *^ from)
-    bow = themeArrowBow theme * magnitude
-    magnitude = case normalize span' of
-      Nothing -> 0
-      Just _ -> sqrt (dotSelf span')
-    dotSelf (V2 x y) = x * x + y * y
-    sideways = case normalize span' of
-      Nothing -> V2 0 0
-      Just (V2 x y) -> V2 (negate y) x
+    span' = to ^-^ from
+
+    -- Doubled, because the control point of a quadratic Bezier is twice as far
+    -- from the chord as the curve ever gets: the arc passes through the
+    -- midpoint of the control point and the chord's midpoint. The field means
+    -- how far the drawn arc bows, which is what anyone tuning it wants, so the
+    -- factor belongs here rather than in the reader's head.
+    offset = 2 * themeArrowBow theme * norm span'
+
+    sideways = maybe (V2 0 0) perpendicular (normalize span')

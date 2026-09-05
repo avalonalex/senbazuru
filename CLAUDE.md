@@ -207,10 +207,12 @@ file" is useless to someone holding a 4000-line crease pattern.
 
 **Two unit systems, never mixed.** Shape *coordinates* are in model units (from
 the FOLD file). Stroke *widths and dash lengths* are in page units and are never
-scaled. The one shape that needs both is `Arrow`: its curve is in model units
-and its head's size is in page units, so the head is built by the backend after
-projection, which is the only place both are in scope. A crease line is ~1pt wide whether the paper is 1 unit or 400 units
+scaled. A crease line is ~1pt wide whether the paper is 1 unit or 400 units
 across. See the header of `Senbazuru.Diagram`.
+
+The one shape needing both is `Arrow`: its curve is in model units and its
+head's size is in page units, so the head is built by the backend *after*
+projection, which is the only place both are in scope.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because

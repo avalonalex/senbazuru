@@ -24,10 +24,21 @@ algorithm that misbehaves spectacularly when that predicate lies, so read
 
 ## Why it matters here
 
-Placing a fold arrow needs the outline of the sheet. The usual approach is to
-take the hull of the vertices, find a segment across it perpendicular to the
-fold line, and draw the arrow's arc along that segment. That makes convex hull
-the first real piece of computational geometry senbazuru will need.
+Less than this note first claimed, which is worth recording.
+
+The expectation was that placing a fold arrow would need the outline of the
+sheet: take the hull of the vertices, find a segment across it perpendicular to
+the fold line, and draw the arrow's arc along that. Fold arrows arrived without
+it. `Senbazuru.Origami.Step` gets both ends of the motion by comparing two
+frames, so the arrow's start and finish are the centres of the paper that moved,
+and no outline is consulted anywhere.
+
+The hull is still what a *better* arrow wants. A book starts its arrow at the
+edge of the flap being moved rather than in the middle of it, and finding that
+edge is exactly the "segment across the outline" problem above. So this is a
+refinement waiting for a reason rather than a prerequisite — and the difference
+between those two is worth being honest about, because a prerequisite that turns
+out not to be one is how a project talks itself out of shipping.
 
 ## References
 

@@ -59,7 +59,9 @@ import Senbazuru.Geometry
     V2 (..),
     applyTransform,
     fitBox,
+    norm,
     normalize,
+    perpendicular,
     (*^),
     (^+^),
     (^-^),
@@ -158,20 +160,29 @@ shapeToSvg toPage (Arrow a) =
   where
     from = applyTransform toPage (arrowFrom a)
     via = applyTransform toPage (arrowVia a)
-    -- The head is drawn as a filled triangle sitting on the end of the curve,
-    -- and the curve is pulled back to the head's base so that a thick stroke
-    -- cannot poke out through the tip.
     tip = applyTransform toPage (arrowTo a)
+
+    -- Along the curve's own tangent at the tip, not along the straight line
+    -- from where it started: a head aimed down the chord sits visibly askew to
+    -- the arc it terminates.
     along = fromMaybe (V2 1 0) (normalize (tip ^-^ via))
     across = perpendicular along
-    base = tip ^-^ (arrowHead a *^ along)
-    half = 0.4 * arrowHead a
+
+    -- Clamped against the arrow's own length on the page, which is the only
+    -- place that length is known. A head is a fixed size in page units, and a
+    -- short motion on a large sheet can be shorter than one: unclamped, the
+    -- curve is pulled back past its own start and drawn backwards underneath a
+    -- head that swallows it.
+    headLength = min (arrowHead a) (0.5 * norm (tip ^-^ from))
+    base = tip ^-^ (headLength *^ along)
+    half = 0.4 * headLength
 
     curve =
       "    <path"
         <> attr "d" (quadratic from via base)
         <> attr "stroke" (colourText (strokeColour (arrowStroke a)))
         <> attrNum "stroke-width" (strokeWidth (arrowStroke a))
+        <> dashAttr (strokeDash (arrowStroke a))
         <> "/>\n"
 
     head' =
@@ -202,9 +213,11 @@ shapeToSvg toPage (Polyline stroke pts)
         <> attrNum "stroke-width" (strokeWidth stroke)
         <> dashAttr (strokeDash stroke)
         <> "/>\n"
-  where
-    dashAttr (Dash []) = mempty
-    dashAttr (Dash ds) = attr "stroke-dasharray" (T.unwords (map formatNumber ds))
+
+-- | A stroke's dash pattern, or nothing at all for a solid one.
+dashAttr :: Dash -> Builder
+dashAttr (Dash []) = mempty
+dashAttr (Dash ds) = attr "stroke-dasharray" (T.unwords (map formatNumber ds))
 
 -- | A quadratic Bézier: move to the first point, curve through the second to
 -- the third.
@@ -213,11 +226,6 @@ quadratic a b c =
   T.concat ["M ", point a, " Q ", point b, " ", point c]
   where
     point (V2 x y) = formatNumber x <> " " <> formatNumber y
-
--- | A quarter turn in the page's plane, for putting an arrowhead's base corners
--- either side of its axis.
-perpendicular :: V2 -> V2
-perpendicular (V2 x y) = V2 (negate y) x
 
 -- | An SVG path closed with @Z@, so the fill has a boundary all the way round.
 closedPathData :: [V2] -> Text

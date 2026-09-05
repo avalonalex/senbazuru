@@ -35,8 +35,9 @@ Two things about mountain and valley are worth internalising early:
 
 Arrows carry the rest of the meaning — a solid arrowhead for a normal fold, a
 hollow one for "fold then unfold", a looped arrow for turning the model over.
-Senbazuru does not draw arrows yet; that is the biggest gap between what it
-produces and a real diagram.
+Senbazuru draws the first of those, worked out by comparing one frame of a file
+with the next (`--arrows`). The other two mark steps whose paper does not
+visibly go anywhere, and it draws nothing for those rather than guessing.
 
 ## 2. Crease pattern vs. folded form
 

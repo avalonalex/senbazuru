@@ -43,9 +43,9 @@ spec = do
       -- own size: two points a hundred units apart, turned about a line a
       -- hundred units away, cannot be expected to land within 1e-9 absolutely.
       forAll ((,,) <$> genRotation <*> genPoint <*> genPoint) $ \(r, a, b) ->
-        let before = norm (a ^-^ b)
-            aft = norm (applyRigid r a ^-^ applyRigid r b)
-         in abs (before - aft) < 1e-9 * max 1 before
+        let apart = norm (a ^-^ b)
+            stillApart = norm (applyRigid r a ^-^ applyRigid r b)
+         in abs (apart - stillApart) < 1e-9 * max 1 apart
 
     it "leaves points on its own axis exactly where they were" $
       forAll ((,,) <$> genPoint <*> (genPoint `suchThat` \v -> norm v > 0.1) <*> choose (-pi, pi)) $

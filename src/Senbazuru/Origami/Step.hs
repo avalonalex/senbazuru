@@ -46,12 +46,12 @@ module Senbazuru.Origami.Step
   )
 where
 
-import Data.List (sortOn)
+import Data.List (foldl', sortOn)
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), Frame (..), VertexId (..))
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
 
 -- | One connected piece of paper moving, and where it ends up.
@@ -79,25 +79,30 @@ data Motion = Motion
 -- different models.
 motionsBetween :: Frame -> Frame -> Either FoldError [Motion]
 motionsBetween before after = do
+  -- Compared for equality and not merely for length. Two frames with the same
+  -- number of faces joined up differently are two models, and matching face i
+  -- to face i across them would take the centre of one flap and the centre of
+  -- an unrelated one as the two ends of a motion.
   sameLength "vertices_coords" (length (verticesCoords before)) (length (verticesCoords after))
-  sameLength "edges_vertices" (length (edgesVertices before)) (length (edgesVertices after))
-  sameLength "faces_vertices" (length (facesVertices before)) (length (facesVertices after))
+  sameContent "edges_vertices" (edgesVertices before) (edgesVertices after)
+  sameContent "faces_vertices" (facesVertices before) (facesVertices after)
   from <- frameVertices before
   to <- frameVertices after
   facesBefore <- frameFaces before
   facesAfter <- frameFaces after
   let moved = movedVertices from to
-      movedFaces = [f | f <- facesBefore, any ((`S.member` moved) . unVertexId) (faceVertexIds f)]
-      -- Faces are matched by id, which is what "the same paper" means here:
-      -- these are two states of one model, not two models that look alike.
-      laterCorners f = maybe (faceCorners f) faceCorners (M.lookup (faceId f) byId)
-      byId = M.fromList [(faceId f, f) | f <- facesAfter]
+      cornersAfter = M.fromList [(faceId f, faceCorners f) | f <- facesAfter]
+      movedFaces =
+        [ (f, ringKeys (faceVertexIds f))
+          | f <- facesBefore,
+            any ((`S.member` moved) . unVertexId) (faceVertexIds f)
+        ]
   pure
     [ Motion
-        { motionFaces = map faceId group,
-          motionCreases = creasesIn group,
-          motionFrom = centre (concatMap faceCorners group),
-          motionTo = centre (concatMap laterCorners group)
+        { motionFaces = map (faceId . fst) group,
+          motionCreases = creasesIn (S.unions (map snd group)),
+          motionFrom = centre (concatMap (faceCorners . fst) group),
+          motionTo = centre (concatMap (laterCorners cornersAfter . fst) group)
         }
       | group <- connectedGroups movedFaces
     ]
@@ -106,58 +111,78 @@ motionsBetween before after = do
       | a == b = Right ()
       | otherwise = Left (FramesDiffer what a b)
 
+    sameContent what a b
+      | length a /= length b = Left (FramesDiffer what (length a) (length b))
+      | otherwise = case [i | (i, x, y) <- zip3 [0 ..] a b, x /= y] of
+          (i : _) -> Left (FramesDisagree what i)
+          [] -> Right ()
+
+    -- Guaranteed present by the faces_vertices check above; the fallback keeps
+    -- the function total rather than standing for a case that can happen.
+    laterCorners byId f = M.findWithDefault (faceCorners f) (faceId f) byId
+
     -- A vertex counts as having moved when it is further from where it was than
-    -- rounding can explain, judged against the size of the sheet: a millimetre
-    -- is a fold in a model a centimetre across and noise in one the size of a
-    -- room.
+    -- rounding can explain, judged against the size of the model: a millimetre
+    -- is a fold in something a centimetre across and noise in something the
+    -- size of a room. 'modelSpan' is shared with the other places that ask how
+    -- big a thing is, so they cannot drift apart.
     movedVertices from to =
       S.fromList
         [ v
           | (v, a, b) <- zip3 [0 ..] from to,
-            norm (a ^-^ b) > 1e-9 * max 1 (spanOf from)
+            norm (a ^-^ b) > 1e-9 * max 1 (modelSpan from)
         ]
 
-    spanOf vs = maximum (0 : [reach v3x vs, reach v3y vs, reach v3z vs])
-    reach f vs = case map f vs of
-      [] -> 0
-      cs -> maximum cs - minimum cs
-
     centre [] = V3 0 0 0
-    centre ps = (1 / fromIntegral (length ps)) *^ foldr (^+^) (V3 0 0 0) ps
+    centre ps = (1 / fromIntegral (length ps)) *^ foldl' (^+^) (V3 0 0 0) ps
 
-    -- The creases this group turned about: those whose recorded angle changed
-    -- and whose two endpoints both belong to a face of the group.
-    creasesIn group =
-      [ eid
-        | (eid, angleBefore, angleAfter) <-
-            zip3 (map EdgeId [0 ..]) (edgesFoldAngle before) (edgesFoldAngle after),
-          angleBefore /= angleAfter,
-          touches group eid
+    -- The creases whose recorded angle changed, indexed by the pair of vertices
+    -- they join, so that asking whether a group turned about one is a set
+    -- lookup rather than a walk down edges_vertices per edge.
+    changed =
+      [ (eid, edgeKey a b)
+        | (eid, (a, b), angleBefore, angleAfter) <-
+            zip4
+              (map EdgeId [0 ..])
+              (edgesVertices before)
+              (edgesFoldAngle before)
+              (edgesFoldAngle after),
+          angleBefore /= angleAfter
       ]
 
-    touches group eid = case drop (unEdgeId eid) (edgesVertices before) of
-      ((a, b) : _) -> any (\f -> a `elem` faceVertexIds f && b `elem` faceVertexIds f) group
-      [] -> False
+    -- Against the group's ring edges, not against the vertices it happens to
+    -- contain: a crease recorded across the diagonal of a face joins two of its
+    -- corners without being one of its sides, and is not a crease that face
+    -- turned about.
+    creasesIn ringsOf = [eid | (eid, key) <- changed, key `S.member` ringsOf]
+
+zip4 :: [a] -> [b] -> [c] -> [d] -> [(a, b, c, d)]
+zip4 (a : as) (b : bs) (c : cs) (d : ds) = (a, b, c, d) : zip4 as bs cs ds
+zip4 _ _ _ _ = []
+
+-- | The unordered pair identifying an edge between two vertices.
+edgeKey :: VertexId -> VertexId -> (Int, Int)
+edgeKey (VertexId a) (VertexId b) = (min a b, max a b)
+
+-- | The edges around a face's boundary, as unordered vertex pairs.
+ringKeys :: [VertexId] -> S.Set (Int, Int)
+ringKeys vs = S.fromList (zipWith edgeKey vs (drop 1 vs <> take 1 vs))
 
 -- | Split faces into groups that are joined to each other through shared edges.
 --
 -- Restricted to the faces given, so two flaps that move together but touch only
 -- through paper that stayed still come out as two groups — which is right, and
 -- is the whole reason this is not one arrow per step.
-connectedGroups :: [Face] -> [[Face]]
+connectedGroups :: [(Face, S.Set (Int, Int))] -> [[(Face, S.Set (Int, Int))]]
 connectedGroups = go
   where
-    edgesOf f = S.fromList [key a b | (a, b) <- ringEdges (faceVertexIds f)]
-    key (VertexId a) (VertexId b) = (min a b, max a b)
-    ringEdges vs = zip vs (drop 1 vs <> take 1 vs)
-
     go [] = []
     go (f : rest) =
-      let (group, others) = grow [f] (edgesOf f) rest
+      let (group, others) = grow [f] (snd f) rest
        in group : go others
 
     grow acc reach candidates =
-      case span (S.disjoint reach . edgesOf) candidates of
-        (_, []) -> (sortOn faceId acc, candidates)
+      case span (S.disjoint reach . snd) candidates of
+        (_, []) -> (sortOn (faceId . fst) acc, candidates)
         (skipped, next : more) ->
-          grow (next : acc) (S.union reach (edgesOf next)) (skipped <> more)
+          grow (next : acc) (S.union reach (snd next)) (skipped <> more)

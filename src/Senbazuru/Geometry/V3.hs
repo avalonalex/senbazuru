@@ -14,6 +14,8 @@ module Senbazuru.Geometry.V3
   ( V3 (..),
     cross,
     zSpan,
+    spanAlong,
+    modelSpan,
     hasRelief,
     polygonNormal,
   )
@@ -49,11 +51,26 @@ cross :: V3 -> V3 -> V3
 cross (V3 ax ay az) (V3 bx by bz) =
   V3 (ay * bz - az * by) (az * bx - ax * bz) (ax * by - ay * bx)
 
+-- | How far a set of points is spread along one axis.
+--
+-- One implementation, because \"how big is this?\" is asked by several callers
+-- with different policies about which axes count, and a second copy of the
+-- arithmetic is how two of them come to disagree.
+spanAlong :: (V3 -> Double) -> [V3] -> Double
+spanAlong f verts = case map f verts of
+  [] -> 0
+  cs -> maximum cs - minimum cs
+
 -- | How far a set of points is spread along @z@.
 zSpan :: [V3] -> Double
-zSpan verts = case map v3z verts of
-  [] -> 0
-  zs -> maximum zs - minimum zs
+zSpan = spanAlong v3z
+
+-- | The largest spread along any axis: how big the thing is, roughly.
+--
+-- The measure to compare a distance against when asking whether it is
+-- significant, since \"small\" only means anything next to something else.
+modelSpan :: [V3] -> Double
+modelSpan verts = maximum [0, spanAlong v3x verts, spanAlong v3y verts, spanAlong v3z verts]
 
 -- | Does the geometry leave the plane?
 --
@@ -71,10 +88,11 @@ zSpan verts = case map v3z verts of
 hasRelief :: [V3] -> Bool
 hasRelief verts = zSpan verts > 1e-9 * max 1 planeSpan
   where
-    spanOf f = case map f verts of
-      [] -> 0
-      cs -> maximum cs - minimum cs
-    planeSpan = max (spanOf v3x) (spanOf v3y)
+    -- Deliberately the spread across the plane and not 'modelSpan': the
+    -- question is whether the relief is small next to the /sheet/, and folding
+    -- the sheet in half out of the plane must not make its own relief look
+    -- negligible by growing the yardstick.
+    planeSpan = max (spanAlong v3x verts) (spanAlong v3y verts)
 
 -- | Which way a polygon faces, from the order its corners are listed in.
 --

@@ -80,11 +80,11 @@ renderStep i path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
   let frames = allFrames f
-  (before, after) <- case drop i frames of
+  (thisStep, nextStep) <- case drop i frames of
     (a : b : _) -> pure (a, b)
     _ -> fail "fixture does not have two frames from there"
-  motions <- either (fail . show) pure (motionsBetween before after)
-  d <- case creasePatternFrom defaultTheme CreasePatternNotation topDown before of
+  motions <- either (fail . show) pure (motionsBetween thisStep nextStep)
+  d <- case creasePatternFrom defaultTheme CreasePatternNotation topDown thisStep of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage (withArrows defaultTheme topDown motions d))
@@ -185,6 +185,23 @@ spec = do
       let headOf = filter (T.isInfixOf "fill=") . T.lines . renderSvg testPage
       headOf (arrowDiagram 1) `shouldBe` headOf (arrowDiagram 400)
 
+    it "shrinks the head rather than drawing the arrow backwards" $ do
+      -- The head is a fixed size in page units, and a small flap on a large
+      -- sheet can move less far than that. This arrow spans 7.36 page units and
+      -- the theme's head is 11, so unclamped the curve would be pulled back past
+      -- its own start and drawn in reverse underneath a head that swallowed it.
+      --
+      -- Pinned exactly, because the number that matters is easy to state: the
+      -- curve starts at x = 200 and must end to the right of it. It ended at
+      -- 197.5 before the head was clamped.
+      let stubby =
+            diagramWithExtent
+              (Box (V2 0 0) (V2 1 1))
+              [Arrow (arrowFor defaultTheme (V2 0.5 0.5) (V2 0.52 0.5))]
+          out = renderSvg defaultPage stubby
+      out `shouldSatisfy` T.isInfixOf "M 200 200 Q 203.68 198.16 204.069 198.354"
+      T.count "<path" out `shouldBe` 2
+
     it "skips a polygon with fewer than three points" $ do
       let sliver =
             diagramWithExtent
@@ -193,11 +210,11 @@ spec = do
       T.count "<path" (renderSvg testPage sliver) `shouldBe` 0
 
     it "skips a polyline with fewer than two points" $ do
-      let dot =
+      let speck =
             diagramWithExtent
               (Box (V2 0 0) (V2 1 1))
               [Polyline (solid (Colour "#000000") 1) [V2 0 0]]
-      T.count "<path" (renderSvg testPage dot) `shouldBe` 0
+      T.count "<path" (renderSvg testPage speck) `shouldBe` 0
 
     it "escapes the title, which comes from a user-supplied file" $ do
       let page = testPage {pageTitle = Just "Fish & <chips>"}

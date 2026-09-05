@@ -11,7 +11,7 @@
 -- @frame_classes@, and the tests below say exactly when.
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
-import Senbazuru.Diagram (Diagram (..), Shape (..))
+import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent)
 import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
@@ -23,12 +23,15 @@ import Senbazuru.Fold.Types
     VertexId (..),
     emptyFrame,
   )
+import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
-import Senbazuru.Render.Camera (isometric, topDown)
+import Senbazuru.Origami.Step (Motion (..))
+import Senbazuru.Render.Camera (frontOn, isometric, topDown)
 import Senbazuru.Render.CreasePattern
   ( creasePatternFrom,
     defaultBasisFor,
     defaultNotationFor,
+    withArrows,
   )
 import Test.Hspec
 
@@ -60,6 +63,12 @@ shapeKinds theme notation fr =
     kind = \case
       Polygon _ _ -> "fill"
       Polyline _ _ -> "line"
+      Arrow _ -> "arrow"
+
+-- | The last element, if there is one.
+lastOf :: [a] -> Maybe a
+lastOf [] = Nothing
+lastOf xs = Just (last xs)
 
 spec :: Spec
 spec = do
@@ -120,9 +129,31 @@ spec = do
       -- a crease pattern since long before faces existed. Telling them apart for
       -- real means asking whether the faces overlap, which is layer ordering.
       -- See docs/notes/layer-ordering.md.
-      let flatFolded = twoFaceSquare {frameClasses = []}
-      shapeKinds defaultTheme (defaultNotationFor [] flatSquare) flatFolded
+      let undeclared = twoFaceSquare {frameClasses = []}
+      shapeKinds defaultTheme (defaultNotationFor [] flatSquare) undeclared
         `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
+
+  describe "arrows" $ do
+    let square = diagramWithExtent (Box (V2 0 0) (V2 1 1)) []
+        motion a b = Motion {motionFaces = [], motionCreases = [], motionFrom = a, motionTo = b}
+        arrowsIn = length . filter isArrow . diagramShapes
+        isArrow = \case Arrow _ -> True; _ -> False
+
+    it "adds one arrow per motion, after everything else" $ do
+      let d = withArrows defaultTheme topDown [motion (V3 0.25 0.5 0) (V3 0.75 0.5 0)] square
+      arrowsIn d `shouldBe` 1
+      fmap isArrow (lastOf (diagramShapes d)) `shouldBe` Just True
+
+    it "draws none for paper that moved without going anywhere on the page" $ do
+      -- A model turned over, or a flap folded straight up and seen from above:
+      -- the paper moved, and its two ends land on the same point. A book marks
+      -- that with a loop or a pair of arrows and senbazuru has neither, so an
+      -- arrow here would be given a direction by whatever the arithmetic
+      -- happened to produce and would say something confident and untrue.
+      let flip' = motion (V3 0.5 0.5 0) (V3 0.5 0.5 1)
+      arrowsIn (withArrows defaultTheme topDown [flip'] square) `shouldBe` 0
+      -- Seen from the side, the same motion is a real displacement.
+      arrowsIn (withArrows defaultTheme frontOn [flip'] square) `shouldBe` 1
 
   describe "defaultBasisFor" $ do
     it "views a flat sheet from above" $

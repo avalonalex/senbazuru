@@ -22,6 +22,7 @@ module Senbazuru.Render.CreasePattern
     creasePatternFrom,
     creasePatternAuto,
     defaultBasisFor,
+    basisFor,
     defaultNotationFor,
     creaseOrder,
     withArrows,
@@ -46,7 +47,7 @@ import Senbazuru.Fold.Query
     frameVertices,
   )
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
-import Senbazuru.Geometry (boxFromPoints)
+import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Layers (paintOrder)
@@ -116,8 +117,17 @@ creasePatternAuto :: Theme -> Maybe Basis -> Frame -> Either FoldError Diagram
 creasePatternAuto theme chosenBasis fr = do
   verts <- frameVertices fr
   let notation = defaultNotationFor (frameClasses fr) verts
-      basis = fromMaybe (defaultBasisFor verts) chosenBasis
-  creasePatternFrom theme notation basis fr
+  creasePatternFrom theme notation (basisFor chosenBasis verts) fr
+
+-- | The basis a drawing will be made through: the caller's, or the one the
+-- geometry picks when the caller has no opinion.
+--
+-- Exported because anything drawn /alongside/ a diagram has to be projected the
+-- same way it was, and arrows are. Two copies of this defaulting rule would
+-- stay in step only by hand, and the day they stopped the arrows would land
+-- somewhere else on the page with nothing failing.
+basisFor :: Maybe Basis -> [V3] -> Basis
+basisFor chosen verts = fromMaybe (defaultBasisFor verts) chosen
 
 -- | Pick a viewing basis for geometry we know nothing else about.
 --
@@ -241,8 +251,23 @@ creaseOrder = \case
 -- of a sequence has to be drawn at one scale or the model appears to grow
 -- between figures — and an arrow that bows a little outside the sheet is a
 -- better outcome than a page that rescales because of one.
+-- A motion whose two ends land on the same point of the page gets no arrow.
+-- That is not a failure to draw one: it is paper that moved without going
+-- anywhere the reader can see it go — a model turned over, or a flap folded
+-- straight up out of the page and looked at from above. Books mark those with a
+-- different symbol altogether, a loop or a pair of arrows, and senbazuru has
+-- neither. An arrow with no length would be given a direction by whatever the
+-- arithmetic happened to produce, and would say something confident and untrue.
 withArrows :: Theme -> Basis -> [Motion] -> Diagram -> Diagram
 withArrows theme basis motions d =
-  d {diagramShapes = diagramShapes d <> map arrow motions}
+  d {diagramShapes = diagramShapes d <> concatMap arrow motions}
   where
-    arrow m = Arrow (arrowFor theme (project basis (motionFrom m)) (project basis (motionTo m)))
+    V2 w h = boxSize (diagramExtent d)
+    negligible = 1e-6 * max 1 (max w h)
+
+    arrow m
+      | norm (to ^-^ from) <= negligible = []
+      | otherwise = [Arrow (arrowFor theme from to)]
+      where
+        from = project basis (motionFrom m)
+        to = project basis (motionTo m)
