@@ -125,32 +125,43 @@ conventions.
 
 ## Roadmap
 
-Roughly in order:
+Roughly in order. Each item is an issue, tagged
+[`roadmap`](https://github.com/avalonalex/senbazuru/labels/roadmap), where the
+approach and the acceptance criteria are written out; this list is the map, the
+issues are the detail.
 
-0. **A flat-foldability checker.** Maekawa's and Kawasaki's theorems decide
-   whether each vertex can fold flat. Small, needs no new geometry, and it makes
-   senbazuru understand origami rather than only draw it.
+0. **[A flat-foldability checker.](https://github.com/avalonalex/senbazuru/issues/14)**
+   Maekawa's and Kawasaki's theorems decide whether each vertex can fold flat.
+   Small, needs no new geometry, and it makes senbazuru understand origami
+   rather than only draw it.
    → [maekawa](docs/notes/maekawa.md), [kawasaki](docs/notes/kawasaki.md)
-1. **Fold arrows.** A crease pattern is not yet instructions; the arrow showing
-   *which way* the paper moves is what makes a diagram teachable. FOLD stores no
-   arrows, so they are inferred by diffing consecutive frames. Needs a convex
-   hull, and therefore needs to care about floating point.
+1. **[Fold arrows.](https://github.com/avalonalex/senbazuru/issues/6)** A crease
+   pattern is not yet instructions; the arrow showing *which way* the paper
+   moves is what makes a diagram teachable. FOLD stores no arrows, so they are
+   inferred by diffing consecutive frames. Needs a convex hull, and therefore
+   needs to care about floating point.
    → [convex-hull](docs/notes/convex-hull.md),
    [robust-predicates](docs/notes/robust-predicates.md)
-2. **Faces.** Decode `faces_vertices` into filled polygons, so a sheet reads as
-   paper rather than as a wireframe.
+2. **[Faces.](https://github.com/avalonalex/senbazuru/issues/15)** Decode
+   `faces_vertices` into filled polygons, so a sheet reads as paper rather than
+   as a wireframe.
    → [half-edge](docs/notes/half-edge.md)
-3. **Multi-frame sequences.** Lay out a `file_frames` sequence as a numbered
-   grid of steps at a single shared scale. Note that every published FOLD
-   example is single-frame, so this needs fixtures we author ourselves.
+3. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
+   Lay out a `file_frames` sequence as a numbered grid of steps at a single
+   shared scale. Note that every published FOLD example is single-frame, so this
+   needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-4. **Folded forms.** Fold a crease pattern into 3D, then render it
-   layer-correctly. The folding itself is cheap; the layer ordering is where the
-   real computational geometry starts.
+4. **Folded forms.** Fold a crease pattern into 3D
+   ([#17](https://github.com/avalonalex/senbazuru/issues/17)), then render it
+   layer-correctly ([#18](https://github.com/avalonalex/senbazuru/issues/18)).
+   The folding itself is cheap; the layer ordering is where the real
+   computational geometry starts.
    → [folding-by-transforms](docs/notes/folding-by-transforms.md),
    [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
    [layer-ordering](docs/notes/layer-ordering.md)
-5. **Authoring tools.** FOLD output, and operations on crease patterns.
+5. **Authoring tools.** FOLD output
+   ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
+   nothing else can be built without it, and then operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)
 
 ## Credits and licence
