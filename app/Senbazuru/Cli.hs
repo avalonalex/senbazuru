@@ -16,17 +16,18 @@ module Senbazuru.Cli
 where
 
 import Control.Monad (unless, when)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Version (makeVersion, showVersion)
 import Numeric (showFFloat)
 import Options.Applicative
-import Senbazuru.Diagram (Colour (..))
+import Senbazuru.Diagram (Colour (..), Diagram)
+import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile, renderLoadError)
-import Senbazuru.Fold.Query (frameVertices, renderFoldError)
+import Senbazuru.Fold.Query (FoldError, frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
   ( Assignment,
     FoldFile (..),
@@ -44,7 +45,7 @@ import Senbazuru.Origami.FlatFold
     reportViolations,
   )
 import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
-import Senbazuru.Origami.Step (motionsBetween)
+import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
@@ -74,7 +75,9 @@ data RenderOptions = RenderOptions
   { roInput :: FilePath,
     -- | 'Nothing' writes to stdout, so the tool composes in a pipeline.
     roOutput :: Maybe FilePath,
-    roFrame :: Int,
+    -- | 'Nothing' means frame 0. Kept optional so that asking for a frame and
+    -- asking for every frame can be told apart.
+    roFrame :: Maybe Int,
     roWidth :: Double,
     roHeight :: Double,
     roMargin :: Double,
@@ -86,6 +89,9 @@ data RenderOptions = RenderOptions
     roFold :: Bool,
     -- | Draw the fold this step performs, worked out from the next frame.
     roArrows :: Bool,
+    -- | Lay every frame out as a numbered grid instead of drawing one.
+    roSteps :: Bool,
+    roColumns :: Int,
     -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
     -- argument parsing, so an unknown name never reaches this record.
     roView :: Maybe Basis
@@ -181,13 +187,13 @@ renderOptions =
               <> help "Output file (default: stdout)"
           )
       )
-    <*> option
-      auto
-      ( long "frame"
-          <> metavar "N"
-          <> value 0
-          <> showDefault
-          <> help "Which frame to render (0 is the key frame)"
+    <*> optional
+      ( option
+          auto
+          ( long "frame"
+              <> metavar "N"
+              <> help "Which frame to render (default: 0, the key frame)"
+          )
       )
     <*> option
       auto
@@ -218,6 +224,21 @@ renderOptions =
                 <> " does: the arrow goes on the picture of the paper before the"
                 <> " fold. The last frame has no next one, and so no arrows"
             )
+      )
+    <*> switch
+      ( long "steps"
+          <> help
+            ( "Lay every frame of the file out as one numbered page of figures,"
+                <> " all at the same scale, instead of drawing a single frame"
+            )
+      )
+    <*> option
+      auto
+      ( long "columns"
+          <> metavar "N"
+          <> value 3
+          <> showDefault
+          <> help "Figures across the page, with --steps"
       )
     <*> optional
       ( option
@@ -267,8 +288,39 @@ frameAt i f = case drop i frames of
     frames = allFrames f
 
 renderFile :: RenderOptions -> FoldFile -> IO ()
-renderFile o f = do
-  chosen <- frameAt (roFrame o) f
+renderFile o f
+  | roSteps o = renderStepPage o f
+  | otherwise = renderOneFrame o f
+
+-- | Every frame of the file as one numbered page of figures.
+renderStepPage :: RenderOptions -> FoldFile -> IO ()
+renderStepPage o f = do
+  -- Refused rather than silently ignored: --steps uses every frame, so a
+  -- request for one particular frame cannot also be honoured.
+  when (isJust (roFrame o)) (die "--steps lays out every frame; --frame selects one")
+  when (roFold o) (die "--steps draws the frames a file already has; --fold computes a new one")
+  figures <- traverse figure (zip [0 ..] frames)
+  case gridOf grid figures of
+    Nothing -> die ("nothing to lay out: " <> T.pack (roInput o) <> " has no frames")
+    Just d -> emitWith o (pageFor o f (fileTitle f)) d
+  where
+    frames = allFrames f
+    grid = (defaultGrid (themeInk (themeFor o))) {gridColumns = roColumns o}
+
+    figure (i, frame) = do
+      d <- case creasePatternAuto (themeFor o) (roView o) frame of
+        Left err -> die (cannotRender o err)
+        Right d -> pure d
+      motions <- stepMotions o frame (drop (i + 1) frames)
+      if null motions
+        then pure d
+        else do
+          basis <- basisOf o frame
+          pure (withArrows (themeFor o) basis motions d)
+
+renderOneFrame :: RenderOptions -> FoldFile -> IO ()
+renderOneFrame o f = do
+  chosen <- frameAt (fromMaybe 0 (roFrame o)) f
   -- Refused rather than resolved. --arrows describes the step from this frame
   -- to the next one in the file, and --fold replaces this frame with one
   -- computed from it, so together they would draw a motion whose start point is
@@ -282,30 +334,21 @@ renderFile o f = do
           die ("cannot fold " <> T.pack (roInput o) <> ": " <> renderFoldingError err)
         Right folded -> pure folded
       else pure chosen
-  motions <-
-    if roArrows o
-      then case drop (roFrame o + 1) (allFrames f) of
-        -- The final picture of a sequence shows the finished model, and a book
-        -- draws no arrow on it. Neither do we.
-        [] -> pure []
-        (next : _) -> case motionsBetween frame next of
-          Left err ->
-            die ("cannot work out the step in " <> T.pack (roInput o) <> ": " <> renderFoldError err)
-          Right ms -> pure ms
-      else pure []
-  case creasePatternAuto theme (roView o) frame of
-    Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
+  motions <- stepMotions o frame (drop (fromMaybe 0 (roFrame o) + 1) (allFrames f))
+  case creasePatternAuto (themeFor o) (roView o) frame of
+    Left err -> die (cannotRender o err)
     Right d
-      | null motions -> emit (renderSvg (page frame) d)
+      | null motions -> emitWith o (pageFor o f (frameTitle frame <|> fileTitle f)) d
       | otherwise -> do
-          basis <- arrowBasis frame
-          emit (renderSvg (page frame) (withArrows theme basis motions d))
-  where
-    -- Each flag only ever subtracts from the default. Written as guards rather
-    -- than as assignments so that a flag left off defers to whatever
-    -- defaultTheme says, instead of asserting today's value of it.
-    theme = hideFlat (noFill defaultTheme)
+          basis <- basisOf o frame
+          emitWith o (pageFor o f (frameTitle frame <|> fileTitle f)) (withArrows (themeFor o) basis motions d)
 
+-- | Each flag only ever subtracts from the default. Written as guards rather
+-- than as assignments so that a flag left off defers to whatever defaultTheme
+-- says, instead of asserting today's value of it.
+themeFor :: RenderOptions -> Theme
+themeFor o = hideFlat (noFill defaultTheme)
+  where
     hideFlat t
       | roHideFlat o = t {themeShowFlat = False, themeShowUnassigned = False}
       | otherwise = t
@@ -314,24 +357,43 @@ renderFile o f = do
       | roNoFill o = t {themePaper = Nothing}
       | otherwise = t
 
-    page frame =
-      defaultPage
-        { pageWidth = roWidth o,
-          pageHeight = roHeight o,
-          pageMargin = roMargin o,
-          pageBackground = if roTransparent o then Nothing else Just (Colour "#ffffff"),
-          -- Prefer the frame's own title; fall back to the file's.
-          pageTitle = frameTitle frame <|> fileTitle f
-        }
+pageFor :: RenderOptions -> FoldFile -> Maybe Text -> Page
+pageFor o _ title =
+  defaultPage
+    { pageWidth = roWidth o,
+      pageHeight = roHeight o,
+      pageMargin = roMargin o,
+      pageBackground = if roTransparent o then Nothing else Just (Colour "#ffffff"),
+      pageTitle = title
+    }
 
-    -- The arrows have to be projected the same way the drawing was. 'basisFor'
-    -- is the decision creasePatternAuto makes, asked again rather than
-    -- reimplemented, so the two cannot drift apart.
-    arrowBasis frame = case frameVertices frame of
-      Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
-      Right verts -> pure (basisFor (roView o) verts)
+-- | The motions to draw on this frame, given the frames that come after it.
+--
+-- The final picture of a sequence shows the finished model, and a book draws no
+-- arrow on it. Neither do we.
+stepMotions :: RenderOptions -> Frame -> [Frame] -> IO [Motion]
+stepMotions o frame later
+  | not (roArrows o) = pure []
+  | otherwise = case later of
+      [] -> pure []
+      (next : _) -> case motionsBetween frame next of
+        Left err ->
+          die ("cannot work out the step in " <> T.pack (roInput o) <> ": " <> renderFoldError err)
+        Right ms -> pure ms
 
-    emit = maybe TIO.putStr TIO.writeFile (roOutput o)
+-- | The arrows have to be projected the same way the drawing was. 'basisFor' is
+-- the decision creasePatternAuto makes, asked again rather than reimplemented,
+-- so the two cannot drift apart.
+basisOf :: RenderOptions -> Frame -> IO Basis
+basisOf o frame = case frameVertices frame of
+  Left err -> die (cannotRender o err)
+  Right verts -> pure (basisFor (roView o) verts)
+
+cannotRender :: RenderOptions -> FoldError -> Text
+cannotRender o err = "cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err
+
+emitWith :: RenderOptions -> Page -> Diagram -> IO ()
+emitWith o pg d = maybe TIO.putStr TIO.writeFile (roOutput o) (renderSvg pg d)
 
 checkFile :: CheckOptions -> FoldFile -> IO ()
 checkFile o f = do

@@ -62,6 +62,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Senbazuru.Diagram
+    Senbazuru.Diagram.Layout
     Senbazuru.Diagram.Style
     Senbazuru.Fold.Load
     Senbazuru.Fold.Query
@@ -103,6 +104,7 @@ test-suite senbazuru-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   other-modules:
+    Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.RigidSpec

@@ -8,9 +8,9 @@ visual style of step-by-step origami instruction books.
 > **Status: early.** Crease patterns render correctly and are filled with paper.
 > A pattern can be *folded* along its own fold angles and the result drawn from a
 > choice of viewing angles, layer-correctly where the file says which face is in
-> front. A multi-frame file can be drawn as steps, each with the arrow showing
-> the fold it asks for. There is also a flat-foldability checker. See
-> [Roadmap](#roadmap).
+> front. A multi-frame file lays out as one numbered page of steps, each with the
+> arrow showing the fold it asks for. There is also a flat-foldability checker.
+> See [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -132,8 +132,19 @@ changing any angle. Paper that moves as one piece gets one arrow; a step that
 folds two separate flaps gets two, because a single arrow averaged between them
 would point somewhere no paper goes.
 
-Laying several steps out on one page is not built yet; for now each step is its
-own file.
+`--steps` puts the whole sequence on one page instead:
+
+```bash
+stack run -- render examples/quarter-fold-steps.fold --steps --arrows \
+  --width 700 --height 300 -o page.svg
+```
+
+Every figure is drawn at **one shared scale**, so the model genuinely shrinks as
+it is folded — the quarter fold ends up a quarter of the size it started. Giving
+each figure its own scale is the tempting mistake: every drawing would then be
+blown up to fill its cell, and the page would tell the reader, in the most
+convincing way a picture can, that folding a sheet in half does not make it
+smaller. `--columns` sets how many figures go across.
 
 ## What it checks
 
@@ -236,6 +247,8 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |
 | `--fold` | Fold the crease pattern along its fold angles and draw the result |
 | `--arrows` | Draw the fold that takes this frame to the next one |
+| `--steps` | Lay every frame out as one numbered page of figures, at one scale |
+| `--columns N` | Figures across the page, with `--steps` (default `3`) |
 
 `check` takes `--frame` too, and one option of its own:
 
@@ -256,6 +269,7 @@ src/Senbazuru/
   Fold/Query.hs            validating a frame into geometry you can trust
   Diagram.hs               backend-independent drawing IR
   Diagram/Style.hs         the origami line conventions
+  Diagram/Layout.hs        several figures on one page, at one scale
   Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
   Origami/Folding.hs       crease pattern + fold angles -> folded form
   Origami/Layers.hs        faceOrders + a viewing direction -> a drawing order
@@ -287,20 +301,21 @@ Roughly in order. Each item is an issue, tagged
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
-0. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
-   Lay out a `file_frames` sequence as a numbered grid of steps at a single
-   shared scale. Note that every published FOLD example is single-frame, so this
-   needs fixtures we author ourselves.
-   → [envelopes](docs/notes/envelopes.md)
-1. **[Solving for layer order.](https://github.com/avalonalex/senbazuru/issues/25)**
+0. **[Solving for layer order.](https://github.com/avalonalex/senbazuru/issues/25)**
    A folded form senbazuru folded itself carries no `faceOrders`, so it is still
    drawn as a wireframe. Working one out is a constraint problem and NP-hard in
    general — the deep end.
    → [layer-ordering](docs/notes/layer-ordering.md)
-2. **Authoring tools.** FOLD output
+1. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)
+2. **[A 3D model of a folded form.](https://github.com/avalonalex/senbazuru/issues/27)**
+   The folding already computes coordinates in space; exporting them would give
+   an object you can turn over rather than one picture of it. The hard part is
+   that paper has no thickness, so a flat-folded model is entirely coplanar and
+   z-fights.
+   → [layer-ordering](docs/notes/layer-ordering.md)
 
 ## Credits and licence
 

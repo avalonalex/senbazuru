@@ -11,6 +11,7 @@ import Data.ByteString qualified as BS
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
+import Senbazuru.Diagram.Layout (defaultGrid, gridOf)
 import Senbazuru.Diagram.Style (Notation (..), arrowFor, defaultTheme)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
@@ -19,7 +20,7 @@ import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, isometric, topDown)
-import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
+import Senbazuru.Render.CreasePattern (creasePatternAuto, creasePatternFrom, withArrows)
 import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
@@ -88,6 +89,27 @@ renderStep i path = do
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage (withArrows defaultTheme topDown motions d))
+
+-- | Every frame of a file, arrows and all, laid out as one page.
+renderSteps :: FilePath -> IO Text
+renderSteps path = do
+  bytes <- BS.readFile path
+  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  let frames = allFrames f
+  figures <- traverse (figure frames) (zip [0 ..] frames)
+  case gridOf (defaultGrid (Colour "#1a1a1a")) figures of
+    Nothing -> fail "nothing to lay out"
+    Just d -> pure (renderSvg testPage {pageWidth = 400} d)
+  where
+    figure frames (i, fr) = do
+      d <- case creasePatternAuto defaultTheme (Just topDown) fr of
+        Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
+        Right d -> pure d
+      case drop (i + 1) frames of
+        [] -> pure d
+        (next : _) -> do
+          ms <- either (fail . show) pure (motionsBetween fr next)
+          pure (withArrows defaultTheme topDown ms d)
 
 -- | Deliberately not 'defaultPage': a golden file should not churn because
 -- someone retunes the default margin.
@@ -202,6 +224,18 @@ spec = do
       out `shouldSatisfy` T.isInfixOf "M 200 200 Q 203.68 198.16 204.069 198.354"
       T.count "<path" out `shouldBe` 2
 
+    it "writes a label as text, escaped" $ do
+      -- Emitted as <text> rather than as outlines, so the file stays small and
+      -- the number stays selectable -- and so the content has to be escaped,
+      -- because a label can carry a frame title straight out of a user's file.
+      let labelled =
+            diagramWithExtent
+              (Box (V2 0 0) (V2 1 1))
+              [Label (Colour "#1a1a1a") 14 (V2 0 1) "1 & <2>"]
+          out = renderSvg testPage labelled
+      out `shouldSatisfy` T.isInfixOf "<text x=\"10\" y=\"10\" font-size=\"14\""
+      out `shouldSatisfy` T.isInfixOf ">1 &amp; &lt;2&gt;</text>"
+
     it "skips a polygon with fewer than three points" $ do
       let sliver =
             diagramWithExtent
@@ -244,6 +278,14 @@ spec = do
     it "renders the first step of a sequence, arrow and all" $
       renderStep 0 "test/fixtures/quarter-fold-steps.fold"
         >>= goldenText "test/golden/quarter-fold-step-1.svg"
+
+    -- The whole pipeline: three frames, each drawn, each given the arrow for the
+    -- fold it asks for, all laid out at one scale and numbered. What comes out
+    -- is a page of instructions, and nothing in the file mentions a step number
+    -- or an arrow.
+    it "renders a whole folding sequence as one numbered page" $
+      renderSteps "test/fixtures/quarter-fold-steps.fold"
+        >>= goldenText "test/golden/quarter-fold-steps.svg"
 
     -- These two are 3D folded forms. Before the camera existed they rendered as
     -- flattened top-down projections; these goldens pin the isometric view that

@@ -152,6 +152,23 @@ renderSvg page d =
 -- unstroked (SVG's initial @stroke@ is @none@, and the group does not change
 -- it) and a polyline is unfilled.
 shapeToSvg :: Transform -> Shape -> Builder
+-- Text is emitted as <text> rather than as outlines, so the file stays small and
+-- the number stays selectable. The trade is that the exact shape depends on the
+-- viewer's fonts: `sans-serif` is a generic family every renderer resolves to
+-- something, and a golden file records the markup rather than the glyphs.
+shapeToSvg toPage (Label (Colour c) size p txt) =
+  "    <text"
+    <> attrNum "x" x
+    <> attrNum "y" y
+    <> attrNum "font-size" size
+    <> attr "font-family" "sans-serif"
+    <> attr "fill" c
+    <> ">"
+    <> TB.fromText (escapeXml txt)
+    <> "</text>\n"
+  where
+    V2 x y = applyTransform toPage p
+
 -- The arrow is the one shape whose size is not entirely in model units: the
 -- curve is, and the head is in page units. Both are in scope here and nowhere
 -- else, which is why the head is built at this point rather than upstream.
