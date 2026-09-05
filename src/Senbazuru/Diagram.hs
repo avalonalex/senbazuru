@@ -41,6 +41,7 @@ module Senbazuru.Diagram
 
     -- * Shapes
     Shape (..),
+    ArrowPath (..),
     shapePoints,
     shapesBounds,
 
@@ -80,11 +81,35 @@ data Stroke = Stroke
 solid :: Colour -> Double -> Stroke
 solid c w = Stroke c w (Dash [])
 
+-- | A curved arrow, as an origami book draws a fold.
+--
+-- Straight in the plane it is drawn on, and bowed, because the paper it stands
+-- for swings through the air rather than sliding across the page. The path is a
+-- quadratic Bézier: from 'arrowFrom', bent towards 'arrowVia', ending at
+-- 'arrowTo' where the head sits.
+--
+-- __The head's size is in page units and its position is in model units__,
+-- which is the two-unit rule of this module meeting a shape that needs both. An
+-- arrowhead measured in model units would be a speck on a sheet four hundred
+-- units across and would swallow one a single unit across; it has to be the
+-- same size on the page whatever the drawing is of. So the backend is handed
+-- the length and builds the head after projecting, which is the only place both
+-- units are in scope at once.
+data ArrowPath = ArrowPath
+  { arrowStroke :: !Stroke,
+    arrowFrom :: !V2,
+    arrowVia :: !V2,
+    arrowTo :: !V2,
+    -- | Page units: how long the head is from tip to base.
+    arrowHead :: !Double
+  }
+  deriving stock (Eq, Show)
+
 -- | A drawable primitive.
 --
--- The curved arrows of a folding step will be a further constructor, and the
--- compiler will then point at every place that has to handle them — which is
--- how 'Polygon' was added to 'Polyline'.
+-- Each was added by writing the constructor and letting @-Wincomplete-patterns@
+-- name every place that had to handle it — which is how 'Polygon' was added to
+-- 'Polyline', and 'Arrow' to both.
 --
 -- A 'Polygon' carries a fill and no stroke, which looks like an omission and is
 -- not. A face and the creases bounding it are separate things in FOLD, and they
@@ -98,6 +123,8 @@ data Shape
   | -- | A closed polygon, filled with the given colour and not stroked. The
     -- closing edge back to the first point is implied.
     Polygon !Colour ![V2]
+  | -- | A curved arrow with a solid head.
+    Arrow !ArrowPath
   deriving stock (Eq, Show)
 
 -- | The model-space points a shape passes through.
@@ -105,6 +132,10 @@ shapePoints :: Shape -> [V2]
 shapePoints = \case
   Polyline _ ps -> ps
   Polygon _ ps -> ps
+  -- The control point is included even though the curve never reaches it: it is
+  -- the far side of the bow, so a box that left it out could still clip the
+  -- arc it produces.
+  Arrow a -> [arrowFrom a, arrowVia a, arrowTo a]
 
 -- | The tightest box containing every point of every shape, or 'Nothing' if
 -- there is nothing to draw.

@@ -24,6 +24,7 @@ module Senbazuru.Render.CreasePattern
     defaultBasisFor,
     defaultNotationFor,
     creaseOrder,
+    withArrows,
   )
 where
 
@@ -31,8 +32,8 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
-import Senbazuru.Diagram (Diagram, Shape (..), diagramWithExtent)
-import Senbazuru.Diagram.Style (Notation (..), Theme (..), strokeFor)
+import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent)
+import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, strokeFor)
 import Senbazuru.Fold.Query
   ( Crease (..),
     Face (..),
@@ -49,6 +50,7 @@ import Senbazuru.Geometry (boxFromPoints)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Layers (paintOrder)
+import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
 
 -- | Render one frame as a crease pattern, seen from directly above.
@@ -228,3 +230,19 @@ creaseOrder = \case
   Border -> 2
   Cut -> 2
   Join -> 2
+
+-- | Add the arrows for a step to a drawing of the paper before it.
+--
+-- Appended, so the arrows are painted after everything else and nothing covers
+-- them: the arrow is the instruction, and a diagram whose instruction is hidden
+-- behind a fill is not a diagram.
+--
+-- The extent is left alone. It is pinned to the paper on purpose — every step
+-- of a sequence has to be drawn at one scale or the model appears to grow
+-- between figures — and an arrow that bows a little outside the sheet is a
+-- better outcome than a page that rescales because of one.
+withArrows :: Theme -> Basis -> [Motion] -> Diagram -> Diagram
+withArrows theme basis motions d =
+  d {diagramShapes = diagramShapes d <> map arrow motions}
+  where
+    arrow m = Arrow (arrowFor theme (project basis (motionFrom m)) (project basis (motionTo m)))

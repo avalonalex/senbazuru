@@ -102,8 +102,11 @@ One direction of flow, no cycles:
      |                               |    fold it: a Frame in, a folded Frame
      |                               |    out, straight back into this pipeline
      |                               +--> Senbazuru.Origami.Layers
-     |                                    which face is in front, given where
-     |                                    the viewer is standing
+     |                               |    which face is in front, given where
+     |                               |    the viewer is standing
+     |                               +--> Senbazuru.Origami.Step
+     |                                    subtract two frames: which paper moved
+     |                                    and where it went, i.e. the arrow
      |  Senbazuru.Render.CreasePattern
      |  + Senbazuru.Render.Camera    orthographic projection to the page
      |  + Senbazuru.Diagram.Style    origami line conventions
@@ -129,6 +132,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
+| `Senbazuru.Origami.Step` | Two frames → what moved between them. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
@@ -203,7 +207,9 @@ file" is useless to someone holding a 4000-line crease pattern.
 
 **Two unit systems, never mixed.** Shape *coordinates* are in model units (from
 the FOLD file). Stroke *widths and dash lengths* are in page units and are never
-scaled. A crease line is ~1pt wide whether the paper is 1 unit or 400 units
+scaled. The one shape that needs both is `Arrow`: its curve is in model units
+and its head's size is in page units, so the head is built by the backend after
+projection, which is the only place both are in scope. A crease line is ~1pt wide whether the paper is 1 unit or 400 units
 across. See the header of `Senbazuru.Diagram`.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
@@ -310,6 +316,13 @@ are not contributors can find it, and so there is only one copy to keep true.
   signs, and they cancel. Recomputing the winding there would uncancel them and
   turn the model inside out. `Senbazuru.Origami.Layers` takes the file's winding
   exactly as written, and is the only place that does.
+- **A step is a subtraction, and it compares positions.** FOLD records no
+  arrows, so `Senbazuru.Origami.Step` works out what moved between two frames.
+  It compares where the paper *is*, not `edges_foldAngle`: a frame may record no
+  angles, may record ones that disagree with its own coordinates, and turning a
+  model over moves paper without changing an angle at all.
+- **The arrow goes on the frame before the fold**, as a printed book draws it.
+  Step 2 shows the paper as it is, with the instruction for reaching step 3.
 - **A stacking is not a drawing order.** `faceOrders` says a face is on the side
   another face's normal points to, which is a fact about the paper. Whether that
   is nearer the viewer depends on which way that normal points relative to them,
@@ -330,8 +343,6 @@ Deliberate omissions, so nobody thinks they are bugs:
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.
-- No fold arrows, which is the main thing standing between this and a real
-  step-by-step diagram.
 - No FOLD *output* (`ToJSON`), which the authoring-tools goal will need.
 
 ## Workflow

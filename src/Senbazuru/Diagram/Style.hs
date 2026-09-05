@@ -69,6 +69,7 @@ module Senbazuru.Diagram.Style
     -- * Mapping fold semantics to ink
     Notation (..),
     strokeFor,
+    arrowFor,
 
     -- * Palette
     ink,
@@ -77,8 +78,9 @@ module Senbazuru.Diagram.Style
   )
 where
 
-import Senbazuru.Diagram (Colour (..), Dash (..), Stroke (..), solid)
+import Senbazuru.Diagram (ArrowPath (..), Colour (..), Dash (..), Stroke (..), solid)
 import Senbazuru.Fold.Types (Assignment (..))
+import Senbazuru.Geometry (V2 (..), normalize, (*^), (^+^))
 
 -- | Near-black, as used for the drawing itself. Not pure black: printed
 -- diagrams and screen rendering both read slightly softer ink as cleaner.
@@ -122,6 +124,14 @@ data Theme = Theme
     themeShowFlat :: !Bool,
     -- | Draw @U@ creases (direction not yet decided)?
     themeShowUnassigned :: !Bool,
+    -- | Page units. Heavier than a crease: the arrow is the instruction and
+    -- should be the first thing the eye finds.
+    themeArrowWidth :: !Double,
+    -- | Page units, tip to base.
+    themeArrowHead :: !Double,
+    -- | How far the arrow bows, as a fraction of the distance it spans. Zero
+    -- would be a straight arrow, which reads as \"slide\" rather than \"fold\".
+    themeArrowBow :: !Double,
     -- | Fill faces with this colour, or 'Nothing' to leave the sheet as a
     -- wireframe.
     --
@@ -152,6 +162,11 @@ defaultTheme =
       themeMountainDash = Dash [9, 3, 1.2, 3, 1.2, 3],
       themeShowFlat = True,
       themeShowUnassigned = True,
+      themeArrowWidth = 1.8,
+      themeArrowHead = 11,
+      -- A quarter of the span. Enough to read as a turn through the air rather
+      -- than a slide along the page, without the arc wandering off the paper.
+      themeArrowBow = 0.25,
       themePaper = Just paper
     }
 
@@ -203,3 +218,35 @@ strokeFor theme notation = \case
     crease dash = case notation of
       CreasePatternNotation -> Stroke (themeInk theme) (themeCreaseWidth theme) dash
       FoldedFormNotation -> solid (themeInk theme) (themeCreaseWidth theme)
+
+-- | The arrow that says \"this paper moves there\".
+--
+-- Bowed rather than straight, because that is what the mark means: the paper
+-- leaves the page, turns over and comes back down, and a straight arrow would
+-- say it slid. The bow is perpendicular to the motion and always to the same
+-- side, which is a convention rather than a fact — the paper really goes out of
+-- the page, and a flat drawing has to choose a side to suggest that on.
+--
+-- The head's size comes from the theme in __page units__ and travels with the
+-- arrow to the backend, which is the only place that can size it after
+-- projection. See 'Senbazuru.Diagram.ArrowPath'.
+arrowFor :: Theme -> V2 -> V2 -> ArrowPath
+arrowFor theme from to =
+  ArrowPath
+    { arrowStroke = solid (themeInk theme) (themeArrowWidth theme),
+      arrowFrom = from,
+      arrowVia = midpoint ^+^ (bow *^ sideways),
+      arrowTo = to,
+      arrowHead = themeArrowHead theme
+    }
+  where
+    midpoint = 0.5 *^ (from ^+^ to)
+    span' = to ^+^ ((-1) *^ from)
+    bow = themeArrowBow theme * magnitude
+    magnitude = case normalize span' of
+      Nothing -> 0
+      Just _ -> sqrt (dotSelf span')
+    dotSelf (V2 x y) = x * x + y * y
+    sideways = case normalize span' of
+      Nothing -> V2 0 0
+      Just (V2 x y) -> V2 (negate y) x

@@ -8,8 +8,8 @@ visual style of step-by-step origami instruction books.
 > **Status: early.** Crease patterns render correctly and are filled with paper.
 > A pattern can be *folded* along its own fold angles and the result drawn from a
 > choice of viewing angles, layer-correctly where the file says which face is in
-> front. There is also a flat-foldability checker. Folding arrows — the thing
-> that makes a diagram a *diagram* — are not built yet. See
+> front. A multi-frame file can be drawn as steps, each with the arrow showing
+> the fold it asks for. There is also a flat-foldability checker. See
 > [Roadmap](#roadmap).
 
 ## What it does today
@@ -103,6 +103,37 @@ decimal place.
 
 Layers are not ordered yet, so a folded form is drawn as a wireframe: senbazuru
 knows where every face went, not which one is in front.
+
+## What it instructs
+
+A picture of paper is not an instruction. The arrow that says *this* piece moves
+*there* is what makes a diagram teachable, and FOLD has no key for one — no
+arrow, no operation, not even a caption. What a file does have is consecutive
+frames, and between two of them the arrow is a subtraction rather than a search:
+both ends of the motion are given.
+
+`--arrows` draws it, on the frame *before* the fold, as a book does:
+
+```bash
+stack run -- render examples/quarter-fold-steps.fold --frame 0 --arrows -o step-1.svg
+stack run -- render examples/quarter-fold-steps.fold --frame 1 --arrows -o step-2.svg
+stack run -- render examples/quarter-fold-steps.fold --frame 2 -o step-3.svg
+```
+
+Step 1 is the flat sheet with an arrow swinging its left half onto the right;
+step 2 is the folded rectangle with an arrow bringing its top half down; step 3
+is the finished quarter, and carries no arrow because there is nothing left to
+do.
+
+What moves is worked out by comparing where the paper *is* in the two frames,
+not by reading fold angles — a frame may record none, or record ones that
+disagree with its own coordinates, and turning a model over moves paper without
+changing any angle. Paper that moves as one piece gets one arrow; a step that
+folds two separate flaps gets two, because a single arrow averaged between them
+would point somewhere no paper goes.
+
+Laying several steps out on one page is not built yet; for now each step is its
+own file.
 
 ## What it checks
 
@@ -204,6 +235,7 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 | `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |
 | `--fold` | Fold the crease pattern along its fold angles and draw the result |
+| `--arrows` | Draw the fold that takes this frame to the next one |
 
 `check` takes `--frame` too, and one option of its own:
 
@@ -226,6 +258,8 @@ src/Senbazuru/
   Diagram/Style.hs         the origami line conventions
   Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
   Origami/Folding.hs       crease pattern + fold angles -> folded form
+  Origami/Layers.hs        faceOrders + a viewing direction -> a drawing order
+  Origami/Step.hs          two frames -> what moved between them
   Render/Camera.hs         orthographic projection, 3D → the page
   Render/CreasePattern.hs  FOLD frame → Diagram
   Render/Svg.hs            Diagram → SVG text
@@ -253,24 +287,17 @@ Roughly in order. Each item is an issue, tagged
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
-0. **[Fold arrows.](https://github.com/avalonalex/senbazuru/issues/6)** A crease
-   pattern is not yet instructions; the arrow showing *which way* the paper
-   moves is what makes a diagram teachable. FOLD stores no arrows, so they are
-   inferred by diffing consecutive frames. Needs a convex hull, and therefore
-   needs to care about floating point.
-   → [convex-hull](docs/notes/convex-hull.md),
-   [robust-predicates](docs/notes/robust-predicates.md)
-1. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
+0. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
    Lay out a `file_frames` sequence as a numbered grid of steps at a single
    shared scale. Note that every published FOLD example is single-frame, so this
    needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-2. **[Solving for layer order.](https://github.com/avalonalex/senbazuru/issues/25)**
+1. **[Solving for layer order.](https://github.com/avalonalex/senbazuru/issues/25)**
    A folded form senbazuru folded itself carries no `faceOrders`, so it is still
    drawn as a wireframe. Working one out is a constraint problem and NP-hard in
    general — the deep end.
    → [layer-ordering](docs/notes/layer-ordering.md)
-3. **Authoring tools.** FOLD output
+2. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)

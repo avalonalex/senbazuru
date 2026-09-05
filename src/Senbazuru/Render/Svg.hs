@@ -38,6 +38,7 @@ module Senbazuru.Render.Svg
 where
 
 import Data.List (dropWhileEnd)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -45,13 +46,24 @@ import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as TB
 import Numeric (showFFloat)
 import Senbazuru.Diagram
-  ( Colour (..),
+  ( ArrowPath (..),
+    Colour (..),
     Dash (..),
     Diagram (..),
     Shape (..),
     Stroke (..),
   )
-import Senbazuru.Geometry (Box (..), Transform, V2 (..), applyTransform, fitBox)
+import Senbazuru.Geometry
+  ( Box (..),
+    Transform,
+    V2 (..),
+    applyTransform,
+    fitBox,
+    normalize,
+    (*^),
+    (^+^),
+    (^-^),
+  )
 
 -- | The canvas the diagram is drawn onto. All values are in page units.
 data Page = Page
@@ -138,6 +150,38 @@ renderSvg page d =
 -- unstroked (SVG's initial @stroke@ is @none@, and the group does not change
 -- it) and a polyline is unfilled.
 shapeToSvg :: Transform -> Shape -> Builder
+-- The arrow is the one shape whose size is not entirely in model units: the
+-- curve is, and the head is in page units. Both are in scope here and nowhere
+-- else, which is why the head is built at this point rather than upstream.
+shapeToSvg toPage (Arrow a) =
+  curve <> head'
+  where
+    from = applyTransform toPage (arrowFrom a)
+    via = applyTransform toPage (arrowVia a)
+    -- The head is drawn as a filled triangle sitting on the end of the curve,
+    -- and the curve is pulled back to the head's base so that a thick stroke
+    -- cannot poke out through the tip.
+    tip = applyTransform toPage (arrowTo a)
+    along = fromMaybe (V2 1 0) (normalize (tip ^-^ via))
+    across = perpendicular along
+    base = tip ^-^ (arrowHead a *^ along)
+    half = 0.4 * arrowHead a
+
+    curve =
+      "    <path"
+        <> attr "d" (quadratic from via base)
+        <> attr "stroke" (colourText (strokeColour (arrowStroke a)))
+        <> attrNum "stroke-width" (strokeWidth (arrowStroke a))
+        <> "/>\n"
+
+    head' =
+      "    <path"
+        <> attr
+          "d"
+          ( pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z"
+          )
+        <> attr "fill" (colourText (strokeColour (arrowStroke a)))
+        <> "/>\n"
 shapeToSvg toPage (Polygon (Colour c) pts)
   -- Two points enclose no area, so a fill would paint nothing. 'frameFaces'
   -- rejects such a face outright; this guard is for diagrams built by hand.
@@ -161,6 +205,19 @@ shapeToSvg toPage (Polyline stroke pts)
   where
     dashAttr (Dash []) = mempty
     dashAttr (Dash ds) = attr "stroke-dasharray" (T.unwords (map formatNumber ds))
+
+-- | A quadratic Bézier: move to the first point, curve through the second to
+-- the third.
+quadratic :: V2 -> V2 -> V2 -> Text
+quadratic a b c =
+  T.concat ["M ", point a, " Q ", point b, " ", point c]
+  where
+    point (V2 x y) = formatNumber x <> " " <> formatNumber y
+
+-- | A quarter turn in the page's plane, for putting an arrowhead's base corners
+-- either side of its axis.
+perpendicular :: V2 -> V2
+perpendicular (V2 x y) = V2 (negate y) x
 
 -- | An SVG path closed with @Z@, so the fill has a boundary all the way round.
 closedPathData :: [V2] -> Text

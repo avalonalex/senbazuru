@@ -121,8 +121,13 @@ Worth stating plainly, because the absences are easy to assume away.
 
 - **No arrows, operations, or step captions.** There is no key anywhere in the
   spec describing the *transition* between two frames. A multi-frame file is a
-  flipbook of states, not an instruction manual. Arrows must be inferred by
-  diffing consecutive frames for creases whose `edges_foldAngle` changed.
+  flipbook of states, not an instruction manual, so an arrow has to be inferred
+  by diffing consecutive frames — which senbazuru does, in
+  `Senbazuru.Origami.Step`. Note it compares **positions** rather than
+  `edges_foldAngle`: a frame may record no angles, may record angles that
+  disagree with its own coordinates, and a step may move paper without changing
+  an angle at all by turning the model over. The coordinates are what the
+  reader is looking at.
 - **No folding sequence semantics beyond array order.** `file_classes:
   ["diagrams"]` declares intent — *"a sequence of frames representing folding
   steps"* — and `file_frames[i]` is frame `i+1`. That is the whole of it. Nor
@@ -143,5 +148,12 @@ Multi-frame files do exist elsewhere, including one with 33 frames, but the
 substantial collections are GPL-licensed and therefore off-limits to this
 MIT-licensed repo — see the third-party rules in `CLAUDE.md`. They are useful
 for *checking understanding*, not for copying.
+
+So `examples/quarter-fold-steps.fold` is ours, and it is the only multi-frame
+file here. Its folded coordinates were computed by senbazuru's own folding
+rather than typed out, which is how a sequence can be authored at all without a
+FOLD writer: fold the same crease pattern to each step's angles and record where
+the paper landed. Each frame repeats the whole graph, because `frame_inherit` is
+decoded and not resolved.
 
 So multi-frame support needs fixtures we author ourselves.
