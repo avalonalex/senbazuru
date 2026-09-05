@@ -6,9 +6,9 @@ visual style of step-by-step origami instruction books.
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
 > **Status: early.** Crease patterns render correctly, and folded forms render
-> as wireframes from a choice of viewing angles. Folding arrows, face filling and
-> layer-correct shading — the things that make a diagram a *diagram* — are not
-> built yet. See [Roadmap](#roadmap).
+> as wireframes from a choice of viewing angles. There is also a flat-foldability
+> checker. Folding arrows, face filling and layer-correct shading — the things
+> that make a diagram a *diagram* — are not built yet. See [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -33,6 +33,46 @@ stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
 
 The bare `--` matters: without it Stack tries to interpret `--view` as one of its
 own options.
+
+## What it checks
+
+`senbazuru check` applies two classical theorems to every *interior* vertex of a
+crease pattern — a vertex with paper all the way round it, as opposed to one on
+the edge of the sheet, where neither theorem applies.
+
+*Maekawa's theorem* says the number of mountain creases at such a vertex minus
+the number of valley creases is always ±2. It follows that the total is even, so
+three creases meeting at a point can never fold flat, whatever their angles:
+
+```console
+$ senbazuru check examples/three-crease.fold
+examples/three-crease.fold, frame 0
+  vertex 5: 3 creases meet here, an odd number, which never folds flat (Maekawa)
+  checked 1 interior vertex; skipped 5 on the border
+  1 violation
+```
+
+*Kawasaki's theorem* says that walking round the vertex and adding the angles
+between consecutive creases with alternating signs gives zero. A square folded
+into quarters satisfies both:
+
+```console
+$ senbazuru check examples/quarter-fold.fold
+examples/quarter-fold.fold, frame 0
+  checked 1 interior vertex; skipped 8 on the border
+  no violations found
+```
+
+It says *no violations found* rather than *flat-foldable*, and that wording is
+load-bearing. Both theorems are necessary, not sufficient: they are local, so a
+sheet whose every vertex passes can still be impossible, and even at one vertex
+they miss a third condition on which crease is a mountain and which a valley.
+`examples/big-little-big.fold` passes this check and cannot be folded — see
+[big-little-big.md](docs/notes/big-little-big.md). A violation means the pattern
+is definitely wrong; a clean run means nothing was caught.
+
+The command exits non-zero when it finds a violation, so it drops into a build
+or a hook without anyone grepping the output.
 
 There is also a summary command for poking at unfamiliar files:
 
@@ -70,6 +110,7 @@ the compiler, delete that line.
 
 ```
 senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
+senbazuru check FILE.fold [--frame N] [--tolerance DEG]
 senbazuru info FILE.fold
 ```
 
@@ -91,6 +132,12 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 
+`check` takes `--frame` too, and one option of its own:
+
+| Option | Meaning |
+| --- | --- |
+| `--tolerance DEG` | How far Kawasaki's alternating sum may sit from zero and still pass (default `0.000573`, which is 1e-5 radians). Raise it for files whose coordinates are heavily rounded |
+
 ## Project layout
 
 ```
@@ -103,6 +150,7 @@ src/Senbazuru/
   Fold/Query.hs            validating a frame into geometry you can trust
   Diagram.hs               backend-independent drawing IR
   Diagram/Style.hs         the origami line conventions
+  Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
   Render/Camera.hs         orthographic projection, 3D → the page
   Render/CreasePattern.hs  FOLD frame → Diagram
   Render/Svg.hs            Diagram → SVG text
@@ -130,28 +178,23 @@ Roughly in order. Each item is an issue, tagged
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
-0. **[A flat-foldability checker.](https://github.com/avalonalex/senbazuru/issues/14)**
-   Maekawa's and Kawasaki's theorems decide whether each vertex can fold flat.
-   Small, needs no new geometry, and it makes senbazuru understand origami
-   rather than only draw it.
-   → [maekawa](docs/notes/maekawa.md), [kawasaki](docs/notes/kawasaki.md)
-1. **[Fold arrows.](https://github.com/avalonalex/senbazuru/issues/6)** A crease
+0. **[Fold arrows.](https://github.com/avalonalex/senbazuru/issues/6)** A crease
    pattern is not yet instructions; the arrow showing *which way* the paper
    moves is what makes a diagram teachable. FOLD stores no arrows, so they are
    inferred by diffing consecutive frames. Needs a convex hull, and therefore
    needs to care about floating point.
    → [convex-hull](docs/notes/convex-hull.md),
    [robust-predicates](docs/notes/robust-predicates.md)
-2. **[Faces.](https://github.com/avalonalex/senbazuru/issues/15)** Decode
+1. **[Faces.](https://github.com/avalonalex/senbazuru/issues/15)** Decode
    `faces_vertices` into filled polygons, so a sheet reads as paper rather than
    as a wireframe.
    → [half-edge](docs/notes/half-edge.md)
-3. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
+2. **[Multi-frame sequences.](https://github.com/avalonalex/senbazuru/issues/16)**
    Lay out a `file_frames` sequence as a numbered grid of steps at a single
    shared scale. Note that every published FOLD example is single-frame, so this
    needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-4. **Folded forms.** Fold a crease pattern into 3D
+3. **Folded forms.** Fold a crease pattern into 3D
    ([#17](https://github.com/avalonalex/senbazuru/issues/17)), then render it
    layer-correctly ([#18](https://github.com/avalonalex/senbazuru/issues/18)).
    The folding itself is cheap; the layer ordering is where the real
@@ -159,7 +202,7 @@ issues are the detail.
    → [folding-by-transforms](docs/notes/folding-by-transforms.md),
    [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
    [layer-ordering](docs/notes/layer-ordering.md)
-5. **Authoring tools.** FOLD output
+4. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)

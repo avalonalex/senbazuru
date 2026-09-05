@@ -17,6 +17,12 @@ For the ideas rather than the definitions, start with
 | **Valley fold** (`V`) | A crease that sinks away from the viewer. Drawn dashed. |
 | **Fold angle** | The dihedral angle at a crease, in degrees, from −180 to 180. Negative is a mountain, positive a valley, and ±180 means folded flat back on itself. |
 | **Flat-folded** | Folded so the whole model lies in a plane. Every fold angle is exactly ±180°. |
+| **Flat-foldable** | Of a crease pattern: it *can* be folded flat along exactly those creases. Cheap to rule out one vertex at a time, [NP-hard](notes/flat-foldability-is-hard.md) to decide for a whole sheet. |
+| **Sector** | The wedge of paper between two creases that are next to each other around a vertex. Kawasaki's theorem is a statement about sector angles. |
+| **Star** | Every crease meeting one vertex, in rotational order, with the sectors between them. What both flat-foldability theorems are computed from. See `Senbazuru.Origami.FlatFold`. |
+| **Maekawa's theorem** | At a flat-foldable interior vertex, mountains minus valleys is ±2. See [notes/maekawa.md](notes/maekawa.md). |
+| **Kawasaki's theorem** | A vertex's angles admit a flat fold exactly when its sectors alternate to zero. See [notes/kawasaki.md](notes/kawasaki.md). |
+| **Big-Little-Big lemma** | A sector strictly smaller than both its neighbours is bounded by one mountain and one valley. The condition on the *arrangement* that the other two theorems miss. See [notes/big-little-big.md](notes/big-little-big.md). |
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
 | **Yoshizawa–Randlett** | The standard diagram notation: solid paper edges, dashed valleys, dash-dot-dot mountains. The dashes mark folds still to be made, so a folded form is drawn with solid edges only. See `Senbazuru.Diagram.Style`. |

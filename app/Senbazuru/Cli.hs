@@ -10,15 +10,18 @@ module Senbazuru.Cli
   ( runCli,
     Command (..),
     RenderOptions (..),
+    CheckOptions (..),
     commandParser,
   )
 where
 
+import Control.Monad (unless)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Version (makeVersion, showVersion)
+import Numeric (showFFloat)
 import Options.Applicative
 import Senbazuru.Diagram (Colour (..))
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
@@ -31,6 +34,16 @@ import Senbazuru.Fold.Types
     allFrames,
     assignmentCode,
   )
+import Senbazuru.Origami.FlatFold
+  ( Report (..),
+    Skip (..),
+    Tolerance (..),
+    checkFrame,
+    defaultTolerance,
+    renderCheckError,
+    renderViolation,
+    reportViolations,
+  )
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (creasePatternAuto)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
@@ -41,6 +54,18 @@ import System.IO (hPutStrLn, stderr)
 data Command
   = Render RenderOptions
   | Info FilePath
+  | Check CheckOptions
+  deriving stock (Eq, Show)
+
+-- | Options for the @check@ subcommand.
+data CheckOptions = CheckOptions
+  { coInput :: FilePath,
+    coFrame :: Int,
+    -- | Kawasaki's alternating sum counts as zero within this many degrees.
+    -- Degrees rather than radians because that is the unit the rest of the
+    -- origami world states angles in, and the unit the message prints.
+    coTolerance :: Double
+  }
   deriving stock (Eq, Show)
 
 -- | Options for the @render@ subcommand.
@@ -87,7 +112,42 @@ commandParser =
         <> command
           "info"
           (info (Info <$> inputArg) (progDesc "Summarise a FOLD file"))
+        <> command
+          "check"
+          ( info
+              (Check <$> checkOptions)
+              (progDesc "Test every interior vertex for flat-foldability")
+          )
     )
+
+checkOptions :: Parser CheckOptions
+checkOptions =
+  CheckOptions
+    <$> inputArg
+    <*> option
+      auto
+      ( long "frame"
+          <> metavar "N"
+          <> value 0
+          <> showDefault
+          <> help "Which frame to check (0 is the key frame)"
+      )
+    <*> option
+      auto
+      ( long "tolerance"
+          <> metavar "DEG"
+          <> value (degreesOf defaultTolerance)
+          -- Spelled out rather than shown, because the default is a round
+          -- number of radians and Haskell's Show would print its value in
+          -- degrees as 5.729577951308233e-4.
+          <> showDefaultWith (\d -> showFFloat (Just 6) d "")
+          <> help
+            ( "How far Kawasaki's alternating sum may sit from zero and still"
+                <> " pass. Raise it for files whose coordinates are heavily rounded"
+            )
+      )
+  where
+    degreesOf t = toleranceRadians t * 180 / pi
 
 inputArg :: Parser FilePath
 inputArg = argument str (metavar "FILE.fold" <> help "Input FOLD file")
@@ -146,6 +206,7 @@ run :: Command -> IO ()
 run = \case
   Info path -> withFoldFile path (TIO.putStr . summarise path)
   Render o -> withFoldFile (roInput o) (renderFile o)
+  Check o -> withFoldFile (coInput o) (checkFile o)
 
 -- | Load a file or abort with a message on stderr.
 withFoldFile :: FilePath -> (FoldFile -> IO ()) -> IO ()
@@ -154,16 +215,20 @@ withFoldFile path k =
     Left err -> die (renderLoadError err)
     Right f -> k f
 
+-- | The nth frame, or abort saying how many the file actually has.
+frameAt :: Int -> FoldFile -> IO Frame
+frameAt i f = case drop i (allFrames f) of
+  (fr : _) -> pure fr
+  [] ->
+    die $
+      "no frame "
+        <> tshow i
+        <> "; this file has "
+        <> tshow (length (allFrames f))
+
 renderFile :: RenderOptions -> FoldFile -> IO ()
 renderFile o f = do
-  frame <- case drop (roFrame o) (allFrames f) of
-    (fr : _) -> pure fr
-    [] ->
-      die $
-        "no frame "
-          <> tshow (roFrame o)
-          <> "; this file has "
-          <> tshow (length (allFrames f))
+  frame <- frameAt (roFrame o) f
   let rendered = creasePatternAuto theme (roView o) frame
   case rendered of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
@@ -184,6 +249,56 @@ renderFile o f = do
         }
 
     emit = maybe TIO.putStr TIO.writeFile (roOutput o)
+
+checkFile :: CheckOptions -> FoldFile -> IO ()
+checkFile o f = do
+  frame <- frameAt (coFrame o) f
+  case checkFrame (Tolerance (coTolerance o * pi / 180)) frame of
+    Left err ->
+      die ("cannot check " <> T.pack (coInput o) <> ": " <> renderCheckError err)
+    Right report -> do
+      TIO.putStr (formatReport (coInput o) (coFrame o) report)
+      -- A non-zero exit so `senbazuru check` composes into a build or a
+      -- pre-commit hook without anyone having to grep the output.
+      unless (null (reportViolations report)) exitFailure
+
+-- | The report as text.
+--
+-- Deliberately says \"no violations found\" rather than \"flat-foldable\". The
+-- checks are local and necessary rather than sufficient, and a tool that
+-- overstates them teaches the wrong thing.
+formatReport :: FilePath -> Int -> Report -> Text
+formatReport path frameIx report =
+  T.unlines $
+    (T.pack path <> ", frame " <> tshow frameIx)
+      : map ("  " <>) (violationLines <> summaryLines)
+  where
+    violations = reportViolations report
+    violationLines = [renderViolation v x | (v, x) <- violations]
+
+    summaryLines =
+      [ "checked "
+          <> plural (length (reportChecked report)) "interior vertex" "interior vertices"
+          <> skippedNote,
+        if null violations
+          then "no violations found"
+          else plural (length violations) "violation" "violations"
+      ]
+
+    skippedNote = case (countSkips OnBorder, countSkips NoCreases) of
+      (0, 0) -> ""
+      (border, 0) -> "; skipped " <> tshow border <> " on the border"
+      (0, bare) -> "; skipped " <> tshow bare <> " with no creases"
+      (border, bare) ->
+        "; skipped "
+          <> tshow border
+          <> " on the border and "
+          <> tshow bare
+          <> " with no creases"
+
+    countSkips s = length [() | (_, s') <- reportSkipped report, s' == s]
+
+    plural n one several = tshow n <> " " <> (if n == 1 then one else several)
 
 -- | A short human summary of a file, for poking at unfamiliar FOLD data.
 summarise :: FilePath -> FoldFile -> Text

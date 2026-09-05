@@ -14,5 +14,13 @@ format:
 | `simple.fold`       | 3D `foldedForm` coordinates, `faceOrders`, mountain and valley edges |
 | `squaretwist.fold`  | A larger rigidly-folded 3D model                                |
 
-`unit-square.fold` is hand-written: the smallest file that still has a border,
-a mountain fold and a valley fold.
+The rest are hand-written here, so they carry no third-party design and no
+licence but this repository's. Between them they are what `senbazuru check` is
+demonstrated on:
+
+| File                   | What it is                                                     |
+| ---------------------- | -------------------------------------------------------------- |
+| `unit-square.fold`     | The smallest file with a border, a mountain fold and a valley fold. Note its three interior creases cross at the centre without a vertex there, so it has no interior vertex to check |
+| `quarter-fold.fold`    | A square folded into quarters: one interior vertex, four creases, and the lopsided three-mountains-to-one-valley that Maekawa's theorem forces |
+| `three-crease.fold`    | Three creases meeting at a point, which cannot fold flat whatever the angles. `check` reports it |
+| `big-little-big.fold`  | A vertex that satisfies both theorems `check` knows and still cannot fold flat, for the reason in [big-little-big.md](../docs/notes/big-little-big.md). `check` passes it, which is the point |
