@@ -37,49 +37,33 @@
 -- with backwards windings has backwards normals and backwards signs, and the
 -- two cancel. Recomputing the winding would uncancel them and invert the model.
 --
--- == A partial order is the expected answer
+-- == A partial order is the expected answer, and depth settles the rest
 --
 -- A file need not order every pair, and a missing pair is not missing
 -- information: @0@, or no entry at all, is how FOLD says two faces do not
--- overlap in their interiors, and faces that do not overlap cannot obscure one
--- another whichever way round they are drawn. So the constraints are sorted
--- topologically and anything left unconstrained keeps its file order.
+-- overlap __in their interiors__.
+--
+-- That is a statement about the paper, and it does not finish the drawing. Two
+-- faces in different planes need no ordering — they genuinely do not overlap —
+-- and can still cover the same patch of page once projected, one simply being
+-- nearer the camera. So the constraints are sorted topologically, and wherever
+-- the sort has a free choice it takes the face furthest from the viewer first.
+-- Depth of the centroid is a rough measure and famously wrong for faces that
+-- interpenetrate, but the cases a file has an opinion about are exactly the
+-- cases it has already constrained, and file order is not a measure of anything
+-- at all.
 module Senbazuru.Origami.Layers
   ( paintOrder,
-    LayerError (..),
-    renderLayerError,
   )
 where
 
 import Data.IntMap.Strict qualified as IM
-import Data.List (insert, sortOn)
-import Data.Text (Text)
-import Data.Text qualified as T
-import Senbazuru.Fold.Query (Face (..))
+import Data.List (sortOn)
+import Data.Set qualified as S
+import Senbazuru.Fold.Query (Face (..), FoldError (..))
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Stacking (..))
 import Senbazuru.Geometry.V3 (V3, polygonNormal)
-import Senbazuru.Geometry.VectorSpace (dot)
-
--- | Everything that stops a stacking being turned into a drawing order.
-data LayerError
-  = -- | A @faceOrders@ entry names a face the frame does not have. Validation
-    -- proper is 'Senbazuru.Fold.Query.frameFaceOrders'; this is the same check
-    -- from the other side, so that a caller cannot pass a mismatched pair of
-    -- lists and get a quietly wrong picture.
-    UnknownFace !FaceId
-  | -- | The constraints run in a circle: @f@ in front of @g@ in front of @f@.
-    -- No stack of paper does that, so the file is describing something
-    -- impossible. Carries one face on the cycle.
-    CyclicStacking !FaceId
-  deriving stock (Eq, Show)
-
-renderLayerError :: LayerError -> Text
-renderLayerError = \case
-  UnknownFace (FaceId f) -> "faceOrders refers to face " <> tshow f <> ", which does not exist"
-  CyclicStacking (FaceId f) ->
-    "the faceOrders run in a circle through face "
-      <> tshow f
-      <> "; no stack of paper can be in front of itself"
+import Senbazuru.Geometry.VectorSpace
 
 -- | The faces in the order to draw them, furthest from the viewer first.
 --
@@ -87,63 +71,111 @@ renderLayerError = \case
 -- model towards whoever is looking — for a camera it is the opposite of the
 -- direction of view.
 --
--- Every face comes back exactly once, ordered ones where the stacking puts them
--- and the rest in file order.
-paintOrder :: V3 -> [Face] -> [FaceOrder] -> Either LayerError [FaceId]
+-- Every face comes back exactly once. Errors are the frame's own type, because
+-- an ordering that cannot be drawn is a fact about the file rather than about
+-- the drawing.
+paintOrder :: V3 -> [Face] -> [FaceOrder] -> Either FoldError [FaceId]
 paintOrder towardsViewer faces orders = do
   constraints <- concat <$> traverse drawnBefore orders
-  map FaceId <$> topologically ids constraints
+  -- Deduplicated before counting anything. A file may say the same thing twice,
+  -- and the two orderings [f, g, +1] and [g, f, -1] are one constraint written
+  -- two ways -- both legal, and both arriving here as the same pair. Kahn's
+  -- algorithm counts edges, so a repeated edge is decremented once per copy but
+  -- frees its target once per copy too: the face comes out of the sort more than
+  -- once, and the extra copies can pad the output enough that a genuine cycle
+  -- slips past the "did everything come out?" check with the cyclic faces
+  -- quietly missing from the drawing.
+  map FaceId <$> topologically ordering (S.toList (S.fromList constraints))
   where
-    ids = map (unFaceId . faceId) faces
+    -- The order to prefer when the sort is free to choose: furthest away first.
+    --
+    -- How far a point reaches towards the viewer is exactly the negative of its
+    -- depth, so furthest-first is this ascending, with no negation anywhere. The
+    -- sign is easy to talk yourself into twice; the test that pins it puts two
+    -- faces at different depths and asserts which is drawn first.
+    --
+    -- Face id breaks the remaining ties, so coplanar faces come out in file
+    -- order and the output is reproducible.
+    ordering =
+      map snd
+        . sortOn fst
+        $ [((dot (centroid f) towardsViewer, unFaceId (faceId f)), unFaceId (faceId f)) | f <- faces]
+
+    centroid f = case faceCorners f of
+      [] -> zeroV
+      cs -> (1 / fromIntegral (length cs)) *^ foldr (^+^) zeroV cs
+
+    zeroV = 0 *^ towardsViewer
 
     normals =
       IM.fromList [(unFaceId (faceId f), polygonNormal (faceCorners f)) | f <- faces]
+
+    normalOf fid = case IM.lookup (unFaceId fid) normals of
+      Nothing -> Left (FaceOrderOutOfRange fid (length faces))
+      Just n -> Right n
 
     -- One entry becomes at most one "draw this before that" pair.
     drawnBefore o = case orderStacking o of
       Unordered -> Right []
       stacking -> do
-        normal <- case IM.lookup (unFaceId (orderRelativeTo o)) normals of
-          Just n -> Right n
-          Nothing -> Left (UnknownFace (orderRelativeTo o))
-        _ <- case IM.lookup (unFaceId (orderFace o)) normals of
-          Just n -> Right n
-          Nothing -> Left (UnknownFace (orderFace o))
+        _ <- normalOf (orderFace o)
+        normal <- normalOf (orderRelativeTo o)
         let facingUs = dot normal towardsViewer
+            -- Compared against the size of the vectors involved, not against
+            -- zero. polygonNormal returns twice the area, so a large face
+            -- almost edge on still has a dot product far from zero, and a small
+            -- one squarely facing the viewer has a small one. An absolute test
+            -- would call the second edge on and let the first be decided by
+            -- rounding.
+            negligible = 1e-9 * norm normal * norm towardsViewer
             f = unFaceId (orderFace o)
             g = unFaceId (orderRelativeTo o)
-        pure $ case compare facingUs 0 of
-          -- Edge on. The relation still holds in the model, but along the line
-          -- of sight it separates nothing, so it constrains no drawing order.
-          -- Silently dropping it is right; treating it as either order would be
-          -- inventing a fact.
-          EQ -> []
-          GT -> [if stacking == Above then (g, f) else (f, g)]
-          LT -> [if stacking == Above then (f, g) else (g, f)]
+        if norm normal <= 0
+          then Left (FaceWithoutNormal (orderRelativeTo o))
+          else
+            pure $
+              if abs facingUs <= negligible
+                then -- Edge on. The relation still holds in the model, but along
+                -- the line of sight it separates nothing, so it constrains no
+                -- drawing order. Inventing one from it would be making
+                -- something up.
+                  []
+                else
+                  if (facingUs > 0) == (stacking == Above)
+                    then [(g, f)]
+                    else [(f, g)]
 
 -- | Kahn's algorithm: repeatedly take a face nothing has to be drawn after.
 --
--- The ready set is kept sorted so that faces nothing constrains come out in
--- file order and the output is reproducible, which golden tests need.
-topologically :: [Int] -> [(Int, Int)] -> Either LayerError [Int]
-topologically ids constraints = go (foldr insert [] (filter ((== 0) . indegree) ids)) indegrees []
+-- The ready set is kept in the caller's preferred order, so faces the
+-- constraints leave free come out furthest-first rather than in whatever order
+-- the graph walk reached them.
+topologically :: [Int] -> [(Int, Int)] -> Either FoldError [Int]
+topologically preferred constraints = go (filter ((== 0) . indegree) preferred) indegrees []
   where
+    rank = IM.fromList (zip preferred [0 :: Int ..])
     successors = IM.fromListWith (<>) [(before, [after]) | (before, after) <- constraints]
-    indegrees = IM.fromListWith (+) ([(i, 0 :: Int) | i <- ids] <> [(after, 1) | (_, after) <- constraints])
+    indegrees =
+      IM.fromListWith
+        (+)
+        ([(i, 0 :: Int) | i <- preferred] <> [(after, 1) | (_, after) <- constraints])
     indegree i = IM.findWithDefault 0 i indegrees
 
+    insertReady i = insertBy (IM.findWithDefault maxBound i rank) i
+    insertBy _ i [] = [i]
+    insertBy r i (j : js)
+      | r <= IM.findWithDefault maxBound j rank = i : j : js
+      | otherwise = j : insertBy r i js
+
     go [] remaining done
-      | length done == length ids = Right (reverse done)
-      -- Anything left has an incoming edge that never cleared, so it is on a
-      -- cycle. Naming the lowest is arbitrary but stable.
+      | length done == length preferred = Right (reverse done)
+      -- Anything left still has an incoming edge, so it is on a cycle. Naming
+      -- the lowest is arbitrary but stable.
       | otherwise = case sortOn id [i | (i, n) <- IM.toList remaining, n > 0] of
-          (stuck : _) -> Left (CyclicStacking (FaceId stuck))
+          (stuck : _) -> Left (ImpossibleStacking (FaceId stuck))
           [] -> Right (reverse done)
     go (next : ready) remaining done =
       let after = IM.findWithDefault [] next successors
           remaining' = foldr (IM.adjust (subtract 1)) remaining after
           freed = [i | i <- after, IM.findWithDefault 1 i remaining' == 0]
-       in go (foldr insert ready freed) remaining' (next : done)
-
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
+       in go (foldr insertReady ready freed) remaining' (next : done)

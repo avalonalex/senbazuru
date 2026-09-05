@@ -8,7 +8,7 @@
 -- viewing direction and the whole stack must reverse with it.
 module Senbazuru.Origami.LayersSpec (spec) where
 
-import Senbazuru.Fold.Query (Face (..))
+import Senbazuru.Fold.Query (Face (..), FoldError (..))
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Layers
@@ -66,11 +66,25 @@ spec = do
       paintOrder fromAbove [facingUp 0 0, facingUp 1 0] [below 1 0]
         `shouldBe` Right (ids [1, 0])
 
-  describe "what it leaves alone" $ do
-    it "keeps file order where nothing is ordered" $
-      -- A file that orders no pair is not withholding information. Faces that
-      -- do not overlap cannot obscure each other, and that is what FOLD says by
-      -- leaving the pair out.
+  describe "faces the file does not order" $ do
+    it "draws the furthest one first" $ do
+      -- Two faces in different planes need no faceOrders entry -- they do not
+      -- overlap, so neither is above the other -- and can still cover the same
+      -- patch of page once projected. File order says nothing about which is
+      -- nearer; depth does.
+      paintOrder fromAbove [facingUp 0 5, facingUp 1 0] []
+        `shouldBe` Right (ids [1, 0])
+      paintOrder fromAbove [facingUp 0 0, facingUp 1 5] []
+        `shouldBe` Right (ids [0, 1])
+
+    it "draws it last from the other side" $
+      -- The same two faces, the other side of the model.
+      paintOrder fromBelow [facingUp 0 5, facingUp 1 0] []
+        `shouldBe` Right (ids [0, 1])
+
+    it "keeps file order between faces at the same depth" $
+      -- Coplanar faces have nothing to choose between them, so the answer has to
+      -- be reproducible rather than merely arbitrary: goldens depend on it.
       paintOrder fromAbove [facingUp 0 0, facingUp 1 0, facingUp 2 0] []
         `shouldBe` Right (ids [0, 1, 2])
 
@@ -93,11 +107,40 @@ spec = do
       paintOrder fromAbove faces [above 2 0, above 1 0] `shouldBe` Right (ids [0, 1, 2])
       paintOrder fromAbove faces [below 2 0, below 1 0] `shouldBe` Right (ids [1, 2, 0])
 
+  describe "orderings a file may write more than one way" $ do
+    it "says the same thing twice without drawing anything twice" $
+      -- Kahn's algorithm counts edges, so a repeated constraint decrements its
+      -- target's count twice and frees it twice: the face comes out of the sort
+      -- more than once, and the extra copies pad the output enough that a real
+      -- cycle can slip past the "did everything come out?" check.
+      paintOrder fromAbove [facingUp 0 0, facingUp 1 0] [above 1 0, above 1 0]
+        `shouldBe` Right (ids [0, 1])
+
+    it "treats above and below written the other way round as one constraint" $
+      -- [f, g, +1] and [g, f, -1] say the same thing, and a file may carry both.
+      paintOrder fromAbove [facingUp 0 0, facingUp 1 0] [above 1 0, below 0 1]
+        `shouldBe` Right (ids [0, 1])
+
+    it "still finds a cycle behind a pile of duplicates" $
+      paintOrder
+        fromAbove
+        [facingUp i 0 | i <- [0 .. 4]]
+        [above 1 0, above 1 0, above 1 0, above 4 3, above 3 4]
+        `shouldBe` Left (ImpossibleStacking (FaceId 3))
+
   describe "orderings that cannot be drawn" $ do
     it "refuses a stack that is in front of itself" $
       paintOrder fromAbove [facingUp 0 0, facingUp 1 0, facingUp 2 0] [above 1 0, above 2 1, above 0 2]
-        `shouldBe` Left (CyclicStacking (FaceId 0))
+        `shouldBe` Left (ImpossibleStacking (FaceId 0))
 
     it "refuses an order naming a face that is not there" $
       paintOrder fromAbove [facingUp 0 0] [above 1 0]
-        `shouldBe` Left (UnknownFace (FaceId 1))
+        `shouldBe` Left (FaceOrderOutOfRange (FaceId 1) 1)
+
+    it "refuses to measure against a face with no area" $ do
+      -- Its normal is the zero vector, so "above" and "below" have no direction
+      -- to mean anything in. Treating that as edge-on would silently discard a
+      -- constraint the file actually stated.
+      let sliver = (facingUp 0 0) {faceCorners = [V3 0 0 0, V3 1 1 0, V3 2 2 0]}
+      paintOrder fromAbove [sliver, facingUp 1 0] [above 1 0]
+        `shouldBe` Left (FaceWithoutNormal (FaceId 0))

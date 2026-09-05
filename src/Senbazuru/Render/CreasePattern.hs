@@ -27,6 +27,7 @@ module Senbazuru.Render.CreasePattern
   )
 where
 
+import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
@@ -43,11 +44,11 @@ import Senbazuru.Fold.Query
     frameKind,
     frameVertices,
   )
-import Senbazuru.Fold.Types (Assignment (..), Frame (..))
+import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
 import Senbazuru.Geometry (boxFromPoints)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
-import Senbazuru.Origami.Layers (LayerError (..), paintOrder)
+import Senbazuru.Origami.Layers (paintOrder)
 import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
 
 -- | Render one frame as a crease pattern, seen from directly above.
@@ -91,10 +92,9 @@ creasePatternFrom theme notation basis fr = do
       ordered <- facesToFill basis notation fr
       pure [Polygon colour (map flatten (faceCorners f)) | f <- ordered]
   let creaseShapes = mapMaybe toShape (sortOn (creaseOrder . creaseAssignment) creases)
-  -- Faces first, and not through paintOrder: they are not creases and there is
-  -- nothing to sort them by. Every face goes under every line, which is what
-  -- makes the fill a background for the drawing rather than a coat of paint
-  -- over it.
+  -- Every face goes under every line, whatever order the faces are in among
+  -- themselves, because a fill that covered a crease would defeat the point of
+  -- drawing the crease.
   pure (diagramWithExtent extent (faceShapes <> creaseShapes))
   where
     flatten = project basis
@@ -173,6 +173,15 @@ defaultNotationFor classes verts = case frameKind classes verts of
 -- and a fill in file order would be a confident picture of the wrong thing.
 -- Computing an order ourselves is NP-hard in general; see
 -- @docs\/notes\/layer-ordering.md@.
+--
+-- An ordering that /contradicts itself/ is refused rather than dropped, and the
+-- drawing fails. That is a change from the version before @faceOrders@ was
+-- read, where such a file rendered as a wireframe because nothing looked. It is
+-- deliberate and it is the rule stated above rather than an exception to it:
+-- these faces were going to be drawn, and the file's own account of how to
+-- stack them is impossible. Quietly drawing something else instead is the
+-- failure mode this module keeps being written to avoid. @--no-fill@ still
+-- renders it, for the same reason it renders a file with a broken face.
 -- The faces are resolved inside each branch rather than passed in, so that a
 -- corrupt face is only ever a reason to refuse a drawing that was going to
 -- contain it. A folded form with no ordering draws no faces and so never looks
@@ -186,19 +195,15 @@ facesToFill basis notation fr = case notation of
       then Right []
       else do
         faces <- frameFaces fr
-        ids <- asFoldError (length faces) (paintOrder towardsViewer faces orders)
-        Right (mapMaybe (`lookup` [(faceId f, f) | f <- faces]) ids)
+        ids <- paintOrder towardsViewer faces orders
+        -- Total by construction: paintOrder returns every face exactly once, so
+        -- a lookup that missed would be a bug rather than a file to tolerate.
+        let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
+        traverse (\fid -> maybe (Left (FaceOrderOutOfRange fid (length faces))) Right (IM.lookup (unFaceId fid) byId)) ids
   where
     -- 'basisForward' points the way the camera looks, so the viewer is the
     -- other way. Getting this backwards draws every model inside out.
     towardsViewer = (-1) *^ basisForward basis
-
-    -- A stacking that cannot be drawn is a fact about the frame, so it reaches
-    -- the caller as the one type everything else wrong with a frame uses.
-    asFoldError n = \case
-      Left (CyclicStacking f) -> Left (ImpossibleStacking f)
-      Left (UnknownFace f) -> Left (FaceOrderOutOfRange f n)
-      Right ids -> Right ids
 
 -- | Painting order for creases, lowest first.
 --

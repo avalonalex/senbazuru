@@ -297,9 +297,11 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Real files carry vendor keys** like `"cpedit:page"`. Ignore unknown keys.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.
-- **SVG paints in document order**, so later shapes cover earlier ones. See
-  `paintOrder` in `Senbazuru.Render.CreasePattern`. Faces sit outside that
-  ordering: every fill is emitted before every line.
+- **SVG paints in document order**, so later shapes cover earlier ones. Creases
+  are sorted by `creaseOrder` in `Senbazuru.Render.CreasePattern`; faces sit
+  outside that ordering entirely — every fill is emitted before every line, and
+  the order of the fills among themselves is
+  `Senbazuru.Origami.Layers.paintOrder`.
 - **Face winding is not to be trusted — except in `faceOrders`.** FOLD specifies
   counterclockwise and real files disagree. Filling does not care, and folding
   measures the winding from the coordinates. But `faceOrders`'s signs are read
@@ -325,9 +327,6 @@ Deliberate omissions, so nobody thinks they are bugs:
 - No solver for layer order. `faceOrders` is read and used when a file supplies
   one; nothing computes one, so a folded form senbazuru folded itself is drawn
   as a wireframe.
-- Folded forms render as wireframes. Crease-pattern faces are filled; a folded
-  form's are not, because its faces overlap and which one is in front is
-  `faceOrders`, which is not decoded.
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.

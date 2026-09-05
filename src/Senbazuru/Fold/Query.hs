@@ -74,6 +74,9 @@ data FoldError
   | -- | A @faceOrders@ entry stacks a face against itself, which says nothing
     -- and is more likely a typo than a claim.
     FaceOrderSelf FaceId
+  | -- | A @faceOrders@ entry is measured against a face with no area, which
+    -- therefore has no normal for the sign to mean anything against.
+    FaceWithoutNormal FaceId
   | -- | The @faceOrders@ contradict each other: following them round returns to
     -- where it started, so the file describes a stack of paper in front of
     -- itself. Raised by "Senbazuru.Origami.Layers" and carried here so that
@@ -117,6 +120,11 @@ renderFoldError = \case
       <> (if n == 1 then "is 1 face" else "are " <> tshow n <> " faces")
   FaceOrderSelf (FaceId f) ->
     "faceOrders stacks face " <> tshow f <> " against itself"
+  FaceWithoutNormal (FaceId f) ->
+    "faceOrders stacks against face "
+      <> tshow f
+      <> ", which has no area and so no normal for above and below to mean"
+      <> " anything against"
   ImpossibleStacking (FaceId f) ->
     "the faceOrders run in a circle through face "
       <> tshow f
@@ -299,12 +307,18 @@ data Face = Face
 -- young a loud failure teaches us what real files look like, where a quiet skip
 -- would draw a sheet with a hole in it and say nothing.
 --
--- __Winding is not consulted, and does not need to be.__ FOLD specifies
--- counterclockwise, real files disagree, and it makes no difference to the one
--- thing this feeds: filling a simple closed polygon covers the same region
--- whichever way round its corners are listed. Anything that needs a face's
--- /normal/ — which side is up, which is what a folded form will care about —
--- must work the orientation out for itself rather than trusting the file.
+-- __Winding is not consulted here, and the corners come back in the order the
+-- file gave them.__ FOLD specifies counterclockwise and real files disagree,
+-- and for filling it makes no difference: a simple closed polygon covers the
+-- same region whichever way round its corners are listed.
+--
+-- What a consumer should do about that depends on what it wants the winding
+-- /for/, and the two answers point opposite ways.
+-- "Senbazuru.Origami.Folding" needs a consistent orientation and nothing else,
+-- so it measures one from the coordinates and ignores the file. But
+-- "Senbazuru.Origami.Layers" reads @faceOrders@, whose signs were written
+-- against the normals the file's own winding defines — so it must take that
+-- winding exactly as given, and recomputing it there turns models inside out.
 frameFaces :: Frame -> Either FoldError [Face]
 frameFaces fr = do
   verts <- frameVertices fr

@@ -159,6 +159,7 @@ examples/unit-square.fold
     edges:    11
     faces:    0
     creases:  B=8 M=1 V=1 F=1
+    layers:   (no faceOrders, so a folded form is drawn as a wireframe)
 ```
 
 ## Building
@@ -264,9 +265,10 @@ issues are the detail.
    shared scale. Note that every published FOLD example is single-frame, so this
    needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-2. **Solving for layer order.** A folded form senbazuru folded itself carries no
-   `faceOrders`, so it is still drawn as a wireframe. Working one out is a
-   constraint problem and NP-hard in general — the deep end.
+2. **[Solving for layer order.](https://github.com/avalonalex/senbazuru/issues/25)**
+   A folded form senbazuru folded itself carries no `faceOrders`, so it is still
+   drawn as a wireframe. Working one out is a constraint problem and NP-hard in
+   general — the deep end.
    → [layer-ordering](docs/notes/layer-ordering.md)
 3. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since

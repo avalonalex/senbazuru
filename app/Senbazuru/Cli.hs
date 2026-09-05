@@ -335,7 +335,11 @@ summarise path f =
         "    vertices: " <> tshow (length (verticesCoords fr)),
         "    edges:    " <> tshow (length (edgesVertices fr)),
         "    faces:    " <> tshow (length (facesVertices fr)),
-        "    creases:  " <> histogram (edgesAssignment fr)
+        "    creases:  " <> histogram (edgesAssignment fr),
+        -- Reported because it is the difference between a folded form drawn as
+        -- paper and one drawn as a wireframe, and there is otherwise no way to
+        -- find that out short of opening the JSON.
+        "    layers:   " <> stacking (faceOrders fr)
       ]
 
     histogram as
@@ -345,6 +349,9 @@ summarise path f =
         entry a n = assignmentCode a <> "=" <> tshow n
         count :: Assignment -> [Assignment] -> Int
         count a = length . filter (== a)
+
+    stacking [] = "(no faceOrders, so a folded form is drawn as a wireframe)"
+    stacking os = tshow (length os) <> " faceOrders"
 
     commas [] = "(none)"
     commas xs = T.intercalate ", " xs

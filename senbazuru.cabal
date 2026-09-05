@@ -105,6 +105,7 @@ test-suite senbazuru-test
     Senbazuru.Diagram.StyleSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.RigidSpec
+    Senbazuru.Geometry.V3Spec
     Senbazuru.GeometrySpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
