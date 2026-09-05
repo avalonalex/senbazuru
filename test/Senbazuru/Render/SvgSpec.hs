@@ -20,7 +20,8 @@ import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, isometric, topDown)
-import Senbazuru.Render.CreasePattern (creasePatternAuto, creasePatternFrom, withArrows)
+import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
+import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
@@ -91,25 +92,20 @@ renderStep i path = do
   pure (renderSvg testPage (withArrows defaultTheme topDown motions d))
 
 -- | Every frame of a file, arrows and all, laid out as one page.
+--
+-- Through 'stepPage', which is what the command line runs. An earlier version
+-- of this helper was a hand copy of the command line's loop, and the two drifted
+-- apart far enough that the copy passed a camera the real path never chose --
+-- which is precisely how a golden test comes to guard nothing.
 renderSteps :: FilePath -> IO Text
 renderSteps path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
-  let frames = allFrames f
-  figures <- traverse (figure frames) (zip [0 ..] frames)
-  case gridOf (defaultGrid (Colour "#1a1a1a")) figures of
-    Nothing -> fail "nothing to lay out"
-    Just d -> pure (renderSvg testPage {pageWidth = 400} d)
-  where
-    figure frames (i, fr) = do
-      d <- case creasePatternAuto defaultTheme (Just topDown) fr of
-        Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
-        Right d -> pure d
-      case drop (i + 1) frames of
-        [] -> pure d
-        (next : _) -> do
-          ms <- either (fail . show) pure (motionsBetween fr next)
-          pure (withArrows defaultTheme topDown ms d)
+  let grid = defaultGrid defaultTheme
+  case stepPage defaultTheme grid Nothing True (allFrames f) of
+    Left err -> fail ("step page failed: " <> show err)
+    Right Nothing -> fail "nothing to lay out"
+    Right (Just d) -> pure (renderSvg testPage {pageWidth = 400} d)
 
 -- | Deliberately not 'defaultPage': a golden file should not churn because
 -- someone retunes the default margin.

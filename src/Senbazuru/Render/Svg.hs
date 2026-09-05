@@ -143,14 +143,20 @@ renderSvg page d =
           <> attr "fill" c
           <> "/>\n"
 
--- | One shape as a @\<path\>@ element, or nothing at all if it has no
--- extent to draw.
+-- | One shape as an SVG element, or nothing at all if it has no extent to draw.
 --
--- Both kinds set the attribute the enclosing group does not want: the group
--- carries @fill=\"none\"@ so that stroked paths are not flooded, and a filled
--- polygon overrides it. Neither kind sets the other attribute, so a polygon is
--- unstroked (SVG's initial @stroke@ is @none@, and the group does not change
--- it) and a polyline is unfilled.
+-- Most shapes become a @\<path\>@; a 'Label' becomes a @\<text\>@, whose content
+-- has to be escaped because a label can carry a title straight out of a
+-- user-supplied file.
+--
+-- The stroked kinds and the filled kinds each set the attribute the enclosing
+-- group does not want: the group carries @fill=\"none\"@ so that stroked paths
+-- are not flooded, and a filled polygon overrides it. Neither sets the other, so
+-- a polygon is unstroked (SVG's initial @stroke@ is @none@, and the group does
+-- not change it) and a polyline is unfilled.
+--
+-- An 'Arrow' is two elements rather than one, because its head is filled and its
+-- curve is stroked.
 shapeToSvg :: Transform -> Shape -> Builder
 -- Text is emitted as <text> rather than as outlines, so the file stays small and
 -- the number stays selectable. The trade is that the exact shape depends on the

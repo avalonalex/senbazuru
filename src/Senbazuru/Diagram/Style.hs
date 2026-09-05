@@ -129,6 +129,8 @@ data Theme = Theme
     themeArrowWidth :: !Double,
     -- | Page units, tip to base.
     themeArrowHead :: !Double,
+    -- | Page units: the type size of a step number.
+    themeLabelSize :: !Double,
     -- | How far the arc's midpoint stands off the straight line between the
     -- arrow's ends, as a fraction of the distance it spans. Zero would be a
     -- straight arrow, which reads as \"slide\" rather than \"fold\".
@@ -165,6 +167,7 @@ defaultTheme =
       themeShowUnassigned = True,
       themeArrowWidth = 1.8,
       themeArrowHead = 11,
+      themeLabelSize = 14,
       -- An eighth of the span. Enough to read as a turn through the air rather
       -- than a slide along the page, without the arc wandering off the paper.
       themeArrowBow = 0.125,

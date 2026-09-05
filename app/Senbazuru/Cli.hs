@@ -24,7 +24,7 @@ import Data.Version (makeVersion, showVersion)
 import Numeric (showFFloat)
 import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
-import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
+import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (FoldError, frameVertices, renderFoldError)
@@ -48,6 +48,7 @@ import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
 import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
+import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -172,6 +173,13 @@ checkOptions =
       | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
       | otherwise = readerError "tolerance must be a non-negative number of degrees"
 
+-- | A column count below one describes no page, and quietly rounding it up to
+-- one would answer a question nobody asked.
+atLeastOne :: Int -> ReadM Int
+atLeastOne n
+  | n >= 1 = pure n
+  | otherwise = readerError "columns must be at least 1"
+
 inputArg :: Parser FilePath
 inputArg = argument str (metavar "FILE.fold" <> help "Input FOLD file")
 
@@ -233,7 +241,10 @@ renderOptions =
             )
       )
     <*> option
-      auto
+      -- Rejected during parsing, as --tolerance is: a column count below one
+      -- describes no page, and quietly rounding it up to one would answer a
+      -- question nobody asked.
+      (atLeastOne =<< auto)
       ( long "columns"
           <> metavar "N"
           <> value 3
@@ -293,30 +304,31 @@ renderFile o f
   | otherwise = renderOneFrame o f
 
 -- | Every frame of the file as one numbered page of figures.
+--
+-- The work is 'stepPage', in the library, where it can be tested and where
+-- there is one copy of it. What is left here is refusing flag combinations and
+-- turning an error into a message.
 renderStepPage :: RenderOptions -> FoldFile -> IO ()
 renderStepPage o f = do
   -- Refused rather than silently ignored: --steps uses every frame, so a
   -- request for one particular frame cannot also be honoured.
   when (isJust (roFrame o)) (die "--steps lays out every frame; --frame selects one")
   when (roFold o) (die "--steps draws the frames a file already has; --fold computes a new one")
-  figures <- traverse figure (zip [0 ..] frames)
-  case gridOf grid figures of
-    Nothing -> die ("nothing to lay out: " <> T.pack (roInput o) <> " has no frames")
-    Just d -> emitWith o (pageFor o f (fileTitle f)) d
-  where
-    frames = allFrames f
-    grid = (defaultGrid (themeInk (themeFor o))) {gridColumns = roColumns o}
-
-    figure (i, frame) = do
-      d <- case creasePatternAuto (themeFor o) (roView o) frame of
-        Left err -> die (cannotRender o err)
-        Right d -> pure d
-      motions <- stepMotions o frame (drop (i + 1) frames)
-      if null motions
-        then pure d
-        else do
-          basis <- basisOf o frame
-          pure (withArrows (themeFor o) basis motions d)
+  let theme = themeFor o
+      grid = (defaultGrid theme) {gridColumns = roColumns o}
+  case stepPage theme grid (roView o) (roArrows o) (allFrames f) of
+    Left (StepError i err) ->
+      die
+        ( "cannot render frame "
+            <> tshow i
+            <> " of "
+            <> T.pack (roInput o)
+            <> ": "
+            <> renderFoldError err
+        )
+    Right Nothing ->
+      die (T.pack (roInput o) <> " has no frame with any geometry in it")
+    Right (Just d) -> emitWith o (pageFor o (fileTitle f)) d
 
 renderOneFrame :: RenderOptions -> FoldFile -> IO ()
 renderOneFrame o f = do
@@ -335,13 +347,15 @@ renderOneFrame o f = do
         Right folded -> pure folded
       else pure chosen
   motions <- stepMotions o frame (drop (fromMaybe 0 (roFrame o) + 1) (allFrames f))
-  case creasePatternAuto (themeFor o) (roView o) frame of
+  let theme = themeFor o
+      pg = pageFor o (frameTitle frame <|> fileTitle f)
+  case creasePatternAuto theme (roView o) frame of
     Left err -> die (cannotRender o err)
     Right d
-      | null motions -> emitWith o (pageFor o f (frameTitle frame <|> fileTitle f)) d
+      | null motions -> emitWith o pg d
       | otherwise -> do
           basis <- basisOf o frame
-          emitWith o (pageFor o f (frameTitle frame <|> fileTitle f)) (withArrows (themeFor o) basis motions d)
+          emitWith o pg (withArrows theme basis motions d)
 
 -- | Each flag only ever subtracts from the default. Written as guards rather
 -- than as assignments so that a flag left off defers to whatever defaultTheme
@@ -357,8 +371,8 @@ themeFor o = hideFlat (noFill defaultTheme)
       | roNoFill o = t {themePaper = Nothing}
       | otherwise = t
 
-pageFor :: RenderOptions -> FoldFile -> Maybe Text -> Page
-pageFor o _ title =
+pageFor :: RenderOptions -> Maybe Text -> Page
+pageFor o title =
   defaultPage
     { pageWidth = roWidth o,
       pageHeight = roHeight o,

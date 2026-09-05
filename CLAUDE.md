@@ -130,6 +130,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
+| `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
@@ -322,6 +323,11 @@ are not contributors can find it, and so there is only one copy to keep true.
   signs, and they cancel. Recomputing the winding there would uncancel them and
   turn the model inside out. `Senbazuru.Origami.Layers` takes the file's winding
   exactly as written, and is the only place that does.
+- **A page of steps is drawn through one camera**, chosen from every frame
+  together. Asking each frame what view suits it moves the reader around the
+  model between figures, and makes the shared extent a union of boxes measured
+  in different projections. The *notation* is still per frame — that is a
+  different question. See `Senbazuru.Render.Steps`.
 - **A page of steps shares one scale, and each figure keeps its own size.**
   `Diagram.Layout` lays figures out against the union of their extents, so a
   folded model is drawn smaller than the sheet it came from. Scaling each figure

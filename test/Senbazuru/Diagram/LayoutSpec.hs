@@ -11,11 +11,12 @@ module Senbazuru.Diagram.LayoutSpec (spec) where
 import Data.Maybe (mapMaybe)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout
+import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Geometry
 import Test.Hspec
 
 ink :: Colour
-ink = Colour "#1a1a1a"
+ink = themeInk defaultTheme
 
 -- | A square outline of the given size, as its own figure.
 square :: Double -> Diagram
@@ -42,7 +43,7 @@ labels d = mapMaybe text (diagramShapes d)
       _ -> Nothing
 
 plain :: Grid
-plain = (defaultGrid ink) {gridNumbering = Nothing}
+plain = (defaultGrid defaultTheme) {gridNumbering = Nothing}
 
 spec :: Spec
 spec = do
@@ -79,7 +80,7 @@ spec = do
     it "numbers from one, because that is what a reader counts from" $ do
       -- The frames these came from are numbered from zero, and the two stop
       -- agreeing the moment anyone lays out a subset.
-      let Just page = gridOf (defaultGrid ink) [square 1, square 1, square 1]
+      let Just page = gridOf (defaultGrid defaultTheme) [square 1, square 1, square 1]
       labels page `shouldBe` ["\"1\"", "\"2\"", "\"3\""]
 
     it "can be turned off" $ do

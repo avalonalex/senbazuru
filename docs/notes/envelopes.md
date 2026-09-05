@@ -35,7 +35,7 @@ is the question an envelope answers, and the point at which this note stops
 being background reading.
 
 Worth noting that `diagramExtent` is not simply the crude version of an
-envelope: it is deliberately /not/ the drawing's own bounds. It is pinned to the
+envelope: it is deliberately *not* the drawing's own bounds. It is pinned to the
 sheet of paper so that a sequence keeps one scale, and an envelope derived from
 each figure's contents would lose exactly that.
 
