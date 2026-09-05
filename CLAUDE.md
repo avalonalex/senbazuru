@@ -99,8 +99,11 @@ One direction of flow, no cycles:
      |                               |    origami knowledge, no drawing: is this
      |                               |    pattern locally impossible to fold?
      |                               +--> Senbazuru.Origami.Folding
-     |                                    fold it: a Frame in, a folded Frame
-     |                                    out, straight back into this pipeline
+     |                               |    fold it: a Frame in, a folded Frame
+     |                               |    out, straight back into this pipeline
+     |                               +--> Senbazuru.Origami.Layers
+     |                                    which face is in front, given where
+     |                                    the viewer is standing
      |  Senbazuru.Render.CreasePattern
      |  + Senbazuru.Render.Camera    orthographic projection to the page
      |  + Senbazuru.Diagram.Style    origami line conventions
@@ -125,6 +128,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
+| `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
@@ -293,14 +297,24 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Real files carry vendor keys** like `"cpedit:page"`. Ignore unknown keys.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.
-- **SVG paints in document order**, so later shapes cover earlier ones. See
-  `paintOrder` in `Senbazuru.Render.CreasePattern`. Faces sit outside that
-  ordering: every fill is emitted before every line.
-- **Face winding is not to be trusted.** FOLD specifies counterclockwise and
-  real files disagree. Filling does not care — a simple closed polygon covers
-  the same region either way round — so nothing currently depends on it.
-  Anything that comes to need a face's *normal* must compute the orientation
-  rather than read it.
+- **SVG paints in document order**, so later shapes cover earlier ones. Creases
+  are sorted by `creaseOrder` in `Senbazuru.Render.CreasePattern`; faces sit
+  outside that ordering entirely — every fill is emitted before every line, and
+  the order of the fills among themselves is
+  `Senbazuru.Origami.Layers.paintOrder`.
+- **Face winding is not to be trusted — except in `faceOrders`.** FOLD specifies
+  counterclockwise and real files disagree. Filling does not care, and folding
+  measures the winding from the coordinates. But `faceOrders`'s signs are read
+  against a face's *normal*, which is *defined* by its winding, so the two were
+  written against each other: a file with backwards windings has backwards
+  signs, and they cancel. Recomputing the winding there would uncancel them and
+  turn the model inside out. `Senbazuru.Origami.Layers` takes the file's winding
+  exactly as written, and is the only place that does.
+- **A stacking is not a drawing order.** `faceOrders` says a face is on the side
+  another face's normal points to, which is a fact about the paper. Whether that
+  is nearer the viewer depends on which way that normal points relative to them,
+  and a folded model has faces pointing both ways. Miss it and models seen from
+  their back face come out inside out.
 - **`-0.0 == 0.0` is `True`** but they format differently. A y-flip produces
   negative zeros. `formatNumber` normalises them.
 
@@ -309,10 +323,10 @@ are not contributors can find it, and so there is only one copy to keep true.
 Deliberate omissions, so nobody thinks they are bugs:
 
 - Frame inheritance (`frame_inherit` / `frame_parent`) is decoded but not resolved.
-- `faceOrders` / `edgeOrders` are not decoded at all.
-- Folded forms render as wireframes. Crease-pattern faces are filled; a folded
-  form's are not, because its faces overlap and which one is in front is
-  `faceOrders`, which is not decoded.
+- `edgeOrders` is not decoded at all.
+- No solver for layer order. `faceOrders` is read and used when a file supplies
+  one; nothing computes one, so a folded form senbazuru folded itself is drawn
+  as a wireframe.
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.

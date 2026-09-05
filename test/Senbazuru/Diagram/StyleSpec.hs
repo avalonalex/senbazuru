@@ -15,20 +15,6 @@ import Test.Hspec
 
 spec :: Spec
 spec = do
-  describe "fillFor" $ do
-    it "fills a crease pattern with the theme's paper" $
-      fillFor defaultTheme CreasePatternNotation `shouldBe` themePaper defaultTheme
-
-    it "refuses to fill a folded form, whatever the theme offers" $
-      -- Not a style preference. A folded form's faces overlap, and which one is
-      -- in front is exactly what we cannot work out yet, so a filled one would
-      -- be a confident picture of the wrong thing. See docs/notes/layer-ordering.md.
-      fillFor defaultTheme FoldedFormNotation `shouldBe` Nothing
-
-    it "fills nothing when the theme has no paper" $
-      fillFor (defaultTheme {themePaper = Nothing}) CreasePatternNotation
-        `shouldBe` Nothing
-
   describe "strokeFor" $ do
     it "never dashes an edge of a folded form" $
       map strokeDash (strokesUnder FoldedFormNotation) `shouldSatisfy` all (== Dash [])

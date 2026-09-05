@@ -88,21 +88,28 @@ order a half-edge structure needs — see
 Counterclockwise winding is what defines a face's normal direction, and
 therefore which side is "up".
 
-Faces of a crease pattern are filled with the paper colour; a folded form is
-left as a wireframe, because filling it would mean knowing which face is in
-front and `faceOrders` is not decoded. `--no-fill` turns filling off entirely.
+Faces of a crease pattern are filled with the paper colour. So are a folded
+form's, but only when the file records a `faceOrders` saying which is in front;
+without one it stays a wireframe. `--no-fill` turns filling off entirely.
 
-Note that senbazuru does **not** trust the stated winding, and does not need to:
-filling a simple closed polygon covers the same region whichever way round its
-corners are listed, and real files disagree with the spec often enough that
-relying on it would be a bug waiting to happen. Anything that comes to need a
-face's normal has to work the orientation out for itself.
+Note that senbazuru does **not** trust the stated winding for filling, and does
+not need to: a simple closed polygon covers the same region whichever way round
+its corners are listed, and real files disagree with the spec often enough that
+relying on it would be a bug waiting to happen. Folding works the orientation
+out from the coordinates for the same reason.
+
+`faceOrders` is the exception, and the reason is worth knowing. Its `s` is read
+against a face's **normal**, which is *defined* by that face's winding — so the
+signs and the windings in a file were written against each other. A file with
+backwards windings has backwards normals and backwards signs, and the two
+cancel; recomputing the winding would uncancel them and turn the model
+inside out. Here the file's winding is taken exactly as written.
 
 ## Layer ordering
 
 | Key | Type | Meaning | Status |
 | --- | --- | --- | --- |
-| `faceOrders` | [int, int, int][] | `[f, g, s]`: face `f` is above (`+1`), below (`-1`), or unordered (`0`) relative to `g` | — |
+| `faceOrders` | [int, int, int][] | `[f, g, s]`: face `f` is above (`+1`), below (`-1`), or unordered (`0`) relative to `g` | used |
 | `edgeOrders` | [int, int, int][] | Same, for edges, 2D only | — |
 
 See [notes/layer-ordering.md](notes/layer-ordering.md) for why this is stored

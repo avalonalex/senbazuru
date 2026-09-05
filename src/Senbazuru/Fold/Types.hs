@@ -48,18 +48,24 @@ module Senbazuru.Fold.Types
     Assignment (..),
     assignmentCode,
     parseAssignment,
+
+    -- * Layer ordering
+    FaceOrder (..),
+    Stacking (..),
   )
 where
 
 import Data.Aeson
   ( FromJSON (..),
     Object,
+    withArray,
     withObject,
     withText,
     (.!=),
     (.:?),
   )
 import Data.Aeson.Types (Parser)
+import Data.Foldable (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -117,7 +123,10 @@ data Frame = Frame
     -- | @edges_foldAngle@ in degrees, in @[-180, 180]@. Indexed by 'EdgeId'.
     edgesFoldAngle :: ![Double],
     -- | @faces_vertices@, indexed by 'FaceId', counterclockwise around the face.
-    facesVertices :: ![[VertexId]]
+    facesVertices :: ![[VertexId]],
+    -- | @faceOrders@: which face is on top where the model overlaps itself.
+    -- Unindexed — this is a list of relationships, not a parallel array.
+    faceOrders :: ![FaceOrder]
   }
   deriving stock (Eq, Show)
 
@@ -138,7 +147,8 @@ emptyFrame =
       edgesVertices = [],
       edgesAssignment = [],
       edgesFoldAngle = [],
-      facesVertices = []
+      facesVertices = [],
+      faceOrders = []
     }
 
 -- | Every frame in the document, key frame first.
@@ -194,6 +204,56 @@ assignmentCode = \case
   Unassigned -> "U"
   Cut -> "C"
   Join -> "J"
+
+-- | Where one face sits relative to another's normal.
+--
+-- The direction is the /other/ face's normal, not the viewer's: FOLD records
+-- how the paper is stacked, which is a fact about the model, and turning that
+-- into a drawing order needs a viewing direction as well. See
+-- "Senbazuru.Origami.Layers".
+data Stacking
+  = -- | On the side the other face's normal points to.
+    Above
+  | -- | On the side away from it.
+    Below
+  | -- | Not ordered, which a file says when two faces do not overlap in their
+    -- interiors and so cannot obscure one another.
+    Unordered
+  deriving stock (Eq, Ord, Show, Enum, Bounded)
+
+-- | One entry of @faceOrders@: the triple @[f, g, s]@.
+--
+-- @s@ is read relative to __@g@'s__ normal, and a face's normal is defined by
+-- the counterclockwise ordering of its own @faces_vertices@. So unlike
+-- everywhere else in senbazuru, the winding a file states is not merely
+-- advisory here — it is what gives these signs their meaning, and it has to be
+-- taken as given rather than recomputed.
+data FaceOrder = FaceOrder
+  { -- | @f@, the face being placed.
+    orderFace :: !FaceId,
+    -- | @g@, the face it is placed relative to, and whose normal fixes the
+    -- sense of 'orderStacking'.
+    orderRelativeTo :: !FaceId,
+    orderStacking :: !Stacking
+  }
+  deriving stock (Eq, Show)
+
+instance FromJSON FaceOrder where
+  parseJSON = withArray "faceOrders entry" $ \v -> case toList v of
+    [f, g, s] -> do
+      orderFace <- parseJSON f
+      orderRelativeTo <- parseJSON g
+      orderStacking <- parseJSON s >>= toStacking
+      pure FaceOrder {..}
+    other ->
+      fail ("faceOrders entry must be [f, g, s], but has " <> show (length other) <> " elements")
+    where
+      toStacking :: Int -> Parser Stacking
+      toStacking = \case
+        1 -> pure Above
+        -1 -> pure Below
+        0 -> pure Unordered
+        n -> fail ("faceOrders sign must be -1, 0 or 1, not " <> show n)
 
 -- | Parse an @edges_assignment@ code.
 --
@@ -254,4 +314,5 @@ parseFrame o = do
   edgesAssignment <- o .:? "edges_assignment" .!= []
   edgesFoldAngle <- o .:? "edges_foldAngle" .!= []
   facesVertices <- o .:? "faces_vertices" .!= []
+  faceOrders <- o .:? "faceOrders" .!= []
   pure Frame {..}

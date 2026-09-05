@@ -123,6 +123,46 @@ spec = do
     it "has no vertices to draw for an empty frame" $
       frameVertices emptyFrame `shouldBe` Right []
 
+  describe "faceOrders" $ do
+    it "decodes the triple and its three signs" $ do
+      f <- decodeOrFail "{\"faceOrders\": [[2, 0, -1], [1, 0, 1], [3, 0, 0]]}"
+      faceOrders (keyFrame f)
+        `shouldBe` [ FaceOrder (FaceId 2) (FaceId 0) Below,
+                     FaceOrder (FaceId 1) (FaceId 0) Above,
+                     FaceOrder (FaceId 3) (FaceId 0) Unordered
+                   ]
+
+    it "rejects a sign that is not -1, 0 or 1" $
+      -- A decode failure has to mean "this is not FOLD", and 2 is not a value
+      -- the specification allows.
+      decodeFoldFile "{\"faceOrders\": [[0, 1, 2]]}" `shouldSatisfy` isLeft
+
+    it "rejects an entry that is not a triple" $
+      decodeFoldFile "{\"faceOrders\": [[0, 1]]}" `shouldSatisfy` isLeft
+
+    it "reads simple.fold's stacking as the file states it" $ do
+      -- Two faces recorded as lying below a third: the only fixture in the repo
+      -- that carries an ordering at all.
+      f <- decodeOrFail =<< BS.readFile "test/fixtures/simple.fold"
+      faceOrders (keyFrame f)
+        `shouldBe` [ FaceOrder (FaceId 2) (FaceId 0) Below,
+                     FaceOrder (FaceId 3) (FaceId 0) Below
+                   ]
+
+  describe "frameFaceOrders" $ do
+    it "passes an ordering whose faces all exist" $ do
+      let fr = (frameOf [[0, 0]] [] []) {facesVertices = replicate 2 [], faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]}
+      fmap length (frameFaceOrders fr) `shouldBe` Right 1
+
+    it "reports an ordering that names a face there is none of" $ do
+      let fr = (frameOf [[0, 0]] [] []) {facesVertices = [[]], faceOrders = [FaceOrder (FaceId 0) (FaceId 4) Above]}
+      frameFaceOrders fr `shouldBe` Left (FaceOrderOutOfRange (FaceId 4) 1)
+
+    it "reports a face stacked against itself" $ do
+      -- It says nothing, and is far likelier to be a typo than a claim.
+      let fr = (frameOf [[0, 0]] [] []) {facesVertices = [[]], faceOrders = [FaceOrder (FaceId 0) (FaceId 0) Above]}
+      frameFaceOrders fr `shouldBe` Left (FaceOrderSelf (FaceId 0))
+
   describe "frameFaces" $ do
     it "resolves a face to the points that bound it" $ do
       let fr = (frameOf [[0, 0], [1, 0], [1, 1]] [] []) {facesVertices = [map VertexId [0, 1, 2]]}

@@ -17,7 +17,9 @@ import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId (..),
+    FaceOrder (..),
     Frame (..),
+    Stacking (..),
     VertexId (..),
     emptyFrame,
   )
@@ -68,9 +70,28 @@ spec = do
       shapeKinds defaultTheme CreasePatternNotation twoFaceSquare
         `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
 
-    it "leaves a folded form as a wireframe even though it has faces" $
+    it "leaves a folded form as a wireframe when nothing says which face is in front" $
+      -- Its faces overlap, so drawing them in file order would be a confident
+      -- picture of the wrong thing. A wireframe says only what is known.
       shapeKinds defaultTheme FoldedFormNotation twoFaceSquare
         `shouldBe` Right (replicate 5 "line")
+
+    it "fills a folded form once the file supplies an ordering" $ do
+      -- The half of layer ordering that is free: the file did the hard part.
+      let stacked = twoFaceSquare {faceOrders = [FaceOrder (FaceId 1) (FaceId 0) Above]}
+      shapeKinds defaultTheme FoldedFormNotation stacked
+        `shouldBe` Right (["fill", "fill"] <> replicate 5 "line")
+
+    it "refuses an ordering that puts a face in front of itself" $ do
+      let impossible =
+            twoFaceSquare
+              { faceOrders =
+                  [ FaceOrder (FaceId 1) (FaceId 0) Above,
+                    FaceOrder (FaceId 0) (FaceId 1) Above
+                  ]
+              }
+      shapeKinds defaultTheme FoldedFormNotation impossible
+        `shouldBe` Left (ImpossibleStacking (FaceId 0))
 
     it "draws only lines when the theme has no paper" $
       shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation twoFaceSquare
@@ -81,9 +102,10 @@ spec = do
         `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
 
     it "draws a folded form whose faces are corrupt, having never looked" $
-      -- A folded form's faces are not drawn, so they are not resolved either. An
-      -- earlier version validated them anyway and turned a file that had always
-      -- rendered into a hard failure over data it was going to discard.
+      -- With no ordering there is nothing to fill, so the faces are never
+      -- resolved. An earlier version validated them anyway and turned a file
+      -- that had always rendered into a hard failure over data it was going to
+      -- discard.
       shapeKinds defaultTheme FoldedFormNotation broken
         `shouldBe` Right (replicate 5 "line")
 

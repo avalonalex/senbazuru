@@ -72,6 +72,7 @@ library
     Senbazuru.Geometry.VectorSpace
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
+    Senbazuru.Origami.Layers
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
     Senbazuru.Render.Svg
@@ -104,9 +105,11 @@ test-suite senbazuru-test
     Senbazuru.Diagram.StyleSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.RigidSpec
+    Senbazuru.Geometry.V3Spec
     Senbazuru.GeometrySpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
+    Senbazuru.Origami.LayersSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec
     Senbazuru.Render.SvgSpec

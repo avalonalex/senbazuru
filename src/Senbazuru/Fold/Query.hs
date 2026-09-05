@@ -25,6 +25,7 @@ module Senbazuru.Fold.Query
     frameVertices,
     frameCreases,
     frameFaces,
+    frameFaceOrders,
   )
 where
 
@@ -35,6 +36,7 @@ import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
     FaceId (..),
+    FaceOrder (..),
     Frame (..),
     VertexId (..),
   )
@@ -66,6 +68,20 @@ data FoldError
     -- is closed implicitly, so this is one corner listed twice, and it makes a
     -- face look as though it has an edge from a vertex to itself.
     FaceRingClosed FaceId
+  | -- | A @faceOrders@ entry names a face that does not exist. Carries the bad
+    -- face id and how many faces there are.
+    FaceOrderOutOfRange FaceId Int
+  | -- | A @faceOrders@ entry stacks a face against itself, which says nothing
+    -- and is more likely a typo than a claim.
+    FaceOrderSelf FaceId
+  | -- | A @faceOrders@ entry is measured against a face with no area, which
+    -- therefore has no normal for the sign to mean anything against.
+    FaceWithoutNormal FaceId
+  | -- | The @faceOrders@ contradict each other: following them round returns to
+    -- where it started, so the file describes a stack of paper in front of
+    -- itself. Raised by "Senbazuru.Origami.Layers" and carried here so that
+    -- everything a frame can be wrong about reaches a caller as one type.
+    ImpossibleStacking FaceId
   | -- | Two parallel arrays that must agree in length do not. Carries the name
     -- and length of each.
     ArrayLengthMismatch Text Int Text Int
@@ -97,6 +113,22 @@ renderFoldError = \case
       <> tshow f
       <> " ends on the corner it starts with; faces_vertices lists each corner"
       <> " once and the ring closes on its own"
+  FaceOrderOutOfRange (FaceId f) n ->
+    "faceOrders refers to face "
+      <> tshow f
+      <> ", but there "
+      <> (if n == 1 then "is 1 face" else "are " <> tshow n <> " faces")
+  FaceOrderSelf (FaceId f) ->
+    "faceOrders stacks face " <> tshow f <> " against itself"
+  FaceWithoutNormal (FaceId f) ->
+    "faceOrders stacks against face "
+      <> tshow f
+      <> ", which has no area and so no normal for above and below to mean"
+      <> " anything against"
+  ImpossibleStacking (FaceId f) ->
+    "the faceOrders run in a circle through face "
+      <> tshow f
+      <> "; no stack of paper is in front of itself"
   ArrayLengthMismatch a na b nb ->
     a
       <> " has "
@@ -275,12 +307,18 @@ data Face = Face
 -- young a loud failure teaches us what real files look like, where a quiet skip
 -- would draw a sheet with a hole in it and say nothing.
 --
--- __Winding is not consulted, and does not need to be.__ FOLD specifies
--- counterclockwise, real files disagree, and it makes no difference to the one
--- thing this feeds: filling a simple closed polygon covers the same region
--- whichever way round its corners are listed. Anything that needs a face's
--- /normal/ — which side is up, which is what a folded form will care about —
--- must work the orientation out for itself rather than trusting the file.
+-- __Winding is not consulted here, and the corners come back in the order the
+-- file gave them.__ FOLD specifies counterclockwise and real files disagree,
+-- and for filling it makes no difference: a simple closed polygon covers the
+-- same region whichever way round its corners are listed.
+--
+-- What a consumer should do about that depends on what it wants the winding
+-- /for/, and the two answers point opposite ways.
+-- "Senbazuru.Origami.Folding" needs a consistent orientation and nothing else,
+-- so it measures one from the coordinates and ignores the file. But
+-- "Senbazuru.Origami.Layers" reads @faceOrders@, whose signs were written
+-- against the normals the file's own winding defines — so it must take that
+-- winding exactly as given, and recomputing it there turns models inside out.
 frameFaces :: Frame -> Either FoldError [Face]
 frameFaces fr = do
   verts <- frameVertices fr
@@ -304,3 +342,24 @@ frameFaces fr = do
         _ -> False
 
   traverse toFace (zip (map FaceId [0 ..]) (facesVertices fr))
+
+-- | The frame's @faceOrders@, checked against the faces that exist.
+--
+-- Nothing here interprets the stacking; that needs a direction to look from and
+-- lives in "Senbazuru.Origami.Layers". This only refuses entries that cannot
+-- mean anything: a face id with no face, and a face stacked against itself.
+frameFaceOrders :: Frame -> Either FoldError [FaceOrder]
+frameFaceOrders fr = traverse check (faceOrders fr)
+  where
+    nFaces = length (facesVertices fr)
+
+    check o = do
+      inRange (orderFace o)
+      inRange (orderRelativeTo o)
+      if orderFace o == orderRelativeTo o
+        then Left (FaceOrderSelf (orderFace o))
+        else Right o
+
+    inRange fid@(FaceId i)
+      | i >= 0 && i < nFaces = Right ()
+      | otherwise = Left (FaceOrderOutOfRange fid nFaces)
