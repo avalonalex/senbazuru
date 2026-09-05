@@ -44,6 +44,16 @@
 -- the command line says the same. A vertex with no violations has survived the
 -- checks we know how to make.
 --
+-- == What this can be pointed at
+--
+-- A crease pattern, and only a crease pattern. A frame with relief is a
+-- three-dimensional folded form and is refused; so is a flat frame whose
+-- @frame_classes@ says @foldedForm@, because a flat-folded model — the
+-- traditional crane — has coordinates a crease pattern's cannot be told from,
+-- and measuring one here would compare the angles the paper /ended up with/
+-- against theorems about the ones it started from. That is not a missed check
+-- but an invented one, which is worse. See 'requireCreasePattern'.
+--
 -- == Which lines count as creases
 --
 -- The theorems are about creases that actually fold, which is not the same as
@@ -76,6 +86,7 @@ module Senbazuru.Origami.FlatFold
     Violation (..),
     Skip (..),
     renderViolation,
+    renderReport,
 
     -- * Errors
     CheckError (..),
@@ -98,17 +109,17 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Numeric (showFFloat)
+import Numeric (showFFloat, showGFloat)
 import Senbazuru.Fold.Query
   ( Crease (..),
-    FoldError,
+    FoldError (..),
     frameCreases,
     frameVertices,
     renderFoldError,
   )
-import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), Frame, VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), normalize)
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 
 -- | How far the alternating sum of Kawasaki's theorem may sit from zero and
 -- still count as zero, in radians.
@@ -146,10 +157,17 @@ defaultTolerance = Tolerance 1e-5
 data CheckError
   = -- | The frame is not structurally sound enough to get this far.
     FrameGeometry !FoldError
-  | -- | The frame's vertices do not lie in one plane, so it is a folded form
-    -- rather than a crease pattern and the question does not apply to it.
-    -- Carries the first vertex found off the plane and how far off it is.
-    NotACreasePattern !VertexId !Double
+  | -- | The geometry leaves the plane, so this is a three-dimensional folded
+    -- form and not a pattern at all. Carries how far it spans in @z@.
+    NotFlat !Double
+  | -- | Flat, but @frame_classes@ says @foldedForm@: a flat-folded model such
+    -- as the traditional crane, whose coordinates are indistinguishable from a
+    -- crease pattern's.
+    DeclaredFoldedForm
+  | -- | The file records no @edges_assignment@ at all, so nothing can be said
+    -- about which lines fold or where the paper stops. See
+    -- 'requireAssignments'.
+    NoAssignments
   | -- | An edge whose two endpoints are the same point, or whose coordinates
     -- are not finite. It has no direction, so it has no place in the rotational
     -- order around either endpoint.
@@ -160,15 +178,24 @@ data CheckError
 renderCheckError :: CheckError -> Text
 renderCheckError = \case
   FrameGeometry err -> renderFoldError err
-  NotACreasePattern (VertexId v) dz ->
-    "vertex "
-      <> tshow v
-      <> " lies "
-      <> fixed 6 dz
-      <> " out of the plane of the first vertex, so this frame is a folded"
-      <> " form; flat-foldability is a question about a crease pattern"
+  NotFlat dz ->
+    "the vertices span "
+      <> general dz
+      <> " in z, so this frame is a folded form; flat-foldability is a"
+      <> " question about the crease pattern it was folded from"
+  DeclaredFoldedForm ->
+    "frame_classes says foldedForm. The coordinates are flat, but a"
+      <> " flat-folded model looks exactly like a crease pattern and only the"
+      <> " class tells them apart; checking this one would measure folded"
+      <> " angles against theorems about unfolded ones"
+  NoAssignments ->
+    "no edges_assignment, so there is no way to tell a fold from the edge of"
+      <> " the paper; every vertex would look like an interior one"
   DegenerateEdge (EdgeId e) ->
-    "edge " <> tshow e <> " has no direction: its endpoints coincide"
+    "edge "
+      <> tshow e
+      <> " has no usable direction: its endpoints coincide, or a coordinate is"
+      <> " not finite"
 
 -- | One crease, as seen from a vertex it meets.
 data Spoke = Spoke
@@ -193,8 +220,9 @@ data Star = Star
     starSectors :: ![Double],
     -- | Whether an edge of the paper, or a cut, reaches this vertex.
     starOnBorder :: !Bool,
-    -- | How many @F@ or @J@ edges were dissolved. Reported so that a surprising
-    -- crease count can be traced back to them.
+    -- | How many @F@ or @J@ edges were dissolved. Kept so that a caller
+    -- confronted with a surprising crease count can trace it back to them;
+    -- nothing in senbazuru prints it yet.
     starDissolved :: !Int
   }
   deriving stock (Eq, Show)
@@ -265,7 +293,12 @@ checkFrame tol fr = do
 frameStars :: Frame -> Either CheckError [Star]
 frameStars fr = do
   verts <- first FrameGeometry (frameVertices fr)
-  requirePlanar verts
+  -- An empty frame is refused rather than answered, so that `check` and
+  -- `render` agree about a file whose vertices_coords went missing. A hook
+  -- that passes such a file silently is worse than one that fails.
+  if null verts then Left (FrameGeometry NoVertices) else Right ()
+  requireCreasePattern fr verts
+  requireAssignments fr
   creases <- first FrameGeometry (frameCreases fr)
   spokes <- concat <$> traverse spokesOf creases
   let byVertex = IM.fromListWith (<>) spokes
@@ -274,26 +307,50 @@ frameStars fr = do
       | i <- [0 .. length verts - 1]
     ]
 
--- | Reject a frame whose vertices do not share a plane parallel to @z = 0@.
+-- | Refuse a frame that is not a crease pattern.
 --
--- A crease pattern is flat by definition, and a folded form is what we are
--- being handed if this fails. Checking the fold angles or @frame_classes@
--- instead would be less reliable: the classes are advisory and often absent,
--- while the coordinates cannot lie about where the paper is.
+-- Two tests, in the order 'Senbazuru.Render.CreasePattern.defaultNotationFor'
+-- uses them and for the same reasons. Relief settles it: a frame that leaves
+-- the plane is a folded form whatever it calls itself, and 'hasRelief' is the
+-- one place that judgement is made, so the checker and the renderer cannot
+-- disagree about the same file.
 --
--- The comparison is against the first vertex rather than against zero, so a
--- pattern drawn on the plane @z = 5@ is still a pattern. The tolerance is
--- absolute, in model units, which is a real limitation on a sheet whose
--- coordinates run to thousands: it is generous there and strict on a unit
--- square. Worth revisiting if a file ever trips it wrongly.
-requirePlanar :: [V3] -> Either CheckError ()
-requirePlanar [] = Right ()
-requirePlanar (V3 _ _ z0 : rest) =
-  case [(vid, dz) | (vid, V3 _ _ z) <- zip (map VertexId [1 ..]) rest, let dz = z - z0, abs dz > planarity] of
-    ((vid, dz) : _) -> Left (NotACreasePattern vid dz)
-    [] -> Right ()
-  where
-    planarity = 1e-9
+-- A flat frame is the hard case. A flat-folded model — the traditional crane —
+-- has coordinates indistinguishable from a crease pattern's, so the only thing
+-- left to ask is @frame_classes@, and a frame that declares nothing is taken as
+-- a pattern, which is what the rest of senbazuru does.
+--
+-- Getting this wrong is not a missed check but an invented one. Run a folded
+-- crane through Kawasaki's theorem and it reports violations at vertices that
+-- are perfectly correct, because the angles being measured are the ones the
+-- paper ended up with rather than the ones it was folded from.
+requireCreasePattern :: Frame -> [V3] -> Either CheckError ()
+requireCreasePattern fr verts
+  | hasRelief verts = Left (NotFlat (zSpan verts))
+  | "foldedForm" `elem` frameClasses fr = Left DeclaredFoldedForm
+  | otherwise = Right ()
+
+-- | Refuse a frame that records no @edges_assignment@ at all.
+--
+-- FOLD makes the array optional, and 'frameCreases' rightly reads its absence
+-- as \"nothing is known about any crease\", which is exactly what @U@ means.
+-- For drawing, that is harmless. Here it is fatal in a way that is easy to
+-- miss: with no assignments there are no @B@ edges, so no vertex is recognised
+-- as being on the border, and every vertex around the outside of the sheet gets
+-- measured as though it had paper all the way round. A perfectly good square
+-- then reports a violation at each of its boundary vertices — a checker
+-- confidently declaring a correct file wrong, which is the worst thing it
+-- could do.
+--
+-- One step of the same trap is still open: a file that marks its outline @U@
+-- rather than @B@ cannot be told apart from one whose creases are genuinely
+-- undecided, and violations are reported there. Working the boundary out from
+-- the geometry would close both, and wants faces.
+requireAssignments :: Frame -> Either CheckError ()
+requireAssignments fr
+  | null (edgesVertices fr) = Right ()
+  | null (edgesAssignment fr) = Left NoAssignments
+  | otherwise = Right ()
 
 -- | The two spokes an edge contributes, one at each endpoint.
 spokesOf :: Crease -> Either CheckError [(Int, [Spoke])]
@@ -386,21 +443,24 @@ verdict tol st
         VertexCheck
           { checkVertex = starVertex st,
             checkDegree = degree,
-            checkUnassigned = countOf Unassigned,
+            checkUnassigned = unassigned,
             checkViolations = violations
           }
   where
-    degree = length (starSpokes st)
-    countOf a = length (filter ((== a) . spokeAssignment) (starSpokes st))
+    spokes = starSpokes st
+    degree = length spokes
+    countOf a = length (filter ((== a) . spokeAssignment) spokes)
+    mountains = countOf Mountain
+    valleys = countOf Valley
+    unassigned = countOf Unassigned
 
     violations
       | odd degree = [OddCreaseCount degree]
       | otherwise = maekawa <> kawasaki
 
     maekawa
-      | countOf Unassigned > 0 = []
-      | abs (countOf Mountain - countOf Valley) /= 2 =
-          [MaekawaImbalance (countOf Mountain) (countOf Valley)]
+      | unassigned > 0 = []
+      | abs (mountains - valleys) /= 2 = [MaekawaImbalance mountains valleys]
       | otherwise = []
 
     kawasaki
@@ -428,12 +488,57 @@ renderViolation (VertexId v) = \case
   where
     at = "vertex " <> tshow v <> ": "
 
+-- | A report as lines of text: one per violation, then a summary.
+--
+-- Lives here rather than in the command line for two reasons. It is the wording
+-- that keeps the promise the module header makes — \"no violations found\",
+-- never \"flat-foldable\" — and it has enough branching to be worth a test,
+-- which "Senbazuru.Cli" says of itself that it does not.
+renderReport :: Report -> [Text]
+renderReport report = violationLines <> [checkedLine, verdictLine]
+  where
+    violations = reportViolations report
+    violationLines = [renderViolation v x | (v, x) <- violations]
+
+    checkedLine =
+      "checked "
+        <> plural (length (reportChecked report)) "interior vertex" "interior vertices"
+        <> skippedNote
+
+    verdictLine
+      | null violations = "no violations found"
+      | otherwise = plural (length violations) "violation" "violations"
+
+    skippedNote = case (countSkips OnBorder, countSkips NoCreases) of
+      (0, 0) -> ""
+      (border, 0) -> "; skipped " <> tshow border <> " on the border"
+      (0, bare) -> "; skipped " <> tshow bare <> " with no creases"
+      (border, bare) ->
+        "; skipped "
+          <> tshow border
+          <> " on the border and "
+          <> tshow bare
+          <> " with no creases"
+
+    countSkips s = length [() | (_, s') <- reportSkipped report, s' == s]
+
+    plural n one several = tshow n <> " " <> (if n == 1 then one else several)
+
 degrees :: Double -> Double
 degrees r = r * 180 / pi
 
 -- | Fixed-point, so a message never reads @1.0e-2@.
 fixed :: Int -> Double -> Text
 fixed places x = T.pack (showFFloat (Just places) x "")
+
+-- | Fixed-point for numbers of ordinary size, exponent notation below 0.1.
+--
+-- Used where the value reported may be tiny. 'hasRelief' judges flatness
+-- relative to the sheet, so a 400-unit pattern can be refused over a @z@ span of
+-- 1e-6, and printing that as @0.000000@ would tell the reader their file is a
+-- folded form because a coordinate is off by nothing at all.
+general :: Double -> Text
+general x = T.pack (showGFloat (Just 6) x "")
 
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show

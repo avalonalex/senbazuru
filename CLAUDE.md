@@ -113,7 +113,7 @@ One direction of flow, no cycles:
 | --- | --- |
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
-| `Senbazuru.Geometry.V3` | Points in space, plus the cross product, which does not generalise. |
+| `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`. |

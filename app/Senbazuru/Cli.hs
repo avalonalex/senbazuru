@@ -35,13 +35,12 @@ import Senbazuru.Fold.Types
     assignmentCode,
   )
 import Senbazuru.Origami.FlatFold
-  ( Report (..),
-    Skip (..),
+  ( Report,
     Tolerance (..),
     checkFrame,
     defaultTolerance,
     renderCheckError,
-    renderViolation,
+    renderReport,
     reportViolations,
   )
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
@@ -116,7 +115,9 @@ commandParser =
           "check"
           ( info
               (Check <$> checkOptions)
-              (progDesc "Test every interior vertex for flat-foldability")
+              ( progDesc
+                  "Check every interior vertex against Maekawa's and Kawasaki's theorems"
+              )
           )
     )
 
@@ -133,7 +134,10 @@ checkOptions =
           <> help "Which frame to check (0 is the key frame)"
       )
     <*> option
-      auto
+      -- Rejected during parsing rather than checked later: a negative tolerance
+      -- makes `abs sum > tolerance` true for every vertex, so the tool would
+      -- confidently report that an alternating sum of 0.0000 degrees is not 0.
+      (nonNegative =<< auto)
       ( long "tolerance"
           <> metavar "DEG"
           <> value (degreesOf defaultTolerance)
@@ -148,6 +152,11 @@ checkOptions =
       )
   where
     degreesOf t = toleranceRadians t * 180 / pi
+
+    nonNegative :: Double -> ReadM Double
+    nonNegative d
+      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
+      | otherwise = readerError "tolerance must be a non-negative number of degrees"
 
 inputArg :: Parser FilePath
 inputArg = argument str (metavar "FILE.fold" <> help "Input FOLD file")
@@ -216,15 +225,21 @@ withFoldFile path k =
     Right f -> k f
 
 -- | The nth frame, or abort saying how many the file actually has.
+--
+-- The lower bound is not decoration: @drop@ on a negative index returns the
+-- whole list, so without it @--frame -5@ quietly works on frame 0 while every
+-- message says @-5@.
 frameAt :: Int -> FoldFile -> IO Frame
-frameAt i f = case drop i (allFrames f) of
-  (fr : _) -> pure fr
-  [] ->
+frameAt i f = case drop i frames of
+  (fr : _) | i >= 0 -> pure fr
+  _ ->
     die $
       "no frame "
         <> tshow i
         <> "; this file has "
-        <> tshow (length (allFrames f))
+        <> tshow (length frames)
+  where
+    frames = allFrames f
 
 renderFile :: RenderOptions -> FoldFile -> IO ()
 renderFile o f = do
@@ -262,43 +277,15 @@ checkFile o f = do
       -- pre-commit hook without anyone having to grep the output.
       unless (null (reportViolations report)) exitFailure
 
--- | The report as text.
+-- | The report, with a heading saying which file and frame it is about.
 --
--- Deliberately says \"no violations found\" rather than \"flat-foldable\". The
--- checks are local and necessary rather than sufficient, and a tool that
--- overstates them teaches the wrong thing.
+-- The body comes from 'renderReport'. The wording there is load-bearing and is
+-- tested; what is left here is the heading and two spaces of indent.
 formatReport :: FilePath -> Int -> Report -> Text
 formatReport path frameIx report =
   T.unlines $
     (T.pack path <> ", frame " <> tshow frameIx)
-      : map ("  " <>) (violationLines <> summaryLines)
-  where
-    violations = reportViolations report
-    violationLines = [renderViolation v x | (v, x) <- violations]
-
-    summaryLines =
-      [ "checked "
-          <> plural (length (reportChecked report)) "interior vertex" "interior vertices"
-          <> skippedNote,
-        if null violations
-          then "no violations found"
-          else plural (length violations) "violation" "violations"
-      ]
-
-    skippedNote = case (countSkips OnBorder, countSkips NoCreases) of
-      (0, 0) -> ""
-      (border, 0) -> "; skipped " <> tshow border <> " on the border"
-      (0, bare) -> "; skipped " <> tshow bare <> " with no creases"
-      (border, bare) ->
-        "; skipped "
-          <> tshow border
-          <> " on the border and "
-          <> tshow bare
-          <> " with no creases"
-
-    countSkips s = length [() | (_, s') <- reportSkipped report, s' == s]
-
-    plural n one several = tshow n <> " " <> (if n == 1 then one else several)
+      : map ("  " <>) (renderReport report)
 
 -- | A short human summary of a file, for poking at unfamiliar FOLD data.
 summarise :: FilePath -> FoldFile -> Text

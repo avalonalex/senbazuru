@@ -7,7 +7,9 @@
 -- tested by property: 'genKawasakiSectors' builds vertices that satisfy it /by
 -- construction/ — pick the odd-numbered sector angles to sum to 180°, and the
 -- even-numbered ones too — and the properties say that such a vertex passes and
--- that nudging one crease makes it fail.
+-- that nudging one crease makes it fail. It starts at one pair, so the
+-- degree-two vertex — two collinear creases, the shape a redundant vertex
+-- half-way along a crease makes — is covered.
 --
 -- Every generated vertex is given @U@ creases and a border ring, which isolates
 -- what is under test: @U@ stops Maekawa being applied at all, so a Kawasaki
@@ -18,6 +20,7 @@ module Senbazuru.Origami.FlatFoldSpec (spec) where
 
 import Data.ByteString qualified as BS
 import Senbazuru.Fold.Load (decodeFoldFile)
+import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
@@ -72,8 +75,13 @@ centreOf fr = do
     (c : _) -> Just c
     [] -> Nothing
 
-violationsAt :: Frame -> Either CheckError [Violation]
-violationsAt fr = fmap (maybe [] checkViolations) (centreOf fr)
+-- | Violations at the centre vertex, or 'Nothing' if it was never checked.
+--
+-- The two are kept apart on purpose. Folding them together — treating a skipped
+-- vertex as a clean one — would let every property below pass while testing
+-- nothing, if some future change started skipping the vertex under test.
+violationsAt :: Frame -> Either CheckError (Maybe [Violation])
+violationsAt fr = fmap (fmap checkViolations) (centreOf fr)
 
 -- | Sector angles for a vertex that satisfies Kawasaki's theorem exactly.
 --
@@ -84,7 +92,7 @@ violationsAt fr = fmap (maybe [] checkViolations) (centreOf fr)
 -- creases around the vertex.
 genKawasakiSectors :: Gen [Double]
 genKawasakiSectors = do
-  n <- choose (2, 5)
+  n <- choose (1, 5)
   odds <- vectorOf n (choose (0.2, 1.0))
   evens <- vectorOf n (choose (0.2, 1.0))
   pure (interleave (toHalfTurn odds) (toHalfTurn evens))
@@ -101,29 +109,29 @@ spec = do
       -- The corollary is the cheapest check in the whole project: it reads no
       -- coordinates and does not care which crease is which.
       let threeCreases as = violationsAt (starFrame (zip [0, 2, 4] as))
-      threeCreases [Mountain, Valley, Mountain] `shouldBe` Right [OddCreaseCount 3]
-      threeCreases [Mountain, Mountain, Mountain] `shouldBe` Right [OddCreaseCount 3]
-      threeCreases [Unassigned, Unassigned, Unassigned] `shouldBe` Right [OddCreaseCount 3]
+      threeCreases [Mountain, Valley, Mountain] `shouldBe` Right (Just [OddCreaseCount 3])
+      threeCreases [Mountain, Mountain, Mountain] `shouldBe` Right (Just [OddCreaseCount 3])
+      threeCreases [Unassigned, Unassigned, Unassigned] `shouldBe` Right (Just [OddCreaseCount 3])
 
     it "accepts three mountains and one valley at right angles" $
       -- A square folded into quarters. Fold it in half, then in half again: the
       -- second fold goes through two layers, which unfold into two creases
       -- folded opposite ways. That is where the lopsided 3-to-1 comes from.
       violationsAt (squareStar [Mountain, Valley, Mountain, Mountain])
-        `shouldBe` Right []
+        `shouldBe` Right (Just [])
 
     it "rejects two mountains and two valleys at right angles" $
       -- The obvious-looking assignment, and impossible: a vertical valley
       -- crossing a horizontal mountain cannot be pressed flat.
       violationsAt (squareStar [Mountain, Valley, Mountain, Valley])
-        `shouldBe` Right [MaekawaImbalance 2 2]
+        `shouldBe` Right (Just [MaekawaImbalance 2 2])
 
     it "is not applied when any crease is unassigned" $ do
       -- U means "not decided yet", so the counts are unknown and Maekawa has
       -- nothing to say. Reporting a violation here would be a checker
       -- complaining about a file that has not made its mind up.
       let fr = squareStar [Mountain, Mountain, Valley, Unassigned]
-      violationsAt fr `shouldBe` Right []
+      violationsAt fr `shouldBe` Right (Just [])
       fmap (fmap checkUnassigned) (centreOf fr) `shouldBe` Right (Just 1)
 
   describe "Kawasaki's theorem" $ do
@@ -131,13 +139,13 @@ spec = do
       -- Sectors of 90, 90, 135 and 45 degrees: 90 - 90 + 135 - 45 = 90.
       let fr = unassignedStar (bearingsOf [pi / 2, pi / 2, 3 * pi / 4, pi / 4])
       violationsAt fr `shouldSatisfy` \case
-        Right [KawasakiSum s] -> abs (abs s - 90) < 1e-9
+        Right (Just [KawasakiSum s]) -> abs (abs s - 90) < 1e-9
         _ -> False
 
     it "holds for any vertex whose alternate sectors each sum to 180 degrees" $
       forAll genKawasakiSectors $ \sectors ->
         let fr = unassignedStar (bearingsOf sectors)
-         in violationsAt fr == Right []
+         in violationsAt fr == Right (Just [])
 
     it "fails once one crease is nudged off that arrangement" $
       -- Moving a single crease by d changes the two sectors either side of it
@@ -149,16 +157,21 @@ spec = do
               (b0 : b1 : rest) -> b0 : (b1 + nudge) : rest
               short -> short
             fr = unassignedStar moved
-         in violationsAt fr /= Right []
+         in violationsAt fr /= Right (Just [])
 
-    it "does not depend on which crease the walk starts at" $
+    it "reports the same size of failure wherever the walk starts" $ do
       -- The alternating sum flips sign if you start one crease further round,
-      -- so only its distance from zero can mean anything. Rotating the whole
-      -- vertex must not change the verdict.
-      forAll genKawasakiSectors $ \sectors ->
-        let rotated = drop 1 sectors <> take 1 sectors
-            check ss = violationsAt (unassignedStar (bearingsOf ss))
-         in check sectors == check rotated
+      -- so only its distance from zero can mean anything.
+      --
+      -- Stated over a vertex that fails, deliberately. Rotating one that passes
+      -- compares nothing against nothing: both sides report no violation
+      -- however wrongly the sum was computed.
+      let sectors = [pi / 2, pi / 2, 3 * pi / 4, pi / 4]
+          rotations = [drop i sectors <> take i sectors | i <- [0 .. 3]]
+          magnitude ss = case violationsAt (unassignedStar (bearingsOf ss)) of
+            Right (Just [KawasakiSum s]) -> Just (round (abs s) :: Int)
+            _ -> Nothing
+      map magnitude rotations `shouldBe` replicate 4 (Just 90)
 
   describe "which lines count as creases" $ do
     it "dissolves a flat crease instead of counting it" $ do
@@ -173,7 +186,7 @@ spec = do
                 (pi, Mountain),
                 (3 * pi / 2, Valley)
               ]
-      violationsAt fr `shouldBe` Right []
+      violationsAt fr `shouldBe` Right (Just [])
       fmap (fmap checkDegree) (centreOf fr) `shouldBe` Right (Just 4)
 
     it "dissolves a join the same way" $ do
@@ -185,7 +198,7 @@ spec = do
                 (pi, Mountain),
                 (3 * pi / 2, Valley)
               ]
-      violationsAt fr `shouldBe` Right []
+      violationsAt fr `shouldBe` Right (Just [])
 
     it "skips a vertex the edge of the paper reaches" $ do
       -- Three creases and a border edge. Left to itself this vertex would
@@ -224,15 +237,41 @@ spec = do
       fmap (map starSectors . take 1) (frameStars fr) `shouldBe` Right [[2 * pi]]
 
   describe "frames the question does not apply to" $ do
-    it "refuses a folded form, which is not a crease pattern" $ do
+    it "refuses a three-dimensional folded form" $ do
       let fr =
             emptyFrame
               { verticesCoords = [[0, 0, 0], [1, 0, 0], [0, 1, 0.5]],
                 edgesVertices = [(VertexId 0, VertexId 1), (VertexId 0, VertexId 2)],
                 edgesAssignment = [Mountain, Valley]
               }
-      checkFrame defaultTolerance fr
-        `shouldBe` Left (NotACreasePattern (VertexId 2) 0.5)
+      checkFrame defaultTolerance fr `shouldBe` Left (NotFlat 0.5)
+
+    it "refuses a flat-folded form, which the coordinates cannot give away" $ do
+      -- The traditional crane folds flat, so its folded frame has coordinates
+      -- of exactly the same shape as a crease pattern's. Only frame_classes
+      -- separates them, and measuring one against these theorems would compare
+      -- folded angles with theorems about unfolded ones -- inventing violations
+      -- rather than missing them.
+      let fr = (squareStar [Mountain, Valley, Mountain, Mountain]) {frameClasses = ["foldedForm"]}
+      checkFrame defaultTolerance fr `shouldBe` Left DeclaredFoldedForm
+      -- The same geometry with no class declared is still a crease pattern.
+      checkFrame defaultTolerance (squareStar [Mountain, Valley, Mountain, Mountain])
+        `shouldSatisfy` \case Right _ -> True; Left _ -> False
+
+    it "refuses a file with no edges_assignment at all" $ do
+      -- FOLD makes the array optional and Fold.Query reads its absence as
+      -- all-U, which is right for drawing. Here it would mean no B edges, so no
+      -- vertex on the border, so a violation reported at every vertex around
+      -- the outside of a perfectly good sheet.
+      let fr = (squareStar [Mountain, Valley, Mountain, Mountain]) {edgesAssignment = []}
+      checkFrame defaultTolerance fr `shouldBe` Left NoAssignments
+
+    it "refuses a frame with no vertices, as rendering does" $
+      -- Not "nothing to check": a file whose vertices_coords went missing must
+      -- fail the same way under check as under render, or it slips through a
+      -- hook silently.
+      checkFrame defaultTolerance emptyFrame
+        `shouldBe` Left (FrameGeometry NoVertices)
 
     it "refuses an edge with no direction" $ do
       -- Two vertices at the same point: the edge between them has no bearing,
@@ -244,6 +283,39 @@ spec = do
                 edgesAssignment = [Mountain]
               }
       checkFrame defaultTolerance fr `shouldBe` Left (DegenerateEdge (EdgeId 0))
+
+  describe "the wording of a report" $ do
+    -- This is the promise the module makes, so it is tested rather than left to
+    -- whatever the command line happened to print.
+    it "never says flat-foldable" $
+      renderReport (reportOf [cleanVertex 0] [])
+        `shouldBe` ["checked 1 interior vertex", "no violations found"]
+
+    it "counts both kinds of skip, and only the kinds that occurred" $ do
+      let skips border bare =
+            [(VertexId i, OnBorder) | i <- [1 .. border]]
+              <> [(VertexId i, NoCreases) | i <- [100 .. 99 + bare]]
+      renderReport (reportOf [cleanVertex 0, cleanVertex 9] (skips 3 1))
+        `shouldBe` [ "checked 2 interior vertices; skipped 3 on the border and 1 with no creases",
+                     "no violations found"
+                   ]
+      renderReport (reportOf [cleanVertex 0] (skips 3 0))
+        `shouldBe` ["checked 1 interior vertex; skipped 3 on the border", "no violations found"]
+      renderReport (reportOf [cleanVertex 0] (skips 0 2))
+        `shouldBe` ["checked 1 interior vertex; skipped 2 with no creases", "no violations found"]
+
+    it "lists every violation before the summary, and counts them" $ do
+      let failing v vs = (cleanVertex v) {checkViolations = vs}
+          report =
+            reportOf
+              [failing 0 [OddCreaseCount 3], failing 9 [MaekawaImbalance 2 2]]
+              []
+      renderReport report
+        `shouldBe` [ "vertex 0: 3 creases meet here, an odd number, which never folds flat (Maekawa)",
+                     "vertex 9: 2 mountains and 2 valleys, which must differ by 2 (Maekawa)",
+                     "checked 2 interior vertices",
+                     "2 violations"
+                   ]
 
   describe "the example files" $ do
     it "passes the square folded into quarters" $ do
@@ -272,6 +344,20 @@ spec = do
       -- for either theorem to look at.
       report <- checkFixture "test/fixtures/unit-square.fold"
       reportChecked report `shouldBe` []
+
+-- | A report with the given checked vertices and skips, for testing wording.
+reportOf :: [VertexCheck] -> [(VertexId, Skip)] -> Report
+reportOf checked skipped =
+  Report {reportChecked = checked, reportSkipped = skipped}
+
+cleanVertex :: Int -> VertexCheck
+cleanVertex v =
+  VertexCheck
+    { checkVertex = VertexId v,
+      checkDegree = 4,
+      checkUnassigned = 0,
+      checkViolations = []
+    }
 
 checkFixture :: FilePath -> IO Report
 checkFixture path = do
