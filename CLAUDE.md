@@ -96,8 +96,11 @@ One direction of flow, no cycles:
  [Crease]                            3D geometry that cannot be structurally wrong
      |                               |
      |                               +--> Senbazuru.Origami.FlatFold
-     |                                    origami knowledge, no drawing: is this
-     |                                    pattern locally impossible to fold?
+     |                               |    origami knowledge, no drawing: is this
+     |                               |    pattern locally impossible to fold?
+     |                               +--> Senbazuru.Origami.Folding
+     |                                    fold it: a Frame in, a folded Frame
+     |                                    out, straight back into this pipeline
      |  Senbazuru.Render.CreasePattern
      |  + Senbazuru.Render.Camera    orthographic projection to the page
      |  + Senbazuru.Diagram.Style    origami line conventions
@@ -114,12 +117,14 @@ One direction of flow, no cycles:
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
+| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
+| `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
@@ -260,6 +265,19 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Coordinates may be 2D or 3D.** `frameVertices` returns `V3` and keeps z;
   2D vertices get `z = 0`. Projection is the camera's job, in
   `Senbazuru.Render.Camera`, not the query layer's.
+- **A folded model's state is its fold angles, not its vertex positions.**
+  Positions are derived from angles by `Senbazuru.Origami.Folding`. A folded
+  frame therefore keeps `edges_foldAngle`, and nothing should interpolate
+  vertex positions to show a half-folded state — that stretches the paper.
+- **A spanning tree cuts every loop, and loops are the whole constraint.**
+  Folding reaches each face by one path, so it will produce coordinates for
+  angles no sheet can adopt. `foldFrame` closes the loops by hand, comparing
+  where each face puts a shared vertex. Anything else walking the face graph
+  needs the same check or it will silently tear a model.
+- **At ±180° a mountain and a valley are the same rigid motion.** Turning half a
+  turn either way about a line lands in the same place. The assignment still
+  matters — it decides which layer ends up on top — but that is layer ordering,
+  not position, so folding cannot tell a flat mountain from a flat valley.
 - **Not every line in a crease pattern folds.** `F` (flat) and `J` (join) are
   drawn but the paper is continuous across them, so anything reasoning about the
   angles around a vertex has to dissolve them first — otherwise the crease count
@@ -295,6 +313,9 @@ Deliberate omissions, so nobody thinks they are bugs:
 - Folded forms render as wireframes. Crease-pattern faces are filled; a folded
   form's are not, because its faces overlap and which one is in front is
   `faceOrders`, which is not decoded.
+- Folding solves for positions from given angles. It does not solve for *angles*
+  — there is no way to ask for a model half folded, because scaling every angle
+  by a fraction generally lands on angles no paper can adopt.
 - No fold arrows, which is the main thing standing between this and a real
   step-by-step diagram.
 - No FOLD *output* (`ToJSON`), which the authoring-tools goal will need.

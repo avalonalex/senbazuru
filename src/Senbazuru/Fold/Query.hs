@@ -20,6 +20,8 @@ module Senbazuru.Fold.Query
     -- * Refined views of a frame
     Crease (..),
     Face (..),
+    FrameKind (..),
+    frameKind,
     frameVertices,
     frameCreases,
     frameFaces,
@@ -36,7 +38,7 @@ import Senbazuru.Fold.Types
     Frame (..),
     VertexId (..),
   )
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 
 -- | Everything that can be structurally wrong with an otherwise well-formed
 -- FOLD frame.
@@ -117,6 +119,39 @@ renderFoldError = \case
 
     tshow :: (Show a) => a -> Text
     tshow = T.pack . show
+
+-- | What a frame's coordinates are a picture of.
+data FrameKind
+  = -- | A flat sheet with the folds still to be made marked on it.
+    CreasePattern
+  | -- | The paper as it is after folding, flat or not.
+    FoldedForm
+  deriving stock (Eq, Show)
+
+-- | Decide which kind of picture a frame is, from its geometry and then, only
+-- if it has to, from its classes.
+--
+-- Relief settles it: a frame that leaves the plane has been folded, whatever it
+-- calls itself, and 'hasRelief' is the one place that judgement is made.
+--
+-- A flat frame is the hard case, and the reason this function exists rather
+-- than each caller writing two lines. A flat-folded model — the traditional
+-- crane — has coordinates a crease pattern's cannot be told from, so the only
+-- thing left to ask is @frame_classes@, and a frame that declares nothing is
+-- taken as a pattern, which is what senbazuru has always done. Three callers
+-- need this answer: what line convention to draw with, whether the
+-- flat-folding theorems apply, and whether there is anything left to fold.
+-- They must not be able to disagree, and they did: the folding module tested
+-- the geometry alone and would fold an already-folded crane a second time.
+--
+-- Takes @frame_classes@ and the vertices rather than the whole frame: the
+-- caller has already validated the vertices, so a frame with a bad coordinate
+-- fails once and in one place, and nobody has to build a frame to ask.
+frameKind :: [Text] -> [V3] -> FrameKind
+frameKind classes verts
+  | hasRelief verts = FoldedForm
+  | "foldedForm" `elem` classes = FoldedForm
+  | otherwise = CreasePattern
 
 -- | Look vertices up by id.
 --

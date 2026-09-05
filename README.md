@@ -6,10 +6,10 @@ visual style of step-by-step origami instruction books.
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
 > **Status: early.** Crease patterns render correctly, and are filled with paper
-> where the file records faces. Folded forms render as wireframes from a choice
-> of viewing angles. There is also a flat-foldability checker. Folding arrows and
-> layer-correct shading — the things that make a diagram a *diagram* — are not
-> built yet. See [Roadmap](#roadmap).
+> where the file records faces. A pattern can be *folded* along its own fold
+> angles and the result drawn from a choice of viewing angles. There is also a
+> flat-foldability checker. Folding arrows and layer-correct shading — the things
+> that make a diagram a *diagram* — are not built yet. See [Roadmap](#roadmap).
 
 ## What it does today
 
@@ -47,6 +47,48 @@ stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
 
 The bare `--` matters: without it Stack tries to interpret `--view` as one of its
 own options.
+
+## What it folds
+
+`--fold` computes the folded form rather than reading one. Given a crease
+pattern and a fold angle for every crease, paper does not stretch, so each face
+moves rigidly and the whole state is one rigid motion per face — walk the faces,
+compose one turn per crease, and every vertex is a lookup.
+
+```bash
+stack run -- render examples/quarter-fold.fold --fold -o quarter-folded.svg
+stack run -- render examples/diagonal-cp.fold --fold -o diagonal-folded.svg
+```
+
+The first folds a square into quarters and produces a quadrant with four layers;
+the second folds a square along its diagonal and produces a triangle. Neither
+needs `--view`: both fold *flat*, and the view is chosen from the coordinates, so
+they are drawn from above. Forcing `--view iso` on a flat-folded model shears a
+correct picture into a wrong one; leave the camera alone unless the fold really
+does leave the plane. Fold angles
+come from `edges_foldAngle`, or from the assignments if the file records none —
+an assignment names a direction and not an amount, and a flat fold is the only
+amount consistent with naming no number.
+
+Not every set of angles describes something a sheet of paper can do. Walk round
+an interior vertex and the turns must compose back to nothing, and the obvious
+algorithm never checks: it reaches each face by one path and silently *tears* the
+model when they disagree. `--fold` compares the places each face puts a shared
+vertex and refuses rather than drawing the tear:
+
+```console
+$ senbazuru render bent.fold --fold
+senbazuru: cannot fold bent.fold: vertex 6 is placed 0.707107 apart by the faces
+meeting at it, so these fold angles tear the paper rather than folding it
+```
+
+The threshold for "disagree" admits arithmetic noise and nothing more, so angles
+that are a fraction of a degree short of closing are refused too — the message
+quotes the distance, which is how you tell a tear from a typo in the fourth
+decimal place.
+
+Layers are not ordered yet, so a folded form is drawn as a wireframe: senbazuru
+knows where every face went, not which one is in front.
 
 ## What it checks
 
@@ -146,6 +188,7 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 | `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |
+| `--fold` | Fold the crease pattern along its fold angles and draw the result |
 
 `check` takes `--frame` too, and one option of its own:
 
@@ -160,12 +203,14 @@ src/Senbazuru/
   Geometry.hs              points, boxes, the model→page transform
   Geometry/VectorSpace.hs  the arithmetic 2D and 3D points share
   Geometry/V3.hs           points in space, for 3D input
+  Geometry/Rigid.hs        motions that turn and slide without deforming
   Fold/Types.hs            the FOLD document model + JSON decoding
   Fold/Load.hs             reading files (the only I/O in the library)
   Fold/Query.hs            validating a frame into geometry you can trust
   Diagram.hs               backend-independent drawing IR
   Diagram/Style.hs         the origami line conventions
   Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
+  Origami/Folding.hs       crease pattern + fold angles -> folded form
   Render/Camera.hs         orthographic projection, 3D → the page
   Render/CreasePattern.hs  FOLD frame → Diagram
   Render/Svg.hs            Diagram → SVG text
@@ -205,14 +250,11 @@ issues are the detail.
    shared scale. Note that every published FOLD example is single-frame, so this
    needs fixtures we author ourselves.
    → [envelopes](docs/notes/envelopes.md)
-2. **Folded forms.** Fold a crease pattern into 3D
-   ([#17](https://github.com/avalonalex/senbazuru/issues/17)), then render it
-   layer-correctly ([#18](https://github.com/avalonalex/senbazuru/issues/18)).
-   The folding itself is cheap; the layer ordering is where the real
-   computational geometry starts.
-   → [folding-by-transforms](docs/notes/folding-by-transforms.md),
-   [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
-   [layer-ordering](docs/notes/layer-ordering.md)
+2. **[Layer ordering.](https://github.com/avalonalex/senbazuru/issues/18)** A
+   folded form is drawn as a wireframe because nothing works out which face is
+   in front. Folding itself was cheap; this is where the real computational
+   geometry starts.
+   → [layer-ordering](docs/notes/layer-ordering.md)
 3. **Authoring tools.** FOLD output
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.
