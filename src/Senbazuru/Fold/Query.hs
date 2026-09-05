@@ -97,6 +97,13 @@ renderFoldError = \case
 -- "Senbazuru.Render.Camera".
 data Crease = Crease
   { creaseId :: !EdgeId,
+    -- | The endpoint ids, kept alongside the positions because a consumer that
+    -- has to reason about the /graph/ — which creases meet at which vertex —
+    -- cannot recover them from coordinates without comparing floating-point
+    -- numbers for equality. "Senbazuru.Origami.FlatFold" is the first such
+    -- consumer.
+    creaseFrom :: !VertexId,
+    creaseTo :: !VertexId,
     creaseStart :: !V3,
     creaseEnd :: !V3,
     creaseAssignment :: !Assignment
@@ -143,7 +150,7 @@ frameCreases fr = do
       toCrease (eid, (a, b), asg) = do
         pa <- resolve eid a
         pb <- resolve eid b
-        pure (Crease eid pa pb asg)
+        pure (Crease eid a b pa pb asg)
 
   traverse toCrease (zip3 (map EdgeId [0 ..]) (edgesVertices fr) assignments)
   where

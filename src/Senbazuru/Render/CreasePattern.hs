@@ -40,7 +40,7 @@ import Senbazuru.Fold.Query
   )
 import Senbazuru.Fold.Types (Assignment (..), Frame (..))
 import Senbazuru.Geometry (boxFromPoints)
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Render.Camera (Basis, isometric, project, topDown)
 
 -- | Render one frame as a crease pattern, seen from directly above.
@@ -133,22 +133,6 @@ defaultNotationFor classes verts
   | hasRelief verts = FoldedFormNotation
   | "foldedForm" `elem` classes = FoldedFormNotation
   | otherwise = CreasePatternNotation
-
--- | Does the geometry leave the plane?
---
--- Judged relative to the sheet's own size, since \"small\" only means anything
--- next to something else. A model a thousand units wide with a thousandth of a
--- unit of relief is flat; one a thousandth of a unit wide with the same relief
--- is not. No vertices at all counts as flat, so that the callers can go on to
--- fail with the error that actually describes the problem.
-hasRelief :: [V3] -> Bool
-hasRelief verts = zSpan > 1e-9 * max 1 planeSpan
-  where
-    spanOf f = case map f verts of
-      [] -> 0
-      cs -> maximum cs - minimum cs
-    zSpan = spanOf v3z
-    planeSpan = max (spanOf v3x) (spanOf v3y)
 
 -- | Painting order, lowest first.
 --

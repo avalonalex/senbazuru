@@ -94,6 +94,10 @@ One direction of flow, no cycles:
      |  Senbazuru.Fold.Query         validate + refine: indices become real points
      v
  [Crease]                            3D geometry that cannot be structurally wrong
+     |                               |
+     |                               +--> Senbazuru.Origami.FlatFold
+     |                                    origami knowledge, no drawing: is this
+     |                                    pattern locally impossible to fold?
      |  Senbazuru.Render.CreasePattern
      |  + Senbazuru.Render.Camera    orthographic projection to the page
      |  + Senbazuru.Diagram.Style    origami line conventions
@@ -109,12 +113,13 @@ One direction of flow, no cycles:
 | --- | --- |
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
-| `Senbazuru.Geometry.V3` | Points in space, plus the cross product, which does not generalise. |
+| `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
+| `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
@@ -124,6 +129,10 @@ One direction of flow, no cycles:
 
 - `Senbazuru.Geometry` depends on nothing in the project. Keep it that way.
 - `Senbazuru.Diagram` must not know what FOLD is.
+- `Senbazuru.Origami.*` is what senbazuru knows about paper, as opposed to what
+  it knows about drawing. Nothing in it may mention a diagram, a page or a
+  colour; it is a second consumer of `Fold.Query`, not a stage on the way to
+  SVG.
 - `Senbazuru.Render.Svg` must not know what a mountain fold is.
 - Only `Senbazuru.Fold.Load` does I/O. Everything else takes and returns values,
   which is what makes the rest testable without a filesystem.
@@ -251,6 +260,12 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Coordinates may be 2D or 3D.** `frameVertices` returns `V3` and keeps z;
   2D vertices get `z = 0`. Projection is the camera's job, in
   `Senbazuru.Render.Camera`, not the query layer's.
+- **Not every line in a crease pattern folds.** `F` (flat) and `J` (join) are
+  drawn but the paper is continuous across them, so anything reasoning about the
+  angles around a vertex has to dissolve them first — otherwise the crease count
+  is wrong, which flips the parity Maekawa's theorem depends on. `B` and `C`
+  mean the paper stops, which makes the vertex a border vertex, where the
+  flat-folding theorems do not apply at all.
 - **A folded form is not necessarily 3D.** The traditional crane folds *flat*,
   so its folded frame lies in a plane. Choose a view from the coordinates
   (`defaultBasisFor`), never from `frame_classes`. The line notation is the one

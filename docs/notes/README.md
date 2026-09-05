@@ -14,6 +14,8 @@ read the Haddock module headers; for the domain, start with
 | --- | --- |
 | [maekawa.md](maekawa.md) | At a flat-foldable vertex, mountains minus valleys is always ±2 |
 | [kawasaki.md](kawasaki.md) | Alternating angles decide single-vertex flat-foldability exactly |
+| [kawasaki-without-trig.md](kawasaki-without-trig.md) | The alternating sum is a product of complex numbers, so it can be tested exactly |
+| [big-little-big.md](big-little-big.md) | A sector smaller than both its neighbours forces one mountain and one valley |
 | [flat-foldability-is-hard.md](flat-foldability-is-hard.md) | One vertex is linear time; the whole sheet is NP-hard |
 | [robust-predicates.md](robust-predicates.md) | Why `Double` gets the left-of-line test *wrong*, not just imprecise |
 | [convex-hull.md](convex-hull.md) | Andrew's monotone chain, in four steps |
@@ -36,7 +38,7 @@ read the Haddock module headers; for the domain, start with
 
 ## Where to start
 
-If you want one thing to build next, [maekawa.md](maekawa.md) and
-[kawasaki.md](kawasaki.md) together are the smallest change that makes senbazuru
-understand origami rather than just draw lines — no new geometry machinery, and
-they give the CLI a second verb that catches genuinely bad input.
+[maekawa.md](maekawa.md) and [kawasaki.md](kawasaki.md) are built:
+`senbazuru check` applies both. Read those two first, then
+[big-little-big.md](big-little-big.md), which is the condition they miss and the
+smallest thing left to add to the checker.

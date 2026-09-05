@@ -1,0 +1,30 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (hand-written)",
+  "file_title": "A three-crease vertex, which cannot fold flat",
+  "file_classes": ["singleModel"],
+  "frame_title": "Three creases at one point",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "vertices_coords": [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [1.0, 1.0],
+    [0.0, 1.0],
+    [0.5, 0.0],
+    [0.5, 0.5]
+  ],
+  "edges_vertices": [
+    [0, 4], [4, 1], [1, 2], [2, 3], [3, 0],
+    [5, 4], [5, 2], [5, 3]
+  ],
+  "edges_assignment": [
+    "B", "B", "B", "B", "B",
+    "M", "V", "M"
+  ],
+  "edges_foldAngle": [
+    0, 0, 0, 0, 0,
+    -180, 180, -180
+  ]
+}

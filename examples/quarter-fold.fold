@@ -1,0 +1,36 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (hand-written)",
+  "file_title": "Square folded into quarters",
+  "file_classes": ["singleModel"],
+  "frame_title": "Quarter folds",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "vertices_coords": [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [1.0, 1.0],
+    [0.0, 1.0],
+    [0.5, 0.0],
+    [1.0, 0.5],
+    [0.5, 1.0],
+    [0.0, 0.5],
+    [0.5, 0.5]
+  ],
+  "edges_vertices": [
+    [0, 4], [4, 1], [1, 5], [5, 2],
+    [2, 6], [6, 3], [3, 7], [7, 0],
+    [8, 4], [8, 5], [8, 6], [8, 7]
+  ],
+  "edges_assignment": [
+    "B", "B", "B", "B",
+    "B", "B", "B", "B",
+    "M", "V", "M", "M"
+  ],
+  "edges_foldAngle": [
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    -180, 180, -180, -180
+  ]
+}
