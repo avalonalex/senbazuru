@@ -62,6 +62,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Senbazuru.Diagram
+    Senbazuru.Diagram.Layout
     Senbazuru.Diagram.Style
     Senbazuru.Fold.Load
     Senbazuru.Fold.Query
@@ -76,6 +77,7 @@ library
     Senbazuru.Origami.Step
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
+    Senbazuru.Render.Steps
     Senbazuru.Render.Svg
 
   build-depends:
@@ -103,6 +105,7 @@ test-suite senbazuru-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   other-modules:
+    Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.RigidSpec
@@ -114,6 +117,7 @@ test-suite senbazuru-test
     Senbazuru.Origami.StepSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec
+    Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
     Test.Golden
 

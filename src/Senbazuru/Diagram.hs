@@ -42,6 +42,7 @@ module Senbazuru.Diagram
     -- * Shapes
     Shape (..),
     ArrowPath (..),
+    mapShapePoints,
     shapePoints,
     shapesBounds,
 
@@ -125,6 +126,14 @@ data Shape
     Polygon !Colour ![V2]
   | -- | A curved arrow with a solid head.
     Arrow !ArrowPath
+  | -- | A line of text: colour, size in __page units__, the model-space point
+    -- its baseline starts at, and the text itself.
+    --
+    -- The second shape whose size and position are in different units, after
+    -- 'ArrowPath'. A step number four hundred model units tall would be
+    -- unreadable on one drawing and would fill the page on another; what it
+    -- has to be is the same height in print whatever the model measures.
+    Label !Colour !Double !V2 !Text
   deriving stock (Eq, Show)
 
 -- | The model-space points a shape passes through.
@@ -132,10 +141,30 @@ shapePoints :: Shape -> [V2]
 shapePoints = \case
   Polyline _ ps -> ps
   Polygon _ ps -> ps
+  Label _ _ p _ -> [p]
   -- The control point is included even though the curve never reaches it: it is
   -- the far side of the bow, so a box that left it out could still clip the
   -- arc it produces.
   Arrow a -> [arrowFrom a, arrowVia a, arrowTo a]
+
+-- | Move every model-space point of a shape.
+--
+-- Only the points move: a stroke width, an arrowhead and a label's size are all
+-- in page units and mean the same thing wherever the shape ends up. That is the
+-- whole reason laying several drawings out on one page can be done by shifting
+-- their coordinates — nothing about how they are inked has to be recomputed.
+mapShapePoints :: (V2 -> V2) -> Shape -> Shape
+mapShapePoints f = \case
+  Polyline s ps -> Polyline s (map f ps)
+  Polygon c ps -> Polygon c (map f ps)
+  Label c size p txt -> Label c size (f p) txt
+  Arrow a ->
+    Arrow
+      a
+        { arrowFrom = f (arrowFrom a),
+          arrowVia = f (arrowVia a),
+          arrowTo = f (arrowTo a)
+        }
 
 -- | The tightest box containing every point of every shape, or 'Nothing' if
 -- there is nothing to draw.

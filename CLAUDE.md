@@ -129,6 +129,8 @@ One direction of flow, no cycles:
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
+| `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
+| `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
@@ -210,9 +212,12 @@ the FOLD file). Stroke *widths and dash lengths* are in page units and are never
 scaled. A crease line is ~1pt wide whether the paper is 1 unit or 400 units
 across. See the header of `Senbazuru.Diagram`.
 
-The one shape needing both is `Arrow`: its curve is in model units and its
-head's size is in page units, so the head is built by the backend *after*
-projection, which is the only place both are in scope.
+Two shapes need both: `Arrow`'s curve is in model units and its head's size is
+in page units, and `Label` is a model-space point with a page-unit type size.
+Both are finished by the backend *after* projection, which is the only place
+both units are in scope. The rule is what makes `Diagram.Layout` possible at
+all — figures are combined by shifting their coordinates, and nothing about how
+they are inked has to be recomputed.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because
@@ -318,6 +323,16 @@ are not contributors can find it, and so there is only one copy to keep true.
   signs, and they cancel. Recomputing the winding there would uncancel them and
   turn the model inside out. `Senbazuru.Origami.Layers` takes the file's winding
   exactly as written, and is the only place that does.
+- **A page of steps is drawn through one camera**, chosen from every frame
+  together. Asking each frame what view suits it moves the reader around the
+  model between figures, and makes the shared extent a union of boxes measured
+  in different projections. The *notation* is still per frame — that is a
+  different question. See `Senbazuru.Render.Steps`.
+- **A page of steps shares one scale, and each figure keeps its own size.**
+  `Diagram.Layout` lays figures out against the union of their extents, so a
+  folded model is drawn smaller than the sheet it came from. Scaling each figure
+  to fill its own cell is the tempting error: it makes folding look like it does
+  not shrink the paper.
 - **A step is a subtraction, and it compares positions.** FOLD records no
   arrows, so `Senbazuru.Origami.Step` works out what moved between two frames.
   It compares where the paper *is*, not `edges_foldAngle`: a frame may record no
@@ -337,7 +352,8 @@ are not contributors can find it, and so there is only one copy to keep true.
 
 Deliberate omissions, so nobody thinks they are bugs:
 
-- Frame inheritance (`frame_inherit` / `frame_parent`) is decoded but not resolved.
+- Frame inheritance (`frame_inherit` / `frame_parent`) is decoded but not
+  resolved, so every frame of a multi-frame file must repeat the whole graph.
 - `edgeOrders` is not decoded at all.
 - No solver for layer order. `faceOrders` is read and used when a file supplies
   one; nothing computes one, so a folded form senbazuru folded itself is drawn

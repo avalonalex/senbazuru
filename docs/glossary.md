@@ -27,6 +27,7 @@ For the ideas rather than the definitions, start with
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
 | **Fold arrow** | The curved mark saying which paper moves where. Drawn on the step *before* the fold. FOLD records none, so senbazuru subtracts one frame from the next — see `Senbazuru.Origami.Step`. |
 | **Step** | One picture of a diagram sequence: the paper as it is, plus the instruction for reaching the next. Stored in FOLD as consecutive frames of `file_frames`. |
+| **Figure** | One drawing on a page of several. `Senbazuru.Diagram.Layout` arranges figures at one shared scale, so a folded model is drawn smaller than the sheet it came from. |
 | **Yoshizawa–Randlett** | The standard diagram notation: solid paper edges, dashed valleys, dash-dot-dot mountains. The dashes mark folds still to be made, so a folded form is drawn with solid edges only. See `Senbazuru.Diagram.Style`. |
 | **Assignment colour convention** | The *other* notation, used by on-screen editors: red mountains, blue valleys, uniform line weight. We target the printed-book one. |
 | **Huzita–Hatori axioms** | The seven ways a single fold can be specified by aligning points and lines. See [notes/huzita-hatori.md](notes/huzita-hatori.md). |

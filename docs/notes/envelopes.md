@@ -21,9 +21,23 @@ problem fall out as algebra.
 
 ## Why it matters here
 
-Roadmap item 3 is laying out a multi-frame FOLD file as a numbered grid of
-steps. That is precisely the problem envelopes solve, and `diagramExtent` is the
-crude fixed-box version of the same idea.
+Laying a multi-frame FOLD file out as a numbered grid of steps is precisely the
+problem envelopes solve. `Senbazuru.Diagram.Layout` does it the crude way — one
+shared bounding box per figure, arranged on a fixed pitch — and that is enough
+for a folding sequence, because every figure is a sheet of paper seen from the
+same angle and the boxes are all much the same shape.
+
+Where it will start to cost is the case a book actually uses: figures at
+different angles, or a step turned on its side to show a flap, laid out so they
+touch without overlapping. A bounding box wastes space on anything diagonal and
+there is no way to ask it for the extent *in the direction of placement*. That
+is the question an envelope answers, and the point at which this note stops
+being background reading.
+
+Worth noting that `diagramExtent` is not simply the crude version of an
+envelope: it is deliberately *not* the drawing's own bounds. It is pinned to the
+sheet of paper so that a sequence keeps one scale, and an envelope derived from
+each figure's contents would lose exactly that.
 
 ## References
 
