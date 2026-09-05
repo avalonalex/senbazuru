@@ -43,7 +43,8 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 
 -- | Everything that can be structurally wrong with an otherwise well-formed
--- FOLD frame.
+-- FOLD frame, or with a pair of frames that are meant to be two states of one
+-- model.
 --
 -- Each constructor carries enough context to point at the offending element,
 -- because \"invalid FOLD file\" is a useless thing to tell someone holding a
@@ -82,6 +83,13 @@ data FoldError
     -- itself. Raised by "Senbazuru.Origami.Layers" and carried here so that
     -- everything a frame can be wrong about reaches a caller as one type.
     ImpossibleStacking FaceId
+  | -- | Two frames that should describe the same paper disagree about how much
+    -- of it there is. Carries the key and the two lengths.
+    FramesDiffer Text Int Int
+  | -- | They have the same amount of paper and have joined it up differently,
+    -- so matching element @i@ of one to element @i@ of the other would compare
+    -- unrelated pieces. Carries the key and the first index that differs.
+    FramesDisagree Text Int
   | -- | Two parallel arrays that must agree in length do not. Carries the name
     -- and length of each.
     ArrayLengthMismatch Text Int Text Int
@@ -129,6 +137,18 @@ renderFoldError = \case
     "the faceOrders run in a circle through face "
       <> tshow f
       <> "; no stack of paper is in front of itself"
+  FramesDisagree what i ->
+    "these two frames are not two states of one model: their "
+      <> what
+      <> " first differ at index "
+      <> tshow i
+  FramesDiffer what a b ->
+    "these two frames are not two states of one model: one has "
+      <> tshow a
+      <> " "
+      <> what
+      <> " and the other has "
+      <> tshow b
   ArrayLengthMismatch a na b nb ->
     a
       <> " has "

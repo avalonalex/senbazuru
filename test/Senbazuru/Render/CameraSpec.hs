@@ -104,8 +104,8 @@ spec = do
               V2 bx by = project b (p ^+^ d)
               V2 cx cy = project b (p ^+^ (t *^ d))
               -- Twice the signed area of the triangle; zero iff collinear.
-              cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-           in abs cross < 1e-6 * (1 + abs t)
+              twiceArea = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+           in abs twiceArea < 1e-6 * (1 + abs t)
 
     it "preserves distance for displacements across the view direction" $
       forAll ((,) <$> genBasis <*> genV3) $ \(b, p) ->

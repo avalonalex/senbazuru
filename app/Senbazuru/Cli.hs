@@ -15,7 +15,7 @@ module Senbazuru.Cli
   )
 where
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -26,7 +26,7 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..))
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile, renderLoadError)
-import Senbazuru.Fold.Query (renderFoldError)
+import Senbazuru.Fold.Query (frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
   ( Assignment,
     FoldFile (..),
@@ -44,8 +44,9 @@ import Senbazuru.Origami.FlatFold
     reportViolations,
   )
 import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
+import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
-import Senbazuru.Render.CreasePattern (creasePatternAuto)
+import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
@@ -83,6 +84,8 @@ data RenderOptions = RenderOptions
     -- | Fold the crease pattern before drawing it, instead of drawing the
     -- pattern itself.
     roFold :: Bool,
+    -- | Draw the fold this step performs, worked out from the next frame.
+    roArrows :: Bool,
     -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
     -- argument parsing, so an unknown name never reaches this record.
     roView :: Maybe Basis
@@ -208,6 +211,14 @@ renderOptions =
                 <> " instead of the pattern"
             )
       )
+    <*> switch
+      ( long "arrows"
+          <> help
+            ( "Draw the fold that takes this frame to the next one, as a book"
+                <> " does: the arrow goes on the picture of the paper before the"
+                <> " fold. The last frame has no next one, and so no arrows"
+            )
+      )
     <*> optional
       ( option
           -- Resolved during parsing, so a bad name is rejected with optparse's
@@ -258,6 +269,12 @@ frameAt i f = case drop i frames of
 renderFile :: RenderOptions -> FoldFile -> IO ()
 renderFile o f = do
   chosen <- frameAt (roFrame o) f
+  -- Refused rather than resolved. --arrows describes the step from this frame
+  -- to the next one in the file, and --fold replaces this frame with one
+  -- computed from it, so together they would draw a motion whose start point is
+  -- not where the paper is any more.
+  when (roFold o && roArrows o) $
+    die "--fold and --arrows describe different frames; use one or the other"
   frame <-
     if roFold o
       then case foldFrame chosen of
@@ -265,10 +282,24 @@ renderFile o f = do
           die ("cannot fold " <> T.pack (roInput o) <> ": " <> renderFoldingError err)
         Right folded -> pure folded
       else pure chosen
-  let rendered = creasePatternAuto theme (roView o) frame
-  case rendered of
+  motions <-
+    if roArrows o
+      then case drop (roFrame o + 1) (allFrames f) of
+        -- The final picture of a sequence shows the finished model, and a book
+        -- draws no arrow on it. Neither do we.
+        [] -> pure []
+        (next : _) -> case motionsBetween frame next of
+          Left err ->
+            die ("cannot work out the step in " <> T.pack (roInput o) <> ": " <> renderFoldError err)
+          Right ms -> pure ms
+      else pure []
+  case creasePatternAuto theme (roView o) frame of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
-    Right d -> emit (renderSvg (page frame) d)
+    Right d
+      | null motions -> emit (renderSvg (page frame) d)
+      | otherwise -> do
+          basis <- arrowBasis frame
+          emit (renderSvg (page frame) (withArrows theme basis motions d))
   where
     -- Each flag only ever subtracts from the default. Written as guards rather
     -- than as assignments so that a flag left off defers to whatever
@@ -292,6 +323,13 @@ renderFile o f = do
           -- Prefer the frame's own title; fall back to the file's.
           pageTitle = frameTitle frame <|> fileTitle f
         }
+
+    -- The arrows have to be projected the same way the drawing was. 'basisFor'
+    -- is the decision creasePatternAuto makes, asked again rather than
+    -- reimplemented, so the two cannot drift apart.
+    arrowBasis frame = case frameVertices frame of
+      Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)
+      Right verts -> pure (basisFor (roView o) verts)
 
     emit = maybe TIO.putStr TIO.writeFile (roOutput o)
 

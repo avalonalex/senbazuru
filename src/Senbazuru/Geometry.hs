@@ -27,6 +27,7 @@ module Senbazuru.Geometry
     -- "Senbazuru.Geometry.V3", and is re-exported here so importing this
     -- module is enough to work with 'V2'.
     module Senbazuru.Geometry.VectorSpace,
+    perpendicular,
 
     -- * Axis-aligned bounding boxes
     Box (..),
@@ -195,3 +196,12 @@ fitBox src dst = Transform (V2 scale (negate scale)) offset
     -- Chosen so that the centre of src lands exactly on the centre of dst.
     -- Note the sign flip on the y term, matching the negated y scale.
     offset = V2 (dstCx - scale * srcCx) (dstCy + scale * srcCy)
+
+-- | A quarter turn anticlockwise in the plane.
+--
+-- Small enough to be worth writing twice and therefore worth writing once: an
+-- arrowhead needs it to put its base corners either side of its axis, and an
+-- arrow needs it to decide which way to bow. The two had drifted into separate
+-- copies in two modules before this existed.
+perpendicular :: V2 -> V2
+perpendicular (V2 x y) = V2 (negate y) x

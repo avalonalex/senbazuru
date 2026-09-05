@@ -11,14 +11,15 @@ import Data.ByteString qualified as BS
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
-import Senbazuru.Diagram.Style (Notation (..), defaultTheme)
+import Senbazuru.Diagram.Style (Notation (..), arrowFor, defaultTheme)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
-import Senbazuru.Fold.Types (FoldFile (..))
+import Senbazuru.Fold.Types (FoldFile (..), allFrames)
 import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
+import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, isometric, topDown)
-import Senbazuru.Render.CreasePattern (creasePatternFrom)
+import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
 import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
@@ -58,6 +59,35 @@ renderFolded basis path = do
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
+
+-- | One arrow across a square model of the given size, so that two sizes can be
+-- compared for anything that ought not to depend on the model's scale.
+arrowDiagram :: Double -> Diagram
+arrowDiagram size =
+  diagramWithExtent
+    (Box (V2 0 0) (V2 size size))
+    [ Arrow
+        ( arrowFor
+            defaultTheme
+            (V2 (0.25 * size) (0.5 * size))
+            (V2 (0.75 * size) (0.5 * size))
+        )
+    ]
+
+-- | Render one frame of a sequence with the arrows for the step it begins.
+renderStep :: Int -> FilePath -> IO Text
+renderStep i path = do
+  bytes <- BS.readFile path
+  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  let frames = allFrames f
+  (thisStep, nextStep) <- case drop i frames of
+    (a : b : _) -> pure (a, b)
+    _ -> fail "fixture does not have two frames from there"
+  motions <- either (fail . show) pure (motionsBetween thisStep nextStep)
+  d <- case creasePatternFrom defaultTheme CreasePatternNotation topDown thisStep of
+    Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
+    Right d -> pure d
+  pure (renderSvg testPage (withArrows defaultTheme topDown motions d))
 
 -- | Deliberately not 'defaultPage': a golden file should not churn because
 -- someone retunes the default margin.
@@ -139,6 +169,39 @@ spec = do
       -- The outline of a face comes from the crease edges that run along it.
       T.count "stroke=" out `shouldBe` 0
 
+    it "draws an arrow as a curve and a solid head" $ do
+      let out = renderSvg testPage (arrowDiagram 1)
+      -- A quadratic Bezier, not a straight line: the mark means the paper turns
+      -- through the air rather than sliding along the page.
+      out `shouldSatisfy` T.isInfixOf " Q "
+      -- Two paths: the stroked curve and the filled head.
+      T.count "<path" out `shouldBe` 2
+      T.count "fill=\"#1a1a1a\"" out `shouldBe` 1
+
+    it "keeps the arrowhead the same size however big the model is" $ do
+      -- The two-unit rule, in the one shape that needs both units at once. A
+      -- head measured in model units would be a speck on a large sheet and
+      -- would swallow a small one.
+      let headOf = filter (T.isInfixOf "fill=") . T.lines . renderSvg testPage
+      headOf (arrowDiagram 1) `shouldBe` headOf (arrowDiagram 400)
+
+    it "shrinks the head rather than drawing the arrow backwards" $ do
+      -- The head is a fixed size in page units, and a small flap on a large
+      -- sheet can move less far than that. This arrow spans 7.36 page units and
+      -- the theme's head is 11, so unclamped the curve would be pulled back past
+      -- its own start and drawn in reverse underneath a head that swallowed it.
+      --
+      -- Pinned exactly, because the number that matters is easy to state: the
+      -- curve starts at x = 200 and must end to the right of it. It ended at
+      -- 197.5 before the head was clamped.
+      let stubby =
+            diagramWithExtent
+              (Box (V2 0 0) (V2 1 1))
+              [Arrow (arrowFor defaultTheme (V2 0.5 0.5) (V2 0.52 0.5))]
+          out = renderSvg defaultPage stubby
+      out `shouldSatisfy` T.isInfixOf "M 200 200 Q 203.68 198.16 204.069 198.354"
+      T.count "<path" out `shouldBe` 2
+
     it "skips a polygon with fewer than three points" $ do
       let sliver =
             diagramWithExtent
@@ -147,11 +210,11 @@ spec = do
       T.count "<path" (renderSvg testPage sliver) `shouldBe` 0
 
     it "skips a polyline with fewer than two points" $ do
-      let dot =
+      let speck =
             diagramWithExtent
               (Box (V2 0 0) (V2 1 1))
               [Polyline (solid (Colour "#000000") 1) [V2 0 0]]
-      T.count "<path" (renderSvg testPage dot) `shouldBe` 0
+      T.count "<path" (renderSvg testPage speck) `shouldBe` 0
 
     it "escapes the title, which comes from a user-supplied file" $ do
       let page = testPage {pageTitle = Just "Fish & <chips>"}
@@ -173,6 +236,14 @@ spec = do
     it "renders quarter-fold.fold, whose four faces meet at a point" $
       renderFixture "test/fixtures/quarter-fold.fold"
         >>= goldenText "test/golden/quarter-fold.svg"
+
+    -- The first step of a folding sequence, with the arrow that makes it an
+    -- instruction rather than a picture. Everything in this file is derived:
+    -- the arrow comes from subtracting two frames, and neither frame says a
+    -- word about arrows because FOLD has no way to.
+    it "renders the first step of a sequence, arrow and all" $
+      renderStep 0 "test/fixtures/quarter-fold-steps.fold"
+        >>= goldenText "test/golden/quarter-fold-step-1.svg"
 
     -- These two are 3D folded forms. Before the camera existed they rendered as
     -- flattened top-down projections; these goldens pin the isometric view that

@@ -73,6 +73,7 @@ library
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
     Senbazuru.Origami.Layers
+    Senbazuru.Origami.Step
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
     Senbazuru.Render.Svg
@@ -110,6 +111,7 @@ test-suite senbazuru-test
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
     Senbazuru.Origami.LayersSpec
+    Senbazuru.Origami.StepSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec
     Senbazuru.Render.SvgSpec

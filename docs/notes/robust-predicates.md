@@ -28,10 +28,17 @@ common case, and never wrong.
 
 ## Why it matters here
 
-Nothing in senbazuru evaluates a geometric predicate *yet*. `fitBox` only scales
-and translates, which is why `Senbazuru.Geometry` gets away with plain `Double`.
-The moment [convex hull](convex-hull.md) arrives for fold arrows, this stops
-being background reading.
+Senbazuru still evaluates no orientation predicate, and fold arrows arrived
+without needing one — see [convex-hull.md](convex-hull.md), which expected
+otherwise.
+
+What it does have is a growing pile of *comparisons against zero*, each with a
+tolerance chosen for a reason: whether a vertex left the plane, whether a face's
+winding can be read, whether a fold angle closes its loop, whether a face is
+edge on to the viewer. None of those is an orientation test, but every one of
+them is the same trap in a smaller form — a sign decided by rounding. The moment
+[convex hull](convex-hull.md) does arrive, this stops being background
+reading.
 
 ## References
 
