@@ -472,6 +472,10 @@ summarise path f =
     stacking fr = case faceOrders fr of
       os@(_ : _) -> tshow (length os) <> " faceOrders"
       [] -> case frameVertices fr of
+        -- Said as such, rather than falling through to the crease-pattern
+        -- line: a frame whose vertices cannot be read is not a crease pattern,
+        -- and this would be the one line of the summary to hide that.
+        Left err -> "(none; the vertices cannot be read: " <> renderFoldError err <> ")"
         Right verts
           | frameKind (frameClasses fr) verts == FoldedForm -> case solveStacking fr of
               Right os ->
@@ -480,7 +484,7 @@ summarise path f =
                   <> " overlapping pairs worked out from the geometry)"
               Left err ->
                 "(none in the file, and none worked out: " <> renderStackingError err <> ")"
-        _ -> "(none, and a crease pattern needs none)"
+          | otherwise -> "(none, and a crease pattern needs none)"
 
     commas [] = "(none)"
     commas xs = T.intercalate ", " xs
