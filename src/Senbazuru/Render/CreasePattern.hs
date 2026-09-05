@@ -36,8 +36,10 @@ import Senbazuru.Fold.Query
   ( Crease (..),
     Face (..),
     FoldError (..),
+    FrameKind (..),
     frameCreases,
     frameFaces,
+    frameKind,
     frameVertices,
   )
 import Senbazuru.Fold.Types (Assignment (..), Frame (..))
@@ -147,10 +149,9 @@ defaultBasisFor verts
 -- already validated them and a frame with a bad coordinate should fail once,
 -- with one error, in one place.
 defaultNotationFor :: [Text] -> [V3] -> Notation
-defaultNotationFor classes verts
-  | hasRelief verts = FoldedFormNotation
-  | "foldedForm" `elem` classes = FoldedFormNotation
-  | otherwise = CreasePatternNotation
+defaultNotationFor classes verts = case frameKind classes verts of
+  FoldedForm -> FoldedFormNotation
+  CreasePattern -> CreasePatternNotation
 
 -- | Painting order for creases, lowest first.
 --

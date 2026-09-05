@@ -71,7 +71,9 @@ module Senbazuru.Origami.Folding
   )
 where
 
+import Control.Monad (when)
 import Data.Bifunctor (first)
+import Data.Foldable (foldl')
 import Data.IntMap.Strict qualified as IM
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
@@ -80,8 +82,10 @@ import Data.Text qualified as T
 import Numeric (showGFloat)
 import Senbazuru.Fold.Query
   ( Face (..),
-    FoldError,
+    FoldError (..),
+    FrameKind (..),
     frameFaces,
+    frameKind,
     frameVertices,
     renderFoldError,
   )
@@ -100,8 +104,9 @@ import Senbazuru.Geometry.VectorSpace
 data FoldingError
   = -- | The frame is not structurally sound enough to get this far.
     FrameGeometry !FoldError
-  | -- | The vertices already leave the plane, so this is a folded form and
-    -- there is nothing to fold. Carries how far it spans in @z@.
+  | -- | This frame is a folded form already, so there is nothing to fold.
+    -- Carries how far it spans in @z@, which is zero for a flat-folded model
+    -- that only its @frame_classes@ gives away.
     AlreadyFolded !Double
   | -- | No @faces_vertices@. Creases alone do not say which pieces of paper
     -- move together, so there is nothing to apply a transform to.
@@ -121,9 +126,13 @@ data FoldingError
   | -- | A face no chain of creases connects to the rest, so nothing places it
     -- relative to the others.
     DisconnectedFace !FaceId
+  | -- | A fold angle that is not a finite number of degrees. Every trig
+    -- function of it is @NaN@, and @NaN@ coordinates format as @0@, so this
+    -- would otherwise stack half the model on the origin in silence.
+    NonFiniteAngle !EdgeId !Double
   | -- | The faces meeting at a vertex disagree about where it ends up: these
     -- angles tear the paper. Carries the vertex and the distance between the
-    -- furthest-apart placements.
+    -- two furthest-apart placements.
     TornAt !VertexId !Double
   deriving stock (Eq, Show)
 
@@ -156,6 +165,8 @@ renderFoldingError = \case
       <> " has "
       <> tshow n
       <> " faces along it; folding needs at most two"
+  NonFiniteAngle (EdgeId e) d ->
+    "edge " <> tshow e <> " has a fold angle of " <> num d <> ", which is not a number of degrees"
   DisconnectedFace (FaceId f) ->
     "face "
       <> tshow f
@@ -181,13 +192,14 @@ renderFoldingError = \case
 foldFrame :: Frame -> Either FoldingError Frame
 foldFrame fr = do
   flat <- first FrameGeometry (frameVertices fr)
-  case () of
-    _ | hasRelief flat -> Left (AlreadyFolded (zSpan flat))
-    _ -> Right ()
+  -- Shared with the renderer and the flat-foldability checker, so that all
+  -- three agree about what a file is. Asking the geometry alone would fold an
+  -- already-folded crane a second time and hand back nonsense: it folds flat,
+  -- so nothing in its coordinates says it has been folded.
+  when (frameKind (frameClasses fr) flat == FoldedForm) $
+    Left (AlreadyFolded (zSpan flat))
   faces <- traverse orientCcw =<< first FrameGeometry (frameFaces fr)
-  case faces of
-    [] -> Left NoFaces
-    _ -> Right ()
+  when (null faces) (Left NoFaces)
   creases <- creaseIndex fr
   neighbours <- faceNeighbours faces
   transforms <- spanningWalk faces creases neighbours
@@ -195,8 +207,30 @@ foldFrame fr = do
   pure
     fr
       { verticesCoords = [[x, y, z] | V3 x y z <- folded],
-        frameClasses = ["foldedForm"]
+        frameClasses = foldedClasses (frameClasses fr),
+        frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr)
       }
+
+-- | @foldedForm@ in place of @creasePattern@, with everything else kept.
+--
+-- Replacing the whole list would drop classes that are still true —
+-- @singleModel@, @graph@ — and those are the file's own words about itself.
+foldedClasses :: [Text] -> [Text]
+foldedClasses classes =
+  "foldedForm" : filter (`notElem` ["creasePattern", "foldedForm"]) classes
+
+-- | @2D@ or @3D@ to match the coordinates we just wrote.
+--
+-- FOLD's attribute describes exactly what folding changes, so a folded frame
+-- that kept its @2D@ while leaving the plane would contradict itself — and this
+-- module is the intended input to a FOLD writer, where that lie would be
+-- written to disk.
+foldedAttributes :: Bool -> [Text] -> [Text]
+foldedAttributes solid attrs
+  | solid = "3D" : without
+  | otherwise = "2D" : without
+  where
+    without = filter (`notElem` ["2D", "3D"]) attrs
 
 -- | An identifier for a crease, independent of which way round it is written.
 type CreaseKey = (Int, Int)
@@ -213,20 +247,31 @@ creaseKey (VertexId a) (VertexId b) = (min a b, max a b)
 -- the wrong way.
 orientCcw :: Face -> Either FoldingError Face
 orientCcw f
+  | abs area <= negligible = Left (DegenerateFace (faceId f))
   | area > 0 = Right f
-  | area < 0 =
+  | otherwise =
       Right
         f
           { faceVertexIds = reverse (faceVertexIds f),
             faceCorners = reverse (faceCorners f)
           }
-  | otherwise = Left (DegenerateFace (faceId f))
   where
     -- Twice the signed area. Positive is counterclockwise with y upwards, which
     -- is the convention model coordinates use.
     area = sum (zipWith term corners (drop 1 corners <> take 1 corners))
     corners = faceCorners f
     term (V3 x0 y0 _) (V3 x1 y1 _) = x0 * y1 - x1 * y0
+
+    -- Judged against the face's own size, not against zero. The shoelace sum of
+    -- a long thin face is a difference of large numbers, so its sign can be
+    -- rounding noise -- and that sign decides the direction of every fold made
+    -- across this face, and of every face beyond it in the walk. A sliver whose
+    -- orientation cannot be read is refused rather than guessed at.
+    negligible = 1e-12 * max 1 (extent * extent)
+    extent = max (spanOf (\(V3 x _ _) -> x)) (spanOf (\(V3 _ y _) -> y))
+    spanOf g = case map g corners of
+      [] -> 0
+      cs -> maximum cs - minimum cs
 
 -- | Every crease by the pair of vertices it joins, with its fold angle in
 -- radians.
@@ -236,13 +281,36 @@ orientCcw f
 -- on its own can say — it names a direction and not an amount — and a flat fold
 -- is the only amount consistent with naming no number at all.
 creaseIndex :: Frame -> Either FoldingError (M.Map CreaseKey (EdgeId, Double))
-creaseIndex fr = foldr add (Right M.empty) (zip3 (map EdgeId [0 ..]) (edgesVertices fr) angles)
+creaseIndex fr = do
+  angles <- foldAngles
+  foldr add (Right M.empty) (zip3 (map EdgeId [0 ..]) (edgesVertices fr) angles)
   where
-    angles = case edgesFoldAngle fr of
-      as | length as == length (edgesVertices fr) -> map radians as
-      _ -> map fromAssignment (edgesAssignment fr <> repeat Unassigned)
+    nEdges = length (edgesVertices fr)
 
-    radians d = d * pi / 180
+    -- An array of the wrong length is a corrupt file, not a default to paper
+    -- over. "Senbazuru.Fold.Query" says exactly that about edges_assignment and
+    -- rejects it; quietly substituting angles derived from the assignments —
+    -- which is what an earlier version did — turned a truncated file into a
+    -- different model that rendered without a word.
+    foldAngles = case (edgesFoldAngle fr, edgesAssignment fr) of
+      (as, _)
+        | length as == nEdges -> traverse finite (zip (map EdgeId [0 ..]) as)
+      ([], asg)
+        | length asg == nEdges -> Right (map fromAssignment asg)
+        | null asg -> Right (replicate nEdges 0)
+        | otherwise -> lengthMismatch "edges_assignment" (length asg)
+      (as, _) -> lengthMismatch "edges_foldAngle" (length as)
+
+    lengthMismatch name n =
+      Left (FrameGeometry (ArrayLengthMismatch "edges_vertices" nEdges name n))
+
+    -- cos and sin of a non-finite angle are NaN, a NaN rotation matrix produces
+    -- NaN coordinates, and formatNumber writes those as 0 -- so the model would
+    -- come out with half its vertices stacked on the origin and nothing said.
+    finite (eid, d)
+      | isNaN d || isInfinite d = Left (NonFiniteAngle eid d)
+      | otherwise = Right (d * pi / 180)
+
     fromAssignment = \case
       Mountain -> -pi
       Valley -> pi
@@ -296,47 +364,69 @@ spanningWalk faces creases neighbours = do
 
     byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
 
+    -- One level of the walk at a time, rather than one face with the newly
+    -- reached ones appended. `queue <> new` on every step is a left-nested
+    -- append that the next pop re-traverses, which is quadratic in the number
+    -- of faces -- and a real crease pattern has thousands.
     go placed [] = Right placed
-    go placed (current : queue) = case IM.lookup current byId of
-      Nothing -> Right placed
+    go placed frontier = do
+      reached <- concat <$> traverse (step placed) frontier
+      let placed' = foldl' keepFirst placed reached
+      -- The next level is what this one actually placed, taken from the map so
+      -- that each face appears exactly once. Reading it off `reached` instead
+      -- lists a face once per neighbour that reached it, and since those
+      -- duplicates each expand again on the following level the walk stops
+      -- being linear and becomes exponential -- a 3600-face grid did not finish.
+      go placed' (IM.keys (placed' `IM.difference` placed))
+
+    -- First arrival wins: foldl' inserts in the order the level produced them
+    -- and insertWith keeps whatever is already there. Reaching a face twice in
+    -- one level means it shares two creases with this one, which is a loop the
+    -- tree has to cut somewhere; placeVertices is what notices whether the cut
+    -- mattered.
+    keepFirst acc (c, m) = IM.insertWith (\_ old -> old) c m acc
+
+    step placed current = case IM.lookup current byId of
+      -- A frontier entry with no face is impossible, since the frontier is
+      -- built from faces. Dropping the rest of the queue on it -- which an
+      -- earlier version did -- would have reported every face still waiting as
+      -- disconnected, blaming the file for a walk that gave up.
+      Nothing -> Right []
       Just f -> do
         steps <- traverse (crossing f) (ringEdges (faceVertexIds f))
         let parent = fromMaybe identity (IM.lookup current placed)
-            fresh =
-              [ (child, parent `after` turn)
-                | Just (child, turn) <- steps,
-                  not (IM.member child placed)
-              ]
-            -- A face can be reached twice within one ring only if it shares two
-            -- creases with this one, in which case the first arrival wins and
-            -- the second is a loop the tree cuts. placeVertices is what notices
-            -- if that mattered.
-            placed' = foldr (\(c, m) acc -> IM.insertWith (\_ old -> old) c m acc) placed fresh
-        go placed' (queue <> map fst fresh)
+        pure
+          [ (child, parent `after` turn)
+            | Just (child, turn) <- steps,
+              not (IM.member child placed)
+          ]
+
+    -- Crossing one edge of a face: who is on the other side, and what turn puts
+    -- them there.
+    crossing f (a, b) = case M.lookup (creaseKey a b) creases of
+      Nothing -> Left (FaceEdgeMissing (faceId f) a b)
+      Just (_, angle) -> case others of
+        [] -> Right Nothing
+        (child : _) -> Just . (,) child <$> turnAcross f a b angle
       where
-        -- Crossing one edge of the current face: who is on the other side, and
-        -- what turn puts them there.
-        crossing f (a, b) = case M.lookup (creaseKey a b) creases of
-          Nothing -> Left (FaceEdgeMissing (faceId f) a b)
-          Just (_, angle) ->
-            let others =
-                  [ unFaceId other
-                    | other <- M.findWithDefault [] (creaseKey a b) neighbours,
-                      other /= faceId f
-                  ]
-             in case others of
-                  [] -> Right Nothing
-                  (child : _) -> Right (Just (child, turnAcross f a b angle))
+        others =
+          [ unFaceId other
+            | other <- M.findWithDefault [] (creaseKey a b) neighbours,
+              other /= faceId f
+          ]
 
     -- The crease runs a -> b in this face's counterclockwise ring, so the
     -- neighbour is on its right, and a valley has to lift it towards +z. That
     -- is a negative turn about a -> b by the right-hand rule; see the module
     -- header.
-    turnAcross f a b angle = case cornerAt f a of
-      Nothing -> identity
-      Just pa -> case cornerAt f b of
-        Nothing -> identity
-        Just pb -> rotationAbout pa (pb ^-^ pa) (negate angle)
+    --
+    -- A corner the face lists but has no coordinate for cannot happen, since
+    -- both lists come from the same Face. Saying so with an error rather than
+    -- with `identity` means a change that does reach it fails loudly instead of
+    -- quietly stacking a face on top of its parent.
+    turnAcross f a b angle = case (cornerAt f a, cornerAt f b) of
+      (Just pa, Just pb) -> Right (rotationAbout pa (pb ^-^ pa) (negate angle))
+      _ -> Left (FaceEdgeMissing (faceId f) a b)
 
     cornerAt f v = lookup v (zip (faceVertexIds f) (faceCorners f))
 
@@ -376,13 +466,38 @@ placeVertices n flat faces transforms =
       -- is the only answer that does not invent one. It is also invisible: the
       -- renderer draws edges, and an edge to such a vertex has no face either.
       [] -> Right (IM.findWithDefault (V3 0 0 0) v original)
-      (p : ps)
-        | spread <= tolerance -> Right p
-        | otherwise -> Left (TornAt (VertexId v) spread)
-        where
-          spread = maximum (0 : map (norm . (^-^ p)) ps)
+      ps@(p : _)
+        -- Written as `all (<= tolerance)` and not `maximum ... <= tolerance`
+        -- on purpose. A NaN coordinate -- which a NaN rotation matrix would
+        -- produce -- makes every comparison False, so this refuses it; a
+        -- seeded `maximum` would not, because `max 0 NaN` is 0 in Haskell, and
+        -- NaN coordinates go on to format as 0 and stack half the model on the
+        -- origin without a word.
+        | all ((<= tolerance) . norm . (^-^ p)) ps -> Right p
+        | otherwise -> Left (TornAt (VertexId v) (diameter ps))
 
-    tolerance = 1e-6 * max 1 sheetSize
+    -- The furthest apart any two placements are, which is what TornAt says it
+    -- carries and what the message quotes to the user. Measuring everything
+    -- against the first placement instead can understate the disagreement by
+    -- half. There are only ever as many placements as faces at the vertex.
+    diameter ps = maximum (0 : [norm (a ^-^ b) | a <- ps, b <- ps])
+
+    -- Set to admit arithmetic noise and nothing else.
+    --
+    -- It is tempting to make this loose enough to wave through angles that are
+    -- merely written imprecisely, and that would be a mistake, because the line
+    -- it draws would then depend on which crease the spanning tree happened to
+    -- cut. A pattern whose right angles are written as 179.9 rather than 180
+    -- reports a disagreement of 1.5e-6 or 1.7e-3 on a unit sheet depending on
+    -- where the tree cut the loop -- three orders of magnitude apart for the
+    -- same file. A threshold anywhere in that range is a coin toss.
+    --
+    -- So the only defensible cut is between our arithmetic and the file's
+    -- angles. Composing rotations along a chain of faces costs on the order of
+    -- 1e-13; anything larger is the angles genuinely failing to close, however
+    -- slightly, and 'TornAt' quotes the distance so the reader can see whether
+    -- it is a tear or a typo in the fourth decimal place.
+    tolerance = 1e-9 * max 1 sheetSize
 
     -- The bounding box is enough to size the sheet, and it is one pass.
     sheetSize = max (spanOf v3x) (spanOf v3y)

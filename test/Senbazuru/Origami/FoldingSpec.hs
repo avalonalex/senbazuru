@@ -20,7 +20,7 @@ module Senbazuru.Origami.FoldingSpec (spec) where
 import Data.ByteString qualified as BS
 import Data.Either (fromRight)
 import Senbazuru.Fold.Load (decodeFoldFile)
-import Senbazuru.Fold.Query (frameVertices)
+import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId (..),
@@ -118,6 +118,19 @@ spec = do
       map (map rounded) (verticesCoords folded)
         `shouldBe` [[0, 0, 0], [0.5, 0, 0], [1, 0, 0], [1, 1, 0], [0.5, 1, 0], [0, 1, 0]]
 
+  describe "reading the winding from the coordinates" $ do
+    it "folds a clockwise face the same as a counterclockwise one" $ do
+      -- The reason orientCcw exists. FOLD specifies counterclockwise and real
+      -- editors emit clockwise; a winding taken on trust flips the sign of
+      -- every fold across that face. Every fixture in this repo happens to be
+      -- counterclockwise, so without this the reversal branch never runs and a
+      -- regression that deleted it would keep the suite green.
+      let ccw = halfSheet Valley 90
+          cw = ccw {facesVertices = map reverse (facesVertices ccw)}
+      folded <- foldOrFail ccw
+      flipped <- foldOrFail cw
+      verticesCoords flipped `shouldBe` verticesCoords folded
+
   describe "which way it turns" $ do
     it "lifts the moving face towards the viewer for a valley" $ do
       -- A valley opens towards you. The left half is held still in the plane,
@@ -214,6 +227,78 @@ spec = do
       case foldFrame flat of
         Left (AlreadyFolded d) -> d `shouldSatisfy` (> 0)
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "refuses to fold something it has already folded" $ do
+      -- The trap this project keeps meeting: a flat-folded model has
+      -- coordinates a crease pattern's cannot be told from, so only its class
+      -- gives it away. Folding one a second time returns the crease pattern it
+      -- came from, still labelled a folded form, with no complaint.
+      flat <- loadFixture "test/fixtures/quarter-fold.fold"
+      once <- foldOrFail flat
+      case foldFrame once of
+        Left (AlreadyFolded _) -> pure ()
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "says 2D or 3D to match the coordinates it wrote" $ do
+      -- FOLD's attribute describes exactly what folding changes, and this is
+      -- the intended input to a FOLD writer, so a folded frame that kept its
+      -- 2D while leaving the plane would write that contradiction to disk.
+      let solid = (halfSheet Valley 90) {frameAttributes = ["2D"]}
+      folded <- foldOrFail solid
+      frameAttributes folded `shouldBe` ["3D"]
+      stillFlat <- foldOrFail ((halfSheet Valley 180) {frameAttributes = ["3D"]})
+      frameAttributes stillFlat `shouldBe` ["2D"]
+
+    it "keeps the classes that are still true" $ do
+      let labelled = (halfSheet Valley 90) {frameClasses = ["creasePattern", "singleModel"]}
+      folded <- foldOrFail labelled
+      frameClasses folded `shouldBe` ["foldedForm", "singleModel"]
+
+    it "refuses angles that are a tenth of a degree short of closing" $ do
+      -- Right angles written as 179.9 rather than 180 do not close, and the
+      -- refusal says by how much. Small, but the tolerance deliberately does not
+      -- try to judge how small is acceptable: the reported distance for this
+      -- very file is 1.5e-6 or 1.7e-3 depending on which crease the spanning
+      -- tree cut, so a threshold placed between them would be arbitrary. It
+      -- admits arithmetic noise and leaves the judgement to the reader.
+      flat <- loadFixture "test/fixtures/quarter-fold.fold"
+      let rough = flat {edgesFoldAngle = map (\a -> if a == 0 then 0 else signum a * 179.9) (edgesFoldAngle flat)}
+      case foldFrame rough of
+        Left (TornAt _ d) -> d `shouldSatisfy` \x -> x > 1e-6 && x < 1e-2
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "refuses an edges_foldAngle array of the wrong length" $ do
+      -- Fold.Query says of the sibling array that "present but the wrong length
+      -- is a corrupt file, not a default to paper over". An earlier version
+      -- quietly substituted angles from the assignments, turning a truncated
+      -- file into a different model that rendered without a word.
+      let truncated = (halfSheet Valley 90) {edgesFoldAngle = [0, 0, 0]}
+      foldFrame truncated
+        `shouldBe` Left (FrameGeometry (ArrayLengthMismatch "edges_vertices" 7 "edges_foldAngle" 3))
+
+    it "refuses a short edges_assignment when there are no angles either" $ do
+      let truncated = (halfSheet Valley 90) {edgesFoldAngle = [], edgesAssignment = [Border, Border]}
+      foldFrame truncated
+        `shouldBe` Left (FrameGeometry (ArrayLengthMismatch "edges_vertices" 7 "edges_assignment" 2))
+
+    it "refuses a fold angle that is not a number" $ do
+      -- Every trig function of an infinity is NaN, a NaN matrix gives NaN
+      -- coordinates, and formatNumber writes those as 0 -- so this would
+      -- otherwise stack half the model on the origin in silence.
+      let broken = (halfSheet Valley 90) {edgesFoldAngle = replicate 6 0 <> [1 / 0]}
+      case foldFrame broken of
+        Left (NonFiniteAngle _ _) -> pure ()
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "refuses a face too thin to read an orientation from" $ do
+      -- The shoelace sum of a sliver is a difference of large numbers, so its
+      -- sign is rounding noise -- and that sign decides which way every fold
+      -- across the face goes.
+      let sliver =
+            (halfSheet Valley 90)
+              { verticesCoords = [[0, 0], [0.5, 0], [1, 0], [1, 1e-14], [0.5, 1e-14], [0, 1e-14]]
+              }
+      foldFrame sliver `shouldBe` Left (DegenerateFace (FaceId 0))
 
     it "refuses a face with no area" $ do
       let flatFace =

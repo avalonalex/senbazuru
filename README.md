@@ -57,11 +57,15 @@ compose one turn per crease, and every vertex is a lookup.
 
 ```bash
 stack run -- render examples/quarter-fold.fold --fold -o quarter-folded.svg
-stack run -- render examples/diagonal-cp.fold --fold --view iso -o diagonal-folded.svg
+stack run -- render examples/diagonal-cp.fold --fold -o diagonal-folded.svg
 ```
 
 The first folds a square into quarters and produces a quadrant with four layers;
-the second folds a square along its diagonal and produces a triangle. Fold angles
+the second folds a square along its diagonal and produces a triangle. Neither
+needs `--view`: both fold *flat*, and the view is chosen from the coordinates, so
+they are drawn from above. Forcing `--view iso` on a flat-folded model shears a
+correct picture into a wrong one; leave the camera alone unless the fold really
+does leave the plane. Fold angles
 come from `edges_foldAngle`, or from the assignments if the file records none —
 an assignment names a direction and not an amount, and a flat fold is the only
 amount consistent with naming no number.
@@ -77,6 +81,11 @@ $ senbazuru render bent.fold --fold
 senbazuru: cannot fold bent.fold: vertex 6 is placed 0.707107 apart by the faces
 meeting at it, so these fold angles tear the paper rather than folding it
 ```
+
+The threshold for "disagree" admits arithmetic noise and nothing more, so angles
+that are a fraction of a degree short of closing are refused too — the message
+quotes the distance, which is how you tell a tear from a typo in the fourth
+decimal place.
 
 Layers are not ordered yet, so a folded form is drawn as a wireframe: senbazuru
 knows where every face went, not which one is in front.

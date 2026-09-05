@@ -113,7 +113,9 @@ import Numeric (showFFloat, showGFloat)
 import Senbazuru.Fold.Query
   ( Crease (..),
     FoldError (..),
+    FrameKind (..),
     frameCreases,
+    frameKind,
     frameVertices,
     renderFoldError,
   )
@@ -309,26 +311,22 @@ frameStars fr = do
 
 -- | Refuse a frame that is not a crease pattern.
 --
--- Two tests, in the order 'Senbazuru.Render.CreasePattern.defaultNotationFor'
--- uses them and for the same reasons. Relief settles it: a frame that leaves
--- the plane is a folded form whatever it calls itself, and 'hasRelief' is the
--- one place that judgement is made, so the checker and the renderer cannot
--- disagree about the same file.
---
--- A flat frame is the hard case. A flat-folded model — the traditional crane —
--- has coordinates indistinguishable from a crease pattern's, so the only thing
--- left to ask is @frame_classes@, and a frame that declares nothing is taken as
--- a pattern, which is what the rest of senbazuru does.
+-- The judgement itself is 'frameKind', shared with the renderer and with
+-- folding so that the three cannot disagree about the same file. All this adds
+-- is which of two messages to give, since a reader told \"this is a folded
+-- form\" deserves to know whether that came from the coordinates or from the
+-- class.
 --
 -- Getting this wrong is not a missed check but an invented one. Run a folded
 -- crane through Kawasaki's theorem and it reports violations at vertices that
 -- are perfectly correct, because the angles being measured are the ones the
 -- paper ended up with rather than the ones it was folded from.
 requireCreasePattern :: Frame -> [V3] -> Either CheckError ()
-requireCreasePattern fr verts
-  | hasRelief verts = Left (NotFlat (zSpan verts))
-  | "foldedForm" `elem` frameClasses fr = Left DeclaredFoldedForm
-  | otherwise = Right ()
+requireCreasePattern fr verts = case frameKind (frameClasses fr) verts of
+  CreasePattern -> Right ()
+  FoldedForm
+    | hasRelief verts -> Left (NotFlat (zSpan verts))
+    | otherwise -> Left DeclaredFoldedForm
 
 -- | Refuse a frame that records no @edges_assignment@ at all.
 --

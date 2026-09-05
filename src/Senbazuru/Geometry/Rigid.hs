@@ -19,8 +19,11 @@
 -- convention (row-major or column-major, points as rows or columns) is in play
 -- before they can tell a translation from a projection. Storing the 3×3 and the
 -- offset separately makes 'after' four lines of visible arithmetic instead, and
--- makes it impossible to write down a value that is not a rigid motion by
--- accident.
+-- removes the one row that could turn a motion into a projection.
+--
+-- It does not make a non-rigid value unwriteable — 'Rigid' will hold any 3×3
+-- matrix, including one that scales — and nothing here checks. What keeps the
+-- type honest is that 'rotationAbout' is the only way anything constructs one.
 module Senbazuru.Geometry.Rigid
   ( -- * Matrices
     Mat3 (..),
