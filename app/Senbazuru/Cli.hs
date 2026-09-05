@@ -43,6 +43,7 @@ import Senbazuru.Origami.FlatFold
     renderReport,
     reportViolations,
   )
+import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
 import Senbazuru.Render.Camera (Basis, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (creasePatternAuto)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
@@ -79,6 +80,9 @@ data RenderOptions = RenderOptions
     roTransparent :: Bool,
     roHideFlat :: Bool,
     roNoFill :: Bool,
+    -- | Fold the crease pattern before drawing it, instead of drawing the
+    -- pattern itself.
+    roFold :: Bool,
     -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
     -- argument parsing, so an unknown name never reaches this record.
     roView :: Maybe Basis
@@ -197,6 +201,13 @@ renderOptions =
       (long "hide-flat" <> help "Do not draw flat (F) or unassigned (U) creases")
     <*> switch
       (long "no-fill" <> help "Draw the sheet as a wireframe, with faces left unfilled")
+    <*> switch
+      ( long "fold"
+          <> help
+            ( "Fold the crease pattern along its fold angles and draw the result"
+                <> " instead of the pattern"
+            )
+      )
     <*> optional
       ( option
           -- Resolved during parsing, so a bad name is rejected with optparse's
@@ -246,7 +257,14 @@ frameAt i f = case drop i frames of
 
 renderFile :: RenderOptions -> FoldFile -> IO ()
 renderFile o f = do
-  frame <- frameAt (roFrame o) f
+  chosen <- frameAt (roFrame o) f
+  frame <-
+    if roFold o
+      then case foldFrame chosen of
+        Left err ->
+          die ("cannot fold " <> T.pack (roInput o) <> ": " <> renderFoldingError err)
+        Right folded -> pure folded
+      else pure chosen
   let rendered = creasePatternAuto theme (roView o) frame
   case rendered of
     Left err -> die ("cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err)

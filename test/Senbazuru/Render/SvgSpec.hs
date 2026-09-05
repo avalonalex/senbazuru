@@ -16,6 +16,7 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry
+import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Render.Camera (Basis, isometric, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom)
 import Senbazuru.Render.Svg
@@ -38,6 +39,22 @@ renderFixtureFrom notation basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
   d <- case creasePatternFrom defaultTheme notation basis (keyFrame f) of
+    Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
+    Right d -> pure d
+  pure (renderSvg testPage d)
+
+-- | Fold a crease-pattern fixture and render the result.
+--
+-- The whole pipeline in one line: decode, fold along the file's own angles,
+-- draw what comes out. The folded frame goes through exactly the renderer a
+-- file-supplied folded form does, which is the point — nothing downstream knows
+-- these coordinates were computed.
+renderFolded :: Basis -> FilePath -> IO Text
+renderFolded basis path = do
+  bytes <- BS.readFile path
+  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
+  d <- case creasePatternFrom defaultTheme FoldedFormNotation basis folded of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -162,6 +179,14 @@ spec = do
     -- replaced that. They also pin the folded-form notation: every edge solid,
     -- no dash arrays anywhere, because the dashes mean "a fold still to be made"
     -- and these models are already folded.
+    -- Computed geometry rather than geometry read from a file: the quarter fold
+    -- collapses to one quadrant with four layers, so the golden is a small
+    -- square of coincident edges. If the sign convention ever flips, half the
+    -- model lands somewhere else and this file changes.
+    it "renders quarter-fold.fold after folding it" $
+      renderFolded topDown "test/fixtures/quarter-fold.fold"
+        >>= goldenText "test/golden/quarter-fold-folded.svg"
+
     it "renders simple.fold from the isometric view" $
       renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"
         >>= goldenText "test/golden/simple-iso.svg"

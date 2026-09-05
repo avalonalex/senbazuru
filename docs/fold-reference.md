@@ -73,7 +73,7 @@ order a half-edge structure needs — see
 | --- | --- | --- | --- |
 | `edges_vertices` | [int, int][] | The two endpoints | used |
 | `edges_assignment` | string[] | `B` `M` `V` `F` `U` `C` `J` | used |
-| `edges_foldAngle` | number[] | Degrees, `[-180, 180]`; negative is mountain | decoded |
+| `edges_foldAngle` | number[] | Degrees, `[-180, 180]`; negative is mountain | used |
 | `edges_faces` | int[][] | Incident faces | — |
 | `edges_length` | number[] | Edge length | — |
 
