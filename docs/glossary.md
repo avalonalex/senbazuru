@@ -19,7 +19,7 @@ For the ideas rather than the definitions, start with
 | **Flat-folded** | Folded so the whole model lies in a plane. Every fold angle is exactly ±180°. |
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
-| **Yoshizawa–Randlett** | The standard diagram notation: solid paper edges, dashed valleys, dash-dot-dot mountains. See `Senbazuru.Diagram.Style`. |
+| **Yoshizawa–Randlett** | The standard diagram notation: solid paper edges, dashed valleys, dash-dot-dot mountains. The dashes mark folds still to be made, so a folded form is drawn with solid edges only. See `Senbazuru.Diagram.Style`. |
 | **Assignment colour convention** | The *other* notation, used by on-screen editors: red mountains, blue valleys, uniform line weight. We target the printed-book one. |
 | **Huzita–Hatori axioms** | The seven ways a single fold can be specified by aligning points and lines. See [notes/huzita-hatori.md](notes/huzita-hatori.md). |
 

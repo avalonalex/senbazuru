@@ -30,11 +30,31 @@
 -- photocopying, which is what the whole notation was designed for. A colour
 -- theme is a plausible future addition, not a replacement.
 --
+-- == One vocabulary, two kinds of picture
+--
+-- The dashes in that table mean /a fold still to be made/. That is what a
+-- crease pattern is: a flat sheet with the instructions drawn on it. A folded
+-- form is a different kind of picture — the paper as it is now — and a book
+-- draws it with solid lines only, because there is nothing left to instruct. A
+-- crease that has been folded is an edge of the shape, and is drawn like one.
+-- The dotted line for edges hidden behind a layer belongs to this second kind
+-- of picture; it is unused because nothing yet works out which edges are
+-- hidden.
+--
+-- 'Notation' names the two kinds, and 'strokeFor' takes one, so that whoever
+-- draws a frame has to say which picture it is. The first version of the camera
+-- drew folded forms with crease-pattern dashes precisely because nothing forced
+-- that choice.
+--
 -- One thing that trips up newcomers: mountain and valley are not intrinsic
 -- properties of a crease, they are relative to which side of the sheet you are
 -- looking at. Turn the paper over and every mountain becomes a valley. FOLD
 -- records the assignment with respect to the sheet's stated orientation, and
--- this module simply renders whatever the file says.
+-- for a crease pattern that is enough, because a crease pattern is always
+-- viewed from that side. Under a camera it is not enough: a face turned away
+-- from the viewer has its mountains and valleys swapped from where the viewer
+-- stands. Drawing folded forms with solid edges sidesteps this. A step diagram
+-- that marks the /next/ fold on top of a folded form will have to face it.
 --
 -- == Why this module knows about 'Assignment'
 --
@@ -47,6 +67,7 @@ module Senbazuru.Diagram.Style
     defaultTheme,
 
     -- * Mapping fold semantics to ink
+    Notation (..),
     strokeFor,
 
     -- * Palette
@@ -68,10 +89,14 @@ ink = Colour "#1a1a1a"
 ghost :: Colour
 ghost = Colour "#bdbdbd"
 
--- | The knobs that control how a crease pattern looks.
+-- | The knobs that control how a diagram looks.
 --
 -- All widths and dash lengths are in __page units__ (see the two-unit rule in
 -- "Senbazuru.Diagram"), tuned for a drawing a few hundred units across.
+--
+-- The two dash patterns only apply under 'CreasePatternNotation'. A theme does
+-- not decide which notation is in use; that is a property of the frame being
+-- drawn, not of how it should look.
 data Theme = Theme
   { themeInk :: !Colour,
     themeGhost :: !Colour,
@@ -108,27 +133,51 @@ defaultTheme =
       themeShowUnassigned = True
     }
 
+-- | Which kind of picture the lines belong to.
+--
+-- The same edge is drawn differently depending on what the drawing is /of/. In
+-- a crease pattern a mountain crease is an instruction, and gets the
+-- dash-dot-dot that says \"fold this away from you\". In a folded form that
+-- crease has already been folded: it is now an edge of the shape, and is drawn
+-- solid like any other edge.
+data Notation
+  = -- | A flat sheet with the folds still to be made marked on it.
+    CreasePatternNotation
+  | -- | The paper as it is after folding. Every crease is an edge.
+    FoldedFormNotation
+  deriving stock (Eq, Show)
+
 -- | The stroke to draw an edge with, or 'Nothing' if it should not be drawn.
 --
 -- \"Not drawn\" is a real answer, not an error case. A @J@ (join) edge exists
 -- only to tell software that two faces are logically one piece of paper; there
 -- is no crease there, so drawing a line would be actively misleading.
-strokeFor :: Theme -> Assignment -> Maybe Stroke
-strokeFor theme = \case
+--
+-- Only mountains and valleys depend on the 'Notation'. The border of the sheet
+-- is an edge in both pictures, and a flat or unassigned crease is a line on the
+-- paper in both, drawn faint so that it does not compete with the folds. The
+-- widths are the same under both notations too, so the only difference between
+-- a crease pattern and a folded form of the same frame is the dashes.
+strokeFor :: Theme -> Notation -> Assignment -> Maybe Stroke
+strokeFor theme notation = \case
   -- The boundary of the sheet, and cuts, are both real edges of paper.
-  Border -> Just (solid (themeInk theme) (themeBorderWidth theme))
-  Cut -> Just (solid (themeInk theme) (themeBorderWidth theme))
-  Valley ->
-    Just (Stroke (themeInk theme) (themeCreaseWidth theme) (themeValleyDash theme))
-  Mountain ->
-    Just (Stroke (themeInk theme) (themeCreaseWidth theme) (themeMountainDash theme))
+  Border -> Just border
+  Cut -> Just border
+  Valley -> Just (crease (themeValleyDash theme))
+  Mountain -> Just (crease (themeMountainDash theme))
   Flat
-    | themeShowFlat theme -> Just (faint theme)
+    | themeShowFlat theme -> Just faint
     | otherwise -> Nothing
   Unassigned
-    | themeShowUnassigned theme -> Just (faint theme)
+    | themeShowUnassigned theme -> Just faint
     | otherwise -> Nothing
   -- Not a fold at all: the two incident faces are the same piece of paper.
   Join -> Nothing
   where
-    faint t = solid (themeGhost t) (themeGhostWidth t)
+    border = solid (themeInk theme) (themeBorderWidth theme)
+    faint = solid (themeGhost theme) (themeGhostWidth theme)
+
+    -- A fold: an instruction in a crease pattern, an edge in a folded form.
+    crease dash = case notation of
+      CreasePatternNotation -> Stroke (themeInk theme) (themeCreaseWidth theme) dash
+      FoldedFormNotation -> solid (themeInk theme) (themeCreaseWidth theme)

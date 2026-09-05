@@ -253,7 +253,10 @@ are not contributors can find it, and so there is only one copy to keep true.
   `Senbazuru.Render.Camera`, not the query layer's.
 - **A folded form is not necessarily 3D.** The traditional crane folds *flat*,
   so its folded frame lies in a plane. Choose a view from the coordinates
-  (`defaultBasisFor`), never from `frame_classes`.
+  (`defaultBasisFor`), never from `frame_classes`. The line notation is the one
+  exception: a flat-folded form and a crease pattern have the same kind of
+  coordinates, so `defaultNotationFor` asks the class, and only when the
+  geometry is flat.
 - **Real files carry vendor keys** like `"cpedit:page"`. Ignore unknown keys.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.

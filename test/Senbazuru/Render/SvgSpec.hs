@@ -11,7 +11,7 @@ import Data.ByteString qualified as BS
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
-import Senbazuru.Diagram.Style (defaultTheme)
+import Senbazuru.Diagram.Style (Notation (..), defaultTheme)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..))
@@ -22,17 +22,22 @@ import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
 
--- | Render a fixture the same way the CLI would, with a fixed page so the
--- output does not depend on defaults changing.
+-- | Render a fixture as a crease pattern, with a fixed page so the output does
+-- not depend on defaults changing.
 renderFixture :: FilePath -> IO Text
-renderFixture = renderFixtureFrom topDown
+renderFixture = renderFixtureFrom CreasePatternNotation topDown
 
--- | Render a fixture through a given viewing basis.
-renderFixtureFrom :: Basis -> FilePath -> IO Text
-renderFixtureFrom basis path = do
+-- | Render a fixture in a given notation through a given viewing basis.
+--
+-- Both are spelled out rather than left to 'creasePatternAuto', which is what
+-- the CLI uses. A golden file should pin what the renderer draws, and the
+-- heuristics that choose the notation and the view have their own tests in
+-- "Senbazuru.Render.CreasePatternSpec".
+renderFixtureFrom :: Notation -> Basis -> FilePath -> IO Text
+renderFixtureFrom notation basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
-  d <- case creasePatternFrom defaultTheme basis (keyFrame f) of
+  d <- case creasePatternFrom defaultTheme notation basis (keyFrame f) of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -127,11 +132,13 @@ spec = do
 
     -- These two are 3D folded forms. Before the camera existed they rendered as
     -- flattened top-down projections; these goldens pin the isometric view that
-    -- replaced that.
+    -- replaced that. They also pin the folded-form notation: every edge solid,
+    -- no dash arrays anywhere, because the dashes mean "a fold still to be made"
+    -- and these models are already folded.
     it "renders simple.fold from the isometric view" $
-      renderFixtureFrom isometric "test/fixtures/simple.fold"
+      renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"
         >>= goldenText "test/golden/simple-iso.svg"
 
     it "renders squaretwist.fold from the isometric view" $
-      renderFixtureFrom isometric "test/fixtures/squaretwist.fold"
+      renderFixtureFrom FoldedFormNotation isometric "test/fixtures/squaretwist.fold"
         >>= goldenText "test/golden/squaretwist-iso.svg"
