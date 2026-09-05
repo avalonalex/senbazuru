@@ -297,6 +297,11 @@ Issues track work before it starts, using the templates in
 | **Bug** | Something renders wrong, crashes, or rejects a valid file |
 | **Study note** | Something to understand, then write up in `docs/notes/` |
 
+The README roadmap items each have an issue carrying the `roadmap` label, so
+`gh issue list --label roadmap` is the roadmap with its reasoning attached. The
+README list stays the map — one paragraph per item, in order; the issue holds the
+approach and the acceptance criteria. Adding a roadmap item means editing both.
+
 Reference the issue from the PR body (`Closes #12`) so merging closes it.
 
 Merges are squash-only and history is linear, so the squashed commit message is
