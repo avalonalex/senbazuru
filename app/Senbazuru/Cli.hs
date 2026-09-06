@@ -241,8 +241,24 @@ budgetOption =
       | n > 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
       | otherwise = readerError "the layer budget must be a positive number of guesses"
 
+-- | Degrees in, radians out.
+--
+-- Every angle this module reads is in degrees, because that is the unit the
+-- origami world states angles in and the unit the help text prints; everything
+-- inside the library is in radians. One conversion rather than one per flag.
 toRadians :: Double -> Double
 toRadians d = d * pi / 180
+
+-- | Refuse an angle that is not a number.
+--
+-- `read` for a Double happily returns NaN, Infinity, and 1e400 — and every one
+-- of those propagates through the arithmetic until it reaches 'formatNumber',
+-- which prints it as 0. A file drawn with one is not wrong-looking, it is
+-- blank, which is the worst way for a flag to fail.
+finite :: Double -> ReadM Double
+finite d
+  | isNaN d || isInfinite d = readerError "the rotation must be a number of degrees"
+  | otherwise = pure d
 
 -- | A column count below one describes no page, and quietly rounding it up to
 -- one would answer a question nobody asked.
@@ -347,21 +363,24 @@ renderOptions =
               )
             -- Degrees at the boundary and radians inside, as --tolerance is:
             -- degrees are what anyone turning a drawing thinks in.
-            <*> ( toRadians
-                    <$> option
-                      auto
-                      ( long "rotate"
-                          <> metavar "DEG"
-                          <> value 0
-                          <> showDefault
-                          <> help
-                            ( "Turn the drawing anticlockwise on the page. A folded"
-                                <> " model lands whichever way up its crease pattern"
-                                <> " was drawn, and nothing in the file says which way"
-                                <> " up it should be read"
-                            )
-                      )
-                )
+            <*> option
+              -- Refused during parsing, as --tolerance is: `read` for a Double
+              -- accepts NaN, Infinity and 1e400, and a basis turned by one of
+              -- those is all NaN. NaN coordinates format as 0, so what came out
+              -- was a page with the whole model stacked on one point, and no
+              -- error anywhere.
+              (fmap toRadians . finite =<< auto)
+              ( long "rotate"
+                  <> metavar "DEG"
+                  <> value 0
+                  <> showDefault
+                  <> help
+                    ( "Turn the drawing anticlockwise on the page. A folded"
+                        <> " model lands whichever way up its crease pattern was"
+                        <> " drawn, and nothing in the file says which way up it"
+                        <> " should be read"
+                    )
+              )
         )
     <*> option
       (indices . T.pack =<< str)

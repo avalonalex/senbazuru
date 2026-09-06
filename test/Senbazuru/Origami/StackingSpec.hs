@@ -16,7 +16,6 @@
 module Senbazuru.Origami.StackingSpec (spec) where
 
 import Control.Monad (forM_)
-import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.List (elemIndex)
 import Senbazuru.Fold.Load (decodeFoldFile)

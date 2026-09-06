@@ -173,13 +173,43 @@ spec = do
          in all (near 0) [dot r u, dot r f, dot u f]
               && all (near 1) [norm r, norm u, norm f]
 
-    it "leaves the model alone: distances on the page are unchanged" $
-      -- The whole reason this is a turn of the camera and not of the paper. A
-      -- mirror would also make an upside-down crane look right, and would be
-      -- drawing a model that cannot be folded from the same sheet.
-      forAll ((,,) <$> genBasis <*> genV3 <*> choose (-10, 10)) $ \(b, p, angle) ->
-        let dist bs = let V2 dx dy = project bs p in sqrt (dx * dx + dy * dy)
-         in near (dist b) (dist (turnedBy angle b))
+    it "turns rather than mirrors, which distance alone cannot tell you" $
+      -- The property that separates the two, and the first version of this test
+      -- had the wrong one. A reflection is an isometry: it preserves every
+      -- length on the page exactly as a turn does, so "distances are unchanged"
+      -- passes for a mirror and says nothing at all. What a mirror does not
+      -- preserve is orientation.
+      --
+      -- The page axes cross to /minus/ forward, for every basis this module
+      -- makes, because forward points away from the viewer and the two page
+      -- axes are right and up as the reader sees them. It falls out of
+      -- basisFrom: up is right x forward, so right x up is
+      -- right x (right x forward), which is -forward. Under a reflection it
+      -- comes out +forward instead, which is what this catches.
+      forAll ((,) <$> genBasis <*> choose (-10, 10)) $ \(b, angle) ->
+        let t = turnedBy angle b
+            V3 cx cy cz = cross (basisRight t) (basisUp t)
+            V3 fx fy fz = basisForward t
+         in near cx (negate fx) && near cy (negate fy) && near cz (negate fz)
+
+    it "leaves lengths on the page alone" $
+      -- True, and worth pinning, but it is not what makes this a turn: see
+      -- above. Measured between two points rather than from the page origin,
+      -- which a turn about that origin would preserve trivially.
+      forAll ((,,,) <$> genBasis <*> genV3 <*> genV3 <*> choose (-10, 10)) $ \(b, p, q, angle) ->
+        let apart bs =
+              let V2 px py = project bs p
+                  V2 qx qy = project bs q
+               in sqrt ((px - qx) ** 2 + (py - qy) ** 2)
+         in near (apart b) (apart (turnedBy angle b))
+
+    it "is no turn at all when the angle is not a number" $ do
+      -- cos and sin of a non-finite angle are NaN, and a Basis of NaNs breaks
+      -- every invariant this module has. Worse, NaN page coordinates format as
+      -- "0", so the model would come out silently stacked on one point.
+      let same a b' = project a (V3 1 2 3) == project b' (V3 1 2 3)
+      turnedBy (0 / 0) topDown `shouldSatisfy` same topDown
+      turnedBy (1 / 0) topDown `shouldSatisfy` same topDown
 
     it "adds up over two turns" $
       forAll ((,,) <$> genBasis <*> genV3 <*> choose (-3, 3)) $ \(b, p, angle) ->

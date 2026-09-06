@@ -42,8 +42,8 @@ solidSheet = sheet [0, 0, 0.7, 0]
 grid :: Grid
 grid = defaultGrid defaultTheme
 
-page :: Maybe a1 -> [Frame] -> Either StepError (Maybe Diagram)
-page _ = stepPage defaultTheme defaultBudget grid defaultView False
+page :: [Frame] -> Either StepError (Maybe Diagram)
+page = stepPage defaultTheme defaultBudget grid defaultView False
 
 spec :: Spec
 spec = do
@@ -74,15 +74,15 @@ spec = do
       -- file that puts every step in file_frames has a key frame holding a
       -- title and nothing else. That is not a step.
       let withMetadataFrame = [emptyFrame {frameTitle = Just "just a title"}, flatSheet, flatSheet]
-      fmap (fmap (length . labelsOf)) (page Nothing withMetadataFrame)
+      fmap (fmap (length . labelsOf)) (page withMetadataFrame)
         `shouldBe` Right (Just 2)
 
     it "has nothing to lay out when no frame has any geometry" $
-      page Nothing [emptyFrame, emptyFrame] `shouldBe` Right Nothing
+      page [emptyFrame, emptyFrame] `shouldBe` Right Nothing
 
     it "numbers the figures, not the frames they came from" $ do
       let withMetadataFrame = [emptyFrame, flatSheet, flatSheet]
-      fmap (fmap labelsOf) (page Nothing withMetadataFrame)
+      fmap (fmap labelsOf) (page withMetadataFrame)
         `shouldBe` Right (Just ["1", "2"])
 
   describe "when a frame will not draw" $
@@ -91,7 +91,7 @@ spec = do
       -- sequence has to bisect it by hand. Note the index counts frames in the
       -- file, so the skipped metadata frame still occupies number zero.
       let broken = flatSheet {verticesCoords = [[0]]}
-      page Nothing [emptyFrame, flatSheet, broken]
+      page [emptyFrame, flatSheet, broken]
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
 
 labelsOf :: Diagram -> [String]
