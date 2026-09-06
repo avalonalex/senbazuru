@@ -97,7 +97,8 @@ paper, and paper knowing nothing about drawing.
 | Where | What |
 | --- | --- |
 | Haddock module headers | Why a module exists and what a newcomer would get wrong in it. The primary place explanation lives. |
-| `README.md` | What the tool is and what it can do. |
+| `README.md` | What the tool is, in one page, for someone who has just found it. |
+| `docs/tour.md` | Every feature at length, with the command and the reasoning. |
 | `docs/usage.md` | Building it, running it, and every flag. |
 | `docs/architecture.md` | The module map and the layering rules. |
 | `docs/fold-primer.md` | The domain, for someone new to origami and geometry. |

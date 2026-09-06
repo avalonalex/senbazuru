@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260">
+  <title>A square folded into quarters, in three steps</title>
+  <rect x="0" y="0" width="720" height="260" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 123.5 130 L 123.5 237.5 L 231 237.5 L 231 130 Z M 123.5 130 L 231 130 L 231 22.5 L 123.5 22.5 Z M 123.5 130 L 123.5 22.5 L 16 22.5 L 16 130 Z M 123.5 130 L 16 130 L 16 237.5 L 123.5 237.5 Z" fill="#faf8f3"/>
+    <path d="M 123.5 130 L 123.5 237.5" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 123.5 130 L 231 130" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 123.5 130 L 123.5 22.5" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 123.5 130 L 16 130" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 16 237.5 L 123.5 237.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 123.5 237.5 L 231 237.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 231 237.5 L 231 130" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 231 130 L 231 22.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 231 22.5 L 123.5 22.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 123.5 22.5 L 16 22.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 22.5 L 16 130" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 130 L 16 237.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 69.75 130 Q 123.5 103.125 167.411 125.081" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 177.25 130 L 165.444 129.016 L 169.379 121.145 Z" fill="#1a1a1a"/>
+    <text x="16" y="48.3" font-size="14" font-family="sans-serif" fill="#1a1a1a">1</text>
+    <path d="M 306.25 130 L 306.25 237.5 L 413.75 237.5 L 413.75 130 Z M 306.25 130 L 413.75 130 L 413.75 22.5 L 306.25 22.5 Z" fill="#faf8f3"/>
+    <path d="M 306.25 22.5 L 306.25 237.5" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 306.25 130 L 413.75 130" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 413.75 237.5 L 306.25 237.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 413.75 237.5 L 413.75 22.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 413.75 22.5 L 306.25 22.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 360 76.25 Q 386.875 130 364.919 173.911" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 360 183.75 L 360.984 171.944 L 368.855 175.879 Z" fill="#1a1a1a"/>
+    <text x="306.25" y="48.3" font-size="14" font-family="sans-serif" fill="#1a1a1a">2</text>
+    <path d="M 542.75 76.25 L 542.75 183.75 L 650.25 183.75 L 650.25 76.25 Z" fill="#faf8f3"/>
+    <path d="M 542.75 76.25 L 542.75 183.75" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 542.75 76.25 L 650.25 76.25" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 650.25 183.75 L 542.75 183.75" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 650.25 183.75 L 650.25 76.25" stroke="#1a1a1a" stroke-width="1.6"/>
+    <text x="542.75" y="102.05" font-size="14" font-family="sans-serif" fill="#1a1a1a">3</text>
+  </g>
+</svg>
