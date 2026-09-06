@@ -45,6 +45,18 @@ labels d = mapMaybe text (diagramShapes d)
 plain :: Grid
 plain = (defaultGrid defaultTheme) {gridNumbering = Nothing}
 
+-- | The page a grid lays the figures out on.
+--
+-- 'gridOf' has nothing to lay out for no figures, and every case below passes
+-- it some, so 'Nothing' here would be a bug in the layout rather than a case
+-- worth handling. Writing that as @let Just page = ...@ says so compactly and
+-- costs a warning and a failure message: an irrefutable pattern that does not
+-- match throws with no indication of which test it was. This says the same
+-- thing and reports it.
+pageOf :: Grid -> [Diagram] -> IO Diagram
+pageOf grid figures =
+  maybe (fail "gridOf laid out nothing for figures it was given") pure (gridOf grid figures)
+
 spec :: Spec
 spec = do
   describe "gridOf" $ do
@@ -56,13 +68,13 @@ spec = do
       -- The whole point. The figures are combined by moving their coordinates
       -- into one space, never by scaling them, so a half-size figure stays half
       -- the size of a full one.
-      let Just page = gridOf plain [square 1, square 0.5]
+      page <- pageOf plain [square 1, square 0.5]
       widths page `shouldBe` [1, 0.5]
 
     it "wraps to a new row after the column count" $ do
-      let Just wide = gridOf plain {gridColumns = 4} (replicate 4 (square 1))
-          Just tall = gridOf plain {gridColumns = 2} (replicate 4 (square 1))
-          V2 wideW wideH = boxSize (diagramExtent wide)
+      wide <- pageOf plain {gridColumns = 4} (replicate 4 (square 1))
+      tall <- pageOf plain {gridColumns = 2} (replicate 4 (square 1))
+      let V2 wideW wideH = boxSize (diagramExtent wide)
           V2 tallW tallH = boxSize (diagramExtent tall)
       -- Four across is wider and shallower than two across; two across is a
       -- square block of four.
@@ -72,17 +84,17 @@ spec = do
     it "leaves no trailing gutter on the page" $ do
       -- One figure in a grid is exactly as wide as that figure, not a figure
       -- and a gap.
-      let Just one = gridOf plain [square 1]
-          V2 w _ = boxSize (diagramExtent one)
+      one <- pageOf plain [square 1]
+      let V2 w _ = boxSize (diagramExtent one)
       w `shouldBe` 1
 
   describe "numbering" $ do
     it "numbers from one, because that is what a reader counts from" $ do
       -- The frames these came from are numbered from zero, and the two stop
       -- agreeing the moment anyone lays out a subset.
-      let Just page = gridOf (defaultGrid defaultTheme) [square 1, square 1, square 1]
+      page <- pageOf (defaultGrid defaultTheme) [square 1, square 1, square 1]
       labels page `shouldBe` ["\"1\"", "\"2\"", "\"3\""]
 
     it "can be turned off" $ do
-      let Just page = gridOf plain [square 1, square 1]
+      page <- pageOf plain [square 1, square 1]
       labels page `shouldBe` []
