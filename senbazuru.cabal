@@ -1,11 +1,12 @@
 cabal-version:      3.0
 name:               senbazuru
 version:            0.1.0.0
-synopsis:           Render FOLD origami files as step-by-step diagram SVGs
+synopsis:           Render origami crease patterns as step-by-step diagram SVGs
 description:
-  Senbazuru reads the FOLD file format (https://github.com/edemaine/FOLD)
-  and renders it to SVG using the line and arrow conventions of printed
-  origami instruction books (the Yoshizawa-Randlett system).
+  Senbazuru reads the FOLD file format (https://github.com/edemaine/FOLD),
+  along with the .cp and .opx crease patterns the desktop editors write, and
+  renders them to SVG using the line and arrow conventions of printed origami
+  instruction books (the Yoshizawa-Randlett system).
 
 homepage:           https://github.com/avalonalex/senbazuru
 license:            MIT
@@ -22,7 +23,9 @@ extra-doc-files:
   CLAUDE.md
 
 extra-source-files:
+  test/fixtures/*.cp
   test/fixtures/*.fold
+  test/fixtures/*.opx
   test/golden/*.glb
   test/golden/*.svg
 
@@ -73,6 +76,9 @@ library
     Senbazuru.Geometry.Rigid
     Senbazuru.Geometry.V3
     Senbazuru.Geometry.VectorSpace
+    Senbazuru.Import.Cp
+    Senbazuru.Import.Opx
+    Senbazuru.Import.Segments
     Senbazuru.Origami.Flat
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
@@ -91,6 +97,8 @@ library
     , base        >=4.17 && <4.20
     , bytestring  >=0.11 && <0.13
     , containers  >=0.6  && <0.8
+    , filepath    >=1.4  && <1.5
+    , tagsoup     >=0.14 && <0.15
     , text        >=2.0  && <2.2
 
 executable senbazuru
@@ -120,6 +128,9 @@ test-suite senbazuru-test
     Senbazuru.Geometry.RigidSpec
     Senbazuru.Geometry.V3Spec
     Senbazuru.GeometrySpec
+    Senbazuru.Import.CpSpec
+    Senbazuru.Import.OpxSpec
+    Senbazuru.Import.SegmentsSpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
     Senbazuru.Origami.LayersSpec

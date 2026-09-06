@@ -5,7 +5,8 @@
 [![Haskell: GHC 9.6.7](https://img.shields.io/badge/Haskell-GHC%209.6.7-5e5086.svg)](https://www.haskell.org/)
 
 **Origami diagrams from [FOLD](https://github.com/edemaine/FOLD) files.** Hand it
-a crease pattern; get back the picture a book would print.
+a crease pattern — FOLD, or the `.cp` and `.opx` the desktop editors write — and
+get back the picture a book would print.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
@@ -92,6 +93,10 @@ picture that looks like it came from a book.
   thickness, and a depth buffer needs it to.
 - **Checks flat-foldability** at every interior vertex, by Maekawa's theorem and
   Kawasaki's, and says which vertex fails and why.
+- **Reads the formats crease patterns are actually shared in.** Most patterns in
+  the wild are not FOLD files but Orihime and Oriedita's `.cp` or ORIPA's
+  `.opx`, both of them a flat list of creases with the vertices left out. Give a
+  command one of those and it rebuilds the vertices and carries on.
 
 <p align="center">
   <img src="docs/img/steps.svg" width="640" alt="A square folded into quarters, drawn as three numbered figures with fold arrows">
@@ -177,7 +182,12 @@ issues are the detail.
 
 The FOLD format is by Erik Demaine, Jason Ku and Robert Lang. The example files
 in `examples/` marked as such come from the
-[reference FOLD repository](https://github.com/edemaine/FOLD) (MIT).
+[reference FOLD repository](https://github.com/edemaine/FOLD) (MIT),
+[Flat-Folder](https://github.com/origamimagiro/flat-folder) (MIT) and
+[Oriedita](https://github.com/oriedita/oriedita) (MIT); each one's provenance is
+in [examples/README.md](examples/README.md). The `.cp` format is Orihime's and
+`.opx` is [ORIPA](https://github.com/oripa/oripa)'s; senbazuru's readers for
+them were written from the formats, not from either implementation.
 
 senbazuru is MIT licensed, the same as the FOLD reference
 implementation. See [LICENSE](LICENSE).

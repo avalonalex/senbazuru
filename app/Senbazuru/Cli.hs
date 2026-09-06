@@ -28,7 +28,7 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
-import Senbazuru.Fold.Load (loadFoldFile, renderLoadError)
+import Senbazuru.Fold.Load (loadFile, renderLoadError)
 import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
   ( Assignment,
@@ -161,8 +161,8 @@ runCli = execParser opts >>= run
       info
         (commandParser <**> helper <**> versionOption)
         ( fullDesc
-            <> progDesc "Render FOLD origami files to SVG diagrams"
-            <> header "senbazuru - origami diagrams from FOLD files"
+            <> progDesc "Render FOLD, .cp and .opx crease patterns to SVG diagrams"
+            <> header "senbazuru - origami diagrams from crease pattern files"
         )
     versionOption =
       infoOption
@@ -180,7 +180,7 @@ commandParser =
         (info (Render <$> renderOptions) (progDesc "Render a frame to SVG"))
         <> command
           "info"
-          (info (Info <$> infoOptions) (progDesc "Summarise a FOLD file"))
+          (info (Info <$> infoOptions) (progDesc "Summarise a file"))
         <> command
           "check"
           ( info
@@ -345,8 +345,19 @@ atLeastOne n
   | n >= 1 = pure n
   | otherwise = readerError "columns must be at least 1"
 
+-- | The input file, in any format senbazuru reads.
+--
+-- The metavar says @FILE@ rather than @FILE.fold@ because
+-- 'Senbazuru.Fold.Load.loadFile' picks the reader from the extension and takes
+-- three: @--help@ that named only one was how a reader learned the other two
+-- were unsupported.
 inputArg :: Parser FilePath
-inputArg = argument str (metavar "FILE.fold" <> help "Input FOLD file")
+inputArg =
+  argument
+    str
+    ( metavar "FILE"
+        <> help "Input crease pattern: .fold, .cp or .opx (anything else is read as FOLD)"
+    )
 
 -- | Which frame, for the verbs that work on one. 'Nothing' means the key
 -- frame, kept optional so that asking for a frame and asking for every frame
@@ -588,9 +599,12 @@ exportFile o f = do
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
 
 -- | Load a file or abort with a message on stderr.
+--
+-- 'loadFile' rather than 'Senbazuru.Fold.Load.loadFoldFile', so every verb
+-- takes a @.cp@ or an @.opx@ wherever it takes a @.fold@.
 withFoldFile :: FilePath -> (FoldFile -> IO ()) -> IO ()
 withFoldFile path k =
-  loadFoldFile path >>= \case
+  loadFile path >>= \case
     Left err -> die (renderLoadError err)
     Right f -> k f
 

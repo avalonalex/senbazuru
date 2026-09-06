@@ -12,9 +12,12 @@ For what the tool *does*, the [README](../README.md); for how to run it,
 One direction of flow, no cycles:
 
 ```
- .fold bytes
-     |  Senbazuru.Fold.Load          I/O boundary: read + decode, errors as values
-     v
+ .fold bytes    .cp / .opx bytes
+     |               |               Senbazuru.Import.Cp / .Opx / .Segments
+     |               |               a list of segments in, one Frame out:
+     |               |               no faces, no fold angles, no second frame
+     |  Senbazuru.Fold.Load          I/O boundary: read + decode, errors as
+     v               v               values; the extension picks the reader
  FoldFile / Frame                    Senbazuru.Fold.Types
      |                               a faithful, permissive mirror of the format
      |  Senbazuru.Fold.Query         validate + refine: indices become real points
@@ -71,7 +74,10 @@ that reaches for it is a caller holding a `Frame` it built or folded.
 | `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform. |
 | `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
-| `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. |
+| `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. Also picks a reader from a file's extension. |
+| `Senbazuru.Import.Segments` | A list of line segments → a `Frame`, merging the endpoints that coincide. What the two other-format readers share. |
+| `Senbazuru.Import.Cp` | Orihime and Oriedita `.cp` text → segments. |
+| `Senbazuru.Import.Opx` | ORIPA `.opx` XML → segments. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
@@ -96,7 +102,7 @@ that reaches for it is a caller holding a `Frame` it built or folded.
 src/Senbazuru/     the library, as above
 app/               the command-line interface
 test/              property, example and golden tests
-examples/          sample .fold files, with their provenance in examples/README.md
+examples/          sample .fold and .cp files, with their provenance in examples/README.md
 docs/              this, and everything else that is prose
 docs/notes/        one idea per file: theorems, algorithms, techniques
 ```
@@ -112,7 +118,14 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 - `Senbazuru.Render.Svg` must not know what a mountain fold is.
 - Only `Senbazuru.Fold.Load` does I/O, reading and writing alike. Everything
   else takes and returns values, which is what makes the rest testable without a
-  filesystem.
+  filesystem. `Senbazuru.Import.*` is no exception: those modules take `Text`
+  and return values, and `Fold.Load` is what turns a path into bytes for them.
+- **A new input format becomes a `Frame`, and stops there.** `Senbazuru.Import.*`
+  may know what FOLD is, because producing a `Frame` is its whole job; nothing
+  downstream may know that a frame came from anywhere but a `.fold` file. Where
+  a format cannot say something FOLD can — neither `.cp` nor `.opx` has faces —
+  the frame simply does not say it either, and the layer above deals with the
+  gap the way it deals with a `.fold` file that left the same key out.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` reads

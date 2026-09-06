@@ -16,6 +16,7 @@ stack run -- render examples/quarter-fold-steps.fold --steps --arrows \
   --width 720 --height 260                                                -o docs/img/steps.svg
 stack run -- render examples/quarter-fold.fold --fold --offset 6 \
   --width 260 --height 260 --margin 28                                    -o docs/img/quarter-fold-offset.svg
+stack run -- render examples/bird-base.cp                                 -o docs/img/bird-base.svg
 ```
 
 | File | What it shows |
@@ -25,7 +26,9 @@ stack run -- render examples/quarter-fold.fold --fold --offset 6 \
 | `pinwheel-underside.svg` | A twist from below, where the back of the paper shows in the other colour |
 | `steps.svg` | A square folded into quarters as three numbered figures, with the arrows worked out by subtracting each frame from the next |
 | `quarter-fold-offset.svg` | The same quarter fold, its four coincident layers stepped apart. Drawn with a wider margin than the default, because the offset pushes the stack outside the extent the page is fitted to and would otherwise touch the edge |
+| `bird-base.svg` | The traditional bird base, read from a `.cp` file rather than a `.fold` one. The valley along the diagonal runs from lower left to upper right; it runs the other way in the file, which measures `y` downwards |
 
 The crane and the pinwheel come from [Flat-Folder](https://github.com/origamimagiro/flat-folder)
-and are traditional designs; their provenance is in
+and the bird base from [Oriedita](https://github.com/oriedita/oriedita); all
+three are traditional designs, and their provenance is in
 [examples/README.md](../../examples/README.md).

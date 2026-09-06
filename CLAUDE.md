@@ -132,6 +132,7 @@ functions are expression, and those stay where they are.
 | Source | Licence | Use |
 | --- | --- | --- |
 | `edemaine/FOLD` examples | MIT | vendored, attributed in `examples/README.md` |
+| Oriedita | MIT | `birdbase.cp` vendored as `examples/bird-base.cp`, attributed there; its source is readable for the `.cp` format, but reimplement |
 | Origami Simulator box-pleat `.fold` | MIT | usable with attribution |
 | Flat-Folder examples | MIT | traditional models, the author's own designs and exhaustive enumerations vendored, attributed in `examples/README.md`; other designers' patterns there are not ours to take |
 | GPL reference implementations | GPL-3.0 | research only, never vendored |
@@ -169,6 +170,14 @@ through it — a stated exception, not a precedent, and the day a second 3D form
 arrives is the day a 3D intermediate representation earns its place. It must
 not import `Render.CreasePattern`; the policy both share, which layer order to
 use, is `Origami.Stacking.layerOrderFor`.
+
+**A new input format becomes a `Frame` and stops there.** `Senbazuru.Import.*`
+reads Orihime and Oriedita's `.cp` and ORIPA's `.opx` — both a flat list of
+segments with no vertices, no faces and no angles — and hands back a `Frame`
+that says only what the file said. Nothing downstream may know a frame came
+from anywhere but a `.fold` file, and where a format cannot say something FOLD
+can, the frame does not say it either. `Senbazuru.Fold.Load` picks the reader
+from the extension; everything unrecognised is still tried as FOLD.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because
@@ -278,6 +287,43 @@ are not contributors can find it, and so there is only one copy to keep true.
   that is a claim the file did not make. Every `Nothing`, every empty list and a
   `frame_inherit` of `False` are left out.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
+- **`.cp` and `.opx` are y-down, and the flip is a correction, not a
+  convention.** Both were written by Java desktop editors storing screen
+  coordinates — Oriedita's `Camera.object2TV` never negates y. Reading one
+  without negating y gives the *mirror* of the model, which folds perfectly
+  well and is not the file's. `Senbazuru.Import.Segments.fromScreenPoint` is
+  the one place it happens. Oriedita's own FOLD export does not do it, so our
+  reading of a `.cp` and its export of the same file are mirror images.
+- **The two type-code tables agree on 1, 2, 3 and disagree about auxiliary.**
+  Paper edge, mountain, valley in both; auxiliary is 0 in an `.opx` and 4 in a
+  `.cp`, where Oriedita's further colours run on to 11. Flat-Folder's two
+  tables disagree with *each other* on code 1 and get away with it because it
+  recomputes the boundary from the faces. See `docs/notes/cp-and-opx.md`.
+- **An `.opx` property is named, not positioned, and an absent one is zero.**
+  `XMLEncoder` sorts a bean's properties by name, so ORIPA writes `x0 x1 y0
+  y1`, and a positional reader draws a plausible wrong pattern. It also omits
+  any value a fresh bean already has, so a crease on an axis has no `x`
+  coordinates and an auxiliary line has no `type`. That is the opposite of
+  FOLD, where absent means the file made no claim.
+- **Endpoints that should be one vertex are not equal.** A segment list has no
+  vertex ids, so they are matched by distance within
+  `Senbazuru.Import.Segments.mergeTolerance` — a billionth of the pattern's
+  diagonal. The search is a grid of tolerance-wide cells and it looks at nine
+  of them, because two points a tolerance apart can straddle a cell boundary;
+  comparing cells alone splits exactly the pair that most needs merging.
+- **A degenerate segment is one whose endpoints merged, not a short one.**
+  Measuring the segment and merging its ends are different questions: a
+  segment nearly two tolerances long that straddles an existing vertex has both
+  ends land on it, and the edge would run from a vertex to itself. So
+  `frameFromSegments` interns first and rejects the segments whose two ids came
+  out equal. That test subsumes "shorter than the tolerance" exactly.
+- **An `.opx` walk has to count nesting.** `properties` reads a flat stream of
+  tags, and the `</object>` closing an object nested inside a property looks
+  exactly like the one closing the crease. Stopping at the first one does not
+  fail — it returns early, silently dropping every property after the nested
+  element. `Senbazuru.Import.Opx.insideElement` takes a whole subtree at a
+  time, which is also what lets a property holding a `<string>` be skipped
+  instead of refusing the file.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.
 - **SVG paints in document order**, so later shapes cover earlier ones. Creases
   are sorted by `creaseOrder` in `Senbazuru.Render.CreasePattern`; the paper
@@ -519,6 +565,22 @@ Deliberate omissions, so nobody thinks they are bugs:
   the per-face rigid transforms `Folding.spanningWalk` computes and discards,
   and intermediate angles that close their loops, per
   `docs/notes/fold-angles-are-the-state.md`.
+- A `.cp` or an `.opx` is read and never written. Neither format can hold a
+  face, a fold angle or a second frame, so writing one would silently drop
+  them; senbazuru writes FOLD, SVG and glTF.
+- A crease pattern read from `.cp` or `.opx` has no faces, so `render --fold`
+  and `export` refuse it. Tracing faces from the edges is the fix and is #34.
+- The `.cp`/`.opx` reader rebuilds the vertices and nothing else, so a segment
+  list can still describe something that is not a planar graph. Two creases
+  that cross without a vertex there stay crossed, and `check` then has one
+  fewer vertex to look at — the same under-reporting `examples/unit-square.fold`
+  already gets. The same crease listed twice becomes two edges between one pair
+  of vertices, and is counted twice by everything that counts creases. Both are
+  #34's to fix; neither is refused, because refusing would mean deciding what
+  the file meant.
+- The `.cp` reader accepts type codes 1 to 11 and refuses everything else,
+  including 0. Oriedita's auxiliary colours are the ones above 4, and it drops
+  the colour, because FOLD has nowhere to put it.
 - FOLD output exists in the library (`Senbazuru.Fold.Load.encodeFoldFile`,
   `saveFoldFile`) but no CLI verb calls it yet. The first authoring verb will.
 - The FOLD writer does not refuse a non-finite number. `aeson` writes an

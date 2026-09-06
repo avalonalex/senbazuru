@@ -22,10 +22,10 @@ the compiler, delete that line.
 ## Running it
 
 ```
-senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
-senbazuru export FILE.fold [-o OUT.glb] [OPTIONS]
-senbazuru check  FILE.fold [--frame N] [--tolerance DEG]
-senbazuru info   FILE.fold [--fold] [--layer-budget N]
+senbazuru render FILE [-o OUT.svg] [OPTIONS]
+senbazuru export FILE [-o OUT.glb] [OPTIONS]
+senbazuru check  FILE [--frame N] [--tolerance DEG]
+senbazuru info   FILE [--fold] [--layer-budget N]
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -38,6 +38,52 @@ make install                               # puts senbazuru on your PATH
 
 The bare `--` matters. Without it, Stack reads `--view` and the rest as options
 of its own and complains about them.
+
+## The files it reads
+
+Every command takes any of three formats, chosen by the file's extension:
+
+| Extension | What it is |
+| --- | --- |
+| `.fold` | [FOLD](https://github.com/edemaine/FOLD), and anything with an extension senbazuru does not recognise |
+| `.cp` | The crease patterns Orihime and [Oriedita](https://github.com/oriedita/oriedita) write: one crease to a line of text |
+| `.opx` | The crease patterns [ORIPA](https://github.com/oripa/oripa) writes: the same, in XML |
+
+```bash
+stack run -- render examples/bird-base.cp -o bird-base.svg
+stack run -- check  examples/bird-base.cp
+```
+
+The last two are crease patterns and nothing else. Neither format can store a
+face, a fold angle or a second frame, so a file in either of them draws and
+checks but does not fold. `render --fold` and `export` say so and stop, because
+folding needs to know which pieces of paper move together and only the faces
+say that. `--arrows` and `--steps` succeed and draw the pattern, but neither
+adds anything to it: both work by comparing one frame with the next, and these
+formats store one frame. Faces can be
+worked out from the creases, which is
+[#34](https://github.com/avalonalex/senbazuru/issues/34); until then, fold in
+Oriedita or ORIPA and export FOLD.
+
+Both formats measure `y` downwards, as the Java editors that write them draw
+it, and senbazuru turns that the right way up on the way in. That is a
+correction rather than a preference — see
+[notes/cp-and-opx.md](notes/cp-and-opx.md) — and it means a pattern read from a
+`.cp` is upside down compared with the same `.cp` put through Oriedita's own
+FOLD export.
+
+Two things a segment list can describe that a crease pattern cannot, and that
+the reader passes through as it finds them: two creases that cross with no
+vertex where they meet, and the same crease listed twice. The first means
+`check` has one fewer vertex to look at than the picture suggests — the same
+under-reporting a `.fold` file drawn that way gets, as `examples/unit-square.fold`
+shows — and the second counts that crease twice. Neither is refused, because
+the fix for both is to rebuild the graph, which is
+[#34](https://github.com/avalonalex/senbazuru/issues/34).
+
+Output is always FOLD, SVG or glTF. senbazuru does not write `.cp` or `.opx`,
+because writing one would silently drop whatever the document held that the
+format cannot say.
 
 ## `render`
 
