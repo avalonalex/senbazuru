@@ -96,6 +96,18 @@ module Senbazuru.Origami.Stacking
     StackingError (..),
     renderStackingError,
 
+    -- * Choosing among several
+    Stackings (..),
+    Choice (..),
+    stackingSpace,
+    solveStackingAs,
+    componentCount,
+    stateCount,
+
+    -- * How hard to look
+    Budget (..),
+    defaultBudget,
+
     -- * The constraints
     Rule (..),
     stackingRules,
@@ -104,7 +116,7 @@ where
 
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.List (nub, tails)
+import Data.List (foldl', nub, tails)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
@@ -132,6 +144,42 @@ import Senbazuru.Geometry.Polygon
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet, vertexAt)
 
+-- | How many guesses the solver may make in one component before giving up.
+--
+-- A guess is one decision the search makes for itself: propagation runs first
+-- and settles everything that follows from the rules, and only what is left
+-- over is guessed at. Counted rather than timed, so the same file behaves the
+-- same on every machine.
+--
+-- Propagation itself is not capped. Each step decides at least one pair and no
+-- pair is ever decided twice, so it cannot run longer than there are pairs.
+--
+-- Per component rather than per model, which is the honest unit once the
+-- components are solved separately: a model does not become harder by having
+-- more independent easy pieces. It does bound the whole model at components
+-- times budget.
+newtype Budget = Budget {budgetGuesses :: Int}
+  deriving stock (Eq, Show)
+
+-- | A thousand guesses per component.
+--
+-- Chosen against measurement rather than picked as a round number, though it is
+-- one. Of the models here, propagation alone settles the quarter fold, the
+-- letter fold and the thirds pinwheel outright; the 2×2 grid spends two guesses
+-- in each of its four open components, the kabuto four in each of its two, and
+-- the crane — the largest, at 892 pairs — eight. The two models that cannot be
+-- stacked at all are refused by propagation without a guess being made. A
+-- thousand is therefore more than a hundred times the worst anything real has
+-- asked for.
+--
+-- It bounds /work/, not time, and that is the point of counting guesses: the
+-- same file behaves the same way on every machine. A guess costs about one
+-- propagation sweep, so what a thousand of them cost depends on the model —
+-- the crane's whole solve, analysis and propagation and its eight guesses
+-- together, is about 60ms.
+defaultBudget :: Budget
+defaultBudget = Budget 1000
+
 -- | Why no ordering was produced.
 --
 -- The first two mean nothing was attempted: the model is outside what this
@@ -144,6 +192,12 @@ data StackingError
   | -- | A face is not convex, and the overlap test is only right for convex
     -- polygons.
     NonConvexFace !FaceId
+  | -- | A caller asked for a layer order a component does not have. Carries
+    -- the component, the index asked for, and how many orders it has.
+    NoSuchStacking !Int !Int !Int
+  | -- | A caller gave an index for a component that does not exist. Carries
+    -- the index and how many components have a choice in them at all.
+    NoSuchComponent !Int !Int
   | -- | The frame is unsound, or its layers cannot be stacked at all.
     StackingRefused !FoldError
   deriving stock (Eq, Show)
@@ -156,6 +210,22 @@ renderStackingError = \case
       <> T.pack (showGFloat (Just 6) dz "")
       <> " in z; working out which layer is on top is only implemented for"
       <> " models folded flat"
+  NoSuchComponent given have ->
+    "there is no component "
+      <> T.pack (show given)
+      <> " to choose an order for: "
+      <> ( if have == 0
+             then "every part of this model has only one"
+             else "only " <> T.pack (show have) <> " of them have more than one, numbered 0 to " <> T.pack (show (have - 1))
+         )
+  NoSuchStacking component want have ->
+    "there is no layer order "
+      <> T.pack (show want)
+      <> " for component "
+      <> T.pack (show component)
+      <> ", which has "
+      <> T.pack (show have)
+      <> (if have == 1 then " order, numbered 0" else " orders, numbered 0 to " <> T.pack (show (have - 1)))
   NonConvexFace (FaceId f) ->
     "face "
       <> T.pack (show f)
@@ -266,25 +336,96 @@ stackingRules fr = analysisRules <$> analyse fr
 -- | A @faceOrders@ for a flat-folded frame that has none.
 --
 -- One entry per pair of faces whose interiors overlap, with the sign read
--- against the second face's normal as FOLD and "Senbazuru.Origami.Layers"
+-- against the second face\'s normal as FOLD and "Senbazuru.Origami.Layers"
 -- expect. Faces that do not overlap get no entry.
+--
+-- The first of however many valid orders the model has. Which one that is is
+-- fixed by the face ids and reproducible, which the golden tests depend on;
+-- 'solveStackingAs' is how to ask for another.
 solveStacking :: Frame -> Either StackingError [FaceOrder]
-solveStacking fr = do
+solveStacking = solveStackingAs defaultBudget []
+
+-- | The layer order a caller picked, out of the several a model may have.
+--
+-- @solveStackingAs budget choices fr@ takes one index per component that has a
+-- choice in it, in the order 'stackingsChoices' lists them. A short list — and
+-- the empty list 'solveStacking' passes — means index zero for the rest, so
+-- @[]@ is the answer every version of senbazuru has given.
+--
+-- An index a component does not have is 'NoSuchStacking' rather than a
+-- silently different picture.
+solveStackingAs :: Budget -> [Int] -> Frame -> Either StackingError [FaceOrder]
+solveStackingAs budget choices fr = do
   analysis <- analyse fr
-  above <-
-    first
-      (StackingRefused . Unstackable . ruleFaces)
-      (solve (analysisPairs analysis) (analysisRules analysis))
-  -- "f is above g" is "f is on the +z side of g". FOLD's sign is relative to
-  -- g's normal instead, which is +z when g lies top-up and -z when it lies
-  -- top-down. So the two agree exactly when g is top-up. The normal comes from
-  -- the same winding paintOrder will read it back with, which is what makes
-  -- the round trip cancel.
-  let faceUp g = M.findWithDefault True g (analysisFaceUp analysis)
-  pure
-    [ FaceOrder f g (if fOnTop == faceUp g then Above else Below)
-      | ((f, g), fOnTop) <- M.toList above
-    ]
+  -- Only as many states of each component as the deepest index asks for. A
+  -- model with more states than anyone can count is common -- one of
+  -- Flat-Folder's has 10^83 of them -- and nobody picking the first needs the
+  -- rest enumerated.
+  --
+  -- Saturating rather than @1 + maximum@, which overflows: an index near
+  -- 'maxBound' wrapped to a negative want, every component then found nothing
+  -- because the search stops when nothing more is wanted, and a perfectly
+  -- stackable model was reported as impossible.
+  space <- solutionSpace budget (foldl' upTo 1 choices) analysis
+  -- An index for a component that is not there is a question about a different
+  -- model, not a request to be ignored. Checked before the indices are matched
+  -- up, because zipping a long list against a short one would drop it in
+  -- silence.
+  case drop (length (stackingsChoices space)) (zip [0 ..] choices) of
+    ((i, _) : _) -> Left (NoSuchComponent i (length (stackingsChoices space)))
+    [] -> Right ()
+  above <- chosen space
+  pure (ordersFrom analysis above)
+  where
+    upTo acc i
+      | i >= maxBound - 1 = maxBound
+      | otherwise = max acc (i + 1)
+
+    -- The settled pairs go in first and every group's answer on top. Leaving
+    -- them out is how the first version of this returned nothing at all for a
+    -- model propagation had settled completely -- which is most of them.
+    --
+    -- Each group's answer already carries the settled pairs, since the search
+    -- starts from them and never overwrites a key. They are put in again here
+    -- for the case where there are no groups at all and nothing to carry them.
+    chosen space =
+      M.unions . (stackingsForced space :)
+        <$> traverse pickOne (zip3 [0 ..] (stackingsChoices space) (choices <> repeat 0))
+      where
+        pickOne (i, choice, want) = case drop want (choiceStates choice) of
+          (state : _) -> Right state
+          -- Only when the search actually finished is the count a fact about
+          -- the paper. Cut short by the budget, this component has at least
+          -- what was found and possibly the one being asked for, and saying it
+          -- has three orders when it has five would be the confident kind of
+          -- wrong.
+          []
+            | choiceCapped choice -> Left (StackingRefused (GaveUpStacking budgetSpent))
+            | otherwise -> Left (NoSuchStacking i want (length (choiceStates choice)))
+        budgetSpent = budgetGuesses budget
+
+-- | Every valid layer order a flat-folded frame has, described rather than
+-- listed.
+--
+-- Enumerates each component to the budget, which is what @info@ reports and
+-- what makes 'solveStackingAs'\'s indices meaningful.
+stackingSpace :: Budget -> Frame -> Either StackingError Stackings
+stackingSpace budget fr = analyse fr >>= solutionSpace budget maxBound
+
+-- | The layer order as @faceOrders@, with the signs FOLD reads them by.
+--
+-- \"f is above g\" is \"f is on the +z side of g\". FOLD\'s sign is relative to
+-- g\'s normal instead, which is +z when g lies top-up and -z when it lies
+-- top-down. So the two agree exactly when g is top-up. The normal comes from
+-- the same winding paintOrder will read it back with, which is what makes the
+-- round trip cancel.
+ordersFrom :: Analysis -> Above -> [FaceOrder]
+ordersFrom analysis above =
+  [ FaceOrder f g (if fOnTop == faceUp g then Above else Below)
+    | ((f, g), fOnTop) <- M.toList above
+  ]
+  where
+    faceUp g = M.findWithDefault True g (analysisFaceUp analysis)
 
 -- | Geometry to constraints.
 analyse :: Frame -> Either StackingError Analysis
@@ -552,34 +693,167 @@ aboveIn known f g
   | f < g = M.findWithDefault False (f, g) known
   | otherwise = not (M.findWithDefault False (g, f) known)
 
--- | Find an assignment to every pair that satisfies every rule, or the rule
--- that could not be satisfied.
+-- | Every valid layer order a model has, as a product rather than a list.
+--
+-- A model with several valid orders usually has a great many, because they
+-- multiply: Flat-Folder\'s corpus contains one with more states than there are
+-- atoms in the observable universe. Listing them is out of the question and
+-- unnecessary, because the choices are independent. What is listed instead is
+-- the choices themselves.
+data Stackings = Stackings
+  { -- | The pairs propagation settled without a guess. Every valid order of
+    -- this model agrees about all of them.
+    stackingsForced :: !Above,
+    -- | The groups of pairs that are still open, each with the assignments it
+    -- admits. A group cannot affect another: no rule joins them, so nothing
+    -- decided in one can propagate into the next, which is the whole reason
+    -- they can be solved and counted separately.
+    stackingsChoices :: ![Choice]
+  }
+  deriving stock (Eq, Show)
+
+-- | One group of pairs and the ways it can be filled in.
+data Choice = Choice
+  { -- | The pairs of faces this group is a choice about. Every valid order of
+    -- the model agrees about every pair outside it.
+    choicePairs :: ![(FaceId, FaceId)],
+    -- | The assignments, in the order the search finds them, which is the order
+    -- 'solveStackingAs' indexes. Never empty: a group with no assignment at all
+    -- makes the whole model unstackable.
+    choiceStates :: ![Above],
+    -- | Whether the budget ran out before the search had found them all, so
+    -- that there are at least this many rather than exactly this many.
+    choiceCapped :: !Bool,
+    -- | How many guesses finding them cost. Recorded because it is the one
+    -- number that says whether propagation is doing its job: a change that
+    -- weakened it would show up here as a bigger count long before it showed
+    -- up anywhere else as a slower run.
+    choiceGuesses :: !Int
+  }
+  deriving stock (Eq, Show)
+
+-- | How many components the model has, counting the settled pairs as one.
+--
+-- The settled pairs are one component whether there are any of them or not,
+-- which looks like an off-by-one and is a deliberate match: it is how
+-- Flat-Folder counts, and counting the same way is what lets its published
+-- figures be compared with ours model by model. Its file records the crane as
+-- two components with @|1|5|@ assignments — one settled group admitting a
+-- single answer, and one open group admitting five.
+componentCount :: Stackings -> Int
+componentCount space = 1 + length (stackingsChoices space)
+
+-- | How many valid layer orders the model has: the product over the components.
+--
+-- 'Integer' because it does not fit in anything smaller. Paired with whether a
+-- budget cut any component short, in which case the model has at least this
+-- many rather than exactly this many.
+stateCount :: Stackings -> (Integer, Bool)
+stateCount space =
+  ( product [toInteger (length (choiceStates c)) | c <- stackingsChoices space],
+    any choiceCapped (stackingsChoices space)
+  )
+
+-- | Propagate, split, and search each part on its own.
 --
 -- Propagation first: a rule is checked by trying every way of filling in its
 -- undecided pairs — there are at most four, so at most sixteen — and any pair
 -- that comes out the same in every way that works is decided. A rule with no
--- way that works is the contradiction. Deciding a pair re-checks the rules
--- that mention it, and so on until nothing changes.
+-- way that works is the contradiction. Deciding a pair re-checks the rules that
+-- mention it, and so on until nothing changes.
 --
--- Then search: the lowest undecided pair is set to \"lower id on top\" and
--- propagation runs again; if that ends in contradiction the pair is set the
--- other way instead. Trying the same answer first for every free pair means
--- pairs no rule touches come out in id order, which never puts a circle in the
--- answer by itself.
-solve :: [(FaceId, FaceId)] -> [Rule] -> Either Rule Above
-solve pairs rules = propagate M.empty (IM.keys byIndex) >>= search pairs
+-- Then the pairs propagation could not settle are split into groups: two pairs
+-- are joined when some rule still names both of them, and a group is what that
+-- joining connects. Nothing decided in one group can reach another — every rule
+-- lies wholly inside one — so each is searched separately, and the model\'s
+-- valid orders are every combination of theirs. That is the difference between
+-- a cost that adds up over the groups and one that multiplies, and it is why
+-- the crane\'s 87 open pairs are not 2^87 of anything.
+--
+-- Within a group the search is depth first over the pairs in id order, trying
+-- \"lower id on top\" before the other way and propagating after each guess.
+-- Taking the first answer of every group therefore gives what every version of
+-- this module has given, because the interleaving the old whole-model search
+-- did between groups never affected any of them.
+solutionSpace :: Budget -> Int -> Analysis -> Either StackingError Stackings
+solutionSpace (Budget budget) wanted analysis = do
+  settled <- refused (propagate M.empty (IM.keys byIndex))
+  let open = [p | p <- analysisPairs analysis, M.notMember p settled]
+  choices <- traverse (search settled) (components settled open)
+  pure Stackings {stackingsForced = settled, stackingsChoices = choices}
   where
+    rules = analysisRules analysis
     byIndex = IM.fromList (zip [0 ..] rules)
     touching = M.fromListWith (<>) [(p, [i]) | (i, r) <- IM.toList byIndex, p <- rulePairs r]
     rulesOn p = M.findWithDefault [] p touching
 
-    search pending known = case dropWhile (`M.member` known) pending of
-      [] -> Right known
-      (p : rest) -> case decide p True rest known of
-        Right done -> Right done
-        Left _ -> decide p False rest known
+    refused = first (StackingRefused . Unstackable . ruleFaces)
 
-    decide p v rest known = propagate (M.insert p v known) (rulesOn p) >>= search rest
+    -- The groups, in the order their lowest pair appears, so that an index into
+    -- them means the same thing on every run.
+    components settled = go S.empty
+      where
+        joined =
+          M.fromListWith
+            (<>)
+            [ (p, [q])
+              | r <- rules,
+                let stillOpen = [x | x <- rulePairs r, M.notMember x settled],
+                p <- stillOpen,
+                q <- stillOpen,
+                p /= q
+            ]
+        go _ [] = []
+        go seen (p : rest)
+          | p `S.member` seen = go seen rest
+          | otherwise =
+              let group = reach S.empty [p]
+               in S.toAscList group : go (S.union seen group) rest
+        reach seen [] = seen
+        reach seen (p : rest)
+          | p `S.member` seen = reach seen rest
+          | otherwise = reach (S.insert p seen) (M.findWithDefault [] p joined <> rest)
+
+    -- A group with no assignment at all cannot be filled in, and neither can
+    -- the model. Named by its faces rather than by one rule: the contradiction
+    -- was reached down some branch of the search, and no single rule is to
+    -- blame for it the way one is when propagation alone finds it.
+    search settled group = case explore wanted budget group settled of
+      ([], left)
+        -- Nothing found and nothing left to spend: the search was cut off, so
+        -- whether this part has an order is not known either way. Saying it has
+        -- none would be the one answer that is certainly wrong.
+        | left <= 0 -> Left (StackingRefused (GaveUpStacking budget))
+      ([], _) -> Left (StackingRefused (Unstackable (nub (concatMap both group))))
+      (states, left) ->
+        Right
+          Choice
+            { choicePairs = group,
+              choiceStates = states,
+              choiceCapped = left <= 0 && length states < wanted,
+              choiceGuesses = budget - left
+            }
+      where
+        both (a, b) = [a, b]
+
+    -- Depth first, at most @want@ answers, at most @spend@ guesses. Returns
+    -- what it found and what is left of the budget, so that the two branches of
+    -- a guess share one allowance rather than each getting a fresh one.
+    explore want spend pairs known
+      | want <= 0 = ([], spend)
+      | otherwise = case dropWhile (`M.member` known) pairs of
+          [] -> ([known], spend)
+          (p : rest) ->
+            let (yes, afterYes) = guess p True rest spend want known
+                (no, afterNo) = guess p False rest afterYes (want - length yes) known
+             in (yes <> no, afterNo)
+
+    guess p v rest spend want known
+      | want <= 0 = ([], spend)
+      | spend <= 0 = ([], 0)
+      | otherwise = case propagate (M.insert p v known) (rulesOn p) of
+          Left _ -> ([], spend - 1)
+          Right known' -> explore want (spend - 1) rest known'
 
     propagate known [] = Right known
     propagate known (i : queue) = case IM.lookup i byIndex of

@@ -111,6 +111,11 @@ data FoldError
     -- paper. Carries the faces of the constraint that could not be met.
     -- Raised by "Senbazuru.Origami.Stacking".
     Unstackable [FaceId]
+  | -- | The layer solver spent its budget on one part of the model without
+    -- finding a single order for it, so whether the model has one is not known
+    -- either way. Carries the budget it spent. Raised by
+    -- "Senbazuru.Origami.Stacking".
+    GaveUpStacking Int
   | -- | Two frames that should describe the same paper disagree about how much
     -- of it there is. Carries the key and the two lengths.
     FramesDiffer Text Int Int
@@ -195,6 +200,11 @@ renderFoldError = \case
       <> " the constraint between faces "
       <> T.intercalate ", " (map (\(FaceId f) -> tshow f) fs)
       <> " is the one that could not be met"
+  GaveUpStacking guesses ->
+    "gave up looking for a layer order after "
+      <> tshow guesses
+      <> (if guesses == 1 then " guess" else " guesses")
+      <> " in one part of the model, so whether it has one is not known"
   FramesDisagree what i ->
     "these two frames are not two states of one model: their "
       <> what

@@ -35,7 +35,7 @@ other file in that folder is another designer's work and stays there.
 | ---------------------- | -------------------------------------------------------------- |
 | `crane.fold`           | `instagram/004_traditional_Crane.fold`. 72 faces, 20 flat creases, 5 valid stackings in 2 components. The first model in the suite that looks like anything; a golden |
 | `kabuto.fold`          | `instagram/002_traditional_Kabuto.fold`. The samurai helmet: 18 faces, 9 valid stackings |
-| `thirds-pinwheel.fold` | `instagram/006_ku_Thirds_Pinwheel.fold`. A twist: its four flaps stack in a circle, which is a valid layer order and one that painting faces whole cannot draw. It is the fixture for drawing by visible regions instead |
+| `thirds-pinwheel.fold` | `instagram/006_ku_Thirds_Pinwheel.fold`. A twist with one valid stacking: its four flaps stack in a circle, which is a valid layer order and one that painting faces whole cannot draw. It is the fixture for drawing by visible regions instead |
 | `bad-twist.fold`       | `unsatisfiable/001_ku_Bad_Twist.fold`. Folds without tearing and has no valid stacking at all; the solver must refuse it |
 | `grid-2x2-d1.fold`     | `grids/002_brown_2x2_D1.fold`. 25 faces, 16 valid stackings in 5 components, and another twist |
 

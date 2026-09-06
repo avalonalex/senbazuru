@@ -40,6 +40,7 @@ import Senbazuru.Diagram.Layout (Grid, gridOf)
 import Senbazuru.Diagram.Style (Theme)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
+import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis)
 import Senbazuru.Render.CreasePattern
@@ -71,13 +72,15 @@ data StepError = StepError
 -- is why this takes frames rather than a count.
 stepPage ::
   Theme ->
+  -- | How hard to look for a layer order, for the frames that need one.
+  Budget ->
   Grid ->
   -- | The camera, or 'Nothing' to choose one from the whole sequence.
   Maybe Basis ->
   Bool ->
   [Frame] ->
   Either StepError (Maybe Diagram)
-stepPage theme grid chosen arrows frames = do
+stepPage theme budget grid chosen arrows frames = do
   -- Numbered by their place in the file, so an error can name the frame someone
   -- would have to go and look at, and then by their place in the sequence, so
   -- "the next step" skips over a metadata-only key frame rather than tripping
@@ -98,7 +101,7 @@ stepPage theme grid chosen arrows frames = do
       d <-
         first
           (StepError i)
-          (creasePatternFrom theme (defaultNotationFor (frameClasses fr) verts) basis fr)
+          (creasePatternFrom theme budget (defaultNotationFor (frameClasses fr) verts) basis fr)
       case drop (position + 1) order of
         -- The last figure of a sequence is the finished model, and a book draws
         -- no arrow on it.

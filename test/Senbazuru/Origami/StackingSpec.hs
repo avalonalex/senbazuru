@@ -15,6 +15,8 @@
 -- not slide in between, because the fold it would have to pass is closed.
 module Senbazuru.Origami.StackingSpec (spec) where
 
+import Control.Monad (forM_)
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.List (elemIndex)
 import Senbazuru.Fold.Load (decodeFoldFile)
@@ -67,9 +69,16 @@ shouldBeUnstackable fr = case solveStacking fr of
 
 -- | The faces of a flat-folded frame in the order to paint them seen from
 -- above: bottom layer first, top layer last.
+--
+-- Takes the layer order 'solveStacking' picks, which is the first of each
+-- component.
 bottomToTop :: Frame -> Either StackingError [Int]
-bottomToTop fr = do
-  orders <- solveStacking fr
+bottomToTop = bottomToTopAs []
+
+-- | The same, for a chosen layer order rather than the first.
+bottomToTopAs :: [Int] -> Frame -> Either StackingError [Int]
+bottomToTopAs choices fr = do
+  orders <- solveStackingAs defaultBudget choices fr
   faces <- refused (frameFaces fr)
   map unFaceId <$> refused (paintOrder (V3 0 0 1) faces orders)
   where
@@ -262,7 +271,6 @@ spec = do
       table
 
     it "stacks the crane, which is what the golden test draws" $ do
-      -- Five valid stackings in two components, says the table; we find one.
       fr <- foldedFixture "crane"
       order <- either (fail . show) pure (bottomToTop fr)
       length order `shouldBe` 72
@@ -272,12 +280,14 @@ spec = do
       -- passes the single-vertex theorems, and no order of its layers exists.
       foldedFixture "bad-twist" >>= shouldBeUnstackable
 
-    it "stacks the twists but cannot yet paint them -- a known limit" $ do
+    it "stacks the twists, which paintOrder still cannot paint" $ do
       -- A twist's flaps lie in a circle: A over B over C over A, with no point
       -- under all three. That is a valid stacking, and the solver finds it, but
-      -- paintOrder needs one global order and there is none. Pinned on purpose:
-      -- once faces are drawn by visible region rather than whole (#31), this
-      -- test fails and is rewritten to assert the picture instead.
+      -- paintOrder needs one global order and there is none.
+      --
+      -- Not a limitation of the renderer any more -- a flat-folded model is
+      -- drawn by visible region now, and draws twists perfectly well. This
+      -- pins the older path, which folded forms that are not flat still take.
       mapM_
         ( \name -> do
             fr <- foldedFixture name
@@ -286,6 +296,80 @@ spec = do
               other -> expectationFailure (name <> ": expected a painting order to be impossible, got " <> show other)
         )
         ["thirds-pinwheel", "grid-2x2-d1"]
+
+  describe "the shape of the answer" $ do
+    -- The same CSV again, four columns further along: components, states and
+    -- component_assignments. Agreeing on the shape and not merely the total is
+    -- the stronger check -- the crane's |1|5| says one group of pairs settled
+    -- outright and one group admitting five answers, and getting that right by
+    -- accident while splitting the graph wrongly is not a thing that happens.
+    --
+    -- Their first component is always the settled pairs, whether there are any
+    -- or not, so ours is theirs minus one and 'componentCount' adds it back.
+    let table =
+          [ ("crane", 2, 5, [5], [8]),
+            ("kabuto", 3, 9, [3, 3], [4, 4]),
+            ("thirds-pinwheel", 1, 1, [], []),
+            ("grid-2x2-d1", 5, 16, [2, 2, 2, 2], [2, 2, 2, 2])
+          ]
+
+    mapM_
+      ( \(name, components, states, sizes, guesses) ->
+          it ("splits the " <> name <> " as Flat-Folder does") $ do
+            fr <- foldedFixture name
+            space <- either (fail . show) pure (stackingSpace defaultBudget fr)
+            componentCount space `shouldBe` components
+            stateCount space `shouldBe` (states, False)
+            map (length . choiceStates) (stackingsChoices space) `shouldBe` sizes
+            -- Not a fact about the model but about our propagation: these are
+            -- the guesses left over once it has done its work, so a change that
+            -- weakened it shows up here as a bigger number rather than as a
+            -- slower test.
+            map choiceGuesses (stackingsChoices space) `shouldBe` guesses
+      )
+      table
+
+  describe "choosing among several" $ do
+    it "puts a different face of the crane on top" $ do
+      -- Five orders, two pictures: the flap on the right wing is on top in one
+      -- and buried in the other. This is the whole point of being able to pick.
+      fr <- foldedFixture "crane"
+      first' <- either (fail . show) pure (bottomToTopAs [0] fr)
+      other <- either (fail . show) pure (bottomToTopAs [3] fr)
+      first' `shouldNotBe` other
+
+    it "refuses an order a component does not have" $ do
+      fr <- foldedFixture "kabuto"
+      solveStackingAs defaultBudget [0, 9] fr `shouldBe` Left (NoSuchStacking 1 9 3)
+
+    it "refuses an index for a component that is not there" $ do
+      -- The crane has one group with a choice in it, so a second index is a
+      -- question about a different model. Zipping the lists would have dropped
+      -- it without a word.
+      fr <- foldedFixture "crane"
+      solveStackingAs defaultBudget [0, 0] fr `shouldBe` Left (NoSuchComponent 1 1)
+
+  describe "the budget" $ do
+    it "gives up rather than running on" $ do
+      -- One guess is not enough for the crane, which needs eight. No model here
+      -- comes anywhere near the default, so this is the only way to reach the
+      -- refusal without inventing a file built to defeat propagation -- which
+      -- would not be paper.
+      fr <- foldedFixture "crane"
+      stackingSpace (Budget 1) fr `shouldBe` Left (StackingRefused (GaveUpStacking 1))
+
+    it "says at least, rather than exactly, when it stops early" $ do
+      -- Enough to find some of the crane's five orders and not all of them.
+      fr <- foldedFixture "crane"
+      space <- either (fail . show) pure (stackingSpace (Budget 5) fr)
+      stateCount space `shouldSatisfy` \(n, capped) -> capped && n < 5
+
+    it "settles every fixture here well inside the default" $ do
+      -- The number that matters is the largest, and it is eight.
+      forM_ ["quarter-fold", "letter-fold", "thirds-pinwheel", "grid-2x2-d1", "kabuto", "crane"] $ \name -> do
+        fr <- foldedFixture name
+        space <- either (fail . show) pure (stackingSpace defaultBudget fr)
+        sum (map choiceGuesses (stackingsChoices space)) `shouldSatisfy` (< 10)
 
   describe "what it declines" $ do
     it "declines a model that is still in the air" $ do

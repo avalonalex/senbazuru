@@ -143,7 +143,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
-| `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints. |
+| `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
@@ -374,6 +374,27 @@ are not contributors can find it, and so there is only one copy to keep true.
   overlapping pieces adding up to more paper than went in until it skipped them.
   Anything that walks a ring's edges and asks which side of one a point is on
   has to skip them too.
+- **A model usually has several valid layer orders, and the count is a
+  product.** The constraint graph falls into components that share no rule, so
+  the orders are every combination of theirs: the crane has 5, one of
+  Flat-Folder's models has 10^83. Solve each component separately and the cost
+  adds up over them instead of multiplying — the crane's 87 open pairs are one
+  component that 8 guesses exhaust. `stateCount` returns `Integer` for a reason.
+- **`--layer-budget` has to reach the renderer, not just the CLI.** A folded
+  form's layer order is worked out inside `Senbazuru.Render.CreasePattern`, so
+  the budget is a parameter of `creasePatternFrom`, `creasePatternAuto` and
+  `stepPage`. It was a CLI flag that did nothing on `render` for exactly as long
+  as it was not.
+- **Flat-Folder counts the settled pairs as a component and we match it.**
+  Its first component is always the pairs propagation forced, whether there are
+  any or not — a model with no variables at all still reports one. So
+  `componentCount` is our components plus one, deliberately, because matching
+  its published figures model for model is the best evidence the split is right.
+- **A different layer order is usually the same picture.** All 16 of the 2x2
+  grid's orders draw identically from either side; the kabuto's 9 are one
+  picture from above and four from below; the crane's 5 make two. Testing
+  `--stacking` by comparing rendered output will mostly compare equal things —
+  compare the `faceOrders`, or use the crane, whose states 0 and 3 differ.
 - **A layer order need not be a painting order.** The solver forbids a circle
   only among three faces that share a patch of paper. Three faces can overlap
   pairwise with no point under all three — the flaps of a twist do — and then
@@ -432,6 +453,11 @@ Deliberate omissions, so nobody thinks they are bugs:
   detect: each of the three loses the shared patch to the other two, and the
   model comes out with a hole in it. Nothing senbazuru produces can be like
   that. A pair of entries that contradict each other directly *is* refused.
+- The layer solver enumerates a component's orders only up to its budget, so a
+  model with more of them than that reports "at least" rather than a count. It
+  gives up on a component it cannot settle within the budget rather than
+  searching on, which is a refusal and not a decline: `render` says so instead
+  of drawing something.
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.

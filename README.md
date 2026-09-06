@@ -163,6 +163,43 @@ form with paper in the air and no `faceOrders` is still drawn as a wireframe,
 and `info` says so. And every face has to be convex, which the faces of a
 flat-foldable pattern are whenever the sheet is.
 
+### Which stacking
+
+There is rarely just one. The crane has five valid layer orders, the kabuto
+nine, and one of Flat-Folder's dragons more than 10⁸³ — the counts are products,
+because the constraints fall into independent components and the choices in them
+multiply. `info --fold` says how the model divides up:
+
+```console
+$ senbazuru info examples/crane.fold --fold
+...
+    layers:   (none in the file; 892 overlapping pairs in 2 components, 5 valid orders)
+    stacking: 1 component with a choice; --stacking takes 0-4
+```
+
+The two counts differ by one on purpose: the first counts components the way
+Flat-Folder does, with the pairs that were settled outright among them, so its
+published figures can be compared with these. The second counts what you can
+actually choose. `--stacking` takes one index per component with a choice in it:
+
+```bash
+stack run -- render examples/crane.fold --fold --stacking 3 -o crane-3.svg
+```
+
+which puts a different flap on top of the crane's right wing. Most of the
+difference between orders is buried, though: all sixteen of the 2×2 grid's are
+the same picture from either side, and all nine of the kabuto's are one picture
+from above and four from below. A count of orders is a count of *models*, not of
+pictures.
+
+The same split is what keeps the search finishing. Each component is solved on
+its own, so the cost adds up over them rather than multiplying, and each is
+given a budget of guesses — `--layer-budget`, a thousand by default — so that a
+model propagation cannot settle says it gave up instead of running on. The most
+any model here needs is eight, and both models that cannot be stacked at all are
+refused without a single guess. The reasoning is in
+[docs/notes/several-stackings.md](docs/notes/several-stackings.md).
+
 ## What it hides
 
 Knowing which layer is on top is not the same as having a picture, for two
@@ -327,7 +364,7 @@ the compiler, delete that line.
 ```
 senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
 senbazuru check FILE.fold [--frame N] [--tolerance DEG]
-senbazuru info FILE.fold
+senbazuru info FILE.fold [--fold] [--layer-budget N]
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -352,6 +389,8 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--arrows` | Draw the fold that takes this frame to the next one |
 | `--steps` | Lay every frame out as one numbered page of figures, at one scale |
 | `--columns N` | Figures across the page, with `--steps` (default `3`) |
+| `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
+| `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
 
 `check` takes `--frame` too, and one option of its own:
 
