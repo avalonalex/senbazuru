@@ -161,10 +161,11 @@ carried `faces_edges` — which lists a face's edges in the order of its corners
 — would no longer be true, and `"cpedit:page"` describes a crease pattern that
 this no longer is. It keeps none of them rather than write something false.
 
-A round trip is therefore a fixed point on the decoded document, tested on every
-file in `examples/`, but not on the bytes: whitespace goes, `"m"` becomes `"M"`,
-and numbers are reformatted. [notes/round-trips.md](notes/round-trips.md) has
-the full list and the reasoning.
+A round trip is therefore a fixed point on the decoded document — tested on
+every `.fold` file in `test/fixtures/`, which are copies of the ones in
+`examples/` — but not on the bytes: whitespace goes, `"m"` becomes `"M"`, and
+numbers are reformatted. [notes/round-trips.md](notes/round-trips.md) has the
+full list, the reasoning, and the one case the writer still gets wrong.
 
 ## What FOLD does **not** contain
 

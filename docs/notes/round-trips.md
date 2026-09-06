@@ -89,13 +89,50 @@ known:
 | Whitespace removed, keys reordered into specification order | Reproducible output, readable diffs |
 | `"m"` written back as `"M"` | The spec's codes are uppercase; the decoder accepts either |
 | `1.0` written as `1`, `1e2` as `100` | Whatever the JSON encoder considers shortest |
-| `-0.0` written as `0` | JSON numbers arrive as `Scientific`, which has no signed zero — a small mercy, given how much trouble `-0.0` causes the SVG backend |
+| `-0.0` written as `0` | See below |
 | `"faces_vertices": []` and `"file_title": null` become absent | An empty array we invented is a claim the file did not make, and neither is a `null` |
 | A key written twice keeps its **first** value | JSON says nothing about duplicates; measured, ours takes the first |
 
 703 bytes in, 478 out, same document. If you need the bytes back exactly, a
 round trip on values is not the test you want — but that is a much rarer
 requirement than it sounds, and paying for it means keeping the input text.
+
+The negative zero is worth a second look, because the reason is not the one you
+would guess and it is load-bearing. Reading a `-0.0` out of a file loses the
+sign on its own: JSON numbers arrive as `Scientific`, whose coefficient is an
+`Integer`, which has no sign to keep. But the negative zeros that actually
+matter are not read, they are *computed* — folding produces them, exactly as it
+does for the SVG backend, where `formatNumber` has to normalise them so golden
+files stay stable. Those survive into a `Frame`, and they come out as `0` only
+because the encoder builds a list of `(Key, Value)` pairs, and `toJSON` of a
+`Double` rounds through `Scientific` on the way in. Encoding a `Double`
+*directly* does not:
+
+```
+encode          (-0.0 :: Double)   ==  "-0.0"
+encode (toJSON  (-0.0 :: Double))  ==  "0"
+```
+
+So the obvious optimisation — build the `Series` straight from `toEncoding` and
+skip the intermediate `Value` — would quietly put negative zeros back into
+written files. There is a test pinning it for that reason.
+
+## One thing that is still wrong
+
+A `Double` that is not finite has no JSON number to be written as, and the
+encoder does not notice. `aeson` writes infinities as *strings* and `NaN` as
+`null`:
+
+```json
+{"vertices_coords": [["+inf", null, "-inf"]]}
+```
+
+which is not FOLD, and no other reader will take it. It is hard to reach —
+nothing in senbazuru produces a non-finite coordinate today — but the decoder
+will happily read a `null` coordinate back as `NaN`, so the two halves agree
+with each other and with nobody else. The honest fix is for the encoder to
+refuse, which means `encodeFoldFile` returning `Either` the way every other
+fallible thing in this codebase does. It has not been done yet.
 
 ## References
 

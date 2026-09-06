@@ -173,9 +173,9 @@ data Frame = Frame
     -- For the key frame this holds the unknown keys of the /top-level/ object,
     -- since that object /is/ the key frame. See 'parseFrame'.
     --
-    -- Anything building a 'Frame' by hand should leave this alone. Putting a
-    -- key here that the encoder also writes — one of 'frameKeys', or one of
-    -- 'fileKeys' on the key frame — gets it written twice.
+    -- Anything building a 'Frame' by hand should leave this alone. A key here
+    -- that the encoder also writes — one of 'frameKeys', or one of 'fileKeys'
+    -- on the key frame — loses to the field, and is not written at all.
     frameExtras :: !Object
   }
   deriving stock (Eq, Show)
@@ -369,14 +369,18 @@ fileKeys =
     "file_frames"
   ]
 
--- | The keys 'parseFrame' reads, which are also exactly the keys the encoder
+-- | The keys 'parseFrame' reads, which are also exactly the keys 'framePairs'
 -- writes.
 --
--- Neither of those can derive the list, so it is stated once here and both are
--- checked against it in "Senbazuru.Fold.TypesSpec": every key is consumed on
--- the way in, and every key is produced on the way out. A key that fell out of
--- this list would be read /and/ collected into 'frameExtras', and then written
--- twice.
+-- Neither of those can derive the list, so it is stated once here and used by
+-- both: the parser subtracts it to find what it did not understand, and the
+-- encoder subtracts it again to make sure nothing it understands can be
+-- written a second time out of 'frameExtras'.
+--
+-- "Senbazuru.Fold.TypesSpec" checks the list against the encoder — writing a
+-- document with every field set has to produce exactly these keys and no
+-- others. The other direction, that everything written is read back, is what
+-- the generated round trip there tests.
 frameKeys :: [Key]
 frameKeys =
   [ "frame_author",
@@ -430,8 +434,8 @@ instance ToJSON FaceOrder where
   toEncoding o = toEncoding (orderFace o, orderRelativeTo o, stackingSign (orderStacking o))
 
 instance ToJSON Frame where
-  toJSON = object . framePairs
-  toEncoding = pairs . series . framePairs
+  toJSON = object . framePairs []
+  toEncoding = pairs . series . framePairs []
 
 instance ToJSON FoldFile where
   toJSON = object . filePairs
@@ -451,16 +455,26 @@ filePairs FoldFile {..} =
       omitNothing "file_title" fileTitle,
       omitNothing "file_description" fileDescription,
       omitEmpty "file_classes" fileClasses,
-      framePairs keyFrame,
+      framePairs fileKeys keyFrame,
       omitEmpty "file_frames" otherFrames
     ]
 
 -- | The keys of one frame, in the order the specification lists them, with
 -- 'frameExtras' after them.
 --
--- The key names here must be exactly 'frameKeys' — see the note there.
-framePairs :: Frame -> [Pair]
-framePairs Frame {..} =
+-- The key names written here must be exactly 'frameKeys' — see the note there.
+--
+-- @claimed@ mirrors 'parseFrame': 'fileKeys' when this frame is the key frame
+-- and the object it is being written into is also the file, nothing when it is
+-- a @file_frames@ entry. Together with 'frameKeys' it is what 'frameExtras' is
+-- filtered against on the way out, so that a frame carrying an extra the
+-- encoder also writes emits that key once rather than twice. The decoder can
+-- never produce such a frame — it subtracts the same keys — but a caller
+-- building one by hand can, and a JSON object with a repeated key is read
+-- differently by different tools, which is the one thing a format written for
+-- interchange must not do.
+framePairs :: [Key] -> Frame -> [Pair]
+framePairs claimed Frame {..} =
   concat
     [ omitNothing "frame_author" frameAuthor,
       omitNothing "frame_title" frameTitle,
@@ -478,7 +492,7 @@ framePairs Frame {..} =
       omitEmpty "faceOrders" faceOrders,
       -- Sorted, so that two runs of senbazuru over the same file produce the
       -- same bytes. A KeyMap has no order of its own to inherit.
-      KM.toAscList frameExtras
+      KM.toAscList (foldr KM.delete frameExtras (claimed <> frameKeys))
     ]
 
 -- | Keep an ordered list of pairs ordered on the way out.
@@ -486,6 +500,14 @@ framePairs Frame {..} =
 -- 'object' would lose it — an 'Object' is a hash map — so the instances above
 -- define 'toEncoding' as well, which is what 'Data.Aeson.encode' actually
 -- uses, and build it from a 'Series', which concatenates in order.
+--
+-- Note what going through 'Pair' — that is, through 'Data.Aeson.Value' — buys
+-- on the way: 'toJSON' of a 'Double' rounds through 'Scientific', whose
+-- coefficient is an 'Integer' and so has no sign to keep, and @-0.0@ comes out
+-- as @0@. 'toEncoding' of a 'Double' does not: it writes @-0.0@. Folding
+-- produces negative zeros, so building the 'Series' straight from 'toEncoding'
+-- to save the intermediate 'Value' would put them back into written files.
+-- "Senbazuru.Fold.TypesSpec" pins this.
 series :: [Pair] -> Series
 series = foldMap (uncurry (.=))
 

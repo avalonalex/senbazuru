@@ -521,6 +521,12 @@ Deliberate omissions, so nobody thinks they are bugs:
   `docs/notes/fold-angles-are-the-state.md`.
 - FOLD output exists in the library (`Senbazuru.Fold.Load.encodeFoldFile`,
   `saveFoldFile`) but no CLI verb calls it yet. The first authoring verb will.
+- The FOLD writer does not refuse a non-finite number. `aeson` writes an
+  infinity as the string `"+inf"` and a `NaN` as `null`, neither of which is a
+  FOLD coordinate, and the decoder reads a `null` coordinate back as `NaN` so
+  the two agree with each other and with nothing else. Nothing produces one
+  today. Fixing it means `encodeFoldFile` returning `Either`, which is what the
+  rest of the codebase would do.
 
 ## Workflow
 

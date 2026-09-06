@@ -17,12 +17,11 @@
 -- and stops compiling until they deal with it.
 module Senbazuru.Fold.TypesSpec (spec) where
 
-import Data.Aeson (Object, Value (..), eitherDecodeStrict', encode, toJSON)
+import Data.Aeson (Object, Value (..), eitherDecodeStrict', toJSON)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.ByteString.Lazy qualified as BL
 import Data.Either (isLeft)
 import Data.Foldable (for_)
 import Data.List (isSuffixOf, sort)
@@ -42,6 +41,27 @@ decodeOrFail :: ByteString -> IO FoldFile
 decodeOrFail bytes = case decodeFoldFile bytes of
   Left err -> fail ("decode failed: " <> err)
   Right f -> pure f
+
+-- | Decode a lone frame, as a @file_frames@ entry is decoded: claiming no
+-- file-level keys, so anything at all can land in 'frameExtras'.
+decodeFrameOrFail :: ByteString -> IO Frame
+decodeFrameOrFail bytes = case eitherDecodeStrict' bytes of
+  Left err -> fail ("decode failed: " <> err)
+  Right fr -> pure fr
+
+-- | A document with nothing in it, to hang one frame off.
+emptyFile :: FoldFile
+emptyFile =
+  FoldFile
+    { fileSpec = Nothing,
+      fileCreator = Nothing,
+      fileAuthor = Nothing,
+      fileTitle = Nothing,
+      fileDescription = Nothing,
+      fileClasses = [],
+      keyFrame = emptyFrame,
+      otherFrames = []
+    }
 
 -- | Decode as a bare JSON object, for the tests that ask which /keys/ came
 -- out rather than what they meant.
@@ -413,6 +433,40 @@ spec = do
       encodeFoldFile f
         `shouldBe` "{\"x:a\":1,\"file_frames\":[{\"x:b\":2}]}\n"
 
+    it "writes a key once when an extra shadows a field, preferring the field" $ do
+      -- The decoder cannot build such a frame -- it subtracts the same keys --
+      -- but a caller assembling one by hand can, and a JSON object with a
+      -- repeated key is read differently by different tools: aeson takes the
+      -- first, JavaScript's JSON.parse the last. A format written for
+      -- interchange must not emit one.
+      let shadowed =
+            emptyFrame
+              { frameTitle = Just "field",
+                frameExtras = KM.fromList [("frame_title", String "extra")]
+              }
+      encodeFoldFile (emptyFile {keyFrame = shadowed})
+        `shouldBe` "{\"frame_title\":\"field\"}\n"
+
+    it "writes a file-level key once when the key frame carries it as an extra" $ do
+      -- The same hazard one level up, and the reason framePairs takes the
+      -- caller's claimed keys the way parseFrame does. Decoding a bare Frame
+      -- claims nothing, so file_spec really does land in its extras -- and that
+      -- frame can then be installed as a key frame.
+      lone <- decodeFrameOrFail "{\"file_spec\": 1.1}"
+      KM.keys (frameExtras lone) `shouldBe` ["file_spec"]
+      encodeFoldFile (emptyFile {fileSpec = Just 1.1, keyFrame = lone})
+        `shouldBe` "{\"file_spec\":1.1}\n"
+
+    it "writes a negative zero as zero, the way the SVG backend does" $ do
+      -- Folding produces negative zeros, and -0.0 == 0.0 is True while the two
+      -- format differently -- the same trap formatNumber and the glTF export
+      -- both have to dodge. Here it is dodged by going through Value: toJSON
+      -- of a Double rounds through Scientific, which has no signed zero.
+      -- encode (-0.0 :: Double) on its own is "-0.0", so building the Series
+      -- straight from toEncoding would undo this. That is what this pins.
+      encodeFoldFile (emptyFile {keyFrame = emptyFrame {verticesCoords = [[-0.0, 0]]}})
+        `shouldBe` "{\"vertices_coords\":[[0,0]]}\n"
+
     it "does not mistake a file-level key for something it does not understand" $ do
       -- fileKeys is what stops the key frame collecting file_spec as an extra
       -- and the encoder then writing it twice.
@@ -438,15 +492,6 @@ spec = do
       -- come back unchanged.
       forAll genFile $ \f ->
         decodeFoldFile (encodeFoldFile f) === Right f
-
-    it "consumes every key it claims to know" $
-      -- Half of the invariant on fileKeys and frameKeys. A key that is read but
-      -- missing from those lists would be collected into frameExtras as well,
-      -- and then written twice. null is used as the value because every one of
-      -- these keys is optional, so all of them accept it.
-      for_ (fileKeys <> frameKeys) $ \k -> do
-        f <- decodeOrFail (BL.toStrict (encode (KM.singleton k Null)))
-        (k, KM.keys (frameExtras (keyFrame f))) `shouldBe` (k, [])
 
     it "writes every key it claims to know, and no others" $ do
       -- The other half. Encoding a document with every field set has to
