@@ -99,9 +99,15 @@ genMaybeText = oneof [pure Nothing, Just <$> genText]
 -- | Keys the decoder does not understand, and values of the shapes a vendor
 -- extension really uses.
 --
--- Every key is namespaced, which is both what the specification asks of a
--- vendor and what keeps the test honest: a generated @vertices_coords@ would
--- be read as one and the property would pass for the wrong reason.
+-- Every key is namespaced, which is what the specification asks of a vendor
+-- and also what keeps the generator inside the property's domain. The round
+-- trip holds for frames the decoder could have produced, and the decoder can
+-- never put a key it understands into 'frameExtras'. A generated
+-- @vertices_coords@ would be a frame no file can produce, and the encoder
+-- drops such an extra in favour of the field, so the round trip would fail on
+-- an input it never promised to handle. That case is covered by the two
+-- shadowing examples in "encoding" instead, which assert what actually matters
+-- about it: the key comes out once.
 genExtras :: Gen Object
 genExtras = KM.fromList <$> small (listOf ((,) <$> genKey <*> genValue))
   where
