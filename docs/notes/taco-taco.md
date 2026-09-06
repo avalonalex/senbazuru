@@ -27,9 +27,7 @@ brings the undersides together and it is the other way round.
 
 **Taco–tortilla.** A face that runs across a taco's fold line cannot lie
 between the taco's two faces. The paper is continuous where the fold line
-crosses it, so a fold passing through would tear it. Nor can a face that runs
-across a *tortilla's* line lie between the tortilla's two faces, for the same
-reason with the roles swapped.
+crosses it, so a fold passing through would tear it.
 
 **Taco–taco.** Two tacos folded on the same line, to the same side, must nest
 or stay apart: if one face of the first taco is between the faces of the second,
@@ -37,7 +35,9 @@ so is its partner. Interleaving them would put one fold through the other.
 
 **Tortilla–tortilla.** Two sheets that both continue flat across one line
 cannot cross it in opposite orders. If one is on top on the left of the line it
-is on top on the right.
+is on top on the right. A face that runs across a tortilla's line is itself a
+tortilla whose two halves are one face, so this rule covers it too: it lies
+above the sheet or below it, never between its two faces.
 
 There is one more, and it is about arithmetic rather than paper: three faces
 that share a patch of paper are totally ordered over that patch, so their three

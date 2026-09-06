@@ -55,6 +55,16 @@ foldOrFail fr = case foldFrame fr of
   Left err -> fail ("fold failed: " <> show err)
   Right folded -> pure folded
 
+-- | A crease-pattern fixture, folded along its own angles.
+foldedFixture :: String -> IO Frame
+foldedFixture name = loadFixture ("test/fixtures/" <> name <> ".fold") >>= foldOrFail
+
+-- | The refusal several tests expect: no order of the layers exists at all.
+shouldBeUnstackable :: Frame -> Expectation
+shouldBeUnstackable fr = case solveStacking fr of
+  Left (StackingRefused (Unstackable _)) -> pure ()
+  other -> expectationFailure ("expected an unstackable model, got " <> show other)
+
 -- | The faces of a flat-folded frame in the order to paint them seen from
 -- above: bottom layer first, top layer last.
 bottomToTop :: Frame -> Either StackingError [Int]
@@ -110,6 +120,19 @@ looseLeaves =
       facesVertices = [map VertexId [0, 1, 2, 3], map VertexId [4, 5, 6, 7]]
     }
 
+-- | How many rules of each kind, in the order Flat-Folder's table lists them:
+-- taco-taco, taco-tortilla, tortilla-tortilla, transitivity. 'Fixed' rules are
+-- the crease assignments and have no column there.
+tally :: [Rule] -> [Int]
+tally rules = [length (filter ((== k) . kind) rules) | k <- [1 .. 4 :: Int]]
+  where
+    kind = \case
+      Fixed {} -> 0
+      NoInterleave {} -> 1
+      NotBetween {} -> 2
+      SameOrder {} -> 3
+      Acyclic {} -> 4
+
 -- | Does @a@ come before @b@ in the list?
 precedes :: Int -> Int -> [Int] -> Bool
 precedes a b xs = case (elemIndex a xs, elemIndex b xs) of
@@ -143,8 +166,7 @@ spec = do
       -- you (valley). The back layer's crease is a mountain seen from the
       -- pattern's side, which is why the file has three. Bottom to top: the
       -- bottom-left quadrant, the bottom-right, the top-right, the top-left.
-      flat <- loadFixture "test/fixtures/quarter-fold.fold"
-      folded <- foldOrFail flat
+      folded <- foldedFixture "quarter-fold"
       bottomToTop folded `shouldBe` Right [3, 0, 1, 2]
 
     it "mirrors the stack when every assignment is swapped" $ do
@@ -184,14 +206,8 @@ spec = do
       -- longer than the pocket, and the pocket is closed at the far end.
       -- Folding cannot see this: the coordinates are identical to the
       -- accordion's. Only the layers know.
-      rolled <- lettered [Valley, Valley] >>= foldOrFail
-      case solveStacking rolled of
-        Left (StackingRefused (Unstackable _)) -> pure ()
-        other -> expectationFailure ("expected an unstackable model, got " <> show other)
-      rolledTheOtherWay <- lettered [Mountain, Mountain] >>= foldOrFail
-      case solveStacking rolledTheOtherWay of
-        Left (StackingRefused (Unstackable _)) -> pure ()
-        other -> expectationFailure ("expected an unstackable model, got " <> show other)
+      lettered [Valley, Valley] >>= foldOrFail >>= shouldBeUnstackable
+      lettered [Mountain, Mountain] >>= foldOrFail >>= shouldBeUnstackable
 
     it "states the rule that forbids the roll" $ do
       -- Taco-tortilla: the first panel runs across the line the second and
@@ -209,11 +225,67 @@ spec = do
       -- Passes Maekawa and Kawasaki, folds without tearing, and still cannot
       -- exist: the small sector's two neighbours both fold to the same side of
       -- it, and each runs across the other's crease.
-      flat <- loadFixture "test/fixtures/big-little-big.fold"
-      folded <- foldOrFail flat
-      case solveStacking folded of
-        Left (StackingRefused (Unstackable _)) -> pure ()
-        other -> expectationFailure ("expected an unstackable model, got " <> show other)
+      foldedFixture "big-little-big" >>= shouldBeUnstackable
+
+  describe "against Flat-Folder's table" $ do
+    -- Flat-Folder (MIT) ships a CSV recording, for most of its example crease
+    -- patterns, how many overlapping pairs it found and how many constraints
+    -- of each kind. The five columns below are copied from
+    -- examples/instagram_data.csv and examples/grids_data.csv at its commit
+    -- d50004815fb7: variables, taco-taco, taco-tortilla, tortilla-tortilla,
+    -- transitivity. Its transitivity column counts triples with a cell of its
+    -- overlap graph under all three faces, before the reduction a later column
+    -- applies; ours counts triples with a common patch of paper, which is the
+    -- same thing. Its taco-taco constraint spans six pairs where ours spans
+    -- four -- the two taco pairs are separate Fixed rules here -- but there is
+    -- one per overlapping edge pair in both, so the counts still compare.
+    --
+    -- Agreeing with an independent implementation, number for number, is the
+    -- best evidence available that the rules are generated right. The first
+    -- run of this test found six transitivity rules missing from the kabuto,
+    -- which turned out to be NaN areas from a division by zero in clipping,
+    -- fixed since.
+    let table =
+          [ ("crane", 892, [197, 712, 254, 6392]),
+            ("kabuto", 117, [21, 88, 0, 420]),
+            ("thirds-pinwheel", 28, [0, 28, 0, 36]),
+            ("grid-2x2-d1", 132, [16, 120, 0, 332])
+          ]
+
+    mapM_
+      ( \(name, variables, counts) ->
+          it ("generates the same constraints for the " <> name) $ do
+            fr <- foldedFixture name
+            fmap length (solveStacking fr) `shouldBe` Right variables
+            fmap tally (stackingRules fr) `shouldBe` Right counts
+      )
+      table
+
+    it "stacks the crane, which is what the golden test draws" $ do
+      -- Five valid stackings in two components, says the table; we find one.
+      fr <- foldedFixture "crane"
+      order <- either (fail . show) pure (bottomToTop fr)
+      length order `shouldBe` 72
+
+    it "refuses the bad twist, which has no valid stacking" $ do
+      -- From Flat-Folder's unsatisfiable/ folder: it folds without tearing and
+      -- passes the single-vertex theorems, and no order of its layers exists.
+      foldedFixture "bad-twist" >>= shouldBeUnstackable
+
+    it "stacks the twists but cannot yet paint them -- a known limit" $ do
+      -- A twist's flaps lie in a circle: A over B over C over A, with no point
+      -- under all three. That is a valid stacking, and the solver finds it, but
+      -- paintOrder needs one global order and there is none. Pinned on purpose:
+      -- once faces are drawn by visible region rather than whole (#31), this
+      -- test fails and is rewritten to assert the picture instead.
+      mapM_
+        ( \name -> do
+            fr <- foldedFixture name
+            case bottomToTop fr of
+              Left (StackingRefused (ImpossibleStacking _)) -> pure ()
+              other -> expectationFailure (name <> ": expected a painting order to be impossible, got " <> show other)
+        )
+        ["thirds-pinwheel", "grid-2x2-d1"]
 
   describe "what it declines" $ do
     it "declines a model that is still in the air" $ do
