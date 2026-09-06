@@ -57,6 +57,7 @@ module Senbazuru.Import.Segments
   ( -- * Segments
     Segment (..),
     fromScreenPoint,
+    readNumber,
 
     -- * What can be wrong with one
     ImportError (..),
@@ -74,6 +75,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Read qualified as TR
 import Senbazuru.Fold.Types
   ( Assignment,
     FoldFile (..),
@@ -81,7 +83,7 @@ import Senbazuru.Fold.Types
     VertexId (..),
     emptyFrame,
   )
-import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
+import Senbazuru.Geometry (Box (..), V2 (..), boxFromPoints, boxSize, norm, (^-^))
 
 -- | One line of a @.cp@ file, or one @OriLineProxy@ of an @.opx@ file: two
 -- endpoints and what kind of line joins them.
@@ -116,6 +118,22 @@ data Segment = Segment
 fromScreenPoint :: Double -> Double -> V2
 fromScreenPoint x y = V2 x (negate y)
 
+-- | A whole field as a number, or 'Nothing'.
+--
+-- Shared by both readers, and the sharing is the point: 'TR.double' is a
+-- reader combinator, so it stops at the first thing it does not understand and
+-- hands back the rest. Ignore that remainder and @1.0mm@ reads as @1.0@. One
+-- copy of the check means one place to fix if either format ever grows a
+-- spelling this does not take.
+--
+-- What it does take is what Java's @Double.toString@ writes, which is what
+-- both formats are full of, including the scientific notation it reaches for
+-- below a thousandth and the negative zeros a reflection leaves behind.
+readNumber :: Text -> Maybe Double
+readNumber field = case TR.double field of
+  Right (value, leftover) | T.null leftover -> Just value
+  _ -> Nothing
+
 -- | Everything that can be wrong with a @.cp@ or an @.opx@ file.
 --
 -- Every case but 'EmptyPattern' names a line, because both formats are line
@@ -132,9 +150,16 @@ data ImportError
   | -- | A line type code the format does not define. Carries the line and the
     -- code.
     UnknownLineType Int Int
-  | -- | A segment whose two endpoints are the same point, to within
-    -- 'mergeTolerance'. It names no direction, so it is not a crease, and
-    -- keeping it would put an edge from a vertex to itself into the frame.
+  | -- | A segment whose two endpoints turned out to be the same vertex. It
+    -- names no direction, so it is not a crease, and keeping it would put an
+    -- edge from a vertex to itself into the frame.
+    --
+    -- Judged after merging rather than by measuring the segment, because those
+    -- are not the same question. A segment a shade longer than
+    -- 'mergeTolerance' can still have both ends land on one existing vertex,
+    -- if it straddles that vertex with each end inside the tolerance; it is
+    -- the merged result that has to be a real edge, so that is what is
+    -- checked.
     DegenerateSegment Int
   deriving stock (Eq, Show)
 
@@ -154,16 +179,17 @@ renderImportError = \case
 -- that the reason for it lives next to the value. See the module header for
 -- why it is relative to the pattern rather than absolute.
 --
--- Zero only when every endpoint in the file is the same point — or when there
--- are no segments at all — and then every segment is degenerate and
--- 'frameFromSegments' rejects the first of them before the tolerance is used
--- for anything else.
+-- Zero when there are no segments at all, or when every endpoint in the file
+-- is the same point — in which case every endpoint interns to vertex 0 and
+-- every segment is rejected as degenerate.
 mergeTolerance :: [Segment] -> Double
-mergeTolerance segments = case boxFromPoints (concatMap ends segments) of
+mergeTolerance segments = case boxFromPoints (concatMap endsOf segments) of
   Nothing -> 0
   Just box -> 1e-9 * norm (boxSize box)
-  where
-    ends s = [segStart s, segEnd s]
+
+-- | Both ends of a segment.
+endsOf :: Segment -> [V2]
+endsOf s = [segStart s, segEnd s]
 
 -- | Build a frame from a list of segments, merging endpoints that coincide.
 --
@@ -171,38 +197,54 @@ mergeTolerance segments = case boxFromPoints (concatMap ends segments) of
 -- a file twice gives the same numbering, and the numbering follows the file
 -- rather than some sort we imposed on it.
 --
--- Only the vertices are rebuilt. Two creases that /cross/ without either
--- naming the crossing point stay crossed, which makes the result a drawing
--- rather than a planar graph; splitting them, and building the faces that
--- follow, is a separate job that the file gives no help with.
+-- Only the vertices are rebuilt, so the result is a drawing and not
+-- necessarily a planar graph. Two creases that /cross/ without either naming
+-- the crossing point stay crossed, and no vertex appears where they meet — so
+-- "Senbazuru.Origami.FlatFold" has nothing to check there and quietly checks
+-- one vertex fewer, exactly as it does for a @.fold@ file drawn the same way.
+-- Two segments listed /twice/ likewise become two edges between the same pair
+-- of vertices, which counts that crease twice in everything that counts
+-- creases. Splitting crossings, and building the faces that follow, is a
+-- separate job that neither format gives any help with.
 frameFromSegments :: [Segment] -> Either ImportError Frame
 frameFromSegments [] = Left EmptyPattern
 frameFromSegments segments = do
-  mapM_ nonDegenerate segments
-  pure
-    emptyFrame
-      { frameClasses = ["creasePattern"],
-        frameAttributes = ["2D"],
-        verticesCoords = [[v2x p, v2y p] | p <- reverse (mergeSeen final)],
-        edgesVertices = reverse edges,
-        edgesAssignment = map segAssignment segments
-      }
+  case [segLine s | (s, (a, b)) <- zip segments edges, a == b] of
+    (line : _) -> Left (DegenerateSegment line)
+    [] ->
+      pure
+        emptyFrame
+          { frameClasses = ["creasePattern"],
+            frameAttributes = ["2D"],
+            verticesCoords = [[v2x p, v2y p] | p <- reverse (mergeSeen final)],
+            edgesVertices = edges,
+            edgesAssignment = map segAssignment segments
+          }
   where
+    box = boxFromPoints (concatMap endsOf segments)
     tolerance = mergeTolerance segments
 
-    nonDegenerate s
-      | norm (segEnd s ^-^ segStart s) <= tolerance = Left (DegenerateSegment (segLine s))
-      | otherwise = Right ()
+    -- Cells are counted from the corner of the pattern rather than from the
+    -- origin, which bounds their indices by the pattern's own size over the
+    -- tolerance -- a thousand million, whatever the coordinates happen to be.
+    -- Counted from the origin, a small pattern drawn a long way off needs
+    -- indices past maxBound, where `floor` on a Double is undefined. Measured,
+    -- GHC wraps there consistently enough that nearby points still share a
+    -- cell, so this is not a bug being fixed; it is a case removed, along with
+    -- the degenerate grid -- every point in one cell -- that the same
+    -- coordinates would otherwise produce.
+    corner = maybe (V2 0 0) boxMin box
 
-    (final, edges) = foldl' addEdge (emptyMerge, []) segments
+    (final, reversedEdges) = foldl' addEdge (emptyMerge, []) segments
+    edges = reverse reversedEdges
 
     -- The bang is load-bearing on a large file: foldl' forces the pair it is
     -- accumulating to weak head normal form, which is the pair and not what is
     -- inside it, so without it every intern of every endpoint stays a thunk
     -- until the very end. See docs/notes/strict-fields.md.
     addEdge (!merge0, acc) s =
-      let (a, merge1) = intern tolerance (segStart s) merge0
-          (b, merge2) = intern tolerance (segEnd s) merge1
+      let (a, merge1) = intern corner tolerance (segStart s) merge0
+          (b, merge2) = intern corner tolerance (segEnd s) merge1
        in (merge2, (a, b) : acc)
 
 -- | Build a whole document from a list of segments.
@@ -250,20 +292,20 @@ emptyMerge = Merge {mergeGrid = M.empty, mergeSeen = [], mergeCount = 0}
 -- possible, since they may be up to two tolerances apart from each other — the
 -- first one found wins. Which one that is depends on the order the file listed
 -- them in, and a pattern where it matters was already ambiguous at this scale.
-intern :: Double -> V2 -> Merge -> (VertexId, Merge)
-intern tolerance p merge = case nearby of
+intern :: V2 -> Double -> V2 -> Merge -> (VertexId, Merge)
+intern corner tolerance p merge = case nearby of
   ((existing, _) : _) -> (existing, merge)
   [] ->
     ( fresh,
       merge
-        { mergeGrid = M.insertWith (<>) (cellOf tolerance p) [(fresh, p)] (mergeGrid merge),
+        { mergeGrid = M.insertWith (<>) (cellOf corner tolerance p) [(fresh, p)] (mergeGrid merge),
           mergeSeen = p : mergeSeen merge,
           mergeCount = mergeCount merge + 1
         }
     )
   where
     fresh = VertexId (mergeCount merge)
-    (cx, cy) = cellOf tolerance p
+    (cx, cy) = cellOf corner tolerance p
     nearby =
       [ candidate
         | dx <- [-1, 0, 1],
@@ -272,6 +314,8 @@ intern tolerance p merge = case nearby of
           norm (q ^-^ p) <= tolerance
       ]
 
--- | Which cell of the tolerance-wide grid a point falls in.
-cellOf :: Double -> V2 -> (Int, Int)
-cellOf tolerance (V2 x y) = (floor (x / tolerance), floor (y / tolerance))
+-- | Which cell of the tolerance-wide grid a point falls in, counted from the
+-- corner of the pattern.
+cellOf :: V2 -> Double -> V2 -> (Int, Int)
+cellOf (V2 originX originY) tolerance (V2 x y) =
+  (floor ((x - originX) / tolerance), floor ((y - originY) / tolerance))

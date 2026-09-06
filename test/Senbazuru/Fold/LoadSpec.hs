@@ -55,10 +55,16 @@ creases frame =
         q <- at j
     ]
   where
-    points = [(x, y) | (x : y : _) <- verticesCoords frame]
+    -- One entry per vertex, empty where the row is too short to be a point.
+    -- Filtering the short rows out instead would renumber every vertex after
+    -- one, and the comparison would then quietly line the wrong endpoints up
+    -- rather than fail.
+    points = map pointOf (verticesCoords frame)
+    pointOf (x : y : _) = [(x, y)]
+    pointOf _ = []
     -- Total, unlike (!!): an id with no coordinates drops its crease, and the
     -- comparison then fails on a length as loudly as it would on a point.
-    at i = take 1 (drop i points)
+    at i = concat (take 1 (drop i points))
 
 -- | The same paper turned over top to bottom.
 --
@@ -164,6 +170,14 @@ spec = do
       decodeFile "square.json" bytes `shouldBe` Right sample
       decodeFile "square" bytes `shouldBe` Right sample
 
+    it "reads a .cp saved with a byte-order mark" $
+      -- A BOM is a zero-width space and is not whitespace to Data.Char, so it
+      -- glues itself to the first field of the first line: without stripping
+      -- it, this file is refused with a complaint about a character nobody can
+      -- see. Windows editors write one.
+      fmap (length . edgesVertices . keyFrame) (decodeFile "pattern.cp" ("\239\187\191" <> quarterFoldCp))
+        `shouldBe` Right 2
+
     it "reports a bad line of a .cp rather than a decode failure" $
       -- The reason ImportFailed is its own constructor: aeson has nothing to
       -- say about line 2 of a file it never saw.
@@ -171,9 +185,12 @@ spec = do
         `shouldBe` Left (ImportFailed "pattern.cp" (MalformedLine 2 "expected a type and four coordinates, found 4 fields"))
 
     it "says which file and which line when it refuses one" $
+      -- "cannot decode", not "cannot read": the bytes arrived. That is the
+      -- distinction LoadError exists to draw, and the one a person holding the
+      -- file needs -- a path typo and a bad line are different problems.
       case decodeFile "pattern.cp" "0 0.0 0.0 1.0 0.0\n" of
         Left err ->
-          renderLoadError err `shouldBe` "cannot read pattern.cp: line 1: unknown line type 0"
+          renderLoadError err `shouldBe` "cannot decode pattern.cp: line 1: unknown line type 0"
         Right _ -> expectationFailure "expected the type code 0 to be refused"
 
   describe "the quarter fold in all three formats" $ do

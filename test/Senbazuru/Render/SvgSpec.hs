@@ -13,7 +13,7 @@ import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, defaultTheme)
-import Senbazuru.Fold.Load (decodeFoldFile)
+import Senbazuru.Fold.Load (decodeFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..), allFrames)
 import Senbazuru.Geometry
@@ -44,12 +44,24 @@ renderFixtureFrom = renderFixtureWith defaultTheme
 -- | The same, through a theme the caller chooses.
 renderFixtureWith :: Theme -> Notation -> Basis -> FilePath -> IO Text
 renderFixtureWith theme notation basis path = do
-  bytes <- BS.readFile path
-  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  f <- decodedFixture path
   d <- case creasePatternFrom theme defaultBudget notation basis (keyFrame f) of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
+
+-- | Read a fixture through the loader the CLI uses, so that a fixture in a
+-- format other than FOLD needs no harness of its own.
+--
+-- 'decodeFile' picks the reader from the extension and falls through to
+-- the FOLD decoder for @.fold@, so every golden below that predates the other
+-- two readers goes down exactly the path it always did.
+decodedFixture :: FilePath -> IO FoldFile
+decodedFixture path = do
+  bytes <- BS.readFile path
+  case decodeFile path bytes of
+    Left err -> fail ("decode failed: " <> T.unpack (renderLoadError err))
+    Right f -> pure f
 
 -- | Fold a crease-pattern fixture and render the result.
 --
@@ -63,8 +75,7 @@ renderFolded = renderFoldedWith defaultTheme
 -- | The same, through a theme the caller chooses, for the offset view.
 renderFoldedWith :: Theme -> Basis -> FilePath -> IO Text
 renderFoldedWith theme basis path = do
-  bytes <- BS.readFile path
-  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  f <- decodedFixture path
   folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
   d <- case creasePatternFrom theme defaultBudget FoldedFormNotation basis folded of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
@@ -88,8 +99,7 @@ arrowDiagram size =
 -- | Render one frame of a sequence with the arrows for the step it begins.
 renderStep :: Int -> FilePath -> IO Text
 renderStep i path = do
-  bytes <- BS.readFile path
-  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  f <- decodedFixture path
   let frames = allFrames f
   (thisStep, nextStep) <- case drop i frames of
     (a : b : _) -> pure (a, b)
@@ -108,8 +118,7 @@ renderStep i path = do
 -- which is precisely how a golden test comes to guard nothing.
 renderSteps :: FilePath -> IO Text
 renderSteps path = do
-  bytes <- BS.readFile path
-  f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
+  f <- decodedFixture path
   let grid = defaultGrid defaultTheme
   case stepPage defaultTheme defaultBudget grid defaultView True (allFrames f) of
     Left err -> fail ("step page failed: " <> show err)
@@ -306,6 +315,15 @@ spec = do
     it "renders diagonal-cp.fold exactly as recorded" $
       renderFixture "test/fixtures/diagonal-cp.fold"
         >>= goldenText "test/golden/diagonal-cp.svg"
+
+    -- The only golden whose fixture is not FOLD, and the only test anywhere
+    -- that takes a .cp all the way to a document. The specs in
+    -- "Senbazuru.Import.CpSpec" pin the vertices and the creases; nothing but
+    -- this would notice the reader keeping those and still drawing the model
+    -- upside down, or at the wrong size, or without its border.
+    it "renders bird-base.cp, whose fixture is not a FOLD file at all" $
+      renderFixture "test/fixtures/bird-base.cp"
+        >>= goldenText "test/golden/bird-base.svg"
 
     -- Four faces meeting at one vertex, which is what pins the ordering: every
     -- fill comes before every crease, so the creases radiating from the centre

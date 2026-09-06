@@ -181,7 +181,57 @@ spec = do
             \        <int>9</int>\n\
             \       </void>\n\
             \      </object>\n"
-      parseOpx (modern crease) `shouldBe` Left (UnknownLineType 10 9)
+      -- Line 12 is the <int>9</int>; line 10 is the enclosing <object>. The
+      -- line to name is the one a person would go to in order to change it.
+      parseOpx (modern crease) `shouldBe` Left (UnknownLineType 12 9)
+
+    it "skips a property whose value is not a number" $ do
+      -- ORIPA's bean is five numbers today. A sixth field of some other type,
+      -- in some later version, must not stop the creases being readable -- and
+      -- before this was handled it stopped the whole file, not just the field.
+      let crease =
+            "      <object class=\"oripa.OriLineProxy\">\n\
+            \       <void property=\"label\">\n\
+            \        <string>a name</string>\n\
+            \       </void>\n\
+            \       <void property=\"type\">\n\
+            \        <int>2</int>\n\
+            \       </void>\n\
+            \       <void property=\"x1\">\n\
+            \        <double>30.0</double>\n\
+            \       </void>\n\
+            \      </object>\n"
+      fmap (map (\s -> (segStart s, segEnd s, segAssignment s))) (parseOpx (modern crease))
+        `shouldBe` Right [(V2 0 0, V2 30 0, Mountain)]
+
+    it "steps over an object nested inside a property" $ do
+      -- The walk is over a flat stream of tags, so the </object> that closes
+      -- the nested one looks exactly like the one that closes the crease.
+      -- Miss that and everything after it is silently not read: the type and
+      -- the coordinates here would both be lost, and the crease would come out
+      -- as a point at the origin rather than as an error.
+      let crease =
+            "      <object class=\"oripa.OriLineProxy\">\n\
+            \       <void property=\"meta\">\n\
+            \        <object class=\"oripa.Meta\">\n\
+            \         <void property=\"weight\">\n\
+            \          <int>7</int>\n\
+            \         </void>\n\
+            \        </object>\n\
+            \       </void>\n\
+            \       <void property=\"type\">\n\
+            \        <int>2</int>\n\
+            \       </void>\n\
+            \       <void property=\"x1\">\n\
+            \        <double>30.0</double>\n\
+            \       </void>\n\
+            \      </object>\n"
+      fmap (map (\s -> (segStart s, segEnd s, segAssignment s))) (parseOpx (modern crease))
+        `shouldBe` Right [(V2 0 0, V2 30 0, Mountain)]
+
+    it "refuses an object that is never closed" $
+      parseOpx "<object class=\"oripa.OriLineProxy\">\n <void property=\"type\">\n"
+        `shouldBe` Left (MalformedLine 1 "an <object> that is never closed")
 
   describe "the quarter fold" $
     it "reads the same twelve creases the .cp file has" $ do

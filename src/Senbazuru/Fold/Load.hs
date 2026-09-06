@@ -50,6 +50,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (toLower)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
@@ -61,11 +62,16 @@ import System.FilePath (takeExtension)
 
 -- | Why a file could not be loaded.
 --
--- The cases are kept apart because they mean different things to whoever is
--- holding the file. \"I could not read this\" is usually a typo in a path;
--- \"I could not decode this\" means the bytes arrived but are not FOLD; and an
--- 'ImportFailed' means the bytes arrived, are one of the two crease-pattern
--- formats, and something in them is wrong at a line that can be named.
+-- \"I could not read this\" is usually a typo in a path, and \"I could not
+-- decode this\" means the bytes arrived and are not what the file said they
+-- would be. Those are the two things a person holding the file needs told
+-- apart, and 'renderLoadError' prints them with different words.
+--
+-- 'DecodeFailed' and 'ImportFailed' are both the second of those, and are two
+-- constructors rather than one because they carry different evidence: aeson
+-- hands back a message about JSON, while the crease-pattern readers can name
+-- a line. A caller that only prints them will not notice the difference; one
+-- that wants the line will.
 data LoadError
   = ReadFailed FilePath Text
   | DecodeFailed FilePath Text
@@ -77,7 +83,7 @@ renderLoadError :: LoadError -> Text
 renderLoadError = \case
   ReadFailed path msg -> "cannot read " <> T.pack path <> ": " <> msg
   DecodeFailed path msg -> "cannot decode " <> T.pack path <> ": " <> msg
-  ImportFailed path err -> "cannot read " <> T.pack path <> ": " <> renderImportError err
+  ImportFailed path err -> "cannot decode " <> T.pack path <> ": " <> renderImportError err
 
 -- | Decode bytes as whatever format the path names.
 --
@@ -98,9 +104,17 @@ decodeFile path bytes = case map toLower (takeExtension path) of
     -- Lenient decoding rather than strict: neither format says what encoding
     -- it is in, both are ASCII in practice, and one stray byte should not be
     -- the thing that stops a pattern of numbers loading.
-    imported parse = case parse (decodeUtf8Lenient bytes) >>= foldFileFromSegments of
+    --
+    -- A leading byte-order mark has to go before anything else sees it. It is
+    -- a zero-width space, so it is invisible in a terminal and it is not
+    -- whitespace to Data.Char -- it glues itself to the first field of the
+    -- first line and the reader complains that the line type is not a number,
+    -- naming a character nobody can see. Windows editors write one.
+    imported parse = case parse (withoutBom (decodeUtf8Lenient bytes)) >>= foldFileFromSegments of
       Left err -> Left (ImportFailed path err)
       Right f -> Right f
+
+    withoutBom text = fromMaybe text (T.stripPrefix "\65279" text)
 
 -- | Read a crease pattern in whatever format senbazuru understands it.
 --

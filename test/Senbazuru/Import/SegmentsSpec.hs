@@ -111,6 +111,20 @@ spec = do
       frameFromSegments (paper <> [segment 17 (0, 0) (tiny, 0)])
         `shouldBe` Left (DegenerateSegment 17)
 
+    it "refuses a segment longer than the tolerance that still lands on one vertex" $ do
+      -- Not the same question as the two above, which is the whole point. This
+      -- segment is 1.8 tolerances long, so measuring it says it is a fine
+      -- crease; but it straddles an existing vertex with each end within one
+      -- tolerance of it, so both ends intern to that vertex and the edge would
+      -- run from a vertex to itself. Judging the merged result rather than the
+      -- segment is what catches it.
+      let straddle = 0.9 * paperTolerance
+          corner = (-200, -200)
+          segments =
+            paper
+              <> [segment 17 (fst corner - straddle, snd corner) (fst corner + straddle, snd corner)]
+      frameFromSegments segments `shouldBe` Left (DegenerateSegment 17)
+
     it "refuses a file with nothing in it" $
       frameFromSegments [] `shouldBe` Left EmptyPattern
 
@@ -150,9 +164,20 @@ spec = do
           otherFrames file `shouldBe` []
           Right (keyFrame file) `shouldBe` frameFromSegments paper
 
-  describe "fromScreenPoint" $
+  describe "fromScreenPoint" $ do
     it "turns a downward y into an upward one" $
       -- The one line of this module that changes the model rather than
       -- describing it. See its Haddock for why leaving it out is not a
       -- different convention but a different model.
       fromScreenPoint 3 4 `shouldBe` V2 3 (-4)
+
+  describe "readNumber" $ do
+    it "reads what Java's Double.toString writes" $ do
+      readNumber "-200.0" `shouldBe` Just (-200.0)
+      readNumber "2.4492935982947067E-14" `shouldBe` Just 2.4492935982947067e-14
+
+    it "refuses a number with something stuck on the end" $
+      -- The reason both readers go through this one function: TR.double is a
+      -- reader combinator and stops at the first thing it does not
+      -- understand, so a caller that ignores the remainder reads "1.0mm" as 1.
+      readNumber "1.0mm" `shouldBe` Nothing

@@ -64,6 +64,7 @@ import Senbazuru.Import.Segments
   ( ImportError (..),
     Segment (..),
     fromScreenPoint,
+    readNumber,
   )
 
 -- | Read the segments of a @.cp@ file.
@@ -98,16 +99,13 @@ readCode line field = case TR.signed TR.decimal field of
   Right (code, rest) | T.null rest -> Right code
   _ -> Left (MalformedLine line ("line type is not a whole number: " <> field))
 
--- | One coordinate.
---
--- 'TR.double' takes exactly what Java's @Double.toString@ produces, which is
--- what both writers use — including the scientific notation it reaches for
--- below @1e-3@, as in the @2.4492935982947067E-14@ that a rotation leaves
--- where a corner of the paper should be.
+-- | One coordinate. The reading is
+-- 'Senbazuru.Import.Segments.readNumber', shared with the @.opx@ reader; what
+-- is here is the complaint, which names the field.
 readCoord :: Int -> Text -> Text -> Either ImportError Double
-readCoord line name field = case TR.double field of
-  Right (value, rest) | T.null rest -> Right value
-  _ -> Left (MalformedLine line (name <> " is not a number: " <> field))
+readCoord line name field = case readNumber field of
+  Just value -> Right value
+  Nothing -> Left (MalformedLine line (name <> " is not a number: " <> field))
 
 -- | What a type code means, or 'Nothing' if the format does not define it.
 --

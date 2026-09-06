@@ -1,11 +1,12 @@
 cabal-version:      3.0
 name:               senbazuru
 version:            0.1.0.0
-synopsis:           Render FOLD origami files as step-by-step diagram SVGs
+synopsis:           Render origami crease patterns as step-by-step diagram SVGs
 description:
-  Senbazuru reads the FOLD file format (https://github.com/edemaine/FOLD)
-  and renders it to SVG using the line and arrow conventions of printed
-  origami instruction books (the Yoshizawa-Randlett system).
+  Senbazuru reads the FOLD file format (https://github.com/edemaine/FOLD),
+  along with the .cp and .opx crease patterns the desktop editors write, and
+  renders them to SVG using the line and arrow conventions of printed origami
+  instruction books (the Yoshizawa-Randlett system).
 
 homepage:           https://github.com/avalonalex/senbazuru
 license:            MIT

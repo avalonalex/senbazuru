@@ -69,15 +69,14 @@ module Senbazuru.Import.Opx
   )
 where
 
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Read qualified as TR
 import Senbazuru.Fold.Types (Assignment (..))
 import Senbazuru.Import.Segments
   ( ImportError (..),
     Segment (..),
     fromScreenPoint,
+    readNumber,
   )
 import Text.HTML.TagSoup (ParseOptions (..), Tag (..), parseOptions, parseTagsOptions)
 
@@ -92,6 +91,12 @@ parseOpx = collect 1 [] . parseTagsOptions parseOptions {optTagPosition = True}
 proxyClass :: Text
 proxyClass = "oripa.OriLineProxy"
 
+-- | The Java primitives a number can be written as. Anything else — a
+-- @\<string\>@, a nested @\<object\>@ — is a property this reader has no use
+-- for.
+numericTypes :: [Text]
+numericTypes = ["int", "long", "short", "float", "double"]
+
 -- | Walk the whole tag stream, picking up each @OriLineProxy@ object and
 -- skipping everything else — the header, the paper size, the array wrapper,
 -- and whichever dialect of them this file uses.
@@ -103,54 +108,96 @@ collect _ found [] = Right (reverse found)
 collect _ found (TagPosition row _ : rest) = collect row found rest
 collect row found (TagOpen name attrs : rest)
   | name == "object",
-    lookup "class" attrs == Just proxyClass = do
-      (row', fields, rest') <- properties row [] rest
-      segment <- segmentFrom row fields
-      collect row' (segment : found) rest'
+    lookup "class" attrs == Just proxyClass =
+      case insideElement "object" rest of
+        Nothing -> Left (MalformedLine row "an <object> that is never closed")
+        Just (inside, rest') -> do
+          fields <- properties row inside
+          segment <- segmentFrom row fields
+          collect row (segment : found) rest'
 collect row found (_ : rest) = collect row found rest
 
--- | Every @\<void property=\"...\"\>@ up to the end of the enclosing object.
-properties :: Int -> [(Text, Double)] -> [Tag Text] -> Either ImportError (Int, [(Text, Double)], [Tag Text])
-properties _row fields (TagPosition r _ : rest) = properties r fields rest
-properties row fields (TagClose "object" : rest) = Right (row, fields, rest)
-properties row fields (TagOpen "void" attrs : rest)
-  | Just name <- lookup "property" attrs = do
-      (row', value, rest') <- propertyValue row rest
-      properties row' ((name, value) : fields) rest'
-properties row fields (_ : rest) = properties row fields rest
-properties row _ [] = Left (MalformedLine row "an <object> that is never closed")
+-- | The tags inside the element just opened, and everything after its matching
+-- close tag. 'Nothing' if the file ends before that tag arrives.
+--
+-- Counting the depth is what stops a nested element of the same name closing
+-- the outer one, and an @.opx@ nests constantly: a @\<void\>@ holding an
+-- object holds that object's own @\<void\>@s. Getting this wrong does not
+-- fail, which is the danger — the walk simply returns early, and the
+-- properties after the nested element are read as though they were never
+-- there.
+--
+-- Positions are kept in the result, because the line a value sits on is what
+-- an error about it should name.
+insideElement :: Text -> [Tag Text] -> Maybe ([Tag Text], [Tag Text])
+insideElement name = go (0 :: Int) []
+  where
+    go depth acc (tag@(TagOpen n _) : rest)
+      | n == name = go (depth + 1) (tag : acc) rest
+    go depth acc (tag@(TagClose n) : rest)
+      | n == name =
+          if depth == 0
+            then Just (reverse acc, rest)
+            else go (depth - 1) (tag : acc) rest
+    go depth acc (tag : rest) = go depth (tag : acc) rest
+    go _ _ [] = Nothing
 
--- | The number inside one property.
+-- | Every numeric @\<void property=\"...\"\>@ of one object, with the line
+-- its value was written on.
+--
+-- A property whose value is not a number is skipped whole rather than
+-- refused. ORIPA's bean is five numbers today; a sixth field of some other
+-- type, in some later version, should cost the reader nothing.
+properties :: Int -> [Tag Text] -> Either ImportError [(Text, (Int, Double))]
+properties = go []
+  where
+    go fields _row (TagPosition r _ : rest) = go fields r rest
+    go fields row (TagOpen "void" attrs : rest)
+      | Just name <- lookup "property" attrs,
+        Just (inside, rest') <- insideElement "void" rest = do
+          value <- propertyValue row inside
+          go (maybe fields (\v -> (name, v) : fields) value) row rest'
+    -- Any other element is stepped over whole, so that an object nested inside
+    -- this one cannot be mistaken for part of it.
+    go fields row (TagOpen name _ : rest)
+      | Just (_, rest') <- insideElement name rest = go fields row rest'
+    go fields row (_ : rest) = go fields row rest
+    go fields _ [] = Right fields
+
+-- | The number inside one property, if it holds one.
 --
 -- The wrapping element says which Java type it was — @\<int\>@ for the line
 -- type, @\<double\>@ for a coordinate — and all of them are read as 'Double',
 -- since that is what a coordinate is and the type code is checked for being
--- whole afterwards.
-propertyValue :: Int -> [Tag Text] -> Either ImportError (Int, Double, [Tag Text])
-propertyValue _row (TagPosition r _ : rest) = propertyValue r rest
-propertyValue row (TagOpen name _ : rest)
-  | name `elem` ["int", "long", "short", "float", "double"] = number row rest
-propertyValue row (TagClose "void" : _) = Left (MalformedLine row "a property with no value in it")
-propertyValue row (_ : rest) = propertyValue row rest
-propertyValue row [] = Left (MalformedLine row "a property with no value in it")
+-- whole afterwards. An element that says it holds a number and does not is an
+-- error; a property holding something else entirely is 'Nothing'.
+propertyValue :: Int -> [Tag Text] -> Either ImportError (Maybe (Int, Double))
+propertyValue = go
+  where
+    go _row (TagPosition r _ : rest) = go r rest
+    go row (TagOpen name _ : rest)
+      | name `elem` numericTypes = Just <$> number row rest
+      | Just (_, rest') <- insideElement name rest = go row rest'
+    go row (_ : rest) = go row rest
+    go _ [] = Right Nothing
 
-number :: Int -> [Tag Text] -> Either ImportError (Int, Double, [Tag Text])
+number :: Int -> [Tag Text] -> Either ImportError (Int, Double)
 number _row (TagPosition r _ : rest) = number r rest
-number row (TagText raw : rest) = case TR.double (T.strip raw) of
-  Right (value, leftover) | T.null leftover -> Right (row, value, rest)
-  _ -> Left (MalformedLine row ("not a number: " <> T.strip raw))
+number row (TagText raw : _) = case readNumber (T.strip raw) of
+  Just value -> Right (row, value)
+  Nothing -> Left (MalformedLine row ("not a number: " <> T.strip raw))
 number row _ = Left (MalformedLine row "a property with no value in it")
 
 -- | One @OriLineProxy@'s properties as a segment.
 --
--- Anything the file left out is zero, for the reason in the module header, and
--- anything it named that we do not recognise is ignored rather than refused:
--- a later ORIPA adding a field to that bean should not stop the creases being
--- readable.
-segmentFrom :: Int -> [(Text, Double)] -> Either ImportError Segment
+-- Anything the file left out is zero, for the reason in the module header. The
+-- segment is placed at the line of its @\<object\>@ tag, since that is the
+-- crease; a complaint about the /type code/ names the line that code was
+-- written on instead, which is where a person would go to change it.
+segmentFrom :: Int -> [(Text, (Int, Double))] -> Either ImportError Segment
 segmentFrom row fields = do
-  code <- wholeNumber row (valueOf "type")
-  assignment <- maybe (Left (UnknownLineType row code)) Right (assignmentForCode code)
+  code <- wholeNumber (lineOf "type") (valueOf "type")
+  assignment <- maybe (Left (UnknownLineType (lineOf "type") code)) Right (assignmentForCode code)
   pure
     Segment
       { segLine = row,
@@ -159,7 +206,8 @@ segmentFrom row fields = do
         segAssignment = assignment
       }
   where
-    valueOf name = fromMaybe 0 (lookup name fields)
+    valueOf name = maybe 0 snd (lookup name fields)
+    lineOf name = maybe row fst (lookup name fields)
 
 wholeNumber :: Int -> Double -> Either ImportError Int
 wholeNumber row value

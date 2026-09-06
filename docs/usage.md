@@ -58,8 +58,9 @@ The last two are crease patterns and nothing else. Neither format can store a
 face, a fold angle or a second frame, so a file in either of them draws and
 checks but does not fold. `render --fold` and `export` say so and stop, because
 folding needs to know which pieces of paper move together and only the faces
-say that; `--arrows` and `--steps` succeed and find nothing to draw, because
-both compare one frame with the next and there is only ever one. Faces can be
+say that. `--arrows` and `--steps` succeed and draw the pattern, but neither
+adds anything to it: both work by comparing one frame with the next, and these
+formats store one frame. Faces can be
 worked out from the creases, which is
 [#34](https://github.com/avalonalex/senbazuru/issues/34); until then, fold in
 Oriedita or ORIPA and export FOLD.
@@ -70,6 +71,15 @@ correction rather than a preference — see
 [notes/cp-and-opx.md](notes/cp-and-opx.md) — and it means a pattern read from a
 `.cp` is upside down compared with the same `.cp` put through Oriedita's own
 FOLD export.
+
+Two things a segment list can describe that a crease pattern cannot, and that
+the reader passes through as it finds them: two creases that cross with no
+vertex where they meet, and the same crease listed twice. The first means
+`check` has one fewer vertex to look at than the picture suggests — the same
+under-reporting a `.fold` file drawn that way gets, as `examples/unit-square.fold`
+shows — and the second counts that crease twice. Neither is refused, because
+the fix for both is to rebuild the graph, which is
+[#34](https://github.com/avalonalex/senbazuru/issues/34).
 
 Output is always FOLD, SVG or glTF. senbazuru does not write `.cp` or `.opx`,
 because writing one would silently drop whatever the document held that the
