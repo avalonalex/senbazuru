@@ -203,20 +203,54 @@ clipHalfPlane (a, b) poly = concat [step p q | (p, q) <- edges (rotateBack poly)
 -- no general polygon-boolean machinery: subtracting a convex shape is @k@
 -- half-plane clips, one per edge, and nothing else.
 --
--- @cutter@ must be convex and anticlockwise, as 'clipConvex' requires.
+-- Both @cutter@ and @piece@ must be convex and anticlockwise. @cutter@ because
+-- 'clipHalfPlane' only adds up to \"inside the polygon\" for a convex one, and
+-- @piece@ because Sutherland–Hodgman returns a concave subject as a single ring
+-- joined by degenerate corridors: the areas would still be right and the rings
+-- would not be shapes anyone could draw.
+--
 -- @tolerance@ is an area: pieces smaller than it are dropped, which is what
 -- removes the slivers left along an edge the two shapes share. A @cutter@ with
--- fewer than three corners encloses nothing and takes nothing away.
+-- fewer than three corners encloses nothing and takes nothing away, and so does
+-- one whose corners do not enclose anything /between them/ — see 'realEdges'.
 subtractConvex :: Double -> [V2] -> [V2] -> [[V2]]
-subtractConvex tolerance cutter piece
-  | length cutter < 3 = keep piece
-  | otherwise = go piece (edges cutter)
+subtractConvex tolerance cutter piece = case realEdges cutter of
+  -- Nothing to be outside of. The piece comes back untouched, tolerance and
+  -- all: nothing was taken away from it, so there is nothing to have left a
+  -- sliver.
+  [] -> [piece]
+  cuts -> go piece cuts
   where
     go _ [] = []
     go inside ((a, b) : rest) =
       keep (clipHalfPlane (b, a) inside) <> go (clipHalfPlane (a, b) inside) rest
 
     keep p = [p | abs (signedArea p) > tolerance]
+
+-- | The edges of a ring that have a direction, in order.
+--
+-- An edge of no length names no side, so 'clipHalfPlane' keeps /everything/ on
+-- both sides of it: the part \"outside\" comes back as the whole polygon and is
+-- emitted as a finished piece, while the part \"inside\" also comes back whole
+-- and carries on to the next edge. The result is pieces that overlap and a
+-- total area larger than what went in — a unit square minus a triangle with one
+-- corner listed twice came back as 1.5 of paper in two overlapping pieces.
+--
+-- Rings like that are not hypothetical. Folding brings distinct corners of a
+-- sheet together, and clipping repeats a corner wherever a cut passes exactly
+-- through one, so any ring that has been through either can carry one.
+--
+-- The test is exact equality rather than a tolerance, which is the one place in
+-- this module that is right. An edge of some tiny length still names a line, so
+-- its two half-planes are still complementary and the pieces still partition
+-- what went in — badly conditioned, but not wrong. Only at exactly zero does
+-- @cross2@ come out zero on /both/ sides and the two halves stop being halves.
+realEdges :: [V2] -> [(V2, V2)]
+realEdges ring
+  | length real < 3 = []
+  | otherwise = real
+  where
+    real = [e | e@(a, b) <- edges ring, a /= b]
 
 -- | The part of a segment that lies inside a convex, anticlockwise polygon,
 -- boundary included, or 'Nothing' if it misses.
