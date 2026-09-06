@@ -26,7 +26,7 @@ For the ideas rather than the definitions, start with
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
 | **Fold arrow** | The curved mark saying which paper moves where. Drawn on the step *before* the fold. FOLD records none, so senbazuru subtracts one frame from the next — see `Senbazuru.Origami.Step`. |
-| **Layer order** | Which face is on top of which, wherever a folded model overlaps itself. Stored as `faceOrders`, or worked out by `Senbazuru.Origami.Stacking` when the file has none. See [notes/taco-taco.md](notes/taco-taco.md). |
+| **Layer order** | Which face is on top of which, wherever a folded model overlaps itself. Stored as `faceOrders`, or worked out by `Senbazuru.Origami.Stacking` when the file has none. A model usually has several valid ones — the crane has five. See [notes/taco-taco.md](notes/taco-taco.md) and [notes/several-stackings.md](notes/several-stackings.md). |
 | **Taco** | Two faces joined along an edge of a folded form that lie on the *same* side of it: the paper folded back on itself. Nothing may lie between them that runs across their fold line. |
 | **Tortilla** | Two faces joined along an edge that lie on *opposite* sides of it: the paper continuing flat across the line. Nothing may pass through it. |
 | **Visible region** | The part of one face a viewer can actually see: the face minus every face nearer the viewer that overlaps it. What a picture of a folded model is made of, rather than whole faces. See [notes/visible-regions.md](notes/visible-regions.md). |
@@ -78,6 +78,7 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | **Interior vertex** | A vertex away from the edge of the paper, with creases all the way round it. The theorems in [notes/maekawa.md](notes/maekawa.md) and [notes/kawasaki.md](notes/kawasaki.md) apply only to these. |
 | **Face-adjacency graph** | Faces as nodes, shared creases as links. |
 | **Spanning tree** | A way of reaching every node from a starting one without revisiting any. Has no cycles — which is the point, and often the catch. |
+| **Connected component** | A piece of a graph with no edge leaving it. The layer solver's constraint graph usually falls into several, and they can be solved and counted separately. See [notes/several-stackings.md](notes/several-stackings.md). |
 | **Half-edge / DCEL** | A structure giving constant-time "next edge around this face". See [notes/half-edge.md](notes/half-edge.md). |
 
 ## This project

@@ -15,6 +15,8 @@
 -- not slide in between, because the fold it would have to pass is closed.
 module Senbazuru.Origami.StackingSpec (spec) where
 
+import Control.Monad (forM_)
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.List (elemIndex)
 import Senbazuru.Fold.Load (decodeFoldFile)
@@ -64,6 +66,13 @@ shouldBeUnstackable :: Frame -> Expectation
 shouldBeUnstackable fr = case solveStacking fr of
   Left (StackingRefused (Unstackable _)) -> pure ()
   other -> expectationFailure ("expected an unstackable model, got " <> show other)
+
+-- | 'bottomToTop' for a chosen layer order rather than the first.
+bottomToTop' :: [Int] -> Frame -> Either StackingError [Int]
+bottomToTop' choices fr = do
+  orders <- solveStackingAs defaultBudget choices fr
+  faces <- first StackingRefused (frameFaces fr)
+  map unFaceId <$> first StackingRefused (paintOrder (V3 0 0 1) faces orders)
 
 -- | The faces of a flat-folded frame in the order to paint them seen from
 -- above: bottom layer first, top layer last.
@@ -262,10 +271,91 @@ spec = do
       table
 
     it "stacks the crane, which is what the golden test draws" $ do
-      -- Five valid stackings in two components, says the table; we find one.
       fr <- foldedFixture "crane"
       order <- either (fail . show) pure (bottomToTop fr)
       length order `shouldBe` 72
+
+  describe "the shape of the answer" $ do
+    -- The same CSV again, four columns further along: components, states and
+    -- component_assignments. Agreeing on the shape and not merely the total is
+    -- the stronger check -- the crane's |1|5| says one group of pairs settled
+    -- outright and one group admitting five answers, and getting that right by
+    -- accident while splitting the graph wrongly is not a thing that happens.
+    --
+    -- Their first component is always the settled pairs, whether there are any
+    -- or not, so ours is theirs minus one and 'componentCount' adds it back.
+    let table =
+          [ ("crane", 2, 5, [5], [8]),
+            ("kabuto", 3, 9, [3, 3], [4, 4]),
+            ("thirds-pinwheel", 1, 1, [], []),
+            ("grid-2x2-d1", 5, 16, [2, 2, 2, 2], [2, 2, 2, 2])
+          ]
+
+    mapM_
+      ( \(name, components, states, sizes, guesses) ->
+          it ("splits the " <> name <> " as Flat-Folder does") $ do
+            fr <- foldedFixture name
+            space <- either (fail . show) pure (stackingSpace defaultBudget fr)
+            componentCount space `shouldBe` components
+            stateCount space `shouldBe` (states, False)
+            map (length . choiceStates) (stackingsChoices space) `shouldBe` sizes
+            -- Not a fact about the model but about our propagation: these are
+            -- the guesses left over once it has done its work, so a change that
+            -- weakened it shows up here as a bigger number rather than as a
+            -- slower test.
+            map choiceGuesses (stackingsChoices space) `shouldBe` guesses
+      )
+      table
+
+    it "gives the same answer as solving the whole graph at once" $ do
+      -- The order the search finds within a group is unchanged, and the groups
+      -- cannot affect one another, so taking the first answer of each is what
+      -- the old whole-model search returned. Every golden depends on it.
+      forM_ ["quarter-fold", "letter-fold", "thirds-pinwheel", "kabuto", "crane"] $ \name -> do
+        fr <- foldedFixture name
+        solveStackingAs defaultBudget [] fr `shouldBe` solveStacking fr
+
+  describe "choosing among several" $ do
+    it "puts a different face of the crane on top" $ do
+      -- Five orders, two pictures: the flap on the right wing is on top in one
+      -- and buried in the other. This is the whole point of being able to pick.
+      fr <- foldedFixture "crane"
+      first' <- either (fail . show) pure (bottomToTop' [0] fr)
+      other <- either (fail . show) pure (bottomToTop' [3] fr)
+      first' `shouldNotBe` other
+
+    it "refuses an order a component does not have" $ do
+      fr <- foldedFixture "kabuto"
+      solveStackingAs defaultBudget [0, 9] fr `shouldBe` Left (NoSuchStacking 1 9 3)
+
+    it "refuses an index for a component that is not there" $ do
+      -- The crane has one group with a choice in it, so a second index is a
+      -- question about a different model. Zipping the lists would have dropped
+      -- it without a word.
+      fr <- foldedFixture "crane"
+      solveStackingAs defaultBudget [0, 0] fr `shouldBe` Left (NoSuchComponent 1 1)
+
+  describe "the budget" $ do
+    it "gives up rather than running on" $ do
+      -- One guess is not enough for the crane, which needs eight. No model here
+      -- comes anywhere near the default, so this is the only way to reach the
+      -- refusal without inventing a file built to defeat propagation -- which
+      -- would not be paper.
+      fr <- foldedFixture "crane"
+      stackingSpace (Budget 1) fr `shouldBe` Left (StackingRefused (GaveUpStacking 1))
+
+    it "says at least, rather than exactly, when it stops early" $ do
+      -- Enough to find some of the crane's five orders and not all of them.
+      fr <- foldedFixture "crane"
+      space <- either (fail . show) pure (stackingSpace (Budget 5) fr)
+      stateCount space `shouldSatisfy` \(n, capped) -> capped && n < 5
+
+    it "settles every fixture here well inside the default" $ do
+      -- The number that matters is the largest, and it is eight.
+      forM_ ["quarter-fold", "letter-fold", "thirds-pinwheel", "grid-2x2-d1", "kabuto", "crane"] $ \name -> do
+        fr <- foldedFixture name
+        space <- either (fail . show) pure (stackingSpace defaultBudget fr)
+        sum (map choiceGuesses (stackingsChoices space)) `shouldSatisfy` (< 10)
 
     it "refuses the bad twist, which has no valid stacking" $ do
       -- From Flat-Folder's unsatisfiable/ folder: it folds without tearing and

@@ -195,6 +195,11 @@ layerOrder fr = do
       Right orders -> Right (Just orders)
       Left NotFlat {} -> Right Nothing
       Left NonConvexFace {} -> Right Nothing
+      -- Unreachable, both of them: this asks for no particular order, so there
+      -- is no index to be out of range and no component to be missing.
+      -- Declining is the harmless answer.
+      Left NoSuchStacking {} -> Right Nothing
+      Left NoSuchComponent {} -> Right Nothing
       Left (StackingRefused err) -> Left err
     else Right (Just supplied)
 
