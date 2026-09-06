@@ -47,6 +47,7 @@ of its own and complains about them.
 | `--width`, `--height` | Page size in points (default `400`) |
 | `--margin` | Blank border in points (default `16`) |
 | `--view NAME` | Viewing angle: `top`, `bottom`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and flat-folded models, `iso` for anything with relief |
+| `--rotate DEG` | Turn the drawing anticlockwise on the page (default `0`). A folded model lands whichever way up its crease pattern was drawn, and nothing in the file says which way up it should be read — the traditional crane comes out upside down, so its picture in the README is drawn with `--rotate 180` |
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 | `--no-fill` | Draw every crease and fill nothing: a wireframe. Also the way to render a file whose layers cannot be stacked, since nothing then needs to know which is on top |

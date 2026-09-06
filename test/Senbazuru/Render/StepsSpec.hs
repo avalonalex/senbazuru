@@ -14,7 +14,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..), emptyFrame)
 import Senbazuru.Origami.Stacking (defaultBudget)
-import Senbazuru.Render.Camera (isometric, topDown)
+import Senbazuru.Render.Camera (View (..), defaultView, isometric, topDown)
 import Senbazuru.Render.Steps
 import Test.Hspec
 
@@ -42,8 +42,8 @@ solidSheet = sheet [0, 0, 0.7, 0]
 grid :: Grid
 grid = defaultGrid defaultTheme
 
-page :: Maybe a1 -> [Frame] -> Either StepError (Maybe Diagram)
-page _ = stepPage defaultTheme defaultBudget grid Nothing False
+page :: [Frame] -> Either StepError (Maybe Diagram)
+page = stepPage defaultTheme defaultBudget grid defaultView False
 
 spec :: Spec
 spec = do
@@ -53,20 +53,20 @@ spec = do
       -- the explicit camera rather than by inspecting coordinates, so the test
       -- says what it means.
       let frames = [flatSheet, solidSheet]
-      stepPage defaultTheme defaultBudget grid Nothing False frames
-        `shouldBe` stepPage defaultTheme defaultBudget grid (Just isometric) False frames
+      stepPage defaultTheme defaultBudget grid defaultView False frames
+        `shouldBe` stepPage defaultTheme defaultBudget grid (View (Just isometric) 0) False frames
 
     it "views a sequence that stays flat from above throughout" $ do
       let frames = [flatSheet, flatSheet]
-      stepPage defaultTheme defaultBudget grid Nothing False frames
-        `shouldBe` stepPage defaultTheme defaultBudget grid (Just topDown) False frames
+      stepPage defaultTheme defaultBudget grid defaultView False frames
+        `shouldBe` stepPage defaultTheme defaultBudget grid (View (Just topDown) 0) False frames
 
     it "is not the same page either way, so the tests above can fail" $ do
       -- Guards the two above: if the cameras happened to agree on this input
       -- they would pass without saying anything.
       let frames = [flatSheet, solidSheet]
-      stepPage defaultTheme defaultBudget grid (Just topDown) False frames
-        `shouldNotBe` stepPage defaultTheme defaultBudget grid (Just isometric) False frames
+      stepPage defaultTheme defaultBudget grid (View (Just topDown) 0) False frames
+        `shouldNotBe` stepPage defaultTheme defaultBudget grid (View (Just isometric) 0) False frames
 
   describe "which frames are steps" $ do
     it "skips a frame with no geometry in it" $ do
@@ -74,15 +74,15 @@ spec = do
       -- file that puts every step in file_frames has a key frame holding a
       -- title and nothing else. That is not a step.
       let withMetadataFrame = [emptyFrame {frameTitle = Just "just a title"}, flatSheet, flatSheet]
-      fmap (fmap (length . labelsOf)) (page Nothing withMetadataFrame)
+      fmap (fmap (length . labelsOf)) (page withMetadataFrame)
         `shouldBe` Right (Just 2)
 
     it "has nothing to lay out when no frame has any geometry" $
-      page Nothing [emptyFrame, emptyFrame] `shouldBe` Right Nothing
+      page [emptyFrame, emptyFrame] `shouldBe` Right Nothing
 
     it "numbers the figures, not the frames they came from" $ do
       let withMetadataFrame = [emptyFrame, flatSheet, flatSheet]
-      fmap (fmap labelsOf) (page Nothing withMetadataFrame)
+      fmap (fmap labelsOf) (page withMetadataFrame)
         `shouldBe` Right (Just ["1", "2"])
 
   describe "when a frame will not draw" $
@@ -91,7 +91,7 @@ spec = do
       -- sequence has to bisect it by hand. Note the index counts frames in the
       -- file, so the skipped metadata frame still occupies number zero.
       let broken = flatSheet {verticesCoords = [[0]]}
-      page Nothing [emptyFrame, flatSheet, broken]
+      page [emptyFrame, flatSheet, broken]
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
 
 labelsOf :: Diagram -> [String]

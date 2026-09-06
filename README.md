@@ -21,13 +21,23 @@ a crease pattern; get back the picture a book would print.
 </table>
 
 ```bash
-stack run -- render examples/crane.fold          -o pattern.svg
-stack run -- render examples/crane.fold --fold   -o crane.svg
+stack run -- render examples/crane.fold          --rotate 180   -o pattern.svg
+stack run -- render examples/crane.fold --fold   --rotate 180   -o crane.svg
 ```
 
-Same file both times. For the second one senbazuru folded the sheet along its own
-angles, worked out which of the seventy-two faces ends up on top of which, and
-then drew only the parts you could actually see.
+Same file both times, and the same half turn, so that a corner of the square on
+the left can be followed to a wing tip on the right. For the second picture
+senbazuru folded the sheet along its own angles, worked out which of the
+seventy-two faces ends up on top of which, and then drew only the parts you
+could actually see.
+
+`--rotate` is there because a folded model lands whichever way up its crease
+pattern happened to be drawn, and nothing in a FOLD file says which way up it
+ought to be read. This crane lands upside down. It turns the camera rather than
+the paper, which matters more than it sounds: a *mirrored* drawing would look
+just as right, and would be a picture of the other crane — the one whose creases
+are these reflected, whose mountains and valleys are swapped, and which folds
+perfectly well from a square of its own. It is simply not the model in the file.
 
 > **Status: early**, and moving. Crease patterns, folding, layer order, hidden
 > lines, two-sided paper, fold arrows, step-by-step pages and a flat-foldability

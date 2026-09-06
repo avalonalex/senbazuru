@@ -122,8 +122,12 @@ out four layers deep in the one order its three mountains and one valley allow.
 The traditional crane works too:
 
 ```bash
-stack run -- render examples/crane.fold --fold -o crane.svg
+stack run -- render examples/crane.fold --fold --rotate 180 -o crane.svg
 ```
+
+`--rotate` because the crane lands upside down. A folded model sits whichever
+way up its crease pattern happened to be drawn, and no FOLD file says which way
+up it should be read, so turning the drawing is the reader's to do.
 
 That file, and a few others in `examples/`, come from
 [Flat-Folder](https://github.com/origamimagiro/flat-folder), an independent

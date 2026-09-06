@@ -42,7 +42,7 @@ import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (Basis)
+import Senbazuru.Render.Camera (View)
 import Senbazuru.Render.CreasePattern
   ( basisFor,
     creasePatternFrom,
@@ -75,18 +75,19 @@ stepPage ::
   -- | How hard to look for a layer order, for the frames that need one.
   Budget ->
   Grid ->
-  -- | The camera, or 'Nothing' to choose one from the whole sequence.
-  Maybe Basis ->
+  -- | Where to look from and which way up, with the camera chosen from the
+  -- whole sequence when the view does not name one.
+  View ->
   Bool ->
   [Frame] ->
   Either StepError (Maybe Diagram)
-stepPage theme budget grid chosen arrows frames = do
+stepPage theme budget grid view arrows frames = do
   -- Numbered by their place in the file, so an error can name the frame someone
   -- would have to go and look at, and then by their place in the sequence, so
   -- "the next step" skips over a metadata-only key frame rather than tripping
   -- on it.
   resolved <- traverse withVertices [(i, fr) | (i, fr) <- zip [0 ..] frames, hasGeometry fr]
-  let basis = basisFor chosen (concatMap (\(_, _, verts) -> verts) resolved)
+  let basis = basisFor view (concatMap (\(_, _, verts) -> verts) resolved)
       order = [fr | (_, fr, _) <- resolved]
   figures <- traverse (figure basis order) (zip [0 ..] resolved)
   pure (gridOf grid figures)

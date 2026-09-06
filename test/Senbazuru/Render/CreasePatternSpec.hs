@@ -11,7 +11,7 @@
 -- @frame_classes@, and the tests below say exactly when.
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
-import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent)
+import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent, shapePoints)
 import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme, paperUnderside)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
@@ -27,9 +27,10 @@ import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Step (Motion (..))
-import Senbazuru.Render.Camera (bottomUp, frontOn, isometric, topDown)
+import Senbazuru.Render.Camera (View (..), bottomUp, defaultView, frontOn, isometric, topDown)
 import Senbazuru.Render.CreasePattern
-  ( creasePatternFrom,
+  ( creasePatternAuto,
+    creasePatternFrom,
     defaultBasisFor,
     defaultNotationFor,
     withArrows,
@@ -81,6 +82,10 @@ shapeKinds theme notation fr =
       Polyline _ _ -> "line"
       Arrow _ -> "arrow"
       Label {} -> "label"
+
+-- | Close enough, for numbers that have been through a sine and a cosine.
+nearly :: Double -> Double -> Bool
+nearly a b = abs (a - b) < 1e-9
 
 -- | The last element, if there is one.
 lastOf :: [a] -> Maybe a
@@ -209,6 +214,20 @@ spec = do
       let undeclared = twoFaceSquare {frameClasses = []}
       shapeKinds defaultTheme (defaultNotationFor [] flatSquare) undeclared
         `shouldBe` Right ["fill", "line", "line", "line", "line", "line"]
+
+  describe "turning the drawing" $ do
+    it "turns every point of it, and nothing else" $ do
+      -- The one place --rotate is wired in. Deleting the turn from basisFor
+      -- left the whole suite green until this test existed: CameraSpec checks
+      -- turnedBy on its own and never renders anything, and every other view
+      -- here asks for no turn at all.
+      let drawnWith view = creasePatternAuto defaultTheme defaultBudget view twoFaceSquare
+      plain <- either (fail . show) pure (drawnWith defaultView)
+      turned <- either (fail . show) pure (drawnWith (View Nothing pi))
+      let points d = concatMap shapePoints (diagramShapes d)
+          opposite (V2 x y) (V2 x' y') = nearly x (negate x') && nearly y (negate y')
+      length (points turned) `shouldBe` length (points plain)
+      and (zipWith opposite (points turned) (points plain)) `shouldBe` True
 
   describe "arrows" $ do
     let square = diagramWithExtent (Box (V2 0 0) (V2 1 1)) []

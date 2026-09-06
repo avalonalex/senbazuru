@@ -47,6 +47,11 @@ module Senbazuru.Render.Camera
     namedView,
     viewNames,
 
+    -- * Turning the drawing on the page
+    View (..),
+    defaultView,
+    turnedBy,
+
     -- * Projection
     project,
     depth,
@@ -61,9 +66,11 @@ import Senbazuru.Geometry.VectorSpace
 
 -- | Three perpendicular unit vectors defining how space maps onto the page.
 --
--- The constructor is not exported, so 'basisFrom' is the only way to make one
--- and the perpendicular-and-unit-length invariant holds by construction rather
--- than by convention.
+-- The constructor is not exported, so the perpendicular-and-unit-length
+-- invariant is kept in this module rather than by convention across the
+-- project. Two functions establish it: 'basisFrom', which builds one from a
+-- direction and a hint, and 'turnedBy', which turns one and has to keep it by
+-- hand — the comment there says how.
 data Basis = Basis
   { basisRight :: !V3,
     basisUp :: !V3,
@@ -165,6 +172,67 @@ namedView = (`lookup` views)
 -- | Every name 'namedView' accepts, for help text and error messages.
 viewNames :: [Text]
 viewNames = map fst views
+
+-- | How to look at a model: from where, and which way up on the page.
+--
+-- Two separate questions, and the second one has no answer in the file. Where
+-- to look from can be worked out — a flat model is drawn from above, a solid
+-- one at an angle — but which way up the drawing should sit cannot be, because
+-- a folded model has no idea which way up it is. It lands wherever its crease
+-- pattern happened to be drawn, and for the traditional crane that is upside
+-- down.
+--
+-- So the turn is the caller\'s to give, in the same way the sheet is theirs to
+-- turn round on the table before taking a photograph of it. It changes nothing
+-- about the model.
+data View = View
+  { -- | Where to look from, or 'Nothing' to work it out from the geometry.
+    viewFrom :: !(Maybe Basis),
+    -- | How far to turn the drawing anticlockwise on the page, in radians.
+    viewTurn :: !Double
+  }
+  deriving stock (Eq, Show)
+
+-- | Look from wherever the geometry suggests, the right way up for the file.
+defaultView :: View
+defaultView = View Nothing 0
+
+-- | Turn a basis about the direction it looks along, so that the drawing it
+-- makes comes out rotated anticlockwise by that angle.
+--
+-- A roll, in the aviation sense: the camera keeps looking at the same thing
+-- from the same place and tilts its head.
+--
+-- Turning rather than mirroring, and the difference is the whole point. Both
+-- would put an upside-down crane the right way up, because a crane is very
+-- nearly symmetric. But a mirrored drawing is a picture of the /other/ model —
+-- the one whose crease pattern is this one reflected, whose mountains and
+-- valleys are swapped, and whose layers stack the other way. That model folds
+-- perfectly well; it is simply not the one in the file. A turn changes nothing
+-- at all.
+--
+-- What separates the two is orientation, not distance: a reflection preserves
+-- every length on the page just as a turn does. It is 'cross' of the two page
+-- axes that tells them apart, and the test for this asserts it.
+--
+-- The @right@ and @up@ axes turn /clockwise/ so that the picture turns
+-- anticlockwise, which is the sign anyone rotating a drawing expects. They stay
+-- perpendicular, unit length and right-handed, so the result is a basis without
+-- being rebuilt — which is a promise this function keeps by hand, since it uses
+-- the constructor directly.
+--
+-- An angle that is not a number is no turn at all rather than a basis full of
+-- them. NaN coordinates format as @0@, so the alternative is every point of the
+-- model silently stacked on one spot; see the note on 'Senbazuru.Geometry.VectorSpace.normalize'.
+turnedBy :: Double -> Basis -> Basis
+turnedBy angle b
+  | isNaN angle || isInfinite angle = b
+  | otherwise =
+      Basis
+        { basisRight = (cos angle *^ basisRight b) ^-^ (sin angle *^ basisUp b),
+          basisUp = (sin angle *^ basisRight b) ^+^ (cos angle *^ basisUp b),
+          basisForward = basisForward b
+        }
 
 -- | Flatten a point onto the page.
 project :: Basis -> V3 -> V2
