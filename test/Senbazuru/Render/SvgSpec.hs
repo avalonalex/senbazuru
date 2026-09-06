@@ -39,10 +39,14 @@ renderFixture = renderFixtureFrom CreasePatternNotation topDown
 -- heuristics that choose the notation and the view have their own tests in
 -- "Senbazuru.Render.CreasePatternSpec".
 renderFixtureFrom :: Notation -> Basis -> FilePath -> IO Text
-renderFixtureFrom notation basis path = do
+renderFixtureFrom = renderFixtureWith defaultTheme
+
+-- | The same, through a theme the caller chooses.
+renderFixtureWith :: Theme -> Notation -> Basis -> FilePath -> IO Text
+renderFixtureWith theme notation basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
-  d <- case creasePatternFrom defaultTheme defaultBudget notation basis (keyFrame f) of
+  d <- case creasePatternFrom theme defaultBudget notation basis (keyFrame f) of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -381,6 +385,22 @@ spec = do
     it "renders the letter fold with its layers stepped apart" $
       renderFoldedWith (defaultTheme {themeLayerOffset = 4}) topDown "test/fixtures/letter-fold.fold"
         >>= goldenText "test/golden/letter-fold-offset.svg"
+
+    -- The offset view's fallback, and the only golden that reaches it. simple.fold
+    -- has paper in the air, so there are no visible regions to tell the model
+    -- from the stack it stands on: every line is drawn at full weight, and the
+    -- paper goes down one face at a time rather than one area per layer. That
+    -- last part is what this pins. Three of its four faces are unordered and so
+    -- share a layer, and they overlap once projected -- merging them into one
+    -- area, which is right for a model folded flat, discards the depth order
+    -- among them and paints the far face over the near one.
+    it "renders a folded form in the air with its layers stepped apart" $
+      renderFixtureWith
+        (defaultTheme {themeLayerOffset = 8})
+        FoldedFormNotation
+        isometric
+        "test/fixtures/simple.fold"
+        >>= goldenText "test/golden/simple-iso-offset.svg"
 
     it "renders simple.fold from the isometric view" $
       renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"

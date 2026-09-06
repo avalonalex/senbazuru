@@ -158,9 +158,9 @@ Three shapes need both: `Arrow`'s curve is in model units and its head's size is
 in page units, `Label` is a model-space point with a page-unit type size, and
 `Offset` is a page-unit displacement wrapped round a shape whose own coordinates
 are in model units. All three are finished by the backend *after* projection,
-which is the only place both units are in scope. The rule is what makes `Diagram.Layout` possible at
-all — figures are combined by shifting their coordinates, and nothing about how
-they are inked has to be recomputed.
+which is the only place both units are in scope. The rule is what makes
+`Diagram.Layout` possible at all — figures are combined by shifting their
+coordinates, and nothing about how they are inked has to be recomputed.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because
@@ -417,6 +417,17 @@ Deliberate omissions, so nobody thinks they are bugs:
   detect: each of the three loses the shared patch to the other two, and the
   model comes out with a hole in it. Nothing senbazuru produces can be like
   that. A pair of entries that contradict each other directly *is* refused.
+- `--offset` is refused with `--arrows`: an arrow is drawn where the paper is
+  and the offset draws every sheet a step away from there, so the tail would
+  start on bare page. Putting the arrow on the sheet it leaves is a real answer
+  and not one that has been worked out.
+- **Merging a layer's faces into one area is right for a flat model and wrong
+  for one with paper in the air.** Two faces of one layer are unordered because
+  they do not overlap /on the paper/; projected, they can still cover the same
+  patch of page. Flat, that cannot happen and merging is what keeps the seams
+  out; in the air it discards the depth order and paints the far face over the
+  near one. `Senbazuru.Render.CreasePattern` has both and picks by which path it
+  is on.
 - The offset view steps a whole sheet, where a printed book offsets edges only
   across the boundary of a cut-away circle, and falls back to a schematic side
   view when a model has too many layers to draw at all. Neither the local

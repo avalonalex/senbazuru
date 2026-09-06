@@ -121,9 +121,13 @@ data RenderOptions = RenderOptions
     -- Empty means the first of each, which is what every version so far drew.
     roStacking :: [Int],
     roBudget :: Budget,
-    -- | Page units between one layer of a folded model and the next. Zero, the
-    -- default, draws them where the paper is.
-    roOffset :: Double
+    -- | Page units between one layer of a folded model and the next.
+    --
+    -- 'Nothing' when the flag was left off, which is not the same as zero: a
+    -- flag left off defers to the theme, and @--offset 0@ says to draw the
+    -- layers where the paper is whatever the theme would have done. They are
+    -- the same picture today and a themed default would part them.
+    roOffset :: Maybe Double
   }
   deriving stock (Eq, Show)
 
@@ -397,26 +401,27 @@ renderOptions =
             )
       )
     <*> budgetOption
-    <*> option
-      -- Refused during parsing like every other malformed number here, and for
-      -- both reasons at once. NaN and Infinity reach 'formatNumber', which
-      -- writes them as 0, so a model drawn with one arrives stacked on the page
-      -- origin with nothing reporting a fault. And a negative step is not an
-      -- error the arithmetic would notice -- the stack would simply open out
-      -- down and to the left -- but "how far apart" is a distance, and reading
-      -- a minus sign as a direction is a guess about what someone meant.
-      (points =<< auto)
-      ( long "offset"
-          <> metavar "PT"
-          <> value 0
-          <> showDefault
-          <> help
-            ( "Draw a folded model's layers this far apart on the page, so that"
-                <> " a stack that lands on one spot can be read as a stack."
-                <> " The buried sheets are drawn finer than the model standing"
-                <> " on them, so a small step still reads. Needs the layers, so"
-                <> " it goes with --fold and not with --no-fill"
-            )
+    <*> optional
+      ( option
+          -- Refused during parsing like every other malformed number here, and for
+          -- both reasons at once. NaN and Infinity reach 'formatNumber', which
+          -- writes them as 0, so a model drawn with one arrives stacked on the page
+          -- origin with nothing reporting a fault. And a negative step is not an
+          -- error the arithmetic would notice -- the stack would simply open out
+          -- down and to the left -- but "how far apart" is a distance, and reading
+          -- a minus sign as a direction is a guess about what someone meant.
+          (points =<< auto)
+          ( long "offset"
+              <> metavar "PT"
+              <> help
+                ( "Draw a folded model's layers this far apart on the page, so"
+                    <> " that a stack that lands on one spot can be read as a"
+                    <> " stack (default: 0, off). The buried sheets are drawn"
+                    <> " finer than the model standing on them, so a small step"
+                    <> " still reads. Needs the layers, so it goes with --fold"
+                    <> " and not with --no-fill"
+                )
+          )
       )
   where
     points :: Double -> ReadM Double
@@ -492,9 +497,15 @@ frameAt i f = case drop i frames of
     frames = allFrames f
 
 renderFile :: RenderOptions -> FoldFile -> IO ()
-renderFile o f
-  | roSteps o = renderStepPage o f
-  | otherwise = renderOneFrame o f
+renderFile o f = do
+  -- Refused rather than resolved, as every other pair that describes two
+  -- different pictures is. An arrow is drawn at the coordinates the paper
+  -- actually has; --offset draws every sheet a step away from those, so the
+  -- arrow would start on bare page between two of them. Putting it on the sheet
+  -- it leaves is a real answer and not one this has worked out.
+  when (roArrows o && maybe False (/= 0) (roOffset o)) $
+    die "--arrows draws on the paper where it is, and --offset draws it where it is not"
+  if roSteps o then renderStepPage o f else renderOneFrame o f
 
 -- | Every frame of the file as one numbered page of figures.
 --
@@ -572,12 +583,11 @@ themeFor o = hideFlat (noFill (offset defaultTheme))
       | roNoFill o = t {themePaper = Nothing}
       | otherwise = t
 
-    -- The one flag that adds rather than subtracts, and still a guard: left
-    -- off, --offset means "whatever the theme says" rather than "zero". The two
-    -- are the same number today and need not stay so.
-    offset t
-      | roOffset o /= 0 = t {themeLayerOffset = roOffset o}
-      | otherwise = t
+    -- The one flag that adds rather than subtracts. Still a guard, because a
+    -- flag left off has to defer to the theme -- and the Maybe is what lets it,
+    -- since --offset 0 is a reader saying "not opened out" and has to override
+    -- a theme that would have opened it.
+    offset t = maybe t (\d -> t {themeLayerOffset = d}) (roOffset o)
 
 pageFor :: RenderOptions -> Maybe Text -> Page
 pageFor o title =

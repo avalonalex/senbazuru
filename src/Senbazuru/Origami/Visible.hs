@@ -327,7 +327,6 @@ regionsOf fromAbove sheet nearer = [r | p <- panels, Just r <- [regionFor p]]
     tidy ring = [b | (a, b) <- zip (rotate ring) ring, norm (b ^-^ a) > sheetHair sheet]
     rotate ps = drop (length ps - 1) ps <> take (length ps - 1) ps
 
--- | The stretches of edge that are not hidden.
 -- | Every stretch that is drawn, by the line it lies on, each labelled with
 -- the sheet whose edge it is.
 --

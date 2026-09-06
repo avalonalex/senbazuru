@@ -41,7 +41,8 @@ perfectly well from a square of its own. It is simply not the model in the file.
 
 > **Status: early**, and moving. Crease patterns, folding, layer order, hidden
 > lines, two-sided paper, offset views, fold arrows, step-by-step pages and a
-> flat-foldability checker all work; there is no FOLD *output* yet, which is the next big thing.
+> flat-foldability checker all work; there is no FOLD *output* yet, which is the
+> next big thing.
 > [Roadmap](#roadmap) · [what works in detail](docs/tour.md)
 
 ## The interesting part is that paper is opaque

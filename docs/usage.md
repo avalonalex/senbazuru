@@ -61,7 +61,9 @@ of its own and complains about them.
 
 Some combinations are refused rather than quietly resolved, because they
 describe different pictures: `--steps` with `--frame`, with `--fold`, or with
-`--stacking`, and `--fold` with `--arrows`.
+`--stacking`; `--fold` with `--arrows`; and `--arrows` with `--offset`, since an
+arrow is drawn at the coordinates the paper actually has and `--offset` draws
+every sheet a step away from those.
 
 `--offset` is the one flag that needs the layers rather than merely using them,
 so four things are worth knowing about it.

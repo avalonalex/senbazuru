@@ -315,8 +315,13 @@ strokeFor theme notation = \case
 -- precisely the view that needs an offset. So the direction is a convention of
 -- the drawing, like the side an arrow bows to.
 --
--- 'Nothing' when the theme asks for no offset at all, which is the usual case
--- and is also the answer for a step that is not a length: @read@ for a 'Double'
+-- 'Nothing' when the theme asks for no offset at all, which is the usual case,
+-- and equally for a step that is not a length. A negative one is refused here
+-- rather than only at the command line, so that the invariant holds wherever
+-- the theme came from: 'themeLayerOffset' is how far apart to draw two layers,
+-- which is a distance, and reading a minus sign as a direction would be a guess
+-- about what someone meant. So are the two that are not numbers: @read@ for a
+-- 'Double'
 -- accepts @NaN@ and @Infinity@, and either would move every layer to the same
 -- nowhere — 'Senbazuru.Render.Svg.formatNumber' writes both as @0@, so the
 -- whole model would arrive stacked on one point with nothing reporting a fault.
@@ -324,7 +329,7 @@ strokeFor theme notation = \case
 -- apart?\" with one question.
 layerStep :: Theme -> Maybe V2
 layerStep theme
-  | isNaN step || isInfinite step || step == 0 = Nothing
+  | isNaN step || isInfinite step || step <= 0 = Nothing
   | otherwise = Just (step *^ V2 diagonal (negate diagonal))
   where
     step = themeLayerOffset theme

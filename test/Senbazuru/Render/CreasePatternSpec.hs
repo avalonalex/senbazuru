@@ -45,6 +45,21 @@ import Senbazuru.Render.CreasePattern
   )
 import Test.Hspec
 
+-- | Three faces with a corner lifted out of the plane, and an ordering that
+-- leaves two of them in the same layer.
+--
+-- The one shape of frame that reaches the offset view's fallback: a folded form
+-- "Senbazuru.Origami.Visible" declines, carrying @faceOrders@ of its own so
+-- that there is still a stack to draw.
+threeInTheAir :: Frame
+threeInTheAir =
+  twoFaceSquare
+    { frameClasses = ["foldedForm"],
+      verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]],
+      facesVertices = map (map VertexId) [[0, 1, 2], [0, 2, 3], [1, 2, 3]],
+      faceOrders = [FaceOrder (FaceId 2) (FaceId 0) Above]
+    }
+
 -- | 'twoFaceSquare' with a face pointing at a vertex that does not exist.
 broken :: Frame
 broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
@@ -98,6 +113,18 @@ shapeKinds theme notation fr =
 -- | Close enough, for numbers that have been through a sine and a cosine.
 nearly :: Double -> Double -> Bool
 nearly a b = abs (a - b) < 1e-9
+
+-- | How many rings each filled area of a drawing is made of, in order.
+--
+-- Looks through the displacement every shape of an offset view is wrapped in:
+-- how many areas the paper was drawn as is a separate question from where each
+-- was put.
+ringsPerFill :: Diagram -> [Int]
+ringsPerFill d = [length rings | Fill _ rings <- map unwrap (diagramShapes d)]
+  where
+    unwrap = \case
+      Offset _ shape -> unwrap shape
+      shape -> shape
 
 -- | The last element, if there is one.
 lastOf :: [a] -> Maybe a
@@ -292,13 +319,37 @@ spec = do
       opened <- either (fail . show) pure (drawn (stepped 40) foldedDiagonal)
       diagramExtent opened `shouldBe` diagramExtent plain
 
-    it "draws exactly the ordinary picture when it is zero" $ do
-      -- Not merely a similar one: the offset view is a different picture
-      -- altogether -- whole faces rather than visible regions -- so a theme
-      -- asking for no offset must not take that path at all.
-      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+    it "takes the ordinary path entirely when it is zero" $ do
+      -- Not merely "draws the same picture": a zero step would draw the same
+      -- picture down the offset path too, every shape wrapped in a displacement
+      -- of nothing. Asserting the wrappers are absent is what says the offset
+      -- view was not entered at all, and it is the assertion that can fail --
+      -- comparing `stepped 0` with `defaultTheme` cannot, since the default
+      -- theme's own offset is zero and the two are the same value.
       off <- either (fail . show) pure (drawn (stepped 0) foldedDiagonal)
+      [() | Offset _ _ <- diagramShapes off] `shouldBe` []
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
       off `shouldBe` plain
+
+    it "merges a layer's paper into one area when the model is flat" $ do
+      -- Two faces of one layer abut and cannot overlap -- a pair that did would
+      -- have a faceOrders entry and so be at different depths -- so they are one
+      -- area of one colour, and drawn separately they would have a pale seam
+      -- along the crease they share.
+      d <- either (fail . show) pure (drawn (stepped 4) twoFaceSquare {frameClasses = ["foldedForm"]})
+      ringsPerFill d `shouldBe` [2]
+
+    it "keeps a layer's faces apart when the model has paper in the air" $ do
+      -- The merge above is wrong here and the reasoning says why: two faces of
+      -- one layer are unordered because they do not overlap *on the paper*, and
+      -- once projected they can still cover the same patch of page, one being
+      -- nearer the camera. Merged, the depth order layerDepths put them in is
+      -- thrown away and the nearer one stops covering the further one.
+      --
+      -- Faces 0 and 1 are unordered, so both sit at depth 0; face 2 is above
+      -- face 0 and sits at depth 1. One ring per fill is the whole assertion.
+      d <- either (fail . show) pure (drawn (stepped 4) threeInTheAir)
+      ringsPerFill d `shouldBe` [1, 1, 1]
 
     it "has nothing to step apart in a crease pattern" $
       -- Its faces do not overlap, so every one of them is layer zero. The flag
