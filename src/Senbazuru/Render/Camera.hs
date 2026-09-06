@@ -47,6 +47,11 @@ module Senbazuru.Render.Camera
     namedView,
     viewNames,
 
+    -- * Turning the drawing on the page
+    View (..),
+    defaultView,
+    turnedBy,
+
     -- * Projection
     project,
     depth,
@@ -165,6 +170,50 @@ namedView = (`lookup` views)
 -- | Every name 'namedView' accepts, for help text and error messages.
 viewNames :: [Text]
 viewNames = map fst views
+
+-- | How to look at a model: from where, and which way up on the page.
+--
+-- Two separate questions, and the second one has no answer in the file. Where
+-- to look from can be worked out — a flat model is drawn from above, a solid
+-- one at an angle — but which way up the drawing should sit cannot be, because
+-- a folded model has no idea which way up it is. It lands wherever its crease
+-- pattern happened to be drawn, and for the traditional crane that is upside
+-- down.
+--
+-- So the turn is the caller\'s to give, in the same way the sheet is theirs to
+-- turn round on the table before taking a photograph of it. It changes nothing
+-- about the model.
+data View = View
+  { -- | Where to look from, or 'Nothing' to work it out from the geometry.
+    viewFrom :: !(Maybe Basis),
+    -- | How far to turn the drawing anticlockwise on the page, in radians.
+    viewTurn :: !Double
+  }
+  deriving stock (Eq, Show)
+
+-- | Look from wherever the geometry suggests, the right way up for the file.
+defaultView :: View
+defaultView = View Nothing 0
+
+-- | Turn a basis about the direction it looks along, so that the drawing it
+-- makes comes out rotated anticlockwise by that angle.
+--
+-- A roll, in the aviation sense: the camera keeps looking at the same thing
+-- from the same place and tilts its head. Nothing about the model moves, which
+-- is what makes this the honest way to reorient a picture — mirroring it would
+-- draw a model that cannot be folded from the same sheet.
+--
+-- The @right@ and @up@ axes turn /clockwise/ so that the picture turns
+-- anticlockwise, which is the sign anyone rotating a drawing expects. They stay
+-- perpendicular and unit length, so the result is a basis by construction and
+-- needs no rebuilding.
+turnedBy :: Double -> Basis -> Basis
+turnedBy angle b =
+  Basis
+    { basisRight = (cos angle *^ basisRight b) ^-^ (sin angle *^ basisUp b),
+      basisUp = (sin angle *^ basisRight b) ^+^ (cos angle *^ basisUp b),
+      basisForward = basisForward b
+    }
 
 -- | Flatten a point onto the page.
 project :: Basis -> V3 -> V2

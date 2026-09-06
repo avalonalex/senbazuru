@@ -20,7 +20,7 @@ import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (Basis, bottomUp, isometric, topDown)
+import Senbazuru.Render.Camera (Basis, bottomUp, defaultView, isometric, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg
@@ -103,7 +103,7 @@ renderSteps path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
   let grid = defaultGrid defaultTheme
-  case stepPage defaultTheme defaultBudget grid Nothing True (allFrames f) of
+  case stepPage defaultTheme defaultBudget grid defaultView True (allFrames f) of
     Left err -> fail ("step page failed: " <> show err)
     Right Nothing -> fail "nothing to lay out"
     Right (Just d) -> pure (renderSvg testPage {pageWidth = 400} d)

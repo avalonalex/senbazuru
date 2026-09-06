@@ -71,7 +71,7 @@ import Senbazuru.Origami.Layers (paintOrder)
 import Senbazuru.Origami.Stacking (Budget, StackingError (..), defaultBudget, solveStackingAs)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
-import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
+import Senbazuru.Render.Camera (Basis, View (..), basisForward, isometric, project, topDown, turnedBy)
 
 -- | Render one frame as a crease pattern, seen from directly above.
 --
@@ -269,21 +269,22 @@ edgeOf theme notation basis (assignment, from, to) = do
 -- the camera, and that says nothing about whether the frame is a crease
 -- pattern, so the notation is still chosen here. There is no way to override
 -- the notation yet because nobody has needed one.
-creasePatternAuto :: Theme -> Budget -> Maybe Basis -> Frame -> Either FoldError Diagram
-creasePatternAuto theme budget chosenBasis fr = do
+creasePatternAuto :: Theme -> Budget -> View -> Frame -> Either FoldError Diagram
+creasePatternAuto theme budget view fr = do
   verts <- frameVertices fr
   let notation = defaultNotationFor (frameClasses fr) verts
-  creasePatternFrom theme budget notation (basisFor chosenBasis verts) fr
+  creasePatternFrom theme budget notation (basisFor view verts) fr
 
 -- | The basis a drawing will be made through: the caller's, or the one the
--- geometry picks when the caller has no opinion.
+-- geometry picks when the caller has no opinion, turned by however much the
+-- caller asked for.
 --
 -- Exported because anything drawn /alongside/ a diagram has to be projected the
 -- same way it was, and arrows are. Two copies of this defaulting rule would
 -- stay in step only by hand, and the day they stopped the arrows would land
 -- somewhere else on the page with nothing failing.
-basisFor :: Maybe Basis -> [V3] -> Basis
-basisFor chosen verts = fromMaybe (defaultBasisFor verts) chosen
+basisFor :: View -> [V3] -> Basis
+basisFor view verts = turnedBy (viewTurn view) (fromMaybe (defaultBasisFor verts) (viewFrom view))
 
 -- | Pick a viewing basis for geometry we know nothing else about.
 --

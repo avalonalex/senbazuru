@@ -57,7 +57,7 @@ import Senbazuru.Origami.Stacking
     stateCount,
   )
 import Senbazuru.Origami.Step (Motion, motionsBetween)
-import Senbazuru.Render.Camera (Basis, namedView, viewNames)
+import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
@@ -114,9 +114,9 @@ data RenderOptions = RenderOptions
     -- | Lay every frame out as a numbered grid instead of drawing one.
     roSteps :: Bool,
     roColumns :: Int,
-    -- | 'Nothing' means let the geometry decide. Resolved to a 'Basis' during
-    -- argument parsing, so an unknown name never reaches this record.
-    roView :: Maybe Basis,
+    -- | Where to look from and which way up. The basis is resolved during
+    -- argument parsing, so an unknown view name never reaches this record.
+    roView :: View,
     -- | Which layer order to draw, one index per component that has a choice.
     -- Empty means the first of each, which is what every version so far drew.
     roStacking :: [Int],
@@ -241,6 +241,9 @@ budgetOption =
       | n > 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
       | otherwise = readerError "the layer budget must be a positive number of guesses"
 
+toRadians :: Double -> Double
+toRadians d = d * pi / 180
+
 -- | A column count below one describes no page, and quietly rounding it up to
 -- one would answer a question nobody asked.
 atLeastOne :: Int -> ReadM Int
@@ -325,22 +328,41 @@ renderOptions =
           <> showDefault
           <> help "Figures across the page, with --steps"
       )
-    <*> optional
-      ( option
-          -- Resolved during parsing, so a bad name is rejected with optparse's
-          -- own usage text before any file is opened, and roView carries a
-          -- Basis rather than an unvalidated string.
-          (maybeReader (namedView . T.pack))
-          ( long "view"
-              <> metavar "NAME"
-              <> help
-                ( "Viewing angle: "
-                    <> T.unpack (T.intercalate ", " viewNames)
-                    <> " (default: chosen from the geometry -- flat models are"
-                    <> " viewed from above, solid ones isometrically)"
+    <*> ( View
+            <$> optional
+              ( option
+                  -- Resolved during parsing, so a bad name is rejected with
+                  -- optparse's own usage text before any file is opened, and
+                  -- roView carries a Basis rather than an unvalidated string.
+                  (maybeReader (namedView . T.pack))
+                  ( long "view"
+                      <> metavar "NAME"
+                      <> help
+                        ( "Viewing angle: "
+                            <> T.unpack (T.intercalate ", " viewNames)
+                            <> " (default: chosen from the geometry -- flat models are"
+                            <> " viewed from above, solid ones isometrically)"
+                        )
+                  )
+              )
+            -- Degrees at the boundary and radians inside, as --tolerance is:
+            -- degrees are what anyone turning a drawing thinks in.
+            <*> ( toRadians
+                    <$> option
+                      auto
+                      ( long "rotate"
+                          <> metavar "DEG"
+                          <> value 0
+                          <> showDefault
+                          <> help
+                            ( "Turn the drawing anticlockwise on the page. A folded"
+                                <> " model lands whichever way up its crease pattern"
+                                <> " was drawn, and nothing in the file says which way"
+                                <> " up it should be read"
+                            )
+                      )
                 )
-          )
-      )
+        )
     <*> option
       (indices . T.pack =<< str)
       ( long "stacking"

@@ -27,7 +27,7 @@ import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Step (Motion (..))
-import Senbazuru.Render.Camera (bottomUp, frontOn, isometric, topDown)
+import Senbazuru.Render.Camera (View (..), bottomUp, defaultView, frontOn, isometric, topDown, turnedBy)
 import Senbazuru.Render.CreasePattern
   ( creasePatternFrom,
     defaultBasisFor,

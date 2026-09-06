@@ -14,7 +14,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..), emptyFrame)
 import Senbazuru.Origami.Stacking (defaultBudget)
-import Senbazuru.Render.Camera (isometric, topDown)
+import Senbazuru.Render.Camera (View (..), defaultView, isometric, topDown)
 import Senbazuru.Render.Steps
 import Test.Hspec
 
@@ -43,7 +43,7 @@ grid :: Grid
 grid = defaultGrid defaultTheme
 
 page :: Maybe a1 -> [Frame] -> Either StepError (Maybe Diagram)
-page _ = stepPage defaultTheme defaultBudget grid Nothing False
+page _ = stepPage defaultTheme defaultBudget grid defaultView False
 
 spec :: Spec
 spec = do
@@ -53,20 +53,20 @@ spec = do
       -- the explicit camera rather than by inspecting coordinates, so the test
       -- says what it means.
       let frames = [flatSheet, solidSheet]
-      stepPage defaultTheme defaultBudget grid Nothing False frames
-        `shouldBe` stepPage defaultTheme defaultBudget grid (Just isometric) False frames
+      stepPage defaultTheme defaultBudget grid defaultView False frames
+        `shouldBe` stepPage defaultTheme defaultBudget grid (View (Just isometric) 0) False frames
 
     it "views a sequence that stays flat from above throughout" $ do
       let frames = [flatSheet, flatSheet]
-      stepPage defaultTheme defaultBudget grid Nothing False frames
-        `shouldBe` stepPage defaultTheme defaultBudget grid (Just topDown) False frames
+      stepPage defaultTheme defaultBudget grid defaultView False frames
+        `shouldBe` stepPage defaultTheme defaultBudget grid (View (Just topDown) 0) False frames
 
     it "is not the same page either way, so the tests above can fail" $ do
       -- Guards the two above: if the cameras happened to agree on this input
       -- they would pass without saying anything.
       let frames = [flatSheet, solidSheet]
-      stepPage defaultTheme defaultBudget grid (Just topDown) False frames
-        `shouldNotBe` stepPage defaultTheme defaultBudget grid (Just isometric) False frames
+      stepPage defaultTheme defaultBudget grid (View (Just topDown) 0) False frames
+        `shouldNotBe` stepPage defaultTheme defaultBudget grid (View (Just isometric) 0) False frames
 
   describe "which frames are steps" $ do
     it "skips a frame with no geometry in it" $ do

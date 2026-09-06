@@ -140,6 +140,53 @@ spec = do
       -- drifting apart, which would leave a view undiscoverable in --help.
       map fst views `shouldBe` viewNames
 
+  describe "turnedBy" $ do
+    it "turns the drawing anticlockwise, not the model" $ do
+      -- A point on the model's +x axis is drawn to the right of the page. Turn
+      -- the drawing a quarter turn anticlockwise and it is drawn above instead.
+      let V2 x y = project (turnedBy (pi / 2) topDown) (V3 1 0 0)
+      x `shouldSatisfy` near 0
+      y `shouldSatisfy` near 1
+
+    it "turns a half turn to the opposite corner of the page" $
+      -- Which is the one that puts the traditional crane the right way up: it
+      -- lands upside down because that is how its crease pattern was drawn.
+      forAll genV3 $ \p ->
+        let V2 ax ay = project topDown p
+            V2 bx by = project (turnedBy pi topDown) p
+         in near ax (negate bx) && near ay (negate by)
+
+    it "does nothing at all when asked for nothing" $
+      forAll ((,) <$> genBasis <*> genV3) $ \(b, p) ->
+        let V2 ax ay = project b p
+            V2 bx by = project (turnedBy 0 b) p
+         in near ax bx && near ay by
+
+    it "keeps the basis a basis" $
+      -- Turned by hand rather than rebuilt through basisFrom, so the
+      -- perpendicular-and-unit-length invariant is this function's to keep.
+      forAll ((,) <$> genBasis <*> choose (-10, 10)) $ \(b, angle) ->
+        let t = turnedBy angle b
+            r = basisRight t
+            u = basisUp t
+            f = basisForward t
+         in all (near 0) [dot r u, dot r f, dot u f]
+              && all (near 1) [norm r, norm u, norm f]
+
+    it "leaves the model alone: distances on the page are unchanged" $
+      -- The whole reason this is a turn of the camera and not of the paper. A
+      -- mirror would also make an upside-down crane look right, and would be
+      -- drawing a model that cannot be folded from the same sheet.
+      forAll ((,,) <$> genBasis <*> genV3 <*> choose (-10, 10)) $ \(b, p, angle) ->
+        let dist bs = let V2 dx dy = project bs p in sqrt (dx * dx + dy * dy)
+         in near (dist b) (dist (turnedBy angle b))
+
+    it "adds up over two turns" $
+      forAll ((,,) <$> genBasis <*> genV3 <*> choose (-3, 3)) $ \(b, p, angle) ->
+        let V2 ax ay = project (turnedBy angle (turnedBy angle b)) p
+            V2 bx by = project (turnedBy (2 * angle) b) p
+         in near ax bx && near ay by
+
   describe "the named views" $
     it "are all well formed, so the total fallback never fires" $
       -- named uses a total wrapper over basisFrom with topDown as the fallback.
