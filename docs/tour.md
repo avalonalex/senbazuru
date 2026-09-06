@@ -244,31 +244,47 @@ Books answer this by drawing the stack slightly opened, and so does `--offset`:
 
 ```bash
 stack run -- render examples/quarter-fold.fold --fold --offset 6 -o stack.svg
-stack run -- render examples/letter-fold.fold --fold --offset 6 -o letter.svg
-stack run -- render examples/crane.fold --fold --rotate 180 --offset 1.5 -o crane.svg
+stack run -- render examples/letter-fold.fold  --fold --offset 6 -o letter.svg
+stack run -- render examples/kabuto.fold       --fold --offset 6 -o kabuto.svg
 ```
 
 Every face is drawn whole and each layer sits a few points further up and to the
 right than the layer below it, the way an exploded drawing separates the parts
 of an assembly. The quarter fold becomes four stepped squares in the order the
 solver found, bottom-left quadrant lowest; the letter fold shows its middle
-panel, which the ordinary picture buries whole; and the crane's wings and body
-fan open into the stacks they are. The crane takes a smaller step than the other
-two because it is thirty-one layers deep by this reckoning, and thirty-one steps
-of six points would be most of a page.
+panel, which the ordinary picture buries whole; and the kabuto's twelve layers
+open into a band of stepped sheets down its diagonal.
 
-The step is in **page units**, which is the two-unit rule doing real work: four
-points is four points whether the sheet is one unit across or four hundred, so
+The step is in **page units**, which is the two-unit rule doing real work: six
+points is six points whether the sheet is one unit across or four hundred, so
 the model's own coordinates are never touched and the page does not rescale
-because a stack was opened. That last part cuts both ways — a large step on a
-model that already fills the page runs off it, and the answer is a smaller step
-or a bigger page.
+because a stack was opened.
 
-Which layer a face is in is the longest chain of faces below it, not a count of
-what it covers, and [notes/layer-numbers.md](notes/layer-numbers.md) is why that
-distinction is the whole of getting this right. It also explains why a twist has
-no offset view: stepping layers apart needs one order for the entire model, and
-a twist is exactly the model that has none.
+### How big a step
+
+Both ends of the range are real, and a model can be deep enough to have no
+usable middle.
+
+A step **smaller than the line weight** is worse than none. The edge of the
+paper is drawn 1.6pt wide, so at `--offset 1.5` consecutive layers' outlines are
+drawn on top of one another and the stack comes out as a band of hatching rather
+than as sheets. Three points is about the floor; six reads clearly.
+
+A step **times the number of layers** has to fit the page, because the offset
+deliberately does not enter the extent — the page is fitted to the paper, and
+opening the stack does not shrink the model to make room. So a deep model needs
+a wider `--margin`, a bigger `--width`, or both.
+
+Multiply those together and the crane, at **32 layers**, has no good answer yet:
+small enough to fit a page is small enough to hatch, and large enough to read
+fans thirty-two copies of the bird apart. The offset view is at its best on the
+shallow models it was built for — four layers, twelve layers — and
+[notes/layer-numbers.md](notes/layer-numbers.md) has the measurements.
+
+That note also explains the two other things worth knowing: which layer a face
+is in is the longest chain of faces below it, not a count of what it covers; and
+a twist has no offset view at all, because stepping layers apart needs one order
+for the entire model and a twist is exactly the model that has none.
 
 ## What it instructs
 

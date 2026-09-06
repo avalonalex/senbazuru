@@ -88,7 +88,33 @@ third further, which is a knob-shaped problem — pick a smaller step.
 Closing it means asking, for each face, the longest chain of faces that all
 share one patch of paper. That is a clique-flavoured question about geometry
 rather than a walk over the relations, and it would buy a slightly more compact
-picture of a model that is already legible.
+picture.
+
+## How deep is too deep to draw
+
+The layer count is what decides whether a model has an offset view worth
+looking at, so it is worth having the numbers side by side. Drawn at
+`--offset 4`, counting the SVG paths each picture emits:
+
+| Model | Layers | Paths, ordinary | Paths, offset |
+| --- | --- | --- | --- |
+| Letter fold | 3 | 6 | 15 |
+| Quarter fold | 4 | 5 | 20 |
+| Kabuto | 12 | 9 | 68 |
+| Crane | 32 | 23 | 286 |
+
+The ordinary picture stays flat because hidden-line removal throws away
+everything buried — for the crane, all but 23 of its edges. The offset view
+throws away nothing, so its ink grows with layers times faces, and the crane is
+squeezed between two limits at once: a step small enough to fit the page is
+smaller than the 1.6pt line the edge of the paper is drawn with, so consecutive
+layers' outlines land on each other and the stack comes out as hatching, while a
+step large enough to read fans thirty-two copies of the bird apart.
+
+Four layers and twelve layers are fine. Thirty-two is not, and the honest fix is
+not a better layer number: it is to stop drawing the creases inside a buried
+sheet, since the sliver of it that shows should be an edge of paper and nothing
+else.
 
 ## Where the relations run in a circle
 
