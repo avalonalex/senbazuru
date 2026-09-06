@@ -1,5 +1,9 @@
 # senbazuru
 
+[![CI](https://github.com/avalonalex/senbazuru/actions/workflows/ci.yml/badge.svg)](https://github.com/avalonalex/senbazuru/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Haskell: GHC 9.6.7](https://img.shields.io/badge/Haskell-GHC%209.6.7-5e5086.svg)](https://www.haskell.org/)
+
 Render [FOLD](https://github.com/edemaine/FOLD) origami files as SVG, in the
 visual style of step-by-step origami instruction books.
 
@@ -8,12 +12,17 @@ visual style of step-by-step origami instruction books.
 > **Status: early.** Crease patterns render correctly and are filled with paper.
 > A pattern can be *folded* along its own fold angles and the result drawn from a
 > choice of viewing angles, layer-correctly: where the file says which face is
-> in front, and for a flat-folded model, where it does not. A model folded flat
-> is drawn as what can be *seen* of it — hidden edges removed, the two sides of
-> the paper in different colours, and either side of the sheet to look at. A
+> in front, and for a flat-folded model, where it does not — including which of
+> the several valid layer orders a model usually has. A model folded flat is
+> drawn as what can be *seen* of it: hidden edges removed, the two sides of the
+> paper in different colours, and either side of the sheet to look at. A
 > multi-frame file lays out as one numbered page of steps, each with the arrow
 > showing the fold it asks for. There is also a flat-foldability checker.
 > See [Roadmap](#roadmap).
+
+Building it and every flag: [docs/usage.md](docs/usage.md). How the code is put
+together: [docs/architecture.md](docs/architecture.md). New to FOLD or to
+origami: [docs/fold-primer.md](docs/fold-primer.md).
 
 ## What it does today
 
@@ -61,9 +70,6 @@ Folded forms take a viewing angle:
 ```bash
 stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
 ```
-
-The bare `--` matters: without it Stack tries to interpret `--view` as one of its
-own options.
 
 ## What it folds
 
@@ -344,99 +350,22 @@ The `layers` line is where to look when a folded form comes out as a wireframe:
 it reports the `faceOrders` the file carries, or, for a folded form without any,
 whether one could be worked out and if not why.
 
-## Building
+## Building it
 
-Requires [Stack](https://docs.haskellstack.org/). The project pins Stackage
-`lts-22.44` (GHC 9.6.7).
+Requires [Stack](https://docs.haskellstack.org/); `stack build` and `stack test`
+are the whole of it, and `make check` is what CI runs.
 
-```bash
-stack build
-stack test
-make check      # formatting, lint and tests: everything CI should run
-```
+## Documentation
 
-`stack.yaml` sets `system-ghc: true`, so Stack reuses a GHC 9.6.7 already on
-your `PATH` rather than downloading its own. If you would rather Stack managed
-the compiler, delete that line.
-
-## Usage
-
-```
-senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
-senbazuru check FILE.fold [--frame N] [--tolerance DEG]
-senbazuru info FILE.fold [--fold] [--layer-budget N]
-```
-
-Working from source, reach the executable in any of three ways:
-
-```bash
-stack run -- render FILE.fold          # everything after -- goes to senbazuru
-stack exec -- senbazuru render FILE.fold   # after a stack build
-make install                           # puts senbazuru on your PATH, then use it directly
-```
-
-| Option | Meaning |
+| Where | What |
 | --- | --- |
-| `-o, --output FILE` | Write to a file instead of stdout |
-| `--frame N` | Which frame to render (default `0`, the key frame) |
-| `--width`, `--height` | Page size in points (default `400`) |
-| `--margin` | Blank border in points (default `16`) |
-| `--view NAME` | Viewing angle: `top`, `bottom`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and flat-folded models, `iso` for anything with relief |
-| `--transparent` | Omit the white background rectangle |
-| `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
-| `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |
-| `--fold` | Fold the crease pattern along its fold angles and draw the result |
-| `--arrows` | Draw the fold that takes this frame to the next one |
-| `--steps` | Lay every frame out as one numbered page of figures, at one scale |
-| `--columns N` | Figures across the page, with `--steps` (default `3`) |
-| `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
-| `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
-
-`check` takes `--frame` too, and one option of its own:
-
-| Option | Meaning |
-| --- | --- |
-| `--tolerance DEG` | How far Kawasaki's alternating sum may sit from zero and still pass (default `0.000573`, which is 1e-5 radians). Raise it for files whose coordinates are heavily rounded |
-
-## Project layout
-
-```
-src/Senbazuru/
-  Geometry.hs              points, boxes, the model→page transform
-  Geometry/VectorSpace.hs  the arithmetic 2D and 3D points share
-  Geometry/V3.hs           points in space, for 3D input
-  Geometry/Rigid.hs        motions that turn and slide without deforming
-  Geometry/Polygon.hs      convex polygons in the plane: area, clipping, overlap
-  Fold/Types.hs            the FOLD document model + JSON decoding
-  Fold/Load.hs             reading files (the only I/O in the library)
-  Fold/Query.hs            validating a frame into geometry you can trust
-  Diagram.hs               backend-independent drawing IR
-  Diagram/Style.hs         the origami line conventions
-  Diagram/Layout.hs        several figures on one page, at one scale
-  Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
-  Origami/Folding.hs       crease pattern + fold angles -> folded form
-  Origami/Layers.hs        faceOrders + a viewing direction -> a drawing order
-  Origami/Stacking.hs      a flat-folded form -> its faceOrders, when the file has none
-  Origami/Step.hs          two frames -> what moved between them
-  Render/Camera.hs         orthographic projection, 3D → the page
-  Render/CreasePattern.hs  FOLD frame → Diagram
-  Render/Svg.hs            Diagram → SVG text
-app/                       the command-line interface
-test/                      property, example and golden tests
-examples/                  sample .fold files, including three from upstream
-docs/fold-primer.md        background on FOLD and on origami diagram notation
-docs/fold-reference.md     every FOLD key, and what we do with it
-docs/glossary.md           every term the docs and code assume
-docs/notes/                one idea per file, with references
-```
-
-[`docs/fold-primer.md`](docs/fold-primer.md) is the place to start if origami or
-the FOLD format are new to you, and
-[`docs/fold-reference.md`](docs/fold-reference.md) is the key-by-key reference
-with our coverage status. [`docs/notes/`](docs/notes/) collects short
-single-idea notes on the theorems, algorithms and techniques this project leans
-on or is heading towards. [`CLAUDE.md`](CLAUDE.md) holds the working
-conventions.
+| [docs/usage.md](docs/usage.md) | Building it, running it, and every flag of every command |
+| [docs/architecture.md](docs/architecture.md) | The pipeline, what each module holds, and the rules about which may know about which |
+| [docs/fold-primer.md](docs/fold-primer.md) | The place to start if origami or the FOLD format are new to you |
+| [docs/fold-reference.md](docs/fold-reference.md) | Every FOLD key, its type, and whether senbazuru supports it |
+| [docs/glossary.md](docs/glossary.md) | Every term the docs and the code assume, in one place |
+| [docs/notes/](docs/notes/) | One idea per file, with references: the theorems, algorithms and techniques this leans on or is heading towards |
+| [CLAUDE.md](CLAUDE.md) | The working conventions |
 
 ## Roadmap
 
