@@ -22,7 +22,14 @@ import Data.ByteString qualified as BS
 import Data.List (sort, tails)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameFaces)
-import Senbazuru.Fold.Types (Assignment (..), FaceOrder, Frame, keyFrame)
+import Senbazuru.Fold.Types
+  ( Assignment (..),
+    FaceOrder,
+    Frame (..),
+    VertexId (..),
+    emptyFrame,
+    keyFrame,
+  )
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, cross2, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -198,7 +205,10 @@ spec = do
         -- things, so its middle has to lie on the edge of a visible piece.
         v <- seen side name
         let middles = [0.5 *^ (flatten (visibleFrom e) ^+^ flatten (visibleTo e)) | e <- formEdges v]
-            stray m = minimum (map (`howFarOutside` m) (pieces v)) > 1e-9
+            -- Seeded, so a fixture that produced no paper at all fails this
+            -- assertion rather than throwing from inside `minimum`.
+            stray m = minimum (1 / 0 : map (`howFarOutside` m) (pieces v)) > 1e-9
+        pieces v `shouldSatisfy` (not . null)
         filter stray middles `shouldBe` []
 
       it ("stops no line in the middle of the paper of " <> name <> " " <> sideName side) $ do
@@ -221,6 +231,28 @@ spec = do
                     && dot (p ^-^ a) (b ^-^ a) > 0
                     && dot (p ^-^ b) (a ^-^ b) > 0
         filter (not . met) ends `shouldBe` []
+
+  describe "a frame with no faces" $ do
+    it "is every crease and no paper, not an empty page" $ do
+      -- Files that record no faces_vertices are common, and a folded form drawn
+      -- from one was a wireframe long before any of this existed. Nothing
+      -- covers its creases, so nothing hides them.
+      let square =
+            emptyFrame
+              { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1]],
+                edgesVertices =
+                  [ (VertexId 0, VertexId 1),
+                    (VertexId 1, VertexId 2),
+                    (VertexId 2, VertexId 3),
+                    (VertexId 3, VertexId 0)
+                  ],
+                edgesAssignment = replicate 4 Border
+              }
+      case visibleForm True square [] of
+        Left err -> expectationFailure ("declined: " <> show err)
+        Right v -> do
+          formRegions v `shouldBe` []
+          length (formEdges v) `shouldBe` 4
 
   describe "what it declines" $ do
     it "declines a model with paper still in the air" $ do

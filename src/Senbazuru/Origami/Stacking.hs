@@ -117,7 +117,6 @@ import Senbazuru.Fold.Query
     FoldError (..),
     edgeKey,
     facesAlongEdges,
-    frameCreases,
     renderFoldError,
   )
 import Senbazuru.Fold.Types
@@ -126,11 +125,12 @@ import Senbazuru.Fold.Types
     FaceOrder (..),
     Frame (..),
     Stacking (..),
+    VertexId (..),
   )
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet)
+import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet, vertexAt)
 
 -- | Why no ordering was produced.
 --
@@ -294,17 +294,13 @@ analyse fr = do
   -- "Senbazuru.Origami.Flat", because the visible-region finder needs exactly
   -- the same preparation and the two must not be able to disagree about it.
   sheet <- first fromFlat (flatSheet fr)
-  creases <- refused (frameCreases fr)
-  valleys <- refused (creaseDirections fr creases)
+  valleys <- refused (creaseDirections fr (sheetCreases sheet))
   alongEdges <- refused (facesAlongEdges (sheetFaces sheet))
   let hair = sheetHair sheet
       speck = sheetSpeck sheet
       panels = sheetPanels sheet
-      positions = IM.fromList (zip [0 ..] (sheetVertices sheet))
       byId = M.fromList [(panelId p, p) | p <- panels]
-      -- Total in practice: every vertex id here came out of a face that
-      -- frameFaces checked against these very vertices.
-      at v = IM.findWithDefault (V2 0 0) v positions
+      at = vertexAt sheet . VertexId
   hinges <-
     catMaybes
       <$> traverse

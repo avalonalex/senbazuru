@@ -19,9 +19,9 @@
 --   is the only thing that needs one.
 --
 -- * __An order does not hide anything.__ Painting every face and then every
---   edge draws the creases of layers buried ten deep, and with one paper
---   colour a model seen from its back looks exactly like one seen from its
---   front. Neither is what a book prints.
+--   edge draws the creases of layers buried ten deep, and says nothing about
+--   which side of the sheet each patch of paper is showing. Neither is what a
+--   book prints.
 --
 -- Both go away if the drawing is made of what is /visible/ rather than of what
 -- is /there/.
@@ -84,9 +84,9 @@
 -- == What this does not do
 --
 -- Only models folded flat, for the reason "Senbazuru.Origami.Flat" gives.
--- Nothing here knows about a page, a colour or a stroke: a region says which
--- face and which side of the paper, and "Senbazuru.Diagram.Style" decides what
--- that looks like.
+-- Nothing here knows about drawing: a region says which face and which side of
+-- the paper is showing, which are facts about paper, and what a picture makes
+-- of them is somebody else\'s business.
 module Senbazuru.Origami.Visible
   ( -- * What can be seen
     VisibleForm (..),
@@ -97,15 +97,9 @@ module Senbazuru.Origami.Visible
 where
 
 import Control.Monad (foldM)
-import Data.Bifunctor (first)
-import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', sort)
 import Data.Map.Strict qualified as M
-import Senbazuru.Fold.Query
-  ( Crease (..),
-    FoldError (..),
-    frameCreases,
-  )
+import Senbazuru.Fold.Query (Crease (..), FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId,
@@ -125,7 +119,7 @@ import Senbazuru.Geometry.Polygon
   )
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet)
+import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet, vertexAt)
 
 -- | The part of one face the viewer can see.
 --
@@ -135,9 +129,10 @@ data Region = Region
   { -- | The face this is the visible part of.
     regionFace :: !FaceId,
     -- | Whether the side of the paper facing the viewer here is the sheet's
-    -- __top__ side — the one a crease pattern is drawn on. This is what makes
-    -- the two sides of the paper distinguishable in a drawing: a flap folded
-    -- over shows its back, and a book prints that in the other colour.
+    -- __top__ side — the one a crease pattern is drawn on. Origami paper is
+    -- usually one thing on the top side and another underneath, and a flap
+    -- folded over shows its underside; this is which of the two the viewer is
+    -- looking at.
     regionTopSide :: !Bool,
     -- | Convex pieces, anticlockwise, which together are the region and do not
     -- overlap one another. Points in space, at the plane the model lies in, so
@@ -182,12 +177,11 @@ data VisibleForm = VisibleForm
 visibleForm :: Bool -> Frame -> [FaceOrder] -> Either FlatError VisibleForm
 visibleForm fromAbove fr orders = do
   sheet <- flatSheet fr
-  creases <- first FlatRefused (frameCreases fr)
   nearer <- nearness fromAbove sheet orders
   pure
     VisibleForm
       { formRegions = regionsOf fromAbove sheet nearer,
-        formEdges = edgesOf sheet nearer creases
+        formEdges = edgesOf sheet nearer
       }
 
 -- | \"Is the first face nearer the viewer than the second?\", from
@@ -283,10 +277,21 @@ regionsOf fromAbove sheet nearer = [r | p <- panels, Just r <- [regionFor p]]
         | q <- panels,
           panelId q /= panelId p,
           nearer (panelId q) (panelId p),
-          abs (signedArea (clipConvex (panelRing p) (panelRing q))) > speck
+          overlap (panelRing p) (panelRing q) > speck
       ]
 
-    cut pieces q = concatMap (subtractConvex speck (panelRing q)) pieces
+    -- Tested piece by piece rather than once against the whole face, and for
+    -- the reason the comment above gives: a subtraction that takes nothing away
+    -- is not free. After a few cuts a remnant may be a corner the next face does
+    -- not reach at all, and running the subtraction on it anyway splits it into
+    -- as many parts as that face has edges, every one of which the remaining
+    -- faces then have to be tried against in turn.
+    cut pieces q = concatMap (cutOne (panelRing q)) pieces
+    cutOne ring piece
+      | overlap ring piece <= speck = [piece]
+      | otherwise = subtractConvex speck ring piece
+
+    overlap ring piece = abs (signedArea (clipConvex ring piece))
 
     -- Clipping puts a corner in twice wherever the cut passed exactly through
     -- one, which costs nothing while all anybody wants is an area and shows up
@@ -299,22 +304,18 @@ regionsOf fromAbove sheet nearer = [r | p <- panels, Just r <- [regionFor p]]
     rotate ps = drop (length ps - 1) ps <> take (length ps - 1) ps
 
 -- | The stretches of edge that are not hidden.
-edgesOf :: Sheet -> (FaceId -> FaceId -> Bool) -> [Crease] -> [VisibleEdge]
-edgesOf sheet nearer creases =
+edgesOf :: Sheet -> (FaceId -> FaceId -> Bool) -> [VisibleEdge]
+edgesOf sheet nearer =
   [ VisibleEdge
       { visibleAssignment = assignment,
         visibleFrom = raise (sheetPlane sheet) (pointAt track s0),
         visibleTo = raise (sheetPlane sheet) (pointAt track s1)
       }
-    | track <- tracks hair at creases,
+    | track <- tracks hair (vertexAt sheet) (sheetCreases sheet),
       (assignment, s0, s1) <- joinRuns (filter (showing track) (stretches hair rims track))
   ]
   where
     hair = sheetHair sheet
-    positions = IM.fromList (zip [0 ..] (sheetVertices sheet))
-    -- Total in practice: every vertex id here came out of an edge that
-    -- frameCreases checked against these very vertices.
-    at v = IM.findWithDefault (V2 0 0) (unVertexId v) positions
 
     -- What can change which face is on top: the boundary of a face. A crease
     -- that bounds nothing is still drawn, but it hides nothing and reveals
@@ -472,7 +473,8 @@ strongest = foldr stronger Join
 --
 -- The topmost face along each side is found, and the stretch is drawn when the
 -- two are not the same face. Paper on one side and nothing on the other counts
--- as different, which is what draws the silhouette of the model.
+-- as different, which is what draws the silhouette of the model, and bare page
+-- on both sides is drawn too — nothing is covering it, so nothing hides it.
 --
 -- No point is nudged to one side to ask the question, because a nudge small
 -- enough to stay on the right side of the line is small enough to be rounding.
@@ -492,9 +494,16 @@ strongest = foldr stronger Join
 -- vanishes from the reckoning, the two sides agree because neither can see it,
 -- and a visible crease stops in the middle of the paper.
 showsAnEdge :: Sheet -> (FaceId -> FaceId -> Bool) -> V2 -> (V2, V2) -> Bool
-showsAnEdge sheet nearer direction (a, b) =
-  fmap panelId (topmost (beside OnTheLeft)) /= fmap panelId (topmost (beside OnTheRight))
+showsAnEdge sheet nearer direction (a, b) = case (top OnTheLeft, top OnTheRight) of
+  -- Bare page on both sides. Nothing is covering the line, so nothing is
+  -- hiding it: this is a crease that bounds no face, and a frame recording no
+  -- faces at all is nothing but those. Drawing them is what keeps such a frame
+  -- the wireframe it has always been rather than an empty page.
+  (Nothing, Nothing) -> True
+  (l, r) -> l /= r
   where
+    top = fmap panelId . topmost . beside
+
     hair = sheetHair sheet
     mid = 0.5 *^ (a ^+^ b)
 

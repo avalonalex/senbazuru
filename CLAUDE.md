@@ -341,6 +341,20 @@ are not contributors can find it, and so there is only one copy to keep true.
   the paper the viewer is looking at. `foldFrame` therefore writes its faces
   counterclockwise as measured on the pattern, so the folded frames it produces
   are frames whose winding can be trusted.
+- **A stretch of edge is judged by how far outside a face its midpoint is, not
+  by clipping it.** A stretch lying along a face's edge clips to itself when
+  rounding puts it a hair inside and to nothing when rounding puts it a hair
+  outside, and a clip has no tolerance to call those the same answer. Use
+  `Senbazuru.Geometry.Polygon.distanceOutside`, which returns the hair and lets
+  the caller decide it is one. Getting this wrong dropped a face from the
+  reckoning entirely and stopped visible creases dead in the middle of the
+  crane.
+- **A ring can carry an edge of no length**, wherever folding brought two
+  corners together or a clip passed exactly through one. Such an edge names no
+  side, so clipping by it keeps everything both ways — `subtractConvex` returned
+  overlapping pieces adding up to more paper than went in until it skipped them.
+  Anything that walks a ring's edges and asks which side of one a point is on
+  has to skip them too.
 - **A layer order need not be a painting order.** The solver forbids a circle
   only among three faces that share a patch of paper. Three faces can overlap
   pairwise with no point under all three — the flaps of a twist do — and then
