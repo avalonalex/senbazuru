@@ -239,22 +239,6 @@ spec = do
       let repeated = [V2 0 0, V2 1 0, V2 1 0, V2 1 1, V2 0 1]
       distanceOutside repeated (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
 
-  describe "distanceOutside" $ do
-    it "is negative inside, zero on the boundary, positive outside" $ do
-      distanceOutside unitSquare (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
-      distanceOutside unitSquare (V2 0.5 0) `shouldSatisfy` near 0
-      distanceOutside unitSquare (V2 0.5 (-0.25)) `shouldSatisfy` near 0.25
-
-    it "measures to the nearest edge, not to the corner" $
-      distanceOutside unitSquare (V2 0.1 0.25) `shouldSatisfy` near (-0.1)
-
-    it "ignores an edge of no length" $ do
-      -- Clipping leaves these wherever a cut passed exactly through a corner.
-      -- An edge with no direction has no side, and treating it as one would
-      -- report every point in the world as outside the polygon.
-      let repeated = [V2 0 0, V2 1 0, V2 1 0, V2 1 1, V2 0 1]
-      distanceOutside repeated (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
-
     it "agrees with strictlyInside, which is one comparison against it" $
       property $ \b ->
         let p = V2 0 0

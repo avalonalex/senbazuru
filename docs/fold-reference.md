@@ -88,11 +88,18 @@ order a half-edge structure needs — see
 Counterclockwise winding is what defines a face's normal direction, and
 therefore which side is "up".
 
-Faces of a crease pattern are filled with the paper colour. So are a folded
-form's, in the order a `faceOrders` says; a flat-folded form without one has
-its order worked out by `Senbazuru.Origami.Stacking`, and one with paper in
-the air and no `faceOrders` stays a wireframe. `--no-fill` turns filling off
-entirely.
+Faces of a crease pattern are filled with the paper colour, all of them in one
+area since they abut and never overlap.
+
+A folded form takes one of two routes. Folded flat, it is drawn as what can be
+*seen* of it — each face cut down to the part no nearer layer covers, each edge
+kept only where the paper differs across it, and the two sides of the sheet in
+different colours; `Senbazuru.Origami.Visible` works that out from a
+`faceOrders`, its own or one `Senbazuru.Origami.Stacking` solved. With paper
+still in the air it is filled face by face in the order the `faceOrders` gives,
+every crease drawn over the top, and with no `faceOrders` at all it stays a
+wireframe. `--no-fill` turns filling off entirely and draws every crease, which
+is the escape hatch for a file none of this can make sense of.
 
 Note that senbazuru does **not** trust the stated winding for filling, and does
 not need to: a simple closed polygon covers the same region whichever way round

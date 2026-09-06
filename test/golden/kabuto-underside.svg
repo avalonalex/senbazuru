@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <title>fixture</title>
+  <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 159.117 190 L 159.117 152.721 L 47.279 40.883 L 10 40.883 Z M 121.838 115.442 L 121.838 78.162 L 84.558 78.162 Z" fill="#faf8f3"/>
+    <path d="M 115.442 40.883 L 100 78.162 L 121.838 78.162 L 159.117 40.883 Z M 159.117 78.162 L 159.117 40.883 L 121.838 78.162 Z M 159.117 78.162 L 121.838 78.162 L 121.838 100 L 159.117 84.558 Z M 84.558 40.883 L 47.279 40.883 L 84.558 78.162 Z M 121.838 115.442 L 159.117 152.721 L 159.117 115.442 Z M 121.838 115.442 L 190 115.442 L 159.117 84.558 L 121.838 100 Z M 84.558 10 L 84.558 40.883 L 115.442 40.883 Z M 84.558 78.162 L 100 78.162 L 115.442 40.883 L 84.558 40.883 Z" fill="#e5ded1"/>
+    <path d="M 10 40.883 L 159.117 190" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 121.838 100 L 159.117 84.558" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 100 78.162 L 115.442 40.883" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 159.117 152.721 L 47.279 40.883" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 121.838 115.442 L 190 115.442" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 159.117 40.883 L 121.838 78.162" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 84.558 78.162 L 84.558 10" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 159.117 190 L 159.117 115.442" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 159.117 84.558 L 159.117 40.883" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 159.117 40.883 L 115.442 40.883" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 84.558 40.883 L 10 40.883" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 121.838 115.442 L 121.838 78.162" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 84.558 78.162 L 121.838 78.162" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 84.558 10 L 115.442 40.883" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 159.117 84.558 L 190 115.442" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

@@ -19,7 +19,7 @@ import Senbazuru.Fold.Types (FoldFile (..), allFrames)
 import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (Basis, isometric, topDown)
+import Senbazuru.Render.Camera (Basis, bottomUp, isometric, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg
@@ -178,7 +178,7 @@ spec = do
       let tri =
             diagramWithExtent
               (Box (V2 0 0) (V2 1 1))
-              [Polygon (Colour "#abcdef") [V2 0 0, V2 1 0, V2 0 1]]
+              [Fill (Colour "#abcdef") [[V2 0 0, V2 1 0, V2 0 1]]]
           out = renderSvg testPage tri
       out `shouldSatisfy` T.isInfixOf "M 10 190 L 190 190 L 10 10 Z"
       out `shouldSatisfy` T.isInfixOf "fill=\"#abcdef\""
@@ -186,6 +186,19 @@ spec = do
       -- its initial "none", so a polygon that names only a fill is unstroked.
       -- The outline of a face comes from the crease edges that run along it.
       T.count "stroke=" out `shouldBe` 0
+
+    it "emits several rings as subpaths of one path" $ do
+      -- Not a tidiness point. Two shapes of one colour sharing an edge are each
+      -- antialiased against the background, and the shared edge comes out as a
+      -- pale seam; one path with two subpaths is rasterised as one region. See
+      -- the note on 'Fill' in "Senbazuru.Diagram".
+      let two =
+            diagramWithExtent
+              (Box (V2 0 0) (V2 1 1))
+              [Fill (Colour "#abcdef") [[V2 0 0, V2 1 0, V2 0 1], [V2 1 0, V2 1 1, V2 0 1]]]
+          out = renderSvg testPage two
+      T.count "<path" out `shouldBe` 1
+      out `shouldSatisfy` T.isInfixOf "M 10 190 L 190 190 L 10 10 Z M 190 190 L 190 10 L 10 10 Z"
 
     it "draws an arrow as a curve and a solid head" $ do
       let out = renderSvg testPage (arrowDiagram 1)
@@ -236,7 +249,7 @@ spec = do
       let sliver =
             diagramWithExtent
               (Box (V2 0 0) (V2 1 1))
-              [Polygon (Colour "#abcdef") [V2 0 0, V2 1 1]]
+              [Fill (Colour "#abcdef") [[V2 0 0, V2 1 1]]]
       T.count "<path" (renderSvg testPage sliver) `shouldBe` 0
 
     it "skips a polyline with fewer than two points" $ do
@@ -313,6 +326,16 @@ spec = do
     it "renders the crane after folding it" $
       renderFolded topDown "test/fixtures/crane.fold"
         >>= goldenText "test/golden/crane-folded.svg"
+
+    -- The one golden that exercises the underside, and the only one with both
+    -- paper colours in it. Turning a model over is not the same picture upside
+    -- down: a different set of faces is on top, and each shows whichever side
+    -- of the sheet happens to face the reader. A regression that swapped the
+    -- two colours, or that read the side of the paper backwards, leaves every
+    -- other golden here byte for byte identical.
+    it "renders the kabuto from underneath, where both sides of the paper show" $
+      renderFolded bottomUp "test/fixtures/kabuto.fold"
+        >>= goldenText "test/golden/kabuto-underside.svg"
 
     it "renders simple.fold from the isometric view" $
       renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"
