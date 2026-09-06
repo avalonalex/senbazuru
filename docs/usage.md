@@ -1,6 +1,6 @@
 # Using senbazuru
 
-Building it, running it, and every option the three commands take. For what the
+Building it, running it, and every option the four commands take. For what the
 commands are *for*, start at the [README](../README.md); for the format they
 read, [fold-primer.md](fold-primer.md).
 
@@ -23,6 +23,7 @@ the compiler, delete that line.
 
 ```
 senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
+senbazuru export FILE.fold [-o OUT.glb] [OPTIONS]
 senbazuru check  FILE.fold [--frame N] [--tolerance DEG]
 senbazuru info   FILE.fold [--fold] [--layer-budget N]
 ```
@@ -87,6 +88,34 @@ questions about layers at all.
 **It refuses a model whose layers run in a circle** — a twist — because stepping
 them apart needs one order for the whole model and there is none. The ordinary
 picture of one still draws fine.
+
+## `export`
+
+Writes one frame as a 3D model, in glTF's binary form (`.glb`), which opens in
+Blender, three.js, and the built-in viewers on macOS and Windows. The frame is
+chosen the way `render` chooses it, and none of the page options apply — a
+model has no page.
+
+| Option | Meaning |
+| --- | --- |
+| `-o, --output FILE` | Write to a file instead of stdout |
+| `--frame N` | Which frame to export (default `0`) |
+| `--fold` | Fold the crease pattern along its fold angles and export the result |
+| `--stacking N[,N...]` | Which layer order to use, as for `render` |
+| `--layer-budget N` | As for `render` |
+| `--thickness UNITS` | How far apart to place the layers of a flat-folded model, in the model's own units (default: a thousandth of its size) |
+
+A flat-folded model has every face in one plane, and a 3D viewer cannot tell
+coincident faces apart — it shows a shimmer of both, called z-fighting. So each
+face is lifted by its layer number times the thickness, which is what makes
+such a model viewable at all, and is also roughly what real paper does. The
+paper's two sides come out in the two colours the SVG uses. A model with paper
+still in the air is written exactly as folded, with no separation.
+
+`--thickness 0` writes the paper exactly as folded and asks for no layer order,
+which is the only way to export a twist — its layers run in a circle and have
+no numbers. [tour.md](tour.md#what-it-exports) has the reasoning and
+[notes/paper-thickness.md](notes/paper-thickness.md) the detail.
 
 ## `check`
 

@@ -16,9 +16,9 @@
 -- Two other questions are answered here because they are the same question
 -- asked differently. 'layerDepths' says how many layers of paper are under each
 -- face rather than merely which comes first, which is what a drawing that steps
--- the layers apart needs. 'showsTopSide' says which side of the sheet a face
--- presents to the viewer, which is the same winding and the same viewing
--- direction combined one step earlier.
+-- the layers apart and an export that lifts them both need. 'showsTopSide' says
+-- which side of the sheet a face presents to the viewer, which is the same
+-- winding and the same viewing direction combined one step earlier.
 --
 -- == Two directions, and only one of them is the viewer's
 --
@@ -62,6 +62,7 @@
 module Senbazuru.Origami.Layers
   ( paintOrder,
     layerDepths,
+    layerOf,
     showsTopSide,
   )
 where
@@ -181,6 +182,18 @@ layerDepths towardsViewer faces orders = do
                   if (facingUs > 0) == (stacking == Above)
                     then [(g, f)]
                     else [(f, g)]
+
+-- | The layer of a face, from what 'layerDepths' returned: zero for a face it
+-- did not mention.
+--
+-- It mentions every face it was given, so the fallback is never reached from
+-- inside senbazuru. It is here so that the two consumers of the depths -- the
+-- offset view and the 3D export -- cannot come to answer differently about a
+-- face that is missing, which is the kind of thing a copied lookup does.
+layerOf :: [(FaceId, Int)] -> FaceId -> Int
+layerOf depths = \fid -> IM.findWithDefault 0 (unFaceId fid) byId
+  where
+    byId = IM.fromList [(unFaceId f, d) | (f, d) <- depths]
 
 -- | Which side of the sheet a face shows to a viewer looking from the given
 -- direction.

@@ -54,12 +54,15 @@ module Senbazuru.Diagram
     -- * Stroke styling
     Stroke (..),
     Colour (..),
+    colourComponents,
     Dash (..),
     solid,
   )
 where
 
+import Data.Char (digitToInt, isHexDigit)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Senbazuru.Geometry (Box, V2, boxFromPoints)
 
 -- | A stroke colour, as whatever string the backend understands.
@@ -68,6 +71,29 @@ import Senbazuru.Geometry (Box, V2, boxFromPoints)
 -- real colour type earns its place when a second backend needs one.
 newtype Colour = Colour {colourText :: Text}
   deriving stock (Eq, Show)
+
+-- | The red, green and blue of a colour, each from 0 to 1, or 'Nothing' for a
+-- colour that is not six hex digits.
+--
+-- The one thing anybody has needed to know about a colour besides its text:
+-- a 3D file wants numbers rather than a CSS string. They come back in the
+-- space the hex digits are written in, which is sRGB — the gamma-encoded
+-- space every @#rrggbb@ on the web is in — and a consumer that wants linear
+-- light, as glTF does, has to undo the encoding itself. That transfer is the
+-- consumer\'s convention, not the colour\'s, so it does not live here.
+colourComponents :: Colour -> Maybe (Double, Double, Double)
+colourComponents (Colour t) = case T.unpack t of
+  ['#', r1, r2, g1, g2, b1, b2] ->
+    (,,) <$> channel r1 r2 <*> channel g1 g2 <*> channel b1 b2
+  _ -> Nothing
+  where
+    channel hi lo = do
+      h <- hex hi
+      l <- hex lo
+      pure (fromIntegral (16 * h + l) / 255)
+    hex c
+      | isHexDigit c = Just (digitToInt c)
+      | otherwise = Nothing
 
 -- | A dash pattern in __page units__: alternating on- and off- lengths, in the
 -- same sense as SVG's @stroke-dasharray@. The empty list means a solid line.

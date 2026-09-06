@@ -11,11 +11,13 @@ module Senbazuru.Cli
     Command (..),
     RenderOptions (..),
     CheckOptions (..),
+    ExportOptions (..),
     commandParser,
   )
 where
 
 import Control.Monad (unless, when)
+import Data.ByteString qualified as BS
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -59,6 +61,7 @@ import Senbazuru.Origami.Stacking
 import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
+import Senbazuru.Render.Gltf (Thickness (..), renderGlb, renderGltfError)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
@@ -69,6 +72,26 @@ data Command
   = Render RenderOptions
   | Info InfoOptions
   | Check CheckOptions
+  | Export ExportOptions
+  deriving stock (Eq, Show)
+
+-- | Options for the @export@ subcommand.
+--
+-- A subset of 'RenderOptions': the ones that choose /which paper/ to draw,
+-- and none of the ones that choose how a page looks, since a 3D model has no
+-- page.
+data ExportOptions = ExportOptions
+  { eoInput :: FilePath,
+    -- | 'Nothing' writes the bytes to stdout, as @render@ does its text.
+    eoOutput :: Maybe FilePath,
+    eoFrame :: Maybe Int,
+    eoFold :: Bool,
+    eoStacking :: [Int],
+    eoBudget :: Budget,
+    -- | Model units between one layer of a flat-folded model and the next.
+    -- 'Nothing' takes the exporter's default, a thousandth of the model.
+    eoThickness :: Maybe Double
+  }
   deriving stock (Eq, Show)
 
 -- | Options for the @info@ subcommand.
@@ -166,7 +189,45 @@ commandParser =
                   "Check every interior vertex against Maekawa's and Kawasaki's theorems"
               )
           )
+        <> command
+          "export"
+          (info (Export <$> exportOptions) (progDesc "Write a frame as a 3D model (glTF binary)"))
     )
+
+exportOptions :: Parser ExportOptions
+exportOptions =
+  ExportOptions
+    <$> inputArg
+    <*> optional
+      ( strOption
+          ( long "output"
+              <> short 'o'
+              <> metavar "FILE.glb"
+              <> help "Output file (default: stdout)"
+          )
+      )
+    <*> frameOption
+    <*> foldSwitch
+    <*> stackingOption
+    <*> budgetOption
+    <*> optional
+      ( option
+          -- Refused during parsing like --offset, and for the same reasons: a
+          -- non-number would land every vertex on one point, and a negative
+          -- distance is a guess about what someone meant.
+          (nonNegative "the thickness" "model units" =<< auto)
+          ( long "thickness"
+              <> metavar "UNITS"
+              <> help
+                ( "How far apart to place the layers of a flat-folded model, in"
+                    <> " the model's own units (default: a thousandth of its"
+                    <> " size). Coincident layers cannot be told apart by a 3D"
+                    <> " viewer, so this is what makes a flat model visible at"
+                    <> " all. 0 writes the paper exactly as folded, which is the"
+                    <> " only way to export a twist"
+                )
+          )
+      )
 
 checkOptions :: Parser CheckOptions
 checkOptions =
@@ -184,7 +245,7 @@ checkOptions =
       -- Rejected during parsing rather than checked later: a negative tolerance
       -- makes `abs sum > tolerance` true for every vertex, so the tool would
       -- confidently report that an alternating sum of 0.0000 degrees is not 0.
-      (nonNegative =<< auto)
+      (nonNegative "tolerance" "degrees" =<< auto)
       ( long "tolerance"
           <> metavar "DEG"
           <> value (degreesOf defaultTolerance)
@@ -199,11 +260,6 @@ checkOptions =
       )
   where
     degreesOf t = toleranceRadians t * 180 / pi
-
-    nonNegative :: Double -> ReadM Double
-    nonNegative d
-      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
-      | otherwise = readerError "tolerance must be a non-negative number of degrees"
 
 infoOptions :: Parser InfoOptions
 infoOptions =
@@ -256,6 +312,21 @@ budgetOption =
 toRadians :: Double -> Double
 toRadians d = d * pi / 180
 
+-- | Refuse a distance or a tolerance that is not one: negative, or not a
+-- number at all.
+--
+-- One reader for the three flags that want it, each naming what it is and
+-- what it is measured in. Rejected during parsing rather than checked later,
+-- so the usage text says which flag and no file is opened first. A negative
+-- tolerance would pass every vertex; a negative offset or thickness reads a
+-- minus sign as a direction, which is a guess about what someone meant; and
+-- NaN or Infinity reaches 'formatNumber' or the float32 packer, which write
+-- them as nothing in particular.
+nonNegative :: String -> String -> Double -> ReadM Double
+nonNegative what unit d
+  | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
+  | otherwise = readerError (what <> " must be a non-negative number of " <> unit)
+
 -- | Refuse an angle that is not a number.
 --
 -- `read` for a Double happily returns NaN, Infinity, and 1e400 — and every one
@@ -277,6 +348,64 @@ atLeastOne n
 inputArg :: Parser FilePath
 inputArg = argument str (metavar "FILE.fold" <> help "Input FOLD file")
 
+-- | Which frame, for the verbs that work on one. 'Nothing' means the key
+-- frame, kept optional so that asking for a frame and asking for every frame
+-- can be told apart.
+frameOption :: Parser (Maybe Int)
+frameOption =
+  optional
+    ( option
+        auto
+        ( long "frame"
+            <> metavar "N"
+            <> help "Which frame to use (default: 0, the key frame)"
+        )
+    )
+
+-- | Fold the crease pattern first, for the verbs that draw a folded form.
+foldSwitch :: Parser Bool
+foldSwitch =
+  switch
+    ( long "fold"
+        <> help
+          ( "Fold the crease pattern along its fold angles and use the result"
+              <> " instead of the pattern"
+          )
+    )
+
+-- | Which layer order, for the verbs that need one.
+stackingOption :: Parser [Int]
+stackingOption =
+  option
+    (indices . T.pack =<< str)
+    ( long "stacking"
+        <> metavar "N[,N...]"
+        <> value []
+        <> help
+          ( "Which layer order to use, when a model has several: one index"
+              <> " per part of it that has a choice, in the order info lists"
+              <> " them. Default: the first of each"
+          )
+    )
+  where
+    -- A comma-separated list of non-negative indices, refused during parsing
+    -- like every other malformed option. "1," is a typo rather than a request
+    -- for a default, so an empty field is rejected rather than filled in.
+    indices :: Text -> ReadM [Int]
+    indices raw = traverse (one . T.unpack) (T.splitOn "," raw)
+      where
+        one field = case reads field of
+          -- Read as an Integer and narrowed afterwards. Reading straight into
+          -- an Int wraps modulo 2^64 before any check can run, so a number too
+          -- large to be an index came out as a perfectly good smaller one and
+          -- drew a picture nobody asked for.
+          [(n, "")] | n >= 0 && n <= toInteger (maxBound :: Int) -> pure (fromInteger n)
+          _ ->
+            readerError
+              ( "--stacking wants comma-separated whole numbers from 0, not "
+                  <> show (T.unpack raw)
+              )
+
 renderOptions :: Parser RenderOptions
 renderOptions =
   RenderOptions
@@ -289,14 +418,7 @@ renderOptions =
               <> help "Output file (default: stdout)"
           )
       )
-    <*> optional
-      ( option
-          auto
-          ( long "frame"
-              <> metavar "N"
-              <> help "Which frame to render (default: 0, the key frame)"
-          )
-      )
+    <*> frameOption
     <*> option
       auto
       (long "width" <> metavar "PT" <> value 400 <> showDefault <> help "Page width")
@@ -318,13 +440,7 @@ renderOptions =
                 <> " then needs to know which is on top"
             )
       )
-    <*> switch
-      ( long "fold"
-          <> help
-            ( "Fold the crease pattern along its fold angles and draw the result"
-                <> " instead of the pattern"
-            )
-      )
+    <*> foldSwitch
     <*> switch
       ( long "arrows"
           <> help
@@ -389,17 +505,7 @@ renderOptions =
                     )
               )
         )
-    <*> option
-      (indices . T.pack =<< str)
-      ( long "stacking"
-          <> metavar "N[,N...]"
-          <> value []
-          <> help
-            ( "Which layer order to draw, when a model has several: one index"
-                <> " per part of it that has a choice, in the order info lists"
-                <> " them. Default: the first of each"
-            )
-      )
+    <*> stackingOption
     <*> budgetOption
     <*> optional
       ( option
@@ -410,7 +516,7 @@ renderOptions =
           -- error the arithmetic would notice -- the stack would simply open out
           -- down and to the left -- but "how far apart" is a distance, and reading
           -- a minus sign as a direction is a guess about what someone meant.
-          (points =<< auto)
+          (nonNegative "the layer offset" "points" =<< auto)
           ( long "offset"
               <> metavar "PT"
               <> help
@@ -423,29 +529,6 @@ renderOptions =
                 )
           )
       )
-  where
-    points :: Double -> ReadM Double
-    points d
-      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
-      | otherwise = readerError "the layer offset must be a non-negative number of points"
-
-    -- A comma-separated list of non-negative indices, refused during parsing
-    -- like every other malformed option. "1," is a typo rather than a request
-    -- for a default, so an empty field is rejected rather than filled in.
-    indices :: Text -> ReadM [Int]
-    indices raw = traverse (one . T.unpack) (T.splitOn "," raw)
-      where
-        one field = case reads field of
-          -- Read as an Integer and narrowed afterwards. Reading straight into
-          -- an Int wraps modulo 2^64 before any check can run, so a number too
-          -- large to be an index came out as a perfectly good smaller one and
-          -- drew a picture nobody asked for.
-          [(n, "")] | n >= 0 && n <= toInteger (maxBound :: Int) -> pure (fromInteger n)
-          _ ->
-            readerError
-              ( "--stacking wants comma-separated whole numbers from 0, not "
-                  <> show (T.unpack raw)
-              )
 
 -- | Write the layer order the reader asked for into the frame.
 --
@@ -453,24 +536,56 @@ renderOptions =
 -- carries @faceOrders@ is drawn by them already, so choosing one and writing it
 -- in is the whole of @--stacking@. It also means the choice is made once, here,
 -- where a bad index can be reported against the file the reader named.
-pickStacking :: RenderOptions -> Frame -> IO Frame
-pickStacking o frame
-  | null (roStacking o) = pure frame
-  | otherwise = case solveStackingAs (roBudget o) (roStacking o) frame of
+pickStacking :: FilePath -> Budget -> [Int] -> Frame -> IO Frame
+pickStacking input budget stacking frame
+  | null stacking = pure frame
+  | otherwise = case solveStackingAs budget stacking frame of
       Left err ->
         die
-          ( "cannot draw that layer order for "
-              <> T.pack (roInput o)
+          ( "cannot use that layer order for "
+              <> T.pack input
               <> ": "
               <> renderStackingError err
           )
       Right os -> pure frame {faceOrders = os}
+
+-- | The frame a one-frame verb works on: the one asked for, folded if asked,
+-- with the layer order asked for written in.
+--
+-- Shared by @render@ and @export@, which choose their paper the same way and
+-- differ only in what they make of it.
+paperFor :: FilePath -> Maybe Int -> Bool -> Budget -> [Int] -> FoldFile -> IO Frame
+paperFor input frameIx fold budget stacking f = do
+  chosen <- frameAt (fromMaybe 0 frameIx) f
+  frame <-
+    if fold
+      then case foldFrame chosen of
+        Left err -> die ("cannot fold " <> T.pack input <> ": " <> renderFoldingError err)
+        Right folded -> pure folded
+      else pure chosen
+  pickStacking input budget stacking frame
 
 run :: Command -> IO ()
 run = \case
   Info o -> withFoldFile (ioInput o) (TIO.putStr . summarise o)
   Render o -> withFoldFile (roInput o) (renderFile o)
   Check o -> withFoldFile (coInput o) (checkFile o)
+  Export o -> withFoldFile (eoInput o) (exportFile o)
+
+-- | Write one frame out as a 3D model.
+--
+-- Bytes rather than text, so the output goes through 'BS.writeFile'; the SVG
+-- path is the only other place the command line writes a file, and it keeps
+-- its own text-shaped one.
+exportFile :: ExportOptions -> FoldFile -> IO ()
+exportFile o f = do
+  frame <- paperFor (eoInput o) (eoFrame o) (eoFold o) (eoBudget o) (eoStacking o) f
+  let thickness = maybe DefaultThickness Thickness (eoThickness o)
+  -- Named the way render titles its page: the frame's title, else the file's,
+  -- since a file's title very often lives on the file and not the frame.
+  case renderGlb (eoBudget o) thickness (frameTitle frame <|> fileTitle f) frame of
+    Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> renderGltfError err)
+    Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
 
 -- | Load a file or abort with a message on stderr.
 withFoldFile :: FilePath -> (FoldFile -> IO ()) -> IO ()
@@ -543,21 +658,13 @@ renderStepPage o f = do
 
 renderOneFrame :: RenderOptions -> FoldFile -> IO ()
 renderOneFrame o f = do
-  chosen <- frameAt (fromMaybe 0 (roFrame o)) f
   -- Refused rather than resolved. --arrows describes the step from this frame
   -- to the next one in the file, and --fold replaces this frame with one
   -- computed from it, so together they would draw a motion whose start point is
   -- not where the paper is any more.
   when (roFold o && roArrows o) $
     die "--fold and --arrows describe different frames; use one or the other"
-  frame <-
-    if roFold o
-      then case foldFrame chosen of
-        Left err ->
-          die ("cannot fold " <> T.pack (roInput o) <> ": " <> renderFoldingError err)
-        Right folded -> pure folded
-      else pure chosen
-  drawn <- pickStacking o frame
+  drawn <- paperFor (roInput o) (roFrame o) (roFold o) (roBudget o) (roStacking o) f
   motions <- stepMotions o drawn (drop (fromMaybe 0 (roFrame o) + 1) (allFrames f))
   let theme = themeFor o
       pg = pageFor o (frameTitle drawn <|> fileTitle f)
@@ -566,7 +673,7 @@ renderOneFrame o f = do
     Right d
       | null motions -> emitWith o pg d
       | otherwise -> do
-          basis <- basisOf o frame
+          basis <- basisOf o drawn
           emitWith o pg (withArrows theme basis motions d)
 
 -- | Each flag turns one thing off or one thing on. Written as guards rather

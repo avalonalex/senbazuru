@@ -23,6 +23,7 @@ extra-doc-files:
 
 extra-source-files:
   test/fixtures/*.fold
+  test/golden/*.glb
   test/golden/*.svg
 
 source-repository head
@@ -81,6 +82,7 @@ library
     Senbazuru.Origami.Visible
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
+    Senbazuru.Render.Gltf
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg
 
@@ -99,6 +101,7 @@ executable senbazuru
   ghc-options:    -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     , base
+    , bytestring
     , optparse-applicative  >=0.17 && <0.19
     , senbazuru
     , text
@@ -124,6 +127,7 @@ test-suite senbazuru-test
     Senbazuru.Origami.VisibleSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec
+    Senbazuru.Render.GltfSpec
     Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
     Test.Golden
@@ -136,5 +140,6 @@ test-suite senbazuru-test
     , filepath    >=1.4 && <1.5
     , hspec       >=2.10 && <2.12
     , QuickCheck  >=2.14 && <2.16
+    , aeson
     , senbazuru
     , text

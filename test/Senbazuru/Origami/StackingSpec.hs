@@ -147,8 +147,51 @@ precedes a b xs = case (elemIndex a xs, elemIndex b xs) of
   (Just i, Just j) -> i < j
   _ -> False
 
+-- | A square folded along its diagonal: two triangles landing on each other
+-- exactly, the angle between them a full valley, and nothing said about which
+-- is on top. The angle is what folds it; the assignment is along for the ride,
+-- since an explicit @edges_foldAngle@ takes precedence over one.
+stackedTriangles :: Frame
+stackedTriangles =
+  emptyFrame
+    { frameClasses = ["foldedForm"],
+      verticesCoords = [[0, 0], [1, 0], [1, 1], [1, 0]],
+      edgesVertices =
+        [ (VertexId 0, VertexId 1),
+          (VertexId 1, VertexId 2),
+          (VertexId 2, VertexId 3),
+          (VertexId 3, VertexId 0),
+          (VertexId 0, VertexId 2)
+        ],
+      edgesAssignment = [Border, Border, Border, Border, Valley],
+      edgesFoldAngle = [0, 0, 0, 0, 180],
+      facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3]]
+    }
+
 spec :: Spec
 spec = do
+  describe "which layer order to use" $ do
+    it "takes the file's own when it has one" $
+      -- Whatever the geometry would have said: a file that states its layers
+      -- is believed, and the solver is not consulted.
+      layerOrderFor defaultBudget stackedTriangles {faceOrders = [FaceOrder (FaceId 1) (FaceId 0) Above]}
+        `shouldBe` Right (Just [FaceOrder (FaceId 1) (FaceId 0) Above])
+
+    it "works one out for a flat model that has none, and the right way up" $
+      -- Face 1 turned over onto face 0, so face 0 is on the side face 1's
+      -- normal now points to: [0, 1, Above]. Pinned as the exact entry and not
+      -- as a count, because the solver's own comment warns that a wrong crease
+      -- direction mirrors the whole stack in silence, and a count of one is
+      -- the same either way up.
+      layerOrderFor defaultBudget stackedTriangles
+        `shouldBe` Right (Just [FaceOrder (FaceId 0) (FaceId 1) Above])
+
+    it "has none for paper still in the air" $
+      -- Declined rather than refused: the solver covers models folded flat and
+      -- attempted nothing here, so there is no ordering and no error either.
+      layerOrderFor defaultBudget stackedTriangles {verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [1, 0, 0]]}
+        `shouldBe` Right Nothing
+
   describe "one crease" $ do
     it "puts the moving face on top for a valley" $ do
       -- A valley brings the two top sides together, so the half that folded
