@@ -90,6 +90,12 @@ data FoldError
     -- itself. Raised by "Senbazuru.Origami.Layers" and carried here so that
     -- everything a frame can be wrong about reaches a caller as one type.
     ImpossibleStacking FaceId
+  | -- | The @faceOrders@ put two faces each above the other. A milder version
+    -- of 'ImpossibleStacking', and a separate one because it is a different
+    -- kind of wrong: a circle needs three faces and a walk to find, whereas
+    -- this is one pair of entries that cannot both be true, and the pair can
+    -- be named. Raised by "Senbazuru.Origami.Visible".
+    ContradictoryStacking FaceId FaceId
   | -- | More than two faces meet along one edge, so the sheet is not a
     -- surface and \"the face on the other side\" has no answer. Carries the
     -- two vertices and how many faces there are.
@@ -160,6 +166,15 @@ renderFoldError = \case
       <> tshow f
       <> ", and painting faces one after another needs an order with no circle"
       <> " in it"
+  ContradictoryStacking (FaceId f) (FaceId g) ->
+    "the faceOrders say face "
+      <> tshow f
+      <> " is above face "
+      <> tshow g
+      <> " and also that face "
+      <> tshow g
+      <> " is above face "
+      <> tshow f
   NonManifoldEdge (VertexId a) (VertexId b) n ->
     "the crease from vertex "
       <> tshow a

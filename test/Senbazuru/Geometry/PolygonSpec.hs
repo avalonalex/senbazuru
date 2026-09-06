@@ -197,6 +197,22 @@ spec = do
     it "misses a segment that passes by" $
       clipSegment unitSquare (V2 2 0, V2 2 1) `shouldBe` Nothing
 
+  describe "distanceOutside" $ do
+    it "is negative inside, zero on the boundary, positive outside" $ do
+      distanceOutside unitSquare (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
+      distanceOutside unitSquare (V2 0.5 0) `shouldSatisfy` near 0
+      distanceOutside unitSquare (V2 0.5 (-0.25)) `shouldSatisfy` near 0.25
+
+    it "measures to the nearest edge, not to the corner" $
+      distanceOutside unitSquare (V2 0.1 0.25) `shouldSatisfy` near (-0.1)
+
+    it "ignores an edge of no length" $ do
+      -- Clipping leaves these wherever a cut passed exactly through a corner.
+      -- An edge with no direction has no side, and treating it as one would
+      -- report every point in the world as outside the polygon.
+      let repeated = [V2 0 0, V2 1 0, V2 1 0, V2 1 1, V2 0 1]
+      distanceOutside repeated (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
+
   describe "collinearOverlap" $ do
     it "finds the stretch two segments share, in the first one's direction" $ do
       collinearOverlap 1e-9 (V2 0 0, V2 2 0) (V2 1 0, V2 3 0) `shouldBe` Just (V2 1 0, V2 2 0)

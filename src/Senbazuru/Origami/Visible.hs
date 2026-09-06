@@ -96,6 +96,7 @@ module Senbazuru.Origami.Visible
   )
 where
 
+import Control.Monad (foldM)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', sort)
@@ -117,10 +118,9 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon
   ( centroid,
     clipConvex,
-    clipSegment,
     cross2,
+    distanceOutside,
     signedArea,
-    strictlyInside,
     subtractConvex,
   )
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -209,6 +209,16 @@ visibleForm fromAbove fr orders = do
 -- which way it asked. An unrecorded pair answers 'False' both ways, which is
 -- right: FOLD leaves out exactly the pairs that do not overlap, and neither of
 -- those can hide the other.
+--
+-- A pair recorded twice, disagreeing with itself, is refused
+-- ('ContradictoryStacking'). That is as far as checking goes here, and it is
+-- worth saying what is /not/ checked: a circle running through three faces that
+-- all share a patch of paper is a real contradiction and passes this. Each of
+-- the three then loses the shared patch to the other two and the model comes
+-- out with a hole in it. Nothing senbazuru produces can be like that —
+-- "Senbazuru.Origami.Stacking" rules exactly that out before it answers — so it
+-- would take a file that contradicts itself in a way one pair at a time cannot
+-- show.
 nearness ::
   Bool ->
   Sheet ->
@@ -216,9 +226,13 @@ nearness ::
   Either FlatError (FaceId -> FaceId -> Bool)
 nearness fromAbove sheet orders = do
   entries <- concat <$> traverse entry orders
-  let known = M.fromList entries
+  known <- foldM record M.empty entries
   pure (\f g -> M.findWithDefault False (f, g) known)
   where
+    record known (fg@(f, g), v) = case M.lookup fg known of
+      Just settled | settled /= v -> Left (FlatRefused (ContradictoryStacking f g))
+      _ -> Right (M.insert fg v known)
+
     faceUp = M.fromList [(panelId p, panelFaceUp p) | p <- sheetPanels sheet]
 
     look fid = case M.lookup fid faceUp of
@@ -462,11 +476,21 @@ strongest = foldr stronger Join
 --
 -- No point is nudged to one side to ask the question, because a nudge small
 -- enough to stay on the right side of the line is small enough to be rounding.
--- Instead each face is asked whether this stretch runs through its interior, in
--- which case the face is on both sides of it, or along one of its edges, in
--- which case the face is on the side its centre is. A stretch can do only one
--- of those: it was cut at every point where a face boundary meets the line, so
--- it is inside a face for all of its length or for none of it.
+-- Instead each face is asked how far outside it the middle of the stretch is.
+-- Well inside, the face is on both sides of the stretch; within a hair of the
+-- boundary, the stretch runs along one of its edges and the face is on the side
+-- its centre is; well outside, the face is not beside the stretch at all. One
+-- number answers all three, and asking the midpoint alone is enough because the
+-- line was cut wherever a face boundary meets it: the stretch is inside a face
+-- for all of its length or for none of it.
+--
+-- Deciding the first two cases by clipping the stretch against the face instead
+-- is what the first version did, and it is wrong in a way worth recording. A
+-- stretch that lies along a face\'s edge clips to itself when rounding puts it a
+-- hair inside and to nothing when rounding puts it a hair outside, and a clip
+-- has no tolerance with which to call those the same answer. The face then
+-- vanishes from the reckoning, the two sides agree because neither can see it,
+-- and a visible crease stops in the middle of the paper.
 showsAnEdge :: Sheet -> (FaceId -> FaceId -> Bool) -> V2 -> (V2, V2) -> Bool
 showsAnEdge sheet nearer direction (a, b) =
   fmap panelId (topmost (beside OnTheLeft)) /= fmap panelId (topmost (beside OnTheRight))
@@ -475,16 +499,12 @@ showsAnEdge sheet nearer direction (a, b) =
     mid = 0.5 *^ (a ^+^ b)
 
     beside side = [p | (p, s) <- sides, s == side || s == OnBothSides]
-    sides = [(p, whichSide p) | p <- sheetPanels sheet, touches p]
+    sides = [(p, whichSide p) | p <- sheetPanels sheet, isBeside p]
 
-    -- A face the stretch only grazes at a corner is beside nothing: the clip
-    -- comes back as a point rather than a length.
-    touches p = case clipSegment (panelRing p) (a, b) of
-      Nothing -> False
-      Just (u, v) -> norm (v ^-^ u) > hair
+    isBeside p = distanceOutside (panelRing p) mid <= hair
 
     whichSide p
-      | strictlyInside hair (panelRing p) mid = OnBothSides
+      | distanceOutside (panelRing p) mid < negate hair = OnBothSides
       | cross2 direction (centroid (panelRing p) ^-^ mid) > 0 = OnTheLeft
       | otherwise = OnTheRight
 

@@ -201,6 +201,27 @@ spec = do
             stray m = minimum (map (`howFarOutside` m) (pieces v)) > 1e-9
         filter stray middles `shouldBe` []
 
+      it ("stops no line in the middle of the paper of " <> name <> " " <> sideName side) $ do
+        -- A line ends where the paper on its two sides stops differing, and
+        -- what makes them stop differing is another edge -- so every end of
+        -- every stretch has to be met by a second one, at its end or somewhere
+        -- along it. This caught a real bug and is the reason it is here: a face
+        -- whose edge lay exactly along a stretch was being dropped from the
+        -- reckoning altogether, so the two sides agreed because neither could
+        -- see it, and creases stopped dead in the middle of the crane.
+        v <- seen side name
+        let ends = concat [[flatten (visibleFrom e), flatten (visibleTo e)] | e <- formEdges v]
+            met p = length (filter (samePoint p) ends) >= 2 || any (runsThrough p) (formEdges v)
+            samePoint p q = norm (q ^-^ p) < 1e-9
+            runsThrough p e =
+              let (a, b) = (flatten (visibleFrom e), flatten (visibleTo e))
+               in not (samePoint p a)
+                    && not (samePoint p b)
+                    && abs (cross2 (b ^-^ a) (p ^-^ a)) < 1e-9 * norm (b ^-^ a)
+                    && dot (p ^-^ a) (b ^-^ a) > 0
+                    && dot (p ^-^ b) (a ^-^ b) > 0
+        filter (not . met) ends `shouldBe` []
+
   describe "what it declines" $ do
     it "declines a model with paper still in the air" $ do
       -- The rigidly folded square twist stands up out of the plane, so there

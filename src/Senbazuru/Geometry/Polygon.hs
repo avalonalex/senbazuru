@@ -55,6 +55,7 @@ module Senbazuru.Geometry.Polygon
     subtractConvex,
     clipSegment,
     strictlyInside,
+    distanceOutside,
 
     -- * Segments on one line
     collinearOverlap,
@@ -252,8 +253,38 @@ clipSegment poly (p, q) = go 0 1 (edges poly)
 -- question being asked: is this point clear of every edge. It is what tells a
 -- segment that runs along an edge of a face from one that runs through it.
 strictlyInside :: Double -> [V2] -> V2 -> Bool
-strictlyInside clearance poly x =
-  and [cross2 (b ^-^ a) (x ^-^ a) > clearance * norm (b ^-^ a) | (a, b) <- edges poly]
+strictlyInside clearance poly x = distanceOutside poly x < negate clearance
+
+-- | How far outside the convex, anticlockwise polygon the point is: positive
+-- outside, zero on the boundary, negative inside, and in either case the
+-- distance to the nearest edge's line.
+--
+-- The whole of \"where is this point\" in one number, which is what makes it
+-- possible to ask the question with a tolerance in either direction: more than
+-- a hair outside, more than a hair inside, or on the boundary. A yes-or-no
+-- predicate can only answer two of those three.
+--
+-- Preferred to clipping a segment against the polygon and looking at what
+-- survives, which sounds equivalent and is not. A segment lying /along/ an edge
+-- is the case a folded model produces constantly, and there the clip is decided
+-- by whether rounding put the segment a hair inside the edge or a hair outside
+-- it: one way it comes back whole, the other it comes back empty, and there is
+-- no tolerance anywhere to say the two answers are the same. This returns the
+-- hair, and lets the caller decide it is a hair.
+--
+-- Edges of no length are skipped. They name no direction, so the distance to
+-- them is not a number; a ring that carries one — clipping leaves them wherever
+-- a cut passed exactly through a corner — would otherwise report every point as
+-- outside it.
+distanceOutside :: [V2] -> V2 -> Double
+distanceOutside poly x =
+  maximum
+    ( negate (1 / 0)
+        : [ negate (cross2 (b ^-^ a) (x ^-^ a)) / norm (b ^-^ a)
+            | (a, b) <- edges poly,
+              norm (b ^-^ a) > 0
+          ]
+    )
 
 -- | The stretch two segments have in common, when they lie on one line.
 --
