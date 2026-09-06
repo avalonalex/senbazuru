@@ -1,442 +1,121 @@
 # senbazuru
 
-Render [FOLD](https://github.com/edemaine/FOLD) origami files as SVG, in the
-visual style of step-by-step origami instruction books.
+[![CI](https://github.com/avalonalex/senbazuru/actions/workflows/ci.yml/badge.svg)](https://github.com/avalonalex/senbazuru/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Haskell: GHC 9.6.7](https://img.shields.io/badge/Haskell-GHC%209.6.7-5e5086.svg)](https://www.haskell.org/)
+
+**Origami diagrams from [FOLD](https://github.com/edemaine/FOLD) files.** Hand it
+a crease pattern; get back the picture a book would print.
 
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes.
 
-> **Status: early.** Crease patterns render correctly and are filled with paper.
-> A pattern can be *folded* along its own fold angles and the result drawn from a
-> choice of viewing angles, layer-correctly: where the file says which face is
-> in front, and for a flat-folded model, where it does not. A model folded flat
-> is drawn as what can be *seen* of it — hidden edges removed, the two sides of
-> the paper in different colours, and either side of the sheet to look at. A
-> multi-frame file lays out as one numbered page of steps, each with the arrow
-> showing the fold it asks for. There is also a flat-foldability checker.
-> See [Roadmap](#roadmap).
-
-## What it does today
-
-Given a `.fold` file, it draws every edge using the standard
-Yoshizawa–Randlett line vocabulary: solid for the edge of the paper, dashed for
-valley folds, dash-dot-dot for mountain folds, and a light line for creases that
-exist but are not folded. Those dashes are instructions, so they belong to crease
-patterns. A folded form is drawn the way a book draws the model itself, with
-every edge solid.
+<table>
+<tr>
+<td align="center"><img src="docs/img/crane-pattern.svg" width="300" alt="The crease pattern of a traditional crane"></td>
+<td align="center"><img src="docs/img/crane-folded.svg" width="300" alt="The same crane, folded flat and drawn as paper"></td>
+</tr>
+<tr>
+<td align="center"><em>what the file says</em></td>
+<td align="center"><em>what senbazuru made of it</em></td>
+</tr>
+</table>
 
 ```bash
-stack run -- render examples/unit-square.fold -o unit-square.svg
+stack run -- render examples/crane.fold          -o pattern.svg
+stack run -- render examples/crane.fold --fold   -o crane.svg
 ```
 
-produces a unit square with a valley fold down the middle, a mountain fold
-across it, and a faint diagonal reference crease. That file records no faces, so
-what comes out is exactly those lines on a blank page.
+Same file both times. For the second one senbazuru folded the sheet along its own
+angles, worked out which of the seventy-two faces ends up on top of which, and
+then drew only the parts you could actually see.
 
-A file that *does* record `faces_vertices` gets its faces filled with a paper
-tint, so the sheet reads as an object rather than as lines floating on the page:
+> **Status: early**, and moving. Crease patterns, folding, layer order, hidden
+> lines, two-sided paper, fold arrows, step-by-step pages and a flat-foldability
+> checker all work; there is no FOLD *output* yet, which is the next big thing.
+> [Roadmap](#roadmap) · [what works in detail](docs/tour.md)
+
+## The interesting part is that paper is opaque
+
+Drawing a crease pattern is easy: the coordinates in the file are already the
+coordinates on the page. Drawing a *folded* model is not, and the reason is
+layers.
+
+Fold a crane and press it flat and all seventy-two of its faces lie in the same
+plane. Something has to be on top of something else, and nothing in the
+coordinates says which — there is no depth left to compare. Work it out and you
+find the crane has **five** valid answers, all of them real paper, two of them
+different pictures. Ku's pinwheel pockets has forty-seven. One model in the
+reference corpus has more than 10⁸³, which is more layer orders than there are
+atoms in the observable universe.
+
+Then there are the ones that stack in a *circle*: the four flaps of a twist lie
+A over B over C over D over A, no paper passing through any other, and no order
+at all to paint four faces in. That model cannot be drawn face by face however
+carefully you sort them — the drawing has to be made of what is visible instead.
+
+None of that shows in the output, which is rather the point. What comes out is a
+picture that looks like it came from a book.
+
+## What it does
+
+- **Draws crease patterns** in the Yoshizawa–Randlett notation every instruction
+  book uses — solid for the edge of the paper, dashed for a valley, dash-dot-dot
+  for a mountain.
+- **Folds them.** Give it a pattern and its fold angles and it computes where
+  every face ends up, then draws that from any of five viewing angles.
+- **Works out which layer is on top**, when the file does not say, from four
+  local rules about how paper can and cannot interleave — and tells you how many
+  other answers there were, so you can ask for a different one.
+- **Draws only what you can see.** Hidden edges are removed, and the two sides
+  of the paper come out in different colours, because origami paper is coloured
+  on one side and a flap folded over shows its back.
+- **Infers the arrows.** FOLD records no arrows, so it subtracts one frame from
+  the next to find what moved where, and lays a whole sequence out as one
+  numbered page at one scale.
+- **Checks flat-foldability** at every interior vertex, by Maekawa's theorem and
+  Kawasaki's, and says which vertex fails and why.
+
+<p align="center">
+  <img src="docs/img/steps.svg" width="640" alt="A square folded into quarters, drawn as three numbered figures with fold arrows">
+</p>
+
+Each of those has a section in [the tour](docs/tour.md), with the command and
+the reasoning. Every flag is in [usage.md](docs/usage.md).
+
+## The paper has two sides
+
+`--view bottom` looks at the underside, which for a flat-folded model is a
+different picture rather than the same one upside down: a different set of faces
+is on top, and they show the other side of the sheet.
+
+<p align="center">
+  <img src="docs/img/pinwheel-underside.svg" width="260" alt="A thirds pinwheel seen from below, its centre showing the back of the paper">
+</p>
 
 ```bash
-stack run -- render examples/quarter-fold.fold -o quarter-fold.svg
-```
-
-`--no-fill` turns that off.
-
-A folded form is filled too, but only when the file says which face is in front.
-FOLD records that in `faceOrders`, and `examples/simple.fold` carries one:
-
-```bash
-stack run -- render examples/simple.fold --view iso -o simple.svg
-```
-
-The stacking is a fact about the paper rather than about the picture — it says a
-face lies on the side another face's *normal* points to — so the drawing order
-depends on where you are looking from, and the same model seen from behind
-stacks the other way up. A folded form with no `faceOrders` gets one worked out,
-if it lies flat; see [What it stacks](#what-it-stacks). One with paper still in
-the air stays a wireframe: painting its faces in the order they happen to appear
-in the file would be a confident picture of the wrong thing.
-
-Folded forms take a viewing angle:
-
-```bash
-stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
-```
-
-The bare `--` matters: without it Stack tries to interpret `--view` as one of its
-own options.
-
-## What it folds
-
-`--fold` computes the folded form rather than reading one. Given a crease
-pattern and a fold angle for every crease, paper does not stretch, so each face
-moves rigidly and the whole state is one rigid motion per face — walk the faces,
-compose one turn per crease, and every vertex is a lookup.
-
-```bash
-stack run -- render examples/quarter-fold.fold --fold -o quarter-folded.svg
-stack run -- render examples/diagonal-cp.fold --fold -o diagonal-folded.svg
-```
-
-The first folds a square into quarters and produces a quadrant with four layers;
-the second folds a square along its diagonal and produces a triangle. Neither
-needs `--view`: both fold *flat*, and the view is chosen from the coordinates, so
-they are drawn from above. Forcing `--view iso` on a flat-folded model shears a
-correct picture into a wrong one; leave the camera alone unless the fold really
-does leave the plane. Fold angles
-come from `edges_foldAngle`, or from the assignments if the file records none —
-an assignment names a direction and not an amount, and a flat fold is the only
-amount consistent with naming no number.
-
-Not every set of angles describes something a sheet of paper can do. Walk round
-an interior vertex and the turns must compose back to nothing, and the obvious
-algorithm never checks: it reaches each face by one path and silently *tears* the
-model when they disagree. `--fold` compares the places each face puts a shared
-vertex and refuses rather than drawing the tear:
-
-```console
-$ senbazuru render bent.fold --fold
-senbazuru: cannot fold bent.fold: vertex 6 is placed 0.707107 apart by the faces
-meeting at it, so these fold angles tear the paper rather than folding it
-```
-
-The threshold for "disagree" admits arithmetic noise and nothing more, so angles
-that are a fraction of a degree short of closing are refused too — the message
-quotes the distance, which is how you tell a tear from a typo in the fourth
-decimal place.
-
-## What it stacks
-
-Folding says where every face went and nothing about which is in front, and in
-a model folded flat every face lies in the same plane, so the coordinates cannot
-say either. FOLD keeps the answer in `faceOrders`, which a computed folded form
-does not have. So senbazuru works one out.
-
-Deciding which layer is on top is a constraint problem, and in general a hard
-one, but every constraint the paper imposes is local. Two faces joined along an
-edge of the folded form are either a *taco* — the paper folded back on itself,
-both faces on one side of the edge — or a *tortilla*, paper continuing flat
-across the line. A face that runs across a taco's fold line cannot lie between
-the taco's two faces; two tacos on one line must nest or stay apart; two
-tortillas cannot cross each other; and a valley puts the face that turned over
-on top where a mountain puts it underneath. Generate those rules for every pair
-of faces that share a patch of paper, satisfy them, and the result is a
-`faceOrders` the renderer already knows how to draw. The rules are written up in
-[docs/notes/taco-taco.md](docs/notes/taco-taco.md).
-
-```bash
-stack run -- render examples/letter-fold.fold --fold -o letter-folded.svg
-```
-
-folds a square in three like a letter, with panels of different widths so the
-order shows: the long third panel is painted last and covers most of the other
-two. Fold a strip of paper the same way and look. The quarter fold above comes
-out four layers deep in the one order its three mountains and one valley allow.
-The traditional crane works too:
-
-```bash
-stack run -- render examples/crane.fold --fold -o crane.svg
-```
-
-That file, and a few others in `examples/`, come from
-[Flat-Folder](https://github.com/origamimagiro/flat-folder), an independent
-solver for the same problem, whose published counts of constraints per model
-senbazuru's test suite checks itself against, kind by kind.
-
-Not every set of creases has a stacking. Make both of the letter fold's creases
-valleys and the third panel has to slide between the first two, but it is longer
-than the pocket and the pocket is closed at the far end:
-
-```console
-$ senbazuru render rolled.fold --fold
-senbazuru: cannot render rolled.fold: the layers cannot be stacked without the
-paper passing through itself; the constraint between faces 0, 1, 2 is the one
-that could not be met
-```
-
-Folding cannot see this — the coordinates are identical to the accordion's — and
-neither can `check`, whose theorems are about one vertex at a time.
-`examples/big-little-big.fold` passes `check` and is refused here, for exactly
-the reason [its note](docs/notes/big-little-big.md) gives.
-
-Two limits, both deliberate. The solver covers models folded *flat*; a folded
-form with paper in the air and no `faceOrders` is still drawn as a wireframe,
-and `info` says so. And every face has to be convex, which the faces of a
-flat-foldable pattern are whenever the sheet is.
-
-### Which stacking
-
-There is rarely just one. The crane has five valid layer orders, the kabuto
-nine, and one of Flat-Folder's dragons more than 10⁸³ — the counts are products,
-because the constraints fall into independent components and the choices in them
-multiply. `info --fold` says how the model divides up:
-
-```console
-$ senbazuru info examples/crane.fold --fold
-...
-    layers:   (none in the file; 892 overlapping pairs in 2 components, 5 valid orders)
-    stacking: 1 component with a choice; --stacking takes 0-4
-```
-
-The two counts differ by one on purpose: the first counts components the way
-Flat-Folder does, with the pairs that were settled outright among them, so its
-published figures can be compared with these. The second counts what you can
-actually choose. `--stacking` takes one index per component with a choice in it:
-
-```bash
-stack run -- render examples/crane.fold --fold --stacking 3 -o crane-3.svg
-```
-
-which puts a different flap on top of the crane's right wing. Most of the
-difference between orders is buried, though: all sixteen of the 2×2 grid's are
-the same picture from either side, and all nine of the kabuto's are one picture
-from above and four from below. A count of orders is a count of *models*, not of
-pictures.
-
-The same split is what keeps the search finishing. Each component is solved on
-its own, so the cost adds up over them rather than multiplying, and each is
-given a budget of guesses — `--layer-budget`, a thousand by default — so that a
-model propagation cannot settle says it gave up instead of running on. The most
-any model here needs is eight, and both models that cannot be stacked at all are
-refused without a single guess. The reasoning is in
-[docs/notes/several-stackings.md](docs/notes/several-stackings.md).
-
-## What it hides
-
-Knowing which layer is on top is not the same as having a picture, for two
-reasons that are really one.
-
-A valid layer order can run in a **circle**. The four flaps of a twist lie A
-over B over C over D over A, and no paper passes through any other, because no
-point of the sheet is under all four at once. There is simply no order to paint
-four whole faces in. And painting whole faces hides nothing anyway: every crease
-is drawn afterwards, including the ones ten layers down.
-
-So a model folded flat is not drawn face by face. Each face is cut down to what
-is left of it once every face nearer the viewer has been taken away, and each
-edge is kept only over the stretches where the paper differs across it. The
-result has its hidden lines gone, and its **two sides in different colours** —
-origami paper is coloured on one side, and a flap folded over shows its back.
-
-```bash
-stack run -- render examples/thirds-pinwheel.fold --fold -o pinwheel.svg
 stack run -- render examples/thirds-pinwheel.fold --fold --view bottom -o under.svg
 ```
 
-The first is a twist, which could not be drawn at all until this arrived. The
-second is the same model from underneath, which is a different picture and not
-the first one upside down: a different set of faces is on top, and they show the
-other side of the paper. How it works is in
-[docs/notes/visible-regions.md](docs/notes/visible-regions.md).
+That is the same twist as above — the one whose flaps stack in a circle and
+cannot be painted face by face at all.
 
-A folded form that is *not* flat — paper still in the air — is still painted
-face by face in the order `faceOrders` gives, with every crease drawn, because
-none of the above has a plane to work in. `--no-fill` also draws every crease,
-which is what makes it the escape hatch for a file this cannot make sense of.
+## Building it
 
-One caveat on the colours. Which side of the sheet a patch of paper shows is
-read from the order its corners are listed in, which FOLD says is
-counterclockwise and which real files sometimes get backwards. A file that wound
-*every* face backwards is drawn with its layers right and its two colours
-swapped, silently — the layer order survives it because its signs were written
-against those same windings, and the paper side has nothing to cancel against.
+Requires [Stack](https://docs.haskellstack.org/). `stack build` and `stack test`
+are the whole of it; `make check` is what CI runs.
 
-## What it instructs
+## Documentation
 
-A picture of paper is not an instruction. The arrow that says *this* piece moves
-*there* is what makes a diagram teachable, and FOLD has no key for one — no
-arrow, no operation, not even a caption. What a file does have is consecutive
-frames, and between two of them the arrow is a subtraction rather than a search:
-both ends of the motion are given.
-
-`--arrows` draws it, on the frame *before* the fold, as a book does:
-
-```bash
-stack run -- render examples/quarter-fold-steps.fold --frame 0 --arrows -o step-1.svg
-stack run -- render examples/quarter-fold-steps.fold --frame 1 --arrows -o step-2.svg
-stack run -- render examples/quarter-fold-steps.fold --frame 2 -o step-3.svg
-```
-
-Step 1 is the flat sheet with an arrow swinging its left half onto the right;
-step 2 is the folded rectangle with an arrow bringing its top half down; step 3
-is the finished quarter, and carries no arrow because there is nothing left to
-do.
-
-What moves is worked out by comparing where the paper *is* in the two frames,
-not by reading fold angles — a frame may record none, or record ones that
-disagree with its own coordinates, and turning a model over moves paper without
-changing any angle. Paper that moves as one piece gets one arrow; a step that
-folds two separate flaps gets two, because a single arrow averaged between them
-would point somewhere no paper goes.
-
-`--steps` puts the whole sequence on one page instead:
-
-```bash
-stack run -- render examples/quarter-fold-steps.fold --steps --arrows \
-  --width 700 --height 300 -o page.svg
-```
-
-Every figure is drawn at **one shared scale**, so the model genuinely shrinks as
-it is folded — the quarter fold ends up a quarter of the size it started. Giving
-each figure its own scale is the tempting mistake: every drawing would then be
-blown up to fill its cell, and the page would tell the reader, in the most
-convincing way a picture can, that folding a sheet in half does not make it
-smaller. `--columns` sets how many figures go across.
-
-## What it checks
-
-`senbazuru check` applies two classical theorems to every *interior* vertex of a
-crease pattern — a vertex with paper all the way round it, as opposed to one on
-the edge of the sheet, where neither theorem applies.
-
-*Maekawa's theorem* says the number of mountain creases at such a vertex minus
-the number of valley creases is always ±2. It follows that the total is even, so
-three creases meeting at a point can never fold flat, whatever their angles:
-
-```console
-$ senbazuru check examples/three-crease.fold
-examples/three-crease.fold, frame 0
-  vertex 5: 3 creases meet here, an odd number, which never folds flat (Maekawa)
-  checked 1 interior vertex; skipped 5 on the border
-  1 violation
-```
-
-*Kawasaki's theorem* says that walking round the vertex and adding the angles
-between consecutive creases with alternating signs gives zero. A square folded
-into quarters satisfies both:
-
-```console
-$ senbazuru check examples/quarter-fold.fold
-examples/quarter-fold.fold, frame 0
-  checked 1 interior vertex; skipped 8 on the border
-  no violations found
-```
-
-It says *no violations found* rather than *flat-foldable*, and that wording is
-load-bearing. Both theorems are necessary, not sufficient: they are local, so a
-sheet whose every vertex passes can still be impossible, and even at one vertex
-they miss a third condition on which crease is a mountain and which a valley.
-`examples/big-little-big.fold` passes this check and cannot be folded — see
-[big-little-big.md](docs/notes/big-little-big.md). A violation means the pattern
-is definitely wrong; a clean run means nothing was caught.
-
-The command exits non-zero when it finds a violation, so it drops into a build
-or a hook without anyone grepping the output.
-
-There is also a summary command for poking at unfamiliar files:
-
-```console
-$ stack run -- info examples/unit-square.fold
-examples/unit-square.fold
-  title:   Unit square with a cross of creases
-  creator: senbazuru (hand-written)
-  classes: singleModel
-  frames:  1
-  frame 0: Preliminary creases
-    classes:  creasePattern
-    vertices: 8
-    edges:    11
-    faces:    0
-    creases:  B=8 M=1 V=1 F=1
-    layers:   (none, and a crease pattern needs none)
-```
-
-The `layers` line is where to look when a folded form comes out as a wireframe:
-it reports the `faceOrders` the file carries, or, for a folded form without any,
-whether one could be worked out and if not why.
-
-## Building
-
-Requires [Stack](https://docs.haskellstack.org/). The project pins Stackage
-`lts-22.44` (GHC 9.6.7).
-
-```bash
-stack build
-stack test
-make check      # formatting, lint and tests: everything CI should run
-```
-
-`stack.yaml` sets `system-ghc: true`, so Stack reuses a GHC 9.6.7 already on
-your `PATH` rather than downloading its own. If you would rather Stack managed
-the compiler, delete that line.
-
-## Usage
-
-```
-senbazuru render FILE.fold [-o OUT.svg] [OPTIONS]
-senbazuru check FILE.fold [--frame N] [--tolerance DEG]
-senbazuru info FILE.fold [--fold] [--layer-budget N]
-```
-
-Working from source, reach the executable in any of three ways:
-
-```bash
-stack run -- render FILE.fold          # everything after -- goes to senbazuru
-stack exec -- senbazuru render FILE.fold   # after a stack build
-make install                           # puts senbazuru on your PATH, then use it directly
-```
-
-| Option | Meaning |
+| Where | What |
 | --- | --- |
-| `-o, --output FILE` | Write to a file instead of stdout |
-| `--frame N` | Which frame to render (default `0`, the key frame) |
-| `--width`, `--height` | Page size in points (default `400`) |
-| `--margin` | Blank border in points (default `16`) |
-| `--view NAME` | Viewing angle: `top`, `bottom`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and flat-folded models, `iso` for anything with relief |
-| `--transparent` | Omit the white background rectangle |
-| `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
-| `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |
-| `--fold` | Fold the crease pattern along its fold angles and draw the result |
-| `--arrows` | Draw the fold that takes this frame to the next one |
-| `--steps` | Lay every frame out as one numbered page of figures, at one scale |
-| `--columns N` | Figures across the page, with `--steps` (default `3`) |
-| `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
-| `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
-
-`check` takes `--frame` too, and one option of its own:
-
-| Option | Meaning |
-| --- | --- |
-| `--tolerance DEG` | How far Kawasaki's alternating sum may sit from zero and still pass (default `0.000573`, which is 1e-5 radians). Raise it for files whose coordinates are heavily rounded |
-
-## Project layout
-
-```
-src/Senbazuru/
-  Geometry.hs              points, boxes, the model→page transform
-  Geometry/VectorSpace.hs  the arithmetic 2D and 3D points share
-  Geometry/V3.hs           points in space, for 3D input
-  Geometry/Rigid.hs        motions that turn and slide without deforming
-  Geometry/Polygon.hs      convex polygons in the plane: area, clipping, overlap
-  Fold/Types.hs            the FOLD document model + JSON decoding
-  Fold/Load.hs             reading files (the only I/O in the library)
-  Fold/Query.hs            validating a frame into geometry you can trust
-  Diagram.hs               backend-independent drawing IR
-  Diagram/Style.hs         the origami line conventions
-  Diagram/Layout.hs        several figures on one page, at one scale
-  Origami/FlatFold.hs      Maekawa's and Kawasaki's theorems, vertex by vertex
-  Origami/Folding.hs       crease pattern + fold angles -> folded form
-  Origami/Layers.hs        faceOrders + a viewing direction -> a drawing order
-  Origami/Stacking.hs      a flat-folded form -> its faceOrders, when the file has none
-  Origami/Step.hs          two frames -> what moved between them
-  Render/Camera.hs         orthographic projection, 3D → the page
-  Render/CreasePattern.hs  FOLD frame → Diagram
-  Render/Svg.hs            Diagram → SVG text
-app/                       the command-line interface
-test/                      property, example and golden tests
-examples/                  sample .fold files, including three from upstream
-docs/fold-primer.md        background on FOLD and on origami diagram notation
-docs/fold-reference.md     every FOLD key, and what we do with it
-docs/glossary.md           every term the docs and code assume
-docs/notes/                one idea per file, with references
-```
-
-[`docs/fold-primer.md`](docs/fold-primer.md) is the place to start if origami or
-the FOLD format are new to you, and
-[`docs/fold-reference.md`](docs/fold-reference.md) is the key-by-key reference
-with our coverage status. [`docs/notes/`](docs/notes/) collects short
-single-idea notes on the theorems, algorithms and techniques this project leans
-on or is heading towards. [`CLAUDE.md`](CLAUDE.md) holds the working
-conventions.
+| [docs/tour.md](docs/tour.md) | Every feature at length, with the command and the reasoning behind it |
+| [docs/usage.md](docs/usage.md) | Building it, running it, and every flag of every command |
+| [docs/architecture.md](docs/architecture.md) | The pipeline, what each module holds, and the rules about which may know about which |
+| [docs/fold-primer.md](docs/fold-primer.md) | The place to start if origami or the FOLD format are new to you |
+| [docs/fold-reference.md](docs/fold-reference.md) | Every FOLD key, its type, and whether senbazuru supports it |
+| [docs/glossary.md](docs/glossary.md) | Every term the docs and the code assume, in one place |
+| [docs/notes/](docs/notes/) | One idea per file, with references: the theorems, algorithms and techniques this leans on or is heading towards |
+| [CLAUDE.md](CLAUDE.md) | The working conventions |
 
 ## Roadmap
 
