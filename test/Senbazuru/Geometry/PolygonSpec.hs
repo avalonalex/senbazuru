@@ -13,6 +13,7 @@
 -- segments that touch at a point share nothing.
 module Senbazuru.Geometry.PolygonSpec (spec) where
 
+import Data.List (tails)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon
 import Test.Hspec
@@ -100,6 +101,64 @@ spec = do
           insideFirst = [V2 0.5 0.5, V2 0 (-1e-17), V2 0 1]
       abs (signedArea (clipConvex clip outsideFirst)) `shouldSatisfy` near 0.25
       abs (signedArea (clipConvex clip insideFirst)) `shouldSatisfy` near 0.25
+
+  describe "clipHalfPlane" $ do
+    it "splits a polygon into two parts that add up to the whole" $
+      -- Run backwards, the same edge keeps the other side, and the two sides
+      -- are what 'subtractConvex' is built out of.
+      property $ \b ->
+        let cut = (V2 (-10) 0.5, V2 10 0.5)
+            flipped = (V2 10 0.5, V2 (-10) 0.5)
+            half side = abs (signedArea (clipHalfPlane side (corners b)))
+         in (half cut + half flipped) `near` area b
+
+    it "keeps a polygon whole when the line misses it" $
+      clipHalfPlane (V2 (-1) (-1), V2 1 (-1)) unitSquare `shouldSatisfy` (near 1 . signedArea)
+
+    it "keeps a polygon that lies exactly on the line" $
+      -- Points on the line count as inside, as they do for 'clipConvex', so
+      -- subtracting a shape that shares an edge does not eat into the shape.
+      clipHalfPlane (V2 0 0, V2 1 0) unitSquare `shouldSatisfy` (near 1 . signedArea)
+
+  describe "subtractConvex" $ do
+    it "takes away exactly the overlap" $
+      -- Against arithmetic again, and over the same awkward boxes: the pieces
+      -- left after a subtraction have to account for the whole of what went in
+      -- minus the whole of what overlapped.
+      property $ \a b ->
+        sum (map (abs . signedArea) (subtractConvex 1e-12 (corners b) (corners a)))
+          `near` (area a - boxOverlap a b)
+
+    it "leaves pieces that do not overlap what was taken away" $
+      property $ \a b ->
+        all
+          (near 0 . abs . signedArea . clipConvex (corners b))
+          (subtractConvex 1e-12 (corners b) (corners a))
+
+    it "leaves pieces that do not overlap one another" $
+      property $ \a b ->
+        and
+          [ near 0 (abs (signedArea (clipConvex p q)))
+            | (p : rest) <- tails (subtractConvex 1e-12 (corners b) (corners a)),
+              q <- rest
+          ]
+
+    it "leaves nothing of a box taken away from itself" $
+      property $
+        \b -> null (subtractConvex 1e-12 (corners b) (corners b))
+
+    it "leaves a ring of pieces around a hole" $ do
+      -- The case that has no answer as a single convex polygon, and the reason
+      -- a region is kept as pieces: a flap landing in the middle of a larger
+      -- face leaves the face visible all around it.
+      let hole = [V2 0.25 0.25, V2 0.75 0.25, V2 0.75 0.75, V2 0.25 0.75]
+          pieces = subtractConvex 1e-12 hole unitSquare
+      sum (map (abs . signedArea) pieces) `shouldSatisfy` near 0.75
+      -- Nothing is left over the hole itself.
+      all (near 0 . abs . signedArea . clipConvex hole) pieces `shouldBe` True
+
+    it "takes nothing away when the cutter encloses nothing" $
+      subtractConvex 1e-12 [V2 0 0, V2 1 0] unitSquare `shouldBe` [unitSquare]
 
   describe "isConvex" $ do
     it "accepts a square and a triangle" $ do

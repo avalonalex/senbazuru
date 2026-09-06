@@ -51,6 +51,8 @@ module Senbazuru.Geometry.Polygon
 
     -- * Clipping
     clipConvex,
+    clipHalfPlane,
+    subtractConvex,
     clipSegment,
     strictlyInside,
 
@@ -132,19 +134,32 @@ isConvex tolerance ps = not (any (> tolerance) turns && any (< negate tolerance)
 -- routine safe on the coincident edges a folded model is full of; the
 -- comment on @meet@ says why.
 clipConvex :: [V2] -> [V2] -> [V2]
-clipConvex clip subject = foldl' clipBy subject (edges clip)
-  where
-    clipBy poly (a, b) = concat [step (a, b) p q | (p, q) <- edges (rotateBack poly)]
+clipConvex clip subject = foldl' (flip clipHalfPlane) subject (edges clip)
 
+-- | @clipHalfPlane (a, b) subject@ is the part of @subject@ lying to the left
+-- of the directed line from @a@ to @b@, with the line itself counted as inside.
+--
+-- One step of 'clipConvex', which is the whole of Sutherland–Hodgman: clipping
+-- by a convex ring is clipping by each of its edges in turn. It is exposed on
+-- its own because 'subtractConvex' needs the /other/ half — the part outside
+-- one edge — and that is this function with the edge handed to it backwards.
+--
+-- @subject@ may be any simple polygon; the result is a single ring when it is
+-- convex. The half-plane is unbounded, so nothing here has to be a polygon at
+-- all in the sense of enclosing a finite area — @a@ and @b@ only name a
+-- direction and a point on it.
+clipHalfPlane :: (V2, V2) -> [V2] -> [V2]
+clipHalfPlane (a, b) poly = concat [step p q | (p, q) <- edges (rotateBack poly)]
+  where
     -- The subject's edges as (previous, current) pairs, so that the corner
     -- emitted is always the current one and the ring stays in order.
     rotateBack ps = drop 1 ps <> take 1 ps
 
-    -- How far inside the clip edge's line each end of the subject edge is:
-    -- positive on the inner side, zero on the line. Computed once and used
-    -- both for the side test and for the crossing, which is what keeps the
-    -- crossing well defined -- see 'meet'.
-    step (a, b) p q =
+    -- How far inside the line each end of the subject edge is: positive on the
+    -- inner side, zero on the line. Computed once and used both for the side
+    -- test and for the crossing, which is what keeps the crossing well defined
+    -- -- see 'meet'.
+    step p q =
       let dp = cross2 (b ^-^ a) (p ^-^ a)
           dq = cross2 (b ^-^ a) (q ^-^ a)
        in case (dp >= 0, dq >= 0) of
@@ -164,6 +179,43 @@ clipConvex clip subject = foldl' clipBy subject (edges clip)
     -- sends the crossing to infinity, and makes the area NaN. See
     -- @docs\/notes\/convex-clipping.md@.
     meet p q dp dq = p ^+^ ((dp / (dp - dq)) *^ (q ^-^ p))
+
+-- | @subtractConvex tolerance cutter piece@ is what is left of @piece@ once
+-- the interior of @cutter@ has been taken away.
+--
+-- The answer is a difference of two convex shapes, which is not convex — a
+-- square with a bite out of the middle of one side is the smallest example —
+-- so it comes back as several pieces rather than one ring. They are each
+-- convex, they do not overlap, and together they are exactly @piece@ minus
+-- @cutter@'s interior.
+--
+-- == How, and why it is only this much code
+--
+-- Walk @cutter@'s edges keeping a running \"still inside every edge so far\"
+-- polygon. At each edge, the part of that polygon /outside/ the edge can never
+-- be inside @cutter@ — one edge is enough to rule it out — so it is a finished
+-- piece; the part inside carries on to the next edge. What survives every edge
+-- is the overlap with @cutter@, and is thrown away.
+--
+-- The pieces are disjoint because the @i@th is outside edge @i@ while every
+-- later one is inside it. That is the whole argument, and it is why this needs
+-- no general polygon-boolean machinery: subtracting a convex shape is @k@
+-- half-plane clips, one per edge, and nothing else.
+--
+-- @cutter@ must be convex and anticlockwise, as 'clipConvex' requires.
+-- @tolerance@ is an area: pieces smaller than it are dropped, which is what
+-- removes the slivers left along an edge the two shapes share. A @cutter@ with
+-- fewer than three corners encloses nothing and takes nothing away.
+subtractConvex :: Double -> [V2] -> [V2] -> [[V2]]
+subtractConvex tolerance cutter piece
+  | length cutter < 3 = keep piece
+  | otherwise = go piece (edges cutter)
+  where
+    go _ [] = []
+    go inside ((a, b) : rest) =
+      keep (clipHalfPlane (b, a) inside) <> go (clipHalfPlane (a, b) inside) rest
+
+    keep p = [p | abs (signedArea p) > tolerance]
 
 -- | The part of a segment that lies inside a convex, anticlockwise polygon,
 -- boundary included, or 'Nothing' if it misses.
