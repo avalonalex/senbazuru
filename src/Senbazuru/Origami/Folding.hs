@@ -192,6 +192,16 @@ renderFoldingError = \case
 -- are written against it. This module already measures the true winding
 -- because the direction of every fold depends on it, so writing it out costs
 -- nothing and makes the result a frame whose winding can be trusted.
+--
+-- One thing is thrown away: 'frameExtras', the keys of the input file that
+-- senbazuru does not understand. They are kept everywhere else precisely so
+-- that a file can be read and written back without losing them — but folding
+-- rewrites every coordinate and reverses the winding of any face that ends up
+-- turned over, and we cannot say which of a file's remaining keys survive
+-- that. @faces_edges@ lists a face's edges in the same order as its corners,
+-- so it does not; @cpedit:page@ is the bounds of a crease pattern's page, and
+-- this is no longer a crease pattern. Writing them out again would be stating
+-- something we have reason to think is false, which is worse than losing them.
 foldFrame :: Frame -> Either FoldingError Frame
 foldFrame fr = do
   flat <- first FrameGeometry (frameVertices fr)
@@ -212,7 +222,8 @@ foldFrame fr = do
       { verticesCoords = [[x, y, z] | V3 x y z <- folded],
         facesVertices = map faceVertexIds faces,
         frameClasses = foldedClasses (frameClasses fr),
-        frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr)
+        frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr),
+        frameExtras = mempty
       }
 
 -- | @foldedForm@ in place of @creasePattern@, with everything else kept.

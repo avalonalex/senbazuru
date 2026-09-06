@@ -161,9 +161,12 @@ approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
 1. **Authoring tools.** FOLD output
-   ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
-   nothing else can be built without it, and then operations on crease patterns.
-   → [huzita-hatori](docs/notes/huzita-hatori.md)
+   ([#19](https://github.com/avalonalex/senbazuru/issues/19)) came first, since
+   nothing else can be built without it; the library reads and writes the format
+   now, losing nothing it does not understand. Next are operations on crease
+   patterns, and a verb to invoke them.
+   → [huzita-hatori](docs/notes/huzita-hatori.md),
+   [round-trips](docs/notes/round-trips.md)
 2. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
    What a book draws when a model has too many layers to show them all at once,
    and the answer to where `--offset` runs out. The 3D export already gives

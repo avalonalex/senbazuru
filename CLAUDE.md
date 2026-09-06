@@ -261,7 +261,22 @@ are not contributors can find it, and so there is only one copy to keep true.
   exception: a flat-folded form and a crease pattern have the same kind of
   coordinates, so `defaultNotationFor` asks the class, and only when the
   geometry is flat.
-- **Real files carry vendor keys** like `"cpedit:page"`. Ignore unknown keys.
+- **Real files carry vendor keys** like `"cpedit:page"`. Do not interpret an
+  unknown key — and do not destroy it either. `parseFrame` collects everything
+  it did not claim into `Frame`'s `frameExtras` and the encoder writes it back,
+  so a file survives a trip through senbazuru with another tool's data intact.
+  The two key lists, `fileKeys` and `frameKeys`, are what say which is which; a
+  key that falls out of them gets read *and* collected, and then written twice.
+- **Preserve at the boundary, discard at the transform.** Keeping keys we do not
+  understand means the writer cannot judge them, so whatever *changes* the
+  document has to. `foldFrame` drops `frameExtras` wholesale, because folding
+  rewrites every coordinate and reverses the winding of any face that turns
+  over, and a carried `faces_edges` would then be false. See
+  `docs/notes/round-trips.md`.
+- **Absent is not empty.** The decoder reports a missing `faces_vertices` as
+  `[]` because it is permissive; the encoder must not write `[]` back, because
+  that is a claim the file did not make. Every `Nothing`, every empty list and a
+  `frame_inherit` of `False` are left out.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.
 - **SVG paints in document order**, so later shapes cover earlier ones. Creases
@@ -504,7 +519,8 @@ Deliberate omissions, so nobody thinks they are bugs:
   the per-face rigid transforms `Folding.spanningWalk` computes and discards,
   and intermediate angles that close their loops, per
   `docs/notes/fold-angles-are-the-state.md`.
-- No FOLD *output* (`ToJSON`), which the authoring-tools goal will need.
+- FOLD output exists in the library (`Senbazuru.Fold.Load.encodeFoldFile`,
+  `saveFoldFile`) but no CLI verb calls it yet. The first authoring verb will.
 
 ## Workflow
 

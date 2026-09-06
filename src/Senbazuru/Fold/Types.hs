@@ -30,8 +30,33 @@
 -- a decode failure always means \"this is not valid JSON-shaped FOLD\", never
 -- \"this is FOLD that I happen to not support yet\".
 --
--- Unrecognised keys are ignored, which matters in practice: real files carry
--- vendor extensions such as @\"cpedit:page\"@ that we must not choke on.
+-- Unrecognised keys are not interpreted, which matters in practice: real files
+-- carry vendor extensions such as @\"cpedit:page\"@ that we must not choke on.
+-- They are not thrown away either — see below.
+--
+-- == Writing a file back out
+--
+-- The 'ToJSON' instances here invert the 'FromJSON' ones, and are deliberately
+-- careful about what they put on the page.
+--
+-- __A field that was absent stays absent.__ An empty @faces_vertices@ that we
+-- invented is not the file we were handed, and a reader that tells \"this model
+-- has no faces\" apart from \"this file does not record faces\" would be told
+-- something untrue. So a 'Nothing', an empty list, and a @frame_inherit@ of
+-- 'False' are all simply not written.
+--
+-- __Keys we do not understand are kept.__ They are collected verbatim into
+-- 'frameExtras' on the way in and written back where they came from. Dropping
+-- them would make senbazuru a bad citizen in a toolchain: FOLD namespaces
+-- vendor extensions with a colon precisely so that they can survive a tool
+-- that does not read them, and the rest — @vertices_edges@, @edgeOrders@ —
+-- is the part of the specification we have not implemented, which is no better
+-- a thing to destroy. The price is that a transform which /invalidates/ one has
+-- to say so; \"Senbazuru.Origami.Folding\" is the one that does.
+--
+-- __Keys come out in the order the specification lists them__, with a frame's
+-- unknown keys sorted and placed after its known ones, so that the output is
+-- byte-for-byte reproducible and a diff between two files is readable.
 module Senbazuru.Fold.Types
   ( -- * Documents and frames
     FoldFile (..),
@@ -52,19 +77,31 @@ module Senbazuru.Fold.Types
     -- * Layer ordering
     FaceOrder (..),
     Stacking (..),
+    stackingSign,
+
+    -- * The keys senbazuru understands
+    fileKeys,
+    frameKeys,
   )
 where
 
 import Data.Aeson
   ( FromJSON (..),
+    Key,
     Object,
+    Series,
+    ToJSON (..),
+    object,
+    pairs,
     withArray,
     withObject,
     withText,
     (.!=),
     (.:?),
+    (.=),
   )
-import Data.Aeson.Types (Parser)
+import Data.Aeson.KeyMap qualified as KM
+import Data.Aeson.Types (Pair, Parser)
 import Data.Foldable (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -126,7 +163,20 @@ data Frame = Frame
     facesVertices :: ![[VertexId]],
     -- | @faceOrders@: which face is on top where the model overlaps itself.
     -- Unindexed — this is a list of relationships, not a parallel array.
-    faceOrders :: ![FaceOrder]
+    faceOrders :: ![FaceOrder],
+    -- | Every key of this frame's object that senbazuru does not understand,
+    -- kept exactly as it arrived so that writing the file out again does not
+    -- destroy it. Both vendor extensions such as @\"cpedit:page\"@ and the
+    -- parts of the specification not implemented here, such as
+    -- @vertices_edges@, end up in it.
+    --
+    -- For the key frame this holds the unknown keys of the /top-level/ object,
+    -- since that object /is/ the key frame. See 'parseFrame'.
+    --
+    -- Anything building a 'Frame' by hand should leave this alone. Putting a
+    -- key here that the encoder also writes — one of 'frameKeys', or one of
+    -- 'fileKeys' on the key frame — gets it written twice.
+    frameExtras :: !Object
   }
   deriving stock (Eq, Show)
 
@@ -148,7 +198,8 @@ emptyFrame =
       edgesAssignment = [],
       edgesFoldAngle = [],
       facesVertices = [],
-      faceOrders = []
+      faceOrders = [],
+      frameExtras = KM.empty
     }
 
 -- | Every frame in the document, key frame first.
@@ -158,17 +209,17 @@ allFrames f = keyFrame f : otherFrames f
 -- | Index into @vertices_*@ arrays.
 newtype VertexId = VertexId {unVertexId :: Int}
   deriving stock (Show)
-  deriving newtype (Eq, Ord, FromJSON)
+  deriving newtype (Eq, Ord, FromJSON, ToJSON)
 
 -- | Index into @edges_*@ arrays.
 newtype EdgeId = EdgeId {unEdgeId :: Int}
   deriving stock (Show)
-  deriving newtype (Eq, Ord, FromJSON)
+  deriving newtype (Eq, Ord, FromJSON, ToJSON)
 
 -- | Index into @faces_*@ arrays.
 newtype FaceId = FaceId {unFaceId :: Int}
   deriving stock (Show)
-  deriving newtype (Eq, Ord, FromJSON)
+  deriving newtype (Eq, Ord, FromJSON, ToJSON)
 
 -- | How the paper behaves along an edge.
 --
@@ -255,6 +306,13 @@ instance FromJSON FaceOrder where
         0 -> pure Unordered
         n -> fail ("faceOrders sign must be -1, 0 or 1, not " <> show n)
 
+-- | The @s@ of a @faceOrders@ triple: the inverse of the table above.
+stackingSign :: Stacking -> Int
+stackingSign = \case
+  Above -> 1
+  Below -> -1
+  Unordered -> 0
+
 -- | Parse an @edges_assignment@ code.
 --
 -- The spec uses uppercase, but lowercase codes appear in files produced by
@@ -289,18 +347,63 @@ instance FromJSON FoldFile where
     fileDescription <- o .:? "file_description"
     fileClasses <- o .:? "file_classes" .!= []
     -- The top-level object doubles as the key frame, so the same Object is fed
-    -- to the frame parser as well.
-    keyFrame <- parseFrame o
+    -- to the frame parser as well — telling it which keys have already been
+    -- taken, so that it does not file @file_spec@ under 'frameExtras'.
+    keyFrame <- parseFrame fileKeys o
     otherFrames <- o .:? "file_frames" .!= []
     pure FoldFile {..}
 
 instance FromJSON Frame where
-  parseJSON = withObject "FOLD frame" parseFrame
+  parseJSON = withObject "FOLD frame" (parseFrame [])
+
+-- | The keys 'FoldFile' reads for itself: the ones that mean something only at
+-- the top level.
+fileKeys :: [Key]
+fileKeys =
+  [ "file_spec",
+    "file_creator",
+    "file_author",
+    "file_title",
+    "file_description",
+    "file_classes",
+    "file_frames"
+  ]
+
+-- | The keys 'parseFrame' reads, which are also exactly the keys the encoder
+-- writes.
+--
+-- Neither of those can derive the list, so it is stated once here and both are
+-- checked against it in "Senbazuru.Fold.TypesSpec": every key is consumed on
+-- the way in, and every key is produced on the way out. A key that fell out of
+-- this list would be read /and/ collected into 'frameExtras', and then written
+-- twice.
+frameKeys :: [Key]
+frameKeys =
+  [ "frame_author",
+    "frame_title",
+    "frame_description",
+    "frame_classes",
+    "frame_attributes",
+    "frame_unit",
+    "frame_parent",
+    "frame_inherit",
+    "vertices_coords",
+    "edges_vertices",
+    "edges_assignment",
+    "edges_foldAngle",
+    "faces_vertices",
+    "faceOrders"
+  ]
 
 -- | Shared by 'FoldFile' (for the key frame) and 'Frame' (for @file_frames@
 -- entries), because in FOLD they are the same set of keys in two places.
-parseFrame :: Object -> Parser Frame
-parseFrame o = do
+--
+-- @claimed@ is what the caller has already taken for itself: 'fileKeys' for
+-- the top-level object, nothing for a @file_frames@ entry. Whatever is left
+-- after those and 'frameKeys' is what we do not understand, and it is kept
+-- verbatim in 'frameExtras' rather than dropped.
+parseFrame :: [Key] -> Object -> Parser Frame
+parseFrame claimed o = do
   frameAuthor <- o .:? "frame_author"
   frameTitle <- o .:? "frame_title"
   frameDescription <- o .:? "frame_description"
@@ -315,4 +418,87 @@ parseFrame o = do
   edgesFoldAngle <- o .:? "edges_foldAngle" .!= []
   facesVertices <- o .:? "faces_vertices" .!= []
   faceOrders <- o .:? "faceOrders" .!= []
+  let frameExtras = foldr KM.delete o (claimed <> frameKeys)
   pure Frame {..}
+
+instance ToJSON Assignment where
+  toJSON = toJSON . assignmentCode
+  toEncoding = toEncoding . assignmentCode
+
+instance ToJSON FaceOrder where
+  toJSON o = toJSON (orderFace o, orderRelativeTo o, stackingSign (orderStacking o))
+  toEncoding o = toEncoding (orderFace o, orderRelativeTo o, stackingSign (orderStacking o))
+
+instance ToJSON Frame where
+  toJSON = object . framePairs
+  toEncoding = pairs . series . framePairs
+
+instance ToJSON FoldFile where
+  toJSON = object . filePairs
+  toEncoding = pairs . series . filePairs
+
+-- | The keys of a whole document, in the order the specification lists them.
+--
+-- The key frame's own keys sit in the middle, between the file metadata and
+-- @file_frames@, because that is where they live in the file: the top-level
+-- object is both. This is the only place in the library that has to know it.
+filePairs :: FoldFile -> [Pair]
+filePairs FoldFile {..} =
+  concat
+    [ omitNothing "file_spec" fileSpec,
+      omitNothing "file_creator" fileCreator,
+      omitNothing "file_author" fileAuthor,
+      omitNothing "file_title" fileTitle,
+      omitNothing "file_description" fileDescription,
+      omitEmpty "file_classes" fileClasses,
+      framePairs keyFrame,
+      omitEmpty "file_frames" otherFrames
+    ]
+
+-- | The keys of one frame, in the order the specification lists them, with
+-- 'frameExtras' after them.
+--
+-- The key names here must be exactly 'frameKeys' — see the note there.
+framePairs :: Frame -> [Pair]
+framePairs Frame {..} =
+  concat
+    [ omitNothing "frame_author" frameAuthor,
+      omitNothing "frame_title" frameTitle,
+      omitNothing "frame_description" frameDescription,
+      omitEmpty "frame_classes" frameClasses,
+      omitEmpty "frame_attributes" frameAttributes,
+      omitNothing "frame_unit" frameUnit,
+      omitNothing "frame_parent" frameParent,
+      omitFalse "frame_inherit" frameInherit,
+      omitEmpty "vertices_coords" verticesCoords,
+      omitEmpty "edges_vertices" edgesVertices,
+      omitEmpty "edges_assignment" edgesAssignment,
+      omitEmpty "edges_foldAngle" edgesFoldAngle,
+      omitEmpty "faces_vertices" facesVertices,
+      omitEmpty "faceOrders" faceOrders,
+      -- Sorted, so that two runs of senbazuru over the same file produce the
+      -- same bytes. A KeyMap has no order of its own to inherit.
+      KM.toAscList frameExtras
+    ]
+
+-- | Keep an ordered list of pairs ordered on the way out.
+--
+-- 'object' would lose it — an 'Object' is a hash map — so the instances above
+-- define 'toEncoding' as well, which is what 'Data.Aeson.encode' actually
+-- uses, and build it from a 'Series', which concatenates in order.
+series :: [Pair] -> Series
+series = foldMap (uncurry (.=))
+
+-- | Write a key only if the field has a value. See the module header: an
+-- absent key and a key written as @null@ are not the same file.
+omitNothing :: (ToJSON a) => Key -> Maybe a -> [Pair]
+omitNothing k = maybe [] (\v -> [k .= v])
+
+-- | Write a key only if the list has something in it.
+omitEmpty :: (ToJSON a) => Key -> [a] -> [Pair]
+omitEmpty _ [] = []
+omitEmpty k xs = [k .= xs]
+
+-- | Write a flag only when it is set, because absent means 'False' already.
+omitFalse :: Key -> Bool -> [Pair]
+omitFalse k b = [k .= True | b]

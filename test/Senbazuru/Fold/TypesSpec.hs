@@ -1,27 +1,60 @@
 -- |
--- Decoding tests for the FOLD format, plus the refinement step in
+-- Decoding and encoding tests for the FOLD format, plus the refinement step in
 -- "Senbazuru.Fold.Query".
 --
 -- Most cases here were chosen by looking at real @.fold@ files rather than at
 -- the specification, because the things that actually break a decoder —
 -- a fractional @file_spec@, vendor-prefixed keys, absent optional arrays — are
 -- things the spec permits but does not draw attention to.
+--
+-- The encoding half is tested three ways, because each catches a different
+-- mistake. Byte-for-byte examples pin the small decisions — key order, what
+-- is left out — where a golden file would be overkill. A round trip over
+-- every fixture is the criterion the format itself suggests: whatever a real
+-- file says, saying it again must not change it. And a round trip over
+-- generated documents is the only one that fails when someone adds a field to
+-- 'Frame' and forgets the encoder, because 'genFrame' is written positionally
+-- and stops compiling until they deal with it.
 module Senbazuru.Fold.TypesSpec (spec) where
 
+import Data.Aeson (Object, Value (..), eitherDecodeStrict', encode, toJSON)
+import Data.Aeson.Key qualified as Key
+import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Either (isLeft)
-import Senbazuru.Fold.Load (decodeFoldFile)
+import Data.Foldable (for_)
+import Data.List (isSuffixOf, sort)
+import Data.Text (Text)
+import Data.Text qualified as T
+import Senbazuru.Fold.Load (decodeFoldFile, encodeFoldFile)
 import Senbazuru.Fold.Query
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..))
+import System.Directory (listDirectory)
+import System.FilePath ((</>))
 import Test.Hspec
+import Test.QuickCheck
 
 -- | Decode or fail the test with the decoder's own message.
 decodeOrFail :: ByteString -> IO FoldFile
 decodeOrFail bytes = case decodeFoldFile bytes of
   Left err -> fail ("decode failed: " <> err)
   Right f -> pure f
+
+-- | Decode as a bare JSON object, for the tests that ask which /keys/ came
+-- out rather than what they meant.
+decodeObjectOrFail :: ByteString -> IO Object
+decodeObjectOrFail bytes = case eitherDecodeStrict' bytes of
+  Left err -> fail ("decode failed: " <> err)
+  Right o -> pure o
+
+-- | Byte-for-byte copies of the @examples@ directory. The tests read these
+-- rather than those because they are what the cabal file ships in a source
+-- distribution.
+fixtureDir :: FilePath
+fixtureDir = "test" </> "fixtures"
 
 -- | A frame with the given vertices and edges, everything else defaulted.
 frameOf :: [[Double]] -> [(Int, Int)] -> [Assignment] -> Frame
@@ -32,8 +65,122 @@ frameOf vs es as =
       edgesAssignment = as
     }
 
+-- | Keep generated documents small: a shrunk counterexample has to be
+-- readable, and nothing here gets better at ten thousand vertices.
+small :: Gen a -> Gen a
+small = scale (`min` 6)
+
+genText :: Gen Text
+genText = T.pack <$> arbitrary
+
+genMaybeText :: Gen (Maybe Text)
+genMaybeText = oneof [pure Nothing, Just <$> genText]
+
+-- | Keys the decoder does not understand, and values of the shapes a vendor
+-- extension really uses.
+--
+-- Every key is namespaced, which is both what the specification asks of a
+-- vendor and what keeps the test honest: a generated @vertices_coords@ would
+-- be read as one and the property would pass for the wrong reason.
+genExtras :: Gen Object
+genExtras = KM.fromList <$> small (listOf ((,) <$> genKey <*> genValue))
+  where
+    genKey = Key.fromText . ("x:" <>) <$> genText
+    genValue =
+      oneof
+        [ toJSON <$> genText,
+          toJSON <$> (arbitrary :: Gen Int),
+          toJSON <$> (arbitrary :: Gen Bool),
+          pure Null,
+          toJSON <$> (arbitrary :: Gen [Int])
+        ]
+
+-- | An arbitrary frame, with no attempt to make it a sensible one.
+--
+-- The parallel arrays are generated independently, so their lengths disagree
+-- constantly. That is the point: "Senbazuru.Fold.Types" is permissive by
+-- design and has to write back whatever it was given, and the checking lives
+-- in "Senbazuru.Fold.Query".
+--
+-- Written as a positional chain of '<*>' rather than with field names on
+-- purpose. Adding a field to 'Frame' breaks this line, and breaking this line
+-- is the only warning anyone gets that the encoder needs a new one too.
+genFrame :: Gen Frame
+genFrame =
+  Frame
+    <$> genMaybeText
+    <*> genMaybeText
+    <*> genMaybeText
+    <*> small (listOf genText)
+    <*> small (listOf genText)
+    <*> genMaybeText
+    <*> arbitrary
+    <*> arbitrary
+    <*> small (listOf (small (listOf arbitrary)))
+    <*> small (listOf ((,) <$> genVertexId <*> genVertexId))
+    <*> small (listOf (elements [minBound .. maxBound]))
+    <*> small (listOf arbitrary)
+    <*> small (listOf (small (listOf genVertexId)))
+    <*> small (listOf genFaceOrder)
+    <*> genExtras
+  where
+    genVertexId = VertexId <$> arbitrary
+    genFaceOrder =
+      FaceOrder
+        <$> (FaceId <$> arbitrary)
+        <*> (FaceId <$> arbitrary)
+        <*> elements [minBound .. maxBound]
+
+genFile :: Gen FoldFile
+genFile =
+  FoldFile
+    <$> oneof [pure Nothing, Just <$> arbitrary]
+    <*> genMaybeText
+    <*> genMaybeText
+    <*> genMaybeText
+    <*> genMaybeText
+    <*> small (listOf genText)
+    <*> genFrame
+    <*> small (listOf genFrame)
+
+-- | A document with every key the encoder knows how to write set to something,
+-- so that the set of keys it produces can be compared against 'fileKeys' and
+-- 'frameKeys'.
+--
+-- Every field has to be non-default, since the encoder leaves defaults out.
+saturated :: FoldFile
+saturated =
+  FoldFile
+    { fileSpec = Just 1.2,
+      fileCreator = Just "senbazuru",
+      fileAuthor = Just "author",
+      fileTitle = Just "title",
+      fileDescription = Just "description",
+      fileClasses = ["singleModel"],
+      keyFrame =
+        emptyFrame
+          { frameAuthor = Just "author",
+            frameTitle = Just "title",
+            frameDescription = Just "description",
+            frameClasses = ["creasePattern"],
+            frameAttributes = ["2D"],
+            frameUnit = Just "unit",
+            frameParent = Just 0,
+            frameInherit = True,
+            verticesCoords = [[0, 0], [1, 0], [1, 1]],
+            edgesVertices = [(VertexId 0, VertexId 1)],
+            edgesAssignment = [Border],
+            edgesFoldAngle = [0],
+            facesVertices = [map VertexId [0, 1, 2]],
+            faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]
+          },
+      otherFrames = [emptyFrame {frameTitle = Just "second"}]
+    }
+
 spec :: Spec
 spec = do
+  fixtures <- runIO (sort . filter (".fold" `isSuffixOf`) <$> listDirectory fixtureDir)
+
   describe "decoding" $ do
     it "reads the minimum viable FOLD document" $ do
       f <- decodeOrFail "{}"
@@ -46,9 +193,12 @@ spec = do
       f <- decodeOrFail "{\"file_spec\": 1.1}"
       fileSpec f `shouldBe` Just 1.1
 
-    it "ignores vendor-prefixed keys it does not understand" $ do
+    it "reads past a vendor-prefixed key it does not understand" $ do
+      -- Not interpreted, but not lost either: it is kept in frameExtras so
+      -- that writing the file out again does not destroy it. See "encoding".
       f <- decodeOrFail "{\"cpedit:page\": {\"xMin\": 0}, \"file_title\": \"t\"}"
       fileTitle f `shouldBe` Just "t"
+      KM.keys (frameExtras (keyFrame f)) `shouldBe` ["cpedit:page"]
 
     it "treats the top-level object as the key frame" $ do
       -- The one genuinely surprising thing about FOLD: file metadata and the
@@ -202,3 +352,106 @@ spec = do
       -- with a hole in it and say nothing.
       let fr = (frameOf [[0, 0], [1, 0], [1, 1]] [] []) {facesVertices = [map VertexId [0, 1]]}
       frameFaces fr `shouldBe` Left (FaceTooFewCorners (FaceId 0) 2)
+
+  describe "encoding" $ do
+    it "writes nothing for a document that says nothing" $ do
+      -- The whole of the "absent stays absent" rule in one line: {} decodes to
+      -- a FoldFile of empty lists and Nothings, and none of them get written.
+      f <- decodeOrFail "{}"
+      encodeFoldFile f `shouldBe` "{}\n"
+
+    it "writes the keys in the order the specification lists them" $ do
+      -- Not cosmetic. It is what makes the output reproducible and a diff
+      -- between two files readable, and a KeyMap has no order to inherit.
+      f <-
+        decodeOrFail
+          "{\"faceOrders\": [[1, 0, -1]], \"frame_title\": \"f\",\
+          \ \"vertices_coords\": [[0, 0]], \"file_title\": \"t\"}"
+      encodeFoldFile f
+        `shouldBe` "{\"file_title\":\"t\",\"frame_title\":\"f\",\
+                   \\"vertices_coords\":[[0,0]],\"faceOrders\":[[1,0,-1]]}\n"
+
+    it "leaves out an array the file did not have" $ do
+      -- edges_assignment is absent, and the decoder reports it as []. Writing
+      -- [] back would tell a reader this file records no assignments, which is
+      -- a different claim from not mentioning them.
+      f <- decodeOrFail "{\"edges_vertices\": [[0, 1]]}"
+      encodeFoldFile f `shouldBe` "{\"edges_vertices\":[[0,1]]}\n"
+
+    it "leaves out frame_inherit when it is false, which absence already means" $ do
+      f <- decodeOrFail "{\"frame_inherit\": false}"
+      encodeFoldFile f `shouldBe` "{}\n"
+
+    it "writes an assignment as its uppercase code, whatever case it arrived in" $ do
+      -- One of the two places the round trip is deliberately not the identity
+      -- on bytes. A lowercase "m" is a tool being loose; the spec says M.
+      f <- decodeOrFail "{\"edges_assignment\": [\"m\", \"v\"]}"
+      encodeFoldFile f `shouldBe` "{\"edges_assignment\":[\"M\",\"V\"]}\n"
+
+    it "writes a stacking back as the sign it was read from" $ do
+      f <- decodeOrFail "{\"faceOrders\": [[2, 0, 1], [3, 0, -1], [4, 0, 0]]}"
+      encodeFoldFile f
+        `shouldBe` "{\"faceOrders\":[[2,0,1],[3,0,-1],[4,0,0]]}\n"
+
+    it "keeps a key it does not understand, after the ones it does" $ do
+      -- Both kinds: a vendor extension, and a part of the specification that
+      -- is simply not implemented here.
+      f <-
+        decodeOrFail
+          "{\"cpedit:page\": {\"xMin\": 0}, \"vertices_edges\": [[0, 1]],\
+          \ \"file_title\": \"t\"}"
+      encodeFoldFile f
+        `shouldBe` "{\"file_title\":\"t\",\"cpedit:page\":{\"xMin\":0},\
+                   \\"vertices_edges\":[[0,1]]}\n"
+
+    it "puts an unknown top-level key back at the top level, not into a frame" $ do
+      -- The top-level object is both the file and the key frame, so an unknown
+      -- key there is filed under the key frame's extras. It has to come back
+      -- out at the top -- with the rest of the key frame, so before
+      -- file_frames -- and not be copied into the frames themselves.
+      f <-
+        decodeOrFail
+          "{\"x:a\": 1, \"file_frames\": [{\"x:b\": 2}]}"
+      encodeFoldFile f
+        `shouldBe` "{\"x:a\":1,\"file_frames\":[{\"x:b\":2}]}\n"
+
+    it "does not mistake a file-level key for something it does not understand" $ do
+      -- fileKeys is what stops the key frame collecting file_spec as an extra
+      -- and the encoder then writing it twice.
+      f <- decodeOrFail "{\"file_spec\": 1.1}"
+      KM.keys (frameExtras (keyFrame f)) `shouldBe` []
+
+  describe "the round trip" $ do
+    for_ fixtures $ \name ->
+      it ("is a fixed point on " <> name) $ do
+        -- The criterion from the issue this was written for: whatever a real
+        -- file says, decoding it, writing it and decoding it again must not
+        -- have changed anything. The second half checks the bytes settle too,
+        -- so the first pass is a normalisation and not an oscillation.
+        original <- decodeOrFail =<< BS.readFile (fixtureDir </> name)
+        again <- decodeOrFail (encodeFoldFile original)
+        again `shouldBe` original
+        encodeFoldFile again `shouldBe` encodeFoldFile original
+
+    it "survives a document nobody would write" $
+      -- Generated frames have parallel arrays of mismatched lengths, faces
+      -- naming vertices that do not exist and vendor keys full of nulls. None
+      -- of that is this layer's business to object to, and all of it has to
+      -- come back unchanged.
+      forAll genFile $ \f ->
+        decodeFoldFile (encodeFoldFile f) === Right f
+
+    it "consumes every key it claims to know" $
+      -- Half of the invariant on fileKeys and frameKeys. A key that is read but
+      -- missing from those lists would be collected into frameExtras as well,
+      -- and then written twice. null is used as the value because every one of
+      -- these keys is optional, so all of them accept it.
+      for_ (fileKeys <> frameKeys) $ \k -> do
+        f <- decodeOrFail (BL.toStrict (encode (KM.singleton k Null)))
+        (k, KM.keys (frameExtras (keyFrame f))) `shouldBe` (k, [])
+
+    it "writes every key it claims to know, and no others" $ do
+      -- The other half. Encoding a document with every field set has to
+      -- produce exactly the keys the two lists name.
+      o <- decodeObjectOrFail (encodeFoldFile saturated)
+      sort (KM.keys o) `shouldBe` sort (fileKeys <> frameKeys)
