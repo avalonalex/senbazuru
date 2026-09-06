@@ -94,13 +94,13 @@ billionth of the pattern's own diagonal, which for the 400-unit square both
 editors draw on is about half a millionth of a unit.
 
 One more thing worth knowing is visible in the picture above. The valley along
-the diagonal runs from the lower left to the upper right, and it runs the other
-way in the file, because both formats measure `y` *downwards* — they are Java
-desktop applications storing screen coordinates. senbazuru turns that the right
-way up on the way in, which is a correction and not a preference: a crease
-pattern read upside down is the mirror image, which is a model that folds
-perfectly well and is not the one in the file. Exactly the argument the README
-makes about `--rotate`.
+the diagonal runs from the lower left to the upper right — and plot the file's
+own numbers with `y` upwards and it runs the other way, because both formats
+measure `y` *downwards*: they are Java desktop applications storing screen
+coordinates. senbazuru turns that the right way up on the way in, which is a
+correction and not a preference: a crease pattern read upside down is the
+mirror image, which is a model that folds perfectly well and is not the one in
+the file — exactly the argument the README makes about `--rotate`.
 
 The formats are set out, with the type-code tables and how each was established,
 in [notes/cp-and-opx.md](notes/cp-and-opx.md).
