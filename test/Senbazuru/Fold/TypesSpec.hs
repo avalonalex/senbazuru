@@ -125,11 +125,9 @@ genFrame =
     <*> genExtras
   where
     genVertexId = VertexId <$> arbitrary
+    genFaceId = FaceId <$> arbitrary
     genFaceOrder =
-      FaceOrder
-        <$> (FaceId <$> arbitrary)
-        <*> (FaceId <$> arbitrary)
-        <*> elements [minBound .. maxBound]
+      FaceOrder <$> genFaceId <*> genFaceId <*> elements [minBound .. maxBound]
 
 genFile :: Gen FoldFile
 genFile =
