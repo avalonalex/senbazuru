@@ -40,9 +40,9 @@ are these reflected, whose mountains and valleys are swapped, and which folds
 perfectly well from a square of its own. It is simply not the model in the file.
 
 > **Status: early**, and moving. Crease patterns, folding, layer order, hidden
-> lines, two-sided paper, offset views, fold arrows, step-by-step pages and a
-> flat-foldability checker all work; there is no FOLD *output* yet, which is the
-> next big thing.
+> lines, two-sided paper, offset views, fold arrows, step-by-step pages, a
+> flat-foldability checker and a 3D export all work; there is no FOLD *output*
+> yet, which is the next big thing.
 > [Roadmap](#roadmap) · [what works in detail](docs/tour.md)
 
 ## The interesting part is that paper is opaque
@@ -86,6 +86,10 @@ picture that looks like it came from a book.
 - **Infers the arrows.** FOLD records no arrows, so it subtracts one frame from
   the next to find what moved where, and lays a whole sequence out as one
   numbered page at one scale.
+- **Exports a 3D model.** `export` writes a folded form as glTF (`.glb`), the
+  paper's two sides in their two colours, with a flat-folded model's layers
+  lifted apart so a 3D viewer can tell them apart at all — paper has no
+  thickness, and a depth buffer needs it to.
 - **Checks flat-foldability** at every interior vertex, by Maekawa's theorem and
   Kawasaki's, and says which vertex fails and why.
 
@@ -160,18 +164,11 @@ issues are the detail.
    ([#19](https://github.com/avalonalex/senbazuru/issues/19)) first, since
    nothing else can be built without it, and then operations on crease patterns.
    → [huzita-hatori](docs/notes/huzita-hatori.md)
-2. **[A 3D model of a folded form.](https://github.com/avalonalex/senbazuru/issues/27)**
-   The folding already computes coordinates in space; exporting them would give
-   an object you can turn over rather than one picture of it. The hard part is
-   that paper has no thickness, so a flat-folded model is entirely coplanar and
-   z-fights.
-   → [layer-ordering](docs/notes/layer-ordering.md)
-3. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
+2. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
    What a book draws when a model has too many layers to show them all at once,
-   and the answer to where `--offset` runs out. It needs the same thickness the
-   item above needs, and should be built with it rather than inventing a second
-   one.
-   → [layer-numbers](docs/notes/layer-numbers.md)
+   and the answer to where `--offset` runs out. The 3D export already gives
+   paper a thickness; this should reuse it rather than invent a second one.
+   → [paper-thickness](docs/notes/paper-thickness.md)
 
 ## Credits and licence
 

@@ -352,6 +352,52 @@ blown up to fill its cell, and the page would tell the reader, in the most
 convincing way a picture can, that folding a sheet in half does not make it
 smaller. `--columns` sets how many figures go across.
 
+## What it exports
+
+Everything above is a picture from one angle. A folded form is an object, and
+the fastest way to see that a fold went wrong is to turn it over.
+
+```bash
+stack run -- export examples/crane.fold --fold -o crane.glb
+stack run -- export examples/quarter-fold.fold --fold --thickness 0.02 -o stack.glb
+```
+
+writes glTF in its binary form, which opens in Blender, in three.js, and in the
+viewers built into macOS and Windows. The paper's two sides come out in the two
+colours the SVG uses, each face written twice and wound both ways, because
+glTF culls a triangle seen from behind and that is how a sheet gets a front
+and a back.
+
+The reason this is more than a mesh writer is the reason the offset view exists:
+**paper has no thickness.** Fold a square into quarters and all four faces lie
+in one plane to the last bit. An SVG copes because it paints in an order. A 3D
+viewer does not — it keeps whichever triangle is nearest at each pixel, and
+when two are at the same depth it keeps whichever rounding favours, pixel by
+pixel. Coincident layers come out as a shimmer of both, and a flat-folded model
+is nothing but coincident layers.
+
+So each face is lifted by its layer number — the same longest-chain number
+`--offset` steps by — times a thickness, a thousandth of the model by default.
+Four faces stacked come out at heights 0, 1, 2 and 3; two lying side by side
+come out level. That is how thick paper sits, and it means every face has to own
+its corners: a crease between layers 3 and 7 steps by four thicknesses, so its
+two faces cannot share a vertex. The quarter fold is sixteen vertices, not nine.
+
+`--thickness 0` writes the paper exactly as folded and asks for no layer order,
+which is the only way to export a twist. A model with paper still in the air is
+written as it stands, unseparated. [notes/paper-thickness.md](notes/paper-thickness.md)
+has the detail, and what other tools do about the same problem.
+
+One expectation to head off: the crane that comes out is **flat**, wings closed,
+because `examples/crane.fold` is the flat-folded crane — every angle in it is
+±180°, which is what a layer solver's corpus records. The crane in a photograph
+is that model after its last two steps, the wings spread and the body puffed,
+and those are partial angles the file does not carry (the puff is not rigid
+origami at all). A frame *with* those angles exports as it stands; what
+senbazuru cannot do is make them up from the flat one, since scaling every
+angle by a fraction lands on angles no sheet can adopt —
+[notes/fold-angles-are-the-state.md](notes/fold-angles-are-the-state.md).
+
 ## What it checks
 
 `senbazuru check` applies two classical theorems to every *interior* vertex of a

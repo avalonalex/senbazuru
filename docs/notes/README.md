@@ -28,6 +28,7 @@ read the Haddock module headers; for the domain, start with
 | [convex-clipping.md](convex-clipping.md) | Test whether two faces overlap by clipping them, not with predicates |
 | [visible-regions.md](visible-regions.md) | Draw a folded model by subtracting the layers over each face, not by painting faces in order |
 | [layer-numbers.md](layer-numbers.md) | Which sheet of the stack a face is in is the longest chain below it, not a count of what it covers |
+| [paper-thickness.md](paper-thickness.md) | A depth buffer cannot draw coincident layers; lift each by its layer number, and give every face its own corners |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
 

@@ -69,6 +69,7 @@ stack build                 # build library + executable
 stack test                  # build everything and run the test suite
 stack run -- render examples/unit-square.fold -o out.svg
 stack run -- render examples/squaretwist.fold --view iso -o out.svg
+stack run -- export examples/crane.fold --fold -o crane.glb
 stack run -- info examples/squaretwist.fold
 stack ghci senbazuru:lib    # REPL with the library loaded
 
@@ -162,6 +163,13 @@ which is the only place both units are in scope. The rule is what makes
 `Diagram.Layout` possible at all — figures are combined by shifting their
 coordinates, and nothing about how they are inked has to be recomputed.
 
+**New backends consume `Diagram`, with one exception.** `Diagram` is 2D, so
+`Senbazuru.Render.Gltf` reads `Fold.Query`'s faces directly rather than going
+through it — a stated exception, not a precedent, and the day a second 3D format
+arrives is the day a 3D intermediate representation earns its place. It must
+not import `Render.CreasePattern`; the policy both share, which layer order to
+use, is `Origami.Layers.layerOrderFor`.
+
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because
 arithmetic hidden in an attribute string cannot be property-tested.
@@ -203,7 +211,10 @@ Three kinds, used for different things:
 
 To update a golden file after an intentional change: run `stack test`, read the
 diff it prints, and if the new output is right, `mv test/golden/X.actual.svg
-test/golden/X.svg`. Never accept a golden diff you have not read.
+test/golden/X.svg`. Never accept a golden diff you have not read. A `.glb`
+golden is opaque to a text diff, so its failure names the first byte that
+differs — inside the JSON chunk is a change of document, inside the binary
+chunk a change of geometry — and `cmp -l` shows the rest.
 
 Anything that generates SVG must go through `formatNumber`, which is what keeps
 output byte-for-byte reproducible (no scientific notation, no trailing zeros, no
@@ -391,7 +402,31 @@ are not contributors can find it, and so there is only one copy to keep true.
   and a folded model has faces pointing both ways. Miss it and models seen from
   their back face come out inside out.
 - **`-0.0 == 0.0` is `True`** but they format differently. A y-flip produces
-  negative zeros. `formatNumber` normalises them.
+  negative zeros. `formatNumber` normalises them — and so does the 3D export
+  before packing a float32, which keeps the two zeros as different bytes.
+- **The layer solver reads the creases, so hand it the frame.** `Render.Gltf`
+  once rebuilt a frame from vertices and faces alone to ask for a layer order;
+  the solver, finding no creases and no assignments, had nothing to constrain
+  and stacked every model flat — including the quarter fold, silently. A twist
+  exporting without complaint was what gave it away.
+- **glTF is y-up; FOLD is z-up.** `Render.Gltf` maps `(x, y, z)` to
+  `(x, z, -y)`. The `-y` reads as a typo and is a quarter turn about `x`;
+  `(x, z, y)` would be a reflection and the model would come out mirrored,
+  which folds perfectly well and is not the model in the file.
+- **A hex colour is sRGB and glTF wants linear.** `#faf8f3` written through
+  unconverted is visibly too light. `Render.Gltf.linearOf` inverts the transfer
+  function; `Diagram.colourComponents` deliberately does not, because the
+  transfer is glTF's convention and not the colour's.
+- **In a 3D export every face owns its corners.** Faces at different layers are
+  lifted to different heights, so a crease's two faces cannot share a vertex;
+  the quarter fold is sixteen vertices, not nine. A watertight mesh would be the
+  wrong answer — a folded sheet is not a solid.
+- **Two paper colours are two primitives, not a two-sided material.** glTF has
+  no material with a front colour and a back colour, so each face is written
+  twice, wound both ways, each copy single-sided and culled from behind.
+- **`--thickness 0` skips the layer solver entirely.** It is the export's
+  `--no-fill`: the only way to write a twist, whose layers run in a circle and
+  have no numbers to be lifted by.
 
 ## Not implemented yet
 
@@ -449,6 +484,17 @@ Deliberate omissions, so nobody thinks they are bugs:
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.
+- The 3D export separates layers only for a model folded flat. A form with
+  paper in the air is written as it stands, and its coplanar faces, where it
+  has any, z-fight; the general case groups faces by plane and lifts each group
+  along its own normal.
+- The 3D export fans each face from its first corner, which is right for convex
+  faces and refuses the rest. Ear clipping would take any simple polygon.
+- The 3D export writes faces and no crease lines, no normals (viewers compute
+  flat ones, which is right for paper), and no animation — the last would need
+  the per-face rigid transforms `Folding.spanningWalk` computes and discards,
+  and intermediate angles that close their loops, per
+  `docs/notes/fold-angles-are-the-state.md`.
 - No FOLD *output* (`ToJSON`), which the authoring-tools goal will need.
 
 ## Workflow

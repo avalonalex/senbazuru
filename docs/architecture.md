@@ -44,6 +44,11 @@ One direction of flow, no cycles:
      |  Senbazuru.Render.CreasePattern
      |  + Senbazuru.Render.Camera    orthographic projection to the page
      |  + Senbazuru.Diagram.Style    origami line conventions
+     |
+     |    Senbazuru.Render.Gltf       the one backend that does not go through
+     |      |                         Diagram, because Diagram is 2D: faces in
+     |      v                         space, layers lifted apart, two-sided paper
+     |    .glb bytes
      v
  Diagram                             Senbazuru.Diagram
      |                               backend-independent: shapes + strokes
@@ -76,6 +81,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
+| `Senbazuru.Render.Gltf` | FOLD frame → glTF binary: a 3D model, with a flat-folded model's layers lifted apart so a depth buffer can tell them apart. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
 ## Where the files are
@@ -101,7 +107,12 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 - Only `Senbazuru.Fold.Load` does I/O. Everything else takes and returns values,
   which is what makes the rest testable without a filesystem.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
-  second traversal of `Frame`.
+  second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
+  is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` reads
+  `Fold.Query`'s faces directly. That is a stated exception, chosen over a 3D
+  intermediate representation for a single consumer; a second 3D format would
+  be the moment to build one. It still must not import `Render.CreasePattern`:
+  what the two share — which layer order to use — lives in `Origami.Layers`.
 
 ## Testing
 

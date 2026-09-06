@@ -114,19 +114,18 @@ import Senbazuru.Fold.Query
     FrameKind (..),
     edgeKey,
     frameCreases,
-    frameFaceOrders,
     frameFaces,
     frameKind,
     frameVertices,
     ringEdges,
   )
-import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder, Frame (..))
+import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
 import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Flat (FlatError (..))
-import Senbazuru.Origami.Layers (layerDepths, paintOrder, showsTopSide)
-import Senbazuru.Origami.Stacking (Budget, StackingError (..), defaultBudget, solveStackingAs)
+import Senbazuru.Origami.Layers (layerDepths, layerOrderFor, paintOrder, showsTopSide)
+import Senbazuru.Origami.Stacking (Budget, defaultBudget)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, View (..), basisForward, isometric, project, topDown, turnedBy)
@@ -199,7 +198,7 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
   -- a file whose stacking is impossible, or whose faces this cannot read.
   (FoldedFormNotation, Nothing) -> everyCrease
   (FoldedFormNotation, Just colours) -> do
-    ordering <- layerOrder budget fr
+    ordering <- layerOrderFor budget fr
     case ordering of
       -- Nothing is known about the layers and the file says nothing either, so
       -- there is no honest way to fill anything. A wireframe it is. That
@@ -401,37 +400,6 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
         Left (PaperInTheAir _) -> Right wholeStack
         Left (ConcaveFace _) -> Right wholeStack
         Left (FlatRefused err) -> Left err
-
--- | The layer order to draw a folded form by: the file\'s, or one worked out,
--- or nothing at all.
---
--- A file that supplies @faceOrders@ gets its own. A file that does not gets one
--- from "Senbazuru.Origami.Stacking", which covers models folded flat with
--- convex faces; outside that it declines, having attempted nothing, and there
--- is no ordering to be had. An empty list is a real answer — no two faces
--- overlap — and is not the same as no answer.
---
--- A model the solver /tried/ and found impossible — no stacking of its layers
--- avoids the paper passing through itself — is refused rather than dropped, and
--- the drawing fails. That is the rule above rather than an exception to it:
--- these faces were going to be drawn, and the only account of how to stack them
--- is impossible. Quietly drawing something else instead is the failure mode this
--- module keeps being written to avoid, and @--no-fill@ still renders the file.
-layerOrder :: Budget -> Frame -> Either FoldError (Maybe [FaceOrder])
-layerOrder budget fr = do
-  supplied <- frameFaceOrders fr
-  if null supplied
-    then case solveStackingAs budget [] fr of
-      Right orders -> Right (Just orders)
-      Left NotFlat {} -> Right Nothing
-      Left NonConvexFace {} -> Right Nothing
-      -- Unreachable, both of them: this asks for no particular order, so there
-      -- is no index to be out of range and no component to be missing.
-      -- Declining is the harmless answer.
-      Left NoSuchStacking {} -> Right Nothing
-      Left NoSuchComponent {} -> Right Nothing
-      Left (StackingRefused err) -> Left err
-    else Right (Just supplied)
 
 -- | Is the viewer on the @+z@ side of the model?
 --

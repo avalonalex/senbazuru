@@ -17,14 +17,17 @@
 -- one fewer dependency to keep current.
 module Test.Golden
   ( goldenText,
+    goldenBytes,
   )
 where
 
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import System.Directory (doesFileExist)
-import System.FilePath (replaceExtension)
+import System.FilePath (replaceExtension, takeExtension)
 import Test.Hspec (Expectation, expectationFailure)
 
 -- | Compare text against the contents of a golden file.
@@ -68,6 +71,58 @@ goldenText goldenPath actual = do
               <> goldenPath
   where
     actualPath = replaceExtension goldenPath ".actual.svg"
+
+-- | 'goldenText' for a binary file.
+--
+-- Same contract, same @.actual@ file beside the golden, and the one thing a
+-- line number cannot give: the offset of the first byte that differs, which is
+-- what tells you whether a @.glb@ changed in its JSON, its geometry, or only
+-- in a length field.
+goldenBytes :: FilePath -> ByteString -> Expectation
+goldenBytes goldenPath actual = do
+  exists <- doesFileExist goldenPath
+  if not exists
+    then do
+      BS.writeFile actualPath actual
+      expectationFailure $
+        "golden file "
+          <> goldenPath
+          <> " does not exist.\nReview "
+          <> actualPath
+          <> " and, if it is correct, move it into place:\n  mv "
+          <> actualPath
+          <> " "
+          <> goldenPath
+    else do
+      expected <- BS.readFile goldenPath
+      if expected == actual
+        then pure ()
+        else do
+          BS.writeFile actualPath actual
+          expectationFailure $
+            "output does not match "
+              <> goldenPath
+              <> "\n  first difference: "
+              <> firstByte expected actual
+              <> "\n  compare with: cmp -l "
+              <> goldenPath
+              <> " "
+              <> actualPath
+              <> "\n  accept with:  mv "
+              <> actualPath
+              <> " "
+              <> goldenPath
+  where
+    actualPath = replaceExtension goldenPath (".actual" <> takeExtension goldenPath)
+
+    firstByte expected actual' =
+      case [i | (i, e, a) <- zip3 [0 :: Int ..] (BS.unpack expected) (BS.unpack actual'), e /= a] of
+        (i : _) -> "byte " <> show i
+        [] ->
+          "lengths differ: expected "
+            <> show (BS.length expected)
+            <> " bytes, actual "
+            <> show (BS.length actual')
 
 -- | The first line that differs, reported with its line number, so the failure
 -- message is useful without opening the diff.

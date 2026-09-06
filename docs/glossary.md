@@ -92,3 +92,6 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | **Two-unit rule** | Shape coordinates are in model units and are scaled to the page; stroke widths, dash lengths, arrowheads, type sizes and layer offsets are in page units and are not. See `Senbazuru.Diagram`. |
 | **Extent** | The model-space region a page should show. Stored on a `Diagram` rather than derived, so every step of a sequence draws at one scale. |
 | **Golden test** | A test pinning exact expected output in a committed file. Read the diff before accepting one. |
+| **glTF / GLB** | The 3D file format `export` writes: glTF 2.0, in its self-contained binary container (`.glb`). A JSON description of meshes and materials, plus a binary buffer of positions and triangle indices. Y is up, where FOLD's is z. |
+| **Z-fighting** | What a 3D viewer shows where two faces lie at exactly the same depth: a shimmer of both, because its depth buffer has no way to say which is in front. A flat-folded model is nothing but such faces, which is why the export gives paper a thickness. See [notes/paper-thickness.md](notes/paper-thickness.md). |
+| **Thickness** | In the 3D export, how far each layer of a flat-folded model is lifted above the one below it: the layer number times a step, a thousandth of the model by default. Not a property of the paper in the file, which has none. |
