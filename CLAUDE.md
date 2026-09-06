@@ -263,6 +263,20 @@ are not contributors can find it, and so there is only one copy to keep true.
   it, lines and all, or the stack reads as a heap of wireframes. The order there
   is fill, lines, fill, lines, from the bottom up — and within one layer the
   usual rule still holds.
+- **The offset view is drawn in two weights, and the weight is the whole fix.**
+  A buried sheet goes down at `themeBuriedWidth` (0.35pt) and the model —
+  `Senbazuru.Origami.Visible`'s unhidden stretches — over the top at full
+  weight. At one weight a dozen sheet edges three points apart are a black band.
+  Dropping lines instead does not work and was measured: keeping only each
+  sheet's silhouette removes 6 of the crane's 242 edge copies, because nearly
+  every crease separates two faces at different depths.
+- **`formEdges` and `formSheetEdges` are the same stretches cut differently.**
+  The first is joined up across changes of the sheet behind it, which is what an
+  ordinary drawing wants and what `joinRuns` was written for; the second is cut
+  at every such change and labelled with the sheet, which is what a drawing that
+  moves the sheets apart needs. Making the first behave like the second is the
+  tempting simplification and it silently resplits every ordinary picture's
+  outline.
 - **A layer number is the longest chain below a face, not a count of what is
   under it.** `Senbazuru.Origami.Layers.layerDepths` is what the offset view
   steps by, and the distinction is the whole of getting it right: counting gives
@@ -403,6 +417,11 @@ Deliberate omissions, so nobody thinks they are bugs:
   detect: each of the three loses the shared patch to the other two, and the
   model comes out with a hole in it. Nothing senbazuru produces can be like
   that. A pair of entries that contradict each other directly *is* refused.
+- The offset view steps a whole sheet, where a printed book offsets edges only
+  across the boundary of a cut-away circle, and falls back to a schematic side
+  view when a model has too many layers to draw at all. Neither the local
+  cut-away nor the side view exists here, so a deep model — the crane is 32
+  layers — comes out honest and crowded.
 - The offset view needs one order for the whole model, so a twist has none: it
   is refused, with the message `paintOrder` gives, rather than drawn without the
   offset. The ordinary picture of a twist is unaffected. `--offset` also does

@@ -76,6 +76,7 @@ module Senbazuru.Diagram.Style
     Notation (..),
     strokeFor,
     arrowFor,
+    buriedEdge,
     layerStep,
 
     -- * Palette
@@ -172,6 +173,15 @@ data Theme = Theme
     -- arrow's ends, as a fraction of the distance it spans. Zero would be a
     -- straight arrow, which reads as \"slide\" rather than \"fold\".
     themeArrowBow :: !Double,
+    -- | Page units: the weight to draw the edge of a sheet buried in an offset
+    -- view with.
+    --
+    -- Lighter than a crease, on purpose and by a lot. An offset view of a model
+    -- a dozen sheets deep shows a dozen edges within a few points of one
+    -- another, and at the weight the model itself is drawn with they add up to
+    -- a black band. Drawn fine they read as what they are — the thickness of
+    -- the paper — and leave the model the heaviest thing on the page.
+    themeBuriedWidth :: !Double,
     -- | Page units: how far apart to draw one layer of a folded model and the
     -- next. Zero draws them where the paper actually is, which is on top of one
     -- another.
@@ -218,6 +228,9 @@ defaultTheme =
       -- An eighth of the span. Enough to read as a turn through the air rather
       -- than a slide along the page, without the arc wandering off the paper.
       themeArrowBow = 0.125,
+      -- A third of a crease. Fine enough that a dozen of them a few points
+      -- apart stay separate, heavy enough to survive being printed.
+      themeBuriedWidth = 0.35,
       -- Off. An offset view is a deliberate cutaway of a model, drawn where it
       -- would otherwise be a silhouette; it is not how a model is normally
       -- shown, and a diagram that stepped its layers apart unasked would be
@@ -316,6 +329,21 @@ layerStep theme
   where
     step = themeLayerOffset theme
     diagonal = sqrt 0.5
+
+-- | The stroke for the edge of a sheet that is buried in an offset view.
+--
+-- The same decision as 'strokeFor' about /whether/ a line is drawn at all — a
+-- join is still not a crease — and a different one about how heavily. Built
+-- from 'strokeFor' rather than beside it, so the two cannot come to disagree
+-- about which assignments are drawn.
+--
+-- Solid whatever the notation says, because what shows of a buried sheet is the
+-- edge of it, and an edge is not an instruction. A dashed hairline would also
+-- be a texture rather than a line at this weight.
+buriedEdge :: Theme -> Notation -> Assignment -> Maybe Stroke
+buriedEdge theme notation a = thin <$> strokeFor theme notation a
+  where
+    thin s = s {strokeWidth = themeBuriedWidth theme, strokeDash = Dash []}
 
 -- | The arrow that says \"this paper moves there\".
 --

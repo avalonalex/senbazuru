@@ -96,25 +96,45 @@ The layer count is what decides whether a model has an offset view worth
 looking at, so it is worth having the numbers side by side. Drawn at
 `--offset 4`, counting the SVG paths each picture emits:
 
-| Model | Layers | Paths, ordinary | Paths, offset |
-| --- | --- | --- | --- |
-| Letter fold | 3 | 6 | 15 |
-| Quarter fold | 4 | 5 | 20 |
-| Kabuto | 12 | 9 | 68 |
-| Crane | 32 | 23 | 286 |
+| Model | Layers | Paths, ordinary | Paths, offset | of those, fine |
+| --- | --- | --- | --- | --- |
+| Letter fold | 3 | 6 | 22 | 12 |
+| Quarter fold | 4 | 5 | 24 | 16 |
+| Kabuto | 12 | 9 | 75 | 56 |
+| Crane | 32 | 23 | 311 | 242 |
 
 The ordinary picture stays flat because hidden-line removal throws away
 everything buried — for the crane, all but 23 of its edges. The offset view
-throws away nothing, so its ink grows with layers times faces, and the crane is
-squeezed between two limits at once: a step small enough to fit the page is
-smaller than the 1.6pt line the edge of the paper is drawn with, so consecutive
-layers' outlines land on each other and the stack comes out as hatching, while a
-step large enough to read fans thirty-two copies of the bird apart.
+throws away nothing, because everything is what the reader asked to see.
 
-Four layers and twelve layers are fine. Thirty-two is not, and the honest fix is
-not a better layer number: it is to stop drawing the creases inside a buried
-sheet, since the sliver of it that shows should be an edge of paper and nothing
-else.
+The first attempt at making that legible was to throw some of it away again:
+draw only the silhouette of each sheet and drop the creases inside it. Measured,
+that removes **6 of the crane's 242** edge copies, because almost every crease
+in a folded model separates two faces at different depths and so is a silhouette
+for both of them. There was nothing to delete.
+
+What was wrong was the weight, not the count. A sheet edge drawn at 1.6pt among
+a dozen others three points away is a black band; the same edges at 0.35pt are a
+hatch that reads as thickness. So the stack is drawn fine and the model is drawn
+over it at full weight, and the count went *up* — 311 paths for the crane, since
+the top sheet is now drawn twice — while the picture got clearer.
+
+## What books do instead
+
+None of which makes a 32-layer model a good subject for an exploded plan, and
+printed diagrams have never pretended otherwise. Robert Lang's diagramming
+conventions offer three tools, in order of how much paper is in the way:
+**x-ray lines** for a few hidden edges, and only as many as the current step
+needs, because too many clutter the drawing; a **cut-away** when those stop
+working — a heavy circle with the obscuring layers removed inside it, and edges
+offset where they cross the boundary; and, when there are simply too many layers
+to draw and keep clarity, a schematic **side view** of the stack with a hooking
+arrow.
+
+`--offset` is the cut-away's offsetting applied to a whole sheet rather than
+inside a circle. That makes it the right tool for a model a handful of layers
+deep and an honest but crowded one for anything deeper. A cut-away confined to a
+region, and a side view, are both real features and neither is built.
 
 ## Where the relations run in a circle
 
@@ -136,5 +156,8 @@ which is exactly why it exists.
   Drawing: Algorithms for the Visualization of Graphs*, Prentice Hall, 1999,
   chapter 9, on layer assignment and on why the compact alternatives are
   harder.
+- Robert J. Lang, "Origami Diagramming Conventions", on x-ray lines, cut-away
+  views and the schematic side view — the three ways a printed diagram shows
+  paper that is in the way.
 - [several-stackings.md](several-stackings.md), for where the `faceOrders` this
   numbers come from when the file supplies none.

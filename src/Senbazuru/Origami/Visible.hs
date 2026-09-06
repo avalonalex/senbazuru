@@ -168,7 +168,19 @@ data VisibleEdge = VisibleEdge
 -- | Everything a drawing of a flat-folded model is made of.
 data VisibleForm = VisibleForm
   { formRegions :: ![Region],
-    formEdges :: ![VisibleEdge]
+    formEdges :: ![VisibleEdge],
+    -- | The same stretches, cut wherever the sheet behind them changes, and
+    -- each labelled with that sheet: the face whose paper lies nearest the
+    -- viewer along it, or 'Nothing' where there is paper on neither side.
+    --
+    -- A second cut of one answer rather than a second answer. A stretch is not
+    -- an edge /of/ one face — it is the line between whatever is on its two
+    -- sides — so a drawing that keeps every sheet in its place, as an ordinary
+    -- picture does, never has to ask which sheet a stretch belongs to, and
+    -- 'formEdges' is deliberately joined up across the boundaries where it
+    -- changes. A drawing that /moves/ the sheets apart does have to ask, and
+    -- gets a stretch per sheet here.
+    formSheetEdges :: ![(Maybe FaceId, VisibleEdge)]
   }
   deriving stock (Eq, Show)
 
@@ -188,10 +200,12 @@ visibleForm :: Bool -> Frame -> [FaceOrder] -> Either FlatError VisibleForm
 visibleForm fromAbove fr orders = do
   sheet <- flatSheet fr
   nearer <- nearness fromAbove sheet orders
+  let shown = shownStretches sheet nearer
   pure
     VisibleForm
       { formRegions = regionsOf fromAbove sheet nearer,
-        formEdges = edgesOf sheet nearer
+        formEdges = edgesOf shown,
+        formSheetEdges = sheetEdgesOf shown
       }
 
 -- | \"Is the first face nearer the viewer than the second?\", from
@@ -314,15 +328,19 @@ regionsOf fromAbove sheet nearer = [r | p <- panels, Just r <- [regionFor p]]
     rotate ps = drop (length ps - 1) ps <> take (length ps - 1) ps
 
 -- | The stretches of edge that are not hidden.
-edgesOf :: Sheet -> (FaceId -> FaceId -> Bool) -> [VisibleEdge]
-edgesOf sheet nearer =
-  [ VisibleEdge
-      { visibleAssignment = assignment,
-        visibleFrom = raise (sheetPlane sheet) (pointAt track s0),
-        visibleTo = raise (sheetPlane sheet) (pointAt track s1)
-      }
-    | track <- tracks hair (vertexAt sheet) (sheetCreases sheet),
-      (assignment, s0, s1) <- joinRuns (filter (showing track) (stretches hair rims track))
+-- | Every stretch that is drawn, by the line it lies on, each labelled with
+-- the sheet whose edge it is.
+--
+-- Both of a 'VisibleForm's edge lists come from this, joined up by different
+-- keys, so the two can never disagree about which stretches are drawn — only
+-- about how finely they are cut.
+shownStretches ::
+  Sheet ->
+  (FaceId -> FaceId -> Bool) ->
+  [(Track, [((Assignment, Maybe FaceId), Double, Double)])]
+shownStretches sheet nearer =
+  [ (track, showingOn track (stretches hair rims track))
+    | track <- tracks hair (sheetPlane sheet) (vertexAt sheet) (sheetCreases sheet)
   ]
   where
     hair = sheetHair sheet
@@ -333,8 +351,41 @@ edgesOf sheet nearer =
     rims = [(p, q) | panel <- sheetPanels sheet, (p, q) <- ring (panelRing panel)]
     ring ps = zip ps (drop 1 ps <> take 1 ps)
 
-    showing track (_, s0, s1) =
-      showsAnEdge sheet nearer (trackDirection track) (pointAt track s0, pointAt track s1)
+    -- Whether a stretch is drawn and whose edge it is are one question with one
+    -- answer, so this asks once rather than filtering and then labelling.
+    showingOn track stretchesOn =
+      [ ((assignment, nearest), s0, s1)
+        | (assignment, s0, s1) <- stretchesOn,
+          Just nearest <-
+            [ showsAnEdge
+                sheet
+                nearer
+                (trackDirection track)
+                (pointAt track s0, pointAt track s1)
+            ]
+      ]
+
+-- | The stretches of edge that are not hidden.
+--
+-- Joined up on the assignment alone, so a stretch that runs on over a change of
+-- sheet behind it stays one line. That is the picture an ordinary drawing wants
+-- and it is what 'joinRuns' was written for.
+edgesOf :: [(Track, [((Assignment, Maybe FaceId), Double, Double)])] -> [VisibleEdge]
+edgesOf shown =
+  [ lineOn track assignment s0 s1
+    | (track, ss) <- shown,
+      (assignment, s0, s1) <- joinRuns [(a, s0, s1) | ((a, _), s0, s1) <- ss]
+  ]
+
+-- | The same, cut at every change of sheet as well, and labelled with it.
+sheetEdgesOf ::
+  [(Track, [((Assignment, Maybe FaceId), Double, Double)])] ->
+  [(Maybe FaceId, VisibleEdge)]
+sheetEdgesOf shown =
+  [ (nearest, lineOn track assignment s0 s1)
+    | (track, ss) <- shown,
+      ((assignment, nearest), s0, s1) <- joinRuns ss
+  ]
 
 -- | Put back together the neighbouring stretches a cut turned out not to
 -- separate.
@@ -347,7 +398,7 @@ edgesOf sheet nearer =
 --
 -- Adjacency is exact equality of the two ends, which is sound because both
 -- stretches took that number from the same list of cuts.
-joinRuns :: [(Assignment, Double, Double)] -> [(Assignment, Double, Double)]
+joinRuns :: (Eq a) => [(a, Double, Double)] -> [(a, Double, Double)]
 joinRuns = \case
   (a, s0, s1) : (b, t0, t1) : rest
     | a == b, s1 == t0 -> joinRuns ((a, s0, t1) : rest)
@@ -362,8 +413,20 @@ joinRuns = \case
 data Track = Track
   { trackOrigin :: !V2,
     trackDirection :: !V2,
+    -- | The @z@ the model lies at, carried so that a stretch worked out along
+    -- this line can be put back into space without the sheet in hand.
+    trackPlane :: !Double,
     trackCreases :: ![(Assignment, Double, Double)]
   }
+
+-- | One stretch of a track, as a line in space.
+lineOn :: Track -> Assignment -> Double -> Double -> VisibleEdge
+lineOn track assignment s0 s1 =
+  VisibleEdge
+    { visibleAssignment = assignment,
+      visibleFrom = raise (trackPlane track) (pointAt track s0),
+      visibleTo = raise (trackPlane track) (pointAt track s1)
+    }
 
 -- | A point on a track, at the given distance along it.
 pointAt :: Track -> Double -> V2
@@ -384,8 +447,8 @@ offset t x = cross2 (trackDirection t) (x ^-^ trackOrigin t)
 -- draw. That is not a corrupt file. Folding brings distinct corners of the
 -- sheet together all the time, and an edge between two of them has been folded
 -- out of existence.
-tracks :: Double -> (VertexId -> V2) -> [Crease] -> [Track]
-tracks hair at = foldl' add [] . concatMap segment
+tracks :: Double -> Double -> (VertexId -> V2) -> [Crease] -> [Track]
+tracks hair plane at = foldl' add [] . concatMap segment
   where
     segment c = case normalize (q ^-^ p) of
       Just direction | norm (q ^-^ p) > hair -> [(creaseAssignment c, p, q, direction)]
@@ -398,7 +461,7 @@ tracks hair at = foldl' add [] . concatMap segment
     -- starts one of its own, at its own start and pointing its own way.
     add ts seg@(_, p, _, direction) = case break (lies seg) ts of
       (before, t : after) -> before <> (record t seg : after)
-      (before, []) -> before <> [record (Track p direction []) seg]
+      (before, []) -> before <> [record (Track p direction plane []) seg]
 
     lies (_, p, q, _) t = abs (offset t p) <= hair && abs (offset t q) <= hair
 
@@ -479,7 +542,12 @@ strongest = foldr stronger Join
       Unassigned -> 1
       Join -> 0
 
--- | Does the paper differ across this stretch of line?
+-- | Does the paper differ across this stretch of line, and if so whose edge is
+-- it?
+--
+-- 'Nothing' when the stretch is hidden. @Just mf@ when it is drawn, carrying
+-- the nearer of the two sides' topmost faces — see 'visibleNearest' — or
+-- 'Nothing' again where there is paper on neither side.
 --
 -- The topmost face along each side is found, and the stretch is drawn when the
 -- two are not the same face. Paper on one side and nothing on the other counts
@@ -503,14 +571,23 @@ strongest = foldr stronger Join
 -- has no tolerance with which to call those the same answer. The face then
 -- vanishes from the reckoning, the two sides agree because neither can see it,
 -- and a visible crease stops in the middle of the paper.
-showsAnEdge :: Sheet -> (FaceId -> FaceId -> Bool) -> V2 -> (V2, V2) -> Bool
+showsAnEdge :: Sheet -> (FaceId -> FaceId -> Bool) -> V2 -> (V2, V2) -> Maybe (Maybe FaceId)
 showsAnEdge sheet nearer direction (a, b) = case (top OnTheLeft, top OnTheRight) of
   -- Bare page on both sides. Nothing is covering the line, so nothing is
   -- hiding it: this is a crease that bounds no face, and a frame recording no
   -- faces at all is nothing but those. Drawing them is what keeps such a frame
   -- the wireframe it has always been rather than an empty page.
-  (Nothing, Nothing) -> True
-  (l, r) -> l /= r
+  (Nothing, Nothing) -> Just Nothing
+  -- Paper on both sides. The same face on both is a crease with a layer over
+  -- it and goes; two different faces are an edge, and the nearer of them is
+  -- the sheet the reader is looking at the edge of.
+  (Just l, Just r)
+    | l == r -> Nothing
+    | otherwise -> Just (Just (if nearer l r then l else r))
+  -- Paper on one side only: the silhouette of that face, and there is no
+  -- other candidate for whose edge it is.
+  (Just l, Nothing) -> Just (Just l)
+  (Nothing, Just r) -> Just (Just r)
   where
     top = fmap panelId . topmost . beside
 

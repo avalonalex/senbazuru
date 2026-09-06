@@ -62,6 +62,15 @@
 --   lines of the layer below, or the stack reads as a heap of wireframes, so
 --   the order is fill, lines, fill, lines, from the bottom of the stack up.
 --
+-- * __The drawing is in two weights.__ A buried sheet is drawn at
+--   'Senbazuru.Diagram.Style.themeBuriedWidth', which is a third of a crease,
+--   and the model itself — the stretches "Senbazuru.Origami.Visible" says are
+--   not hidden — goes over the top at full weight, each stretch with the sheet
+--   whose edge it is. Drawn all at one weight, a dozen sheet edges three points
+--   apart are a black band rather than a stack; this is the difference between
+--   a picture of a model standing on its layers and a picture of nothing in
+--   particular.
+--
 -- The one thing an offset view needs and the ordinary picture of a flat model
 -- does not is a single order to put every face in. A twist has none — see
 -- "Senbazuru.Origami.Visible" — so a twist has no offset view either, and says
@@ -88,12 +97,13 @@ import Data.List (sortOn)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
-import Senbazuru.Diagram (Colour, Diagram (..), Shape (..), diagramWithExtent)
+import Senbazuru.Diagram (Colour, Diagram (..), Shape (..), Stroke, diagramWithExtent)
 import Senbazuru.Diagram.Style
   ( Notation (..),
     Paper (..),
     Theme (..),
     arrowFor,
+    buriedEdge,
     layerStep,
     strokeFor,
   )
@@ -288,12 +298,59 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
                 not (null group)
             ]
 
-          layer d =
+          -- One layer of the picture: its paper, then the fine edges of that
+          -- sheet, then whatever of the model itself belongs to it. All three
+          -- move together, and a later layer's paper covers all three, which is
+          -- what keeps a sheet from drawing its lines over the sheet above it.
+          layer ink' model d =
             map
               (Offset (fromIntegral d *^ step))
-              (fillsAt d <> mapMaybe (edgeOf theme notation basis) (linesAt d))
+              (fillsAt d <> mapMaybe (ink' basis) (linesAt d) <> model d)
 
-      pure (concatMap layer [0 .. deepest])
+          -- Every sheet, drawn fine. What survives of a layer is the sliver the
+          -- layer above does not cover, and at the model's own line weight a
+          -- dozen of those a few points apart add up to a black band rather
+          -- than to a stack -- so the stack is drawn as a stack is engraved,
+          -- and the drawing proper goes over the top of it.
+          stacked model = concatMap (layer (edgeWith (buriedEdge theme notation)) model) [0 .. deepest]
+
+          -- No visible form to be had -- paper in the air, or a face the region
+          -- finder cannot clip. Then there is no telling the model from the
+          -- stack it stands on, so every line is drawn as the model, which is
+          -- what the offset view did before it could tell.
+          wholeStack =
+            concatMap (layer (edgeWith (strokeFor theme notation)) (const [])) [0 .. deepest]
+
+          -- The stretches of the model's own drawing that belong to sheet @d@.
+          --
+          -- From 'formSheetEdges' rather than 'formEdges', which is the same
+          -- answer joined up across the changes of sheet this needs to keep.
+          modelAt seen d =
+            [ shape
+              | (nearest, e) <- sortOn (creaseOrder . visibleAssignment . snd) (formSheetEdges seen),
+                -- A stretch with paper on neither side belongs to no sheet --
+                -- it is a crease bounding nothing -- so it is drawn where the
+                -- paper is.
+                maybe 0 depthOf nearest == d,
+                Just shape <- [edgeOf theme notation basis (asVisible e)]
+            ]
+
+          asVisible e = (visibleAssignment e, visibleFrom e, visibleTo e)
+
+      -- What the model would look like without the offset, laid over the stack
+      -- at full weight, each stretch at the offset of the sheet whose edge it
+      -- is. That is the whole of the design: the reader sees the drawing they
+      -- would have seen, with the layers it stands on showing behind it.
+      --
+      -- The visibility is worked out on the model as it lies, not as it is
+      -- drawn, so a stretch that the step uncovers stays fine and one it covers
+      -- stays heavy. Both are wrong by at most one step, which is a few points,
+      -- and the alternative is a second arrangement to compute in page space.
+      case visibleForm (seenFromAbove basis) fr orders of
+        Right seen -> Right (stacked (modelAt seen))
+        Left (PaperInTheAir _) -> Right wholeStack
+        Left (ConcaveFace _) -> Right wholeStack
+        Left (FlatRefused err) -> Left err
 
 -- | The layer order to draw a folded form by: the file\'s, or one worked out,
 -- or nothing at all.
@@ -377,8 +434,17 @@ fill basis colour faces =
 -- and what happens to it afterwards is the same, which is why they hand over
 -- the same triple rather than each building a 'Polyline' of their own.
 edgeOf :: Theme -> Notation -> Basis -> (Assignment, V3, V3) -> Maybe Shape
-edgeOf theme notation basis (assignment, from, to) = do
-  stroke <- strokeFor theme notation assignment
+edgeOf theme notation = edgeWith (strokeFor theme notation)
+
+-- | The same, with the choice of stroke handed in.
+--
+-- The offset view draws the same edges twice over at two weights — once as the
+-- stack a model stands on and once as the model — so what varies between them
+-- is exactly this function's argument, and nothing else about how an edge
+-- becomes a line is written down twice.
+edgeWith :: (Assignment -> Maybe Stroke) -> Basis -> (Assignment, V3, V3) -> Maybe Shape
+edgeWith strokeOf basis (assignment, from, to) = do
+  stroke <- strokeOf assignment
   pure (Polyline stroke [project basis from, project basis to])
 
 -- | Render one frame, letting the frame decide what kind of picture it is and,

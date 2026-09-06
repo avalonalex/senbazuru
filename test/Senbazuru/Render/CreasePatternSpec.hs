@@ -13,7 +13,7 @@ module Senbazuru.Render.CreasePatternSpec (spec) where
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
-import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent, shapePoints)
+import Senbazuru.Diagram (Diagram (..), Shape (..), Stroke (..), diagramWithExtent, shapePoints)
 import Senbazuru.Diagram.Style
   ( Notation (..),
     Theme (..),
@@ -238,8 +238,35 @@ spec = do
       -- know there are two. With one, both are drawn, each with its own three
       -- edges, and each layer's paper goes down before its lines so that it
       -- covers the layer beneath.
+      --
+      -- Eleven shapes, not eight: each sheet brings a fill and its three edges
+      -- as part of the stack, and the top one brings its three edges a second
+      -- time as the model itself, at the weight an ordinary picture would draw
+      -- them. The buried sheet brings no such copy, because none of it shows.
       shapeKinds (stepped 4) FoldedFormNotation foldedDiagonal
-        `shouldBe` Right ["fill", "line", "line", "line", "fill", "line", "line", "line"]
+        `shouldBe` Right (["fill"] <> replicate 3 "line" <> ["fill"] <> replicate 6 "line")
+
+    it "draws the stack finer than the model standing on it" $ do
+      -- The whole reason the offset view is legible on a model more than a
+      -- couple of sheets deep. A dozen sheet edges within a few points of one
+      -- another, all at the weight the model itself is drawn with, add up to a
+      -- black band; drawn fine they read as the thickness of the paper.
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      let widths = [strokeWidth st | Offset _ (Polyline st _) <- diagramShapes d]
+          buried = themeBuriedWidth defaultTheme
+      -- Six fine ones -- three per sheet, the stack -- and three at full
+      -- weight, which are the model.
+      length (filter (== buried) widths) `shouldBe` 6
+      filter (/= buried) widths `shouldSatisfy` all (> buried)
+
+    it "leaves the ordinary picture of the same frame alone" $ do
+      -- The offset view reaches for hidden-line removal to tell the model from
+      -- the stack, and reads a second, more finely cut list of the same edges
+      -- to do it. The list an ordinary drawing uses is not that one, and this
+      -- is what says so: turning the flag off has to give back exactly the
+      -- picture it always did, down to how many strokes the outline is in.
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+      length (diagramShapes plain) `shouldBe` 4
 
     it "draws a crease shared by two layers once in each" $ do
       -- The diagonal bounds both triangles, and they are drawn a step apart, so

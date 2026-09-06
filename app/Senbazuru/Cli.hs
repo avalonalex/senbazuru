@@ -413,9 +413,9 @@ renderOptions =
           <> help
             ( "Draw a folded model's layers this far apart on the page, so that"
                 <> " a stack that lands on one spot can be read as a stack."
-                <> " Below about 3 the layers' outlines overlap each other and"
-                <> " the stack comes out as hatching. Needs the layers, so it"
-                <> " goes with --fold and not with --no-fill"
+                <> " The buried sheets are drawn finer than the model standing"
+                <> " on them, so a small step still reads. Needs the layers, so"
+                <> " it goes with --fold and not with --no-fill"
             )
       )
   where

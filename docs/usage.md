@@ -57,7 +57,7 @@ of its own and complains about them.
 | `--columns N` | Figures across the page, with `--steps` (default `3`) |
 | `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
 | `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
-| `--offset PT` | Draw a folded model's layers this far apart on the page, so a stack that lands on one spot reads as a stack (default `0`, off). Below about `3` the layers' outlines overlap; see below |
+| `--offset PT` | Draw a folded model's layers this far apart on the page, so a stack that lands on one spot reads as a stack (default `0`, off). Buried sheets are drawn finer than the model, so a small step still reads |
 
 Some combinations are refused rather than quietly resolved, because they
 describe different pictures: `--steps` with `--frame`, with `--fold`, or with
@@ -66,13 +66,13 @@ describe different pictures: `--steps` with `--frame`, with `--fold`, or with
 `--offset` is the one flag that needs the layers rather than merely using them,
 so four things are worth knowing about it.
 
-**How big to make it.** Below the line weight it is worse than useless: the edge
-of the paper is drawn 1.6pt wide, so at `--offset 1.5` consecutive layers'
-outlines land on each other and the stack reads as a band of hatching rather
-than as sheets. Three points is about the floor and six reads clearly. Above
-that, the step times the number of layers has to fit the page — see the next
-point — so a deep model may have no comfortable setting at all.
-[tour.md](tour.md#how-big-a-step) works the range out.
+**How big to make it.** The buried sheets are drawn at 0.35pt against the
+model's 1 to 1.6, so even a step of a point or two separates them; the limit is
+the page rather than the ink. A model a handful of layers deep takes 4 to 6
+comfortably. A deep one — the crane is 32 layers — wants a small step and a wide
+margin, and is dense whatever you choose, because it really does have 32 layers.
+[tour.md](tour.md#how-many-layers-is-too-many) says what printed books do
+instead.
 
 **It never changes the size of the drawing.** The page is fitted to the paper,
 and opening a stack does not shrink the model to make room, so a large step on a
