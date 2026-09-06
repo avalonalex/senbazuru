@@ -44,7 +44,7 @@ import Senbazuru.Origami.FlatFold
     renderReport,
     reportViolations,
   )
-import Senbazuru.Origami.Folding (foldFrame, renderFoldingError)
+import Senbazuru.Origami.Folding (FoldingError (..), foldFrame, renderFoldingError)
 import Senbazuru.Origami.Stacking
   ( Budget (..),
     Choice (..),
@@ -71,7 +71,7 @@ data Command
   | Check CheckOptions
   deriving stock (Eq, Show)
 
--- | Options for the @check@ subcommand.
+-- | Options for the @info@ subcommand.
 data InfoOptions = InfoOptions
   { ioInput :: FilePath,
     -- | Summarise the layers of each frame /folded/, as @render --fold@ draws
@@ -81,6 +81,7 @@ data InfoOptions = InfoOptions
   }
   deriving stock (Eq, Show)
 
+-- | Options for the @check@ subcommand.
 data CheckOptions = CheckOptions
   { coInput :: FilePath,
     coFrame :: Int,
@@ -221,6 +222,9 @@ budgetOption :: Parser Budget
 budgetOption =
   Budget
     <$> option
+      -- Through Integer for the reason --stacking is: `auto` at type Int wraps
+      -- rather than refusing, so a budget too large to be one silently became a
+      -- small one.
       (positive =<< auto)
       ( long "layer-budget"
           <> metavar "N"
@@ -232,8 +236,9 @@ budgetOption =
             )
       )
   where
+    positive :: Integer -> ReadM Int
     positive n
-      | n > 0 = pure n
+      | n > 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
       | otherwise = readerError "the layer budget must be a positive number of guesses"
 
 -- | A column count below one describes no page, and quietly rounding it up to
@@ -337,7 +342,7 @@ renderOptions =
           )
       )
     <*> option
-      (indices =<< str)
+      (indices . T.pack =<< str)
       ( long "stacking"
           <> metavar "N[,N...]"
           <> value []
@@ -352,16 +357,20 @@ renderOptions =
     -- A comma-separated list of non-negative indices, refused during parsing
     -- like every other malformed option. "1," is a typo rather than a request
     -- for a default, so an empty field is rejected rather than filled in.
-    indices :: String -> ReadM [Int]
-    indices raw = traverse one (splitOn ',' raw)
+    indices :: Text -> ReadM [Int]
+    indices raw = traverse (one . T.unpack) (T.splitOn "," raw)
       where
         one field = case reads field of
-          [(n, "")] | n >= 0 -> pure n
-          _ -> readerError ("--stacking wants comma-separated indices from 0, not " <> show raw)
-
-    splitOn c raw = case break (== c) raw of
-      (field, []) -> [field]
-      (field, _ : rest) -> field : splitOn c rest
+          -- Read as an Integer and narrowed afterwards. Reading straight into
+          -- an Int wraps modulo 2^64 before any check can run, so a number too
+          -- large to be an index came out as a perfectly good smaller one and
+          -- drew a picture nobody asked for.
+          [(n, "")] | n >= 0 && n <= toInteger (maxBound :: Int) -> pure (fromInteger n)
+          _ ->
+            readerError
+              ( "--stacking wants comma-separated whole numbers from 0, not "
+                  <> show (T.unpack raw)
+              )
 
 -- | Write the layer order the reader asked for into the frame.
 --
@@ -428,9 +437,16 @@ renderStepPage o f = do
   -- request for one particular frame cannot also be honoured.
   when (isJust (roFrame o)) (die "--steps lays out every frame; --frame selects one")
   when (roFold o) (die "--steps draws the frames a file already has; --fold computes a new one")
+  -- Every frame has its own layer order and its own components, so one list of
+  -- indices cannot mean anything across a page of them. --layer-budget does
+  -- apply, and is passed through below: it says how hard to look, which is the
+  -- same question for every frame.
+  unless
+    (null (roStacking o))
+    (die "--steps lays out every frame, and --stacking chooses an order for one")
   let theme = themeFor o
       grid = (defaultGrid theme) {gridColumns = roColumns o}
-  case stepPage theme grid (roView o) (roArrows o) (allFrames f) of
+  case stepPage theme (roBudget o) grid (roView o) (roArrows o) (allFrames f) of
     Left (StepError i err) ->
       die
         ( "cannot render frame "
@@ -464,7 +480,7 @@ renderOneFrame o f = do
   motions <- stepMotions o drawn (drop (fromMaybe 0 (roFrame o) + 1) (allFrames f))
   let theme = themeFor o
       pg = pageFor o (frameTitle drawn <|> fileTitle f)
-  case creasePatternAuto theme (roView o) drawn of
+  case creasePatternAuto theme (roBudget o) (roView o) drawn of
     Left err -> die (cannotRender o err)
     Right d
       | null motions -> emitWith o pg d
@@ -568,8 +584,32 @@ summarise o f =
         -- Reported because it is the difference between a folded form drawn as
         -- paper and one drawn as a wireframe, and there is otherwise no way to
         -- find that out short of opening the JSON.
-        "    layers:   " <> layersOf fr
+        "    layers:   " <> layers
       ]
+        -- The one line that says what --stacking may be given, and the reason
+        -- info grew a --fold: without it the indices are not discoverable
+        -- anywhere. Shown only when there is something to choose, since most
+        -- models have exactly one layer order and a line saying so every time
+        -- would be noise.
+        --
+        -- Counted differently from the layers line above, on purpose. That one
+        -- counts components the way Flat-Folder does, with the settled pairs
+        -- among them, so that its published figures can be compared with ours.
+        -- This one counts what a reader can act on, which is only the
+        -- components with more than one answer in them.
+        <> [ "    stacking: "
+               <> plural (length choices) "component"
+               <> " with a choice; --stacking takes "
+               <> T.intercalate ", " (map range choices)
+             | not (null choices)
+           ]
+      where
+        (layers, choices) = layersOf fr
+        range c =
+          "0-"
+            <> tshow (length (choiceStates c) - 1)
+            -- The budget stopped the count, so there may be more than this.
+            <> (if choiceCapped c then "+" else "")
 
     histogram as
       | null as = "(none recorded)"
@@ -579,50 +619,62 @@ summarise o f =
         count :: Assignment -> [Assignment] -> Int
         count a = length . filter (== a)
 
-    -- A folded form with no faceOrders has its layers worked out at render
-    -- time, and this is the one place to find out whether that will succeed
-    -- and, if not, why -- the renderer falls back to a wireframe without a
-    -- word when the solver does not cover a model.
     -- With --fold the layers line describes the folded form, since that is
     -- where layers exist at all. Only that line: everything above it counts
     -- what the file stores, and folding does not change any of it.
     layersOf fr
-      | not (ioFold o) = stacking fr
+      | not (ioFold o) = stackingOf fr
       | otherwise = case foldFrame fr of
-          Left err -> "(cannot be folded: " <> renderFoldingError err <> ")"
-          Right folded -> stacking folded
+          -- A frame that is already a folded form is the thing --fold asks to
+          -- see, so it is described rather than refused. A multi-frame sequence
+          -- is a crease pattern followed by folded steps, and the flag would
+          -- otherwise break exactly the frames it is meant to be about.
+          Left (AlreadyFolded _) -> stackingOf fr
+          Left err -> ("(cannot be folded: " <> renderFoldingError err <> ")", [])
+          Right folded -> stackingOf folded
 
-    stacking fr = case faceOrders fr of
-      os@(_ : _) -> tshow (length os) <> " faceOrders"
+    -- A folded form with no faceOrders has its layers worked out at render
+    -- time, and this is the one place to find out whether that will succeed
+    -- and, if not, why -- the renderer falls back to a wireframe without a word
+    -- when the solver does not cover a model.
+    --
+    -- Returns the components alongside the line, so that the two lines above
+    -- come from one solve rather than two: they are two readings of the same
+    -- answer.
+    stackingOf :: Frame -> (Text, [Choice])
+    stackingOf fr = case faceOrders fr of
+      os@(_ : _) -> (tshow (length os) <> " faceOrders", [])
       [] -> case frameVertices fr of
         -- Said as such, rather than falling through to the crease-pattern
         -- line: a frame whose vertices cannot be read is not a crease pattern,
         -- and this would be the one line of the summary to hide that.
-        Left err -> "(none; the vertices cannot be read: " <> renderFoldError err <> ")"
+        Left err -> ("(none; the vertices cannot be read: " <> renderFoldError err <> ")", [])
         Right verts
           | frameKind (frameClasses fr) verts == FoldedForm -> case stackingSpace (ioBudget o) fr of
-              Right space -> "(none in the file; " <> worked space <> ")"
+              Right space -> ("(none in the file; " <> worked space <> ")", stackingsChoices space)
               Left err ->
-                "(none in the file, and none worked out: " <> renderStackingError err <> ")"
-          | otherwise -> "(none, and a crease pattern needs none)"
+                ("(none in the file, and none worked out: " <> renderStackingError err <> ")", [])
+          | otherwise -> ("(none, and a crease pattern needs none)", [])
 
     -- What the solver made of a frame that carries no faceOrders: how many
     -- pairs of faces overlap, how few of them are actually open questions, and
-    -- how many different models that leaves. The last number is what --stacking
-    -- indexes, so it is the reason this line grew.
+    -- how many different models that leaves.
     worked space =
       plural pairs "overlapping pair"
         <> " in "
         <> plural (componentCount space) "component"
         <> ", "
         <> (if capped then "at least " else "")
-        <> plural' states "valid order"
+        <> plural states "valid order"
       where
         pairs = length (stackingsForced space) + sum [length (choicePairs c) | c <- stackingsChoices space]
         (states, capped) = stateCount space
 
+    -- Over any number type, because one of these counts pairs and components as
+    -- Int and the other counts orders as Integer -- there being models with
+    -- more orders than an Int can hold.
+    plural :: (Show a, Num a, Eq a) => a -> Text -> Text
     plural n what = tshow n <> " " <> what <> (if n == 1 then "" else "s")
-    plural' n what = tshow n <> " " <> what <> (if n == 1 then "" else "s")
 
     commas [] = "(none)"
     commas xs = T.intercalate ", " xs

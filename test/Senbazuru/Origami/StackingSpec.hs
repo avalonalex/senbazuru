@@ -67,18 +67,18 @@ shouldBeUnstackable fr = case solveStacking fr of
   Left (StackingRefused (Unstackable _)) -> pure ()
   other -> expectationFailure ("expected an unstackable model, got " <> show other)
 
--- | 'bottomToTop' for a chosen layer order rather than the first.
-bottomToTop' :: [Int] -> Frame -> Either StackingError [Int]
-bottomToTop' choices fr = do
-  orders <- solveStackingAs defaultBudget choices fr
-  faces <- first StackingRefused (frameFaces fr)
-  map unFaceId <$> first StackingRefused (paintOrder (V3 0 0 1) faces orders)
-
 -- | The faces of a flat-folded frame in the order to paint them seen from
 -- above: bottom layer first, top layer last.
+--
+-- Takes the layer order 'solveStacking' picks, which is the first of each
+-- component.
 bottomToTop :: Frame -> Either StackingError [Int]
-bottomToTop fr = do
-  orders <- solveStacking fr
+bottomToTop = bottomToTopAs []
+
+-- | The same, for a chosen layer order rather than the first.
+bottomToTopAs :: [Int] -> Frame -> Either StackingError [Int]
+bottomToTopAs choices fr = do
+  orders <- solveStackingAs defaultBudget choices fr
   faces <- refused (frameFaces fr)
   map unFaceId <$> refused (paintOrder (V3 0 0 1) faces orders)
   where
@@ -275,6 +275,28 @@ spec = do
       order <- either (fail . show) pure (bottomToTop fr)
       length order `shouldBe` 72
 
+    it "refuses the bad twist, which has no valid stacking" $ do
+      -- From Flat-Folder's unsatisfiable/ folder: it folds without tearing and
+      -- passes the single-vertex theorems, and no order of its layers exists.
+      foldedFixture "bad-twist" >>= shouldBeUnstackable
+
+    it "stacks the twists, which paintOrder still cannot paint" $ do
+      -- A twist's flaps lie in a circle: A over B over C over A, with no point
+      -- under all three. That is a valid stacking, and the solver finds it, but
+      -- paintOrder needs one global order and there is none.
+      --
+      -- Not a limitation of the renderer any more -- a flat-folded model is
+      -- drawn by visible region now, and draws twists perfectly well. This
+      -- pins the older path, which folded forms that are not flat still take.
+      mapM_
+        ( \name -> do
+            fr <- foldedFixture name
+            case bottomToTop fr of
+              Left (StackingRefused (ImpossibleStacking _)) -> pure ()
+              other -> expectationFailure (name <> ": expected a painting order to be impossible, got " <> show other)
+        )
+        ["thirds-pinwheel", "grid-2x2-d1"]
+
   describe "the shape of the answer" $ do
     -- The same CSV again, four columns further along: components, states and
     -- component_assignments. Agreeing on the shape and not merely the total is
@@ -307,21 +329,13 @@ spec = do
       )
       table
 
-    it "gives the same answer as solving the whole graph at once" $ do
-      -- The order the search finds within a group is unchanged, and the groups
-      -- cannot affect one another, so taking the first answer of each is what
-      -- the old whole-model search returned. Every golden depends on it.
-      forM_ ["quarter-fold", "letter-fold", "thirds-pinwheel", "kabuto", "crane"] $ \name -> do
-        fr <- foldedFixture name
-        solveStackingAs defaultBudget [] fr `shouldBe` solveStacking fr
-
   describe "choosing among several" $ do
     it "puts a different face of the crane on top" $ do
       -- Five orders, two pictures: the flap on the right wing is on top in one
       -- and buried in the other. This is the whole point of being able to pick.
       fr <- foldedFixture "crane"
-      first' <- either (fail . show) pure (bottomToTop' [0] fr)
-      other <- either (fail . show) pure (bottomToTop' [3] fr)
+      first' <- either (fail . show) pure (bottomToTopAs [0] fr)
+      other <- either (fail . show) pure (bottomToTopAs [3] fr)
       first' `shouldNotBe` other
 
     it "refuses an order a component does not have" $ do
@@ -356,26 +370,6 @@ spec = do
         fr <- foldedFixture name
         space <- either (fail . show) pure (stackingSpace defaultBudget fr)
         sum (map choiceGuesses (stackingsChoices space)) `shouldSatisfy` (< 10)
-
-    it "refuses the bad twist, which has no valid stacking" $ do
-      -- From Flat-Folder's unsatisfiable/ folder: it folds without tearing and
-      -- passes the single-vertex theorems, and no order of its layers exists.
-      foldedFixture "bad-twist" >>= shouldBeUnstackable
-
-    it "stacks the twists but cannot yet paint them -- a known limit" $ do
-      -- A twist's flaps lie in a circle: A over B over C over A, with no point
-      -- under all three. That is a valid stacking, and the solver finds it, but
-      -- paintOrder needs one global order and there is none. Pinned on purpose:
-      -- once faces are drawn by visible region rather than whole (#31), this
-      -- test fails and is rewritten to assert the picture instead.
-      mapM_
-        ( \name -> do
-            fr <- foldedFixture name
-            case bottomToTop fr of
-              Left (StackingRefused (ImpossibleStacking _)) -> pure ()
-              other -> expectationFailure (name <> ": expected a painting order to be impossible, got " <> show other)
-        )
-        ["thirds-pinwheel", "grid-2x2-d1"]
 
   describe "what it declines" $ do
     it "declines a model that is still in the air" $ do

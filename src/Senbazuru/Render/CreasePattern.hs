@@ -68,18 +68,22 @@ import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Flat (FlatError (..))
 import Senbazuru.Origami.Layers (paintOrder)
-import Senbazuru.Origami.Stacking (StackingError (..), solveStacking)
+import Senbazuru.Origami.Stacking (Budget, StackingError (..), defaultBudget, solveStackingAs)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
 
 -- | Render one frame as a crease pattern, seen from directly above.
 --
--- Equivalent to @'creasePatternFrom' theme 'CreasePatternNotation' 'topDown'@,
--- and the right choice for a @creasePattern@ frame, which is flat in the
--- @z = 0@ plane and has nothing to see from any other angle.
+-- Equivalent to @'creasePatternFrom' theme 'defaultBudget'
+-- 'CreasePatternNotation' 'topDown'@, and the right choice for a
+-- @creasePattern@ frame, which is flat in the @z = 0@ plane and has nothing to
+-- see from any other angle.
+--
+-- The budget is beside the point here and any would do: a crease pattern\'s
+-- faces do not overlap, so there are no layers to look for.
 creasePattern :: Theme -> Frame -> Either FoldError Diagram
-creasePattern theme = creasePatternFrom theme CreasePatternNotation topDown
+creasePattern theme = creasePatternFrom theme defaultBudget CreasePatternNotation topDown
 
 -- | Render one frame in the given notation, seen through the given basis.
 --
@@ -96,11 +100,11 @@ creasePattern theme = creasePatternFrom theme CreasePatternNotation topDown
 -- geometry stays true to the file until the moment a page demands a flat
 -- answer. Note the extent is measured /after/ projecting: how much page a model
 -- needs depends on the angle it is viewed from.
-creasePatternFrom :: Theme -> Notation -> Basis -> Frame -> Either FoldError Diagram
-creasePatternFrom theme notation basis fr = do
+creasePatternFrom :: Theme -> Budget -> Notation -> Basis -> Frame -> Either FoldError Diagram
+creasePatternFrom theme budget notation basis fr = do
   verts <- frameVertices fr
   extent <- maybe (Left NoVertices) Right (boxFromPoints (map (project basis) verts))
-  shapes <- picture theme notation basis fr
+  shapes <- picture theme budget notation basis fr
   pure (diagramWithExtent extent shapes)
 
 -- | Everything to draw for one frame: the paper first, then the lines.
@@ -124,8 +128,8 @@ creasePatternFrom theme notation basis fr = do
 -- face on a /folded form/ — whose faces this never drew — into a hard failure
 -- on a file that used to render. Complaining about data nobody looked at is a
 -- validator's job, and senbazuru has a separate verb for that.
-picture :: Theme -> Notation -> Basis -> Frame -> Either FoldError [Shape]
-picture theme notation basis fr = case (notation, themePaper theme) of
+picture :: Theme -> Budget -> Notation -> Basis -> Frame -> Either FoldError [Shape]
+picture theme budget notation basis fr = case (notation, themePaper theme) of
   (CreasePatternNotation, Nothing) -> everyCrease
   (CreasePatternNotation, Just colours) -> do
     faces <- frameFaces fr
@@ -136,7 +140,7 @@ picture theme notation basis fr = case (notation, themePaper theme) of
   -- a file whose stacking is impossible, or whose faces this cannot read.
   (FoldedFormNotation, Nothing) -> everyCrease
   (FoldedFormNotation, Just colours) -> do
-    ordering <- layerOrder fr
+    ordering <- layerOrder budget fr
     case ordering of
       -- Nothing is known about the layers and the file says nothing either, so
       -- there is no honest way to fill anything. A wireframe it is.
@@ -187,11 +191,11 @@ picture theme notation basis fr = case (notation, themePaper theme) of
 -- these faces were going to be drawn, and the only account of how to stack them
 -- is impossible. Quietly drawing something else instead is the failure mode this
 -- module keeps being written to avoid, and @--no-fill@ still renders the file.
-layerOrder :: Frame -> Either FoldError (Maybe [FaceOrder])
-layerOrder fr = do
+layerOrder :: Budget -> Frame -> Either FoldError (Maybe [FaceOrder])
+layerOrder budget fr = do
   supplied <- frameFaceOrders fr
   if null supplied
-    then case solveStacking fr of
+    then case solveStackingAs budget [] fr of
       Right orders -> Right (Just orders)
       Left NotFlat {} -> Right Nothing
       Left NonConvexFace {} -> Right Nothing
@@ -265,11 +269,11 @@ edgeOf theme notation basis (assignment, from, to) = do
 -- the camera, and that says nothing about whether the frame is a crease
 -- pattern, so the notation is still chosen here. There is no way to override
 -- the notation yet because nobody has needed one.
-creasePatternAuto :: Theme -> Maybe Basis -> Frame -> Either FoldError Diagram
-creasePatternAuto theme chosenBasis fr = do
+creasePatternAuto :: Theme -> Budget -> Maybe Basis -> Frame -> Either FoldError Diagram
+creasePatternAuto theme budget chosenBasis fr = do
   verts <- frameVertices fr
   let notation = defaultNotationFor (frameClasses fr) verts
-  creasePatternFrom theme notation (basisFor chosenBasis verts) fr
+  creasePatternFrom theme budget notation (basisFor chosenBasis verts) fr
 
 -- | The basis a drawing will be made through: the caller's, or the one the
 -- geometry picks when the caller has no opinion.

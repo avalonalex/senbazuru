@@ -116,7 +116,7 @@ where
 
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.List (nub, tails)
+import Data.List (foldl', nub, tails)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
@@ -361,7 +361,12 @@ solveStackingAs budget choices fr = do
   -- model with more states than anyone can count is common -- one of
   -- Flat-Folder's has 10^83 of them -- and nobody picking the first needs the
   -- rest enumerated.
-  space <- solutionSpace budget (1 + maximum (0 : choices)) analysis
+  --
+  -- Saturating rather than @1 + maximum@, which overflows: an index near
+  -- 'maxBound' wrapped to a negative want, every component then found nothing
+  -- because the search stops when nothing more is wanted, and a perfectly
+  -- stackable model was reported as impossible.
+  space <- solutionSpace budget (foldl' upTo 1 choices) analysis
   -- An index for a component that is not there is a question about a different
   -- model, not a request to be ignored. Checked before the indices are matched
   -- up, because zipping a long list against a short one would drop it in
@@ -372,16 +377,32 @@ solveStackingAs budget choices fr = do
   above <- chosen space
   pure (ordersFrom analysis above)
   where
+    upTo acc i
+      | i >= maxBound - 1 = maxBound
+      | otherwise = max acc (i + 1)
+
     -- The settled pairs go in first and every group's answer on top. Leaving
     -- them out is how the first version of this returned nothing at all for a
     -- model propagation had settled completely -- which is most of them.
+    --
+    -- Each group's answer already carries the settled pairs, since the search
+    -- starts from them and never overwrites a key. They are put in again here
+    -- for the case where there are no groups at all and nothing to carry them.
     chosen space =
       M.unions . (stackingsForced space :)
         <$> traverse pickOne (zip3 [0 ..] (stackingsChoices space) (choices <> repeat 0))
       where
         pickOne (i, choice, want) = case drop want (choiceStates choice) of
-          (state : _) -> Right (M.union state (stackingsForced space))
-          [] -> Left (NoSuchStacking i want (length (choiceStates choice)))
+          (state : _) -> Right state
+          -- Only when the search actually finished is the count a fact about
+          -- the paper. Cut short by the budget, this component has at least
+          -- what was found and possibly the one being asked for, and saying it
+          -- has three orders when it has five would be the confident kind of
+          -- wrong.
+          []
+            | choiceCapped choice -> Left (StackingRefused (GaveUpStacking budgetSpent))
+            | otherwise -> Left (NoSuchStacking i want (length (choiceStates choice)))
+        budgetSpent = budgetGuesses budget
 
 -- | Every valid layer order a flat-folded frame has, described rather than
 -- listed.

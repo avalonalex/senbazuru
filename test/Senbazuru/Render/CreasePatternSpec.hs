@@ -25,6 +25,7 @@ import Senbazuru.Fold.Types
   )
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Render.Camera (bottomUp, frontOn, isometric, topDown)
 import Senbazuru.Render.CreasePattern
@@ -73,7 +74,7 @@ twoFaceSquare =
 -- | The shapes of a rendered frame, or the error, as a list of tags in order.
 shapeKinds :: Theme -> Notation -> Frame -> Either FoldError [String]
 shapeKinds theme notation fr =
-  map kind . diagramShapes <$> creasePatternFrom theme notation topDown fr
+  map kind . diagramShapes <$> creasePatternFrom theme defaultBudget notation topDown fr
   where
     kind = \case
       Fill _ _ -> "fill"
@@ -109,7 +110,7 @@ spec = do
       -- Face 1 is the triangle that moved, over a valley, so it is on top, and
       -- the whole of it is what shows. Asserted on the fill's corners because
       -- the shapes carry no face ids.
-      d <- either (fail . show) pure (creasePatternFrom defaultTheme FoldedFormNotation topDown foldedDiagonal)
+      d <- either (fail . show) pure (creasePatternFrom defaultTheme defaultBudget FoldedFormNotation topDown foldedDiagonal)
       [rings | Fill _ rings <- diagramShapes d]
         `shouldBe` [[[V2 1 0, V2 1 1, V2 0 0]]]
 
@@ -118,7 +119,7 @@ spec = do
       -- it presents the other side of the paper. Two things change together --
       -- which face shows, and which side of it -- and a view from below that
       -- got only one of them right would look plausible.
-      d <- either (fail . show) pure (creasePatternFrom defaultTheme FoldedFormNotation bottomUp foldedDiagonal)
+      d <- either (fail . show) pure (creasePatternFrom defaultTheme defaultBudget FoldedFormNotation bottomUp foldedDiagonal)
       -- Mirrored in x by the camera, which is what looking at the back of
       -- something does -- and which is why the ring comes out the other way
       -- round from the view above. A Fill means the union of its rings whatever

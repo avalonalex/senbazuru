@@ -174,9 +174,13 @@ multiply. `info --fold` says how the model divides up:
 $ senbazuru info examples/crane.fold --fold
 ...
     layers:   (none in the file; 892 overlapping pairs in 2 components, 5 valid orders)
+    stacking: 1 component with a choice; --stacking takes 0-4
 ```
 
-and `--stacking` takes one index per component that has a choice in it:
+The two counts differ by one on purpose: the first counts components the way
+Flat-Folder does, with the pairs that were settled outright among them, so its
+published figures can be compared with these. The second counts what you can
+actually choose. `--stacking` takes one index per component with a choice in it:
 
 ```bash
 stack run -- render examples/crane.fold --fold --stacking 3 -o crane-3.svg

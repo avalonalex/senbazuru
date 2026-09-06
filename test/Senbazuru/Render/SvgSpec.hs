@@ -18,6 +18,7 @@ import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..), allFrames)
 import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
+import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, bottomUp, isometric, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
@@ -41,7 +42,7 @@ renderFixtureFrom :: Notation -> Basis -> FilePath -> IO Text
 renderFixtureFrom notation basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
-  d <- case creasePatternFrom defaultTheme notation basis (keyFrame f) of
+  d <- case creasePatternFrom defaultTheme defaultBudget notation basis (keyFrame f) of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -57,7 +58,7 @@ renderFolded basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
   folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
-  d <- case creasePatternFrom defaultTheme FoldedFormNotation basis folded of
+  d <- case creasePatternFrom defaultTheme defaultBudget FoldedFormNotation basis folded of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -86,7 +87,7 @@ renderStep i path = do
     (a : b : _) -> pure (a, b)
     _ -> fail "fixture does not have two frames from there"
   motions <- either (fail . show) pure (motionsBetween thisStep nextStep)
-  d <- case creasePatternFrom defaultTheme CreasePatternNotation topDown thisStep of
+  d <- case creasePatternFrom defaultTheme defaultBudget CreasePatternNotation topDown thisStep of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage (withArrows defaultTheme topDown motions d))
@@ -102,7 +103,7 @@ renderSteps path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
   let grid = defaultGrid defaultTheme
-  case stepPage defaultTheme grid Nothing True (allFrames f) of
+  case stepPage defaultTheme defaultBudget grid Nothing True (allFrames f) of
     Left err -> fail ("step page failed: " <> show err)
     Right Nothing -> fail "nothing to lay out"
     Right (Just d) -> pure (renderSvg testPage {pageWidth = 400} d)

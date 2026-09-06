@@ -380,6 +380,11 @@ are not contributors can find it, and so there is only one copy to keep true.
   Flat-Folder's models has 10^83. Solve each component separately and the cost
   adds up over them instead of multiplying — the crane's 87 open pairs are one
   component that 8 guesses exhaust. `stateCount` returns `Integer` for a reason.
+- **`--layer-budget` has to reach the renderer, not just the CLI.** A folded
+  form's layer order is worked out inside `Senbazuru.Render.CreasePattern`, so
+  the budget is a parameter of `creasePatternFrom`, `creasePatternAuto` and
+  `stepPage`. It was a CLI flag that did nothing on `render` for exactly as long
+  as it was not.
 - **Flat-Folder counts the settled pairs as a component and we match it.**
   Its first component is always the pairs propagation forced, whether there are
   any or not — a model with no variables at all still reports one. So
