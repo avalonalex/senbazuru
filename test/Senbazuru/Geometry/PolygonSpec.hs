@@ -13,6 +13,7 @@
 -- segments that touch at a point share nothing.
 module Senbazuru.Geometry.PolygonSpec (spec) where
 
+import Data.List (tails)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon
 import Test.Hspec
@@ -101,6 +102,90 @@ spec = do
       abs (signedArea (clipConvex clip outsideFirst)) `shouldSatisfy` near 0.25
       abs (signedArea (clipConvex clip insideFirst)) `shouldSatisfy` near 0.25
 
+  describe "clipHalfPlane" $ do
+    it "splits a polygon into two parts that add up to the whole" $
+      -- Run backwards, the same edge keeps the other side, and the two sides
+      -- are what 'subtractConvex' is built out of.
+      property $ \b ->
+        let cut = (V2 (-10) 0.5, V2 10 0.5)
+            flipped = (V2 10 0.5, V2 (-10) 0.5)
+            half side = abs (signedArea (clipHalfPlane side (corners b)))
+         in (half cut + half flipped) `near` area b
+
+    it "keeps a polygon whole when the line misses it" $
+      clipHalfPlane (V2 (-1) (-1), V2 1 (-1)) unitSquare `shouldSatisfy` (near 1 . signedArea)
+
+    it "keeps a polygon that lies exactly on the line" $
+      -- Points on the line count as inside, as they do for 'clipConvex', so
+      -- subtracting a shape that shares an edge does not eat into the shape.
+      clipHalfPlane (V2 0 0, V2 1 0) unitSquare `shouldSatisfy` (near 1 . signedArea)
+
+  describe "subtractConvex" $ do
+    it "takes away exactly the overlap" $
+      -- Against arithmetic again, and over the same awkward boxes: the pieces
+      -- left after a subtraction have to account for the whole of what went in
+      -- minus the whole of what overlapped.
+      property $ \a b ->
+        sum (map (abs . signedArea) (subtractConvex 1e-12 (corners b) (corners a)))
+          `near` (area a - boxOverlap a b)
+
+    it "leaves pieces that do not overlap what was taken away" $
+      property $ \a b ->
+        all
+          (near 0 . abs . signedArea . clipConvex (corners b))
+          (subtractConvex 1e-12 (corners b) (corners a))
+
+    it "leaves pieces that do not overlap one another" $
+      property $ \a b ->
+        and
+          [ near 0 (abs (signedArea (clipConvex p q)))
+            | (p : rest) <- tails (subtractConvex 1e-12 (corners b) (corners a)),
+              q <- rest
+          ]
+
+    it "leaves nothing of a box taken away from itself" $
+      property $
+        \b -> null (subtractConvex 1e-12 (corners b) (corners b))
+
+    it "leaves a ring of pieces around a hole" $ do
+      -- The case that has no answer as a single convex polygon, and the reason
+      -- a region is kept as pieces: a flap landing in the middle of a larger
+      -- face leaves the face visible all around it.
+      let hole = [V2 0.25 0.25, V2 0.75 0.25, V2 0.75 0.75, V2 0.25 0.75]
+          pieces = subtractConvex 1e-12 hole unitSquare
+      sum (map (abs . signedArea) pieces) `shouldSatisfy` near 0.75
+      -- Nothing is left over the hole itself.
+      all (near 0 . abs . signedArea . clipConvex hole) pieces `shouldBe` True
+
+    it "takes nothing away when the cutter encloses nothing" $
+      subtractConvex 1e-12 [V2 0 0, V2 1 0] unitSquare `shouldBe` [unitSquare]
+
+    it "keeps a piece smaller than the tolerance when nothing was taken from it" $ do
+      -- The tolerance is for slivers a subtraction left behind. Where there was
+      -- no subtraction there is no sliver, and applying it anyway deletes paper
+      -- nothing was cutting.
+      let speck = [V2 0 0, V2 0.01 0, V2 0 0.01]
+      subtractConvex 1e-3 [V2 0 0, V2 1 0] speck `shouldBe` [speck]
+
+    it "is not fooled by a cutter that lists a corner twice" $ do
+      -- An edge of no length names no side, so clipping by it keeps everything
+      -- both ways: the part "outside" comes back whole and is emitted as a
+      -- finished piece, and the part "inside" comes back whole and carries on.
+      -- Before this was guarded, a unit square minus a corner-repeating triangle
+      -- came back as 1.5 of paper in two pieces overlapping by 0.5.
+      let repeated = [V2 0 0, V2 0 0, V2 1 0, V2 0 1]
+          honest = [V2 0 0, V2 1 0, V2 0 1]
+          area' = sum . map (abs . signedArea)
+      area' (subtractConvex 1e-12 repeated unitSquare)
+        `shouldSatisfy` near (area' (subtractConvex 1e-12 honest unitSquare))
+      area' (subtractConvex 1e-12 repeated unitSquare) `shouldSatisfy` near 0.5
+
+    it "leaves no overlap when the cutter lists a corner twice" $ do
+      let repeated = [V2 0 0, V2 0 0, V2 1 0, V2 0 1]
+          pieces = subtractConvex 1e-12 repeated unitSquare
+      and [near 0 (abs (signedArea (clipConvex p q))) | (p : rest) <- tails pieces, q <- rest]
+        `shouldBe` True
+
   describe "isConvex" $ do
     it "accepts a square and a triangle" $ do
       isConvex 1e-9 unitSquare `shouldBe` True
@@ -137,6 +222,43 @@ spec = do
 
     it "misses a segment that passes by" $
       clipSegment unitSquare (V2 2 0, V2 2 1) `shouldBe` Nothing
+
+  describe "distanceOutside" $ do
+    it "is negative inside, zero on the boundary, positive outside" $ do
+      distanceOutside unitSquare (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
+      distanceOutside unitSquare (V2 0.5 0) `shouldSatisfy` near 0
+      distanceOutside unitSquare (V2 0.5 (-0.25)) `shouldSatisfy` near 0.25
+
+    it "measures to the nearest edge, not to the corner" $
+      distanceOutside unitSquare (V2 0.1 0.25) `shouldSatisfy` near (-0.1)
+
+    it "ignores an edge of no length" $ do
+      -- Clipping leaves these wherever a cut passed exactly through a corner.
+      -- An edge with no direction has no side, and treating it as one would
+      -- report every point in the world as outside the polygon.
+      let repeated = [V2 0 0, V2 1 0, V2 1 0, V2 1 1, V2 0 1]
+      distanceOutside repeated (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
+
+  describe "distanceOutside" $ do
+    it "is negative inside, zero on the boundary, positive outside" $ do
+      distanceOutside unitSquare (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
+      distanceOutside unitSquare (V2 0.5 0) `shouldSatisfy` near 0
+      distanceOutside unitSquare (V2 0.5 (-0.25)) `shouldSatisfy` near 0.25
+
+    it "measures to the nearest edge, not to the corner" $
+      distanceOutside unitSquare (V2 0.1 0.25) `shouldSatisfy` near (-0.1)
+
+    it "ignores an edge of no length" $ do
+      -- Clipping leaves these wherever a cut passed exactly through a corner.
+      -- An edge with no direction has no side, and treating it as one would
+      -- report every point in the world as outside the polygon.
+      let repeated = [V2 0 0, V2 1 0, V2 1 0, V2 1 1, V2 0 1]
+      distanceOutside repeated (V2 0.5 0.5) `shouldSatisfy` near (-0.5)
+
+    it "agrees with strictlyInside, which is one comparison against it" $
+      property $ \b ->
+        let p = V2 0 0
+         in strictlyInside 0.5 (corners b) p == (distanceOutside (corners b) p < -0.5)
 
   describe "collinearOverlap" $ do
     it "finds the stretch two segments share, in the first one's direction" $ do

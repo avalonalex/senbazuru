@@ -72,11 +72,13 @@ library
     Senbazuru.Geometry.Rigid
     Senbazuru.Geometry.V3
     Senbazuru.Geometry.VectorSpace
+    Senbazuru.Origami.Flat
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
     Senbazuru.Origami.Layers
     Senbazuru.Origami.Stacking
     Senbazuru.Origami.Step
+    Senbazuru.Origami.Visible
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
     Senbazuru.Render.Steps
@@ -119,6 +121,7 @@ test-suite senbazuru-test
     Senbazuru.Origami.LayersSpec
     Senbazuru.Origami.StackingSpec
     Senbazuru.Origami.StepSpec
+    Senbazuru.Origami.VisibleSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec
     Senbazuru.Render.StepsSpec

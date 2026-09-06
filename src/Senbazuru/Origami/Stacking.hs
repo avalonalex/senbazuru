@@ -25,6 +25,10 @@
 -- polygons; Kawasaki's theorem makes the faces of a flat-foldable pattern
 -- convex whenever the sheet is, so this refuses very little in practice.
 --
+-- Both of those judgements, and the reading of the frame that goes with them,
+-- are "Senbazuru.Origami.Flat" — shared with the visible-region finder, which
+-- covers exactly the same models for exactly the same reasons.
+--
 -- == The variables
 --
 -- One yes-or-no per pair of faces whose interiors overlap: is the first above
@@ -110,13 +114,9 @@ import Numeric (showGFloat)
 import Senbazuru.Fold.Query
   ( Crease (..),
     EdgeKey,
-    Face (..),
     FoldError (..),
     edgeKey,
     facesAlongEdges,
-    frameCreases,
-    frameFaces,
-    frameVertices,
     renderFoldError,
   )
 import Senbazuru.Fold.Types
@@ -125,11 +125,12 @@ import Senbazuru.Fold.Types
     FaceOrder (..),
     Frame (..),
     Stacking (..),
+    VertexId (..),
   )
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon
-import Senbazuru.Geometry.V3 (V3 (..), hasRelief, spanAlong, zSpan)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet, vertexAt)
 
 -- | Why no ordering was produced.
 --
@@ -225,17 +226,6 @@ ruleHolds above = \case
 pair :: FaceId -> FaceId -> (FaceId, FaceId)
 pair a b = (min a b, max a b)
 
--- | One face of the folded model as it lies in the plane.
-data Panel = Panel
-  { panelId :: !FaceId,
-    -- | The corners, anticlockwise whichever way the file listed them, so the
-    -- clipping below can assume a direction.
-    panelRing :: ![V2],
-    -- | Whether the file's winding runs anticlockwise as the face lies here —
-    -- that is, whether the top side of the paper faces @+z@ at this face.
-    panelFaceUp :: !Bool
-  }
-
 -- | Two faces joined along an edge of the folded form.
 data Hinge = Hinge
   { hingePanels :: !(Panel, Panel),
@@ -299,30 +289,18 @@ solveStacking fr = do
 -- | Geometry to constraints.
 analyse :: Frame -> Either StackingError Analysis
 analyse fr = do
-  verts <- refused (frameVertices fr)
-  -- Checked before anything looks at a face, so a folded form with paper in
-  -- the air is declined on its vertices alone and a corrupt face in it stays
-  -- the renderer's business, as it was before this module existed.
-  if hasRelief verts then Left (NotFlat (zSpan verts)) else Right ()
-  faces <- refused (frameFaces fr)
-  creases <- refused (frameCreases fr)
-  valleys <- refused (creaseDirections fr creases)
-  alongEdges <- refused (facesAlongEdges faces)
-  let -- Both tolerances are relative to the size of the sheet, as every other
-      -- one in this project is. The area one is a length tolerance squared:
-      -- rounding leaves slivers a hair wide along every shared edge, and their
-      -- area is that hair times the length of the sheet, so the threshold sits
-      -- well above them and well below any face a person would draw.
-      scale = max 1 (max (spanAlong v3x verts) (spanAlong v3y verts))
-      hair = 1e-9 * scale
-      speck = hair * scale
-      flatten (V3 x y _) = V2 x y
-      positions = IM.fromList (zip [0 ..] (map flatten verts))
-  panels <- traverse (toPanel speck flatten) faces
-  let byId = M.fromList [(panelId p, p) | p <- panels]
-      -- Total in practice: every vertex id here came out of a face that
-      -- frameFaces checked against these very vertices.
-      at v = IM.findWithDefault (V2 0 0) v positions
+  -- Everything about reading a flat-folded frame as polygons in a plane --
+  -- including declining a model that is not one -- is
+  -- "Senbazuru.Origami.Flat", because the visible-region finder needs exactly
+  -- the same preparation and the two must not be able to disagree about it.
+  sheet <- first fromFlat (flatSheet fr)
+  valleys <- refused (creaseDirections fr (sheetCreases sheet))
+  alongEdges <- refused (facesAlongEdges (sheetFaces sheet))
+  let hair = sheetHair sheet
+      speck = sheetSpeck sheet
+      panels = sheetPanels sheet
+      byId = M.fromList [(panelId p, p) | p <- panels]
+      at = vertexAt sheet . VertexId
   hinges <-
     catMaybes
       <$> traverse
@@ -385,26 +363,18 @@ analyse fr = do
     refused :: Either FoldError a -> Either StackingError a
     refused = first StackingRefused
 
--- | A face as it lies in the plane, or why it cannot be one.
+-- | A reason a frame is not a flat sheet of convex faces, as a reason no
+-- ordering was produced.
 --
--- Area comes first: a face with none has no winding to read, and refusing it
--- is the file's fault ('FaceWithoutNormal'). Convexity comes second and is
--- declined rather than refused, because a concave face is not wrong, merely
--- outside what the overlap test can answer.
-toPanel :: Double -> (V3 -> V2) -> Face -> Either StackingError Panel
-toPanel speck flatten f
-  | abs area <= speck = Left (StackingRefused (FaceWithoutNormal (faceId f)))
-  | not (isConvex speck ring) = Left (NonConvexFace (faceId f))
-  | otherwise =
-      Right
-        Panel
-          { panelId = faceId f,
-            panelRing = if area > 0 then ring else reverse ring,
-            panelFaceUp = area > 0
-          }
-  where
-    ring = map flatten (faceCorners f)
-    area = signedArea ring
+-- The two types stay separate because they answer different questions: a
+-- 'FlatError' is about the model, and 'StackingError' is about this module's
+-- attempt on it, which can also fail for a reason — 'Unstackable' — that has
+-- nothing to do with lying in a plane.
+fromFlat :: FlatError -> StackingError
+fromFlat = \case
+  PaperInTheAir dz -> NotFlat dz
+  ConcaveFace f -> NonConvexFace f
+  FlatRefused err -> StackingRefused err
 
 -- | The hinge along one edge shared by two faces, if the edge has any length
 -- in the folded form.

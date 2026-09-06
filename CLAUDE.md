@@ -107,6 +107,10 @@ One direction of flow, no cycles:
      |                               +--> Senbazuru.Origami.Stacking
      |                               |    which face is on top of which, when
      |                               |    the file does not say: faceOrders out
+     |                               +--> Senbazuru.Origami.Visible
+     |                               |    what of a flat-folded model can be
+     |                               |    seen: regions of paper and the edges
+     |                               |    that are not buried
      |                               +--> Senbazuru.Origami.Step
      |                                    subtract two frames: which paper moved
      |                                    and where it went, i.e. the arrow
@@ -135,11 +139,13 @@ One direction of flow, no cycles:
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
 | `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures. |
+| `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
+| `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
@@ -328,11 +334,27 @@ are not contributors can find it, and so there is only one copy to keep true.
   two were written against each other: a file with backwards windings has
   backwards signs, and they cancel. Recomputing the winding there would uncancel
   them and turn the model inside out. `Senbazuru.Origami.Layers` takes the
-  file's winding exactly as written, and so does `Senbazuru.Origami.Stacking`,
-  which reads it to tell a face lying top-up from one lying top-down and checks
-  it against itself across every crease. `foldFrame` therefore writes its faces
+  file's winding exactly as written, and so does `Senbazuru.Origami.Flat`, which
+  reads it to tell a face lying top-up from one lying top-down —
+  `Senbazuru.Origami.Stacking` then checks it against itself across every
+  crease, and `Senbazuru.Origami.Visible` reads it again to decide which side of
+  the paper the viewer is looking at. `foldFrame` therefore writes its faces
   counterclockwise as measured on the pattern, so the folded frames it produces
   are frames whose winding can be trusted.
+- **A stretch of edge is judged by how far outside a face its midpoint is, not
+  by clipping it.** A stretch lying along a face's edge clips to itself when
+  rounding puts it a hair inside and to nothing when rounding puts it a hair
+  outside, and a clip has no tolerance to call those the same answer. Use
+  `Senbazuru.Geometry.Polygon.distanceOutside`, which returns the hair and lets
+  the caller decide it is one. Getting this wrong dropped a face from the
+  reckoning entirely and stopped visible creases dead in the middle of the
+  crane.
+- **A ring can carry an edge of no length**, wherever folding brought two
+  corners together or a clip passed exactly through one. Such an edge names no
+  side, so clipping by it keeps everything both ways — `subtractConvex` returned
+  overlapping pieces adding up to more paper than went in until it skipped them.
+  Anything that walks a ring's edges and asks which side of one a point is on
+  has to skip them too.
 - **A layer order need not be a painting order.** The solver forbids a circle
   only among three faces that share a patch of paper. Three faces can overlap
   pairwise with no point under all three — the flaps of a twist do — and then
