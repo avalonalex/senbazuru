@@ -53,6 +53,63 @@ Folded forms take a viewing angle:
 stack run -- render examples/squaretwist.fold --view iso -o squaretwist.svg
 ```
 
+## What it reads
+
+Most crease patterns in the world are not FOLD files. FOLD is from 2016 and was
+written for research; the patterns people actually share were saved by the two
+desktop editors, in formats that predate it by a decade. senbazuru reads both,
+and every command takes one wherever it takes a `.fold`.
+
+```bash
+stack run -- render examples/bird-base.cp -o bird-base.svg
+stack run -- check  examples/bird-base.cp
+```
+
+<p align="center">
+  <img src="img/bird-base.svg" width="300" alt="The crease pattern of the traditional bird base">
+</p>
+
+That is `examples/bird-base.cp`, a traditional bird base as Oriedita saved it —
+twenty-six lines of text, each one `type x1 y1 x2 y2`. ORIPA's `.opx` is the
+same list of creases serialised as a Java bean in XML. Neither has a version, a
+unit, a title or a face; both are a **flat list of segments with a colour**, and
+`check` passes all five of that base's interior vertices.
+
+What neither has is *vertices*. A `.fold` file numbers them and its edges point
+at the numbers, so two creases meeting at a corner say so. A `.cp` only puts two
+endpoints at the same coordinates — and not even that, quite. Six creases meet
+at the centre of this bird base and the file spells that one point three
+different ways, none of them zero, because the editor computed them by
+reflecting other points across creases and never rounded:
+
+```
+9.094947017729283E-15   9.094947017729283E-15
+9.094947017729283E-15  -0.0
+1.2246467991473534E-14  9.094947017729283E-15
+```
+
+Its 52 endpoints are 22 distinct spellings of 13 vertices. Rebuilding that list
+is the whole of reading one of these files, and it needs a tolerance — a
+billionth of the pattern's own diagonal, which for the 400-unit square both
+editors draw on is about half a millionth of a unit.
+
+One more thing worth knowing is visible in the picture above. The valley along
+the diagonal runs from the lower left to the upper right, and it runs the other
+way in the file, because both formats measure `y` *downwards* — they are Java
+desktop applications storing screen coordinates. senbazuru turns that the right
+way up on the way in, which is a correction and not a preference: a crease
+pattern read upside down is the mirror image, which is a model that folds
+perfectly well and is not the one in the file. Exactly the argument the README
+makes about `--rotate`.
+
+The formats are set out, with the type-code tables and how each was established,
+in [notes/cp-and-opx.md](notes/cp-and-opx.md).
+
+Because neither format stores faces, a `.cp` draws and checks but does not fold
+yet — `--fold` and `export` need to know which pieces of paper move together,
+and only the faces say that. Tracing them from the creases is
+[#34](https://github.com/avalonalex/senbazuru/issues/34).
+
 ## What it folds
 
 `--fold` computes the folded form rather than reading one. Given a crease

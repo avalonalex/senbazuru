@@ -1,4 +1,4 @@
-# Example FOLD files
+# Example crease patterns
 
 `diagonal-cp.fold`, `squaretwist.fold` and `simple.fold` are taken from the
 reference FOLD repository at <https://github.com/edemaine/FOLD/tree/main/examples>
@@ -38,6 +38,21 @@ other file in that folder is another designer's work and stays there.
 | `thirds-pinwheel.fold` | `instagram/006_ku_Thirds_Pinwheel.fold`. A twist with one valid stacking: its four flaps stack in a circle, which is a valid layer order and one that painting faces whole cannot draw. It is the fixture for drawing by visible regions instead |
 | `bad-twist.fold`       | `unsatisfiable/001_ku_Bad_Twist.fold`. Folds without tearing and has no valid stacking at all; the solver must refuse it |
 | `grid-2x2-d1.fold`     | `grids/002_brown_2x2_D1.fold`. 25 faces, 16 valid stackings in 5 components, and another twist |
+
+One is not a FOLD file at all. `bird-base.cp` is Oriedita's own
+`oriedita-data/src/test/resources/birdbase.cp`, copied byte for byte from
+[oriedita/oriedita](https://github.com/oriedita/oriedita) (MIT) at commit
+`c02a5442` (2026-06-12) and renamed to match the hyphenated names here. The
+file itself has not changed since 2022.
+
+It is the traditional bird base, so there is no designer to ask, and it is the
+first real base in the suite. It is also the fixture for reading the `.cp`
+format, which is why a hand-written one would not do: 26 lines of text, `y`
+measured downwards, no vertices, no faces, and six creases meeting at a centre
+the file spells three different ways. Its 52 endpoints are 22 distinct
+spellings of 13 vertices, so a reader that does not merge them gets a bird base
+in 22 disconnected pieces. See
+[docs/notes/cp-and-opx.md](../docs/notes/cp-and-opx.md).
 
 The rest are hand-written here, so they carry no third-party design and no
 licence but this repository's. Between them they are what `senbazuru check` is

@@ -52,6 +52,15 @@ For the ideas rather than the definitions, start with
 
 Every key with its type and our support status: [fold-reference.md](fold-reference.md).
 
+## The other two formats
+
+| Term | Meaning |
+| --- | --- |
+| **`.cp`** | The crease-pattern format Orihime and Oriedita write: one crease to a line of text, as `type x1 y1 x2 y2`. No vertices, no faces, no metadata. |
+| **`.opx`** | ORIPA's crease-pattern format: the same list of creases serialised as a Java bean in XML. |
+| **Auxiliary line** | A line drawn on a crease pattern as a construction guide and not folded when the model is. Both formats have a code for it; FOLD calls the same thing `F`. |
+| **Segment list** | A crease pattern given as loose line segments, with the shared endpoints left for the reader to match up. What both formats above are, and the reason reading one needs a tolerance. See [notes/cp-and-opx.md](notes/cp-and-opx.md). |
+
 ## Geometry
 
 | Term | Meaning |

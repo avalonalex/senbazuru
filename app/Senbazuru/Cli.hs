@@ -28,7 +28,7 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
-import Senbazuru.Fold.Load (loadFoldFile, renderLoadError)
+import Senbazuru.Fold.Load (loadFile, renderLoadError)
 import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
   ( Assignment,
@@ -588,9 +588,12 @@ exportFile o f = do
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
 
 -- | Load a file or abort with a message on stderr.
+--
+-- 'loadFile' rather than 'Senbazuru.Fold.Load.loadFoldFile', so every verb
+-- takes a @.cp@ or an @.opx@ wherever it takes a @.fold@.
 withFoldFile :: FilePath -> (FoldFile -> IO ()) -> IO ()
 withFoldFile path k =
-  loadFoldFile path >>= \case
+  loadFile path >>= \case
     Left err -> die (renderLoadError err)
     Right f -> k f
 

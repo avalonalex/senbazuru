@@ -22,7 +22,9 @@ extra-doc-files:
   CLAUDE.md
 
 extra-source-files:
+  test/fixtures/*.cp
   test/fixtures/*.fold
+  test/fixtures/*.opx
   test/golden/*.glb
   test/golden/*.svg
 
@@ -73,6 +75,9 @@ library
     Senbazuru.Geometry.Rigid
     Senbazuru.Geometry.V3
     Senbazuru.Geometry.VectorSpace
+    Senbazuru.Import.Cp
+    Senbazuru.Import.Opx
+    Senbazuru.Import.Segments
     Senbazuru.Origami.Flat
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
@@ -91,6 +96,8 @@ library
     , base        >=4.17 && <4.20
     , bytestring  >=0.11 && <0.13
     , containers  >=0.6  && <0.8
+    , filepath    >=1.4  && <1.5
+    , tagsoup     >=0.14 && <0.15
     , text        >=2.0  && <2.2
 
 executable senbazuru
@@ -120,6 +127,9 @@ test-suite senbazuru-test
     Senbazuru.Geometry.RigidSpec
     Senbazuru.Geometry.V3Spec
     Senbazuru.GeometrySpec
+    Senbazuru.Import.CpSpec
+    Senbazuru.Import.OpxSpec
+    Senbazuru.Import.SegmentsSpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
     Senbazuru.Origami.LayersSpec

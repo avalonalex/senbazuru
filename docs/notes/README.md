@@ -32,6 +32,13 @@ read the Haddock module headers; for the domain, start with
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
 
+## Files and formats
+
+| Note | Idea |
+| --- | --- |
+| [cp-and-opx.md](cp-and-opx.md) | The two formats crease patterns are actually shared in are one format twice: a flat list of coloured segments, with the vertices left out |
+| [round-trips.md](round-trips.md) | A decode/encode round trip only tests the parts the decoder kept, so keep the parts you do not understand |
+
 ## Haskell
 
 | Note | Idea |
@@ -41,7 +48,6 @@ read the Haddock module headers; for the domain, start with
 | [shrinking.md](shrinking.md) | A property test is only as useful as its counterexample is small |
 | [folds.md](folds.md) | `foldl` builds a tower, `foldl'` flattens it, `foldr` produces lazily |
 | [strict-fields.md](strict-fields.md) | `foldl'` forces only to WHNF, so lazy fields leak anyway — measured |
-| [round-trips.md](round-trips.md) | A decode/encode round trip only tests the parts the decoder kept, so keep the parts you do not understand |
 
 ## Where to start
 
