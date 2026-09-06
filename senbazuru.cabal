@@ -72,6 +72,7 @@ library
     Senbazuru.Geometry.Rigid
     Senbazuru.Geometry.V3
     Senbazuru.Geometry.VectorSpace
+    Senbazuru.Origami.Flat
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
     Senbazuru.Origami.Layers
