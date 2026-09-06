@@ -53,6 +53,44 @@ Kawasaki's theorem keeps every sector at an interior vertex under 180° — so t
 solver checks convexity and declines the rare face that fails, rather than
 answering wrongly.
 
+## The line that dropped constraints
+
+The crossing point in Sutherland–Hodgman is `p + t (q − p)`, and the textbook
+gives
+
+```
+t = cross(b − a, a − p) / cross(b − a, q − p)
+```
+
+with the remark that the denominator cannot be zero, because the step is only
+taken when `p` and `q` are on opposite sides of the line. In floating point it
+can. A subject edge that runs *along* a clip edge — which every shared crease of
+a folded model is — can have one end a rounding hair outside the line and the
+other exactly on it, while `q − p` rounds to exactly parallel. Then `t` is
+infinite, or `0/0`, the "crossing" is nowhere, and the area of the result is
+NaN.
+
+NaN fails every comparison, including "is this area above the tolerance", so
+the effect is not a crash but a face pair or triple quietly losing its rule.
+A cross-check against an independent solver's constraint counts found six such
+triples in an eighteen-face model.
+
+The fix is not a guard but a different formula. The side test has already
+computed how far inside the line each end is, `d_p` and `d_q`, and the crossing
+is where that distance interpolates to zero:
+
+```
+t = d_p / (d_p − d_q)
+```
+
+The step only runs when one of the two is non-negative and the other strictly
+negative, so the denominator is a sum of two same-sign magnitudes: it cannot be
+zero, and `t` lies in `[0, 1]` by the monotonicity of rounding. Nothing is
+clamped and nothing is special-cased; the ill-conditioned input simply lands
+the point on whichever end is on or nearest the line, which is where the true
+crossing is to within that hair. It reads like a needless rewrite of one line
+and is the whole fix.
+
 ## Why it matters here
 
 `Senbazuru.Geometry.Polygon` is this note as code, and a property test drives
