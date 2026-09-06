@@ -42,8 +42,10 @@ perfectly well from a square of its own. It is simply not the model in the file.
 
 > **Status: early**, and moving. Crease patterns, folding, layer order, hidden
 > lines, two-sided paper, offset views, fold arrows, step-by-step pages, a
-> flat-foldability checker and a 3D export all work; there is no FOLD *output*
-> yet, which is the next big thing.
+> flat-foldability checker and a 3D export all work, and it reads the `.cp` and
+> `.opx` files the desktop editors write as well as FOLD. What it cannot yet do
+> is *make* a crease pattern, or show one part-way through a fold — which is
+> where the roadmap goes.
 > [Roadmap](#roadmap) · [what works in detail](docs/tour.md)
 
 ## The interesting part is that paper is opaque
@@ -165,18 +167,55 @@ Roughly in order. Each item is an issue, tagged
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
-1. **Authoring tools.** FOLD output
-   ([#19](https://github.com/avalonalex/senbazuru/issues/19)) came first, since
-   nothing else can be built without it; the library reads and writes the format
-   now, losing nothing it does not understand. Next are operations on crease
-   patterns, and a verb to invoke them.
+1. **[Build the faces from the creases.](https://github.com/avalonalex/senbazuru/issues/34)**
+   Everything below needs them. A crease pattern is a planar graph, and its
+   faces are the regions the creases cut the sheet into — but only some files
+   record them, and no `.cp` or `.opx` ever does. Without faces nothing can be
+   folded, filled or stacked. It is also the first authoring primitive, since
+   every operation that adds a crease has to re-derive them.
+   → [half-edge](docs/notes/half-edge.md)
+2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
+   FOLD output ([#19](https://github.com/avalonalex/senbazuru/issues/19))
+   came first, since nothing else can be built without it; the library reads and
+   writes the format now, losing nothing it does not understand. What is missing
+   is anything to write *with*: a set of named operations each taking one frame
+   to the next, so that a folding scheme is a list of moves and running down it
+   is the sequence the renderer already draws. Not a sequence *solver* — see
+   below.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
-2. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
+3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
+   A model part-way through a fold, honestly: angles solved for rather than read
+   off, so the paper never stretches and never tears. Measure what real angles
+   look like first, then the degree-4 closed form, then rotating a flap — which
+   covers 41 of the crane's 48 interior vertices without a solver at all — then
+   the general solve, then animation over each face's rigid transform rather
+   than over moving vertices
+   ([#53](https://github.com/avalonalex/senbazuru/issues/53),
+   [#52](https://github.com/avalonalex/senbazuru/issues/52),
+   [#54](https://github.com/avalonalex/senbazuru/issues/54),
+   [#56](https://github.com/avalonalex/senbazuru/issues/56)).
+   Somewhere along it the layers have to stay out of each other
+   ([#61](https://github.com/avalonalex/senbazuru/issues/61)), or a
+   spread wing sweeps through the body.
+   → [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
+   [folding-by-transforms](docs/notes/folding-by-transforms.md)
+4. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
    What a book draws when a model has too many layers to show them all at once,
    and the answer to where `--offset` runs out. The 3D export already gives
    paper a thickness; this should reuse it rather than invent a second one.
    → [paper-thickness](docs/notes/paper-thickness.md)
+
+**Deliberately not on it.** Turning a crease pattern *into* instructions is
+something nobody can do, and the obstacle is not compute: the move vocabulary a
+solver would search has no formalisation to search over
+([no-sequence-solver](docs/notes/no-sequence-solver.md)). Inflating a waterbomb
+is outside the model rather than merely hard — every face here is a flat
+polygon, and an inflated balloon's are not. Wet-folding and shaping are outside
+it too. Spreading a crane's wings, which looks like the same problem, is not:
+that is angles, and it is item 3.
+[#64](https://github.com/avalonalex/senbazuru/issues/64) is where that
+boundary gets written down properly.
 
 ## Credits and licence
 
