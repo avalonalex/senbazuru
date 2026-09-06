@@ -232,6 +232,42 @@ counterclockwise and which real files sometimes get backwards. A file that wound
 swapped, silently — the layer order survives it because its signs were written
 against those same windings, and the paper side has nothing to cancel against.
 
+## What it opens out
+
+Hidden-line removal makes the picture honest, and sometimes honest is useless.
+Fold a square into quarters and the four quadrants land exactly on top of one
+another: the silhouette is one square, the only visible region is one square,
+and the reader is told nothing at all about the four layers underneath. There is
+nothing partly hidden to reveal.
+
+Books answer this by drawing the stack slightly opened, and so does `--offset`:
+
+```bash
+stack run -- render examples/quarter-fold.fold --fold --offset 6 -o stack.svg
+stack run -- render examples/letter-fold.fold --fold --offset 6 -o letter.svg
+stack run -- render examples/crane.fold --fold --rotate 180 --offset 1.5 -o crane.svg
+```
+
+Every face is drawn whole and each layer sits a few points further up and to the
+right than the layer below it, the way an exploded drawing separates the parts
+of an assembly. The quarter fold becomes four stepped squares in the order the
+solver found, bottom-left quadrant lowest; the letter fold shows its middle
+panel, which the ordinary picture buries whole; the crane opens into a
+sheaf you can count.
+
+The step is in **page units**, which is the two-unit rule doing real work: four
+points is four points whether the sheet is one unit across or four hundred, so
+the model's own coordinates are never touched and the page does not rescale
+because a stack was opened. That last part cuts both ways — a large step on a
+model that already fills the page runs off it, and the answer is a smaller step
+or a bigger page.
+
+Which layer a face is in is the longest chain of faces below it, not a count of
+what it covers, and [notes/layer-numbers.md](notes/layer-numbers.md) is why that
+distinction is the whole of getting this right. It also explains why a twist has
+no offset view: stepping layers apart needs one order for the entire model, and
+a twist is exactly the model that has none.
+
 ## What it instructs
 
 A picture of paper is not an instruction. The arrow that says *this* piece moves

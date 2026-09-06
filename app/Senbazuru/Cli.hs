@@ -120,7 +120,10 @@ data RenderOptions = RenderOptions
     -- | Which layer order to draw, one index per component that has a choice.
     -- Empty means the first of each, which is what every version so far drew.
     roStacking :: [Int],
-    roBudget :: Budget
+    roBudget :: Budget,
+    -- | Page units between one layer of a folded model and the next. Zero, the
+    -- default, draws them where the paper is.
+    roOffset :: Double
   }
   deriving stock (Eq, Show)
 
@@ -394,7 +397,32 @@ renderOptions =
             )
       )
     <*> budgetOption
+    <*> option
+      -- Refused during parsing like every other malformed number here, and for
+      -- both reasons at once. NaN and Infinity reach 'formatNumber', which
+      -- writes them as 0, so a model drawn with one arrives stacked on the page
+      -- origin with nothing reporting a fault. And a negative step is not an
+      -- error the arithmetic would notice -- the stack would simply open out
+      -- down and to the left -- but "how far apart" is a distance, and reading
+      -- a minus sign as a direction is a guess about what someone meant.
+      (points =<< auto)
+      ( long "offset"
+          <> metavar "PT"
+          <> value 0
+          <> showDefault
+          <> help
+            ( "Draw a folded model's layers this far apart on the page, so that"
+                <> " a stack that lands on one spot can be read as a stack."
+                <> " Needs the layers, so it goes with --fold and not with"
+                <> " --no-fill"
+            )
+      )
   where
+    points :: Double -> ReadM Double
+    points d
+      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
+      | otherwise = readerError "the layer offset must be a non-negative number of points"
+
     -- A comma-separated list of non-negative indices, refused during parsing
     -- like every other malformed option. "1," is a typo rather than a request
     -- for a default, so an empty field is rejected rather than filled in.
@@ -529,11 +557,11 @@ renderOneFrame o f = do
           basis <- basisOf o frame
           emitWith o pg (withArrows theme basis motions d)
 
--- | Each flag only ever subtracts from the default. Written as guards rather
+-- | Each flag turns one thing off or one thing on. Written as guards rather
 -- than as assignments so that a flag left off defers to whatever defaultTheme
 -- says, instead of asserting today's value of it.
 themeFor :: RenderOptions -> Theme
-themeFor o = hideFlat (noFill defaultTheme)
+themeFor o = hideFlat (noFill (offset defaultTheme))
   where
     hideFlat t
       | roHideFlat o = t {themeShowFlat = False, themeShowUnassigned = False}
@@ -541,6 +569,13 @@ themeFor o = hideFlat (noFill defaultTheme)
 
     noFill t
       | roNoFill o = t {themePaper = Nothing}
+      | otherwise = t
+
+    -- The one flag that adds rather than subtracts, and still a guard: left
+    -- off, --offset means "whatever the theme says" rather than "zero". The two
+    -- are the same number today and need not stay so.
+    offset t
+      | roOffset o /= 0 = t {themeLayerOffset = roOffset o}
       | otherwise = t
 
 pageFor :: RenderOptions -> Maybe Text -> Page

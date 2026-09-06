@@ -40,6 +40,7 @@ module Senbazuru.Geometry
     -- * Model-to-page transforms
     Transform (..),
     applyTransform,
+    movedBy,
     fitBox,
   )
 where
@@ -134,6 +135,20 @@ data Transform = Transform
 applyTransform :: Transform -> V2 -> V2
 applyTransform (Transform (V2 sx sy) (V2 ox oy)) (V2 x y) =
   V2 (sx * x + ox) (sy * y + oy)
+
+-- | The same transform, followed by a shift of its results.
+--
+-- @applyTransform (movedBy v t) p == applyTransform t p ^+^ v@, which is the
+-- whole of it: a translation after a scale-and-translate is another
+-- scale-and-translate, with the same scale.
+--
+-- The displacement is in the transform's __destination__ space, which for the
+-- one transform this project builds means page units. That is the point of it:
+-- it is how a shape earns a nudge measured in page units without its own
+-- coordinates, which are in model units, being touched. See
+-- 'Senbazuru.Diagram.Offset'.
+movedBy :: V2 -> Transform -> Transform
+movedBy v t = t {tOffset = tOffset t ^+^ v}
 
 -- | @fitBox src dst@ builds the transform that maps model-space box @src@ into
 -- page-space box @dst@.

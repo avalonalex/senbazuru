@@ -59,6 +59,7 @@ import Senbazuru.Geometry
     V2 (..),
     applyTransform,
     fitBox,
+    movedBy,
     norm,
     normalize,
     perpendicular,
@@ -158,7 +159,13 @@ renderSvg page d =
 --
 -- An 'Arrow' is two elements rather than one, because its head is filled and its
 -- curve is stroked.
+--
+-- An 'Offset' emits no element of its own. It moves the /transform/ rather than
+-- the points, which is what makes its displacement a page-unit one: the shape
+-- inside is projected exactly as it would have been and then slid, so nothing
+-- inside it — a stroke width, an arrowhead, a type size — has any idea it moved.
 shapeToSvg :: Transform -> Shape -> Builder
+shapeToSvg toPage (Offset v s) = shapeToSvg (movedBy v toPage) s
 -- Text is emitted as <text> rather than as outlines, so the file stays small and
 -- the number stays selectable. The trade is that the exact shape depends on the
 -- viewer's fonts: `sans-serif` is a generic family every renderer resolves to

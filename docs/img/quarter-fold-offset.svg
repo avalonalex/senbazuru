@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260">
+  <title>Quarter folds</title>
+  <rect x="0" y="0" width="260" height="260" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 232 L 232 232 L 232 28 L 28 28 Z" fill="#e5ded1"/>
+    <path d="M 28 28 L 28 232" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 28 28 L 232 28" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 232 232 L 28 232" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 232 28 L 232 232" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 32.243 23.757 L 32.243 227.757 L 236.243 227.757 L 236.243 23.757 Z" fill="#faf8f3"/>
+    <path d="M 32.243 23.757 L 32.243 227.757" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 32.243 23.757 L 236.243 23.757" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 32.243 227.757 L 236.243 227.757" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 236.243 227.757 L 236.243 23.757" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 36.485 223.515 L 240.485 223.515 L 240.485 19.515 L 36.485 19.515 Z" fill="#e5ded1"/>
+    <path d="M 36.485 19.515 L 240.485 19.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 36.485 19.515 L 36.485 223.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 240.485 19.515 L 240.485 223.515" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 240.485 223.515 L 36.485 223.515" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 40.728 15.272 L 40.728 219.272 L 244.728 219.272 L 244.728 15.272 Z" fill="#faf8f3"/>
+    <path d="M 40.728 15.272 L 40.728 219.272" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 40.728 15.272 L 244.728 15.272" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 40.728 219.272 L 244.728 219.272" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 244.728 219.272 L 244.728 15.272" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

@@ -76,6 +76,7 @@ module Senbazuru.Diagram.Style
     Notation (..),
     strokeFor,
     arrowFor,
+    layerStep,
 
     -- * Palette
     ink,
@@ -171,6 +172,16 @@ data Theme = Theme
     -- arrow's ends, as a fraction of the distance it spans. Zero would be a
     -- straight arrow, which reads as \"slide\" rather than \"fold\".
     themeArrowBow :: !Double,
+    -- | Page units: how far apart to draw one layer of a folded model and the
+    -- next. Zero draws them where the paper actually is, which is on top of one
+    -- another.
+    --
+    -- A page-unit length rather than a model-unit one, and for the reason the
+    -- arrowhead is: how far apart two layers have to be drawn before a reader
+    -- can tell them apart is a fact about print, not about the sheet. See
+    -- 'layerStep' for the direction, and "Senbazuru.Render.CreasePattern" for
+    -- what an offset view is.
+    themeLayerOffset :: !Double,
     -- | Fill the paper with these two colours, or 'Nothing' to leave the sheet
     -- as a wireframe.
     --
@@ -207,6 +218,11 @@ defaultTheme =
       -- An eighth of the span. Enough to read as a turn through the air rather
       -- than a slide along the page, without the arc wandering off the paper.
       themeArrowBow = 0.125,
+      -- Off. An offset view is a deliberate cutaway of a model, drawn where it
+      -- would otherwise be a silhouette; it is not how a model is normally
+      -- shown, and a diagram that stepped its layers apart unasked would be
+      -- lying about where the paper is.
+      themeLayerOffset = 0,
       themePaper = Just (Paper paper paperUnderside)
     }
 
@@ -258,6 +274,48 @@ strokeFor theme notation = \case
     crease dash = case notation of
       CreasePatternNotation -> Stroke (themeInk theme) (themeCreaseWidth theme) dash
       FoldedFormNotation -> solid (themeInk theme) (themeCreaseWidth theme)
+
+-- | How far and which way one layer of an offset view is drawn from the layer
+-- below it, in page units and __page axes__.
+--
+-- Up and to the right, at forty-five degrees, so that a stack of paper looked
+-- at from directly above reads as a stack seen from slightly off to one side —
+-- the same convention an exploded engineering drawing uses, and for the same
+-- reason. Diagonal rather than along an axis because a fold line in a model
+-- folded flat is very often horizontal or vertical, and a stack stepped along
+-- one of those slides its layers along their own edges, where a layer's outline
+-- lands exactly on top of the one below it and nothing is revealed.
+--
+-- @y@ is __negated__, which reads as a sign error and is not: this is a page
+-- displacement, and page @y@ grows downwards, so up the page is the negative
+-- direction. Everywhere else in senbazuru a positive @y@ is up, which is
+-- exactly why it is worth saying so here.
+--
+-- The length of the step is 'themeLayerOffset' — the two components are each
+-- @1\/sqrt 2@ of it, not all of it, so that "four points apart" means four
+-- points measured on the page rather than four points in each direction.
+--
+-- A fixed direction rather than one taken from the model, because there is
+-- nothing in the model to take. The layers of a flat-folded form lie in one
+-- plane, and the direction the stack actually grows in — the plane's normal —
+-- projects to /nothing at all/ when the model is viewed face on, which is
+-- precisely the view that needs an offset. So the direction is a convention of
+-- the drawing, like the side an arrow bows to.
+--
+-- 'Nothing' when the theme asks for no offset at all, which is the usual case
+-- and is also the answer for a step that is not a length: @read@ for a 'Double'
+-- accepts @NaN@ and @Infinity@, and either would move every layer to the same
+-- nowhere — 'Senbazuru.Render.Svg.formatNumber' writes both as @0@, so the
+-- whole model would arrive stacked on one point with nothing reporting a fault.
+-- Refusing here means a caller can ask \"is this an offset view?\" and \"how far
+-- apart?\" with one question.
+layerStep :: Theme -> Maybe V2
+layerStep theme
+  | isNaN step || isInfinite step || step == 0 = Nothing
+  | otherwise = Just (step *^ V2 diagonal (negate diagonal))
+  where
+    step = themeLayerOffset theme
+    diagonal = sqrt 0.5
 
 -- | The arrow that says \"this paper moves there\".
 --

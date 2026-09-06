@@ -11,8 +11,16 @@
 -- @frame_classes@, and the tests below say exactly when.
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
+import Data.List (nub)
+import Data.Maybe (fromMaybe)
 import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent, shapePoints)
-import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme, paperUnderside)
+import Senbazuru.Diagram.Style
+  ( Notation (..),
+    Theme (..),
+    defaultTheme,
+    layerStep,
+    paperUnderside,
+  )
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
@@ -82,6 +90,10 @@ shapeKinds theme notation fr =
       Polyline _ _ -> "line"
       Arrow _ -> "arrow"
       Label {} -> "label"
+      -- Reported as whatever it wraps. Where a shape sits is a separate
+      -- question from what it is, and the tests below that care ask about the
+      -- displacements directly.
+      Offset _ shape -> kind shape
 
 -- | Close enough, for numbers that have been through a sine and a cosine.
 nearly :: Double -> Double -> Bool
@@ -214,6 +226,75 @@ spec = do
       let undeclared = twoFaceSquare {frameClasses = []}
       shapeKinds defaultTheme (defaultNotationFor [] flatSquare) undeclared
         `shouldBe` Right ["fill", "line", "line", "line", "line", "line"]
+
+  describe "the offset view" $ do
+    let stepped d = defaultTheme {themeLayerOffset = d}
+        drawn theme = creasePatternFrom theme defaultBudget FoldedFormNotation topDown
+        offsetsOf d = [v | Offset v _ <- diagramShapes d]
+
+    it "draws every face whole, buried or not" $
+      -- Without an offset the two triangles land on each other exactly and the
+      -- picture is one triangle -- correct, and no use to a reader who wants to
+      -- know there are two. With one, both are drawn, each with its own three
+      -- edges, and each layer's paper goes down before its lines so that it
+      -- covers the layer beneath.
+      shapeKinds (stepped 4) FoldedFormNotation foldedDiagonal
+        `shouldBe` Right ["fill", "line", "line", "line", "fill", "line", "line", "line"]
+
+    it "draws a crease shared by two layers once in each" $ do
+      -- The diagonal bounds both triangles, and they are drawn a step apart, so
+      -- one line cannot serve both. This is the whole of what the module header
+      -- means by the one-polyline-per-crease pipeline having to change.
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      let diagonals = [v | Offset v (Polyline _ [V2 0 0, V2 1 1]) <- diagramShapes d]
+      length diagonals `shouldBe` 2
+      nub diagonals `shouldBe` diagonals
+
+    it "steps each layer one further than the one below it" $ do
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      let step = fromMaybe (V2 0 0) (layerStep (stepped 4))
+      -- Four shapes at rest and four a step along: the bottom triangle is drawn
+      -- where the paper is, and the one on top of it is moved.
+      nub (offsetsOf d) `shouldBe` [V2 0 0, step]
+
+    it "leaves the page alone, so a stack opened out does not rescale it" $ do
+      -- The displacement is in page units and never enters the extent. A page
+      -- that grew to admit it would shrink the model every time the reader
+      -- asked to see more of it.
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+      opened <- either (fail . show) pure (drawn (stepped 40) foldedDiagonal)
+      diagramExtent opened `shouldBe` diagramExtent plain
+
+    it "draws exactly the ordinary picture when it is zero" $ do
+      -- Not merely a similar one: the offset view is a different picture
+      -- altogether -- whole faces rather than visible regions -- so a theme
+      -- asking for no offset must not take that path at all.
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+      off <- either (fail . show) pure (drawn (stepped 0) foldedDiagonal)
+      off `shouldBe` plain
+
+    it "has nothing to step apart in a crease pattern" $
+      -- Its faces do not overlap, so every one of them is layer zero. The flag
+      -- is harmless rather than special-cased.
+      creasePatternFrom (stepped 4) defaultBudget CreasePatternNotation topDown twoFaceSquare
+        `shouldBe` creasePatternFrom defaultTheme defaultBudget CreasePatternNotation topDown twoFaceSquare
+
+    it "refuses a model whose layers have no single order" $ do
+      -- Three faces in a circle: a real stacking, since no point is under all
+      -- three, and one that cannot be drawn a layer at a time because there is
+      -- no bottom layer to start from. The ordinary picture of a flat model
+      -- draws it happily, which is why this is a refusal and not a fallback.
+      let twist =
+            twoFaceSquare
+              { facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3], map VertexId [0, 1, 3]],
+                faceOrders =
+                  [ FaceOrder (FaceId 1) (FaceId 0) Above,
+                    FaceOrder (FaceId 2) (FaceId 1) Above,
+                    FaceOrder (FaceId 0) (FaceId 2) Above
+                  ]
+              }
+      shapeKinds (stepped 4) FoldedFormNotation twist
+        `shouldBe` Left (ImpossibleStacking (FaceId 0))
 
   describe "turning the drawing" $ do
     it "turns every point of it, and nothing else" $ do

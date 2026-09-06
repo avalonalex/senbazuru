@@ -57,10 +57,20 @@ of its own and complains about them.
 | `--columns N` | Figures across the page, with `--steps` (default `3`) |
 | `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
 | `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
+| `--offset PT` | Draw a folded model's layers this far apart on the page, so a stack that lands on one spot reads as a stack (default `0`, off) |
 
 Some combinations are refused rather than quietly resolved, because they
 describe different pictures: `--steps` with `--frame`, with `--fold`, or with
 `--stacking`, and `--fold` with `--arrows`.
+
+`--offset` is the one flag that needs the layers rather than merely using them,
+so three things are worth knowing about it. It does nothing under `--no-fill`,
+which is the escape hatch that asks no questions about layers at all. It refuses
+a model whose layers run in a circle — a twist — because stepping them apart
+needs one order for the whole model and there is none; the ordinary picture of
+one still draws fine. And it never changes the size of the drawing, so a large
+step on a model that already fills the page will run off it: pick a smaller one,
+or a larger `--width`.
 
 ## `check`
 

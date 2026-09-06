@@ -147,3 +147,17 @@ spec = do
         let line = Box (V2 0 5) (V2 10 5) -- all vertices on a horizontal line
             V2 x y = applyTransform (fitBox line dst) (V2 5 5)
          in not (isNaN x || isInfinite x || isNaN y || isInfinite y)
+
+  describe "movedBy" $ do
+    it "shifts the result by exactly the displacement given" $
+      forAll ((,,) <$> genBox <*> genBox <*> genPoint) $ \(src, dst, v) ->
+        forAll (genPointIn src) $ \p ->
+          nearV2
+            (applyTransform (movedBy v (fitBox src dst)) p)
+            (applyTransform (fitBox src dst) p ^+^ v)
+
+    it "leaves the scale alone, so the drawing is moved and not resized" $
+      -- The whole point of the offset view: a layer slides across the page
+      -- without becoming a different size from the layer under it.
+      forAll ((,,) <$> genBox <*> genBox <*> genPoint) $ \(src, dst, v) ->
+        tScale (movedBy v (fitBox src dst)) == tScale (fitBox src dst)

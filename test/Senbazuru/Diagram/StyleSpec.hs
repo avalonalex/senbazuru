@@ -11,6 +11,7 @@ import Data.Maybe (mapMaybe)
 import Senbazuru.Diagram (Dash (..), Stroke (..))
 import Senbazuru.Diagram.Style
 import Senbazuru.Fold.Types (Assignment (..))
+import Senbazuru.Geometry (V2 (..), norm)
 import Test.Hspec
 
 spec :: Spec
@@ -32,7 +33,35 @@ spec = do
       forM_ everyAssignment $ \a ->
         fmap undashed (strokeFor defaultTheme CreasePatternNotation a)
           `shouldBe` fmap undashed (strokeFor defaultTheme FoldedFormNotation a)
+
+  describe "layerStep" $ do
+    it "is off in the default theme" $
+      -- An offset view is a cutaway, asked for on purpose. A drawing that
+      -- stepped its layers apart unasked would be saying the paper is somewhere
+      -- it is not.
+      layerStep defaultTheme `shouldBe` Nothing
+
+    it "steps by the distance asked for, measured on the page" $
+      -- Not four points along each axis: four points apart, which is what
+      -- anybody choosing a number means by it.
+      fmap norm (steppedBy 4) `shouldBe` Just 4
+
+    it "steps up the page and to the right" $ do
+      -- Page y grows downwards, so up the page is negative. That sign is the
+      -- one thing here worth a test of its own: everywhere else in senbazuru a
+      -- positive y is up.
+      fmap (\(V2 x _) -> x > 0) (steppedBy 4) `shouldBe` Just True
+      fmap (\(V2 _ y) -> y < 0) (steppedBy 4) `shouldBe` Just True
+
+    it "refuses a step that is not a length" $ do
+      -- read for a Double accepts both, and formatNumber writes both as 0, so
+      -- the alternative is every layer drawn at the page origin with nothing
+      -- reporting a fault.
+      steppedBy (0 / 0) `shouldBe` Nothing
+      steppedBy (1 / 0) `shouldBe` Nothing
   where
+    steppedBy d = layerStep defaultTheme {themeLayerOffset = d}
+
     everyAssignment = [minBound .. maxBound] :: [Assignment]
     strokesUnder notation = mapMaybe (strokeFor defaultTheme notation) everyAssignment
     undashed s = s {strokeDash = Dash []}
