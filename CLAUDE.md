@@ -196,6 +196,7 @@ functions are expression, and those stay where they are.
 | --- | --- | --- |
 | `edemaine/FOLD` examples | MIT | vendored, attributed in `examples/README.md` |
 | Origami Simulator box-pleat `.fold` | MIT | usable with attribution |
+| Flat-Folder examples | MIT | traditional models, the author's own designs and exhaustive enumerations vendored, attributed in `examples/README.md`; other designers' patterns there are not ours to take |
 | GPL reference implementations | GPL-3.0 | research only, never vendored |
 | Patterns we generate ourselves | ours | preferred |
 

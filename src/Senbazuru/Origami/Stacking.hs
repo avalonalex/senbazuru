@@ -49,15 +49,16 @@
 --
 -- 2. __Taco-tortilla__ ('NotBetween'). A face that runs across a taco's fold
 --    line cannot lie between the taco's two faces: the paper is continuous
---    across the line, and the fold would have to pass through it. The same
---    holds for a face that runs across a tortilla's line, for the same reason.
+--    across the line, and the fold would have to pass through it.
 --
 -- 3. __Taco-taco__ ('NoInterleave'). Two tacos folded on the same line, on the
 --    same side, must nest or stay apart. If one face of a taco is between the
 --    other taco's faces, so is its partner.
 --
 -- 4. __Tortilla-tortilla__ ('SameOrder'). Two sheets continuing flat across
---    the same line cannot cross it in opposite orders.
+--    the same line cannot cross it in opposite orders. A face that runs across
+--    a tortilla's line is itself a tortilla whose two halves are one face, so
+--    it is filed here, with that face on both sides.
 --
 -- Plus one rule that is not about paper but about arithmetic: three faces that
 -- share a patch of paper are totally ordered over it, so their three pairwise
@@ -99,7 +100,7 @@ where
 
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.List (tails)
+import Data.List (nub, tails)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
@@ -175,7 +176,10 @@ data Rule
     NotBetween FaceId FaceId FaceId
   | -- | @SameOrder a c b d@: @a@ is above @c@ exactly when @b@ is above @d@.
     -- Tortilla-tortilla: @a@–@b@ and @c@–@d@ both continue flat across one
-    -- line, @a@ and @c@ on the same side of it.
+    -- line, @a@ and @c@ on the same side of it. @c@ and @d@ may be the same
+    -- face: a face the line runs through is a tortilla whose two halves are
+    -- one face, and then this says it lies above the sheet or below it, not
+    -- between.
     SameOrder FaceId FaceId FaceId FaceId
   | -- | @NoInterleave a b c d@: @c@ lies between @a@ and @b@ exactly when @d@
     -- does. Taco-taco: @a@–@b@ and @c@–@d@ are folded on one line, on the
@@ -195,14 +199,15 @@ rulePairs = \case
   NoInterleave a b c d -> [pair a c, pair b c, pair a d, pair b d]
   Acyclic a b c -> [pair a b, pair b c, pair a c]
 
--- | Every face a rule mentions, for naming the culprits.
+-- | Every face a rule mentions, once each, for naming the culprits.
 ruleFaces :: Rule -> [FaceId]
-ruleFaces = \case
-  Fixed a b _ -> [a, b]
-  NotBetween t a b -> [t, a, b]
-  SameOrder a c b d -> [a, c, b, d]
-  NoInterleave a b c d -> [a, b, c, d]
-  Acyclic a b c -> [a, b, c]
+ruleFaces =
+  nub . \case
+    Fixed a b _ -> [a, b]
+    NotBetween t a b -> [t, a, b]
+    SameOrder a c b d -> [a, c, b, d]
+    NoInterleave a b c d -> [a, b, c, d]
+    Acyclic a b c -> [a, b, c]
 
 -- | Does the rule hold, given a way to ask whether one face is above another?
 ruleHolds :: (FaceId -> FaceId -> Bool) -> Rule -> Bool
@@ -239,6 +244,12 @@ data Hinge = Hinge
     -- | Whether the crease is a valley, when the file says either way.
     hingeValley :: !(Maybe Bool)
   }
+
+-- | The two faces of a hinge, by id.
+hingeFaces :: Hinge -> (FaceId, FaceId)
+hingeFaces h = (panelId pf, panelId pg)
+  where
+    (pf, pg) = hingePanels h
 
 -- | Which way the paper goes at a hinge, read from where the two faces lie
 -- rather than from the recorded angle, for the same reason
@@ -344,12 +355,11 @@ analyse fr = do
 
       creaseRules = concatMap (creaseRule hair) hinges
       crossingRules =
-        [ NotBetween (panelId t) (panelId a) (panelId b)
+        [ crossingRule h t
           | h <- hinges,
-            let (a, b) = hingePanels h,
+            let (a, b) = hingeFaces h,
             t <- panels,
-            panelId t /= panelId a,
-            panelId t /= panelId b,
+            panelId t `notElem` [a, b],
             runsAcross hair (panelRing t) (hingeSegment h)
         ]
       collinearRules =
@@ -363,7 +373,7 @@ analyse fr = do
       -- can slip under the area threshold when a face is a sliver, and
       -- dropping the rule for that would drop a fact about the paper.
       tacoPairs =
-        [pair (panelId a) (panelId b) | h <- hinges, hingeKind h == Taco, let (a, b) = hingePanels h]
+        [pair a b | h <- hinges, hingeKind h == Taco, let (a, b) = hingeFaces h]
       pairs = S.toAscList (S.fromList (overlaps <> tacoPairs <> concatMap rulePairs rules))
   pure
     Analysis
@@ -480,6 +490,22 @@ creaseRule _ h = case (hingeKind h, hingeValley h) of
       | panelFaceUp pf = (panelId pg, panelId pf)
       | otherwise = (panelId pf, panelId pg)
 
+-- | The rule a hinge imposes on a face whose interior its line runs through.
+--
+-- For a taco this is taco-tortilla: the face cannot be inside the fold. For a
+-- tortilla it is tortilla-tortilla with a twist worth noticing — the crossing
+-- face is itself a tortilla across the same line, whose two halves happen to
+-- be one face, so the rule is 'SameOrder' with that face on both sides. The
+-- two constructors say the same thing about @t@; writing the tortilla case
+-- this way names the shape of the paper rather than just the formula, and it
+-- is how Flat-Folder files it, which lets its counts be compared with ours.
+crossingRule :: Hinge -> Panel -> Rule
+crossingRule h t = case hingeKind h of
+  Taco -> NotBetween (panelId t) a b
+  Tortilla -> SameOrder a (panelId t) b (panelId t)
+  where
+    (a, b) = hingeFaces h
+
 -- | The rules two hinges on one line impose on each other.
 collinearRule :: Double -> Hinge -> Hinge -> [Rule]
 collinearRule hair h1 h2 = case collinearOverlap hair (hingeSegment h1) (hingeSegment h2) of
@@ -502,8 +528,8 @@ collinearRule hair h1 h2 = case collinearOverlap hair (hingeSegment h1) (hingeSe
     where
       (pa, pb) = hingePanels h1
       (pc, pd) = hingePanels h2
-      (a, b) = (panelId pa, panelId pb)
-      (c, d) = (panelId pc, panelId pd)
+      (a, b) = hingeFaces h1
+      (c, d) = hingeFaces h2
       -- All four judged against the one shared segment, so that the two
       -- hinges being written in opposite directions cannot matter.
       side = leftOf shared

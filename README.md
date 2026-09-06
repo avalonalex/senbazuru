@@ -129,6 +129,16 @@ folds a square in three like a letter, with panels of different widths so the
 order shows: the long third panel is painted last and covers most of the other
 two. Fold a strip of paper the same way and look. The quarter fold above comes
 out four layers deep in the one order its three mountains and one valley allow.
+The traditional crane works too:
+
+```bash
+stack run -- render examples/crane.fold --fold -o crane.svg
+```
+
+That file, and a few others in `examples/`, come from
+[Flat-Folder](https://github.com/origamimagiro/flat-folder), an independent
+solver for the same problem, whose published counts of constraints per model
+senbazuru's test suite checks itself against, kind by kind.
 
 Not every set of creases has a stacking. Make both of the letter fold's creases
 valleys and the third panel has to slide between the first two, but it is longer

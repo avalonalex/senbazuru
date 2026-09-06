@@ -306,6 +306,14 @@ spec = do
       renderFolded topDown "test/fixtures/letter-fold.fold"
         >>= goldenText "test/golden/letter-fold-folded.svg"
 
+    -- The first real model: the traditional crane from Flat-Folder's corpus,
+    -- 72 faces folded flat and stacked by the solver. The table says it has
+    -- five valid stackings; this pins the one the solver chooses, so a change
+    -- to how it chooses among them shows up as a diff rather than silently.
+    it "renders the crane after folding it" $
+      renderFolded topDown "test/fixtures/crane.fold"
+        >>= goldenText "test/golden/crane-folded.svg"
+
     it "renders simple.fold from the isometric view" $
       renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"
         >>= goldenText "test/golden/simple-iso.svg"
