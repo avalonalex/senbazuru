@@ -166,6 +166,12 @@ issues are the detail.
    that paper has no thickness, so a flat-folded model is entirely coplanar and
    z-fights.
    → [layer-ordering](docs/notes/layer-ordering.md)
+3. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
+   What a book draws when a model has too many layers to show them all at once,
+   and the answer to where `--offset` runs out. It needs the same thickness the
+   item above needs, and should be built with it rather than inventing a second
+   one.
+   → [layer-numbers](docs/notes/layer-numbers.md)
 
 ## Credits and licence
 

@@ -133,8 +133,10 @@ arrow.
 
 `--offset` is the cut-away's offsetting applied to a whole sheet rather than
 inside a circle. That makes it the right tool for a model a handful of layers
-deep and an honest but crowded one for anything deeper. A cut-away confined to a
-region, and a side view, are both real features and neither is built.
+deep and an honest but crowded one for anything deeper. The other two are real
+features and neither is built: senbazuru issues #48, #49 and #50 carry the
+approach for each, and the side view is on the roadmap because it needs the same
+thickness a 3D export does.
 
 ## Where the relations run in a circle
 

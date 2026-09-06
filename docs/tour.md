@@ -297,8 +297,12 @@ stack with an arrow, which is a different picture rather than a busier one.
 
 `--offset` is the second of those applied to the whole sheet rather than inside
 a circle. It is the right tool for a model a handful of layers deep, and for a
-deep one it is honest rather than legible. A local cut-away and a side view are
-both worth having and neither is here yet.
+deep one it is honest rather than legible. The other two are tracked:
+[#48](https://github.com/avalonalex/senbazuru/issues/48) for x-ray lines scoped
+to the step, [#49](https://github.com/avalonalex/senbazuru/issues/49) for the
+cut-away, and [#50](https://github.com/avalonalex/senbazuru/issues/50) for the
+side view, which needs the paper to have a thickness and so belongs with the 3D
+export.
 
 [notes/layer-numbers.md](notes/layer-numbers.md) has the measurements, and the
 two other things worth knowing: which layer a face is in is the longest chain of
