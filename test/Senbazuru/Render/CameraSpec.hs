@@ -143,6 +143,12 @@ spec = do
   describe "the named views" $
     it "are all well formed, so the total fallback never fires" $
       -- named uses a total wrapper over basisFrom with topDown as the fallback.
-      -- If any named view were degenerate it would silently become topDown,
-      -- which this catches.
-      [isometric, frontOn, sideOn] `shouldSatisfy` notElem topDown
+      -- If any named view were degenerate -- its direction parallel to its up
+      -- hint, say, which is one typo away -- it would silently become topDown,
+      -- and --view bottom would quietly draw the top.
+      --
+      -- Taken from views rather than listed by hand, for the reason views is a
+      -- single source of truth in the first place: a list written out here
+      -- covers the views someone remembered, and a new one added to the module
+      -- and forgotten here would be exactly the one nobody checked.
+      [b | (name, b) <- views, name /= "top"] `shouldSatisfy` notElem topDown

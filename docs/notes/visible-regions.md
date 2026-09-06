@@ -70,9 +70,9 @@ of a larger face, and pieces express a hole without anyone having to notice one.
 `Senbazuru.Geometry.Polygon.subtractConvex` is the one piece of geometry it
 needed. For the flat-folded crane it turns 72 faces and 129 creases into 14
 pieces of paper in 11 regions and 22 stretches of edge, which is what a book
-would print. Nothing draws it yet: `Senbazuru.Render.CreasePattern` still paints
-whole faces in the order `Senbazuru.Origami.Layers` sorts them into, which is
-why `render --fold examples/thirds-pinwheel.fold` still refuses a twist.
+would print. `render --fold` draws every flat-folded model this way;
+`Senbazuru.Origami.Layers` and its whole-face painting remain for folded forms
+with paper still in the air, which have no one plane to cut into regions.
 
 The two-sided part is free once regions exist. A region knows which face it came
 from, and a face in a flat-folded model knows which way up it lies from its

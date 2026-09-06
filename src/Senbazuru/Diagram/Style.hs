@@ -37,9 +37,14 @@
 -- form is a different kind of picture — the paper as it is now — and a book
 -- draws it with solid lines only, because there is nothing left to instruct. A
 -- crease that has been folded is an edge of the shape, and is drawn like one.
--- The dotted line for edges hidden behind a layer belongs to this second kind
--- of picture; it is unused because nothing yet works out which edges are
--- hidden.
+--
+-- The dotted line for a hidden edge belongs to that second kind of picture and
+-- is still unused, for a reason that has changed. Which edges are hidden is now
+-- worked out — "Senbazuru.Origami.Visible" does it for a model folded flat —
+-- and a hidden edge is simply not drawn. Dotting one instead is the /x-ray/
+-- convention, which a book uses sparingly and deliberately, to show the reader
+-- a flap they are about to pull out. Drawing every hidden edge that way would
+-- be the wireframe again, with dots.
 --
 -- 'Notation' names the two kinds, and 'strokeFor' takes one, so that whoever
 -- draws a frame has to say which picture it is. The first version of the camera
@@ -64,6 +69,7 @@
 module Senbazuru.Diagram.Style
   ( -- * Themes
     Theme (..),
+    Paper (..),
     defaultTheme,
 
     -- * Mapping fold semantics to ink
@@ -75,6 +81,7 @@ module Senbazuru.Diagram.Style
     ink,
     ghost,
     paper,
+    paperUnderside,
   )
 where
 
@@ -92,7 +99,8 @@ ink = Colour "#1a1a1a"
 ghost :: Colour
 ghost = Colour "#bdbdbd"
 
--- | A faint warm off-white, for the sheet itself.
+-- | A faint warm off-white, for the side of the sheet a crease pattern is
+-- drawn on.
 --
 -- A printed book fills faces with nothing at all: the paper in the diagram is
 -- the paper of the page, and the sheet reads as an object because the reader is
@@ -102,6 +110,34 @@ ghost = Colour "#bdbdbd"
 -- a coloured shape competing with the creases.
 paper :: Colour
 paper = Colour "#faf8f3"
+
+-- | A warm grey, for the other side of the same sheet.
+--
+-- Origami paper is usually coloured on one side and white on the other, and a
+-- book relies on that: a flap folded over shows its back, and the reader can
+-- see at a glance which way the paper went. A diagram whose two sides look the
+-- same throws that away, and a folded model drawn in one colour is a silhouette
+-- with lines on it.
+--
+-- Which side is which is not a decision made here. A face lying top-up in a
+-- flat-folded model shows the top side to a viewer above it and the back to one
+-- below; "Senbazuru.Origami.Visible" works that out, and this is only what the
+-- two are painted with.
+--
+-- Dark enough to read as a different side at a glance, light enough that a
+-- crease drawn on it in 'ink' still reads as a line.
+paperUnderside :: Colour
+paperUnderside = Colour "#e5ded1"
+
+-- | The two sides of the sheet.
+--
+-- Kept together because a diagram that fills one has to fill the other: the
+-- decision is \"draw the paper or leave a wireframe\", not \"draw the front\".
+data Paper = Paper
+  { paperFront :: !Colour,
+    paperBack :: !Colour
+  }
+  deriving stock (Eq, Show)
 
 -- | The knobs that control how a diagram looks.
 --
@@ -135,15 +171,15 @@ data Theme = Theme
     -- arrow's ends, as a fraction of the distance it spans. Zero would be a
     -- straight arrow, which reads as \"slide\" rather than \"fold\".
     themeArrowBow :: !Double,
-    -- | Fill faces with this colour, or 'Nothing' to leave the sheet as a
-    -- wireframe.
+    -- | Fill the paper with these two colours, or 'Nothing' to leave the sheet
+    -- as a wireframe.
     --
-    -- Offering a colour is as far as a theme goes. Whether faces /can/ be
+    -- Offering colours is as far as a theme goes. Whether the paper /can/ be
     -- filled is not a question about how a drawing should look: a folded model
     -- overlaps itself, so filling one means knowing which face is in front, and
-    -- that is in the file or it is nowhere. See
+    -- that is in the file, worked out from the geometry, or nowhere. See
     -- "Senbazuru.Render.CreasePattern".
-    themePaper :: !(Maybe Colour)
+    themePaper :: !(Maybe Paper)
   }
   deriving stock (Eq, Show)
 
@@ -171,7 +207,7 @@ defaultTheme =
       -- An eighth of the span. Enough to read as a turn through the air rather
       -- than a slide along the page, without the arc wandering off the paper.
       themeArrowBow = 0.125,
-      themePaper = Just paper
+      themePaper = Just (Paper paper paperUnderside)
     }
 
 -- | Which kind of picture the lines belong to.

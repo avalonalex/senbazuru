@@ -39,6 +39,7 @@ module Senbazuru.Render.Camera
 
     -- * Named views
     topDown,
+    bottomUp,
     isometric,
     frontOn,
     sideOn,
@@ -98,6 +99,20 @@ basisFrom direction up = do
 topDown :: Basis
 topDown = named (V3 0 0 (-1)) (V3 0 1 0)
 
+-- | Looking straight up at the @xy@ plane from underneath, @y@ up the page.
+--
+-- The underside of a model, which for a flat-folded one is a different picture
+-- and not merely the same picture upside down: a different set of faces is on
+-- top, and the faces showing present the other side of the paper. See
+-- "Senbazuru.Origami.Visible".
+--
+-- The image comes out mirrored, and that is not a bug to correct. Walk round a
+-- sheet of paper and look at its back and what was on your left is on your
+-- right; a view from below that kept left on the left would be a view through
+-- the paper rather than of its other side.
+bottomUp :: Basis
+bottomUp = named (V3 0 0 1) (V3 0 1 0)
+
 -- | A three-quarter view from above, in front and to the right: the angle
 -- printed diagrams use for a folded model.
 --
@@ -137,6 +152,7 @@ named d u = fromMaybe topDown (basisFrom d u)
 views :: [(Text, Basis)]
 views =
   [ ("top", topDown),
+    ("bottom", bottomUp),
     ("iso", isometric),
     ("front", frontOn),
     ("side", sideOn)

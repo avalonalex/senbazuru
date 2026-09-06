@@ -66,6 +66,7 @@ import Senbazuru.Geometry
     (^+^),
     (^-^),
   )
+import Senbazuru.Geometry.Polygon (signedArea)
 
 -- | The canvas the diagram is drawn onto. All values are in page units.
 data Page = Page
@@ -216,15 +217,26 @@ shapeToSvg toPage (Arrow a) =
           )
         <> attr "fill" (colourText (strokeColour (arrowStroke a)))
         <> "/>\n"
-shapeToSvg toPage (Polygon (Colour c) pts)
-  -- Two points enclose no area, so a fill would paint nothing. 'frameFaces'
-  -- rejects such a face outright; this guard is for diagrams built by hand.
-  | length pts < 3 = mempty
+shapeToSvg toPage (Fill (Colour c) rings)
+  -- Two points enclose no area, so a ring of them would paint nothing.
+  -- 'frameFaces' rejects such a face outright; this guard is for diagrams built
+  -- by hand.
+  | null drawable = mempty
   | otherwise =
       "    <path"
-        <> attr "d" (closedPathData (map (applyTransform toPage) pts))
+        -- Every ring in one path, which is what keeps an area of one colour
+        -- free of seams where its pieces meet. See "Senbazuru.Diagram".
+        <> attr "d" (T.unwords (map (closedPathData . map (applyTransform toPage)) drawable))
         <> attr "fill" c
         <> "/>\n"
+  where
+    -- Turned the same way here rather than by whoever built the shape, because
+    -- SVG adds overlapping subpaths up by the nonzero rule and two rings wound
+    -- against each other would cut a hole in the paper. A 'Fill' means the
+    -- union of its rings, so this is where that promise is kept -- and it has to
+    -- be kept somewhere no producer can forget.
+    drawable = map sameWayRound (filter ((>= 3) . length) rings)
+    sameWayRound ring = if signedArea ring < 0 then reverse ring else ring
 shapeToSvg toPage (Polyline stroke pts)
   -- A polyline of fewer than two points has no length. Emitting it would
   -- produce a stray dot under a round line cap.

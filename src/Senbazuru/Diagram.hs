@@ -109,21 +109,48 @@ data ArrowPath = ArrowPath
 -- | A drawable primitive.
 --
 -- Each was added by writing the constructor and letting @-Wincomplete-patterns@
--- name every place that had to handle it — which is how 'Polygon' was added to
+-- name every place that had to handle it — which is how 'Fill' was added to
 -- 'Polyline', and 'Arrow' to both.
 --
--- A 'Polygon' carries a fill and no stroke, which looks like an omission and is
+-- A 'Fill' carries a colour and no stroke, which looks like an omission and is
 -- not. A face and the creases bounding it are separate things in FOLD, and they
--- are separate things here: the outline of a filled face is drawn by the border
+-- are separate things here: the outline of a filled area is drawn by the border
 -- and crease edges that happen to run along it, each with the weight its own
--- assignment calls for. Stroking the polygon as well would double every line
--- and would draw the edge of the sheet at the wrong weight.
+-- assignment calls for. Stroking the fill as well would double every line and
+-- would draw the edge of the sheet at the wrong weight.
+--
+-- == Why a 'Fill' holds several rings
+--
+-- Because an area of one colour has to be painted in one go. Two shapes of the
+-- same colour that share an edge do /not/ add up to the shape they cover: each
+-- is antialiased against what is behind it, so the shared edge comes out as a
+-- pale seam. Measured on a square split into two triangles by its diagonal, the
+-- pixels along the diagonal come out @#d6cab3@ where the whole square gives
+-- @#c8b89a@. As one path with two subpaths they are identical to the whole
+-- square, because the rasteriser works out the coverage of the path rather than
+-- of each piece.
+--
+-- That matters here because paper arrives in pieces. The visible part of a face
+-- in a folded model comes back as several convex pieces with nothing drawn
+-- between them, and there the seams would be the whole picture. A crease pattern
+-- is one sheet cut into faces that abut along every crease, and there the seam
+-- usually hides under the crease drawn along it — but not under a @J@ edge,
+-- which is not drawn at all, and not where a theme suppresses a flat crease.
+-- Either way they are one area of one colour, and drawing them as one is both
+-- cheaper and what they are.
+--
+-- A 'Fill' is the __union__ of its rings, whichever way round each is written.
+-- Winding carries meaning elsewhere in senbazuru — it is how a folded face says
+-- which side of the paper is up — and it deliberately carries none here, so
+-- that a fill built from faces a file wound backwards cannot come out with
+-- holes in it. A backend that adds up rings by the nonzero rule has to turn
+-- them all the same way first; "Senbazuru.Render.Svg" does.
 data Shape
   = -- | An open polyline through the given model-space points.
     Polyline !Stroke ![V2]
-  | -- | A closed polygon, filled with the given colour and not stroked. The
-    -- closing edge back to the first point is implied.
-    Polygon !Colour ![V2]
+  | -- | An area filled with the given colour and not stroked, given as closed
+    -- rings. The closing edge back to each ring's first point is implied.
+    Fill !Colour ![[V2]]
   | -- | A curved arrow with a solid head.
     Arrow !ArrowPath
   | -- | A line of text: colour, size in __page units__, the model-space point
@@ -140,7 +167,7 @@ data Shape
 shapePoints :: Shape -> [V2]
 shapePoints = \case
   Polyline _ ps -> ps
-  Polygon _ ps -> ps
+  Fill _ rings -> concat rings
   Label _ _ p _ -> [p]
   -- The control point is included even though the curve never reaches it: it is
   -- the far side of the bow, so a box that left it out could still clip the
@@ -156,7 +183,7 @@ shapePoints = \case
 mapShapePoints :: (V2 -> V2) -> Shape -> Shape
 mapShapePoints f = \case
   Polyline s ps -> Polyline s (map f ps)
-  Polygon c ps -> Polygon c (map f ps)
+  Fill c rings -> Fill c (map (map f) rings)
   Label c size p txt -> Label c size (f p) txt
   Arrow a ->
     Arrow

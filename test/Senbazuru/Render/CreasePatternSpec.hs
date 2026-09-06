@@ -12,7 +12,7 @@
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
 import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent)
-import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme)
+import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme, paperUnderside)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
@@ -26,7 +26,7 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Step (Motion (..))
-import Senbazuru.Render.Camera (frontOn, isometric, topDown)
+import Senbazuru.Render.Camera (bottomUp, frontOn, isometric, topDown)
 import Senbazuru.Render.CreasePattern
   ( creasePatternFrom,
     defaultBasisFor,
@@ -76,7 +76,7 @@ shapeKinds theme notation fr =
   map kind . diagramShapes <$> creasePatternFrom theme notation topDown fr
   where
     kind = \case
-      Polygon _ _ -> "fill"
+      Fill _ _ -> "fill"
       Polyline _ _ -> "line"
       Arrow _ -> "arrow"
       Label {} -> "label"
@@ -89,32 +89,50 @@ lastOf xs = Just (last xs)
 spec :: Spec
 spec = do
   describe "filling faces" $ do
-    it "paints every face before every line" $
+    it "paints the paper before every line" $
       -- Not a detail of taste: SVG paints in document order, so a fill emitted
-      -- after a crease would cover it.
+      -- after a crease would cover it. The two faces are one fill, because they
+      -- tile one sheet in one colour and drawing them separately would leave a
+      -- seam along the crease they share.
       shapeKinds defaultTheme CreasePatternNotation twoFaceSquare
-        `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
+        `shouldBe` Right ["fill", "line", "line", "line", "line", "line"]
 
-    it "fills a flat folded form that supplies no ordering, having worked one out" $
-      -- The faces overlap and the file says nothing about which is in front,
-      -- so the answer comes from Senbazuru.Origami.Stacking. Two fills, and
-      -- the diagonal drawn over both.
+    it "draws a flat folded form as what is visible of it" $
+      -- The two triangles land on each other exactly, so only the top one is
+      -- showing, and the five edges of the pattern land on the three sides of
+      -- one triangle. The file says nothing about which triangle is in front;
+      -- the answer comes from Senbazuru.Origami.Stacking.
       shapeKinds defaultTheme FoldedFormNotation foldedDiagonal
-        `shouldBe` Right (["fill", "fill"] <> replicate 5 "line")
+        `shouldBe` Right ["fill", "line", "line", "line"]
 
-    it "fills the face that folded over last, seen from above" $ do
-      -- Face 1 is the triangle that moved, over a valley, so it is on top.
-      -- Asserted on the fill's corners because the shapes carry no face ids.
+    it "shows the face that folded over last, seen from above" $ do
+      -- Face 1 is the triangle that moved, over a valley, so it is on top, and
+      -- the whole of it is what shows. Asserted on the fill's corners because
+      -- the shapes carry no face ids.
       d <- either (fail . show) pure (creasePatternFrom defaultTheme FoldedFormNotation topDown foldedDiagonal)
-      [c | Polygon _ c <- diagramShapes d]
-        `shouldBe` [[V2 0 0, V2 1 0, V2 1 1], [V2 0 0, V2 1 1, V2 1 0]]
+      [rings | Fill _ rings <- diagramShapes d]
+        `shouldBe` [[[V2 1 0, V2 1 1, V2 0 0]]]
 
-    it "fills a flat folded form whose faces do not overlap, having found nothing to order" $
+    it "shows the other triangle from underneath" $ do
+      -- The same model turned over: the buried face is the one on top now, and
+      -- it presents the other side of the paper. Two things change together --
+      -- which face shows, and which side of it -- and a view from below that
+      -- got only one of them right would look plausible.
+      d <- either (fail . show) pure (creasePatternFrom defaultTheme FoldedFormNotation bottomUp foldedDiagonal)
+      -- Mirrored in x by the camera, which is what looking at the back of
+      -- something does -- and which is why the ring comes out the other way
+      -- round from the view above. A Fill means the union of its rings whatever
+      -- their winding, and the backend is what turns them all one way.
+      [rings | Fill _ rings <- diagramShapes d]
+        `shouldBe` [[[V2 0 0, V2 (-1) 0, V2 (-1) 1]]]
+      [c | Fill c _ <- diagramShapes d] `shouldBe` [paperUnderside]
+
+    it "draws a flat folded form whose faces do not overlap as one sheet" $
       -- Two triangles tiling a square are declared folded. Nothing is on top of
-      -- anything, so an empty ordering is the right answer and every fill order
-      -- draws the same picture.
+      -- anything, both show the same side of the paper, and so they are one
+      -- area of one colour with every crease still visible.
       shapeKinds defaultTheme FoldedFormNotation twoFaceSquare
-        `shouldBe` Right (["fill", "fill"] <> replicate 5 "line")
+        `shouldBe` Right (["fill"] <> replicate 5 "line")
 
     it "leaves a folded form in the air as a wireframe" $
       -- Ordering layers is only worked out for flat models. With paper still
@@ -126,12 +144,27 @@ spec = do
       -- The half of layer ordering that is free: the file did the hard part.
       let stacked = twoFaceSquare {faceOrders = [FaceOrder (FaceId 1) (FaceId 0) Above]}
       shapeKinds defaultTheme FoldedFormNotation stacked
-        `shouldBe` Right (["fill", "fill"] <> replicate 5 "line")
+        `shouldBe` Right (["fill"] <> replicate 5 "line")
 
     it "refuses an ordering that puts a face in front of itself" $ do
       let impossible =
             twoFaceSquare
               { faceOrders =
+                  [ FaceOrder (FaceId 1) (FaceId 0) Above,
+                    FaceOrder (FaceId 0) (FaceId 1) Above
+                  ]
+              }
+      shapeKinds defaultTheme FoldedFormNotation impossible
+        `shouldBe` Left (ContradictoryStacking (FaceId 0) (FaceId 1))
+
+    it "still refuses a circle when it is painting whole faces" $ do
+      -- The same contradiction on a model with paper in the air, which no
+      -- amount of region finding covers, so the faces are painted in the order
+      -- paintOrder sorts them into -- and it will not invent one.
+      let impossible =
+            twoFaceSquare
+              { verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]],
+                faceOrders =
                   [ FaceOrder (FaceId 1) (FaceId 0) Above,
                     FaceOrder (FaceId 0) (FaceId 1) Above
                   ]
@@ -174,7 +207,7 @@ spec = do
       -- See docs/notes/layer-ordering.md.
       let undeclared = twoFaceSquare {frameClasses = []}
       shapeKinds defaultTheme (defaultNotationFor [] flatSquare) undeclared
-        `shouldBe` Right ["fill", "fill", "line", "line", "line", "line", "line"]
+        `shouldBe` Right ["fill", "line", "line", "line", "line", "line"]
 
   describe "arrows" $ do
     let square = diagramWithExtent (Box (V2 0 0) (V2 1 1)) []

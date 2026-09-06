@@ -323,10 +323,22 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **`file_spec` is a number, not an integer.** Real files say `1.1`.
 - **Model y is up, SVG y is down.** Every model→page transform flips y.
 - **SVG paints in document order**, so later shapes cover earlier ones. Creases
-  are sorted by `creaseOrder` in `Senbazuru.Render.CreasePattern`; faces sit
-  outside that ordering entirely — every fill is emitted before every line, and
-  the order of the fills among themselves is
-  `Senbazuru.Origami.Layers.paintOrder`.
+  are sorted by `creaseOrder` in `Senbazuru.Render.CreasePattern`; the paper
+  sits outside that ordering entirely — every fill is emitted before every line.
+  Where the fills overlap each other, their order is
+  `Senbazuru.Origami.Layers.paintOrder`; where they do not, they are one `Fill`.
+- **Abutting fills of one colour are one `Fill`, not several shapes.** Two
+  shapes that share an edge are each antialiased against what is behind them, so
+  the shared edge comes out as a pale seam — measured, on a square split by its
+  diagonal, as `#d6cab3` where the whole square gives `#c8b89a`. One path with
+  several subpaths rasterises as one region and is pixel-identical to the whole.
+  Paper arrives in pieces constantly: a crease pattern is faces abutting along
+  every crease, and a visible region is several convex pieces.
+- **A `Fill`'s rings add up by the nonzero rule**, so two overlapping rings
+  wound opposite ways cut a hole in each other. `Senbazuru.Render.CreasePattern`
+  turns every ring anticlockwise on the way out, which is allowed precisely
+  because filling has never relied on the file's winding — see below for what
+  does.
 - **Face winding is not to be trusted — except in a folded form's layers.** FOLD
   specifies counterclockwise and real files disagree. Filling does not care, and
   folding measures the winding from the coordinates. But `faceOrders`'s signs
@@ -335,12 +347,19 @@ are not contributors can find it, and so there is only one copy to keep true.
   backwards signs, and they cancel. Recomputing the winding there would uncancel
   them and turn the model inside out. `Senbazuru.Origami.Layers` takes the
   file's winding exactly as written, and so does `Senbazuru.Origami.Flat`, which
-  reads it to tell a face lying top-up from one lying top-down —
+  reads it to tell a face lying top-up from one lying top-down;
   `Senbazuru.Origami.Stacking` then checks it against itself across every
-  crease, and `Senbazuru.Origami.Visible` reads it again to decide which side of
-  the paper the viewer is looking at. `foldFrame` therefore writes its faces
-  counterclockwise as measured on the pattern, so the folded frames it produces
-  are frames whose winding can be trusted.
+  crease. `foldFrame` therefore writes its faces counterclockwise as measured on
+  the pattern, so the folded frames it produces are frames whose winding can be
+  trusted.
+- **The cancellation covers the layer order and nothing else.**
+  `Senbazuru.Origami.Visible` reads the same winding a third time, to say which
+  *side* of the paper a region shows, and there is nothing for that to cancel
+  against: a file that wound every face backwards *and* negated every
+  `faceOrders` sign picks the same face as visible and calls it the other side
+  of the sheet. Both paper colours come out swapped, silently, because no
+  signal in such a file distinguishes the two. Trusting the winding is what
+  makes the layer order work and what makes the paper side a guess.
 - **A stretch of edge is judged by how far outside a face its midpoint is, not
   by clipping it.** A stretch lying along a face's edge clips to itself when
   rounding puts it a hair inside and to nothing when rounding puts it a hair
@@ -358,9 +377,12 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **A layer order need not be a painting order.** The solver forbids a circle
   only among three faces that share a patch of paper. Three faces can overlap
   pairwise with no point under all three — the flaps of a twist do — and then
-  their pairwise orders may legitimately run in a circle. `paintOrder` still
-  needs one global order and reports `ImpossibleStacking` on such a model; that
-  is a limit of painting faces whole, not a fault in the file.
+  their pairwise orders may legitimately run in a circle, which `paintOrder`
+  reports as `ImpossibleStacking` because it needs one global order. That is why
+  a flat-folded model is drawn by `Senbazuru.Origami.Visible` instead, which
+  never needs one: over any single point the covering faces *are* totally
+  ordered, and that is all a region asks. `paintOrder` remains for folded forms
+  with paper in the air, which have no plane to cut into regions.
 - **A page of steps is drawn through one camera**, chosen from every frame
   together. Asking each frame what view suits it moves the reader around the
   model between figures, and makes the shared extent a union of boxes measured
@@ -397,9 +419,19 @@ Deliberate omissions, so nobody thinks they are bugs:
   folded form with paper still in the air and no `faceOrders` is drawn as a
   wireframe, and a face that is not convex declines the whole model. Both are
   reported by `info`.
-- A face that overlaps another is painted whole, so a model whose pairwise
-  layer order runs in a circle — a twist — cannot be painted even when its
-  `faceOrders` are right.
+- Hidden-line removal and the two-sided paper colour are for models folded
+  flat. A folded form with paper in the air is painted face by face with every
+  crease drawn, as it always was.
+- Which side of the paper a region shows is read from the file's winding and
+  cannot be checked. A folded form whose faces are all wound backwards — which
+  some editors emit — is drawn with its two paper colours swapped. The layer
+  order survives it, because its signs were written against the same windings;
+  the paper side has nothing to cancel against.
+- A file whose own `faceOrders` run in a circle through three faces that share
+  a patch of paper is a contradiction `Senbazuru.Origami.Visible` does not
+  detect: each of the three loses the shared patch to the other two, and the
+  model comes out with a hole in it. Nothing senbazuru produces can be like
+  that. A pair of entries that contradict each other directly *is* refused.
 - Folding solves for positions from given angles. It does not solve for *angles*
   — there is no way to ask for a model half folded, because scaling every angle
   by a fraction generally lands on angles no paper can adopt.

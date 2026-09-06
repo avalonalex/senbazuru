@@ -8,9 +8,11 @@ visual style of step-by-step origami instruction books.
 > **Status: early.** Crease patterns render correctly and are filled with paper.
 > A pattern can be *folded* along its own fold angles and the result drawn from a
 > choice of viewing angles, layer-correctly: where the file says which face is
-> in front, and for a flat-folded model, where it does not. A multi-frame file
-> lays out as one numbered page of steps, each with the arrow showing the fold it
-> asks for. There is also a flat-foldability checker.
+> in front, and for a flat-folded model, where it does not. A model folded flat
+> is drawn as what can be *seen* of it — hidden edges removed, the two sides of
+> the paper in different colours, and either side of the sheet to look at. A
+> multi-frame file lays out as one numbered page of steps, each with the arrow
+> showing the fold it asks for. There is also a flat-foldability checker.
 > See [Roadmap](#roadmap).
 
 ## What it does today
@@ -161,6 +163,46 @@ form with paper in the air and no `faceOrders` is still drawn as a wireframe,
 and `info` says so. And every face has to be convex, which the faces of a
 flat-foldable pattern are whenever the sheet is.
 
+## What it hides
+
+Knowing which layer is on top is not the same as having a picture, for two
+reasons that are really one.
+
+A valid layer order can run in a **circle**. The four flaps of a twist lie A
+over B over C over D over A, and no paper passes through any other, because no
+point of the sheet is under all four at once. There is simply no order to paint
+four whole faces in. And painting whole faces hides nothing anyway: every crease
+is drawn afterwards, including the ones ten layers down.
+
+So a model folded flat is not drawn face by face. Each face is cut down to what
+is left of it once every face nearer the viewer has been taken away, and each
+edge is kept only over the stretches where the paper differs across it. The
+result has its hidden lines gone, and its **two sides in different colours** —
+origami paper is coloured on one side, and a flap folded over shows its back.
+
+```bash
+stack run -- render examples/thirds-pinwheel.fold --fold -o pinwheel.svg
+stack run -- render examples/thirds-pinwheel.fold --fold --view bottom -o under.svg
+```
+
+The first is a twist, which could not be drawn at all until this arrived. The
+second is the same model from underneath, which is a different picture and not
+the first one upside down: a different set of faces is on top, and they show the
+other side of the paper. How it works is in
+[docs/notes/visible-regions.md](docs/notes/visible-regions.md).
+
+A folded form that is *not* flat — paper still in the air — is still painted
+face by face in the order `faceOrders` gives, with every crease drawn, because
+none of the above has a plane to work in. `--no-fill` also draws every crease,
+which is what makes it the escape hatch for a file this cannot make sense of.
+
+One caveat on the colours. Which side of the sheet a patch of paper shows is
+read from the order its corners are listed in, which FOLD says is
+counterclockwise and which real files sometimes get backwards. A file that wound
+*every* face backwards is drawn with its layers right and its two colours
+swapped, silently — the layer order survives it because its signs were written
+against those same windings, and the paper side has nothing to cancel against.
+
 ## What it instructs
 
 A picture of paper is not an instruction. The arrow that says *this* piece moves
@@ -302,7 +344,7 @@ make install                           # puts senbazuru on your PATH, then use i
 | `--frame N` | Which frame to render (default `0`, the key frame) |
 | `--width`, `--height` | Page size in points (default `400`) |
 | `--margin` | Blank border in points (default `16`) |
-| `--view NAME` | Viewing angle: `top`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and `iso` for folded forms |
+| `--view NAME` | Viewing angle: `top`, `bottom`, `iso`, `front`, `side`. Defaults to `top` for crease patterns and flat-folded models, `iso` for anything with relief |
 | `--transparent` | Omit the white background rectangle |
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 | `--no-fill` | Draw the sheet as a wireframe, with faces left unfilled |

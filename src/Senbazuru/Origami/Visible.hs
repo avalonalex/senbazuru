@@ -87,6 +87,16 @@
 -- Nothing here knows about drawing: a region says which face and which side of
 -- the paper is showing, which are facts about paper, and what a picture makes
 -- of them is somebody else\'s business.
+--
+-- And 'regionTopSide' is a guess in one case, worth knowing about because it is
+-- silent. It is read from the winding the file wrote, and a file that wound
+-- every face backwards /and/ negated every @faceOrders@ sign describes the same
+-- model: the two wrongs cancel for the layer order, since the signs were
+-- written against those windings, and there is nothing for them to cancel
+-- against here. Such a file comes out with its two sides of paper the wrong way
+-- round, and no test on the geometry can tell. Frames from
+-- "Senbazuru.Origami.Folding" are not like that — it writes its faces
+-- anticlockwise on purpose.
 module Senbazuru.Origami.Visible
   ( -- * What can be seen
     VisibleForm (..),

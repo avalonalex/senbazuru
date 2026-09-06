@@ -218,7 +218,13 @@ renderOptions =
     <*> switch
       (long "hide-flat" <> help "Do not draw flat (F) or unassigned (U) creases")
     <*> switch
-      (long "no-fill" <> help "Draw the sheet as a wireframe, with faces left unfilled")
+      ( long "no-fill"
+          <> help
+            ( "Draw every crease and fill nothing: a wireframe. Also the way to"
+                <> " render a file whose layers cannot be stacked, since nothing"
+                <> " then needs to know which is on top"
+            )
+      )
     <*> switch
       ( long "fold"
           <> help

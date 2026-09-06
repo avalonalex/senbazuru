@@ -9,15 +9,30 @@
 -- no layer ordering, no hidden-line removal.
 --
 -- Since "Senbazuru.Render.Camera" arrived this module also draws folded forms,
--- seen from a chosen angle and filled face by face where the layer order is
--- known. The name has stayed, because the work is the same: every edge becomes
--- one line. What differs is which lines, and that is a 'Notation', chosen by
--- 'defaultNotationFor'.
+-- seen from a chosen angle. The name has stayed, because most of the work is
+-- the same. What differs is which lines are drawn and how, and that is a
+-- 'Notation', chosen by 'defaultNotationFor'.
 --
--- This module is deliberately short. All it does is join three pieces that are
--- each tested on their own: "Senbazuru.Fold.Query" for validated geometry,
--- "Senbazuru.Diagram.Style" for the line conventions, and "Senbazuru.Diagram"
--- for the output type.
+-- == The three ways a frame gets drawn
+--
+-- A crease pattern is a flat subdivision of one sheet: nothing overlaps, so
+-- every face is filled and every crease drawn.
+--
+-- A model folded __flat__ is drawn as what can be seen of it —
+-- "Senbazuru.Origami.Visible" cuts each face down to the part no nearer layer
+-- covers, and keeps each edge only where the paper differs across it. That
+-- picture has its hidden lines gone and its two sides of paper apart, and it is
+-- the only one of the three that can draw a twist at all.
+--
+-- Anything else — a folded form with paper still in the air — is filled face by
+-- face, back to front, in the order "Senbazuru.Origami.Layers" sorts
+-- @faceOrders@ into, with every crease drawn over the top. It is the oldest of
+-- the three and the fallback for everything the second cannot take apart.
+--
+-- This module is deliberately short. All it does is choose between those and
+-- join pieces that are each tested on their own: "Senbazuru.Fold.Query" for
+-- validated geometry, "Senbazuru.Diagram.Style" for the line conventions, and
+-- "Senbazuru.Diagram" for the output type.
 module Senbazuru.Render.CreasePattern
   ( creasePattern,
     creasePatternFrom,
@@ -34,8 +49,8 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
-import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent)
-import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, strokeFor)
+import Senbazuru.Diagram (Colour, Diagram (..), Shape (..), diagramWithExtent)
+import Senbazuru.Diagram.Style (Notation (..), Paper (..), Theme (..), arrowFor, strokeFor)
 import Senbazuru.Fold.Query
   ( Crease (..),
     Face (..),
@@ -47,13 +62,15 @@ import Senbazuru.Fold.Query
     frameKind,
     frameVertices,
   )
-import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
+import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder, Frame (..))
 import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
+import Senbazuru.Origami.Flat (FlatError (..))
 import Senbazuru.Origami.Layers (paintOrder)
 import Senbazuru.Origami.Stacking (StackingError (..), solveStacking)
 import Senbazuru.Origami.Step (Motion (..))
+import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, basisForward, isometric, project, topDown)
 
 -- | Render one frame as a crease pattern, seen from directly above.
@@ -82,31 +99,159 @@ creasePattern theme = creasePatternFrom theme CreasePatternNotation topDown
 creasePatternFrom :: Theme -> Notation -> Basis -> Frame -> Either FoldError Diagram
 creasePatternFrom theme notation basis fr = do
   verts <- frameVertices fr
-  extent <- maybe (Left NoVertices) Right (boxFromPoints (map flatten verts))
-  creases <- frameCreases fr
-  -- Faces are resolved only when they are going to be drawn, so a renderer
-  -- refuses a file for something it was going to put on the page and never for
-  -- anything else. The first version validated them always, on the grounds that
-  -- a flag should not decide which files are acceptable; that turned a
-  -- malformed face on a *folded form* -- whose faces this never draws -- into a
-  -- hard failure on a file that used to render. Complaining about data nobody
-  -- looked at is a validator's job, and senbazuru has a separate verb for that.
-  faceShapes <- case themePaper theme of
-    Nothing -> pure []
-    Just colour -> do
-      ordered <- facesToFill basis notation fr
-      pure [Polygon colour (map flatten (faceCorners f)) | f <- ordered]
-  let creaseShapes = mapMaybe toShape (sortOn (creaseOrder . creaseAssignment) creases)
-  -- Every face goes under every line, whatever order the faces are in among
-  -- themselves, because a fill that covered a crease would defeat the point of
-  -- drawing the crease.
-  pure (diagramWithExtent extent (faceShapes <> creaseShapes))
-  where
-    flatten = project basis
+  extent <- maybe (Left NoVertices) Right (boxFromPoints (map (project basis) verts))
+  shapes <- picture theme notation basis fr
+  pure (diagramWithExtent extent shapes)
 
-    toShape c = do
-      stroke <- strokeFor theme notation (creaseAssignment c)
-      pure (Polyline stroke [flatten (creaseStart c), flatten (creaseEnd c)])
+-- | Everything to draw for one frame: the paper first, then the lines.
+--
+-- Every fill goes under every line, whatever order the fills are in among
+-- themselves, because a fill that covered a crease would defeat the point of
+-- drawing the crease.
+--
+-- A crease pattern is one sheet cut into faces that never overlap, so they are
+-- one area of paper and every crease is drawn: nothing to hide, no order to
+-- work out. A folded form is drawn from what is /visible/ when senbazuru can
+-- work that out — which needs it to be folded flat, and needs to know which
+-- layer is on top — and back to front, face by face, otherwise. A theme with no
+-- paper colour draws none of it: no fills, every crease, and no layer order
+-- asked for at all.
+--
+-- Faces are resolved only when they are going to be drawn, so a renderer
+-- refuses a file for something it was going to put on the page and never for
+-- anything else. The first version validated them always, on the grounds that
+-- a flag should not decide which files are acceptable; that turned a malformed
+-- face on a /folded form/ — whose faces this never drew — into a hard failure
+-- on a file that used to render. Complaining about data nobody looked at is a
+-- validator's job, and senbazuru has a separate verb for that.
+picture :: Theme -> Notation -> Basis -> Frame -> Either FoldError [Shape]
+picture theme notation basis fr = case (notation, themePaper theme) of
+  (CreasePatternNotation, Nothing) -> everyCrease
+  (CreasePatternNotation, Just colours) -> do
+    faces <- frameFaces fr
+    withCreases [fill basis (paperFront colours) faces]
+  -- With no paper colour there is nothing to fill and nothing to hide behind,
+  -- so every crease is drawn and no layer order is asked for. That is what
+  -- makes @--no-fill@ the escape hatch it is documented to be: it still renders
+  -- a file whose stacking is impossible, or whose faces this cannot read.
+  (FoldedFormNotation, Nothing) -> everyCrease
+  (FoldedFormNotation, Just colours) -> do
+    ordering <- layerOrder fr
+    case ordering of
+      -- Nothing is known about the layers and the file says nothing either, so
+      -- there is no honest way to fill anything. A wireframe it is.
+      Nothing -> everyCrease
+      Just orders -> case visibleForm (seenFromAbove basis) fr orders of
+        Right seen -> Right (whatIsVisible theme notation colours basis seen)
+        -- The model is not flat, or has a face the region finder cannot clip.
+        -- Fall back to painting whole faces in the order the layers give, which
+        -- is how every folded form was drawn before regions existed.
+        Left (PaperInTheAir _) -> backToFront colours orders
+        Left (ConcaveFace _) -> backToFront colours orders
+        Left (FlatRefused err) -> Left err
+  where
+    withCreases fills = (fills <>) <$> everyCrease
+
+    everyCrease =
+      mapMaybe (edgeOf theme notation basis . asDrawn)
+        . sortOn (creaseOrder . creaseAssignment)
+        <$> frameCreases fr
+
+    asDrawn c = (creaseAssignment c, creaseStart c, creaseEnd c)
+
+    -- Whole faces, furthest from the viewer first, each its own area because
+    -- they overlap and the order is the picture. Every crease is drawn over
+    -- them, buried or not: without regions there is no telling which are.
+    backToFront colours orders = do
+      faces <- frameFaces fr
+      ids <- paintOrder ((-1) *^ basisForward basis) faces orders
+      -- Total by construction: paintOrder returns every face exactly once, so a
+      -- lookup that missed would be a bug rather than a file to tolerate.
+      let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
+          look fid = maybe (Left (FaceOrderOutOfRange fid (length faces))) Right (IM.lookup (unFaceId fid) byId)
+      ordered <- traverse look ids
+      withCreases [fill basis (paperFront colours) [f] | f <- ordered]
+
+-- | The layer order to draw a folded form by: the file\'s, or one worked out,
+-- or nothing at all.
+--
+-- A file that supplies @faceOrders@ gets its own. A file that does not gets one
+-- from "Senbazuru.Origami.Stacking", which covers models folded flat with
+-- convex faces; outside that it declines, having attempted nothing, and there
+-- is no ordering to be had. An empty list is a real answer — no two faces
+-- overlap — and is not the same as no answer.
+--
+-- A model the solver /tried/ and found impossible — no stacking of its layers
+-- avoids the paper passing through itself — is refused rather than dropped, and
+-- the drawing fails. That is the rule above rather than an exception to it:
+-- these faces were going to be drawn, and the only account of how to stack them
+-- is impossible. Quietly drawing something else instead is the failure mode this
+-- module keeps being written to avoid, and @--no-fill@ still renders the file.
+layerOrder :: Frame -> Either FoldError (Maybe [FaceOrder])
+layerOrder fr = do
+  supplied <- frameFaceOrders fr
+  if null supplied
+    then case solveStacking fr of
+      Right orders -> Right (Just orders)
+      Left NotFlat {} -> Right Nothing
+      Left NonConvexFace {} -> Right Nothing
+      Left (StackingRefused err) -> Left err
+    else Right (Just supplied)
+
+-- | Is the viewer on the @+z@ side of the model?
+--
+-- 'basisForward' points the way the camera looks, so the viewer is the other
+-- way. A model lying flat in a plane is seen from above when the camera looks
+-- down at it, and a camera exactly edge on — which shows a flat model as a line
+-- — is counted as above, because the answer has to be one or the other and
+-- there is nothing to see either way.
+seenFromAbove :: Basis -> Bool
+seenFromAbove basis = v3z (basisForward basis) <= 0
+
+-- | The paper that shows and the lines that are not buried.
+--
+-- Two fills at most, one per side of the sheet, each gathering every piece of
+-- paper of that side into one area — which is the whole reason a 'Fill' holds
+-- rings. The pieces of a region abut, and so do the regions of neighbouring
+-- faces; drawn separately they would be criss-crossed with pale seams where
+-- they meet.
+--
+-- The two sides are drawn in a fixed order rather than a meaningful one. They
+-- do not overlap, so the order is not a picture of anything; it is here so the
+-- output is reproducible.
+whatIsVisible :: Theme -> Notation -> Paper -> Basis -> VisibleForm -> [Shape]
+whatIsVisible theme notation colours basis seen =
+  [ Fill colour rings
+    | (colour, side) <- [(paperFront colours, True), (paperBack colours, False)],
+      let rings = paperOf side,
+      not (null rings)
+  ]
+    <> mapMaybe (edgeOf theme notation basis . asDrawn) (sortOn (creaseOrder . visibleAssignment) (formEdges seen))
+  where
+    paperOf side =
+      [ map (project basis) piece
+        | r <- formRegions seen,
+          regionTopSide r == side,
+          piece <- regionPieces r
+      ]
+
+    asDrawn e = (visibleAssignment e, visibleFrom e, visibleTo e)
+
+-- | One area of paper: a colour and the faces that make it up.
+fill :: Basis -> Colour -> [Face] -> Shape
+fill basis colour faces =
+  Fill colour [map (project basis) (faceCorners f) | f <- faces]
+
+-- | One line of the drawing, or nothing where the notation draws none.
+--
+-- The two pictures reach this from different data — a 'Crease' of the frame, or
+-- a stretch of one that "Senbazuru.Origami.Visible" found not to be buried —
+-- and what happens to it afterwards is the same, which is why they hand over
+-- the same triple rather than each building a 'Polyline' of their own.
+edgeOf :: Theme -> Notation -> Basis -> (Assignment, V3, V3) -> Maybe Shape
+edgeOf theme notation basis (assignment, from, to) = do
+  stroke <- strokeFor theme notation assignment
+  pure (Polyline stroke [project basis from, project basis to])
 
 -- | Render one frame, letting the frame decide what kind of picture it is and,
 -- unless a basis is given, where to look at it from.
@@ -169,72 +314,6 @@ defaultNotationFor :: [Text] -> [V3] -> Notation
 defaultNotationFor classes verts = case frameKind classes verts of
   FoldedForm -> FoldedFormNotation
   CreasePattern -> CreasePatternNotation
-
--- | The faces to fill, furthest from the viewer first, or none at all.
---
--- The two kinds of picture want different things here, for one reason: whether
--- the faces overlap.
---
--- A crease pattern is a flat subdivision of one sheet. Its faces tile the paper
--- and never cover one another, so every order draws the same picture and file
--- order will do.
---
--- A folded model does overlap itself, and then the order /is/ the picture.
--- Which face is in front is not in the coordinates — in a flat-folded model
--- every layer sits in the same plane — so it has to come from somewhere else.
--- A file that supplies @faceOrders@ gets its faces filled in that order. A
--- file that does not gets one worked out by "Senbazuru.Origami.Stacking",
--- which is what a folded form senbazuru computed itself always needs.
---
--- The solver covers flat-folded models with convex faces. Outside that it
--- declines, having attempted nothing, and the frame stays a wireframe — as
--- every folded form without an ordering was drawn before the solver existed.
--- A wireframe is honest about not knowing, where a fill in file order would be
--- a confident picture of the wrong thing.
---
--- An ordering that /contradicts itself/ — a file's that runs in a circle, or
--- a model whose layers cannot be stacked at all — is refused rather than
--- dropped, and the drawing fails. That is the rule stated above rather than an
--- exception to it: these faces were going to be drawn, and the only account of
--- how to stack them is impossible. Quietly drawing something else instead is
--- the failure mode this module keeps being written to avoid. @--no-fill@ still
--- renders it, for the same reason it renders a file with a broken face.
---
--- The faces are resolved only once it is known they will be drawn, so that a
--- corrupt face is only ever a reason to refuse a drawing that was going to
--- contain it. The solver keeps that promise too: it declines a model with paper
--- in the air on its vertices alone, before looking at a face.
-facesToFill :: Basis -> Notation -> Frame -> Either FoldError [Face]
-facesToFill basis notation fr = case notation of
-  CreasePatternNotation -> frameFaces fr
-  FoldedFormNotation -> do
-    supplied <- frameFaceOrders fr
-    ordering <-
-      if null supplied
-        then computed
-        else Right (Just supplied)
-    case ordering of
-      Nothing -> Right []
-      Just orders -> do
-        faces <- frameFaces fr
-        ids <- paintOrder towardsViewer faces orders
-        -- Total by construction: paintOrder returns every face exactly once, so
-        -- a lookup that missed would be a bug rather than a file to tolerate.
-        let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
-        traverse (\fid -> maybe (Left (FaceOrderOutOfRange fid (length faces))) Right (IM.lookup (unFaceId fid) byId)) ids
-  where
-    -- An ordering worked out from the geometry, or Nothing when the solver
-    -- does not cover this model. An empty list is a real answer -- no two faces
-    -- overlap, so any order draws the same picture -- and is filled.
-    computed = case solveStacking fr of
-      Right orders -> Right (Just orders)
-      Left NotFlat {} -> Right Nothing
-      Left NonConvexFace {} -> Right Nothing
-      Left (StackingRefused err) -> Left err
-
-    -- 'basisForward' points the way the camera looks, so the viewer is the
-    -- other way. Getting this backwards draws every model inside out.
-    towardsViewer = (-1) *^ basisForward basis
 
 -- | Painting order for creases, lowest first.
 --
