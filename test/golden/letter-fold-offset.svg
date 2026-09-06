@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <title>fixture</title>
+  <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 46 190 L 100 190 L 100 10 L 46 10 Z" fill="#faf8f3"/>
+    <path d="M 100 190 L 100 10" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 46 190 L 100 190" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 100 10 L 46 10" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 46 10 L 46 190" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 46 190 L 64 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 64 10 L 46 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 46 10 L 46 190" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 102.828 7.172 L 66.828 7.172 L 66.828 187.172 L 102.828 187.172 Z" fill="#e5ded1"/>
+    <path d="M 102.828 187.172 L 102.828 7.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 66.828 187.172 L 66.828 7.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 102.828 187.172 L 66.828 187.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 66.828 7.172 L 102.828 7.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 69.657 184.343 L 159.657 184.343 L 159.657 4.343 L 69.657 4.343 Z" fill="#faf8f3"/>
+    <path d="M 69.657 184.343 L 69.657 4.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 69.657 184.343 L 159.657 184.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 159.657 184.343 L 159.657 4.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 159.657 4.343 L 69.657 4.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 69.657 184.343 L 69.657 4.343" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 69.657 184.343 L 159.657 184.343" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 159.657 184.343 L 159.657 4.343" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 159.657 4.343 L 69.657 4.343" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

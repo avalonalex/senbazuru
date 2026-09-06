@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <title>fixture</title>
+  <rect x="0" y="0" width="200" height="200" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 190 L 190 190 L 190 10 L 10 10 Z" fill="#e5ded1"/>
+    <path d="M 10 10 L 10 190" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 10 10 L 190 10" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 190 190 L 10 190" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 190 10 L 190 190" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 12.828 7.172 L 12.828 187.172 L 192.828 187.172 L 192.828 7.172 Z" fill="#faf8f3"/>
+    <path d="M 12.828 7.172 L 12.828 187.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 12.828 7.172 L 192.828 7.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 12.828 187.172 L 192.828 187.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 192.828 187.172 L 192.828 7.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 15.657 184.343 L 195.657 184.343 L 195.657 4.343 L 15.657 4.343 Z" fill="#e5ded1"/>
+    <path d="M 15.657 4.343 L 195.657 4.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 15.657 4.343 L 15.657 184.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 195.657 4.343 L 195.657 184.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 195.657 184.343 L 15.657 184.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 18.485 1.515 L 18.485 181.515 L 198.485 181.515 L 198.485 1.515 Z" fill="#faf8f3"/>
+    <path d="M 18.485 1.515 L 18.485 181.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 18.485 1.515 L 198.485 1.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 18.485 181.515 L 198.485 181.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 198.485 181.515 L 198.485 1.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 18.485 1.515 L 18.485 181.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 18.485 1.515 L 198.485 1.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 198.485 181.515 L 18.485 181.515" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 198.485 181.515 L 198.485 1.515" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

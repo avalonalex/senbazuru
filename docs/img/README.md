@@ -14,6 +14,8 @@ stack run -- render examples/crane.fold --fold --rotate 180               -o doc
 stack run -- render examples/thirds-pinwheel.fold --fold --view bottom    -o docs/img/pinwheel-underside.svg
 stack run -- render examples/quarter-fold-steps.fold --steps --arrows \
   --width 720 --height 260                                                -o docs/img/steps.svg
+stack run -- render examples/quarter-fold.fold --fold --offset 6 \
+  --width 260 --height 260 --margin 28                                    -o docs/img/quarter-fold-offset.svg
 ```
 
 | File | What it shows |
@@ -22,6 +24,7 @@ stack run -- render examples/quarter-fold-steps.fold --steps --arrows \
 | `crane-folded.svg` | The same file folded and drawn — 72 faces stacked, hidden edges gone. Turned half a turn, because the crane lands upside down: a folded model sits whichever way up its crease pattern was drawn |
 | `pinwheel-underside.svg` | A twist from below, where the back of the paper shows in the other colour |
 | `steps.svg` | A square folded into quarters as three numbered figures, with the arrows worked out by subtracting each frame from the next |
+| `quarter-fold-offset.svg` | The same quarter fold, its four coincident layers stepped apart. Drawn with a wider margin than the default, because the offset pushes the stack outside the extent the page is fitted to and would otherwise touch the edge |
 
 The crane and the pinwheel come from [Flat-Folder](https://github.com/origamimagiro/flat-folder)
 and are traditional designs; their provenance is in

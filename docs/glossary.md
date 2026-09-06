@@ -31,6 +31,8 @@ For the ideas rather than the definitions, start with
 | **Tortilla** | Two faces joined along an edge that lie on *opposite* sides of it: the paper continuing flat across the line. Nothing may pass through it. |
 | **Visible region** | The part of one face a viewer can actually see: the face minus every face nearer the viewer that overlaps it. What a picture of a folded model is made of, rather than whole faces. See [notes/visible-regions.md](notes/visible-regions.md). |
 | **Hidden-line removal** | Not drawing the edges that are behind paper. In a flat-folded model an edge survives exactly where the topmost face differs across it. |
+| **Offset view** | A drawing that steps the layers of a folded model a little apart, so a stack that lands on one spot can be read as a stack. The picture a book uses where hidden-line removal has nothing to reveal — the quarter fold is four squares in exactly the same place. |
+| **Layer number** | How many sheets deep a face sits: the longest chain of faces below it, not a count of what it covers. What an offset view steps each face by. See [notes/layer-numbers.md](notes/layer-numbers.md). |
 | **Step** | One picture of a diagram sequence: the paper as it is, plus the instruction for reaching the next. Stored in FOLD as consecutive frames of `file_frames`. |
 | **Figure** | One drawing on a page of several. `Senbazuru.Diagram.Layout` arranges figures at one shared scale, so a folded model is drawn smaller than the sheet it came from. |
 | **Yoshizawa–Randlett** | The standard diagram notation: solid paper edges, dashed valleys, dash-dot-dot mountains. The dashes mark folds still to be made, so a folded form is drawn with solid edges only. See `Senbazuru.Diagram.Style`. |
@@ -87,5 +89,6 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | --- | --- |
 | **Model space** | Coordinates as the FOLD file gives them. Mathematical convention: `y` increases upwards. |
 | **Page space** | SVG user units. Screen convention: `y` increases *downwards*. Every model-to-page transform flips `y`. |
+| **Two-unit rule** | Shape coordinates are in model units and are scaled to the page; stroke widths, dash lengths, arrowheads, type sizes and layer offsets are in page units and are not. See `Senbazuru.Diagram`. |
 | **Extent** | The model-space region a page should show. Stored on a `Diagram` rather than derived, so every step of a sequence draws at one scale. |
 | **Golden test** | A test pinning exact expected output in a committed file. Read the diff before accepting one. |

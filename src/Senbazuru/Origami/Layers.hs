@@ -13,6 +13,13 @@
 -- and its answer arrives here as a @faceOrders@ like any other. This is the
 -- half that is free.
 --
+-- Two other questions are answered here because they are the same question
+-- asked differently. 'layerDepths' says how many layers of paper are under each
+-- face rather than merely which comes first, which is what a drawing that steps
+-- the layers apart needs. 'showsTopSide' says which side of the sheet a face
+-- presents to the viewer, which is the same winding and the same viewing
+-- direction combined one step earlier.
+--
 -- == Two directions, and only one of them is the viewer's
 --
 -- @faceOrders@ says @f@ is above @g@ meaning __on the side @g@'s normal points
@@ -54,11 +61,13 @@
 -- at all.
 module Senbazuru.Origami.Layers
   ( paintOrder,
+    layerDepths,
+    showsTopSide,
   )
 where
 
 import Data.IntMap.Strict qualified as IM
-import Data.List (sortOn)
+import Data.List (foldl', sortOn)
 import Data.Set qualified as S
 import Senbazuru.Fold.Query (Face (..), FoldError (..))
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Stacking (..))
@@ -75,7 +84,32 @@ import Senbazuru.Geometry.VectorSpace
 -- an ordering that cannot be drawn is a fact about the file rather than about
 -- the drawing.
 paintOrder :: V3 -> [Face] -> [FaceOrder] -> Either FoldError [FaceId]
-paintOrder towardsViewer faces orders = do
+paintOrder towardsViewer faces orders =
+  map fst <$> layerDepths towardsViewer faces orders
+
+-- | The same faces in the same order, each with the number of layers of paper
+-- under it.
+--
+-- @layerDepths towardsViewer faces orders@. A face with nothing under it is at
+-- depth 0; every other is one deeper than the deepest face it is drawn after.
+-- That is the /longest/ chain below it and not a count of the faces below it,
+-- and the difference is what makes the number mean \"which layer of the stack
+-- is this\": three faces in a row come out 0, 1, 2 whether or not the file also
+-- records the third as being over the first.
+--
+-- The property that follows, and the one a drawing relies on, is that the depth
+-- __strictly increases along every relation the orders record__. So sorting the
+-- faces by depth is itself a valid painting order, which is what lets a drawing
+-- paint a whole layer at a time rather than a face at a time. And since FOLD
+-- records an entry for exactly the pairs that overlap, faces sharing a depth
+-- are faces that do not overlap: a crease pattern comes out all depth 0, and a
+-- flat-folded model comes out in the layers a reader would count.
+--
+-- The order is 'paintOrder'\'s, furthest from the viewer first, and the depths
+-- do not determine it: two faces at the same depth may be drawn in either
+-- order, and this fixes one so the output is reproducible.
+layerDepths :: V3 -> [Face] -> [FaceOrder] -> Either FoldError [(FaceId, Int)]
+layerDepths towardsViewer faces orders = do
   constraints <- concat <$> traverse drawnBefore orders
   -- Deduplicated before counting anything. A file may say the same thing twice,
   -- and the two orderings [f, g, +1] and [g, f, -1] are one constraint written
@@ -85,7 +119,10 @@ paintOrder towardsViewer faces orders = do
   -- once, and the extra copies can pad the output enough that a genuine cycle
   -- slips past the "did everything come out?" check with the cyclic faces
   -- quietly missing from the drawing.
-  map FaceId <$> topologically ordering (S.toList (S.fromList constraints))
+  let settled = S.toList (S.fromList constraints)
+  order <- topologically ordering settled
+  let depths = deepen (predecessorsOf settled) order
+  pure [(FaceId i, IM.findWithDefault 0 i depths) | i <- order]
   where
     -- The order to prefer when the sort is free to choose: furthest away first.
     --
@@ -144,6 +181,51 @@ paintOrder towardsViewer faces orders = do
                   if (facingUs > 0) == (stacking == Above)
                     then [(g, f)]
                     else [(f, g)]
+
+-- | Which side of the sheet a face shows to a viewer looking from the given
+-- direction.
+--
+-- @showsTopSide towardsViewer face@ is 'True' when the viewer is looking at the
+-- __top__ side of the paper — the side a crease pattern is drawn on — and
+-- 'False' when they are looking at its back. Origami paper is usually coloured
+-- on one side and white on the other, so this is the difference between the two
+-- colours in a drawing of a folded model.
+--
+-- The winding is read exactly as the file wrote it, for the reason the module
+-- header gives: FOLD's normal /is/ the corner order, and turning a face over
+-- reverses it. But
+-- this is the one reading with nothing to cancel against. A file that wound
+-- every face backwards has @faceOrders@ signs written against those same
+-- backwards normals, so its layer order survives; the side of the paper has no
+-- second wrong to meet, and such a file is drawn with its two colours swapped
+-- and no way to tell. "Senbazuru.Origami.Visible" says the same of the same
+-- question, reached from the other direction.
+--
+-- Two cases answer 'True' arbitrarily, and neither can be seen: a face with no
+-- normal at all, whose corners are collinear or repeated, and a face turned
+-- exactly edge on to the viewer. The first encloses no area and the second
+-- projects to a line, so whichever side either is said to show, it paints
+-- nothing.
+showsTopSide :: V3 -> Face -> Bool
+showsTopSide towardsViewer f = dot (polygonNormal (faceCorners f)) towardsViewer >= 0
+
+-- | The faces each face has to be drawn after.
+predecessorsOf :: [(Int, Int)] -> IM.IntMap [Int]
+predecessorsOf constraints =
+  IM.fromListWith (<>) [(after, [before]) | (before, after) <- constraints]
+
+-- | How deep in the stack each face lies, given the faces in an order where
+-- everything a face is drawn after comes before it.
+--
+-- One pass is enough precisely because of that: by the time a face is reached,
+-- every face it sits on has its final depth, so there is nothing to revisit.
+deepen :: IM.IntMap [Int] -> [Int] -> IM.IntMap Int
+deepen predecessors = foldl' step IM.empty
+  where
+    step depths i = IM.insert i (level depths i) depths
+    level depths i = case IM.findWithDefault [] i predecessors of
+      [] -> 0
+      ps -> 1 + maximum [IM.findWithDefault 0 p depths | p <- ps]
 
 -- | Kahn's algorithm: repeatedly take a face nothing has to be drawn after.
 --

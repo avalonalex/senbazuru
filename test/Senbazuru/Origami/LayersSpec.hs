@@ -39,6 +39,15 @@ fromBelow = V3 0 0 (-1)
 ids :: [Int] -> [FaceId]
 ids = map FaceId
 
+-- | @n@ coplanar squares, for the questions that are about the orders rather
+-- than about the geometry.
+squares :: Int -> [Face]
+squares n = [facingUp i 0 | i <- [0 .. n - 1]]
+
+-- | The depths of @n@ 'squares' under the given orders, seen from above.
+depthsOf :: Int -> [FaceOrder] -> Either FoldError [(FaceId, Int)]
+depthsOf n = layerDepths fromAbove (squares n)
+
 spec :: Spec
 spec = do
   describe "which face is drawn last" $ do
@@ -144,3 +153,53 @@ spec = do
       let sliver = (facingUp 0 0) {faceCorners = [V3 0 0 0, V3 1 1 0, V3 2 2 0]}
       paintOrder fromAbove [sliver, facingUp 1 0] [above 1 0]
         `shouldBe` Left (FaceWithoutNormal (FaceId 0))
+
+  describe "how deep in the stack each face lies" $ do
+    it "numbers a stack from the bottom up" $
+      -- Four squares folded onto one another, every pair recorded, which is
+      -- what the quarter fold produces.
+      depthsOf
+        4
+        [above 1 0, above 2 0, above 3 0, above 2 1, above 3 1, above 3 2]
+        `shouldBe` Right [(FaceId 0, 0), (FaceId 1, 1), (FaceId 2, 2), (FaceId 3, 3)]
+
+    it "counts the longest chain below a face, not the faces below it" $ do
+      -- 0 under 1 under 2, with no entry saying 2 is over 0 -- which is what a
+      -- file writes when 2 has slid clear of 0 and the two no longer share any
+      -- paper. Face 2 is still the third layer, because getting to it means
+      -- passing through 1 and then 0.
+      depthsOf 3 [above 1 0, above 2 1]
+        `shouldBe` Right [(FaceId 0, 0), (FaceId 1, 1), (FaceId 2, 2)]
+      -- Counting what is under it would have made it the second.
+      fmap (lookup (FaceId 2)) (depthsOf 3 [above 1 0, above 2 1])
+        `shouldNotBe` Right (Just 1)
+
+    it "puts faces that overlap nothing all in the same layer" $
+      -- A crease pattern is exactly this: faces that abut and never overlap, so
+      -- there is nothing to step apart and an offset view of one is the
+      -- ordinary picture.
+      depthsOf 4 [] `shouldBe` Right [(FaceId i, 0) | i <- [0 .. 3]]
+
+    it "turns the stack over with the viewer" $
+      -- The same model from underneath: what was the bottom layer is now the
+      -- top one, and the depths say so.
+      layerDepths fromBelow (squares 3) [above 1 0, above 2 1, above 2 0]
+        `shouldBe` Right [(FaceId 2, 0), (FaceId 1, 1), (FaceId 0, 2)]
+
+    it "refuses a stack with no order at all, as painting does" $
+      -- A twist: every pair is fine and the circle is not. An offset view needs
+      -- one number per face and there is none to give, which is the same
+      -- refusal 'paintOrder' makes and for the same reason.
+      layerDepths fromAbove (squares 3) [above 1 0, above 2 1, above 0 2]
+        `shouldBe` Left (ImpossibleStacking (FaceId 0))
+
+  describe "which side of the paper a face shows" $ do
+    it "shows the top side to a viewer the normal points at" $ do
+      showsTopSide fromAbove (facingUp 0 0) `shouldBe` True
+      showsTopSide fromBelow (facingUp 0 0) `shouldBe` False
+
+    it "turns over with the face" $ do
+      -- A flap folded over shows its back, which is the whole reason the two
+      -- sides of origami paper are different colours.
+      showsTopSide fromAbove (facingDown 0 0) `shouldBe` False
+      showsTopSide fromBelow (facingDown 0 0) `shouldBe` True

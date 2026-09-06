@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
-import Senbazuru.Diagram.Style (Notation (..), arrowFor, defaultTheme)
+import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, defaultTheme)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..), allFrames)
@@ -39,10 +39,14 @@ renderFixture = renderFixtureFrom CreasePatternNotation topDown
 -- heuristics that choose the notation and the view have their own tests in
 -- "Senbazuru.Render.CreasePatternSpec".
 renderFixtureFrom :: Notation -> Basis -> FilePath -> IO Text
-renderFixtureFrom notation basis path = do
+renderFixtureFrom = renderFixtureWith defaultTheme
+
+-- | The same, through a theme the caller chooses.
+renderFixtureWith :: Theme -> Notation -> Basis -> FilePath -> IO Text
+renderFixtureWith theme notation basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
-  d <- case creasePatternFrom defaultTheme defaultBudget notation basis (keyFrame f) of
+  d <- case creasePatternFrom theme defaultBudget notation basis (keyFrame f) of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -54,11 +58,15 @@ renderFixtureFrom notation basis path = do
 -- file-supplied folded form does, which is the point — nothing downstream knows
 -- these coordinates were computed.
 renderFolded :: Basis -> FilePath -> IO Text
-renderFolded basis path = do
+renderFolded = renderFoldedWith defaultTheme
+
+-- | The same, through a theme the caller chooses, for the offset view.
+renderFoldedWith :: Theme -> Basis -> FilePath -> IO Text
+renderFoldedWith theme basis path = do
   bytes <- BS.readFile path
   f <- either (fail . ("decode failed: " <>)) pure (decodeFoldFile bytes)
   folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
-  d <- case creasePatternFrom defaultTheme defaultBudget FoldedFormNotation basis folded of
+  d <- case creasePatternFrom theme defaultBudget FoldedFormNotation basis folded of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure d
   pure (renderSvg testPage d)
@@ -260,6 +268,31 @@ spec = do
               [Polyline (solid (Colour "#000000") 1) [V2 0 0]]
       T.count "<path" (renderSvg testPage speck) `shouldBe` 0
 
+    it "moves an offset shape by exactly the page units it was given" $ do
+      -- The plain line runs "M 10 190 L 190 190". Three page units right and
+      -- five up puts it here, and the five is negative because page y grows
+      -- downwards.
+      let line = Polyline (solid (Colour "#000000") 1) [V2 0 0, V2 1 0]
+          nudged = diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Offset (V2 3 (-5)) line]
+      renderSvg testPage nudged `shouldSatisfy` T.isInfixOf "M 13 185 L 193 185"
+
+    it "moves the drawing without rescaling the page to fit it" $ do
+      -- Forty page units, on a drawing 180 wide. The line is still 180 wide and
+      -- now runs off the right of a 200-unit page, which is the deal: an offset
+      -- view opens a stack out and may spill, where a page that grew to admit
+      -- it would shrink the model every time a reader asked to see more of it.
+      let line = Polyline (solid (Colour "#000000") 1) [V2 0 0, V2 1 0]
+          far = diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Offset (V2 40 0) line]
+      renderSvg testPage far `shouldSatisfy` T.isInfixOf "M 50 190 L 230 190"
+
+    it "adds nothing of its own to the document" $ do
+      -- A nudge of nothing has to produce the same bytes as no nudge at all.
+      -- The wrapper emits no element and moves the transform instead, so
+      -- everything inked in page units -- the width, the dashes, an arrowhead --
+      -- is what it would have been in place.
+      let wrapped = square {diagramShapes = map (Offset (V2 0 0)) (diagramShapes square)}
+      renderSvg testPage wrapped `shouldBe` renderSvg testPage square
+
     it "escapes the title, which comes from a user-supplied file" $ do
       let page = testPage {pageTitle = Just "Fish & <chips>"}
       renderSvg page square
@@ -337,6 +370,37 @@ spec = do
     it "renders the kabuto from underneath, where both sides of the paper show" $
       renderFolded bottomUp "test/fixtures/kabuto.fold"
         >>= goldenText "test/golden/kabuto-underside.svg"
+
+    -- The offset view, on the model that has nothing else to show: folded, the
+    -- quarter fold is four squares in exactly the same place, so the golden
+    -- above is one square and this one is four, stepped up and to the right in
+    -- the order the solver found -- bottom-left quadrant lowest. The two paper
+    -- colours alternate, because each quadrant turns over as it folds.
+    it "renders the quarter fold with its layers stepped apart" $
+      renderFoldedWith (defaultTheme {themeLayerOffset = 4}) topDown "test/fixtures/quarter-fold.fold"
+        >>= goldenText "test/golden/quarter-fold-offset.svg"
+
+    -- The middle panel of the letter fold is buried whole, so the ordinary
+    -- picture has two outlines in it and this one has three.
+    it "renders the letter fold with its layers stepped apart" $
+      renderFoldedWith (defaultTheme {themeLayerOffset = 4}) topDown "test/fixtures/letter-fold.fold"
+        >>= goldenText "test/golden/letter-fold-offset.svg"
+
+    -- The offset view's fallback, and the only golden that reaches it. simple.fold
+    -- has paper in the air, so there are no visible regions to tell the model
+    -- from the stack it stands on: every line is drawn at full weight, and the
+    -- paper goes down one face at a time rather than one area per layer. That
+    -- last part is what this pins. Three of its four faces are unordered and so
+    -- share a layer, and they overlap once projected -- merging them into one
+    -- area, which is right for a model folded flat, discards the depth order
+    -- among them and paints the far face over the near one.
+    it "renders a folded form in the air with its layers stepped apart" $
+      renderFixtureWith
+        (defaultTheme {themeLayerOffset = 8})
+        FoldedFormNotation
+        isometric
+        "test/fixtures/simple.fold"
+        >>= goldenText "test/golden/simple-iso-offset.svg"
 
     it "renders simple.fold from the isometric view" $
       renderFixtureFrom FoldedFormNotation isometric "test/fixtures/simple.fold"

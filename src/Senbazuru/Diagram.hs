@@ -33,6 +33,11 @@
 -- must not depend on the model's choice of scale. Keeping widths in page units
 -- from the start avoids the alternative, which is dividing by the viewport
 -- scale at emit time and getting it wrong.
+--
+-- 'Offset' is the one thing here that is a /position/ in page units, and it is
+-- a wrapper rather than a coordinate for exactly that reason: the shape inside
+-- keeps its model coordinates, and the nudge is added after they have been
+-- scaled.
 module Senbazuru.Diagram
   ( -- * Diagrams
     Diagram (..),
@@ -161,6 +166,26 @@ data Shape
     -- unreadable on one drawing and would fill the page on another; what it
     -- has to be is the same height in print whatever the model measures.
     Label !Colour !Double !V2 !Text
+  | -- | A shape nudged across the page, by a displacement in __page units and
+    -- page axes__ — so @y@ grows /downwards/, as it does in the finished
+    -- document and as it does nowhere else in this module.
+    --
+    -- The third shape to need both units, after 'ArrowPath' and 'Label', and
+    -- the first whose page-unit part is a position. It exists for the offset
+    -- view of a flat-folded model, where layers that lie exactly on top of one
+    -- another are drawn a few points apart so that the stack reads as a stack.
+    -- How far apart is a decision about the drawing and not about the paper —
+    -- four points is four points whether the sheet is one unit across or four
+    -- hundred — so it cannot be a model-space displacement, and the model's own
+    -- coordinates are not touched.
+    --
+    -- Two consequences follow from that, and both are wanted. The nudge does
+    -- not enter 'shapePoints', so a diagram's extent is the paper's and the page
+    -- does not rescale because layers were stepped apart. And 'mapShapePoints'
+    -- passes straight through it, so laying figures out on a grid shifts the
+    -- shape inside and leaves the nudge alone, exactly as it leaves a stroke
+    -- width alone.
+    Offset !V2 !Shape
   deriving stock (Eq, Show)
 
 -- | The model-space points a shape passes through.
@@ -173,6 +198,11 @@ shapePoints = \case
   -- the far side of the bow, so a box that left it out could still clip the
   -- arc it produces.
   Arrow a -> [arrowFrom a, arrowVia a, arrowTo a]
+  -- The nudge is deliberately not accounted for. It is in page units, and these
+  -- points are in model units, so there is nothing to add it to -- and a page
+  -- that grew to admit it would rescale the whole drawing because two layers
+  -- were stepped apart.
+  Offset _ s -> shapePoints s
 
 -- | Move every model-space point of a shape.
 --
@@ -192,6 +222,7 @@ mapShapePoints f = \case
           arrowVia = f (arrowVia a),
           arrowTo = f (arrowTo a)
         }
+  Offset v s -> Offset v (mapShapePoints f s)
 
 -- | The tightest box containing every point of every shape, or 'Nothing' if
 -- there is nothing to draw.

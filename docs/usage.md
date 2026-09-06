@@ -57,10 +57,36 @@ of its own and complains about them.
 | `--columns N` | Figures across the page, with `--steps` (default `3`) |
 | `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
 | `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
+| `--offset PT` | Draw a folded model's layers this far apart on the page, so a stack that lands on one spot reads as a stack (default `0`, off). Buried sheets are drawn finer than the model, so a small step still reads |
 
 Some combinations are refused rather than quietly resolved, because they
 describe different pictures: `--steps` with `--frame`, with `--fold`, or with
-`--stacking`, and `--fold` with `--arrows`.
+`--stacking`; `--fold` with `--arrows`; and `--arrows` with `--offset`, since an
+arrow is drawn at the coordinates the paper actually has and `--offset` draws
+every sheet a step away from those.
+
+`--offset` is the one flag that needs the layers rather than merely using them,
+so four things are worth knowing about it.
+
+**How big to make it.** The buried sheets are drawn at 0.35pt against the
+model's 1 to 1.6, so even a step of a point or two separates them; the limit is
+the page rather than the ink. A model a handful of layers deep takes 4 to 6
+comfortably. A deep one — the crane is 32 layers — wants a small step and a wide
+margin, and is dense whatever you choose, because it really does have 32 layers.
+[tour.md](tour.md#how-many-layers-is-too-many) says what printed books do
+instead.
+
+**It never changes the size of the drawing.** The page is fitted to the paper,
+and opening a stack does not shrink the model to make room, so a large step on a
+model that already fills the page runs off it. The answers are a wider
+`--margin`, a bigger `--width`, or a smaller step.
+
+**It does nothing under `--no-fill`**, which is the escape hatch that asks no
+questions about layers at all.
+
+**It refuses a model whose layers run in a circle** — a twist — because stepping
+them apart needs one order for the whole model and there is none. The ordinary
+picture of one still draws fine.
 
 ## `check`
 

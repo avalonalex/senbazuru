@@ -28,8 +28,9 @@ One direction of flow, no cycles:
      |                               |    fold it: a Frame in, a folded Frame
      |                               |    out, straight back into this pipeline
      |                               +--> Senbazuru.Origami.Layers
-     |                               |    which face is in front, given where
-     |                               |    the viewer is standing
+     |                               |    which face is in front, and how deep
+     |                               |    in the stack, given where the viewer
+     |                               |    is standing
      |                               +--> Senbazuru.Origami.Stacking
      |                               |    which face is on top of which, when
      |                               |    the file does not say: faceOrders out
@@ -68,7 +69,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
-| `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in. |
+| `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |

@@ -31,6 +31,7 @@ widths d = map spread (mapMaybe points (diagramShapes d))
   where
     points = \case
       Polyline _ ps -> Just ps
+      Offset _ shape -> points shape
       _ -> Nothing
     spread ps = maximum (map xOf ps) - minimum (map xOf ps)
     xOf (V2 x _) = x
@@ -87,6 +88,18 @@ spec = do
       one <- pageOf plain [square 1]
       let V2 w _ = boxSize (diagramExtent one)
       w `shouldBe` 1
+
+    it "moves a figure's shapes and not the page-unit nudges on them" $ do
+      -- The same reason a stroke width survives being laid out: an offset is in
+      -- page units, so it means the same thing wherever the figure ends up. A
+      -- layout that shifted it too would step the layers of a folded model
+      -- further apart in every cell but the first.
+      let nudged = (square 1) {diagramShapes = map (Offset (V2 7 (-7))) (diagramShapes (square 1))}
+      page <- pageOf plain [square 1, nudged]
+      [v | Offset v _ <- diagramShapes page] `shouldBe` [V2 7 (-7)]
+      -- And the shape inside did move, or it would have been drawn on top of
+      -- the first figure.
+      widths page `shouldBe` [1, 1]
 
   describe "numbering" $ do
     it "numbers from one, because that is what a reader counts from" $ do

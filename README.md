@@ -40,8 +40,9 @@ are these reflected, whose mountains and valleys are swapped, and which folds
 perfectly well from a square of its own. It is simply not the model in the file.
 
 > **Status: early**, and moving. Crease patterns, folding, layer order, hidden
-> lines, two-sided paper, fold arrows, step-by-step pages and a flat-foldability
-> checker all work; there is no FOLD *output* yet, which is the next big thing.
+> lines, two-sided paper, offset views, fold arrows, step-by-step pages and a
+> flat-foldability checker all work; there is no FOLD *output* yet, which is the
+> next big thing.
 > [Roadmap](#roadmap) · [what works in detail](docs/tour.md)
 
 ## The interesting part is that paper is opaque
@@ -79,6 +80,9 @@ picture that looks like it came from a book.
 - **Draws only what you can see.** Hidden edges are removed, and the two sides
   of the paper come out in different colours, because origami paper is coloured
   on one side and a flap folded over shows its back.
+- **Opens the stack out.** Where a model's layers land exactly on top of one
+  another, `--offset` steps them apart on the page the way a book does, so four
+  squares in the same place read as four squares.
 - **Infers the arrows.** FOLD records no arrows, so it subtracts one frame from
   the next to find what moved where, and lays a whole sequence out as one
   numbered page at one scale.
@@ -108,6 +112,24 @@ stack run -- render examples/thirds-pinwheel.fold --fold --view bottom -o under.
 
 That is the same twist as above — the one whose flaps stack in a circle and
 cannot be painted face by face at all.
+
+## When the honest picture is one square
+
+Fold a square into quarters and the four quadrants land exactly on top of one
+another. Hidden-line removal has nothing to reveal — nothing is *partly* hidden
+— so the picture is one square and the reader learns nothing. `--offset` steps
+the layers apart on the page instead, the way a book does.
+
+<p align="center">
+  <img src="docs/img/quarter-fold-offset.svg" width="260" alt="A square folded into quarters, its four layers drawn stepped apart up and to the right">
+</p>
+
+```bash
+stack run -- render examples/quarter-fold.fold --fold --offset 6 -o stack.svg
+```
+
+The step is in page units, so it is the same six points whether the sheet is one
+unit across or four hundred, and the page does not rescale to make room for it.
 
 ## Building it
 
@@ -144,6 +166,12 @@ issues are the detail.
    that paper has no thickness, so a flat-folded model is entirely coplanar and
    z-fights.
    → [layer-ordering](docs/notes/layer-ordering.md)
+3. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
+   What a book draws when a model has too many layers to show them all at once,
+   and the answer to where `--offset` runs out. It needs the same thickness the
+   item above needs, and should be built with it rather than inventing a second
+   one.
+   → [layer-numbers](docs/notes/layer-numbers.md)
 
 ## Credits and licence
 

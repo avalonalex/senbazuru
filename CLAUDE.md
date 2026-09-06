@@ -154,12 +154,13 @@ the FOLD file). Stroke *widths and dash lengths* are in page units and are never
 scaled. A crease line is ~1pt wide whether the paper is 1 unit or 400 units
 across. See the header of `Senbazuru.Diagram`.
 
-Two shapes need both: `Arrow`'s curve is in model units and its head's size is
-in page units, and `Label` is a model-space point with a page-unit type size.
-Both are finished by the backend *after* projection, which is the only place
-both units are in scope. The rule is what makes `Diagram.Layout` possible at
-all — figures are combined by shifting their coordinates, and nothing about how
-they are inked has to be recomputed.
+Three shapes need both: `Arrow`'s curve is in model units and its head's size is
+in page units, `Label` is a model-space point with a page-unit type size, and
+`Offset` is a page-unit displacement wrapped round a shape whose own coordinates
+are in model units. All three are finished by the backend *after* projection,
+which is the only place both units are in scope. The rule is what makes
+`Diagram.Layout` possible at all — figures are combined by shifting their
+coordinates, and nothing about how they are inked has to be recomputed.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because
@@ -257,6 +258,39 @@ are not contributors can find it, and so there is only one copy to keep true.
   sits outside that ordering entirely — every fill is emitted before every line.
   Where the fills overlap each other, their order is
   `Senbazuru.Origami.Layers.paintOrder`; where they do not, they are one `Fill`.
+- **The offset view is the one picture where a fill goes over a line.** Its
+  layers are separate sheets, so a layer's paper has to cover the layer below
+  it, lines and all, or the stack reads as a heap of wireframes. The order there
+  is fill, lines, fill, lines, from the bottom up — and within one layer the
+  usual rule still holds.
+- **The offset view is drawn in two weights, and the weight is the whole fix.**
+  A buried sheet goes down at `themeBuriedWidth` (0.35pt) and the model —
+  `Senbazuru.Origami.Visible`'s unhidden stretches — over the top at full
+  weight. At one weight a dozen sheet edges three points apart are a black band.
+  Dropping lines instead does not work and was measured: keeping only each
+  sheet's silhouette removes 6 of the crane's 242 edge copies, because nearly
+  every crease separates two faces at different depths.
+- **`formEdges` and `formSheetEdges` are the same stretches cut differently.**
+  The first is joined up across changes of the sheet behind it, which is what an
+  ordinary drawing wants and what `joinRuns` was written for; the second is cut
+  at every such change and labelled with the sheet, which is what a drawing that
+  moves the sheets apart needs. Making the first behave like the second is the
+  tempting simplification and it silently resplits every ordinary picture's
+  outline.
+- **A layer number is the longest chain below a face, not a count of what is
+  under it.** `Senbazuru.Origami.Layers.layerDepths` is what the offset view
+  steps by, and the distinction is the whole of getting it right: counting gives
+  two overlapping faces the same number as soon as the stack fans out, and then
+  they are drawn on top of each other again. Longest-chain strictly increases
+  along every `faceOrders` relation, which is also what makes sorting by it a
+  valid painting order. See `docs/notes/layer-numbers.md`.
+- **A page-unit displacement is a `Shape` wrapper, not a coordinate.** `Offset`
+  is the third shape needing both units, after `Arrow`'s head and `Label`'s type
+  size, and the first whose page-unit part is a position. It is deliberately
+  outside `shapePoints`, so the extent never sees it and a stack opened out does
+  not rescale the page; and `mapShapePoints` passes through it, so laying
+  figures out on a grid leaves it alone the way it leaves a stroke width alone.
+  `Senbazuru.Render.Svg` moves the transform rather than the points.
 - **Abutting fills of one colour are one `Fill`, not several shapes.** Two
   shapes that share an edge are each antialiased against what is behind them, so
   the shared edge comes out as a pale seam — measured, on a square split by its
@@ -383,6 +417,30 @@ Deliberate omissions, so nobody thinks they are bugs:
   detect: each of the three loses the shared patch to the other two, and the
   model comes out with a hole in it. Nothing senbazuru produces can be like
   that. A pair of entries that contradict each other directly *is* refused.
+- `--offset` is refused with `--arrows`: an arrow is drawn where the paper is
+  and the offset draws every sheet a step away from there, so the tail would
+  start on bare page. Putting the arrow on the sheet it leaves is a real answer
+  and not one that has been worked out.
+- **Merging a layer's faces into one area is right for a flat model and wrong
+  for one with paper in the air.** Two faces of one layer are unordered because
+  they do not overlap /on the paper/; projected, they can still cover the same
+  patch of page. Flat, that cannot happen and merging is what keeps the seams
+  out; in the air it discards the depth order and paints the far face over the
+  near one. `Senbazuru.Render.CreasePattern` has both and picks by which path it
+  is on.
+- The offset view steps a whole sheet, where a printed book offsets edges only
+  across the boundary of a cut-away circle, and falls back to a schematic side
+  view when a model has too many layers to draw at all. Neither the local
+  cut-away nor the side view exists here, so a deep model — the crane is 32
+  layers — comes out honest and crowded.
+- The offset view needs one order for the whole model, so a twist has none: it
+  is refused, with the message `paintOrder` gives, rather than drawn without the
+  offset. The ordinary picture of a twist is unaffected. `--offset` also does
+  nothing under `--no-fill`, which is the escape hatch that asks no questions
+  about layers at all.
+- The offset never enters the extent, on purpose, so a large step on a model
+  that already fills the page runs off it. There is no auto-fitting: the reader
+  picks a smaller step or a bigger page.
 - The layer solver enumerates a component's orders only up to its budget, so a
   model with more of them than that reports "at least" rather than a count. It
   gives up on a component it cannot settle within the budget rather than

@@ -232,6 +232,84 @@ counterclockwise and which real files sometimes get backwards. A file that wound
 swapped, silently — the layer order survives it because its signs were written
 against those same windings, and the paper side has nothing to cancel against.
 
+## What it opens out
+
+Hidden-line removal makes the picture honest, and sometimes honest is useless.
+Fold a square into quarters and the four quadrants land exactly on top of one
+another: the silhouette is one square, the only visible region is one square,
+and the reader is told nothing at all about the four layers underneath. There is
+nothing partly hidden to reveal.
+
+Books answer this by drawing the stack slightly opened, and so does `--offset`:
+
+```bash
+stack run -- render examples/quarter-fold.fold --fold --offset 6 -o stack.svg
+stack run -- render examples/letter-fold.fold  --fold --offset 6 -o letter.svg
+stack run -- render examples/kabuto.fold       --fold --offset 6 -o kabuto.svg
+stack run -- render examples/crane.fold --fold --rotate 180 --offset 1.5 --margin 60 -o crane.svg
+```
+
+Every face is drawn whole and each layer sits a few points further up and to the
+right than the layer below it, the way an exploded drawing separates the parts
+of an assembly. The quarter fold becomes four stepped squares in the order the
+solver found, bottom-left quadrant lowest; the letter fold shows its middle
+panel, which the ordinary picture buries whole; and the kabuto's twelve layers
+open into a band of stepped sheets down its diagonal.
+
+The step is in **page units**, which is the two-unit rule doing real work: six
+points is six points whether the sheet is one unit across or four hundred, so
+the model's own coordinates are never touched and the page does not rescale
+because a stack was opened.
+
+### The stack is drawn finer than the model
+
+The drawing is in two weights, and it has to be. A sheet buried in the stack is
+drawn at 0.35pt where the model itself is drawn at 1 to 1.6 — so what the reader
+sees is the picture they would have seen without the flag, standing on a fine
+hatch of the layers underneath it.
+
+Drawing the stack at the model's own weight is the version that does not work. A
+dozen sheet edges within a few points of one another, each as heavy as the
+outline of the paper, add up to a black band; the same edges drawn fine read as
+the thickness of the sheaf. It also removes the floor on the step, which used to
+be the line weight: a step of 1.5pt separates 0.35pt lines perfectly well, and it
+did not separate 1.6pt ones at all.
+
+What remains is a ceiling. The step times the number of layers has to fit the
+page, because the offset deliberately does not enter the extent — the page is
+fitted to the paper, and opening a stack does not shrink the model to make room.
+A deep model wants a small step, a wide `--margin`, or both.
+
+### How many layers is too many
+
+Fold a square in half twice and you have four layers; fold anything worth
+folding and you have thirty. The crane is **32 layers** deep, and an offset view
+of it is dense — not because the drawing is wrong but because the model is like
+that, and the picture is telling the truth about it.
+
+Printed books do not answer this by exploding the whole model. Robert Lang's
+diagramming conventions give three tools in order of desperation: **x-ray
+lines** for a few hidden edges, and only as many as the current step needs;
+a **cut-away** when those get cluttered — a heavy circle with the obscuring
+layers removed inside it, and edges offset where they cross the boundary; and,
+when there are too many layers to draw at all, a schematic **side view** of the
+stack with an arrow, which is a different picture rather than a busier one.
+
+`--offset` is the second of those applied to the whole sheet rather than inside
+a circle. It is the right tool for a model a handful of layers deep, and for a
+deep one it is honest rather than legible. The other two are tracked:
+[#48](https://github.com/avalonalex/senbazuru/issues/48) for x-ray lines scoped
+to the step, [#49](https://github.com/avalonalex/senbazuru/issues/49) for the
+cut-away, and [#50](https://github.com/avalonalex/senbazuru/issues/50) for the
+side view, which needs the paper to have a thickness and so belongs with the 3D
+export.
+
+[notes/layer-numbers.md](notes/layer-numbers.md) has the measurements, and the
+two other things worth knowing: which layer a face is in is the longest chain of
+faces below it, not a count of what it covers; and a twist has no offset view at
+all, because stepping layers apart needs one order for the entire model and a
+twist is exactly the model that has none.
+
 ## What it instructs
 
 A picture of paper is not an instruction. The arrow that says *this* piece moves

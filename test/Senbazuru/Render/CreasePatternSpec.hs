@@ -11,8 +11,16 @@
 -- @frame_classes@, and the tests below say exactly when.
 module Senbazuru.Render.CreasePatternSpec (spec) where
 
-import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent, shapePoints)
-import Senbazuru.Diagram.Style (Notation (..), Theme (..), defaultTheme, paperUnderside)
+import Data.List (nub)
+import Data.Maybe (fromMaybe)
+import Senbazuru.Diagram (Diagram (..), Shape (..), Stroke (..), diagramWithExtent, shapePoints)
+import Senbazuru.Diagram.Style
+  ( Notation (..),
+    Theme (..),
+    defaultTheme,
+    layerStep,
+    paperUnderside,
+  )
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
@@ -36,6 +44,21 @@ import Senbazuru.Render.CreasePattern
     withArrows,
   )
 import Test.Hspec
+
+-- | Three faces with a corner lifted out of the plane, and an ordering that
+-- leaves two of them in the same layer.
+--
+-- The one shape of frame that reaches the offset view's fallback: a folded form
+-- "Senbazuru.Origami.Visible" declines, carrying @faceOrders@ of its own so
+-- that there is still a stack to draw.
+threeInTheAir :: Frame
+threeInTheAir =
+  twoFaceSquare
+    { frameClasses = ["foldedForm"],
+      verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]],
+      facesVertices = map (map VertexId) [[0, 1, 2], [0, 2, 3], [1, 2, 3]],
+      faceOrders = [FaceOrder (FaceId 2) (FaceId 0) Above]
+    }
 
 -- | 'twoFaceSquare' with a face pointing at a vertex that does not exist.
 broken :: Frame
@@ -82,10 +105,26 @@ shapeKinds theme notation fr =
       Polyline _ _ -> "line"
       Arrow _ -> "arrow"
       Label {} -> "label"
+      -- Reported as whatever it wraps. Where a shape sits is a separate
+      -- question from what it is, and the tests below that care ask about the
+      -- displacements directly.
+      Offset _ shape -> kind shape
 
 -- | Close enough, for numbers that have been through a sine and a cosine.
 nearly :: Double -> Double -> Bool
 nearly a b = abs (a - b) < 1e-9
+
+-- | How many rings each filled area of a drawing is made of, in order.
+--
+-- Looks through the displacement every shape of an offset view is wrapped in:
+-- how many areas the paper was drawn as is a separate question from where each
+-- was put.
+ringsPerFill :: Diagram -> [Int]
+ringsPerFill d = [length rings | Fill _ rings <- map unwrap (diagramShapes d)]
+  where
+    unwrap = \case
+      Offset _ shape -> unwrap shape
+      shape -> shape
 
 -- | The last element, if there is one.
 lastOf :: [a] -> Maybe a
@@ -214,6 +253,126 @@ spec = do
       let undeclared = twoFaceSquare {frameClasses = []}
       shapeKinds defaultTheme (defaultNotationFor [] flatSquare) undeclared
         `shouldBe` Right ["fill", "line", "line", "line", "line", "line"]
+
+  describe "the offset view" $ do
+    let stepped d = defaultTheme {themeLayerOffset = d}
+        drawn theme = creasePatternFrom theme defaultBudget FoldedFormNotation topDown
+        offsetsOf d = [v | Offset v _ <- diagramShapes d]
+
+    it "draws every face whole, buried or not" $
+      -- Without an offset the two triangles land on each other exactly and the
+      -- picture is one triangle -- correct, and no use to a reader who wants to
+      -- know there are two. With one, both are drawn, each with its own three
+      -- edges, and each layer's paper goes down before its lines so that it
+      -- covers the layer beneath.
+      --
+      -- Eleven shapes, not eight: each sheet brings a fill and its three edges
+      -- as part of the stack, and the top one brings its three edges a second
+      -- time as the model itself, at the weight an ordinary picture would draw
+      -- them. The buried sheet brings no such copy, because none of it shows.
+      shapeKinds (stepped 4) FoldedFormNotation foldedDiagonal
+        `shouldBe` Right (["fill"] <> replicate 3 "line" <> ["fill"] <> replicate 6 "line")
+
+    it "draws the stack finer than the model standing on it" $ do
+      -- The whole reason the offset view is legible on a model more than a
+      -- couple of sheets deep. A dozen sheet edges within a few points of one
+      -- another, all at the weight the model itself is drawn with, add up to a
+      -- black band; drawn fine they read as the thickness of the paper.
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      let widths = [strokeWidth st | Offset _ (Polyline st _) <- diagramShapes d]
+          buried = themeBuriedWidth defaultTheme
+      -- Six fine ones -- three per sheet, the stack -- and three at full
+      -- weight, which are the model.
+      length (filter (== buried) widths) `shouldBe` 6
+      filter (/= buried) widths `shouldSatisfy` all (> buried)
+
+    it "leaves the ordinary picture of the same frame alone" $ do
+      -- The offset view reaches for hidden-line removal to tell the model from
+      -- the stack, and reads a second, more finely cut list of the same edges
+      -- to do it. The list an ordinary drawing uses is not that one, and this
+      -- is what says so: turning the flag off has to give back exactly the
+      -- picture it always did, down to how many strokes the outline is in.
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+      length (diagramShapes plain) `shouldBe` 4
+
+    it "draws a crease shared by two layers once in each" $ do
+      -- The diagonal bounds both triangles, and they are drawn a step apart, so
+      -- one line cannot serve both. This is the whole of what the module header
+      -- means by the one-polyline-per-crease pipeline having to change.
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      let diagonals = [v | Offset v (Polyline _ [V2 0 0, V2 1 1]) <- diagramShapes d]
+      length diagonals `shouldBe` 2
+      nub diagonals `shouldBe` diagonals
+
+    it "steps each layer one further than the one below it" $ do
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      let step = fromMaybe (V2 0 0) (layerStep (stepped 4))
+      -- Four shapes at rest and four a step along: the bottom triangle is drawn
+      -- where the paper is, and the one on top of it is moved.
+      nub (offsetsOf d) `shouldBe` [V2 0 0, step]
+
+    it "leaves the page alone, so a stack opened out does not rescale it" $ do
+      -- The displacement is in page units and never enters the extent. A page
+      -- that grew to admit it would shrink the model every time the reader
+      -- asked to see more of it.
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+      opened <- either (fail . show) pure (drawn (stepped 40) foldedDiagonal)
+      diagramExtent opened `shouldBe` diagramExtent plain
+
+    it "takes the ordinary path entirely when it is zero" $ do
+      -- Not merely "draws the same picture": a zero step would draw the same
+      -- picture down the offset path too, every shape wrapped in a displacement
+      -- of nothing. Asserting the wrappers are absent is what says the offset
+      -- view was not entered at all, and it is the assertion that can fail --
+      -- comparing `stepped 0` with `defaultTheme` cannot, since the default
+      -- theme's own offset is zero and the two are the same value.
+      off <- either (fail . show) pure (drawn (stepped 0) foldedDiagonal)
+      [() | Offset _ _ <- diagramShapes off] `shouldBe` []
+      plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
+      off `shouldBe` plain
+
+    it "merges a layer's paper into one area when the model is flat" $ do
+      -- Two faces of one layer abut and cannot overlap -- a pair that did would
+      -- have a faceOrders entry and so be at different depths -- so they are one
+      -- area of one colour, and drawn separately they would have a pale seam
+      -- along the crease they share.
+      d <- either (fail . show) pure (drawn (stepped 4) twoFaceSquare {frameClasses = ["foldedForm"]})
+      ringsPerFill d `shouldBe` [2]
+
+    it "keeps a layer's faces apart when the model has paper in the air" $ do
+      -- The merge above is wrong here and the reasoning says why: two faces of
+      -- one layer are unordered because they do not overlap *on the paper*, and
+      -- once projected they can still cover the same patch of page, one being
+      -- nearer the camera. Merged, the depth order layerDepths put them in is
+      -- thrown away and the nearer one stops covering the further one.
+      --
+      -- Faces 0 and 1 are unordered, so both sit at depth 0; face 2 is above
+      -- face 0 and sits at depth 1. One ring per fill is the whole assertion.
+      d <- either (fail . show) pure (drawn (stepped 4) threeInTheAir)
+      ringsPerFill d `shouldBe` [1, 1, 1]
+
+    it "has nothing to step apart in a crease pattern" $
+      -- Its faces do not overlap, so every one of them is layer zero. The flag
+      -- is harmless rather than special-cased.
+      creasePatternFrom (stepped 4) defaultBudget CreasePatternNotation topDown twoFaceSquare
+        `shouldBe` creasePatternFrom defaultTheme defaultBudget CreasePatternNotation topDown twoFaceSquare
+
+    it "refuses a model whose layers have no single order" $ do
+      -- Three faces in a circle: a real stacking, since no point is under all
+      -- three, and one that cannot be drawn a layer at a time because there is
+      -- no bottom layer to start from. The ordinary picture of a flat model
+      -- draws it happily, which is why this is a refusal and not a fallback.
+      let twist =
+            twoFaceSquare
+              { facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3], map VertexId [0, 1, 3]],
+                faceOrders =
+                  [ FaceOrder (FaceId 1) (FaceId 0) Above,
+                    FaceOrder (FaceId 2) (FaceId 1) Above,
+                    FaceOrder (FaceId 0) (FaceId 2) Above
+                  ]
+              }
+      shapeKinds (stepped 4) FoldedFormNotation twist
+        `shouldBe` Left (ImpossibleStacking (FaceId 0))
 
   describe "turning the drawing" $ do
     it "turns every point of it, and nothing else" $ do
