@@ -100,6 +100,7 @@ module Senbazuru.Origami.Stacking
     Stackings (..),
     Choice (..),
     stackingSpace,
+    layerOrderFor,
     solveStackingAs,
     componentCount,
     stateCount,
@@ -123,14 +124,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
-import Senbazuru.Fold.Query
-  ( Crease (..),
-    EdgeKey,
-    FoldError (..),
-    edgeKey,
-    facesAlongEdges,
-    renderFoldError,
-  )
+import Senbazuru.Fold.Query (Crease (..), EdgeKey, FoldError (..), edgeKey, facesAlongEdges, frameFaceOrders, renderFoldError)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId (..),
@@ -354,6 +348,40 @@ solveStacking = solveStackingAs defaultBudget []
 --
 -- An index a component does not have is 'NoSuchStacking' rather than a
 -- silently different picture.
+-- | The layer order to draw or build a folded form by: the file\'s, or one
+-- worked out, or nothing at all.
+--
+-- A file that supplies @faceOrders@ gets its own, checked but not second-guessed.
+-- A file that does not gets one from 'solveStackingAs', which covers models
+-- folded flat with convex faces; outside that it declines, having attempted
+-- nothing, and there is no ordering to be had. An empty list is a real answer
+-- — no two faces overlap — and is not the same as no answer.
+--
+-- A model the solver /tried/ and found impossible — no stacking of its layers
+-- avoids the paper passing through itself — is refused rather than dropped.
+-- These faces were going to be drawn or built, and the only account of how to
+-- stack them is impossible; quietly producing something else instead is the
+-- failure mode the renderers keep being written to avoid.
+--
+-- Here rather than in a renderer because two of them need it — the SVG of a
+-- folded form and the 3D export both stand or fall by the same order — and a
+-- policy copied into each would agree only by hand.
+layerOrderFor :: Budget -> Frame -> Either FoldError (Maybe [FaceOrder])
+layerOrderFor budget fr = do
+  supplied <- frameFaceOrders fr
+  if null supplied
+    then case solveStackingAs budget [] fr of
+      Right orders -> Right (Just orders)
+      Left NotFlat {} -> Right Nothing
+      Left NonConvexFace {} -> Right Nothing
+      -- Unreachable, both of them: this asks for no particular order, so there
+      -- is no index to be out of range and no component to be missing.
+      -- Declining is the harmless answer.
+      Left NoSuchStacking {} -> Right Nothing
+      Left NoSuchComponent {} -> Right Nothing
+      Left (StackingRefused err) -> Left err
+    else Right (Just supplied)
+
 solveStackingAs :: Budget -> [Int] -> Frame -> Either StackingError [FaceOrder]
 solveStackingAs budget choices fr = do
   analysis <- analyse fr

@@ -215,7 +215,7 @@ exportOptions =
           -- Refused during parsing like --offset, and for the same reasons: a
           -- non-number would land every vertex on one point, and a negative
           -- distance is a guess about what someone meant.
-          (distance =<< auto)
+          (nonNegative "the thickness" "model units" =<< auto)
           ( long "thickness"
               <> metavar "UNITS"
               <> help
@@ -228,11 +228,6 @@ exportOptions =
                 )
           )
       )
-  where
-    distance :: Double -> ReadM Double
-    distance d
-      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
-      | otherwise = readerError "the thickness must be a non-negative number of model units"
 
 checkOptions :: Parser CheckOptions
 checkOptions =
@@ -250,7 +245,7 @@ checkOptions =
       -- Rejected during parsing rather than checked later: a negative tolerance
       -- makes `abs sum > tolerance` true for every vertex, so the tool would
       -- confidently report that an alternating sum of 0.0000 degrees is not 0.
-      (nonNegative =<< auto)
+      (nonNegative "tolerance" "degrees" =<< auto)
       ( long "tolerance"
           <> metavar "DEG"
           <> value (degreesOf defaultTolerance)
@@ -265,11 +260,6 @@ checkOptions =
       )
   where
     degreesOf t = toleranceRadians t * 180 / pi
-
-    nonNegative :: Double -> ReadM Double
-    nonNegative d
-      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
-      | otherwise = readerError "tolerance must be a non-negative number of degrees"
 
 infoOptions :: Parser InfoOptions
 infoOptions =
@@ -321,6 +311,21 @@ budgetOption =
 -- inside the library is in radians. One conversion rather than one per flag.
 toRadians :: Double -> Double
 toRadians d = d * pi / 180
+
+-- | Refuse a distance or a tolerance that is not one: negative, or not a
+-- number at all.
+--
+-- One reader for the three flags that want it, each naming what it is and
+-- what it is measured in. Rejected during parsing rather than checked later,
+-- so the usage text says which flag and no file is opened first. A negative
+-- tolerance would pass every vertex; a negative offset or thickness reads a
+-- minus sign as a direction, which is a guess about what someone meant; and
+-- NaN or Infinity reaches 'formatNumber' or the float32 packer, which write
+-- them as nothing in particular.
+nonNegative :: String -> String -> Double -> ReadM Double
+nonNegative what unit d
+  | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
+  | otherwise = readerError (what <> " must be a non-negative number of " <> unit)
 
 -- | Refuse an angle that is not a number.
 --
@@ -511,7 +516,7 @@ renderOptions =
           -- error the arithmetic would notice -- the stack would simply open out
           -- down and to the left -- but "how far apart" is a distance, and reading
           -- a minus sign as a direction is a guess about what someone meant.
-          (points =<< auto)
+          (nonNegative "the layer offset" "points" =<< auto)
           ( long "offset"
               <> metavar "PT"
               <> help
@@ -524,11 +529,6 @@ renderOptions =
                 )
           )
       )
-  where
-    points :: Double -> ReadM Double
-    points d
-      | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
-      | otherwise = readerError "the layer offset must be a non-negative number of points"
 
 -- | Write the layer order the reader asked for into the frame.
 --
@@ -581,7 +581,9 @@ exportFile :: ExportOptions -> FoldFile -> IO ()
 exportFile o f = do
   frame <- paperFor (eoInput o) (eoFrame o) (eoFold o) (eoBudget o) (eoStacking o) f
   let thickness = maybe DefaultThickness Thickness (eoThickness o)
-  case renderGlb (eoBudget o) thickness frame of
+  -- Named the way render titles its page: the frame's title, else the file's,
+  -- since a file's title very often lives on the file and not the frame.
+  case renderGlb (eoBudget o) thickness (frameTitle frame <|> fileTitle f) frame of
     Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> renderGltfError err)
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
 

@@ -60,7 +60,7 @@ module Senbazuru.Diagram
   )
 where
 
-import Data.Char (digitToInt, isDigit)
+import Data.Char (digitToInt, isHexDigit)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Geometry (Box, V2, boxFromPoints)
@@ -92,9 +92,7 @@ colourComponents (Colour t) = case T.unpack t of
       l <- hex lo
       pure (fromIntegral (16 * h + l) / 255)
     hex c
-      | isDigit c = Just (digitToInt c)
-      | c >= 'a' && c <= 'f' = Just (10 + fromEnum c - fromEnum 'a')
-      | c >= 'A' && c <= 'F' = Just (10 + fromEnum c - fromEnum 'A')
+      | isHexDigit c = Just (digitToInt c)
       | otherwise = Nothing
 
 -- | A dash pattern in __page units__: alternating on- and off- lengths, in the

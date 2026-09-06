@@ -74,8 +74,8 @@ One direction of flow, no cycles:
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
-| `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. |
-| `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. |
+| `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. Reads orders; never computes them. |
+| `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. Also `layerOrderFor`, the one policy for *which* orders a frame gets — its own, or solved, or none — shared by the SVG and 3D backends. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
@@ -112,7 +112,8 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   `Fold.Query`'s faces directly. That is a stated exception, chosen over a 3D
   intermediate representation for a single consumer; a second 3D format would
   be the moment to build one. It still must not import `Render.CreasePattern`:
-  what the two share — which layer order to use — lives in `Origami.Layers`.
+  what the two share — which layer order to use — is
+  `Origami.Stacking.layerOrderFor`.
 
 ## Testing
 

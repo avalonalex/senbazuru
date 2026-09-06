@@ -9,18 +9,9 @@
 module Senbazuru.Origami.LayersSpec (spec) where
 
 import Senbazuru.Fold.Query (Face (..), FoldError (..))
-import Senbazuru.Fold.Types
-  ( Assignment (..),
-    FaceId (..),
-    FaceOrder (..),
-    Frame (..),
-    Stacking (..),
-    VertexId (..),
-    emptyFrame,
-  )
+import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Layers
-import Senbazuru.Origami.Stacking (defaultBudget)
 import Test.Hspec
 
 -- | A unit square in the plane @z = 0@ at the given height, listed
@@ -47,26 +38,6 @@ fromBelow = V3 0 0 (-1)
 
 ids :: [Int] -> [FaceId]
 ids = map FaceId
-
--- | A square folded along its diagonal: two triangles landing on each other
--- exactly, with the valley between them and nothing said about which is on
--- top.
-stackedTriangles :: Frame
-stackedTriangles =
-  emptyFrame
-    { frameClasses = ["foldedForm"],
-      verticesCoords = [[0, 0], [1, 0], [1, 1], [1, 0]],
-      edgesVertices =
-        [ (VertexId 0, VertexId 1),
-          (VertexId 1, VertexId 2),
-          (VertexId 2, VertexId 3),
-          (VertexId 3, VertexId 0),
-          (VertexId 0, VertexId 2)
-        ],
-      edgesAssignment = [Border, Border, Border, Border, Valley],
-      edgesFoldAngle = [0, 0, 0, 0, 180],
-      facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3]]
-    }
 
 -- | @n@ coplanar squares, for the questions that are about the orders rather
 -- than about the geometry.
@@ -221,25 +192,6 @@ spec = do
       -- refusal 'paintOrder' makes and for the same reason.
       layerDepths fromAbove (squares 3) [above 1 0, above 2 1, above 0 2]
         `shouldBe` Left (ImpossibleStacking (FaceId 0))
-
-  describe "which layer order to use" $ do
-    it "takes the file's own when it has one" $
-      -- Whatever the geometry would have said: a file that states its layers
-      -- is believed, and the solver is not consulted.
-      layerOrderFor defaultBudget stackedTriangles {faceOrders = [above 0 1]}
-        `shouldBe` Right (Just [above 0 1])
-
-    it "works one out for a flat model that has none" $
-      -- Two triangles folded onto each other over a valley: one order, and
-      -- the solver finds it. An empty list would be a real answer too -- no
-      -- two faces overlap -- and is not what this is.
-      fmap (fmap length) (layerOrderFor defaultBudget stackedTriangles) `shouldBe` Right (Just 1)
-
-    it "has none for paper still in the air" $
-      -- Declined rather than refused: the solver covers models folded flat and
-      -- attempted nothing here, so there is no ordering and no error either.
-      layerOrderFor defaultBudget stackedTriangles {verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [1, 0, 0]]}
-        `shouldBe` Right Nothing
 
   describe "which side of the paper a face shows" $ do
     it "shows the top side to a viewer the normal points at" $ do

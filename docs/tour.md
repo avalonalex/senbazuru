@@ -389,8 +389,10 @@ written as it stands, unseparated. [notes/paper-thickness.md](notes/paper-thickn
 has the detail, and what other tools do about the same problem.
 
 One expectation to head off: the crane that comes out is **flat**, wings closed,
-because `examples/crane.fold` is the flat-folded crane — every angle in it is
-±180°, which is what a layer solver's corpus records. The crane in a photograph
+because `examples/crane.fold` is the flat-folded crane — every crease in it is a
+mountain or a valley and nothing in between, which is what a layer solver's
+corpus records (the file carries no `edges_foldAngle` at all; the folding reads
+±180° off the assignments). The crane in a photograph
 is that model after its last two steps, the wings spread and the body puffed,
 and those are partial angles the file does not carry (the puff is not rigid
 origami at all). A frame *with* those angles exports as it stands; what

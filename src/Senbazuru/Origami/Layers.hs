@@ -16,9 +16,9 @@
 -- Two other questions are answered here because they are the same question
 -- asked differently. 'layerDepths' says how many layers of paper are under each
 -- face rather than merely which comes first, which is what a drawing that steps
--- the layers apart needs. 'showsTopSide' says which side of the sheet a face
--- presents to the viewer, which is the same winding and the same viewing
--- direction combined one step earlier.
+-- the layers apart and an export that lifts them both need. 'showsTopSide' says
+-- which side of the sheet a face presents to the viewer, which is the same
+-- winding and the same viewing direction combined one step earlier.
 --
 -- == Two directions, and only one of them is the viewer's
 --
@@ -60,9 +60,9 @@
 -- cases it has already constrained, and file order is not a measure of anything
 -- at all.
 module Senbazuru.Origami.Layers
-  ( layerOrderFor,
-    paintOrder,
+  ( paintOrder,
     layerDepths,
+    layerOf,
     showsTopSide,
   )
 where
@@ -70,45 +70,10 @@ where
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', sortOn)
 import Data.Set qualified as S
-import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaceOrders)
-import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Frame, Stacking (..))
+import Senbazuru.Fold.Query (Face (..), FoldError (..))
+import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Stacking (..))
 import Senbazuru.Geometry.V3 (V3, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Stacking (Budget, StackingError (..), solveStackingAs)
-
--- | The layer order to draw or build a folded form by: the file\'s, or one
--- worked out, or nothing at all.
---
--- A file that supplies @faceOrders@ gets its own. A file that does not gets one
--- from "Senbazuru.Origami.Stacking", which covers models folded flat with
--- convex faces; outside that it declines, having attempted nothing, and there
--- is no ordering to be had. An empty list is a real answer — no two faces
--- overlap — and is not the same as no answer.
---
--- A model the solver /tried/ and found impossible — no stacking of its layers
--- avoids the paper passing through itself — is refused rather than dropped.
--- These faces were going to be drawn, and the only account of how to stack
--- them is impossible; quietly producing something else instead is the failure
--- mode the renderers keep being written to avoid.
---
--- Here rather than in a renderer because two of them need it — the SVG of a
--- folded form and the 3D export both stand or fall by the same order — and a
--- policy copied into each would agree only by hand.
-layerOrderFor :: Budget -> Frame -> Either FoldError (Maybe [FaceOrder])
-layerOrderFor budget fr = do
-  supplied <- frameFaceOrders fr
-  if null supplied
-    then case solveStackingAs budget [] fr of
-      Right orders -> Right (Just orders)
-      Left NotFlat {} -> Right Nothing
-      Left NonConvexFace {} -> Right Nothing
-      -- Unreachable, both of them: this asks for no particular order, so there
-      -- is no index to be out of range and no component to be missing.
-      -- Declining is the harmless answer.
-      Left NoSuchStacking {} -> Right Nothing
-      Left NoSuchComponent {} -> Right Nothing
-      Left (StackingRefused err) -> Left err
-    else Right (Just supplied)
 
 -- | The faces in the order to draw them, furthest from the viewer first.
 --
@@ -217,6 +182,18 @@ layerDepths towardsViewer faces orders = do
                   if (facingUs > 0) == (stacking == Above)
                     then [(g, f)]
                     else [(f, g)]
+
+-- | The layer of a face, from what 'layerDepths' returned: zero for a face it
+-- did not mention.
+--
+-- It mentions every face it was given, so the fallback is never reached from
+-- inside senbazuru. It is here so that the two consumers of the depths -- the
+-- offset view and the 3D export -- cannot come to answer differently about a
+-- face that is missing, which is the kind of thing a copied lookup does.
+layerOf :: [(FaceId, Int)] -> FaceId -> Int
+layerOf depths = \fid -> IM.findWithDefault 0 (unFaceId fid) byId
+  where
+    byId = IM.fromList [(unFaceId f, d) | (f, d) <- depths]
 
 -- | Which side of the sheet a face shows to a viewer looking from the given
 -- direction.

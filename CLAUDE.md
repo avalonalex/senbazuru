@@ -168,7 +168,7 @@ coordinates, and nothing about how they are inked has to be recomputed.
 through it — a stated exception, not a precedent, and the day a second 3D format
 arrives is the day a 3D intermediate representation earns its place. It must
 not import `Render.CreasePattern`; the policy both share, which layer order to
-use, is `Origami.Layers.layerOrderFor`.
+use, is `Origami.Stacking.layerOrderFor`.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit
 `<g transform="scale(...)">`, because that scales stroke widths too, and because
@@ -355,11 +355,12 @@ are not contributors can find it, and so there is only one copy to keep true.
   Flat-Folder's models has 10^83. Solve each component separately and the cost
   adds up over them instead of multiplying — the crane's 87 open pairs are one
   component that 8 guesses exhaust. `stateCount` returns `Integer` for a reason.
-- **`--layer-budget` has to reach the renderer, not just the CLI.** A folded
-  form's layer order is worked out inside `Senbazuru.Render.CreasePattern`, so
-  the budget is a parameter of `creasePatternFrom`, `creasePatternAuto` and
-  `stepPage`. It was a CLI flag that did nothing on `render` for exactly as long
-  as it was not.
+- **`--layer-budget` has to reach every backend, not just the CLI.** A folded
+  form's layer order is asked for through `Origami.Stacking.layerOrderFor`,
+  which takes the budget, so it is a parameter of `creasePatternFrom`,
+  `creasePatternAuto`, `stepPage` *and* `renderGlb`. It was a CLI flag that did
+  nothing on `render` for exactly as long as it was not, and a new backend that
+  forgets it repeats that.
 - **Flat-Folder counts the settled pairs as a component and we match it.**
   Its first component is always the pairs propagation forced, whether there are
   any or not — a model with no variables at all still reports one. So
@@ -402,14 +403,20 @@ are not contributors can find it, and so there is only one copy to keep true.
   and a folded model has faces pointing both ways. Miss it and models seen from
   their back face come out inside out.
 - **`-0.0 == 0.0` is `True`** but they format differently. A y-flip produces
-  negative zeros. `formatNumber` normalises them — and so does the 3D export
-  before packing a float32, which keeps the two zeros as different bytes.
+  negative zeros. `formatNumber` normalises them. The 3D export has the same
+  problem in float32, which keeps the two zeros as different bytes, and removes
+  it by rounding every coordinate through an `Integer`, which has no sign to
+  keep — not by a guard, which cannot see the sign either, and not by rounding
+  in `Float`, where `realToFrac` of a negative zero keeps the sign under
+  optimisation and drops it without.
 - **The layer solver reads the creases, so hand it the frame.** `Render.Gltf`
   once rebuilt a frame from vertices and faces alone to ask for a layer order;
   the solver, finding no creases and no assignments, had nothing to constrain
   and stacked every model flat — including the quarter fold, silently. A twist
   exporting without complaint was what gave it away.
-- **glTF is y-up; FOLD is z-up.** `Render.Gltf` maps `(x, y, z)` to
+- **glTF is y-up; senbazuru treats FOLD's z as up.** FOLD itself does not
+  say; z-up is the convention its folded forms follow and `Render.Camera`
+  adopts. `Render.Gltf` maps `(x, y, z)` to
   `(x, z, -y)`. The `-y` reads as a typo and is a quarter turn about `x`;
   `(x, z, y)` would be a reflection and the model would come out mirrored,
   which folds perfectly well and is not the model in the file.
@@ -446,7 +453,9 @@ Deliberate omissions, so nobody thinks they are bugs:
   cannot be checked. A folded form whose faces are all wound backwards — which
   some editors emit — is drawn with its two paper colours swapped. The layer
   order survives it, because its signs were written against the same windings;
-  the paper side has nothing to cancel against.
+  the paper side has nothing to cancel against. The 3D export inherits this
+  identically: its two primitives are wound from the file, so such a file comes
+  out with its two paper colours swapped there too.
 - A file whose own `faceOrders` run in a circle through three faces that share
   a patch of paper is a contradiction `Senbazuru.Origami.Visible` does not
   detect: each of the three loses the shared patch to the other two, and the

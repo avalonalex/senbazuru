@@ -92,9 +92,12 @@
 -- * __Coordinates are rounded before they are packed.__ Folding leaves noise
 --   like @6.1e-17@ in coordinates that are really zero, and float32 keeps a
 --   negative zero distinct from a positive one, so two runs of the same fold
---   could differ in a byte. Rounding to six decimals and normalising the sign
+--   could differ in a byte. Rounding every coordinate to a millionth of the
+--   model's span — through an integer, which has no negative zero to keep —
 --   is the binary sibling of 'Senbazuru.Render.Svg.formatNumber', and it is
---   what lets a @.glb@ be golden-tested.
+--   what lets a @.glb@ be golden-tested. Relative to the model, not absolute:
+--   a millionth of a unit is coarser than a model a thousandth of a unit
+--   across and finer than single precision can hold on one a thousand across.
 module Senbazuru.Render.Gltf
   ( -- * Export
     renderGlb,
@@ -106,6 +109,7 @@ module Senbazuru.Render.Gltf
 
     -- * Pieces exposed for testing
     toGltfAxes,
+    quantumFor,
     packable,
     linearOf,
   )
@@ -113,21 +117,32 @@ where
 
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
 import Data.ByteString.Builder qualified as B
 import Data.ByteString.Lazy qualified as BL
-import Data.IntMap.Strict qualified as IM
+import Data.List (foldl')
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Numeric (showFFloat, showHex)
 import Senbazuru.Diagram (Colour, colourComponents)
 import Senbazuru.Diagram.Style (paper, paperUnderside)
-import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaces, frameVertices, renderFoldError)
+import Senbazuru.Fold.Query
+  ( Face (..),
+    FoldError (..),
+    FrameKind (..),
+    frameFaceOrders,
+    frameFaces,
+    frameKind,
+    frameVertices,
+    renderFoldError,
+  )
 import Senbazuru.Fold.Types (FaceId (..), Frame (..))
 import Senbazuru.Geometry.Polygon (isConvex)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, polygonNormal)
-import Senbazuru.Origami.Layers (layerDepths, layerOrderFor)
-import Senbazuru.Origami.Stacking (Budget)
+import Senbazuru.Geometry.VectorSpace (norm)
+import Senbazuru.Origami.Layers (layerDepths, layerOf)
+import Senbazuru.Origami.Stacking (Budget, layerOrderFor)
 import Senbazuru.Render.Camera (basisFrom, project)
 
 -- | How far apart to place the layers of a flat-folded model.
@@ -156,6 +171,14 @@ data GltfError
     GltfNoFaces
   | -- | A thickness that is not a distance: negative, or not a number.
     GltfBadThickness !Double
+  | -- | A thickness finer than the rounding the coordinates go through, which
+    -- would lift some layers by a step and others by none. Carries the
+    -- thickness asked for and the finest one this model can hold.
+    GltfThicknessTooFine !Double !Double
+  | -- | A coordinate that single precision cannot hold: not a number, or
+    -- beyond about 3.4e38. Written through, it would arrive as the bare token
+    -- @Infinity@ in the JSON, which no parser accepts.
+    GltfUnwritableCoordinate !Double
   deriving stock (Eq, Show)
 
 renderGltfError :: GltfError -> Text
@@ -176,48 +199,102 @@ renderGltfError = \case
   GltfNoFaces -> "the frame records no faces, so there is no surface to write"
   GltfBadThickness t ->
     "a thickness of " <> T.pack (show t) <> " is not a distance"
+  GltfThicknessTooFine t finest ->
+    "a thickness of "
+      <> T.pack (show t)
+      <> " is finer than the rounding this model's coordinates go through,"
+      <> " which is "
+      <> T.pack (show finest)
+      <> "; some layers would be lifted and others not"
+  GltfUnwritableCoordinate c ->
+    "the coordinate " <> T.pack (show c) <> " cannot be written in single precision"
   where
     tshow = T.pack . show
 
 -- | Write a frame as a binary glTF document.
 --
 -- The budget is how hard the layer solver may look, for a flat-folded frame
--- that carries no @faceOrders@ of its own; see 'Senbazuru.Origami.Layers.layerOrderFor'.
-renderGlb :: Budget -> Thickness -> Frame -> Either GltfError ByteString
-renderGlb budget thickness fr = do
+-- that carries no @faceOrders@ of its own; see
+-- 'Senbazuru.Origami.Stacking.layerOrderFor'. The name, if any, goes on the
+-- scene's one node, which is what a viewer lists the model as. It is the
+-- caller's to choose because the frame alone does not always have one: a
+-- file's title often lives on the file and not the frame.
+--
+-- The frame's @faceOrders@ are checked on every path, whether or not they end
+-- up used, because @render@ refuses a file whose orders name a face that is
+-- not there and a flag should not decide which files are acceptable.
+renderGlb :: Budget -> Thickness -> Maybe Text -> Frame -> Either GltfError ByteString
+renderGlb budget thickness name fr = do
   verts <- refused (frameVertices fr)
   faces <- refused (frameFaces fr)
+  _ <- refused (frameFaceOrders fr)
   if null faces then Left GltfNoFaces else Right ()
-  step <- resolve thickness verts
-  layerOf <- layersFor budget step fr verts faces
-  mapM_ (convexOrRefuse verts) faces
-  let corners f = [toGltfAxes (lift (fromIntegral (layerOf (faceId f)) * step) c) | c <- faceCorners f]
-  pure (assemble (frameTitle fr) [(faceId f, map packable (corners f)) | f <- faces])
+  mapM_ writable verts
+  let span' = modelSpan verts
+      quantum = quantumFor span'
+      -- The same rule "Senbazuru.Origami.Flat" uses for a face with no area,
+      -- over the model's size in any direction rather than in the plane, since
+      -- a face here may lie in any plane: a hair wide and as long as the
+      -- model. Computed once, not once per face.
+      speck = 1e-9 * max 1 span' * max 1 span'
+  step <- resolve thickness span' quantum
+  layer <- layersFor budget step fr verts faces
+  mapM_ (convexOrRefuse speck) faces
+  let corners f = [toGltfAxes (lift (fromIntegral (layer (faceId f)) * step) c) | c <- faceCorners f]
+  pure (assemble name [(faceId f, map (packable quantum) (corners f)) | f <- faces])
   where
     refused :: Either FoldError a -> Either GltfError a
     refused = first GltfRefused
 
     lift dz (V3 x y z) = V3 x y (z + dz)
 
+    writable (V3 x y z) = mapM_ component [x, y, z]
+    component c
+      | isNaN c || isInfinite c || abs c > singleMax = Left (GltfUnwritableCoordinate c)
+      | otherwise = Right ()
+    singleMax = 3.4e38
+
+-- | The size of the rounding step the coordinates go through: a millionth of
+-- the model's span, and one unit's millionth for a model with no span at all,
+-- which is a point and rounds to itself either way.
+quantumFor :: Double -> Double
+quantumFor span'
+  | span' > 0 = 1e-6 * span'
+  | otherwise = 1e-6
+
 -- | The thickness to use, as a number.
-resolve :: Thickness -> [V3] -> Either GltfError Double
-resolve thickness verts = case thickness of
-  DefaultThickness -> Right (modelSpan verts / 1000)
+--
+-- A thickness finer than the rounding step is refused rather than rounded
+-- away: rounded, some layers would land a step apart and others on the same
+-- height, and a face might even straddle two rounding cells and kink. The
+-- default is a thousand steps, so it never comes near.
+resolve :: Thickness -> Double -> Double -> Either GltfError Double
+resolve thickness span' quantum = case thickness of
+  DefaultThickness -> Right (span' / 1000)
   Thickness t
     | isNaN t || isInfinite t || t < 0 -> Left (GltfBadThickness t)
+    | t > 0 && t < quantum -> Left (GltfThicknessTooFine t quantum)
     | otherwise -> Right t
 
 -- | Each face's layer number, or zero for every face when there is nothing to
--- separate: a thickness of zero, a model with paper in the air, or one whose
--- layers the solver declines to order.
+-- separate: a thickness of zero, a crease pattern, a model with paper in the
+-- air, or one whose layers the solver declines to order.
+--
+-- A crease pattern is decided the way "Senbazuru.Render.CreasePattern" decides
+-- it, by 'frameKind', and never reaches the solver. Its faces do not overlap,
+-- so there is nothing to order — and the solver, asked anyway, would refuse a
+-- file with a face wound backwards or a short @edges_foldAngle@, both of which
+-- @render@ draws without complaint. A flag deciding which files are acceptable
+-- is the failure that module was rewritten to avoid.
 --
 -- Declining is not refusing. A flat model with a concave face is one the
 -- solver does not cover, and it comes back unseparated here so that the
--- convexity check below can refuse it with the right message rather than this
--- one refusing it with a message about layers.
+-- convexity check can refuse it with the right message rather than this one
+-- refusing it with a message about layers.
 layersFor :: Budget -> Double -> Frame -> [V3] -> [Face] -> Either GltfError (FaceId -> Int)
 layersFor budget step fr verts faces
   | step == 0 || hasRelief verts = Right (const 0)
+  | frameKind (frameClasses fr) verts == CreasePattern = Right (const 0)
   | otherwise = do
       -- The whole frame, not the vertices and faces already in hand: the solver
       -- reads the creases and their assignments, which is where every rule
@@ -232,29 +309,29 @@ layersFor budget step fr verts faces
           -- table and the stack rises out of it. There is no viewer here to
           -- ask; +z is where FOLD says up is.
           depths <- first GltfRefused (layerDepths (V3 0 0 1) faces orders)
-          let byId = IM.fromList [(unFaceId fid, d) | (fid, d) <- depths]
-          Right (\fid -> IM.findWithDefault 0 (unFaceId fid) byId)
+          Right (layerOf depths)
 
 -- | Refuse a face the fan would triangulate wrongly.
 --
 -- Convexity is judged in the face's own plane: its corners are projected
 -- through a basis whose forward axis is the face's normal, which is the one
--- direction in which a flat polygon has no extent. A face with no normal at
--- all — collinear or repeated corners — has no plane to judge in, and is
--- refused as the frame's own kind of error.
-convexOrRefuse :: [V3] -> Face -> Either GltfError ()
-convexOrRefuse verts f = case basisFrom normal (leastAligned normal) of
-  Nothing -> Left (GltfRefused (FaceWithoutNormal (faceId f)))
-  Just basis
-    | isConvex speck (map (project basis) (faceCorners f)) -> Right ()
-    | otherwise -> Left (GltfConcaveFace (faceId f))
+-- direction in which a flat polygon has no extent. A face with no area to
+-- speak of — collinear or repeated corners, within the speck — has no plane to
+-- judge in and no paper to write, and is refused as the frame's own kind of
+-- error. Judged by area rather than by an exactly zero normal, because a
+-- sliver a rounding error wide passes every other test and fans into
+-- triangles of no area.
+convexOrRefuse :: Double -> Face -> Either GltfError ()
+convexOrRefuse speck f
+  -- polygonNormal's length is twice the area.
+  | norm normal <= 2 * speck = Left (GltfRefused (FaceWithoutNormal (faceId f)))
+  | otherwise = case basisFrom normal (leastAligned normal) of
+      Nothing -> Left (GltfRefused (FaceWithoutNormal (faceId f)))
+      Just basis
+        | isConvex speck (map (project basis) (faceCorners f)) -> Right ()
+        | otherwise -> Left (GltfConcaveFace (faceId f))
   where
     normal = polygonNormal (faceCorners f)
-
-    -- The same yardstick "Senbazuru.Origami.Flat" uses: an area a hair wide and
-    -- as long as the model, below which a turn is rounding.
-    scale = max 1 (modelSpan verts)
-    speck = 1e-9 * scale * scale
 
     -- An up hint that cannot be parallel to the normal: whichever world axis
     -- the normal has the least of.
@@ -270,20 +347,19 @@ convexOrRefuse verts f = case basisFrom normal (leastAligned normal) of
 toGltfAxes :: V3 -> V3
 toGltfAxes (V3 x y z) = V3 x z (negate y)
 
--- | A coordinate as it will be packed: rounded to six decimals, with no
--- negative zero, and narrowed to the single precision glTF stores.
+-- | A coordinate as it will be packed: rounded to a whole number of quanta
+-- and narrowed to the single precision glTF stores.
 --
--- Rounded in double precision and narrowed afterwards, so that the rounding
--- is exact. Six decimals is a millionth of a unit; a model a thousand units
--- across keeps a thousandth, which is finer than any viewer will show.
-packable :: V3 -> (Float, Float, Float)
-packable (V3 x y z) = (tidy x, tidy y, tidy z)
+-- Rounded in double precision, through an 'Integer', and narrowed afterwards.
+-- The integer is what removes negative zero: @-0.0@ and @-4e-7@ both round to
+-- the integer @0@, and an integer has no sign to keep. Do not replace this
+-- with a rounding in 'Float' and a guard — @realToFrac@ of a negative zero
+-- keeps its sign under optimisation and drops it without, and the goldens
+-- would come to depend on the build flags.
+packable :: Double -> V3 -> (Float, Float, Float)
+packable quantum (V3 x y z) = (tidy x, tidy y, tidy z)
   where
-    tidy c
-      | rounded == 0 = 0
-      | otherwise = realToFrac rounded
-      where
-        rounded = fromIntegral (round (c * 1e6) :: Integer) / 1e6 :: Double
+    tidy c = realToFrac (fromIntegral (round (c / quantum) :: Integer) * quantum :: Double)
 
 -- | A colour's channels in linear light, from 0 to 1, as glTF wants them.
 --
@@ -312,8 +388,8 @@ assemble title faces =
     B.string7 "glTF"
       <> B.word32LE 2
       <> B.word32LE (fromIntegral total)
-      <> chunk "JSON" jsonBytes
-      <> chunk "BIN\0" binBytes
+      <> chunk "JSON" spaces jsonBytes
+      <> chunk "BIN\0" zeros binBytes
   where
     positions = concatMap snd faces
     vertexCount = length positions
@@ -325,7 +401,7 @@ assemble title faces =
     -- way. Reversing the two later corners is what turns the triangle over:
     -- its front is on the side its corners go round anticlockwise from.
     front = concat [fan start (length cs) | (start, (_, cs)) <- zip starts faces]
-    back = concat [map turnOver (fan start (length cs)) | (start, (_, cs)) <- zip starts faces]
+    back = map turnOver front
     fan start n = [(start, start + i, start + i + 1) | i <- [1 .. n - 2]]
     turnOver (a, b, c) = (a, c, b)
     indexCount = 3 * length front
@@ -356,15 +432,15 @@ assemble title faces =
 
     jsonBytes = BL.toStrict (B.toLazyByteString json)
 
-    -- The JSON chunk is padded with spaces and the binary chunk with zeros,
-    -- as the specification says, to the four-byte boundary it requires.
-    chunk tag bytes =
-      B.word32LE (fromIntegral (padded (bsLength bytes)))
+    -- Each chunk is padded to the four-byte boundary the specification
+    -- requires, with the filler it requires: spaces for JSON, zeros for binary.
+    chunk tag filler bytes =
+      B.word32LE (fromIntegral (padded (BS.length bytes)))
         <> B.string7 tag
         <> B.byteString bytes
-        <> (if tag == "JSON" then spaces else zeros) (padded (bsLength bytes) - bsLength bytes)
+        <> filler (padded (BS.length bytes) - BS.length bytes)
 
-    total = 12 + 8 + padded (bsLength jsonBytes) + 8 + padded (bsLength binBytes)
+    total = 12 + 8 + padded (BS.length jsonBytes) + 8 + padded (BS.length binBytes)
 
     (lo, hi) = bounds positions
 
@@ -461,17 +537,14 @@ assemble title faces =
 -- least.
 bounds :: [(Float, Float, Float)] -> ((Float, Float, Float), (Float, Float, Float))
 bounds [] = ((0, 0, 0), (0, 0, 0))
-bounds (p : ps) = foldr grow (p, p) ps
+bounds (p : ps) = foldl' grow (p, p) ps
   where
-    grow (x, y, z) ((lx, ly, lz), (hx, hy, hz)) =
+    grow ((lx, ly, lz), (hx, hy, hz)) (x, y, z) =
       ((min lx x, min ly y, min lz z), (max hx x, max hy y, max hz z))
 
 -- | Round a length up to a multiple of four.
 padded :: Int -> Int
 padded n = n + ((4 - n `mod` 4) `mod` 4)
-
-bsLength :: ByteString -> Int
-bsLength = fromIntegral . BL.length . BL.fromStrict
 
 spaces, zeros :: Int -> B.Builder
 spaces n = B.string7 (replicate n ' ')
@@ -481,8 +554,10 @@ zeros n = mconcat (replicate n (B.word8 0))
 -- A JSON writer just big enough for one document.
 --
 -- Hand-rolled for the reason "Senbazuru.Render.Svg" gives for its own output:
--- this is a fixed, small document whose exact bytes are the test contract,
--- and a library's key ordering and number formatting are not ours to promise.
+-- this is a fixed, small document whose exact bytes are the test contract.
+-- aeson would keep the key order it is given; what it would not give is
+-- control of how a number is written, and a bound stated as @1.5e-3@ where
+-- the data holds a float32 is a validator's disagreement waiting to happen.
 
 object :: [(Text, B.Builder)] -> B.Builder
 object fields =

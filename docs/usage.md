@@ -1,6 +1,6 @@
 # Using senbazuru
 
-Building it, running it, and every option the three commands take. For what the
+Building it, running it, and every option the four commands take. For what the
 commands are *for*, start at the [README](../README.md); for the format they
 read, [fold-primer.md](fold-primer.md).
 

@@ -124,8 +124,8 @@ import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Flat (FlatError (..))
-import Senbazuru.Origami.Layers (layerDepths, layerOrderFor, paintOrder, showsTopSide)
-import Senbazuru.Origami.Stacking (Budget, defaultBudget)
+import Senbazuru.Origami.Layers (layerDepths, layerOf, paintOrder, showsTopSide)
+import Senbazuru.Origami.Stacking (Budget, defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, View (..), basisForward, isometric, project, topDown, turnedBy)
@@ -258,8 +258,7 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
       creases <- frameCreases fr
       depths <- layerDepths towardsViewer faces orders
       let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
-          depthById = IM.fromList [(unFaceId fid, d) | (fid, d) <- depths]
-          depthOf fid = IM.findWithDefault 0 (unFaceId fid) depthById
+          depthOf = layerOf depths
           deepest = maximum (0 : map snd depths)
 
           -- In the order layerDepths gave them, which is the painting order, so

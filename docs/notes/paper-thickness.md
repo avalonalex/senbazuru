@@ -50,9 +50,12 @@ would come out with steps at creases that have no paper under them.
 
 The step `t` is a thousandth of the model's own span by default, which is about
 the thickness of paper on a hand-sized square and comfortably more than any
-depth buffer can fail to resolve. A tool that only wants to defeat z-fighting
-can use something far smaller — a millionth is plenty — but then the model
-looks like zero-thickness paper, which is the thing it is not.
+depth buffer can fail to resolve. It can be set smaller, down to a floor: the
+coordinates are rounded to a millionth of the model before they are written,
+which is all single precision can hold, and a step finer than that is refused
+rather than rounded away — rounded, some layers would land a step apart and
+others on the same height. A step at the floor defeats z-fighting and looks
+like zero-thickness paper, which is the thing it is not.
 
 The same `t` is what a schematic side view of the stack would need, and the two
 should share it rather than each inventing one.
@@ -67,8 +70,9 @@ height for the face on layer 3, another for the face on layer 7.
 So the mesh is written with a fresh copy of every corner for every face. Four
 quads become sixteen vertices, not nine. The crease between layers 3 and 7
 becomes a step of four thicknesses, which is, again, exactly what a stack of
-paper does at that crease. The mesh is not watertight, and that is correct: a
-folded sheet is not a solid.
+paper does at that crease. The mesh is not *watertight* — its edges are not each
+shared by two triangles, so it encloses no volume — and that is correct: a
+folded sheet is a surface, not a solid.
 
 ## Where this stops
 

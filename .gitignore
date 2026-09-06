@@ -8,6 +8,7 @@ dist-newstyle/
 
 # Golden-test output written when a test fails; never committed
 *.actual.svg
+*.actual.glb
 
 # Editor / OS
 .DS_Store
