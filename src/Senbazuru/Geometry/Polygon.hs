@@ -127,7 +127,10 @@ isConvex tolerance ps = not (any (> tolerance) turns && any (< negate tolerance)
 --
 -- Points exactly on a clip edge count as inside, so clipping a polygon by
 -- itself gives it back rather than a ring of duplicated corners and
--- zero-length edges. An empty result is the empty list.
+-- zero-length edges. An empty result is the empty list. The crossing point is
+-- found by interpolating on the two side values, which is what makes the
+-- routine safe on the coincident edges a folded model is full of; the
+-- comment on @meet@ says why.
 clipConvex :: [V2] -> [V2] -> [V2]
 clipConvex clip subject = foldl' clipBy subject (edges clip)
   where
@@ -137,20 +140,30 @@ clipConvex clip subject = foldl' clipBy subject (edges clip)
     -- emitted is always the current one and the ring stays in order.
     rotateBack ps = drop 1 ps <> take 1 ps
 
-    inside a b p = cross2 (b ^-^ a) (p ^-^ a) >= 0
+    -- How far inside the clip edge's line each end of the subject edge is:
+    -- positive on the inner side, zero on the line. Computed once and used
+    -- both for the side test and for the crossing, which is what keeps the
+    -- crossing well defined -- see 'meet'.
+    step (a, b) p q =
+      let dp = cross2 (b ^-^ a) (p ^-^ a)
+          dq = cross2 (b ^-^ a) (q ^-^ a)
+       in case (dp >= 0, dq >= 0) of
+            (True, True) -> [q]
+            (True, False) -> [meet p q dp dq]
+            (False, True) -> [meet p q dp dq, q]
+            (False, False) -> []
 
-    step (a, b) p q = case (inside a b p, inside a b q) of
-      (True, True) -> [q]
-      (True, False) -> [meet a b p q]
-      (False, True) -> [meet a b p q, q]
-      (False, False) -> []
-
-    -- Where the segment from p to q crosses the line through a and b. Only
-    -- called when p and q are on opposite sides, so the two are not parallel
-    -- and the denominator is not zero.
-    meet a b p q = p ^+^ (t *^ (q ^-^ p))
-      where
-        t = cross2 (b ^-^ a) (a ^-^ p) / cross2 (b ^-^ a) (q ^-^ p)
+    -- Where the segment from p to q crosses the line, given how far inside it
+    -- each end is. Interpolating on those two values, rather than recomputing
+    -- a denominator from the segment's direction, looks like a needless
+    -- refactor and is not: only called when one is non-negative and the other
+    -- strictly negative, the denominator is a same-sign sum, so it cannot be
+    -- zero and @t@ lies in @[0, 1]@ even when the segment runs along the edge
+    -- and rounding has put one end a hair outside. The textbook formula
+    -- divides by a separately rounded cross product that /can/ be zero there,
+    -- sends the crossing to infinity, and makes the area NaN. See
+    -- @docs\/notes\/convex-clipping.md@.
+    meet p q dp dq = p ^+^ ((dp / (dp - dq)) *^ (q ^-^ p))
 
 -- | The part of a segment that lies inside a convex, anticlockwise polygon,
 -- boundary included, or 'Nothing' if it misses.

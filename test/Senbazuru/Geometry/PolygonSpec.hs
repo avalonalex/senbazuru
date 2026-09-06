@@ -85,6 +85,22 @@ spec = do
       abs (signedArea (clipConvex unitSquare [V2 1 0, V2 2 0, V2 2 1, V2 1 1]))
         `shouldSatisfy` near 0
 
+    it "survives a subject edge lying along a clip edge, one end a hair outside" $ do
+      -- The case that silently dropped constraints in the layer solver. The
+      -- subject's first edge runs along the clip's diagonal: one end is 1e-17
+      -- below the line and tests as outside, the other is exactly on it and
+      -- tests as inside -- but the edge direction rounds to exactly parallel.
+      -- The textbook crossing formula divides by that direction's cross
+      -- product, which is 0.0 here, so it gave t = Infinity in one orientation
+      -- and 0/0 = NaN in the other; either way the area came back NaN, which
+      -- fails every comparison, including "is this above the tolerance". The
+      -- subject lies inside the clip, so the answer is its own area, 0.25.
+      let clip = [V2 0 0, V2 1 1, V2 0 1]
+          outsideFirst = [V2 0 (-1e-17), V2 0.5 0.5, V2 0 1]
+          insideFirst = [V2 0.5 0.5, V2 0 (-1e-17), V2 0 1]
+      abs (signedArea (clipConvex clip outsideFirst)) `shouldSatisfy` near 0.25
+      abs (signedArea (clipConvex clip insideFirst)) `shouldSatisfy` near 0.25
+
   describe "isConvex" $ do
     it "accepts a square and a triangle" $ do
       isConvex 1e-9 unitSquare `shouldBe` True
