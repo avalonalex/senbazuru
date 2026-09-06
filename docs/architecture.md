@@ -57,6 +57,12 @@ One direction of flow, no cycles:
  SVG text
 ```
 
+The top of that diagram is the only part that also runs backwards:
+`Senbazuru.Fold.Load` encodes and writes as well as reading and decoding, so a
+`FoldFile` can go back out as bytes. It is a second door in the same wall rather
+than a cycle — nothing further down the page is involved, and the only thing
+that reaches for it is a caller holding a `Frame` it built or folded.
+
 | Module | Holds |
 | --- | --- |
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
@@ -65,7 +71,7 @@ One direction of flow, no cycles:
 | `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform. |
 | `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
-| `Senbazuru.Fold.Load` | The only I/O in the library. |
+| `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
@@ -104,8 +110,9 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   colour; it is a second consumer of `Fold.Query`, not a stage on the way to
   SVG.
 - `Senbazuru.Render.Svg` must not know what a mountain fold is.
-- Only `Senbazuru.Fold.Load` does I/O. Everything else takes and returns values,
-  which is what makes the rest testable without a filesystem.
+- Only `Senbazuru.Fold.Load` does I/O, reading and writing alike. Everything
+  else takes and returns values, which is what makes the rest testable without a
+  filesystem.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` reads

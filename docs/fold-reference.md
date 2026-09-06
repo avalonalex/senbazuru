@@ -8,6 +8,9 @@ pattern is, why mountains and valleys are relative — read
 **Status** is one of: **used** (affects output), **decoded** (parsed and
 available on `Frame`, nothing reads it yet), or **—** (not decoded).
 
+Status describes *reading*. Writing is simpler: **every key survives**, whatever
+its status — see [Writing a file back out](#writing-a-file-back-out).
+
 ## The organising principle
 
 A `.fold` file is JSON describing a planar graph. Keys are named
@@ -17,7 +20,8 @@ anywhere. So `edges_assignment[7]` is the assignment of edge 7, whose endpoints
 are `edges_vertices[7]`.
 
 Almost everything is optional; `{}` is a valid FOLD file. Unrecognised keys must
-be ignored, and vendor extensions are namespaced with a colon (`"cpedit:page"`).
+not be choked on, and vendor extensions are namespaced with a colon
+(`"cpedit:page"`). senbazuru does not interpret them, but it does keep them.
 
 ## File metadata
 
@@ -124,6 +128,44 @@ inside out. Here the file's winding is taken exactly as written.
 See [notes/layer-ordering.md](notes/layer-ordering.md) for why this is stored
 rather than left to the reader, and [notes/taco-taco.md](notes/taco-taco.md)
 for how it is computed when a flat-folded frame arrives without it.
+
+## Writing a file back out
+
+senbazuru can write FOLD as well as read it: `Senbazuru.Fold.Load` has
+`encodeFoldFile` and `saveFoldFile` against its `decodeFoldFile` and
+`loadFoldFile`. Three decisions are worth stating, because each of them could
+plausibly have gone the other way.
+
+**Nothing is dropped.** Every key above comes back out, including the ones
+marked **—** and including vendor extensions. Keys the decoder does not
+understand are collected verbatim into `Frame`'s `frameExtras` and written back
+where they came from — a file's `"cpedit:page"` survives a trip through
+senbazuru, and so does its `vertices_edges`. Destroying another tool's data
+because we have not implemented that part of the specification yet is not a
+service to anyone, and FOLD namespaces vendor keys precisely so they can
+survive a tool that does not read them.
+
+**A field that was absent stays absent.** The decoder is permissive and reports
+a missing `faces_vertices` as an empty list, but writing `[]` back would tell
+the next reader that this model records no faces, which is a different claim
+from not mentioning them. So a `Nothing`, an empty list, and a `frame_inherit`
+of `false` are simply not written. `{}` in gives `{}` out.
+
+**Keys come out in the order this page lists them**, with each frame's unknown
+keys sorted after its known ones, and the output is compact. That makes the
+bytes reproducible and a diff between two files readable.
+
+The one thing that *does* drop a key is folding. `foldFrame` rewrites every
+coordinate and reverses the winding of any face that ends up turned over, so a
+carried `faces_edges` — which lists a face's edges in the order of its corners
+— would no longer be true, and `"cpedit:page"` describes a crease pattern that
+this no longer is. It keeps none of them rather than write something false.
+
+A round trip is therefore a fixed point on the decoded document — tested on
+every `.fold` file in `test/fixtures/`, which are copies of the ones in
+`examples/` — but not on the bytes: whitespace goes, `"m"` becomes `"M"`, and
+numbers are reformatted. [notes/round-trips.md](notes/round-trips.md) has the
+full list, the reasoning, and the one case the writer still gets wrong.
 
 ## What FOLD does **not** contain
 

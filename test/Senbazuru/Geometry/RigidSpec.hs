@@ -26,7 +26,7 @@ genRotation :: Gen Rigid
 genRotation = do
   p <- genPoint
   axis <- genPoint `suchThat` \v -> norm v > 0.1
-  theta <- choose (-2 * pi, 2 * pi)
+  theta <- choose (-(2 * pi), 2 * pi)
   pure (rotationAbout p axis theta)
 
 near :: Double -> Double -> Bool

@@ -114,6 +114,7 @@ test-suite senbazuru-test
   other-modules:
     Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
+    Senbazuru.Fold.LoadSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.PolygonSpec
     Senbazuru.Geometry.RigidSpec
