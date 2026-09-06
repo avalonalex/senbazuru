@@ -43,6 +43,14 @@ local rules ([taco-taco.md](taco-taco.md)), and finding which faces they apply
 to is polygon clipping ([convex-clipping.md](convex-clipping.md)). A model with
 paper still in the air is not covered, and stays a wireframe.
 
+Having the ordering is not the same as having a picture. A valid layer order can
+run in a circle among three faces that overlap pairwise without sharing a common
+patch — the flaps of a twist do exactly that — and then there is no order to
+paint whole faces in, however correct the ordering is. Painting whole faces also
+cannot hide anything: every crease still gets drawn over the top. Both are the
+subject of [visible-regions.md](visible-regions.md), which asks what can be
+*seen* rather than what order to paint in.
+
 ## References
 
 - Jacques Justin, "Towards a mathematical theory of origami", 1994.

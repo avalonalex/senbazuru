@@ -25,6 +25,7 @@ read the Haddock module headers; for the domain, start with
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
 | [taco-taco.md](taco-taco.md) | Every constraint on the layer order is one of four local rules |
 | [convex-clipping.md](convex-clipping.md) | Test whether two faces overlap by clipping them, not with predicates |
+| [visible-regions.md](visible-regions.md) | Draw a folded model by subtracting the layers over each face, not by painting faces in order |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
 
