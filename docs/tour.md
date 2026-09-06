@@ -252,8 +252,10 @@ Every face is drawn whole and each layer sits a few points further up and to the
 right than the layer below it, the way an exploded drawing separates the parts
 of an assembly. The quarter fold becomes four stepped squares in the order the
 solver found, bottom-left quadrant lowest; the letter fold shows its middle
-panel, which the ordinary picture buries whole; the crane opens into a
-sheaf you can count.
+panel, which the ordinary picture buries whole; and the crane's wings and body
+fan open into the stacks they are. The crane takes a smaller step than the other
+two because it is thirty-one layers deep by this reckoning, and thirty-one steps
+of six points would be most of a page.
 
 The step is in **page units**, which is the two-unit rule doing real work: four
 points is four points whether the sheet is one unit across or four hundred, so
