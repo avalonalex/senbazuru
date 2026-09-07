@@ -72,6 +72,7 @@ stack run -- render examples/squaretwist.fold --view iso -o out.svg
 stack run -- export examples/crane.fold --fold -o crane.glb
 stack run -- info examples/squaretwist.fold
 stack run -- crease examples/quarter-fold.fold --from 0,0 --to 1,1 --valley -o creased.fold
+stack run -- crease examples/diagonal-cp.fold --folded --from 0,0.5 --to 0.5,0 --valley
 stack ghci senbazuru:lib    # REPL with the library loaded
 
 make fmt                    # ormolu, in place
@@ -211,6 +212,12 @@ is not FOLD", never "this is FOLD we do not support yet". Refinement happens in
 `make fmt`. `hlint` must be clean. Warnings in `senbazuru.cabal`'s `common
 warnings` stanza apply everywhere; keep the build warning-free.
 
+One trap in that: **do not name a binding `pattern`.** `hlint`'s parser reads it
+as the `PatternSynonyms` keyword whether or not the extension is on, so
+`draw pattern share = ...` compiles under GHC and fails `make lint` with a parse
+error. It is a tempting name in a project about crease patterns; `paper` or
+`sheet` says the same thing.
+
 The ormolu version is **pinned in `.github/workflows/ci.yml`** (`ORMOLU_VERSION`,
 currently `0.7.2.0`) and must match the one on your `PATH`. Ormolu changes its
 output between releases, so an unpinned formatter fails CI on a day nobody
@@ -282,6 +289,28 @@ are not contributors can find it, and so there is only one copy to keep true.
   onto `foldedPattern`; using the frame that went in numbers the faces of a
   different drawing, and `examples/unit-square.fold` is a file where the two
   differ.
+- **Creasing a folded model asks for one kind of crease and writes both.** Every
+  layer of a packet creases the same physical way, but alternate layers are
+  upside down, so a fold that opens towards the reader is a valley on the faces
+  lying top-up and a mountain on the ones lying top-down. Ask
+  `Origami.ThroughLayers` for a valley across the quarter fold and the four
+  creases come back M, V, M, V through the stack. Which way up a face lies flips
+  across every crease the paper folds along and stays the same across every one
+  it does not, so it is a parity count of the folds back to the root face. Passing the caller's assignment through unchanged gives
+  every position right and every kind wrong, which is a file that looks fine
+  and folds into a different model.
+- **Which way up a face ended is `M · ẑ`, not the winding.** A flat fold sends
+  the up direction to exactly `+ẑ` or `-ẑ`, so the sign of the transformed
+  vector is the whole answer, and it is a measurement.
+  `Origami.Flat`'s `panelFaceUp` answers the same question from the *file's*
+  winding, which is the guess with nothing to cancel against described below —
+  fine for deciding which side of the paper a picture shows, and not what to
+  build a crease's assignment on.
+- **A line drawn on a folded model is one segment per *face*, not per layer.**
+  Three counts get confused. On the folded crane the worst line crosses 56 of
+  its 72 faces, the deepest stack of paper found over any single point is 24,
+  and the largest layer number is 32. Only the first bounds the work, and its ceiling is the
+  face count.
 - **At ±180° a mountain and a valley are the same rigid motion.** Turning half a
   turn either way about a line lands in the same place. The assignment still
   matters — it decides which layer ends up on top — but that is layer ordering,
@@ -658,10 +687,24 @@ Deliberate omissions, so nobody thinks they are bugs:
 - The `.cp` reader accepts type codes 1 to 11 and refuses everything else,
   including 0. Oriedita's auxiliary colours are the ones above 4, and it drops
   the colour, because FOLD has nowhere to put it.
-- Creasing works on a flat pattern only. A folded form is refused, because a
-  line drawn on one is a crease *per layer* landing somewhere different on the
-  flat sheet — #70, and the wall the authoring vocabulary meets on its second
-  move.
+- Creasing through the layers creases *every* layer under the line. A book also
+  says "fold the top layer only", and that is a different instruction belonging
+  with #60's vocabulary — it would need to know which face is over which at a
+  point, which this deliberately never asks.
+- Creasing through the layers wants both ends of the line clear of the paper or
+  on its edge. An end in the middle of a face creases that one layer part of the
+  way across, which the face tracing refuses a step later as a vertex with one
+  crease at it; `Origami.ThroughLayers` asks first and says so. Unlike
+  `Fold.Creasing`, which has no way to say where a sheet *is*, this does: the
+  folded model is a list of convex panels.
+- Creasing through the layers is for a model folded *flat*. With paper still in
+  the air a line drawn on the page is a ray and not a point, so it names no one
+  place on the sheet. The same restriction `Origami.Visible` and the layer
+  solver carry, and it arrives via `Origami.Flat.flatSheet`.
+- A folded-form *file* is still refused by both creasing verbs. `--folded`
+  takes the *pattern* and folds it here, which is the only way the per-face
+  transforms exist; a file that is already folded carries neither them nor a
+  sheet to map back to, and recovering one is unfolding.
 - A new crease takes the fold angle its assignment implies — ±180 for a
   mountain or a valley — not zero. A valley with an angle of zero is not a
   valley, and `foldFrame` reads the same value off the assignment when the

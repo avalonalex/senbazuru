@@ -88,6 +88,7 @@ library
     Senbazuru.Origami.Layers
     Senbazuru.Origami.Stacking
     Senbazuru.Origami.Step
+    Senbazuru.Origami.ThroughLayers
     Senbazuru.Origami.Visible
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
@@ -142,6 +143,7 @@ test-suite senbazuru-test
     Senbazuru.Origami.LayersSpec
     Senbazuru.Origami.StackingSpec
     Senbazuru.Origami.StepSpec
+    Senbazuru.Origami.ThroughLayersSpec
     Senbazuru.Origami.VisibleSpec
     Senbazuru.Render.CameraSpec
     Senbazuru.Render.CreasePatternSpec

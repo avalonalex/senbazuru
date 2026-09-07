@@ -22,6 +22,7 @@ read the Haddock module headers; for the domain, start with
 | [half-edge.md](half-edge.md) | The structure FOLD's array format is already shaped for |
 | [folding-by-transforms.md](folding-by-transforms.md) | How angles become positions: one rigid matrix per face, over a spanning tree |
 | [fold-angles-are-the-state.md](fold-angles-are-the-state.md) | Positions are derived from angles, and neither can be naively interpolated |
+| [creasing-through-layers.md](creasing-through-layers.md) | Creasing a packet of layers alternates mountain and valley, because alternate layers are upside down |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
 | [taco-taco.md](taco-taco.md) | Every constraint on the layer order is one of four local rules |
 | [several-stackings.md](several-stackings.md) | A model usually has many valid layer orders, and counting them is a product over independent components |

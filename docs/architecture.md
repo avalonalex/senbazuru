@@ -22,6 +22,8 @@ One direction of flow, no cycles:
      |                               a faithful, permissive mirror of the format
      |  Senbazuru.Fold.Creasing      draw a new crease: a Frame in, a Frame
      |                               out, and back through the two below
+     |                               (Origami.ThroughLayers draws one on the
+     |                               folded model instead, and comes back here)
      |  Senbazuru.Fold.Crossings     cut the creases where they meet, so the
      |                               drawing is a planar graph
      |  Senbazuru.Fold.Faces         the faces a file did not record, traced
@@ -106,6 +108,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. Reads orders; never computes them. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. Also `layerOrderFor`, the one policy for *which* orders a frame gets — its own, or solved, or none — shared by the SVG and 3D backends. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
+| `Senbazuru.Origami.ThroughLayers` | A line drawn on the model a pattern folds into → the creases it makes on the pattern, one per face it crosses, each of the kind that layer's own way up asks for. |
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
