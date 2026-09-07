@@ -212,6 +212,14 @@ is not FOLD", never "this is FOLD we do not support yet". Refinement happens in
 `make fmt`. `hlint` must be clean. Warnings in `senbazuru.cabal`'s `common
 warnings` stanza apply everywhere; keep the build warning-free.
 
+**`stack build --ghc-options=-fforce-recomp` does not show you the warnings**,
+and believing it does is how eight of them accumulated in the test suite. Stack
+decides whether to invoke GHC at all, from a hash of the source and the flags —
+so `touch` changes nothing, and a *second* run with the same `--ghc-options`
+rebuilds nothing and prints nothing. It looks exactly like a clean build.
+`stack clean && stack build --test` is the check that is actually a check. CI
+does it from cold every time, which is why it sees what a local run does not.
+
 One trap in that: **do not name a binding `pattern`.** `hlint`'s parser reads it
 as the `PatternSynonyms` keyword whether or not the extension is on, so
 `draw pattern share = ...` compiles under GHC and fails `make lint` with a parse

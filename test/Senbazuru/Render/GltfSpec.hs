@@ -34,7 +34,6 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
-    EdgeId (..),
     FaceId (..),
     FaceOrder (..),
     FoldFile (..),

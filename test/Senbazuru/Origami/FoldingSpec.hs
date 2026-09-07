@@ -24,7 +24,6 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
-    EdgeId (..),
     FaceId (..),
     FaceOrder (..),
     Frame (..),
@@ -163,8 +162,8 @@ carriesItsCorners path = do
       length (facesVertices (foldedPattern f)) `shouldSatisfy` (> 0)
       sequence_
         [ case (IM.lookup v onSheet, IM.lookup v inModel, IM.lookup i (foldedPlacements f)) of
-            (Just before, Just landed, Just m) ->
-              applyRigid m before `shouldSatisfy` nearV3 landed
+            (Just corner, Just landed, Just m) ->
+              applyRigid m corner `shouldSatisfy` nearV3 landed
             _ ->
               expectationFailure
                 (path <> ": nothing placed vertex " <> show v <> " of face " <> show i)

@@ -528,9 +528,10 @@ spec = do
         -- have changed anything. The second half checks the bytes settle too,
         -- so the first pass is a normalisation and not an oscillation.
         original <- decodeOrFail =<< BS.readFile (fixtureDir </> name)
-        again <- decodeOrFail (encodeFoldFile original)
-        again `shouldBe` original
-        encodeFoldFile again `shouldBe` encodeFoldFile original
+        -- Not `again`: QuickCheck exports one.
+        reread <- decodeOrFail (encodeFoldFile original)
+        reread `shouldBe` original
+        encodeFoldFile reread `shouldBe` encodeFoldFile original
 
     it "survives a document nobody would write" $
       -- Generated frames have parallel arrays of mismatched lengths, faces

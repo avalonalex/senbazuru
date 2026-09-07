@@ -1,3 +1,11 @@
+-- QuickCheck's Arbitrary is somebody else's class and V2 and Box2 are the
+-- library's types, so instances for them are orphans wherever they are written.
+-- The alternatives are worse: putting them in the library drags QuickCheck into
+-- it, and wrapping every generated point in a newtype obscures every property
+-- here. A test suite is the one place an orphan costs nothing, since nothing
+-- else imports it.
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 -- |
 -- Tests for convex polygons in the plane.
 --
