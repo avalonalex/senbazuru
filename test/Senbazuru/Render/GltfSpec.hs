@@ -475,12 +475,14 @@ spec = do
               }
       exportFrame DefaultThickness square `shouldBe` exportFrame DefaultThickness stated
 
-    it "refuses a frame whose creases cross with no vertex where they meet" $ do
-      -- unit-square.fold used to be refused here for recording no faces. Now
-      -- the tracing gets as far as saying what is really wrong with it.
+    it "cuts creases that cross, rather than refusing the frame they are in" $ do
+      -- unit-square.fold has been refused here twice over: for recording no
+      -- faces, then for its creases crossing. Both were about what the file
+      -- left out rather than about the paper, and both are now worked out.
       (_, fr) <- fixture "test/fixtures/unit-square.fold"
-      exportFrame DefaultThickness fr
-        `shouldBe` Left (GltfRefused (EdgesCross (EdgeId 8) (EdgeId 9)))
+      case exportFrame DefaultThickness fr of
+        Left err -> expectationFailure ("expected an export, got " <> show err)
+        Right bytes -> BS.take 4 bytes `shouldBe` "glTF"
 
     it "refuses a frame with no creases at all, which has no surface to write" $ do
       let bare = flatSheet {facesVertices = [], edgesVertices = [], edgesAssignment = []}

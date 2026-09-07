@@ -127,6 +127,7 @@ import Data.Text.Encoding qualified as TE
 import Numeric (showFFloat, showHex)
 import Senbazuru.Diagram (Colour, colourComponents)
 import Senbazuru.Diagram.Style (paper, paperUnderside)
+import Senbazuru.Fold.Crossings (splitCrossings)
 import Senbazuru.Fold.Faces (withTracedFaces)
 import Senbazuru.Fold.Query
   ( Face (..),
@@ -230,7 +231,7 @@ renderGlb budget thickness name fr0 = do
   -- is a policy that is wrong on the other. A crease pattern that records no
   -- faces still has them, and exporting a flat sheet is a thing to be able to
   -- do with one.
-  fr <- refused (withTracedFaces fr0)
+  fr <- refused (withTracedFaces =<< splitCrossings fr0)
   verts <- refused (frameVertices fr)
   faces <- refused (frameFaces fr)
   _ <- refused (frameFaceOrders fr)

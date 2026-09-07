@@ -109,12 +109,28 @@ Neither format stores faces, and that turns out not to matter for folding: the
 faces are determined by the creases, so `--fold` and `export` trace them — see
 [What it folds](#what-it-folds) below. A `.cp` folds like a `.fold` does.
 
-Drawing one flat is the exception, and stays a wireframe. Not an oversight: a
-pattern whose creases cross with no vertex where they meet cannot be traced at
-all, and it still has to draw, so the fill follows what the file says rather
-than what could be worked out.
+Drawing one flat is the exception, and stays a wireframe. Not an oversight:
+some drawings cannot be traced however much is worked out — a crease that stops
+in the middle of the paper has no face round it — and those still have to draw,
+so the fill follows what the file says rather than what could be derived.
 
 ## What it folds
+
+Before any of that, the creases are cut at the points where they meet. A file
+may draw two creases crossing and record no vertex where they cross, or end one
+crease part-way along another without cutting it — and then the regions between
+the creases are not the faces of anything, so nothing can be folded. Both are
+recovered rather than refused: the crossing is on the paper already, and only
+the vertex the drawing implies was missing.
+
+`examples/unit-square.fold` is the small case, three creases through the middle
+of the sheet becoming six through one new vertex. The instructive one is
+ORIPA's own `turkey2015.opx`, which needs no new vertex at all — every one of
+its 231 was already there — and yet has 71 creases that stop on another crease
+that ORIPA never cut. Cutting them turns 429 creases into 500, and turns a file
+senbazuru could not fold into one that folds and stacks 672 ways. Editors are
+tidier than hand-written files, but not as tidy as you would assume.
+
 
 `--fold` computes the folded form rather than reading one. Given a crease
 pattern and a fold angle for every crease, paper does not stretch, so each face

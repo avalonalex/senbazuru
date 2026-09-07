@@ -147,6 +147,12 @@ data FoldError
   | -- | Two edges that cross with no vertex where they meet, so the drawing is
     -- not a planar graph and its regions are not the faces of anything.
     EdgesCross !EdgeId !EdgeId
+  | -- | Two edges lying along one line with a stretch in common. They do not
+    -- cross — there is no single point to cut them at — and along the stretch
+    -- they share there are two answers to how the paper folds. Raised by
+    -- "Senbazuru.Fold.Crossings", which would otherwise cut them into pieces
+    -- lying exactly on top of each other.
+    EdgesOverlap !EdgeId !EdgeId
   | -- | The creases fall into pieces that share no vertex, so the sheet is more
     -- than one sheet. Carries one vertex from each of two of them.
     SheetInPieces !VertexId !VertexId
@@ -277,6 +283,13 @@ renderFoldError = \case
       <> tshow b
       <> " cross with no vertex where they meet, so these creases are not a"
       <> " planar graph and the regions between them are not faces"
+  EdgesOverlap (EdgeId a) (EdgeId b) ->
+    "edges "
+      <> tshow a
+      <> " and "
+      <> tshow b
+      <> " lie along the same line and share a stretch of it, so along that"
+      <> " stretch the paper has two ways to fold"
   SheetInPieces (VertexId a) (VertexId b) ->
     "no chain of creases joins vertex "
       <> tshow a

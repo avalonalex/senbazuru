@@ -66,6 +66,14 @@
 module Senbazuru.Fold.Faces
   ( traceFaces,
     withTracedFaces,
+
+    -- * The drawing itself
+    -- $sheet
+    Sheet (..),
+    sheetOf,
+    pointAt,
+    endsOf,
+    tolerances,
   )
 where
 
@@ -94,17 +102,8 @@ import Senbazuru.Geometry.V3 (V3 (..))
 -- nobody has creased.
 traceFaces :: Frame -> Either FoldError [[VertexId]]
 traceFaces fr = do
-  verts <- frameVertices fr
-  -- The same judgement the renderer and the flat-foldability checker make, so
-  -- that all of them agree about what a file is. Geometry alone is not enough:
-  -- a model folded flat -- the traditional crane -- has coordinates a crease
-  -- pattern's cannot be told from, and tracing its creases would report the
-  -- regions of a drawing in which the paper lies on top of itself.
-  when (frameKind (frameClasses fr) verts == FoldedForm) (Left SheetIsFolded)
-  mapM_ (namesRealVertices (length verts)) numbered
-  let points = map flatten verts
-      sheet = Sheet {sheetPoints = IM.fromList (zip [0 ..] points), sheetEdges = numbered}
-  if null numbered
+  sheet <- sheetOf fr
+  if null (sheetEdges sheet)
     then pure []
     else do
       checkDrawing sheet
@@ -112,24 +111,6 @@ traceFaces fr = do
       mapM_ noBridge traced
       pure [map VertexId ring | ring <- traced]
   where
-    numbered =
-      [ (EdgeId i, (a, b))
-        | (i, (VertexId a, VertexId b)) <- zip [0 ..] (edgesVertices fr)
-      ]
-
-    -- frameVertices resolves coordinates and nothing else, so an edge naming a
-    -- vertex that is not there gets past it. Left unchecked, that vertex would
-    -- be given a phantom position and every complaint after this point would
-    -- name whichever innocent element the phantom happened to land on.
-    namesRealVertices n (eid, (a, b)) =
-      mapM_
-        (\v -> when (v < 0 || v >= n) (Left (VertexIndexOutOfRange eid (VertexId v) n)))
-        [a, b]
-
-    -- A crease pattern lies in z = 0, which frameKind has just confirmed, so
-    -- dropping z loses nothing rather than projecting anything.
-    flatten (V3 x y _) = V2 x y
-
     -- A crease with the same face on both sides is walked in both directions
     -- by one ring, which then lists both its ends twice and is not a polygon.
     -- Checked here rather than in checkDrawing because it is a property of the
@@ -166,6 +147,14 @@ withTracedFaces fr
       traced <- traceFaces fr
       pure fr {facesVertices = traced}
 
+-- $sheet
+--
+-- The drawing a frame's creases make, and the questions about it that do not
+-- depend on what is being asked. Exported for "Senbazuru.Fold.Crossings",
+-- which splits the creases this module refuses to trace and so has to read the
+-- same drawing, at the same tolerance, and refuse the same malformed frames.
+-- Two copies of that would be two chances to disagree about what a file says.
+
 -- | A flat drawing of creases: where the vertices are, and which pairs are
 -- joined.
 --
@@ -176,6 +165,42 @@ data Sheet = Sheet
   { sheetPoints :: !(IntMap V2),
     sheetEdges :: ![(EdgeId, (Int, Int))]
   }
+  deriving stock (Eq, Show)
+
+-- | Read a frame as a flat drawing, refusing the frames that are not one.
+--
+-- Two refusals, and both have to happen here rather than in a caller. A folded
+-- form is not a drawing on flat paper: a model folded flat has coordinates a
+-- crease pattern's cannot be told from, so only 'frameKind' — the judgement
+-- the renderer and the flat-foldability checker already share — separates
+-- them. And an edge naming a vertex that does not exist gets past
+-- 'frameVertices', which resolves coordinates and nothing else; left
+-- unchecked, that vertex is given a phantom position and every complaint after
+-- it names whichever innocent element the phantom happens to land on.
+sheetOf :: Frame -> Either FoldError Sheet
+sheetOf fr = do
+  verts <- frameVertices fr
+  when (frameKind (frameClasses fr) verts == FoldedForm) (Left SheetIsFolded)
+  mapM_ (namesRealVertices (length verts)) numbered
+  pure
+    Sheet
+      { sheetPoints = IM.fromList (zip [0 ..] (map flatten verts)),
+        sheetEdges = numbered
+      }
+  where
+    numbered =
+      [ (EdgeId i, (a, b))
+        | (i, (VertexId a, VertexId b)) <- zip [0 ..] (edgesVertices fr)
+      ]
+
+    namesRealVertices n (eid, (a, b)) =
+      mapM_
+        (\v -> when (v < 0 || v >= n) (Left (VertexIndexOutOfRange eid (VertexId v) n)))
+        [a, b]
+
+    -- A crease pattern lies in z = 0, which frameKind has just confirmed, so
+    -- dropping z loses nothing rather than projecting anything.
+    flatten (V3 x y _) = V2 x y
 
 -- | Where a vertex is. Every id in 'sheetEdges' came through 'frameVertices',
 -- which already refused the ones with no coordinates, so the fallback is
