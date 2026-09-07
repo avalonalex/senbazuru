@@ -97,7 +97,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Fold.Faces` | The faces a file does not record, traced from the creases. Refuses a drawing whose regions would not be its faces. Owns `Sheet`, the drawing itself. |
 | `Senbazuru.Fold.Crossings` | Cuts creases at the points where they meet, so a drawing `Fold.Faces` refuses becomes one it can trace. `withPlanarFaces` is the pair — cut, then trace — that every backend calls. |
-| `Senbazuru.Fold.Creasing` | Draws a new crease on a pattern: the one operation that changes a crease pattern rather than reading one. Adds the line and hands the frame straight back to `Fold.Crossings`. |
+| `Senbazuru.Fold.Creasing` | Draws new creases on a pattern: the one operation that changes a crease pattern rather than reading one. Adds the lines and hands the frame straight back to `Fold.Crossings` — once for the whole batch, because that handing back is nearly all the cost. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |

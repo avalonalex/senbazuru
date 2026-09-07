@@ -173,6 +173,17 @@ arrives is the day a 3D intermediate representation earns its place. It must
 not import `Render.CreasePattern`; the policy both share, which layer order to
 use, is `Origami.Stacking.layerOrderFor`.
 
+**Creases are drawn in batches, because the handing back is the cost.** Almost
+all of drawing a crease is `withPlanarFaces` afterwards — every pair of edges
+compared, every face walked — so doing it once per crease over a growing pattern
+is cubic. `Fold.Creasing.creaseAllAlong` takes them all and cuts once;
+`creaseAlong` is that with one. Creasing a 320-fold accordion through its layers
+went from 63 seconds to 0.6, with byte-identical output. Two things the batch
+must do that a single crease need not: intern ends against the batch as well as
+the sheet, so two creases meeting at a new point meet at one vertex; and decide
+every refusal against the frame as it was, so the answer does not depend on the
+order the batch is in.
+
 **A move that changes a pattern hands the result back to what validates a read
 one.** `Senbazuru.Fold.Creasing` adds a crease and then calls
 `Fold.Crossings.withPlanarFaces` — so a pattern that has been creased is cut,
