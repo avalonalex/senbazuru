@@ -37,6 +37,7 @@ module Senbazuru.Geometry.Rigid
     after,
     applyRigid,
     rotationAbout,
+    inverse,
   )
 where
 
@@ -126,3 +127,30 @@ rotationAbout p axis theta = case normalize axis of
         (V3 (t * x * x + c) (t * x * y - s * z) (t * x * z + s * y))
         (V3 (t * x * y + s * z) (t * y * y + c) (t * y * z - s * x))
         (V3 (t * x * z - s * y) (t * y * z + s * x) (t * z * z + c))
+
+-- | The motion that undoes this one: @inverse r \`after\` r@ is 'identity'.
+--
+-- Folding needs this to run backwards. A face of a folded model carries the
+-- motion that put it there, so inverting that motion takes a point on the
+-- folded paper back to the point of the flat sheet it came from — which is how
+-- a line drawn on a model already folded becomes creases on its pattern.
+--
+-- == Why transposing is enough
+--
+-- Undoing @x ↦ M x + t@ means solving for @x@, which is @x ↦ M⁻¹ (x − t)@, and
+-- that is @x ↦ M⁻¹ x − M⁻¹ t@. So the only hard part is @M⁻¹@ — and there is no
+-- hard part, because a rotation matrix is /orthogonal/: its rows are unit
+-- vectors at right angles to each other, so the matrix that undoes it is its
+-- own transpose. No determinant, no division, and nothing that can be
+-- ill-conditioned.
+--
+-- That holds because every 'Rigid' in the program is built by 'rotationAbout'
+-- or composed from ones that were — the same argument the module header makes
+-- for the type being honest at all. A 'Rigid' assembled by hand out of a
+-- scaling matrix would come back from here with a plausible value that is not
+-- an inverse, and nothing checks. If that ever becomes possible, this is the
+-- function that breaks first.
+inverse :: Rigid -> Rigid
+inverse (Rigid m t) = Rigid mi (negate 1 *^ matApply mi t)
+  where
+    mi = transpose m

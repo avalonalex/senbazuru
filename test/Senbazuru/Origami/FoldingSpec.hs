@@ -19,6 +19,7 @@ module Senbazuru.Origami.FoldingSpec (spec) where
 
 import Data.ByteString qualified as BS
 import Data.Either (fromRight)
+import Data.IntMap.Strict qualified as IM
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
@@ -30,6 +31,7 @@ import Senbazuru.Fold.Types
     emptyFrame,
     keyFrame,
   )
+import Senbazuru.Geometry.Rigid (applyRigid, matApply, rigidLinear)
 import Senbazuru.Geometry.V3 (V3 (..), zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding
@@ -106,6 +108,14 @@ inTheQuadrant _ = False
 -- | Rounded, so that a coordinate landing on 6e-17 compares as the zero it is.
 rounded :: Double -> Double
 rounded x = fromIntegral (round (x * 1e9) :: Integer) / 1e9
+
+-- | Two points at the same place, for the same reason 'rounded' exists.
+nearV3 :: V3 -> V3 -> Bool
+nearV3 a b = norm (a ^-^ b) < 1e-9
+
+-- | A frame's vertices by id, so two frames' can be compared vertex for vertex.
+positions :: Frame -> IM.IntMap V3
+positions fr = IM.fromList (zip [0 ..] (vertices fr))
 
 spec :: Spec
 spec = do
@@ -382,3 +392,80 @@ spec = do
       case foldFrame threeFaced of
         Left (FrameGeometry (NonManifoldEdge _ _ n)) -> n `shouldBe` 3
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+  describe "foldFrameWith" $ do
+    it "carries every corner to where the folded form draws it" $ do
+      -- The contract anything inverting these motions depends on, and the only
+      -- one worth stating: the motion filed under a face really is the one that
+      -- took that face's corners from the sheet to where the folded frame puts
+      -- them. A map keyed off by one, or keyed against the frame that went in
+      -- rather than the cut one, fails here and nowhere else.
+      --
+      -- Asserting instead that foldFrame agrees with foldedFrame would prove
+      -- nothing: foldFrame is defined as this with the rest dropped, so that
+      -- comparison is true by construction. What guards the refactor is the
+      -- rest of this file, unchanged, and the goldens.
+      flat <- loadFixture "test/fixtures/quarter-fold.fold"
+      case foldFrameWith flat of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right f -> do
+          let onSheet = positions (foldedPattern f)
+              inModel = positions (foldedFrame f)
+          sequence_
+            [ case (IM.lookup v onSheet, IM.lookup v inModel, IM.lookup i (foldedPlacements f)) of
+                (Just before, Just after', Just m) ->
+                  applyRigid m before `shouldSatisfy` nearV3 after'
+                _ -> expectationFailure ("nothing placed vertex " <> show v <> " of face " <> show i)
+              | (i, ring) <- zip [0 ..] (facesVertices (foldedPattern f)),
+                VertexId v <- ring
+            ]
+
+    it "places each face with the motion that put it there" $ do
+      -- diagonal-cp.fold is the unit square with one valley along the diagonal
+      -- from (0,1) to (1,0). The face below the diagonal is the root and does
+      -- not move; the one above it turns half a circle about the diagonal, so
+      -- the far corner (1,1) lands on (0,0).
+      flat <- loadFixture "test/fixtures/diagonal-cp.fold"
+      case foldFrameWith flat of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right f -> do
+          let at i = IM.lookup i (foldedPlacements f)
+          fmap (`applyRigid` V3 1 1 0) (at 0) `shouldSatisfy` maybe False (nearV3 (V3 1 1 0))
+          fmap (`applyRigid` V3 1 1 0) (at 1) `shouldSatisfy` maybe False (nearV3 (V3 0 0 0))
+
+    it "says which way up each face ended, by where it sends the up direction" $ do
+      -- The fact creasing through the layers is built on: a face that turned
+      -- over shows the other side of the paper, and its motion is what says so
+      -- -- exactly, since a flat fold sends the up direction to plus or minus
+      -- itself and nothing in between. Read here rather than from the winding,
+      -- which is the file's word and not a measurement.
+      flat <- loadFixture "test/fixtures/diagonal-cp.fold"
+      case foldFrameWith flat of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right f -> do
+          let upward i = fmap (\m -> matApply (rigidLinear m) (V3 0 0 1)) (IM.lookup i (foldedPlacements f))
+          upward 0 `shouldSatisfy` maybe False (nearV3 (V3 0 0 1))
+          upward 1 `shouldSatisfy` maybe False (nearV3 (V3 0 0 (-1)))
+
+    it "gives one motion per face of the pattern it hands back" $ do
+      flat <- loadFixture "test/fixtures/quarter-fold.fold"
+      case foldFrameWith flat of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right f ->
+          IM.size (foldedPlacements f) `shouldBe` length (facesVertices (foldedPattern f))
+
+    it "hands back the cut pattern, not the frame that went in" $ do
+      -- The thing a caller would get wrong. unit-square.fold's creases cross in
+      -- the middle with no vertex there, and folding cuts them first -- so the
+      -- faces the motions are keyed by belong to a frame with a vertex the
+      -- input did not have. Writing a crease onto the input frame using these
+      -- face numbers would be writing onto a different sheet.
+      flat <- loadFixture "test/fixtures/unit-square.fold"
+      case foldFrameWith flat of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right f -> do
+          length (verticesCoords flat) `shouldBe` 8
+          length (verticesCoords (foldedPattern f)) `shouldBe` 9
+          -- And it is the flat one: the folded form is a separate frame.
+          map (take 2) (verticesCoords (foldedPattern f))
+            `shouldBe` map (take 2) (verticesCoords flat) <> [[0.5, 0.5]]

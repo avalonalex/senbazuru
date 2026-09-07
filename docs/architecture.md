@@ -85,7 +85,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
-| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform. |
+| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform, and the inverses that undo them. |
 | `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. Also picks a reader from a file's extension. |
@@ -102,7 +102,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures. |
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
-| `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form. |
+| `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form, and the rigid motion that placed each face. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. Reads orders; never computes them. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. Also `layerOrderFor`, the one policy for *which* orders a frame gets — its own, or solved, or none — shared by the SVG and 3D backends. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |

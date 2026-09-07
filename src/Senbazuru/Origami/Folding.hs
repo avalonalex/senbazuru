@@ -66,6 +66,8 @@
 -- difference between this module and a plausible-looking one.
 module Senbazuru.Origami.Folding
   ( foldFrame,
+    Folded (..),
+    foldFrameWith,
     FoldingError (..),
     renderFoldingError,
   )
@@ -205,7 +207,44 @@ renderFoldingError = \case
 -- this is no longer a crease pattern. Writing them out again would be stating
 -- something we have reason to think is false, which is worse than losing them.
 foldFrame :: Frame -> Either FoldingError Frame
-foldFrame fr0 = do
+foldFrame = fmap foldedFrame . foldFrameWith
+
+-- | A folded model, the pattern it was folded from, and the motion that placed
+-- each face.
+--
+-- 'foldFrame' answers the question this module was written for and throws the
+-- rest away. What it throws away is the interesting part for anything that has
+-- to run the fold /backwards/: each 'Rigid' says where a face of the flat sheet
+-- ended up, so 'Senbazuru.Geometry.Rigid.inverse' of it takes a point on the
+-- folded model back to the point of the sheet it came from.
+data Folded = Folded
+  { -- | The folded form, exactly what 'foldFrame' returns.
+    foldedFrame :: !Frame,
+    -- | __The pattern the transforms are against__, which is not the frame that
+    -- went in. Folding first hands the input to
+    -- 'Senbazuru.Fold.Crossings.withPlanarFaces', and cutting the crossings
+    -- adds vertices and re-traces the faces. So a face's transform is keyed by
+    -- its index into /this/ frame's faces, and it is this frame that a caller
+    -- wanting to write something back onto the sheet has to write onto.
+    --
+    -- Handing it back states that invariant. The alternative is every caller
+    -- calling @withPlanarFaces@ again itself and trusting that it lands on the
+    -- same frame, which is true today and is not a thing to build on.
+    foldedPattern :: !Frame,
+    -- | One motion per face, keyed by 'Senbazuru.Fold.Types.FaceId'. Every face
+    -- of 'foldedPattern' has one: a face the walk could not reach is
+    -- 'DisconnectedFace' rather than a gap here.
+    foldedPlacements :: !(IM.IntMap Rigid)
+  }
+  deriving stock (Eq, Show)
+
+-- | 'foldFrame', keeping the working.
+--
+-- The same computation; 'foldFrame' is this with two thirds of the answer
+-- dropped. Written this way round rather than as two functions so that there is
+-- one spanning walk and not two implementations of it that can drift.
+foldFrameWith :: Frame -> Either FoldingError Folded
+foldFrameWith fr0 = do
   asGiven <- first FrameGeometry (frameVertices fr0)
   -- Shared with the renderer and the flat-foldability checker, so that all
   -- three agree about what a file is. Asking the geometry alone would fold an
@@ -233,12 +272,17 @@ foldFrame fr0 = do
   transforms <- spanningWalk faces creases neighbours
   folded <- placeVertices (length flat) flat faces transforms
   pure
-    fr
-      { verticesCoords = [[x, y, z] | V3 x y z <- folded],
-        facesVertices = map faceVertexIds faces,
-        frameClasses = foldedClasses (frameClasses fr),
-        frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr),
-        frameExtras = mempty
+    Folded
+      { foldedFrame =
+          fr
+            { verticesCoords = [[x, y, z] | V3 x y z <- folded],
+              facesVertices = map faceVertexIds faces,
+              frameClasses = foldedClasses (frameClasses fr),
+              frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr),
+              frameExtras = mempty
+            },
+        foldedPattern = fr,
+        foldedPlacements = transforms
       }
 
 -- | @foldedForm@ in place of @creasePattern@, with everything else kept.
