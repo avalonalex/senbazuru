@@ -66,16 +66,23 @@
 -- layer solver carry, and it arrives here for free from
 -- 'Senbazuru.Origami.Flat.flatSheet'.
 --
--- __The line has to cross the model rather than stop on it.__ Both ends must be
--- clear of the paper, or on its edge; an end in the middle of a face would
--- crease that one layer part of the way across, and a crease that stops in the
--- middle of the paper divides nothing. Every end being outside is the usual
--- case and not a burden — a fold reaches the edge of the paper — but a line
--- given as "from the middle to the corner" is refused, by name, as
--- 'LineStopsOnTheModel'.
+-- __Neither end may be in the middle of a face.__ That layer would be creased
+-- only part of the way across, and a crease that stops in the middle of the
+-- paper divides nothing. Refused by name, as 'LineStopsOnTheModel'.
+--
+-- Note what that does /not/ say. The test is per face and not about the model:
+-- an end on the boundary of every face it touches is fine wherever it is,
+-- including well inside the model's silhouette, because every one of those
+-- layers is then creased edge to edge. Whether a given crease of a folded model
+-- is such a place depends on whether the layers' edges coincide there, and that
+-- varies more than it sounds. Of the folded crane's 248 face-edge midpoints,
+-- 120 are on the boundary of every face they touch and 128 are inside some
+-- other face and refused; the bird base splits 24 to 20; the quarter fold, whose
+-- four layers land exactly on top of one another, is 16 to nothing.
 module Senbazuru.Origami.ThroughLayers
   ( creaseThroughLayers,
     ThroughError (..),
+    LineEnd (..),
     renderThroughError,
   )
 where
@@ -103,6 +110,20 @@ import Senbazuru.Origami.Folding
     renderFoldingError,
   )
 
+-- | Which end of the drawn line a refusal is about.
+--
+-- Named rather than a 'Bool' because it reaches the user: being told an end is
+-- in the middle of a face is only half an instruction if they then have to
+-- guess which of the two to move.
+data LineEnd = FromEnd | ToEnd
+  deriving stock (Eq, Show)
+
+-- | The flag the user typed for this end.
+endFlag :: LineEnd -> Text
+endFlag = \case
+  FromEnd -> "--from"
+  ToEnd -> "--to"
+
 -- | Everything that stops a line drawn on a folded model becoming creases.
 data ThroughError
   = -- | The pattern could not be folded, so there is no model to draw on. The
@@ -126,17 +147,39 @@ data ThroughError
     -- the model's edges rather than across its paper. Both leave no face with a
     -- stretch of line properly inside it.
     NoPaperUnderTheLine
-  | -- | An end of the line is on the paper rather than clear of it, so the
-    -- crease that layer gets would stop in the middle of its own face. Carries
-    -- a face the end landed on.
+  | -- | An end of the line is inside one of the model's faces rather than on
+    -- that face's edge, so the crease that layer gets would stop in the middle
+    -- of its own paper. Carries which end, and a face it landed in.
     --
-    -- A crease that stops in the middle of the paper divides nothing, and the
-    -- face tracing refuses it a step later with a message about a vertex with
-    -- one crease at it. Asked here instead, because unlike
-    -- "Senbazuru.Fold.Creasing" -- which has no way to say where a sheet /is/,
-    -- and says so -- this does: the folded model is a list of convex panels and
-    -- the question is one predicate on each.
-    LineStopsOnTheModel !FaceId
+    -- Asked of each face and not of the model as a whole, which is the tempting
+    -- generalisation and is the wrong question. What has to be true is that
+    -- /every layer the line reaches is creased right across/, and that is a fact
+    -- about each face separately. An end well inside the model's silhouette is
+    -- perfectly good so long as it is on the boundary of every face it touches
+    -- — which is what happens where a fold has brought several layers' edges
+    -- into line, and is why the quarter fold accepts an end on any of its
+    -- creases.
+    --
+    -- It is not the common case, though, and saying so would be wrong: on the
+    -- folded crane 128 of 248 face-edge midpoints are inside some other face,
+    -- because one layer's crease crosses the middle of another layer's paper.
+    -- Those are refused, and correctly.
+    --
+    -- Unlike "Senbazuru.Fold.Creasing", which has no way to say where a sheet
+    -- /is/ and says so, this can ask: the folded model is a list of convex
+    -- panels and the question is one predicate on each.
+    LineStopsOnTheModel !LineEnd !FaceId
+  | -- | A face of the folded model has no motion recorded for it, so there is
+    -- no way to take its share of the line back to the sheet.
+    --
+    -- 'Senbazuru.Origami.Folding.Folded' promises this cannot happen — a face
+    -- the walk could not reach is a @DisconnectedFace@ and the fold fails
+    -- instead. It is refused here anyway because the alternative is not an
+    -- error but a /wrong answer/: skipping the face would crease some layers
+    -- and not others, hand back a pattern that folds into a different model,
+    -- and report success. An invariant held in another module is a fine reason
+    -- to expect something and a poor reason to assume it.
+    LayerNotPlaced !FaceId
   | -- | One of the lines the move worked out was refused when it was drawn on
     -- the sheet. Carries the face it came from, so the refusal can be traced
     -- back to a layer, and what "Senbazuru.Fold.Creasing" said.
@@ -160,11 +203,19 @@ renderThroughError = \case
   NoPaperUnderTheLine ->
     "no face of the folded model has this line across it, so there is nothing"
       <> " to crease: either it misses the model or it runs along its edges"
-  LineStopsOnTheModel (FaceId f) ->
-    "an end of the line is on the paper, over face "
+  LineStopsOnTheModel end (FaceId f) ->
+    endFlag end
+      <> " is inside face "
       <> tshow f
-      <> ", rather than clear of it -- so that layer would be creased only part"
-      <> " of the way across. A line has to cross the model, not stop on it"
+      <> " of the folded model rather than on that face's edge, so that layer"
+      <> " would be creased only part of the way across. Each layer the line"
+      <> " reaches has to be creased right across, so move this end onto an edge"
+      <> " or clear of the paper"
+  LayerNotPlaced (FaceId f) ->
+    "face "
+      <> tshow f
+      <> " of the folded model has no motion recorded for it, so there is no way"
+      <> " to say where its share of this line came from on the sheet"
   CannotCrease (FaceId f) err ->
     "the crease this line makes on the layer from face "
       <> tshow f
@@ -197,8 +248,18 @@ creaseThroughLayers from to assignment fr = do
   -- Asked of the ends before anything is clipped, because a clip cannot tell
   -- the difference: a line stopping halfway over the model comes back from
   -- 'clipSegment' looking exactly like one that crossed a narrow face.
-  case [panelId p | p <- sheetPanels sheet, end <- [from, to], stopsOn sheet p end] of
-    (f : _) -> Left (LineStopsOnTheModel f)
+  case [ (which, panelId p)
+         | (which, end) <- [(FromEnd, from), (ToEnd, to)],
+           p <- sheetPanels sheet,
+           stopsOn sheet p end
+       ] of
+    ((which, f) : _) -> Left (LineStopsOnTheModel which f)
+    [] -> Right ()
+  -- Asked once, up front, rather than folded into the per-face Maybe below,
+  -- where "no motion for this face" would be indistinguishable from "the line
+  -- misses this face" and would silently drop a layer.
+  case [panelId p | p <- sheetPanels sheet, not (hasPlacement (foldedPlacements folded) p)] of
+    (f : _) -> Left (LayerNotPlaced f)
     [] -> Right ()
   let shares = mapMaybe (shareFor sheet (foldedPlacements folded) assignment (from, to)) (sheetPanels sheet)
   when (null shares) (Left NoPaperUnderTheLine)
@@ -254,6 +315,10 @@ shareFor sheet placements assignment line panel = do
     -- again.
     ontoSheet back (V2 x y) = case applyRigid back (V3 x y (sheetPlane sheet)) of
       V3 x' y' _ -> V2 x' y'
+
+-- | Whether the fold recorded a motion for this face.
+hasPlacement :: IM.IntMap Rigid -> Panel -> Bool
+hasPlacement placements panel = IM.member (unFaceId (panelId panel)) placements
 
 -- | Whether an end of the drawn line came down on this face's paper.
 --

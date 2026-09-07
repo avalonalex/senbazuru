@@ -257,20 +257,33 @@ not the same as one per layer and is usually more: across the folded crane, the
 worst line crosses 56 of its 72 faces, where the deepest stack of paper found
 over any single point is 24 and the deepest layer number is 32.
 
-**Both ends have to be clear of the paper**, or on its edge, so that the line
-crosses the model rather than stopping on it. An end in the middle of a face
-would crease that one layer part of the way across, and a crease that stops in
-the middle of the paper divides nothing:
+**Neither end may be in the middle of a face**, because that layer would then be
+creased only part of the way across, and a crease that stops in the middle of
+the paper divides nothing:
 
 ```console
 $ senbazuru crease examples/bird-base.cp --folded --from=-200,150 --to=-100,150 --valley
-senbazuru: cannot crease examples/bird-base.cp: an end of the line is on the paper,
-over face 12, rather than clear of it -- so that layer would be creased only part of
-the way across. A line has to cross the model, not stop on it
+senbazuru: cannot crease examples/bird-base.cp: --from is inside face 12 of the folded
+model rather than on that face's edge, so that layer would be creased only part of the
+way across. Each layer the line reaches has to be creased right across, so move this
+end onto an edge or clear of the paper
 ```
 
-Moving that first end clear of the model creases the bird base through all
-fourteen of its layers, and the result folds:
+An end *on* a face's edge is fine, wherever it is — including well inside the
+model's outline. What matters is only that every layer the line reaches gets
+creased right across, and an end sitting on the edge of each face it touches
+does exactly that. This is why a line can be drawn from one crease of the
+quarter fold to another.
+
+How often a crease of a folded model is such a place depends on whether the
+layers' edges line up there, and that varies a lot. Of the folded crane's 248
+face-edge midpoints, 120 sit on the edge of every face they touch; the other 128
+are in the middle of some other layer's paper and are refused. The bird base
+splits 24 to 20. The quarter fold, whose four layers land exactly on top of one
+another, is 16 to nothing.
+
+Moving that end off the paper creases the bird base through all fourteen of its
+layers, and the result folds:
 
 ```bash
 stack run -- crease examples/bird-base.cp --folded --from=-300,150 --to=-100,150 --valley -o bird.fold
