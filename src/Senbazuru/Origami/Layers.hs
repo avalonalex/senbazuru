@@ -112,9 +112,15 @@ paintOrder towardsViewer faces orders =
 layerDepths :: V3 -> [Face] -> [FaceOrder] -> Either FoldError [(FaceId, Int)]
 layerDepths towardsViewer faces orders = do
   constraints <- concat <$> traverse drawnBefore orders
-  -- Deduplicated before counting anything. A file may say the same thing twice,
-  -- and the two orderings [f, g, +1] and [g, f, -1] are one constraint written
-  -- two ways -- both legal, and both arriving here as the same pair. Kahn's
+  -- Deduplicated before counting anything, because a file may say the same
+  -- thing twice and both copies arrive here as the same pair.
+  --
+  -- Note that [f, g, +1] and [g, f, -1] are /not/ reliably one constraint
+  -- written two ways, which is the tempting reading. Each sign is read against
+  -- the second face's normal, so the two forms agree only when f and g face the
+  -- same way -- and in a flat fold half the faces have turned over. Where they
+  -- face opposite ways the two forms are opposite claims, and a file writing
+  -- both believing them synonymous states a contradiction. Kahn's
   -- algorithm counts edges, so a repeated edge is decremented once per copy but
   -- frees its target once per copy too: the face comes out of the sort more than
   -- once, and the extra copies can pad the output enough that a genuine cycle

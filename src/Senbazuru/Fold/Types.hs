@@ -79,6 +79,7 @@ module Senbazuru.Fold.Types
     FaceOrder (..),
     Stacking (..),
     stackingSign,
+    otherSide,
 
     -- * The keys senbazuru understands
     fileKeys,
@@ -335,6 +336,23 @@ stackingSign = \case
   Above -> 1
   Below -> -1
   Unordered -> 0
+
+-- | The same relation read against the opposite normal.
+--
+-- What a sign has to become when the face it is read against — @g@, the second
+-- of the triple — has its winding turned round, since a normal is defined by
+-- that winding. "Senbazuru.Origami.Folding" is the one transform that rewrites
+-- a winding and so the one caller, but the swap belongs beside the type rather
+-- than inside it: the next move that turns a model over will want the same
+-- answer, and two copies would sooner or later disagree about 'Unordered'.
+--
+-- 'Unordered' has no opposite. Two faces that do not overlap do not start to
+-- because one of them was written the other way round.
+otherSide :: Stacking -> Stacking
+otherSide = \case
+  Above -> Below
+  Below -> Above
+  Unordered -> Unordered
 
 -- | Parse an @edges_assignment@ code.
 --

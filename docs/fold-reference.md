@@ -116,7 +116,14 @@ against a face's **normal**, which is *defined* by that face's winding — so th
 signs and the windings in a file were written against each other. A file with
 backwards windings has backwards normals and backwards signs, and the two
 cancel; recomputing the winding would uncancel them and turn the model
-inside out. Here the file's winding is taken exactly as written.
+inside out. Here the file's winding is taken exactly as written — by everything
+that *reads* a frame.
+
+Folding is the exception, because it rewrites the winding on purpose: it needs
+the true one to decide which way each fold turns, and writes it out so the
+result is a frame whose winding can be trusted. Having moved the winding it
+moves the signs with it, swapping `Above` and `Below` on every entry whose
+**second** face was turned round, so that the file still says what it said.
 
 ## Layer ordering
 

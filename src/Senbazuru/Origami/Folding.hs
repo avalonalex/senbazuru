@@ -103,8 +103,8 @@ import Senbazuru.Fold.Types
     FaceId (..),
     FaceOrder (..),
     Frame (..),
-    Stacking (..),
     VertexId (..),
+    otherSide,
   )
 import Senbazuru.Geometry.Rigid (Rigid, after, applyRigid, identity, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
@@ -193,7 +193,8 @@ renderFoldingError = \case
 -- Two things about the graph change, and the second is the price of the first.
 --
 -- Every face comes back wound __counterclockwise as it lay in the crease
--- pattern__, whichever way the file listed it. That is the winding FOLD asks for, and it is not cosmetic. A
+-- pattern__, whichever way the file listed it. That is the winding FOLD asks
+-- for, and it is not cosmetic. A
 -- face's winding defines its normal, and the normal is how a folded form says
 -- which side of the paper is which: "Senbazuru.Origami.Stacking" reads it to
 -- decide which face a mountain fold puts underneath, and @faceOrders@ signs
@@ -250,8 +251,15 @@ data Folded = Folded
     -- calling @withPlanarFaces@ again itself and trusting that it lands on the
     -- same frame, which is true today and is not a thing to build on.
     --
-    -- One thing it does /not/ promise: that face @i@'s corners are listed in the
-    -- same order here as in 'foldedFrame'. Folding writes its faces
+    -- Two things it does /not/ promise. Its @faceOrders@ are the file's, read
+    -- against the file's winding, where 'foldedFrame'\'s have been re-signed to
+    -- match the counterclockwise rings it writes — so the two frames can carry
+    -- opposite signs for the same relation, and each is right about its own
+    -- faces. Reading faces from one and orders from the other is the mistake to
+    -- avoid; take both from 'foldedFrame'.
+    --
+    -- Nor does it promise that face @i@'s corners are listed in the same order
+    -- here as in 'foldedFrame'. Folding writes its faces
     -- counterclockwise as measured on the pattern, so a face the file listed
     -- clockwise has its ring reversed on the way out. The two frames agree about
     -- which vertices a face has and about their ids, not about where the ring
@@ -297,7 +305,7 @@ foldFrameWith fr0 = do
   let faces = map fst turned
       -- The faces whose rings this just reversed, by id. Every @faceOrders@
       -- sign written against one of them now reads backwards.
-      rewound = IS.fromList [unFaceId (faceId f) | (f, True) <- turned]
+      rewound = IS.fromList [unFaceId (faceId f) | (f, Rewound) <- turned]
   when (null faces) (Left NoFaces)
   creases <- creaseIndex fr
   neighbours <- faceNeighbours faces
@@ -339,6 +347,15 @@ foldedAttributes solid attrs
   where
     without = filter (`notElem` ["2D", "3D"]) attrs
 
+-- | Whether a face's corners had to be turned round to run counterclockwise.
+--
+-- A 'Bool' would do and would be worse. Which way round it reads decides which
+-- @faceOrders@ signs get flipped, so a caller that took @True@ for "was already
+-- counterclockwise" would invert exactly the wrong faces — quietly, and in the
+-- same way the bug this exists to fix did.
+data Winding = AsGiven | Rewound
+  deriving stock (Eq, Show)
+
 -- | Put a face's corners in counterclockwise order as seen from @+z@, and say
 -- whether that meant turning them round.
 --
@@ -348,20 +365,20 @@ foldedAttributes solid attrs
 -- file whose winding disagrees with the specification would fold half its faces
 -- the wrong way.
 --
--- The 'Bool' is what 'reorient' needs. A winding is not private to its face:
--- @faceOrders@ signs are written against it, so moving one without the other
--- changes what the file says.
-orientCcw :: Face -> Either FoldingError (Face, Bool)
+-- The 'Winding' is what 'reorient' needs. A winding is not private to its
+-- face: @faceOrders@ signs are written against it, so moving one without the
+-- other changes what the file says.
+orientCcw :: Face -> Either FoldingError (Face, Winding)
 orientCcw f
   | abs area <= negligible = Left (DegenerateFace (faceId f))
-  | area > 0 = Right (f, False)
+  | area > 0 = Right (f, AsGiven)
   | otherwise =
       Right
         ( f
             { faceVertexIds = reverse (faceVertexIds f),
               faceCorners = reverse (faceCorners f)
             },
-          True
+          Rewound
         )
   where
     -- Twice the signed area. Positive is counterclockwise with y upwards, which
@@ -400,15 +417,8 @@ orientCcw f
 reorient :: IS.IntSet -> FaceOrder -> FaceOrder
 reorient rewound o
   | unFaceId (orderRelativeTo o) `IS.member` rewound =
-      o {orderStacking = theOtherSide (orderStacking o)}
+      o {orderStacking = otherSide (orderStacking o)}
   | otherwise = o
-  where
-    theOtherSide = \case
-      Above -> Below
-      Below -> Above
-      -- Two faces that do not overlap do not start to because one of them was
-      -- written the other way round.
-      Unordered -> Unordered
 
 -- | Every crease by the pair of vertices it joins, with its fold angle in
 -- radians.

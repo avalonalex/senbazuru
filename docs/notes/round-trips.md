@@ -74,6 +74,14 @@ a crease pattern's page, and the result is not a crease pattern. Writing either
 one out again would be stating something we have reason to believe is false,
 which is a worse outcome than losing it.
 
+`faceOrders` is the one key it neither keeps nor drops, but *rewrites*, and the
+distinction is the point. Folding writes every face counterclockwise, and a
+`faceOrders` sign is read against the second face's normal, which that face's
+winding defines — so moving the winding without the sign would leave the file
+saying the opposite of what it said. Here the transform knows exactly what the
+key means, so it can carry the meaning across rather than choosing between
+keeping a value it has invalidated and losing one it understands.
+
 The rule that falls out: **preserve at the boundary, discard at the transform.**
 The boundary cannot judge; the transform is the only thing that knows what it
 broke.
