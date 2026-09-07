@@ -11,10 +11,8 @@
 -- different model with nothing to show for it. So every assertion here names
 -- the assignment.
 --
--- __The quarter fold__ is the same question at four layers, where two of each
--- kind coming back is a pattern rather than a coin toss that happened to land
--- right — and where it is visible that the kinds are decided quarter by quarter
--- rather than alternating round the middle.
+-- __The quarter fold__ is the same question at four layers, where the kinds
+-- alternating is a pattern rather than a coin toss that happened to land right.
 module Senbazuru.Origami.ThroughLayersSpec (spec) where
 
 import Data.ByteString qualified as BS
@@ -65,6 +63,33 @@ folds fr =
     at (VertexId i) = case drop i (verticesCoords fr) of
       ((x : y : _) : _) -> (rounded x, rounded y)
       _ -> (0, 0)
+
+-- | The creases the move drew, as against the ones that were already there.
+--
+-- Neither a difference of counts nor a set difference will do, and both are
+-- tempting. Creasing splits every crease the new lines cross, so a crease the
+-- file had arrives as two shorter ones -- gone from the result as written, and
+-- present as two pieces that were not in the input either. Counting those as
+-- drawn is what let "a single valley comes back as both kinds" pass on the
+-- crane, whose own 58 mountains and 41 valleys answer it before the move runs.
+--
+-- So a crease of the result is old exactly when it lies along one the pattern
+-- already had, of the same kind, and new otherwise.
+drawn :: Frame -> Frame -> [((Double, Double), (Double, Double), Assignment)]
+drawn before after =
+  [c | c <- folds after, not (any (holds c) (folds before))]
+  where
+    holds (p, q, a) (r, s, b) = a == b && within r s p && within r s q
+    -- On the line through r and s, and between them. The tolerance is loose
+    -- next to what it has to tell apart: a point genuinely off one of these
+    -- creases is a tenth of the sheet away, which is a cross product of
+    -- thousands on a .cp's coordinates and hundredths on a unit square.
+    within (rx, ry) (sx, sy) (px, py) =
+      abs ((sx - rx) * (py - ry) - (sy - ry) * (px - rx)) < 1e-6
+        && min rx sx - 1e-9 <= px
+        && px <= max rx sx + 1e-9
+        && min ry sy - 1e-9 <= py
+        && py <= max ry sy + 1e-9
 
 -- | Rounded, so a coordinate landing on 2e-16 compares as the zero it is.
 rounded :: Double -> Double
@@ -123,7 +148,8 @@ spec = do
       -- on the folded quarter reaches all four, and they are the four quarters
       -- of the sheet reflected about x = 0.5 and y = 0.5 in turn: two land at
       -- x = 0.6 and two at x = 0.4, and the kind follows whether that quarter
-      -- turned over an odd or an even number of times on the way in.
+      -- turned over an odd or an even number of times on the way in. Here that
+      -- alternates, because the four quarters are a ring joined by four folds.
       flat <- fixture "quarter-fold.fold"
       out <- creased flat (0.6, 0) (0.6, 0.5) Valley
       -- The drawn line was vertical and every fold it was reflected in is
@@ -156,12 +182,16 @@ spec = do
       -- count -- that is a fact about where the line was drawn -- but that a
       -- single request for a valley comes back as both kinds, and that a
       -- pattern with that many new creases in it still folds and stacks.
+      --
+      -- Asked of the creases this move drew and not of the result, which still
+      -- holds the crane's own 58 mountains and 41 valleys: against those, "both
+      -- kinds came back" is true before the move runs.
       flat <- fixture "crane.fold"
       out <- creased flat (0.66, 0.25) (1.34, 0.25) Valley
-      let added = length (folds out) - length (folds flat)
-      added `shouldSatisfy` (> 0)
-      map (\(_, _, a) -> a) (folds out) `shouldSatisfy` elem Mountain
-      map (\(_, _, a) -> a) (folds out) `shouldSatisfy` elem Valley
+      let kinds = [a | (_, _, a) <- drawn flat out]
+      length kinds `shouldSatisfy` (> 8)
+      kinds `shouldSatisfy` elem Mountain
+      kinds `shouldSatisfy` elem Valley
       case foldFrame out of
         Left err -> expectationFailure ("expected a fold, got " <> show err)
         Right f -> case layerOrderFor defaultBudget f of
@@ -177,21 +207,34 @@ spec = do
       -- exercised for the new verb.
       flat <- fixture "bird-base.cp"
       out <- creased flat (-300, 150) (-100, 150) Valley
-      let added = length (folds out) - length (folds flat)
-      added `shouldSatisfy` (>= 14)
+      -- One crease per layer the line reaches, counted as the creases that were
+      -- not there before. A plain difference of lengths would also count the
+      -- halves of every crease the new ones cut, and would pass on eight layers.
+      length (drawn flat out) `shouldBe` 14
       case foldFrame out of
         Left err -> expectationFailure ("expected a fold, got " <> show err)
         Right f -> length (facesVertices f) `shouldBe` 28
 
   describe "lines it will not crease along" $ do
-    it "refuses a model with paper still in the air" $ do
-      -- A line drawn on the page of such a model is a ray and not a point:
-      -- there is no one place on the paper it came from. simple.fold is
-      -- already a folded form, so it is refused a step earlier still -- there
-      -- is no pattern under it to write anything onto.
+    it "refuses a file that is already a folded form" $ do
+      -- Not the same refusal as the one below, though it reads like it. There
+      -- is no pattern under this file to write anything onto, so it never gets
+      -- as far as asking whether the model is flat.
       folded <- fixture "simple.fold"
       case creaseThroughLayers (V2 0 0) (V2 1 1) Valley folded of
         Left (CannotFold _) -> pure ()
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "refuses a model with paper still in the air" $ do
+      -- A line drawn on the page of such a model is a ray and not a point:
+      -- there is no one place on the paper it came from. Reached by taking the
+      -- diagonal fold and folding it half way, which no fixture does -- and
+      -- without this the whole PaperStillInTheAir branch could be deleted with
+      -- the suite still green.
+      flat <- fixture "diagonal-cp.fold"
+      let halfWay = flat {edgesFoldAngle = map (\a -> if a == 180 then 90 else a) (edgesFoldAngle flat)}
+      case creaseThroughLayers (V2 0.2 0.2) (V2 0.8 0.2) Valley halfWay of
+        Left (PaperStillInTheAir dz) -> dz `shouldSatisfy` (> 0)
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
 
     it "refuses a line that misses the model" $ do
@@ -218,14 +261,15 @@ spec = do
         Left (LineStopsOnTheModel _) -> pure ()
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
 
-    it "allows an end that lands exactly on the model's edge" $ do
-      -- The other side of that test: an end on the silhouette is where a fold
-      -- reaches the edge of the paper, which is most of them. If the clearance
-      -- were the wrong way round this would be refused and almost nothing would
-      -- work.
-      flat <- fixture "diagonal-cp.fold"
-      out <- creased flat (0, 0.5) (0.5, 0) Valley
-      length (folds out) `shouldBe` 3
+    it "allows an end that lands on an inside crease of the model" $ do
+      -- The other side of that test, and the one the clearance actually has to
+      -- get right. On the folded quarter fold the line from (0.6, 0) up to the
+      -- middle of the top edge ends on a crease rather than out in the open, so
+      -- it is on the boundary of a face and not inside one. That has to be
+      -- allowed: the crease it makes runs to the edge of its layer's paper.
+      flat <- fixture "quarter-fold.fold"
+      out <- creased flat (0.6, 0) (0.6, 0.5) Valley
+      length (drawn flat out) `shouldBe` 4
 
     it "refuses two ends that are the same point" $ do
       flat <- fixture "diagonal-cp.fold"

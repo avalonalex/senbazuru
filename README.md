@@ -190,8 +190,8 @@ issues are the detail.
    a book gives its instructions on paper that is *already folded*, and
    `crease --folded` draws a line on the model and writes the creases it makes
    on the sheet — one per face it crosses, each of the kind that layer's own way
-   up asks for, so asking for a single valley comes back as a mix of mountains
-   and valleys. Not a sequence *solver* — see below.
+   up asks for, so asking for a single valley across four layers comes back as
+   mountain, valley, mountain, valley. Not a sequence *solver* — see below.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
 2. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**

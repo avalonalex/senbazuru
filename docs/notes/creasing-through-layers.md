@@ -27,23 +27,39 @@ a mountain on the side the pattern is drawn on.
 
 The other half never turned over, so its crease is a valley on both counts.
 
+## The rule
+
+Which way up a layer lies flips across **every crease the paper actually folds
+along**, and stays the same across every crease it does not — a flat (`F`) or
+unassigned (`U`) line, where the paper is continuous.
+
+That falls out of how folding places the faces. Each face is put where it is by
+one rigid motion, and the motion for a face across a crease is the neighbour's
+followed by a turn about that crease's line, which lies in the plane of the
+sheet. A half turn about a line in the plane sends the up direction to exactly
+its opposite; a turn of nothing leaves it alone. So up-ness is the parity of the
+folds between a face and whichever face was held still.
+
 ## More layers
 
-The rule is per layer, so it follows how each layer got where it is rather than
-alternating for its own sake. Fold a unit square into quarters — the four creases
-running from the middle to the four edge midpoints — and the paper collapses into
-the corner square with `x` between `0.5` and `1` and `y` between `0` and `0.5`.
-Crease that four-layer packet with one vertical line at `x = 0.6`. Opening it out
-gives four creases, two at `x = 0.6` and two at `x = 0.4`, and their kinds are:
+Fold a unit square into quarters — the four creases running from the middle to
+the four edge midpoints — and the paper collapses into the corner square with
+`x` between `0.5` and `1` and `y` between `0` and `0.5`. Crease that four-layer
+packet with one vertical line at `x = 0.6`. Opening it out gives four creases,
+two at `x = 0.6` and two at `x = 0.4`:
 
     x = 0.4, y below 0.5   mountain        x = 0.6, y below 0.5   valley
     x = 0.4, y above 0.5   valley          x = 0.6, y above 0.5   mountain
 
-Two of each, and not in a ring: the kind is decided quarter by quarter, by
-whether that quarter of the sheet turned over an odd or an even number of times
-on its way into the packet. Two of the four are face up when the crease is made
-and two are face down, and reading round the middle is the wrong way to look for
-the pattern.
+The four quarters form a ring joined by four folds, so by the rule above they
+alternate — and they do so **both ways you can read them**. Round the middle,
+starting bottom-right and going anticlockwise: valley, mountain, valley,
+mountain. And through the stack, bottom sheet to top: mountain, valley,
+mountain, valley. Both were measured, not reasoned about.
+
+The ring is what makes those two readings agree here, and it is a property of
+this pattern rather than of folding. What is general is the parity rule: count
+the folds on the way to a layer.
 
 ## How a program knows
 

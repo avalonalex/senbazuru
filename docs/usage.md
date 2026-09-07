@@ -247,9 +247,10 @@ That is not a bug and it is what paper does. Every layer of a packet creases the
 same physical way, but a flap folded over is upside down, so the same fold is a
 valley where the sheet is face up and a mountain where it is face down. Fold a
 square in half, crease the packet, unfold, and you have one of each. Ask for a
-valley across the quarter fold, which is four layers, and two of the four come
-back mountains and two valleys, decided by how many times each quarter of the
-sheet turned over on its way into the packet.
+valley across the quarter fold, which is four layers, and the kinds alternate
+through the stack: mountain, valley, mountain, valley. Which way up a layer lies
+flips across every crease the paper actually folds along, so it is a parity count
+of the folds between that layer and whichever face was held still.
 
 A line drawn on a folded model is **one crease per face it crosses**, which is
 not the same as one per layer and is usually more: across the folded crane, the

@@ -293,8 +293,10 @@ are not contributors can find it, and so there is only one copy to keep true.
   layer of a packet creases the same physical way, but alternate layers are
   upside down, so a fold that opens towards the reader is a valley on the faces
   lying top-up and a mountain on the ones lying top-down. Ask
-  `Origami.ThroughLayers` for a valley across the quarter fold and two of the
-  four creases come back mountains. Passing the caller's assignment through unchanged gives
+  `Origami.ThroughLayers` for a valley across the quarter fold and the four
+  creases come back M, V, M, V through the stack. Which way up a face lies flips
+  across every crease the paper folds along and stays the same across every one
+  it does not, so it is a parity count of the folds back to the root face. Passing the caller's assignment through unchanged gives
   every position right and every kind wrong, which is a file that looks fine
   and folds into a different model.
 - **Which way up a face ended is `M · ẑ`, not the winding.** A flat fold sends

@@ -555,11 +555,18 @@ is the interesting one**, and it is not a bug. Every layer of a packet creases
 the same physical way, but a flap folded over is upside down, so a fold that
 opens towards you is a valley where the sheet is face up and a mountain where it
 is face down. Fold a square in half, crease the packet, unfold it, and there is
-one of each. Do the same across the quarter fold, which is four layers, and two
-of the four come back mountains and two valleys — decided quarter by quarter, by
-how many times each turned over on its way into the packet. Passing the
-requested assignment through unchanged would put every crease in the right place
-and give a file that folds into a different model.
+one of each. Do the same across the quarter fold, which is four layers, and the
+kinds alternate: mountain, valley, mountain, valley through the stack, and the
+same round the middle of the sheet. Passing the requested assignment through
+unchanged would put every crease in the right place and give a file that folds
+into a different model.
+
+The rule underneath is a parity count. Which way up a layer lies flips across
+every crease the paper actually folds along and stays the same across every one
+it does not, so it is the number of folds between that layer and whichever face
+was held still. The quarter fold's four quarters happen to form a ring joined by
+four folds, which is why its kinds alternate however you read them; a model
+without that symmetry just has a parity per layer.
 
 Which way up a layer ended is not read from the file. Each face of a folded
 model carries the rigid motion that placed it, and where that motion sends the
