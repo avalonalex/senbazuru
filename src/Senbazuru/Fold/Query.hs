@@ -42,6 +42,7 @@ import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showFFloat)
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
@@ -226,195 +227,198 @@ data FoldError
     ArrayLengthMismatch Text Int Text Int
   deriving stock (Eq, Show)
 
--- | A human-readable rendering of a 'FoldError', suitable for a CLI message.
-renderFoldError :: FoldError -> Text
-renderFoldError = \case
-  NoVertices ->
-    "frame has no vertices_coords, so there is nothing to draw"
-  VertexCoordTooShort (VertexId v) n ->
-    "vertex "
-      <> tshow v
-      <> " has "
-      <> tshow n
-      <> " coordinate(s); at least 2 (x, y) are required"
-  VertexIndexOutOfRange (EdgeId e) (VertexId v) n ->
-    "edge " <> tshow e <> " refers to vertex " <> tshow v <> ", but " <> validIds n
-  FaceVertexOutOfRange (FaceId f) (VertexId v) n ->
-    "face " <> tshow f <> " refers to vertex " <> tshow v <> ", but " <> validIds n
-  FaceTooFewCorners (FaceId f) n ->
-    "face "
-      <> tshow f
-      <> " has "
-      <> tshow n
-      <> " corner(s); a face needs at least 3 to enclose any paper"
-  FaceRingClosed (FaceId f) ->
-    "face "
-      <> tshow f
-      <> " ends on the corner it starts with; faces_vertices lists each corner"
-      <> " once and the ring closes on its own"
-  FaceOrderOutOfRange (FaceId f) n ->
-    "faceOrders refers to face "
-      <> tshow f
-      <> ", but there "
-      <> (if n == 1 then "is 1 face" else "are " <> tshow n <> " faces")
-  FaceOrderSelf (FaceId f) ->
-    "faceOrders stacks face " <> tshow f <> " against itself"
-  FaceWithoutNormal (FaceId f) ->
-    "faceOrders stacks against face "
-      <> tshow f
-      <> ", which has no area and so no normal for above and below to mean"
-      <> " anything against"
-  ImpossibleStacking (FaceId f) ->
-    "the faceOrders run in a circle through face "
-      <> tshow f
-      <> ", and painting faces one after another needs an order with no circle"
-      <> " in it"
-  ContradictoryStacking (FaceId f) (FaceId g) ->
-    "the faceOrders say face "
-      <> tshow f
-      <> " is above face "
-      <> tshow g
-      <> " and also that face "
-      <> tshow g
-      <> " is above face "
-      <> tshow f
-  NonManifoldEdge (VertexId a) (VertexId b) n ->
-    "the crease from vertex "
-      <> tshow a
-      <> " to "
-      <> tshow b
-      <> " has "
-      <> tshow n
-      <> " faces along it; a sheet of paper has at most two"
-  WindingClash (FaceId f) (FaceId g) ->
-    "faces "
-      <> tshow f
-      <> " and "
-      <> tshow g
-      <> " share an edge, but their faces_vertices wind so that the same side"
-      <> " of the paper faces both ways at once"
-  Unstackable fs ->
-    "the layers cannot be stacked without the paper passing through itself;"
-      <> " the constraint between faces "
-      <> T.intercalate ", " (map (\(FaceId f) -> tshow f) fs)
-      <> " is the one that could not be met"
-  GaveUpStacking guesses ->
-    "gave up looking for a layer order after "
-      <> tshow guesses
-      <> (if guesses == 1 then " guess" else " guesses")
-      <> " in one part of the model, so whether it has one is not known"
-  SheetIsFolded ->
-    "this frame is a folded form, so its paper overlaps itself and the regions"
-      <> " between its creases are not its faces; faces can only be traced from"
-      <> " a crease pattern"
-  EdgeWithoutLength (EdgeId e) ->
-    "edge " <> tshow e <> " starts and ends at the same point"
-  CreaseEndMeetsNothing _ (V2 x y) ->
-    "the end at ("
-      <> coord x
-      <> ", "
-      <> coord y
-      <> ") does not meet any crease or edge the pattern already has, so the"
-      <> " crease would stop there and divide nothing"
-  CreaseRepeated (V2 x0 y0) (V2 x1 y1) ->
-    "two of the creases asked for run between ("
-      <> coord x0
-      <> ", "
-      <> coord y0
-      <> ") and ("
-      <> coord x1
-      <> ", "
-      <> coord y1
-      <> "), so one of them is a line already being drawn"
-  CreaseWithoutLength (V2 x0 y0) (V2 x1 y1) ->
-    "the crease from ("
-      <> coord x0
-      <> ", "
-      <> coord y0
-      <> ") to ("
-      <> coord x1
-      <> ", "
-      <> coord y1
-      <> ") has its two ends at the same point, so it names no line to fold"
-      <> " about"
-  EdgeRepeated (EdgeId a) (EdgeId b) ->
-    "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
-  VertexTooFewCreases (VertexId v) n
-    | n == 0 ->
-        "vertex "
-          <> tshow v
-          <> " is not an end of any crease, so it is not a corner of anything"
-    | otherwise ->
-        "vertex "
-          <> tshow v
-          <> " has "
-          <> (if n == 1 then "1 crease" else tshow n <> " creases")
-          <> " at it; a crease that stops in the middle of the paper does not"
-          <> " divide it, so there is no face to trace round"
-  VertexInsideEdge (VertexId v) (EdgeId e) ->
-    "vertex "
-      <> tshow v
-      <> " lies on edge "
-      <> tshow e
-      <> ", which does not end there; the edge needs splitting in two at it"
-  EdgesCross (EdgeId a) (EdgeId b) ->
-    "edges "
-      <> tshow a
-      <> " and "
-      <> tshow b
-      <> " cross with no vertex where they meet, so these creases are not a"
-      <> " planar graph and the regions between them are not faces"
-  EdgesOverlap (EdgeId a) (EdgeId b) ->
-    "edges "
-      <> tshow a
-      <> " and "
-      <> tshow b
-      <> " lie along the same line and share a stretch of it, so along that"
-      <> " stretch the paper has two ways to fold"
-  SheetInPieces (VertexId a) (VertexId b) ->
-    "no chain of creases joins vertex "
-      <> tshow a
-      <> " to vertex "
-      <> tshow b
-      <> ", so this is more than one sheet of paper"
-  CreaseBridge (VertexId a) (VertexId b) ->
-    "the crease from vertex "
-      <> tshow a
-      <> " to "
-      <> tshow b
-      <> " has the same paper on both sides of it, so the region around it is"
-      <> " not a polygon"
-  FramesDisagree what i ->
-    "these two frames are not two states of one model: their "
-      <> what
-      <> " first differ at index "
-      <> tshow i
-  FramesDiffer what a b ->
-    "these two frames are not two states of one model: one has "
-      <> tshow a
-      <> " "
-      <> what
-      <> " and the other has "
-      <> tshow b
-  ArrayLengthMismatch a na b nb ->
-    a
-      <> " has "
-      <> tshow na
-      <> " entries but "
-      <> b
-      <> " has "
-      <> tshow nb
-      <> "; FOLD requires parallel arrays to line up"
-  where
-    -- Spelled out for the empty case, which would otherwise read "valid ids are
-    -- 0..-1" -- a backwards interval, which is not a range and not a hint.
-    validIds 0 = "vertices_coords is empty"
-    validIds n =
-      "vertices_coords only has "
+instance Explain FoldError where
+  explain = \case
+    NoVertices ->
+      "frame has no vertices_coords, so there is nothing to draw"
+    VertexCoordTooShort (VertexId v) n ->
+      "vertex "
+        <> tshow v
+        <> " has "
         <> tshow n
-        <> " entries (valid ids are 0.."
-        <> tshow (n - 1)
-        <> ")"
+        <> " coordinate(s); at least 2 (x, y) are required"
+    VertexIndexOutOfRange (EdgeId e) (VertexId v) n ->
+      "edge " <> tshow e <> " refers to vertex " <> tshow v <> ", but " <> validIds n
+    FaceVertexOutOfRange (FaceId f) (VertexId v) n ->
+      "face " <> tshow f <> " refers to vertex " <> tshow v <> ", but " <> validIds n
+    FaceTooFewCorners (FaceId f) n ->
+      "face "
+        <> tshow f
+        <> " has "
+        <> tshow n
+        <> " corner(s); a face needs at least 3 to enclose any paper"
+    FaceRingClosed (FaceId f) ->
+      "face "
+        <> tshow f
+        <> " ends on the corner it starts with; faces_vertices lists each corner"
+        <> " once and the ring closes on its own"
+    FaceOrderOutOfRange (FaceId f) n ->
+      "faceOrders refers to face "
+        <> tshow f
+        <> ", but there "
+        <> (if n == 1 then "is 1 face" else "are " <> tshow n <> " faces")
+    FaceOrderSelf (FaceId f) ->
+      "faceOrders stacks face " <> tshow f <> " against itself"
+    FaceWithoutNormal (FaceId f) ->
+      "faceOrders stacks against face "
+        <> tshow f
+        <> ", which has no area and so no normal for above and below to mean"
+        <> " anything against"
+    ImpossibleStacking (FaceId f) ->
+      "the faceOrders run in a circle through face "
+        <> tshow f
+        <> ", and painting faces one after another needs an order with no circle"
+        <> " in it"
+    ContradictoryStacking (FaceId f) (FaceId g) ->
+      "the faceOrders say face "
+        <> tshow f
+        <> " is above face "
+        <> tshow g
+        <> " and also that face "
+        <> tshow g
+        <> " is above face "
+        <> tshow f
+    NonManifoldEdge (VertexId a) (VertexId b) n ->
+      "the crease from vertex "
+        <> tshow a
+        <> " to "
+        <> tshow b
+        <> " has "
+        <> tshow n
+        <> " faces along it; a sheet of paper has at most two"
+    WindingClash (FaceId f) (FaceId g) ->
+      "faces "
+        <> tshow f
+        <> " and "
+        <> tshow g
+        <> " share an edge, but their faces_vertices wind so that the same side"
+        <> " of the paper faces both ways at once"
+    Unstackable fs ->
+      "the layers cannot be stacked without the paper passing through itself;"
+        <> " the constraint between faces "
+        <> T.intercalate ", " (map (\(FaceId f) -> tshow f) fs)
+        <> " is the one that could not be met"
+    GaveUpStacking guesses ->
+      "gave up looking for a layer order after "
+        <> tshow guesses
+        <> (if guesses == 1 then " guess" else " guesses")
+        <> " in one part of the model, so whether it has one is not known"
+    SheetIsFolded ->
+      "this frame is a folded form, so its paper overlaps itself and the regions"
+        <> " between its creases are not its faces; faces can only be traced from"
+        <> " a crease pattern"
+    EdgeWithoutLength (EdgeId e) ->
+      "edge " <> tshow e <> " starts and ends at the same point"
+    CreaseEndMeetsNothing _ (V2 x y) ->
+      "the end at ("
+        <> coord x
+        <> ", "
+        <> coord y
+        <> ") does not meet any crease or edge the pattern already has, so the"
+        <> " crease would stop there and divide nothing"
+    CreaseRepeated (V2 x0 y0) (V2 x1 y1) ->
+      "two of the creases asked for run between ("
+        <> coord x0
+        <> ", "
+        <> coord y0
+        <> ") and ("
+        <> coord x1
+        <> ", "
+        <> coord y1
+        <> "), so one of them is a line already being drawn"
+    CreaseWithoutLength (V2 x0 y0) (V2 x1 y1) ->
+      "the crease from ("
+        <> coord x0
+        <> ", "
+        <> coord y0
+        <> ") to ("
+        <> coord x1
+        <> ", "
+        <> coord y1
+        <> ") has its two ends at the same point, so it names no line to fold"
+        <> " about"
+    EdgeRepeated (EdgeId a) (EdgeId b) ->
+      "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
+    VertexTooFewCreases (VertexId v) n
+      | n == 0 ->
+          "vertex "
+            <> tshow v
+            <> " is not an end of any crease, so it is not a corner of anything"
+      | otherwise ->
+          "vertex "
+            <> tshow v
+            <> " has "
+            <> (if n == 1 then "1 crease" else tshow n <> " creases")
+            <> " at it; a crease that stops in the middle of the paper does not"
+            <> " divide it, so there is no face to trace round"
+    VertexInsideEdge (VertexId v) (EdgeId e) ->
+      "vertex "
+        <> tshow v
+        <> " lies on edge "
+        <> tshow e
+        <> ", which does not end there; the edge needs splitting in two at it"
+    EdgesCross (EdgeId a) (EdgeId b) ->
+      "edges "
+        <> tshow a
+        <> " and "
+        <> tshow b
+        <> " cross with no vertex where they meet, so these creases are not a"
+        <> " planar graph and the regions between them are not faces"
+    EdgesOverlap (EdgeId a) (EdgeId b) ->
+      "edges "
+        <> tshow a
+        <> " and "
+        <> tshow b
+        <> " lie along the same line and share a stretch of it, so along that"
+        <> " stretch the paper has two ways to fold"
+    SheetInPieces (VertexId a) (VertexId b) ->
+      "no chain of creases joins vertex "
+        <> tshow a
+        <> " to vertex "
+        <> tshow b
+        <> ", so this is more than one sheet of paper"
+    CreaseBridge (VertexId a) (VertexId b) ->
+      "the crease from vertex "
+        <> tshow a
+        <> " to "
+        <> tshow b
+        <> " has the same paper on both sides of it, so the region around it is"
+        <> " not a polygon"
+    FramesDisagree what i ->
+      "these two frames are not two states of one model: their "
+        <> what
+        <> " first differ at index "
+        <> tshow i
+    FramesDiffer what a b ->
+      "these two frames are not two states of one model: one has "
+        <> tshow a
+        <> " "
+        <> what
+        <> " and the other has "
+        <> tshow b
+    ArrayLengthMismatch a na b nb ->
+      a
+        <> " has "
+        <> tshow na
+        <> " entries but "
+        <> b
+        <> " has "
+        <> tshow nb
+        <> "; FOLD requires parallel arrays to line up"
+    where
+      -- Spelled out for the empty case, which would otherwise read "valid ids are
+      -- 0..-1" -- a backwards interval, which is not a range and not a hint.
+      validIds 0 = "vertices_coords is empty"
+      validIds n =
+        "vertices_coords only has "
+          <> tshow n
+          <> " entries (valid ids are 0.."
+          <> tshow (n - 1)
+          <> ")"
+
+-- | 'explain' for a 'FoldError', under the name call sites already use.
+renderFoldError :: FoldError -> Text
+renderFoldError = explain
 
 -- | A coordinate, as the caller would have written it.
 --
@@ -424,9 +428,6 @@ renderFoldError = \case
 -- round-tripping, so it gives back @0.01@ and @3.0@.
 coord :: Double -> Text
 coord x = T.pack (showFFloat Nothing x "")
-
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
 
 -- | What a frame's coordinates are a picture of.
 data FrameKind

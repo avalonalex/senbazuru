@@ -153,6 +153,26 @@ do not use partial functions (`head`, `fromJust`, `!!`) in library code. Error
 types carry enough context to point at the offending element — "invalid FOLD
 file" is useless to someone holding a 4000-line crease pattern.
 
+**Every error type has an `Explain` instance, and that is where its words
+live.** One class, one method, in `Senbazuru.Explain`, so that "how does this
+project print an error" has one answer to look up rather than a shape to copy
+from the nine types that already had one. **The compiler does not enforce
+this** — a class demands an instance only where `explain` is called, so a
+twelfth error type with none compiles, lints and passes CI. It is a convention
+with a name, not a check. The old `renderFoldError` and its eight siblings are
+still exported as one-line bindings so the tests did not have to move; new code
+says `explain`. A type that nothing prints today — `FlatError` and `StepError`
+are the two — gets an instance anyway, because it is one `Left` away from being
+printed and the alternative is `show`.
+
+`num` and `tshow` live there too. `num` is a quantity we measured, at six
+digits so `show`'s rounding stays out of the message; `tshow` is an id, a
+count, or a number the *reader* gave us, written the way they wrote it. Four
+modules had their own `num` and seven their own `tshow`; five of those went,
+and `Diagram.Layout`'s stayed because its one use numbers a figure rather than
+naming a fault. Neither is `Render.Svg`'s `formatNumber`, which exists to keep
+golden files byte-identical and answers a different question.
+
 **Two unit systems, never mixed.** Shape *coordinates* are in model units (from
 the FOLD file). Stroke *widths and dash lengths* are in page units and are never
 scaled. A crease line is ~1pt wide whether the paper is 1 unit or 400 units

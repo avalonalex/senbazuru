@@ -76,6 +76,7 @@ import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Read qualified as TR
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Types
   ( Assignment,
     FoldFile (..),
@@ -163,15 +164,18 @@ data ImportError
     DegenerateSegment Int
   deriving stock (Eq, Show)
 
--- | A message suitable for printing to a terminal.
+instance Explain ImportError where
+  explain = \case
+    EmptyPattern -> "no creases in this file"
+    MalformedLine n what -> atLine n <> what
+    UnknownLineType n code -> atLine n <> "unknown line type " <> tshow code
+    DegenerateSegment n -> atLine n <> "the two endpoints are the same point"
+    where
+      atLine n = "line " <> tshow n <> ": "
+
+-- | 'explain' for an 'ImportError', under the name call sites already use.
 renderImportError :: ImportError -> Text
-renderImportError = \case
-  EmptyPattern -> "no creases in this file"
-  MalformedLine n what -> atLine n <> what
-  UnknownLineType n code -> atLine n <> "unknown line type " <> T.pack (show code)
-  DegenerateSegment n -> atLine n <> "the two endpoints are the same point"
-  where
-    atLine n = "line " <> T.pack (show n) <> ": "
+renderImportError = explain
 
 -- | How close two endpoints have to be before they are taken to be one vertex.
 --

@@ -91,10 +91,9 @@ import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Numeric (showGFloat)
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Creasing (creaseAllAlong)
-import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), creaseEndFlag, renderFoldError)
+import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), creaseEndFlag)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
 import Senbazuru.Geometry (V2 (..), norm, (^+^), (^-^))
 import Senbazuru.Geometry.Polygon (clipSegment, strictlyInside)
@@ -106,7 +105,6 @@ import Senbazuru.Origami.Folding
   ( Folded (..),
     FoldingError,
     foldFrameWith,
-    renderFoldingError,
   )
 
 -- | Everything that stops a line drawn on a folded model becoming creases.
@@ -177,39 +175,42 @@ data ThroughError
     CannotCrease !FoldError
   deriving stock (Eq, Show)
 
--- | A human-readable rendering of a 'ThroughError'.
+instance Explain ThroughError where
+  explain = \case
+    CannotFold err -> explain err
+    PaperStillInTheAir dz ->
+      "the folded model spans "
+        <> num dz
+        <> " in z, so it is not folded flat and a line drawn on it does not name"
+        <> " one point of the paper"
+    FaceNotConvex (FaceId f) ->
+      "face " <> tshow f <> " is not convex, so the line cannot be clipped to it"
+    ThroughRefused err -> explain err
+    LineWithoutLength ->
+      "the two ends are the same point, so they name no line to crease along"
+    NoPaperUnderTheLine ->
+      "no face of the folded model has this line across it, so there is nothing"
+        <> " to crease: either it misses the model or it runs along its edges"
+    LineStopsOnTheModel end (FaceId f) ->
+      creaseEndFlag end
+        <> " is inside face "
+        <> tshow f
+        <> " of the folded model rather than on that face's edge, so that layer"
+        <> " would be creased only part of the way across. Each layer the line"
+        <> " reaches has to be creased right across, so move this end onto an edge"
+        <> " or clear of the paper"
+    LayerNotPlaced (FaceId f) ->
+      "face "
+        <> tshow f
+        <> " of the folded model has no motion recorded for it, so there is no way"
+        <> " to say where its share of this line came from on the sheet"
+    CannotCrease err ->
+      "the creases this line makes on the layers it reaches were refused: "
+        <> explain err
+
+-- | 'explain' for a 'ThroughError', under the name call sites already use.
 renderThroughError :: ThroughError -> Text
-renderThroughError = \case
-  CannotFold err -> renderFoldingError err
-  PaperStillInTheAir dz ->
-    "the folded model spans "
-      <> num dz
-      <> " in z, so it is not folded flat and a line drawn on it does not name"
-      <> " one point of the paper"
-  FaceNotConvex (FaceId f) ->
-    "face " <> tshow f <> " is not convex, so the line cannot be clipped to it"
-  ThroughRefused err -> renderFoldError err
-  LineWithoutLength ->
-    "the two ends are the same point, so they name no line to crease along"
-  NoPaperUnderTheLine ->
-    "no face of the folded model has this line across it, so there is nothing"
-      <> " to crease: either it misses the model or it runs along its edges"
-  LineStopsOnTheModel end (FaceId f) ->
-    creaseEndFlag end
-      <> " is inside face "
-      <> tshow f
-      <> " of the folded model rather than on that face's edge, so that layer"
-      <> " would be creased only part of the way across. Each layer the line"
-      <> " reaches has to be creased right across, so move this end onto an edge"
-      <> " or clear of the paper"
-  LayerNotPlaced (FaceId f) ->
-    "face "
-      <> tshow f
-      <> " of the folded model has no motion recorded for it, so there is no way"
-      <> " to say where its share of this line came from on the sheet"
-  CannotCrease err ->
-    "the creases this line makes on the layers it reaches were refused: "
-      <> renderFoldError err
+renderThroughError = explain
 
 -- | Draw a line on a folded model and crease every layer under it.
 --
@@ -348,9 +349,3 @@ fromFlat = \case
   PaperInTheAir dz -> PaperStillInTheAir dz
   ConcaveFace f -> FaceNotConvex f
   FlatRefused err -> ThroughRefused err
-
-num :: Double -> Text
-num x = T.pack (showGFloat (Just 6) x "")
-
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show

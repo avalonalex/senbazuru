@@ -91,8 +91,7 @@ import Data.IntSet qualified as IS
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Numeric (showGFloat)
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Query
   ( EdgeKey,
@@ -104,7 +103,6 @@ import Senbazuru.Fold.Query
     frameFaces,
     frameKind,
     frameVertices,
-    renderFoldError,
     ringEdges,
   )
 import Senbazuru.Fold.Types
@@ -171,53 +169,56 @@ data FoldingError
     AngleNotAchieved !EdgeId !Double
   deriving stock (Eq, Show)
 
--- | A human-readable rendering of a 'FoldingError'.
+instance Explain FoldingError where
+  explain = \case
+    FrameGeometry err -> explain err
+    AlreadyFolded dz ->
+      "the vertices span " <> num dz <> " in z, so this frame is already folded"
+    NoFaces ->
+      "there are no creases here, so there is no paper to fold"
+    DegenerateFace (FaceId f) ->
+      "face " <> tshow f <> " has no area, so it has no orientation to fold about"
+    FaceEdgeMissing (FaceId f) (VertexId a) (VertexId b) ->
+      "face "
+        <> tshow f
+        <> " has an edge from vertex "
+        <> tshow a
+        <> " to "
+        <> tshow b
+        <> " that edges_vertices does not list, so it has no fold angle"
+    DuplicateEdge (EdgeId a) (EdgeId b) ->
+      "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
+    NonFiniteAngle (EdgeId e) d ->
+      "edge " <> tshow e <> " has a fold angle of " <> num d <> ", which is not a number of degrees"
+    DisconnectedFace (FaceId f) ->
+      "face "
+        <> tshow f
+        <> " is not joined to the rest of the sheet by any crease, so nothing"
+        <> " says where it goes"
+    AngleWithoutPaper (EdgeId e) d ->
+      "crease "
+        <> tshow e
+        <> " has paper on one side only and records a fold angle of "
+        <> num d
+        <> " degrees, so there is no second face for it to move"
+    AngleNotAchieved (EdgeId e) d ->
+      "crease "
+        <> tshow e
+        <> " is not folded to the angle it records: its two faces are "
+        <> num d
+        <> " from where that angle puts them, so these angles cannot all be"
+        <> " achieved at once"
+    TornAt (VertexId v) d ->
+      "vertex "
+        <> tshow v
+        <> " is placed "
+        <> num d
+        <> " apart by the faces meeting at it, so these fold angles tear the"
+        <> " paper rather than folding it"
+
+-- | 'explain' for a 'FoldingError', under the name call sites already use.
 renderFoldingError :: FoldingError -> Text
-renderFoldingError = \case
-  FrameGeometry err -> renderFoldError err
-  AlreadyFolded dz ->
-    "the vertices span " <> num dz <> " in z, so this frame is already folded"
-  NoFaces ->
-    "there are no creases here, so there is no paper to fold"
-  DegenerateFace (FaceId f) ->
-    "face " <> tshow f <> " has no area, so it has no orientation to fold about"
-  FaceEdgeMissing (FaceId f) (VertexId a) (VertexId b) ->
-    "face "
-      <> tshow f
-      <> " has an edge from vertex "
-      <> tshow a
-      <> " to "
-      <> tshow b
-      <> " that edges_vertices does not list, so it has no fold angle"
-  DuplicateEdge (EdgeId a) (EdgeId b) ->
-    "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
-  NonFiniteAngle (EdgeId e) d ->
-    "edge " <> tshow e <> " has a fold angle of " <> num d <> ", which is not a number of degrees"
-  DisconnectedFace (FaceId f) ->
-    "face "
-      <> tshow f
-      <> " is not joined to the rest of the sheet by any crease, so nothing"
-      <> " says where it goes"
-  AngleWithoutPaper (EdgeId e) d ->
-    "crease "
-      <> tshow e
-      <> " has paper on one side only and records a fold angle of "
-      <> num d
-      <> " degrees, so there is no second face for it to move"
-  AngleNotAchieved (EdgeId e) d ->
-    "crease "
-      <> tshow e
-      <> " is not folded to the angle it records: its two faces are "
-      <> num d
-      <> " from where that angle puts them, so these angles cannot all be"
-      <> " achieved at once"
-  TornAt (VertexId v) d ->
-    "vertex "
-      <> tshow v
-      <> " is placed "
-      <> num d
-      <> " apart by the faces meeting at it, so these fold angles tear the"
-      <> " paper rather than folding it"
+renderFoldingError = explain
 
 -- | Fold a crease pattern into the form its fold angles describe.
 --
@@ -812,9 +813,3 @@ sheetTolerance flat = 1e-9 * max 1 sheetSize
     spanOf f = case map f flat of
       [] -> 0
       cs -> maximum cs - minimum cs
-
-num :: Double -> Text
-num x = T.pack (showGFloat (Just 6) x "")
-
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
