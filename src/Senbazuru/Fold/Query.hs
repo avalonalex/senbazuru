@@ -416,7 +416,7 @@ instance Explain FoldError where
           <> tshow (n - 1)
           <> ")"
 
--- | 'explain' for a 'FoldError', under the name call sites already use.
+-- | 'explain' for a 'FoldError', under the name the test suite already uses.
 renderFoldError :: FoldError -> Text
 renderFoldError = explain
 

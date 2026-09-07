@@ -131,10 +131,12 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 ## Layering rules
 
 - `Senbazuru.Geometry` depends on nothing in the project. Keep it that way.
-- `Senbazuru.Explain` depends on nothing in the project either, and every
-  layer may import it. That is the price of one name for "print this error":
-  the class has to sit below the error types rather than beside them, which is
-  also why it holds no error type of its own.
+- `Senbazuru.Explain` depends on nothing in the project either, and every layer
+  that has an error type may import it. That is the price of one name for
+  "print this error": the class has to sit below the error types rather than
+  beside them, which is also why it holds no error type of its own. It does not
+  reopen the rule above — `Senbazuru.Geometry` has no error type, and giving it
+  one is the change to argue about, not the import that would follow.
 - `Senbazuru.Diagram` must not know what FOLD is.
 - `Senbazuru.Origami.*` is what senbazuru knows about paper, as opposed to what
   it knows about drawing. Nothing in it may mention a diagram, a page or a

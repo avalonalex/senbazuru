@@ -216,7 +216,11 @@ instance Explain FoldingError where
         <> " apart by the faces meeting at it, so these fold angles tear the"
         <> " paper rather than folding it"
 
--- | 'explain' for a 'FoldingError', under the name call sites already use.
+-- | 'explain' for a 'FoldingError', under the name it had before the class.
+--
+-- Kept when the class arrived so that nothing had to move at once. Nothing
+-- calls it now: the CLI says 'explain' and no test names this one, so it is
+-- exported for a caller that does not exist yet.
 renderFoldingError :: FoldingError -> Text
 renderFoldingError = explain
 

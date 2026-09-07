@@ -208,7 +208,7 @@ instance Explain ThroughError where
       "the creases this line makes on the layers it reaches were refused: "
         <> explain err
 
--- | 'explain' for a 'ThroughError', under the name call sites already use.
+-- | 'explain' for a 'ThroughError', under the name the test suite already uses.
 renderThroughError :: ThroughError -> Text
 renderThroughError = explain
 
