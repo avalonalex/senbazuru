@@ -265,8 +265,7 @@ creaseThroughLayers from to assignment fr = do
 -- | One layer's share of the line: where it lands on the sheet, and what kind
 -- of crease it is there.
 data LayerCrease = LayerCrease
-  { layerFace :: !FaceId,
-    layerFrom :: !V2,
+  { layerFrom :: !V2,
     layerTo :: !V2,
     layerAs :: !Assignment
   }
@@ -291,8 +290,7 @@ shareFor sheet placements assignment line panel = do
   let back = inverse placed
   pure
     LayerCrease
-      { layerFace = panelId panel,
-        layerFrom = ontoSheet back u,
+      { layerFrom = ontoSheet back u,
         layerTo = ontoSheet back v,
         layerAs = if facesUp placed then assignment else theOtherWay assignment
       }

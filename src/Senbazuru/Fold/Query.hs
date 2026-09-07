@@ -170,12 +170,20 @@ data FoldError
     -- What the three have in common is exactly this, and it is also what points
     -- at the fix: put the end on something.
     CreaseEndMeetsNothing !CreaseEnd !V2
+  | -- | Two of the creases asked for run between the same pair of points, so
+    -- one of them is a line already being drawn. Carries the two ends.
+    --
+    -- Said about the request rather than about the file. The refusal for two
+    -- edges joining one pair of vertices names their indices, and in a batch
+    -- those are indices of creases that exist only inside this call — which is
+    -- the failure this module's whole shape is arranged to avoid.
+    CreaseRepeated !V2 !V2
   | -- | A crease was /asked for/ between two points that are the same point.
     -- Carries nothing, because there is nothing in the file to point at: the
     -- offending element is the request. Raised by "Senbazuru.Fold.Creasing",
     -- which used to borrow 'EdgeWithoutLength' and name an edge the file did
     -- not have.
-    CreaseWithoutLength
+    CreaseWithoutLength !V2 !V2
   | -- | Two entries of @edges_vertices@ join the same pair of vertices. Around
     -- a vertex they lie at the same angle, so which of them a face traversal
     -- should turn onto is a coin toss.
@@ -308,9 +316,27 @@ renderFoldError = \case
       <> coord y
       <> ") does not meet any crease or edge the pattern already has, so the"
       <> " crease would stop there and divide nothing"
-  CreaseWithoutLength ->
-    "the two ends of the crease are the same point, so it names no line to"
-      <> " fold about"
+  CreaseRepeated (V2 x0 y0) (V2 x1 y1) ->
+    "two of the creases asked for run between ("
+      <> coord x0
+      <> ", "
+      <> coord y0
+      <> ") and ("
+      <> coord x1
+      <> ", "
+      <> coord y1
+      <> "), so one of them is a line already being drawn"
+  CreaseWithoutLength (V2 x0 y0) (V2 x1 y1) ->
+    "the crease from ("
+      <> coord x0
+      <> ", "
+      <> coord y0
+      <> ") to ("
+      <> coord x1
+      <> ", "
+      <> coord y1
+      <> ") has its two ends at the same point, so it names no line to fold"
+      <> " about"
   EdgeRepeated (EdgeId a) (EdgeId b) ->
     "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
   VertexTooFewCreases (VertexId v) n

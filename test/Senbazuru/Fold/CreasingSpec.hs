@@ -200,17 +200,38 @@ spec = do
           length (verticesCoords out) `shouldBe` 5
           creasesOf out `shouldBe` [(0, 1), (1, 4), (4, 2), (2, 3), (3, 0), (0, 4), (3, 4)]
 
-    it "decides every refusal against the frame as it was" $
+    it "decides every refusal against the frame as it was" $ do
       -- Order-independence, chosen over the case it forbids: the second crease
       -- here would meet the first if they were drawn in turn, and does not meet
-      -- the paper. Drawn together, neither end of it meets anything, and the
-      -- answer does not depend on which was listed first.
-      creaseAllAlong
-        [ (V2 0 0, V2 1 1, Valley),
-          (V2 0.5 0.5, V2 0.75 0.75, Mountain)
-        ]
-        square
-        `shouldBe` Left (CreaseEndMeetsNothing FromEnd (V2 0.5 0.5))
+      -- the paper. Drawn together, neither end of it meets anything -- and both
+      -- orderings are asserted, since "does not depend on which was listed
+      -- first" is the claim.
+      let diagonal = (V2 0 0, V2 1 1, Valley)
+          hanging = (V2 0.5 0.5, V2 0.75 0.75, Mountain)
+          refused = Left (CreaseEndMeetsNothing FromEnd (V2 0.5 0.5))
+      creaseAllAlong [diagonal, hanging] square `shouldBe` refused
+      creaseAllAlong [hanging, diagonal] square `shouldBe` refused
+
+    it "refuses the same crease asked for twice, naming the points" $
+      -- The cutting would refuse this as two edges joining one pair of
+      -- vertices, naming indices 4 and 5 -- creases that exist only inside the
+      -- call, on a file with four edges. Naming an index the reader can go and
+      -- fail to find is the thing this module is built not to do.
+      creaseAllAlong [(V2 0 0, V2 1 1, Valley), (V2 0 0, V2 1 1, Valley)] square
+        `shouldBe` Left (CreaseRepeated (V2 0 0) (V2 1 1))
+
+    it "refuses the same crease given the other way round too" $
+      -- Guards the test above: comparing the pair of ids without allowing for
+      -- the reversal would let this through to the cutting.
+      creaseAllAlong [(V2 0 0, V2 1 1, Valley), (V2 1 1, V2 0 0, Mountain)] square
+        `shouldBe` Left (CreaseRepeated (V2 1 1) (V2 0 0))
+
+    it "still refuses a folded form when there is nothing to draw" $ do
+      -- The empty batch is a short circuit, and it must not be one that skips
+      -- the refusals. A caller that computed no creases should hear the same
+      -- answer about the frame as one that computed some.
+      fr <- fixture "simple.fold"
+      creaseAllAlong [] fr `shouldBe` Left SheetIsFolded
 
     it "leaves the pattern alone when there is nothing to draw" $
       -- Not "validate and hand back with the faces dropped", which is what
@@ -223,7 +244,7 @@ spec = do
       -- named edge 4 of a four-edge file, which the reader can only go and
       -- fail to find.
       creaseAlong (V2 0.5 0.5) (V2 0.5 0.5) Valley square
-        `shouldBe` Left CreaseWithoutLength
+        `shouldBe` Left (CreaseWithoutLength (V2 0.5 0.5) (V2 0.5 0.5))
 
     it "refuses an end off the paper" $ do
       -- Named for what it is, not for what it does to the faces. The first end
@@ -258,7 +279,7 @@ spec = do
       -- The refusal for that names an edge index the file does not have, which
       -- is exactly what this module is trying not to do.
       creaseAlong (V2 (-1.4e-9) 0) (V2 1.4e-9 0) Valley square
-        `shouldBe` Left CreaseWithoutLength
+        `shouldBe` Left (CreaseWithoutLength (V2 (-1.4e-9) 0) (V2 1.4e-9 0))
 
     it "says so in the message, since that is the whole of this refusal" $ do
       -- Fixed point, not `show`: a coordinate typed as 0.01 has to read back as

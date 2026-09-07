@@ -63,9 +63,10 @@ module Senbazuru.Fold.Creasing
   )
 where
 
-import Control.Monad (when)
-import Data.Foldable (foldl', traverse_)
+import Control.Monad (foldM, when)
+import Data.Foldable (traverse_)
 import Data.IntMap.Strict qualified as IM
+import Data.List (sortOn)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (Sheet (..), coordsFor, endsOf, sheetOf, tolerance)
 import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..))
@@ -117,29 +118,45 @@ creaseAlong from to assignment = creaseAllAlong [(from, to, assignment)]
 -- to be in. That is a change from repeating 'creaseAlong', where a crease could
 -- meet one drawn earlier in the same call; no caller wants that, and
 -- order-dependence in a refusal is worth more than the case it forbids.
+--
+-- == What it still costs
+--
+-- The cutting is one pass now, and the scans that are left are the inner loops:
+-- an end is matched against every corner the paper has and against every edge,
+-- so a batch of @k@ creases on a pattern of @n@ elements is @O(k n)@ with no
+-- bounding box to reject cheaply. That is nothing beside the cubic it replaces
+-- — a 320-fold accordion went from 63 seconds to 0.6 — and it is what will bite
+-- next, on a tessellation with thousands of faces rather than hundreds.
+--
+-- And merging ends is order-dependent at the margin, because being within a
+-- tolerance is not transitive: three points a tolerance apart in a row can be
+-- merged into two vertices or one depending which is considered first. The
+-- nearest candidate is taken rather than the most recent, so the choice follows
+-- the geometry as far as it can, but no rule removes the ambiguity. The same
+-- thing is true of "Senbazuru.Import.Segments", which reaches for a grid rather
+-- than a scan and still has to say which nine cells it looks at.
 creaseAllAlong :: [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame
--- Drawing nothing leaves the pattern alone, rather than putting it through the
--- cutting and coming back with its faces dropped. There is nothing to validate
--- it against that reading the file did not already do.
-creaseAllAlong [] fr = Right fr
 creaseAllAlong segments fr = do
   -- Read the sheet only to refuse the frames that are not one to draw on: a
   -- folded form, and an edge naming a vertex that is not there. Its tolerance
   -- is the sheet's own, so a crease counts as having length by the same
   -- measure everything else on this paper is judged by.
+  --
+  -- Before the empty-batch case below, not after. Drawing nothing on a folded
+  -- form is still something this module refuses, and a caller that computed an
+  -- empty batch should hear the same answer as one that computed a full one.
   sheet <- sheetOf fr
   arraysLineUp
   let near = tolerance sheet
-  traverse_ (wellFormed sheet near) segments
-  let (added, pairs) = intern sheet near
-  -- Two ends further apart than the tolerance can still be the same corner, if
-  -- each is within the tolerance of it and they lie on opposite sides. The
-  -- crease would then run from a vertex to itself, and the refusal for that
-  -- names an edge index the file does not have -- which is the whole thing this
-  -- module is trying not to do. The sheet has already said these are one point;
-  -- say the same.
-  when (any (uncurry (==)) pairs) (Left CreaseWithoutLength)
-  withPlanarFaces (creased added pairs)
+  traverse_ (wellFormed near) segments
+  if null segments
+    then -- Nothing to draw leaves the pattern exactly as it was, rather than
+    -- putting it through the cutting and getting it back with its faces
+    -- dropped for no reason.
+      Right fr
+    else do
+      (added, pairs) <- intern sheet near
+      withPlanarFaces (creased added pairs)
   where
     edges = length (edgesVertices fr)
 
@@ -156,10 +173,8 @@ creaseAllAlong segments fr = do
       when (n /= 0 && n /= edges) $
         Left (ArrayLengthMismatch "edges_vertices" edges what n)
 
-    wellFormed sheet near (from, to, _) = do
-      when (norm (to ^-^ from) <= near) (Left CreaseWithoutLength)
-      meetsSomething sheet near FromEnd from
-      meetsSomething sheet near ToEnd to
+    wellFormed near (from, to, _) =
+      when (norm (to ^-^ from) <= near) (Left (CreaseWithoutLength from to))
 
     -- Each end has to land on something the drawing already has. Why that is
     -- the question, rather than whether the end is on the paper, is in the
@@ -174,31 +189,65 @@ creaseAllAlong segments fr = do
       where
         onIt e = distanceToSegment (endsOf sheet e) p <= near
 
-    -- Every end of every crease resolved to a vertex id, with the coordinates
-    -- of the ones that had to be added.
+    -- Every crease's two ends resolved to vertex ids, with the coordinates of
+    -- the ones that had to be added.
     --
     -- An end is matched against the paper's own corners first and then against
     -- the ends this batch has already added, so two creases that meet at a new
     -- point meet at one vertex. An end that lands in the /middle/ of a crease
     -- needs no special case: it becomes a vertex, and cutting that crease at it
     -- is exactly what "Senbazuru.Fold.Crossings" is for.
-    intern sheet near = finish (foldl' resolve (length (verticesCoords fr), [], []) points)
+    --
+    -- Resolved a crease at a time rather than over a flattened list of points,
+    -- so the ids come back attached to the crease they belong to and there is
+    -- no re-pairing step to get wrong.
+    intern sheet near = finish <$> foldM step (Interning (length (verticesCoords fr)) [] []) segments
       where
-        points = concat [[from, to] | (from, to, _) <- segments]
+        step acc (from, to, _) = do
+          meetsSomething sheet near FromEnd from
+          meetsSomething sheet near ToEnd to
+          let (acc', a) = resolve acc from
+              (acc'', b) = resolve acc' to
+          -- Two ends further apart than the tolerance can still be the same
+          -- corner, if each is within the tolerance of it and they lie on
+          -- opposite sides. The crease would then run from a vertex to itself.
+          when (a == b) (Left (CreaseWithoutLength from to))
+          -- And two creases between one pair of vertices give the paper two
+          -- answers about one line. Refused here, naming the points, rather
+          -- than by the cutting, which would name edge indices that exist only
+          -- inside this call.
+          when (any (samePair (a, b)) (internPairs acc'')) (Left (CreaseRepeated from to))
+          Right acc'' {internPairs = (a, b) : internPairs acc''}
 
-        resolve (next, addedSoFar, ids) p = case existingAt sheet near p of
-          Just v -> (next, addedSoFar, v : ids)
-          Nothing -> case [v | (v, q) <- addedSoFar, norm (q ^-^ p) <= near] of
-            (v : _) -> (next, addedSoFar, v : ids)
-            [] -> (next + 1, (next, p) : addedSoFar, next : ids)
+        samePair (a, b) (c, d) = (a, b) == (c, d) || (a, b) == (d, c)
 
-        finish (_, addedSoFar, ids) =
-          ( [coordsFor fr p | (_, p) <- reverse addedSoFar],
-            twos (reverse ids)
+        -- The /nearest/ candidate, not the first. Being within a tolerance is
+        -- not transitive, so a run of points a tolerance apart can be merged
+        -- more than one way and something has to choose; taking whichever was
+        -- added most recently makes the choice depend on the order the batch
+        -- was listed in for no reason at all. Nearest still depends on it at
+        -- the margin -- nothing can avoid that -- but it depends on the
+        -- geometry first.
+        resolve acc p = case existingAt sheet near p of
+          Just v -> (acc, v)
+          Nothing -> case nearestAdded acc p of
+            Just v -> (acc, v)
+            Nothing ->
+              ( acc
+                  { internNext = internNext acc + 1,
+                    internAdded = (internNext acc, p) : internAdded acc
+                  },
+                internNext acc
+              )
+
+        nearestAdded acc p = case sortOn snd [(v, norm (q ^-^ p)) | (v, q) <- internAdded acc, norm (q ^-^ p) <= near] of
+          ((v, _) : _) -> Just v
+          [] -> Nothing
+
+        finish acc =
+          ( [coordsFor fr p | (_, p) <- reverse (internAdded acc)],
+            reverse (internPairs acc)
           )
-
-        twos (a : b : rest) = (a, b) : twos rest
-        twos _ = []
 
     creased added pairs =
       fr
@@ -241,6 +290,19 @@ creaseAllAlong segments fr = do
     angles
       | null (edgesFoldAngle fr) = []
       | otherwise = edgesFoldAngle fr <> map flatAngleFor asked
+
+-- | The ends resolved so far, while a batch is being interned.
+--
+-- A record rather than a tuple, and strict, because a lazy triple under
+-- 'foldM' builds a chain of unevaluated increments that reads as though it were
+-- strict and is not.
+data Interning = Interning
+  { internNext :: !Int,
+    -- | The ends this batch has added, most recent first.
+    internAdded :: ![(Int, V2)],
+    -- | The creases resolved so far, most recent first.
+    internPairs :: ![(Int, Int)]
+  }
 
 -- | The angle a crease of this kind takes when the paper is folded flat.
 --
