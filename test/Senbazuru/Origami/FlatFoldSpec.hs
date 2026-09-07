@@ -37,8 +37,8 @@ import Test.QuickCheck
 -- bearing, and a border ring joining their far ends.
 --
 -- The ring is what makes the outer vertices border vertices. Without it each
--- would be an interior vertex of degree one and would report Maekawa's
--- corollary, drowning the vertex actually under test.
+-- would be an interior vertex of degree one and would report a crease that
+-- stops, drowning the vertex actually under test.
 starFrame :: [(Double, Assignment)] -> Frame
 starFrame spokes =
   emptyFrame
@@ -213,6 +213,54 @@ spec = do
       let fr = starFrame (zip [0, 1, 2, 3] [Mountain, Valley, Mountain, Cut])
       fmap (lookup (VertexId 0) . reportSkipped) (checkFrame defaultTolerance fr)
         `shouldBe` Right (Just OnBorder)
+
+  describe "a crease that stops" $ do
+    it "says so, rather than blaming Maekawa for an odd count of one" $ do
+      -- A square with one crease running from the middle of a side to the
+      -- centre. Nothing about this is a flat-foldability question: one crease
+      -- at a vertex divides no paper, so no assignment of angles could fold it.
+      -- Maekawa is about a vertex with paper all the way round and which
+      -- arrangements of creases can fold; reporting it here named a theorem
+      -- that does not apply.
+      --
+      -- The other side of the split -- that a genuine odd count is still
+      -- Maekawa's corollary -- is \"rejects an odd number of creases\" above,
+      -- which reddens if this carve-out ever widens past one.
+      let fr =
+            emptyFrame
+              { verticesCoords =
+                  [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0], [0.5, 0.5]],
+                edgesVertices =
+                  [ (VertexId 0, VertexId 4),
+                    (VertexId 4, VertexId 1),
+                    (VertexId 1, VertexId 2),
+                    (VertexId 2, VertexId 3),
+                    (VertexId 3, VertexId 0),
+                    (VertexId 4, VertexId 5)
+                  ],
+                edgesAssignment = replicate 5 Border <> [Valley]
+              }
+      fmap (map snd . reportViolations) (checkFrame defaultTolerance fr)
+        `shouldBe` Right [CreaseStops 0]
+
+    it "counts the flat lines that were dissolved, so the number adds up" $ do
+      -- Three lines meet at the centre and a reader looking at the page counts
+      -- three. Two are flat, the paper is continuous across them, and one
+      -- crease is left -- which is worth saying, or the count looks wrong.
+      let fr = starFrame [(0, Mountain), (2 * pi / 3, Flat), (4 * pi / 3, Flat)]
+      violationsAt fr `shouldBe` Right (Just [CreaseStops 2])
+
+    it "reads as one line each way round" $ do
+      renderViolation (VertexId 5) (CreaseStops 0)
+        `shouldBe` "vertex 5: one crease meets here and stops, so it divides no paper"
+      renderViolation (VertexId 8) (CreaseStops 2)
+        `shouldBe` ( "vertex 8: one crease meets here and stops, so it divides no"
+                       <> " paper (2 flat lines here are drawn, not folded)"
+                   )
+      renderViolation (VertexId 8) (CreaseStops 1)
+        `shouldBe` ( "vertex 8: one crease meets here and stops, so it divides no"
+                       <> " paper (1 flat line here is drawn, not folded)"
+                   )
 
   describe "the star of creases around a vertex" $ do
     it "measures sectors that sum to a full turn" $

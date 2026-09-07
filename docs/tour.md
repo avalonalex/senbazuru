@@ -652,6 +652,20 @@ examples/quarter-fold.fold, frame 0
   no violations found
 ```
 
+Not everything it reports is a theorem. A crease that ends part-way along a
+*flat* line stops in the middle of continuous paper — the sheet carries straight
+on across an `F`, so such a crease divides nothing and no angles could ever fold
+it. That is wrong about the drawing rather than about the fold, and it is said as
+such:
+
+```console
+  vertex 8: one crease meets here and stops, so it divides no paper (2 flat lines here are drawn, not folded)
+```
+
+Three lines meet at that vertex on the page, which is why the count of one is
+worth explaining. Blaming Maekawa for it — as this used to — names a theorem
+about a vertex with paper all the way round, which this is not.
+
 It says *no violations found* rather than *flat-foldable*, and that wording is
 load-bearing. Both theorems are necessary, not sufficient: they are local, so a
 sheet whose every vertex passes can still be impossible, and even at one vertex

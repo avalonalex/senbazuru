@@ -348,9 +348,12 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Not every line in a crease pattern folds.** `F` (flat) and `J` (join) are
   drawn but the paper is continuous across them, so anything reasoning about the
   angles around a vertex has to dissolve them first — otherwise the crease count
-  is wrong, which flips the parity Maekawa's theorem depends on. `B` and `C`
-  mean the paper stops, which makes the vertex a border vertex, where the
-  flat-folding theorems do not apply at all.
+  is wrong, which flips the parity Maekawa's theorem depends on. Dissolving can
+  also leave *one*, and one is not a Maekawa case at all: it is a crease that
+  stops in the middle of the paper, which `check` now says as such — see
+  `Origami.FlatFold`'s `CreaseStops`. `B` and `C` mean the paper stops, which
+  makes the vertex a border vertex, where the flat-folding theorems do not apply
+  at all.
 - **A folded form is not necessarily 3D.** The traditional crane folds *flat*,
   so its folded frame lies in a plane. Choose a view from the coordinates
   (`defaultBasisFor`), never from `frame_classes`. The line notation is the one

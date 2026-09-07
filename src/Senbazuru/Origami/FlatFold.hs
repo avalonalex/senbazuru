@@ -24,6 +24,13 @@
 --   consecutive creases with alternating signs gives zero. This one needs
 --   angles, and so needs a tolerance.
 --
+-- One thing it reports is not a theorem at all. A vertex with exactly one
+-- crease at it, once the flat lines are dissolved, has a crease that /stops/:
+-- it divides no paper, and no assignment of angles could fold it. That is a
+-- fact about the drawing rather than about folding, and it is reported as
+-- 'CreaseStops' rather than as Maekawa's corollary — which it satisfies the
+-- letter of, being an odd count, while having nothing to do with the theorem.
+--
 -- == What a clean result does and does not mean
 --
 -- Passing both is __necessary, not sufficient__, in two separate ways, and
@@ -241,8 +248,22 @@ data Skip
 -- | A local condition that every flat-foldable vertex satisfies, and this one
 -- does not.
 data Violation
-  = -- | Maekawa's corollary: an odd number of creases meet here. Carries the
-    -- count. Reported instead of 'MaekawaImbalance' rather than as well as it,
+  = -- | Exactly one crease that folds meets here, so it stops in the middle of
+    -- the paper. Carries how many flat lines were dissolved at this vertex, so
+    -- that a reader looking at three lines on the page can be told why the
+    -- count is one.
+    --
+    -- Not a Maekawa violation, though it is an odd count and used to be
+    -- reported as one. Maekawa is about a vertex with paper all the way round
+    -- it and says which /arrangements/ of creases can fold; this is a crease
+    -- that divides no paper, which no angles could ever fold and which is
+    -- wrong about the drawing rather than about the fold. Reported first for
+    -- the same reason 'OddCreaseCount' displaces 'MaekawaImbalance': it is the
+    -- more fundamental fact.
+    CreaseStops !Int
+  | -- | Maekawa's corollary: an odd number of creases meet here. Carries the
+    -- count, which is always three or more — one is 'CreaseStops' and zero is
+    -- a skip. Reported instead of 'MaekawaImbalance' rather than as well as it,
     -- because an odd count is the more fundamental fact and it also leaves
     -- Kawasaki's alternating sum undefined.
     OddCreaseCount !Int
@@ -453,6 +474,9 @@ verdict tol st
     unassigned = countOf Unassigned
 
     violations
+      -- Before the odd-count test, which would otherwise swallow this and
+      -- blame a theorem that does not apply.
+      | degree == 1 = [CreaseStops (starDissolved st)]
       | odd degree = [OddCreaseCount degree]
       | otherwise = maekawa <> kawasaki
 
@@ -473,6 +497,10 @@ verdict tol st
 -- README and in @docs\/notes\/@, not in a message someone reads once per run.
 renderViolation :: VertexId -> Violation -> Text
 renderViolation (VertexId v) = \case
+  CreaseStops dissolved ->
+    at
+      <> "one crease meets here and stops, so it divides no paper"
+      <> flatLines dissolved
   OddCreaseCount n ->
     at <> tshow n <> " creases meet here, an odd number, which never folds flat (Maekawa)"
   MaekawaImbalance m val ->
@@ -485,6 +513,16 @@ renderViolation (VertexId v) = \case
     at <> "sector angles alternate to " <> fixed 4 s <> " degrees, not 0 (Kawasaki)"
   where
     at = "vertex " <> tshow v <> ": "
+
+    -- Said only when there are some, because a reader looking at one line at
+    -- this vertex needs no explanation of why the count is one -- and a reader
+    -- looking at three does.
+    flatLines 0 = ""
+    flatLines n =
+      " ("
+        <> tshow n
+        <> (if n == 1 then " flat line here is" else " flat lines here are")
+        <> " drawn, not folded)"
 
 -- | A report as lines of text: one per violation, then a summary.
 --
