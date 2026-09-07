@@ -282,6 +282,27 @@ are not contributors can find it, and so there is only one copy to keep true.
   rewrites every coordinate and reverses the winding of any face that turns
   over, and a carried `faces_edges` would then be false. See
   `docs/notes/round-trips.md`.
+- **Faces are not extra information, they are the creases read another way.**
+  Most files record none — no `.cp` or `.opx` can — so `Senbazuru.Fold.Faces`
+  traces them, and `Origami.Folding` and `Render.Gltf` both call it rather than
+  refusing. `Render.CreasePattern` deliberately does not: filling a pattern
+  that records no faces changes what every existing picture of one looks like,
+  and that is a separate decision from being able to fold it.
+- **The face walk turns clockwise to trace an anticlockwise face.** From the
+  half-edge `u→v` it turns at `v` onto the next crease *clockwise* from `v→u`.
+  Turning the way the face winds traces the same rings backwards; turning the
+  sharpest way against the direction of travel is what keeps the walk hugging
+  one region. The outer ring is the one with negative area and is dropped.
+- **A traced winding can be trusted, unlike a file's.** The sign is what
+  selected the ring, so every traced face is anticlockwise. This does not
+  contradict the rule that a file's winding is taken as written: that rule is
+  about not breaking `faceOrders` signs, and a frame that recorded no faces
+  recorded no orders either.
+- **Tracing refuses a drawing that is not planar as drawn, and it must.** Two
+  creases crossing with no vertex, or a vertex sitting on an unsplit edge, both
+  produce rings — plausible ones that fill and fold — describing regions that
+  are not the regions on the page. `examples/unit-square.fold` is the case in
+  hand: its three interior creases all cross at the middle of the sheet.
 - **Absent is not empty.** The decoder reports a missing `faces_vertices` as
   `[]` because it is permissive; the encoder must not write `[]` back, because
   that is a claim the file did not make. Every `Nothing`, every empty list and a
@@ -568,16 +589,14 @@ Deliberate omissions, so nobody thinks they are bugs:
 - A `.cp` or an `.opx` is read and never written. Neither format can hold a
   face, a fold angle or a second frame, so writing one would silently drop
   them; senbazuru writes FOLD, SVG and glTF.
-- A crease pattern read from `.cp` or `.opx` has no faces, so `render --fold`
-  and `export` refuse it. Tracing faces from the edges is the fix and is #34.
 - The `.cp`/`.opx` reader rebuilds the vertices and nothing else, so a segment
   list can still describe something that is not a planar graph. Two creases
   that cross without a vertex there stay crossed, and `check` then has one
   fewer vertex to look at — the same under-reporting `examples/unit-square.fold`
   already gets. The same crease listed twice becomes two edges between one pair
-  of vertices, and is counted twice by everything that counts creases. Both are
-  #34's to fix; neither is refused, because refusing would mean deciding what
-  the file meant.
+  of vertices, and is counted twice by everything that counts creases. Anything
+  needing faces refuses both, naming the offending element; splitting a
+  crossing is #67.
 - The `.cp` reader accepts type codes 1 to 11 and refuses everything else,
   including 0. Oriedita's auxiliary colours are the ones above 4, and it drops
   the colour, because FOLD has nowhere to put it.

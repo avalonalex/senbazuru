@@ -23,6 +23,7 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
+    EdgeId (..),
     FaceId (..),
     Frame (..),
     VertexId (..),
@@ -235,10 +236,44 @@ spec = do
         `shouldBe` map (map rounded) (verticesCoords asFolded)
 
   describe "patterns it will not fold" $ do
-    it "refuses a sheet with no faces" $ do
-      -- Creases alone do not say which pieces of paper move together.
+    it "traces the faces of a sheet that records none, and folds it" $ do
+      -- Creases alone do not say which pieces of paper move together -- but
+      -- they determine them, so a frame arriving without faces gets them
+      -- traced rather than refused. See "Senbazuru.Fold.Faces".
+      let square =
+            emptyFrame
+              { frameClasses = ["creasePattern"],
+                verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1]],
+                edgesVertices =
+                  [ (VertexId 0, VertexId 1),
+                    (VertexId 1, VertexId 2),
+                    (VertexId 2, VertexId 3),
+                    (VertexId 3, VertexId 0),
+                    (VertexId 0, VertexId 2)
+                  ],
+                edgesAssignment = [Border, Border, Border, Border, Valley],
+                edgesFoldAngle = [0, 0, 0, 0, 180]
+              }
+      case foldFrame square of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right folded -> do
+          -- The diagonal cuts the square in two, and folding along it brings
+          -- one triangle onto the other.
+          length (facesVertices folded) `shouldBe` 2
+          map (map rounded) (verticesCoords folded)
+            `shouldBe` [[0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 0, 0]]
+
+    it "refuses a sheet whose creases cross with no vertex where they meet" $ do
+      -- unit-square.fold's three interior creases all pass through the middle
+      -- of the sheet and none of them stops there, so the regions between them
+      -- are not faces of anything. It used to be refused for having no faces;
+      -- now the tracing gets far enough to say what is actually wrong with it.
       flat <- loadFixture "test/fixtures/unit-square.fold"
-      foldFrame flat `shouldBe` Left NoFaces
+      foldFrame flat `shouldBe` Left (FrameGeometry (EdgesCross (EdgeId 8) (EdgeId 9)))
+
+    it "refuses a sheet with no creases at all, which is what is left of NoFaces" $ do
+      let bare = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1]]}
+      foldFrame bare `shouldBe` Left NoFaces
 
     it "refuses something that is already folded" $ do
       flat <- loadFixture "test/fixtures/simple.fold"

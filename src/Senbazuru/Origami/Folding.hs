@@ -80,6 +80,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
+import Senbazuru.Fold.Faces (withTracedFaces)
 import Senbazuru.Fold.Query
   ( EdgeKey,
     Face (..),
@@ -112,8 +113,10 @@ data FoldingError
     -- Carries how far it spans in @z@, which is zero for a flat-folded model
     -- that only its @frame_classes@ gives away.
     AlreadyFolded !Double
-  | -- | No @faces_vertices@. Creases alone do not say which pieces of paper
-    -- move together, so there is nothing to apply a transform to.
+  | -- | No @faces_vertices@, and none could be traced from the creases either
+    -- — so the sheet has no creases at all. Anything worse than that about the
+    -- drawing is refused by "Senbazuru.Fold.Faces" with the offending element
+    -- named, and arrives as a 'FrameGeometry'.
     NoFaces
   | -- | A face whose corners are collinear, so it has no area and no
     -- orientation to read.
@@ -144,8 +147,7 @@ renderFoldingError = \case
   AlreadyFolded dz ->
     "the vertices span " <> num dz <> " in z, so this frame is already folded"
   NoFaces ->
-    "no faces_vertices, so there is no way to know which pieces of paper move"
-      <> " together; folding needs faces, not just creases"
+    "there are no creases here, so there is no paper to fold"
   DegenerateFace (FaceId f) ->
     "face " <> tshow f <> " has no area, so it has no orientation to fold about"
   FaceEdgeMissing (FaceId f) (VertexId a) (VertexId b) ->
@@ -203,14 +205,20 @@ renderFoldingError = \case
 -- this is no longer a crease pattern. Writing them out again would be stating
 -- something we have reason to think is false, which is worse than losing them.
 foldFrame :: Frame -> Either FoldingError Frame
-foldFrame fr = do
-  flat <- first FrameGeometry (frameVertices fr)
+foldFrame fr0 = do
+  flat <- first FrameGeometry (frameVertices fr0)
   -- Shared with the renderer and the flat-foldability checker, so that all
   -- three agree about what a file is. Asking the geometry alone would fold an
   -- already-folded crane a second time and hand back nonsense: it folds flat,
   -- so nothing in its coordinates says it has been folded.
-  when (frameKind (frameClasses fr) flat == FoldedForm) $
+  when (frameKind (frameClasses fr0) flat == FoldedForm) $
     Left (AlreadyFolded (zSpan flat))
+  -- Most files record no faces -- no .cp or .opx can -- and creases alone do
+  -- not say which pieces of paper move together. They do determine them,
+  -- though, so a frame that arrives without faces gets them traced rather than
+  -- refused. Done here, before anything reads the frame, so that everything
+  -- below sees one frame and cannot disagree about what its faces are.
+  fr <- first FrameGeometry (withTracedFaces fr0)
   faces <- traverse orientCcw =<< first FrameGeometry (frameFaces fr)
   when (null faces) (Left NoFaces)
   creases <- creaseIndex fr

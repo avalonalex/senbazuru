@@ -20,6 +20,9 @@ One direction of flow, no cycles:
      v               v               values; the extension picks the reader
  FoldFile / Frame                    Senbazuru.Fold.Types
      |                               a faithful, permissive mirror of the format
+     |  Senbazuru.Fold.Faces         the faces a file did not record, traced
+     |                               from the creases; asked for by whatever
+     |                               needs paper rather than lines
      |  Senbazuru.Fold.Query         validate + refine: indices become real points
      v
  [Crease]                            3D geometry that cannot be structurally wrong
@@ -79,6 +82,7 @@ that reaches for it is a caller holding a `Frame` it built or folded.
 | `Senbazuru.Import.Cp` | Orihime and Oriedita `.cp` text → segments. |
 | `Senbazuru.Import.Opx` | ORIPA `.opx` XML → segments. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
+| `Senbazuru.Fold.Faces` | The faces a file does not record, traced from the creases. Refuses a drawing whose regions would not be its faces. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
@@ -120,6 +124,12 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   else takes and returns values, which is what makes the rest testable without a
   filesystem. `Senbazuru.Import.*` is no exception: those modules take `Text`
   and return values, and `Fold.Load` is what turns a path into bytes for them.
+- **Whatever needs faces asks `Fold.Faces` for them, and does not refuse a
+  frame without any.** Most files record none — no `.cp` or `.opx` can — and
+  the creases determine them, so `Origami.Folding` and `Render.Gltf` both trace
+  first. The renderer deliberately does *not*: filling a pattern that records
+  no faces would change what every existing picture of one looks like, which is
+  a separate decision from being able to fold it.
 - **A new input format becomes a `Frame`, and stops there.** `Senbazuru.Import.*`
   may know what FOLD is, because producing a `Frame` is its whole job; nothing
   downstream may know that a frame came from anywhere but a `.fold` file. Where

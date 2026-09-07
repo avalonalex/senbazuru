@@ -116,6 +116,34 @@ data FoldError
     -- either way. Carries the budget it spent. Raised by
     -- "Senbazuru.Origami.Stacking".
     GaveUpStacking Int
+  | -- | Faces were asked for from a frame whose vertices leave the plane.
+    -- Tracing the regions the creases cut a sheet into is a question about a
+    -- drawing on flat paper; a folded form is not one, and its edges cross in
+    -- projection wherever the paper overlaps itself. Carries the span in @z@.
+    -- Raised by "Senbazuru.Fold.Faces".
+    SheetNotFlat !Double
+  | -- | An edge whose two endpoints are the same point. It names no direction,
+    -- so there is no angle to sort it by around either end.
+    EdgeWithoutLength !EdgeId
+  | -- | Two entries of @edges_vertices@ join the same pair of vertices. Around
+    -- a vertex they lie at the same angle, so which of them a face traversal
+    -- should turn onto is a coin toss.
+    EdgeRepeated !EdgeId !EdgeId
+  | -- | A vertex with fewer than two creases at it. A crease that stops in the
+    -- middle of the paper does not divide it, so the region around it is not a
+    -- polygon — the boundary walks up the crease and back down it, and lists
+    -- the vertex twice. Carries the vertex and its degree.
+    VertexTooFewCreases !VertexId !Int
+  | -- | A vertex lying on an edge that does not end there. The edge should have
+    -- been split in two at it; as the file stands, a traversal walks straight
+    -- past and puts the vertex on the wrong side of the crease.
+    VertexInsideEdge !VertexId !EdgeId
+  | -- | Two edges that cross with no vertex where they meet, so the drawing is
+    -- not a planar graph and its regions are not the faces of anything.
+    EdgesCross !EdgeId !EdgeId
+  | -- | The creases fall into pieces that share no vertex, so the sheet is more
+    -- than one sheet. Carries one vertex from each of two of them.
+    SheetInPieces !VertexId !VertexId
   | -- | Two frames that should describe the same paper disagree about how much
     -- of it there is. Carries the key and the two lengths.
     FramesDiffer Text Int Int
@@ -205,6 +233,41 @@ renderFoldError = \case
       <> tshow guesses
       <> (if guesses == 1 then " guess" else " guesses")
       <> " in one part of the model, so whether it has one is not known"
+  SheetNotFlat dz ->
+    "the vertices span "
+      <> tshow dz
+      <> " in z, so this is not a flat sheet; faces can only be traced from"
+      <> " creases drawn on flat paper"
+  EdgeWithoutLength (EdgeId e) ->
+    "edge " <> tshow e <> " starts and ends at the same point"
+  EdgeRepeated (EdgeId a) (EdgeId b) ->
+    "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
+  VertexTooFewCreases (VertexId v) n ->
+    "vertex "
+      <> tshow v
+      <> " has "
+      <> (if n == 1 then "1 crease" else tshow n <> " creases")
+      <> " at it; a crease that stops in the middle of the paper does not"
+      <> " divide it, so there is no face to trace round"
+  VertexInsideEdge (VertexId v) (EdgeId e) ->
+    "vertex "
+      <> tshow v
+      <> " lies on edge "
+      <> tshow e
+      <> ", which does not end there; the edge needs splitting in two at it"
+  EdgesCross (EdgeId a) (EdgeId b) ->
+    "edges "
+      <> tshow a
+      <> " and "
+      <> tshow b
+      <> " cross with no vertex where they meet, so these creases are not a"
+      <> " planar graph and the regions between them are not faces"
+  SheetInPieces (VertexId a) (VertexId b) ->
+    "no chain of creases joins vertex "
+      <> tshow a
+      <> " to vertex "
+      <> tshow b
+      <> ", so this is more than one sheet of paper"
   FramesDisagree what i ->
     "these two frames are not two states of one model: their "
       <> what
