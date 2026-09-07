@@ -153,6 +153,14 @@ data FoldingError
     -- angles tear the paper. Carries the vertex and the distance between the
     -- two furthest-apart placements.
     TornAt !VertexId !Double
+  | -- | A crease with paper on one side only records a fold angle. Nothing can
+    -- turn about such a crease — there is no second face for it to move — so
+    -- the angle describes a fold that cannot happen. Carries the crease and the
+    -- angle, in degrees.
+    --
+    -- Silent until now, and in the same way the loop-closing creases were: the
+    -- walk simply never looks at it.
+    AngleWithoutPaper !EdgeId !Double
   | -- | A crease's two faces are not at the angle it records. Carries the
     -- crease and how far the paper is from where that angle would put it.
     --
@@ -190,6 +198,12 @@ renderFoldingError = \case
       <> tshow f
       <> " is not joined to the rest of the sheet by any crease, so nothing"
       <> " says where it goes"
+  AngleWithoutPaper (EdgeId e) d ->
+    "crease "
+      <> tshow e
+      <> " has paper on one side only and records a fold angle of "
+      <> num d
+      <> " degrees, so there is no second face for it to move"
   AngleNotAchieved (EdgeId e) d ->
     "crease "
       <> tshow e
@@ -334,6 +348,10 @@ foldFrameWith fr0 = do
   when (null faces) (Left NoFaces)
   creases <- creaseIndex fr
   neighbours <- faceNeighbours faces
+  -- Built once and handed to both checks below, so they cannot come to
+  -- different conclusions about one file by measuring it differently.
+  let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
+      tolerance = sheetTolerance flat
   transforms <- spanningWalk faces creases neighbours
   -- Vertices first, creases second, and that order is the whole of which
   -- message a torn model gets. 'TornAt' names the vertex the faces disagree
@@ -341,8 +359,8 @@ foldFrameWith fr0 = do
   -- crease the spanning tree happened to drop, which is an accident of the
   -- walk. So the vertex check speaks first and this is the backstop for what it
   -- cannot see.
-  folded <- placeVertices (length flat) flat faces transforms
-  loopsClose (sheetTolerance flat) faces creases neighbours transforms
+  folded <- placeVertices tolerance (length flat) flat faces transforms
+  loopsClose tolerance byId faces creases neighbours transforms
   pure
     Folded
       { foldedFrame =
@@ -609,16 +627,18 @@ cornerAt f v = lookup v (zip (faceVertexIds f) (faceCorners f))
 -- give both faces the /same/ transform, they agree about every vertex they
 -- share and the ignored angle vanishes without trace.
 --
--- That is not a corner case. A square with a flat line across it and one valley
+-- The case that found it: a square with a flat line across it and one valley
 -- running from the middle of that line to the edge is three faces in a ring,
--- two of the three joins at zero degrees; the tree reaches all three without
+-- two of the three joins at zero degrees. The tree reaches all three without
 -- turning anything, the valley closes the loop, and the model comes back
 -- unfolded and unremarked. It was <https://github.com/avalonalex/senbazuru/issues/84 #84>.
 --
--- So every crease is checked against the transforms afterwards, tree edge or
--- not. For a tree edge it holds by construction and costs a comparison; for the
--- rest it is the loop-closure condition, stated about the crease that was
--- dropped rather than about a vertex somewhere near it.
+-- So every crease is checked against the transforms afterwards. For a tree edge
+-- that holds by construction and costs a comparison; for a crease that closes a
+-- loop it is the closure condition, stated about the crease that was dropped
+-- rather than about a vertex somewhere near it; and for a crease with paper on
+-- one side only it is the observation that nothing can turn about it at all, so
+-- the only angle it can honestly carry is zero.
 --
 -- It runs __after__ 'placeVertices' and is deliberately the second opinion. A
 -- model whose angles genuinely tear has a vertex its faces disagree about, and
@@ -627,43 +647,81 @@ cornerAt f v = lookup v (zip (faceVertexIds f) (faceCorners f))
 -- Where 'TornAt' can speak it should, and this catches only what it cannot see.
 loopsClose ::
   Double ->
+  IM.IntMap Face ->
   [Face] ->
   M.Map EdgeKey (EdgeId, Double) ->
   M.Map EdgeKey [FaceId] ->
   IM.IntMap Rigid ->
   Either FoldingError ()
-loopsClose tolerance faces creases neighbours transforms =
+loopsClose tolerance byId faces creases neighbours transforms =
   traverse_ checkFace faces
   where
-    placementOf f = fromMaybe identity (IM.lookup (unFaceId f) transforms)
-    byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
-
     checkFace f = traverse_ (checkEdge f) (ringEdges (faceVertexIds f))
 
     checkEdge f (a, b) = case M.lookup (edgeKey a b) creases of
+      -- Unreachable: 'spanningWalk' looks up the same key for the same ring
+      -- edge of the same face and refuses this before the walk finishes. Kept
+      -- because the alternative is a partial pattern match, and stated as
+      -- unreachable so nobody goes looking for the case that produces it.
       Nothing -> Left (FaceEdgeMissing (faceId f) a b)
-      Just (eid, angle) -> traverse_ (against f a b eid angle) (others f a b)
+      Just (eid, angle) -> case across f a b of
+        -- A crease the paper only has on one side. Nothing can turn about it,
+        -- so an angle there is a fold that cannot happen -- and it would
+        -- otherwise be ignored in exactly the silence this function exists to
+        -- break. Zero is the only angle such a crease can honestly carry.
+        [] | angle /= 0 -> Left (AngleWithoutPaper eid (degrees angle))
+        [] -> Right ()
+        os -> traverse_ (against f a b eid angle) (onceOnly f os)
+
+    -- Who is on the other side of this crease, which is a different question
+    -- from which pairs are this face's turn to check. Asking one and using the
+    -- answer for the other says every interior crease has paper on one side,
+    -- for whichever of its two faces is numbered higher.
+    across f a b =
+      [ other
+        | other <- M.findWithDefault [] (edgeKey a b) neighbours,
+          other /= faceId f
+      ]
 
     -- Each unordered pair once. The relation is symmetric -- crossing back the
     -- other way turns by the same angle about the reversed axis -- so checking
     -- both directions would only cost time.
-    others f a b =
-      [ other
-        | other <- M.findWithDefault [] (edgeKey a b) neighbours,
-          unFaceId other > unFaceId (faceId f)
-      ]
+    onceOnly f os = [o | o <- os, unFaceId o > unFaceId (faceId f)]
 
+    -- Both lookups are total over the faces this was handed, and both fail
+    -- loudly rather than falling back, for the reason 'turnAcross' gives: a
+    -- default here does not report a smaller problem, it reports no problem.
+    -- An `identity` for a missing transform compares as though the face had
+    -- not moved, and an empty corner list makes the crease pass unconditionally.
     against f a b eid angle other = do
       turn <- turnAcross f a b angle
-      let expected = placementOf (faceId f) `after` turn
-          actual = placementOf other
-          corners = maybe [] faceCorners (IM.lookup (unFaceId other) byId)
-          off = maximum (0 : [norm (applyRigid expected c ^-^ applyRigid actual c) | c <- corners])
-      -- `not (<=)` rather than `>`, so a NaN coordinate is a failure rather
-      -- than a pass, for the reason placeVertices gives.
-      if off <= tolerance
-        then Right ()
-        else Left (AngleNotAchieved eid off)
+      here <- placementOf (faceId f)
+      there <- placementOf other
+      corners <- cornersOf other
+      let expected = here `after` turn
+          off c = norm (applyRigid expected c ^-^ applyRigid there c)
+      -- Filtered rather than compared against a maximum. `maximum (0 : xs)` is
+      -- 0 when xs holds a NaN, because `max 0 NaN` is 0 in Haskell -- so a NaN
+      -- transform would pass this check silently, which is the trap
+      -- 'placeVertices' documents and which an earlier version of this function
+      -- fell into while claiming in a comment not to.
+      case filter (not . within) (map off corners) of
+        [] -> Right ()
+        (bad : _) -> Left (AngleNotAchieved eid bad)
+
+    -- Named so the negation below reads as "not within" and not as "greater
+    -- than". They are different for a NaN, which is neither -- and hlint
+    -- suggests rewriting `not . (<= tolerance)` to `(> tolerance)` while its
+    -- own note says that is wrong in exactly this case.
+    within d = d <= tolerance
+
+    placementOf f = case IM.lookup (unFaceId f) transforms of
+      Just m -> Right m
+      Nothing -> Left (DisconnectedFace f)
+
+    cornersOf f = case IM.lookup (unFaceId f) byId of
+      Just g -> Right (faceCorners g)
+      Nothing -> Left (DisconnectedFace f)
 
 -- | Move every vertex, and refuse to hand back a torn model.
 --
@@ -676,12 +734,13 @@ loopsClose tolerance faces creases neighbours transforms =
 -- means something next to something else: a millimetre is a tear in a model a
 -- centimetre across and rounding noise in one the size of a room.
 placeVertices ::
+  Double ->
   Int ->
   [V3] ->
   [Face] ->
   IM.IntMap Rigid ->
   Either FoldingError [V3]
-placeVertices n flat faces transforms =
+placeVertices tolerance n flat faces transforms =
   traverse settle [0 .. n - 1]
   where
     placements :: IM.IntMap [V3]
@@ -717,7 +776,9 @@ placeVertices n flat faces transforms =
     -- half. There are only ever as many placements as faces at the vertex.
     diameter ps = maximum (0 : [norm (a ^-^ b) | a <- ps, b <- ps])
 
-    tolerance = sheetTolerance flat
+-- | Radians as the degrees a file would have written.
+degrees :: Double -> Double
+degrees r = r * 180 / pi
 
 -- | How far apart two answers about this sheet may be and still be one answer.
 --
@@ -737,6 +798,12 @@ placeVertices n flat faces transforms =
 -- anything larger is the angles genuinely failing to close, however slightly,
 -- and the refusals quote the distance so the reader can see whether it is a
 -- tear or a typo in the fourth decimal place.
+--
+-- The @max 1@ is a floor and not a scale, so on a sheet smaller than one model
+-- unit — a file written in metres for a pleat a millimetre across — this stops
+-- tracking the paper and becomes an absolute 1e-9. That is inherited from where
+-- this used to live rather than chosen here, and it is a real gap for very
+-- small coordinates.
 sheetTolerance :: [V3] -> Double
 sheetTolerance flat = 1e-9 * max 1 sheetSize
   where
