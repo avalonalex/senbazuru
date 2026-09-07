@@ -76,8 +76,16 @@ import Senbazuru.Geometry.VectorSpace
 -- This is the orientation predicate of @docs\/notes\/robust-predicates.md@ in
 -- vector form: @cross2 (b ^-^ a) (p ^-^ a)@ is positive exactly when @p@ lies
 -- to the left of the line from @a@ to @b@. Its magnitude is twice the area of
--- the triangle the two vectors span, which is why every tolerance in this
--- module is an area.
+-- the triangle the two vectors span, which is why most tolerances in this
+-- module are areas.
+--
+-- __Most, not all, and each function says which.__ 'segmentsCross' and
+-- 'distanceToSegment' take distances, and 'segmentsCross' divides this by a
+-- segment length to get there. Two units that are both @Double@ is a real trap
+-- and has been sprung: @segmentsCross@ was changed from one to the other and
+-- its callers were not, which asked five hundred times the intended clearance
+-- on a 400-unit sheet and was invisible to the compiler, to hlint and to a
+-- review. Read the function you are calling, not this paragraph.
 cross2 :: V2 -> V2 -> Double
 cross2 (V2 ux uy) (V2 vx vy) = ux * vy - uy * vx
 

@@ -80,7 +80,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
-import Senbazuru.Fold.Faces (withTracedFaces)
+import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Query
   ( EdgeKey,
     Face (..),
@@ -206,19 +206,26 @@ renderFoldingError = \case
 -- something we have reason to think is false, which is worse than losing them.
 foldFrame :: Frame -> Either FoldingError Frame
 foldFrame fr0 = do
-  flat <- first FrameGeometry (frameVertices fr0)
+  asGiven <- first FrameGeometry (frameVertices fr0)
   -- Shared with the renderer and the flat-foldability checker, so that all
   -- three agree about what a file is. Asking the geometry alone would fold an
   -- already-folded crane a second time and hand back nonsense: it folds flat,
   -- so nothing in its coordinates says it has been folded.
-  when (frameKind (frameClasses fr0) flat == FoldedForm) $
-    Left (AlreadyFolded (zSpan flat))
-  -- Most files record no faces -- no .cp or .opx can -- and creases alone do
-  -- not say which pieces of paper move together. They do determine them,
-  -- though, so a frame that arrives without faces gets them traced rather than
-  -- refused. Done here, before anything reads the frame, so that everything
-  -- below sees one frame and cannot disagree about what its faces are.
-  fr <- first FrameGeometry (withTracedFaces fr0)
+  when (frameKind (frameClasses fr0) asGiven == FoldedForm) $
+    Left (AlreadyFolded (zSpan asGiven))
+  -- Two ways in which a file leaves out what its own creases determine, and
+  -- both are recovered rather than refused. A drawing whose creases cross has
+  -- left out the vertex where they meet, so cut them at it; and most files
+  -- record no faces at all -- no .cp or .opx can -- so trace those. Neither
+  -- invents anything: the crossing is on the paper already, and creases alone
+  -- do say which pieces of paper move together, just not in so many words.
+  --
+  -- Both happen here, before anything else reads the frame, so that nothing
+  -- below can disagree about which frame it is working on. That includes the
+  -- vertices: splitting adds some, so they have to be read from the frame that
+  -- comes out and not from the one that went in.
+  fr <- first FrameGeometry (withPlanarFaces fr0)
+  flat <- first FrameGeometry (frameVertices fr)
   faces <- traverse orientCcw =<< first FrameGeometry (frameFaces fr)
   when (null faces) (Left NoFaces)
   creases <- creaseIndex fr

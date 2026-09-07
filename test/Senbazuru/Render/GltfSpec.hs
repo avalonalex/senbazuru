@@ -475,12 +475,44 @@ spec = do
               }
       exportFrame DefaultThickness square `shouldBe` exportFrame DefaultThickness stated
 
-    it "refuses a frame whose creases cross with no vertex where they meet" $ do
-      -- unit-square.fold used to be refused here for recording no faces. Now
-      -- the tracing gets as far as saying what is really wrong with it.
+    it "cuts creases that cross, rather than refusing the frame they are in" $ do
+      -- unit-square.fold has been refused here twice over: for recording no
+      -- faces, then for its creases crossing. Both were about what the file
+      -- left out rather than about the paper, and both are now worked out.
       (_, fr) <- fixture "test/fixtures/unit-square.fold"
-      exportFrame DefaultThickness fr
-        `shouldBe` Left (GltfRefused (EdgesCross (EdgeId 8) (EdgeId 9)))
+      -- Compared against the same pattern cut by hand: the three creases
+      -- through the middle of the sheet become six through one new vertex at
+      -- (0.5, 0.5), and the six faces that cuts the square into come out in
+      -- that order. "It exported something" would be true of every possible
+      -- success, including cutting it into three vertices a hair apart.
+      let byHand =
+            fr
+              { verticesCoords = verticesCoords fr <> [[0.5, 0.5]],
+                edgesVertices =
+                  [ (VertexId a, VertexId b)
+                    | (a, b) <-
+                        [ (0, 4),
+                          (4, 1),
+                          (1, 5),
+                          (5, 2),
+                          (2, 6),
+                          (6, 3),
+                          (3, 7),
+                          (7, 0),
+                          (4, 8),
+                          (8, 6),
+                          (7, 8),
+                          (8, 5),
+                          (0, 8),
+                          (8, 2)
+                        ]
+                  ],
+                edgesAssignment =
+                  replicate 8 Border <> [Valley, Valley, Mountain, Mountain, Flat, Flat],
+                edgesFoldAngle =
+                  replicate 8 0 <> [180, 180, -180, -180, 0, 0]
+              }
+      exportFrame DefaultThickness fr `shouldBe` exportFrame DefaultThickness byHand
 
     it "refuses a frame with no creases at all, which has no surface to write" $ do
       let bare = flatSheet {facesVertices = [], edgesVertices = [], edgesAssignment = []}

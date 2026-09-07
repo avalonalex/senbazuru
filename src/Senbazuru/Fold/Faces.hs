@@ -66,6 +66,14 @@
 module Senbazuru.Fold.Faces
   ( traceFaces,
     withTracedFaces,
+
+    -- * The drawing itself
+    -- $sheet
+    Sheet (..),
+    sheetOf,
+    pointAt,
+    endsOf,
+    tolerance,
   )
 where
 
@@ -94,17 +102,8 @@ import Senbazuru.Geometry.V3 (V3 (..))
 -- nobody has creased.
 traceFaces :: Frame -> Either FoldError [[VertexId]]
 traceFaces fr = do
-  verts <- frameVertices fr
-  -- The same judgement the renderer and the flat-foldability checker make, so
-  -- that all of them agree about what a file is. Geometry alone is not enough:
-  -- a model folded flat -- the traditional crane -- has coordinates a crease
-  -- pattern's cannot be told from, and tracing its creases would report the
-  -- regions of a drawing in which the paper lies on top of itself.
-  when (frameKind (frameClasses fr) verts == FoldedForm) (Left SheetIsFolded)
-  mapM_ (namesRealVertices (length verts)) numbered
-  let points = map flatten verts
-      sheet = Sheet {sheetPoints = IM.fromList (zip [0 ..] points), sheetEdges = numbered}
-  if null numbered
+  sheet <- sheetOf fr
+  if null (sheetEdges sheet)
     then pure []
     else do
       checkDrawing sheet
@@ -112,24 +111,6 @@ traceFaces fr = do
       mapM_ noBridge traced
       pure [map VertexId ring | ring <- traced]
   where
-    numbered =
-      [ (EdgeId i, (a, b))
-        | (i, (VertexId a, VertexId b)) <- zip [0 ..] (edgesVertices fr)
-      ]
-
-    -- frameVertices resolves coordinates and nothing else, so an edge naming a
-    -- vertex that is not there gets past it. Left unchecked, that vertex would
-    -- be given a phantom position and every complaint after this point would
-    -- name whichever innocent element the phantom happened to land on.
-    namesRealVertices n (eid, (a, b)) =
-      mapM_
-        (\v -> when (v < 0 || v >= n) (Left (VertexIndexOutOfRange eid (VertexId v) n)))
-        [a, b]
-
-    -- A crease pattern lies in z = 0, which frameKind has just confirmed, so
-    -- dropping z loses nothing rather than projecting anything.
-    flatten (V3 x y _) = V2 x y
-
     -- A crease with the same face on both sides is walked in both directions
     -- by one ring, which then lists both its ends twice and is not a polygon.
     -- Checked here rather than in checkDrawing because it is a property of the
@@ -166,6 +147,14 @@ withTracedFaces fr
       traced <- traceFaces fr
       pure fr {facesVertices = traced}
 
+-- $sheet
+--
+-- The drawing a frame's creases make, and the questions about it that do not
+-- depend on what is being asked. Exported for "Senbazuru.Fold.Crossings",
+-- which splits the creases this module refuses to trace and so has to read the
+-- same drawing, at the same tolerance, and refuse the same malformed frames.
+-- Two copies of that would be two chances to disagree about what a file says.
+
 -- | A flat drawing of creases: where the vertices are, and which pairs are
 -- joined.
 --
@@ -176,6 +165,42 @@ data Sheet = Sheet
   { sheetPoints :: !(IntMap V2),
     sheetEdges :: ![(EdgeId, (Int, Int))]
   }
+  deriving stock (Eq, Show)
+
+-- | Read a frame as a flat drawing, refusing the frames that are not one.
+--
+-- Two refusals, and both have to happen here rather than in a caller. A folded
+-- form is not a drawing on flat paper: a model folded flat has coordinates a
+-- crease pattern's cannot be told from, so only 'frameKind' — the judgement
+-- the renderer and the flat-foldability checker already share — separates
+-- them. And an edge naming a vertex that does not exist gets past
+-- 'frameVertices', which resolves coordinates and nothing else; left
+-- unchecked, that vertex is given a phantom position and every complaint after
+-- it names whichever innocent element the phantom happens to land on.
+sheetOf :: Frame -> Either FoldError Sheet
+sheetOf fr = do
+  verts <- frameVertices fr
+  when (frameKind (frameClasses fr) verts == FoldedForm) (Left SheetIsFolded)
+  mapM_ (namesRealVertices (length verts)) numbered
+  pure
+    Sheet
+      { sheetPoints = IM.fromList (zip [0 ..] (map flatten verts)),
+        sheetEdges = numbered
+      }
+  where
+    numbered =
+      [ (EdgeId i, (a, b))
+        | (i, (VertexId a, VertexId b)) <- zip [0 ..] (edgesVertices fr)
+      ]
+
+    namesRealVertices n (eid, (a, b)) =
+      mapM_
+        (\v -> when (v < 0 || v >= n) (Left (VertexIndexOutOfRange eid (VertexId v) n)))
+        [a, b]
+
+    -- A crease pattern lies in z = 0, which frameKind has just confirmed, so
+    -- dropping z loses nothing rather than projecting anything.
+    flatten (V3 x y _) = V2 x y
 
 -- | Where a vertex is. Every id in 'sheetEdges' came through 'frameVertices',
 -- which already refused the ones with no coordinates, so the fallback is
@@ -187,21 +212,26 @@ pointAt sheet v = fromMaybe (V2 0 0) (IM.lookup v (sheetPoints sheet))
 endsOf :: Sheet -> (Int, Int) -> (V2, V2)
 endsOf sheet (a, b) = (pointAt sheet a, pointAt sheet b)
 
--- | How far apart two things have to be to be apart, as a distance and as an
--- area.
+-- | How far apart two things on this sheet have to be to be apart.
 --
--- Relative to the sheet's own diagonal, a billionth of it, for the reason
--- "Senbazuru.Import.Segments" gives about its own tolerance: the same reader
--- has to cope with a pattern on the unit square and one on the 400-unit square
--- the desktop editors draw on, and an absolute number cannot serve both. The
--- area is that distance times the same diagonal, because
--- 'Senbazuru.Geometry.Polygon.cross2' returns twice a triangle's area and the
--- triangles in question are a hair high and a sheet wide.
-tolerances :: Sheet -> (Double, Double)
-tolerances sheet = (nearness, nearness * diagonal)
+-- A distance, relative to the sheet's own diagonal — a billionth of it — for
+-- the reason "Senbazuru.Import.Segments" gives about its own tolerance: the
+-- same reader has to cope with a pattern on the unit square and one on the
+-- 400-unit square the desktop editors draw on, and an absolute number cannot
+-- serve both.
+--
+-- One number, and it used to be two. The second was an /area/, for
+-- 'segmentsCross' back when that took one; it takes a distance now, and the
+-- two call sites went on handing it the area — which on the 400-unit sheet
+-- asked for five hundred times the clearance intended, and left a band in
+-- which a crossing was too shallow to be reported here and too far off the
+-- line to be a vertex sitting on it. Neither check saw it. If a second unit is
+-- ever wanted again it should be a second function, not a second component
+-- nobody can tell apart at the call site.
+tolerance :: Sheet -> Double
+tolerance sheet = 1e-9 * diagonal
   where
     diagonal = maybe 0 (norm . boxSize) (boxFromPoints (IM.elems (sheetPoints sheet)))
-    nearness = 1e-9 * diagonal
 
 -- | Refuse every drawing whose regions are not what tracing would report.
 --
@@ -217,7 +247,7 @@ checkDrawing sheet = do
   mapM_ noVertexInside (sheetEdges sheet)
   noCrossing (sheetEdges sheet)
   where
-    (near, area) = tolerances sheet
+    near = tolerance sheet
 
     hasLength (eid, ends) = do
       let (a, b) = endsOf sheet ends
@@ -285,7 +315,7 @@ checkDrawing sheet = do
             (f, fp) <- rest,
             not (share ep fp),
             boxesOverlap ep fp,
-            segmentsCross area (endsOf sheet ep) (endsOf sheet fp)
+            segmentsCross near (endsOf sheet ep) (endsOf sheet fp)
         ]
 
     share (a, b) (c, d) = a == c || a == d || b == c || b == d

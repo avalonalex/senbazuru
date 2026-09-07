@@ -284,12 +284,17 @@ are not contributors can find it, and so there is only one copy to keep true.
   `docs/notes/round-trips.md`.
 - **Faces are not extra information, they are the creases read another way.**
   Most files record none — no `.cp` or `.opx` can — so `Senbazuru.Fold.Faces`
-  traces them, and `Origami.Folding` and `Render.Gltf` both call it rather than
-  refusing. `Render.CreasePattern` deliberately does not, and not for fear of
-  churning goldens: tracing can fail — `examples/unit-square.fold`'s creases
-  cross — and a drawing must not stop working because its faces cannot be
-  worked out. Filling only when the trace happens to succeed would make the
-  picture depend on something nobody looking at the page can see.
+  traces them, and `Origami.Folding` and `Render.Gltf` both call
+  `Fold.Crossings.withPlanarFaces` — cut, then trace — rather than refusing.
+  **One function, not two calls at each backend**, for the reason
+  `--layer-budget` is written down below: a policy spelled out per backend is a
+  policy the next backend forgets.
+  `Render.CreasePattern` deliberately does neither, and not for fear of
+  churning goldens: tracing can fail on a drawing no cutting fixes — a crease
+  that stops in the middle of the paper has no face round it — and a drawing
+  must not stop working because its faces cannot be worked out. Filling only
+  when the trace happens to succeed would make the picture depend on something
+  nobody looking at the page can see.
 - **The face walk turns clockwise to trace an anticlockwise face.** From the
   half-edge `u→v` it turns at `v` onto the next crease *clockwise* from `v→u`.
   Turning the way the face winds traces the same rings backwards; turning the
@@ -303,8 +308,30 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Tracing refuses a drawing that is not planar as drawn, and it must.** Two
   creases crossing with no vertex, or a vertex sitting on an unsplit edge, both
   produce rings — plausible ones that fill and fold — describing regions that
-  are not the regions on the page. `examples/unit-square.fold` is the case in
-  hand: its three interior creases all cross at the middle of the sheet.
+  are not the regions on the page. Neither is a fact about the paper, though,
+  so `Fold.Crossings` cuts them first and only what survives that is refused.
+- **Cut every crossing before adding any of them as a vertex.** Three creases
+  through one point are three crossings pairwise, and computing each on its own
+  gives three vertices a rounding error apart joined by creases shorter than
+  anything a person drew. `examples/unit-square.fold` is exactly that case.
+  Find every crossing, merge them at the sheet's tolerance, *then* cut.
+- **`splitCrossings` leaves two kinds of frame alone**, and both matter. A
+  frame that *records its own faces* has already answered the question cutting
+  asks — a crease stopping part-way along another is no defect there, the face
+  just has a corner mid-side — so cutting would swap the file's answer for ours,
+  re-wound, and `faceOrders` are read against the file's winding. And a frame
+  with *nothing to cut* comes back untouched, keys and all, which is what lets
+  this sit in front of every fold and export without stripping keys or adding
+  refusals on paths that never asked. When it does cut, `faces_vertices` and
+  `frameExtras` go, on the preserve-at-the-boundary rule.
+- **Cutting does not renumber the vertices** — every one the file had keeps its
+  id, and crossings are appended after them. What makes a stale
+  `faces_vertices` untrue is the new corners in the middle of its sides, not
+  dangling ids. The obvious reason is the wrong one, and it was in this file.
+- **Editors are not as tidy as you would assume.** Of thirty crease patterns in
+  the reference corpora, one hand-written file has creases genuinely crossing —
+  and ORIPA's own `turkey2015.opx` has 71 creases that stop on another crease
+  it never cut, which made it unfoldable here until `Fold.Crossings` existed.
 - **Absent is not empty.** The decoder reports a missing `faces_vertices` as
   `[]` because it is permissive; the encoder must not write `[]` back, because
   that is a claim the file did not make. Every `Nothing`, every empty list and a
@@ -592,13 +619,14 @@ Deliberate omissions, so nobody thinks they are bugs:
   face, a fold angle or a second frame, so writing one would silently drop
   them; senbazuru writes FOLD, SVG and glTF.
 - The `.cp`/`.opx` reader rebuilds the vertices and nothing else, so a segment
-  list can still describe something that is not a planar graph. Two creases
-  that cross without a vertex there stay crossed, and `check` then has one
-  fewer vertex to look at — the same under-reporting `examples/unit-square.fold`
-  already gets. The same crease listed twice becomes two edges between one pair
-  of vertices, and is counted twice by everything that counts creases. Anything
-  needing faces refuses both, naming the offending element; splitting a
-  crossing is #67.
+  list can still describe something that is not a planar graph. `check` reads
+  such a file as drawn, so a crossing with no vertex there leaves it one vertex
+  short of what the picture suggests — the same under-reporting
+  `examples/unit-square.fold` already gets, and `check` does not cut. Anything
+  needing faces cuts first (`Fold.Crossings`) and refuses what is left.
+- Two creases lying along one line with a stretch in common are refused rather
+  than cut: along the stretch they share there are two answers to how the paper
+  folds, and picking one is not senbazuru's to do.
 - The `.cp` reader accepts type codes 1 to 11 and refuses everything else,
   including 0. Oriedita's auxiliary colours are the ones above 4, and it drops
   the colour, because FOLD has nowhere to put it.

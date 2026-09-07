@@ -99,14 +99,14 @@ picture that looks like it came from a book.
   the wild are not FOLD files but Orihime and Oriedita's `.cp` or ORIPA's
   `.opx`, both of them a flat list of creases with the vertices left out. Give a
   command one of those and it rebuilds the vertices and carries on.
-- **Works out the faces when a file does not record them**, which most do not
-  and no `.cp` can. A crease pattern is a planar graph and its faces are the
-  regions the creases cut the sheet into, so folding and exporting trace them —
-  and a drawing whose creases cross with no vertex where they meet is refused
-  naming the pair, rather than folded into a plausible picture of other paper.
-  Drawing a pattern does not trace, so the flat picture of one is a wireframe
-  whether or not the file records faces; the reason is that a pattern which
-  cannot be traced must still draw.
+- **Works out what a file leaves unsaid about its own creases.** Most patterns
+  record no faces and no `.cp` can, but a crease pattern is a planar graph and
+  its faces are the regions the creases cut the sheet into — so folding and
+  exporting trace them. Creases that cross with no vertex where they meet, or
+  that stop part-way along another, are cut at the point they imply first: one
+  real ORIPA design has 71 of the latter and could not be folded here until it
+  was. Drawing a pattern flat does neither, because some drawings cannot be
+  traced however much is worked out, and those still have to draw.
 
 <p align="center">
   <img src="docs/img/steps.svg" width="640" alt="A square folded into quarters, drawn as three numbered figures with fold arrows">

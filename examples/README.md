@@ -60,7 +60,7 @@ demonstrated on:
 
 | File                   | What it is                                                     |
 | ---------------------- | -------------------------------------------------------------- |
-| `unit-square.fold`     | The smallest file with a border, a mountain fold and a valley fold. Its three interior creases cross at the centre without a vertex there, which makes it two fixtures in one: it has no interior vertex for `check` to look at, and its faces cannot be traced, so it is what `Senbazuru.Fold.Faces` is demonstrated refusing |
+| `unit-square.fold`     | The smallest file with a border, a mountain fold and a valley fold. Its three interior creases cross at the centre without a vertex there, which earns it three jobs: `check` finds no interior vertex to look at, `Senbazuru.Fold.Crossings` cuts it into six creases through one new vertex, and the result folds and then cannot be *stacked* — its 2 mountains and 2 valleys at right angles are what Maekawa's theorem forbids, showing up as layers that would have to pass through each other |
 | `quarter-fold.fold`    | A square folded into quarters: one interior vertex, four creases, and the lopsided three-mountains-to-one-valley that Maekawa's theorem forces. Its four faces meet at that vertex, which is what makes it the fixture for face filling |
 | `three-crease.fold`    | Three creases meeting at a point, which cannot fold flat whatever the angles. `check` reports it |
 | `big-little-big.fold`  | A vertex that satisfies both theorems `check` knows and still cannot fold flat, for the reason in [big-little-big.md](../docs/notes/big-little-big.md). `check` passes it, which is the point; `render --fold` refuses it, because its layers cannot be stacked |

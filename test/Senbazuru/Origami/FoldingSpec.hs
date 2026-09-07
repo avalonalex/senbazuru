@@ -263,13 +263,21 @@ spec = do
           map (map rounded) (verticesCoords folded)
             `shouldBe` [[0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 0, 0]]
 
-    it "refuses a sheet whose creases cross with no vertex where they meet" $ do
+    it "cuts creases that cross, and folds the sheet they cut" $ do
       -- unit-square.fold's three interior creases all pass through the middle
-      -- of the sheet and none of them stops there, so the regions between them
-      -- are not faces of anything. It used to be refused for having no faces;
-      -- now the tracing gets far enough to say what is actually wrong with it.
+      -- of the sheet and none of them stops there. It has been refused twice
+      -- over in its time -- first for recording no faces, then for those
+      -- creases crossing -- and neither was a fact about the paper. The
+      -- crossing is on the sheet already; only the vertex was missing.
       flat <- loadFixture "test/fixtures/unit-square.fold"
-      foldFrame flat `shouldBe` Left (FrameGeometry (EdgesCross (EdgeId 8) (EdgeId 9)))
+      case foldFrame flat of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right folded -> do
+          -- One new vertex at the centre, not three a rounding error apart,
+          -- and the three creases through it become six.
+          length (verticesCoords folded) `shouldBe` 9
+          length (edgesVertices folded) `shouldBe` 14
+          length (facesVertices folded) `shouldBe` 6
 
     it "refuses a sheet with no creases at all, which is what is left of NoFaces" $ do
       let bare = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1]]}
