@@ -86,14 +86,14 @@ module Senbazuru.Origami.ThroughLayers
   )
 where
 
-import Control.Monad (foldM, guard, when)
+import Control.Monad (guard, when)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
-import Senbazuru.Fold.Creasing (creaseAlong)
+import Senbazuru.Fold.Creasing (creaseAllAlong)
 import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), creaseEndFlag, renderFoldError)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
 import Senbazuru.Geometry (V2 (..), norm, (^+^), (^-^))
@@ -165,10 +165,16 @@ data ThroughError
     -- and report success. An invariant held in another module is a fine reason
     -- to expect something and a poor reason to assume it.
     LayerNotPlaced !FaceId
-  | -- | One of the lines the move worked out was refused when it was drawn on
-    -- the sheet. Carries the face it came from, so the refusal can be traced
-    -- back to a layer, and what "Senbazuru.Fold.Creasing" said.
-    CannotCrease !FaceId !FoldError
+  | -- | The lines this move worked out were refused when they were drawn on
+    -- the sheet.
+    --
+    -- No face. They are drawn in one go, and the cutting that refuses them sees
+    -- all of them at once, so a refusal is about the set and not about one
+    -- layer — and saying otherwise would mean naming whichever share the cutter
+    -- happened to reach first. What "Senbazuru.Fold.Creasing" says names the
+    -- point at fault where it can, which locates the share better than a face
+    -- number would.
+    CannotCrease !FoldError
   deriving stock (Eq, Show)
 
 -- | A human-readable rendering of a 'ThroughError'.
@@ -201,10 +207,8 @@ renderThroughError = \case
       <> tshow f
       <> " of the folded model has no motion recorded for it, so there is no way"
       <> " to say where its share of this line came from on the sheet"
-  CannotCrease (FaceId f) err ->
-    "the crease this line makes on the layer from face "
-      <> tshow f
-      <> " was refused: "
+  CannotCrease err ->
+    "the creases this line makes on the layers it reaches were refused: "
       <> renderFoldError err
 
 -- | Draw a line on a folded model and crease every layer under it.
@@ -248,15 +252,15 @@ creaseThroughLayers from to assignment fr = do
     [] -> Right ()
   let shares = mapMaybe (shareFor sheet (foldedPlacements folded) assignment (from, to)) (sheetPanels sheet)
   when (null shares) (Left NoPaperUnderTheLine)
-  -- Every share is worked out before any of them is drawn, and that order is
-  -- not an accident. 'creaseAlong' drops the faces and has them traced again, so a
-  -- face number means something different the moment the first crease lands.
-  -- The shares themselves are points on the flat sheet, which do not move.
-  foldM draw (foldedPattern folded) shares
-  where
-    draw paper share =
-      first (CannotCrease (layerFace share)) $
-        creaseAlong (layerFrom share) (layerTo share) (layerAs share) paper
+  -- One call, not one per layer. Drawing them in turn meant cutting and
+  -- re-tracing the whole pattern once per share, which is most of the work and
+  -- all of the cost: a 320-fold accordion took a minute where the fold itself
+  -- takes a third of a second. It is also unnecessary -- the shares are points
+  -- on a sheet that does not move while they are drawn. See #77.
+  first CannotCrease $
+    creaseAllAlong
+      [(layerFrom share, layerTo share, layerAs share) | share <- shares]
+      (foldedPattern folded)
 
 -- | One layer's share of the line: where it lands on the sheet, and what kind
 -- of crease it is there.

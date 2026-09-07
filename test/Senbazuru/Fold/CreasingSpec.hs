@@ -167,6 +167,56 @@ spec = do
           -- assertion that was already true before creasing.
           frameExtras s `shouldBe` mempty
 
+  describe "drawing several at once" $ do
+    it "puts two creases on the sheet in one pass" $ do
+      -- The batch form exists for speed -- cutting and tracing once instead of
+      -- once per crease -- so what has to be pinned is that it draws the same
+      -- thing.
+      case creaseAllAlong
+        [ (V2 0.5 0, V2 0.5 1, Mountain),
+          (V2 0 0.5, V2 1 0.5, Valley)
+        ]
+        square of
+        Left err -> expectationFailure (show err)
+        Right out -> do
+          -- Four sides cut in two, the two new creases cut at their crossing,
+          -- and the middle is one vertex.
+          length (verticesCoords out) `shouldBe` 9
+          length (edgesVertices out) `shouldBe` 12
+          drop 8 (edgesAssignment out) `shouldBe` [Mountain, Mountain, Valley, Valley]
+
+    it "joins two creases that end at the same new point" $ do
+      -- The one thing a batch has to do that a single crease never does. Both
+      -- of these end at the middle of the right-hand side, which no corner
+      -- occupies yet; resolving the ends independently would put two vertices
+      -- there, joined to nothing, and the tracing would refuse the drawing.
+      case creaseAllAlong
+        [ (V2 0 0, V2 1 0.5, Valley),
+          (V2 0 1, V2 1 0.5, Mountain)
+        ]
+        square of
+        Left err -> expectationFailure (show err)
+        Right out -> do
+          length (verticesCoords out) `shouldBe` 5
+          creasesOf out `shouldBe` [(0, 1), (1, 4), (4, 2), (2, 3), (3, 0), (0, 4), (3, 4)]
+
+    it "decides every refusal against the frame as it was" $
+      -- Order-independence, chosen over the case it forbids: the second crease
+      -- here would meet the first if they were drawn in turn, and does not meet
+      -- the paper. Drawn together, neither end of it meets anything, and the
+      -- answer does not depend on which was listed first.
+      creaseAllAlong
+        [ (V2 0 0, V2 1 1, Valley),
+          (V2 0.5 0.5, V2 0.75 0.75, Mountain)
+        ]
+        square
+        `shouldBe` Left (CreaseEndMeetsNothing FromEnd (V2 0.5 0.5))
+
+    it "leaves the pattern alone when there is nothing to draw" $
+      -- Not "validate and hand back with the faces dropped", which is what
+      -- falling through to the cutting would do.
+      creaseAllAlong [] square `shouldBe` Right square
+
   describe "creases it will not draw" $ do
     it "refuses one with no length, without naming an edge the file has not got" $
       -- The offending element is the request. Borrowing EdgeWithoutLength

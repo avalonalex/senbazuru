@@ -59,10 +59,12 @@
 -- <https://github.com/avalonalex/senbazuru/issues/76 somebody else's question>.
 module Senbazuru.Fold.Creasing
   ( creaseAlong,
+    creaseAllAlong,
   )
 where
 
 import Control.Monad (when)
+import Data.Foldable (foldl', traverse_)
 import Data.IntMap.Strict qualified as IM
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (Sheet (..), coordsFor, endsOf, sheetOf, tolerance)
@@ -85,7 +87,42 @@ import Senbazuru.Geometry.Polygon (distanceToSegment)
 -- the same thing said in coordinates; and an end that meets nothing the
 -- drawing already has, for the reason in the module header.
 creaseAlong :: V2 -> V2 -> Assignment -> Frame -> Either FoldError Frame
-creaseAlong from to assignment fr = do
+creaseAlong from to assignment = creaseAllAlong [(from, to, assignment)]
+
+-- | Draw several creases, and put the pattern back in order __once__.
+--
+-- The same move as 'creaseAlong' repeated, and not the same cost. Almost all
+-- the work of drawing a crease is the cutting and tracing afterwards, which
+-- compares every pair of edges and walks every face — so doing it once per
+-- crease over a pattern that grows by one each time is cubic in the number of
+-- creases. Creasing a folded model through its layers draws one crease per face
+-- the line crosses, which is 321 of them on a 320-fold accordion, and that took
+-- a minute where the fold itself takes a third of a second. It was
+-- <https://github.com/avalonalex/senbazuru/issues/77 #77>.
+--
+-- Nothing forced the one-at-a-time shape: the creases are points on a sheet
+-- that does not move while they are being drawn.
+--
+-- == What has to be done together rather than in turn
+--
+-- __Interning the ends.__ An end that lands on a corner the paper already has
+-- /is/ that corner, and two creases in one batch that end at the same new point
+-- have to become one vertex too — otherwise the drawing has two coincident
+-- corners joined to nothing, which the face tracing refuses. So the ends are
+-- resolved against the sheet /and/ against the ends already resolved in this
+-- batch.
+--
+-- __Refusing before appending.__ Every per-crease refusal is decided against the
+-- frame as it was, so the answer does not depend on the order the batch happens
+-- to be in. That is a change from repeating 'creaseAlong', where a crease could
+-- meet one drawn earlier in the same call; no caller wants that, and
+-- order-dependence in a refusal is worth more than the case it forbids.
+creaseAllAlong :: [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame
+-- Drawing nothing leaves the pattern alone, rather than putting it through the
+-- cutting and coming back with its faces dropped. There is nothing to validate
+-- it against that reading the file did not already do.
+creaseAllAlong [] fr = Right fr
+creaseAllAlong segments fr = do
   -- Read the sheet only to refuse the frames that are not one to draw on: a
   -- folded form, and an edge naming a vertex that is not there. Its tolerance
   -- is the sheet's own, so a crease counts as having length by the same
@@ -93,18 +130,16 @@ creaseAlong from to assignment fr = do
   sheet <- sheetOf fr
   arraysLineUp
   let near = tolerance sheet
-  when (norm (to ^-^ from) <= near) (Left CreaseWithoutLength)
-  meetsSomething sheet near FromEnd from
-  meetsSomething sheet near ToEnd to
-  let ends@((a, _), (b, _)) = endpointsOf sheet near
-  -- Two ends further apart than the tolerance can still be the same corner,
-  -- if each is within the tolerance of it and they lie on opposite sides. The
+  traverse_ (wellFormed sheet near) segments
+  let (added, pairs) = intern sheet near
+  -- Two ends further apart than the tolerance can still be the same corner, if
+  -- each is within the tolerance of it and they lie on opposite sides. The
   -- crease would then run from a vertex to itself, and the refusal for that
-  -- names an edge index the file does not have -- which is the whole thing
-  -- this module is trying not to do. The sheet has already said these are one
-  -- point; say the same.
-  when (a == b) (Left CreaseWithoutLength)
-  withPlanarFaces (creased ends)
+  -- names an edge index the file does not have -- which is the whole thing this
+  -- module is trying not to do. The sheet has already said these are one point;
+  -- say the same.
+  when (any (uncurry (==)) pairs) (Left CreaseWithoutLength)
+  withPlanarFaces (creased added pairs)
   where
     edges = length (edgesVertices fr)
 
@@ -121,6 +156,11 @@ creaseAlong from to assignment fr = do
       when (n /= 0 && n /= edges) $
         Left (ArrayLengthMismatch "edges_vertices" edges what n)
 
+    wellFormed sheet near (from, to, _) = do
+      when (norm (to ^-^ from) <= near) (Left CreaseWithoutLength)
+      meetsSomething sheet near FromEnd from
+      meetsSomething sheet near ToEnd to
+
     -- Each end has to land on something the drawing already has. Why that is
     -- the question, rather than whether the end is on the paper, is in the
     -- module header.
@@ -134,38 +174,39 @@ creaseAlong from to assignment fr = do
       where
         onIt e = distanceToSegment (endsOf sheet e) p <= near
 
-    -- An end that lands on a corner the paper already has /is/ that corner.
-    -- Appending a second vertex at the same place instead would leave the
-    -- crease attached to a vertex of its own, joined to nothing, and the face
-    -- tracing would refuse it -- correctly, since a crease hanging off a point
-    -- that happens to coincide with a corner really does divide nothing.
+    -- Every end of every crease resolved to a vertex id, with the coordinates
+    -- of the ones that had to be added.
     --
-    -- Only corners, and only these two points, so a plain scan is the whole of
-    -- it. An end that lands in the /middle/ of a crease needs no special case:
-    -- it becomes a vertex, and cutting that crease at it is exactly what
-    -- "Senbazuru.Fold.Crossings" is for.
-    --
-    -- The two are resolved in order, because the second's id depends on
-    -- whether the first added a vertex or joined one. Numbering them 0 and 1
-    -- up front is wrong exactly when one end lands on a corner and the other
-    -- does not, which is the commonest crease there is.
-    endpointsOf sheet near = ((a, addedA), (b, addedB))
+    -- An end is matched against the paper's own corners first and then against
+    -- the ends this batch has already added, so two creases that meet at a new
+    -- point meet at one vertex. An end that lands in the /middle/ of a crease
+    -- needs no special case: it becomes a vertex, and cutting that crease at it
+    -- is exactly what "Senbazuru.Fold.Crossings" is for.
+    intern sheet near = finish (foldl' resolve (length (verticesCoords fr), [], []) points)
       where
-        next = length (verticesCoords fr)
-        (a, addedA) = case existingAt sheet near from of
-          Just v -> (v, [])
-          Nothing -> (next, [coordsFor fr from])
-        (b, addedB) = case existingAt sheet near to of
-          Just v -> (v, [])
-          Nothing -> (next + length addedA, [coordsFor fr to])
+        points = concat [[from, to] | (from, to, _) <- segments]
 
-    creased ((a, addedA), (b, addedB)) =
+        resolve (next, addedSoFar, ids) p = case existingAt sheet near p of
+          Just v -> (next, addedSoFar, v : ids)
+          Nothing -> case [v | (v, q) <- addedSoFar, norm (q ^-^ p) <= near] of
+            (v : _) -> (next, addedSoFar, v : ids)
+            [] -> (next + 1, (next, p) : addedSoFar, next : ids)
+
+        finish (_, addedSoFar, ids) =
+          ( [coordsFor fr p | (_, p) <- reverse addedSoFar],
+            twos (reverse ids)
+          )
+
+        twos (a : b : rest) = (a, b) : twos rest
+        twos _ = []
+
+    creased added pairs =
       fr
-        { verticesCoords = verticesCoords fr <> addedA <> addedB,
-          edgesVertices = edgesVertices fr <> [(VertexId a, VertexId b)],
+        { verticesCoords = verticesCoords fr <> added,
+          edgesVertices = edgesVertices fr <> [(VertexId a, VertexId b) | (a, b) <- pairs],
           edgesAssignment = assignments,
           edgesFoldAngle = angles,
-          -- The line cuts at least one face in two, so every face the file
+          -- The lines cut at least one face in two, so every face the file
           -- recorded is now wrong -- and so is every faceOrders entry, which
           -- names those faces and is read against their winding. Dropping the
           -- faces is also what lets "Senbazuru.Fold.Crossings" do its half of
@@ -177,14 +218,16 @@ creaseAlong from to assignment fr = do
           frameExtras = mempty
         }
 
+    asked = [a | (_, _, a) <- segments]
+
     -- The assignment is the one thing the caller actually asked for, so it is
     -- written whether or not the file kept an array to write it in. An absent
     -- @edges_assignment@ means "nothing is known about any crease", which is
     -- what @U@ means -- so the array it becomes says exactly what the absence
-    -- said, plus the one crease somebody has now decided about.
+    -- said, plus the creases somebody has now decided about.
     assignments
-      | null (edgesAssignment fr) = replicate edges Unassigned <> [assignment]
-      | otherwise = edgesAssignment fr <> [assignment]
+      | null (edgesAssignment fr) = replicate edges Unassigned <> asked
+      | otherwise = edgesAssignment fr <> asked
 
     -- The angle follows the assignment rather than being nought. A valley with
     -- an angle of nought is not a valley: FOLD puts a valley's angle in
@@ -197,7 +240,7 @@ creaseAlong from to assignment fr = do
     -- crease's angle and folding will derive them all the same way.
     angles
       | null (edgesFoldAngle fr) = []
-      | otherwise = edgesFoldAngle fr <> [flatAngleFor assignment]
+      | otherwise = edgesFoldAngle fr <> map flatAngleFor asked
 
 -- | The angle a crease of this kind takes when the paper is folded flat.
 --
