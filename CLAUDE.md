@@ -574,6 +574,14 @@ are not contributors can find it, and so there is only one copy to keep true.
   overlapping pieces adding up to more paper than went in until it skipped them.
   Anything that walks a ring's edges and asks which side of one a point is on
   has to skip them too.
+- **The layer solver's cost is the propagation, not the geometry, and only a
+  profile says so.** On a 161-layer accordion the whole triple enumeration —
+  every one of the C(f, 3) `Acyclic` rules — is 0.9% of the run, while looking
+  pairs up in the decided-pairs map is over half. Two things measured in GHCi
+  said the opposite and were both wrong: the interpreter does not float the
+  loop-invariant clip out that a compiled build does, so an "optimisation" worth
+  2× interpreted was worth nothing compiled. Use `stack build --profile` and
+  `+RTS -p`; a proxy measurement here has misled twice.
 - **A model usually has several valid layer orders, and the count is a
   product.** The constraint graph falls into components that share no rule, so
   the orders are every combination of theirs: the crane has 5, one of
