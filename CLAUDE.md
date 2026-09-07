@@ -212,6 +212,12 @@ is not FOLD", never "this is FOLD we do not support yet". Refinement happens in
 `make fmt`. `hlint` must be clean. Warnings in `senbazuru.cabal`'s `common
 warnings` stanza apply everywhere; keep the build warning-free.
 
+One trap in that: **do not name a binding `pattern`.** `hlint`'s parser reads it
+as the `PatternSynonyms` keyword whether or not the extension is on, so
+`draw pattern share = ...` compiles under GHC and fails `make lint` with a parse
+error. It is a tempting name in a project about crease patterns; `paper` or
+`sheet` says the same thing.
+
 The ormolu version is **pinned in `.github/workflows/ci.yml`** (`ORMOLU_VERSION`,
 currently `0.7.2.0`) and must match the one on your `PATH`. Ormolu changes its
 output between releases, so an unpinned formatter fails CI on a day nobody
