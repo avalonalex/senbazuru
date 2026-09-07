@@ -55,15 +55,24 @@ stack run -- check  examples/bird-base.cp
 ```
 
 The last two are crease patterns and nothing else. Neither format can store a
-face, a fold angle or a second frame, so a file in either of them draws and
-checks but does not fold. `render --fold` and `export` say so and stop, because
-folding needs to know which pieces of paper move together and only the faces
-say that. `--arrows` and `--steps` succeed and draw the pattern, but neither
-adds anything to it: both work by comparing one frame with the next, and these
-formats store one frame. Faces can be
-worked out from the creases, which is
-[#34](https://github.com/avalonalex/senbazuru/issues/34); until then, fold in
-Oriedita or ORIPA and export FOLD.
+face, a fold angle or a second frame — but the first two of those are not
+losses senbazuru has to live with. The faces are determined by the creases and
+are traced from them, and a fold angle follows from a mountain or a valley, so
+`--fold` and `export` work on a `.cp` as they do on a `.fold`:
+
+```bash
+stack run -- render examples/bird-base.cp --fold -o bird-base-folded.svg
+```
+
+What a single frame really cannot give you is a *sequence*: `--arrows` and
+`--steps` succeed and draw the pattern, but neither adds anything to it, since
+both work by comparing one frame with the next.
+
+One thing tracing does not change is the flat picture. `render` on a pattern
+that records no faces draws a wireframe, as it always has, and filling it is not
+a matter of switching the tracing on: a pattern whose creases cross — as
+`examples/unit-square.fold`'s do — cannot be traced at all, and it still has to
+draw. So the fill follows the file, and folding does not.
 
 Both formats measure `y` downwards, as the Java editors that write them draw
 it, and senbazuru turns that the right way up on the way in. That is a
@@ -74,12 +83,13 @@ FOLD export.
 
 Two things a segment list can describe that a crease pattern cannot, and that
 the reader passes through as it finds them: two creases that cross with no
-vertex where they meet, and the same crease listed twice. The first means
-`check` has one fewer vertex to look at than the picture suggests — the same
-under-reporting a `.fold` file drawn that way gets, as `examples/unit-square.fold`
-shows — and the second counts that crease twice. Neither is refused, because
-the fix for both is to rebuild the graph, which is
-[#34](https://github.com/avalonalex/senbazuru/issues/34).
+vertex where they meet, and the same crease listed twice. `check` reads such a
+file happily — it has one fewer vertex to look at than the picture suggests,
+the same under-reporting a `.fold` file drawn that way gets. Anything needing
+*faces* refuses it and names the offending pair, because the regions between
+creases that cross are not the faces of anything. Splitting a crossing in two,
+rather than complaining about it, is
+[#67](https://github.com/avalonalex/senbazuru/issues/67).
 
 Output is always FOLD, SVG or glTF. senbazuru does not write `.cp` or `.opx`,
 because writing one would silently drop whatever the document held that the

@@ -325,6 +325,16 @@ spec = do
       renderFixture "test/fixtures/bird-base.cp"
         >>= goldenText "test/golden/bird-base.svg"
 
+    -- The whole chain the docs promise, in one file: a .cp with no vertices
+    -- and no faces of its own is read, its endpoints merged, its faces traced,
+    -- its angles taken from its assignments, folded, stacked, and drawn with
+    -- the buried lines removed. Nothing shorter covers it -- the specs either
+    -- side of this one check the pieces, and every one of them can stay green
+    -- while the picture comes out mirrored, inside out, or a wireframe.
+    it "folds bird-base.cp, which records neither faces nor angles" $
+      renderFolded topDown "test/fixtures/bird-base.cp"
+        >>= goldenText "test/golden/bird-base-folded.svg"
+
     -- Four faces meeting at one vertex, which is what pins the ordering: every
     -- fill comes before every crease, so the creases radiating from the centre
     -- are not painted over by the face next door.

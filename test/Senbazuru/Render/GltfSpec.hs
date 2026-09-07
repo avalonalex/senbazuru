@@ -34,6 +34,7 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
+    EdgeId (..),
     FaceId (..),
     FaceOrder (..),
     FoldFile (..),
@@ -441,9 +442,49 @@ spec = do
         Left (GltfUnwritableCoordinate _) -> pure ()
         other -> expectationFailure ("NaN was not refused as a coordinate: " <> either show (const "exported") other)
 
-    it "refuses a frame with no faces, which has no surface to write" $ do
+    it "traces the faces of a crease pattern that records none, and writes them" $ do
+      -- The same tracing foldFrame does, here for the reason --layer-budget
+      -- had to reach both backends: a policy that reaches one of them is a
+      -- policy that is wrong on the other.
+      let square =
+            flatSheet
+              { facesVertices = [],
+                edgesVertices =
+                  [ (VertexId 0, VertexId 1),
+                    (VertexId 1, VertexId 2),
+                    (VertexId 2, VertexId 3),
+                    (VertexId 3, VertexId 0),
+                    (VertexId 0, VertexId 2)
+                  ],
+                edgesAssignment = [Border, Border, Border, Border, Valley],
+                edgesFoldAngle = []
+              }
+      -- Compared against the same sheet with those two faces written out by
+      -- hand, byte for byte. "It exported something" would be true of every
+      -- possible success, including tracing one face, or the wrong two.
+      -- The second ring is written from corner 2 rather than corner 0, which
+      -- is where the walk happened to start, and the export writes corners in
+      -- the order it is given them. So this pins the rotation too: a change to
+      -- where a trace begins changes the bytes, and should have to say so.
+      let stated =
+            square
+              { facesVertices =
+                  [ [VertexId 0, VertexId 1, VertexId 2],
+                    [VertexId 2, VertexId 3, VertexId 0]
+                  ]
+              }
+      exportFrame DefaultThickness square `shouldBe` exportFrame DefaultThickness stated
+
+    it "refuses a frame whose creases cross with no vertex where they meet" $ do
+      -- unit-square.fold used to be refused here for recording no faces. Now
+      -- the tracing gets as far as saying what is really wrong with it.
       (_, fr) <- fixture "test/fixtures/unit-square.fold"
-      exportFrame DefaultThickness fr `shouldBe` Left GltfNoFaces
+      exportFrame DefaultThickness fr
+        `shouldBe` Left (GltfRefused (EdgesCross (EdgeId 8) (EdgeId 9)))
+
+    it "refuses a frame with no creases at all, which has no surface to write" $ do
+      let bare = flatSheet {facesVertices = [], edgesVertices = [], edgesAssignment = []}
+      exportFrame DefaultThickness bare `shouldBe` Left GltfNoFaces
 
   describe "the pieces" $ do
     it "rounds a coordinate to the quantum and forgets the sign of zero" $ do

@@ -132,10 +132,10 @@ Worth knowing: **Flat-Folder's two tables disagree with each other here.** Its
 the same code to `F`, a crease that is not folded. It gets away with it because
 after tracing the faces it overwrites the assignment of every edge with only
 one face on it back to `B` — so the boundary is recovered from the geometry and
-the table never has to be right. A reader that does not trace faces — senbazuru,
-until [#34](https://github.com/avalonalex/senbazuru/issues/34) — has nothing to
-recover it from. "Another implementation does it this way" is not evidence on
-its own.
+the table never has to be right. Senbazuru traces faces too, and does *not* do
+that recovery: it takes the code at its word, so getting the table right is
+load-bearing here in a way it is not there. "Another implementation does it
+this way" is not evidence on its own.
 
 ## Which way is up
 

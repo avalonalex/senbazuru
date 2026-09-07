@@ -127,6 +127,7 @@ import Data.Text.Encoding qualified as TE
 import Numeric (showFFloat, showHex)
 import Senbazuru.Diagram (Colour, colourComponents)
 import Senbazuru.Diagram.Style (paper, paperUnderside)
+import Senbazuru.Fold.Faces (withTracedFaces)
 import Senbazuru.Fold.Query
   ( Face (..),
     FoldError (..),
@@ -166,8 +167,7 @@ data GltfError
     -- cover paper that is not there. Ear clipping would handle it and is not
     -- built.
     GltfConcaveFace !FaceId
-  | -- | Nothing to build. A frame recording creases and no faces is a
-    -- perfectly good crease pattern and has no surface to write.
+  | -- | Nothing to build: no faces, and no creases to trace any from either.
     GltfNoFaces
   | -- | A thickness that is not a distance: negative, or not a number.
     GltfBadThickness !Double
@@ -196,7 +196,7 @@ renderGltfError = \case
       <> tshow f
       <> " is not convex, and a 3D model is built from triangles fanned out"
       <> " from each face's first corner, which is only right for convex faces"
-  GltfNoFaces -> "the frame records no faces, so there is no surface to write"
+  GltfNoFaces -> "there are no creases here, so there is no surface to write"
   GltfBadThickness t ->
     "a thickness of " <> T.pack (show t) <> " is not a distance"
   GltfThicknessTooFine t finest ->
@@ -224,7 +224,13 @@ renderGltfError = \case
 -- up used, because @render@ refuses a file whose orders name a face that is
 -- not there and a flag should not decide which files are acceptable.
 renderGlb :: Budget -> Thickness -> Maybe Text -> Frame -> Either GltfError ByteString
-renderGlb budget thickness name fr = do
+renderGlb budget thickness name fr0 = do
+  -- The same tracing "Senbazuru.Origami.Folding" does, and here for the same
+  -- reason it takes a --layer-budget: a policy that reaches only one backend
+  -- is a policy that is wrong on the other. A crease pattern that records no
+  -- faces still has them, and exporting a flat sheet is a thing to be able to
+  -- do with one.
+  fr <- refused (withTracedFaces fr0)
   verts <- refused (frameVertices fr)
   faces <- refused (frameFaces fr)
   _ <- refused (frameFaceOrders fr)

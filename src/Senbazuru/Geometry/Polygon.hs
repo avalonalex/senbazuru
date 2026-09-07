@@ -44,6 +44,10 @@ module Senbazuru.Geometry.Polygon
   ( -- * The orientation predicate
     cross2,
 
+    -- * Segments
+    distanceToSegment,
+    segmentsCross,
+
     -- * Whole polygons
     signedArea,
     centroid,
@@ -76,6 +80,62 @@ import Senbazuru.Geometry.VectorSpace
 -- module is an area.
 cross2 :: V2 -> V2 -> Double
 cross2 (V2 ux uy) (V2 vx vy) = ux * vy - uy * vx
+
+-- | How far the point is from the segment — from the segment itself, not from
+-- the infinite line through it, so a point beyond an end measures to that end.
+--
+-- A distance rather than a predicate, for the reason 'distanceOutside' gives:
+-- the interesting cases are the ones a hair either side of zero, and a
+-- yes-or-no answer has already thrown away the hair the caller needs to judge
+-- them by.
+--
+-- A segment of no length names no direction, so the distance to it is the
+-- distance to its one point.
+distanceToSegment :: (V2, V2) -> V2 -> Double
+distanceToSegment (a, b) p
+  | lengthSquared <= 0 = norm (p ^-^ a)
+  | otherwise = norm (p ^-^ (a ^+^ (along *^ direction)))
+  where
+    direction = b ^-^ a
+    lengthSquared = dot direction direction
+    -- Clamped to the segment: past either end, the nearest point is that end.
+    along = max 0 (min 1 (dot (p ^-^ a) direction / lengthSquared))
+
+-- | Do the two segments cross at a point in the interior of both?
+--
+-- \"Interior\" is what makes this the right question for a crease pattern.
+-- Segments that merely meet at a shared corner are what a crease pattern is
+-- made of; segments that cross in the middle, with no vertex where they meet,
+-- are the thing that stops it being a planar graph and stops its faces being
+-- traceable at all.
+--
+-- The tolerance is a __distance__, unlike 'isConvex'\'s and unlike most of this
+-- module's: each segment's endpoints have to be clear of the other's /line/ by
+-- more than that, on opposite sides. 'cross2' returns twice an area, so it is
+-- divided by the segment's length to get there, and that division is the whole
+-- point. An area tolerance is a distance tolerance scaled by whatever the
+-- segment happens to be long, so two short segments would need to be
+-- implausibly far apart to count as crossing — on a unit sheet, a pair a
+-- millionth long would need a clearance of a thousandth. A genuine crossing
+-- between them would go unreported, and unreported by 'distanceToSegment' too,
+-- since their endpoints are nowhere near a distance tolerance of each other.
+-- Dividing removes the gap: both questions are then asked in the same units.
+--
+-- A segment of no length has no direction for the other to be on a side of, so
+-- nothing crosses it.
+segmentsCross :: Double -> (V2, V2) -> (V2, V2) -> Bool
+segmentsCross tolerance first second =
+  straddles first second && straddles second first
+  where
+    -- Are the ends of one segment strictly on opposite sides of the other?
+    straddles (a, b) (p, q) =
+      length' > 0
+        && ( (sideOf p < negate tolerance && sideOf q > tolerance)
+               || (sideOf p > tolerance && sideOf q < negate tolerance)
+           )
+      where
+        length' = norm (b ^-^ a)
+        sideOf x = cross2 (b ^-^ a) (x ^-^ a) / length'
 
 -- | The consecutive pairs around a closed ring: each corner with the next, and
 -- the last with the first. Polymorphic so that it also pairs up consecutive

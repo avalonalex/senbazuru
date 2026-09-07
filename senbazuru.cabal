@@ -68,6 +68,7 @@ library
     Senbazuru.Diagram
     Senbazuru.Diagram.Layout
     Senbazuru.Diagram.Style
+    Senbazuru.Fold.Faces
     Senbazuru.Fold.Load
     Senbazuru.Fold.Query
     Senbazuru.Fold.Types
@@ -122,6 +123,7 @@ test-suite senbazuru-test
   other-modules:
     Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
+    Senbazuru.Fold.FacesSpec
     Senbazuru.Fold.LoadSpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.PolygonSpec

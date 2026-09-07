@@ -99,6 +99,14 @@ picture that looks like it came from a book.
   the wild are not FOLD files but Orihime and Oriedita's `.cp` or ORIPA's
   `.opx`, both of them a flat list of creases with the vertices left out. Give a
   command one of those and it rebuilds the vertices and carries on.
+- **Works out the faces when a file does not record them**, which most do not
+  and no `.cp` can. A crease pattern is a planar graph and its faces are the
+  regions the creases cut the sheet into, so folding and exporting trace them —
+  and a drawing whose creases cross with no vertex where they meet is refused
+  naming the pair, rather than folded into a plausible picture of other paper.
+  Drawing a pattern does not trace, so the flat picture of one is a wireframe
+  whether or not the file records faces; the reason is that a pattern which
+  cannot be traced must still draw.
 
 <p align="center">
   <img src="docs/img/steps.svg" width="640" alt="A square folded into quarters, drawn as three numbered figures with fold arrows">
@@ -167,14 +175,7 @@ Roughly in order. Each item is an issue, tagged
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail.
 
-1. **[Build the faces from the creases.](https://github.com/avalonalex/senbazuru/issues/34)**
-   Everything below needs them. A crease pattern is a planar graph, and its
-   faces are the regions the creases cut the sheet into — but only some files
-   record them, and no `.cp` or `.opx` ever does. Without faces nothing can be
-   folded, filled or stacked. It is also the first authoring primitive, since
-   every operation that adds a crease has to re-derive them.
-   → [half-edge](docs/notes/half-edge.md)
-2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
+1. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output ([#19](https://github.com/avalonalex/senbazuru/issues/19))
    came first, since nothing else can be built without it; the library reads and
    writes the format now, losing nothing it does not understand. What is missing
@@ -184,7 +185,7 @@ issues are the detail.
    below.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
-3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
+2. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
    A model part-way through a fold, honestly: angles solved for rather than read
    off, so the paper never stretches and never tears. Measure what real angles
    look like first, then the degree-4 closed form, then rotating a flap — which
@@ -200,7 +201,7 @@ issues are the detail.
    spread wing sweeps through the body.
    → [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
    [folding-by-transforms](docs/notes/folding-by-transforms.md)
-4. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
+3. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
    What a book draws when a model has too many layers to show them all at once,
    and the answer to where `--offset` runs out. The 3D export already gives
    paper a thickness; this should reuse it rather than invent a second one.
@@ -213,7 +214,7 @@ solver would search has no formalisation to search over
 is outside the model rather than merely hard — every face here is a flat
 polygon, and an inflated balloon's are not. Wet-folding and shaping are outside
 it too. Spreading a crane's wings, which looks like the same problem, is not:
-that is angles, and it is item 3.
+that is angles, and it is item 2.
 [#64](https://github.com/avalonalex/senbazuru/issues/64) is where that
 boundary gets written down properly.
 
