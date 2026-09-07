@@ -68,6 +68,7 @@ library
     Senbazuru.Diagram
     Senbazuru.Diagram.Layout
     Senbazuru.Diagram.Style
+    Senbazuru.Explain
     Senbazuru.Fold.Creasing
     Senbazuru.Fold.Crossings
     Senbazuru.Fold.Faces
@@ -126,6 +127,7 @@ test-suite senbazuru-test
   other-modules:
     Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
+    Senbazuru.ExplainSpec
     Senbazuru.Fold.CreasingSpec
     Senbazuru.Fold.CrossingsSpec
     Senbazuru.Fold.FacesSpec

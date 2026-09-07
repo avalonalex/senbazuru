@@ -127,6 +127,7 @@ import Data.Text.Encoding qualified as TE
 import Numeric (showFFloat, showHex)
 import Senbazuru.Diagram (Colour, colourComponents)
 import Senbazuru.Diagram.Style (paper, paperUnderside)
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Query
   ( Face (..),
@@ -136,7 +137,6 @@ import Senbazuru.Fold.Query
     frameFaces,
     frameKind,
     frameVertices,
-    renderFoldError,
   )
 import Senbazuru.Fold.Types (FaceId (..), Frame (..))
 import Senbazuru.Geometry.Polygon (isConvex)
@@ -181,35 +181,37 @@ data GltfError
     GltfUnwritableCoordinate !Double
   deriving stock (Eq, Show)
 
+instance Explain GltfError where
+  explain = \case
+    -- The frame's own message is about painting, which is what the layer order
+    -- was first for; here it is about height, and the reader has a way out.
+    GltfRefused (ImpossibleStacking (FaceId f)) ->
+      "the layers run in a circle through face "
+        <> tshow f
+        <> ", so there is no height to lift each face to; with a thickness of"
+        <> " zero the model is written exactly as folded, circle and all"
+    GltfRefused err -> explain err
+    GltfConcaveFace (FaceId f) ->
+      "face "
+        <> tshow f
+        <> " is not convex, and a 3D model is built from triangles fanned out"
+        <> " from each face's first corner, which is only right for convex faces"
+    GltfNoFaces -> "there are no creases here, so there is no surface to write"
+    GltfBadThickness t ->
+      "a thickness of " <> tshow t <> " is not a distance"
+    GltfThicknessTooFine t finest ->
+      "a thickness of "
+        <> tshow t
+        <> " is finer than the rounding this model's coordinates go through,"
+        <> " which is "
+        <> tshow finest
+        <> "; some layers would be lifted and others not"
+    GltfUnwritableCoordinate c ->
+      "the coordinate " <> tshow c <> " cannot be written in single precision"
+
+-- | 'explain' for a 'GltfError', under the name call sites already use.
 renderGltfError :: GltfError -> Text
-renderGltfError = \case
-  -- The frame's own message is about painting, which is what the layer order
-  -- was first for; here it is about height, and the reader has a way out.
-  GltfRefused (ImpossibleStacking (FaceId f)) ->
-    "the layers run in a circle through face "
-      <> tshow f
-      <> ", so there is no height to lift each face to; with a thickness of"
-      <> " zero the model is written exactly as folded, circle and all"
-  GltfRefused err -> renderFoldError err
-  GltfConcaveFace (FaceId f) ->
-    "face "
-      <> tshow f
-      <> " is not convex, and a 3D model is built from triangles fanned out"
-      <> " from each face's first corner, which is only right for convex faces"
-  GltfNoFaces -> "there are no creases here, so there is no surface to write"
-  GltfBadThickness t ->
-    "a thickness of " <> T.pack (show t) <> " is not a distance"
-  GltfThicknessTooFine t finest ->
-    "a thickness of "
-      <> T.pack (show t)
-      <> " is finer than the rounding this model's coordinates go through,"
-      <> " which is "
-      <> T.pack (show finest)
-      <> "; some layers would be lifted and others not"
-  GltfUnwritableCoordinate c ->
-    "the coordinate " <> T.pack (show c) <> " cannot be written in single precision"
-  where
-    tshow = T.pack . show
+renderGltfError = explain
 
 -- | Write a frame as a binary glTF document.
 --

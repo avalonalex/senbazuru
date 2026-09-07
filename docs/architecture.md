@@ -84,6 +84,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 
 | Module | Holds |
 | --- | --- |
+| `Senbazuru.Explain` | The one method every error type in the library answers: turn yourself into a message. No FOLD, no geometry, no drawing — just `Text`. |
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
@@ -130,6 +131,10 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 ## Layering rules
 
 - `Senbazuru.Geometry` depends on nothing in the project. Keep it that way.
+- `Senbazuru.Explain` depends on nothing in the project either, and every
+  layer may import it. That is the price of one name for "print this error":
+  the class has to sit below the error types rather than beside them, which is
+  also why it holds no error type of its own.
 - `Senbazuru.Diagram` must not know what FOLD is.
 - `Senbazuru.Origami.*` is what senbazuru knows about paper, as opposed to what
   it knows about drawing. Nothing in it may mention a diagram, a page or a

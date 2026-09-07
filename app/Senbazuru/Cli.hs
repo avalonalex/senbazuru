@@ -30,9 +30,10 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
+import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Creasing (creaseAlong)
-import Senbazuru.Fold.Load (encodeFoldFile, loadFile, renderLoadError, renderSaveError, saveFoldFile)
-import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices, renderFoldError)
+import Senbazuru.Fold.Load (encodeFoldFile, loadFile, saveFoldFile)
+import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FoldFile (..),
@@ -47,27 +48,25 @@ import Senbazuru.Origami.FlatFold
     Tolerance (..),
     checkFrame,
     defaultTolerance,
-    renderCheckError,
     renderReport,
     reportViolations,
   )
-import Senbazuru.Origami.Folding (FoldingError (..), foldFrame, renderFoldingError)
+import Senbazuru.Origami.Folding (FoldingError (..), foldFrame)
 import Senbazuru.Origami.Stacking
   ( Budget (..),
     Choice (..),
     Stackings (..),
     componentCount,
     defaultBudget,
-    renderStackingError,
     solveStackingAs,
     stackingSpace,
     stateCount,
   )
 import Senbazuru.Origami.Step (Motion, motionsBetween)
-import Senbazuru.Origami.ThroughLayers (creaseThroughLayers, renderThroughError)
+import Senbazuru.Origami.ThroughLayers (creaseThroughLayers)
 import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
-import Senbazuru.Render.Gltf (Thickness (..), renderGlb, renderGltfError)
+import Senbazuru.Render.Gltf (Thickness (..), renderGlb)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
@@ -656,7 +655,7 @@ pickStacking input budget stacking frame
           ( "cannot use that layer order for "
               <> T.pack input
               <> ": "
-              <> renderStackingError err
+              <> explain err
           )
       Right os -> pure frame {faceOrders = os}
 
@@ -671,7 +670,7 @@ paperFor input frameIx fold budget stacking f = do
   frame <-
     if fold
       then case foldFrame chosen of
-        Left err -> die ("cannot fold " <> T.pack input <> ": " <> renderFoldingError err)
+        Left err -> die ("cannot fold " <> T.pack input <> ": " <> explain err)
         Right folded -> pure folded
       else pure chosen
   pickStacking input budget stacking frame
@@ -700,7 +699,7 @@ creaseFile o f = do
     Nothing -> BS.putStr (encodeFoldFile document)
     Just path ->
       saveFoldFile path document >>= \case
-        Left err -> die (renderSaveError err)
+        Left err -> die (explain err)
         Right () -> pure ()
   where
     toV2 (x, y) = V2 x y
@@ -711,10 +710,10 @@ creaseFile o f = do
     -- the two into the message a caller sees.
     drawn frame
       | creaseFolded o =
-          first renderThroughError $
+          first explain $
             creaseThroughLayers (toV2 (creaseFrom o)) (toV2 (creaseTo o)) (creaseAs o) frame
       | otherwise =
-          first renderFoldError $
+          first explain $
             creaseAlong (toV2 (creaseFrom o)) (toV2 (creaseTo o)) (creaseAs o) frame
 
     refuse why = die ("cannot crease " <> T.pack (creaseInput o) <> ": " <> why)
@@ -731,7 +730,7 @@ exportFile o f = do
   -- Named the way render titles its page: the frame's title, else the file's,
   -- since a file's title very often lives on the file and not the frame.
   case renderGlb (eoBudget o) thickness (frameTitle frame <|> fileTitle f) frame of
-    Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> renderGltfError err)
+    Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> explain err)
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
 
 -- | Load a file or abort with a message on stderr.
@@ -741,7 +740,7 @@ exportFile o f = do
 withFoldFile :: FilePath -> (FoldFile -> IO ()) -> IO ()
 withFoldFile path k =
   loadFile path >>= \case
-    Left err -> die (renderLoadError err)
+    Left err -> die (explain err)
     Right f -> k f
 
 -- | The nth frame, or abort saying how many the file actually has.
@@ -800,7 +799,7 @@ renderStepPage o f = do
             <> " of "
             <> T.pack (roInput o)
             <> ": "
-            <> renderFoldError err
+            <> explain err
         )
     Right Nothing ->
       die (T.pack (roInput o) <> " has no frame with any geometry in it")
@@ -867,7 +866,7 @@ stepMotions o frame later
       [] -> pure []
       (next : _) -> case motionsBetween frame next of
         Left err ->
-          die ("cannot work out the step in " <> T.pack (roInput o) <> ": " <> renderFoldError err)
+          die ("cannot work out the step in " <> T.pack (roInput o) <> ": " <> explain err)
         Right ms -> pure ms
 
 -- | The arrows have to be projected the same way the drawing was. 'basisFor' is
@@ -879,7 +878,7 @@ basisOf o frame = case frameVertices frame of
   Right verts -> pure (basisFor (roView o) verts)
 
 cannotRender :: RenderOptions -> FoldError -> Text
-cannotRender o err = "cannot render " <> T.pack (roInput o) <> ": " <> renderFoldError err
+cannotRender o err = "cannot render " <> T.pack (roInput o) <> ": " <> explain err
 
 emitWith :: RenderOptions -> Page -> Diagram -> IO ()
 emitWith o pg d = maybe TIO.putStr TIO.writeFile (roOutput o) (renderSvg pg d)
@@ -889,7 +888,7 @@ checkFile o f = do
   frame <- frameAt (coFrame o) f
   case checkFrame (Tolerance (coTolerance o * pi / 180)) frame of
     Left err ->
-      die ("cannot check " <> T.pack (coInput o) <> ": " <> renderCheckError err)
+      die ("cannot check " <> T.pack (coInput o) <> ": " <> explain err)
     Right report -> do
       TIO.putStr (formatReport (coInput o) (coFrame o) report)
       -- A non-zero exit so `senbazuru check` composes into a build or a
@@ -974,7 +973,7 @@ summarise o f =
           -- is a crease pattern followed by folded steps, and the flag would
           -- otherwise break exactly the frames it is meant to be about.
           Left (AlreadyFolded _) -> stackingOf fr
-          Left err -> ("(cannot be folded: " <> renderFoldingError err <> ")", [])
+          Left err -> ("(cannot be folded: " <> explain err <> ")", [])
           Right folded -> stackingOf folded
 
     -- A folded form with no faceOrders has its layers worked out at render
@@ -992,12 +991,12 @@ summarise o f =
         -- Said as such, rather than falling through to the crease-pattern
         -- line: a frame whose vertices cannot be read is not a crease pattern,
         -- and this would be the one line of the summary to hide that.
-        Left err -> ("(none; the vertices cannot be read: " <> renderFoldError err <> ")", [])
+        Left err -> ("(none; the vertices cannot be read: " <> explain err <> ")", [])
         Right verts
           | frameKind (frameClasses fr) verts == FoldedForm -> case stackingSpace (ioBudget o) fr of
               Right space -> ("(none in the file; " <> worked space <> ")", stackingsChoices space)
               Left err ->
-                ("(none in the file, and none worked out: " <> renderStackingError err <> ")", [])
+                ("(none in the file, and none worked out: " <> explain err <> ")", [])
           | otherwise -> ("(none, and a crease pattern needs none)", [])
 
     -- What the solver made of a frame that carries no faceOrders: how many

@@ -153,6 +153,20 @@ do not use partial functions (`head`, `fromJust`, `!!`) in library code. Error
 types carry enough context to point at the offending element — "invalid FOLD
 file" is useless to someone holding a 4000-line crease pattern.
 
+**Every error type has an `Explain` instance, and that is where its words
+live.** One class, one method, in `Senbazuru.Explain`, so that "and this one
+says what it is" is something you are prompted for rather than a shape you
+copy from the nine types that already had one. The old `renderFoldError` and its
+eight siblings are still exported as one-line bindings, so no call site had to
+move; new code says `explain`. A type that nothing prints today — `FlatError`
+and `StepError` are the two — gets an instance anyway, because it is one
+`Left` away from being printed and the alternative is `show`.
+
+`num` and `tshow` live there too: they are the number and the id as an error
+message spells them, and four modules each had their own copy. They are not
+`Render.Svg`'s `formatNumber`, which exists to keep golden files byte-identical
+and answers a different question.
+
 **Two unit systems, never mixed.** Shape *coordinates* are in model units (from
 the FOLD file). Stroke *widths and dash lengths* are in page units and are never
 scaled. A crease line is ~1pt wide whether the paper is 1 unit or 400 units

@@ -38,6 +38,7 @@ import Data.Bifunctor (first)
 import Senbazuru.Diagram (Diagram)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
 import Senbazuru.Diagram.Style (Theme)
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Origami.Stacking (Budget)
@@ -59,6 +60,14 @@ data StepError = StepError
     stepReason :: !FoldError
   }
   deriving stock (Eq, Show)
+
+-- | The frame number, then the frame's own complaint.
+--
+-- The index leads, because it is the part the reader does not have: they are
+-- holding a file, not a frame, and a message that opens with a face number
+-- makes them count steps to find out whose face it is.
+instance Explain StepError where
+  explain (StepError i err) = "frame " <> tshow i <> ": " <> explain err
 
 -- | Every frame of a file as one page of numbered figures.
 --

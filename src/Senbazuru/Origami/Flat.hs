@@ -61,6 +61,7 @@ where
 
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query
   ( Crease (..),
     Face (..),
@@ -129,6 +130,27 @@ data FlatError
     -- being flat.
     FlatRefused !FoldError
   deriving stock (Eq, Show)
+
+-- | The plain statement of the fact, with nothing about what it stops.
+--
+-- Nothing prints this today: every caller of 'flatSheet' flattens a
+-- 'FlatError' into its own error type first, because the useful message says
+-- what the model being unflat /prevented/ — working out which layer is on top,
+-- or reading a line drawn on the model — and this module does not know which
+-- of those was being attempted. So each caller has its own @fromFlat@, and the
+-- clause about what it was doing is the only part that differs between them.
+--
+-- The instance exists anyway, and is the stem both of those messages are
+-- variations of. An error type that is only ever taken apart is one @Left@
+-- away from being printed, and a type with no words of its own is the one that
+-- gets printed with @show@.
+instance Explain FlatError where
+  explain = \case
+    PaperInTheAir dz ->
+      "the model spans " <> num dz <> " in z, so it is not folded flat"
+    ConcaveFace (FaceId f) ->
+      "face " <> tshow f <> " is not convex"
+    FlatRefused err -> explain err
 
 -- | Read a frame as a flat-folded model, or say why it is not one.
 --

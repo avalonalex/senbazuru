@@ -54,10 +54,11 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
+import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (FoldFile)
 import Senbazuru.Import.Cp (parseCp)
 import Senbazuru.Import.Opx (parseOpx)
-import Senbazuru.Import.Segments (ImportError, foldFileFromSegments, renderImportError)
+import Senbazuru.Import.Segments (ImportError, foldFileFromSegments)
 import System.FilePath (takeExtension)
 
 -- | Why a file could not be loaded.
@@ -65,7 +66,7 @@ import System.FilePath (takeExtension)
 -- \"I could not read this\" is usually a typo in a path, and \"I could not
 -- decode this\" means the bytes arrived and are not what the file said they
 -- would be. Those are the two things a person holding the file needs told
--- apart, and 'renderLoadError' prints them with different words.
+-- apart, and 'explain' prints them with different words.
 --
 -- 'DecodeFailed' and 'ImportFailed' are both the second of those, and are two
 -- constructors rather than one because they carry different evidence: aeson
@@ -78,12 +79,15 @@ data LoadError
   | ImportFailed FilePath ImportError
   deriving stock (Eq, Show)
 
--- | A message suitable for printing to a terminal.
+instance Explain LoadError where
+  explain = \case
+    ReadFailed path msg -> "cannot read " <> T.pack path <> ": " <> msg
+    DecodeFailed path msg -> "cannot decode " <> T.pack path <> ": " <> msg
+    ImportFailed path err -> "cannot decode " <> T.pack path <> ": " <> explain err
+
+-- | 'explain' for a 'LoadError', under the name call sites already use.
 renderLoadError :: LoadError -> Text
-renderLoadError = \case
-  ReadFailed path msg -> "cannot read " <> T.pack path <> ": " <> msg
-  DecodeFailed path msg -> "cannot decode " <> T.pack path <> ": " <> msg
-  ImportFailed path err -> "cannot decode " <> T.pack path <> ": " <> renderImportError err
+renderLoadError = explain
 
 -- | Decode bytes as whatever format the path names.
 --
@@ -161,9 +165,12 @@ withBytes path decode = do
 data SaveError = WriteFailed FilePath Text
   deriving stock (Eq, Show)
 
--- | A message suitable for printing to a terminal.
+instance Explain SaveError where
+  explain (WriteFailed path msg) = "cannot write " <> T.pack path <> ": " <> msg
+
+-- | 'explain' for a 'SaveError', under the name call sites already use.
 renderSaveError :: SaveError -> Text
-renderSaveError (WriteFailed path msg) = "cannot write " <> T.pack path <> ": " <> msg
+renderSaveError = explain
 
 -- | Encode FOLD to bytes.
 --

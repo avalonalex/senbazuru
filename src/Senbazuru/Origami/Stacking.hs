@@ -122,9 +122,8 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T
-import Numeric (showGFloat)
-import Senbazuru.Fold.Query (Crease (..), EdgeKey, FoldError (..), edgeKey, facesAlongEdges, frameFaceOrders, renderFoldError)
+import Senbazuru.Explain (Explain (..), num, tshow)
+import Senbazuru.Fold.Query (Crease (..), EdgeKey, FoldError (..), edgeKey, facesAlongEdges, frameFaceOrders)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId (..),
@@ -196,36 +195,39 @@ data StackingError
     StackingRefused !FoldError
   deriving stock (Eq, Show)
 
--- | A human-readable rendering of a 'StackingError'.
+instance Explain StackingError where
+  explain = \case
+    NotFlat dz ->
+      "the model spans "
+        <> num dz
+        <> " in z; working out which layer is on top is only implemented for"
+        <> " models folded flat"
+    NoSuchComponent given have ->
+      "there is no component "
+        <> tshow given
+        <> " to choose an order for: "
+        <> ( if have == 0
+               then "every part of this model has only one"
+               else "only " <> tshow have <> " of them have more than one, numbered 0 to " <> tshow (have - 1)
+           )
+    NoSuchStacking component want have ->
+      "there is no layer order "
+        <> tshow want
+        <> " for component "
+        <> tshow component
+        <> ", which has "
+        <> tshow have
+        <> (if have == 1 then " order, numbered 0" else " orders, numbered 0 to " <> tshow (have - 1))
+    NonConvexFace (FaceId f) ->
+      "face "
+        <> tshow f
+        <> " is not convex, and the test for whether two faces overlap is only"
+        <> " right for convex ones"
+    StackingRefused err -> explain err
+
+-- | 'explain' for a 'StackingError', under the name call sites already use.
 renderStackingError :: StackingError -> Text
-renderStackingError = \case
-  NotFlat dz ->
-    "the model spans "
-      <> T.pack (showGFloat (Just 6) dz "")
-      <> " in z; working out which layer is on top is only implemented for"
-      <> " models folded flat"
-  NoSuchComponent given have ->
-    "there is no component "
-      <> T.pack (show given)
-      <> " to choose an order for: "
-      <> ( if have == 0
-             then "every part of this model has only one"
-             else "only " <> T.pack (show have) <> " of them have more than one, numbered 0 to " <> T.pack (show (have - 1))
-         )
-  NoSuchStacking component want have ->
-    "there is no layer order "
-      <> T.pack (show want)
-      <> " for component "
-      <> T.pack (show component)
-      <> ", which has "
-      <> T.pack (show have)
-      <> (if have == 1 then " order, numbered 0" else " orders, numbered 0 to " <> T.pack (show (have - 1)))
-  NonConvexFace (FaceId f) ->
-    "face "
-      <> T.pack (show f)
-      <> " is not convex, and the test for whether two faces overlap is only"
-      <> " right for convex ones"
-  StackingRefused err -> renderFoldError err
+renderStackingError = explain
 
 -- | One constraint on the layer order, over the faces it names.
 --

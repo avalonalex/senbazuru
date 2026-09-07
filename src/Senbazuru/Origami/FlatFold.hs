@@ -117,7 +117,8 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Numeric (showFFloat, showGFloat)
+import Numeric (showFFloat)
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query
   ( Crease (..),
     FoldError (..),
@@ -125,7 +126,6 @@ import Senbazuru.Fold.Query
     frameCreases,
     frameKind,
     frameVertices,
-    renderFoldError,
   )
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), normalize)
@@ -184,28 +184,31 @@ data CheckError
     DegenerateEdge !EdgeId
   deriving stock (Eq, Show)
 
--- | A human-readable rendering of a 'CheckError', for a CLI message.
+instance Explain CheckError where
+  explain = \case
+    FrameGeometry err -> explain err
+    NotFlat dz ->
+      "the vertices span "
+        <> num dz
+        <> " in z, so this frame is a folded form; flat-foldability is a"
+        <> " question about the crease pattern it was folded from"
+    DeclaredFoldedForm ->
+      "frame_classes says foldedForm. The coordinates are flat, but a"
+        <> " flat-folded model looks exactly like a crease pattern and only the"
+        <> " class tells them apart; checking this one would measure folded"
+        <> " angles against theorems about unfolded ones"
+    NoAssignments ->
+      "no edges_assignment, so there is no way to tell a fold from the edge of"
+        <> " the paper; every vertex would look like an interior one"
+    DegenerateEdge (EdgeId e) ->
+      "edge "
+        <> tshow e
+        <> " has no usable direction: its endpoints coincide, or a coordinate is"
+        <> " not finite"
+
+-- | 'explain' for a 'CheckError', under the name call sites already use.
 renderCheckError :: CheckError -> Text
-renderCheckError = \case
-  FrameGeometry err -> renderFoldError err
-  NotFlat dz ->
-    "the vertices span "
-      <> general dz
-      <> " in z, so this frame is a folded form; flat-foldability is a"
-      <> " question about the crease pattern it was folded from"
-  DeclaredFoldedForm ->
-    "frame_classes says foldedForm. The coordinates are flat, but a"
-      <> " flat-folded model looks exactly like a crease pattern and only the"
-      <> " class tells them apart; checking this one would measure folded"
-      <> " angles against theorems about unfolded ones"
-  NoAssignments ->
-    "no edges_assignment, so there is no way to tell a fold from the edge of"
-      <> " the paper; every vertex would look like an interior one"
-  DegenerateEdge (EdgeId e) ->
-    "edge "
-      <> tshow e
-      <> " has no usable direction: its endpoints coincide, or a coordinate is"
-      <> " not finite"
+renderCheckError = explain
 
 -- | One crease, as seen from a vertex it meets.
 data Spoke = Spoke
@@ -583,15 +586,3 @@ degrees r = r * 180 / pi
 -- | Fixed-point, so a message never reads @1.0e-2@.
 fixed :: Int -> Double -> Text
 fixed places x = T.pack (showFFloat (Just places) x "")
-
--- | Fixed-point for numbers of ordinary size, exponent notation below 0.1.
---
--- Used where the value reported may be tiny. 'hasRelief' judges flatness
--- relative to the sheet, so a 400-unit pattern can be refused over a @z@ span of
--- 1e-6, and printing that as @0.000000@ would tell the reader their file is a
--- folded form because a coordinate is off by nothing at all.
-general :: Double -> Text
-general x = T.pack (showGFloat (Just 6) x "")
-
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
