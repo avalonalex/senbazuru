@@ -586,11 +586,13 @@ that stops in the middle of the paper divides nothing, so such a line is refused
 naming the face the end came down in. Working out where a folded model actually
 *is* is what `render --fold` is for.
 
-An end *on* an edge is fine, which is what makes the rule liveable: a fold
-reaches the edge of the paper or runs up to a crease already there. And folded
-layers stack their edges exactly on top of one another, so an end on one crease
-is usually on the boundary of every layer beneath it, and all of them get
-creased right across.
+An end *on* a face's edge is fine, wherever it is — well inside the model's
+outline included. All that matters is that every layer the line reaches gets
+creased right across, and an end on the edge of each face it touches does that.
+Whether a given crease of a folded model is such a place depends on whether the
+layers' edges line up there: of the folded crane's 248 face-edge midpoints, 120
+are and 128 are in the middle of some other layer's paper. The quarter fold,
+whose four layers land exactly on top of one another, is 16 out of 16.
 
 Three limits, all deliberate. Every layer under the line is creased; "fold the
 top layer only" is a different instruction and part of

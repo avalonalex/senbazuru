@@ -258,7 +258,27 @@ spec = do
       -- which says it as "vertex 4 has 1 crease at it".
       flat <- fixture "diagonal-cp.fold"
       case creaseThroughLayers (V2 0.2 0.2) (V2 2 0.2) Valley flat of
-        Left (LineStopsOnTheModel _) -> pure ()
+        Left err@(LineStopsOnTheModel end _) -> do
+          -- Which end, because being told an end is in the middle of a face is
+          -- half an instruction if you then have to guess which one to move.
+          end `shouldBe` FromEnd
+          -- And the sentence itself, because it is the whole of what this
+          -- refusal does and docs/usage.md quotes it verbatim.
+          renderThroughError err
+            `shouldBe` ( "--from is inside face 0 of the folded model rather than on"
+                           <> " that face's edge, so that layer would be creased only"
+                           <> " part of the way across. Each layer the line reaches has"
+                           <> " to be creased right across, so move this end onto an"
+                           <> " edge or clear of the paper"
+                       )
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "names the second end when that is the one in the middle of a face" $ do
+      -- Guards the test above: if the end were not carried, or were always
+      -- reported as the first, this would still say --from.
+      flat <- fixture "diagonal-cp.fold"
+      case creaseThroughLayers (V2 2 0.2) (V2 0.2 0.2) Valley flat of
+        Left (LineStopsOnTheModel end _) -> end `shouldBe` ToEnd
         other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
 
     it "allows an end that lands on an inside crease of the model" $ do
