@@ -197,6 +197,12 @@ instance Explain GltfError where
         <> " is not convex, and a 3D model is built from triangles fanned out"
         <> " from each face's first corner, which is only right for convex faces"
     GltfNoFaces -> "there are no creases here, so there is no surface to write"
+    -- 'tshow' and not 'num' for the four numbers below, although every one of
+    -- them is a distance. Three are the thickness the user typed, and quoting
+    -- it back the way @show@ writes it is what lets them match the message
+    -- against their own command line; @num@ would answer @--thickness 0.001@
+    -- with @1.000000e-3@. 'GltfThicknessTooFine' then prints @finest@ beside
+    -- it, and two numbers meant to be compared have to be written the same way.
     GltfBadThickness t ->
       "a thickness of " <> tshow t <> " is not a distance"
     GltfThicknessTooFine t finest ->

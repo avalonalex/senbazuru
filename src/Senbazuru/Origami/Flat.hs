@@ -133,17 +133,29 @@ data FlatError
 
 -- | The plain statement of the fact, with nothing about what it stops.
 --
--- Nothing prints this today: every caller of 'flatSheet' flattens a
--- 'FlatError' into its own error type first, because the useful message says
--- what the model being unflat /prevented/ — working out which layer is on top,
--- or reading a line drawn on the model — and this module does not know which
--- of those was being attempted. So each caller has its own @fromFlat@, and the
--- clause about what it was doing is the only part that differs between them.
+-- Nothing prints this today, and the three callers of 'flatSheet' avoid it
+-- three different ways. "Senbazuru.Origami.Stacking" and
+-- "Senbazuru.Origami.ThroughLayers" each have a @fromFlat@ that maps the same
+-- three constructors into their own error type, because the useful message
+-- names what the model being unflat /prevented/ — working out which layer is
+-- on top, or reading a line drawn on the model — and this module does not know
+-- which was being attempted. "Senbazuru.Origami.Visible" does not convert at
+-- all: it returns @Either FlatError@ unchanged, and its caller
+-- "Senbazuru.Render.CreasePattern" matches 'PaperInTheAir' and 'ConcaveFace'
+-- to pick a /fallback drawing/ rather than to refuse. For that third caller
+-- being unflat is not a failure, so it never becomes words.
 --
--- The instance exists anyway, and is the stem both of those messages are
--- variations of. An error type that is only ever taken apart is one @Left@
--- away from being printed, and a type with no words of its own is the one that
--- gets printed with @show@.
+-- So this is not quite a common stem: only 'ConcaveFace' is the two printed
+-- messages minus their trailing clause. Their 'PaperInTheAir' wordings differ
+-- earlier than that — one says \"the folded model\", the other replaces the
+-- \"so it is not folded flat\" ending outright — and nothing links the three.
+-- Folding them into one is [#65](https://github.com/avalonalex/senbazuru/issues/65)'s
+-- first comment and a later change.
+--
+-- The instance exists anyway because an error type that is only ever taken
+-- apart is one @Left@ away from being printed — 'Senbazuru.Origami.Visible'
+-- already hands one to a library caller — and a type with no words of its own
+-- is the one that gets printed with @show@.
 instance Explain FlatError where
   explain = \case
     PaperInTheAir dz ->

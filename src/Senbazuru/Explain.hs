@@ -10,8 +10,10 @@
 --
 -- The duplication was the /convention/. Nine of the eleven had a function of
 -- the same shape under a name of the same shape — @renderFoldError@,
--- @renderLoadError@, and so on down the list — and nothing except habit said
--- the twelfth type would get one too. This class is that habit written down
+-- @renderLoadError@, and so on down the list. The other two, 'FlatError' and
+-- 'Senbazuru.Render.Steps.StepError', had none, because nothing had needed to
+-- print them yet — and nothing except habit said they, or a twelfth type,
+-- would get one when something did. This class is that habit written down
 -- somewhere a reader can look it up, rather than a shape you have to notice.
 --
 -- == Why a class, when nothing dispatches on it
@@ -63,30 +65,47 @@ class Explain e where
   -- \"invalid FOLD file\" tells the reader nothing they did not already know.
   explain :: e -> Text
 
--- | A measured quantity, for a message that reports one.
+-- | A measured quantity, for a message that reports one: how far a model spans
+-- in @z@, how far apart two faces put a vertex, a fold angle in degrees.
 --
--- Every use is a distance that came out of arithmetic rather than out of a
--- file — how far a model spans in @z@, a fold angle that is not a number of
--- degrees — so 'show' would print the rounding along with the answer:
--- @0.30000000000000004@ where the reader wants @0.300000@, and
--- @2.220446049250313e-16@ where they want @2.220446e-16@. Six digits is what
--- 'showGFloat' takes as its argument, and it is enough to see the size of the
--- thing, which is all these messages ask of the number.
+-- Two decisions, and the second is the one that looks wrong.
 --
--- It still gives an exponent for a small number — @1.000000e-7@ — and that is
--- wanted: a span of @0.0000001@ is easier to misread than to read.
+-- __Six digits__, because most of these numbers come out of arithmetic and
+-- @show@ prints the rounding along with the answer: @0.30000000000000004@
+-- where the reader wants @0.300000@, and @2.220446049250313e-16@ where they
+-- want @2.220446e-16@. Six is enough to see the size of the thing, which is
+-- all these messages ask of the number.
 --
--- Not "Senbazuru.Render.Svg"'s @formatNumber@, which exists to keep golden
--- files byte-identical and answers a different question: nothing compares two
--- error messages for equality.
+-- __Exponent notation below 0.1__, which is 'showGFloat''s own threshold and
+-- is further up than it looks: @num 0.05@ is @5.000000e-2@, not @0.050000@.
+-- That reads like a defect and is the point. Flatness is judged /relative to
+-- the sheet/ — see 'Senbazuru.Geometry.V3.hasRelief' — so a 400-unit pattern
+-- can be refused over a @z@ span of @1e-6@, and fixed-point would print that
+-- as @0.000000@: a message telling the reader their file is a folded form
+-- because a coordinate is off by nothing at all.
+--
+-- Not every number in a message is one of these. A /coordinate/ the caller
+-- typed goes through "Senbazuru.Fold.Query"'s @coord@, which is shortest
+-- round-tripping so that @0.01@ reads back as @0.01@; a thickness echoed back
+-- to the user goes through 'tshow'. And not
+-- "Senbazuru.Render.Svg"'s @formatNumber@, which exists to keep golden files
+-- byte-identical and answers a different question: nothing compares two error
+-- messages for equality.
 num :: Double -> Text
 num x = T.pack (showGFloat (Just 6) x "")
 
--- | An id or a count, for a message that names one.
+-- | Whatever the reader gave us, back as they would recognise it.
 --
--- Almost every use is the @Int@ unwrapped from a @VertexId@, @EdgeId@ or
--- @FaceId@ — the messages match on @'Senbazuru.Fold.Types.VertexId' v@ and
--- then say @tshow v@, because a reader chasing a fault wants @vertex 12@ and
--- not @vertex (VertexId 12)@.
+-- Most uses are the @Int@ unwrapped from a @VertexId@, @EdgeId@ or @FaceId@ —
+-- the messages match on @'Senbazuru.Fold.Types.VertexId' v@ and then say
+-- @tshow v@, because a reader chasing a fault wants @vertex 12@ and not
+-- @vertex (VertexId 12)@.
+--
+-- It is also right for a 'Double' the /user/ supplied, and
+-- "Senbazuru.Render.Gltf" uses it that way on purpose: @--thickness 0.001@ is
+-- refused with @a thickness of 1.0e-3@, the number as @show@ writes it, so it
+-- can be matched against what was typed. Reaching for 'num' there because the
+-- value is a distance would print @1.000000e-3@ and break that match. The rule
+-- is not the type — it is whether the number came from the reader or from us.
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show

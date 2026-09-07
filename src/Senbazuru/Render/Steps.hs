@@ -66,6 +66,14 @@ data StepError = StepError
 -- The index leads, because it is the part the reader does not have: they are
 -- holding a file, not a frame, and a message that opens with a face number
 -- makes them count steps to find out whose face it is.
+--
+-- The CLI does not use this, and cannot: it says @cannot render frame 2 of
+-- a.fold: …@, with the file name /between/ the index and the reason, which no
+-- ordering of one method's output produces. So it takes the error apart and
+-- writes those words itself, and this instance is what a caller holding a
+-- 'StepError' and no file name gets. Two spellings of one message is a real
+-- cost; the alternative was to change what @senbazuru render --steps@ prints,
+-- which is not this change's to do.
 instance Explain StepError where
   explain (StepError i err) = "frame " <> tshow i <> ": " <> explain err
 

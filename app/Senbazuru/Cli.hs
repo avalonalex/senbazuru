@@ -30,7 +30,7 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
-import Senbazuru.Explain (Explain (..))
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Creasing (creaseAlong)
 import Senbazuru.Fold.Load (encodeFoldFile, loadFile, saveFoldFile)
 import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices)
@@ -1024,6 +1024,3 @@ summarise o f =
 
 die :: Text -> IO a
 die msg = hPutStrLn stderr ("senbazuru: " <> T.unpack msg) >> exitFailure
-
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
