@@ -225,7 +225,11 @@ instance Explain StackingError where
         <> " right for convex ones"
     StackingRefused err -> explain err
 
--- | 'explain' for a 'StackingError', under the name call sites already use.
+-- | 'explain' for a 'StackingError', under the name it had before the class.
+--
+-- Kept when the class arrived so that nothing had to move at once. Nothing
+-- calls it now: the CLI says 'explain' and no test names this one, so it is
+-- exported for a caller that does not exist yet.
 renderStackingError :: StackingError -> Text
 renderStackingError = explain
 

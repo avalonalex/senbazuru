@@ -119,6 +119,23 @@ spec = do
       explain (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
         `shouldBe` "frame 2: vertex 0 has 1 coordinate(s); at least 2 (x, y) are required"
 
+  -- 'num' is the one helper whose choice of formatter is load-bearing, and the
+  -- reason lives below 0.1 where 'showGFloat' switches to an exponent. Every
+  -- other assertion in the suite happens to sit above that, so swapping it for
+  -- 'showFFloat (Just 6)' would leave the whole thing green while turning a
+  -- refusal into "spans 0.000000 in z" -- the message that tells a reader their
+  -- file is a folded form because a coordinate is off by nothing at all.
+  describe "how a measured quantity is written" $ do
+    it "keeps six digits rather than show's rounding" $
+      explain (PaperInTheAir 0.30000000000000004)
+        `shouldBe` "the model spans 0.300000 in z, so it is not folded flat"
+
+    it "goes to an exponent below 0.1, so a tiny span is not printed as zero" $ do
+      explain (PaperInTheAir 5.0e-2)
+        `shouldBe` "the model spans 5.000000e-2 in z, so it is not folded flat"
+      explain (PaperInTheAir 1.0e-6)
+        `shouldBe` "the model spans 1.000000e-6 in z, so it is not folded flat"
+
 -- | A message may open with a digit or a quote; what it may not open with is a
 -- capital, which is what would read as a new sentence mid-line.
 opensWithCapital :: Text -> Bool

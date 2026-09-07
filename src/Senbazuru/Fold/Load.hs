@@ -85,7 +85,7 @@ instance Explain LoadError where
     DecodeFailed path msg -> "cannot decode " <> T.pack path <> ": " <> msg
     ImportFailed path err -> "cannot decode " <> T.pack path <> ": " <> explain err
 
--- | 'explain' for a 'LoadError', under the name call sites already use.
+-- | 'explain' for a 'LoadError', under the name the test suite already uses.
 renderLoadError :: LoadError -> Text
 renderLoadError = explain
 
@@ -168,7 +168,7 @@ data SaveError = WriteFailed FilePath Text
 instance Explain SaveError where
   explain (WriteFailed path msg) = "cannot write " <> T.pack path <> ": " <> msg
 
--- | 'explain' for a 'SaveError', under the name call sites already use.
+-- | 'explain' for a 'SaveError', under the name the test suite already uses.
 renderSaveError :: SaveError -> Text
 renderSaveError = explain
 

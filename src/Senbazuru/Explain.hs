@@ -23,10 +23,14 @@
 -- nothing at a call site — @explain err@ compiles to the same function the old
 -- name did. It buys two things at the definition site. One name is now the
 -- answer to "how does this project print an error". And an error nested inside
--- another is quoted by that same name wherever it appears: seven of the eleven
--- types hold a 'Senbazuru.Fold.Query.FoldError' somewhere, and their instances
--- used to import its rendering function under its own spelling in order to say
--- so.
+-- another is quoted by that same name wherever it appears. Seven of the eleven
+-- types hold a 'Senbazuru.Fold.Query.FoldError' somewhere, and the five that
+-- already printed one — "Senbazuru.Origami.FlatFold",
+-- "Senbazuru.Origami.Folding", "Senbazuru.Origami.Stacking",
+-- "Senbazuru.Origami.ThroughLayers" and "Senbazuru.Render.Gltf" — each
+-- imported its rendering function under that function's own spelling in order
+-- to say so. The other two are 'Senbazuru.Origami.Flat.FlatError' and
+-- 'Senbazuru.Render.Steps.StepError', which had no instance at all.
 --
 -- == What this deliberately is not
 --
@@ -39,9 +43,11 @@
 -- nothing the one method does not already give.
 --
 -- __Not a replacement for the nine old names.__ They are still exported, now
--- as one-line bindings, so no call site or test had to move in order to
--- introduce this. Whether they still earn their keep is a separate question
--- and a much smaller change.
+-- as one-line bindings, so the tests did not have to move. The CLI did: every
+-- call site there says 'explain', which left four of the nine —
+-- @renderImportError@, @renderCheckError@, @renderFoldingError@ and
+-- @renderStackingError@ — with no caller anywhere. Whether any of them still
+-- earns its keep is a separate question and a much smaller change.
 module Senbazuru.Explain
   ( Explain (..),
     num,
@@ -102,10 +108,16 @@ num x = T.pack (showGFloat (Just 6) x "")
 -- @vertex (VertexId 12)@.
 --
 -- It is also right for a 'Double' the /user/ supplied, and
--- "Senbazuru.Render.Gltf" uses it that way on purpose: @--thickness 0.001@ is
--- refused with @a thickness of 1.0e-3@, the number as @show@ writes it, so it
--- can be matched against what was typed. Reaching for 'num' there because the
--- value is a distance would print @1.000000e-3@ and break that match. The rule
--- is not the type — it is whether the number came from the reader or from us.
+-- "Senbazuru.Render.Gltf" uses it that way on purpose. @senbazuru export
+-- examples\/crane.fold --fold --thickness 0.0000007@ is refused with
+-- @a thickness of 7.0e-7 is finer than …@ — the number as @show@ writes it,
+-- which is how the reader matches the message against what they typed.
+-- Reaching for 'num' there because the value is a distance would answer
+-- @7.000000e-7@ and break that match.
+--
+-- So the rule is not the type. It is whether the number came from the reader
+-- or from us. That same message goes on to print a number that came from us,
+-- and prints it with 'tshow' too; see the note at the alternative in
+-- "Senbazuru.Render.Gltf".
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show

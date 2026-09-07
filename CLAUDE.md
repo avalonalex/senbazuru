@@ -168,9 +168,11 @@ printed and the alternative is `show`.
 `num` and `tshow` live there too. `num` is a quantity we measured, at six
 digits so `show`'s rounding stays out of the message; `tshow` is an id, a
 count, or a number the *reader* gave us, written the way they wrote it. Four
-modules had their own `num` and seven their own `tshow`; five of those went,
+modules had their own `num` and seven their own `tshow`; six of the seven went,
 and `Diagram.Layout`'s stayed because its one use numbers a figure rather than
-naming a fault. Neither is `Render.Svg`'s `formatNumber`, which exists to keep
+naming a fault. `Render.Gltf` prints two numbers of *ours* through `tshow`, which
+by that rule want `num`; that is a loose end recorded at the site, not a
+counter-example. Neither is `Render.Svg`'s `formatNumber`, which exists to keep
 golden files byte-identical and answers a different question.
 
 **Two unit systems, never mixed.** Shape *coordinates* are in model units (from

@@ -198,11 +198,19 @@ instance Explain GltfError where
         <> " from each face's first corner, which is only right for convex faces"
     GltfNoFaces -> "there are no creases here, so there is no surface to write"
     -- 'tshow' and not 'num' for the four numbers below, although every one of
-    -- them is a distance. Three are the thickness the user typed, and quoting
-    -- it back the way @show@ writes it is what lets them match the message
-    -- against their own command line; @num@ would answer @--thickness 0.001@
-    -- with @1.000000e-3@. 'GltfThicknessTooFine' then prints @finest@ beside
-    -- it, and two numbers meant to be compared have to be written the same way.
+    -- them is a distance. Two of them are the thickness the user typed, and
+    -- quoting that back the way @show@ writes it is what lets them match the
+    -- message against their own command line: @--thickness 0.0000007@ is
+    -- refused as @a thickness of 7.0e-7@, where @num@ would answer
+    -- @7.000000e-7@.
+    --
+    -- The other two came from us, not from the reader — @finest@ is
+    -- 'quantumFor' of the model's span, and @c@ is a coordinate after the
+    -- layers were lifted — so by "Senbazuru.Explain"'s own rule they want
+    -- 'num', which would print @7.071068e-7@ rather than
+    -- @7.071067811865761e-7@. They are left as they are only because changing
+    -- them changes what the tool prints, which the change that hoisted these
+    -- helpers had ruled out for itself. It is a loose end, not a decision.
     GltfBadThickness t ->
       "a thickness of " <> tshow t <> " is not a distance"
     GltfThicknessTooFine t finest ->
@@ -215,7 +223,7 @@ instance Explain GltfError where
     GltfUnwritableCoordinate c ->
       "the coordinate " <> tshow c <> " cannot be written in single precision"
 
--- | 'explain' for a 'GltfError', under the name call sites already use.
+-- | 'explain' for a 'GltfError', under the name the test suite already uses.
 renderGltfError :: GltfError -> Text
 renderGltfError = explain
 

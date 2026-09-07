@@ -206,7 +206,11 @@ instance Explain CheckError where
         <> " has no usable direction: its endpoints coincide, or a coordinate is"
         <> " not finite"
 
--- | 'explain' for a 'CheckError', under the name call sites already use.
+-- | 'explain' for a 'CheckError', under the name it had before the class.
+--
+-- Kept when the class arrived so that nothing had to move at once. Nothing
+-- calls it now: the CLI says 'explain' and no test names this one, so it is
+-- exported for a caller that does not exist yet.
 renderCheckError :: CheckError -> Text
 renderCheckError = explain
 
