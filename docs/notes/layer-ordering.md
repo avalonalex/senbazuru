@@ -17,6 +17,15 @@ other way up. This is also the one place a file's winding has to be taken
 exactly as written — the normals and the signs were written against each other,
 and recomputing the winding uncancels them.
 
+One transform does recompute it. `foldFrame` writes every face counterclockwise,
+because the direction a ring runs decides which way each fold turns and it has
+to measure that anyway. Having moved a winding, it is obliged to move the signs
+written against it: every `faceOrders` entry whose **second** face was turned
+round comes back with `Above` and `Below` swapped. Only the second — reversing
+`f` changes which face is being placed, not the direction the relation is read
+in. A winding is not private to its face, which is the whole of why this is
+delicate.
+
 Computing a valid ordering from scratch, rather than reading it from the file,
 is a constraint satisfaction problem. The local conditions have memorable names
 -- *taco-taco*, *taco-tortilla*, *tortilla-tortilla* -- each describing a way

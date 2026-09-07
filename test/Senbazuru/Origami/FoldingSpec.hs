@@ -21,12 +21,14 @@ import Data.ByteString qualified as BS
 import Data.Either (fromRight)
 import Data.IntMap.Strict qualified as IM
 import Senbazuru.Fold.Load (decodeFoldFile)
-import Senbazuru.Fold.Query (FoldError (..), frameVertices)
+import Senbazuru.Fold.Query (FoldError (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
     FaceId (..),
+    FaceOrder (..),
     Frame (..),
+    Stacking (..),
     VertexId (..),
     emptyFrame,
     keyFrame,
@@ -35,6 +37,7 @@ import Senbazuru.Geometry.Rigid (applyRigid, matApply, rigidLinear)
 import Senbazuru.Geometry.V3 (V3 (..), zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding
+import Senbazuru.Origami.Layers (layerDepths)
 import Test.Hspec
 import Test.QuickCheck
 
@@ -63,6 +66,33 @@ halfSheet assignment angle =
           map VertexId [1, 2, 3, 4]
         ]
     }
+
+-- | The same sheet, saying where face 0 sits relative to face 1.
+--
+-- Read against __face 1's__ normal, which is what FOLD's @faceOrders@ triple
+-- means and what makes the sign depend on face 1's winding.
+withOrder :: Stacking -> Frame -> Frame
+withOrder s fr = fr {faceOrders = [FaceOrder (FaceId 0) (FaceId 1) s]}
+
+-- | The rings with the first one turned round, and the rest as they were.
+--
+-- Written out rather than as @reverse (head rs) : drop 1 rs@, which throws on a
+-- frame that records no faces.
+turnFirst :: [[VertexId]] -> [[VertexId]]
+turnFirst [] = []
+turnFirst (r : rest) = reverse r : rest
+
+-- | The layers a drawing would read out of a folded frame, furthest first.
+--
+-- Via 'layerDepths' rather than by comparing @faceOrders@, so that a test can
+-- say two frames describe the same stacking without also demanding they say it
+-- in the same words.
+stackingOf :: Frame -> Either String [(Int, Int)]
+stackingOf fr = case frameFaces fr of
+  Left err -> Left (show err)
+  Right fs -> case layerDepths (V3 0 0 1) fs (faceOrders fr) of
+    Left err -> Left (show err)
+    Right ds -> Right [(unFaceId i, d) | (i, d) <- ds]
 
 -- | The frame's vertices as points.
 --
@@ -174,6 +204,60 @@ spec = do
       folded <- foldOrFail ccw
       flipped <- foldOrFail cw
       verticesCoords flipped `shouldBe` verticesCoords folded
+
+    it "keeps what a clockwise file said about its layers" $ do
+      -- The invariant, and it is not "both windings agree". A faceOrders sign is
+      -- read against the *second* face's normal, and a normal is defined by that
+      -- face's winding, so the two were written against each other: reversing
+      -- the winding while keeping the sign describes the opposite model, not the
+      -- same one written differently.
+      --
+      -- These two files therefore say the same thing, and it is the true thing
+      -- about this fold: a valley brings the two top sides together, so face 1
+      -- turns over and lands on top of face 0. Face 1 then lies top-down and its
+      -- normal points -z, which is the side face 0 is on -- Above, relative to
+      -- face 1. Senbazuru.Origami.StackingSpec solves for exactly that entry.
+      -- The clockwise file says the same by winding its faces the other way and
+      -- calling it Below: both wrongs cancel there, and there is nothing to
+      -- cancel in the counterclockwise one.
+      --
+      -- Folding rewrites every face counterclockwise, which uncancels them. If
+      -- the sign does not move with the winding, the clockwise file comes out
+      -- saying the opposite of what it said, and no test on the geometry can
+      -- tell -- which is what this pins.
+      let ccw = withOrder Above (halfSheet Valley 180)
+          cw = (withOrder Below ccw) {facesVertices = map reverse (facesVertices ccw)}
+      fromCcw <- foldOrFail ccw
+      fromCw <- foldOrFail cw
+      facesVertices fromCw `shouldBe` facesVertices fromCcw
+      faceOrders fromCw `shouldBe` faceOrders fromCcw
+      -- And the same all the way through to what a drawing would do with them:
+      -- face 0 furthest from a viewer at +z, face 1 on top of it. Stated as a
+      -- value rather than as an equality between the two, so that two frames
+      -- that both failed to produce a stacking could not pass it.
+      stackingOf fromCcw `shouldBe` Right [(0, 0), (1, 1)]
+      stackingOf fromCw `shouldBe` Right [(0, 0), (1, 1)]
+
+    it "reads the sign against the second face, so the first's winding is its own" $ do
+      -- The other half of the rule, and the one a fix is likely to overshoot.
+      -- Reversing the first face changes which face is being placed, not the
+      -- direction the relation is read in.
+      let ccw = withOrder Above (halfSheet Valley 180)
+          firstOnly = ccw {facesVertices = turnFirst (facesVertices ccw)}
+      folded <- foldOrFail firstOnly
+      faceOrders folded `shouldBe` [FaceOrder (FaceId 0) (FaceId 1) Above]
+
+    it "leaves an unordered pair unordered, whichever way it was wound" $ do
+      -- s = 0 says the two faces do not overlap, and they do not start to
+      -- because one of them was written the other way round. Without this, a
+      -- later rewrite of the flip in terms of the numeric sign -- negate, or an
+      -- Enum trick over the three constructors -- would turn it into an
+      -- ordering constraint, and layerDepths would invent a drawing order for
+      -- paper the file said never meets.
+      let ccw = withOrder Unordered (halfSheet Valley 180)
+          cw = ccw {facesVertices = map reverse (facesVertices ccw)}
+      folded <- foldOrFail cw
+      faceOrders folded `shouldBe` [FaceOrder (FaceId 0) (FaceId 1) Unordered]
 
     it "writes every face counterclockwise, whichever way the file listed it" $ do
       -- The winding it measured is written out, so the folded frame's normals

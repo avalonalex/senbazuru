@@ -77,6 +77,7 @@ import Control.Monad (when)
 import Data.Bifunctor (first)
 import Data.Foldable (foldl')
 import Data.IntMap.Strict qualified as IM
+import Data.IntSet qualified as IS
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -100,8 +101,10 @@ import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
     FaceId (..),
+    FaceOrder (..),
     Frame (..),
     VertexId (..),
+    otherSide,
   )
 import Senbazuru.Geometry.Rigid (Rigid, after, applyRigid, identity, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
@@ -187,15 +190,26 @@ renderFoldingError = \case
 -- The root face is held still, which places the model somewhere particular in
 -- space without changing its shape.
 --
--- One thing about the graph does change: every face comes back wound
--- __counterclockwise as it lay in the crease pattern__, whichever way the file
--- listed it. That is the winding FOLD asks for, and it is not cosmetic. A
+-- Two things about the graph change, and the second is the price of the first.
+--
+-- Every face comes back wound __counterclockwise as it lay in the crease
+-- pattern__, whichever way the file listed it. That is the winding FOLD asks
+-- for, and it is not cosmetic. A
 -- face's winding defines its normal, and the normal is how a folded form says
 -- which side of the paper is which: "Senbazuru.Origami.Stacking" reads it to
 -- decide which face a mountain fold puts underneath, and @faceOrders@ signs
 -- are written against it. This module already measures the true winding
 -- because the direction of every fold depends on it, so writing it out costs
 -- nothing and makes the result a frame whose winding can be trusted.
+--
+-- And every @faceOrders@ entry whose /second/ face was turned round comes back
+-- with its sign flipped, because a winding is not private to its face. FOLD
+-- reads a sign against that face's normal and a normal is defined by its
+-- winding, so the two were written against each other: a file that wound its
+-- faces backwards has signs that are backwards too, and the pair cancels.
+-- Re-winding uncancels it. Moving the sign as well puts the cancellation back,
+-- and leaving it would turn such a file's model inside out with nothing in the
+-- geometry to give it away. See 'reorient'.
 --
 -- One thing is thrown away: 'frameExtras', the keys of the input file that
 -- senbazuru does not understand. They are kept everywhere else precisely so
@@ -237,8 +251,15 @@ data Folded = Folded
     -- calling @withPlanarFaces@ again itself and trusting that it lands on the
     -- same frame, which is true today and is not a thing to build on.
     --
-    -- One thing it does /not/ promise: that face @i@'s corners are listed in the
-    -- same order here as in 'foldedFrame'. Folding writes its faces
+    -- Two things it does /not/ promise. Its @faceOrders@ are the file's, read
+    -- against the file's winding, where 'foldedFrame'\'s have been re-signed to
+    -- match the counterclockwise rings it writes — so the two frames can carry
+    -- opposite signs for the same relation, and each is right about its own
+    -- faces. Reading faces from one and orders from the other is the mistake to
+    -- avoid; take both from 'foldedFrame'.
+    --
+    -- Nor does it promise that face @i@'s corners are listed in the same order
+    -- here as in 'foldedFrame'. Folding writes its faces
     -- counterclockwise as measured on the pattern, so a face the file listed
     -- clockwise has its ring reversed on the way out. The two frames agree about
     -- which vertices a face has and about their ids, not about where the ring
@@ -280,7 +301,11 @@ foldFrameWith fr0 = do
   -- comes out and not from the one that went in.
   fr <- first FrameGeometry (withPlanarFaces fr0)
   flat <- first FrameGeometry (frameVertices fr)
-  faces <- traverse orientCcw =<< first FrameGeometry (frameFaces fr)
+  turned <- traverse orientCcw =<< first FrameGeometry (frameFaces fr)
+  let faces = map fst turned
+      -- The faces whose rings this just reversed, by id. Every @faceOrders@
+      -- sign written against one of them now reads backwards.
+      rewound = IS.fromList [unFaceId (faceId f) | (f, Rewound) <- turned]
   when (null faces) (Left NoFaces)
   creases <- creaseIndex fr
   neighbours <- faceNeighbours faces
@@ -292,6 +317,7 @@ foldFrameWith fr0 = do
           fr
             { verticesCoords = [[x, y, z] | V3 x y z <- folded],
               facesVertices = map faceVertexIds faces,
+              faceOrders = map (reorient rewound) (faceOrders fr),
               frameClasses = foldedClasses (frameClasses fr),
               frameAttributes = foldedAttributes (hasRelief folded) (frameAttributes fr),
               frameExtras = mempty
@@ -321,23 +347,39 @@ foldedAttributes solid attrs
   where
     without = filter (`notElem` ["2D", "3D"]) attrs
 
--- | Put a face's corners in counterclockwise order as seen from @+z@.
+-- | Whether a face's corners had to be turned round to run counterclockwise.
+--
+-- A 'Bool' would do and would be worse. Which way round it reads decides which
+-- @faceOrders@ signs get flipped, so a caller that took @True@ for "was already
+-- counterclockwise" would invert exactly the wrong faces — quietly, and in the
+-- same way the bug this exists to fix did.
+data Winding = AsGiven | Rewound
+  deriving stock (Eq, Show)
+
+-- | Put a face's corners in counterclockwise order as seen from @+z@, and say
+-- whether that meant turning them round.
 --
 -- Measured from the coordinates with the shoelace formula, rather than trusting
 -- the order the file lists them in. That is not caution for its own sake: the
 -- direction the ring runs decides the sign of every fold made across it, so a
 -- file whose winding disagrees with the specification would fold half its faces
 -- the wrong way.
-orientCcw :: Face -> Either FoldingError Face
+--
+-- The 'Winding' is what 'reorient' needs. A winding is not private to its
+-- face: @faceOrders@ signs are written against it, so moving one without the
+-- other changes what the file says.
+orientCcw :: Face -> Either FoldingError (Face, Winding)
 orientCcw f
   | abs area <= negligible = Left (DegenerateFace (faceId f))
-  | area > 0 = Right f
+  | area > 0 = Right (f, AsGiven)
   | otherwise =
       Right
-        f
-          { faceVertexIds = reverse (faceVertexIds f),
-            faceCorners = reverse (faceCorners f)
-          }
+        ( f
+            { faceVertexIds = reverse (faceVertexIds f),
+              faceCorners = reverse (faceCorners f)
+            },
+          Rewound
+        )
   where
     -- Twice the signed area. Positive is counterclockwise with y upwards, which
     -- is the convention model coordinates use.
@@ -355,6 +397,28 @@ orientCcw f
     spanOf g = case map g corners of
       [] -> 0
       cs -> maximum cs - minimum cs
+
+-- | A face order as it reads once the faces have been re-wound.
+--
+-- FOLD's triple @[f, g, s]@ puts @s@ against __@g@__'s normal, and a normal is
+-- defined by the counterclockwise ordering of that face's own corners. So the
+-- winding and the sign were written against each other: a file that wound its
+-- faces backwards has signs that are backwards too, and the two wrongs cancel.
+--
+-- 'orientCcw' rewrites the winding, which uncancels them. Flipping the sign of
+-- every order whose @g@ was turned round puts the cancellation back, and the
+-- result is a frame that says the same thing about its layers in the winding
+-- FOLD asks for. Doing neither would turn a model inside out silently, since
+-- nothing downstream can tell a deliberate order from an inverted one.
+--
+-- Only @g@. Reversing @f@ changes which face is being placed and not the
+-- direction the relation is read in, so an order whose first face was turned
+-- round is left exactly as it was.
+reorient :: IS.IntSet -> FaceOrder -> FaceOrder
+reorient rewound o
+  | unFaceId (orderRelativeTo o) `IS.member` rewound =
+      o {orderStacking = otherSide (orderStacking o)}
+  | otherwise = o
 
 -- | Every crease by the pair of vertices it joins, with its fold angle in
 -- radians.
