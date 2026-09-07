@@ -78,9 +78,12 @@ import Senbazuru.Geometry.Polygon (distanceToSegment)
 -- crease crosses on its way is cut too, and the faces are worked out again
 -- from the creases that result.
 --
--- Refuses a folded form — creasing one means creasing through its layers,
--- which is a different and much harder move — and refuses a crease with no
--- length, which names no line to fold about.
+-- Refuses four things: a folded form, since creasing one means creasing
+-- through its layers and is a different and much harder move
+-- ("Senbazuru.Origami.ThroughLayers"); a crease with no length, which names no
+-- line to fold about, and a pair of ends that resolve to one corner, which is
+-- the same thing said in coordinates; and an end that meets nothing the
+-- drawing already has, for the reason in the module header.
 creaseAlong :: V2 -> V2 -> Assignment -> Frame -> Either FoldError Frame
 creaseAlong from to assignment fr = do
   -- Read the sheet only to refuse the frames that are not one to draw on: a
@@ -89,12 +92,19 @@ creaseAlong from to assignment fr = do
   -- measure everything else on this paper is judged by.
   sheet <- sheetOf fr
   arraysLineUp
-  if norm (to ^-^ from) <= tolerance sheet
-    then Left CreaseWithoutLength
-    else do
-      meetsSomething sheet FromEnd from
-      meetsSomething sheet ToEnd to
-      withPlanarFaces (creased (endpointsOf sheet (tolerance sheet)))
+  let near = tolerance sheet
+  when (norm (to ^-^ from) <= near) (Left CreaseWithoutLength)
+  meetsSomething sheet near FromEnd from
+  meetsSomething sheet near ToEnd to
+  let ends@((a, _), (b, _)) = endpointsOf sheet near
+  -- Two ends further apart than the tolerance can still be the same corner,
+  -- if each is within the tolerance of it and they lie on opposite sides. The
+  -- crease would then run from a vertex to itself, and the refusal for that
+  -- names an edge index the file does not have -- which is the whole thing
+  -- this module is trying not to do. The sheet has already said these are one
+  -- point; say the same.
+  when (a == b) (Left CreaseWithoutLength)
+  withPlanarFaces (creased ends)
   where
     edges = length (edgesVertices fr)
 
@@ -111,25 +121,18 @@ creaseAlong from to assignment fr = do
       when (n /= 0 && n /= edges) $
         Left (ArrayLengthMismatch "edges_vertices" edges what n)
 
-    -- Each end has to land on something the drawing already has, or the crease
-    -- stops there and divides nothing -- and the face tracing then refuses it a
-    -- step later, naming a vertex the caller never chose and a consequence
-    -- rather than a cause.
+    -- Each end has to land on something the drawing already has. Why that is
+    -- the question, rather than whether the end is on the paper, is in the
+    -- module header.
     --
-    -- Asked of the /edges/ and not of the sheet. An end off the paper, an end
-    -- in the middle of a face, and an end nowhere near the model all fail this
-    -- one test and all fail it for the same reason, which is exactly as much as
-    -- can be said without deciding what a sheet is. Telling them apart would
-    -- need that; pointing at the end that has to move does not.
-    --
-    -- An end on an isolated vertex, if a frame has one, meets nothing by this
-    -- test, and that is right: a point with no edges at it divides no paper
-    -- either.
-    meetsSomething sheet which p
+    -- One case the header does not cover: an end on an isolated vertex, if a
+    -- frame has one, meets nothing by this test. That is right -- a point with
+    -- no edges at it divides no paper either.
+    meetsSomething sheet near which p
       | any (onIt . snd) (sheetEdges sheet) = Right ()
       | otherwise = Left (CreaseEndMeetsNothing which p)
       where
-        onIt e = distanceToSegment (endsOf sheet e) p <= tolerance sheet
+        onIt e = distanceToSegment (endsOf sheet e) p <= near
 
     -- An end that lands on a corner the paper already has /is/ that corner.
     -- Appending a second vertex at the same place instead would leave the

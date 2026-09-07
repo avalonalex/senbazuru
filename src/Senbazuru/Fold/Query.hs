@@ -41,6 +41,7 @@ import Data.IntMap.Strict qualified as IM
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Numeric (showFFloat)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
@@ -154,6 +155,13 @@ data FoldError
     -- already has: no edge to be cut at that point, no corner to join. The
     -- crease would stop there and divide nothing. Carries which end, and the
     -- point that was given.
+    --
+    -- The end is carried for a caller that wants it, and is deliberately /not/
+    -- in the message. "Senbazuru.Origami.ThroughLayers" raises this about a
+    -- per-layer segment it worked out rather than about anything the caller
+    -- typed, so naming @--from@ there would name a flag that had nothing to do
+    -- with it. The point identifies the end well enough for the caller who did
+    -- type it.
     --
     -- Said about the /drawing/ and not about the sheet, deliberately. An end
     -- off the paper, an end in the middle of a face, and an end nowhere near
@@ -293,12 +301,11 @@ renderFoldError = \case
       <> " a crease pattern"
   EdgeWithoutLength (EdgeId e) ->
     "edge " <> tshow e <> " starts and ends at the same point"
-  CreaseEndMeetsNothing end (V2 x y) ->
-    creaseEndFlag end
-      <> " ("
-      <> tshow x
+  CreaseEndMeetsNothing _ (V2 x y) ->
+    "the end at ("
+      <> coord x
       <> ", "
-      <> tshow y
+      <> coord y
       <> ") does not meet any crease or edge the pattern already has, so the"
       <> " crease would stop there and divide nothing"
   CreaseWithoutLength ->
@@ -383,8 +390,17 @@ renderFoldError = \case
         <> tshow (n - 1)
         <> ")"
 
-    tshow :: (Show a) => a -> Text
-    tshow = T.pack . show
+-- | A coordinate, as the caller would have written it.
+--
+-- @show@ will not do: it gives @1.0e-2@ for a coordinate typed as @0.01@, and
+-- this number's whole job is to be recognised as one of the two the caller
+-- passed in. 'showFFloat' with no digit count is fixed-point and shortest
+-- round-tripping, so it gives back @0.01@ and @3.0@.
+coord :: Double -> Text
+coord x = T.pack (showFFloat Nothing x "")
+
+tshow :: (Show a) => a -> Text
+tshow = T.pack . show
 
 -- | What a frame's coordinates are a picture of.
 data FrameKind
