@@ -131,7 +131,6 @@ that ORIPA never cut. Cutting them turns 429 creases into 500, and turns a file
 senbazuru could not fold into one that folds and stacks 672 ways. Editors are
 tidier than hand-written files, but not as tidy as you would assume.
 
-
 `--fold` computes the folded form rather than reading one. Given a crease
 pattern and a fold angle for every crease, paper does not stretch, so each face
 moves rigidly and the whole state is one rigid motion per face — walk the faces,

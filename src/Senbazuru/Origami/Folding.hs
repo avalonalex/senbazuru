@@ -80,8 +80,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
-import Senbazuru.Fold.Crossings (splitCrossings)
-import Senbazuru.Fold.Faces (withTracedFaces)
+import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Query
   ( EdgeKey,
     Face (..),
@@ -225,7 +224,7 @@ foldFrame fr0 = do
   -- below can disagree about which frame it is working on. That includes the
   -- vertices: splitting adds some, so they have to be read from the frame that
   -- comes out and not from the one that went in.
-  fr <- first FrameGeometry (withTracedFaces =<< splitCrossings fr0)
+  fr <- first FrameGeometry (withPlanarFaces fr0)
   flat <- first FrameGeometry (frameVertices fr)
   faces <- traverse orientCcw =<< first FrameGeometry (frameFaces fr)
   when (null faces) (Left NoFaces)

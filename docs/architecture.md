@@ -85,7 +85,7 @@ that reaches for it is a caller holding a `Frame` it built or folded.
 | `Senbazuru.Import.Opx` | ORIPA `.opx` XML → segments. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Fold.Faces` | The faces a file does not record, traced from the creases. Refuses a drawing whose regions would not be its faces. Owns `Sheet`, the drawing itself. |
-| `Senbazuru.Fold.Crossings` | Cuts creases at the points where they meet, so a drawing `Fold.Faces` refuses becomes one it can trace. |
+| `Senbazuru.Fold.Crossings` | Cuts creases at the points where they meet, so a drawing `Fold.Faces` refuses becomes one it can trace. `withPlanarFaces` is the pair — cut, then trace — that every backend calls. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
@@ -129,8 +129,9 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   and return values, and `Fold.Load` is what turns a path into bytes for them.
 - **Whatever needs faces asks `Fold.Faces` for them, and does not refuse a
   frame without any.** Most files record none — no `.cp` or `.opx` can — and
-  the creases determine them, so `Origami.Folding` and `Render.Gltf` both cut
-  the crossings and then trace. `Render.CreasePattern` deliberately does
+  the creases determine them, so `Origami.Folding` and `Render.Gltf` both call
+  `Fold.Crossings.withPlanarFaces`, which is one function rather than a pair of
+  calls at each backend precisely so a third backend cannot half-apply it. `Render.CreasePattern` deliberately does
   *neither*, and the reason is not golden churn: tracing can *fail* on a
   drawing no amount of cutting fixes — a crease that stops in the middle of
   the paper has no face round it — and a drawing must not stop working because

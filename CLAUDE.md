@@ -284,8 +284,11 @@ are not contributors can find it, and so there is only one copy to keep true.
   `docs/notes/round-trips.md`.
 - **Faces are not extra information, they are the creases read another way.**
   Most files record none — no `.cp` or `.opx` can — so `Senbazuru.Fold.Faces`
-  traces them, and `Origami.Folding` and `Render.Gltf` both cut the crossings
-  (`Fold.Crossings`) and then call it, rather than refusing.
+  traces them, and `Origami.Folding` and `Render.Gltf` both call
+  `Fold.Crossings.withPlanarFaces` — cut, then trace — rather than refusing.
+  **One function, not two calls at each backend**, for the reason
+  `--layer-budget` is written down below: a policy spelled out per backend is a
+  policy the next backend forgets.
   `Render.CreasePattern` deliberately does neither, and not for fear of
   churning goldens: tracing can fail on a drawing no cutting fixes — a crease
   that stops in the middle of the paper has no face round it — and a drawing
@@ -312,11 +315,19 @@ are not contributors can find it, and so there is only one copy to keep true.
   gives three vertices a rounding error apart joined by creases shorter than
   anything a person drew. `examples/unit-square.fold` is exactly that case.
   Find every crossing, merge them at the sheet's tolerance, *then* cut.
-- **`splitCrossings` returns the frame untouched when there is nothing to
-  cut**, and that is load-bearing rather than an optimisation: it is what lets
-  it sit in front of every fold without stripping `faces_vertices` and
-  `frameExtras` off files that never needed it. When it does cut, both go, on
-  the same preserve-at-the-boundary rule `foldFrame` follows.
+- **`splitCrossings` leaves two kinds of frame alone**, and both matter. A
+  frame that *records its own faces* has already answered the question cutting
+  asks — a crease stopping part-way along another is no defect there, the face
+  just has a corner mid-side — so cutting would swap the file's answer for ours,
+  re-wound, and `faceOrders` are read against the file's winding. And a frame
+  with *nothing to cut* comes back untouched, keys and all, which is what lets
+  this sit in front of every fold and export without stripping keys or adding
+  refusals on paths that never asked. When it does cut, `faces_vertices` and
+  `frameExtras` go, on the preserve-at-the-boundary rule.
+- **Cutting does not renumber the vertices** — every one the file had keeps its
+  id, and crossings are appended after them. What makes a stale
+  `faces_vertices` untrue is the new corners in the middle of its sides, not
+  dangling ids. The obvious reason is the wrong one, and it was in this file.
 - **Editors are not as tidy as you would assume.** Of thirty crease patterns in
   the reference corpora, one hand-written file has creases genuinely crossing —
   and ORIPA's own `turkey2015.opx` has 71 creases that stop on another crease

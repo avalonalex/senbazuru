@@ -95,6 +95,22 @@ spec = do
           drop 6 (verticesCoords s) `shouldBe` [[1, 0], [2, 0]]
           creasesOf s `shouldBe` [(0, 6), (6, 7), (7, 1), (2, 6), (6, 3), (4, 7), (7, 5)]
 
+    it "keeps every vertex the file wrote, and puts the new one on the same sheet" $ do
+      -- A crease pattern is flat, which is not the same as lying at z = 0.
+      -- Reading the drawing throws the z column away -- it has to, the walk is
+      -- two-dimensional -- so rebuilding the vertices from what was read would
+      -- quietly move a sheet recorded at a constant height down to the origin,
+      -- and leave a frame whose frame_attributes still said 3D.
+      let raised =
+            sheet
+              [[0.5, 0, 5], [0.5, 1, 5], [0, 0.5, 5], [1, 0.5, 5]]
+              [(0, 1), (2, 3)]
+      case splitCrossings raised of
+        Left err -> expectationFailure (show err)
+        Right s -> do
+          take 4 (verticesCoords s) `shouldBe` verticesCoords raised
+          drop 4 (verticesCoords s) `shouldBe` [[0.5, 0.5, 5]]
+
     it "leaves a pattern with nothing to cut exactly as it found it" $ do
       -- Byte for byte through the writer, not merely equal in the parts this
       -- module touches: a frame that needed no cutting must keep its faces and
@@ -147,23 +163,47 @@ spec = do
       fmap edgesFoldAngle (splitCrossings bare) `shouldBe` Right []
 
     it "refuses an array that does not line up, rather than reading past its end" $ do
-      let short =
-            (sheet [[0, 0], [1, 0], [1, 1]] [(0, 1), (1, 2), (2, 0)])
+      -- Only when there is something to cut. A frame with nothing to cut comes
+      -- back untouched and unexamined, because this check exists to keep the
+      -- rebuilding total and there is no rebuilding to keep total.
+      let crossing =
+            (sheet [[0.5, 0], [0.5, 1], [0, 0.5], [1, 0.5]] [(0, 1), (2, 3)])
               { edgesAssignment = [Border]
               }
-      splitCrossings short
-        `shouldBe` Left (ArrayLengthMismatch "edges_vertices" 3 "edges_assignment" 1)
+          uncrossed =
+            (sheet [[0, 0], [1, 0], [1, 1], [0, 1]] [(0, 1), (1, 2), (2, 3), (3, 0)])
+              { edgesAssignment = [Border]
+              }
+      splitCrossings crossing
+        `shouldBe` Left (ArrayLengthMismatch "edges_vertices" 2 "edges_assignment" 1)
+      splitCrossings uncrossed `shouldBe` Right uncrossed
 
-  describe "what cutting destroys" $
-    it "drops the faces and the keys it cannot vouch for, but only when it cuts" $ do
-      -- Preserve at the boundary, discard at the transform: cutting renumbers
-      -- the vertices, so a faces_vertices written against the old numbering is
-      -- no longer true of this frame and neither is anything in frameExtras
-      -- that indexes one.
+  describe "what cutting destroys" $ do
+    it "drops the faces and the keys it cannot vouch for when it cuts" $ do
+      -- Preserve at the boundary, discard at the transform -- and note the
+      -- reason, because the obvious one is wrong. Cutting leaves every vertex
+      -- the file had at the id it had, since crossings are appended after
+      -- them, so what makes a stale faces_vertices untrue is not dangling ids
+      -- but the new corners now sitting in the middle of its sides. Anything in frameExtras that indexes a face or an edge is in
+      -- the same position, and the decoder cannot judge a key it does not
+      -- understand, so the transform has to.
       fr <- fixture "unit-square.fold"
-      let withFaces = fr {facesVertices = [map VertexId [0, 1, 2, 3]]}
-      fmap facesVertices (splitCrossings withFaces) `shouldBe` Right []
-      fmap frameExtras (splitCrossings withFaces) `shouldBe` Right mempty
+      case splitCrossings fr of
+        Left err -> expectationFailure (show err)
+        Right s -> do
+          facesVertices s `shouldBe` []
+          frameExtras s `shouldBe` mempty
+
+    it "does not cut a frame that records its own faces" $ do
+      -- Such a frame has already answered the question cutting asks. A crease
+      -- stopping part-way along another is no defect there: the face on that
+      -- side simply has a corner in the middle of one of its sides, which is
+      -- legal and which real patterns are full of. Cutting anyway would throw
+      -- away an answer the file gave for one we worked out, re-wound to our
+      -- own convention -- and faceOrders are read against the file's winding.
+      fr <- fixture "unit-square.fold"
+      let claimed = fr {facesVertices = [map VertexId [0, 1, 2, 3]]}
+      splitCrossings claimed `shouldBe` Right claimed
 
   describe "drawings it leaves alone" $ do
     it "passes a folded form through untouched rather than cutting it" $ do

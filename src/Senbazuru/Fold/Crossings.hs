@@ -54,32 +54,49 @@
 -- candidate, where here there is one candidate per crossing, and a crease
 -- pattern that crosses itself hundreds of times is not a thing anyone has.
 --
--- == What it destroys
+-- == What it leaves alone, and what it destroys
 --
--- Cutting a crease renumbers the vertices and rewrites @edges_vertices@, so a
--- @faces_vertices@ written against the old numbering is no longer true of this
--- frame, and neither is anything in @frameExtras@ that indexes faces or edges.
--- Both are dropped, on the rule @foldFrame@ follows and for the same reason:
--- __preserve at the boundary, discard at the transform__ — the decoder cannot
--- judge a key it does not understand, so whatever /changes/ the document has
--- to.
+-- __A frame that records its own faces is never cut.__ It has already answered
+-- the question cutting asks. A crease stopping part-way along another is no
+-- defect there — the face on that side simply has a corner in the middle of
+-- one of its sides, which is legal and which real patterns are full of — so
+-- cutting would throw away an answer the file gave in favour of one worked out
+-- here, re-wound to this project\'s convention. @faceOrders@ are read against
+-- the winding of the faces a file recorded, so replacing those faces
+-- underneath them turns a model inside out.
 --
--- The exception is doing nothing. A drawing with no crossings comes back the
--- frame it arrived as, keys and all, because nothing was transformed. That is
--- worth having as more than an optimisation: it is what lets this sit in front
--- of every fold without quietly stripping keys off the files that did not need
--- it.
+-- __A frame with nothing to cut comes back the frame it arrived as__, keys and
+-- all. More than an optimisation: it is what lets this sit in front of every
+-- fold and every export without stripping keys off files that never needed it,
+-- and without adding refusals to paths that never asked a question it answers.
+--
+-- __When it does cut, @faces_vertices@ and @frameExtras@ go.__ Note the reason,
+-- because the obvious one is wrong: the vertices are /not/ renumbered — every
+-- one the file had keeps the id it had, and crossings are appended after them.
+-- What makes a stale @faces_vertices@ untrue is that its rings have gained
+-- corners in the middle of their sides. Anything in @frameExtras@ indexing a
+-- face or an edge is in the same position, and the decoder cannot judge a key
+-- it does not understand, so whatever /changes/ the document has to:
+-- __preserve at the boundary, discard at the transform__.
+--
+-- One thing it does not catch: two creases drawn exactly on top of each other,
+-- end for end. Neither cuts the other, so nothing is rebuilt and the frame
+-- passes through — and "Senbazuru.Fold.Faces" refuses it as a repeated edge,
+-- naming the two creases the file really has. Only a /partial/ overlap is
+-- reported from here, because that is the case where the pieces would
+-- otherwise come out doubled.
 module Senbazuru.Fold.Crossings
   ( splitCrossings,
+    withPlanarFaces,
   )
 where
 
 import Control.Monad (when)
 import Data.IntMap.Strict qualified as IM
-import Data.List (sortOn, tails)
+import Data.List (foldl', partition, sortOn, tails)
 import Data.Maybe (mapMaybe)
-import Senbazuru.Fold.Faces (Sheet (..), endsOf, pointAt, sheetOf, tolerances)
-import Senbazuru.Fold.Query (FoldError (..), FrameKind (..), frameKind, frameVertices)
+import Senbazuru.Fold.Faces (Sheet (..), endsOf, pointAt, sheetOf, tolerance, withTracedFaces)
+import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types (EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), dot, norm, (*^), (^+^), (^-^))
 import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, segmentsCross)
@@ -94,40 +111,55 @@ import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, segmentsCross)
 --
 -- Idempotent: splitting a split drawing finds nothing left to cut.
 splitCrossings :: Frame -> Either FoldError Frame
-splitCrossings fr = do
-  verts <- frameVertices fr
-  -- A folded form is left exactly as it is rather than refused. Cutting is a
-  -- question about a crease pattern -- a folded form's creases cross wherever
-  -- the paper overlaps itself, and cutting there would be cutting the paper --
-  -- but whether a folded form is acceptable at all is
-  -- "Senbazuru.Fold.Faces"'s call, and answering it here as well would be two
-  -- places that can disagree. It has that answer: a folded form with faces
-  -- goes through untouched, and one without is refused there.
-  if frameKind (frameClasses fr) verts == FoldedForm
-    then pure fr
-    else splitPattern fr
-
--- | The half of 'splitCrossings' that knows it is looking at a crease pattern.
-splitPattern :: Frame -> Either FoldError Frame
-splitPattern fr = do
-  sheet <- sheetOf fr
-  if null (sheetEdges sheet)
-    then pure fr
-    else do
-      arraysLineUp fr
-      let points = IM.elems (sheetPoints sheet) <> mergedCrossings sheet
-          indexed = IM.fromList (zip [0 ..] points)
-          cuts = cutsAlong indexed sheet
-      if all (null . snd) cuts
+splitCrossings fr
+  -- A frame that records its own faces is left exactly as it is. Cutting
+  -- exists to answer "where do these creases divide the paper?", and such a
+  -- frame has already answered it: a crease stopping part-way along another is
+  -- no defect there, because the face on that side simply has a corner in the
+  -- middle of one of its sides, which is legal and which real patterns are
+  -- full of. Cutting anyway would throw away an answer the file gave for one
+  -- we worked out, re-wound to our own convention and possibly failing on a
+  -- drawing its faces described perfectly well.
+  --
+  -- The same rule "Senbazuru.Fold.Faces" follows, for the same reason, and it
+  -- is what keeps @faceOrders@ meaningful: those are read against the winding
+  -- of the faces the file recorded, so a frame whose faces are replaced
+  -- underneath them is a frame turned inside out.
+  | not (null (facesVertices fr)) = Right fr
+  | otherwise = do
+      sheet <- sheetOf fr
+      if null (sheetEdges sheet)
         then pure fr
-        else rebuilt fr points cuts
+        else do
+          let points = IM.elems (sheetPoints sheet) <> mergedCrossings sheet
+              indexed = IM.fromList (zip [0 ..] points)
+              cuts = cutsAlong indexed sheet
+          if all (null . snd) cuts
+            then pure fr
+            else do
+              arraysLineUp fr
+              rebuilt fr points cuts
+
+-- | Cut the creases and then work out the faces, which is the pair every
+-- caller wants and neither half of which is any use alone.
+--
+-- One function rather than two calls, because a policy spelled out at each
+-- backend is a policy the next backend forgets — which is exactly what
+-- happened to @--layer-budget@, and is written down in CLAUDE.md so that it
+-- does not happen twice.
+withPlanarFaces :: Frame -> Either FoldError Frame
+withPlanarFaces fr = withTracedFaces =<< splitCrossings fr
 
 -- | Refuse an assignment or angle array that does not line up with the creases.
 --
--- Checked before anything is cut so that giving each piece its parent's
--- assignment cannot be a lookup past the end of an array. "Senbazuru.Fold.Query"
--- refuses the same file for the same reason; this is the same complaint,
--- raised early enough to keep the rebuilding total.
+-- Checked immediately before the rebuild and not a step earlier. It exists
+-- only to keep 'rebuilt' total — each piece looks its parent's assignment up
+-- by edge id — so a frame with nothing to cut must not be refused by it. That
+-- frame was acceptable to @export --thickness 0@, which consults no
+-- assignments at all, and adding a refusal it has no use for on the way past
+-- is how a transform that was supposed to be invisible stops being invisible.
+-- "Senbazuru.Fold.Query" still refuses the same file wherever the arrays are
+-- actually read.
 arraysLineUp :: Frame -> Either FoldError ()
 arraysLineUp fr = do
   matches "edges_assignment" (length (edgesAssignment fr))
@@ -146,24 +178,56 @@ arraysLineUp fr = do
 -- vertex the file has is dropped rather than added: the file put it there, and
 -- the cut below will use it.
 mergedCrossings :: Sheet -> [V2]
-mergedCrossings sheet = foldl keepDistinct [] found
+mergedCrossings sheet =
+  [ centre group
+    | group <- foldl absorb [] found,
+      not (any (near `apart` centre group) existing)
+  ]
   where
-    (near, area) = tolerances sheet
+    near = tolerance sheet
     existing = IM.elems (sheetPoints sheet)
 
+    -- The box rejects most pairs before any of the crossing geometry runs, for
+    -- the reason "Senbazuru.Fold.Faces" gives about the identical test: this
+    -- is every crease against every other, on the way into every fold.
     found =
       mapMaybe
-        (uncurry (crossingOf sheet area))
+        (uncurry (crossingOf sheet near))
         [ (ep, fp)
           | (_, ep) : rest <- tails (sheetEdges sheet),
-            (_, fp) <- rest
+            (_, fp) <- rest,
+            boxesMeet sheet near ep fp
         ]
 
-    keepDistinct kept p
-      | any (sameAs p) (existing <> kept) = kept
-      | otherwise = kept <> [p]
+    -- Grouping has to be transitive, and \"is this within a tolerance of one I
+    -- already kept\" is not. Three crossings in a row, each within a tolerance
+    -- of the next but the ends further apart than that, would keep the first
+    -- and the last: two vertices at one place on the paper, joined by a crease
+    -- a hair long that nothing downstream is short enough to refuse. So a new
+    -- point absorbs every group it is near to, rather than being dropped
+    -- against the first one it meets.
+    absorb groups p = untouched <> [p : concat touching]
+      where
+        (touching, untouched) = partition (any (near `apart` p)) groups
 
-    sameAs p q = norm (q ^-^ p) <= near
+    centre group = (1 / fromIntegral (length group)) *^ foldl' (^+^) (V2 0 0) group
+
+-- | Are the two points within a tolerance of each other?
+apart :: Double -> V2 -> V2 -> Bool
+apart near p q = norm (q ^-^ p) <= near
+
+-- | Do the two creases\' bounding boxes come within a tolerance of touching?
+--
+-- The cheap rejection in front of every pairwise geometric test here, and the
+-- same one "Senbazuru.Fold.Faces" documents as load-bearing for the identical
+-- questions.
+boxesMeet :: Sheet -> Double -> (Int, Int) -> (Int, Int) -> Bool
+boxesMeet sheet near ep fp =
+  overlaps (ax, bx) (cx, dx) && overlaps (ay, by) (cy, dy)
+  where
+    (V2 ax ay, V2 bx by) = endsOf sheet ep
+    (V2 cx cy, V2 dx dy) = endsOf sheet fp
+    overlaps (p, q) (r, s) = min p q - near <= max r s && min r s - near <= max p q
 
 -- | Where two creases cross, if they do.
 --
@@ -171,9 +235,9 @@ mergedCrossings sheet = foldl keepDistinct [] found
 -- so the one place a division by a near-zero cross product could happen is
 -- behind a test that the two are not nearly parallel.
 crossingOf :: Sheet -> Double -> (Int, Int) -> (Int, Int) -> Maybe V2
-crossingOf sheet area ep fp
+crossingOf sheet near ep fp
   | shareEnd = Nothing
-  | not (segmentsCross area (a, b) (c, d)) = Nothing
+  | not (segmentsCross near (a, b) (c, d)) = Nothing
   | otherwise = Just (a ^+^ (along *^ ab))
   where
     (a, b) = endsOf sheet ep
@@ -206,20 +270,31 @@ cutsAlong points sheet =
     | edge@(_, ends) <- sheetEdges sheet
   ]
   where
-    (near, _) = tolerances sheet
+    near = tolerance sheet
+
+    listed = IM.toList points
 
     inside (u, v) =
       [ (dot (p ^-^ from) direction, i)
-        | (i, p) <- IM.toList points,
+        | (i, p) <- listed,
           i /= u,
           i /= v,
+          withinBox p,
           distanceToSegment (from, to) p <= near,
-          norm (p ^-^ from) > near,
-          norm (p ^-^ to) > near
+          not (apart near p from),
+          not (apart near p to)
       ]
       where
-        (from, to) = (pointAt sheet u, pointAt sheet v)
+        (from@(V2 fx fy), to@(V2 tx ty)) = (pointAt sheet u, pointAt sheet v)
         direction = to ^-^ from
+        -- Read once per crease rather than once per crease and vertex, and
+        -- rejected on the box before any distance is computed. This is the
+        -- only O(creases x vertices) loop in the module.
+        withinBox (V2 x y) =
+          x >= min fx tx - near
+            && x <= max fx tx + near
+            && y >= min fy ty - near
+            && y <= max fy ty + near
 
 -- | The frame with its creases cut into the pieces the cuts make.
 --
@@ -231,7 +306,7 @@ rebuilt fr points cuts = do
   noDoubledPiece
   pure
     fr
-      { verticesCoords = [[x, y] | V2 x y <- points],
+      { verticesCoords = kept <> map added (drop (length kept) points),
         edgesVertices = [(VertexId a, VertexId b) | (a, b) <- concatMap snd chains],
         edgesAssignment = inherited (edgesAssignment fr),
         edgesFoldAngle = inherited (edgesFoldAngle fr),
@@ -255,6 +330,19 @@ rebuilt fr points cuts = do
         [] -> Right ()
 
     unordered (a, b) = (min a b, max a b)
+
+    -- Every vertex the file had keeps the row the file wrote, untouched.
+    -- Rebuilding them from the flattened points would drop the z column that
+    -- reading the sheet threw away -- and a crease pattern is flat, not
+    -- necessarily flat at z = 0, so a sheet recorded at a constant height
+    -- would quietly move to the origin.
+    kept = verticesCoords fr
+
+    -- A crossing is a new point on that same sheet, so it is written with as
+    -- many components as the file uses, at the height the file is drawn at.
+    added (V2 x y) = case kept of
+      ((_ : _ : z : _) : _) -> [x, y, z]
+      _ -> [x, y]
 
     chains =
       [ (eid, zip chain (drop 1 chain))

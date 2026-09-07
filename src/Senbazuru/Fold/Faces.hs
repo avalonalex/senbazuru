@@ -73,7 +73,7 @@ module Senbazuru.Fold.Faces
     sheetOf,
     pointAt,
     endsOf,
-    tolerances,
+    tolerance,
   )
 where
 
@@ -212,21 +212,26 @@ pointAt sheet v = fromMaybe (V2 0 0) (IM.lookup v (sheetPoints sheet))
 endsOf :: Sheet -> (Int, Int) -> (V2, V2)
 endsOf sheet (a, b) = (pointAt sheet a, pointAt sheet b)
 
--- | How far apart two things have to be to be apart, as a distance and as an
--- area.
+-- | How far apart two things on this sheet have to be to be apart.
 --
--- Relative to the sheet's own diagonal, a billionth of it, for the reason
--- "Senbazuru.Import.Segments" gives about its own tolerance: the same reader
--- has to cope with a pattern on the unit square and one on the 400-unit square
--- the desktop editors draw on, and an absolute number cannot serve both. The
--- area is that distance times the same diagonal, because
--- 'Senbazuru.Geometry.Polygon.cross2' returns twice a triangle's area and the
--- triangles in question are a hair high and a sheet wide.
-tolerances :: Sheet -> (Double, Double)
-tolerances sheet = (nearness, nearness * diagonal)
+-- A distance, relative to the sheet's own diagonal — a billionth of it — for
+-- the reason "Senbazuru.Import.Segments" gives about its own tolerance: the
+-- same reader has to cope with a pattern on the unit square and one on the
+-- 400-unit square the desktop editors draw on, and an absolute number cannot
+-- serve both.
+--
+-- One number, and it used to be two. The second was an /area/, for
+-- 'segmentsCross' back when that took one; it takes a distance now, and the
+-- two call sites went on handing it the area — which on the 400-unit sheet
+-- asked for five hundred times the clearance intended, and left a band in
+-- which a crossing was too shallow to be reported here and too far off the
+-- line to be a vertex sitting on it. Neither check saw it. If a second unit is
+-- ever wanted again it should be a second function, not a second component
+-- nobody can tell apart at the call site.
+tolerance :: Sheet -> Double
+tolerance sheet = 1e-9 * diagonal
   where
     diagonal = maybe 0 (norm . boxSize) (boxFromPoints (IM.elems (sheetPoints sheet)))
-    nearness = 1e-9 * diagonal
 
 -- | Refuse every drawing whose regions are not what tracing would report.
 --
@@ -242,7 +247,7 @@ checkDrawing sheet = do
   mapM_ noVertexInside (sheetEdges sheet)
   noCrossing (sheetEdges sheet)
   where
-    (near, area) = tolerances sheet
+    near = tolerance sheet
 
     hasLength (eid, ends) = do
       let (a, b) = endsOf sheet ends
@@ -310,7 +315,7 @@ checkDrawing sheet = do
             (f, fp) <- rest,
             not (share ep fp),
             boxesOverlap ep fp,
-            segmentsCross area (endsOf sheet ep) (endsOf sheet fp)
+            segmentsCross near (endsOf sheet ep) (endsOf sheet fp)
         ]
 
     share (a, b) (c, d) = a == c || a == d || b == c || b == d
