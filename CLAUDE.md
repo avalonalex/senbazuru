@@ -495,6 +495,14 @@ are not contributors can find it, and so there is only one copy to keep true.
   crease. `foldFrame` therefore writes its faces counterclockwise as measured on
   the pattern, so the folded frames it produces are frames whose winding can be
   trusted.
+- **A winding is not private to its face, so re-winding one means re-signing the
+  orders that name it.** `foldFrame` is the one place that rewrites a winding,
+  and it therefore has to move the signs with it: `Folding.reorient` flips
+  `Above` and `Below` on every `faceOrders` entry whose *second* face was turned
+  round. Only the second — FOLD reads the sign against `g`'s normal, so
+  reversing `f` changes which face is being placed and not the direction the
+  relation is read in. Doing neither was #78, and it turned a clockwise-wound
+  file's model inside out in silence.
 - **The cancellation covers the layer order and nothing else.**
   `Senbazuru.Origami.Visible` reads the same winding a third time, to say which
   *side* of the paper a region shows, and there is nothing for that to cancel
