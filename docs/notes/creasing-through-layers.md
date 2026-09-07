@@ -1,6 +1,6 @@
 # Creasing a packet of layers alternates mountain and valley
 
-Terms this assumes — mountain, valley, crease pattern, folded form, layer order
+Terms this assumes — mountain, valley, crease pattern, folded form, flat-folded
 — are in [the glossary](../glossary.md).
 
 Fold a square in half. Now, without unfolding it, crease the doubled sheet
@@ -61,10 +61,11 @@ out of the front of the sheet:
 - comes back pointing **up**, and the face is still face up;
 - comes back pointing **down**, and the face turned over.
 
-For a model folded flat there is nothing in between. Every fold is a half turn
-about a line lying in the plane, and a half turn about such a line sends the up
-direction to exactly its opposite; composing any number of them lands on exactly
-up or exactly down. So the sign of one number is the whole answer, with no
+For a model folded flat there is nothing in between. Every crease it folds along
+is a half turn about a line lying in the plane — and the ones it does not fold
+along are no turn at all. A half turn about such a line sends the up direction to
+exactly its opposite, so composing any number of them lands on exactly up or
+exactly down. So the sign of one number is the whole answer, with no
 tolerance to choose and no near-tie to get wrong.
 
 ## Why it matters
