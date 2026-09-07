@@ -91,6 +91,7 @@ module Senbazuru.Origami.FlatFold
     reportViolations,
     VertexCheck (..),
     Violation (..),
+    Dissolved (..),
     Skip (..),
     renderViolation,
     renderReport,
@@ -229,9 +230,10 @@ data Star = Star
     starSectors :: ![Double],
     -- | Whether an edge of the paper, or a cut, reaches this vertex.
     starOnBorder :: !Bool,
-    -- | How many @F@ or @J@ edges were dissolved. Kept so that a caller
-    -- confronted with a surprising crease count can trace it back to them;
-    -- nothing in senbazuru prints it yet.
+    -- | How many @F@ or @J@ edges were dissolved. This is what a caller
+    -- confronted with a surprising crease count traces it back to, and
+    -- 'renderViolation' prints it for exactly that reason: a vertex with three
+    -- lines on the page reporting one crease needs the other two accounted for.
     starDissolved :: !Int
   }
   deriving stock (Eq, Show)
@@ -245,22 +247,31 @@ data Skip
     NoCreases
   deriving stock (Eq, Show)
 
+-- | How many lines at a vertex were dissolved before the creases were counted.
+--
+-- Its own type because it travels next to a crease count and is not one: a
+-- reader meeting @CreaseStops 2@ beside @OddCreaseCount 3@ would fairly read
+-- the 2 as creases. These are the @F@ and @J@ lines, which are drawn and not
+-- folded along, and are what makes a vertex with three lines on the page report
+-- one crease.
+newtype Dissolved = Dissolved Int
+  deriving stock (Eq, Show)
+
 -- | A local condition that every flat-foldable vertex satisfies, and this one
 -- does not.
 data Violation
   = -- | Exactly one crease that folds meets here, so it stops in the middle of
-    -- the paper. Carries how many flat lines were dissolved at this vertex, so
-    -- that a reader looking at three lines on the page can be told why the
-    -- count is one.
+    -- the paper.
     --
     -- Not a Maekawa violation, though it is an odd count and used to be
     -- reported as one. Maekawa is about a vertex with paper all the way round
     -- it and says which /arrangements/ of creases can fold; this is a crease
     -- that divides no paper, which no angles could ever fold and which is
-    -- wrong about the drawing rather than about the fold. Reported first for
-    -- the same reason 'OddCreaseCount' displaces 'MaekawaImbalance': it is the
-    -- more fundamental fact.
-    CreaseStops !Int
+    -- wrong about the drawing rather than about the fold. Reported /instead of/
+    -- everything else at this vertex, for the same reason 'OddCreaseCount'
+    -- displaces 'MaekawaImbalance': it is the more fundamental fact, and the
+    -- theorems have nothing to say about a vertex like this.
+    CreaseStops !Dissolved
   | -- | Maekawa's corollary: an odd number of creases meet here. Carries the
     -- count, which is always three or more — one is 'CreaseStops' and zero is
     -- a skip. Reported instead of 'MaekawaImbalance' rather than as well as it,
@@ -278,8 +289,10 @@ data Violation
 -- | What we can say about one vertex we were able to check.
 data VertexCheck = VertexCheck
   { checkVertex :: !VertexId,
-    -- | Creases that fold, after dissolving. This is the number both theorems
-    -- are about, and it can be smaller than the vertex's degree in the file.
+    -- | Creases that fold, after dissolving, which can be smaller than the
+    -- vertex's degree in the file. This is the number both theorems are about
+    -- wherever they apply — with the exception of one, where neither does and
+    -- the vertex reports 'CreaseStops' instead.
     checkDegree :: !Int,
     -- | How many of those have assignment @U@. Maekawa is not tested when this
     -- is non-zero.
@@ -476,7 +489,7 @@ verdict tol st
     violations
       -- Before the odd-count test, which would otherwise swallow this and
       -- blame a theorem that does not apply.
-      | degree == 1 = [CreaseStops (starDissolved st)]
+      | degree == 1 = [CreaseStops (Dissolved (starDissolved st))]
       | odd degree = [OddCreaseCount degree]
       | otherwise = maekawa <> kawasaki
 
@@ -491,16 +504,20 @@ verdict tol st
       where
         sum' = alternatingSum (starSectors st)
 
+-- | @n@ of a thing, with the word agreeing.
+plural :: Int -> Text -> Text -> Text
+plural n one several = tshow n <> " " <> (if n == 1 then one else several)
+
 -- | A one-line description of a violation, naming the vertex and the theorem.
 --
 -- Kept to one terminal line each. The reasoning behind them belongs in the
 -- README and in @docs\/notes\/@, not in a message someone reads once per run.
 renderViolation :: VertexId -> Violation -> Text
 renderViolation (VertexId v) = \case
-  CreaseStops dissolved ->
+  CreaseStops (Dissolved n) ->
     at
       <> "one crease meets here and stops, so it divides no paper"
-      <> flatLines dissolved
+      <> alsoDrawn n
   OddCreaseCount n ->
     at <> tshow n <> " creases meet here, an odd number, which never folds flat (Maekawa)"
   MaekawaImbalance m val ->
@@ -517,12 +534,14 @@ renderViolation (VertexId v) = \case
     -- Said only when there are some, because a reader looking at one line at
     -- this vertex needs no explanation of why the count is one -- and a reader
     -- looking at three does.
-    flatLines 0 = ""
-    flatLines n =
+    --
+    -- "line" rather than "flat line": a join dissolves the same way and is not
+    -- flat, and there is one number for both.
+    alsoDrawn 0 = ""
+    alsoDrawn n =
       " ("
-        <> tshow n
-        <> (if n == 1 then " flat line here is" else " flat lines here are")
-        <> " drawn, not folded)"
+        <> plural n "line here is" "lines here are"
+        <> " drawn, not folded along)"
 
 -- | A report as lines of text: one per violation, then a summary.
 --
@@ -557,8 +576,6 @@ renderReport report = violationLines <> [checkedLine, verdictLine]
           <> " with no creases"
 
     countSkips s = length [() | (_, s') <- reportSkipped report, s' == s]
-
-    plural n one several = tshow n <> " " <> (if n == 1 then one else several)
 
 degrees :: Double -> Double
 degrees r = r * 180 / pi

@@ -241,26 +241,51 @@ spec = do
                 edgesAssignment = replicate 5 Border <> [Valley]
               }
       fmap (map snd . reportViolations) (checkFrame defaultTolerance fr)
-        `shouldBe` Right [CreaseStops 0]
+        `shouldBe` Right [CreaseStops (Dissolved 0)]
 
     it "counts the flat lines that were dissolved, so the number adds up" $ do
       -- Three lines meet at the centre and a reader looking at the page counts
       -- three. Two are flat, the paper is continuous across them, and one
       -- crease is left -- which is worth saying, or the count looks wrong.
       let fr = starFrame [(0, Mountain), (2 * pi / 3, Flat), (4 * pi / 3, Flat)]
-      violationsAt fr `shouldBe` Right (Just [CreaseStops 2])
+      violationsAt fr `shouldBe` Right (Just [CreaseStops (Dissolved 2)])
 
     it "reads as one line each way round" $ do
-      renderViolation (VertexId 5) (CreaseStops 0)
+      -- "line" and not "flat line": a join dissolves the same way, is not
+      -- flat, and shares the one count.
+      renderViolation (VertexId 5) (CreaseStops (Dissolved 0))
         `shouldBe` "vertex 5: one crease meets here and stops, so it divides no paper"
-      renderViolation (VertexId 8) (CreaseStops 2)
+      renderViolation (VertexId 8) (CreaseStops (Dissolved 2))
         `shouldBe` ( "vertex 8: one crease meets here and stops, so it divides no"
-                       <> " paper (2 flat lines here are drawn, not folded)"
+                       <> " paper (2 lines here are drawn, not folded along)"
                    )
-      renderViolation (VertexId 8) (CreaseStops 1)
+      renderViolation (VertexId 8) (CreaseStops (Dissolved 1))
         `shouldBe` ( "vertex 8: one crease meets here and stops, so it divides no"
-                       <> " paper (1 flat line here is drawn, not folded)"
+                       <> " paper (1 line here is drawn, not folded along)"
                    )
+
+    it "counts a dissolved join the same as a dissolved flat line" $ do
+      -- The wording has to cover both, because starDissolved does.
+      let fr = starFrame [(0, Mountain), (2 * pi / 3, Join), (4 * pi / 3, Join)]
+      violationsAt fr `shouldBe` Right (Just [CreaseStops (Dissolved 2)])
+
+    it "reports both forms from a file, through the whole command" $ do
+      -- The only test on the path a user actually takes: decode, star, check,
+      -- render. crease-stops.fold has one crease running to a point in the
+      -- middle of the sheet and one ending part-way along a flat line, so both
+      -- shapes of the message come out of one run.
+      bytes <- BS.readFile "test/fixtures/crease-stops.fold"
+      case decodeFoldFile bytes of
+        Left err -> expectationFailure ("decode failed: " <> err)
+        Right f -> case checkFrame defaultTolerance (keyFrame f) of
+          Left err -> expectationFailure (show err)
+          Right report ->
+            map (uncurry renderViolation) (reportViolations report)
+              `shouldBe` [ "vertex 5: one crease meets here and stops, so it divides no"
+                             <> " paper (2 lines here are drawn, not folded along)",
+                           "vertex 9: one crease meets here and stops, so it divides"
+                             <> " no paper"
+                         ]
 
   describe "the star of creases around a vertex" $ do
     it "measures sectors that sum to a full turn" $

@@ -652,19 +652,28 @@ examples/quarter-fold.fold, frame 0
   no violations found
 ```
 
-Not everything it reports is a theorem. A crease that ends part-way along a
-*flat* line stops in the middle of continuous paper — the sheet carries straight
-on across an `F`, so such a crease divides nothing and no angles could ever fold
-it. That is wrong about the drawing rather than about the fold, and it is said as
-such:
+Not everything it reports is a theorem. A crease with only one crease at the
+far end of it stops in the middle of the paper: it divides nothing, so no
+assignment of angles could ever fold it. That is wrong about the drawing rather
+than about the fold, and it is said as such:
 
 ```console
-  vertex 8: one crease meets here and stops, so it divides no paper (2 flat lines here are drawn, not folded)
+$ senbazuru check examples/crease-stops.fold
+examples/crease-stops.fold, frame 0
+  vertex 5: one crease meets here and stops, so it divides no paper (2 lines here are drawn, not folded along)
+  vertex 9: one crease meets here and stops, so it divides no paper
+  checked 2 interior vertices; skipped 8 on the border
+  2 violations
 ```
 
-Three lines meet at that vertex on the page, which is why the count of one is
-worth explaining. Blaming Maekawa for it — as this used to — names a theorem
-about a vertex with paper all the way round, which this is not.
+Vertex 9 is the plain case — a valley running up from the bottom edge to a point
+in the middle of the sheet. Vertex 5 is the one worth the parenthetical: *three*
+lines meet there on the page, but two of them are flat, the paper is continuous
+across a flat line, and one crease is left. Without the count the reader would
+go looking for their own mistake.
+
+Blaming Maekawa for either — as this used to — names a theorem about a vertex
+with paper all the way round it, which neither of these is.
 
 It says *no violations found* rather than *flat-foldable*, and that wording is
 load-bearing. Both theorems are necessary, not sufficient: they are local, so a

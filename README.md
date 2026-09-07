@@ -95,7 +95,8 @@ picture that looks like it came from a book.
   lifted apart so a 3D viewer can tell them apart at all — paper has no
   thickness, and a depth buffer needs it to.
 - **Checks flat-foldability** at every interior vertex, by Maekawa's theorem and
-  Kawasaki's, and says which vertex fails and why.
+  Kawasaki's, and says which vertex fails and why — including the one failure
+  that is neither theorem, a crease that stops in the middle of the paper.
 - **Draws a crease and writes the pattern back out.** `crease` is the one
   command that produces a crease pattern rather than a picture of one: the new
   line joins the corners it lands on, cuts whatever it crosses, and the faces

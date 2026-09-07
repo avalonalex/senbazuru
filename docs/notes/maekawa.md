@@ -15,12 +15,20 @@ and `M - V = +/- 2` forces it to be even. So **no flat-foldable vertex has an od
 number of creases** -- a three-crease vertex cannot fold flat, whatever the
 angles are.
 
+One odd count is worth separating out, because it is barely about this theorem:
+a vertex with exactly **one** crease at it. The corollary covers it, one being
+odd, but nothing about the arrangement is the problem — such a crease divides no
+paper, so no angles could fold it, and it is a mistake in the drawing rather
+than in the fold. `senbazuru check` says so separately for that reason. Note
+too that the count is of creases that *fold*: flat and join lines are dissolved
+first, so three lines on the page can leave one crease.
+
 ## Why it matters here
 
-This is the cheapest possible origami-aware check, and senbazuru has none yet.
-It needs only the rotational order of edges at each vertex and
-`edges_assignment` -- no coordinates, no trigonometry, no tolerances. Roughly
-thirty lines on top of what `Senbazuru.Fold.Query` already produces.
+This is the cheapest possible origami-aware check, and it is what
+`senbazuru check` does. It needs only the rotational order of edges at each
+vertex and `edges_assignment` -- no coordinates, no trigonometry, no tolerances,
+and not much more than what `Senbazuru.Fold.Query` already produces.
 
 Note it is *necessary*, not sufficient. See [kawasaki.md](kawasaki.md).
 
