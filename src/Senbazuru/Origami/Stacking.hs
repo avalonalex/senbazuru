@@ -712,14 +712,28 @@ creaseDirections fr creases = do
 -- answering \"is the lower one above?\".
 type Above = M.Map (FaceId, FaceId) Bool
 
--- | Is @f@ above @g@, in a partial answer?
+-- | Is @f@ above @g@, given a handful of pairs being tried out over everything
+-- already decided?
 --
 -- Only asked once every pair a rule names is decided, so the default is never
 -- read; it is there to keep the lookup total.
-aboveIn :: Above -> FaceId -> FaceId -> Bool
-aboveIn known f g
-  | f < g = M.findWithDefault False (f, g) known
-  | otherwise = not (M.findWithDefault False (g, f) known)
+--
+-- Two maps rather than one, and that is the whole reason this exists. The
+-- propagation tries a few pairs at a time against everything settled so far,
+-- and the obvious way to ask is to union them — which is correct, since union
+-- is left-biased and the trial wins, and which rebuilds the settled map every
+-- time. That map holds one entry per overlapping pair, so on a 161-layer
+-- accordion it is 12,880 entries copied to consult three keys, and it was a
+-- third of the allocation in a whole run. Looking in the small one first and
+-- falling through costs two lookups in the worst case.
+aboveWith :: Above -> Above -> FaceId -> FaceId -> Bool
+aboveWith way known f g
+  | f < g = look (f, g)
+  | otherwise = not (look (g, f))
+  where
+    look k = case M.lookup k way of
+      Just v -> v
+      Nothing -> M.findWithDefault False k known
 
 -- | Every valid layer order a model has, as a product rather than a list.
 --
@@ -891,7 +905,8 @@ solutionSpace (Budget budget) wanted analysis = do
       Just rule ->
         let open = [p | p <- rulePairs rule, M.notMember p known]
             ways = [M.fromList choice | choice <- sequence [[(p, True), (p, False)] | p <- open]]
-            fitting = [way | way <- ways, ruleHolds (aboveIn (M.union way known)) rule]
+            -- Two maps, not their union: see 'aboveWith'.
+            fitting = [way | way <- ways, ruleHolds (aboveWith way known) rule]
             forced =
               [ (p, v)
                 | p <- open,
