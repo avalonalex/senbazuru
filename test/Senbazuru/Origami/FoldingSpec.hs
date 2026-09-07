@@ -93,6 +93,28 @@ stackingOf fr = case frameFaces fr of
     Left err -> Left (show err)
     Right ds -> Right [(unFaceId i, d) | (i, d) <- ds]
 
+-- | A square cut by a flat line, with one crease from the middle of that line
+-- to the top edge at the given angle.
+--
+-- Three faces in a ring, two of the joins flat. The point of it is that the
+-- spanning tree can reach every face across the flat joins, turning nothing,
+-- and drop the third crease -- so whatever angle that crease carries is never
+-- applied, and the two faces either side of it share only its own endpoints.
+flatLineAndValley :: Double -> Frame
+flatLineAndValley angle =
+  emptyFrame
+    { frameClasses = ["creasePattern"],
+      verticesCoords =
+        [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.5], [0.5, 0.5], [1, 0.5], [0.5, 1]],
+      edgesVertices =
+        [ (VertexId a, VertexId b)
+          | (a, b) <-
+              [(0, 1), (1, 6), (6, 2), (2, 7), (7, 3), (3, 4), (4, 0), (4, 5), (5, 6), (5, 7)]
+        ],
+      edgesAssignment = replicate 7 Border <> [Flat, Flat, Valley],
+      edgesFoldAngle = replicate 7 0 <> [0, 0, angle]
+    }
+
 -- | The frame's vertices as points.
 --
 -- Via 'frameVertices' rather than by pattern-matching @[x, y, z]@, because a
@@ -339,6 +361,38 @@ spec = do
       case foldFrame bent of
         Left (TornAt _ d) -> d `shouldSatisfy` (> 0.7)
         other -> expectationFailure ("expected a tear, got " <> show (fmap frameClasses other))
+
+    it "refuses a loop the tree closed by doing nothing at all" $ do
+      -- The case a vertex comparison cannot see. A square with a flat line
+      -- across it and one valley from the middle of that line to the top edge
+      -- is three faces in a ring: bottom, top-left, top-right. Two of the three
+      -- joins are the flat line, at zero degrees, so the tree reaches all three
+      -- without turning anything and the valley is the join it drops.
+      --
+      -- Nothing then disagrees. The only vertices the two top faces share are
+      -- the valley's own endpoints, which lie on its rotation axis and are
+      -- fixed by any turn about it -- so TornAt has nothing to compare and the
+      -- 180 degrees goes unapplied, returning the sheet unmoved. It was #84.
+      let fr = flatLineAndValley 180
+      case foldFrame fr of
+        Left (AngleNotAchieved _ off) -> off `shouldSatisfy` (> 0.5)
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "folds the same sheet when that crease really is flat" $ do
+      -- The control. Identical drawing with the loop-closing crease at zero,
+      -- which the tree's answer does satisfy, so nothing is refused and the
+      -- sheet stays put because it is meant to.
+      folded <- foldOrFail (flatLineAndValley 0)
+      map (map rounded) (verticesCoords folded)
+        `shouldBe` [ [0, 0, 0],
+                     [1, 0, 0],
+                     [1, 1, 0],
+                     [0, 1, 0],
+                     [0, 0.5, 0],
+                     [0.5, 0.5, 0],
+                     [1, 0.5, 0],
+                     [0.5, 1, 0]
+                   ]
 
     it "does not mind a mountain and a valley swapped at 180 degrees" $ do
       -- Worth pinning because it is surprising: turning 180 degrees one way
