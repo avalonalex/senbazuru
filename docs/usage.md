@@ -214,12 +214,22 @@ through the right-hand half of the bird base, which crosses five of its creases
 and takes it from 26 creases to 37. Its own diagonals are already creased, so
 drawing one of those is refused — see below.)
 
-Three creases it will not draw, each refused naming what is wrong: one with no
-length; one drawn along a crease that is already there, where the paper would
-have two ways to fold along the stretch they share; and one that runs off the
-edge of the paper — though that last one is reported as what it does to the
-faces rather than as what it is, which is
-[#71](https://github.com/avalonalex/senbazuru/issues/71).
+Four creases it will not draw, each refused naming what is wrong: one with no
+length, or with two ends the sheet counts as one point; one drawn along a crease
+that is already there, where the paper would have two ways to fold along the
+stretch they share; one on a folded form, which is `--folded`'s business below;
+and one whose end does not land on any edge or corner the pattern already has,
+so it would stop there and divide nothing. The last names the point:
+
+```console
+$ senbazuru crease square.fold --from 0,0 --to 3,3 --valley
+senbazuru: cannot crease square.fold: the end at (3.0, 3.0) does not meet any crease
+or edge the pattern already has, so the crease would stop there and divide nothing
+```
+
+It says that rather than "that end is off the paper" because the second is not
+always true — [the tour](tour.md#what-it-creases) has the case that shows why.
+An end part-way *along* an existing crease is not refused: it meets something.
 
 ### `--folded`, creasing through the layers
 

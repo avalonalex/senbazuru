@@ -519,15 +519,35 @@ stacks. Note the `=`: a coordinate that starts with a minus sign is read as a
 flag otherwise, and every `.cp` and `.opx` in the world is drawn on the square
 from `(-200, -200)` to `(200, 200)`.
 
-Four creases it will not draw, and the interesting thing is that three of the
-refusals are not about the crease at all. One with no length names no line to
-fold about. One drawn on top of an existing crease, or along part of one, would
-give the paper two ways to fold along the stretch they share. One that runs off
-the edge of the paper ends at a vertex with a single crease at it — and there
-is no face to trace round that, which is the refusal you get, phrased as what
-it does to the paper rather than as what you did. Asking the question directly
-would mean deciding what a sheet *is* before deciding what a move is, and the
-tracing already knows.
+Four creases it will not draw. One with no length names no line to fold about.
+One drawn on top of an existing crease, or along part of one, would give the
+paper two ways to fold along the stretch they share. One on a folded form is
+`--folded`'s business, below. And one whose **end meets nothing**:
+
+```console
+$ senbazuru crease square.fold --from 0,0 --to 3,3 --valley
+senbazuru: cannot crease square.fold: the end at (3.0, 3.0) does not meet any crease
+or edge the pattern already has, so the crease would stop there and divide nothing
+```
+
+That last one is worth dwelling on, because the obvious way to say it is wrong.
+`(3, 3)` is off the paper and it is tempting to report exactly that — until you
+try a line that stays on it:
+
+```console
+$ senbazuru crease square.fold --from 0.3,0.3 --to 0.7,0.7 --valley
+senbazuru: cannot crease square.fold: the end at (0.3, 0.3) does not meet any crease
+or edge the pattern already has, so the crease would stop there and divide nothing
+```
+
+Both ends of that one are squarely inside the square, and it is refused for the
+same reason, so "that end is off the paper" would be a false thing to print half
+the time. What is true of both is narrower, and it is what the message says: the
+end does not land on any edge or corner the drawing already has, so the crease
+stops there and divides nothing.
+
+An end that lands part-way *along* an existing crease is fine, and stays fine —
+it meets something, and whether the result folds is a separate question.
 
 ### Creasing through the layers
 

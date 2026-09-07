@@ -18,6 +18,7 @@ module Senbazuru.Origami.ThroughLayersSpec (spec) where
 import Data.ByteString qualified as BS
 import Data.List (sort)
 import Senbazuru.Fold.Load (decodeFile, renderLoadError)
+import Senbazuru.Fold.Query (CreaseEnd (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
     Frame (..),

@@ -37,17 +37,26 @@
 --
 -- == Where the crease has to be
 --
--- On the paper. That is not checked directly — senbazuru has no
--- \"is this point on the sheet\" question, and building one would mean deciding
--- what a sheet is before deciding what a move is — but it does not need to be.
--- A crease drawn off the edge of the paper ends at a vertex with one crease at
--- it, and re-deriving the faces refuses exactly that, naming the vertex. A
--- crease drawn entirely outside leaves the sheet in two pieces, which is
--- refused too.
+-- Each end has to __meet something the drawing already has__: an edge, which it
+-- cuts, or a corner, which it joins. An end that meets neither leaves a crease
+-- stopping there and dividing nothing, and there is no face to trace round it.
 --
--- So the check is real and the message is about the drawing rather than about
--- the intent. Saying \"that crease runs off the paper\" would be nicer and
--- would mean answering a harder question than the one being asked.
+-- Note what that is not. It is not \"on the paper\" — senbazuru has no
+-- \"is this point on the sheet\" question, and building one would mean deciding
+-- what a sheet is before deciding what a move is. It is a question about the
+-- drawing, and the drawing is right here.
+--
+-- The distinction is not academic, because the two answers differ. A crease
+-- from the middle of a face to the middle of a face has both ends on the paper
+-- and still divides nothing; a crease to a point off the paper divides nothing
+-- either. Both are refused, by one test, with one true sentence — where saying
+-- \"that end is off the paper\" would be wrong for the first, and where a
+-- previous version said neither and reported a vertex the caller never chose.
+--
+-- What it does /not/ refuse is an end that lands part-way along a crease that
+-- is already there. That end does meet something, the drawing is sound, and
+-- whether the result can be folded is
+-- <https://github.com/avalonalex/senbazuru/issues/76 somebody else's question>.
 module Senbazuru.Fold.Creasing
   ( creaseAlong,
   )
@@ -56,10 +65,11 @@ where
 import Control.Monad (when)
 import Data.IntMap.Strict qualified as IM
 import Senbazuru.Fold.Crossings (withPlanarFaces)
-import Senbazuru.Fold.Faces (Sheet (..), coordsFor, sheetOf, tolerance)
-import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Faces (Sheet (..), coordsFor, endsOf, sheetOf, tolerance)
+import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..))
 import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
+import Senbazuru.Geometry.Polygon (distanceToSegment)
 
 -- | Draw a crease between two points, and put the pattern back in order.
 --
@@ -68,9 +78,12 @@ import Senbazuru.Geometry (V2 (..), norm, (^-^))
 -- crease crosses on its way is cut too, and the faces are worked out again
 -- from the creases that result.
 --
--- Refuses a folded form — creasing one means creasing through its layers,
--- which is a different and much harder move — and refuses a crease with no
--- length, which names no line to fold about.
+-- Refuses four things: a folded form, since creasing one means creasing
+-- through its layers and is a different and much harder move
+-- ("Senbazuru.Origami.ThroughLayers"); a crease with no length, which names no
+-- line to fold about, and a pair of ends that resolve to one corner, which is
+-- the same thing said in coordinates; and an end that meets nothing the
+-- drawing already has, for the reason in the module header.
 creaseAlong :: V2 -> V2 -> Assignment -> Frame -> Either FoldError Frame
 creaseAlong from to assignment fr = do
   -- Read the sheet only to refuse the frames that are not one to draw on: a
@@ -79,9 +92,19 @@ creaseAlong from to assignment fr = do
   -- measure everything else on this paper is judged by.
   sheet <- sheetOf fr
   arraysLineUp
-  if norm (to ^-^ from) <= tolerance sheet
-    then Left CreaseWithoutLength
-    else withPlanarFaces (creased (endpointsOf sheet (tolerance sheet)))
+  let near = tolerance sheet
+  when (norm (to ^-^ from) <= near) (Left CreaseWithoutLength)
+  meetsSomething sheet near FromEnd from
+  meetsSomething sheet near ToEnd to
+  let ends@((a, _), (b, _)) = endpointsOf sheet near
+  -- Two ends further apart than the tolerance can still be the same corner,
+  -- if each is within the tolerance of it and they lie on opposite sides. The
+  -- crease would then run from a vertex to itself, and the refusal for that
+  -- names an edge index the file does not have -- which is the whole thing
+  -- this module is trying not to do. The sheet has already said these are one
+  -- point; say the same.
+  when (a == b) (Left CreaseWithoutLength)
+  withPlanarFaces (creased ends)
   where
     edges = length (edgesVertices fr)
 
@@ -97,6 +120,19 @@ creaseAlong from to assignment fr = do
     matches what n =
       when (n /= 0 && n /= edges) $
         Left (ArrayLengthMismatch "edges_vertices" edges what n)
+
+    -- Each end has to land on something the drawing already has. Why that is
+    -- the question, rather than whether the end is on the paper, is in the
+    -- module header.
+    --
+    -- One case the header does not cover: an end on an isolated vertex, if a
+    -- frame has one, meets nothing by this test. That is right -- a point with
+    -- no edges at it divides no paper either.
+    meetsSomething sheet near which p
+      | any (onIt . snd) (sheetEdges sheet) = Right ()
+      | otherwise = Left (CreaseEndMeetsNothing which p)
+      where
+        onIt e = distanceToSegment (endsOf sheet e) p <= near
 
     -- An end that lands on a corner the paper already has /is/ that corner.
     -- Appending a second vertex at the same place instead would leave the

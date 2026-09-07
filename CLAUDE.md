@@ -289,6 +289,11 @@ are not contributors can find it, and so there is only one copy to keep true.
   onto `foldedPattern`; using the frame that went in numbers the faces of a
   different drawing, and `examples/unit-square.fold` is a file where the two
   differ.
+- **A crease's end has to meet something, and that is a question about the
+  drawing rather than about the sheet.** "That end is off the paper" is the
+  tempting message and is false for a crease drawn from the middle of a face to
+  the middle of a face, which is refused too. The argument is written out once,
+  in `Fold.Creasing`'s module header; do not restate it.
 - **Creasing through the layers asks whether an end is inside a *face*, never
   whether it is inside the *model*.** What has to hold is that every layer the
   line reaches is creased right across, which is a fact about each face on its
@@ -729,11 +734,9 @@ Deliberate omissions, so nobody thinks they are bugs:
   valley, and `foldFrame` reads the same value off the assignment when the
   array is absent, so writing zero made one command mean two things depending
   on whether the file happened to record angles.
-- A crease that runs off the paper is refused for what it does to the faces
-  ("vertex 4 has 1 crease at it") rather than for what it is. `Fold.Creasing`
-  has no "is this point on the sheet" question on purpose: answering it means
-  deciding what a sheet is, and the face tracing already refuses the case
-  correctly. A better sentence in front of it is #71.
+- `crease` does not say that an end is *off the paper*, only that it meets
+  nothing, and it never learns which. `Fold.Creasing` still has no "is this
+  point on the sheet" question, and does not need one.
 - The FOLD writer does not refuse a non-finite number. `aeson` writes an
   infinity as the string `"+inf"` and a `NaN` as `null`, neither of which is a
   FOLD coordinate, and the decoder reads a `null` coordinate back as `NaN` so

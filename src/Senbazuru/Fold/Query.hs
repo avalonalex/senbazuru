@@ -15,6 +15,8 @@
 module Senbazuru.Fold.Query
   ( -- * Errors
     FoldError (..),
+    CreaseEnd (..),
+    creaseEndFlag,
     renderFoldError,
 
     -- * Refined views of a frame
@@ -39,6 +41,7 @@ import Data.IntMap.Strict qualified as IM
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Numeric (showFFloat)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
@@ -47,7 +50,24 @@ import Senbazuru.Fold.Types
     Frame (..),
     VertexId (..),
   )
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief)
+
+-- | Which end of a crease a refusal is about.
+--
+-- Named rather than a 'Bool' because it reaches the user, who typed the two
+-- ends as separate flags and has to be told which one to move. Lives here
+-- beside 'FoldError' rather than in either caller, so that
+-- "Senbazuru.Fold.Creasing" and "Senbazuru.Origami.ThroughLayers" do not grow
+-- two names for it.
+data CreaseEnd = FromEnd | ToEnd
+  deriving stock (Eq, Show)
+
+-- | The flag the user typed for this end.
+creaseEndFlag :: CreaseEnd -> Text
+creaseEndFlag = \case
+  FromEnd -> "--from"
+  ToEnd -> "--to"
 
 -- | Everything that can be structurally wrong with an otherwise well-formed
 -- FOLD frame, or with a pair of frames that are meant to be two states of one
@@ -131,6 +151,25 @@ data FoldError
   | -- | An edge whose two endpoints are the same point. It names no direction,
     -- so there is no angle to sort it by around either end.
     EdgeWithoutLength !EdgeId
+  | -- | A crease was /asked for/ with an end that meets nothing the pattern
+    -- already has: no edge to be cut at that point, no corner to join. The
+    -- crease would stop there and divide nothing. Carries which end, and the
+    -- point that was given.
+    --
+    -- The end is carried for a caller that wants it, and is deliberately /not/
+    -- in the message. "Senbazuru.Origami.ThroughLayers" raises this about a
+    -- per-layer segment it worked out rather than about anything the caller
+    -- typed, so naming @--from@ there would name a flag that had nothing to do
+    -- with it. The point identifies the end well enough for the caller who did
+    -- type it.
+    --
+    -- Said about the /drawing/ and not about the sheet, deliberately. An end
+    -- off the paper, an end in the middle of a face, and an end nowhere near
+    -- the model all produce it, and telling them apart would mean deciding what
+    -- a sheet is — the question "Senbazuru.Fold.Creasing" is built to avoid.
+    -- What the three have in common is exactly this, and it is also what points
+    -- at the fix: put the end on something.
+    CreaseEndMeetsNothing !CreaseEnd !V2
   | -- | A crease was /asked for/ between two points that are the same point.
     -- Carries nothing, because there is nothing in the file to point at: the
     -- offending element is the request. Raised by "Senbazuru.Fold.Creasing",
@@ -262,6 +301,13 @@ renderFoldError = \case
       <> " a crease pattern"
   EdgeWithoutLength (EdgeId e) ->
     "edge " <> tshow e <> " starts and ends at the same point"
+  CreaseEndMeetsNothing _ (V2 x y) ->
+    "the end at ("
+      <> coord x
+      <> ", "
+      <> coord y
+      <> ") does not meet any crease or edge the pattern already has, so the"
+      <> " crease would stop there and divide nothing"
   CreaseWithoutLength ->
     "the two ends of the crease are the same point, so it names no line to"
       <> " fold about"
@@ -344,8 +390,17 @@ renderFoldError = \case
         <> tshow (n - 1)
         <> ")"
 
-    tshow :: (Show a) => a -> Text
-    tshow = T.pack . show
+-- | A coordinate, as the caller would have written it.
+--
+-- @show@ will not do: it gives @1.0e-2@ for a coordinate typed as @0.01@, and
+-- this number's whole job is to be recognised as one of the two the caller
+-- passed in. 'showFFloat' with no digit count is fixed-point and shortest
+-- round-tripping, so it gives back @0.01@ and @3.0@.
+coord :: Double -> Text
+coord x = T.pack (showFFloat Nothing x "")
+
+tshow :: (Show a) => a -> Text
+tshow = T.pack . show
 
 -- | What a frame's coordinates are a picture of.
 data FrameKind

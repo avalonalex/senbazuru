@@ -6,12 +6,10 @@
 -- duplicated, what got cut on the way, and which of the file's own claims
 -- stopped being true the moment the line was drawn.
 --
--- The refusals matter as much as the successes, because the interesting ones
--- are not about the crease at all. A crease running off the edge of the paper
--- is refused by the face tracing, for a reason about the /paper/ — there is no
--- face to trace round a crease that stops in the middle of it — and that is
--- the answer this module deliberately leans on rather than asking a
--- \"is this point on the sheet\" question of its own.
+-- The refusals matter as much as the successes, and the pair worth reading
+-- together is an end off the paper and an end in the middle of it: both are
+-- refused, for the same stated reason, and getting that reason right is what
+-- the module header of "Senbazuru.Fold.Creasing" is about.
 module Senbazuru.Fold.CreasingSpec (spec) where
 
 import Data.Aeson qualified as Aeson
@@ -19,7 +17,7 @@ import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
 import Senbazuru.Fold.Creasing
 import Senbazuru.Fold.Load (decodeFile, renderLoadError)
-import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), renderFoldError)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Test.Hspec
@@ -177,13 +175,50 @@ spec = do
       creaseAlong (V2 0.5 0.5) (V2 0.5 0.5) Valley square
         `shouldBe` Left CreaseWithoutLength
 
-    it "refuses one that runs off the edge of the paper" $ do
-      -- Not checked as such: the crease simply ends at a vertex with one
-      -- crease at it, and there is no face to trace round that. The refusal is
-      -- about the paper rather than about the intent, which is the trade this
-      -- module makes on purpose.
-      creaseAlong (V2 0.5 0.5) (V2 3 3) Valley square
-        `shouldBe` Left (VertexTooFewCreases (VertexId 4) 1)
+    it "refuses an end off the paper" $ do
+      -- Named for what it is, not for what it does to the faces. The first end
+      -- is a corner, so it is the second that fails -- which also pins that the
+      -- end is carried rather than always reported as the first.
+      creaseAlong (V2 0 0) (V2 3 3) Valley square
+        `shouldBe` Left (CreaseEndMeetsNothing ToEnd (V2 3 3))
+
+    it "refuses an end in the middle of the paper the same way" $ do
+      -- The case that stops the tempting message. Both ends are squarely on the
+      -- sheet, so "that end is off the paper" would be a false thing to say --
+      -- and the old refusal, a vertex with one crease at it, was the same
+      -- sentence for both. What is true of both is that neither end meets
+      -- anything.
+      creaseAlong (V2 0.3 0.3) (V2 0.7 0.7) Valley square
+        `shouldBe` Left (CreaseEndMeetsNothing FromEnd (V2 0.3 0.3))
+
+    it "allows an end part-way along a crease that is already there" $ do
+      -- The carve-out, and the thing a tightening of this check would silently
+      -- take away. quarter-fold.fold has four creases running from the middle
+      -- to the edge midpoints; an end half way down one of them meets it, so
+      -- the drawing is sound and whether it folds is #76's question. Tightening
+      -- the test to corners, or to border edges, would refuse this.
+      fr <- fixture "quarter-fold.fold"
+      case creaseAlong (V2 0.5 0.25) (V2 1 0.25) Valley fr of
+        Left err -> expectationFailure ("expected a crease, got " <> show err)
+        Right out -> length (edgesVertices out) `shouldBe` 15
+
+    it "refuses two ends that resolve to one corner, as a crease with no length" $ do
+      -- Further apart than the tolerance, and both within the tolerance of the
+      -- corner at the origin, so the crease would run from vertex 0 to vertex 0.
+      -- The refusal for that names an edge index the file does not have, which
+      -- is exactly what this module is trying not to do.
+      creaseAlong (V2 (-1.4e-9) 0) (V2 1.4e-9 0) Valley square
+        `shouldBe` Left CreaseWithoutLength
+
+    it "says so in the message, since that is the whole of this refusal" $ do
+      -- Fixed point, not `show`: a coordinate typed as 0.01 has to read back as
+      -- 0.01 and not as 1.0e-2, since being recognised as one of the two the
+      -- caller passed in is the number's whole job.
+      renderFoldError (CreaseEndMeetsNothing ToEnd (V2 0.01 3))
+        `shouldBe` ( "the end at (0.01, 3.0) does not meet any crease or edge the"
+                       <> " pattern already has, so the crease would stop there and"
+                       <> " divide nothing"
+                   )
 
     it "refuses to crease a folded form" $ do
       -- Creasing one means creasing through its layers, which is a different
