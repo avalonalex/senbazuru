@@ -78,11 +78,11 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
-import Senbazuru.Fold.Query (FoldError (..), frameVertices, ringEdges)
+import Senbazuru.Fold.Query (FoldError (..), FrameKind (..), frameKind, frameVertices, ringEdges)
 import Senbazuru.Fold.Types (EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize, norm, (^-^))
 import Senbazuru.Geometry.Polygon (distanceToSegment, segmentsCross, signedArea)
-import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
+import Senbazuru.Geometry.V3 (V3 (..))
 
 -- | The regions the creases cut the sheet into, as rings of corners.
 --
@@ -95,23 +95,55 @@ import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 traceFaces :: Frame -> Either FoldError [[VertexId]]
 traceFaces fr = do
   verts <- frameVertices fr
-  when (hasRelief verts) (Left (SheetNotFlat (zSpan verts)))
+  -- The same judgement the renderer and the flat-foldability checker make, so
+  -- that all of them agree about what a file is. Geometry alone is not enough:
+  -- a model folded flat -- the traditional crane -- has coordinates a crease
+  -- pattern's cannot be told from, and tracing its creases would report the
+  -- regions of a drawing in which the paper lies on top of itself.
+  when (frameKind (frameClasses fr) verts == FoldedForm) (Left SheetIsFolded)
+  mapM_ (namesRealVertices (length verts)) numbered
   let points = map flatten verts
       sheet = Sheet {sheetPoints = IM.fromList (zip [0 ..] points), sheetEdges = numbered}
   if null numbered
     then pure []
     else do
       checkDrawing sheet
-      pure (facesOf sheet)
+      let traced = facesOf sheet
+      mapM_ noBridge traced
+      pure [map VertexId ring | ring <- traced]
   where
     numbered =
       [ (EdgeId i, (a, b))
         | (i, (VertexId a, VertexId b)) <- zip [0 ..] (edgesVertices fr)
       ]
 
-    -- A crease pattern lies in z = 0, which hasRelief has just confirmed, so
+    -- frameVertices resolves coordinates and nothing else, so an edge naming a
+    -- vertex that is not there gets past it. Left unchecked, that vertex would
+    -- be given a phantom position and every complaint after this point would
+    -- name whichever innocent element the phantom happened to land on.
+    namesRealVertices n (eid, (a, b)) =
+      mapM_
+        (\v -> when (v < 0 || v >= n) (Left (VertexIndexOutOfRange eid (VertexId v) n)))
+        [a, b]
+
+    -- A crease pattern lies in z = 0, which frameKind has just confirmed, so
     -- dropping z loses nothing rather than projecting anything.
     flatten (V3 x y _) = V2 x y
+
+    -- A crease with the same face on both sides is walked in both directions
+    -- by one ring, which then lists both its ends twice and is not a polygon.
+    -- Checked here rather than in checkDrawing because it is a property of the
+    -- trace and not of the drawing: every degree is fine, nothing crosses,
+    -- nothing is disconnected -- an island joined to the sheet by a single
+    -- crease passes all of that, and comes back as one ring shaped like a
+    -- keyhole.
+    noBridge ring =
+      case [ (u, v)
+             | (u, v) <- ringEdges ring,
+               (v, u) `elem` ringEdges ring
+           ] of
+        ((u, v) : _) -> Left (CreaseBridge (VertexId u) (VertexId v))
+        [] -> Right ()
 
 -- | The frame, with its faces filled in if it did not have any.
 --
@@ -122,6 +154,14 @@ traceFaces fr = do
 withTracedFaces :: Frame -> Either FoldError Frame
 withTracedFaces fr
   | not (null (facesVertices fr)) = Right fr
+  -- A frame with @faceOrders@ and no @faces_vertices@ is malformed, and was
+  -- refused before there was any tracing: the orders name faces that do not
+  -- exist. Filling faces in underneath them would not fix that file, it would
+  -- silence it -- the orders would be range-checked against faces they were
+  -- never written for, quite possibly pass, and describe a stacking of some
+  -- other model. Left alone, so "Senbazuru.Fold.Query" refuses it as it always
+  -- did.
+  | not (null (faceOrders fr)) = Right fr
   | otherwise = do
       traced <- traceFaces fr
       pure fr {facesVertices = traced}
@@ -212,15 +252,27 @@ checkDrawing sheet = do
               (stranded : _) -> Left (SheetInPieces (VertexId start) (VertexId stranded))
               [] -> Right ()
 
-    noVertexInside (eid, ends@(a, b)) =
+    -- The endpoints are read once per edge rather than once per vertex, and the
+    -- edge's own box rejects most vertices before any distance is computed.
+    -- Without both, this is the most expensive check by a wide margin: it is
+    -- the only one that pairs every edge with every vertex.
+    noVertexInside (eid, (a, b)) =
       case [ v
              | (v, p) <- IM.toList (sheetPoints sheet),
                v /= a,
                v /= b,
-               distanceToSegment (endsOf sheet ends) p <= near
+               withinBox p,
+               distanceToSegment (pa, pb) p <= near
            ] of
         (v : _) -> Left (VertexInsideEdge (VertexId v) eid)
         [] -> Right ()
+      where
+        (pa@(V2 ax ay), pb@(V2 bx by)) = (pointAt sheet a, pointAt sheet b)
+        withinBox (V2 x y) =
+          x >= min ax bx - near
+            && x <= max ax bx + near
+            && y >= min ay by - near
+            && y <= max ay by + near
 
     -- Quadratic in the edges, with a cheap rejection first. The crane is 129
     -- edges, so this is 8256 pairs of which a handful survive the boxes; a
@@ -266,9 +318,9 @@ reachableFrom sheet start = go (IS.singleton start) [start]
 -- because it is the same boundary the sheet's own outer face runs the other way
 -- along. A drawing in one connected piece has exactly one such ring, which is
 -- why 'checkDrawing' insists on one piece before this is reached.
-facesOf :: Sheet -> [[VertexId]]
+facesOf :: Sheet -> [[Int]]
 facesOf sheet =
-  [ map VertexId ring
+  [ ring
     | ring <- rings,
       signedArea (map (pointAt sheet) ring) > 0
   ]
@@ -305,11 +357,16 @@ nextAround sheet =
   M.fromList
     [ ((neighbour, v), (v, previous))
       | (v, ordered) <- IM.toList byVertex,
-        let count = length ordered,
-        (i, neighbour) <- zip [0 ..] ordered,
-        let previous = ordered !! ((i - 1 + count) `mod` count)
+        (neighbour, previous) <- zip ordered (rotateRight ordered)
     ]
   where
+    -- Each crease paired with the one before it, wrapping round: the list
+    -- shifted along by one. Written this way rather than by indexing, which
+    -- would be partial and would walk the list once per crease.
+    rotateRight xs = case reverse xs of
+      [] -> []
+      (final : _) -> final : init xs
+
     byVertex =
       IM.map
         (map snd . sortOn fst)

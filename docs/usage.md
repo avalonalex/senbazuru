@@ -68,6 +68,12 @@ What a single frame really cannot give you is a *sequence*: `--arrows` and
 `--steps` succeed and draw the pattern, but neither adds anything to it, since
 both work by comparing one frame with the next.
 
+One thing tracing does not change is the flat picture. `render` on a pattern
+that records no faces draws a wireframe, as it always has, and filling it is not
+a matter of switching the tracing on: a pattern whose creases cross — as
+`examples/unit-square.fold`'s do — cannot be traced at all, and it still has to
+draw. So the fill follows the file, and folding does not.
+
 Both formats measure `y` downwards, as the Java editors that write them draw
 it, and senbazuru turns that the right way up on the way in. That is a
 correction rather than a preference — see

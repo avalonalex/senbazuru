@@ -105,9 +105,14 @@ the file — exactly the argument the README makes about `--rotate`.
 The formats are set out, with the type-code tables and how each was established,
 in [notes/cp-and-opx.md](notes/cp-and-opx.md).
 
-Neither format stores faces, and that turns out not to matter: the faces are
-determined by the creases, so they are traced from them — see
+Neither format stores faces, and that turns out not to matter for folding: the
+faces are determined by the creases, so `--fold` and `export` trace them — see
 [What it folds](#what-it-folds) below. A `.cp` folds like a `.fold` does.
+
+Drawing one flat is the exception, and stays a wireframe. Not an oversight: a
+pattern whose creases cross with no vertex where they meet cannot be traced at
+all, and it still has to draw, so the fill follows what the file says rather
+than what could be worked out.
 
 ## What it folds
 

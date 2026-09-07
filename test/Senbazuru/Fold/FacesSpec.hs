@@ -21,7 +21,7 @@ import Data.ByteString qualified as BS
 import Data.List (nub, sort)
 import Senbazuru.Fold.Faces
 import Senbazuru.Fold.Load (decodeFile, renderLoadError)
-import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Query (FoldError (..), frameFaceOrders, renderFoldError)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
@@ -67,6 +67,11 @@ fromLowest ring = take (length ids) (drop start (cycle ids))
     ids = map unVertexId ring
     lowest = minimum ids
     start = length (takeWhile (/= lowest) ids)
+
+-- | The error from a refusal, for asserting on the message rather than the
+-- constructor.
+leftOf :: Either a b -> Maybe a
+leftOf = either Just (const Nothing)
 
 -- | A square of paper with the given creases and no faces recorded.
 sheet :: [[Double]] -> [(Int, Int)] -> Frame
@@ -125,9 +130,17 @@ gridFrame (Grid (xs, ys)) = sheet points (across <> down)
     down = [(at i j, at i (j + 1)) | j <- [0 .. ny - 2], i <- [0 .. nx - 1]]
 
 -- | The area of a traced ring, read off the frame it came from.
-areaOf :: Frame -> [VertexId] -> Double
-areaOf fr ring =
-  signedArea [V2 x y | VertexId v <- ring, (x : y : _) <- take 1 (drop v (verticesCoords fr))]
+--
+-- 'Nothing' rather than a shorter polygon if any corner cannot be resolved. A
+-- comprehension that filtered the bad corner out would quietly measure a
+-- different shape — which is exactly the failure the property below exists to
+-- catch, so it must not be able to hide inside the measurement.
+areaOf :: Frame -> [VertexId] -> Maybe Double
+areaOf fr ring = signedArea <$> traverse corner ring
+  where
+    corner (VertexId v) = case take 1 (drop v (verticesCoords fr)) of
+      [x : y : _] -> Just (V2 x y)
+      _ -> Nothing
 
 spec :: Spec
 spec = do
@@ -155,7 +168,7 @@ spec = do
       fr <- fixture "crane.fold"
       case traceFaces fr of
         Left err -> expectationFailure (show err)
-        Right rings -> map (signum . areaOf fr) rings `shouldBe` replicate 72 1
+        Right rings -> map (fmap signum . areaOf fr) rings `shouldBe` replicate 72 (Just 1)
 
   describe "a grid of creases" $ do
     it "traces one face per cell" $
@@ -171,16 +184,62 @@ spec = do
         let fr = gridFrame g
          in case traceFaces fr of
               Left err -> counterexample (show err) False
-              Right rings ->
-                let total = sum (map (areaOf fr) rings)
-                 in counterexample (show total) (abs (total - 1) < 1e-9)
+              Right rings -> case traverse (areaOf fr) rings of
+                Nothing -> counterexample "a traced ring named a corner the frame does not have" False
+                Just areas ->
+                  let total = sum areas
+                   in counterexample (show total) (abs (total - 1) < 1e-9)
 
   describe "drawings it will not trace" $ do
-    it "refuses a folded form, which is not a drawing on flat paper" $ do
+    it "refuses a folded form that has left the plane" $ do
       fr <- fixture "simple.fold"
-      case traceFaces fr of
-        Left (SheetNotFlat dz) -> dz `shouldSatisfy` (> 0)
-        other -> expectationFailure ("expected a refusal, got " <> show (fmap length other))
+      traceFaces fr `shouldBe` Left SheetIsFolded
+
+    it "refuses a form folded flat, which its coordinates alone do not give away" $ do
+      -- The case relief cannot catch, and the one that matters: a model folded
+      -- flat has coordinates a crease pattern's cannot be told from, so only
+      -- frame_classes says what it is. Tracing it would report the regions of
+      -- a drawing in which the paper lies on top of itself -- and every one of
+      -- the checks below would pass, because a self-overlapping drawing is not
+      -- malformed, only meaningless.
+      let overlapped =
+            (sheet [[0, 0], [1, 0], [1, 1], [0, 1]] [(0, 1), (1, 2), (2, 3), (3, 0)])
+              { frameClasses = ["foldedForm"]
+              }
+      traceFaces overlapped `shouldBe` Left SheetIsFolded
+
+    it "refuses an edge naming a vertex that is not there, as frameCreases does" $ do
+      -- frameVertices resolves coordinates and nothing else, so this gets past
+      -- it. Unchecked, vertex 7 was given a phantom position at the origin and
+      -- the refusal that followed named whichever innocent element it landed
+      -- on -- here vertex 0 and edge 5, neither of which is wrong.
+      let phantom =
+            sheet
+              [[10, 10], [11, 10], [11, 11], [10, 11]]
+              [(0, 1), (1, 2), (2, 3), (3, 0), (0, 7), (7, 2)]
+      traceFaces phantom
+        `shouldBe` Left (VertexIndexOutOfRange (EdgeId 4) (VertexId 7) 4)
+
+    it "refuses a crease with the same paper on both sides of it" $ do
+      -- An island joined to the sheet by one crease. Every degree is two or
+      -- more, nothing crosses, nothing is disconnected -- so every check on
+      -- the drawing passes, and the trace still comes back with a ring shaped
+      -- like a keyhole that lists both ends of the bridge twice. A face like
+      -- that is its own neighbour across that edge.
+      let island =
+            sheet
+              [[0, 0], [4, 0], [4, 4], [0, 4], [1, 1], [3, 1], [3, 3], [1, 3]]
+              [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4)]
+      traceFaces island `shouldBe` Left (CreaseBridge (VertexId 0) (VertexId 4))
+
+    it "refuses a vertex no crease uses, and says that rather than something else" $ do
+      -- Degree nought and degree one are the same constructor and not the same
+      -- complaint: nothing stops in the middle of the paper here, the vertex
+      -- is simply unused.
+      let stray = sheet [[0, 0], [1, 0], [1, 1], [0, 1], [5, 5]] [(0, 1), (1, 2), (2, 3), (3, 0)]
+      traceFaces stray `shouldBe` Left (VertexTooFewCreases (VertexId 4) 0)
+      fmap renderFoldError (leftOf (traceFaces stray))
+        `shouldBe` Just "vertex 4 is not an end of any crease, so it is not a corner of anything"
 
     it "refuses creases that cross with no vertex where they meet" $ do
       -- unit-square.fold's three interior creases all pass through the middle
@@ -239,6 +298,21 @@ spec = do
     it "fills in the faces of one that does not" $ do
       fr <- fixture "three-crease.fold"
       fmap (length . facesVertices) (withTracedFaces fr) `shouldBe` Right 3
+
+    it "leaves alone a frame whose faceOrders name faces it never recorded" $ do
+      -- Malformed, and refused as such before there was any tracing. Tracing
+      -- underneath those orders would not fix the file, it would silence it:
+      -- they would be range-checked against faces they were never written for,
+      -- quite possibly pass, and describe the stacking of some other model.
+      let orders =
+            (sheet [[0, 0], [1, 0], [1, 1], [0, 1]] [(0, 1), (1, 2), (2, 3), (3, 0)])
+              { faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]
+              }
+      -- No faces invented,
+      fmap facesVertices (withTracedFaces orders) `shouldBe` Right []
+      -- and the refusal the file has always earned still arrives.
+      (frameFaceOrders =<< withTracedFaces orders)
+        `shouldBe` Left (FaceOrderOutOfRange (FaceId 0) 0)
   where
     reproduces name =
       it ("reproduces " <> name <> ".fold's own faces_vertices") $ do

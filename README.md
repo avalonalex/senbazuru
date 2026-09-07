@@ -101,9 +101,12 @@ picture that looks like it came from a book.
   command one of those and it rebuilds the vertices and carries on.
 - **Works out the faces when a file does not record them**, which most do not
   and no `.cp` can. A crease pattern is a planar graph and its faces are the
-  regions the creases cut the sheet into, so they are traced from the creases —
+  regions the creases cut the sheet into, so folding and exporting trace them —
   and a drawing whose creases cross with no vertex where they meet is refused
   naming the pair, rather than folded into a plausible picture of other paper.
+  Drawing a pattern does not trace, so the flat picture of one is a wireframe
+  whether or not the file records faces; the reason is that a pattern which
+  cannot be traced must still draw.
 
 <p align="center">
   <img src="docs/img/steps.svg" width="640" alt="A square folded into quarters, drawn as three numbered figures with fold arrows">

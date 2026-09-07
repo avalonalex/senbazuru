@@ -14,7 +14,7 @@
 module Senbazuru.Geometry.PolygonSpec (spec) where
 
 import Data.List (tails)
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (V2 (..), norm, (*^), (^+^), (^-^))
 import Senbazuru.Geometry.Polygon
 import Test.Hspec
 import Test.QuickCheck
@@ -22,6 +22,18 @@ import Test.QuickCheck
 -- | An axis-aligned box as its corners, anticlockwise.
 data Box2 = Box2 !Double !Double !Double !Double
   deriving stock (Show)
+
+-- | Points on a modest grid rather than anywhere in the plane.
+--
+-- Whole tenths over a small range, so that a counterexample is a pair of
+-- numbers a reader can plot rather than eighteen digits of float, and so that
+-- coincidences worth hitting -- the same point twice, three points in a line --
+-- come up often instead of never. See docs/notes/shrinking.md.
+instance Arbitrary V2 where
+  arbitrary = V2 <$> coordinate <*> coordinate
+    where
+      coordinate = (/ 10) . fromIntegral <$> choose (-30 :: Int, 30)
+  shrink (V2 x y) = [V2 x' y | x' <- shrink x] <> [V2 x y' | y' <- shrink y]
 
 instance Arbitrary Box2 where
   arbitrary = do
@@ -54,6 +66,65 @@ near a b = abs (a - b) < 1e-9
 
 spec :: Spec
 spec = do
+  describe "distanceToSegment" $ do
+    it "measures to the segment, not to the line through it" $ do
+      -- The clamp is the whole of it: a point beyond an end is as far away as
+      -- that end, where the infinite line would call it a distance of nothing.
+      distanceToSegment (V2 0 0, V2 1 0) (V2 2 0) `shouldBe` 1
+      distanceToSegment (V2 0 0, V2 1 0) (V2 0.5 3) `shouldBe` 3
+
+    it "measures to the one point of a segment with no length" $
+      distanceToSegment (V2 1 1, V2 1 1) (V2 4 5) `shouldBe` 5
+
+    it "is never more than the distance to either end" $
+      -- The property that says the clamp is a clamp and not a cut-off: some
+      -- point of the segment is always at least as close as its ends.
+      property $ \a b p ->
+        distanceToSegment (a, b) p <= norm (p ^-^ a) + 1e-9
+          && distanceToSegment (a, b) p <= norm (p ^-^ b) + 1e-9
+
+    it "is zero along the segment and nowhere else" $
+      property $ \a b (t :: Double) ->
+        a /= b ==>
+          let along = max 0 (min 1 t)
+              on = a ^+^ (along *^ (b ^-^ a))
+           in distanceToSegment (a, b) on < 1e-9
+
+  describe "segmentsCross" $ do
+    it "reports a plain crossing" $
+      segmentsCross 1e-9 (V2 0 0, V2 2 2) (V2 0 2, V2 2 0) `shouldBe` True
+
+    it "does not report segments that only meet at an end" $
+      -- What a crease pattern is made of. If this were a crossing, every
+      -- corner of every sheet would be one.
+      segmentsCross 1e-9 (V2 0 0, V2 1 0) (V2 1 0, V2 1 1) `shouldBe` False
+
+    it "does not report segments that miss each other" $
+      segmentsCross 1e-9 (V2 0 0, V2 1 0) (V2 0 1, V2 1 1) `shouldBe` False
+
+    it "does not report a T, where one segment ends on the other" $
+      -- Touching is not crossing: the stem's end is on the bar, not through
+      -- it. It is Senbazuru.Fold.Faces's distanceToSegment check that has to
+      -- notice a T, and it does.
+      segmentsCross 1e-9 (V2 0 0, V2 2 0) (V2 1 0, V2 1 1) `shouldBe` False
+
+    it "reports a crossing between two very short segments" $ do
+      -- The reason the tolerance is a distance and not an area. cross2 returns
+      -- twice an area, so against an area tolerance the clearance a pair needs
+      -- grows as they get shorter: a millionth-long pair on a unit sheet would
+      -- have needed a thousandth of clearance, and a real crossing between
+      -- them would have gone unreported by this and by every distance check
+      -- too.
+      let tiny = 1e-6
+      segmentsCross 1e-9 (V2 0 0, V2 tiny tiny) (V2 0 tiny, V2 tiny 0) `shouldBe` True
+
+    it "nothing crosses a segment of no length" $
+      segmentsCross 1e-9 (V2 1 1, V2 1 1) (V2 0 0, V2 2 2) `shouldBe` False
+
+    it "does not care which segment is named first" $
+      property $ \a b c d ->
+        segmentsCross 1e-9 (a, b) (c, d) === segmentsCross 1e-9 (c, d) (a, b)
+
   describe "signedArea" $ do
     it "is positive anticlockwise and negative clockwise" $ do
       signedArea unitSquare `shouldBe` 1

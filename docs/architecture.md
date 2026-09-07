@@ -127,9 +127,12 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 - **Whatever needs faces asks `Fold.Faces` for them, and does not refuse a
   frame without any.** Most files record none — no `.cp` or `.opx` can — and
   the creases determine them, so `Origami.Folding` and `Render.Gltf` both trace
-  first. The renderer deliberately does *not*: filling a pattern that records
-  no faces would change what every existing picture of one looks like, which is
-  a separate decision from being able to fold it.
+  first. `Render.CreasePattern` deliberately does *not*, and the reason is not
+  golden churn: tracing can *fail* — `examples/unit-square.fold`'s creases
+  cross — and a drawing must not stop working because its faces cannot be
+  worked out. Filling optimistically, whenever the trace happened to succeed,
+  would make the picture of a pattern depend on a property of it nobody
+  looking at the page can see.
 - **A new input format becomes a `Frame`, and stops there.** `Senbazuru.Import.*`
   may know what FOLD is, because producing a `Frame` is its whole job; nothing
   downstream may know that a frame came from anywhere but a `.fold` file. Where

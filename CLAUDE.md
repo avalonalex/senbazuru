@@ -285,9 +285,11 @@ are not contributors can find it, and so there is only one copy to keep true.
 - **Faces are not extra information, they are the creases read another way.**
   Most files record none — no `.cp` or `.opx` can — so `Senbazuru.Fold.Faces`
   traces them, and `Origami.Folding` and `Render.Gltf` both call it rather than
-  refusing. `Render.CreasePattern` deliberately does not: filling a pattern
-  that records no faces changes what every existing picture of one looks like,
-  and that is a separate decision from being able to fold it.
+  refusing. `Render.CreasePattern` deliberately does not, and not for fear of
+  churning goldens: tracing can fail — `examples/unit-square.fold`'s creases
+  cross — and a drawing must not stop working because its faces cannot be
+  worked out. Filling only when the trace happens to succeed would make the
+  picture depend on something nobody looking at the page can see.
 - **The face walk turns clockwise to trace an anticlockwise face.** From the
   half-edge `u→v` it turns at `v` onto the next crease *clockwise* from `v→u`.
   Turning the way the face winds traces the same rings backwards; turning the

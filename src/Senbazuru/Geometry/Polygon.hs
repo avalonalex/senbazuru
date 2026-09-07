@@ -109,22 +109,33 @@ distanceToSegment (a, b) p
 -- are the thing that stops it being a planar graph and stops its faces being
 -- traceable at all.
 --
--- The tolerance is an area, like 'isConvex'\'s: each segment's endpoints have
--- to be clear of the other's line by more than that on opposite sides. So a
--- crossing at a glancing angle — two nearly parallel segments — is not
--- reported, which is deliberate. Where those meet there is a vertex a hair
--- from a segment, and 'distanceToSegment' is the question that catches it,
--- with an answer that does not depend on an angle.
+-- The tolerance is a __distance__, unlike 'isConvex'\'s and unlike most of this
+-- module's: each segment's endpoints have to be clear of the other's /line/ by
+-- more than that, on opposite sides. 'cross2' returns twice an area, so it is
+-- divided by the segment's length to get there, and that division is the whole
+-- point. An area tolerance is a distance tolerance scaled by whatever the
+-- segment happens to be long, so two short segments would need to be
+-- implausibly far apart to count as crossing — on a unit sheet, a pair a
+-- millionth long would need a clearance of a thousandth. A genuine crossing
+-- between them would go unreported, and unreported by 'distanceToSegment' too,
+-- since their endpoints are nowhere near a distance tolerance of each other.
+-- Dividing removes the gap: both questions are then asked in the same units.
+--
+-- A segment of no length has no direction for the other to be on a side of, so
+-- nothing crosses it.
 segmentsCross :: Double -> (V2, V2) -> (V2, V2) -> Bool
 segmentsCross tolerance first second =
   straddles first second && straddles second first
   where
     -- Are the ends of one segment strictly on opposite sides of the other?
     straddles (a, b) (p, q) =
-      (sideOf p < negate tolerance && sideOf q > tolerance)
-        || (sideOf p > tolerance && sideOf q < negate tolerance)
+      length' > 0
+        && ( (sideOf p < negate tolerance && sideOf q > tolerance)
+               || (sideOf p > tolerance && sideOf q < negate tolerance)
+           )
       where
-        sideOf x = cross2 (b ^-^ a) (x ^-^ a)
+        length' = norm (b ^-^ a)
+        sideOf x = cross2 (b ^-^ a) (x ^-^ a) / length'
 
 -- | The consecutive pairs around a closed ring: each corner with the next, and
 -- the last with the first. Polymorphic so that it also pairs up consecutive

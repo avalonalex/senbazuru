@@ -459,9 +459,21 @@ spec = do
                 edgesAssignment = [Border, Border, Border, Border, Valley],
                 edgesFoldAngle = []
               }
-      case exportFrame (Thickness 0) square of
-        Left err -> expectationFailure ("expected an export, got " <> show err)
-        Right bytes -> BS.length bytes `shouldSatisfy` (> 0)
+      -- Compared against the same sheet with those two faces written out by
+      -- hand, byte for byte. "It exported something" would be true of every
+      -- possible success, including tracing one face, or the wrong two.
+      -- The second ring is written from corner 2 rather than corner 0, which
+      -- is where the walk happened to start, and the export writes corners in
+      -- the order it is given them. So this pins the rotation too: a change to
+      -- where a trace begins changes the bytes, and should have to say so.
+      let stated =
+            square
+              { facesVertices =
+                  [ [VertexId 0, VertexId 1, VertexId 2],
+                    [VertexId 2, VertexId 3, VertexId 0]
+                  ]
+              }
+      exportFrame DefaultThickness square `shouldBe` exportFrame DefaultThickness stated
 
     it "refuses a frame whose creases cross with no vertex where they meet" $ do
       -- unit-square.fold used to be refused here for recording no faces. Now
