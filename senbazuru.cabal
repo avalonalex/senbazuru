@@ -159,5 +159,6 @@ test-suite senbazuru-test
     , hspec       >=2.10 && <2.12
     , QuickCheck  >=2.14 && <2.16
     , aeson
+    , containers
     , senbazuru
     , text

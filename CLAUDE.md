@@ -273,6 +273,15 @@ are not contributors can find it, and so there is only one copy to keep true.
   angles no sheet can adopt. `foldFrame` closes the loops by hand, comparing
   where each face puts a shared vertex. Anything else walking the face graph
   needs the same check or it will silently tear a model.
+- **A fold's transforms are against the *cut* pattern, not the file's frame.**
+  `foldFrameWith` hands back all three — the folded form, that pattern, and one
+  `Rigid` per face — because folding calls `withPlanarFaces` before anything
+  else, and cutting the crossings adds vertices and re-traces the faces. So a
+  face's motion is keyed by its index into the frame that came *out* of the
+  cutting. Inverting one to write something back onto the sheet means writing
+  onto `foldedPattern`; using the frame that went in numbers the faces of a
+  different drawing, and `examples/unit-square.fold` is a file where the two
+  differ.
 - **At ±180° a mountain and a valley are the same rigid motion.** Turning half a
   turn either way about a line lands in the same place. The assignment still
   matters — it decides which layer ends up on top — but that is layer ordering,
@@ -630,9 +639,9 @@ Deliberate omissions, so nobody thinks they are bugs:
 - The 3D export fans each face from its first corner, which is right for convex
   faces and refuses the rest. Ear clipping would take any simple polygon.
 - The 3D export writes faces and no crease lines, no normals (viewers compute
-  flat ones, which is right for paper), and no animation — the last would need
-  the per-face rigid transforms `Folding.spanningWalk` computes and discards,
-  and intermediate angles that close their loops, per
+  flat ones, which is right for paper), and no animation. The per-face rigid
+  transforms it would need are there — `Folding.foldFrameWith` hands them back
+  — but the intermediate angles that close their loops are not, per
   `docs/notes/fold-angles-are-the-state.md`.
 - A `.cp` or an `.opx` is read and never written. Neither format can hold a
   face, a fold angle or a second frame, so writing one would silently drop

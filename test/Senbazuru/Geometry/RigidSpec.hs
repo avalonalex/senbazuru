@@ -102,6 +102,30 @@ spec = do
         nearV3 (applyRigid (identity `after` r) x) (applyRigid r x)
           && nearV3 (applyRigid (r `after` identity) x) (applyRigid r x)
 
+  describe "inverse" $ do
+    it "puts every point back where it started" $
+      forAll ((,) <$> genRotation <*> genPoint) $ \(r, x) ->
+        norm (applyRigid (inverse r) (applyRigid r x) ^-^ x) < 1e-9 * max 1 (norm x)
+
+    it "undoes a whole chain of motions, not just one" $
+      -- What folding actually hands it. A face deep in a model carries the
+      -- composition of every turn on the path to it, and the transpose trick
+      -- has to survive composition or the inverse is right only for the root.
+      forAll ((,,) <$> genRotation <*> genRotation <*> genPoint) $ \(a, b, x) ->
+        let there = a `after` b
+         in norm (applyRigid (inverse there) (applyRigid there x) ^-^ x)
+              < 1e-9 * max 1 (norm x)
+
+    it "moves the offset as well as transposing the matrix" $ do
+      -- The line that looks like it could be left out. For a turn about a line
+      -- through the origin the offset is zero and forgetting to transform it
+      -- costs nothing, so the test uses one that is not: a quarter turn about
+      -- the line x = 1 along z, which carries (2,0,0) to (1,1,0). Reusing the
+      -- original offset instead of -M'.t sends it back to (2,-2,0).
+      let r = rotationAbout (V3 1 0 0) (V3 0 0 1) (pi / 2)
+      applyRigid r (V3 2 0 0) `shouldSatisfy` nearV3 (V3 1 1 0)
+      applyRigid (inverse r) (V3 1 1 0) `shouldSatisfy` nearV3 (V3 2 0 0)
+
   describe "matMul" $
     it "multiplies rows into columns, not rows into rows" $ do
       -- A transposition slip here is invisible for symmetric matrices and for
