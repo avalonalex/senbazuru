@@ -28,15 +28,17 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
-import Senbazuru.Fold.Load (loadFile, renderLoadError)
+import Senbazuru.Fold.Creasing (creaseAlong)
+import Senbazuru.Fold.Load (encodeFoldFile, loadFile, renderLoadError, renderSaveError, saveFoldFile)
 import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
-  ( Assignment,
+  ( Assignment (..),
     FoldFile (..),
     Frame (..),
     allFrames,
     assignmentCode,
   )
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.FlatFold
   ( Report,
     Tolerance (..),
@@ -73,6 +75,22 @@ data Command
   | Info InfoOptions
   | Check CheckOptions
   | Export ExportOptions
+  | Crease CreaseOptions
+  deriving stock (Eq, Show)
+
+-- | Options for the @crease@ subcommand.
+--
+-- The first verb that writes a crease pattern rather than a picture of one,
+-- and so the first caller the FOLD writer has had.
+data CreaseOptions = CreaseOptions
+  { creaseInput :: FilePath,
+    -- | 'Nothing' writes to stdout, as @render@ and @export@ do.
+    creaseOutput :: Maybe FilePath,
+    creaseFrame :: Maybe Int,
+    creaseFrom :: (Double, Double),
+    creaseTo :: (Double, Double),
+    creaseAs :: Assignment
+  }
   deriving stock (Eq, Show)
 
 -- | Options for the @export@ subcommand.
@@ -192,7 +210,64 @@ commandParser =
         <> command
           "export"
           (info (Export <$> exportOptions) (progDesc "Write a frame as a 3D model (glTF binary)"))
+        <> command
+          "crease"
+          (info (Crease <$> creaseOptions) (progDesc "Draw a crease on a pattern and write it out"))
     )
+
+creaseOptions :: Parser CreaseOptions
+creaseOptions =
+  CreaseOptions
+    <$> inputArg
+    <*> optional
+      ( strOption
+          ( long "output"
+              <> short 'o'
+              <> metavar "FILE.fold"
+              <> help "Output file (default: stdout)"
+          )
+      )
+    <*> frameOption
+    <*> option
+      point
+      ( long "from"
+          <> metavar "X,Y"
+          <> help "One end of the crease (use --from=-1,0 for a negative coordinate)"
+      )
+    <*> option point (long "to" <> metavar "X,Y" <> help "The other end")
+    <*> assignmentOption
+
+-- | @x,y@ as a point.
+--
+-- A comma rather than a space so that one end is one value: four separate
+-- numbers would be four things to keep in the right order, and a transposed
+-- pair is a crease somewhere else that nothing would complain about.
+--
+-- Named options rather than positional arguments, which is not a style
+-- preference. A coordinate may be negative, and every @.cp@ and @.opx@ in
+-- existence is drawn on the square from @(-200, -200)@ to @(200, 200)@ — so a
+-- positional @-200,-200@ is read as a flag and the verb is unusable on the
+-- commonest crease patterns there are. As an option value it still needs the
+-- @=@ form, @--from=-200,-200@, which is a rule of the argument parser rather
+-- than one of ours; the help text says so.
+point :: ReadM (Double, Double)
+point = eitherReader $ \raw -> case break (== ',') raw of
+  (x, ',' : y) -> (,) <$> number "x" x <*> number "y" y
+  _ -> Left ("expected a point as x,y, not " <> raw)
+  where
+    number what raw = case reads raw of
+      [(v, "")] -> Right v
+      _ -> Left (what <> " of the point is not a number: " <> raw)
+
+-- | Which kind of crease to draw. One flag rather than an argument taking a
+-- letter, because @--valley@ is what a book calls it and @V@ is what the file
+-- calls it.
+assignmentOption :: Parser Assignment
+assignmentOption =
+  flag' Mountain (long "mountain" <> help "A mountain fold (M)")
+    <|> flag' Valley (long "valley" <> help "A valley fold (V)")
+    <|> flag' Flat (long "flat" <> help "A crease that is drawn and not folded (F)")
+    <|> flag' Unassigned (long "unassigned" <> help "A crease whose direction is not decided yet (U)")
 
 exportOptions :: Parser ExportOptions
 exportOptions =
@@ -582,6 +657,44 @@ run = \case
   Render o -> withFoldFile (roInput o) (renderFile o)
   Check o -> withFoldFile (coInput o) (checkFile o)
   Export o -> withFoldFile (eoInput o) (exportFile o)
+  Crease o -> withFoldFile (creaseInput o) (creaseFile o)
+
+-- | Draw a crease on one frame and write the whole document back out.
+--
+-- The other frames are carried through untouched. A document may be a sequence
+-- of steps, and creasing one of them is not a statement about the others —
+-- though it does leave a file whose frames no longer describe one model, which
+-- is the file the author asked for and not ours to second-guess.
+creaseFile :: CreaseOptions -> FoldFile -> IO ()
+creaseFile o f = do
+  let index = fromMaybe 0 (creaseFrame o)
+  frame <- frameAt index f
+  case creaseAlong (toV2 (creaseFrom o)) (toV2 (creaseTo o)) (creaseAs o) frame of
+    Left err ->
+      die ("cannot crease " <> T.pack (creaseInput o) <> ": " <> renderFoldError err)
+    Right creased -> do
+      let document = replacingFrame index creased f
+      case creaseOutput o of
+        Nothing -> BS.putStr (encodeFoldFile document)
+        Just path ->
+          saveFoldFile path document >>= \case
+            Left err -> die (renderSaveError err)
+            Right () -> pure ()
+  where
+    toV2 (x, y) = V2 x y
+
+-- | The document with one frame replaced, keeping every other frame and all
+-- the file's own metadata.
+replacingFrame :: Int -> Frame -> FoldFile -> FoldFile
+replacingFrame index frame f
+  | index == 0 = f {keyFrame = frame}
+  | otherwise =
+      f
+        { otherFrames =
+            [ if i == index then frame else other
+              | (i, other) <- zip [1 ..] (otherFrames f)
+            ]
+        }
 
 -- | Write one frame out as a 3D model.
 --
