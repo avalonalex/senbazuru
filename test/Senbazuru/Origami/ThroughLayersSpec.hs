@@ -11,9 +11,10 @@
 -- different model with nothing to show for it. So every assertion here names
 -- the assignment.
 --
--- __The quarter fold__ is the same question at four layers, where the pattern
--- the kinds make — valley, mountain, valley, mountain outwards from the middle
--- — is visible rather than a coin toss that happened to land right.
+-- __The quarter fold__ is the same question at four layers, where two of each
+-- kind coming back is a pattern rather than a coin toss that happened to land
+-- right — and where it is visible that the kinds are decided quarter by quarter
+-- rather than alternating round the middle.
 module Senbazuru.Origami.ThroughLayersSpec (spec) where
 
 import Data.ByteString qualified as BS
@@ -121,7 +122,8 @@ spec = do
       -- rather than a coin toss that landed right. A vertical line at x = 0.6
       -- on the folded quarter reaches all four, and they are the four quarters
       -- of the sheet reflected about x = 0.5 and y = 0.5 in turn: two land at
-      -- x = 0.6 and two at x = 0.4, and the kind flips with each turning over.
+      -- x = 0.6 and two at x = 0.4, and the kind follows whether that quarter
+      -- turned over an odd or an even number of times on the way in.
       flat <- fixture "quarter-fold.fold"
       out <- creased flat (0.6, 0) (0.6, 0.5) Valley
       -- The drawn line was vertical and every fold it was reflected in is
@@ -167,6 +169,20 @@ spec = do
           Right Nothing -> expectationFailure "expected a layer order"
           Right (Just _) -> pure ()
 
+  describe "a pattern that came from a .cp" $
+    it "creases the bird base through all fourteen of its layers" $ do
+      -- A format with no faces and no fold angles at all: both are worked out
+      -- from the creases and the assignments. Nothing downstream may know a
+      -- frame came from anywhere but a .fold file, and this is where that gets
+      -- exercised for the new verb.
+      flat <- fixture "bird-base.cp"
+      out <- creased flat (-300, 150) (-100, 150) Valley
+      let added = length (folds out) - length (folds flat)
+      added `shouldSatisfy` (>= 14)
+      case foldFrame out of
+        Left err -> expectationFailure ("expected a fold, got " <> show err)
+        Right f -> length (facesVertices f) `shouldBe` 28
+
   describe "lines it will not crease along" $ do
     it "refuses a model with paper still in the air" $ do
       -- A line drawn on the page of such a model is a ray and not a point:
@@ -191,6 +207,25 @@ spec = do
       flat <- fixture "diagonal-cp.fold"
       creaseThroughLayers (V2 0 1) (V2 1 0) Valley flat
         `shouldBe` Left NoPaperUnderTheLine
+
+    it "refuses a line that stops on the paper instead of crossing it" $ do
+      -- An end in the middle of a face would crease that layer only part of the
+      -- way across, and a crease that stops in the middle of the paper divides
+      -- nothing. Refused by name here rather than reaching the face tracing,
+      -- which says it as "vertex 4 has 1 crease at it".
+      flat <- fixture "diagonal-cp.fold"
+      case creaseThroughLayers (V2 0.2 0.2) (V2 2 0.2) Valley flat of
+        Left (LineStopsOnTheModel _) -> pure ()
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "allows an end that lands exactly on the model's edge" $ do
+      -- The other side of that test: an end on the silhouette is where a fold
+      -- reaches the edge of the paper, which is most of them. If the clearance
+      -- were the wrong way round this would be refused and almost nothing would
+      -- work.
+      flat <- fixture "diagonal-cp.fold"
+      out <- creased flat (0, 0.5) (0.5, 0) Valley
+      length (folds out) `shouldBe` 3
 
     it "refuses two ends that are the same point" $ do
       flat <- fixture "diagonal-cp.fold"

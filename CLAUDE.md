@@ -683,6 +683,12 @@ Deliberate omissions, so nobody thinks they are bugs:
   says "fold the top layer only", and that is a different instruction belonging
   with #60's vocabulary — it would need to know which face is over which at a
   point, which this deliberately never asks.
+- Creasing through the layers wants both ends of the line clear of the paper or
+  on its edge. An end in the middle of a face creases that one layer part of the
+  way across, which the face tracing refuses a step later as a vertex with one
+  crease at it; `Origami.ThroughLayers` asks first and says so. Unlike
+  `Fold.Creasing`, which has no way to say where a sheet *is*, this does: the
+  folded model is a list of convex panels.
 - Creasing through the layers is for a model folded *flat*. With paper still in
   the air a line drawn on the page is a ray and not a point, so it names no one
   place on the sheet. The same restriction `Origami.Visible` and the layer

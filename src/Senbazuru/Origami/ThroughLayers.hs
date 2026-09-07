@@ -65,6 +65,14 @@
 -- came from. That is the same restriction "Senbazuru.Origami.Visible" and the
 -- layer solver carry, and it arrives here for free from
 -- 'Senbazuru.Origami.Flat.flatSheet'.
+--
+-- __The line has to cross the model rather than stop on it.__ Both ends must be
+-- clear of the paper, or on its edge; an end in the middle of a face would
+-- crease that one layer part of the way across, and a crease that stops in the
+-- middle of the paper divides nothing. Every end being outside is the usual
+-- case and not a burden — a fold reaches the edge of the paper — but a line
+-- given as "from the middle to the corner" is refused, by name, as
+-- 'LineStopsOnTheModel'.
 module Senbazuru.Origami.ThroughLayers
   ( creaseThroughLayers,
     ThroughError (..),
@@ -118,6 +126,17 @@ data ThroughError
     -- the model's edges rather than across its paper. Both leave no face with a
     -- stretch of line properly inside it.
     NoPaperUnderTheLine
+  | -- | An end of the line is on the paper rather than clear of it, so the
+    -- crease that layer gets would stop in the middle of its own face. Carries
+    -- a face the end landed on.
+    --
+    -- A crease that stops in the middle of the paper divides nothing, and the
+    -- face tracing refuses it a step later with a message about a vertex with
+    -- one crease at it. Asked here instead, because unlike
+    -- "Senbazuru.Fold.Creasing" -- which has no way to say where a sheet /is/,
+    -- and says so -- this does: the folded model is a list of convex panels and
+    -- the question is one predicate on each.
+    LineStopsOnTheModel !FaceId
   | -- | One of the lines the move worked out was refused when it was drawn on
     -- the sheet. Carries the face it came from, so the refusal can be traced
     -- back to a layer, and what "Senbazuru.Fold.Creasing" said.
@@ -141,6 +160,11 @@ renderThroughError = \case
   NoPaperUnderTheLine ->
     "no face of the folded model has this line across it, so there is nothing"
       <> " to crease: either it misses the model or it runs along its edges"
+  LineStopsOnTheModel (FaceId f) ->
+    "an end of the line is on the paper, over face "
+      <> tshow f
+      <> ", rather than clear of it -- so that layer would be creased only part"
+      <> " of the way across. A line has to cross the model, not stop on it"
   CannotCrease (FaceId f) err ->
     "the crease this line makes on the layer from face "
       <> tshow f
@@ -170,6 +194,12 @@ creaseThroughLayers from to assignment fr = do
   -- Judged by the folded model's own tolerance, so that "the same point" means
   -- here what it means everywhere else on this paper.
   when (norm (to ^-^ from) <= sheetHair sheet) (Left LineWithoutLength)
+  -- Asked of the ends before anything is clipped, because a clip cannot tell
+  -- the difference: a line stopping halfway over the model comes back from
+  -- 'clipSegment' looking exactly like one that crossed a narrow face.
+  case [panelId p | p <- sheetPanels sheet, end <- [from, to], stopsOn sheet p end] of
+    (f : _) -> Left (LineStopsOnTheModel f)
+    [] -> Right ()
   let shares = mapMaybe (shareFor sheet (foldedPlacements folded) assignment (from, to)) (sheetPanels sheet)
   when (null shares) (Left NoPaperUnderTheLine)
   -- Every share is worked out before any of them is drawn, and that order is
@@ -224,6 +254,16 @@ shareFor sheet placements assignment line panel = do
     -- again.
     ontoSheet back (V2 x y) = case applyRigid back (V3 x y (sheetPlane sheet)) of
       V3 x' y' _ -> V2 x' y'
+
+-- | Whether an end of the drawn line came down on this face's paper.
+--
+-- Strictly inside, so an end that lands on the silhouette or on a crease is
+-- fine: the crease it makes there runs to the edge of that layer's paper, which
+-- is what a fold does. It is an end in the /middle/ of a face that has no
+-- meaning, and the clearance is the same hair everything else on this model is
+-- judged by.
+stopsOn :: Sheet -> Panel -> V2 -> Bool
+stopsOn sheet panel = strictlyInside (sheetHair sheet) (panelRing panel)
 
 -- | Whether this face still has the top side of the paper towards @+z@.
 --
