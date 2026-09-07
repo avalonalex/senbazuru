@@ -257,17 +257,23 @@ not the same as one per layer and is usually more: across the folded crane, the
 worst line crosses 56 of its 72 faces, where the deepest stack of paper found
 over any single point is 24 and the deepest layer number is 32.
 
-**Both ends have to be clear of the paper**, or on its edge, so that the line
-crosses the model rather than stopping on it. An end in the middle of a face
-would crease that one layer part of the way across, and a crease that stops in
-the middle of the paper divides nothing:
+**Neither end may be in the middle of a face**, because that layer would then be
+creased only part of the way across, and a crease that stops in the middle of
+the paper divides nothing:
 
 ```console
 $ senbazuru crease examples/bird-base.cp --folded --from=-200,150 --to=-100,150 --valley
-senbazuru: cannot crease examples/bird-base.cp: an end of the line is on the paper,
-over face 12, rather than clear of it -- so that layer would be creased only part of
-the way across. A line has to cross the model, not stop on it
+senbazuru: cannot crease examples/bird-base.cp: an end of the line is inside face 12
+of the folded model rather than on its edge, so that layer would be creased only part
+of the way across. A line has to cross each layer it reaches, not stop in the middle
+of one
 ```
+
+An end *on* an edge is fine, and that is the common case: a fold reaches the
+edge of the paper, or runs up to a crease that is already there. It is also
+commoner than it sounds — folded layers stack their edges exactly on top of one
+another, so an end on one crease is usually on the boundary of every layer under
+it, and every one of them gets creased right across.
 
 Moving that first end clear of the model creases the bird base through all
 fourteen of its layers, and the result folds:

@@ -580,12 +580,17 @@ Across the folded crane the worst line crosses 56 of its 72 faces, where the
 deepest stack of paper found over any single point is 24 and the deepest layer
 number is 32 — three different questions, and only the first bounds the work.
 
-One thing to know before drawing one: **both ends have to be clear of the
-paper**, or on its edge. An end in the middle of a face would crease that one
-layer part of the way across, and a crease that stops in the middle of the paper
-divides nothing — so a line given from the middle of the model to somewhere off
-it is refused, naming the face the end came down on. Working out where a folded
-model actually *is* is what `render --fold` is for.
+One thing to know before drawing one: **neither end may be in the middle of a
+face**. That layer would be creased only part of the way across, and a crease
+that stops in the middle of the paper divides nothing, so such a line is refused
+naming the face the end came down in. Working out where a folded model actually
+*is* is what `render --fold` is for.
+
+An end *on* an edge is fine, which is what makes the rule liveable: a fold
+reaches the edge of the paper or runs up to a crease already there. And folded
+layers stack their edges exactly on top of one another, so an end on one crease
+is usually on the boundary of every layer beneath it, and all of them get
+creased right across.
 
 Three limits, all deliberate. Every layer under the line is creased; "fold the
 top layer only" is a different instruction and part of

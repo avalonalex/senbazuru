@@ -126,16 +126,20 @@ data ThroughError
     -- the model's edges rather than across its paper. Both leave no face with a
     -- stretch of line properly inside it.
     NoPaperUnderTheLine
-  | -- | An end of the line is on the paper rather than clear of it, so the
-    -- crease that layer gets would stop in the middle of its own face. Carries
-    -- a face the end landed on.
+  | -- | An end of the line is inside one of the model's faces rather than on
+    -- its edge, so the crease that layer gets would stop in the middle of its
+    -- own paper. Carries a face the end landed in.
     --
-    -- A crease that stops in the middle of the paper divides nothing, and the
-    -- face tracing refuses it a step later with a message about a vertex with
-    -- one crease at it. Asked here instead, because unlike
-    -- "Senbazuru.Fold.Creasing" -- which has no way to say where a sheet /is/,
-    -- and says so -- this does: the folded model is a list of convex panels and
-    -- the question is one predicate on each.
+    -- Asked of each face and not of the model as a whole, which is the tempting
+    -- generalisation and is wrong. In a folded model the layers' edges coincide
+    -- constantly -- that is what a fold /is/ -- so an end on a crease is on the
+    -- boundary of every face covering it and inside none of them, and every one
+    -- of those layers is creased edge to edge. Asking of the union would refuse
+    -- that, and it is the ordinary case.
+    --
+    -- Unlike "Senbazuru.Fold.Creasing", which has no way to say where a sheet
+    -- /is/ and says so, this can ask: the folded model is a list of convex
+    -- panels and the question is one predicate on each.
     LineStopsOnTheModel !FaceId
   | -- | One of the lines the move worked out was refused when it was drawn on
     -- the sheet. Carries the face it came from, so the refusal can be traced
@@ -161,10 +165,11 @@ renderThroughError = \case
     "no face of the folded model has this line across it, so there is nothing"
       <> " to crease: either it misses the model or it runs along its edges"
   LineStopsOnTheModel (FaceId f) ->
-    "an end of the line is on the paper, over face "
+    "an end of the line is inside face "
       <> tshow f
-      <> ", rather than clear of it -- so that layer would be creased only part"
-      <> " of the way across. A line has to cross the model, not stop on it"
+      <> " of the folded model rather than on its edge, so that layer would be"
+      <> " creased only part of the way across. A line has to cross each layer"
+      <> " it reaches, not stop in the middle of one"
   CannotCrease (FaceId f) err ->
     "the crease this line makes on the layer from face "
       <> tshow f
