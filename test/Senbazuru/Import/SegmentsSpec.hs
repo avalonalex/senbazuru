@@ -74,9 +74,10 @@ spec = do
       -- different cells. A reader that compared cells and stopped there would
       -- give eight vertices here rather than seven.
       let boundary = fromIntegral (ceiling (100 / paperTolerance) :: Integer) * paperTolerance
-          before = boundary - 0.25 * paperTolerance
-          after = boundary + 0.25 * paperTolerance
-          segments = paper <> [segment 3 (before, 0) (0, 0), segment 4 (after, 0) (0, -100)]
+          -- Not `before`/`after`: hspec exports both, as hooks.
+          under = boundary - 0.25 * paperTolerance
+          over = boundary + 0.25 * paperTolerance
+          segments = paper <> [segment 3 (under, 0) (0, 0), segment 4 (over, 0) (0, -100)]
       fmap (length . verticesCoords) (frameFromSegments segments) `shouldBe` Right 7
 
     it "numbers vertices in the order the file first mentions them" $ do

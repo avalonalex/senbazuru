@@ -187,8 +187,9 @@ spec = do
               Right rings -> case traverse (areaOf fr) rings of
                 Nothing -> counterexample "a traced ring named a corner the frame does not have" False
                 Just areas ->
-                  let total = sum areas
-                   in counterexample (show total) (abs (total - 1) < 1e-9)
+                  -- Not `total`: QuickCheck exports one.
+                  let whole = sum areas
+                   in counterexample (show whole) (abs (whole - 1) < 1e-9)
 
   describe "drawings it will not trace" $ do
     it "refuses a folded form that has left the plane" $ do

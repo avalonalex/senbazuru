@@ -77,8 +77,10 @@ folds fr =
 -- So a crease of the result is old exactly when it lies along one the pattern
 -- already had, of the same kind, and new otherwise.
 drawn :: Frame -> Frame -> [((Double, Double), (Double, Double), Assignment)]
-drawn before after =
-  [c | c <- folds after, not (any (holds c) (folds before))]
+drawn was now =
+  -- Not `before` and `after`: hspec exports both, and shadowing them is a
+  -- warning the build treats as one to fix.
+  [c | c <- folds now, not (any (holds c) (folds was))]
   where
     holds (p, q, a) (r, s, b) = a == b && within r s p && within r s q
     -- On the line through r and s, and between them. The tolerance is loose
