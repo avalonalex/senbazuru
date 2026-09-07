@@ -285,9 +285,14 @@ are not contributors can find it, and so there is only one copy to keep true.
   vertex positions to show a half-folded state — that stretches the paper.
 - **A spanning tree cuts every loop, and loops are the whole constraint.**
   Folding reaches each face by one path, so it will produce coordinates for
-  angles no sheet can adopt. `foldFrame` closes the loops by hand, comparing
-  where each face puts a shared vertex. Anything else walking the face graph
-  needs the same check or it will silently tear a model.
+  angles no sheet can adopt. `foldFrame` closes the loops by hand, and it takes
+  *two* checks. Comparing where each face puts a shared vertex (`TornAt`)
+  catches most of it — but two faces across a crease share only that crease's
+  endpoints, which lie on its rotation axis and are fixed by any turn about it,
+  so a loop the walk closed by turning *nothing* leaves every shared vertex
+  agreeing. `loopsClose` asks the other question: is each crease's own angle
+  achieved? Anything else walking the face graph needs both or it will silently
+  tear a model — or, worse, silently not fold one.
 - **A fold's transforms are against the *cut* pattern, not the file's frame.**
   `foldFrameWith` hands back all three — the folded form, that pattern, and one
   `Rigid` per face — because folding calls `withPlanarFaces` before anything

@@ -24,6 +24,7 @@ import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
+    EdgeId (..),
     FaceId (..),
     FaceOrder (..),
     Frame (..),
@@ -92,6 +93,28 @@ stackingOf fr = case frameFaces fr of
   Right fs -> case layerDepths (V3 0 0 1) fs (faceOrders fr) of
     Left err -> Left (show err)
     Right ds -> Right [(unFaceId i, d) | (i, d) <- ds]
+
+-- | A square cut by a flat line, with one crease from the middle of that line
+-- to the top edge at the given angle.
+--
+-- Three faces in a ring, two of the joins flat. The point of it is that the
+-- spanning tree can reach every face across the flat joins, turning nothing,
+-- and drop the third crease -- so whatever angle that crease carries is never
+-- applied, and the two faces either side of it share only its own endpoints.
+flatLineAndValley :: Assignment -> Double -> Frame
+flatLineAndValley assignment angle =
+  emptyFrame
+    { frameClasses = ["creasePattern"],
+      verticesCoords =
+        [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.5], [0.5, 0.5], [1, 0.5], [0.5, 1]],
+      edgesVertices =
+        [ (VertexId a, VertexId b)
+          | (a, b) <-
+              [(0, 1), (1, 6), (6, 2), (2, 7), (7, 3), (3, 4), (4, 0), (4, 5), (5, 6), (5, 7)]
+        ],
+      edgesAssignment = replicate 7 Border <> [Flat, Flat, assignment],
+      edgesFoldAngle = replicate 7 0 <> [0, 0, angle]
+    }
 
 -- | The frame's vertices as points.
 --
@@ -339,6 +362,68 @@ spec = do
       case foldFrame bent of
         Left (TornAt _ d) -> d `shouldSatisfy` (> 0.7)
         other -> expectationFailure ("expected a tear, got " <> show (fmap frameClasses other))
+
+    it "refuses a loop the tree closed by doing nothing at all" $ do
+      -- The case a vertex comparison cannot see. A square with a flat line
+      -- across it and one valley from the middle of that line to the top edge
+      -- is three faces in a ring: bottom, top-left, top-right. Two of the three
+      -- joins are the flat line, at zero degrees, so the tree reaches all three
+      -- without turning anything and the valley is the join it drops.
+      --
+      -- Nothing then disagrees. The only vertices the two top faces share are
+      -- the valley's own endpoints, which lie on its rotation axis and are
+      -- fixed by any turn about it -- so TornAt has nothing to compare and the
+      -- 180 degrees goes unapplied, returning the sheet unmoved. It was #84.
+      --
+      -- Note what this fixture is and is not. It is the #84 pattern, where the
+      -- dropped crease is also a crease that stops once the two flat lines
+      -- either side of it are dissolved -- so it does not on its own pin the
+      -- general loop case, where the tree's path composes to something other
+      -- than the identity. It pins the case that was silently wrong.
+      --
+      -- The crease and the distance are both exact, so both are asserted: crease
+      -- 9 is the valley, and a full unit is how far the top half is from where
+      -- 180 degrees would put it.
+      case foldFrame (flatLineAndValley Valley 180) of
+        Left (AngleNotAchieved e off) -> do
+          e `shouldBe` EdgeId 9
+          off `shouldSatisfy` \d -> abs (d - 1) < 1e-9
+        other -> expectationFailure ("expected a refusal, got " <> show (fmap frameClasses other))
+
+    it "folds the same sheet when that crease really is flat" $ do
+      -- The control. Identical drawing with the loop-closing crease at zero,
+      -- which the tree's answer does satisfy, so nothing is refused and the
+      -- sheet stays put because it is meant to.
+      folded <- foldOrFail (flatLineAndValley Flat 0)
+      map (map rounded) (verticesCoords folded)
+        `shouldBe` [ [0, 0, 0],
+                     [1, 0, 0],
+                     [1, 1, 0],
+                     [0, 1, 0],
+                     [0, 0.5, 0],
+                     [0.5, 0.5, 0],
+                     [1, 0.5, 0],
+                     [0.5, 1, 0]
+                   ]
+
+    it "refuses a fold angle on a crease with paper on one side only" $ do
+      -- The other silence in the same family: nothing can turn about a crease
+      -- the paper only has on one side, so the walk never looks at it and the
+      -- angle went unapplied and unremarked. A unit square, no interior
+      -- creases, and a valley written on one of its own edges.
+      let fr =
+            emptyFrame
+              { frameClasses = ["creasePattern"],
+                verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1]],
+                edgesVertices =
+                  [ (VertexId a, VertexId b)
+                    | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0)]
+                  ],
+                edgesAssignment = [Valley, Border, Border, Border],
+                edgesFoldAngle = [180, 0, 0, 0],
+                facesVertices = [map VertexId [0, 1, 2, 3]]
+              }
+      foldFrame fr `shouldBe` Left (AngleWithoutPaper (EdgeId 0) 180)
 
     it "does not mind a mountain and a valley swapped at 180 degrees" $ do
       -- Worth pinning because it is surprising: turning 180 degrees one way

@@ -71,6 +71,16 @@ a tree cannot. So a vertex shared by several faces gets a position from each of
 them, and they agree only under a condition the tree never checks. See
 [fold-angles-are-the-state.md](fold-angles-are-the-state.md).
 
+**And comparing those positions is not the whole check.** The two faces either
+side of a crease share only that crease's own endpoints, and those lie on its
+rotation axis, where any turn about it leaves them exactly where they were. So
+if the walk happens to hand both faces the *same* transform, every vertex they
+share agrees and the crease's angle was simply never applied — no tear, no
+complaint, and a model that came back unfolded. Closing the loops properly means
+asking the second question too: did each crease actually end up at the angle it
+records? A square with a flat line across it and one valley from the middle of
+that line to the edge is the smallest pattern where the difference shows.
+
 ## The flat case is much easier
 
 When every angle is exactly ±180°, rotating about a line *in the plane* by 180°

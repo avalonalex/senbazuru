@@ -72,7 +72,7 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | **Normal** | The direction perpendicular to a face, pointing out of the side the winding defines. |
 | **Rigid transform** | A motion that rotates and translates but never bends, stretches or scales. What a face undergoes when paper folds. See `Senbazuru.Geometry.Rigid`. |
 | **Loop closure** | The condition that the turns round an interior vertex compose back to nothing. Only angles satisfying it describe paper that can actually fold; a spanning tree cuts the loops and so never tests it. See [notes/fold-angles-are-the-state.md](notes/fold-angles-are-the-state.md). |
-| **Tear** | What a folding algorithm produces from angles that fail loop closure: the faces round a vertex disagree about where it goes, so the sheet is pulled apart. Plausible-looking and wrong. |
+| **Tear** | What a folding algorithm produces from angles that fail loop closure: the faces round a vertex disagree about where it goes, so the sheet is pulled apart. Plausible-looking and wrong. Watching the vertices is not enough on its own — two faces across a crease share only that crease's endpoints, which sit on its rotation axis and agree however the crease is folded, so a loop the walk closed by turning *nothing* leaves no vertex disagreeing. `Senbazuru.Origami.Folding` therefore also checks that each crease's own angle came out. |
 | **Orthographic projection** | Flattening 3D onto a page along parallel lines, with no perspective. Parallel edges stay parallel. |
 | **Isometric** | An orthographic view whose direction has equal magnitude on all three axes, so all three foreshorten equally. |
 | **Basis** | Three perpendicular unit vectors defining a view: right, up, and forward. |
