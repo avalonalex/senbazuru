@@ -186,10 +186,12 @@ issues are the detail.
    FOLD output ([#19](https://github.com/avalonalex/senbazuru/issues/19))
    came first, since nothing else can be built without it. The first move is
    built too — `crease` draws a line on a pattern and writes it out. What is
-   missing is the rest of the vocabulary, and the one hard thing in it: a book
-   gives its instructions on paper that is *already folded*, so a line drawn in
-   step 4 is one crease per layer, each landing somewhere different on the flat
-   sheet ([#70](https://github.com/avalonalex/senbazuru/issues/70)). Not a sequence *solver* — see below.
+   missing is the rest of the vocabulary. The one hard thing in it is done:
+   a book gives its instructions on paper that is *already folded*, and
+   `crease --folded` draws a line on the model and writes the creases it makes
+   on the sheet — one per face it crosses, each of the kind that layer's own way
+   up asks for, so asking for a single valley comes back as a mix of mountains
+   and valleys. Not a sequence *solver* — see below.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
 2. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**

@@ -18,6 +18,7 @@ module Senbazuru.Cli
 where
 
 import Control.Monad (unless, when)
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
@@ -63,6 +64,7 @@ import Senbazuru.Origami.Stacking
     stateCount,
   )
 import Senbazuru.Origami.Step (Motion, motionsBetween)
+import Senbazuru.Origami.ThroughLayers (creaseThroughLayers, renderThroughError)
 import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Gltf (Thickness (..), renderGlb, renderGltfError)
@@ -91,7 +93,11 @@ data CreaseOptions = CreaseOptions
     creaseFrame :: Maybe Int,
     creaseFrom :: (Double, Double),
     creaseTo :: (Double, Double),
-    creaseAs :: Assignment
+    creaseAs :: Assignment,
+    -- | Read the two ends on the model the pattern folds into, rather than on
+    -- the pattern, and crease every layer under the line between them. What is
+    -- written out is still the pattern.
+    creaseFolded :: Bool
   }
   deriving stock (Eq, Show)
 
@@ -243,6 +249,13 @@ creaseOptions =
           <> help "The other end (use --to=-1,0 for a negative coordinate)"
       )
     <*> assignmentOption
+    <*> switch
+      ( long "folded"
+          <> help
+            ( "Read --from and --to on the model the pattern folds into, and"
+                <> " crease every layer under that line. Writes the pattern"
+            )
+      )
 
 -- | @x,y@ as a point.
 --
@@ -681,19 +694,30 @@ creaseFile :: CreaseOptions -> FoldFile -> IO ()
 creaseFile o f = do
   let index = fromMaybe 0 (creaseFrame o)
   frame <- frameAt index f
-  case creaseAlong (toV2 (creaseFrom o)) (toV2 (creaseTo o)) (creaseAs o) frame of
-    Left err ->
-      die ("cannot crease " <> T.pack (creaseInput o) <> ": " <> renderFoldError err)
-    Right creased -> do
-      let document = replacingFrame index creased f
-      case creaseOutput o of
-        Nothing -> BS.putStr (encodeFoldFile document)
-        Just path ->
-          saveFoldFile path document >>= \case
-            Left err -> die (renderSaveError err)
-            Right () -> pure ()
+  creased <- either refuse pure (drawn frame)
+  let document = replacingFrame index creased f
+  case creaseOutput o of
+    Nothing -> BS.putStr (encodeFoldFile document)
+    Just path ->
+      saveFoldFile path document >>= \case
+        Left err -> die (renderSaveError err)
+        Right () -> pure ()
   where
     toV2 (x, y) = V2 x y
+
+    -- Both verbs are "draw a line and hand back a pattern", so the only thing
+    -- that differs is which surface the two ends are read on. They refuse for
+    -- different reasons, though, so each renders its own error and this joins
+    -- the two into the message a caller sees.
+    drawn frame
+      | creaseFolded o =
+          first renderThroughError $
+            creaseThroughLayers (toV2 (creaseFrom o)) (toV2 (creaseTo o)) (creaseAs o) frame
+      | otherwise =
+          first renderFoldError $
+            creaseAlong (toV2 (creaseFrom o)) (toV2 (creaseTo o)) (creaseAs o) frame
+
+    refuse why = die ("cannot crease " <> T.pack (creaseInput o) <> ": " <> why)
 
 -- | Write one frame out as a 3D model.
 --

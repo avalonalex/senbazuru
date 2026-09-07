@@ -529,13 +529,58 @@ it does to the paper rather than as what you did. Asking the question directly
 would mean deciding what a sheet *is* before deciding what a move is, and the
 tracing already knows.
 
-And it refuses a *folded* form outright. Creasing one means creasing through
-its layers: a line drawn across a model folded in half is two creases on the
-flat sheet, mirror images about the existing fold, and across a finished crane
-it is up to thirty-two. That is
-[#70](https://github.com/avalonalex/senbazuru/issues/70), and it is the move
-that turns creasing from a way to draw a crease pattern into a way to write a
-folding sequence.
+### Creasing through the layers
+
+A book almost never gives its instructions on the flat sheet. Step 4 says "fold
+the top corner down" about paper that was folded in half in step 2, and the
+reader's fingers are creasing every layer under the line at once. That is what
+`--folded` does: the two ends are read on the model the pattern folds into, and
+what comes back is still the pattern.
+
+```bash
+stack run -- crease examples/diagonal-cp.fold --folded --from 0,0.5 --to 0.5,0 --valley -o pleat.fold
+```
+
+`diagonal-cp.fold` is the unit square with a valley down its diagonal, so it
+folds in half onto the triangle `(0,0), (1,0), (0,1)`. That command draws the
+triangle's midline, which reaches both layers, and two creases come back:
+
+| Layer | On the sheet | Kind |
+| --- | --- | --- |
+| the half that did not move | `(0, 0.5)` to `(0.5, 0)` | valley, as asked |
+| the half folded over | `(0.5, 1)` to `(1, 0.5)` | **mountain** |
+
+Mirror images about the existing fold, and of opposite kinds. **The second half
+is the interesting one**, and it is not a bug. Every layer of a packet creases
+the same physical way, but a flap folded over is upside down, so a fold that
+opens towards you is a valley where the sheet is face up and a mountain where it
+is face down. Fold a square in half, crease the packet, unfold it, and there is
+one of each. Do the same across the quarter fold, which is four layers, and two
+of the four come back mountains and two valleys — decided quarter by quarter, by
+how many times each turned over on its way into the packet. Passing the
+requested assignment through unchanged would put every crease in the right place
+and give a file that folds into a different model.
+
+Which way up a layer ended is not read from the file. Each face of a folded
+model carries the rigid motion that placed it, and where that motion sends the
+up direction is the answer — for a model folded flat, exactly up or exactly
+down, so there is no near-tie to get wrong. The same motion inverted is what
+takes the drawn line back to the sheet in the first place.
+
+The count is worth being careful about too. A line on a folded model is one
+crease per **face** it crosses, which is not one per layer and is usually more.
+Across the folded crane the worst line crosses 56 of its 72 faces, where the
+deepest stack of paper found over any single point is 24 and the deepest layer
+number is 32 — three different questions, and only the first bounds the work.
+
+Three limits, all deliberate. Every layer under the line is creased; "fold the
+top layer only" is a different instruction and part of
+[#60](https://github.com/avalonalex/senbazuru/issues/60). The model has to fold
+*flat*, since a line drawn on the page of a model with paper in the air is a ray
+and not a point. And the input is the **pattern**, not a file that is already a
+folded form: the motions only exist because senbazuru did the folding, and a
+file that arrives folded carries neither them nor a sheet to map back to.
+Without `--folded`, a folded form is still refused outright.
 
 ## What it checks
 

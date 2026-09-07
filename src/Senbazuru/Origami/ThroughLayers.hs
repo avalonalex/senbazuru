@@ -1,0 +1,264 @@
+-- |
+-- Module      : Senbazuru.Origami.ThroughLayers
+-- Description : Creasing a model that is already folded, through its layers.
+--
+-- "Senbazuru.Fold.Creasing" draws a line on a flat sheet. This draws one on a
+-- model that has already been folded, which is how a book actually gives its
+-- instructions: step 4 says \"fold the top corner down\" about paper that was
+-- folded in half in step 2, and the reader's fingers are creasing every layer
+-- under the line at once.
+--
+-- == One segment per face, not one crease per layer
+--
+-- A line drawn across a folded model is not one crease and it is not one crease
+-- per layer either. The paper under the line is a set of /faces/, each of which
+-- arrived there by a different fold, so each becomes a different line on the
+-- flat sheet. The count is therefore the number of faces the line crosses,
+-- which is bounded by the number of faces and by nothing smaller: a line across
+-- the folded crane crosses 56 of its 72, where the deepest stack of paper found
+-- over any one point is 24 and the largest layer number is 32. Those are three
+-- different questions and only the first one is this one.
+--
+-- Most of the 56 are short pieces of a handful of creases, cut up by the
+-- creases the pattern already has, so \"56 creases\" would overstate what a
+-- person would say they had drawn.
+--
+-- == Why the flat pattern stays in charge
+--
+-- The move is expressed on the sheet and uses the folded model only to say
+-- /where/. Fold the pattern, work out what the line becomes on the sheet, and
+-- crease the sheet — so there is one authoritative representation and it is the
+-- one @docs\/notes\/fold-angles-are-the-state.md@ argues the state actually is.
+--
+-- The alternative, creasing the folded form directly and folding backwards,
+-- leaves the model in two representations at once with no answer to which wins.
+--
+-- == The line that is not a mistake: half the creases come out the other kind
+--
+-- Ask for a valley and about half of what gets written is a __mountain__, and
+-- that is correct. Every layer of a packet creases the same physical way, but
+-- alternate layers are upside down — a flap folded over shows the underside of
+-- the paper — so a fold that opens towards the reader is a valley on the faces
+-- lying top-up and a mountain on the ones lying top-down. Fold a square in half
+-- and crease the packet, and unfolding gives you one of each. Passing the
+-- caller's assignment through unchanged would produce a file that looks right
+-- and folds into a different model.
+--
+-- Which way up a face lies is read from the motion that placed it, as where it
+-- sends the up direction. A flat fold sends it to exactly plus or minus itself
+-- and nothing in between, so the sign is the whole answer. Deliberately /not/
+-- from "Senbazuru.Origami.Flat"'s @panelFaceUp@, which reads the winding the
+-- file wrote — a guess with nothing to cancel against, per CLAUDE.md. The
+-- motion is a measurement.
+--
+-- == What it will not do
+--
+-- __Every layer under the line is creased.__ A book distinguishes folding
+-- through all the layers from folding only the near ones, and that second
+-- instruction is a different move belonging with the
+-- <https://github.com/avalonalex/senbazuru/issues/60 vocabulary>. It would also
+-- need to know which face is over which at a point, which is a depth question
+-- this deliberately never asks.
+--
+-- __Flat-folded models only.__ On a model with paper still in the air, a line
+-- drawn on the page is a ray rather than a point and has no single place it
+-- came from. That is the same restriction "Senbazuru.Origami.Visible" and the
+-- layer solver carry, and it arrives here for free from
+-- 'Senbazuru.Origami.Flat.flatSheet'.
+module Senbazuru.Origami.ThroughLayers
+  ( creaseThroughLayers,
+    ThroughError (..),
+    renderThroughError,
+  )
+where
+
+import Control.Monad (foldM, guard, when)
+import Data.Bifunctor (first)
+import Data.IntMap.Strict qualified as IM
+import Data.Maybe (mapMaybe)
+import Data.Text (Text)
+import Data.Text qualified as T
+import Numeric (showGFloat)
+import Senbazuru.Fold.Creasing (creaseAlong)
+import Senbazuru.Fold.Query (FoldError (..), renderFoldError)
+import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
+import Senbazuru.Geometry (V2 (..), norm, (^+^), (^-^))
+import Senbazuru.Geometry.Polygon (clipSegment, strictlyInside)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, inverse, matApply, rigidLinear)
+import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.VectorSpace ((*^))
+import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet)
+import Senbazuru.Origami.Folding
+  ( Folded (..),
+    FoldingError,
+    foldFrameWith,
+    renderFoldingError,
+  )
+
+-- | Everything that stops a line drawn on a folded model becoming creases.
+data ThroughError
+  = -- | The pattern could not be folded, so there is no model to draw on. The
+    -- commonest one by far is a frame that is /already/ a folded form: such a
+    -- file records no angles to fold and no sheet to map back to, and
+    -- recovering one would be unfolding, which is a different problem.
+    CannotFold !FoldingError
+  | -- | The model does not come back into one plane, so a line drawn on the
+    -- page passes through several thicknesses of paper at different heights
+    -- and does not name one point on any of them. Carries the span in @z@.
+    PaperStillInTheAir !Double
+  | -- | A face is not convex, and clipping a line to it is only right for ones
+    -- that are.
+    FaceNotConvex !FaceId
+  | -- | The folded model is unsound in a way that has nothing to do with this
+    -- move.
+    ThroughRefused !FoldError
+  | -- | The two ends given are the same point, so there is no line.
+    LineWithoutLength
+  | -- | Nothing was creased: either the line misses the model, or it runs along
+    -- the model's edges rather than across its paper. Both leave no face with a
+    -- stretch of line properly inside it.
+    NoPaperUnderTheLine
+  | -- | One of the lines the move worked out was refused when it was drawn on
+    -- the sheet. Carries the face it came from, so the refusal can be traced
+    -- back to a layer, and what "Senbazuru.Fold.Creasing" said.
+    CannotCrease !FaceId !FoldError
+  deriving stock (Eq, Show)
+
+-- | A human-readable rendering of a 'ThroughError'.
+renderThroughError :: ThroughError -> Text
+renderThroughError = \case
+  CannotFold err -> renderFoldingError err
+  PaperStillInTheAir dz ->
+    "the folded model spans "
+      <> num dz
+      <> " in z, so it is not folded flat and a line drawn on it does not name"
+      <> " one point of the paper"
+  FaceNotConvex (FaceId f) ->
+    "face " <> tshow f <> " is not convex, so the line cannot be clipped to it"
+  ThroughRefused err -> renderFoldError err
+  LineWithoutLength ->
+    "the two ends are the same point, so they name no line to crease along"
+  NoPaperUnderTheLine ->
+    "no face of the folded model has this line across it, so there is nothing"
+      <> " to crease: either it misses the model or it runs along its edges"
+  CannotCrease (FaceId f) err ->
+    "the crease this line makes on the layer from face "
+      <> tshow f
+      <> " was refused: "
+      <> renderFoldError err
+
+-- | Draw a line on a folded model and crease every layer under it.
+--
+-- @creaseThroughLayers from to assignment pattern@ takes a crease pattern with
+-- fold angles, folds it, reads the two points __in the folded model's
+-- coordinates__, and hands back the pattern with the creases that line makes on
+-- the sheet. What comes back is a crease pattern, never a folded form: the
+-- caller folds it again to see the result.
+--
+-- The assignment asked for is the one a reader would name looking at the model
+-- from @+z@, which is where a crease pattern is drawn from and how mountain and
+-- valley are defined. Layers lying face down get the other one — see the module
+-- header, because that is the part that looks wrong and is not.
+creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame
+creaseThroughLayers from to assignment fr = do
+  folded <- first CannotFold (foldFrameWith fr)
+  -- Of the folded form, not of the pattern: the rings the line is clipped
+  -- against are where the paper is now. This is also the one refusal that has
+  -- to happen before anything else is measured, since a model with paper in the
+  -- air has no plane for the line to be drawn on.
+  sheet <- first fromFlat (flatSheet (foldedFrame folded))
+  -- Judged by the folded model's own tolerance, so that "the same point" means
+  -- here what it means everywhere else on this paper.
+  when (norm (to ^-^ from) <= sheetHair sheet) (Left LineWithoutLength)
+  let shares = mapMaybe (shareFor sheet (foldedPlacements folded) assignment (from, to)) (sheetPanels sheet)
+  when (null shares) (Left NoPaperUnderTheLine)
+  -- Every share is worked out before any of them is drawn, and that order is
+  -- not an accident. 'creaseAlong' drops the faces and has them traced again, so a
+  -- face number means something different the moment the first crease lands.
+  -- The shares themselves are points on the flat sheet, which do not move.
+  foldM draw (foldedPattern folded) shares
+  where
+    draw paper share =
+      first (CannotCrease (layerFace share)) $
+        creaseAlong (layerFrom share) (layerTo share) (layerAs share) paper
+
+-- | One layer's share of the line: where it lands on the sheet, and what kind
+-- of crease it is there.
+data LayerCrease = LayerCrease
+  { layerFace :: !FaceId,
+    layerFrom :: !V2,
+    layerTo :: !V2,
+    layerAs :: !Assignment
+  }
+  deriving stock (Eq, Show)
+
+-- | What the drawn line becomes on one face's worth of paper, if it crosses it.
+--
+-- The two tests are one question asked twice, and both are needed.
+-- 'clipSegment' hands back a segment lying exactly /along/ an edge of the ring
+-- whole, because such a segment is inside the polygon by the boundary-included
+-- reading it uses. That is a line drawn down the fold rather than across the
+-- paper, and creasing along a crease that is already there is refused later
+-- anyway, less clearly. So the midpoint is asked whether it is properly inside.
+-- The length test catches the other degenerate clip, where the line only grazes
+-- a corner. "Senbazuru.Origami.Stacking"'s @runsAcross@ is the same pair.
+shareFor :: Sheet -> IM.IntMap Rigid -> Assignment -> (V2, V2) -> Panel -> Maybe LayerCrease
+shareFor sheet placements assignment line panel = do
+  placed <- IM.lookup (unFaceId (panelId panel)) placements
+  (u, v) <- clipSegment (panelRing panel) line
+  guard (norm (v ^-^ u) > sheetHair sheet)
+  guard (strictlyInside (sheetHair sheet) (panelRing panel) (0.5 *^ (u ^+^ v)))
+  let back = inverse placed
+  pure
+    LayerCrease
+      { layerFace = panelId panel,
+        layerFrom = ontoSheet back u,
+        layerTo = ontoSheet back v,
+        layerAs = if facesUp placed then assignment else theOtherWay assignment
+      }
+  where
+    -- Out of the plane the model lies in, back through the fold, and into the
+    -- plane the pattern lies in. The z that comes back is nought to within
+    -- rounding, since undoing a flat fold lands in the plane the sheet was cut
+    -- from, and dropping it is what makes this a crease pattern coordinate
+    -- again.
+    ontoSheet back (V2 x y) = case applyRigid back (V3 x y (sheetPlane sheet)) of
+      V3 x' y' _ -> V2 x' y'
+
+-- | Whether this face still has the top side of the paper towards @+z@.
+--
+-- Where the motion sends the up direction. For a model folded flat that is
+-- exactly @+z@ or exactly @-z@ — every turn is by a half circle about a line in
+-- the plane, and those map the up direction to plus or minus itself — so the
+-- sign is the whole answer and there is no near-tie to get wrong.
+facesUp :: Rigid -> Bool
+facesUp placed = v3z (matApply (rigidLinear placed) (V3 0 0 1)) > 0
+
+-- | The same fold seen from the other side of the paper.
+--
+-- Only mountain and valley have another side. A border is a border whichever
+-- way the paper is turned; and flat and unassigned say the paper does not fold
+-- there, or that nobody has decided, and neither of those has a direction to
+-- reverse.
+theOtherWay :: Assignment -> Assignment
+theOtherWay = \case
+  Mountain -> Valley
+  Valley -> Mountain
+  other -> other
+
+-- | A 'FlatError' as this module's own refusal.
+--
+-- Flattened rather than wrapped, the way "Senbazuru.Origami.Stacking" does it:
+-- what stops this move is a fact about the model, and it reads better said in
+-- this module's words than as another error type quoted inside one.
+fromFlat :: FlatError -> ThroughError
+fromFlat = \case
+  PaperInTheAir dz -> PaperStillInTheAir dz
+  ConcaveFace f -> FaceNotConvex f
+  FlatRefused err -> ThroughRefused err
+
+num :: Double -> Text
+num x = T.pack (showGFloat (Just 6) x "")
+
+tshow :: (Show a) => a -> Text
+tshow = T.pack . show

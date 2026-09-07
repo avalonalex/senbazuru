@@ -27,7 +27,7 @@ senbazuru export FILE [-o OUT.glb] [OPTIONS]
 senbazuru check  FILE [--frame N] [--tolerance DEG]
 senbazuru info   FILE [--fold] [--layer-budget N]
 senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
-                      [--frame N] [-o OUT.fold]
+                      [--folded] [--frame N] [-o OUT.fold]
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -192,6 +192,7 @@ stack run -- crease examples/quarter-fold.fold --from 0,0 --to 1,1 --valley -o c
 | `--from X,Y` | One end of the crease |
 | `--to X,Y` | The other end |
 | `--mountain` / `--valley` / `--flat` / `--unassigned` | What kind of crease it is. Exactly one, and required |
+| `--folded` | Read `--from` and `--to` on the model the pattern folds into, and crease every layer under that line. What is written out is still the pattern |
 | `--frame N` | Which frame to crease (default 0). The others are carried through untouched |
 | `-o`, `--output` | Where to write. Default is stdout |
 
@@ -220,10 +221,54 @@ edge of the paper — though that last one is reported as what it does to the
 faces rather than as what it is, which is
 [#71](https://github.com/avalonalex/senbazuru/issues/71).
 
-It also refuses a *folded* form. Creasing one means creasing through its
-layers, which is one crease per layer landing somewhere different on the flat
-sheet, and is [#70](https://github.com/avalonalex/senbazuru/issues/70) — the move that turns creasing from a way to draw a
-crease pattern into a way to write a folding sequence.
+### `--folded`, creasing through the layers
+
+A book almost never gives its instructions on the flat sheet. Step 4 says "fold
+the top corner down" about paper that was folded in half in step 2, and the
+reader is creasing every layer under their fingers at once. `--folded` is that
+move: the two ends are read on the model the pattern folds into, and what comes
+back is the pattern with everything that line creases marked on it.
+
+```bash
+stack run -- crease examples/diagonal-cp.fold --folded --from 0,0.5 --to 0.5,0 --valley
+```
+
+`diagonal-cp.fold` is the unit square with a valley down the diagonal, so it
+folds in half onto a triangle. That command draws the triangle's midline, which
+reaches both layers, and the pattern comes back with two new creases —
+mirror images about the existing fold, and **one of each kind**:
+
+| | |
+| --- | --- |
+| `(0, 0.5)` to `(0.5, 0)` | valley, as asked |
+| `(0.5, 1)` to `(1, 0.5)` | **mountain** |
+
+That is not a bug and it is what paper does. Every layer of a packet creases the
+same physical way, but a flap folded over is upside down, so the same fold is a
+valley where the sheet is face up and a mountain where it is face down. Fold a
+square in half, crease the packet, unfold, and you have one of each. Ask for a
+valley across the quarter fold, which is four layers, and two of the four come
+back mountains and two valleys, decided by how many times each quarter of the
+sheet turned over on its way into the packet.
+
+A line drawn on a folded model is **one crease per face it crosses**, which is
+not the same as one per layer and is usually more: across the folded crane, the
+worst line crosses 56 of its 72 faces, where the deepest stack of paper found
+over any single point is 24 and the deepest layer number is 32.
+
+Three things it will not do. It creases *every* layer under the line — "fold the
+top layer only" is a different instruction, and is part of
+[#60](https://github.com/avalonalex/senbazuru/issues/60). It wants a model that
+folds *flat*, because a line drawn on the page of a model with paper still in
+the air is a ray rather than a point and names no one place on the sheet. And it
+takes the **pattern**, not a file that is already a folded form: the line is
+mapped back by undoing the motion that placed each face, and those motions exist
+only because we did the folding. A file that arrives already folded carries
+neither them nor a sheet to map back to, and recovering one is unfolding.
+
+Without `--folded` a folded form is refused outright, as it always was: the
+regions between a folded form's creases are not its faces, so there is nothing
+to draw a line on.
 
 ## `check`
 
