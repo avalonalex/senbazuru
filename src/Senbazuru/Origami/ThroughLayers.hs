@@ -82,7 +82,6 @@
 module Senbazuru.Origami.ThroughLayers
   ( creaseThroughLayers,
     ThroughError (..),
-    LineEnd (..),
     renderThroughError,
   )
 where
@@ -95,7 +94,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showGFloat)
 import Senbazuru.Fold.Creasing (creaseAlong)
-import Senbazuru.Fold.Query (FoldError (..), renderFoldError)
+import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), creaseEndFlag, renderFoldError)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
 import Senbazuru.Geometry (V2 (..), norm, (^+^), (^-^))
 import Senbazuru.Geometry.Polygon (clipSegment, strictlyInside)
@@ -109,20 +108,6 @@ import Senbazuru.Origami.Folding
     foldFrameWith,
     renderFoldingError,
   )
-
--- | Which end of the drawn line a refusal is about.
---
--- Named rather than a 'Bool' because it reaches the user: being told an end is
--- in the middle of a face is only half an instruction if they then have to
--- guess which of the two to move.
-data LineEnd = FromEnd | ToEnd
-  deriving stock (Eq, Show)
-
--- | The flag the user typed for this end.
-endFlag :: LineEnd -> Text
-endFlag = \case
-  FromEnd -> "--from"
-  ToEnd -> "--to"
 
 -- | Everything that stops a line drawn on a folded model becoming creases.
 data ThroughError
@@ -168,7 +153,7 @@ data ThroughError
     -- Unlike "Senbazuru.Fold.Creasing", which has no way to say where a sheet
     -- /is/ and says so, this can ask: the folded model is a list of convex
     -- panels and the question is one predicate on each.
-    LineStopsOnTheModel !LineEnd !FaceId
+    LineStopsOnTheModel !CreaseEnd !FaceId
   | -- | A face of the folded model has no motion recorded for it, so there is
     -- no way to take its share of the line back to the sheet.
     --
@@ -204,7 +189,7 @@ renderThroughError = \case
     "no face of the folded model has this line across it, so there is nothing"
       <> " to crease: either it misses the model or it runs along its edges"
   LineStopsOnTheModel end (FaceId f) ->
-    endFlag end
+    creaseEndFlag end
       <> " is inside face "
       <> tshow f
       <> " of the folded model rather than on that face's edge, so that layer"

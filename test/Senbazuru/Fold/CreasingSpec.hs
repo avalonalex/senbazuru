@@ -19,7 +19,7 @@ import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
 import Senbazuru.Fold.Creasing
 import Senbazuru.Fold.Load (decodeFile, renderLoadError)
-import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), renderFoldError)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Test.Hspec
@@ -177,13 +177,33 @@ spec = do
       creaseAlong (V2 0.5 0.5) (V2 0.5 0.5) Valley square
         `shouldBe` Left CreaseWithoutLength
 
-    it "refuses one that runs off the edge of the paper" $ do
-      -- Not checked as such: the crease simply ends at a vertex with one
-      -- crease at it, and there is no face to trace round that. The refusal is
-      -- about the paper rather than about the intent, which is the trade this
-      -- module makes on purpose.
+    it "refuses an end that meets nothing the pattern already has" $ do
+      -- Named for what it is, not for what it does to the faces. The first end
+      -- is in the middle of the square and the second is off it altogether;
+      -- both fail the same test, and the message says which end and where.
       creaseAlong (V2 0.5 0.5) (V2 3 3) Valley square
-        `shouldBe` Left (VertexTooFewCreases (VertexId 4) 1)
+        `shouldBe` Left (CreaseEndMeetsNothing FromEnd (V2 0.5 0.5))
+
+    it "refuses an end in the middle of the paper the same way" $ do
+      -- The case that stops the tempting message. Both ends are squarely on the
+      -- sheet, so "that end is off the paper" would be a false thing to say --
+      -- and the old refusal, a vertex with one crease at it, was the same
+      -- sentence for both. What is true of both is that neither end meets
+      -- anything.
+      creaseAlong (V2 0.3 0.3) (V2 0.7 0.7) Valley square
+        `shouldBe` Left (CreaseEndMeetsNothing FromEnd (V2 0.3 0.3))
+
+    it "names the second end when the first is on an edge" $ do
+      -- Guards the two above: if the end were not carried, or always reported
+      -- as the first, this would say --from.
+      creaseAlong (V2 0 0) (V2 3 3) Valley square
+        `shouldBe` Left (CreaseEndMeetsNothing ToEnd (V2 3 3))
+
+    it "says so in the message, since that is the whole of this refusal" $
+      renderFoldError (CreaseEndMeetsNothing ToEnd (V2 3 3))
+        `shouldBe` ( "--to (3.0, 3.0) does not meet any crease or edge the pattern"
+                       <> " already has, so the crease would stop there and divide nothing"
+                   )
 
     it "refuses to crease a folded form" $ do
       -- Creasing one means creasing through its layers, which is a different

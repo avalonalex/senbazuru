@@ -289,6 +289,14 @@ are not contributors can find it, and so there is only one copy to keep true.
   onto `foldedPattern`; using the frame that went in numbers the faces of a
   different drawing, and `examples/unit-square.fold` is a file where the two
   differ.
+- **A crease's end has to meet something, and that is a question about the
+  drawing rather than about the sheet.** `Fold.Creasing` refuses an end that is
+  not on any existing edge, naming which end and the point given. The tempting
+  message is "that end is off the paper" and it is wrong: an end off the paper,
+  an end in the middle of a face, and an end nowhere near the model all fail the
+  same test, so all three used to produce one sentence about a vertex the caller
+  never chose. Telling them apart would need the sheet question this module is
+  built to avoid; pointing at the end that has to move does not.
 - **Creasing through the layers asks whether an end is inside a *face*, never
   whether it is inside the *model*.** What has to hold is that every layer the
   line reaches is creased right across, which is a fact about each face on its
@@ -729,11 +737,12 @@ Deliberate omissions, so nobody thinks they are bugs:
   valley, and `foldFrame` reads the same value off the assignment when the
   array is absent, so writing zero made one command mean two things depending
   on whether the file happened to record angles.
-- A crease that runs off the paper is refused for what it does to the faces
-  ("vertex 4 has 1 crease at it") rather than for what it is. `Fold.Creasing`
-  has no "is this point on the sheet" question on purpose: answering it means
-  deciding what a sheet is, and the face tracing already refuses the case
-  correctly. A better sentence in front of it is #71.
+- `crease` does not say that an end is *off the paper*, only that it meets
+  nothing. Those are different: a crease from the middle of a face to the middle
+  of a face has both ends on the sheet and is refused too, so "off the paper"
+  would be false half the time. `Fold.Creasing` still has no "is this point on
+  the sheet" question — answering it means deciding what a sheet is — and does
+  not need one to point at the end that has to move.
 - The FOLD writer does not refuse a non-finite number. `aeson` writes an
   infinity as the string `"+inf"` and a `NaN` as `null`, neither of which is a
   FOLD coordinate, and the decoder reads a `null` coordinate back as `NaN` so
