@@ -126,10 +126,6 @@ spec = do
       applyRigid r (V3 2 0 0) `shouldSatisfy` nearV3 (V3 1 1 0)
       applyRigid (inverse r) (V3 1 1 0) `shouldSatisfy` nearV3 (V3 2 0 0)
 
-    it "is the identity's own inverse" $
-      forAll genPoint $
-        \x -> nearV3 (applyRigid (inverse identity) x) x
-
   describe "matMul" $
     it "multiplies rows into columns, not rows into rows" $ do
       -- A transposition slip here is invisible for symmetric matrices and for

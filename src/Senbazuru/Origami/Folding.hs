@@ -220,20 +220,35 @@ foldFrame = fmap foldedFrame . foldFrameWith
 data Folded = Folded
   { -- | The folded form, exactly what 'foldFrame' returns.
     foldedFrame :: !Frame,
-    -- | __The pattern the transforms are against__, which is not the frame that
-    -- went in. Folding first hands the input to
+    -- | __The pattern the transforms are against__, which is not necessarily the
+    -- frame that went in. Folding first hands the input to
     -- 'Senbazuru.Fold.Crossings.withPlanarFaces', and cutting the crossings
     -- adds vertices and re-traces the faces. So a face's transform is keyed by
     -- its index into /this/ frame's faces, and it is this frame that a caller
     -- wanting to write something back onto the sheet has to write onto.
     --
-    -- Handing it back states that invariant. The alternative is every caller
+    -- Most frames come back from that untouched — a frame that records its own
+    -- faces and has nothing crossing is returned as it was — so checking the
+    -- claim against the nearest example will usually show the two are equal.
+    -- The one that matters is @examples\/unit-square.fold@, whose creases cross
+    -- with no vertex where they meet: eight vertices go in and nine come out.
+    --
+    -- Handing it back states the invariant. The alternative is every caller
     -- calling @withPlanarFaces@ again itself and trusting that it lands on the
     -- same frame, which is true today and is not a thing to build on.
+    --
+    -- One thing it does /not/ promise: that face @i@'s corners are listed in the
+    -- same order here as in 'foldedFrame'. Folding writes its faces
+    -- counterclockwise as measured on the pattern, so a face the file listed
+    -- clockwise has its ring reversed on the way out. The two frames agree about
+    -- which vertices a face has and about their ids, not about where the ring
+    -- starts or which way it runs.
     foldedPattern :: !Frame,
-    -- | One motion per face, keyed by 'Senbazuru.Fold.Types.FaceId'. Every face
-    -- of 'foldedPattern' has one: a face the walk could not reach is
-    -- 'DisconnectedFace' rather than a gap here.
+    -- | One motion per face, keyed by the @Int@ inside its
+    -- 'Senbazuru.Fold.Types.FaceId' — @IM.lookup (unFaceId f)@, as
+    -- "Senbazuru.Origami.ThroughLayers" does. Every face of 'foldedPattern' has
+    -- one: a face the walk could not reach is 'DisconnectedFace' rather than a
+    -- gap here.
     foldedPlacements :: !(IM.IntMap Rigid)
   }
   deriving stock (Eq, Show)

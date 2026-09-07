@@ -128,7 +128,8 @@ rotationAbout p axis theta = case normalize axis of
         (V3 (t * x * y + s * z) (t * y * y + c) (t * y * z - s * x))
         (V3 (t * x * z - s * y) (t * y * z + s * x) (t * z * z + c))
 
--- | The motion that undoes this one: @inverse r \`after\` r@ is 'identity'.
+-- | The motion that undoes this one: @inverse r \`after\` r@ is 'identity' to
+-- within rounding.
 --
 -- Folding needs this to run backwards. A face of a folded model carries the
 -- motion that put it there, so inverting that motion takes a point on the
@@ -150,7 +151,12 @@ rotationAbout p axis theta = case normalize axis of
 -- scaling matrix would come back from here with a plausible value that is not
 -- an inverse, and nothing checks. If that ever becomes possible, this is the
 -- function that breaks first.
+--
+-- The offset is written as a subtraction from zero rather than as a
+-- multiplication by minus one, which would turn a zero component into a
+-- negative zero. The two compare equal and print differently, and this project
+-- has been caught by that before — see @formatNumber@.
 inverse :: Rigid -> Rigid
-inverse (Rigid m t) = Rigid mi (negate 1 *^ matApply mi t)
+inverse (Rigid m t) = Rigid mi (V3 0 0 0 ^-^ matApply mi t)
   where
     mi = transpose m

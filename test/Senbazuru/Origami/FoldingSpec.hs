@@ -117,6 +117,31 @@ nearV3 a b = norm (a ^-^ b) < 1e-9
 positions :: Frame -> IM.IntMap V3
 positions fr = IM.fromList (zip [0 ..] (vertices fr))
 
+-- | Every corner of every face, carried by that face's own motion, lands where
+-- the folded frame draws it.
+carriesItsCorners :: FilePath -> Expectation
+carriesItsCorners path = do
+  flat <- loadFixture path
+  case foldFrameWith flat of
+    Left err -> expectationFailure (path <> ": expected a fold, got " <> show err)
+    Right f -> do
+      let onSheet = positions (foldedPattern f)
+          inModel = positions (foldedFrame f)
+      -- Guards the loop below, which asserts nothing at all if the face list is
+      -- empty -- and unit-square.fold records no faces, so an implementation
+      -- that handed back the frame that went in would make it empty.
+      length (facesVertices (foldedPattern f)) `shouldSatisfy` (> 0)
+      sequence_
+        [ case (IM.lookup v onSheet, IM.lookup v inModel, IM.lookup i (foldedPlacements f)) of
+            (Just before, Just landed, Just m) ->
+              applyRigid m before `shouldSatisfy` nearV3 landed
+            _ ->
+              expectationFailure
+                (path <> ": nothing placed vertex " <> show v <> " of face " <> show i)
+          | (i, ring) <- zip [0 ..] (facesVertices (foldedPattern f)),
+            VertexId v <- ring
+        ]
+
 spec :: Spec
 spec = do
   describe "rigidity" $ do
@@ -405,20 +430,17 @@ spec = do
       -- nothing: foldFrame is defined as this with the rest dropped, so that
       -- comparison is true by construction. What guards the refactor is the
       -- rest of this file, unchanged, and the goldens.
-      flat <- loadFixture "test/fixtures/quarter-fold.fold"
-      case foldFrameWith flat of
-        Left err -> expectationFailure ("expected a fold, got " <> show err)
-        Right f -> do
-          let onSheet = positions (foldedPattern f)
-              inModel = positions (foldedFrame f)
-          sequence_
-            [ case (IM.lookup v onSheet, IM.lookup v inModel, IM.lookup i (foldedPlacements f)) of
-                (Just before, Just after', Just m) ->
-                  applyRigid m before `shouldSatisfy` nearV3 after'
-                _ -> expectationFailure ("nothing placed vertex " <> show v <> " of face " <> show i)
-              | (i, ring) <- zip [0 ..] (facesVertices (foldedPattern f)),
-                VertexId v <- ring
-            ]
+      --
+      -- Checked on two fixtures, and the second is the one that matters.
+      -- quarter-fold.fold records its own faces and has nothing crossing, so
+      -- cutting leaves it alone and the face numbers are the file's own.
+      -- unit-square.fold records no faces at all and its creases cross with
+      -- no vertex where they meet, so the numbering is ours: an
+      -- implementation keyed against the frame that went in passes the first
+      -- fixture and fails this one.
+      mapM_
+        carriesItsCorners
+        ["test/fixtures/quarter-fold.fold", "test/fixtures/unit-square.fold"]
 
     it "places each face with the motion that put it there" $ do
       -- diagonal-cp.fold is the unit square with one valley along the diagonal
