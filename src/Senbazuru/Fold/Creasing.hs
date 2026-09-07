@@ -308,6 +308,11 @@ data Interning = Interning
 --
 -- Mountain and valley are the two that fold; everything else is a line on the
 -- paper that the paper is not folded along.
+--
+-- Not zero for those two. A valley with an angle of zero is not a valley, and
+-- 'Senbazuru.Origami.Folding.creaseIndex' reads the same @±180@ off the
+-- assignment when the array is absent — so writing zero here made one command
+-- mean two things, depending on whether the file happened to record angles.
 flatAngleFor :: Assignment -> Double
 flatAngleFor = \case
   Mountain -> -180

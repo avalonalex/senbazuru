@@ -66,6 +66,16 @@
 -- No normals are written. The specification requires a viewer to compute flat
 -- normals when a mesh carries none, and flat is exactly right for paper.
 --
+-- No crease lines are written either, and no animation: the per-face rigid
+-- transforms an animation would need come back from
+-- 'Senbazuru.Origami.Folding.foldFrameWith', but the intermediate angles that
+-- close their loops do not exist yet (#56).
+--
+-- Because the front /is/ the file's winding, a file whose faces are all wound
+-- backwards comes out here with its two colours swapped, exactly as it does on
+-- the page, and for the same reason: nothing in such a file says which side is
+-- which.
+--
 -- == Why this does not go through 'Senbazuru.Diagram'
 --
 -- Every other backend consumes a 'Senbazuru.Diagram.Diagram', and the

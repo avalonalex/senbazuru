@@ -482,6 +482,11 @@ reorient rewound o
 -- mountain folds to @-180°@ and a valley to @+180°@. That is what an assignment
 -- on its own can say — it names a direction and not an amount — and a flat fold
 -- is the only amount consistent with naming no number at all.
+--
+-- At @±180°@ the two are the same rigid motion: turning half a turn either way
+-- about a line lands in the same place. So folding cannot tell a flat mountain
+-- from a flat valley, and the assignment survives only as layer ordering, which
+-- is "Senbazuru.Origami.Stacking"\'s question rather than this module's.
 creaseIndex :: Frame -> Either FoldingError (M.Map EdgeKey (EdgeId, Double))
 creaseIndex fr = do
   angles <- foldAngles

@@ -38,6 +38,13 @@
 -- a wrapper rather than a coordinate for exactly that reason: the shape inside
 -- keeps its model coordinates, and the nudge is added after they have been
 -- scaled.
+--
+-- 'Arrow' and 'Label' need both units too: an arrow's curve is in model units
+-- and its head's size in page units, and a label is a model-space point with a
+-- page-unit type size. All three are finished by the backend /after/
+-- projection, which is the only place both units are in scope. That is what
+-- lets "Senbazuru.Diagram.Layout" combine figures by shifting their
+-- coordinates without recomputing how anything is inked.
 module Senbazuru.Diagram
   ( -- * Diagrams
     Diagram (..),

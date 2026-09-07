@@ -69,6 +69,10 @@ above and four from below. The crane's five make two pictures. A count of orders
 is a count of *models*, and how many of them a reader could tell apart is a
 different and smaller number.
 
+That is a trap for a test. Comparing rendered output across `--stacking` values
+mostly compares equal pictures; compare the `faceOrders` instead, or use the
+crane, whose states 0 and 3 draw differently.
+
 ## Why the search still needs a budget
 
 Splitting bounds the work by the size of the largest piece, which is a real

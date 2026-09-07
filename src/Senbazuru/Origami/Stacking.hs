@@ -91,6 +91,17 @@
 -- disagreement is 'WindingClash' rather than a guess. 'foldFrame' writes its
 -- faces counterclockwise as measured on the crease pattern, so the frames this
 -- module was built for always pass.
+-- == Where the time goes
+--
+-- The cost is the propagation, not the geometry, and only a profile says so.
+-- On a 161-layer accordion the whole triple enumeration — every one of the
+-- C(f, 3) 'Acyclic' rules — is 0.9% of the run, while looking pairs up in the
+-- decided-pairs map is over half (#88). Two things measured in GHCi said the
+-- opposite and were both wrong: the interpreter does not float the
+-- loop-invariant clip out that a compiled build does, so an "optimisation"
+-- worth 2× interpreted was worth nothing compiled. Measure with
+-- @stack build --profile@ and @+RTS -p@; a proxy measurement here has misled
+-- twice.
 module Senbazuru.Origami.Stacking
   ( solveStacking,
     StackingError (..),
