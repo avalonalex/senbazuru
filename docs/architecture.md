@@ -20,6 +20,8 @@ One direction of flow, no cycles:
      v               v               values; the extension picks the reader
  FoldFile / Frame                    Senbazuru.Fold.Types
      |                               a faithful, permissive mirror of the format
+     |  Senbazuru.Fold.Creasing      draw a new crease: a Frame in, a Frame
+     |                               out, and back through the two below
      |  Senbazuru.Fold.Crossings     cut the creases where they meet, so the
      |                               drawing is a planar graph
      |  Senbazuru.Fold.Faces         the faces a file did not record, traced
@@ -92,8 +94,8 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Import.Opx` | ORIPA `.opx` XML → segments. |
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Fold.Faces` | The faces a file does not record, traced from the creases. Refuses a drawing whose regions would not be its faces. Owns `Sheet`, the drawing itself. |
-| `Senbazuru.Fold.Creasing` | Draws a new crease on a pattern — the one operation that changes a crease pattern rather than reading one. |
 | `Senbazuru.Fold.Crossings` | Cuts creases at the points where they meet, so a drawing `Fold.Faces` refuses becomes one it can trace. `withPlanarFaces` is the pair — cut, then trace — that every backend calls. |
+| `Senbazuru.Fold.Creasing` | Draws a new crease on a pattern: the one operation that changes a crease pattern rather than reading one. Adds the line and hands the frame straight back to `Fold.Crossings`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |

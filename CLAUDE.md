@@ -180,9 +180,15 @@ that came out of a file. The alternative, a move that checks its own work, is
 two definitions of a valid pattern that drift.
 
 Note what a move has to destroy. Drawing a crease cuts at least one face in
-two, so `faces_vertices` and `frameExtras` go — and dropping the faces is also
+two, so `faces_vertices`, `faceOrders` — which name those faces and are read
+against their winding — and `frameExtras` all go. Dropping the faces is also
 what lets `splitCrossings` run at all, since it leaves a frame that records
 faces alone.
+
+`frameExtras` is dropped too widely, and knowingly: on the key frame it holds
+the *file's* unknown keys as well as the frame's, so creasing a pattern
+destroys a `cpedit:page` that a new crease does not invalidate. Nothing can
+tell those apart from the ones it does invalidate. That is #73.
 
 **A new input format becomes a `Frame` and stops there.** `Senbazuru.Import.*`
 reads Orihime and Oriedita's `.cp` and ORIPA's `.opx` — both a flat list of
@@ -647,6 +653,11 @@ Deliberate omissions, so nobody thinks they are bugs:
   line drawn on one is a crease *per layer* landing somewhere different on the
   flat sheet — #70, and the wall the authoring vocabulary meets on its second
   move.
+- A new crease takes the fold angle its assignment implies — ±180 for a
+  mountain or a valley — not zero. A valley with an angle of zero is not a
+  valley, and `foldFrame` reads the same value off the assignment when the
+  array is absent, so writing zero made one command mean two things depending
+  on whether the file happened to record angles.
 - A crease that runs off the paper is refused for what it does to the faces
   ("vertex 4 has 1 crease at it") rather than for what it is. `Fold.Creasing`
   has no "is this point on the sheet" question on purpose: answering it means

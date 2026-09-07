@@ -53,11 +53,12 @@ module Senbazuru.Fold.Creasing
   )
 where
 
+import Control.Monad (when)
 import Data.IntMap.Strict qualified as IM
 import Senbazuru.Fold.Crossings (withPlanarFaces)
-import Senbazuru.Fold.Faces (Sheet (..), sheetOf, tolerance)
+import Senbazuru.Fold.Faces (Sheet (..), coordsFor, sheetOf, tolerance)
 import Senbazuru.Fold.Query (FoldError (..))
-import Senbazuru.Fold.Types (Assignment, EdgeId (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 
 -- | Draw a crease between two points, and put the pattern back in order.
@@ -77,11 +78,26 @@ creaseAlong from to assignment fr = do
   -- is the sheet's own, so a crease counts as having length by the same
   -- measure everything else on this paper is judged by.
   sheet <- sheetOf fr
-  let near = tolerance sheet
-  if norm (to ^-^ from) <= near
-    then Left (EdgeWithoutLength (EdgeId (length (edgesVertices fr))))
-    else withPlanarFaces (creased (endpointsOf sheet near))
+  arraysLineUp
+  if norm (to ^-^ from) <= tolerance sheet
+    then Left CreaseWithoutLength
+    else withPlanarFaces (creased (endpointsOf sheet (tolerance sheet)))
   where
+    edges = length (edgesVertices fr)
+
+    -- Refused before anything is appended, so that appending lands on the end
+    -- of an array that really is edge-indexed. A file whose arrays do not line
+    -- up is one "Senbazuru.Fold.Query" refuses wherever they are read; without
+    -- this it would be silently transformed into a still-mismatched file with
+    -- the new assignment written onto somebody else's crease.
+    arraysLineUp = do
+      matches "edges_assignment" (length (edgesAssignment fr))
+      matches "edges_foldAngle" (length (edgesFoldAngle fr))
+
+    matches what n =
+      when (n /= 0 && n /= edges) $
+        Left (ArrayLengthMismatch "edges_vertices" edges what n)
+
     -- An end that lands on a corner the paper already has /is/ that corner.
     -- Appending a second vertex at the same place instead would leave the
     -- crease attached to a vertex of its own, joined to nothing, and the face
@@ -92,7 +108,8 @@ creaseAlong from to assignment fr = do
     -- it. An end that lands in the /middle/ of a crease needs no special case:
     -- it becomes a vertex, and cutting that crease at it is exactly what
     -- "Senbazuru.Fold.Crossings" is for.
-    -- The two ends are resolved in order, because the second's id depends on
+    --
+    -- The two are resolved in order, because the second's id depends on
     -- whether the first added a vertex or joined one. Numbering them 0 and 1
     -- up front is wrong exactly when one end lands on a corner and the other
     -- does not, which is the commonest crease there is.
@@ -101,41 +118,60 @@ creaseAlong from to assignment fr = do
         next = length (verticesCoords fr)
         (a, addedA) = case existingAt sheet near from of
           Just v -> (v, [])
-          Nothing -> (next, [coordsOf from])
+          Nothing -> (next, [coordsFor fr from])
         (b, addedB) = case existingAt sheet near to of
           Just v -> (v, [])
-          Nothing -> (next + length addedA, [coordsOf to])
+          Nothing -> (next + length addedA, [coordsFor fr to])
 
     creased ((a, addedA), (b, addedB)) =
       fr
         { verticesCoords = verticesCoords fr <> addedA <> addedB,
           edgesVertices = edgesVertices fr <> [(VertexId a, VertexId b)],
-          edgesAssignment = appended (edgesAssignment fr) assignment,
-          edgesFoldAngle = appended (edgesFoldAngle fr) 0,
+          edgesAssignment = assignments,
+          edgesFoldAngle = angles,
           -- The line cuts at least one face in two, so every face the file
-          -- recorded is now wrong. Dropping them is also what lets
-          -- "Senbazuru.Fold.Crossings" do its half of the work: it leaves a
-          -- frame that records faces alone, on the grounds that such a frame
-          -- has already answered the question cutting asks. This one has not,
-          -- any more.
+          -- recorded is now wrong -- and so is every faceOrders entry, which
+          -- names those faces and is read against their winding. Dropping the
+          -- faces is also what lets "Senbazuru.Fold.Crossings" do its half of
+          -- the work: it leaves a frame that records faces alone, on the
+          -- grounds that such a frame has already answered the question
+          -- cutting asks. This one has not, any more.
           facesVertices = [],
+          faceOrders = [],
           frameExtras = mempty
         }
 
-    -- The endpoints are written with as many components as the file uses. A
-    -- crease pattern is flat but not necessarily at z = 0, and a point drawn
-    -- on the sheet is at the sheet's own height.
-    coordsOf (V2 x y) = case verticesCoords fr of
-      ((_ : _ : z : _) : _) -> [x, y, z]
-      _ -> [x, y]
+    -- The assignment is the one thing the caller actually asked for, so it is
+    -- written whether or not the file kept an array to write it in. An absent
+    -- @edges_assignment@ means "nothing is known about any crease", which is
+    -- what @U@ means -- so the array it becomes says exactly what the absence
+    -- said, plus the one crease somebody has now decided about.
+    assignments
+      | null (edgesAssignment fr) = replicate edges Unassigned <> [assignment]
+      | otherwise = edgesAssignment fr <> [assignment]
 
-    -- An array the file did not have stays absent. An angle invented for a
-    -- crease nobody asked about would be a claim the file never made -- and
-    -- leaving edges_foldAngle absent is what lets foldFrame read +/-180 off
-    -- the assignment, so "crease it" and "crease it and fold it" stay one
-    -- decision made by the file rather than two made here.
-    appended [] _ = []
-    appended xs x = xs <> [x]
+    -- The angle follows the assignment rather than being nought. A valley with
+    -- an angle of nought is not a valley: FOLD puts a valley's angle in
+    -- (0, 180], and "Senbazuru.Origami.Folding" reads exactly this off the
+    -- assignment when the array is absent. Writing nought here made the same
+    -- command mean two different things depending on whether the file happened
+    -- to record angles at all.
+    --
+    -- Absent stays absent, because there the file made no claim about any
+    -- crease's angle and folding will derive them all the same way.
+    angles
+      | null (edgesFoldAngle fr) = []
+      | otherwise = edgesFoldAngle fr <> [flatAngleFor assignment]
+
+-- | The angle a crease of this kind takes when the paper is folded flat.
+--
+-- Mountain and valley are the two that fold; everything else is a line on the
+-- paper that the paper is not folded along.
+flatAngleFor :: Assignment -> Double
+flatAngleFor = \case
+  Mountain -> -180
+  Valley -> 180
+  _ -> 0
 
 -- | The id of a corner the paper already has at this point, if there is one.
 existingAt :: Sheet -> Double -> V2 -> Maybe Int

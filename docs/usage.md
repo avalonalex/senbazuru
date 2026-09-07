@@ -26,7 +26,8 @@ senbazuru render FILE [-o OUT.svg] [OPTIONS]
 senbazuru export FILE [-o OUT.glb] [OPTIONS]
 senbazuru check  FILE [--frame N] [--tolerance DEG]
 senbazuru info   FILE [--fold] [--layer-budget N]
-senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned) [-o OUT.fold]
+senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
+                      [--frame N] [-o OUT.fold]
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -203,11 +204,14 @@ comes out is a pattern in the same good order as one that was read.
 parser reads it as an option:
 
 ```bash
-stack run -- crease examples/bird-base.cp --from=-200,-200 --to=200,200 --flat
+stack run -- crease examples/bird-base.cp --from=100,-200 --to=100,200 --flat
 ```
 
 That is not a corner case. Every `.cp` and `.opx` in existence is drawn on the
-square from `(-200, -200)` to `(200, 200)`.
+square from `(-200, -200)` to `(200, 200)`. (The line above is a vertical one
+through the right-hand half of the bird base, which crosses five of its creases
+and takes it from 26 creases to 37. Its own diagonals are already creased, so
+drawing one of those is refused — see below.)
 
 Three creases it will not draw, each refused naming what is wrong: one with no
 length; one drawn along a crease that is already there, where the paper would

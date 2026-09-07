@@ -476,6 +476,67 @@ senbazuru cannot do is make them up from the flat one, since scaling every
 angle by a fraction lands on angles no sheet can adopt —
 [notes/fold-angles-are-the-state.md](notes/fold-angles-are-the-state.md).
 
+## What it creases
+
+Every other command turns a file into a picture. This one turns a file into
+another file — the first thing senbazuru does that leaves a crease pattern
+changed.
+
+```bash
+stack run -- crease examples/quarter-fold.fold --from 0,0 --to 1,1 --valley -o creased.fold
+```
+
+That draws a valley along the diagonal of the quarter fold and writes the whole
+document back out as FOLD. What comes out has 14 creases where it had 12 and
+six faces where it had four — because almost none of the work is the crease.
+
+Adding the line is two vertices and an edge. The rest is everything the line
+makes untrue. It crosses the two creases running to the centre, and a crossing
+with no vertex where it happens is not a planar graph, so those are cut. It
+divides a face in two, so every face the file recorded is wrong and they are
+worked out again. Anything under an unrecognised key that indexes a face or an
+edge went with them, and so did the `faceOrders`, which name faces that no
+longer exist.
+
+None of that is this command's own code. The creased frame is handed to the
+same cutting and tracing that a file gets when it is read, so a pattern that
+has been creased is validated by exactly what validates one that was written by
+hand. A second definition of "a pattern in good order" is a second definition to
+keep in step.
+
+The ends of the crease join whatever is already there. Draw one to a corner the
+paper has and it *is* that corner; draw one to the middle of an existing
+crease and that crease is cut at it. So this works on the formats the desktop
+editors write, where the interesting lines are the ones between existing
+points:
+
+```bash
+stack run -- crease examples/bird-base.cp --from=100,-200 --to=100,200 --flat -o creased.fold
+```
+
+That takes the bird base from 26 creases to 37, and the result still folds and
+stacks. Note the `=`: a coordinate that starts with a minus sign is read as a
+flag otherwise, and every `.cp` and `.opx` in the world is drawn on the square
+from `(-200, -200)` to `(200, 200)`.
+
+Four creases it will not draw, and the interesting thing is that three of the
+refusals are not about the crease at all. One with no length names no line to
+fold about. One drawn on top of an existing crease, or along part of one, would
+give the paper two ways to fold along the stretch they share. One that runs off
+the edge of the paper ends at a vertex with a single crease at it — and there
+is no face to trace round that, which is the refusal you get, phrased as what
+it does to the paper rather than as what you did. Asking the question directly
+would mean deciding what a sheet *is* before deciding what a move is, and the
+tracing already knows.
+
+And it refuses a *folded* form outright. Creasing one means creasing through
+its layers: a line drawn across a model folded in half is two creases on the
+flat sheet, mirror images about the existing fold, and across a finished crane
+it is up to thirty-two. That is
+[#70](https://github.com/avalonalex/senbazuru/issues/70), and it is the move
+that turns creasing from a way to draw a crease pattern into a way to write a
+folding sequence.
+
 ## What it checks
 
 `senbazuru check` applies two classical theorems to every *interior* vertex of a

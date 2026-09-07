@@ -11,6 +11,7 @@ module Senbazuru.Cli
     Command (..),
     RenderOptions (..),
     CheckOptions (..),
+    CreaseOptions (..),
     ExportOptions (..),
     commandParser,
   )
@@ -37,6 +38,7 @@ import Senbazuru.Fold.Types
     Frame (..),
     allFrames,
     assignmentCode,
+    replacingFrame,
   )
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.FlatFold
@@ -234,7 +236,12 @@ creaseOptions =
           <> metavar "X,Y"
           <> help "One end of the crease (use --from=-1,0 for a negative coordinate)"
       )
-    <*> option point (long "to" <> metavar "X,Y" <> help "The other end")
+    <*> option
+      point
+      ( long "to"
+          <> metavar "X,Y"
+          <> help "The other end (use --to=-1,0 for a negative coordinate)"
+      )
     <*> assignmentOption
 
 -- | @x,y@ as a point.
@@ -255,7 +262,12 @@ point = eitherReader $ \raw -> case break (== ',') raw of
   (x, ',' : y) -> (,) <$> number "x" x <*> number "y" y
   _ -> Left ("expected a point as x,y, not " <> raw)
   where
+    -- Finite, for the reason --rotate and --thickness are: a coordinate that
+    -- is not a number reaches the geometry and every question asked of it
+    -- answers NaN, which formats as 0 and stacks half a model on the origin
+    -- without a word. `reads` accepts "NaN" and "Infinity" quite happily.
     number what raw = case reads raw of
+      [(v, "")] | isNaN v || isInfinite v -> Left (what <> " of the point is not a number: " <> raw)
       [(v, "")] -> Right v
       _ -> Left (what <> " of the point is not a number: " <> raw)
 
@@ -682,19 +694,6 @@ creaseFile o f = do
             Right () -> pure ()
   where
     toV2 (x, y) = V2 x y
-
--- | The document with one frame replaced, keeping every other frame and all
--- the file's own metadata.
-replacingFrame :: Int -> Frame -> FoldFile -> FoldFile
-replacingFrame index frame f
-  | index == 0 = f {keyFrame = frame}
-  | otherwise =
-      f
-        { otherFrames =
-            [ if i == index then frame else other
-              | (i, other) <- zip [1 ..] (otherFrames f)
-            ]
-        }
 
 -- | Write one frame out as a 3D model.
 --

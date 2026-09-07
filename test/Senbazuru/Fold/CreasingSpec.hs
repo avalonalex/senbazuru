@@ -14,6 +14,8 @@
 -- \"is this point on the sheet\" question of its own.
 module Senbazuru.Fold.CreasingSpec (spec) where
 
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
 import Senbazuru.Fold.Creasing
 import Senbazuru.Fold.Load (decodeFile, renderLoadError)
@@ -99,16 +101,44 @@ spec = do
       fmap (drop 12 . edgesAssignment) (creaseAlong (V2 0 0) (V2 1 1) Valley fr)
         `shouldBe` Right [Valley, Valley]
 
-    it "gains a fold angle only where the file recorded them" $ do
-      -- Present: the crease is drawn and not yet folded, so nought. Absent:
-      -- still absent, which is what lets foldFrame read the angle off the
-      -- assignment instead -- so "crease it" and "crease it and fold it" stay
-      -- one decision the file makes rather than two this makes for it.
+    it "gives the new crease the angle its assignment implies" $ do
+      -- Not nought. A valley with an angle of nought is not a valley -- FOLD
+      -- puts a valley's angle in (0, 180] -- and foldFrame reads exactly this
+      -- off the assignment when the array is absent. Writing nought made the
+      -- same command mean two things depending on whether the file happened to
+      -- record angles, and left the crease unfoldable on the files that did.
       fr <- fixture "quarter-fold.fold"
       fmap (drop 12 . edgesFoldAngle) (creaseAlong (V2 0 0) (V2 1 1) Valley fr)
+        `shouldBe` Right [180, 180]
+      fmap (drop 12 . edgesFoldAngle) (creaseAlong (V2 0 0) (V2 1 1) Mountain fr)
+        `shouldBe` Right [-180, -180]
+      fmap (drop 12 . edgesFoldAngle) (creaseAlong (V2 0 0) (V2 1 1) Flat fr)
         `shouldBe` Right [0, 0]
+
+    it "leaves an angle array the file did not have absent" $
+      -- There the file made no claim about any crease's angle, and folding
+      -- derives them all from the assignments the same way.
       fmap edgesFoldAngle (creaseAlong (V2 0 0) (V2 1 1) Valley square)
         `shouldBe` Right []
+
+    it "records the assignment even when the file kept no array for it" $ do
+      -- The one thing the caller actually asked for. An absent
+      -- edges_assignment means "nothing is known about any crease", which is
+      -- what U means -- so the array it becomes says exactly what the absence
+      -- said, plus the crease somebody has now decided about. It used to say
+      -- nothing at all, and the valley the user asked for existed nowhere in
+      -- the output.
+      fmap edgesAssignment (creaseAlong (V2 0 0) (V2 1 1) Valley square)
+        `shouldBe` Right [Unassigned, Unassigned, Unassigned, Unassigned, Valley]
+
+    it "refuses an array that does not line up rather than mislabelling a crease" $ do
+      -- Appending to a short array writes the new assignment onto an existing
+      -- crease and leaves the new one with none. The file is one Fold.Query
+      -- refuses wherever the arrays are read; this refuses it before
+      -- transforming it into a still-mismatched file.
+      let short = square {edgesAssignment = [Border, Border]}
+      creaseAlong (V2 0 0) (V2 1 1) Valley short
+        `shouldBe` Left (ArrayLengthMismatch "edges_vertices" 4 "edges_assignment" 2)
 
     it "puts the crease on the sheet's own plane, not on z = 0" $ do
       let raised = sheet [[0, 0, 5], [1, 0, 5], [1, 1, 5], [0, 1, 5]] [(0, 1), (1, 2), (2, 3), (3, 0)]
@@ -121,17 +151,31 @@ spec = do
       -- recorded is wrong the moment it is drawn, and so is anything in
       -- frameExtras that indexes a face or an edge.
       fr <- fixture "quarter-fold.fold"
-      case creaseAlong (V2 0 0) (V2 1 1) Valley fr of
+      let vendored =
+            fr
+              { frameExtras = KM.fromList [("cpedit:page", Aeson.String "A4")],
+                faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]
+              }
+      case creaseAlong (V2 0 0) (V2 1 1) Valley vendored of
         Left err -> expectationFailure (show err)
         Right s -> do
           facesVertices s `shouldNotBe` facesVertices fr
           length (facesVertices s) `shouldBe` 6
+          -- The orders name faces that no longer exist and were read against
+          -- the winding of faces that no longer exist either.
+          faceOrders s `shouldBe` []
+          -- Checked on a frame that really carries an unrecognised key: the
+          -- fixtures carry none, so asserting this on one of them is an
+          -- assertion that was already true before creasing.
           frameExtras s `shouldBe` mempty
 
   describe "creases it will not draw" $ do
-    it "refuses one with no length, which names no line to fold about" $
+    it "refuses one with no length, without naming an edge the file has not got" $
+      -- The offending element is the request. Borrowing EdgeWithoutLength
+      -- named edge 4 of a four-edge file, which the reader can only go and
+      -- fail to find.
       creaseAlong (V2 0.5 0.5) (V2 0.5 0.5) Valley square
-        `shouldBe` Left (EdgeWithoutLength (EdgeId 4))
+        `shouldBe` Left CreaseWithoutLength
 
     it "refuses one that runs off the edge of the paper" $ do
       -- Not checked as such: the crease simply ends at a vertex with one

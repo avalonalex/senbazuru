@@ -131,6 +131,12 @@ data FoldError
   | -- | An edge whose two endpoints are the same point. It names no direction,
     -- so there is no angle to sort it by around either end.
     EdgeWithoutLength !EdgeId
+  | -- | A crease was /asked for/ between two points that are the same point.
+    -- Carries nothing, because there is nothing in the file to point at: the
+    -- offending element is the request. Raised by "Senbazuru.Fold.Creasing",
+    -- which used to borrow 'EdgeWithoutLength' and name an edge the file did
+    -- not have.
+    CreaseWithoutLength
   | -- | Two entries of @edges_vertices@ join the same pair of vertices. Around
     -- a vertex they lie at the same angle, so which of them a face traversal
     -- should turn onto is a coin toss.
@@ -256,6 +262,9 @@ renderFoldError = \case
       <> " a crease pattern"
   EdgeWithoutLength (EdgeId e) ->
     "edge " <> tshow e <> " starts and ends at the same point"
+  CreaseWithoutLength ->
+    "the two ends of the crease are the same point, so it names no line to"
+      <> " fold about"
   EdgeRepeated (EdgeId a) (EdgeId b) ->
     "edges " <> tshow a <> " and " <> tshow b <> " join the same two vertices"
   VertexTooFewCreases (VertexId v) n
