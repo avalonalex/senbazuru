@@ -44,8 +44,9 @@ perfectly well from a square of its own. It is simply not the model in the file.
 > lines, two-sided paper, offset views, fold arrows, step-by-step pages, a
 > flat-foldability checker and a 3D export all work, and it reads the `.cp` and
 > `.opx` files the desktop editors write as well as FOLD. What it cannot yet do
-> is *make* a crease pattern, or show one part-way through a fold — which is
-> where the roadmap goes.
+> is show a model part-way through a fold, or write a folding *sequence* — it
+> can now draw a crease on a pattern and write the result back out, which is
+> the first move of that. The roadmap goes there.
 > [Roadmap](#roadmap) · [what works in detail](docs/tour.md)
 
 ## The interesting part is that paper is opaque
@@ -95,6 +96,12 @@ picture that looks like it came from a book.
   thickness, and a depth buffer needs it to.
 - **Checks flat-foldability** at every interior vertex, by Maekawa's theorem and
   Kawasaki's, and says which vertex fails and why.
+- **Draws a crease and writes the pattern back out.** `crease` is the one
+  command that produces a crease pattern rather than a picture of one: the new
+  line joins the corners it lands on, cuts whatever it crosses, and the faces
+  are worked out again — so what comes out is in the same good order as what
+  went in. The first move of an authoring vocabulary rather than the whole of
+  one.
 - **Reads the formats crease patterns are actually shared in.** Most patterns in
   the wild are not FOLD files but Orihime and Oriedita's `.cp` or ORIPA's
   `.opx`, both of them a flat list of creases with the vertices left out. Give a
@@ -177,12 +184,12 @@ issues are the detail.
 
 1. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output ([#19](https://github.com/avalonalex/senbazuru/issues/19))
-   came first, since nothing else can be built without it; the library reads and
-   writes the format now, losing nothing it does not understand. What is missing
-   is anything to write *with*: a set of named operations each taking one frame
-   to the next, so that a folding scheme is a list of moves and running down it
-   is the sequence the renderer already draws. Not a sequence *solver* — see
-   below.
+   came first, since nothing else can be built without it. The first move is
+   built too — `crease` draws a line on a pattern and writes it out. What is
+   missing is the rest of the vocabulary, and the one hard thing in it: a book
+   gives its instructions on paper that is *already folded*, so a line drawn in
+   step 4 is one crease per layer, each landing somewhere different on the flat
+   sheet ([#70](https://github.com/avalonalex/senbazuru/issues/70)). Not a sequence *solver* — see below.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
 2. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**

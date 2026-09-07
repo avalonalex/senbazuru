@@ -71,6 +71,7 @@ stack run -- render examples/unit-square.fold -o out.svg
 stack run -- render examples/squaretwist.fold --view iso -o out.svg
 stack run -- export examples/crane.fold --fold -o crane.glb
 stack run -- info examples/squaretwist.fold
+stack run -- crease examples/quarter-fold.fold --from 0,0 --to 1,1 --valley -o creased.fold
 stack ghci senbazuru:lib    # REPL with the library loaded
 
 make fmt                    # ormolu, in place
@@ -170,6 +171,24 @@ through it — a stated exception, not a precedent, and the day a second 3D form
 arrives is the day a 3D intermediate representation earns its place. It must
 not import `Render.CreasePattern`; the policy both share, which layer order to
 use, is `Origami.Stacking.layerOrderFor`.
+
+**A move that changes a pattern hands the result back to what validates a read
+one.** `Senbazuru.Fold.Creasing` adds a crease and then calls
+`Fold.Crossings.withPlanarFaces` — so a pattern that has been creased is cut,
+traced and refused by exactly the code that cuts, traces and refuses a pattern
+that came out of a file. The alternative, a move that checks its own work, is
+two definitions of a valid pattern that drift.
+
+Note what a move has to destroy. Drawing a crease cuts at least one face in
+two, so `faces_vertices`, `faceOrders` — which name those faces and are read
+against their winding — and `frameExtras` all go. Dropping the faces is also
+what lets `splitCrossings` run at all, since it leaves a frame that records
+faces alone.
+
+`frameExtras` is dropped too widely, and knowingly: on the key frame it holds
+the *file's* unknown keys as well as the frame's, so creasing a pattern
+destroys a `cpedit:page` that a new crease does not invalidate. Nothing can
+tell those apart from the ones it does invalidate. That is #73.
 
 **A new input format becomes a `Frame` and stops there.** `Senbazuru.Import.*`
 reads Orihime and Oriedita's `.cp` and ORIPA's `.opx` — both a flat list of
@@ -630,8 +649,20 @@ Deliberate omissions, so nobody thinks they are bugs:
 - The `.cp` reader accepts type codes 1 to 11 and refuses everything else,
   including 0. Oriedita's auxiliary colours are the ones above 4, and it drops
   the colour, because FOLD has nowhere to put it.
-- FOLD output exists in the library (`Senbazuru.Fold.Load.encodeFoldFile`,
-  `saveFoldFile`) but no CLI verb calls it yet. The first authoring verb will.
+- Creasing works on a flat pattern only. A folded form is refused, because a
+  line drawn on one is a crease *per layer* landing somewhere different on the
+  flat sheet — #70, and the wall the authoring vocabulary meets on its second
+  move.
+- A new crease takes the fold angle its assignment implies — ±180 for a
+  mountain or a valley — not zero. A valley with an angle of zero is not a
+  valley, and `foldFrame` reads the same value off the assignment when the
+  array is absent, so writing zero made one command mean two things depending
+  on whether the file happened to record angles.
+- A crease that runs off the paper is refused for what it does to the faces
+  ("vertex 4 has 1 crease at it") rather than for what it is. `Fold.Creasing`
+  has no "is this point on the sheet" question on purpose: answering it means
+  deciding what a sheet is, and the face tracing already refuses the case
+  correctly. A better sentence in front of it is #71.
 - The FOLD writer does not refuse a non-finite number. `aeson` writes an
   infinity as the string `"+inf"` and a `NaN` as `null`, neither of which is a
   FOLD coordinate, and the decoder reads a `null` coordinate back as `NaN` so

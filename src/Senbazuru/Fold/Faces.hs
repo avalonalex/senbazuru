@@ -71,6 +71,7 @@ module Senbazuru.Fold.Faces
     -- $sheet
     Sheet (..),
     sheetOf,
+    coordsFor,
     pointAt,
     endsOf,
     tolerance,
@@ -201,6 +202,22 @@ sheetOf fr = do
     -- A crease pattern lies in z = 0, which frameKind has just confirmed, so
     -- dropping z loses nothing rather than projecting anything.
     flatten (V3 x y _) = V2 x y
+
+-- | A point on this frame's sheet, written with as many components as the
+-- frame uses.
+--
+-- A crease pattern is flat, which is not the same as lying at @z = 0@, so a
+-- new point on a sheet recorded at some height belongs at that height. Reading
+-- a drawing throws the @z@ column away — the walk is two-dimensional — and
+-- anything that writes a point back has to put it on again.
+--
+-- Shared by "Senbazuru.Fold.Crossings" and "Senbazuru.Fold.Creasing", which
+-- both add points to a frame, so that there is one answer to how wide a
+-- coordinate row is rather than two that can drift.
+coordsFor :: Frame -> V2 -> [Double]
+coordsFor fr (V2 x y) = case verticesCoords fr of
+  ((_ : _ : z : _) : _) -> [x, y, z]
+  _ -> [x, y]
 
 -- | Where a vertex is. Every id in 'sheetEdges' came through 'frameVertices',
 -- which already refused the ones with no coordinates, so the fallback is

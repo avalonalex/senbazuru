@@ -95,7 +95,7 @@ import Control.Monad (when)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', partition, sortOn, tails)
 import Data.Maybe (mapMaybe)
-import Senbazuru.Fold.Faces (Sheet (..), endsOf, pointAt, sheetOf, tolerance, withTracedFaces)
+import Senbazuru.Fold.Faces (Sheet (..), coordsFor, endsOf, pointAt, sheetOf, tolerance, withTracedFaces)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types (EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), dot, norm, (*^), (^+^), (^-^))
@@ -338,11 +338,7 @@ rebuilt fr points cuts = do
     -- would quietly move to the origin.
     kept = verticesCoords fr
 
-    -- A crossing is a new point on that same sheet, so it is written with as
-    -- many components as the file uses, at the height the file is drawn at.
-    added (V2 x y) = case kept of
-      ((_ : _ : z : _) : _) -> [x, y, z]
-      _ -> [x, y]
+    added = coordsFor fr
 
     chains =
       [ (eid, zip chain (drop 1 chain))

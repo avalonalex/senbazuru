@@ -26,6 +26,8 @@ senbazuru render FILE [-o OUT.svg] [OPTIONS]
 senbazuru export FILE [-o OUT.glb] [OPTIONS]
 senbazuru check  FILE [--frame N] [--tolerance DEG]
 senbazuru info   FILE [--fold] [--layer-budget N]
+senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
+                      [--frame N] [-o OUT.fold]
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -175,6 +177,53 @@ still in the air is written exactly as folded, with no separation.
 which is the only way to export a twist — its layers run in a circle and have
 no numbers. [tour.md](tour.md#what-it-exports) has the reasoning and
 [notes/paper-thickness.md](notes/paper-thickness.md) the detail.
+
+## `crease`
+
+Draws a crease on a pattern and writes the whole document back out as FOLD.
+The one command that produces a crease pattern rather than a picture of one.
+
+```bash
+stack run -- crease examples/quarter-fold.fold --from 0,0 --to 1,1 --valley -o creased.fold
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--from X,Y` | One end of the crease |
+| `--to X,Y` | The other end |
+| `--mountain` / `--valley` / `--flat` / `--unassigned` | What kind of crease it is. Exactly one, and required |
+| `--frame N` | Which frame to crease (default 0). The others are carried through untouched |
+| `-o`, `--output` | Where to write. Default is stdout |
+
+The ends join whatever is already at them: a corner they land on, or a crease
+they land in the middle of, which is cut there. Anything the new crease crosses
+on the way is cut too, and the faces are worked out again afterwards — so what
+comes out is a pattern in the same good order as one that was read.
+
+**A negative coordinate needs the `=` form**, because otherwise the argument
+parser reads it as an option:
+
+```bash
+stack run -- crease examples/bird-base.cp --from=100,-200 --to=100,200 --flat
+```
+
+That is not a corner case. Every `.cp` and `.opx` in existence is drawn on the
+square from `(-200, -200)` to `(200, 200)`. (The line above is a vertical one
+through the right-hand half of the bird base, which crosses five of its creases
+and takes it from 26 creases to 37. Its own diagonals are already creased, so
+drawing one of those is refused — see below.)
+
+Three creases it will not draw, each refused naming what is wrong: one with no
+length; one drawn along a crease that is already there, where the paper would
+have two ways to fold along the stretch they share; and one that runs off the
+edge of the paper — though that last one is reported as what it does to the
+faces rather than as what it is, which is
+[#71](https://github.com/avalonalex/senbazuru/issues/71).
+
+It also refuses a *folded* form. Creasing one means creasing through its
+layers, which is one crease per layer landing somewhere different on the flat
+sheet, and is [#70](https://github.com/avalonalex/senbazuru/issues/70) — the move that turns creasing from a way to draw a
+crease pattern into a way to write a folding sequence.
 
 ## `check`
 

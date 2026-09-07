@@ -63,6 +63,7 @@ module Senbazuru.Fold.Types
     Frame (..),
     emptyFrame,
     allFrames,
+    replacingFrame,
 
     -- * Element identifiers
     VertexId (..),
@@ -205,6 +206,28 @@ emptyFrame =
 -- | Every frame in the document, key frame first.
 allFrames :: FoldFile -> [Frame]
 allFrames f = keyFrame f : otherFrames f
+
+-- | The document with the nth frame replaced, counting the way 'allFrames'
+-- counts: the key frame is 0 and @file_frames@ start at 1.
+--
+-- Lives here beside 'allFrames' rather than in whatever wants it, because the
+-- two are one numbering written twice. The key frame is stored inline at the
+-- top level and the rest are in a list, so reading the nth and writing the nth
+-- are each a small index shift — and two independent shifts of the same
+-- numbering is how a verb ends up writing into the wrong frame in silence.
+--
+-- An index no frame has leaves the document alone. The caller that took a
+-- frame out by the same index has already been told there is no such frame.
+replacingFrame :: Int -> Frame -> FoldFile -> FoldFile
+replacingFrame index frame f
+  | index == 0 = f {keyFrame = frame}
+  | otherwise =
+      f
+        { otherFrames =
+            [ if i == index then frame else other
+              | (i, other) <- zip [1 ..] (otherFrames f)
+            ]
+        }
 
 -- | Index into @vertices_*@ arrays.
 newtype VertexId = VertexId {unVertexId :: Int}

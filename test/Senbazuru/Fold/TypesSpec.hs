@@ -203,6 +203,47 @@ saturated =
 
 spec :: Spec
 spec = do
+  describe "replacingFrame" $ do
+    it "counts the frames the way allFrames counts them" $ do
+      -- Two index shifts of one numbering, written independently: reading the
+      -- nth frame and writing it. Getting them out of step writes a change
+      -- into the wrong frame and says nothing about it.
+      let named n = emptyFrame {frameTitle = Just n}
+          document =
+            FoldFile
+              { fileSpec = Just 1.2,
+                fileCreator = Nothing,
+                fileAuthor = Nothing,
+                fileTitle = Nothing,
+                fileDescription = Nothing,
+                fileClasses = [],
+                keyFrame = named "zero",
+                otherFrames = [named "one", named "two"]
+              }
+          titles = map frameTitle . allFrames
+      titles (replacingFrame 0 (named "new") document)
+        `shouldBe` [Just "new", Just "one", Just "two"]
+      titles (replacingFrame 1 (named "new") document)
+        `shouldBe` [Just "zero", Just "new", Just "two"]
+      titles (replacingFrame 2 (named "new") document)
+        `shouldBe` [Just "zero", Just "one", Just "new"]
+
+    it "leaves a document alone when no frame has that index" $ do
+      let one = emptyFrame {frameTitle = Just "only"}
+          document =
+            FoldFile
+              { fileSpec = Nothing,
+                fileCreator = Nothing,
+                fileAuthor = Nothing,
+                fileTitle = Nothing,
+                fileDescription = Nothing,
+                fileClasses = [],
+                keyFrame = one,
+                otherFrames = []
+              }
+      replacingFrame 7 (emptyFrame {frameTitle = Just "new"}) document
+        `shouldBe` document
+
   fixtures <- runIO (sort . filter (".fold" `isSuffixOf`) <$> listDirectory fixtureDir)
 
   describe "decoding" $ do

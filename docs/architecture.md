@@ -20,6 +20,8 @@ One direction of flow, no cycles:
      v               v               values; the extension picks the reader
  FoldFile / Frame                    Senbazuru.Fold.Types
      |                               a faithful, permissive mirror of the format
+     |  Senbazuru.Fold.Creasing      draw a new crease: a Frame in, a Frame
+     |                               out, and back through the two below
      |  Senbazuru.Fold.Crossings     cut the creases where they meet, so the
      |                               drawing is a planar graph
      |  Senbazuru.Fold.Faces         the faces a file did not record, traced
@@ -71,6 +73,13 @@ The top of that diagram is the only part that also runs backwards:
 than a cycle — nothing further down the page is involved, and the only thing
 that reaches for it is a caller holding a `Frame` it built or folded.
 
+`Senbazuru.Fold.Creasing` is the first such caller, and the first module that
+goes *in* at the top and comes *out* at the top: a frame in, a frame out, no
+picture anywhere. Everything an authoring vocabulary
+([#60](https://github.com/avalonalex/senbazuru/issues/60)) adds will have that
+shape, and will reach the rest of the pipeline the way a file does — by being
+a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
+
 | Module | Holds |
 | --- | --- |
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
@@ -86,6 +95,7 @@ that reaches for it is a caller holding a `Frame` it built or folded.
 | `Senbazuru.Fold.Query` | Validation and refinement of a `Frame`: `Crease`, `Face`. |
 | `Senbazuru.Fold.Faces` | The faces a file does not record, traced from the creases. Refuses a drawing whose regions would not be its faces. Owns `Sheet`, the drawing itself. |
 | `Senbazuru.Fold.Crossings` | Cuts creases at the points where they meet, so a drawing `Fold.Faces` refuses becomes one it can trace. `withPlanarFaces` is the pair — cut, then trace — that every backend calls. |
+| `Senbazuru.Fold.Creasing` | Draws a new crease on a pattern: the one operation that changes a crease pattern rather than reading one. Adds the line and hands the frame straight back to `Fold.Crossings`. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
