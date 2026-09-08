@@ -51,10 +51,11 @@ renderFixtureWith theme notation basis path = do
 -- | Draw one frame already in hand, at the page every golden here is measured
 -- against.
 --
--- The three renderers above and the round trip below all end in these same
--- three lines; this is the one copy. It takes a 'Frame' rather than a path
--- because the round-trip test has no file to name — its second frame exists
--- only as bytes it just wrote.
+-- The two renderers above and the round trip below all end in these same three
+-- lines. 'renderStep' keeps its own copy and has to: it puts arrows on the
+-- 'Diagram' before rendering, so it needs the diagram and not the text this
+-- returns. It takes a 'Frame' rather than a path because the round-trip test
+-- has no file to name — its second frame exists only as bytes it just wrote.
 drawFrame :: Theme -> Notation -> Basis -> Frame -> IO Text
 drawFrame theme notation basis fr =
   case creasePatternFrom theme defaultBudget notation basis fr of

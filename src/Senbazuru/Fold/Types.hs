@@ -228,12 +228,28 @@ allFrames f = keyFrame f : otherFrames f
 --
 -- The file's own metadata stays. @file_title@ and the rest describe the model,
 -- and taking one frame out of a document does not make it a different model.
+--
+-- The exception is a @file_classes@ entry that describes a /collection/ of
+-- frames — @diagrams@ says the frames are a folding sequence, @animation@ that
+-- they are its frames, @multiModel@ that they are different models. Those stop
+-- being true the moment the frames go, so they are dropped, and only when
+-- frames were actually removed: a document that arrived with one frame is left
+-- to make its own claims. Keeping @diagrams@ on a single frame would be the
+-- writer stating something the file cannot support, which is the same mistake
+-- as writing an empty array for an absent one.
 soleFrame :: Frame -> FoldFile -> FoldFile
 soleFrame frame f =
   f
-    { keyFrame = frame {frameParent = Nothing, frameInherit = False},
+    { fileClasses = keptClasses,
+      keyFrame = frame {frameParent = Nothing, frameInherit = False},
       otherFrames = []
     }
+  where
+    keptClasses
+      | null (otherFrames f) = fileClasses f
+      | otherwise = filter (`notElem` aboutSeveralFrames) (fileClasses f)
+
+    aboutSeveralFrames = ["multiModel", "animation", "diagrams"]
 
 -- | The document with the nth frame replaced, counting the way 'allFrames'
 -- counts: the key frame is 0 and @file_frames@ start at 1.

@@ -203,6 +203,52 @@ saturated =
 
 spec :: Spec
 spec = do
+  describe "soleFrame" $ do
+    let sequenceDocument =
+          FoldFile
+            { fileSpec = Just 1.2,
+              fileCreator = Nothing,
+              fileAuthor = Nothing,
+              fileTitle = Just "A model in three steps",
+              fileDescription = Nothing,
+              fileClasses = ["singleModel", "diagrams"],
+              keyFrame = emptyFrame {frameTitle = Just "zero"},
+              otherFrames =
+                [ emptyFrame {frameTitle = Just "one"},
+                  emptyFrame {frameTitle = Just "two"}
+                ]
+            }
+
+    it "drops the parent link, which indexes a file the frame is leaving" $ do
+      -- The failure this prevents is silent: frame_parent is an index, so a
+      -- link that survived the move names whichever frame happens to sit at
+      -- that index in the new file, or nothing. The document still decodes.
+      let child = emptyFrame {frameTitle = Just "two", frameParent = Just 1, frameInherit = True}
+          out = keyFrame (soleFrame child sequenceDocument)
+      frameParent out `shouldBe` Nothing
+      frameInherit out `shouldBe` False
+      frameTitle out `shouldBe` Just "two"
+
+    it "keeps the file's own metadata, which is about the model" $ do
+      -- Taking one frame out of a document does not make it a different model
+      -- or give it a different author.
+      let out = soleFrame (emptyFrame {frameTitle = Just "only"}) sequenceDocument
+      fileTitle out `shouldBe` Just "A model in three steps"
+      fileSpec out `shouldBe` Just 1.2
+      otherFrames out `shouldBe` []
+
+    it "drops a file_classes entry that describes frames it just removed" $ do
+      -- diagrams declares "a sequence of frames representing folding steps".
+      -- One frame is not a sequence, so carrying the class through would write
+      -- a claim the file cannot support.
+      fileClasses (soleFrame emptyFrame sequenceDocument) `shouldBe` ["singleModel"]
+
+    it "leaves the classes of a document that was already one frame" $ do
+      -- Nothing was removed, so there is nothing to correct, and correcting it
+      -- anyway would be editing a claim this function has no evidence against.
+      let alone = sequenceDocument {otherFrames = []}
+      fileClasses (soleFrame emptyFrame alone) `shouldBe` ["singleModel", "diagrams"]
+
   describe "replacingFrame" $ do
     it "counts the frames the way allFrames counts them" $ do
       -- Two index shifts of one numbering, written independently: reading the

@@ -357,8 +357,11 @@ spec = do
       let angleOf a = [d | (b, d) <- zip (edgesAssignment folded) (edgesFoldAngle folded), b == a]
       angleOf Mountain `shouldSatisfy` (\ds -> not (null ds) && all (== -180) ds)
       angleOf Valley `shouldSatisfy` (\ds -> not (null ds) && all (== 180) ds)
-      angleOf Flat `shouldSatisfy` all (== 0)
-      angleOf Border `shouldSatisfy` all (== 0)
+      -- Each of the four guards against an empty list as well as a wrong
+      -- value: `all` is True of nothing, so a change that dropped these
+      -- creases from the frame entirely would pass an unguarded assertion.
+      angleOf Flat `shouldSatisfy` (\ds -> not (null ds) && all (== 0) ds)
+      angleOf Border `shouldSatisfy` (\ds -> not (null ds) && all (== 0) ds)
 
     it "says the result is a folded form" $ do
       -- Otherwise a flat-folded result would be drawn with crease-pattern
