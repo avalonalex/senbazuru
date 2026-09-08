@@ -32,6 +32,7 @@ read the Haddock module headers; for the domain, start with
 | [paper-thickness.md](paper-thickness.md) | A depth buffer cannot draw coincident layers; lift each by its layer number, and give every face its own corners |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
+| [the-puff-is-a-drawing.md](the-puff-is-a-drawing.md) | The crane's last step is a puff, not a fold; a convincing one is a bump function rather than a simulation, and what it still needs is its silhouette |
 
 ## Files and formats
 

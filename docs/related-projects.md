@@ -39,6 +39,28 @@ says *not checked*, check it before reading the code.
 | [rigid-origami](https://github.com/belalugaX/rigid-origami) | Python: rigid-origami crease-pattern generation and folding simulation, framed as a game environment | not checked | Another rigid-origami simulator to compare angle solutions against. |
 | [OrigamiSimulator (MATLAB)](https://github.com/zzhuyii/OrigamiSimulator) — Yuyuan Zhu | Bar-and-hinge simulation of active origami: compliant creases, panel contact, thermal actuation | not checked | What keeping paper out of paper ([#61](https://github.com/avalonalex/senbazuru/issues/61)) looks like in a compliant model. |
 
+## Simulators that could inflate a crane
+
+The crane's last step — blow into the body so it rounds out — is the airbag
+problem, and every tool below could compute it properly. None is needed:
+[notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md) argues that a
+diagram wants a convincing bulge rather than a correct one, and
+[#106](https://github.com/avalonalex/senbazuru/issues/106) generates that from
+a bump function. This is the list of what accuracy would have cost, kept so the
+question is not reopened from scratch.
+
+| Project | What it is | Licence | Why it matters here |
+| --- | --- | --- | --- |
+| [LS-DYNA](https://lsdyna.ansys.com/) | Explicit finite element analysis. Simulates folded airbags inflating as a matter of routine, and lets the flat sheet be the stress-free state with the folded one as the start | Commercial | The reference answer, and out of reach. A week to set up the first model. |
+| [Abaqus](https://www.3ds.com/products/simulia/) | Implicit and explicit finite element analysis. What Bertoldi's group used for metre-scale inflatable origami: faces as shell plates, creases as thinned hinges, pressure on the cavity, self-contact throughout | Commercial | Same, with a published method worth reading even though the licence is not ours. |
+| [CalculiX](http://www.calculix.de/), [Code_Aster](https://code-aster.org/), [Kratos](https://github.com/KratosMultiphysics/Kratos) | Open-source nonlinear shells with pressure loads and contact | not checked | Free, and none of them knows what a crease is: every hinge is a thin strip or a connector you build by hand. |
+| [MERLIN](https://paulino.princeton.edu/software.html) — Liu and Paulino | The bar-and-hinge reduced-order model for origami: bars along edges, torsional springs at creases and across faces | not checked | Orders of magnitude cheaper than shells, and its nodes are a FOLD file's vertices. The closest thing to a drop-in. |
+| [Blender](https://www.blender.org/) | A cloth simulator with a pressure setting that inflates a closed mesh | GPL-2.0 | For a picture only, which is all a diagram needs. An afternoon rather than a week. |
+| [ArcSim](http://graphics.berkeley.edu/resources/ARCSim/) | Adaptive cloth simulation written for folding and crumpling paper, with plastic creases | not checked | Same again: no number anyone would publish, and a puffed crane by the end of the day. |
+
+SWOMPS, the bar-and-hinge simulator with panel contact and compliant crease
+regions, is the OrigamiSimulator (MATLAB) row in the table above.
+
 ## Research, 2026
 
 Four papers that build a formal move vocabulary, which

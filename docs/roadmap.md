@@ -52,6 +52,13 @@ and, since 2026, four research papers in it.
    sub-issues are open ([#52](https://github.com/avalonalex/senbazuru/issues/52), [#53](https://github.com/avalonalex/senbazuru/issues/53), [#54](https://github.com/avalonalex/senbazuru/issues/54),
    [#56](https://github.com/avalonalex/senbazuru/issues/56), [#61](https://github.com/avalonalex/senbazuru/issues/61)), and so is the note that draws the boundary
    ([#64](https://github.com/avalonalex/senbazuru/issues/64)).
+   If the solver proves intractable, the fallback is frames from outside — a
+   simulator's states ([#53](https://github.com/avalonalex/senbazuru/issues/53)) or a sequence a person edits by hand — which
+   the renderer draws face by face without asking where they came from. The
+   same route draws an inflated body, which no solver here will ever produce:
+   [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md), with
+   [#106](https://github.com/avalonalex/senbazuru/issues/106) to generate one and
+   [#104](https://github.com/avalonalex/senbazuru/issues/104) to draw it without its mesh.
 3. **A schematic side view** ([#50](https://github.com/avalonalex/senbazuru/issues/50)). Not started. It was gated on a
    paper-thickness model, which the glTF export now has, so it is unblocked.
 

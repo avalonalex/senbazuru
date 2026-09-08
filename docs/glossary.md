@@ -24,6 +24,8 @@ For the ideas rather than the definitions, start with
 | **Kawasaki's theorem** | A vertex's angles admit a flat fold exactly when its sectors alternate to zero. See [notes/kawasaki.md](notes/kawasaki.md). |
 | **Big-Little-Big lemma** | A sector strictly smaller than both its neighbours is bounded by one mountain and one valley. The condition on the *arrangement* that the other two theorems miss. See [notes/big-little-big.md](notes/big-little-big.md). |
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
+| **Puff** | Rounding a flat pocket out into a solid by blowing into it, as the last step of a crane and the whole of a waterbomb. Not a fold: no fold angle expresses it, because what drives it is air pressure. See [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md). |
+| **Waterbomb** | The traditional paper balloon: folded flat, then puffed into something close to a cube. Distinct from the *waterbomb base* it is folded from, which is a base in the sense above. |
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
 | **Through all layers** | An instruction creasing every layer of paper under the line, as against one that catches only the near ones. On the flat sheet it is one crease per face the line crosses, and their kinds alternate — see [notes/creasing-through-layers.md](notes/creasing-through-layers.md). |
 | **Fold arrow** | The curved mark saying which paper moves where. Drawn on the step *before* the fold. FOLD records none, so senbazuru subtracts one frame from the next — see `Senbazuru.Origami.Step`. |

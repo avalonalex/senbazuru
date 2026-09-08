@@ -17,6 +17,7 @@ stack run -- render examples/quarter-fold-steps.fold --steps --arrows \
 stack run -- render examples/quarter-fold.fold --fold --offset 6 \
   --width 260 --height 260 --margin 28                                    -o docs/img/quarter-fold-offset.svg
 stack run -- render examples/bird-base.cp                                 -o docs/img/bird-base.svg
+stack run -- render examples/puffed-square.fold --view iso                -o docs/img/puffed-square.svg
 ```
 
 | File | What it shows |
@@ -27,6 +28,7 @@ stack run -- render examples/bird-base.cp                                 -o doc
 | `steps.svg` | A square folded into quarters as three numbered figures, with the arrows worked out by subtracting each frame from the next |
 | `quarter-fold-offset.svg` | The same quarter fold, its four coincident layers stepped apart. Drawn with a wider margin than the default, because the offset pushes the stack outside the extent the page is fitted to and would otherwise touch the edge |
 | `bird-base.svg` | The traditional bird base, read from a `.cp` file rather than a `.fold` one. The valley along the diagonal runs from lower left to upper right; it runs the other way in the file, which measures `y` downwards |
+| `puffed-square.svg` | A square bulged into a dome, as a mesh of 200 flat faces with 3D coordinates, drawn face by face with its mesh lines showing. Hide them and the dome vanishes, which is what [notes/the-puff-is-a-drawing.md](../notes/the-puff-is-a-drawing.md) is about |
 
 The crane and the pinwheel come from [Flat-Folder](https://github.com/origamimagiro/flat-folder)
 and the bird base from [Oriedita](https://github.com/oriedita/oriedita); all
