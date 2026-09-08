@@ -41,6 +41,7 @@ import Senbazuru.Fold.Types
     allFrames,
     assignmentCode,
     replacingFrame,
+    soleFrame,
   )
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.FlatFold
@@ -249,14 +250,7 @@ foldOptions :: Parser FoldOptions
 foldOptions =
   FoldOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.fold"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.fold"
     <*> frameOption
     <*> stackingOption
     <*> budgetOption
@@ -265,14 +259,7 @@ creaseOptions :: Parser CreaseOptions
 creaseOptions =
   CreaseOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.fold"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.fold"
     <*> frameOption
     <*> option
       point
@@ -336,14 +323,7 @@ exportOptions :: Parser ExportOptions
 exportOptions =
   ExportOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.glb"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.glb"
     <*> frameOption
     <*> foldSwitch
     <*> stackingOption
@@ -497,6 +477,24 @@ inputArg =
         <> help "Input crease pattern: .fold, .cp or .opx (anything else is read as FOLD)"
     )
 
+-- | Where to write, for the verbs that write one thing.
+--
+-- The metavar is the argument because it is the only difference between the
+-- four: every verb that writes offers @-o@ with the same long name, the same
+-- short name and the same help, and says only what kind of file it produces.
+-- Kept as one parser for the reason 'inputArg' and 'frameOption' are — the
+-- fourth copy is where a wording change starts missing a verb.
+outputOption :: String -> Parser (Maybe FilePath)
+outputOption metaVar =
+  optional
+    ( strOption
+        ( long "output"
+            <> short 'o'
+            <> metavar metaVar
+            <> help "Output file (default: stdout)"
+        )
+    )
+
 -- | Which frame, for the verbs that work on one. 'Nothing' means the key
 -- frame, kept optional so that asking for a frame and asking for every frame
 -- can be told apart.
@@ -559,14 +557,7 @@ renderOptions :: Parser RenderOptions
 renderOptions =
   RenderOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.svg"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.svg"
     <*> frameOption
     <*> option
       auto
@@ -745,43 +736,22 @@ run = \case
 -- The layer order is solved and written in. That is the point of the verb as
 -- much as the coordinates are: @--stacking@ has always been able to choose an
 -- order that nothing could then save. 'layerOrderFor' declines rather than
--- guesses for a model it does not cover, and a declined order writes no
--- @faceOrders@ rather than an empty one — the difference between "no two faces
--- overlap" and "nobody knows", which "Senbazuru.Fold.Load" is careful about.
+-- guesses for a model it does not cover, and a model it declines gets no
+-- @faceOrders@.
+--
+-- What the /file/ cannot say is which of two silences it holds. A solved order
+-- with nothing in it — a folded shape no part of which overlaps any other — is
+-- written as no @faceOrders@ key, exactly as a declined one is, because the
+-- writer omits an empty array. So "no two faces overlap" and "nobody worked it
+-- out" reach a reader identically, and a reader who needs them apart has to ask
+-- the solver again.
 foldFile :: FoldOptions -> FoldFile -> IO ()
 foldFile o f = do
   folded <- paperFor (foInput o) (foFrame o) True (foBudget o) (foStacking o) f
   orders <- case layerOrderFor (foBudget o) folded of
     Left err -> die ("cannot fold " <> T.pack (foInput o) <> ": " <> explain err)
     Right os -> pure os
-  let document = foldedDocument (folded {faceOrders = fromMaybe [] orders}) f
-  case foOutput o of
-    Nothing -> BS.putStr (encodeFoldFile document)
-    Just path ->
-      saveFoldFile path document >>= \case
-        Left err -> die (explain err)
-        Right () -> pure ()
-
--- | The folded shape as the whole of a one-frame document.
---
--- The file's own metadata stays. @file_title@, @file_author@ and the rest
--- describe the /model/, and folding a crane does not make it a different
--- model or give it a different author.
---
--- Two things about the frame have to go, and the second is easy to miss.
--- @frame_parent@ and @frame_inherit@ name a frame by its index in the file this
--- frame came from, and that frame is not in the file being written — so a
--- parent link that survived the move would point at whatever happened to land
--- at that index, or at nothing. A frame that folds at all carries its own
--- geometry, since senbazuru does not resolve inheritance (#102) and could not
--- have folded a frame that leaned on a parent for its vertices. So dropping the
--- link loses nothing and keeping it would state something false.
-foldedDocument :: Frame -> FoldFile -> FoldFile
-foldedDocument frame f =
-  f
-    { keyFrame = frame {frameParent = Nothing, frameInherit = False},
-      otherFrames = []
-    }
+  writeDocument (foOutput o) (soleFrame (folded {faceOrders = fromMaybe [] orders}) f)
 
 -- | Draw a crease on one frame and write the whole document back out.
 --
@@ -794,13 +764,7 @@ creaseFile o f = do
   let index = fromMaybe 0 (creaseFrame o)
   frame <- frameAt index f
   creased <- either refuse pure (drawn frame)
-  let document = replacingFrame index creased f
-  case creaseOutput o of
-    Nothing -> BS.putStr (encodeFoldFile document)
-    Just path ->
-      saveFoldFile path document >>= \case
-        Left err -> die (explain err)
-        Right () -> pure ()
+  writeDocument (creaseOutput o) (replacingFrame index creased f)
   where
     toV2 (x, y) = V2 x y
 
@@ -832,6 +796,19 @@ exportFile o f = do
   case renderGlb (eoBudget o) thickness (frameTitle frame <|> fileTitle f) frame of
     Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> explain err)
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
+
+-- | Write a FOLD document where the reader asked for it, or abort.
+--
+-- The counterpart of 'withFoldFile', shared by the two verbs that write a
+-- document rather than a picture. 'exportFile' deliberately keeps its own
+-- one-liner instead: it writes a @.glb@, which is bytes and not a document.
+writeDocument :: Maybe FilePath -> FoldFile -> IO ()
+writeDocument output document = case output of
+  Nothing -> BS.putStr (encodeFoldFile document)
+  Just path ->
+    saveFoldFile path document >>= \case
+      Left err -> die (explain err)
+      Right () -> pure ()
 
 -- | Load a file or abort with a message on stderr.
 --

@@ -635,10 +635,12 @@ stack run -- render crane-folded.fold -o crane.svg
 
 That second command draws the crane from a file that already *is* the folded
 crane, and the bytes it produces are identical to `render examples/crane.fold
---fold`. That equality is the acceptance test, and it is a stronger claim than
-it looks: the FOLD writer sends every number through a type whose coefficient is
-an `Integer`, which has no sign to keep, and folding produces negative zeros. A
-signed zero that mattered would come back changed.
+--fold`. That equality is the acceptance test: every number in the file has been
+through the writer's rounding and the decoder's parse, and the picture is what
+says whether any of it mattered. One thing it does not catch, worth naming
+because the writer really does lose it: a negative zero becomes a plain zero on
+the way to the file, and `formatNumber` normalises it on the way to the page
+too, so both drawings are blind to the sign in the same way.
 
 The file carries what the fold worked out. `frame_classes` becomes
 `["foldedForm"]`, `frame_attributes` says `2D` or `3D` to match the coordinates,

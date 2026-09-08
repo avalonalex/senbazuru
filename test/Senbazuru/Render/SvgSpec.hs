@@ -16,7 +16,7 @@ import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, defaultTheme)
 import Senbazuru.Fold.Load (decodeFile, decodeFoldFile, encodeFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
-import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames)
+import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames, soleFrame)
 import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Stacking (defaultBudget, layerOrderFor)
@@ -46,10 +46,20 @@ renderFixtureFrom = renderFixtureWith defaultTheme
 renderFixtureWith :: Theme -> Notation -> Basis -> FilePath -> IO Text
 renderFixtureWith theme notation basis path = do
   f <- decodedFixture path
-  d <- case creasePatternFrom theme defaultBudget notation basis (keyFrame f) of
+  drawFrame theme notation basis (keyFrame f)
+
+-- | Draw one frame already in hand, at the page every golden here is measured
+-- against.
+--
+-- The three renderers above and the round trip below all end in these same
+-- three lines; this is the one copy. It takes a 'Frame' rather than a path
+-- because the round-trip test has no file to name — its second frame exists
+-- only as bytes it just wrote.
+drawFrame :: Theme -> Notation -> Basis -> Frame -> IO Text
+drawFrame theme notation basis fr =
+  case creasePatternFrom theme defaultBudget notation basis fr of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
-    Right d -> pure d
-  pure (renderSvg testPage d)
+    Right d -> pure (renderSvg testPage d)
 
 -- | Read a fixture through the loader the CLI uses, so that a fixture in a
 -- format other than FOLD needs no harness of its own.
@@ -78,10 +88,7 @@ renderFoldedWith :: Theme -> Basis -> FilePath -> IO Text
 renderFoldedWith theme basis path = do
   f <- decodedFixture path
   folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
-  d <- case creasePatternFrom theme defaultBudget FoldedFormNotation basis folded of
-    Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
-    Right d -> pure d
-  pure (renderSvg testPage d)
+  drawFrame theme FoldedFormNotation basis folded
 
 -- | One arrow across a square model of the given size, so that two sizes can be
 -- compared for anything that ought not to depend on the model's scale.
@@ -392,31 +399,37 @@ spec = do
 
     -- The claim the `fold` verb turns on, and the reason its acceptance
     -- criterion is stated in bytes: a folded shape written out as FOLD and read
-    -- back has to draw the same picture as the one still in memory. It is not
-    -- obvious. The writer sends every Double through Scientific, whose
-    -- coefficient is an Integer and so has no sign to keep, and folding
-    -- produces negative zeros -- so a signed zero that mattered to the geometry
-    -- would come back changed, and this is what would notice.
+    -- back draws the same picture as the one still in memory. Every number in
+    -- the file has been through the writer's rounding and the decoder's parse,
+    -- and the picture is what says whether any of it mattered.
+    --
+    -- What this does *not* pin, despite the temptation to claim it: a lost
+    -- signed zero. The writer does turn -0.0 into 0 -- Scientific's coefficient
+    -- is an Integer and has no sign -- and folding does produce negative zeros.
+    -- But formatNumber normalises -0.0 to "0" on the way to the page as well,
+    -- so both sides of this comparison are blind to the sign in the same way.
+    -- Catching that needs the frames compared, not the pictures.
     --
     -- The two sides differ in one more way on purpose. The frame in memory
     -- carries no faceOrders and has its layers solved while it is drawn; the
     -- one from the file carries all 892 of them and is drawn by what it says.
     -- Equal output means the writer preserved the solved order too.
+    --
+    -- The document is assembled by soleFrame, which is what the verb itself
+    -- calls. Building it by hand here is how this test would come to guard a
+    -- shape the CLI stopped writing -- see renderSteps above, which learnt it.
     it "draws a folded crane the same after a trip through the FOLD writer" $ do
-      let draw fr = case creasePatternFrom defaultTheme defaultBudget FoldedFormNotation topDown fr of
-            Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
-            Right d -> pure (renderSvg testPage d)
       f <- decodedFixture "test/fixtures/crane.fold"
       folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
       orders <-
         either (fail . ("stacking failed: " <>) . T.unpack . renderFoldError) pure $
           layerOrderFor defaultBudget folded
-      let saved = f {keyFrame = folded {faceOrders = fromMaybe [] orders}, otherFrames = []}
+      let saved = soleFrame (folded {faceOrders = fromMaybe [] orders}) f
       reread <- case decodeFoldFile (encodeFoldFile saved) of
         Left err -> fail ("decode failed: " <> err)
         Right g -> pure (keyFrame g)
-      viaFile <- draw reread
-      direct <- draw folded
+      viaFile <- drawFrame defaultTheme FoldedFormNotation topDown reread
+      direct <- drawFrame defaultTheme FoldedFormNotation topDown folded
       viaFile `shouldBe` direct
 
     -- The one golden that exercises the underside, and the only one with both

@@ -2,8 +2,9 @@
 -- Module      : Senbazuru.Origami.Folding
 -- Description : Turning a crease pattern and its fold angles into a folded form.
 --
--- Given a flat sheet with a crease pattern on it and an angle for every crease,
--- where does the paper end up? This module answers that, and hands back another
+-- Given a flat sheet with a crease pattern on it and an angle for every crease
+-- — or, where the file names only mountains and valleys, the @±180°@ those mean
+-- — where does the paper end up? This module answers that, and hands back another
 -- 'Frame' — a folded form, which the existing renderer draws with no idea that
 -- it was computed rather than read from a file.
 --
@@ -226,10 +227,14 @@ renderFoldingError = explain
 
 -- | Fold a crease pattern into the form its fold angles describe.
 --
--- The result is a new 'Frame' with the same graph and the same angles, moved
--- vertices, and @frame_classes@ set to @foldedForm@ so that whatever draws it
--- picks the right line convention. The angles are kept because they, not the
--- coordinates, are the state — see @docs\/notes\/fold-angles-are-the-state.md@.
+-- The result is a new 'Frame' with the same graph, moved vertices, the angles
+-- it folded by, and @frame_classes@ set to @foldedForm@ so that whatever draws
+-- it picks the right line convention. Angles and not coordinates are the state
+-- — see @docs\/notes\/fold-angles-are-the-state.md@ — so a folded form has to
+-- carry them, and it carries the ones this used even where the file gave none.
+-- A pattern naming only an assignment folds at @±180°@, and the crane is that
+-- case: 129 assignments, no angles, and a folded form that would otherwise say
+-- nothing whatever about how it had been folded. 'foldAnglesOf' decides them.
 --
 -- The root face is held still, which places the model somewhere particular in
 -- space without changing its shape.
@@ -254,13 +259,6 @@ renderFoldingError = explain
 -- Re-winding uncancels it. Moving the sign as well puts the cancellation back,
 -- and leaving it would turn such a file's model inside out with nothing in the
 -- geometry to give it away. See 'reorient'.
---
--- __The angles it folded by are written back.__ A file that gives only an
--- assignment says nothing about how far each crease turns, and folding reads
--- @±180°@ from it. The folded frame records those, so the shape carries its own
--- state instead of leaving the next reader to derive it again. The crane is the
--- case that matters: it carries 129 assignments and no angles, so until this
--- its folded form said nothing whatever about how it had been folded.
 --
 -- One thing is thrown away: 'frameExtras', the keys of the input file that
 -- senbazuru does not understand. They are kept everywhere else precisely so
@@ -358,11 +356,11 @@ foldFrameWith fr0 = do
       -- sign written against one of them now reads backwards.
       rewound = IS.fromList [unFaceId (faceId f) | (f, Rewound) <- turned]
   when (null faces) (Left NoFaces)
-  creases <- creaseIndex fr
-  -- The angles this fold used, so that the folded frame can record them. Read
-  -- after 'creaseIndex' rather than before it, so a file with a bad angle or a
-  -- mismatched array still fails in the same place with the same message.
+  -- Read once and handed to both the walk and the frame that comes out, so
+  -- that the angles this folded by and the angles it records cannot disagree.
+  -- The pair below does the same for the same reason.
   angles <- foldAnglesOf fr
+  creases <- creaseIndex angles fr
   neighbours <- faceNeighbours faces
   -- Built once and handed to both checks below, so they cannot come to
   -- different conclusions about one file by measuring it differently.
@@ -536,18 +534,18 @@ foldAnglesOf fr = case (edgesFoldAngle fr, edgesAssignment fr) of
 -- | Every crease by the pair of vertices it joins, with its fold angle in
 -- radians.
 --
--- The angles are 'foldAnglesOf' in the unit the rotations want. The conversion
--- is exact where it has to be: @180 * pi / 180@ is @pi@ and @-180 * pi / 180@
--- is @-pi@, both measured, so keeping the angles in degrees did not move a
--- flat fold by a bit and no golden file changed.
+-- The angles come in from 'foldAnglesOf' rather than being read here, so that
+-- one read of the frame serves both this and the folded form that records
+-- them. The conversion to radians is exact where it has to be: @180 * pi / 180@
+-- is @pi@ and @-180 * pi / 180@ is @-pi@, both measured, so keeping the angles
+-- in degrees did not move a flat fold by a bit and no golden file changed.
 --
 -- At @±180°@ the two are the same rigid motion: turning half a turn either way
 -- about a line lands in the same place. So folding cannot tell a flat mountain
 -- from a flat valley, and the assignment survives only as layer ordering, which
 -- is "Senbazuru.Origami.Stacking"\'s question rather than this module's.
-creaseIndex :: Frame -> Either FoldingError (M.Map EdgeKey (EdgeId, Double))
-creaseIndex fr = do
-  angles <- foldAnglesOf fr
+creaseIndex :: [Double] -> Frame -> Either FoldingError (M.Map EdgeKey (EdgeId, Double))
+creaseIndex angles fr =
   foldr
     add
     (Right M.empty)
