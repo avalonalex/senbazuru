@@ -8,17 +8,18 @@
 module Senbazuru.Render.SvgSpec (spec) where
 
 import Data.ByteString qualified as BS
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, defaultTheme)
-import Senbazuru.Fold.Load (decodeFile, renderLoadError)
+import Senbazuru.Fold.Load (decodeFile, decodeFoldFile, encodeFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
-import Senbazuru.Fold.Types (FoldFile (..), allFrames)
+import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames, soleFrame)
 import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
-import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Stacking (defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, bottomUp, defaultView, isometric, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
@@ -45,10 +46,21 @@ renderFixtureFrom = renderFixtureWith defaultTheme
 renderFixtureWith :: Theme -> Notation -> Basis -> FilePath -> IO Text
 renderFixtureWith theme notation basis path = do
   f <- decodedFixture path
-  d <- case creasePatternFrom theme defaultBudget notation basis (keyFrame f) of
+  drawFrame theme notation basis (keyFrame f)
+
+-- | Draw one frame already in hand, at the page every golden here is measured
+-- against.
+--
+-- The two renderers above and the round trip below all end in these same three
+-- lines. 'renderStep' keeps its own copy and has to: it puts arrows on the
+-- 'Diagram' before rendering, so it needs the diagram and not the text this
+-- returns. It takes a 'Frame' rather than a path because the round-trip test
+-- has no file to name — its second frame exists only as bytes it just wrote.
+drawFrame :: Theme -> Notation -> Basis -> Frame -> IO Text
+drawFrame theme notation basis fr =
+  case creasePatternFrom theme defaultBudget notation basis fr of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
-    Right d -> pure d
-  pure (renderSvg testPage d)
+    Right d -> pure (renderSvg testPage d)
 
 -- | Read a fixture through the loader the CLI uses, so that a fixture in a
 -- format other than FOLD needs no harness of its own.
@@ -77,10 +89,7 @@ renderFoldedWith :: Theme -> Basis -> FilePath -> IO Text
 renderFoldedWith theme basis path = do
   f <- decodedFixture path
   folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
-  d <- case creasePatternFrom theme defaultBudget FoldedFormNotation basis folded of
-    Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
-    Right d -> pure d
-  pure (renderSvg testPage d)
+  drawFrame theme FoldedFormNotation basis folded
 
 -- | One arrow across a square model of the given size, so that two sizes can be
 -- compared for anything that ought not to depend on the model's scale.
@@ -388,6 +397,41 @@ spec = do
     it "renders the crane after folding it" $
       renderFolded topDown "test/fixtures/crane.fold"
         >>= goldenText "test/golden/crane-folded.svg"
+
+    -- The claim the `fold` verb turns on, and the reason its acceptance
+    -- criterion is stated in bytes: a folded shape written out as FOLD and read
+    -- back draws the same picture as the one still in memory. Every number in
+    -- the file has been through the writer's rounding and the decoder's parse,
+    -- and the picture is what says whether any of it mattered.
+    --
+    -- What this does *not* pin, despite the temptation to claim it: a lost
+    -- signed zero. The writer does turn -0.0 into 0 -- Scientific's coefficient
+    -- is an Integer and has no sign -- and folding does produce negative zeros.
+    -- But formatNumber normalises -0.0 to "0" on the way to the page as well,
+    -- so both sides of this comparison are blind to the sign in the same way.
+    -- Catching that needs the frames compared, not the pictures.
+    --
+    -- The two sides differ in one more way on purpose. The frame in memory
+    -- carries no faceOrders and has its layers solved while it is drawn; the
+    -- one from the file carries all 892 of them and is drawn by what it says.
+    -- Equal output means the writer preserved the solved order too.
+    --
+    -- The document is assembled by soleFrame, which is what the verb itself
+    -- calls. Building it by hand here is how this test would come to guard a
+    -- shape the CLI stopped writing -- see renderSteps above, which learnt it.
+    it "draws a folded crane the same after a trip through the FOLD writer" $ do
+      f <- decodedFixture "test/fixtures/crane.fold"
+      folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
+      orders <-
+        either (fail . ("stacking failed: " <>) . T.unpack . renderFoldError) pure $
+          layerOrderFor defaultBudget folded
+      let saved = soleFrame (folded {faceOrders = fromMaybe [] orders}) f
+      reread <- case decodeFoldFile (encodeFoldFile saved) of
+        Left err -> fail ("decode failed: " <> err)
+        Right g -> pure (keyFrame g)
+      viaFile <- drawFrame defaultTheme FoldedFormNotation topDown reread
+      direct <- drawFrame defaultTheme FoldedFormNotation topDown folded
+      viaFile `shouldBe` direct
 
     -- The one golden that exercises the underside, and the only one with both
     -- paper colours in it. Turning a model over is not the same picture upside

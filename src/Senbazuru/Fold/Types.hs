@@ -64,6 +64,7 @@ module Senbazuru.Fold.Types
     emptyFrame,
     allFrames,
     replacingFrame,
+    soleFrame,
 
     -- * Element identifiers
     VertexId (..),
@@ -207,6 +208,48 @@ emptyFrame =
 -- | Every frame in the document, key frame first.
 allFrames :: FoldFile -> [Frame]
 allFrames f = keyFrame f : otherFrames f
+
+-- | The document reduced to one frame, which becomes the key frame.
+--
+-- The counterpart of 'replacingFrame': that one puts a frame into a numbering,
+-- this one takes a frame out of it. Both live here beside 'allFrames' for the
+-- same reason — the numbering is defined here, and a caller that reasons about
+-- it somewhere else is reasoning about a copy.
+--
+-- __It drops @frame_parent@ and @frame_inherit@, and that is the whole point.__
+-- A parent is an /index/ into the file the frame came from, and that file is
+-- not this one. A link that survived the move would name whatever frame
+-- happened to land at that index, or nothing at all, and neither failure says
+-- anything: the document decodes, and one frame quietly claims descent from a
+-- stranger. Dropping the link costs nothing, because a frame worth extracting
+-- carries its own geometry — senbazuru does not resolve inheritance
+-- (<https://github.com/avalonalex/senbazuru/issues/102 #102>), so a frame that
+-- leaned on a parent for its vertices could not have been read this far.
+--
+-- The file's own metadata stays. @file_title@ and the rest describe the model,
+-- and taking one frame out of a document does not make it a different model.
+--
+-- The exception is a @file_classes@ entry that describes a /collection/ of
+-- frames — @diagrams@ says the frames are a folding sequence, @animation@ that
+-- they are its frames, @multiModel@ that they are different models. Those stop
+-- being true the moment the frames go, so they are dropped, and only when
+-- frames were actually removed: a document that arrived with one frame is left
+-- to make its own claims. Keeping @diagrams@ on a single frame would be the
+-- writer stating something the file cannot support, which is the same mistake
+-- as writing an empty array for an absent one.
+soleFrame :: Frame -> FoldFile -> FoldFile
+soleFrame frame f =
+  f
+    { fileClasses = keptClasses,
+      keyFrame = frame {frameParent = Nothing, frameInherit = False},
+      otherFrames = []
+    }
+  where
+    keptClasses
+      | null (otherFrames f) = fileClasses f
+      | otherwise = filter (`notElem` aboutSeveralFrames) (fileClasses f)
+
+    aboutSeveralFrames = ["multiModel", "animation", "diagrams"]
 
 -- | The document with the nth frame replaced, counting the way 'allFrames'
 -- counts: the key frame is 0 and @file_frames@ start at 1.

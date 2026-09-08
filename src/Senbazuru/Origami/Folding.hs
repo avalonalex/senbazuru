@@ -2,8 +2,9 @@
 -- Module      : Senbazuru.Origami.Folding
 -- Description : Turning a crease pattern and its fold angles into a folded form.
 --
--- Given a flat sheet with a crease pattern on it and an angle for every crease,
--- where does the paper end up? This module answers that, and hands back another
+-- Given a flat sheet with a crease pattern on it and an angle for every crease
+-- — or, where the file names only mountains and valleys, the @±180°@ those mean
+-- — where does the paper end up? This module answers that, and hands back another
 -- 'Frame' — a folded form, which the existing renderer draws with no idea that
 -- it was computed rather than read from a file.
 --
@@ -226,10 +227,14 @@ renderFoldingError = explain
 
 -- | Fold a crease pattern into the form its fold angles describe.
 --
--- The result is a new 'Frame' with the same graph and the same angles, moved
--- vertices, and @frame_classes@ set to @foldedForm@ so that whatever draws it
--- picks the right line convention. The angles are kept because they, not the
--- coordinates, are the state — see @docs\/notes\/fold-angles-are-the-state.md@.
+-- The result is a new 'Frame' with the same graph, moved vertices, the angles
+-- it folded by, and @frame_classes@ set to @foldedForm@ so that whatever draws
+-- it picks the right line convention. Angles and not coordinates are the state
+-- — see @docs\/notes\/fold-angles-are-the-state.md@ — so a folded form has to
+-- carry them, and it carries the ones this used even where the file gave none.
+-- A pattern naming only an assignment folds at @±180°@, and the crane is that
+-- case: 129 assignments, no angles, and a folded form that would otherwise say
+-- nothing whatever about how it had been folded. 'foldAnglesOf' decides them.
 --
 -- The root face is held still, which places the model somewhere particular in
 -- space without changing its shape.
@@ -351,7 +356,11 @@ foldFrameWith fr0 = do
       -- sign written against one of them now reads backwards.
       rewound = IS.fromList [unFaceId (faceId f) | (f, Rewound) <- turned]
   when (null faces) (Left NoFaces)
-  creases <- creaseIndex fr
+  -- Read once and handed to both the walk and the frame that comes out, so
+  -- that the angles this folded by and the angles it records cannot disagree.
+  -- The pair below does the same for the same reason.
+  angles <- foldAnglesOf fr
+  creases <- creaseIndex angles fr
   neighbours <- faceNeighbours faces
   -- Built once and handed to both checks below, so they cannot come to
   -- different conclusions about one file by measuring it differently.
@@ -371,6 +380,7 @@ foldFrameWith fr0 = do
       { foldedFrame =
           fr
             { verticesCoords = [[x, y, z] | V3 x y z <- folded],
+              edgesFoldAngle = angles,
               facesVertices = map faceVertexIds faces,
               faceOrders = map (reorient rewound) (faceOrders fr),
               frameClasses = foldedClasses (frameClasses fr),
@@ -475,38 +485,36 @@ reorient rewound o
       o {orderStacking = otherSide (orderStacking o)}
   | otherwise = o
 
--- | Every crease by the pair of vertices it joins, with its fold angle in
--- radians.
+-- | The fold angle of every crease, in degrees, in @edges_vertices@ order.
 --
--- When @edges_foldAngle@ is absent the angle is taken from the assignment: a
+-- Degrees rather than radians, because degrees are what the file holds and what
+-- a folded frame has to write back: 'foldFrameWith' records the angles it
+-- folded by, so the shape it produces carries its own state. Radians are one
+-- multiplication away and only 'creaseIndex' wants them. Going the other way,
+-- from radians back to degrees, would be a second rounding on a number that is
+-- about to be written to a file, and files are compared byte for byte here.
+--
+-- When @edges_foldAngle@ is absent the angle comes from the assignment: a
 -- mountain folds to @-180°@ and a valley to @+180°@. That is what an assignment
 -- on its own can say — it names a direction and not an amount — and a flat fold
 -- is the only amount consistent with naming no number at all.
 --
--- At @±180°@ the two are the same rigid motion: turning half a turn either way
--- about a line lands in the same place. So folding cannot tell a flat mountain
--- from a flat valley, and the assignment survives only as layer ordering, which
--- is "Senbazuru.Origami.Stacking"\'s question rather than this module's.
-creaseIndex :: Frame -> Either FoldingError (M.Map EdgeKey (EdgeId, Double))
-creaseIndex fr = do
-  angles <- foldAngles
-  foldr add (Right M.empty) (zip3 (map EdgeId [0 ..]) (edgesVertices fr) angles)
+-- An array of the wrong length is a corrupt file, not a default to paper over.
+-- "Senbazuru.Fold.Query" says exactly that about @edges_assignment@ and rejects
+-- it; quietly substituting angles derived from the assignments — which is what
+-- an earlier version did — turned a truncated file into a different model that
+-- rendered without a word.
+foldAnglesOf :: Frame -> Either FoldingError [Double]
+foldAnglesOf fr = case (edgesFoldAngle fr, edgesAssignment fr) of
+  (as, _)
+    | length as == nEdges -> traverse finite (zip (map EdgeId [0 ..]) as)
+  ([], asg)
+    | length asg == nEdges -> Right (map fromAssignment asg)
+    | null asg -> Right (replicate nEdges 0)
+    | otherwise -> lengthMismatch "edges_assignment" (length asg)
+  (as, _) -> lengthMismatch "edges_foldAngle" (length as)
   where
     nEdges = length (edgesVertices fr)
-
-    -- An array of the wrong length is a corrupt file, not a default to paper
-    -- over. "Senbazuru.Fold.Query" says exactly that about edges_assignment and
-    -- rejects it; quietly substituting angles derived from the assignments —
-    -- which is what an earlier version did — turned a truncated file into a
-    -- different model that rendered without a word.
-    foldAngles = case (edgesFoldAngle fr, edgesAssignment fr) of
-      (as, _)
-        | length as == nEdges -> traverse finite (zip (map EdgeId [0 ..]) as)
-      ([], asg)
-        | length asg == nEdges -> Right (map fromAssignment asg)
-        | null asg -> Right (replicate nEdges 0)
-        | otherwise -> lengthMismatch "edges_assignment" (length asg)
-      (as, _) -> lengthMismatch "edges_foldAngle" (length as)
 
     lengthMismatch name n =
       Left (FrameGeometry (ArrayLengthMismatch "edges_vertices" nEdges name n))
@@ -516,12 +524,34 @@ creaseIndex fr = do
     -- come out with half its vertices stacked on the origin and nothing said.
     finite (eid, d)
       | isNaN d || isInfinite d = Left (NonFiniteAngle eid d)
-      | otherwise = Right (d * pi / 180)
+      | otherwise = Right d
 
     fromAssignment = \case
-      Mountain -> -pi
-      Valley -> pi
+      Mountain -> -180
+      Valley -> 180
       _ -> 0
+
+-- | Every crease by the pair of vertices it joins, with its fold angle in
+-- radians.
+--
+-- The angles come in from 'foldAnglesOf' rather than being read here, so that
+-- one read of the frame serves both this and the folded form that records
+-- them. The conversion to radians is exact where it has to be: @180 * pi / 180@
+-- is @pi@ and @-180 * pi / 180@ is @-pi@, both measured, so keeping the angles
+-- in degrees did not move a flat fold by a bit and no golden file changed.
+--
+-- At @±180°@ the two are the same rigid motion: turning half a turn either way
+-- about a line lands in the same place. So folding cannot tell a flat mountain
+-- from a flat valley, and the assignment survives only as layer ordering, which
+-- is "Senbazuru.Origami.Stacking"\'s question rather than this module's.
+creaseIndex :: [Double] -> Frame -> Either FoldingError (M.Map EdgeKey (EdgeId, Double))
+creaseIndex angles fr =
+  foldr
+    add
+    (Right M.empty)
+    (zip3 (map EdgeId [0 ..]) (edgesVertices fr) (map toRadians angles))
+  where
+    toRadians d = d * pi / 180
 
     add (eid, (a, b), angle) acc = do
       m <- acc

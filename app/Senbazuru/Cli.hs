@@ -41,6 +41,7 @@ import Senbazuru.Fold.Types
     allFrames,
     assignmentCode,
     replacingFrame,
+    soleFrame,
   )
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.FlatFold
@@ -58,6 +59,7 @@ import Senbazuru.Origami.Stacking
     Stackings (..),
     componentCount,
     defaultBudget,
+    layerOrderFor,
     solveStackingAs,
     stackingSpace,
     stateCount,
@@ -79,6 +81,7 @@ data Command
   | Check CheckOptions
   | Export ExportOptions
   | Crease CreaseOptions
+  | Fold FoldOptions
   deriving stock (Eq, Show)
 
 -- | Options for the @crease@ subcommand.
@@ -97,6 +100,21 @@ data CreaseOptions = CreaseOptions
     -- the pattern, and crease every layer under the line between them. What is
     -- written out is still the pattern.
     creaseFolded :: Bool
+  }
+  deriving stock (Eq, Show)
+
+-- | Options for the @fold@ subcommand.
+--
+-- The same choices @render --fold@ makes about /which/ paper to fold, and none
+-- about how it looks: this verb writes the paper itself rather than a picture
+-- of it.
+data FoldOptions = FoldOptions
+  { foInput :: FilePath,
+    -- | 'Nothing' writes to stdout, as @crease@ does.
+    foOutput :: Maybe FilePath,
+    foFrame :: Maybe Int,
+    foStacking :: [Int],
+    foBudget :: Budget
   }
   deriving stock (Eq, Show)
 
@@ -220,20 +238,28 @@ commandParser =
         <> command
           "crease"
           (info (Crease <$> creaseOptions) (progDesc "Draw a crease on a pattern and write it out"))
+        <> command
+          "fold"
+          ( info
+              (Fold <$> foldOptions)
+              (progDesc "Fold a crease pattern and write the folded shape out as FOLD")
+          )
     )
+
+foldOptions :: Parser FoldOptions
+foldOptions =
+  FoldOptions
+    <$> inputArg
+    <*> outputOption "FILE.fold"
+    <*> frameOption
+    <*> stackingOption
+    <*> budgetOption
 
 creaseOptions :: Parser CreaseOptions
 creaseOptions =
   CreaseOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.fold"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.fold"
     <*> frameOption
     <*> option
       point
@@ -297,14 +323,7 @@ exportOptions :: Parser ExportOptions
 exportOptions =
   ExportOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.glb"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.glb"
     <*> frameOption
     <*> foldSwitch
     <*> stackingOption
@@ -458,6 +477,24 @@ inputArg =
         <> help "Input crease pattern: .fold, .cp or .opx (anything else is read as FOLD)"
     )
 
+-- | Where to write, for the verbs that write one thing.
+--
+-- The metavar is the argument because it is the only difference between the
+-- four: every verb that writes offers @-o@ with the same long name, the same
+-- short name and the same help, and says only what kind of file it produces.
+-- Kept as one parser for the reason 'inputArg' and 'frameOption' are — the
+-- fourth copy is where a wording change starts missing a verb.
+outputOption :: String -> Parser (Maybe FilePath)
+outputOption metaVar =
+  optional
+    ( strOption
+        ( long "output"
+            <> short 'o'
+            <> metavar metaVar
+            <> help "Output file (default: stdout)"
+        )
+    )
+
 -- | Which frame, for the verbs that work on one. 'Nothing' means the key
 -- frame, kept optional so that asking for a frame and asking for every frame
 -- can be told apart.
@@ -520,14 +557,7 @@ renderOptions :: Parser RenderOptions
 renderOptions =
   RenderOptions
     <$> inputArg
-    <*> optional
-      ( strOption
-          ( long "output"
-              <> short 'o'
-              <> metavar "FILE.svg"
-              <> help "Output file (default: stdout)"
-          )
-      )
+    <*> outputOption "FILE.svg"
     <*> frameOption
     <*> option
       auto
@@ -682,6 +712,46 @@ run = \case
   Check o -> withFoldFile (coInput o) (checkFile o)
   Export o -> withFoldFile (eoInput o) (exportFile o)
   Crease o -> withFoldFile (creaseInput o) (creaseFile o)
+  Fold o -> withFoldFile (foInput o) (foldFile o)
+
+-- | Fold one frame and write the folded shape out as a FOLD file.
+--
+-- @render --fold@ folds a pattern, works out how its layers stack, draws the
+-- result and throws all of it away. This is the same computation with the
+-- answer kept, which is what every other tool in the field consumes: Flat-Folder
+-- and ORIPA both export a folded state, and #38, #53 and #56 each need one.
+--
+-- __One frame comes out, and it is the folded shape.__ The issue asked for two,
+-- the folded shape and the pattern it came from, and that is worse in three
+-- ways. @--steps@ draws frames in file order and 'allFrames' puts the key frame
+-- first, so a folded frame followed by its pattern is a picture of the model
+-- coming /undone/. The key frame's 'frameExtras' are the unknown keys of the
+-- whole file rather than of a frame, so demoting it writes file keys inside a
+-- frame entry. And the two candidate patterns — the frame that went in, and the
+-- cut one that 'Senbazuru.Origami.Folding.foldedPattern' hands back — are
+-- different files on @examples\/unit-square.fold@, so "keep the pattern" is not
+-- even one instruction. The input file still holds the pattern; nothing is lost
+-- that the reader did not already have.
+--
+-- The layer order is solved and written in. That is the point of the verb as
+-- much as the coordinates are: @--stacking@ has always been able to choose an
+-- order that nothing could then save. 'layerOrderFor' declines rather than
+-- guesses for a model it does not cover, and a model it declines gets no
+-- @faceOrders@.
+--
+-- What the /file/ cannot say is which of two silences it holds. A solved order
+-- with nothing in it — a folded shape no part of which overlaps any other — is
+-- written as no @faceOrders@ key, exactly as a declined one is, because the
+-- writer omits an empty array. So "no two faces overlap" and "nobody worked it
+-- out" reach a reader identically, and a reader who needs them apart has to ask
+-- the solver again.
+foldFile :: FoldOptions -> FoldFile -> IO ()
+foldFile o f = do
+  folded <- paperFor (foInput o) (foFrame o) True (foBudget o) (foStacking o) f
+  orders <- case layerOrderFor (foBudget o) folded of
+    Left err -> die ("cannot fold " <> T.pack (foInput o) <> ": " <> explain err)
+    Right os -> pure os
+  writeDocument (foOutput o) (soleFrame (folded {faceOrders = fromMaybe [] orders}) f)
 
 -- | Draw a crease on one frame and write the whole document back out.
 --
@@ -694,13 +764,7 @@ creaseFile o f = do
   let index = fromMaybe 0 (creaseFrame o)
   frame <- frameAt index f
   creased <- either refuse pure (drawn frame)
-  let document = replacingFrame index creased f
-  case creaseOutput o of
-    Nothing -> BS.putStr (encodeFoldFile document)
-    Just path ->
-      saveFoldFile path document >>= \case
-        Left err -> die (explain err)
-        Right () -> pure ()
+  writeDocument (creaseOutput o) (replacingFrame index creased f)
   where
     toV2 (x, y) = V2 x y
 
@@ -732,6 +796,19 @@ exportFile o f = do
   case renderGlb (eoBudget o) thickness (frameTitle frame <|> fileTitle f) frame of
     Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> explain err)
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
+
+-- | Write a FOLD document where the reader asked for it, or abort.
+--
+-- The counterpart of 'withFoldFile', shared by the two verbs that write a
+-- document rather than a picture. 'exportFile' deliberately keeps its own
+-- one-liner instead: it writes a @.glb@, which is bytes and not a document.
+writeDocument :: Maybe FilePath -> FoldFile -> IO ()
+writeDocument output document = case output of
+  Nothing -> BS.putStr (encodeFoldFile document)
+  Just path ->
+    saveFoldFile path document >>= \case
+      Left err -> die (explain err)
+      Right () -> pure ()
 
 -- | Load a file or abort with a message on stderr.
 --
