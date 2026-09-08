@@ -13,10 +13,10 @@ closes.
 | | |
 | --- | --- |
 | Age | 5 days, 2026-09-03 to 2026-09-07 |
-| Commits / merged PRs | 54 / 44 |
-| Library / CLI / test lines | 11.1k / 1.0k / 7.7k |
-| Docs | 5.1k lines of markdown, 27 notes |
-| Tests | 648 examples, about a second once built |
+| Commits / merged PRs | 58 / 48 |
+| Library / CLI / test lines | 11.3k / 1.1k / 7.9k |
+| Docs | 5.2k lines of markdown, 28 notes |
+| Tests | 652 examples, about a second once built |
 | Roadmap issues closed | 9 of 12 |
 | Largest real model in the suite | the crane, 72 faces |
 | Releases | none |
@@ -108,12 +108,21 @@ and, since 2026, four research papers in it.
   be read edge by edge. #106 is subdivision, a bump and a per-layer height, and
   its open question is how the reader names a region.
   [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md) has both.
+- **[#111](https://github.com/avalonalex/senbazuru/issues/111) one answer about fold angles.** Moving `foldAnglesOf` into
+  `Fold.Query` is the easy half. The judgement is which of the other three
+  callers can share it, since how far a crease turns and which way it turns are
+  not the same question.
 - **[#62](https://github.com/avalonalex/senbazuru/issues/62) polymorphic scalar**, **[#63](https://github.com/avalonalex/senbazuru/issues/63) phantom units**,
   **[#73](https://github.com/avalonalex/senbazuru/issues/73) vendor keys**, **[#102](https://github.com/avalonalex/senbazuru/issues/102) frame inheritance.** Refactors
   of the data model, each with one design choice in it.
 
 ### Small: an afternoon of composing what exists
 
+- **[#110](https://github.com/avalonalex/senbazuru/issues/110) a folded frame with its layer order in it.** One function
+  beside `layerOrderFor`, and #38, #53 and #56 each stop needing the command
+  line to build the value they want.
+- **[#109](https://github.com/avalonalex/senbazuru/issues/109) a length `zip3` cannot truncate.** One comparison and an
+  error that already exists.
 - [#92](https://github.com/avalonalex/senbazuru/issues/92) `convert`, [#100](https://github.com/avalonalex/senbazuru/issues/100) big-little-big, [#101](https://github.com/avalonalex/senbazuru/issues/101) the
   whole-sheet verdict, [#95](https://github.com/avalonalex/senbazuru/issues/95) turn over, [#96](https://github.com/avalonalex/senbazuru/issues/96) the papers note,
   [#98](https://github.com/avalonalex/senbazuru/issues/98) the release, [#58](https://github.com/avalonalex/senbazuru/issues/58), [#11](https://github.com/avalonalex/senbazuru/issues/11), [#64](https://github.com/avalonalex/senbazuru/issues/64).
@@ -135,7 +144,10 @@ stacking and read the assignment off it. That drops the hardest precondition.
 3. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
 4. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
    produce the numbers [#55](https://github.com/avalonalex/senbazuru/issues/55) will be tested against.
-5. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
+5. [#110](https://github.com/avalonalex/senbazuru/issues/110) and [#109](https://github.com/avalonalex/senbazuru/issues/109), the two follow-ups the `fold`
+   verb left behind. #110 first, and before #38 or #53 rather than after them,
+   because it is the value both of them will otherwise rebuild by hand.
+6. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
    even though generating a body is the point: it is what makes any curved form
    printable, and `examples/puffed-square.fold` already exists to test it
    against, so it can be finished before anything can make a second one.
