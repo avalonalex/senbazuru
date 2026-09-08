@@ -102,6 +102,12 @@ and, since 2026, four research papers in it.
 - **[#38](https://github.com/avalonalex/senbazuru/issues/38) assignment from a stacking**, **[#53](https://github.com/avalonalex/senbazuru/issues/53) reading a
   simulator's angles**, **[#56](https://github.com/avalonalex/senbazuru/issues/56) glTF animation.** Each is composition
   once [#91](https://github.com/avalonalex/senbazuru/issues/91) writes a folded form out; #56 also waits on #55.
+- **[#104](https://github.com/avalonalex/senbazuru/issues/104) the silhouette** and **[#106](https://github.com/avalonalex/senbazuru/issues/106) generating a puff.**
+  The rule for #104 is one sign test per shared edge; the care is that it
+  changes what every existing folded form draws, so each golden's diff has to
+  be read edge by edge. #106 is subdivision, a bump and a per-layer height, and
+  its open question is how the reader names a region.
+  [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md) has both.
 - **[#62](https://github.com/avalonalex/senbazuru/issues/62) polymorphic scalar**, **[#63](https://github.com/avalonalex/senbazuru/issues/63) phantom units**,
   **[#73](https://github.com/avalonalex/senbazuru/issues/73) vendor keys**, **[#102](https://github.com/avalonalex/senbazuru/issues/102) frame inheritance.** Refactors
   of the data model, each with one design choice in it.
@@ -132,3 +138,7 @@ stacking and read the assignment off it. That drops the hardest precondition.
 4. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
 5. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
    produce the numbers [#55](https://github.com/avalonalex/senbazuru/issues/55) will be tested against.
+6. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
+   even though generating a body is the point: it is what makes any curved form
+   printable, and `examples/puffed-square.fold` already exists to test it
+   against, so it can be finished before anything can make a second one.
