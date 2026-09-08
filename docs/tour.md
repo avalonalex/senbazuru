@@ -623,6 +623,45 @@ folded form: the motions only exist because senbazuru did the folding, and a
 file that arrives folded carries neither them nor a sheet to map back to.
 Without `--folded`, a folded form is still refused outright.
 
+## What it writes out
+
+Everything above computes a folded model and then draws it. `senbazuru fold`
+does the computing and keeps the answer:
+
+```bash
+stack run -- fold examples/crane.fold -o crane-folded.fold
+stack run -- render crane-folded.fold -o crane.svg
+```
+
+That second command draws the crane from a file that already *is* the folded
+crane, and the bytes it produces are identical to `render examples/crane.fold
+--fold`. That equality is the acceptance test, and it is a stronger claim than
+it looks: the FOLD writer sends every number through a type whose coefficient is
+an `Integer`, which has no sign to keep, and folding produces negative zeros. A
+signed zero that mattered would come back changed.
+
+The file carries what the fold worked out. `frame_classes` becomes
+`["foldedForm"]`, `frame_attributes` says `2D` or `3D` to match the coordinates,
+and `faceOrders` holds the layer order the solver found — 892 relations for the
+crane. `--stacking` chooses among the five orders the crane admits, and until
+this verb existed that flag could pick an order that nothing was able to save.
+
+The angles come out too, and that is a change to folding itself rather than to
+this verb. A file like the crane gives 129 assignments and no `edges_foldAngle`
+at all. Folding reads ±180° from each assignment, places the faces with it, and
+used to discard it — so the folded crane recorded nothing about how it had been
+folded. Since a folded model's state *is* its angles, the shape now carries
+them.
+
+**One frame comes out.** Writing the pattern alongside it was the other option
+and is worse three ways over: `--steps` draws frames in file order, so a folded
+frame followed by its flat sheet is a picture of the model coming undone; the
+key frame's unknown keys belong to the whole file rather than to a frame, so
+demoting it files the file's keys inside a frame; and there are two candidate
+patterns, the frame that went in and the one whose crossings were cut, which are
+different files for anything drawn with creases that cross. The input still
+holds the pattern, so nothing is lost.
+
 ## What it checks
 
 `senbazuru check` applies two classical theorems to every *interior* vertex of a

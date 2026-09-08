@@ -8,17 +8,18 @@
 module Senbazuru.Render.SvgSpec (spec) where
 
 import Data.ByteString qualified as BS
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, defaultTheme)
-import Senbazuru.Fold.Load (decodeFile, renderLoadError)
+import Senbazuru.Fold.Load (decodeFile, decodeFoldFile, encodeFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
-import Senbazuru.Fold.Types (FoldFile (..), allFrames)
+import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames)
 import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
-import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Stacking (defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (motionsBetween)
 import Senbazuru.Render.Camera (Basis, bottomUp, defaultView, isometric, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
@@ -388,6 +389,35 @@ spec = do
     it "renders the crane after folding it" $
       renderFolded topDown "test/fixtures/crane.fold"
         >>= goldenText "test/golden/crane-folded.svg"
+
+    -- The claim the `fold` verb turns on, and the reason its acceptance
+    -- criterion is stated in bytes: a folded shape written out as FOLD and read
+    -- back has to draw the same picture as the one still in memory. It is not
+    -- obvious. The writer sends every Double through Scientific, whose
+    -- coefficient is an Integer and so has no sign to keep, and folding
+    -- produces negative zeros -- so a signed zero that mattered to the geometry
+    -- would come back changed, and this is what would notice.
+    --
+    -- The two sides differ in one more way on purpose. The frame in memory
+    -- carries no faceOrders and has its layers solved while it is drawn; the
+    -- one from the file carries all 892 of them and is drawn by what it says.
+    -- Equal output means the writer preserved the solved order too.
+    it "draws a folded crane the same after a trip through the FOLD writer" $ do
+      let draw fr = case creasePatternFrom defaultTheme defaultBudget FoldedFormNotation topDown fr of
+            Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
+            Right d -> pure (renderSvg testPage d)
+      f <- decodedFixture "test/fixtures/crane.fold"
+      folded <- either (fail . ("fold failed: " <>) . show) pure (foldFrame (keyFrame f))
+      orders <-
+        either (fail . ("stacking failed: " <>) . T.unpack . renderFoldError) pure $
+          layerOrderFor defaultBudget folded
+      let saved = f {keyFrame = folded {faceOrders = fromMaybe [] orders}, otherFrames = []}
+      reread <- case decodeFoldFile (encodeFoldFile saved) of
+        Left err -> fail ("decode failed: " <> err)
+        Right g -> pure (keyFrame g)
+      viaFile <- draw reread
+      direct <- draw folded
+      viaFile `shouldBe` direct
 
     -- The one golden that exercises the underside, and the only one with both
     -- paper colours in it. Turning a model over is not the same picture upside

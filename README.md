@@ -61,6 +61,7 @@ stack run -- render examples/quarter-fold.fold --fold --offset 6 -o stack.svg
 stack run -- render examples/bird-base.cp --fold -o bird-base.svg
 stack run -- check examples/crane.fold
 stack run -- export examples/crane.fold --fold -o crane.glb
+stack run -- fold examples/crane.fold -o crane-folded.fold
 ```
 
 `stack test` runs the suite, which takes about a second once everything is

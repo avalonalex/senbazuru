@@ -58,6 +58,7 @@ import Senbazuru.Origami.Stacking
     Stackings (..),
     componentCount,
     defaultBudget,
+    layerOrderFor,
     solveStackingAs,
     stackingSpace,
     stateCount,
@@ -79,6 +80,7 @@ data Command
   | Check CheckOptions
   | Export ExportOptions
   | Crease CreaseOptions
+  | Fold FoldOptions
   deriving stock (Eq, Show)
 
 -- | Options for the @crease@ subcommand.
@@ -97,6 +99,21 @@ data CreaseOptions = CreaseOptions
     -- the pattern, and crease every layer under the line between them. What is
     -- written out is still the pattern.
     creaseFolded :: Bool
+  }
+  deriving stock (Eq, Show)
+
+-- | Options for the @fold@ subcommand.
+--
+-- The same choices @render --fold@ makes about /which/ paper to fold, and none
+-- about how it looks: this verb writes the paper itself rather than a picture
+-- of it.
+data FoldOptions = FoldOptions
+  { foInput :: FilePath,
+    -- | 'Nothing' writes to stdout, as @crease@ does.
+    foOutput :: Maybe FilePath,
+    foFrame :: Maybe Int,
+    foStacking :: [Int],
+    foBudget :: Budget
   }
   deriving stock (Eq, Show)
 
@@ -220,7 +237,29 @@ commandParser =
         <> command
           "crease"
           (info (Crease <$> creaseOptions) (progDesc "Draw a crease on a pattern and write it out"))
+        <> command
+          "fold"
+          ( info
+              (Fold <$> foldOptions)
+              (progDesc "Fold a crease pattern and write the folded shape out as FOLD")
+          )
     )
+
+foldOptions :: Parser FoldOptions
+foldOptions =
+  FoldOptions
+    <$> inputArg
+    <*> optional
+      ( strOption
+          ( long "output"
+              <> short 'o'
+              <> metavar "FILE.fold"
+              <> help "Output file (default: stdout)"
+          )
+      )
+    <*> frameOption
+    <*> stackingOption
+    <*> budgetOption
 
 creaseOptions :: Parser CreaseOptions
 creaseOptions =
@@ -682,6 +721,67 @@ run = \case
   Check o -> withFoldFile (coInput o) (checkFile o)
   Export o -> withFoldFile (eoInput o) (exportFile o)
   Crease o -> withFoldFile (creaseInput o) (creaseFile o)
+  Fold o -> withFoldFile (foInput o) (foldFile o)
+
+-- | Fold one frame and write the folded shape out as a FOLD file.
+--
+-- @render --fold@ folds a pattern, works out how its layers stack, draws the
+-- result and throws all of it away. This is the same computation with the
+-- answer kept, which is what every other tool in the field consumes: Flat-Folder
+-- and ORIPA both export a folded state, and #38, #53 and #56 each need one.
+--
+-- __One frame comes out, and it is the folded shape.__ The issue asked for two,
+-- the folded shape and the pattern it came from, and that is worse in three
+-- ways. @--steps@ draws frames in file order and 'allFrames' puts the key frame
+-- first, so a folded frame followed by its pattern is a picture of the model
+-- coming /undone/. The key frame's 'frameExtras' are the unknown keys of the
+-- whole file rather than of a frame, so demoting it writes file keys inside a
+-- frame entry. And the two candidate patterns — the frame that went in, and the
+-- cut one that 'Senbazuru.Origami.Folding.foldedPattern' hands back — are
+-- different files on @examples\/unit-square.fold@, so "keep the pattern" is not
+-- even one instruction. The input file still holds the pattern; nothing is lost
+-- that the reader did not already have.
+--
+-- The layer order is solved and written in. That is the point of the verb as
+-- much as the coordinates are: @--stacking@ has always been able to choose an
+-- order that nothing could then save. 'layerOrderFor' declines rather than
+-- guesses for a model it does not cover, and a declined order writes no
+-- @faceOrders@ rather than an empty one — the difference between "no two faces
+-- overlap" and "nobody knows", which "Senbazuru.Fold.Load" is careful about.
+foldFile :: FoldOptions -> FoldFile -> IO ()
+foldFile o f = do
+  folded <- paperFor (foInput o) (foFrame o) True (foBudget o) (foStacking o) f
+  orders <- case layerOrderFor (foBudget o) folded of
+    Left err -> die ("cannot fold " <> T.pack (foInput o) <> ": " <> explain err)
+    Right os -> pure os
+  let document = foldedDocument (folded {faceOrders = fromMaybe [] orders}) f
+  case foOutput o of
+    Nothing -> BS.putStr (encodeFoldFile document)
+    Just path ->
+      saveFoldFile path document >>= \case
+        Left err -> die (explain err)
+        Right () -> pure ()
+
+-- | The folded shape as the whole of a one-frame document.
+--
+-- The file's own metadata stays. @file_title@, @file_author@ and the rest
+-- describe the /model/, and folding a crane does not make it a different
+-- model or give it a different author.
+--
+-- Two things about the frame have to go, and the second is easy to miss.
+-- @frame_parent@ and @frame_inherit@ name a frame by its index in the file this
+-- frame came from, and that frame is not in the file being written — so a
+-- parent link that survived the move would point at whatever happened to land
+-- at that index, or at nothing. A frame that folds at all carries its own
+-- geometry, since senbazuru does not resolve inheritance (#102) and could not
+-- have folded a frame that leaned on a parent for its vertices. So dropping the
+-- link loses nothing and keeping it would state something false.
+foldedDocument :: Frame -> FoldFile -> FoldFile
+foldedDocument frame f =
+  f
+    { keyFrame = frame {frameParent = Nothing, frameInherit = False},
+      otherFrames = []
+    }
 
 -- | Draw a crease on one frame and write the whole document back out.
 --

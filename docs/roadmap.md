@@ -16,7 +16,7 @@ closes.
 | Commits / merged PRs | 54 / 44 |
 | Library / CLI / test lines | 11.1k / 1.0k / 7.7k |
 | Docs | 5.1k lines of markdown, 27 notes |
-| Tests | 645 examples, about a second once built |
+| Tests | 648 examples, about a second once built |
 | Roadmap issues closed | 9 of 12 |
 | Largest real model in the suite | the crane, 72 faces |
 | Releases | none |
@@ -101,7 +101,7 @@ and, since 2026, four research papers in it.
   conventions of two web tools to read before fixing ours.
 - **[#38](https://github.com/avalonalex/senbazuru/issues/38) assignment from a stacking**, **[#53](https://github.com/avalonalex/senbazuru/issues/53) reading a
   simulator's angles**, **[#56](https://github.com/avalonalex/senbazuru/issues/56) glTF animation.** Each is composition
-  once [#91](https://github.com/avalonalex/senbazuru/issues/91) writes a folded form out; #56 also waits on #55.
+  now that the `fold` verb writes a folded form out; #56 also waits on #55.
 - **[#104](https://github.com/avalonalex/senbazuru/issues/104) the silhouette** and **[#106](https://github.com/avalonalex/senbazuru/issues/106) generating a puff.**
   The rule for #104 is one sign test per shared edge; the care is that it
   changes what every existing folded form draws, so each golden's diff has to
@@ -114,8 +114,6 @@ and, since 2026, four research papers in it.
 
 ### Small: an afternoon of composing what exists
 
-- **[#91](https://github.com/avalonalex/senbazuru/issues/91) the `fold` verb.** Half a day, and it unblocks #93, #53 and
-  #38.
 - [#92](https://github.com/avalonalex/senbazuru/issues/92) `convert`, [#100](https://github.com/avalonalex/senbazuru/issues/100) big-little-big, [#101](https://github.com/avalonalex/senbazuru/issues/101) the
   whole-sheet verdict, [#95](https://github.com/avalonalex/senbazuru/issues/95) turn over, [#96](https://github.com/avalonalex/senbazuru/issues/96) the papers note,
   [#98](https://github.com/avalonalex/senbazuru/issues/98) the release, [#58](https://github.com/avalonalex/senbazuru/issues/58), [#11](https://github.com/avalonalex/senbazuru/issues/11), [#64](https://github.com/avalonalex/senbazuru/issues/64).
@@ -128,17 +126,16 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 ## An order
 
-1. [#91](https://github.com/avalonalex/senbazuru/issues/91), the `fold` verb. Cheapest, and three issues want it.
-2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
+1. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
-3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their
+2. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their
    vocabulary, then decide the scheme format. Only then [#95](https://github.com/avalonalex/senbazuru/issues/95),
    [#94](https://github.com/avalonalex/senbazuru/issues/94) and [#36](https://github.com/avalonalex/senbazuru/issues/36), which give a written scheme its arrows and
    captions.
-4. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
-5. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
+3. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
+4. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
    produce the numbers [#55](https://github.com/avalonalex/senbazuru/issues/55) will be tested against.
-6. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
+5. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
    even though generating a body is the point: it is what makes any curved form
    printable, and `examples/puffed-square.fold` already exists to test it
    against, so it can be finished before anything can make a second one.

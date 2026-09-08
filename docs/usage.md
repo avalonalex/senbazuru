@@ -28,6 +28,7 @@ senbazuru check  FILE [--frame N] [--tolerance DEG]
 senbazuru info   FILE [--fold] [--layer-budget N]
 senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
                       [--folded] [--frame N] [-o OUT.fold]
+senbazuru fold   FILE [--frame N] [--stacking N[,N...]] [--layer-budget N] [-o OUT.fold]
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -312,6 +313,43 @@ neither them nor a sheet to map back to, and recovering one is unfolding.
 Without `--folded` a folded form is refused outright, as it always was: the
 regions between a folded form's creases are not its faces, so there is nothing
 to draw a line on.
+
+## `fold`
+
+Folds a crease pattern and writes the folded shape out as FOLD, with the layer
+order it worked out. `render --fold` computes all of this and then draws it;
+this is the same computation with the answer kept.
+
+```bash
+stack run -- fold examples/crane.fold -o crane-folded.fold
+stack run -- render crane-folded.fold -o crane.svg     # the same picture, from the file
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--frame N` | Which frame to fold (default 0, the key frame) |
+| `--stacking N[,N...]` | Which layer order to write, when the model has several. `info --fold` lists the choices |
+| `--layer-budget N` | How many guesses the layer solver may make before giving up |
+| `-o`, `--output` | Where to write. Default is stdout |
+
+**One frame comes out, and it is the folded shape.** The other frames of the
+input are not carried through, and neither is the pattern: the input file still
+holds it, and a file whose first frame is a folded form followed by the flat
+sheet is a picture of the model coming undone, since `--steps` draws frames in
+file order.
+
+What comes out carries `frame_classes: ["foldedForm"]`, 3D coordinates when the
+model leaves the plane, the fold angles it folded by, and `faceOrders` when the
+layer order can be worked out. A model the solver does not cover — one not
+folded flat, or with a face that is not convex — gets no `faceOrders` rather
+than an empty list, because "no two faces overlap" and "nobody knows" are not
+the same claim.
+
+Two deliberate omissions. The vendor keys of the input do not survive, which is
+[#73](https://github.com/avalonalex/senbazuru/issues/73): folding rewrites every
+coordinate, and nothing can judge which unknown keys still hold. And
+`file_creator` is left alone, so a file that says another tool made it goes on
+saying so; `crease` behaves the same way.
 
 ## `check`
 

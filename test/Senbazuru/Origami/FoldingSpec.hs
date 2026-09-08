@@ -344,6 +344,22 @@ spec = do
       edgesFoldAngle folded `shouldBe` edgesFoldAngle flat
       edgesVertices folded `shouldBe` edgesVertices flat
 
+    it "writes the angles it folded by, when the file gives only assignments" $ do
+      -- The crane carries 129 assignments and no edges_foldAngle at all.
+      -- Folding reads +/-180 from each assignment, places the faces with it,
+      -- and used to throw it away -- leaving a folded form that said nothing
+      -- about how it had been folded. A folded model's state is its angles, so
+      -- the shape has to carry them for any other tool to make sense of it.
+      flat <- loadFixture "test/fixtures/crane.fold"
+      folded <- foldOrFail flat
+      edgesFoldAngle flat `shouldBe` []
+      length (edgesFoldAngle folded) `shouldBe` length (edgesVertices folded)
+      let angleOf a = [d | (b, d) <- zip (edgesAssignment folded) (edgesFoldAngle folded), b == a]
+      angleOf Mountain `shouldSatisfy` (\ds -> not (null ds) && all (== -180) ds)
+      angleOf Valley `shouldSatisfy` (\ds -> not (null ds) && all (== 180) ds)
+      angleOf Flat `shouldSatisfy` all (== 0)
+      angleOf Border `shouldSatisfy` all (== 0)
+
     it "says the result is a folded form" $ do
       -- Otherwise a flat-folded result would be drawn with crease-pattern
       -- dashes, which mean a fold still to be made.
