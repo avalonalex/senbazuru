@@ -34,6 +34,7 @@ says *not checked*, check it before reading the code.
 | [Freeform Origami, Rigid Origami Simulator, Origamizer](https://tsg.ne.jp/TT/software/) — Tomohiro Tachi | Rigid-origami kinematics, interactive design under rigid constraints, and crease patterns for any polyhedron | Binaries only, non-commercial | Tachi's *papers* are the method [#55](https://github.com/avalonalex/senbazuru/issues/55) follows; the binaries are what to compare against once it exists. |
 | [TreeMaker](https://langorigami.com/article/treemaker/) — Robert J. Lang | Turns a stick figure into a crease pattern for a base | GPL | The design end of the pipeline, which senbazuru does not do. Read for the vocabulary of bases and flaps. |
 | [ReferenceFinder](https://langorigami.com/article/referencefinder/) — Robert J. Lang | Finds a short folding sequence that lands a reference point or line, by searching the Huzita–Hatori axioms | GPL (not checked) | Exactly the *reference* vocabulary a written folding scheme needs ([#97](https://github.com/avalonalex/senbazuru/issues/97)); see [notes/huzita-hatori.md](notes/huzita-hatori.md). |
+| [Eos](https://www.semanticscholar.org/paper/Computational-Origami-System-Eos-Ida-Takahashi/b7ae46f4f3b074d336af2802ac0a8337a39c1ba0) — Tetsuo Ida and others | The E-origami system: Mathematica programs that fold as a person would, implement Huzita's axioms with a logical specification in first-order predicate logic, solve the constraints symbolically, and prove geometric properties of the result | Needs Mathematica; not checked | The rigorous answer to the half of [#97](https://github.com/avalonalex/senbazuru/issues/97) that is hard — how a fold names the line it folds on. Read it for the reference vocabulary. It is not a diagram tool: it constructs reference geometry and proves things about it, one computed line at a time, so it answers *where does this line go* and never *how do I fold a crane*. |
 | [Doodle](https://doodle.sourceforge.net/) — Jérôme Gout and others | A text language for origami diagrams, compiled to PostScript. 2000–2001 | not checked | A whole diagramming language with no geometry in it: the arrows and captions were typed, not computed. One of the three shapes [#97](https://github.com/avalonalex/senbazuru/issues/97) weighs. |
 | [Foldinator](https://zingman.com/origami/foldinator3OSMEpaper.php) — John Szinger, 2001 | A modeller that folds a sheet step by step in 3D and generates annotated diagrams. Valley, mountain and reverse folds; never released | paper only | The closest ancestor of [#60](https://github.com/avalonalex/senbazuru/issues/60), and a record of how far a fold vocabulary got twenty-five years ago. |
 | [rigid-origami](https://github.com/belalugaX/rigid-origami) | Python: rigid-origami crease-pattern generation and folding simulation, framed as a game environment | not checked | Another rigid-origami simulator to compare angle solutions against. |
@@ -60,6 +61,49 @@ question is not reopened from scratch.
 
 SWOMPS, the bar-and-hinge simulator with panel contact and compliant crease
 regions, is the OrigamiSimulator (MATLAB) row in the table above.
+
+## Two halves that never met
+
+Three of the entries above are attempts at the thing
+[#60](https://github.com/avalonalex/senbazuru/issues/60) wants, and they fall
+either side of one line.
+
+**Eos has the geometry and no diagrams.** It is rigorous to the point of proving
+theorems about a folded point, and what it produces is a construction rather
+than a model anyone would recognise.
+
+**Doodle has the diagrams and no geometry.** It printed book-quality pages from
+typed input in 2000, and it could not tell you whether what you typed was
+foldable, because nothing in it knew what paper was.
+
+**Foldinator tried to join them** — fold a sheet step by step in 3D, emit
+annotated diagrams — and was never released, so only the paper survives.
+
+That is the gap senbazuru would be filling, and it is worth knowing that the
+one previous attempt to fill it did not ship.
+
+## The same problem, outside origami
+
+Naming a flap is the hard part of a written scheme, and it is not an origami
+problem. Parametric CAD has fought it for thirty years under the name **the
+topological naming problem**: you select a face, the system records an
+identifier for it, you change an earlier feature, and the identifier now names a
+different face or none. FreeCAD and the commercial packages have all bled on it.
+
+A written fold hits it the moment it says something like *petal fold the front
+flap*. That flap is not a corner or an edge of the square; it exists only
+because of the folds made before it, so a step inserted earlier can leave the
+name pointing at different paper, or at none — and the scheme still parses.
+Nobody has a clean answer, but there is a great deal of evidence about which
+approaches fail, and it is cheaper to read than to rediscover.
+
+Machine knitting has been through a version of the same exercise from the other
+direction, turning a traditional written craft vocabulary into something a
+machine can execute.
+
+This belongs here rather than in a note because the useful part is the pointer
+to other people's software. If a decision comes out of it, that is
+[#97](https://github.com/avalonalex/senbazuru/issues/97).
 
 ## Research, 2026
 
