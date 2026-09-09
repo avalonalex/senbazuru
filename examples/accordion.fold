@@ -1,0 +1,43 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (hand-written)",
+  "file_title": "Accordion of four panels",
+  "file_classes": ["singleModel"],
+  "frame_title": "Four equal panels, folded back and forth",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "vertices_coords": [
+    [0.0, 0.0],
+    [0.25, 0.0],
+    [0.5, 0.0],
+    [0.75, 0.0],
+    [1.0, 0.0],
+    [1.0, 1.0],
+    [0.75, 1.0],
+    [0.5, 1.0],
+    [0.25, 1.0],
+    [0.0, 1.0]
+  ],
+  "edges_vertices": [
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    [4, 5],
+    [5, 6], [6, 7], [7, 8], [8, 9],
+    [9, 0],
+    [1, 8], [2, 7], [3, 6]
+  ],
+  "edges_assignment": [
+    "B", "B", "B", "B",
+    "B",
+    "B", "B", "B", "B",
+    "B",
+    "M", "V", "M"
+  ],
+  "edges_foldAngle": [
+    0, 0, 0, 0,
+    0,
+    0, 0, 0, 0,
+    0,
+    -180, 180, -180
+  ]
+}
