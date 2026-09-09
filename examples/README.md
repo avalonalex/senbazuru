@@ -67,27 +67,36 @@ demonstrated on:
 | `puffed-square.fold` | Not a fold at all: a unit square on a 10×10 grid, each cell cut into two triangles, lifted by `z = 0.25 sin(πx) sin(πy)`, every interior edge `F`. Generated, so it carries no design. It is the method a puffed crane body would use, at the smallest size that shows it, and the fixture for drawing a curved surface as a mesh of flat faces — see [docs/notes/the-puff-is-a-drawing.md](../docs/notes/the-puff-is-a-drawing.md) |
 | `letter-fold.fold`     | A square folded in three like a letter, with panels of different widths so that the layer order shows. Alternate the creases and it folds into an accordion; make them both valleys and it cannot be folded at all, because the long panel would have to pass through a closed fold |
 | `quarter-fold-steps.fold` | The same quarter fold as three frames of a sequence, and the only multi-frame file here. Its folded coordinates were computed by senbazuru's own folding rather than typed out. `--arrows` and `--steps` are demonstrated on it |
-| `book-base.fold`       | The simplest fold there is: one crease, two faces, two layers. Nothing smaller exercises folding at all, which is what makes it the first case for [#114](https://github.com/avalonalex/senbazuru/issues/114) |
-| `accordion.fold`       | Four equal panels folded back and forth. The four layers land exactly on top of one another, as the quarter fold's do, but there is no interior vertex anywhere — so it is the quarter fold's stacking problem with the hard part removed |
-| `blintz-base.fold`     | Four corners folded to the centre. Its creases are oblique, and its four flaps tile the diamond they fold onto exactly, so the folded form is one shape with eight edges hidden inside it. Draw it with `--view bottom`: the flaps are on the far side from the default camera, and from above it is a plain diamond |
 | `crease-stops.fold` | Two creases that divide no paper: one running to a point in the middle of the sheet, and one ending part-way along a flat line, where the paper is continuous and three drawn lines leave one crease. What `check` reports as neither of its two theorems. |
 
-## The base folds, and what they are for
+## Folds with no interior vertex
 
-`book-base.fold`, `accordion.fold` and `blintz-base.fold` are the first rung of
-a ladder of traditional bases, and they are here for
-[#114](https://github.com/avalonalex/senbazuru/issues/114): senbazuru draws a
-folded stack as though the layers were loose sheets, because it never draws the
-paper that wraps around a fold. `docs/img/quarter-fold-offset.svg` is the
-symptom — four squares with nothing joining them.
+These three are the first rung of a ladder of traditional folds, and they are
+here for [#114](https://github.com/avalonalex/senbazuru/issues/114): senbazuru
+draws a folded stack as though the layers were loose sheets, because it never
+draws the paper that wraps around a fold. `docs/img/quarter-fold-offset.svg` is
+the symptom, four squares with nothing joining them.
 
-**What these three have in common is that none of them has an interior
-vertex.** Every crease runs between two points on the border, so `check` skips
-every vertex and reports so. That is the point rather than a shortcoming. Where
-several creases meet, the rounded folds interact and the surface is no longer
-developable, which is the one part of #114 that has no clean answer; these
-three let the fold radius and the layer separation be got right before anything
-has to be decided about vertices.
+**What they have in common is that no crease meets another.** Every one runs
+between two points on the border, so `check` skips every vertex and says so.
+That is the point rather than a shortcoming, and it is why they are grouped
+apart from the table above: there is nothing here for `check` to demonstrate.
+Where creases *do* meet, the rounded folds interact and the surface stops being
+developable, which is the one part of #114 with no clean answer. These let the
+fold radius and the layer separation be settled first.
 
-They are traditional forms with no single author, and they are generated rather
-than copied, so they carry no design and no licence but this one.
+Each folds and stacks with exactly one valid layer order, so there is no choice
+among stackings for a change to make differently in silence.
+"Senbazuru.Origami.StackingSpec" pins that, and pins the absence of an interior
+vertex with it, because those two properties are the whole reason these files
+were chosen.
+
+| File | What it is |
+| ---- | ---------- |
+| `book-base.fold` | The simplest fold there is: one crease, two faces, two layers. Nothing smaller exercises folding at all, which is what makes it the first case for #114 |
+| `accordion.fold` | Four equal panels folded back and forth. The four layers land exactly on top of one another, as the quarter fold's do, but with no interior vertex — so it is the quarter fold's stacking problem with the hard part removed. Not a duplicate of `letter-fold.fold`, whose three panels are deliberately unequal so that the stack shows without an offset |
+| `blintz-base.fold` | Four corners folded to the centre, so its creases are oblique and its four flaps tile the diamond they land on exactly. The creases are mountains rather than valleys, which is what puts the flaps towards the default camera; folded the other way it draws as a plain diamond with all eight of those edges hidden underneath |
+
+They are traditional forms with no single author, and they were written here
+rather than taken from anywhere, so they carry no design and no licence but
+this repository's.

@@ -16,7 +16,7 @@ closes.
 | Commits / merged PRs | 58 / 48 |
 | Library / CLI / test lines | 11.3k / 1.1k / 7.9k |
 | Docs | 5.2k lines of markdown, 28 notes |
-| Tests | 652 examples, about a second once built |
+| Tests | 661 examples, about a second once built |
 | Roadmap issues closed | 9 of 12 |
 | Largest real model in the suite | the crane, 72 faces |
 | Releases | none |
