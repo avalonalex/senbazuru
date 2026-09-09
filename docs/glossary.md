@@ -15,6 +15,8 @@ For the ideas rather than the definitions, start with
 | **Folded form** | The same graph with vertices moved to where they end up after folding. Often 3D — but not always: the traditional crane folds flat, so its folded form is 2D. |
 | **Mountain fold** (`M`) | A crease that rises towards the viewer. Drawn dash-dot-dot. |
 | **Valley fold** (`V`) | A crease that sinks away from the viewer. Drawn dashed. |
+| **Plastic hinge** | What a pressed crease physically is: a strip of broken fibres a few thicknesses wide that bends far more easily than the paper either side of it. Once formed, more force barely tightens the fold. See [notes/a-crease-is-a-hinge.md](notes/a-crease-is-a-hinge.md). |
+| **Rest angle** | The angle a creased sheet's two panels settle at when nothing is loading them. Set by the material's yield stress, independent of thickness, and not zero. See [notes/a-crease-is-a-hinge.md](notes/a-crease-is-a-hinge.md). |
 | **Fold angle** | The dihedral angle at a crease, in degrees, from −180 to 180. Negative is a mountain, positive a valley, and ±180 means folded flat back on itself. |
 | **Flat-folded** | Folded so the whole model lies in a plane. Every fold angle is exactly ±180°. |
 | **Flat-foldable** | Of a crease pattern: it *can* be folded flat along exactly those creases. Cheap to rule out one vertex at a time, [NP-hard](notes/flat-foldability-is-hard.md) to decide for a whole sheet. |
