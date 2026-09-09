@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: three items, in
 order, each an issue tagged `roadmap` that holds the approach and the
 acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-07**. The
+snapshot and will drift, so it carries a date: **as of 2026-09-09**. The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -12,10 +12,10 @@ closes.
 
 | | |
 | --- | --- |
-| Age | 5 days, 2026-09-03 to 2026-09-07 |
-| Commits / merged PRs | 58 / 48 |
+| Age | 7 days, 2026-09-03 to 2026-09-09 |
+| Commits / merged PRs | 62 / 52 |
 | Library / CLI / test lines | 11.3k / 1.1k / 7.9k |
-| Docs | 5.2k lines of markdown, 28 notes |
+| Docs | 5.4k lines of markdown, 29 notes |
 | Tests | 661 examples, about a second once built |
 | Roadmap issues closed | 9 of 12 |
 | Largest real model in the suite | the crane, 72 faces |
@@ -84,6 +84,14 @@ and, since 2026, four research papers in it.
   cutting and tracing, non-convex faces, and models the solver cannot settle
   in a minute. A real fix for the solver's propagation may be Flat-Folder's
   cell and overlap-graph formulation rather than a faster map.
+- **[#114](https://github.com/avalonalex/senbazuru/issues/114) the material around a fold.** Both renderers cut the sheet
+  at every crease: the offset view slides layers apart and the 3D export
+  lifts them and leaves a step, so a folded stack draws as loose plates. The
+  first rung is days — a cylindrical strip at each crease, layers a thickness
+  apart, one connected mesh — and the fixtures ([#115](https://github.com/avalonalex/senbazuru/pull/115)) and the
+  mechanics ([notes/a-crease-is-a-hinge.md](notes/a-crease-is-a-hinge.md)) are landed. What makes it hard is
+  the vertex: where creases meet, the rounded folds interact and the surface
+  stops being developable, and there is no clean rule for what to draw there.
 
 ### Medium: days, with a picture or a format to design
 
@@ -135,19 +143,26 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 ## An order
 
-1. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
+1. [#114](https://github.com/avalonalex/senbazuru/issues/114), the material around a fold, in three steps: get a
+   single fold right in the 3D export, with the test that the mesh has one
+   connected component written first because it fails today on every fixture;
+   then the stack, checked by rotating it in a glTF viewer; then project the
+   curved geometry back to SVG, which is where [#104](https://github.com/avalonalex/senbazuru/issues/104) lands. Taken ahead of the
+   sweep because the fixtures and the study are done and the picture is the
+   project's purpose.
+2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
-2. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their
+3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their
    vocabulary, then decide the scheme format. Only then [#95](https://github.com/avalonalex/senbazuru/issues/95),
    [#94](https://github.com/avalonalex/senbazuru/issues/94) and [#36](https://github.com/avalonalex/senbazuru/issues/36), which give a written scheme its arrows and
    captions.
-3. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
-4. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
+4. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
+5. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
    produce the numbers [#55](https://github.com/avalonalex/senbazuru/issues/55) will be tested against.
-5. [#110](https://github.com/avalonalex/senbazuru/issues/110) and [#109](https://github.com/avalonalex/senbazuru/issues/109), the two follow-ups the `fold`
+6. [#110](https://github.com/avalonalex/senbazuru/issues/110) and [#109](https://github.com/avalonalex/senbazuru/issues/109), the two follow-ups the `fold`
    verb left behind. #110 first, and before #38 or #53 rather than after them,
    because it is the value both of them will otherwise rebuild by hand.
-6. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
+7. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
    even though generating a body is the point: it is what makes any curved form
    printable, and `examples/puffed-square.fold` already exists to test it
    against, so it can be finished before anything can make a second one.
