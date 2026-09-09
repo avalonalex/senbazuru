@@ -32,6 +32,7 @@ import Senbazuru.Fold.Types
     keyFrame,
   )
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.FlatFold (Report (..), checkFrame, defaultTolerance)
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Layers (paintOrder)
 import Senbazuru.Origami.Stacking
@@ -240,6 +241,29 @@ spec = do
       order <- either (fail . show) pure (bottomToTop halfFolded)
       order `shouldSatisfy` precedes 3 0
       order `shouldSatisfy` precedes 2 1
+
+  describe "the folds with no interior vertex" $ do
+    -- book-base, accordion and blintz-base are grouped in examples/README.md by
+    -- two properties, and both are asserted here because both are the reason
+    -- those files were chosen over other traditional folds and neither is
+    -- visible in the file itself.
+    --
+    -- No crease meets another, so #114 can settle the fold radius and the layer
+    -- separation before deciding what to draw where creases cross. And each has
+    -- exactly one valid layer order, so a change to the solver cannot pick a
+    -- different stacking for them without a test saying so.
+    forM_ ["book-base", "accordion", "blintz-base"] $ \name -> do
+      it ("has no interior vertex in " <> name) $ do
+        flat <- loadFixture ("test/fixtures/" <> name <> ".fold")
+        report <- either (fail . show) pure (checkFrame defaultTolerance flat)
+        reportChecked report `shouldBe` []
+        reportSkipped report `shouldSatisfy` (not . null)
+
+      it ("stacks " <> name <> " exactly one way") $ do
+        -- Counted rather than compared: the point is that there is nothing to
+        -- choose, not which order was chosen.
+        folded <- foldedFixture name
+        fmap stateCount (stackingSpace defaultBudget folded) `shouldBe` Right (1, False)
 
   describe "the letter fold" $ do
     -- Panels of width 0.3, 0.2 and 0.5. The middle panel folds onto the first;
