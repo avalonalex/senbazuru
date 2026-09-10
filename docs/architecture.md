@@ -183,9 +183,13 @@ why each, is in [AGENTS.md](../AGENTS.md#testing).
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project but not exported by the library. It generates sharp and rounded
-versions of two prescribed surfaces, compares their material lengths, and uses
-`Camera`, `Diagram` and
-`Render.Svg` for previews. Its indexed OBJ export and offline viewer inspect the
-same samples. Nothing in the library imports it; see
+versions of two prescribed surfaces in `FoldMaterial`. `FoldRelaxation` corrects
+their material edge lengths; `FoldContact` supplies separation constraints and
+checks for violations of the known packet order. The coupled solve treats paper
+as having zero thickness and only handles these nearly flat study packets.
+`Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
+meshes use the depth-buffered viewer because the SVG painter assumes the very
+layer order those meshes can violate. Indexed OBJ and FOLD exports inspect the
+same samples. Nothing in the library imports these study modules; see
 [the study](../study/fold-material/README.md) before treating its double fold as
 a physically valid model.

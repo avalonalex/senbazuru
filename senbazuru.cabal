@@ -128,7 +128,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: FoldMaterial
+  other-modules: FoldMaterial, FoldRelaxation, FoldContact
   build-depends:
     , base
     , aeson
@@ -145,8 +145,12 @@ test-suite senbazuru-test
   hs-source-dirs:     test, study/fold-material
   main-is:            Spec.hs
   other-modules:
+    FoldContact
+    FoldContactSpec
     FoldMaterial
     FoldMaterialSpec
+    FoldRelaxation
+    FoldRelaxationSpec
     Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
     Senbazuru.ExplainSpec
