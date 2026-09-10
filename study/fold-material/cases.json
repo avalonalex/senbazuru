@@ -26,6 +26,15 @@
     "title": "Kite base",
     "source": "examples/kite-base.fold",
     "description": "Two adjacent sides turn towards the square’s diagonal. The central panel stays still; the flaps stop five degrees short of flat.",
+    "contact": {
+      "direction": [0, 0, 1],
+      "panels": [
+        {"name": "centre", "at": [0.6, 0.6]},
+        {"name": "lower-right", "at": [0.8, 0.1]},
+        {"name": "upper-left", "at": [0.1, 0.8]}
+      ],
+      "orders": [["centre", "lower-right"], ["centre", "upper-left"]]
+    },
     "steps": [
       {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0]},
       {"label": "Lower-right flap · 90°", "angles": [0, 0, 0, 0, 0, 0, 90, 0]},
@@ -39,6 +48,17 @@
     "title": "Blintz base",
     "source": "examples/blintz-base.fold",
     "description": "Four corners turn towards the centre, one at a time. The central diamond stays still; the flaps stop five degrees short of flat.",
+    "contact": {
+      "direction": [0, 0, 1],
+      "panels": [
+        {"name": "centre", "at": [0.5, 0.5]},
+        {"name": "lower-right", "at": [0.9, 0.1]},
+        {"name": "upper-right", "at": [0.9, 0.9]},
+        {"name": "upper-left", "at": [0.1, 0.9]},
+        {"name": "lower-left", "at": [0.1, 0.1]}
+      ],
+      "orders": [["centre", "lower-right"], ["centre", "upper-right"], ["centre", "upper-left"], ["centre", "lower-left"]]
+    },
     "steps": [
       {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
       {"label": "Lower-right corner · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0]},

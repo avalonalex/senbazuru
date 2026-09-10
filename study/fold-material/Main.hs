@@ -16,6 +16,7 @@ import Data.Text.IO qualified as TIO
 import FoldContact
 import FoldMaterial
 import FoldRelaxation
+import PanelContact
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), solid)
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -55,12 +56,12 @@ generate destination = do
       fitted = [(checkpointName name point, Relaxed, which, checkpointMesh point) | (name, which, result) <- runs, point <- checkpoints result]
       models = starting ++ fitted
       dataSet = object ([Key.fromString name .= modelValue surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= authoredValue pose | (_, poses) <- authored, (key, _, pose) <- poses])
-      catalog = object [Key.fromString (caseId spec) .= object ["title" .= caseTitle spec, "description" .= caseDescription spec, "source" .= caseSource spec, "steps" .= [object ["key" .= key, "label" .= poseLabel step, "angles" .= poseAngles step] | (key, step, _) <- poses]] | (spec, poses) <- authored]
+      catalog = object [Key.fromString (caseId spec) .= object ["title" .= caseTitle spec, "description" .= caseDescription spec, "source" .= caseSource spec, "contact" .= caseContact spec, "steps" .= [object ["key" .= key, "label" .= poseLabel step, "angles" .= poseAngles step] | (key, step, _) <- poses]] | (spec, poses) <- authored]
       progress = object [Key.fromString name .= progressValue name which result | (name, which, result) <- runs]
   mapM_ (writeModel destination) models
   mapM_ (writeAuthored destination) [pose | (_, poses) <- authored, pose <- poses]
   BL.writeFile (destination </> "cases.json") (encode catalog)
-  BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
+  BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
   BL.writeFile (destination </> "relaxation.json") (encode progress)
   template <- TIO.readFile "study/fold-material/viewer.html"
   let json = TE.decodeUtf8 (BL.toStrict (encode dataSet))
@@ -80,14 +81,14 @@ loadCase spec = do
   poses <- mapM (build (keyFrame source)) (zip [0 :: Int ..] (caseSteps spec))
   pure (spec, poses)
   where
-    build source (i, step) = case buildPose 3 source step of
+    build source (i, step) = case buildCasePose 3 spec source step of
       Left err -> die (caseId spec ++ " / " ++ T.unpack (poseLabel step) ++ ": " ++ T.unpack (explain err))
       Right pose -> pure (caseId spec ++ "-step-" ++ show i, step, pose)
 
 writeAuthored :: FilePath -> (String, PoseSpec, StudyPose) -> IO ()
 writeAuthored destination (key, step, pose) = do
   TIO.writeFile (destination </> key ++ ".obj") (obj (poseMesh pose))
-  BL.writeFile (destination </> key ++ ".fold") (encode (surfaceFoldValue (T.unpack (poseLabel step)) (poseMesh pose)))
+  BL.writeFile (destination </> key ++ ".fold") (encode (surfaceFoldValue (T.unpack (poseLabel step)) (poseContact pose) (poseMesh pose)))
 
 authoredValue :: StudyPose -> Value
 authoredValue pose =
@@ -98,7 +99,7 @@ authoredValue pose =
           "triangles" .= map indices (triangles mesh),
           "panels" .= posePanels pose,
           "lines" .= [[coords a, coords b] | (a, b) <- poseLines pose],
-          "metrics" .= meshMetrics Nothing mesh,
+          "metrics" .= meshMetrics Nothing (poseContact pose) mesh,
           "strain" .= measuredStrain mesh,
           "measuredStrain" .= measuredStrain mesh
         ]
@@ -131,10 +132,10 @@ indices :: Triangle -> [Int]
 indices (a, b, c) = [a, b, c]
 
 metrics :: Surface -> FoldCase -> Mesh -> Value
-metrics surface which mesh = meshMetrics (if surface == Rounded then Nothing else Just (packetCheck which mesh)) mesh
+metrics surface which mesh = meshMetrics (if surface == Rounded then Nothing else Just (packetCheck which mesh)) Nothing mesh
 
-meshMetrics :: Maybe PacketCheck -> Mesh -> Value
-meshMetrics contact mesh =
+meshMetrics :: Maybe PacketCheck -> Maybe ContactCheck -> Mesh -> Value
+meshMetrics contact panels mesh =
   object
     [ "vertices" .= length (samples mesh),
       "triangles" .= length (triangles mesh),
@@ -144,7 +145,8 @@ meshMetrics contact mesh =
       "maxEdgeStrain" .= maximum (0 : edgeStrains mesh),
       "minPrincipalStrain" .= minimum (0 : map fst (triangleStrains mesh)),
       "maxPrincipalStrain" .= maximum (0 : map snd (triangleStrains mesh)),
-      "packetOrder" .= fmap contactValue contact
+      "packetOrder" .= fmap contactValue contact,
+      "panelContact" .= panels
     ]
 
 contactValue :: PacketCheck -> Value
@@ -181,11 +183,11 @@ measuredStrain :: Mesh -> [Double]
 measuredStrain = map (\(small, large) -> if abs small > abs large then small else large) . triangleStrains
 
 foldValue :: Surface -> FoldCase -> Mesh -> Value
-foldValue surface which = surfaceFoldValue (show surface ++ " " ++ show which)
+foldValue surface which = surfaceFoldValue (show surface ++ " " ++ show which) Nothing
 
-surfaceFoldValue :: String -> Mesh -> Value
-surfaceFoldValue title mesh =
-  object
+surfaceFoldValue :: String -> Maybe ContactCheck -> Mesh -> Value
+surfaceFoldValue title contact mesh =
+  object $
     [ "file_spec" .= (1.2 :: Double),
       "file_creator" .= ("senbazuru fold-material study" :: T.Text),
       "file_title" .= title,
@@ -197,6 +199,7 @@ surfaceFoldValue title mesh =
       "faces_vertices" .= map indices (triangles mesh),
       "senbazuru:material_coords" .= map (\s -> [materialU s, materialV s]) (samples mesh)
     ]
+      ++ maybe [] (\report -> ["senbazuru:panel_contact" .= report]) contact
 
 obj :: Mesh -> T.Text
 obj mesh =
