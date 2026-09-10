@@ -752,10 +752,14 @@ whether one could be worked out and if not why.
 ## Fold-material experiment
 
 `stack run senbazuru-material-study -- build/fold-material` generates a single fold
-and two perpendicular folds, each with sharp and rounded variants, a rotatable
-viewer, SVG previews, indexed OBJ and FOLD surfaces, and material-length
-measurements. Open
+and two perpendicular folds, with sharp and rounded variants plus a before/after
+length and contact correction. It produces a rotatable viewer, baseline SVG previews,
+indexed OBJ and FOLD surfaces for each recorded checkpoint, material-length
+measurements and solver progress. Open
 `build/fold-material/index.html`. The [study guide](../study/fold-material/README.md)
-explains how to run and inspect it. Both double folds are prescribed shapes with
-measurable stretch: this experiment does not solve elasticity or contact and
-does not add rounded folds to `render` or `export`.
+explains how to run and inspect it. The corrected double fold meets both its
+edge-length and packet-order targets. The viewer also reports crossings in
+unfinished iterations. Bending stiffness, crease-angle preferences, finite
+thickness and general collision handling remain unsolved. Solver checkpoints
+have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
+`render` or `export`.
