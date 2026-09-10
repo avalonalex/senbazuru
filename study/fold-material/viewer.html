@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One sheet, two bends · Senbazuru study</title>
+<style>
+:root { font-family: system-ui, sans-serif; color: #302c27; background: #f5f1e9; }
+body { max-width: 1120px; margin: 40px auto; padding: 0 24px; }
+h1 { font-size: 38px; font-weight: 550; letter-spacing: -1px; margin: 8px 0; }
+p { max-width: 850px; line-height: 1.6; }
+header small { color: #746556; text-transform: uppercase; letter-spacing: 2px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 22px 0; }
+button, select { font: inherit; padding: 9px 12px; border: 1px solid #baad9d; background: #fffaf2; border-radius: 5px; color: inherit; }
+button[aria-pressed=true] { background: #3c534a; color: white; border-color: #3c534a; }
+label { display: flex; gap: 8px; align-items: center; }
+canvas { display: block; width: 100%; height: 510px; touch-action: none; background: #eee8dd; border-bottom: 1px solid #cbbfad; }
+[hidden] { display: none !important; }
+#status { font-weight: 550; }
+#metrics { display: flex; gap: 36px; flex-wrap: wrap; padding: 20px 0; border-bottom: 1px solid #cbbfad; }
+#metrics strong { display: block; font-size: 27px; font-weight: 500; }
+#metrics span { color: #6d6359; font-size: 14px; }
+#legend { margin-top: 12px; color: #65584a; }
+a { color: #305f51; }
+details { margin: 24px 0; }
+summary { cursor: pointer; font-weight: 550; }
+.warning { border-left: 3px solid #b95430; padding-left: 16px; }
+footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
+@media(max-width: 650px) {
+  body { margin: 20px auto; padding: 0 14px; }
+  h1 { font-size: 29px; }
+  canvas { height: 400px; }
+  #metrics { gap: 20px; }
+}
+</style>
+<header>
+  <small>Senbazuru · material study / #114</small>
+  <h1>One sheet, two bends</h1>
+  <p>A square folded once, then in half again at right angles. Compare sharp creases with exaggerated rounded bends. The layers meet at their folds; they need not stay parallel away from them.</p>
+</header>
+<div class="controls" aria-label="Model and view">
+  <button id="single" aria-pressed="false">1 · Single fold</button>
+  <button id="double" aria-pressed="true">2 · Double fold</button>
+  <label>Shape <select id="shape">
+    <option value="sharp">Sharp creases</option>
+    <option value="rounded">Rounded bends</option>
+  </select></label>
+  <label>View <select id="view">
+    <option value="orbit">3D paper</option>
+    <option value="strain">3D stretch</option>
+    <option value="material">Stretch on original sheet</option>
+  </select></label>
+  <button id="reset">Reset camera</button>
+</div>
+<p id="status" aria-live="polite"></p>
+<canvas id="canvas" aria-label="Interactive folded-paper surface. Drag or use arrow keys to rotate; scroll or use plus and minus to zoom." tabindex="0"></canvas>
+<div id="legend"></div>
+<div id="metrics" aria-live="polite"></div>
+<p id="explanation"></p>
+<p class="warning">These are prescribed geometric shapes, not a physics simulation. Both double-fold constructions distort the original sheet. No material stiffness, solid thickness, contact or equilibrium is solved.</p>
+<p id="downloads"></p>
+<details>
+  <summary>What this experiment measures</summary>
+  <p>The sharp single fold rotates one rigid half around its crease. The sharp double fold uses gaps that close at the creases and grow towards the free edges. Two of the panels bend into gently curved surfaces. That captures a drawing target, but their measured extension means the shape is not an unstretched square.</p>
+  <p>The rounded single fold consumes a strip of width πr, with r = 0.015. The second rounded bend uses the same strip for radii r and 3r, making the outer strip three times as long: 200% extension. Its layer separation is exaggerated to 3% of the original sheet's side. The sharp example instead specifies a 2.5% free-edge gap; that gap is not paper thickness.</p>
+  <p>Edge extension compares each mesh edge's 3D length with its original length. Chords are slightly shorter than circular arcs, producing the rounded single fold's small compression. The heat map shows analytic local extension at each triangle's material centroid: maximum over directions for sharp panels, and along the second fold for rounded bends. The color ranges differ between shapes and are printed below the view.</p>
+  <p>All measurements and model positions come from Haskell. Shared vertex indices connect the surface; the viewer splits lighting normals at sharp creases without splitting the material. Connectivity and length checks alone do not establish contact or physical feasibility.</p>
+</details>
+<footer>Generate from the repository root: <code>stack run senbazuru-material-study -- build/fold-material</code>. Model data is embedded for offline viewing.</footer>
+<script>
+'use strict';
+const models = /*MODEL_DATA*/null;
+const element = id => document.getElementById(id);
+if (models) {
+  initialize();
+} else {
+  element('status').textContent = 'This is the source template. Open the generated viewer to see the paper.';
+  element('downloads').innerHTML = '<a href="../../build/fold-material/index.html">Open generated fold examples</a>';
+  element('canvas').hidden = true;
+  document.querySelector('.controls').hidden = true;
+  element('legend').textContent = 'The generation command is at the bottom of this page.';
+}
+
+function initialize() {
+  const canvas = element('canvas');
+  const gl = canvas.getContext('webgl', {antialias: true});
+  let selected = 'double', shape = 'sharp', mode = 'orbit';
+  let yaw = -.75, pitch = .52, zoom = 1;
+  let buffers = [], surfaceBuffer, lineBuffer, vertexCount = 0, lineCount = 0;
+  let center = [0, 0, 0];
+  const program = gl && gl.createProgram();
+
+  function shader(type, source) {
+    const result = gl.createShader(type);
+    gl.shaderSource(result, source);
+    gl.compileShader(result);
+    if (!gl.getShaderParameter(result, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(result));
+    return result;
+  }
+  if (gl) {
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, `
+      attribute vec3 pos;
+      attribute vec3 normal;
+      attribute float strain;
+      uniform mat3 rotation;
+      uniform vec3 center;
+      uniform vec2 scale;
+      varying vec3 n;
+      varying float e;
+      void main() {
+        vec3 p = rotation * (pos-center);
+        gl_Position = vec4(p.x*scale.x, p.y*scale.y, -p.z*.8, 1.);
+        n = rotation*normal;
+        e = strain;
+      }`));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, `
+      precision mediump float;
+      varying vec3 n;
+      varying float e;
+      uniform float heat;
+      uniform float heatMax;
+      uniform float ink;
+      void main() {
+        if (ink > .5) { gl_FragColor = vec4(.32,.28,.23,1.); return; }
+        vec3 paper = gl_FrontFacing ? vec3(.84,.53,.27) : vec3(.96,.91,.80);
+        float light = .65 + .35*abs(dot(normalize(n),normalize(vec3(-.3,.5,1.))));
+        vec3 color = paper*light;
+        if (heat > .5) {
+          color = mix(vec3(.94,.93,.86),vec3(.69,.16,.12),clamp(e/heatMax,0.,1.));
+          if (heat < 1.5) color *= light;
+        }
+        gl_FragColor = vec4(color,1.);
+      }`));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+    gl.enable(gl.DEPTH_TEST);
+  }
+
+  const subtract = (a, b) => a.map((x, i) => x-b[i]);
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  function buffer(data) {
+    const result = gl.createBuffer();
+    buffers.push(result);
+    gl.bindBuffer(gl.ARRAY_BUFFER, result);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    return result;
+  }
+  // Interleaved position, normal and extension for each displayed corner.
+  function bind(data) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, data);
+    for (const [name, size, offset] of [['pos',3,0], ['normal',3,12], ['strain',1,24]]) {
+      const location = gl.getAttribLocation(program, name);
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(location, size, gl.FLOAT, false, 28, offset);
+    }
+  }
+  function upload() {
+    if (!gl) return;
+    buffers.forEach(b => gl.deleteBuffer(b));
+    buffers = [];
+    const model = models[`${shape}-${selected}`];
+    const points = mode === 'material' ? model.material.map(p => [...p,0]) : model.positions;
+    // Average within a panel only: smoothing across a crease makes it look rolled.
+    const groups = model.triangles.map(triangle => {
+      if (shape !== 'sharp' || mode === 'material') return 0;
+      const u = triangle.reduce((s,i) => s+model.material[i][0],0)/3;
+      const v = triangle.reduce((s,i) => s+model.material[i][1],0)/3;
+      return Number(u>.5) + 2*Number(selected==='double' && v>.5);
+    });
+    const normals = new Map();
+    model.triangles.forEach(([a,b,c], j) => {
+      const normal = cross(subtract(points[b],points[a]), subtract(points[c],points[a]));
+      for (const i of [a,b,c]) {
+        const key = `${groups[j]}:${i}`;
+        const sum = normals.get(key) || [0,0,0];
+        normals.set(key, sum.map((value,k) => value+normal[k]));
+      }
+    });
+    const data = [];
+    model.triangles.forEach((triangle,j) => triangle.forEach(i => {
+      data.push(...points[i], ...normals.get(`${groups[j]}:${i}`), model.strain[j]);
+    }));
+    vertexCount = data.length/7;
+    surfaceBuffer = buffer(data);
+    const lines = model.lines.flatMap(edge => edge.flatMap(p => [...p,0,0,1,0]));
+    lineCount = lines.length/7;
+    lineBuffer = buffer(lines);
+    center = [0,1,2].map(k => (Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);
+    draw();
+  }
+  function draw() {
+    if (!gl) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const width = Math.round(canvas.clientWidth*dpr), height = Math.round(canvas.clientHeight*dpr);
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    gl.viewport(0,0,width,height);
+    gl.clearColor(.933,.91,.867,1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), sp = Math.sin(pitch), cp = Math.cos(pitch);
+    const rotation = mode === 'material' ? [1,0,0,0,1,0,0,0,1] : [cy,-sy*sp,sy*cp,sy,cy*sp,-cy*cp,0,cp,sp];
+    gl.uniformMatrix3fv(gl.getUniformLocation(program,'rotation'),false,new Float32Array(rotation));
+    gl.uniform3fv(gl.getUniformLocation(program,'center'),center);
+    gl.uniform2f(gl.getUniformLocation(program,'scale'),1.65*zoom*height/width,1.65*zoom);
+    gl.uniform1f(gl.getUniformLocation(program,'heat'),mode==='orbit' ? 0 : mode==='material' ? 2 : 1);
+    gl.uniform1f(gl.getUniformLocation(program,'heatMax'),shape==='sharp' ? .01 : 2);
+    gl.uniform1f(gl.getUniformLocation(program,'ink'),0);
+    bind(surfaceBuffer);
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(1,1);
+    gl.drawArrays(gl.TRIANGLES,0,vertexCount);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    if (mode !== 'material') {
+      gl.uniform1f(gl.getUniformLocation(program,'ink'),1);
+      bind(lineBuffer);
+      gl.drawArrays(gl.LINES,0,lineCount);
+    }
+  }
+  function update() {
+    const name = `${shape}-${selected}`, model = models[name].metrics;
+    const isDouble = selected === 'double', sharp = shape === 'sharp';
+    element('single').setAttribute('aria-pressed',String(!isDouble));
+    element('double').setAttribute('aria-pressed',String(isDouble));
+    element('status').textContent = !gl ? 'WebGL is unavailable. Use the SVG previews and downloads below.' :
+      isDouble ? (sharp ? 'Sharp double fold: gaps taper to creases; panels are not parallel.' : 'Rounded double fold: connected, but the outer bend stretches.') :
+      (sharp ? 'Sharp single fold: two rigid panels meet at one crease.' : 'Rounded single fold: the smooth surface preserves lengths.');
+    const percent = value => (Math.abs(value)<1e-12 ? 0 : 100*value).toFixed(3);
+    element('metrics').innerHTML = `
+      <div><strong>${model.connectedComponents}</strong><span>connected material surface</span></div>
+      <div><strong>${percent(model.maxEdgeStrain)}%</strong><span>largest edge extension</span></div>
+      <div><strong>${percent(model.minEdgeStrain)}%</strong><span>largest edge compression</span></div>
+      <div><strong>${model.surfaceAreaRatio.toFixed(5)}</strong><span>area / original sheet area</span></div>`;
+    element('explanation').textContent = sharp ? (isDouble ?
+      'The crease is a sharp change of direction. Opening comes from the panels away from it, with zero gap at the shared fold. This hand-chosen shape still stretches the sheet: a smaller error than the rounded construction is not a physical solution.' :
+      'One half rotates as a rigid panel, leaving a narrow wedge-shaped opening. Distances on both panels stay unchanged; the mesh includes the exact crease.') : (isDouble ?
+      'The outer half of the second bend needs three times its available material width. The smooth surface gains about 4.71% in total area. Inspect the original-sheet map to see the affected strip.' :
+      'Two straight portions and a semicircle use exactly one unit of material. The small mesh compression comes from replacing curved arcs with straight chords.');
+    element('legend').textContent = mode === 'orbit' ? 'Drag to rotate · scroll to zoom · arrow keys also rotate. Cream and ochre are the two sides of one sheet.' :
+      `Analytic extension: pale = 0% · red = ${sharp ? '1%' : '200%'}. Color scale changes with the selected shape.`;
+    element('downloads').innerHTML = `Export this example: <a href="${name}.svg">SVG preview</a> · <a href="${name}.obj" download>3D OBJ</a> · <a href="${name}.fold" download>FOLD surface</a> · <a href="measurements.json">measurements</a>`;
+    upload();
+  }
+  for (const name of ['single','double']) element(name).onclick = () => { selected = name; update(); };
+  element('shape').onchange = event => { shape = event.target.value; update(); };
+  element('view').onchange = event => { mode = event.target.value; update(); };
+  element('reset').onclick = () => { yaw = -.75; pitch = .52; zoom = 1; draw(); };
+  let drag = null;
+  canvas.onpointerdown = event => { drag = [event.clientX,event.clientY]; canvas.setPointerCapture(event.pointerId); };
+  canvas.onpointermove = event => {
+    if (!drag || mode === 'material') return;
+    yaw += (event.clientX-drag[0])*.008;
+    pitch = Math.max(-1.5,Math.min(1.5,pitch+(event.clientY-drag[1])*.008));
+    drag = [event.clientX,event.clientY];
+    draw();
+  };
+  canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
+  canvas.onwheel = event => {
+    event.preventDefault();
+    zoom = Math.max(.5,Math.min(3,zoom*Math.exp(-event.deltaY*.001)));
+    draw();
+  };
+  canvas.onkeydown = event => {
+    if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-'].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key==='ArrowLeft') yaw -= .1;
+    if (event.key==='ArrowRight') yaw += .1;
+    if (event.key==='ArrowUp') pitch = Math.min(1.5,pitch+.1);
+    if (event.key==='ArrowDown') pitch = Math.max(-1.5,pitch-.1);
+    if (event.key==='+') zoom = Math.min(3,zoom*1.1);
+    if (event.key==='-') zoom = Math.max(.5,zoom/1.1);
+    draw();
+  };
+  window.addEventListener('resize',draw);
+  update();
+}
+</script>
+</html>

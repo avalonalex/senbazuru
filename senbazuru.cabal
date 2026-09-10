@@ -25,6 +25,8 @@ extra-doc-files:
   docs/agent-workflow.md
 
 extra-source-files:
+  study/fold-material/README.md
+  study/fold-material/viewer.html
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.opx
@@ -121,12 +123,30 @@ executable senbazuru
     , senbazuru
     , text
 
+-- Stack run picks the first executable alphabetically; keep senbazuru first.
+executable senbazuru-material-study
+  import:         warnings
+  hs-source-dirs: study/fold-material
+  main-is:       Main.hs
+  other-modules: FoldMaterial
+  build-depends:
+    , base
+    , aeson
+    , bytestring
+    , containers
+    , directory
+    , filepath
+    , senbazuru
+    , text
+
 test-suite senbazuru-test
   import:             warnings
   type:               exitcode-stdio-1.0
-  hs-source-dirs:     test
+  hs-source-dirs:     test, study/fold-material
   main-is:            Spec.hs
   other-modules:
+    FoldMaterial
+    FoldMaterialSpec
     Senbazuru.Diagram.LayoutSpec
     Senbazuru.Diagram.StyleSpec
     Senbazuru.ExplainSpec

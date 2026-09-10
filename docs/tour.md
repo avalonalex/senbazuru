@@ -748,3 +748,14 @@ examples/unit-square.fold
 The `layers` line is where to look when a folded form comes out as a wireframe:
 it reports the `faceOrders` the file carries, or, for a folded form without any,
 whether one could be worked out and if not why.
+
+## Fold-material experiment
+
+`stack run senbazuru-material-study -- build/fold-material` generates a single fold
+and two perpendicular folds, each with sharp and rounded variants, a rotatable
+viewer, SVG previews, indexed OBJ and FOLD surfaces, and material-length
+measurements. Open
+`build/fold-material/index.html`. The [study guide](../study/fold-material/README.md)
+explains how to run and inspect it. Both double folds are prescribed shapes with
+measurable stretch: this experiment does not solve elasticity or contact and
+does not add rounded folds to `render` or `export`.

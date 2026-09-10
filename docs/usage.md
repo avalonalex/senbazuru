@@ -387,3 +387,14 @@ The two counts differ by one on purpose. The first counts components the way
 that were settled outright among them, so that its published figures can be
 compared with these. The second counts what you can actually choose. See
 [notes/several-stackings.md](notes/several-stackings.md).
+
+## Fold-material experiment
+
+`stack run senbazuru-material-study -- build/fold-material` generates a single fold
+and two perpendicular folds, each with sharp and rounded variants, a rotatable
+viewer, SVG previews, indexed OBJ and FOLD surfaces, and material-length
+measurements. Open
+`build/fold-material/index.html`. The [study guide](../study/fold-material/README.md)
+explains how to run and inspect it. Both double folds are prescribed shapes with
+measurable stretch: this experiment does not solve elasticity or contact and
+does not add rounded folds to `render` or `export`.
