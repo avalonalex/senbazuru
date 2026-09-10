@@ -110,3 +110,52 @@ designer; neither its data nor a tutorial image was copied. The coordinate
 `sqrt(2)-1` is stored as a decimal. The authored angle states in
 [`study/fold-material/cases.json`](../study/fold-material/cases.json) use this
 file and the existing `blintz-base.fold` to exercise oblique creases.
+
+## Square and waterbomb bases: meeting creases
+
+[`square-base.fold`](square-base.fold) and
+[`waterbomb-base.fold`](waterbomb-base.fold) are constructed here from the four
+corners, four edge midpoints and centre of a unit square. They are traditional
+bases, with no single designer; no tutorial data or images were copied. A base
+is a folded starting shape used by several models. The square base is also
+called the preliminary base; the triangular waterbomb base is the starting
+shape for the paper balloon, not the inflated balloon itself.
+
+Both files draw the diagonals and the horizontal and vertical midlines. All
+eight segments share centre vertex 8, so the face builder reconstructs eight
+triangles joined in one sheet. Six segments bend in the chosen collapsed
+state; two stay flat. `M` is a mountain at −180°, `V` a valley at +180°, and
+`F` a flat guide at 0°; see the [glossary](../docs/glossary.md). These assignments
+describe the target state, not the direction used to make each preliminary
+crease. Coordinates use x to the right and y upwards.
+
+| File | Mountain | Valley | Flat guide | Collapsed outline |
+| --- | --- | --- | --- | --- |
+| `square-base.fold` | SW–NE diagonal | Both midlines | SE–NW diagonal | Square of side ½ |
+| `waterbomb-base.fold` | Horizontal midline | Both diagonals | Vertical midline | Triangle of base 1 and height ½ |
+
+Each preview below is independently fitted to its image; they do not share a
+physical scale. Mountain folds use dash-dot-dot lines, valleys use dashes, and
+flat guides use thin grey lines. In the folded views the creases are solid.
+
+| Base | Crease pattern | Collapsed form |
+| --- | --- | --- |
+| Square | ![Square-base crease pattern](../docs/img/square-base-cp.svg) | ![Square base folded flat](../docs/img/square-base-folded.svg) |
+| Waterbomb | ![Waterbomb-base crease pattern](../docs/img/waterbomb-base-cp.svg) | ![Waterbomb base folded flat](../docs/img/waterbomb-base-folded.svg) |
+
+From the repository root, regenerate the previews and check both patterns:
+
+```bash
+for name in square-base waterbomb-base; do
+  stack run -- check "examples/$name.fold"
+  stack run -- render "examples/$name.fold" -o "docs/img/$name-cp.svg"
+  stack run -- render "examples/$name.fold" --fold -o "docs/img/$name-folded.svg"
+done
+```
+
+Both checks report one interior vertex with no violations. That alone is not
+proof of a valid folded sheet: `BasePatternSpec` also checks shared corners,
+preserved lengths, the expected collapsed coordinates and exactly one valid
+flat layer order. See [why a pre-crease can stay flat](../docs/notes/precreases-and-target-states.md).
+These fixtures establish the endpoints for the material study; intermediate
+collapse states and contact checks along that motion remain future work.

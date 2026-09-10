@@ -32,6 +32,8 @@ extra-source-files:
   examples/quarter-fold.fold
   examples/kite-base.fold
   examples/blintz-base.fold
+  examples/square-base.fold
+  examples/waterbomb-base.fold
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.opx
@@ -175,6 +177,7 @@ test-suite senbazuru-test
     Senbazuru.Import.CpSpec
     Senbazuru.Import.OpxSpec
     Senbazuru.Import.SegmentsSpec
+    Senbazuru.Origami.BasePatternSpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
     Senbazuru.Origami.LayersSpec

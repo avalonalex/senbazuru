@@ -125,6 +125,18 @@ deliberately reversed folds. Independent polygon fixtures check 3D crossings,
 hinge contact, coplanar order, upright panels and rotated measuring directions.
 See [the note on sharing material vertices](../../docs/notes/sharing-material-vertices.md).
 
+## Next: creases that meet
+
+The [square and waterbomb crease patterns](../../examples/README.md#square-and-waterbomb-bases-meeting-creases)
+establish the next two examples. Both have a shared centre where six creases
+bend and two guide segments stay flat in the chosen collapsed state. The
+production folding and stacking code already verifies their final square and
+triangle shapes; `BasePatternSpec` checks those endpoints and material lengths.
+These are source fixtures and SVG previews, not additional gallery states yet.
+The next step is to find compatible intermediate crease angles, then check
+panel contact and layer order at those states. Scaling every crease angle by
+the same fraction is not a general way to close the loop around the centre.
+
 ## Original fold controls
 
 The rounded bend radius is 0.015 times the original square's side. The resulting layer

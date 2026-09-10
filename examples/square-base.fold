@@ -1,0 +1,40 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (constructed here)",
+  "file_title": "Square (preliminary) base",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "frame_description": "Unit square with both diagonals and both midlines pre-creased. For this collapsed square base the SW-NE diagonal is mountain, the four midline segments are valley, and the SE-NW diagonal remains flat. Assignments describe this target state, not the direction used to make every pre-crease.",
+  "vertices_coords": [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [0.5, 0],
+    [1, 0.5],
+    [0.5, 1],
+    [0, 0.5],
+    [0.5, 0.5]
+  ],
+  "edges_vertices": [
+    [0, 4],
+    [4, 1],
+    [1, 5],
+    [5, 2],
+    [2, 6],
+    [6, 3],
+    [3, 7],
+    [7, 0],
+    [8, 0],
+    [8, 4],
+    [8, 1],
+    [8, 5],
+    [8, 2],
+    [8, 6],
+    [8, 3],
+    [8, 7]
+  ],
+  "edges_assignment": ["B", "B", "B", "B", "B", "B", "B", "B", "M", "V", "F", "V", "M", "V", "F", "V"],
+  "edges_foldAngle": [0, 0, 0, 0, 0, 0, 0, 0, -180, 180, 0, 180, -180, 180, 0, 180]
+}
