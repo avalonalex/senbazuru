@@ -193,3 +193,10 @@ layer order those meshes can violate. Indexed OBJ and FOLD exports inspect the
 same samples. Nothing in the library imports these study modules; see
 [the study](../study/fold-material/README.md) before treating its double fold as
 a physically valid model.
+
+`StudyCase` adds authored rigid cases beside those controls. It consumes a FOLD
+`Frame` and an explicit angle state, reuses `Origami.Folding`, and builds a shared
+triangle mesh from the returned cut pattern. The gallery's JSON manifest is read
+by the study executable; it is not a new library input format. Panel ids travel
+with the mesh so the viewer can split lighting at arbitrary crease directions.
+These cases do not use the packet-specific contact solver.

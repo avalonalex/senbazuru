@@ -1,4 +1,4 @@
-# One sheet, two bends
+# One sheet, several folds
 
 An executable geometric study for #114: a unit square folded once, then in half
 again at right angles. It compares sharp creases, exaggerated rounded bends,
@@ -24,12 +24,76 @@ carry the same mesh and original material coordinates. The SVG previews reuse
 Senbazuru's camera and SVG backend, with the known packet layer order and
 depth-sorted triangles within each layer. Only the original examples have SVGs:
 that painter would hide layer-order violations in unfinished solver iterations.
+The viewer breaks near-equal depth ties using the packet order only after its
+contact check passes. That convention fixes underside patches without changing
+the mesh; see [depth ties at contact](../../docs/notes/depth-ties-at-contact.md).
 Use the depth-buffered 3D view to inspect overlaps; the SVG preview is not the
 future general curved-surface visibility renderer.
 
 `stack test` includes the geometry checks. `make fmt` and `make lint` include
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
+
+## Folding states
+
+All four examples have a **Folding state** selector. Single and double folds
+include the unfolded square and the first fold at 90° and 175°. Their final
+option returns to the original packet comparison, where **Shape** chooses the
+rounded, sharp or length-corrected surface. For the double fold this final
+option is **Second fold · packet comparison**. There are no intermediate states
+of its second fold yet: that would require a path between its curved panels,
+not independent rigid crease angles or interpolated vertices. **Solver iteration**
+remains a separate control for numerical correction, not a folding step.
+
+## Authored bases
+
+Choose **Kite base** or **Blintz base**, then a **Folding state**. A base is a
+reusable folded starting shape. These examples turn rigid flaps around their
+creases, so material lengths stay unchanged without a length correction. They
+stop at 175°, leaving a five-degree opening that makes the layers inspectable.
+This opening is a chosen angle, not a prediction of how paper springs back.
+The state selector jumps between computed poses; it does not interpolate their
+vertices or claim to simulate the motion between them.
+
+[cases.json](cases.json) is the reusable case format. Each entry contains:
+
+- `id`, `title`, and `description` for the gallery;
+- `source`, an ordinary FOLD crease pattern, relative to the repository root;
+- `steps`, each with a `label` and a complete `angles` list in degrees, in the
+  source file's `edges_vertices` order (including zeroes for boundary edges).
+
+Positive angles lift a flap towards the front of the original sheet; see the
+[glossary](../../docs/glossary.md) for mountain and valley. The angle states
+explicitly override the source's angles. In particular, the blintz fixture's
+negative angles face the existing SVG camera, whereas this gallery uses positive
+angles to open its flaps upwards. The source file is unchanged.
+
+`StudyCase.buildPose` calls the production rigid folding code, uses its returned
+cut pattern, holds the largest panel still, and subdivides the resulting convex
+panels three times. Material indices are shared across creases; lighting normals
+are split by panel. Boundaries and actual creases get lines, triangle subdivisions
+do not. Adding another case of this kind needs a FOLD file and a manifest entry,
+with no new shape formula or viewer branch.
+
+This first format is limited to a unit square with convex panels and explicitly
+supplied angle states. The original single/double final packet formulas remain separate
+controls because their rounded or curved panels are not rigid angle states.
+For equally large panels the lowest, then leftmost centre is held still, so the
+controls’ first-fold states agree with their original right-to-left fold.
+**No general contact check runs on the authored bases.** Their measurements report
+`packetOrder: null`; the viewer says contact is untested. Do not run the existing
+nearly horizontal four-layer packet check on them. They have OBJ/FOLD exports
+and generated `cases.json` state metadata, but no SVG preview: the current SVG
+painter only knows the original single/double layer orders.
+
+`StudyCaseSpec` checks every named state for connectivity, positive triangle
+area, one unit of material area and edge-length preservation. Random angle and
+refinement tests exercise the same builder. Independent checks place the kite's
+free corners on its diagonal and all four blintz corners at the centre when
+folded to 180°; a 90° check verifies the moving flap and its stationary neighbours.
+See [the note on sharing material vertices](../../docs/notes/sharing-material-vertices.md).
+
+## Original fold controls
 
 The rounded bend radius is 0.015 times the original square's side. The resulting layer
 separation of 0.03 is exaggerated for inspection, not a measured paper thickness.

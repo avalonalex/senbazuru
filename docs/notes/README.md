@@ -55,6 +55,13 @@ read the Haddock module headers; for the domain, start with
 | [folds.md](folds.md) | `foldl` builds a tower, `foldl'` flattens it, `foldr` produces lazily |
 | [strict-fields.md](strict-fields.md) | `foldl'` forces only to WHNF, so lazy fields leak anyway — measured |
 
+## Material mesh
+
+| Note | Idea |
+| --- | --- |
+| [depth-ties-at-contact.md](depth-ties-at-contact.md) | Touching zero-thickness layers need an explicit display convention when depth precision runs out |
+| [sharing-material-vertices.md](sharing-material-vertices.md) | Shared material vertices keep creases connected; separate panel normals keep them sharp |
+
 ## Where to start
 
 [maekawa.md](maekawa.md) and [kawasaki.md](kawasaki.md) are built:

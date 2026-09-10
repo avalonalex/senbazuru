@@ -100,3 +100,13 @@ were chosen.
 They are traditional forms with no single author, and they were written here
 rather than taken from anywhere, so they carry no design and no licence but
 this repository's.
+
+## Kite base for the material study
+
+`kite-base.fold` was constructed here from a unit square: the two creases run
+from `(0,0)` to `(1, sqrt(2)-1)` and `(sqrt(2)-1, 1)`. Folding the adjacent
+sides onto the diagonal gives the traditional kite base. It has no single
+designer; neither its data nor a tutorial image was copied. The coordinate
+`sqrt(2)-1` is stored as a decimal. The authored angle states in
+[`study/fold-material/cases.json`](../study/fold-material/cases.json) use this
+file and the existing `blintz-base.fold` to exercise oblique creases.
