@@ -18,6 +18,14 @@ found overlapping triangle depths differing by less than 1e-11 model units.
 Removing the slope-dependent polygon offset did not fix it; a 64-increment guard
 did. This distinguishes a numerical tie from a sizeable geometric intersection.
 
+Short lines remained after that fix. They survived disabling crease strokes,
+and a magnified view with flat red/white face colours isolated them from lighting.
+The slope-dependent outline offset was pushing steep triangles farther back
+than their neighbours, exposing thin strips of the other side. Replacing
+`polygonOffset(1,1)` with `(0,1)` removed those strips: surfaces still leave a small
+constant depth allowance for ink, but the offset no longer changes their relative
+depths. Both corrections are needed in the reproduced corner view.
+
 The study now breaks these near-equal depth ties by 64 depth-buffer increments
 per layer, projected along the packet's vertical axis. Looking underneath reverses
 which layer wins. Boundary and crease strokes receive their incident panel's

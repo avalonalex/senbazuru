@@ -264,7 +264,10 @@ function initialize() {
     gl.uniform1f(gl.getUniformLocation(program,'ink'),0);
     bind(surfaceBuffer);
     gl.enable(gl.POLYGON_OFFSET_FILL);
-    gl.polygonOffset(1,1);
+    // Leave room for ink with the same depth offset on every triangle.
+    // A slope-dependent offset pushes steep crease triangles behind touching
+    // layers, exposing short strips of the reverse side even without ink.
+    gl.polygonOffset(0,1);
     gl.drawArrays(gl.TRIANGLES,0,vertexCount);
     gl.disable(gl.POLYGON_OFFSET_FILL);
     if (mode !== 'material') {
