@@ -66,7 +66,7 @@ jobs:
       - name: Check formatting
         run: |
           ormolu --version
-          ormolu --mode check $(find src app test -name '*.hs')
+          ormolu --mode check $(find src app test study -name '*.hs')
 
   lint:
     name: hlint
@@ -76,5 +76,5 @@ jobs:
       - uses: haskell-actions/hlint-setup@v2
       - uses: haskell-actions/hlint-run@v2
         with:
-          path: '["src/", "app/", "test/"]'
+          path: '["src/", "app/", "test/", "study/"]'
           fail-on: warning

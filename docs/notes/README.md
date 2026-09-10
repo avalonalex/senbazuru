@@ -32,6 +32,8 @@ read the Haddock module headers; for the domain, start with
 | [paper-thickness.md](paper-thickness.md) | A depth buffer cannot draw coincident layers; lift each by its layer number, and give every face its own corners |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
+| [two-bends-need-more-than-radii.md](two-bends-need-more-than-radii.md) | A single rounded fold preserves material, but composing two perpendicular bends can stretch the outer layer by 200%; an executable counterexample |
+| [sharp-creases-and-opening-panels.md](sharp-creases-and-opening-panels.md) | A sharp crease can join nonparallel panels; prescribed openings still need material-length checks |
 | [a-crease-is-a-hinge.md](a-crease-is-a-hinge.md) | A crease is a torsional hinge with a rest angle set by the material and a radius set by what it wraps, and the two numbers a renderer needs are those |
 | [the-puff-is-a-drawing.md](the-puff-is-a-drawing.md) | The crane's last step is a puff, not a fold; a convincing one is a bump function rather than a simulation, and what it still needs is its silhouette |
 

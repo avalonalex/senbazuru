@@ -2,7 +2,7 @@
 # the Makefile exists so that `make check` names the exact set of gates that
 # should pass before a commit.
 
-HS_FILES := $(shell find src app test -name '*.hs')
+HS_FILES := $(shell find src app test study -name '*.hs')
 
 .PHONY: build repl install test fmt fmt-check lint check examples clean
 
@@ -30,7 +30,7 @@ fmt-check:
 	ormolu --mode check $(HS_FILES)
 
 lint:
-	hlint src app test
+	hlint src app test study
 
 # What CI should run.
 check: fmt-check lint test

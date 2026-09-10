@@ -178,3 +178,14 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 Three kinds, used for different things: property tests for the geometry layer,
 example tests for decoding, golden tests for whole-document output. Which, and
 why each, is in [AGENTS.md](../AGENTS.md#testing).
+
+## Material study
+
+`study/fold-material/` is a separate executable experiment, compiled and tested
+with the project but not exported by the library. It generates sharp and rounded
+versions of two prescribed surfaces, compares their material lengths, and uses
+`Camera`, `Diagram` and
+`Render.Svg` for previews. Its indexed OBJ export and offline viewer inspect the
+same samples. Nothing in the library imports it; see
+[the study](../study/fold-material/README.md) before treating its double fold as
+a physically valid model.

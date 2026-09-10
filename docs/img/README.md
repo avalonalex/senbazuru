@@ -34,3 +34,19 @@ The crane and the pinwheel come from [Flat-Folder](https://github.com/origamimag
 and the bird base from [Oriedita](https://github.com/oriedita/oriedita); all
 three are traditional designs, and their provenance is in
 [examples/README.md](../../examples/README.md).
+
+The four `material-{sharp,rounded}-{single,double}.svg` previews are generated
+here, without third-party fixtures:
+
+```bash
+stack run senbazuru-material-study -- build/fold-material
+cp build/fold-material/sharp-single.svg docs/img/material-sharp-single.svg
+cp build/fold-material/sharp-double.svg docs/img/material-sharp-double.svg
+cp build/fold-material/rounded-single.svg docs/img/material-rounded-single.svg
+cp build/fold-material/rounded-double.svg docs/img/material-rounded-double.svg
+```
+
+Inspect them before copying. They illustrate the
+[rounded-bend counterexample](../notes/two-bends-need-more-than-radii.md) and
+[sharp-crease comparison](../notes/sharp-creases-and-opening-panels.md),
+not production `render` output.
