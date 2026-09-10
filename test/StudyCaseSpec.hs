@@ -7,9 +7,11 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either (isLeft)
 import Data.List (find)
 import FoldMaterial
+import PanelContact
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
 import StudyCase
@@ -46,6 +48,34 @@ spec = describe "authored material-study cases" $ do
     it "keeps all refinement vertices in one consistent material winding" $ do
       pose <- requireRight (buildPose 2 source (PoseSpec "flat" (replicate (length (edgesVertices source)) 0)))
       resolvedTriangles (poseMesh pose) `shouldSatisfy` all (\(a, b, c) -> let V3 _ _ z = cross (position b ^-^ position a) (position c ^-^ position a) in z > 0)
+  forM_ [entry | entry <- cases, Just _ <- [caseContact entry]] $ \entry -> describe (caseId entry ++ " contact") $ do
+    source <- runIO $ keyFrame <$> (loadFoldFile (caseSource entry) >>= requireRight)
+    forM_ (caseSteps entry) $ \step -> it (show (poseLabel step) ++ " meets contact and order requirements") $ do
+      pose <- requireRight (buildCasePose 3 entry source step)
+      let expectedPairs = if caseId entry == "kite" then 3 else 10
+      poseContact pose `shouldBe` Just (ContactCheck expectedPairs [] [] [] [])
+    it "accepts ordered contact when all flaps close to 180 degrees" $ do
+      let angles = [if a == 0 then 0 else 180 | a <- edgesFoldAngle source]
+      pose <- requireRight (buildCasePose 1 entry source (PoseSpec "closed" angles))
+      poseContact pose `shouldSatisfy` maybe False contactPassed
+    it "reports the wrong folding side even without a panel crossing" $ do
+      let angles = [if a == 0 then 0 else -175 | a <- edgesFoldAngle source]
+      pose <- requireRight (buildCasePose 1 entry source (PoseSpec "wrong side" angles))
+      poseContact pose `shouldSatisfy` maybe False (not . null . reversedOrders)
+      fmap crossingPanels (poseContact pose) `shouldBe` Just []
+    it "keeps contact checks independent of mesh refinement and edge numbering" $ do
+      let angles = [if a == 0 then 0 else 175 | a <- edgesFoldAngle source]
+          reordered = source {edgesVertices = reverse (edgesVertices source), edgesAssignment = reverse (edgesAssignment source), edgesFoldAngle = reverse (edgesFoldAngle source)}
+      coarse <- requireRight (buildCasePose 0 entry source (PoseSpec "coarse" angles))
+      fine <- requireRight (buildCasePose 3 entry reordered (PoseSpec "fine" (reverse angles)))
+      poseContact fine `shouldBe` poseContact coarse
+    it "refuses missing, repeated or boundary-anchored panel declarations" $ do
+      let step = PoseSpec "flat" (replicate (length (edgesVertices source)) 0)
+          alter f = entry {caseContact = fmap f (caseContact entry)}
+          missing spec' = spec' {namedPanels = drop 1 (namedPanels spec')}
+          repeated spec' = spec' {namedPanels = namedPanels spec' ++ take 1 (namedPanels spec')}
+          boundary spec' = spec' {namedPanels = [tag {tagAt = V2 0 0} | tag <- namedPanels spec']}
+      mapM_ (\change -> buildCasePose 1 (alter change) source step `shouldSatisfy` isLeft) [missing, repeated, boundary]
   it "keeps the left half fixed when opening the controls' first fold" $
     forM_ [("examples/book-base.fold", replicate 6 0 ++ [90]), ("examples/quarter-fold.fold", replicate 8 0 ++ [90, 0, 90, 0])] $ \(path, angles) -> do
       source <- keyFrame <$> (loadFoldFile path >>= requireRight)

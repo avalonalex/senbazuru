@@ -15,18 +15,21 @@
 -- panel; they never interpolate between folding states.
 --
 -- This first case format supports convex panels of a unit square. It does not
--- solve bending, thickness, collisions, or motion between the supplied states.
+-- solve bending, thickness, or motion between the supplied states. Optional
+-- named panel requirements go through PanelContact in buildCasePose; buildPose
+-- constructs geometry alone so tests can also inspect unconstrained states.
 module StudyCase
   ( CaseSpec (..),
     PoseSpec (..),
     StudyPose (..),
     CaseError (..),
     buildPose,
+    buildCasePose,
   )
 where
 
 import Control.Monad (unless)
-import Data.Aeson (FromJSON (..), withObject, (.:))
+import Data.Aeson (FromJSON (..), withObject, (.:), (.:?))
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (maximumBy)
@@ -35,9 +38,12 @@ import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import FoldMaterial
+import PanelContact
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..), VertexId (..))
+import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.Polygon (signedArea, strictlyInside)
 import Senbazuru.Geometry.Rigid (applyRigid, inverse)
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
@@ -48,12 +54,13 @@ data CaseSpec = CaseSpec
     caseTitle :: !Text,
     caseSource :: !FilePath,
     caseDescription :: !Text,
-    caseSteps :: ![PoseSpec]
+    caseSteps :: ![PoseSpec],
+    caseContact :: !(Maybe ContactSpec)
   }
   deriving stock (Eq, Show)
 
 instance FromJSON CaseSpec where
-  parseJSON = withObject "study case" $ \o -> CaseSpec <$> o .: "id" <*> o .: "title" <*> o .: "source" <*> o .: "description" <*> o .: "steps"
+  parseJSON = withObject "study case" $ \o -> CaseSpec <$> o .: "id" <*> o .: "title" <*> o .: "source" <*> o .: "description" <*> o .: "steps" <*> o .:? "contact"
 
 data PoseSpec = PoseSpec
   { poseLabel :: !Text,
@@ -69,7 +76,10 @@ data StudyPose = StudyPose
     -- | One original panel id per triangle, for normals split at creases.
     posePanels :: ![Int],
     -- | Boundary and crease segments, without triangle subdivision lines.
-    poseLines :: ![(V3, V3)]
+    poseLines :: ![(V3, V3)],
+    -- | Whole rigid panels, before refinement, with their original material map.
+    poseFaces :: ![(Int, [Sample])],
+    poseContact :: !(Maybe ContactCheck)
   }
   deriving stock (Eq, Show)
 
@@ -78,6 +88,29 @@ newtype CaseError = CaseError Text
 
 instance Explain CaseError where
   explain (CaseError message) = message
+
+-- | Panel names are anchored strictly inside the original material, so face
+-- renumbering during crease cutting cannot silently change an order's meaning.
+-- Require every panel to be named: otherwise an omitted flap could escape all
+-- contact checks. The raw buildPose remains useful for unconstrained fixtures.
+buildCasePose :: Int -> CaseSpec -> Frame -> PoseSpec -> Either CaseError StudyPose
+buildCasePose levels spec source step = do
+  pose <- buildPose levels source step
+  report <- traverse (check pose) (caseContact spec)
+  pure pose {poseContact = report}
+  where
+    check pose requirements = do
+      resolved <- mapM (resolve (poseFaces pose)) (namedPanels requirements)
+      let ids = map fst resolved
+      unless (length ids == length (poseFaces pose) && length ids == S.size (S.fromList ids)) $
+        Left (CaseError "contact declarations must name every material panel exactly once")
+      first (CaseError . explain) (checkPanelContact (orderDirection requirements) (panelOrders requirements) (map snd resolved))
+    resolve faces (PanelTag name point@(V2 u v))
+      | any (\x -> isNaN x || isInfinite x) [u, v] = Left (CaseError ("panel " <> name <> " needs a finite material point"))
+      | otherwise = case [(i, Panel name (map position ps)) | (i, ps) <- faces, strictlyInside 1e-10 (outline ps) point] of
+          [found] -> Right found
+          _ -> Left (CaseError ("panel " <> name <> " needs a point strictly inside exactly one material face"))
+    outline ps = let ring2 = [V2 (materialU p) (materialV p) | p <- ps] in if signedArea ring2 < 0 then reverse ring2 else ring2
 
 buildPose :: Int -> Frame -> PoseSpec -> Either CaseError StudyPose
 buildPose levels source step = do
@@ -99,9 +132,15 @@ buildPose levels source step = do
   let points = [Sample u v (applyRigid (inverse placement) q) | (V3 u v _, q) <- zip flat placed]
       tagged = [(triangle, unFaceId (faceId face)) | face <- faces, triangle <- fan (map unVertexId (faceVertexIds face))]
       (refined, refinedFaces) = iterateSplit levels points tagged
-      lookupPoint i = maybe (Left (CaseError "feature edge refers to a missing vertex")) (Right . position) (IM.lookup (unVertexId i) (IM.fromList (zip [0 ..] points)))
+      indexed = IM.fromList (zip [0 ..] points)
+      lookupSample i = maybe (Left (CaseError "panel or feature edge refers to a missing vertex")) Right (IM.lookup (unVertexId i) indexed)
+      lookupPoint i = position <$> lookupSample i
+      wholePanel face = do
+        corners <- mapM lookupSample (faceVertexIds face)
+        pure (unFaceId (faceId face), corners)
   lines3 <- mapM (\(a, b) -> (,) <$> lookupPoint a <*> lookupPoint b) [(a, b) | ((a, b), assignment) <- zip (edgesVertices sheet) (edgesAssignment sheet), assignment `elem` [Border, Mountain, Valley]]
-  pure (StudyPose (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3)
+  panels <- mapM wholePanel faces
+  pure (StudyPose (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3 panels Nothing)
   where
     inside (V3 u v z) = u >= 0 && u <= 1 && v >= 0 && v <= 1 && z == 0
 

@@ -19,6 +19,7 @@ canvas { display: block; width: 100%; height: 510px; touch-action: none; backgro
 #comparison-labels { display: grid; grid-template-columns: 1fr 1fr; text-align: center; padding: 12px 0; background: #e7dfd1; color: #65584a; }
 #case-buttons { display: inline-flex; gap: 12px; }
 #contact { color: #8d3d22; }
+#contact[data-state=passed] { color: #305f51; }
 #metrics { display: flex; gap: 36px; flex-wrap: wrap; padding: 20px 0; border-bottom: 1px solid #cbbfad; }
 #metrics strong { display: block; font-size: 27px; font-weight: 500; }
 #metrics span { color: #6d6359; font-size: 14px; }
@@ -66,6 +67,13 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 <canvas id="canvas" aria-label="Interactive folded-paper surface. Drag or use arrow keys to rotate; scroll or use plus and minus to zoom." tabindex="0"></canvas>
 <div id="legend"></div>
 <p id="contact" aria-live="polite"></p>
+<details id="panel-contact" hidden>
+  <summary>Panel order and contact</summary>
+  <p>These requirements follow the paper when the camera rotates. Above and below use the case’s declared direction; touching is allowed, including along shared creases.</p>
+  <p id="panel-direction"></p>
+  <ul id="panel-orders"></ul>
+  <ul id="contact-issues"></ul>
+</details>
 <small id="metrics-label" hidden>Measurements for the right-hand checkpoint</small>
 <div id="metrics" aria-live="polite"></div>
 <p id="explanation"></p>
@@ -73,7 +81,7 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 <p id="downloads"></p>
 <details>
   <summary>What this experiment measures</summary>
-  <p>Kite and blintz are authored rigid cases: their folding states supply angles to the existing folding engine. Each angle list includes every source edge, and the largest panel stays still. Material indices are shared across creases while lighting normals remain separate. These cases have no length-correction iterations or general contact check. The remaining details describe the original single/double controls.</p>
+  <p>Kite and blintz are authored rigid cases: their folding states supply angles to the existing folding engine. Each angle list includes every source edge, and the largest panel stays still. Material indices are shared across creases while lighting normals remain separate. Each state checks all rigid panel pairs for 3D crossings and compares declared above/below requirements. Coplanar overlap without an order is reported as unresolved. These checks do not adjust angles or certify the motion between states. The remaining details describe the original single/double controls.</p>
   <p>The length comparison starts with the sharp examples. A coordinated least-squares correction reduces edge-length errors and penalises reversed layers. A line search keeps each accepted iteration from increasing that combined objective. The iteration selector displays recorded solutions, never interpolated vertex positions. A zero-iteration single fold is expected: its rigid panels already preserve lengths.</p>
   <p>For the before/after comparison, strain is measured from each triangle's original material coordinates and current positions. Its two principal strains describe the most compressed and most extended directions. The color uses whichever has larger magnitude; the cards still report actual mesh edges. The contact constraint keeps this nearly flat packet in its prescribed layer order; bending energy remains unsolved.</p>
   <p>The packet check compares the heights of triangles wherever their footprints overlap, using the expected bottom-to-top layer order. A lower layer rising above an upper one is an ordering violation. Length correction alone produced an ochre patch at the crease intersection where layers crossed. The coupled correction also penalises those crossings. This check applies to these nearly flat packets only: it does not check folds within a panel or motion between iterations. Once the packet check passes, the viewer breaks almost-equal depth ties using that same layer order, reversing it when viewed from underneath. This only adjusts display depth, not the mesh positions. States that fail the check receive no tie-break, so their crossings remain visible. Solver checkpoints have no SVG preview because the current SVG painter assumes a fixed layer order and would hide crossings in unfinished iterations.</p>
@@ -295,16 +303,32 @@ function initialize() {
     const percent = value => (Math.abs(value)<1e-12 ? 0 : 100*value).toFixed(fitting ? 4 : 3);
     const contact = model.packetOrder;
     element('contact').hidden = !contact && !authored();
-    element('contact').textContent = authored() ? 'Contact has not been checked for this case. These rigid angle states preserve material lengths; they are not a collision-tested folding motion.' : !contact ? '' : contact.violatingPairs ?
+    element('contact').textContent = authored() ? authoredContact(model.panelContact) : !contact ? '' : contact.violatingPairs ?
       `Layers cross: ${contact.violatingPairs} triangle pairs violate the expected packet order. The largest reversal is ${percent(contact.maxViolation)}% of the original sheet's side. This intermediate checkpoint has not met the contact target.` :
       contact.uncheckedTriangles ? `Packet check incomplete: ${contact.uncheckedTriangles} triangles are edge-on to its measuring plane.` :
       `No reversed layers above the contact tolerance (${(100*relaxations[selected].contactTolerance).toFixed(5)}% of the sheet’s side). This checks the expected packet order, not general collisions. A small display-depth tie-break keeps touching layers visually stable; exported geometry is unchanged.`;
+    element('contact').dataset.state = authored() && model.panelContact?.passed ? 'passed' : 'attention';
+    element('panel-contact').hidden = !authored() || !model.panelContact;
+    const items = (id, values) => element(id).replaceChildren(...values.map(value => {
+      const li = document.createElement('li'); li.textContent = value; return li;
+    }));
+    items('panel-orders', authored() ? (cases[selected].contact?.orders || []).map(([lower,upper]) => `${upper} above ${lower}`) : []);
+    const report = authored() && model.panelContact;
+    const direction = authored() && cases[selected].contact?.direction;
+    element('panel-direction').textContent = direction ? direction[0] === 0 && direction[1] === 0 && direction[2] > 0 ?
+      'Above points towards the front of the original sheet.' : `Above follows (${direction.join(', ')}) in model coordinates.` : '';
+    items('contact-issues', report ? [
+      ...report.crossingPanels.map(([a,b]) => `Crossing: ${a} and ${b}`),
+      ...report.reversedOrders.map(([lower,upper,gap]) => `Reversed order: ${upper} lies below ${lower} by up to ${(100*gap).toFixed(5)}% of the sheet’s side.`),
+      ...report.unorderedContacts.map(([a,b]) => `Unresolved coplanar overlap: ${a} and ${b} need an order.`),
+      ...report.uncheckedOrders.map(([a,b]) => `Order unchecked: ${a} and ${b} are both parallel to the measuring direction.`)
+    ] : []);
     element('metrics').innerHTML = `
       <div><strong>${model.connectedComponents}</strong><span>connected material surface</span></div>
       <div><strong>${percent(model.maxEdgeStrain)}%</strong><span>largest edge extension</span></div>
       <div><strong>${percent(model.minEdgeStrain)}%</strong><span>largest edge compression</span></div>
       <div><strong>${model.surfaceAreaRatio.toFixed(5)}</strong><span>area / original sheet area</span></div>`;
-    element('scope').textContent = authored() ? 'These states use rigid panels and prescribed crease angles. Paper has zero thickness; panel bending and collisions are not solved.' : 'This is a geometry study, not a physics simulation. The solver corrects lengths and layer order in an already posed sheet. It does not determine crease angles or panel bending stiffness, and it treats paper as having zero thickness. Passing these checks is not proof of physical feasibility.';
+    element('scope').textContent = authored() ? 'These states use rigid panels and prescribed crease angles. Paper has zero thickness; contact checks inspect individual states without changing them. Panel bending, thickness and collisions during the motion are not solved.' : 'This is a geometry study, not a physics simulation. The solver corrects lengths and layer order in an already posed sheet. It does not determine crease angles or panel bending stiffness, and it treats paper as having zero thickness. Passing these checks is not proof of physical feasibility.';
     element('explanation').textContent = authored() ? cases[selected].description : fitting ? `The target is ${(100*relaxations[selected].tolerance).toFixed(3)}% maximum absolute edge-length error. This checkpoint's triangle strains range from ${percent(model.minPrincipalStrain)}% to ${percent(model.maxPrincipalStrain)}% over all material directions. Both images show the same indexed sheet; vertices move together to correct lengths and keep the layers in order. Solver iterations are not folding steps or elapsed time.` : sharp ? (isDouble ?
       'The crease is a sharp change of direction. Opening comes from the panels away from it, with zero gap at the shared fold. This hand-chosen shape still stretches the sheet: a smaller error than the rounded construction is not a physical solution.' :
       'One half rotates as a rigid panel, leaving a narrow wedge-shaped opening. Distances on both panels stay unchanged; the mesh includes the exact crease.') : (isDouble ?
@@ -314,6 +338,12 @@ function initialize() {
       fitting || authored() ? 'Measured triangle strain: blue = −1% · pale = 0% · red = +1%. Color shows the principal strain with the largest magnitude.' : `Analytic extension: pale = 0% · red = ${sharp ? '1%' : '200%'}. Color scale changes with the selected shape.`;
     element('downloads').innerHTML = `Export this ${fitting ? 'checkpoint' : 'example'}: ${fitting || authored() ? '' : `<a href="${name}.svg">SVG preview</a> · `}<a href="${name}.obj" download>3D OBJ</a> · <a href="${name}.fold" download>FOLD surface</a> · <a href="measurements.json">measurements</a>${authored() ? ' · <a href="cases.json">angle states</a>' : fitting ? ' · <a href="relaxation.json">solver progress</a>' : ''}`;
     upload();
+  }
+  function authoredContact(report) {
+    if (!report) return 'Contact has not been checked for this case. These rigid angle states preserve material lengths; they are not a collision-tested folding motion.';
+    const scope = `Tolerance: ${(100*report.tolerance).toFixed(5)}% of the sheet’s side. This state only; motion between states is unchecked.`;
+    return report.passed ? `${report.checkedPanelPairs} panel pair${report.checkedPanelPairs === 1 ? '' : 's'} checked: no crossings or reversed order above tolerance. Touching is allowed. ${scope}` :
+      `Contact requirements not met. Crossing pairs: ${report.crossingPanels.length}; reversed orders: ${report.reversedOrders.length}; unresolved overlaps: ${report.unorderedContacts.length}; unchecked orders: ${report.uncheckedOrders.length}. ${scope}`;
   }
   function resetIterations() {
     if (authored()) return;

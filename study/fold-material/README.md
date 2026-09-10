@@ -60,7 +60,9 @@ vertices or claim to simulate the motion between them.
 - `id`, `title`, and `description` for the gallery;
 - `source`, an ordinary FOLD crease pattern, relative to the repository root;
 - `steps`, each with a `label` and a complete `angles` list in degrees, in the
-  source file's `edges_vertices` order (including zeroes for boundary edges).
+  source file's `edges_vertices` order (including zeroes for boundary edges);
+- optional `contact` requirements, with named panels, an ordering direction,
+  and pairs written `[lower, upper]`.
 
 Positive angles lift a flap towards the front of the original sheet; see the
 [glossary](../../docs/glossary.md) for mountain and valley. The angle states
@@ -80,17 +82,47 @@ supplied angle states. The original single/double final packet formulas remain s
 controls because their rounded or curved panels are not rigid angle states.
 For equally large panels the lowest, then leftmost centre is held still, so the
 controls’ first-fold states agree with their original right-to-left fold.
-**No general contact check runs on the authored bases.** Their measurements report
-`packetOrder: null`; the viewer says contact is untested. Do not run the existing
-nearly horizontal four-layer packet check on them. They have OBJ/FOLD exports
-and generated `cases.json` state metadata, but no SVG preview: the current SVG
-painter only knows the original single/double layer orders.
+Kite and blintz now declare that each flap stays above the central panel, measured
+towards the front of the original sheet (`direction: [0, 0, 1]`). No order is
+invented between flaps that do not overlap. Each panel name has an `at: [u, v]`
+point strictly inside that panel on the original sheet: for example the kite's
+`lower-right` name uses `[0.8, 0.1]`. The point identifies material, so changing
+face numbering or the viewer's camera cannot change which panel a rule means.
+Every material panel must be named exactly once; unknown names and cyclic orders
+are rejected.
+
+`StudyCase.buildCasePose` runs `PanelContact` on the original rigid polygons,
+independently of mesh subdivision. All pairs are checked for crossings in 3D,
+including upright flaps. Declared order is checked wherever the panels' projections
+overlap along the ordering direction. Touching is allowed; a coplanar interior
+overlap needs an order, possibly implied through other ordered panels. If both
+panels stand parallel to the ordering direction, that order is reported as
+unchecked rather than passed. The distance tolerance is `1e-7` of the unit sheet.
+
+The viewer reports passed, failed and unresolved checks in **Panel order and
+contact**, with named pairs for failures. `measurements.json` and the embedded
+viewer data include `panelContact`; FOLD exports include the same report in
+`senbazuru:panel_contact`. Generated `cases.json` includes the declarations.
+`packetOrder` remains null on authored states: the original curved-packet solver
+is a separate check. Single/double first-fold angle states have no declarations
+yet and are explicitly marked untested, while their final packet controls retain
+their existing solver checks. OBJ exports carry geometry; consult the companion
+measurements for checks. No SVG preview is supplied for authored states because
+the painter only knows the original single/double layer orders.
+
+These checks report a pose's violations; they do not move its vertices, adjust
+crease angles, or add display depth bias. A checked state says nothing about the
+path used to reach it. Bending, finite thickness and continuous collision handling
+remain outside this milestone. See [panel contact and order](../../docs/notes/panel-contact-and-order.md).
 
 `StudyCaseSpec` checks every named state for connectivity, positive triangle
 area, one unit of material area and edge-length preservation. Random angle and
 refinement tests exercise the same builder. Independent checks place the kite's
 free corners on its diagonal and all four blintz corners at the centre when
 folded to 180°; a 90° check verifies the moving flap and its stationary neighbours.
+Contact tests cover all 14 kite/blintz states, fully closed 180° states, and
+deliberately reversed folds. Independent polygon fixtures check 3D crossings,
+hinge contact, coplanar order, upright panels and rotated measuring directions.
 See [the note on sharing material vertices](../../docs/notes/sharing-material-vertices.md).
 
 ## Original fold controls

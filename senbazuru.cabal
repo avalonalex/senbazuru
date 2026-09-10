@@ -133,7 +133,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: FoldMaterial, FoldRelaxation, FoldContact, StudyCase
+  other-modules: FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact
   build-depends:
     , base
     , aeson
@@ -154,6 +154,8 @@ test-suite senbazuru-test
     FoldContactSpec
     StudyCase
     StudyCaseSpec
+    PanelContact
+    PanelContactSpec
     FoldMaterial
     FoldMaterialSpec
     FoldRelaxation

@@ -199,4 +199,8 @@ a physically valid model.
 triangle mesh from the returned cut pattern. The gallery's JSON manifest is read
 by the study executable; it is not a new library input format. Panel ids travel
 with the mesh so the viewer can split lighting at arbitrary crease directions.
-These cases do not use the packet-specific contact solver.
+These cases do not use the packet-specific contact solver. `PanelContact` checks
+their whole convex panels for 3D crossings and for declared above/below order.
+`StudyCase.buildCasePose` resolves panel names from points on the original sheet,
+so the declarations survive face renumbering. Reports are exported and displayed;
+they do not change the prescribed pose or certify motion between states.
