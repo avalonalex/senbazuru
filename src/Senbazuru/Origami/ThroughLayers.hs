@@ -48,7 +48,7 @@
 -- sends the up direction. A flat fold sends it to exactly plus or minus itself
 -- and nothing in between, so the sign is the whole answer. Deliberately /not/
 -- from "Senbazuru.Origami.Flat"'s @panelFaceUp@, which reads the winding the
--- file wrote — a guess with nothing to cancel against, per CLAUDE.md. The
+-- file wrote — a guess with nothing to cancel against, per AGENTS.md. The
 -- motion is a measurement.
 --
 -- == What it will not do

@@ -177,4 +177,4 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
 
 Three kinds, used for different things: property tests for the geometry layer,
 example tests for decoding, golden tests for whole-document output. Which, and
-why each, is in [CLAUDE.md](../CLAUDE.md#testing).
+why each, is in [AGENTS.md](../AGENTS.md#testing).

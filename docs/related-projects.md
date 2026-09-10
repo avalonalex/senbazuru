@@ -5,7 +5,7 @@ taken or could take from it. Kept as one list so that "has anyone done this?"
 has a place to look before an issue is written.
 
 **The licence column comes first for a reason.** The rule in
-[CLAUDE.md](../CLAUDE.md#third-party-material) is that ideas travel and
+[AGENTS.md](../AGENTS.md#third-party-material) is that ideas travel and
 expression does not: a published algorithm can be reimplemented from
 understanding, and a GPL implementation can be read to understand the domain
 and never copied, fixtures included. MIT projects can be vendored with

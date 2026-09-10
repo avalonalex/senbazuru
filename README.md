@@ -245,7 +245,8 @@ with every open issue tiered by how hard it is.
 | [docs/notes/](docs/notes/) | One idea per file, with references: the theorems, algorithms and techniques this leans on or is heading towards |
 | [docs/related-projects.md](docs/related-projects.md) | The other tools in this space, their licences, and what each one means for us |
 | [docs/roadmap.md](docs/roadmap.md) | Where the project stands, dated: what is done, what is open, how hard each open issue is, and an order |
-| [CLAUDE.md](CLAUDE.md) | The working conventions |
+| [AGENTS.md](AGENTS.md) | The shared working conventions for Claude Code and Codex |
+| [docs/agent-workflow.md](docs/agent-workflow.md) | Using either agent, handing off work, and running concurrent tasks |
 
 ## Credits and licence
 

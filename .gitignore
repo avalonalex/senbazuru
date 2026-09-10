@@ -17,3 +17,7 @@ dist-newstyle/
 
 # Output of `make examples`
 build/
+
+# Personal agent instructions and Claude Code permissions
+CLAUDE.local.md
+.claude/settings.local.json
