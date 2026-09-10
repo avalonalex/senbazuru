@@ -20,7 +20,9 @@ tested-with:        GHC ==9.6.7
 
 extra-doc-files:
   README.md
+  AGENTS.md
   CLAUDE.md
+  docs/agent-workflow.md
 
 extra-source-files:
   test/fixtures/*.cp

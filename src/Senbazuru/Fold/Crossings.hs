@@ -145,7 +145,7 @@ splitCrossings fr
 --
 -- One function rather than two calls, because a policy spelled out at each
 -- backend is a policy the next backend forgets — which is exactly what
--- happened to @--layer-budget@, and is written down in CLAUDE.md so that it
+-- happened to @--layer-budget@, and is written down in AGENTS.md so that it
 -- does not happen twice.
 withPlanarFaces :: Frame -> Either FoldError Frame
 withPlanarFaces fr = withTracedFaces =<< splitCrossings fr

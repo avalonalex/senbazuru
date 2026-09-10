@@ -207,7 +207,7 @@ can vendor exercises `file_frames` at all.
 
 Multi-frame files do exist elsewhere, including one with 33 frames, but the
 substantial collections are GPL-licensed and therefore off-limits to this
-MIT-licensed repo — see the third-party rules in `CLAUDE.md`. They are useful
+MIT-licensed repo — see the third-party rules in `AGENTS.md`. They are useful
 for *checking understanding*, not for copying.
 
 So `examples/quarter-fold-steps.fold` is ours, and it is the only multi-frame
