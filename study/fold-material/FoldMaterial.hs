@@ -93,7 +93,7 @@ paperPoint which u v =
         Single -> V3 x v z
         Double
           | v < bendStart -> V3 x v z
-          | v > bendEnd -> V3 x (1 - v) (-2 * radius - z)
+          | v > bendEnd -> V3 x (1 - v) (-(2 * radius) - z)
           | otherwise ->
               -- The PLUS z is intentional. The second fold turns downwards,
               -- so the upper layer lies outside the lower layer's bend.
@@ -136,7 +136,7 @@ sharpPoint Single u v
 sharpPoint Double u v =
   let s = 2 * max 0 (u - 0.5)
       t = 2 * abs (v - 0.5)
-      z = if v <= 0.5 then opening * s * t else -opening * (1 + s) * t
+      z = if v <= 0.5 then opening * s * t else -(opening * (1 + s) * t)
    in V3 (min u (1 - u)) (min v (1 - v)) z
 
 -- | Largest local extension over ALL material directions. For the double

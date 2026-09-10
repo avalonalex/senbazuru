@@ -39,7 +39,7 @@ spec = do
       areaRatio fine `shouldSatisfy` (\a -> abs (a - 1) < 0.00002)
     it "puts the perpendicular double fold in four distinct layer planes" $ do
       map (\(u, v) -> v3z (paperPoint Double u v)) [(0.2, 0.2), (0.8, 0.2), (0.2, 0.8), (0.8, 0.8)]
-        `shouldBe` [0, 2 * radius, -2 * radius, -4 * radius]
+        `shouldBe` [0, 2 * radius, -(2 * radius), -(4 * radius)]
     it "exposes rather than hides the double fold's material deficit" $ do
       let mesh = makeMesh 32 Double
       maximum (edgeStrains mesh) `shouldSatisfy` (\s -> s > 1.998 && s < 2)

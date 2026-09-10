@@ -215,7 +215,7 @@ relaxWith packet settings original = do
           distance = norm delta
       if distance <= 0 || not (finite distance)
         then Left (CollapsedEdge i j)
-        else Right ([(i, (-1 / distance) *^ delta), (j, (1 / distance) *^ delta)], distance - rest)
+        else Right ([(i, (-(1 / distance)) *^ delta), (j, (1 / distance) *^ delta)], distance - rest)
     -- All indices below originate in the validated mesh; defaults keep these
     -- lookups total without introducing partial array indexing.
     atSample = IM.findWithDefault (Sample 0 0 (V3 0 0 0))
