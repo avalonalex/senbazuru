@@ -13,7 +13,7 @@
 -- for finite paper thickness. An edge-on triangle has no height function and
 -- is counted as unchecked, never silently treated as clear. The tolerances
 -- below apply to this study's unit square, not arbitrary model scales.
-module FoldContact (PacketCheck (..), ContactRow (..), packetCheck, packetContacts, contactTolerance) where
+module FoldContact (PacketCheck (..), ContactRow (..), packetCheck, packetContacts, contactTolerance, packetLayer) where
 
 import Data.IntMap.Strict qualified as IM
 import Data.List (find, tails)
@@ -104,8 +104,7 @@ contactPairs which mesh = (mapMaybe checkPair pairs, unchecked)
            in [(i, 1 - wb - wc), (j, wb), (k, wc)]
         u = (materialU a + materialU b + materialU c) / 3
         v = (materialV a + materialV b + materialV c) / 3
-        firstHalf = if u <= 0.5 then 0 else 1
-        order = if which == Single || v <= 0.5 then 2 + firstHalf else 1 - firstHalf
+        order = packetLayer which u v
     checkPair (a, b)
       | separate (bounds a) (bounds b) = Nothing
       | abs (signedArea overlap) <= 1e-14 = Nothing
@@ -140,3 +139,10 @@ contactNormal p lower upper
     edgeAt face =
       let pairs = zip (corners face) (drop 1 (corners face) ++ take 1 (corners face))
        in fmap (\(a, b) -> b ^-^ a) (find (\(a, b) -> distanceToSegment (xy a, xy b) p < 1e-10) pairs)
+
+-- | The prescribed bottom-to-top order, shared by contact checks and previews.
+-- This is a property of these two controls, not an inferred order for any mesh.
+packetLayer :: FoldCase -> Double -> Double -> Int
+packetLayer which u v =
+  let firstHalf = if u <= 0.5 then 0 else 1
+   in if which == Single || v <= 0.5 then 2 + firstHalf else 1 - firstHalf

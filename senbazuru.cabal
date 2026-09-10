@@ -27,6 +27,11 @@ extra-doc-files:
 extra-source-files:
   study/fold-material/README.md
   study/fold-material/viewer.html
+  study/fold-material/cases.json
+  examples/book-base.fold
+  examples/quarter-fold.fold
+  examples/kite-base.fold
+  examples/blintz-base.fold
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.opx
@@ -128,7 +133,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: FoldMaterial, FoldRelaxation, FoldContact
+  other-modules: FoldMaterial, FoldRelaxation, FoldContact, StudyCase
   build-depends:
     , base
     , aeson
@@ -147,6 +152,8 @@ test-suite senbazuru-test
   other-modules:
     FoldContact
     FoldContactSpec
+    StudyCase
+    StudyCaseSpec
     FoldMaterial
     FoldMaterialSpec
     FoldRelaxation

@@ -1,0 +1,78 @@
+-- | Geometry assertions independent of the viewer and of its chosen camera.
+module StudyCaseSpec (spec) where
+
+import Control.Monad (forM_)
+import Data.Aeson (eitherDecode)
+import Data.ByteString.Lazy qualified as BL
+import Data.Either (isLeft)
+import Data.List (find)
+import FoldMaterial
+import Senbazuru.Explain (explain)
+import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
+import Senbazuru.Geometry.V3 (V3 (..), cross)
+import Senbazuru.Geometry.VectorSpace
+import StudyCase
+import Test.Hspec
+import Test.QuickCheck
+
+spec :: Spec
+spec = describe "authored material-study cases" $ do
+  cases <- runIO $ BL.readFile "study/fold-material/cases.json" >>= requireRight . eitherDecode
+  forM_ (cases :: [CaseSpec]) $ \entry -> describe (caseId entry) $ do
+    source <- runIO $ keyFrame <$> (loadFoldFile (caseSource entry) >>= requireRight)
+    forM_ (caseSteps entry) $ \step -> it (show (poseLabel step) ++ " preserves material and shared topology") $ do
+      pose <- requireRight (buildPose 3 source step)
+      let mesh = poseMesh pose
+      componentCount mesh `shouldBe` 1
+      length (samples mesh) - length (meshEdges mesh) + length (triangles mesh) `shouldBe` 1
+      edgeStrains mesh `shouldSatisfy` all ((< 1e-12) . abs)
+      abs (areaRatio mesh - 1) `shouldSatisfy` (< 1e-12)
+      resolvedTriangles mesh `shouldSatisfy` all (\(a, b, c) -> norm (cross (position b ^-^ position a) (position c ^-^ position a)) > 1e-10)
+      length (posePanels pose) `shouldBe` length (triangles mesh)
+      length (poseLines pose) `shouldBe` length (edgesVertices source)
+    it "preserves lengths for arbitrary intermediate hinge angles and refinements" $
+      forAll (choose (-175, 175)) $ \angle ->
+        forAll (chooseInt (0, 3)) $ \level ->
+          let angles = if caseId entry == "double" then replicate 8 0 ++ [angle, 0, angle, 0] else [if a == 0 then 0 else angle | a <- edgesFoldAngle source]
+           in case buildPose level source (PoseSpec "arbitrary" angles) of
+                Left err -> counterexample (show (explain err)) False
+                Right pose -> property (all ((< 1e-12) . abs) (edgeStrains (poseMesh pose)))
+    it "refuses an incomplete angle list instead of truncating it" $
+      buildPose 1 source (PoseSpec "missing angles" []) `shouldSatisfy` isLeft
+    it "refuses a non-finite crease angle" $ do
+      let angles = [if a == 0 then 0 else 0 / 0 | a <- edgesFoldAngle source]
+      buildPose 1 source (PoseSpec "NaN" angles) `shouldSatisfy` isLeft
+    it "keeps all refinement vertices in one consistent material winding" $ do
+      pose <- requireRight (buildPose 2 source (PoseSpec "flat" (replicate (length (edgesVertices source)) 0)))
+      resolvedTriangles (poseMesh pose) `shouldSatisfy` all (\(a, b, c) -> let V3 _ _ z = cross (position b ^-^ position a) (position c ^-^ position a) in z > 0)
+  it "keeps the left half fixed when opening the controls' first fold" $
+    forM_ [("examples/book-base.fold", replicate 6 0 ++ [90]), ("examples/quarter-fold.fold", replicate 8 0 ++ [90, 0, 90, 0])] $ \(path, angles) -> do
+      source <- keyFrame <$> (loadFoldFile path >>= requireRight)
+      pose <- requireRight (buildPose 1 source (PoseSpec "first fold" angles))
+      pointAt (0, 0) (poseMesh pose) `shouldSatisfy` maybe False (near (V3 0 0 0))
+      pointAt (1, 0) (poseMesh pose) `shouldSatisfy` maybe False (near (V3 0.5 0 0.5))
+  it "folds the kite's two free corners onto its diagonal" $ do
+    source <- keyFrame <$> (loadFoldFile "examples/kite-base.fold" >>= requireRight)
+    pose <- requireRight (buildPose 2 source (PoseSpec "flat-folded" (replicate 6 0 ++ [180, 180])))
+    mapM_ (\uv -> pointAt uv (poseMesh pose) `shouldSatisfy` maybe False (near (V3 (sqrt 0.5) (sqrt 0.5) 0))) [(1, 0), (0, 1)]
+    pointAt (1, 1) (poseMesh pose) `shouldSatisfy` maybe False (near (V3 1 1 0))
+  it "brings all four blintz corners to the centre at 180 degrees" $ do
+    source <- keyFrame <$> (loadFoldFile "examples/blintz-base.fold" >>= requireRight)
+    pose <- requireRight (buildPose 2 source (PoseSpec "flat-folded" (replicate 8 0 ++ replicate 4 180)))
+    mapM_ (\uv -> pointAt uv (poseMesh pose) `shouldSatisfy` maybe False (near (V3 0.5 0.5 0))) [(0, 0), (1, 0), (1, 1), (0, 1)]
+  it "lifts the first blintz corner while the other three stay still" $ do
+    source <- keyFrame <$> (loadFoldFile "examples/blintz-base.fold" >>= requireRight)
+    pose <- requireRight (buildPose 1 source (PoseSpec "first flap" (replicate 8 0 ++ [90, 0, 0, 0])))
+    pointAt (1, 0) (poseMesh pose) `shouldSatisfy` maybe False (near (V3 0.75 0.25 (sqrt 0.125)))
+    mapM_ (\uv@(u, v) -> pointAt uv (poseMesh pose) `shouldSatisfy` maybe False (near (V3 u v 0))) [(0, 0), (1, 1), (0, 1)]
+
+requireRight :: (Show e) => Either e a -> IO a
+requireRight (Left err) = expectationFailure (show err) >> fail "fixture failed"
+requireRight (Right value) = pure value
+
+pointAt :: (Double, Double) -> Mesh -> Maybe V3
+pointAt (u, v) mesh = position <$> find (\s -> materialU s == u && materialV s == v) (samples mesh)
+
+near :: V3 -> V3 -> Bool
+near expected actual = norm (expected ^-^ actual) < 1e-12

@@ -2,7 +2,7 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>One sheet, two bends · Senbazuru study</title>
+<title>One sheet, several folds · Senbazuru study</title>
 <style>
 :root { font-family: system-ui, sans-serif; color: #302c27; background: #f5f1e9; }
 body { max-width: 1120px; margin: 40px auto; padding: 0 24px; }
@@ -17,6 +17,7 @@ canvas { display: block; width: 100%; height: 510px; touch-action: none; backgro
 [hidden] { display: none !important; }
 #status { font-weight: 550; }
 #comparison-labels { display: grid; grid-template-columns: 1fr 1fr; text-align: center; padding: 12px 0; background: #e7dfd1; color: #65584a; }
+#case-buttons { display: inline-flex; gap: 12px; }
 #contact { color: #8d3d22; }
 #metrics { display: flex; gap: 36px; flex-wrap: wrap; padding: 20px 0; border-bottom: 1px solid #cbbfad; }
 #metrics strong { display: block; font-size: 27px; font-weight: 500; }
@@ -36,13 +37,14 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 </style>
 <header>
   <small>Senbazuru · material study / #114</small>
-  <h1>One sheet, two bends</h1>
-  <p>A square folded once, then in half again at right angles. Start with sharp folds and correct the lengths of the paper. Compare the starting shape with the corrected sheet, and inspect what still prevents it from being real paper.</p>
+  <h1>One sheet, several folds</h1>
+  <p>Explore single and double folds, then kite and blintz bases. The new bases follow named angle states on one connected sheet; the double fold compares a prescribed shape with its length and layer-order correction.</p>
 </header>
 <div class="controls" aria-label="Model and view">
   <button id="single" aria-pressed="false">1 · Single fold</button>
   <button id="double" aria-pressed="true">2 · Double fold</button>
-  <label>Shape <select id="shape">
+  <span id="case-buttons"></span>
+  <label id="shape-control">Shape <select id="shape">
     <option value="relaxed">Lengths + layer order</option>
     <option value="sharp">Sharp creases</option>
     <option value="rounded">Rounded bends</option>
@@ -58,6 +60,7 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
   <label>Solver iteration <select id="iteration"></select></label>
   <span>Before / after · shared camera and scale</span>
 </div>
+<div id="pose-controls" class="controls" hidden><label>Folding state <select id="pose"></select></label></div>
 <p id="status" aria-live="polite"></p>
 <div id="comparison-labels" hidden><span>Starting shape</span><span id="after-label">Corrected shape</span></div>
 <canvas id="canvas" aria-label="Interactive folded-paper surface. Drag or use arrow keys to rotate; scroll or use plus and minus to zoom." tabindex="0"></canvas>
@@ -66,13 +69,14 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 <small id="metrics-label" hidden>Measurements for the right-hand checkpoint</small>
 <div id="metrics" aria-live="polite"></div>
 <p id="explanation"></p>
-<p class="warning">This is a geometry study, not a physics simulation. The solver corrects lengths and layer order in an already posed sheet. It does not determine crease angles or panel bending stiffness, and it treats paper as having zero thickness. Passing these checks is not proof of physical feasibility.</p>
+<p id="scope" class="warning">This is a geometry study, not a physics simulation. The solver corrects lengths and layer order in an already posed sheet. It does not determine crease angles or panel bending stiffness, and it treats paper as having zero thickness. Passing these checks is not proof of physical feasibility.</p>
 <p id="downloads"></p>
 <details>
   <summary>What this experiment measures</summary>
+  <p>Kite and blintz are authored rigid cases: their folding states supply angles to the existing folding engine. Each angle list includes every source edge, and the largest panel stays still. Material indices are shared across creases while lighting normals remain separate. These cases have no length-correction iterations or general contact check. The remaining details describe the original single/double controls.</p>
   <p>The length comparison starts with the sharp examples. A coordinated least-squares correction reduces edge-length errors and penalises reversed layers. A line search keeps each accepted iteration from increasing that combined objective. The iteration selector displays recorded solutions, never interpolated vertex positions. A zero-iteration single fold is expected: its rigid panels already preserve lengths.</p>
   <p>For the before/after comparison, strain is measured from each triangle's original material coordinates and current positions. Its two principal strains describe the most compressed and most extended directions. The color uses whichever has larger magnitude; the cards still report actual mesh edges. The contact constraint keeps this nearly flat packet in its prescribed layer order; bending energy remains unsolved.</p>
-  <p>The packet check compares the heights of triangles wherever their footprints overlap, using the expected bottom-to-top layer order. A lower layer rising above an upper one is an ordering violation. Length correction alone produced an ochre patch at the crease intersection where layers crossed. The coupled correction also penalises those crossings. This check applies to these nearly flat packets only: it does not check folds within a panel or motion between iterations. Solver checkpoints have no SVG preview because the current SVG painter assumes a fixed layer order and would hide crossings in unfinished iterations.</p>
+  <p>The packet check compares the heights of triangles wherever their footprints overlap, using the expected bottom-to-top layer order. A lower layer rising above an upper one is an ordering violation. Length correction alone produced an ochre patch at the crease intersection where layers crossed. The coupled correction also penalises those crossings. This check applies to these nearly flat packets only: it does not check folds within a panel or motion between iterations. Once the packet check passes, the viewer breaks almost-equal depth ties using that same layer order, reversing it when viewed from underneath. This only adjusts display depth, not the mesh positions. States that fail the check receive no tie-break, so their crossings remain visible. Solver checkpoints have no SVG preview because the current SVG painter assumes a fixed layer order and would hide crossings in unfinished iterations.</p>
   <p>The sharp single fold rotates one rigid half around its crease. The sharp double fold uses gaps that close at the creases and grow towards the free edges. Two of the panels bend into gently curved surfaces. That captures a drawing target, but their measured extension means the shape is not an unstretched square.</p>
   <p>The rounded single fold consumes a strip of width πr, with r = 0.015. The second rounded bend uses the same strip for radii r and 3r, making the outer strip three times as long: 200% extension. Its layer separation is exaggerated to 3% of the original sheet's side. The sharp example instead specifies a 2.5% free-edge gap; that gap is not paper thickness.</p>
   <p>Edge extension compares each mesh edge's 3D length with its original length. Chords are slightly shorter than circular arcs, producing the rounded single fold's small compression. For the original sharp and rounded examples, the heat map shows analytic local extension at each triangle's material centroid: maximum over directions for sharp panels, and along the second fold for rounded bends. The color ranges differ between shapes and are printed below the view.</p>
@@ -82,6 +86,7 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 <script>
 'use strict';
 const models = /*MODEL_DATA*/null;
+const cases = /*CASE_DATA*/null;
 const relaxations = /*RELAXATION_DATA*/null;
 const element = id => document.getElementById(id);
 if (models) {
@@ -97,7 +102,16 @@ if (models) {
 function initialize() {
   const canvas = element('canvas');
   const gl = canvas.getContext('webgl', {antialias: true});
-  let selected = 'double', shape = 'relaxed', mode = 'orbit';
+  let selected = 'double', shape = 'relaxed', mode = 'orbit', poseIndex = cases.double.steps.length;
+  const authored = () => Boolean(cases && cases[selected] && poseIndex < cases[selected].steps.length);
+  for (const [id, spec] of Object.entries(cases || {})) {
+    if (id === 'single' || id === 'double') continue;
+    const button = document.createElement('button');
+    button.id = id;
+    button.textContent = spec.title;
+    button.setAttribute('aria-pressed', 'false');
+    element('case-buttons').append(button);
+  }
   let checkpointIndex = relaxations ? relaxations.double.steps.length - 1 : 0;
   let yaw = -.75, pitch = .52, zoom = 1;
   let buffers = [], views = [];
@@ -116,6 +130,8 @@ function initialize() {
       attribute vec3 pos;
       attribute vec3 normal;
       attribute float strain;
+      attribute float contactRank;
+      uniform float depthBias;
       uniform mat3 rotation;
       uniform vec3 center;
       uniform vec2 scale;
@@ -123,7 +139,7 @@ function initialize() {
       varying float e;
       void main() {
         vec3 p = rotation * (pos-center);
-        gl_Position = vec4(p.x*scale.x, p.y*scale.y, -p.z*.8, 1.);
+        gl_Position = vec4(p.x*scale.x, p.y*scale.y, -p.z*.8 - contactRank*depthBias*rotation[2].z, 1.);
         n = rotation*normal;
         e = strain;
       }`));
@@ -150,6 +166,11 @@ function initialize() {
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
     gl.enable(gl.DEPTH_TEST);
+    // A 64-increment guard per layer covers depth interpolation at contact.
+    // Eight increments still flickered at oblique underside crease corners.
+    // Only depth changes: screen positions and exported material stay untouched.
+    // Project along the packet's z axis so looking underneath reverses the tie.
+    gl.uniform1f(gl.getUniformLocation(program,'depthBias'),128/(2**gl.getParameter(gl.DEPTH_BITS)-1));
   }
 
   const subtract = (a, b) => a.map((x, i) => x-b[i]);
@@ -161,23 +182,23 @@ function initialize() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
     return result;
   }
-  // Interleaved position, normal and extension for each displayed corner.
+  // Interleaved position, normal, extension and contact rank for each corner.
   function bind(data) {
     gl.bindBuffer(gl.ARRAY_BUFFER, data);
-    for (const [name, size, offset] of [['pos',3,0], ['normal',3,12], ['strain',1,24]]) {
+    for (const [name, size, offset] of [['pos',3,0], ['normal',3,12], ['strain',1,24], ['contactRank',1,28]]) {
       const location = gl.getAttribLocation(program, name);
       gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, size, gl.FLOAT, false, 28, offset);
+      gl.vertexAttribPointer(location, size, gl.FLOAT, false, 32, offset);
     }
   }
   function selectedKey() {
-    return shape === 'relaxed' ? relaxations[selected].steps[checkpointIndex].key : `${shape}-${selected}`;
+    return authored() ? cases[selected].steps[poseIndex].key : shape === 'relaxed' ? relaxations[selected].steps[checkpointIndex].key : `${shape}-${selected}`;
   }
   function upload() {
     if (!gl) return;
     buffers.forEach(b => gl.deleteBuffer(b));
     buffers = [];
-    const keys = shape === 'relaxed' ? [relaxations[selected].steps[0].key, selectedKey()] : [selectedKey()];
+    const keys = !authored() && shape === 'relaxed' ? [relaxations[selected].steps[0].key, selectedKey()] : [selectedKey()];
     views = keys.map(uploadModel);
     const points = keys.flatMap(key => mode === 'material' ? models[key].material.map(p => [...p,0]) : models[key].positions);
     center = [0,1,2].map(k => (Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);
@@ -187,12 +208,7 @@ function initialize() {
     const model = models[key];
     const points = mode === 'material' ? model.material.map(p => [...p,0]) : model.positions;
     // Average within a panel only: smoothing across a crease makes it look rolled.
-    const groups = model.triangles.map(triangle => {
-      if (shape === 'rounded' || mode === 'material') return 0;
-      const u = triangle.reduce((s,i) => s+model.material[i][0],0)/3;
-      const v = triangle.reduce((s,i) => s+model.material[i][1],0)/3;
-      return Number(u>.5) + 2*Number(selected==='double' && v>.5);
-    });
+    const groups = model.panels.map(panel => mode === 'material' ? 0 : panel);
     const normals = new Map();
     model.triangles.forEach(([a,b,c], j) => {
       const normal = cross(subtract(points[b],points[a]), subtract(points[c],points[a]));
@@ -202,14 +218,20 @@ function initialize() {
         normals.set(key, sum.map((value,k) => value+normal[k]));
       }
     });
+    // Apply the declared packet order only after its geometric check passes.
+    // Unchecked or intersecting states keep unbiased depth, exposing crossings.
+    const contact = model.metrics.packetOrder;
+    const stableContact = !authored() && mode !== 'material' && contact &&
+      !contact.uncheckedTriangles && contact.maxViolation <= relaxations[selected].contactTolerance;
+    const rank = value => stableContact ? value : 0;
     const data = [];
     model.triangles.forEach((triangle,j) => triangle.forEach(i => {
-      data.push(...points[i], ...normals.get(`${groups[j]}:${i}`), (shape === 'relaxed' ? model.measuredStrain[j] : model.strain[j]));
+      data.push(...points[i], ...normals.get(`${groups[j]}:${i}`), (shape === 'relaxed' ? model.measuredStrain[j] : model.strain[j]), rank(model.depthRanks?.[j] || 0));
     }));
-    const vertexCount = data.length/7;
+    const vertexCount = data.length/8;
     const surfaceBuffer = buffer(data);
-    const lines = model.lines.flatMap(edge => edge.flatMap(p => [...p,0,0,1,0]));
-    const lineCount = lines.length/7;
+    const lines = model.lines.flatMap((edge,j) => edge.flatMap(p => [...p,0,0,1,0,rank(model.lineDepthRanks?.[j] || 0)]));
+    const lineCount = lines.length/8;
     const lineBuffer = buffer(lines);
     return {surfaceBuffer,lineBuffer,vertexCount,lineCount};
   }
@@ -227,7 +249,7 @@ function initialize() {
     gl.uniform3fv(gl.getUniformLocation(program,'center'),center);
 
     gl.uniform1f(gl.getUniformLocation(program,'heat'),mode==='orbit' ? 0 : mode==='material' ? 2 : 1);
-    gl.uniform1f(gl.getUniformLocation(program,'heatMax'),shape==='rounded' ? 2 : .01);
+    gl.uniform1f(gl.getUniformLocation(program,'heatMax'),!authored() && shape==='rounded' ? 2 : .01);
     views.forEach((view,index) => {
       const split = views.length;
       const left = Math.floor(index*width/split), right = Math.floor((index+1)*width/split);
@@ -254,47 +276,64 @@ function initialize() {
   function update() {
     const name = selectedKey(), model = models[name].metrics;
     const isDouble = selected === 'double', sharp = shape !== 'rounded';
-    const fitting = shape === 'relaxed';
+    const fitting = !authored() && shape === 'relaxed';
+    element('pose-controls').hidden = false;
+    element('shape-control').hidden = authored();
     element('solver-controls').hidden = !fitting;
     element('comparison-labels').hidden = !fitting;
     element('metrics-label').hidden = !fitting;
     if (fitting) element('after-label').textContent = `Iteration ${relaxations[selected].steps[checkpointIndex].iterations}`;
-    element('single').setAttribute('aria-pressed',String(!isDouble));
-    element('double').setAttribute('aria-pressed',String(isDouble));
+    for (const id of Object.keys(cases || {})) element(id).setAttribute('aria-pressed', String(selected === id));
     element('status').textContent = !gl ? 'WebGL is unavailable. Download the meshes below, or choose a baseline shape for an SVG preview.' :
+      authored() ? `${cases[selected].title} · ${cases[selected].steps[poseIndex].label}` :
       fitting ? `${relaxations[selected].steps[checkpointIndex].iterations} solver iterations: ${relaxations[selected].steps[checkpointIndex].error <= relaxations[selected].tolerance && relaxations[selected].steps[checkpointIndex].contactError <= relaxations[selected].contactTolerance ? 'length and contact tolerances met' : 'length or contact tolerance not yet met'}. Left: starting shape. Right: corrected shape.` :
       isDouble ? (sharp ? 'Sharp double fold: gaps taper to creases; panels are not parallel.' : 'Rounded double fold: connected, but the outer bend stretches.') :
       (sharp ? 'Sharp single fold: two rigid panels meet at one crease.' : 'Rounded single fold: the smooth surface preserves lengths.');
     const percent = value => (Math.abs(value)<1e-12 ? 0 : 100*value).toFixed(fitting ? 4 : 3);
     const contact = model.packetOrder;
-    element('contact').hidden = !contact;
-    element('contact').textContent = !contact ? '' : contact.violatingPairs ?
+    element('contact').hidden = !contact && !authored();
+    element('contact').textContent = authored() ? 'Contact has not been checked for this case. These rigid angle states preserve material lengths; they are not a collision-tested folding motion.' : !contact ? '' : contact.violatingPairs ?
       `Layers cross: ${contact.violatingPairs} triangle pairs violate the expected packet order. The largest reversal is ${percent(contact.maxViolation)}% of the original sheet's side. This intermediate checkpoint has not met the contact target.` :
       contact.uncheckedTriangles ? `Packet check incomplete: ${contact.uncheckedTriangles} triangles are edge-on to its measuring plane.` :
-      `No reversed layers above the contact tolerance (${(100*relaxations[selected].contactTolerance).toFixed(5)}% of the sheet’s side). This checks the expected packet order, not general collisions.`;
+      `No reversed layers above the contact tolerance (${(100*relaxations[selected].contactTolerance).toFixed(5)}% of the sheet’s side). This checks the expected packet order, not general collisions. A small display-depth tie-break keeps touching layers visually stable; exported geometry is unchanged.`;
     element('metrics').innerHTML = `
       <div><strong>${model.connectedComponents}</strong><span>connected material surface</span></div>
       <div><strong>${percent(model.maxEdgeStrain)}%</strong><span>largest edge extension</span></div>
       <div><strong>${percent(model.minEdgeStrain)}%</strong><span>largest edge compression</span></div>
       <div><strong>${model.surfaceAreaRatio.toFixed(5)}</strong><span>area / original sheet area</span></div>`;
-    element('explanation').textContent = fitting ? `The target is ${(100*relaxations[selected].tolerance).toFixed(3)}% maximum absolute edge-length error. This checkpoint's triangle strains range from ${percent(model.minPrincipalStrain)}% to ${percent(model.maxPrincipalStrain)}% over all material directions. Both images show the same indexed sheet; vertices move together to correct lengths and keep the layers in order. Solver iterations are not folding steps or elapsed time.` : sharp ? (isDouble ?
+    element('scope').textContent = authored() ? 'These states use rigid panels and prescribed crease angles. Paper has zero thickness; panel bending and collisions are not solved.' : 'This is a geometry study, not a physics simulation. The solver corrects lengths and layer order in an already posed sheet. It does not determine crease angles or panel bending stiffness, and it treats paper as having zero thickness. Passing these checks is not proof of physical feasibility.';
+    element('explanation').textContent = authored() ? cases[selected].description : fitting ? `The target is ${(100*relaxations[selected].tolerance).toFixed(3)}% maximum absolute edge-length error. This checkpoint's triangle strains range from ${percent(model.minPrincipalStrain)}% to ${percent(model.maxPrincipalStrain)}% over all material directions. Both images show the same indexed sheet; vertices move together to correct lengths and keep the layers in order. Solver iterations are not folding steps or elapsed time.` : sharp ? (isDouble ?
       'The crease is a sharp change of direction. Opening comes from the panels away from it, with zero gap at the shared fold. This hand-chosen shape still stretches the sheet: a smaller error than the rounded construction is not a physical solution.' :
       'One half rotates as a rigid panel, leaving a narrow wedge-shaped opening. Distances on both panels stay unchanged; the mesh includes the exact crease.') : (isDouble ?
       'The outer half of the second bend needs three times its available material width. The smooth surface gains about 4.71% in total area. Inspect the original-sheet map to see the affected strip.' :
       'Two straight portions and a semicircle use exactly one unit of material. The small mesh compression comes from replacing curved arcs with straight chords.');
     element('legend').textContent = mode === 'orbit' ? 'Drag to rotate · scroll to zoom · arrow keys also rotate. Cream and ochre are the two sides of one sheet.' :
-      fitting ? 'Measured triangle strain: blue = −1% · pale = 0% · red = +1%. Both images use the same scale; color shows the principal strain with the largest magnitude.' : `Analytic extension: pale = 0% · red = ${sharp ? '1%' : '200%'}. Color scale changes with the selected shape.`;
-    element('downloads').innerHTML = `Export this ${fitting ? 'checkpoint' : 'example'}: ${fitting ? '' : `<a href="${name}.svg">SVG preview</a> · `}<a href="${name}.obj" download>3D OBJ</a> · <a href="${name}.fold" download>FOLD surface</a> · <a href="measurements.json">measurements</a>${fitting ? ' · <a href="relaxation.json">solver progress</a>' : ''}`;
+      fitting || authored() ? 'Measured triangle strain: blue = −1% · pale = 0% · red = +1%. Color shows the principal strain with the largest magnitude.' : `Analytic extension: pale = 0% · red = ${sharp ? '1%' : '200%'}. Color scale changes with the selected shape.`;
+    element('downloads').innerHTML = `Export this ${fitting ? 'checkpoint' : 'example'}: ${fitting || authored() ? '' : `<a href="${name}.svg">SVG preview</a> · `}<a href="${name}.obj" download>3D OBJ</a> · <a href="${name}.fold" download>FOLD surface</a> · <a href="measurements.json">measurements</a>${authored() ? ' · <a href="cases.json">angle states</a>' : fitting ? ' · <a href="relaxation.json">solver progress</a>' : ''}`;
     upload();
   }
   function resetIterations() {
+    if (authored()) return;
     const steps = relaxations[selected].steps;
     checkpointIndex = steps.length-1;
     element('iteration').innerHTML = steps.map((step,i) => `<option value="${i}">${step.iterations}</option>`).join('');
     element('iteration').value = String(checkpointIndex);
   }
   element('iteration').onchange = event => { checkpointIndex = Number(event.target.value); update(); };
-  for (const name of ['single','double']) element(name).onclick = () => { selected = name; resetIterations(); update(); };
+  function selectCase(name) {
+    selected = name;
+    const control = name === 'single' || name === 'double';
+    poseIndex = cases[name].steps.length - (control ? 0 : 1);
+    const labels = cases[name].steps.map(step => step.label);
+    if (control) labels.push(name === 'double' ? 'Second fold · packet comparison' : 'Folded packet · compare shapes');
+    element('pose').replaceChildren(...labels.map((label, i) => {
+      const option = document.createElement('option'); option.value = i; option.textContent = label; return option;
+    }));
+    element('pose').value = poseIndex;
+    resetIterations(); update();
+  }
+  for (const name of Object.keys(cases || {})) element(name).onclick = () => selectCase(name);
+  element('pose').onchange = event => { poseIndex = Number(event.target.value); resetIterations(); update(); };
   element('shape').onchange = event => { shape = event.target.value; resetIterations(); update(); };
   element('view').onchange = event => { mode = event.target.value; update(); };
   element('reset').onclick = () => { yaw = -.75; pitch = .52; zoom = 1; draw(); };
@@ -325,8 +364,7 @@ function initialize() {
     draw();
   };
   window.addEventListener('resize',draw);
-  resetIterations();
-  update();
+  selectCase(selected);
 }
 </script>
 </html>

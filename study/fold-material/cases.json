@@ -1,0 +1,54 @@
+[
+  {
+    "id": "single",
+    "title": "Single fold",
+    "source": "examples/book-base.fold",
+    "description": "One half turns about the central crease. The last angle state leaves a five-degree opening; the packet comparison retains the original study controls.",
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0]},
+      {"label": "First fold · 90°", "angles": [0, 0, 0, 0, 0, 0, 90]},
+      {"label": "First fold · 175°", "angles": [0, 0, 0, 0, 0, 0, 175]}
+    ]
+  },
+  {
+    "id": "double",
+    "title": "Double fold",
+    "source": "examples/quarter-fold.fold",
+    "description": "First fold the square in half. The second fold uses the existing curved-packet study: choose Second fold · packet comparison to inspect its corrected shape.",
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+      {"label": "First fold · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 90, 0]},
+      {"label": "First fold · 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 0, 175, 0]}
+    ]
+  },
+  {
+    "id": "kite",
+    "title": "Kite base",
+    "source": "examples/kite-base.fold",
+    "description": "Two adjacent sides turn towards the square’s diagonal. The central panel stays still; the flaps stop five degrees short of flat.",
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0]},
+      {"label": "Lower-right flap · 90°", "angles": [0, 0, 0, 0, 0, 0, 90, 0]},
+      {"label": "Lower-right flap · 175°", "angles": [0, 0, 0, 0, 0, 0, 175, 0]},
+      {"label": "Upper-left flap · 90°", "angles": [0, 0, 0, 0, 0, 0, 175, 90]},
+      {"label": "Upper-left flap · 175°", "angles": [0, 0, 0, 0, 0, 0, 175, 175]}
+    ]
+  },
+  {
+    "id": "blintz",
+    "title": "Blintz base",
+    "source": "examples/blintz-base.fold",
+    "description": "Four corners turn towards the centre, one at a time. The central diamond stays still; the flaps stop five degrees short of flat.",
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+      {"label": "Lower-right corner · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0]},
+      {"label": "Lower-right corner · 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 0, 0, 0]},
+      {"label": "Upper-right corner · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 90, 0, 0]},
+      {"label": "Upper-right corner · 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 0, 0]},
+      {"label": "Upper-left corner · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 90, 0]},
+      {"label": "Upper-left corner · 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 175, 0]},
+      {"label": "Lower-left corner · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 175, 90]},
+      {"label": "Lower-left corner · 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 175, 175]}
+    ]
+  }
+]
