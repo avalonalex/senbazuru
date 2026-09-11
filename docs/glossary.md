@@ -27,6 +27,9 @@ For the ideas rather than the definitions, start with
 | **Big-Little-Big lemma** | A sector strictly smaller than both its neighbours is bounded by one mountain and one valley. The condition on the *arrangement* that the other two theorems miss. See [notes/big-little-big.md](notes/big-little-big.md). |
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Flap** | A part of the sheet that can be lifted or folded over. It may contain several faces and several layers; it is not necessarily one polygon. |
+| **Book fold** | Folding a sheet in half so two opposite edges meet. |
+| **Cupboard fold** | Folding two opposite edges to meet at the centre line, like a pair of cupboard doors. Also called a gate fold. |
+| **Squash fold** | Opening a doubled flap into a pocket, then pressing it flat along a different pair of creases. Four squash folds followed by four petal folds turn a square base into a frog base. |
 | **Rabbit-ear fold** | Gathering a triangular region along its angle bisectors into a pointed flap, then laying that flap to one side. Two make the traditional fish base. See [notes/fish-and-bird-endpoints.md](notes/fish-and-bird-endpoints.md). |
 | **Petal fold** | Lifting a flap while folding its sides inward to make a longer, narrower flap. Applying it to both sides of a square base makes a bird base. See [notes/fish-and-bird-endpoints.md](notes/fish-and-bird-endpoints.md). |
 | **Puff** | Rounding a flat pocket out into a solid by blowing into it, as the last step of a crane and the whole of a waterbomb. Not a fold: no fold angle expresses it, because what drives it is air pressure. See [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md). |

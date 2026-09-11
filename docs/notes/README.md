@@ -25,6 +25,7 @@ read the Haddock module headers; for the domain, start with
 | [precreases-and-target-states.md](precreases-and-target-states.md) | Square and waterbomb bases share eight guide segments, but only six bend in each chosen collapsed state |
 | [symmetric-base-collapse.md](symmetric-base-collapse.md) | A symmetric square/waterbomb collapse links four valley angles to two mountain angles without stretching the sheet |
 | [fish-and-bird-endpoints.md](fish-and-bird-endpoints.md) | A fish's rabbit ears and a bird's lifted petals need explicit endpoint creases; a valid flat packet alone does not identify the intended base |
+| [six-more-base-endpoints.md](six-more-base-endpoints.md) | Boat and pig have the same silhouette but different material landmarks; six traditional endpoints exercise folds through layers and four petals |
 | [rabbit-ear-motion.md](rabbit-ear-motion.md) | Four linked crease angles gather one fish-base flap; its moving panels need different order requirements from the closed stack |
 | [petal-fold-motion.md](petal-fold-motion.md) | A bird-base petal lifts its tip while four side creases close and two old folds open; the flat body retains its layer order |
 | [two-petals.md](two-petals.md) | The two bird-base petals move on opposite sides of a stationary packet and close into the verified endpoint |

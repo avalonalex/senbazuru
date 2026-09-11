@@ -229,3 +229,33 @@ Render with `stack run -- render examples/bird-base-sequence.fold --steps --colu
 Regenerate with `stack run senbazuru-material-study -- --bird-svg build/fold-material`
 and copy `build/fold-material/bird-base-sequence.fold` here. `BirdSequenceSpec`
 checks that this fixture matches the study and pins the SVG pages from both sides.
+
+## Six more traditional bases
+
+`helmet-base.fold`, `organ-base.fold`, `frog-base.fold`, `boat-base.fold`,
+`pig-base.fold` and `diamond-base.fold` are constructed here by
+[`BasicBases`](../study/fold-material/BasicBases.hs). They describe traditional
+bases, not original designs. No third-party diagrams, fixture files or code
+were copied. The [construction note](../docs/notes/six-more-base-endpoints.md)
+gives the coordinate derivations and tutorial references.
+
+Each file stores a unit square, the cut crease graph, traced faces and closed
+endpoint angles. Flat guides remain 0°, mountains are −180° and valleys +180°.
+The production folding and stacking functions derive the final coordinates
+and layer orders. `BasicBaseSpec` checks every material landmark rather than
+accepting a plausible outline: boat and pig have the same outline but different
+flaps. Frog adds four squash folds and four petal folds, with 32 panels.
+
+```bash
+stack run senbazuru-material-study -- --basic-bases build/fold-material
+stack run -- check examples/frog-base.fold
+stack run -- render examples/frog-base.fold --fold --view bottom -o frog.svg
+stack test --ta='--match "six basic-base"'
+```
+
+The fast study command regenerates all six crease fixtures as
+`build/fold-material/NAME-base-cp.fold`, plus checked folded FOLD exports,
+SVGs and `basic-bases.html`. The HTML offers both sides and a layer-spread
+view. Spreading is a page displacement for inspection; exported FOLD vertices
+still coincide at real creases. These endpoints do not specify a folding
+motion or model finite paper thickness.

@@ -256,6 +256,32 @@ The [visibility note](../../docs/notes/projected-panel-visibility.md) records
 the distinction between material layer order and viewing order, and the
 current limits of projecting open panels to SVG.
 
+## Six additional base endpoints
+
+The **Six more bases** link opens `basic-bases.html`: helmet, organ, frog,
+boat, pig and diamond crease patterns beside their closed forms. Switch
+front/reverse views to expose the flaps; the optional layer spread is only
+a drawing aid. FOLD downloads retain shared material vertices and explicit
+layer orders. These examples establish endpoints before attempting their
+folding motions.
+
+```bash
+stack run senbazuru-material-study -- --basic-bases build/fold-material
+stack test --ta='--match "six basic-base"'
+```
+
+Open `basic-bases.html` from the same local server as the main viewer.
+The fast command generates the six constructions, their front/reverse SVGs,
+layer-spread SVGs, crease and folded FOLD files, and
+`basic-base-measurements.json`. It also runs during normal gallery generation.
+`BasicBaseSpec` compares the constructions with the committed examples, then
+checks all material landmarks, shared vertices, lengths and area at three
+refinements, achieved crease magnitudes, one complete stacking per base,
+all 638 panel contact pairs and visible coverage from three cameras.
+The [construction note](../../docs/notes/six-more-base-endpoints.md) explains
+why identical outlines do not imply identical folds. Frog is the largest of
+these cases, with 32 panels and 14 active creases at its centre.
+
 ## Original fold controls
 
 The rounded bend radius is 0.015 times the original square's side. The resulting layer
