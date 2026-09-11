@@ -787,8 +787,14 @@ measurements and solver progress. Open
 `build/fold-material/index.html`. The [study guide](../study/fold-material/README.md)
 explains how to run and inspect it. The corrected double fold meets both its
 edge-length and packet-order targets. The viewer also reports crossings in
-unfinished iterations. Bending stiffness, crease-angle preferences, finite
-thickness and general collision handling remain unsolved. Solver checkpoints
+unfinished iterations. A separate [crease and panel energy experiment](notes/crease-and-panel-energy.md)
+now adds illustrative bending stiffness and crease-angle preferences to these
+two packets. Run `stack run senbazuru-material-study -- --bending build/fold-material`
+and open `build/fold-material/bending.html` to compare a known single-fold
+equilibrium and the double fold with softer/stiffer panels. It checks lengths,
+connectivity and known packet order independently of the angular energy.
+Arbitrary folded-surface mechanics, finite thickness and general collision
+handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
 `render` or `export`.
 

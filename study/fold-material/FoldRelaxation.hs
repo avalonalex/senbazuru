@@ -14,6 +14,11 @@
 -- and convergence is not proof of a physically attainable folded sheet.
 -- We start near the sharp-fold examples, rather than folding a flat sheet by
 -- interpolating vertices. See docs/notes/restoring-material-lengths.md.
+--
+-- The separate 'relaxBending' experiment adds angular preferences from
+-- FoldBending and tightens numerical length/contact penalties in four stages.
+-- Its final convergence also checks the proposed movement, so valid lengths
+-- alone cannot masquerade as an elastic equilibrium.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -22,14 +27,18 @@ module FoldRelaxation
     Relaxation (..),
     relaxLengths,
     relaxPacket,
+    relaxBending,
     principalStrains,
     maxLengthError,
   )
 where
 
+import Control.Monad (foldM)
 import Data.Bifunctor (second)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
+import Data.Maybe (isJust, isNothing)
+import FoldBending
 import FoldContact
 import FoldMaterial
 import Senbazuru.Explain (Explain (..), tshow)
@@ -54,9 +63,11 @@ data RelaxError
   | DegenerateMaterialTriangle !Int
   | CollapsedEdge !Int !Int
   | UncheckablePacket !Int
+  | BendingFailure !BendingError
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
+  explain (BendingFailure err) = explain err
   explain InvalidSettings = "length relaxation needs a nonnegative iteration limit and a finite positive tolerance"
   explain EmptyMesh = "length relaxation needs at least one triangle"
   explain (InvalidSample i) = "study vertex " <> tshow i <> " has a non-finite material or spatial coordinate"
@@ -112,15 +123,43 @@ maxLengthError :: MaterialMesh -> Double
 maxLengthError mesh = maximum (0 : map abs (edgeStrains mesh))
 
 relaxLengths :: Settings -> MaterialMesh -> Either RelaxError Relaxation
-relaxLengths = relaxWith Nothing
+relaxLengths = relaxWith Nothing Nothing
 
 -- | Also keep the known nearly flat packet's layers in order. This is a
 -- zero-thickness inequality, not a general paper collision implementation.
 relaxPacket :: Settings -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
-relaxPacket settings which = relaxWith (Just which) settings
+relaxPacket settings which = relaxWith (Just which) Nothing settings
 
-relaxWith :: Maybe FoldCase -> Settings -> MaterialMesh -> Either RelaxError Relaxation
-relaxWith packet settings original = do
+-- | Prefer crease rest angles and flat panels, while retaining the packet's
+-- length/contact checks. Large numerical penalties approximate those constraints;
+-- they are not material stiffnesses. Convergence also requires the full proposed
+-- correction to be below 1e-7 sheet units at the final penalty. The iteration
+-- limit applies to each of four penalty stages. A shortened line-search step alone
+-- must never count as equilibrium.
+relaxBending :: Settings -> Bending -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
+relaxBending settings bending which mesh = do
+  hinges <- either (Left . BendingFailure) Right (buildHinges bending which mesh)
+  if iterationLimit settings == 0
+    then relaxWith (Just which) (Just (hinges, 1e8)) settings mesh
+    else do
+      -- A strong length penalty from the outset makes even a rigid rotation
+      -- crawl: its straight tangent step violates lengths at second order.
+      -- Solve easier problems first, then tighten the SAME final constraints.
+      -- Only the final stage can establish the result's convergence.
+      (_, history, settled) <- foldM (stage hinges) (mesh, [], False) [1e2, 1e4, 1e6, 1e8]
+      Right (Relaxation history settled)
+  where
+    stage hinges (current, history, _) weight = do
+      result <- relaxWith (Just which) (Just (hinges, weight)) settings current
+      let offset = case reverse history of [] -> 0; previous : _ -> completedIterations previous
+          shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
+          combined = history ++ (if null history then shifted else drop 1 shifted)
+      case reverse (checkpoints result) of
+        [] -> Left EmptyMesh
+        final : _ -> Right (checkpointMesh final, combined, converged result)
+
+relaxWith :: Maybe FoldCase -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError Relaxation
+relaxWith packet bending settings original = do
   if iterationLimit settings < 0 || lengthTolerance settings <= 0 || not (finite (lengthTolerance settings))
     then Left InvalidSettings
     else Right ()
@@ -154,28 +193,40 @@ relaxWith packet settings original = do
       Just which -> case packetContacts which (meshFrom current) of
         (rows, 0) -> Right rows
         (_, count) -> Left (UncheckablePacket count)
+    angularRows current = case bending of
+      Nothing -> Right []
+      Just (hinges, _) -> either (Left . BendingFailure) Right (bendingRows hinges (meshFrom current))
     advance edges count current history = do
       contactRows <- contacts current
       let mesh = meshFrom current
           residual = maxLengthError mesh
-          done = residual <= lengthTolerance settings && all ((>= negate contactTolerance) . contactGap) contactRows
+          constraintsMet = residual <= lengthTolerance settings && all ((>= negate contactTolerance) . contactGap) contactRows
           exhausted = count >= iterationLimit settings
+      -- The old length-only solve stops immediately on its valid rigid control.
+      -- An elastic solve must still check whether an angular force wants to move it.
+      (next, stationary) <-
+        if exhausted || (isNothing bending && constraintsMet)
+          then Right (current, False)
+          else coordinatedStep edges contactRows current
+      let warmingUp = maybe False ((< 1e8) . snd) bending
+          done = if isNothing bending then constraintsMet else stationary && (warmingUp || constraintsMet)
           snapshot = Checkpoint count mesh residual
           keep = count `elem` [0, 1, 2, 5, 10, 20, 50] || done || exhausted
           history' = if keep then snapshot : history else history
       if done || exhausted
         then Right (Relaxation (reverse history') done)
-        else do
-          next <- coordinatedStep edges contactRows current
-          advance edges (count + 1) next history'
+        else advance edges (count + 1) next history'
     coordinatedStep edges contactRows current = do
       lengthRows <- mapM (edgeRow current) edges
+      angles <- angularRows current
       let zero = IM.map (const (V3 0 0 0)) current
           -- Linearise all lengths together. A small penalty on movement makes
           -- the underdetermined system solvable without pinning arbitrary
           -- vertices. Conjugate gradients applies J^T J without storing it.
-          damping = 1e-8
-          contactWeight = 100
+          damping = if isNothing bending then 1e-8 else 1e-3
+          lengthWeight = maybe 1 snd bending
+          contactWeight = 100 * lengthWeight
+          scaleRow factor (gradient, residual) = (map (second (factor *^)) gradient, factor * residual)
           addRow values (gradient, amount) = foldl' (\acc (i, g) -> IM.adjust (^+^ (amount *^ g)) i acc) values gradient
           linearChange values gradient = sum [dot g (at i values) | (i, g) <- gradient]
           solve rows =
@@ -188,26 +239,27 @@ relaxWith packet settings original = do
                 -- Contact acts mostly vertically on these nearly flat sheets.
                 -- Diagonal preconditioning rescales that stiff direction so
                 -- it does not drown out the in-plane length corrections.
-                precondition values = if null contactRows then values else IM.intersectionWith divide values diagonal
-             in conjugateGradient (if null contactRows then 300 else 600) precondition action rhs
+                precondition values = if null contactRows && isNothing bending then values else IM.intersectionWith divide values diagonal
+             in conjugateGradient (if isJust bending then 3000 else if null contactRows then 300 else 600) (if isJust bending then 1e-6 else 1e-15) precondition action rhs
           -- Penalise only negative gaps: separated layers must not attract
           -- each other like glued surfaces. Include errors BELOW the stopping
           -- tolerance too, since the line-search objective includes them.
           -- Omitting their derivatives can make a non-descent step stall.
           activeRows = [(map (second (sqrt contactWeight *^)) (contactGradient row), sqrt contactWeight * contactGap row) | row <- contactRows, contactGap row < 0]
-          correction = solve (lengthRows ++ activeRows)
-          objective candidate = case contacts candidate of
-            Left _ -> 1 / 0
-            Right rows ->
-              sum [let d = norm (position (atSample j candidate) ^-^ position (atSample i candidate)) - rest in d * d | (i, j, rest) <- edges]
+          (correction, linearSolved) = solve (map (scaleRow (sqrt lengthWeight)) lengthRows ++ activeRows ++ angles)
+          objective candidate = case (contacts candidate, angularRows candidate) of
+            (Right rows, Right bends) ->
+              lengthWeight * sum [let d = norm (position (atSample j candidate) ^-^ position (atSample i candidate)) - rest in d * d | (i, j, rest) <- edges]
                 + contactWeight * sum [let d = min 0 (contactGap row) in d * d | row <- rows]
+                + sum [r * r | (_, r) <- bends]
+            _ -> 1 / 0
           before = objective current
           attempt scale remaining =
             let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
              in if objective candidate < before
                   then candidate
                   else if remaining <= (0 :: Int) then current else attempt (scale / 2) (remaining - 1)
-      Right (attempt 1 30)
+      Right (attempt 1 30, linearSolved && finite before && maximum (0 : map norm (IM.elems correction)) <= 1e-7)
     edgeRow current (i, j, rest) = do
       a <- maybe (Left (MissingVertex 0 i)) Right (IM.lookup i current)
       b <- maybe (Left (MissingVertex 0 j)) Right (IM.lookup j current)
@@ -226,21 +278,27 @@ at = IM.findWithDefault (V3 0 0 0)
 -- | Solve a symmetric positive definite linear system by repeatedly choosing
 -- a search direction conjugate to the earlier ones. Only matrix-vector
 -- products are needed, so the edge graph stays sparse. This is an inner
--- numerical solve, not a physical time integration.
-conjugateGradient :: Int -> (IM.IntMap V3 -> IM.IntMap V3) -> (IM.IntMap V3 -> IM.IntMap V3) -> IM.IntMap V3 -> IM.IntMap V3
-conjugateGradient limit precondition action rhs = go limit zero rhs (precondition rhs) (inner rhs (precondition rhs))
+-- numerical solve, not a physical time integration. The Boolean records
+-- whether the linear residual passed: a failed solve returning no movement
+-- must not make the outer elastic problem appear to be at equilibrium.
+-- A residual floor is needed near a penalised equilibrium: forces from the
+-- 1e8 length penalty nearly cancel the angular forces, and their floating-point
+-- subtraction cannot promise a relative error on an arbitrarily tiny remainder.
+conjugateGradient :: Int -> Double -> (IM.IntMap V3 -> IM.IntMap V3) -> (IM.IntMap V3 -> IM.IntMap V3) -> IM.IntMap V3 -> (IM.IntMap V3, Bool)
+conjugateGradient limit residualFloor precondition action rhs = go limit zero rhs (precondition rhs) (inner rhs (precondition rhs))
   where
     zero = IM.map (const (V3 0 0 0)) rhs
-    threshold = max 1e-30 (inner rhs rhs * 1e-16)
+    threshold = max (residualFloor * residualFloor) (inner rhs rhs * 1e-16)
     inner a b = sum (IM.elems (IM.intersectionWith dot a b))
     add a scale b = IM.unionWith (^+^) a (IM.map (scale *^) b)
     go remaining solution residual direction productResidual
-      | remaining <= 0 || inner residual residual <= threshold = solution
+      | finite (inner residual residual) && inner residual residual <= threshold = (solution, True)
+      | remaining <= 0 = (solution, False)
       | otherwise =
           let product' = action direction
               denominator = inner direction product'
            in if denominator <= 0 || not (finite denominator)
-                then solution
+                then (solution, False)
                 else
                   let alpha = productResidual / denominator
                       solution' = add solution alpha direction

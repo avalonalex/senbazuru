@@ -193,6 +193,11 @@ sharp and rounded versions of two prescribed surfaces in `FoldMaterial`. `FoldRe
 their material edge lengths; `FoldContact` supplies separation constraints and
 checks for violations of the known packet order. The coupled solve treats paper
 as having zero thickness and only handles these nearly flat study packets.
+`FoldBending` assigns rest angles to their material creases and a zero-angle
+preference to internal panel edges. `FoldRelaxation.relaxBending` adds those
+energies with staged numerical penalties; `BendingGallery` exports a separate
+comparison page and measurements. These fixture-specific mechanics remain in
+the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very
 layer order those meshes can violate. Indexed OBJ and FOLD exports inspect the

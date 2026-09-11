@@ -98,7 +98,10 @@ work.
   [#146](https://github.com/avalonalex/senbazuru/issues/146), with thickness optional. The original
   rounded double-fold experiment showed that a 3:1 radius ratio can still
   stretch the paper; radius and connectivity alone do not settle its shape.
-  Later work needs bending, crease preferences and compatible contact.
+  The [angular-energy study](notes/crease-and-panel-energy.md) now adds crease
+  preferences and panel bending for the two original packets. Taking their
+  crease identities from arbitrary shared surfaces, calibrating stiffness and
+  supporting general contact remain open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.
@@ -159,9 +162,11 @@ stacking and read the assignment off it. That drops the hardest precondition.
 1. [#146](https://github.com/avalonalex/senbazuru/issues/146), the shared connected
    surface, following the findings of [#114](https://github.com/avalonalex/senbazuru/issues/114).
    The shared core and glTF replacement are in place, with material references
-   on graphics copies and refreshed README examples. Next add bending resistance
-   and crease preferences; physical thickness is not a prerequisite for that
-   first mechanics model.
+   on graphics copies and refreshed README examples. The first
+   crease/panel energy experiment is [#150](https://github.com/avalonalex/senbazuru/issues/150);
+   extend it beyond the two packet controls before adding general opening
+   mechanics. Physical thickness is not a prerequisite for that first mechanics
+   model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

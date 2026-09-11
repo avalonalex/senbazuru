@@ -3,6 +3,7 @@
 module Main (main) where
 
 import BasicBaseGallery (writeBasicBases)
+import BendingGallery (writeBendingStudy)
 import Control.Monad (unless)
 import Data.Aeson (Value, eitherDecode, encode, object, (.=))
 import Data.Aeson.Key qualified as Key
@@ -46,9 +47,10 @@ main = do
   args <- getArgs
   case args of
     [destination] -> generate destination
+    ["--bending", destination] -> writeBendingStudy destination
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bird-svg | --basic-bases] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -70,6 +72,7 @@ generate destination = do
   mapM_ (writeAuthored destination) [pose | (_, poses) <- authored, pose <- poses]
   writeBirdSequence destination
   writeBasicBases destination
+  writeBendingStudy destination
   BL.writeFile (destination </> "cases.json") (encode catalog)
   BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
   BL.writeFile (destination </> "relaxation.json") (encode progress)
