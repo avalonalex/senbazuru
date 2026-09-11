@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frog base · SVG sequence</title>
+<style>
+body { margin:0; background:#f5f1e9; color:#322f2a; font:16px/1.55 system-ui,sans-serif; }
+main { max-width:1100px; margin:auto; padding:36px 24px; }
+h1 { font-size:36px; letter-spacing:-1px; line-height:1.15; }
+a { color:#39584e; }
+.eyebrow { text-transform:uppercase; letter-spacing:2px; font-size:12px; color:#756956; }
+.intro { max-width:780px; }
+nav { display:flex; flex-wrap:wrap; gap:18px; margin:22px 0; }
+figure { margin:24px 0; padding:18px; background:white; border:1px solid #ded6c8; border-radius:8px; }
+figcaption, summary { font-weight:600; }
+img { display:block; width:100%; height:auto; }
+ol { columns:2; padding-left:28px; column-gap:32px; }
+li { break-inside:avoid; padding:3px 8px; font-size:14px; }
+li p { margin:8px 0; }
+.note { color:#6c6254; font-size:14px; }
+@media(max-width:640px) { ol { columns:1; } main { padding:24px 14px; } }
+</style>
+<main>
+<p class="eyebrow">Senbazuru · From the material study to SVG</p>
+<h1>Four squashes, four petals, one frog base</h1>
+<p class="intro">Follow five checked folding states from the square base to the frog base, drawn with the same renderer as the bird sequence. Each page keeps one camera and scale. A <strong>flap</strong> is a section you can turn like a page. A <strong>squash fold</strong> opens a flap into a pocket and flattens it; a <strong>petal fold</strong> lifts an edge while tucking its sides inward to make a narrow point.</p>
+<nav><a href="basic-bases.html#frog">Frog model</a><a href="bird-sequence.html">Bird folding sequence</a><a href="frog-base-sequence.fold" download>FOLD sequence</a><a href="frog-sequence-side-above.svg" download>SVG from above</a><a href="frog-sequence-side-below.svg" download>SVG from below</a></nav>
+<figure><figcaption>Side view · 45° above the paper · follow the working faces</figcaption><img src="frog-sequence-side-above.svg" alt="Five numbered frog-base checkpoints: square base, one squash, four squashes, one petal, completed frog base"></figure>
+<details><summary>Side view · 45° below the paper · inspect the reverse</summary><figure><img src="frog-sequence-side-below.svg" alt="The same five frog-base checkpoints seen from below at 45 degrees"></figure></details>
+<p class="note">Other projection: <a href="frog-sequence-front.svg">straight onto the working faces</a> · <a href="frog-guide-measurements.json">model measurements</a>.</p>
+<ol>
+<li><strong>Square base.</strong><p>With the coloured side up, crease both diagonals and reopen. Turn the sheet over, crease it in half both ways, and reopen. Gather the four corners into a small square, with two flaps on each side. Arrange it as a diamond: closed point away from you, loose corners towards you.</p></li>
+<li id="squash"><strong>Squash the first flap.</strong><p>On the front right flap, crease the upper closed edge onto the centre line and reopen. Reverse that crease and reopen again. Raise the flap upright, open its two layers into a pocket, and flatten it with its middle crease on the centre line.</p></li>
+<li><strong>Complete four squashes; expose the working face.</strong><p>Turn over and squash the matching flap. Turn the large front left flap rightward and the large back right flap leftward, like book pages. Squash each newly exposed flap.</p><p>Turn one narrow leaf across the front and one across the back in the opposite direction. Turn the model over to expose the broad face with a short, straight bottom edge shown in figure 3. Keep the closed point at the top.</p></li>
+<li id="petal"><strong>Lift the first petal.</strong><p>On the front face only, crease each lower sloping edge onto the centre line, then reopen. Raise the uppermost layer's short bottom edge towards the closed point. Tuck its sides inward along those creases and flatten the narrow point upwards. The long loose corners underneath stay at the bottom.</p></li>
+<li><strong>Complete four petals.</strong><p>Turn over and repeat the petal fold. Turn two narrow leaves left-to-right across the front and two right-to-left across the back to expose the last two faces; make a petal on each. Stop with four long separate tips below and the smaller lifted points near the middle. This is the base; the frog's body and legs come later.</p></li>
+</ol>
+<p class="note">These are five flat, zero-thickness checkpoints, with page turns to show the working face. Unlike the bird sequence, they do not yet include intermediate opening states. Lengths, shared vertices, crease angles, contact and layer order are checked at each checkpoint; the movements between them are not yet simulated. No movement arrows are inferred between these independently constructed crease patterns.</p>
+<p class="note">For hand movements, see the <a href="https://origami-resource-center.com/frog-base/">Origami Resource Center photo sequence</a> or <a href="https://www.accessorigami.com/2025/06/the-frog-base.html">Lindy van der Merwe’s detailed text instructions</a>. Our diagrams are generated from our own material constructions.</p>
+</main>
+</html>

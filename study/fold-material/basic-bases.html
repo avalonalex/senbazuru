@@ -29,7 +29,7 @@ footer span { margin-left:auto; color:#39584e; }
 <p class="eyebrow">Senbazuru · Material study / #144</p>
 <h1>Six more ways to gather a square</h1>
 <p class="intro">Helmet, organ, frog, boat, pig and diamond bases. Each begins with one unit square and ends as a connected sheet with checked crease angles and layer order. Switch sides to reveal the flaps hidden on the back.</p>
-<nav><a href="index.html">3D study viewer</a><a href="bird-sequence.html">Bird folding sequence</a><a href="basic-base-measurements.json">Measurements</a></nav>
+<nav><a href="index.html">3D study viewer</a><a href="bird-sequence.html">Bird folding sequence</a><a href="frog-instructions.html">Frog folding sequence</a><a href="basic-base-measurements.json">Measurements</a></nav>
 <div class="controls"><label>View <select id="side"><option value="flaps">Flap side</option><option value="front">Front</option><option value="reverse">Reverse</option></select></label><label><input type="checkbox" id="spread"> Spread layers for inspection</label></div>
 <p class="note" id="view-note">Closed endpoints. Figures are fitted independently; their displayed sizes do not compare material scale.</p>
 <!--BASES-->
@@ -47,7 +47,7 @@ function updateViews() {
     image.src = source;
     image.alt = `${card.querySelector('h2').textContent}, ${label}`;
     card.querySelector('.view-label').textContent = label;
-    card.querySelector('footer a:last-of-type').href = source;
+    card.querySelector('.svg-download').href = source;
   });
   document.getElementById('view-note').textContent = spread.checked
     ? 'Layers are shifted on the page to reveal their order. These gaps are not paper thickness or a folding state.'

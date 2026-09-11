@@ -51,7 +51,33 @@ fourteen active creases at the centre and twelve interior vertices with
 four active creases each. In the folded plane the shoulders are
 `(d/2, ±r)`, the four long tips coincide at `(0,0)`, and the centre makes
 the shorter tip at `(d,0)`. Its outline area is `d*r`, while the material
-area is still one.
+area is still one. The hinge A–B is a mountain, while the branches from the
+edge midpoint `(1/2,0)` to A and B are valleys. Reversing those three creases
+still produces a valid flat stacking with the same vertex positions, but
+tucks the small petal into the packet. This error surfaced while drawing the
+folding guide. A regression now requires a visible sloping edge to meet the
+raised midpoint tip on both opened working faces; a centre-line seam alone
+does not identify an exposed petal.
+
+The frog's [folding guide](../../study/fold-material/README.md#six-additional-base-endpoints)
+also constructs square, one-squash, four-squash and one-petal checkpoints.
+Before a petal is lifted, each squash crease continues from the centre to
+the boundary at `(1-d,0)` or `(d,0)` in the south sector. The petal replaces
+the outer portions with branches at A and B. Measured along the folded
+centre line from the loose tips, a squashed edge midpoint is `d-1/2` away;
+lifting that petal moves it to `1/2`. Tests check those heights independently,
+so a diagram cannot quietly repeat the previous checkpoint. Rigid turns use
+the closed and loose material tips to keep every figure upright, even when
+the folding engine chooses a different fixed face. After all four squashes, the
+guide opens two opposite faces like book pages to expose the working face.
+Its two flat guides move from the original diagonals onto those faces'
+midlines; the finished guide therefore has a different page arrangement from
+the gallery, with the same four lifted petals. The whole packet turns over
+to show that working face. Layer-order signs stay unchanged because a rigid
+turn carries each face's normal along with the paper. The ordinary FOLD
+sequence then passes through `Render.Steps` with one camera and scale, as the
+bird sequence does. These are checkpoints with written folding instructions
+between them, not a computed motion.
 
 The six sources have 638 panel pairs altogether. Tests check shared vertices,
 lengths and area at three mesh refinements, achieved crease magnitudes,

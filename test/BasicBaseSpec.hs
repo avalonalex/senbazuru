@@ -5,32 +5,48 @@
 -- a wrong flap arrangement even when lengths and loop closure both pass.
 module BasicBaseSpec (spec) where
 
+import BasicBaseGallery (writeFrogGuide)
 import BasicBases
-import Control.Monad (forM_)
+import Control.Exception (bracket_)
+import Control.Monad (forM_, when)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sort, tails)
 import Data.Text qualified as T
+import Data.Text.IO qualified as TIO
 import FoldMaterial
 import PanelContact
+import Senbazuru.Diagram.Layout (defaultGrid)
+import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, signedArea)
 import Senbazuru.Geometry.Rigid (applyRigid)
-import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
+import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.FlatFold
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.Stacking (defaultBudget, solveStacking, stackingSpace, stateCount)
-import Senbazuru.Origami.Visible (Region (..), VisibleForm (..))
+import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..))
 import Senbazuru.Render.Camera
 import Senbazuru.Render.Projected (projectedForm)
+import Senbazuru.Render.Steps (stepPage)
+import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import StudyCase
+import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
+import System.FilePath ((</>))
+import Test.Golden (goldenText)
 import Test.Hspec
 
 spec :: Spec
-spec = describe "six basic-base endpoints" $
+spec = do
+  endpointSpec
+  frogGuideSpec
+  frogSequenceSpec
+
+endpointSpec :: Spec
+endpointSpec = describe "six basic-base endpoints" $
   forM_ basicBases $ \base -> describe (baseId base) $ do
     source <- runIO $ keyFrame <$> (loadFoldFile ("examples/" ++ baseId base ++ "-base.fold") >>= right)
     result <- runIO $ right (foldFrameWith source)
@@ -105,6 +121,103 @@ spec = describe "six basic-base endpoints" $
         abs (area - silhouette * factor) `shouldSatisfy` (< 1e-9)
         forM_ [(a, b) | a : rest <- tails pieces, b <- rest] $ \(a, b) ->
           abs (signedArea (clipConvex a b)) `shouldSatisfy` (< 1e-9)
+
+frogGuideSpec :: Spec
+frogGuideSpec = describe "frog folding-guide milestones" $
+  forM_ (zip frogMilestones [(0, 0, 8), (1, 0, 10), (4, 0, 16), (4, 1, 20), (4, 4, 32)]) $ \((key, base), (squashes, petals, count)) -> describe key $ do
+    source <- runIO $ right (baseFrame base)
+    result <- runIO $ right (foldFrameWith source)
+    let final = foldedFrame result
+    it "closes its creases and moves only the intended edge midpoints" $ do
+      report <- right (checkFrame defaultTolerance source)
+      reportViolations report `shouldBe` []
+      length (facesVertices final) `shouldBe` count
+      placed <- right (frameVertices final)
+      let material = zip (verticesCoords source) placed
+          point xy = just (lookup xy material)
+          d = 1 / sqrt 2
+      origin <- point [0, 0]
+      closed <- point [0.5, 0.5]
+      abs (norm (closed ^-^ origin) - d) `shouldSatisfy` (< 1e-12)
+      let axis = (1 / d) *^ (closed ^-^ origin)
+      forM_ [[1, 0], [1, 1], [0, 1]] $ \corner -> do
+        p <- point corner
+        norm (p ^-^ origin) `shouldSatisfy` (< 1e-12)
+      forM_ (zip [0 :: Int ..] [[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]) $ \(i, midpoint) -> do
+        p <- point midpoint
+        let displacement = p ^-^ origin
+            height = dot axis displacement
+            expectedHeight
+              | i < petals = 0.5
+              | i < squashes = d - 0.5
+              | otherwise = d / 2
+            width = norm (displacement ^-^ (height *^ axis))
+            expectedWidth = if i < squashes then 0 else d / 2
+        abs (height - expectedHeight) `shouldSatisfy` (< 1e-12)
+        abs (width - expectedWidth) `shouldSatisfy` (< 1e-12)
+    it "preserves a connected sheet through the squash and petal checkpoints" $ do
+      pose <- right (buildPose 2 source (PoseSpec "guide checkpoint" (edgesFoldAngle source)))
+      componentCount (poseMesh pose) `shouldBe` 1
+      edgeStrains (poseMesh pose) `shouldSatisfy` all ((< 1e-12) . abs)
+      abs (areaRatio (poseMesh pose) - 1) `shouldSatisfy` (< 1e-12)
+    it "passes all panel-pair contact checks with its solved stacking" $ do
+      faces <- right (frameFaces final)
+      orders <- right (solveStacking final)
+      alongZ <- mapM (orderAlongZ faces) orders
+      report <- right (checkPanelContact (V3 0 0 1) alongZ [Panel (nameOf (faceId f)) (faceCorners f) | f <- faces])
+      report `shouldBe` ContactCheck (count * (count - 1) `div` 2) [] [] [] []
+
+    when (key == "complete") $ it "exposes the lifted petal on both opened working faces" $ do
+      orders <- right (solveStacking final)
+      placed <- right (frameVertices final)
+      let material = zip (verticesCoords source) placed
+      tip <- just (lookup [0.5, 0] material)
+      origin <- just (lookup [0, 0] material)
+      closed <- just (lookup [0.5, 0.5] material)
+      forM_ [topDown, bottomUp] $ \basis -> do
+        seen <- right (projectedForm basis final orders) >>= just
+        let atTip p = norm (p ^-^ tip) < 1e-9
+            leavesAxis p = norm (cross (closed ^-^ origin) (p ^-^ tip)) > 1e-6
+            outlinesTip edge = (atTip (visibleFrom edge) && leavesAxis (visibleTo edge)) || (atTip (visibleTo edge) && leavesAxis (visibleFrom edge))
+        formEdges seen `shouldSatisfy` any outlinesTip
+
+frogSequenceSpec :: Spec
+frogSequenceSpec = describe "frog sequence through production SVG" $
+  it "exports aligned material checkpoints and renders one reviewed page" $ do
+    tmp <- getTemporaryDirectory
+    let dir = tmp </> "senbazuru-frog-sequence-spec"
+    bracket_ (createDirectoryIfMissing True dir) (removeDirectoryRecursive dir) $ do
+      writeFrogGuide dir
+      file <- loadFoldFile (dir </> "frog-base-sequence.fold") >>= right
+      verticesCoords (keyFrame file) `shouldBe` []
+      length (otherFrames file) `shouldBe` 5
+      forM_ (zip frogMilestones (otherFrames file)) $ \((_, base), exported) -> do
+        source <- right (baseFrame base)
+        result <- right (foldFrameWith source)
+        let final = foldedFrame result
+        orders <- right (solveStacking final)
+        exported {verticesCoords = []} `shouldBe` final {verticesCoords = [], faceOrders = orders}
+        originalPoints <- right (frameVertices final)
+        presentedPoints <- right (frameVertices exported)
+        let material = zip (verticesCoords source) presentedPoints
+        origin <- just (lookup [0, 0] material)
+        closed <- just (lookup [0.5, 0.5] material)
+        norm origin `shouldSatisfy` (< 1e-12)
+        norm (closed ^-^ V3 0 (1 / sqrt 2) 0) `shouldSatisfy` (< 1e-12)
+        forM_ [(a, b) | a : rest <- tails (zip originalPoints presentedPoints), b <- rest] $ \((p, p'), (q, q')) ->
+          abs (norm (p ^-^ q) - norm (p' ^-^ q')) `shouldSatisfy` (< 1e-12)
+        faces <- right (frameFaces exported)
+        alongZ <- mapM (orderAlongZ faces) (faceOrders exported)
+        contact <- right (checkPanelContact (V3 0 0 1) alongZ [Panel (nameOf (faceId f)) (faceCorners f) | f <- faces])
+        contactPassed contact `shouldBe` True
+      above <- just (basisFrom (V3 (-1) 0 (-1)) (V3 0 1 0))
+      below <- just (basisFrom (V3 (-1) 0 1) (V3 0 1 0))
+      forM_ [("side-above", above), ("side-below", below), ("front", topDown)] $ \(name, basis) -> do
+        drawing <- right (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) (View (Just basis) 0) False (allFrames file)) >>= just
+        let svg = renderSvg defaultPage {pageWidth = 1000, pageHeight = 720} drawing
+        recorded <- TIO.readFile (dir </> "frog-sequence-" ++ name ++ ".svg")
+        recorded `shouldBe` svg
+        when (name == "side-above") $ goldenText "test/golden/frog-sequence.svg" svg
 
 -- The coordinates use exact constructions, not captured folding output.
 -- Organ has two right triangles with legs 1/4 cut from a 1 by 1/2 rectangle;

@@ -14,7 +14,7 @@
 -- BasicBaseSpec also checks stacking, contact and visible regions. The
 -- coordinate derivation and construction references are in
 -- docs/notes/six-more-base-endpoints.md. No intermediate motion is prescribed.
-module BasicBases (Base (..), basicBases, baseFrame, baseFile) where
+module BasicBases (Base (..), basicBases, baseFrame, baseFile, frogMilestones) where
 
 import Data.List (nub)
 import Data.Text (Text)
@@ -125,13 +125,33 @@ diamond =
         (V2 1 1, b, Valley),
         (V2 k 1, b, Mountain)
       ]
-frog =
+frog = frogCreases False 4 4
+
+-- | Flat checkpoints for a human folding guide, not samples of a continuous
+-- motion. A squash bisects one sector about the sheet centre. Its two new
+-- creases reach the boundary at 1-d and d; a later petal fold replaces their
+-- outer parts with the branches meeting at the petal's shoulders.
+frogMilestones :: [(String, Base)]
+frogMilestones =
+  [ milestone "square" "Square base" 0 0,
+    milestone "one-squash" "One squash fold" 1 0,
+    milestone "four-squashes" "Four squash folds" 4 0,
+    milestone "one-petal" "One petal fold" 4 1,
+    milestone "complete" "Frog base" 4 4
+  ]
+  where
+    milestone key title squashes petals =
+      (key, Base ("frog-guide-" ++ key) title "Flat milestone of the frog folding guide; no motion is implied between checkpoints." (frogCreases (squashes == 4) squashes petals))
+
+frogCreases :: Bool -> Int -> Int -> [(V2, V2, Assignment)]
+frogCreases openPages squashes petals =
   concat
     [ [(rotate n start, rotate n end, kind) | (start, end, kind) <- sector n]
       | n <- [0 .. 3]
     ]
   where
-    r = (1 - 1 / sqrt 2) / 2
+    d = 1 / sqrt 2
+    r = (1 - d) / 2
     c = V2 0.5 0.5
     a = V2 (0.5 - r) r
     b = V2 (0.5 + r) r
@@ -139,18 +159,25 @@ frog =
     s = V2 0.5 0
     -- Two opposite diagonals stay flat, as in the square base. Squashing
     -- reverses each inner midline; lifting the petal reverses its outer part.
-    sector n =
-      [ (c, V2 0 0, if even n then Mountain else Flat),
-        (c, t, Mountain),
-        (t, s, Valley),
-        (c, a, Valley),
-        (c, b, Valley),
-        (V2 0 0, a, Valley),
-        (V2 1 0, b, Valley),
-        (s, a, Mountain),
-        (s, b, Mountain),
-        (a, b, Valley)
-      ]
+    -- Opening two opposite faces like book pages moves the flat guides from
+    -- the old diagonals to those faces' midlines. This exposes the short edge
+    -- and lifted petal in the guide, without changing the loose-corner tips.
+    opened n = openPages && even n
+    sector n = (c, V2 0 0, if openPages || even n then Mountain else Flat) : flap n
+    flap n
+      | n < petals =
+          [ (c, t, if opened n then Flat else Mountain),
+            (t, s, if opened n then Flat else Valley),
+            (c, a, Valley),
+            (c, b, Valley),
+            (V2 0 0, a, Valley),
+            (V2 1 0, b, Valley),
+            (s, a, Valley),
+            (s, b, Valley),
+            (a, b, Mountain)
+          ]
+      | n < squashes = [(c, s, if opened n then Flat else Mountain), (c, V2 (1 - d) 0, Valley), (c, V2 d 0, Valley)]
+      | otherwise = [(c, s, Valley)]
     rotate :: Int -> V2 -> V2
     rotate 0 p = p
     rotate n (V2 x y) = rotate (n - 1) (V2 (1 - y) x)
