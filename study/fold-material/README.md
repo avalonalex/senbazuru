@@ -205,30 +205,35 @@ The complete fish and bird bases have
 with SVG previews and layer inspection views. `FlapPatternSpec` checks material
 lengths, shared vertices, achieved crease magnitudes, contact and flat layer
 orders. The fish has both rabbit-ear stages in the gallery; the bird has the
-first petal motion below as well as its complete endpoint preview. See
+two-petal sequence below as well as its complete endpoint preview. See
 [the endpoint note](../../docs/notes/fish-and-bird-endpoints.md) for why the bird
 needs two additional hinges beyond our old CP fixture.
 
-## The first bird-base petal
+## Two petals form the bird base
 
-Select **Bird base · first petal**. Eight states start with the collapsed square
-base and lift its south-east corner, folding both sides inward. The body and
-second petal stay still. The final inspection state leaves a five-degree hinge
-opening; the exact one-petal endpoint is also tested. The second petal is not
-part of this sequence yet.
+Select **Bird base**. Sixteen states start with the collapsed square base, fold
+the first petal, fold the second underneath the packet, then press both flat.
+The first eight states lift the south-east corner. In the next seven, the
+north-west corner forms the second petal while the first hinge stays at 175°.
+Drag to look underneath during this second stage. The final **Completed bird
+base · press both petals flat** state brings both hinges to 180°; it matches
+the source bird-base endpoint exactly.
 
-Seven crease angles change together. Four side creases close as the petal lifts,
-while two old square-base folds open towards zero. The moving tip is the largest
-panel, so this case uses `fixedPanel: [0.58, 0.4]` to hold the stationary base
-instead. See [the angle derivation](../../docs/notes/petal-fold-motion.md).
+Each petal changes seven crease angles together: four side creases close as
+two old square-base folds open towards zero. The same signed angles send the
+two petals to opposite sides of the stationary base plane. This case uses
+`fixedPanel: [0.58, 0.4]` to hold that base still. See the
+[first-petal derivation](../../docs/notes/petal-fold-motion.md) and the
+[two-petal construction](../../docs/notes/two-petals.md).
 
-`PetalFoldSpec` checks tip landmarks, stationary material, shared vertices,
-achieved crease magnitudes, material lengths and area, and all 120 panel pairs
-in a half-degree sweep and at random states. Its declared orders agree with
-both flat endpoints' unique stackings. The viewer uses those checked orders to
-break depth ties between touching faces and their feature lines, reversing the
-adjustment when viewed from underneath. It disables the adjustment if contact
-fails or in the original-sheet view. Exported geometry remains unchanged.
+`PetalFoldSpec` checks independent landmarks, stationary first-petal and body
+material during the second stage, shared vertices, achieved crease magnitudes,
+material lengths and area, and all 120 panel pairs in half-degree sweeps and
+at random states. The declared orders agree with the square, one-petal and
+complete bird endpoints' unique stackings. The viewer uses those checked
+orders to break depth ties between touching faces and their feature lines,
+reversing the adjustment when viewed from underneath. Contact failures and the
+original-sheet view disable the adjustment. Exported geometry stays unchanged.
 These checks do not certify continuous collisions or finite paper thickness.
 
 ## Original fold controls

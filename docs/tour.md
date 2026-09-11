@@ -773,8 +773,11 @@ gather the first ear, then hold it nearly closed while gathering the second.
 Four linked crease angles per ear preserve the material; the original
 [angle derivation](notes/rabbit-ear-motion.md) and
 [two-ear construction](notes/two-rabbit-ears.md) explain the geometry and checks.
-Select **Bird base · first petal** for eight states beginning with a square
-base. The tip lifts while its sides close and two existing folds open out.
-The body and second petal stay still; [the construction](notes/petal-fold-motion.md)
-derives the linked angles and explains why touching layers need explicit order.
-The second petal and general continuous collision certification remain future work.
+Select **Bird base** for sixteen states beginning with a square base. The first
+petal lifts while its sides close and two existing folds open out; then the
+second petal folds on the underside while the first stays fixed. The final
+state presses both flat to match the existing bird-base endpoint.
+[The first-petal construction](notes/petal-fold-motion.md) derives the linked
+angles; [the two-petal sequence](notes/two-petals.md) explains the opposing
+motions and their contact checks. General continuous collision certification
+remains future work.

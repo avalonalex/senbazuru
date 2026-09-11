@@ -168,9 +168,9 @@
   },
   {
     "id": "bird-petal",
-    "title": "Bird base · first petal",
+    "title": "Bird base",
     "source": "examples/bird-base.fold",
-    "description": "Start with the collapsed square base. Lift the south-east corner while the two sides fold inward, making the first long petal flap. The underlying packet and the second petal stay still. The final inspection state leaves the first petal slightly open; completing the second petal to form the bird base is a later step.",
+    "description": "Start with the collapsed square base and lift the south-east corner into the first petal. Then fold the north-west corner on the underside into the second petal, keeping the first at its nearly closed inspection angle. Drag to view the underside during the second stage. The last state presses both petals flat to complete the bird base.",
     "fixedPanel": [0.58, 0.4],
     "contact": {
       "direction": [0, 0, 1],
@@ -194,24 +194,25 @@
       ],
       "orders": [
         ["south-west-side", "south-east-side"],
-        ["west-south-side", "south-west-side"],
         ["east-north-side", "east-south-side"],
-        ["north-east-side", "east-north-side"],
         ["north-west-side", "north-east-side"],
         ["west-north-side", "west-south-side"],
         ["back-west", "front-south"],
         ["back-base", "back-west"],
-        ["second-petal", "back-west"],
         ["front-south", "front-base"],
         ["back-north", "front-east"],
         ["back-base", "back-north"],
-        ["second-petal", "back-north"],
         ["front-east", "front-base"],
         ["front-south", "south-west-side"],
         ["first-petal", "south-east-side"],
         ["first-petal", "east-south-side"],
         ["front-east", "east-north-side"],
-        ["front-base", "first-petal"]
+        ["front-base", "first-petal"],
+        ["north-east-side", "back-north"],
+        ["north-west-side", "second-petal"],
+        ["west-north-side", "second-petal"],
+        ["west-south-side", "back-west"],
+        ["second-petal", "back-base"]
       ]
     },
     "steps": [
@@ -222,7 +223,15 @@
       {"label": "First petal · lift · hinge 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -90, -41.88204094448767, -41.88204094448767, -180, -90, -41.88204094448767, -41.88204094448767, -180, -180, 0, 0, -180, -180, 0, 0, 90, 0]},
       {"label": "First petal · close sides · hinge 120°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -60, -67.07499597814946, -67.07499597814946, -180, -60, -67.07499597814946, -67.07499597814946, -180, -180, 0, 0, -180, -180, 0, 0, 120, 0]},
       {"label": "First petal · close sides · hinge 150°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -30, -110.00173436650509, -110.00173436650509, -180, -30, -110.00173436650509, -110.00173436650509, -180, -180, 0, 0, -180, -180, 0, 0, 150, 0]},
-      {"label": "First petal · close sides · hinge 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -180, 0, 0, -180, -180, 0, 0, 175, 0]}
+      {"label": "First petal · close sides · hinge 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -180, 0, 0, -180, -180, 0, 0, 175, 0]},
+      {"label": "Second petal · underside · lift · hinge 15°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -165, -5.768386380324521, -5.768386380324521, -180, -165, -5.768386380324521, -5.768386380324521, 175, 15]},
+      {"label": "Second petal · underside · lift · hinge 30°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -150, -11.709261834721097, -11.709261834721097, -180, -150, -11.709261834721097, -11.709261834721097, 175, 30]},
+      {"label": "Second petal · underside · lift · hinge 60°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -120, -24.917820383381585, -24.917820383381585, -180, -120, -24.917820383381585, -24.917820383381585, 175, 60]},
+      {"label": "Second petal · underside · lift · hinge 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -90, -41.88204094448767, -41.88204094448767, -180, -90, -41.88204094448767, -41.88204094448767, 175, 90]},
+      {"label": "Second petal · underside · close sides · hinge 120°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -60, -67.07499597814946, -67.07499597814946, -180, -60, -67.07499597814946, -67.07499597814946, 175, 120]},
+      {"label": "Second petal · underside · close sides · hinge 150°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -30, -110.00173436650509, -110.00173436650509, -180, -30, -110.00173436650509, -110.00173436650509, 175, 150]},
+      {"label": "Second petal · underside · close sides · hinge 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, -180, -5, -166.98236060695527, -166.98236060695527, 175, 175]},
+      {"label": "Completed bird base · press both petals flat", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, -180, 0, -180.0, -180.0, -180, 0, -180.0, -180.0, -180, 0, -180.0, -180.0, -180, 0, -180.0, -180.0, 180, 180]}
     ]
   }
 ]

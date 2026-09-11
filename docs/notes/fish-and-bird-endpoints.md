@@ -72,8 +72,8 @@ At ±180° the geometry cannot distinguish mountain from valley, so the stacking
 check supplies information that the measured angles cannot.
 
 These are zero-thickness endpoints. They do not establish a collision-free
-route from the unfolded square or predict paper bending. The next step is to
-identify one flap by its original material, supply compatible intermediate
-crease angles for its rabbit-ear or petal operation, and repeat the same checks
-at those states. Moving vertices along straight lines between these endpoints
-would change material lengths and would not establish that motion.
+route from the unfolded square or predict paper bending. The study now follows
+[both fish rabbit ears](two-rabbit-ears.md) and [both bird petals](two-petals.md)
+through compatible intermediate crease angles, repeating the material and
+contact checks at those states. Moving vertices along straight lines between
+endpoints would change material lengths and would not establish that motion.
