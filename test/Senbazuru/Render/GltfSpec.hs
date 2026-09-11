@@ -223,11 +223,14 @@ spec = do
       -- makes them agree. Asserted against a copy of the frame with the noise
       -- put in by hand -- exporting one frame twice proves only that the
       -- function is a function.
-      (name, fr) <- folded "test/fixtures/quarter-fold.fold"
-      let noisy = fr {verticesCoords = map (zipWith (+) [6e-17, -0.0, 3e-17]) (verticesCoords fr)}
-      a <- export CompletePaper (name, fr)
-      b <- export CompletePaper (name, noisy)
-      b `shouldBe` a
+      forM_ ["quarter-fold", "crane"] $ \model -> do
+        (name, fr) <- folded ("test/fixtures/" ++ model ++ ".fold")
+        let noisy = fr {verticesCoords = map (zipWith (+) [6e-17, -0.0, 3e-17]) (verticesCoords fr)}
+        forM_ [CompletePaper, VisiblePaper] $ \mode -> do
+          a <- export mode (name, fr)
+          b <- export mode (name, noisy)
+          -- Keep a failure readable even though a GLB contains arbitrary bytes.
+          (model, mode, b == a) `shouldBe` (model, mode, True)
 
   describe "the geometry" $ do
     it "keeps all four quarter-fold layers at their shared material positions" $ do
@@ -402,7 +405,7 @@ spec = do
       nub [y | (_, y, _) <- vec3s glb 0] `shouldBe` [0]
 
   describe "material identities across every basic base" $
-    forM_ ["book", "quarter-fold", "square", "waterbomb", "fish", "bird", "helmet", "organ", "frog", "boat", "pig", "diamond"] $ \name ->
+    forM_ ["book", "quarter-fold", "kite", "blintz", "square", "waterbomb", "fish", "bird", "helmet", "organ", "frog", "boat", "pig", "diamond"] $ \name ->
       it (name ++ " keeps every graphics corner attached to its material") $ do
         let path = if name == "quarter-fold" then "examples/quarter-fold.fold" else "examples/" ++ name ++ "-base.fold"
         named <- folded path

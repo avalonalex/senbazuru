@@ -228,7 +228,7 @@ renderSurfaceGlb budget mode name sheet = do
     CompletePaper -> Right [("Complete paper", complete)]
     VisiblePaper -> do
       shown <- first GltfPaperMeshError (visiblePaper budget sheet)
-      Right [("Visible paper", shown), ("Complete paper", complete)]
+      Right [("Visible paper", map (canonicalPiece quantum) shown), ("Complete paper", complete)]
   let requirements = [A.object ["direction" .= [x, y, z], "lowerUpper" .= [[unFaceId a, unFaceId b] | (a, b) <- pairs]] | (V3 x y z, pairs) <- maybe [] pure (surfaceLayerRequirements sheet)]
       storedPoint p = let (x, y, z) = packable quantum p in map (realToFrac :: Float -> Double) [x, y, z]
       -- Packing changes positions. Keep only our original-sheet map, whose
@@ -373,10 +373,32 @@ assemble title quantum metadata scenes =
           positionSection = (bytes (mconcat [B.floatLE x <> B.floatLE y <> B.floatLE z | (x, y, z) <- positions]), 34962, [("componentType", int 5126), ("count", int count), ("type", string "VEC3"), ("min", triple lo), ("max", triple hi)])
           indexSection (_, ts) = (bytes (mconcat [packIndex a <> packIndex b <> packIndex c | (_, (a, b, c)) <- ts]), 34963, [("componentType", int indexType), ("count", int (3 * length ts)), ("type", string "SCALAR")])
           primitive i (side, ts) = object [("attributes", object [("POSITION", int start)]), ("indices", int i), ("material", int (if side then 0 else 1)), ("extras", object [("materialFaces", array [int (unFaceId fid) | (fid, _) <- ts])])]
-          weights = A.toJSON [[A.toJSON [A.toJSON (unVertexId vid), A.toJSON w] | (vid, w) <- materialWeights v] | v <- vertices]
+          weights = A.toJSON [[A.toJSON [A.toJSON (unVertexId vid), A.toJSON (packedWeight w)] | (vid, w) <- materialWeights v] | v <- vertices]
           mesh = object [("primitives", array [primitive i ch | (i, ch) <- zip [start + 1 ..] (channels ps)]), ("extras", object [("materialWeights", encoded weights)])]
        in (mesh, positionSection : map indexSection (channels ps))
     material name colour = object [("name", string name), ("pbrMetallicRoughness", object [("baseColorFactor", array (let (r, g, b) = linearOf colour in [number r, number g, number b, int 1])), ("metallicFactor", int 0), ("roughnessFactor", int 1)])]
+
+-- Clipping may start the same polygon at a different corner after roundoff.
+-- Choose the least packed position as its first corner, preserving winding.
+-- Otherwise its fan and metadata change even when its visible region does not.
+canonicalPiece :: Double -> PaperPiece -> PaperPiece
+canonicalPiece quantum piece = piece {pieceCorners = rotate (pieceCorners piece)}
+  where
+    rotate corners = case zip [0 ..] corners of
+      [] -> []
+      first : rest ->
+        let (i, _) = foldl' earlier first rest
+         in drop i corners ++ take i corners
+    earlier old@(_, a) new@(_, b)
+      | packable quantum (paperPosition b) < packable quantum (paperPosition a) = new
+      | otherwise = old
+
+-- Clipping leaves arithmetic noise in material weights too. Stabilise their
+-- metadata at 1e-10, well below the millionth used for positions, or
+-- geometrically identical exports differ only in their JSON's last digits.
+-- This does not change the display piece or its packed position.
+packedWeight :: Double -> Double
+packedWeight w = fromInteger (round (w * 1e10)) / 1e10
 
 bounds :: [(Float, Float, Float)] -> ((Float, Float, Float), (Float, Float, Float))
 bounds [] = ((0, 0, 0), (0, 0, 0))

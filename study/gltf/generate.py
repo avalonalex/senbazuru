@@ -23,7 +23,7 @@ def export(title, filename, source, *options):
                     "-o", str(destination / filename)], check=True)
     models.append({"title": title, "path": filename})
 
-for name in ["book-base", "quarter-fold", "square-base", "waterbomb-base",
+for name in ["book-base", "quarter-fold", "kite-base", "blintz-base", "square-base", "waterbomb-base",
              "fish-base", "bird-base", "helmet-base", "organ-base", "frog-base",
              "boat-base", "pig-base", "diamond-base", "thirds-pinwheel", "crane"]:
     export(name.replace("-", " "), name + ".glb", "examples/" + name + ".fold", "--fold")

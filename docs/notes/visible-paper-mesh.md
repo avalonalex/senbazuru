@@ -40,6 +40,11 @@ The GLB records these references in application-specific `extras`:
   surface's stored properties. A requirement contains a FOLD-axis `direction`
   and `lowerUpper` panel pairs. These are constraints, not a new contact report.
 
+Clipped pieces start at a consistent packed corner so arithmetic noise cannot
+rotate their triangle fans. Weight metadata is rounded to `1e-10`, much finer
+than the `1e-6` model-span precision used for graphics positions. This also
+keeps equivalent exports from differing only in the JSON's last digits.
+
 Ids refer to the prepared surface, after crossing cuts have introduced any
 new vertices or panels; they need not match the input file's numbering.
 

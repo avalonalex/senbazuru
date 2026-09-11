@@ -15,7 +15,7 @@ closes.
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,084 examples, including material and contact checks |
+| Tests | 1,086 examples, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 

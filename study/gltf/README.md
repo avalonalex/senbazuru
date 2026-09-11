@@ -18,7 +18,8 @@ retains touching layers, which an ordinary depth buffer cannot order.
 Both scenes use one camera centre and scale. Edge-on flat paper has no area;
 physical thickness is not being added for display.
 
-The generator exports twelve basic bases, a pinwheel, a crane, and all sixteen
+The generator exports all thirteen `*-base.fold` fixtures plus the quarter
+fold, a pinwheel, a crane, and all sixteen
 checked bird states. Give it a directory argument to place the preview under
 an existing local server. For example, `build/fold-material/gltf-preview`
 puts it at `/gltf-preview/` when serving the usual material-study directory;
