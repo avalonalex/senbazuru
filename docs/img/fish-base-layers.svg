@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <title>Fish base</title>
+  <rect x="0" y="0" width="400" height="400" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 200 16 L 200 384 L 276.215 200 Z M 200 384 L 200 16 L 123.785 200 Z" fill="#faf8f3"/>
+    <path d="M 200 16 L 200 384" stroke="#bdbdbd" stroke-width="0.35"/>
+    <path d="M 200 16 L 123.785 200" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 200 384 L 123.785 200" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 200 16 L 276.215 200" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 200 384 L 276.215 200" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 279.044 197.172 L 202.828 13.172 L 202.828 273.387 Z M 126.613 197.172 L 202.828 273.387 L 202.828 13.172 Z" fill="#e5ded1"/>
+    <path d="M 202.828 13.172 L 126.613 197.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 202.828 273.387 L 126.613 197.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 202.828 13.172 L 279.044 197.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 202.828 273.387 L 279.044 197.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 202.828 13.172 L 202.828 273.387" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 202.828 273.387 L 202.828 13.172" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 202.828 13.172 L 126.613 197.172" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 202.828 13.172 L 279.044 197.172" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 202.828 13.172 L 202.828 197.172" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 205.657 194.343 L 205.657 270.558 L 281.872 194.343 Z M 205.657 270.558 L 205.657 194.343 L 129.442 194.343 Z" fill="#faf8f3"/>
+    <path d="M 205.657 270.558 L 129.442 194.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 129.442 194.343 L 205.657 194.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 205.657 270.558 L 281.872 194.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 281.872 194.343 L 205.657 194.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 205.657 270.558 L 205.657 194.343" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 205.657 194.343 L 205.657 270.558" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 284.701 191.515 L 208.485 191.515 L 208.485 375.515 Z M 132.27 191.515 L 208.485 375.515 L 208.485 191.515 Z" fill="#e5ded1"/>
+    <path d="M 208.485 375.515 L 132.27 191.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 132.27 191.515 L 208.485 191.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 208.485 375.515 L 284.701 191.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 284.701 191.515 L 208.485 191.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 208.485 191.515 L 208.485 375.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 208.485 375.515 L 208.485 191.515" stroke="#1a1a1a" stroke-width="0.35"/>
+    <path d="M 208.485 375.515 L 132.27 191.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 132.27 191.515 L 208.485 191.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 208.485 191.515 L 284.701 191.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 208.485 375.515 L 284.701 191.515" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 208.485 191.515 L 208.485 375.515" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

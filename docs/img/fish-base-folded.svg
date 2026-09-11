@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <title>Fish base</title>
+  <rect x="0" y="0" width="400" height="400" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 200 200 L 200 16 L 123.785 200 Z M 123.785 200 L 200 384 L 200 200 Z M 276.215 200 L 200 200 L 200 384 Z M 276.215 200 L 200 16 L 200 146.108 L 200 200 Z" fill="#e5ded1"/>
+    <path d="M 200 16 L 123.785 200" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 200 384 L 123.785 200" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 123.785 200 L 276.215 200" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 200 16 L 276.215 200" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 200 384 L 276.215 200" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 200 16 L 200 384" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

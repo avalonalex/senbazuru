@@ -34,6 +34,9 @@ extra-source-files:
   examples/blintz-base.fold
   examples/square-base.fold
   examples/waterbomb-base.fold
+  examples/fish-base.fold
+  examples/bird-base.fold
+  examples/bird-base.cp
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.opx
@@ -153,6 +156,7 @@ test-suite senbazuru-test
   main-is:            Spec.hs
   other-modules:
     BaseCollapseSpec
+    FlapPatternSpec
     FoldContact
     FoldContactSpec
     StudyCase

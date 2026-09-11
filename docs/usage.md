@@ -402,3 +402,9 @@ unfinished iterations. Bending stiffness, crease-angle preferences, finite
 thickness and general collision handling remain unsolved. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
 `render` or `export`.
+
+The [fish and bird fixtures](../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps)
+can be drawn with `render examples/fish-base.fold --fold` and
+`render examples/bird-base.fold --fold`. Their crease patterns and closed
+endpoints are checked, but intermediate rabbit-ear and petal-fold states are
+not yet available in the study viewer.

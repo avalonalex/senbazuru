@@ -54,8 +54,10 @@ spellings of 13 vertices, so a reader that does not merge them gets a bird base
 in 22 disconnected pieces. See
 [docs/notes/cp-and-opx.md](../docs/notes/cp-and-opx.md).
 
-The rest are hand-written here, so they carry no third-party design and no
-licence but this repository's. Between them they are what `senbazuru check` is
+The other imported derivative is `bird-base.fold`, described
+[below](#fish-and-bird-bases-opening-and-reshaping-flaps). The rest are
+hand-written here, so they carry no third-party design and no licence but this
+repository's. Between them they are what `senbazuru check` is
 demonstrated on:
 
 | File                   | What it is                                                     |
@@ -160,3 +162,56 @@ flat layer order. See [why a pre-crease can stay flat](../docs/notes/precreases-
 These fixtures establish the endpoints for the material study. Its
 [square and waterbomb gallery states](../study/fold-material/README.md#square-and-waterbomb-collapse)
 sample a compatible symmetric collapse, with contact checks at each state.
+
+## Fish and bird bases: opening and reshaping flaps
+
+[`fish-base.fold`](fish-base.fold) is constructed here from the angle bisectors
+of the two triangles on either side of a unit square's diagonal. It has two
+[rabbit-ear folds](../docs/glossary.md), laid towards the NE corner: eight
+triangular panels, with two interior vertices where four creases bend.
+
+[`bird-base.fold`](bird-base.fold) adapts the MIT Oriedita `bird-base.cp`
+reference attributed above. The CP importer flips its screen y axis; we then
+translate and scale to a unit square, reorder vertices, and replace numerical
+noise with the constructed coordinates. To describe two lifted
+[petal folds](../docs/glossary.md), we add valley hinges `9–10` and `11–12` and
+change the four outer midline segments from valley to flat. The old CP remains
+unchanged. The new endpoint has sixteen triangles, four interior vertices with
+four active creases, and a centre with six. It is a traditional base, with no
+single designer; no tutorial images or coordinate data were copied.
+
+Both files store the closed endpoint angles: mountains −180°, valleys +180°,
+flat guides and boundaries 0°. Faces and layer orders are reconstructed by the
+existing production pipeline. The [construction note](../docs/notes/fish-and-bird-endpoints.md)
+explains the coordinates and the difference between the two bird fixtures.
+
+| Base | Crease pattern | Closed endpoint | Layers offset for inspection |
+| --- | --- | --- | --- |
+| Fish | ![Fish crease pattern](../docs/img/fish-base-cp.svg) | ![Fish folded flat](../docs/img/fish-base-folded.svg) | ![Fish layers offset](../docs/img/fish-base-layers.svg) |
+| Bird | ![Bird crease pattern on a unit square](../docs/img/bird-base-unit-cp.svg) | ![Bird with both petal flaps lifted](../docs/img/bird-base-unit-folded.svg) | ![Bird layers offset](../docs/img/bird-base-unit-layers.svg) |
+
+Figures are fitted independently, so their displayed heights do not compare
+material scale. The fish's tip-to-tip length is sqrt(2), the bird's is 1. The
+last column shifts layers on the page to reveal them; it does not model paper
+thickness or another folding state. Mountain lines are dash-dot-dot, valleys
+dashed, and flat guides thin grey. The fish endpoint is viewed from below to
+show its flaps; the bird is viewed from above.
+
+Regenerate these previews from the repository root:
+
+```bash
+stack run -- render examples/fish-base.fold --rotate 45 -o docs/img/fish-base-cp.svg
+stack run -- render examples/fish-base.fold --fold --view bottom --rotate 90 -o docs/img/fish-base-folded.svg
+stack run -- render examples/fish-base.fold --fold --view bottom --rotate 90 --offset 4 -o docs/img/fish-base-layers.svg
+stack run -- render examples/bird-base.fold --rotate 45 -o docs/img/bird-base-unit-cp.svg
+stack run -- render examples/bird-base.fold --fold --rotate 90 -o docs/img/bird-base-unit-folded.svg
+stack run -- render examples/bird-base.fold --fold --rotate 90 --offset 4 --margin 32 -o docs/img/bird-base-unit-layers.svg
+stack run -- check examples/fish-base.fold
+stack run -- check examples/bird-base.fold
+stack test --ta='--match flap-base'
+```
+
+`FlapPatternSpec` checks the intended material landmarks, shared vertices,
+edge lengths, area, achieved crease magnitudes, a valid flat layer order and
+all panel pairs for contact. These fixtures do not yet provide intermediate
+rabbit-ear or petal-fold motion in the material-study gallery.
