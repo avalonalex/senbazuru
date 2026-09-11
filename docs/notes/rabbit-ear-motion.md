@@ -1,7 +1,7 @@
 # Four linked creases gather one rabbit ear
 
-Choose **Rabbit-ear fold** in the material-study viewer, then **Gather the
-flap · mountain −30°**. The south-east corner rises and turns towards the
+Choose **Fish base** in the material-study viewer, then **First ear ·
+gather · mountain −30°**. The south-east corner rises and turns towards the
 north-east corner while the opposite half stays flat. A rabbit ear gathers
 a triangular region into a pointed flap; two of them make our fish base.
 Mountain and valley directions are defined in the [glossary](../glossary.md).
@@ -52,7 +52,7 @@ rounded here, are:
 | −175° | +175° | +178.826130° |
 | −180° | +180° | +180° |
 
-The faster valleys lay the ear over while it rises. There is no separate
+The two larger valley angles lay the ear over while it rises. There is no separate
 rigid phase in which this ear is first lifted straight up and only then
 turned. Uniformly scaling all four final angles does not give this motion;
 the folding engine rejects that shortcut. Positions come from the production
@@ -76,16 +76,17 @@ Layer order needs more care than the angle formula. During the turn, all
 three moving panels remain above the fixed APC panel along +z, but their
 order relative to **each other** changes wherever their vertical projections
 overlap. Imposing the final stack during this motion reports reversed orders
-even when no panels cross. The case therefore declares only those three
+even when no panels cross. For this ear, the case declares only those three
 stable relations. At exact closure they leave three overlapping pairs
 unresolved. The endpoint test supplies the full chain
 `centre-south < south-panel < ear-tip < east-panel` and checks it against the
 unique flat stacking; it also verifies that leaving those orders out fails.
 
-Run `stack test --ta='--match rabbit-ear'`. Besides the eight displayed states,
+Run `stack test --ta='--match rabbit-ear'`. Besides the eight first-ear states,
 tests cover random angles and mesh refinements, a half-degree sweep, both
 upright-panel configurations, and the exact closed endpoint. All 28 panel
 pairs are checked in each sampled pose. This establishes sampled geometry
 and contact, not continuous collision freedom or finite paper thickness.
-The gallery stops at mountain −175° to leave its layers visibly separated;
-the second ear and the bird's petal-fold motion remain future work.
+The first stage stops at mountain −175° to leave its layers visibly separated.
+The gallery then [folds the second ear](two-rabbit-ears.md) with the first held
+still. The bird's petal-fold motion remains future work.

@@ -1,14 +1,16 @@
 -- | One rabbit ear gathers a triangular half-sheet into a pointed flap.
 -- Four creases meet at its interior vertex, so choosing their angles
 -- independently would tear the sheet. These tests exercise a compatible
--- family, with the opposite half of the fish base held flat. See
+-- family, first leaving the opposite half flat, then folding it to complete
+-- the fish base while the first ear stays fixed. See
 -- docs/notes/rabbit-ear-motion.md for the coordinates and angle derivation.
 --
 -- Landmark positions come from rotating around two fixed crease axes;
 -- they independently check which way the flap rises and turns. Contact is
 -- checked along sampled states, not certified continuously. The moving panels
 -- exchange vertical order during the turn, so only their order above the
--- stationary paper is required throughout. The complete closed stacking is
+-- stationary paper is required throughout. Each ear also stays on its own
+-- side of the diagonal's vertical plane. The complete closed stacking is
 -- checked separately against the production flat-stacking solver.
 module RabbitEarSpec (spec) where
 
@@ -40,10 +42,17 @@ spec = describe "rabbit-ear motion" $ do
   it "records eight linked states with the opposite ear left flat" $ do
     let magnitudes = [0, 15, 30, 60, 90, 120, 150, 175]
     caseSource entry `shouldBe` "examples/fish-base.fold"
-    length (caseSteps entry) `shouldBe` length magnitudes
+    length (caseSteps entry) `shouldBe` 15
     forM_ (zip (caseSteps entry) magnitudes) $ \(step, magnitude) -> do
       length (poseAngles step) `shouldBe` 15
       zipWith (-) (poseAngles step) (rabbitAngles magnitude) `shouldSatisfy` all ((< 1e-12) . abs)
+  it "continues with seven second-ear states while keeping the first ear at 175 degrees" $ do
+    let magnitudes = [15, 30, 60, 90, 120, 150, 175]
+        secondStage = drop 8 (caseSteps entry)
+    length secondStage `shouldBe` length magnitudes
+    forM_ (zip secondStage magnitudes) $ \(step, magnitude) -> do
+      length (poseAngles step) `shouldBe` 15
+      zipWith (-) (poseAngles step) (fishAngles 175 magnitude) `shouldSatisfy` all ((< 1e-12) . abs)
   it "preserves connected material and contact at random compatible angles and refinements" $
     forAll (choose (0.1, 179.9)) $ \magnitude ->
       forAll (chooseInt (0, 2)) $ \level ->
@@ -60,9 +69,30 @@ spec = describe "rabbit-ear motion" $ do
     forM_ (uprightMountain : [0, 0.5 .. 179.5]) $ \magnitude -> do
       pose <- requireRight (buildCasePose 0 entry source (PoseSpec "sweep" (rabbitAngles magnitude)))
       poseContact pose `shouldBe` Just (ContactCheck 28 [] [] [] [])
+  it "checks all panel pairs through the second ear's half-degree sweep" $
+    forM_ (uprightMountain : [0, 0.5 .. 179.5]) $ \magnitude -> do
+      pose <- requireRight (buildCasePose 0 entry source (PoseSpec "second sweep" (fishAngles 175 magnitude)))
+      poseContact pose `shouldBe` Just (ContactCheck 28 [] [] [] [])
+  it "keeps independently posed ears on opposite sides of the diagonal plane" $
+    forAll (choose (0.1, 179.9)) $ \first ->
+      forAll (choose (0.1, 179.9)) $ \second ->
+        forAll (chooseInt (0, 2)) $ \level ->
+          case buildCasePose level entry source (PoseSpec "independent ears" (fishAngles first second)) of
+            Left err -> counterexample (show err) False
+            Right pose ->
+              let mesh = poseMesh pose
+                  staysOnSide p =
+                    let V3 x y _ = position p
+                     in if materialU p >= materialV p then x >= y - 1e-12 else y >= x - 1e-12
+               in counterexample (show (poseContact pose)) $
+                    all staysOnSide (samples mesh)
+                      && componentCount mesh == 1
+                      && all ((< 1e-12) . abs) (edgeStrains mesh)
+                      && abs (areaRatio mesh - 1) < 1e-12
+                      && poseContact pose == Just (ContactCheck 28 [] [] [] [])
   it "agrees at shared vertices and achieves crease magnitudes measured from panel normals" $
-    forM_ [0, 15, uprightMountain, 60, 90, 150, 175, 180] $ \magnitude -> do
-      result <- requireRight (foldFrameWith source {edgesFoldAngle = rabbitAngles magnitude})
+    forM_ ([(m, 0) | m <- [0, 15, uprightMountain, 60, 90, 150, 175, 180]] ++ [(175, m) | m <- [15, 30, uprightMountain, 60, 90, 120, 150, 175]] ++ [(180, 180)]) $ \(first, second) -> do
+      result <- requireRight (foldFrameWith source {edgesFoldAngle = fishAngles first second})
       let sheet = foldedPattern result
           final = foldedFrame result
       original <- IM.fromList . zip [0 ..] <$> requireRight (frameVertices sheet)
@@ -102,6 +132,26 @@ spec = describe "rabbit-ear motion" $ do
         norm (position p ^-^ V3 (materialU p) (materialV p) 0) `shouldSatisfy` (< 1e-12)
       fixedCentre <- pointAt (d, r) mesh
       norm (fixedCentre ^-^ V3 d r 0) `shouldSatisfy` (< 1e-12)
+  it "reflects the second ear's landmarks and keeps every first-ear point fixed" $ do
+    resting <- requireRight (buildPose 2 source (PoseSpec "first ear" (rabbitAngles 175)))
+    forM_ [0, 15, 30, uprightMountain, 60, 90, 120, 150, 175] $ \magnitude -> do
+      pose <- requireRight (buildPose 2 source (PoseSpec "second ear" (fishAngles 175 magnitude)))
+      let mesh = poseMesh pose
+          m = magnitude * pi / 180
+          v = valleyAngle magnitude * pi / 180
+          c = cos (pi / 8)
+          s = sin (pi / 8)
+          r = 1 - 1 / sqrt 2
+          -- Reflect x and y, retaining height: both ears rise towards +z.
+          expectedTip = V3 (c * s * (1 - cos v)) (c * c + s * s * cos v) (s * sin v)
+          expectedShoulder = V3 (r + (sqrt 2 - 1) / 4 * (1 - cos m)) (0.75 + 0.25 * cos m) (r * c * sin m)
+      tip <- pointAt (0, 1) mesh
+      shoulder <- pointAt (r, 1) mesh
+      norm (tip ^-^ expectedTip) `shouldSatisfy` (< 1e-12)
+      norm (shoulder ^-^ expectedShoulder) `shouldSatisfy` (< 1e-12)
+      forM_ [p | p <- samples (poseMesh resting), materialU p >= materialV p] $ \p -> do
+        q <- pointAt (materialU p, materialV p) mesh
+        norm (position p ^-^ q) `shouldSatisfy` (< 1e-12)
   it "requires the remaining three moving-panel orders at the closed endpoint" $ do
     pose <- requireRight (buildCasePose 0 entry source (PoseSpec "closed" (rabbitAngles 180)))
     poseContact pose
@@ -129,17 +179,58 @@ spec = describe "rabbit-ear motion" $ do
     report <- requireJust (poseContact pose)
     crossingPanels report `shouldBe` []
     reversedOrders report `shouldSatisfy` (not . null)
+  it "matches the complete fish endpoint, including its two separate layer chains" $ do
+    let angles = fishAngles 180 180
+        complete contact = contact {panelOrders = [("centre-south", "south-panel"), ("south-panel", "ear-tip"), ("ear-tip", "east-panel"), ("centre-north", "west-panel"), ("west-panel", "north-tip"), ("north-tip", "north-panel")]}
+    angles `shouldBe` edgesFoldAngle source
+    unresolved <- requireRight (buildCasePose 0 entry source (PoseSpec "closed fish" angles))
+    report <- requireJust (poseContact unresolved)
+    unorderedContacts report `shouldMatchList` [("south-panel", "ear-tip"), ("south-panel", "east-panel"), ("ear-tip", "east-panel"), ("north-panel", "north-tip"), ("north-panel", "west-panel"), ("north-tip", "west-panel")]
+    pose <- requireRight (buildCasePose 0 (entry {caseContact = fmap complete (caseContact entry)}) source (PoseSpec "ordered fish" angles))
+    poseContact pose `shouldBe` Just (ContactCheck 28 [] [] [] [])
+    let d = 1 / sqrt 2
+        r = 1 - d
+    forM_ [(1, 0), (0, 1)] $ \uv -> do
+      tip <- pointAt uv (poseMesh pose)
+      norm (tip ^-^ V3 d d 0) `shouldSatisfy` (< 1e-12)
+    forM_ [(1, r), (r, 1)] $ \uv -> do
+      shoulder <- pointAt uv (poseMesh pose)
+      norm (shoulder ^-^ V3 0.5 0.5 0) `shouldSatisfy` (< 1e-12)
+    result <- requireRight (foldFrameWith source {edgesFoldAngle = angles})
+    let coords (V3 x y z) = [x, y, z]
+        final = (foldedFrame result) {verticesCoords = map (coords . position) (samples (poseMesh pose))}
+    space <- requireRight (stackingSpace defaultBudget final)
+    stateCount space `shouldBe` (1, False)
+    orders <- requireRight (solveStacking final)
+    faces <- requireRight (frameFaces final)
+    ordered <- mapM (alongZ faces) orders
+    -- The second chain is 6 = centre-north < 5 = west-panel
+    -- < 4 = north-tip < 3 = north-panel. No order joins the two ears.
+    ordered `shouldMatchList` [(7, 0), (7, 1), (7, 2), (0, 1), (0, 2), (1, 2), (6, 5), (6, 4), (6, 3), (5, 4), (5, 3), (4, 3)]
+  it "detects the second ear folding below the sheet without a crossing" $ do
+    let angles = fishAngles 175 (-90)
+    pose <- requireRight (buildCasePose 0 entry source (PoseSpec "second ear reversed" angles))
+    report <- requireJust (poseContact pose)
+    crossingPanels report `shouldBe` []
+    reversedOrders report `shouldSatisfy` (not . null)
   it "rejects scaling all endpoint angles together or perturbing just one valley" $ do
     buildPose 0 source (PoseSpec "uniform half-fold" (map (/ 2) (rabbitAngles 180))) `shouldSatisfy` isLeft
     let perturbed = [if i == (7 :: Int) then angle + 1 else angle | (i, angle) <- zip [0 ..] (rabbitAngles 60)]
     buildPose 0 source (PoseSpec "one wrong valley" perturbed) `shouldSatisfy` isLeft
+    let secondPerturbed = [if i == (11 :: Int) then angle + 1 else angle | (i, angle) <- zip [0 ..] (fishAngles 175 60)]
+    buildPose 0 source (PoseSpec "second ear wrong valley" secondPerturbed) `shouldSatisfy` isLeft
 
 -- | PB is mountain -m; PC is valley +m. PA and PE share valley +v.
 -- The atan2 form remains defined at m = 180 degrees.
 rabbitAngles :: Double -> [Double]
-rabbitAngles magnitude = replicate 7 0 ++ [valley, magnitude, negate magnitude, valley] ++ replicate 4 0
+rabbitAngles magnitude = fishAngles magnitude 0
+
+-- The reflected ear has the same signed angles: its panels are traversed
+-- in the opposite order, and both ears still rise towards the front (+z).
+fishAngles :: Double -> Double -> [Double]
+fishAngles first second = replicate 7 0 ++ earAngles first ++ earAngles second
   where
-    valley = valleyAngle magnitude
+    earAngles magnitude = let valley = valleyAngle magnitude in [valley, magnitude, negate magnitude, valley]
 
 valleyAngle :: Double -> Double
 valleyAngle magnitude =
