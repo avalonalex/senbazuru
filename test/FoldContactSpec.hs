@@ -22,7 +22,7 @@ spec = describe "study packet order" $ do
     let mesh = pair (-0.1)
     packetCheck Single (mesh {triangles = [(2, 1, 0), (3, 4, 5)]}) `shouldBe` PacketCheck 1 0.1 0
   it "reports edge-on triangles as unchecked" $ do
-    let mesh = Mesh [Sample 0 0 (V3 0 0 0), Sample 0.2 0 (V3 0 1 0), Sample 0 0.2 (V3 0 0 1)] [(0, 1, 2)]
+    let mesh = Mesh [materialSample 0 0 (V3 0 0 0), materialSample 0.2 0 (V3 0 1 0), materialSample 0 0.2 (V3 0 0 1)] [(0, 1, 2)]
     packetCheck Single mesh `shouldBe` PacketCheck 0 0 1
   it "differentiates moving edge intersections and vertex/face contacts" $ do
     let tilted = (pair (-0.2)) {samples = map tilt (samples (pair (-0.2)))}
@@ -36,7 +36,7 @@ spec = describe "study packet order" $ do
 -- A numerical derivative of the actual clipped overlap checks the contact
 -- normal independently of the solver. The perturbed vertex moves in all three
 -- directions; holding the projected intersection fixed gives a wrong answer.
-checkDerivative :: Mesh -> Expectation
+checkDerivative :: MaterialMesh -> Expectation
 checkDerivative mesh = do
   let direction = V3 0.7 (-0.2) 0.3
       epsilon = 1e-6
@@ -46,14 +46,14 @@ checkDerivative mesh = do
       analytical = sum [2 * min 0 (contactGap row) * dot gradient direction | row <- fst (packetContacts Single mesh), (i, gradient) <- contactGradient row, i == 3]
   abs (numerical - analytical) `shouldSatisfy` (< 1e-7)
 
-pair :: Double -> Mesh
+pair :: Double -> MaterialMesh
 pair upperHeight =
   Mesh
-    [ Sample 0 0 (V3 (-2) (-1) 0),
-      Sample 0.2 0 (V3 2 (-1) 0),
-      Sample 0 0.2 (V3 0 2 0),
-      Sample 0.8 0 (V3 (-2) 1 upperHeight),
-      Sample 1 0 (V3 0 (-2) upperHeight),
-      Sample 1 0.2 (V3 2 1 upperHeight)
+    [ materialSample 0 0 (V3 (-2) (-1) 0),
+      materialSample 0.2 0 (V3 2 (-1) 0),
+      materialSample 0 0.2 (V3 0 2 0),
+      materialSample 0.8 0 (V3 (-2) 1 upperHeight),
+      materialSample 1 0 (V3 0 (-2) upperHeight),
+      materialSample 1 0.2 (V3 2 1 upperHeight)
     ]
     [(0, 1, 2), (3, 4, 5)]

@@ -2,7 +2,7 @@
 
 A folded sheet is still the same piece of paper. Points on opposite sides of a
 crease remain joined, while two layers that happen to touch remain different
-parts of the sheet. Our next representation should preserve both facts. The
+parts of the sheet. The shared representation preserves both facts. The
 [material coordinates](../glossary.md) identify where a point came from on the
 original sheet; its current position says where it is now. Joining points just
 because their current positions coincide would weld a folded packet shut.
@@ -17,7 +17,7 @@ lighting normals, but those copies must still refer to the same material point.
 Thickness answers a different question: how much space does each layer occupy?
 It matters for stack height, clearance and material calibration. A surface can
 carry those properties without representing the sheet as a solid volume. Our
-first shared representation will support zero-thickness geometry and explicit
+first shared representation supports zero-thickness geometry and explicit
 layer order. A rendering depth adjustment must not silently become a material
 parameter. Ordinary glTF viewers cannot read FOLD's layer orders, so stable
 viewing of coincident surfaces remains an explicit export/viewer design task.
@@ -39,7 +39,7 @@ panels stay rigid depends on its crease pattern. Allowing panel
 bending expands the possible shapes; merely connecting its vertices does not.
 Spreading a crane's wings and opening its body are intended future operations.
 The traditional waterbomb balloon, distinct from its triangular starting base,
-is another target. Neither operation is implemented by this planning change.
+is another target. Neither operation is implemented by the shared representation.
 
 Start with a controlled opening, such as increasing the distance between two
 selected material points while preserving lengths and contact. That gives a
@@ -55,6 +55,11 @@ do not establish a folding path for our traditional balloon or crane.
 
 [Issue #146](https://github.com/avalonalex/senbazuru/issues/146) tracks sharing
 this representation across the study, SVG projection and 3D export.
+The first stage is now `Origami.Surface`: known material coordinates are typed
+separately from a folded file's possibly missing map, and the study uses the
+library's shared midpoint refinement. Both renderer interfaces accept the
+surface. The old glTF display spacing is still present; replacing it and
+carrying material identity into graphics exports remain under that issue.
 [Issue #106](https://github.com/avalonalex/senbazuru/issues/106) tracks later
 pocket opening. The earlier [schematic puff](the-puff-is-a-drawing.md) remains
 an illustration of what a drawing can fake, not a substitute for the material

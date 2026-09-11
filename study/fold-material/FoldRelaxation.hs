@@ -67,7 +67,7 @@ instance Explain RelaxError where
 
 data Checkpoint = Checkpoint
   { completedIterations :: !Int,
-    checkpointMesh :: !Mesh,
+    checkpointMesh :: !MaterialMesh,
     checkpointError :: !Double
   }
   deriving stock (Eq, Show)
@@ -86,7 +86,7 @@ finite x = not (isNaN x || isInfinite x)
 -- sends the original (u,v) directions to du and dv. Eigenvalues of their Gram
 -- matrix are squared length multipliers. A zero-area material triangle has
 -- no inverse; return Nothing rather than a plausible-looking zero strain.
-principalStrains :: (Sample, Sample, Sample) -> Maybe (Double, Double)
+principalStrains :: (MaterialSample, MaterialSample, MaterialSample) -> Maybe (Double, Double)
 principalStrains (a, b, c)
   | determinant == 0 || not (finite determinant) = Nothing
   | otherwise =
@@ -108,18 +108,18 @@ principalStrains (a, b, c)
     ab = position b ^-^ position a
     ac = position c ^-^ position a
 
-maxLengthError :: Mesh -> Double
+maxLengthError :: MaterialMesh -> Double
 maxLengthError mesh = maximum (0 : map abs (edgeStrains mesh))
 
-relaxLengths :: Settings -> Mesh -> Either RelaxError Relaxation
+relaxLengths :: Settings -> MaterialMesh -> Either RelaxError Relaxation
 relaxLengths = relaxWith Nothing
 
 -- | Also keep the known nearly flat packet's layers in order. This is a
 -- zero-thickness inequality, not a general paper collision implementation.
-relaxPacket :: Settings -> FoldCase -> Mesh -> Either RelaxError Relaxation
+relaxPacket :: Settings -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
 relaxPacket settings which = relaxWith (Just which) settings
 
-relaxWith :: Maybe FoldCase -> Settings -> Mesh -> Either RelaxError Relaxation
+relaxWith :: Maybe FoldCase -> Settings -> MaterialMesh -> Either RelaxError Relaxation
 relaxWith packet settings original = do
   if iterationLimit settings < 0 || lengthTolerance settings <= 0 || not (finite (lengthTolerance settings))
     then Left InvalidSettings
@@ -218,7 +218,7 @@ relaxWith packet settings original = do
         else Right ([(i, (-(1 / distance)) *^ delta), (j, (1 / distance) *^ delta)], distance - rest)
     -- All indices below originate in the validated mesh; defaults keep these
     -- lookups total without introducing partial array indexing.
-    atSample = IM.findWithDefault (Sample 0 0 (V3 0 0 0))
+    atSample = IM.findWithDefault (materialSample 0 0 (V3 0 0 0))
 
 at :: Int -> IM.IntMap V3 -> V3
 at = IM.findWithDefault (V3 0 0 0)

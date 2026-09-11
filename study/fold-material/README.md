@@ -72,13 +72,21 @@ explicitly override the source's angles. In particular, the blintz fixture's
 negative angles face the existing SVG camera, whereas this gallery uses positive
 angles to open its flaps upwards. The source file is unchanged.
 
-`StudyCase.buildPose` calls the production rigid folding code, uses its returned
-cut pattern, holds the largest panel still, and subdivides the resulting convex
-panels three times. `buildCasePose` can instead hold the panel selected by
+`StudyCase.buildPose` calls the production rigid folding code and builds an
+`Origami.Surface` from its returned cut pattern and folded frame. The shared
+library representation owns material coordinates, current positions and crease
+identities; its `refineSurface` subdivides the convex panels three times.
+The study holds the largest panel still; `buildCasePose` can instead hold the panel selected by
 `fixedPanel` still. Material indices are shared across creases; lighting normals
 are split by panel. Boundaries and actual creases get lines, triangle subdivisions
 do not. A source guide also gets a line when the current state bends it. Adding another case of this kind needs a FOLD file and a manifest entry,
 with no new shape formula or viewer branch.
+
+The shared `Surface V2` is available as `poseSurface`; `poseFrame` and the
+viewer's order pairs are derived from it. Named contact requirements still go
+through the study's checker, then their resolved material panel ids are stored
+on the surface. Its optional physical thickness is data only: it neither changes
+these zero-thickness contact tests nor becomes a viewer depth adjustment.
 
 This first format is limited to a unit square with convex panels and explicitly
 supplied angle states. The original single/double final packet formulas remain separate

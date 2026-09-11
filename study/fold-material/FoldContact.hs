@@ -56,16 +56,16 @@ data Projected = Projected
 -- | Positive violation means a supposedly lower layer lies ABOVE an upper
 -- one. Coplanar contact is allowed: this is a zero-thickness surface study.
 -- Input must be a valid indexed study mesh in its original packet orientation.
-packetCheck :: FoldCase -> Mesh -> PacketCheck
+packetCheck :: FoldCase -> MaterialMesh -> PacketCheck
 packetCheck which mesh = PacketCheck (length (filter (> contactTolerance) violations)) (maximum (0 : violations)) unchecked
   where
     (pairs, unchecked) = contactPairs which mesh
     violations = [maximum (0 : map (negate . contactGap) rows) | rows <- pairs]
 
-packetContacts :: FoldCase -> Mesh -> ([ContactRow], Int)
+packetContacts :: FoldCase -> MaterialMesh -> ([ContactRow], Int)
 packetContacts which mesh = let (pairs, unchecked) = contactPairs which mesh in (concat pairs, unchecked)
 
-contactPairs :: FoldCase -> Mesh -> ([[ContactRow]], Int)
+contactPairs :: FoldCase -> MaterialMesh -> ([[ContactRow]], Int)
 contactPairs which mesh = (mapMaybe checkPair pairs, unchecked)
   where
     vertices = IM.fromList (zip [0 ..] (samples mesh))

@@ -15,7 +15,7 @@ closes.
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,042 examples, including material and contact checks |
+| Tests | 1,069 examples, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -31,18 +31,20 @@ second generation.
 [related-projects.md](related-projects.md) has the tools and their licences.
 Senbazuru's focus is book-style diagrams from checked folding states: hidden
 lines, two paper colours and visible regions even when flaps stack in a circle.
-The study now supplies examples of connected paper in motion; the next step is
-to share that representation with the production renderers. Authoring a folding
-sequence, handling larger models and installing without Stack remain separate
-pieces of work.
+The study now shares its material representation with the renderer interfaces;
+replacing the old glTF display spacing is next. Authoring a folding sequence,
+handling larger models and installing without Stack remain separate pieces of
+work.
 
 ## The four roadmap items
 
 1. **One connected material surface** ([#146](https://github.com/avalonalex/senbazuru/issues/146)).
-   Share material coordinates, connectivity, crease identities and contact/order
-   relationships across the study, SVG projection and 3D export. Physical
-   thickness is optional and distinct from display offsets. Replace obsolete
-   internal paths rather than maintaining them for alpha compatibility.
+   `Origami.Surface` now holds material identity, current geometry, crease
+   topology and optional properties. The study uses its mesh/refinement code,
+   and both renderer interfaces accept it. The next stage replaces glTF's
+   per-face display spacing and preserves material identities in graphics
+   exports. Physical thickness stays distinct from display offsets. Replace
+   obsolete internal paths rather than maintaining them for alpha compatibility.
    [The design note](notes/connected-paper-surface.md) separates this
    representation change from the bending and opening controls that follow.
 2. **A vocabulary of folds** ([#60](https://github.com/avalonalex/senbazuru/issues/60)). The first move exists, `crease`
@@ -156,10 +158,11 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 1. [#146](https://github.com/avalonalex/senbazuru/issues/146), the shared connected
    surface, following the findings of [#114](https://github.com/avalonalex/senbazuru/issues/114).
-   Move verified study states through the common representation into both
-   rendering paths. Check material identity and crease continuity even when
-   graphics vertices are duplicated for lighting. Add bending and crease
-   preferences next; physical thickness is not a prerequisite for the handoff.
+   The shared core is in place. Next replace the glTF display spacing, retaining
+   material identity and crease continuity when graphics vertices are duplicated
+   for lighting, then refresh the README's three-example gallery. Add bending
+   and crease preferences next; physical thickness is not a prerequisite for
+   the handoff.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

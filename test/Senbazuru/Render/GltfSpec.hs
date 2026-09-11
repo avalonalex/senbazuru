@@ -43,8 +43,9 @@ import Senbazuru.Fold.Types
     emptyFrame,
   )
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
-import Senbazuru.Origami.Folding (foldFrame)
+import Senbazuru.Origami.Folding (foldFrame, foldFrameWith)
 import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Surface qualified as Paper
 import Senbazuru.Render.Gltf
 import Test.Golden (goldenBytes)
 import Test.Hspec
@@ -364,6 +365,21 @@ spec = do
       asInt (at "componentType" (nth 1 (at "accessors" (glbJson glb)))) `shouldBe` 5125
 
   describe "the thickness" $ do
+    it "keeps physical material thickness distinct from export display spacing" $ do
+      (name, source) <- fixture "test/fixtures/quarter-fold.fold"
+      result <- either (fail . show) pure (foldFrameWith source)
+      sheet <- either (fail . show) pure (Paper.surfaceFromFolded result >>= Paper.withPhysicalThickness (Just 0.25))
+      bytes <- either (fail . show) pure (renderSurfaceGlb defaultBudget (Thickness 0) name sheet)
+      glb <- parseGlb bytes
+      -- Four layers remain at z = 0. A stored material property must not turn
+      -- into the old exporter offsets (0, .25, .5, .75) without asking for
+      -- that separate display operation.
+      nub [y | (_, y, _) <- vec3s glb 0] `shouldBe` [0]
+      -- Graphics still duplicate corners for their per-face layout. Material
+      -- identities belong to the nine-vertex surface, not those copies.
+      length (Paper.surfaceSamples sheet) `shouldBe` 9
+      length (vec3s glb 0) `shouldBe` 16
+
     it "is refused when finer than the rounding the coordinates go through" $ do
       -- Rounded away, some layers would land a step apart and others on the
       -- same height. The floor is a millionth of the model, which is also the

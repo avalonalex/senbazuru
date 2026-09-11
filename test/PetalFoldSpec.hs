@@ -276,7 +276,7 @@ transitive pairs =
   let extended = S.union pairs (S.fromList [(a, d) | (a, b) <- S.toList pairs, (c, d) <- S.toList pairs, b == c])
    in if pairs == extended then pairs else transitive extended
 
-pointAt :: (Double, Double) -> Mesh -> IO V3
+pointAt :: (Double, Double) -> MaterialMesh -> IO V3
 pointAt (u, v) mesh = position <$> requireJust (find (\p -> abs (materialU p - u) < 1e-12 && abs (materialV p - v) < 1e-12) (samples mesh))
 
 requireRight :: (Show e) => Either e a -> IO a

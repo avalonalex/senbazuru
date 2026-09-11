@@ -87,7 +87,7 @@ symmetricAngles source magnitude = map angle (edgesAssignment source)
     angle Valley = valley
     angle _ = 0
 
-pointAt :: (Double, Double) -> Mesh -> IO V3
+pointAt :: (Double, Double) -> MaterialMesh -> IO V3
 pointAt (u, v) mesh = case find (\p -> materialU p == u && materialV p == v) (samples mesh) of
   Just p -> pure (position p)
   Nothing -> expectationFailure "missing original material point" >> fail "invalid mesh"

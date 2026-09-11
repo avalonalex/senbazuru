@@ -164,8 +164,8 @@ the reasoning.
   [body opening](https://github.com/avalonalex/senbazuru/issues/106) and
   [the connected-surface plan](docs/notes/connected-paper-surface.md).
 - **Model every paper treatment.** Wet-folding, damage and detailed crease
-  ageing are not current goals. Physical thickness is optional future input
-  for packing and clearance; it is not required simply to represent a surface.
+  ageing are not current goals. The shared surface can store physical thickness;
+  mechanics that use it for packing and clearance are future work.
 - **Guess.** A model with no valid layer order is refused with the reason, not
   drawn as something plausible. A file whose faces cannot be traced draws as a
   crease pattern and declines to fold. A mirrored model folds perfectly well
@@ -203,10 +203,12 @@ issues are the detail, and the smaller pieces in between are the rest of the
 with every open issue tiered by how hard it is.
 
 1. **[One connected paper surface for folding and rendering.](https://github.com/avalonalex/senbazuru/issues/146)**
-   Bring the study and production paths onto shared material geometry, crease
-   identities and layer relationships. Keep thickness separate from display
-   offsets. This is an alpha: obsolete internal paths can be replaced once
-   their replacements pass the verified base and sequence cases.
+   The shared surface and study refinement are now in the library, with SVG
+   and glTF entry points. Next replace the glTF face-spacing display policy
+   and preserve material identities in graphics exports. Keep thickness
+   separate from display offsets. This is an alpha: obsolete internal paths
+   can be replaced once their replacements pass the verified base and sequence
+   cases.
    → [connected-paper-surface](docs/notes/connected-paper-surface.md)
 2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output came first, since nothing else can be built without it, and the

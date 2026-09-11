@@ -212,11 +212,12 @@ from a file. A move must drop what it invalidates (`faces_vertices`,
 is cubic. Header of `Senbazuru.Fold.Creasing`.
 
 **New backends consume `Diagram`, with one exception.** `Diagram` is 2D, so
-`Render.Gltf` reads `Fold.Query`'s faces directly — a stated exception, not a
+`Render.Gltf` consumes `Origami.Surface` in 3D — a stated exception, not a
 precedent. It must not import `Render.CreasePattern`; the policy both share,
 which layer order to use, is `Origami.Stacking.layerOrderFor`. **`--layer-budget`
 is a parameter of every entry point** — `creasePatternFrom`,
-`creasePatternAuto`, `stepPage` and `renderGlb` — because it was a CLI flag that
+`creasePatternAuto`, `surfaceDiagram`, `stepPage`, `renderGlb` and
+`renderSurfaceGlb` — because it was a CLI flag that
 did nothing on `render` for exactly as long as it was not.
 
 **Do the geometry in Haskell, not in SVG attributes.** We never emit

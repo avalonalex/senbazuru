@@ -26,6 +26,8 @@ module StudyCase
   ( CaseSpec (..),
     PoseSpec (..),
     StudyPose (..),
+    poseFrame,
+    poseOrders,
     CaseError (..),
     buildPose,
     buildCasePose,
@@ -47,14 +49,15 @@ import Data.Text (Text)
 import FoldMaterial
 import PanelContact
 import Senbazuru.Explain (Explain (..), tshow)
-import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
-import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..), emptyFrame)
+import Senbazuru.Fold.Query (Crease (..), Face (..), frameFaces, frameVertices)
+import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, signedArea, strictlyInside)
-import Senbazuru.Geometry.Rigid (applyRigid, inverse)
+import Senbazuru.Geometry.Rigid (inverse)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
+import Senbazuru.Origami.Surface qualified as Paper
 
 data CaseSpec = CaseSpec
   { caseId :: !String,
@@ -82,8 +85,8 @@ instance FromJSON PoseSpec where
 
 data StudyPose = StudyPose
   { -- | Unrefined, cut FOLD topology in the same stationary reference frame.
-    poseFrame :: !Frame,
-    poseMesh :: !Mesh,
+    poseSurface :: !(Paper.Surface V2),
+    poseMesh :: !MaterialMesh,
     -- | One original panel id per triangle, for normals split at creases.
     posePanels :: ![Int],
     -- | Boundary and crease segments, without triangle subdivision lines.
@@ -91,12 +94,18 @@ data StudyPose = StudyPose
     -- | Incident material panels for each feature segment, in poseLines order.
     poseLinePanels :: ![[Int]],
     -- | Whole rigid panels, before refinement, with their original material map.
-    poseFaces :: ![(Int, [Sample])],
-    poseContact :: !(Maybe ContactCheck),
-    -- | Declared lower/upper relations resolved to the cut pattern's panels.
-    poseOrders :: !(Maybe (V3, [(Int, Int)]))
+    poseFaces :: ![(Int, [MaterialSample])],
+    poseContact :: !(Maybe ContactCheck)
   }
   deriving stock (Eq, Show)
+
+poseFrame :: StudyPose -> Frame
+poseFrame = Paper.surfaceFrame . poseSurface
+
+-- | The viewer's integer ids are a view of the material requirements, not a
+-- second copy that can disagree with the shared surface.
+poseOrders :: StudyPose -> Maybe (V3, [(Int, Int)])
+poseOrders = fmap (\(axis, pairs) -> (axis, [(unFaceId a, unFaceId b) | (a, b) <- pairs])) . Paper.surfaceLayerRequirements . poseSurface
 
 newtype CaseError = CaseError Text
   deriving stock (Eq, Show)
@@ -112,7 +121,10 @@ buildCasePose :: Int -> CaseSpec -> Frame -> PoseSpec -> Either CaseError StudyP
 buildCasePose levels spec source step = do
   pose <- buildPoseAt (caseFixedPanel spec) levels source step
   checked <- traverse (check pose) (caseContact spec)
-  pure pose {poseContact = fmap fst checked, poseOrders = fmap snd checked}
+  paper <- case checked of
+    Nothing -> Right (poseSurface pose)
+    Just (_, (axis, pairs)) -> first (CaseError . explain) (Paper.withLayerRequirements axis [(FaceId a, FaceId b) | (a, b) <- pairs] (poseSurface pose))
+  pure pose {poseSurface = paper, poseContact = fmap fst checked}
   where
     check pose requirements = do
       resolved <- mapM (resolve (poseFaces pose)) (namedPanels requirements)
@@ -138,11 +150,10 @@ buildPoseAt anchor levels source step = do
   unless (levels >= 0 && levels <= 5) (Left (CaseError "study subdivision level must be between 0 and 5"))
   unless (length (poseAngles step) == length (edgesVertices source)) $
     Left (CaseError ("state needs " <> tshow (length (edgesVertices source)) <> " angles, one per source edge"))
-  folded <- first (CaseError . explain) (foldFrameWith source {edgesFoldAngle = poseAngles step})
+  folded <- first (CaseError . explain) (foldFrameWith source {edgesFoldAngle = poseAngles step, frameTitle = Just (poseLabel step)})
   let sheet = (foldedPattern folded) {facesVertices = facesVertices (foldedFrame folded)}
   faces <- first (CaseError . explain) (frameFaces sheet)
   flat <- first (CaseError . explain) (frameVertices sheet)
-  placed <- first (CaseError . explain) (frameVertices (foldedFrame folded))
   unless (all inside flat) (Left (CaseError "study material coordinates must lie in the unit square at z = 0"))
   unless (abs (sum (map faceArea faces) - 1) < 1e-9) (Left (CaseError "study panels must cover one unit of material area"))
   mapM_ convex faces
@@ -157,23 +168,13 @@ buildPoseAt anchor levels source step = do
         [face] -> Right face
         _ -> Left (CaseError "fixed panel needs a point strictly inside exactly one material face")
   placement <- maybe (Left (CaseError "fixed panel has no folding transform")) Right (IM.lookup (unFaceId (faceId fixed)) (foldedPlacements folded))
-  let points = [Sample u v (applyRigid (inverse placement) q) | (V3 u v _, q) <- zip flat placed]
-      tagged = [(triangle, unFaceId (faceId face)) | face <- faces, triangle <- fan (map unVertexId (faceVertexIds face))]
-      (refined, refinedFaces) = iterateSplit levels points tagged
-      indexed = IM.fromList (zip [0 ..] points)
-      lookupSample i = maybe (Left (CaseError "panel or feature edge refers to a missing vertex")) Right (IM.lookup (unVertexId i) indexed)
-      lookupPoint i = position <$> lookupSample i
-      wholePanel face = do
-        corners <- mapM lookupSample (faceVertexIds face)
-        pure (unFaceId (faceId face), corners)
-  -- A guide flat in the source endpoint can bend earlier in a sequence.
-  let features = [(a, b) | ((a, b), assignment, angle) <- zip3 (edgesVertices sheet) (edgesAssignment sheet) (edgesFoldAngle sheet), assignment `elem` [Border, Mountain, Valley] || abs angle > 1e-10]
-      owners = [[unFaceId (faceId face) | face <- faces, a `elem` faceVertexIds face, b `elem` faceVertexIds face] | (a, b) <- features]
-  lines3 <- mapM (\(a, b) -> (,) <$> lookupPoint a <*> lookupPoint b) features
-  panels <- mapM wholePanel faces
-  let coordinates p = let V3 x y z = position p in [x, y, z]
-      frame = (foldedFrame folded) {verticesCoords = map coordinates points, frameTitle = Just (poseLabel step)}
-  pure (StudyPose frame (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3 owners panels Nothing Nothing)
+  paper <- first (CaseError . explain) (Paper.surfaceFromFolded folded >>= Paper.transformSurface (inverse placement))
+  (mesh, trianglePanels) <- first (CaseError . explain) (Paper.refineSurface levels paper)
+  features <- first (CaseError . explain) (Paper.surfaceFeatures paper)
+  panels <- first (CaseError . explain) (Paper.surfacePanelSamples paper)
+  let lines3 = [(creaseStart edge, creaseEnd edge) | (edge, _) <- features]
+      owners = [map unFaceId ids | (_, ids) <- features]
+  pure (StudyPose paper mesh (map unFaceId trianglePanels) lines3 owners [(unFaceId fid, ps) | (fid, ps) <- panels] Nothing)
   where
     inside (V3 u v z) = u >= 0 && u <= 1 && v >= 0 && v <= 1 && z == 0
 
@@ -259,27 +260,3 @@ convex face = do
       turns = [z | (a, b) <- sides, c <- corners, let V3 _ _ z = cross (b ^-^ a) (c ^-^ a)]
   unless (faceArea face > 0 && (all (>= (-1e-12)) turns || all (<= 1e-12) turns)) $
     Left (CaseError ("study panel " <> tshow (unFaceId (faceId face)) <> " must be convex"))
-
-fan :: [Int] -> [Triangle]
-fan (a : b : c : rest) = (a, b, c) : fan (a : c : rest)
-fan _ = []
-
--- | Topological edge keys avoid approximate-coordinate welding, which could
--- accidentally connect distinct pieces of paper at a folded overlap.
-iterateSplit :: Int -> [Sample] -> [(Triangle, Int)] -> ([Sample], [(Triangle, Int)])
-iterateSplit 0 points faces = (points, faces)
-iterateSplit n points faces =
-  let indexed = IM.fromList (zip [0 ..] points)
-      keys = S.toList (S.fromList [ordered i j | ((a, b, c), _) <- faces, (i, j) <- [(a, b), (b, c), (c, a)]])
-      midpoint (a, b) = do
-        p <- IM.lookup a indexed
-        q <- IM.lookup b indexed
-        pure (Sample ((materialU p + materialU q) / 2) ((materialV p + materialV q) / 2) (0.5 *^ (position p ^+^ position q)))
-      added = [(edge, point) | edge <- keys, Just point <- [midpoint edge]]
-      ids = M.fromList (zip (map fst added) [length points ..])
-      split ((a, b, c), panel) = case (M.lookup (ordered a b) ids, M.lookup (ordered b c) ids, M.lookup (ordered c a) ids) of
-        (Just ab, Just bc, Just ca) -> [((a, ab, ca), panel), ((ab, b, bc), panel), ((ca, bc, c), panel), ((ab, bc, ca), panel)]
-        _ -> [] -- All indices come from validated faces and previous splits.
-   in iterateSplit (n - 1) (points ++ map snd added) (concatMap split faces)
-  where
-    ordered a b = (min a b, max a b)
