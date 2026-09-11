@@ -10,7 +10,7 @@ import FoldMaterial
 import PanelContact
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
-import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
+import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
@@ -32,9 +32,9 @@ spec = describe "authored material-study cases" $ do
       abs (areaRatio mesh - 1) `shouldSatisfy` (< 1e-12)
       resolvedTriangles mesh `shouldSatisfy` all (\(a, b, c) -> norm (cross (position b ^-^ position a) (position c ^-^ position a)) > 1e-10)
       length (posePanels pose) `shouldBe` length (triangles mesh)
-      -- The new bases have two flat guide segments, omitted from the 3D edges.
-      length (poseLines pose) `shouldBe` (if meetingCreases entry then 14 else length (edgesVertices source))
-    unless (meetingCreases entry) $
+      -- Flat guides subdivide the material but are omitted from the 3D edges.
+      length (poseLines pose) `shouldBe` length (filter (`elem` [Border, Mountain, Valley]) (edgesAssignment source))
+    unless (coupledCreases entry) $
       it "preserves lengths for arbitrary independent hinge angles and refinements" $
         forAll (choose (-175, 175)) $ \angle ->
           forAll (chooseInt (0, 3)) $ \level ->
@@ -54,15 +54,18 @@ spec = describe "authored material-study cases" $ do
     source <- runIO $ keyFrame <$> (loadFoldFile (caseSource entry) >>= requireRight)
     forM_ (caseSteps entry) $ \step -> it (show (poseLabel step) ++ " meets contact and order requirements") $ do
       pose <- requireRight (buildCasePose 3 entry source step)
-      let expectedPairs
-            | meetingCreases entry = 28
-            | caseId entry == "kite" = 3
-            | otherwise = 10
+      let panels = length (poseFaces pose)
+          expectedPairs = panels * (panels - 1) `div` 2
       poseContact pose `shouldBe` Just (ContactCheck expectedPairs [] [] [] [])
-    it "accepts ordered contact when all flaps close to 180 degrees" $ do
-      let angles = if meetingCreases entry then edgesFoldAngle source else [if a == 0 then 0 else 180 | a <- edgesFoldAngle source]
-      pose <- requireRight (buildCasePose 1 entry source (PoseSpec "closed" angles))
-      poseContact pose `shouldSatisfy` maybe False contactPassed
+    -- The rabbit ear's moving panels exchange vertical order during the turn.
+    -- Its case declares only stable relations to the fixed paper; RabbitEarSpec
+    -- checks the complete closed stacking separately, including missing orders.
+    unless (caseId entry == "rabbit-ear") $
+      it "accepts ordered contact when all flaps close to 180 degrees" $ do
+        finalStep <- finalPose entry
+        let angles = map (\angle -> signum angle * 180) (poseAngles finalStep)
+        pose <- requireRight (buildCasePose 1 entry source (PoseSpec "closed" angles))
+        poseContact pose `shouldSatisfy` maybe False contactPassed
     it "reports the wrong folding side even without a panel crossing" $ do
       finalStep <- finalPose entry
       let angles = map negate (poseAngles finalStep)
@@ -108,8 +111,8 @@ requireRight :: (Show e) => Either e a -> IO a
 requireRight (Left err) = expectationFailure (show err) >> fail "fixture failed"
 requireRight (Right value) = pure value
 
-meetingCreases :: CaseSpec -> Bool
-meetingCreases entry = caseId entry `elem` ["square", "waterbomb"]
+coupledCreases :: CaseSpec -> Bool
+coupledCreases entry = caseId entry `elem` ["square", "waterbomb", "rabbit-ear"]
 
 finalPose :: CaseSpec -> IO PoseSpec
 finalPose entry = case reverse (caseSteps entry) of
