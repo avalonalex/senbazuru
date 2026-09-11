@@ -28,7 +28,7 @@ import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Stacking (defaultBudget)
-import Senbazuru.Render.Camera (View (..), bottomUp, depth, isometric, project)
+import Senbazuru.Render.Camera (View (..), basisFrom, bottomUp, depth, isometric, project)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, escapeXml, renderSvg)
 import StudyCase
@@ -90,11 +90,17 @@ writeBirdSequence destination = do
   source <- loadFoldFile (caseSource spec) >>= either (die . T.unpack . explain) pure
   file <- either (die . T.unpack . explain) pure (buildCaseSequence spec source)
   BL.writeFile (destination </> "bird-base-sequence.fold") (encode file)
-  mapM_ (writePage file) [("iso", isometric), ("bottom", bottomUp)]
+  above <- sideView (-1)
+  below <- sideView 1
+  mapM_ (writePage file) [("side-above", above), ("side-below", below), ("iso", isometric), ("bottom", bottomUp)]
   template <- TIO.readFile "study/fold-material/bird-sequence.html"
   let labels = T.concat ["<li>" <> escapeXml (poseLabel step) <> "</li>" | step <- caseSteps spec]
   TIO.writeFile (destination </> "bird-sequence.html") (T.replace "<!--STEPS-->" labels template)
   where
+    -- Look along the x axis with equal horizontal and vertical components:
+    -- 45 degrees above/below the sheet. Seeing the petal from its side makes
+    -- its lift clearer than looking straight along its line of symmetry.
+    sideView z = maybe (die "bird sequence side camera is invalid") pure (basisFrom (V3 (-1) 0 z) (V3 0 0 1))
     writePage file (name, basis) = do
       result <- either (die . T.unpack . explain) pure (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) False (otherFrames file))
       diagram <- maybe (die "bird sequence has no figures") pure result
