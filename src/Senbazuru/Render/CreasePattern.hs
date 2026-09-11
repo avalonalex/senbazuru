@@ -88,6 +88,7 @@ module Senbazuru.Render.CreasePattern
   ( creasePattern,
     creasePatternFrom,
     creasePatternAuto,
+    surfaceDiagram,
     defaultBasisFor,
     basisFor,
     defaultNotationFor,
@@ -131,6 +132,7 @@ import Senbazuru.Origami.Flat (FlatError (..))
 import Senbazuru.Origami.Layers (layerDepths, layerOf, paintOrder, showsTopSide)
 import Senbazuru.Origami.Stacking (Budget, defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (Motion (..))
+import Senbazuru.Origami.Surface (Surface, surfaceFrame)
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, View (..), basisForward, isometric, project, topDown, turnedBy)
 import Senbazuru.Render.Projected (projectedForm)
@@ -146,6 +148,13 @@ import Senbazuru.Render.Projected (projectedForm)
 -- faces do not overlap, so there are no layers to look for.
 creasePattern :: Theme -> Frame -> Either FoldError Diagram
 creasePattern theme = creasePatternFrom theme defaultBudget CreasePatternNotation topDown
+
+-- | Draw the current geometry of a shared material surface. Physical
+-- thickness is not a page displacement; the existing theme's offset remains
+-- an explicitly requested drawing aid. Material coordinates and directional
+-- contact requirements do not become camera-dependent painting orders.
+surfaceDiagram :: Theme -> Budget -> View -> Surface material -> Either FoldError Diagram
+surfaceDiagram theme budget view = creasePatternAuto theme budget view . surfaceFrame
 
 -- | Render one frame in the given notation, seen through the given basis.
 --

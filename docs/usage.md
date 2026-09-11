@@ -186,6 +186,21 @@ the shared geometry, later bending/contact constraints and opening controls
 they need. The name `--thickness` currently controls layer display spacing;
 it does not enable those mechanics.
 
+Library callers can pass `Origami.Surface` to `surfaceDiagram` and
+`renderSurfaceGlb`. A surface produced from folding retains its original-sheet
+coordinates; a standalone folded file leaves missing material coordinates
+unknown. Stored physical thickness is not used by either renderer as a display
+offset or by the current contact checks. Shared refinement currently requires
+convex planar panels with nondegenerate triangles in their first-corner fan;
+it does not triangulate arbitrary concave or curved panels.
+Separate pieces at a cut need distinct vertex ids. Refinement refuses a `C`
+edge still shared by two panels rather than welding its new midpoints.
+
+`surfaceFromFrame` recognises the study's `senbazuru:material_coords` extension;
+`materialFrame` writes it when original-sheet coordinates are known. This map
+survives an explicit material export/reload. Physical thickness and directional
+requirements are not yet serialised to FOLD.
+
 ## `crease`
 
 Draws a crease on a pattern and writes the whole document back out as FOLD.

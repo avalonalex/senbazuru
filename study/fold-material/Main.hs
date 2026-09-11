@@ -176,7 +176,7 @@ progressValue name which result =
       "steps" .= [object ["key" .= checkpointName name point, "iterations" .= completedIterations point, "error" .= checkpointError point, "contactError" .= maxOrderViolation (packetCheck which (checkpointMesh point))] | point <- checkpoints result]
     ]
 
-writeModel :: FilePath -> (String, Surface, FoldCase, Mesh) -> IO ()
+writeModel :: FilePath -> (String, Surface, FoldCase, MaterialMesh) -> IO ()
 writeModel destination (name, surface, which, mesh) = do
   TIO.writeFile (destination </> name ++ ".obj") (obj mesh)
   BL.writeFile (destination </> name ++ ".fold") (encode (foldValue surface which mesh))
@@ -190,10 +190,10 @@ coords (V3 x y z) = [x, y, z]
 indices :: Triangle -> [Int]
 indices (a, b, c) = [a, b, c]
 
-metrics :: Surface -> FoldCase -> Mesh -> Value
+metrics :: Surface -> FoldCase -> MaterialMesh -> Value
 metrics surface which mesh = meshMetrics (if surface == Rounded then Nothing else Just (packetCheck which mesh)) Nothing mesh
 
-meshMetrics :: Maybe PacketCheck -> Maybe ContactCheck -> Mesh -> Value
+meshMetrics :: Maybe PacketCheck -> Maybe ContactCheck -> MaterialMesh -> Value
 meshMetrics contact panels mesh =
   object
     [ "vertices" .= length (samples mesh),
@@ -216,7 +216,7 @@ contactValue result =
       "uncheckedTriangles" .= uncheckedTriangles result
     ]
 
-modelValue :: Surface -> FoldCase -> Mesh -> Value
+modelValue :: Surface -> FoldCase -> MaterialMesh -> Value
 modelValue surface which mesh =
   object
     [ "positions" .= map (coords . position) (samples mesh),
@@ -235,16 +235,16 @@ modelValue surface which mesh =
     extension = if surface == Sharp then sharpStretch else analyticStretch
     strain (a, b, c) = extension which ((materialU a + materialU b + materialU c) / 3) ((materialV a + materialV b + materialV c) / 3)
 
-triangleStrains :: Mesh -> [(Double, Double)]
+triangleStrains :: MaterialMesh -> [(Double, Double)]
 triangleStrains = mapMaybe principalStrains . resolvedTriangles
 
-measuredStrain :: Mesh -> [Double]
+measuredStrain :: MaterialMesh -> [Double]
 measuredStrain = map (\(small, large) -> if abs small > abs large then small else large) . triangleStrains
 
-foldValue :: Surface -> FoldCase -> Mesh -> Value
+foldValue :: Surface -> FoldCase -> MaterialMesh -> Value
 foldValue surface which = surfaceFoldValue (show surface ++ " " ++ show which) Nothing
 
-surfaceFoldValue :: String -> Maybe ContactCheck -> Mesh -> Value
+surfaceFoldValue :: String -> Maybe ContactCheck -> MaterialMesh -> Value
 surfaceFoldValue title contact mesh =
   object $
     [ "file_spec" .= (1.2 :: Double),
@@ -260,7 +260,7 @@ surfaceFoldValue title contact mesh =
     ]
       ++ maybe [] (\report -> ["senbazuru:panel_contact" .= report]) contact
 
-obj :: Mesh -> T.Text
+obj :: MaterialMesh -> T.Text
 obj mesh =
   T.unlines $
     ["# Connected material mid-surface study. No finite thickness or paper stiffness is solved."]
@@ -273,7 +273,7 @@ obj mesh =
 -- layers: a triangle's centre is not the depth of its whole footprint.
 -- This is specific to these almost-flat packets seen from above; it is not a
 -- general hidden-surface algorithm. The WebGL viewer uses a depth buffer.
-svg :: Surface -> FoldCase -> Mesh -> T.Text
+svg :: Surface -> FoldCase -> MaterialMesh -> T.Text
 svg surface which mesh = renderSvg page (Diagram (Box (V2 (-0.8) (-0.5)) (V2 0.8 0.7)) shapes)
   where
     page = defaultPage {pageWidth = 700, pageHeight = 525, pageMargin = 25, pageTitle = Just (T.pack (show which) <> " fold — geometric study")}
@@ -306,7 +306,7 @@ svg surface which mesh = renderSvg page (Diagram (Box (V2 (-0.8) (-0.5)) (V2 0.8
 
 -- | Only the sheet boundary and actual sharp creases get ink. Triangulation
 -- edges subdivide a surface for display; they are not additional crease marks.
-feature :: Surface -> FoldCase -> Sample -> Sample -> Bool
+feature :: Surface -> FoldCase -> MaterialSample -> MaterialSample -> Bool
 feature surface which a b =
   let along coordinate value = coordinate a == value && coordinate b == value
       boundary = any (\coordinate -> along coordinate 0 || along coordinate 1) [materialU, materialV]

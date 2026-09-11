@@ -17,8 +17,10 @@ import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.Polygon (clipConvex, signedArea)
 import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Surface qualified as Paper
 import Senbazuru.Origami.Visible (Region (..), VisibleForm (..))
 import Senbazuru.Render.Camera
+import Senbazuru.Render.CreasePattern (surfaceDiagram)
 import Senbazuru.Render.Projected
 import Senbazuru.Render.Steps
 import Senbazuru.Render.Svg
@@ -58,6 +60,10 @@ spec = describe "bird sequence through production SVG" $ do
     length (verticesCoords fr) `shouldBe` 13
     length (facesVertices fr) `shouldBe` 16
     forM_ [isometric, topDown, bottomUp] $ \basis -> do
+      -- The direct surface entry point takes the same checked geometry; its
+      -- material thickness must not shift visible regions in page space.
+      surface <- right (Paper.withFaceOrders (faceOrders fr) (poseSurface pose) >>= Paper.withPhysicalThickness (Just 0.001))
+      diagram <- right (surfaceDiagram defaultTheme defaultBudget (View (Just basis) 0) surface)
       result <- right (projectedForm basis fr (faceOrders fr))
       result `shouldSatisfy` isJust
       case result of
@@ -66,6 +72,9 @@ spec = describe "bird sequence through production SVG" $ do
           let pieces = [map (project basis) piece | region <- formRegions seen, piece <- regionPieces region]
               overlaps = [abs (signedArea (clipConvex a b)) | a : rest <- tails pieces, b <- rest]
           overlaps `shouldSatisfy` all (< 1e-8)
+          let drawnArea = sum [abs (signedArea ring) | Fill _ rings <- diagramShapes diagram, ring <- rings]
+              visibleArea = sum (map (abs . signedArea) pieces)
+          abs (drawnArea - visibleArea) `shouldSatisfy` (< 1e-8)
   forM_ [("iso", isometric), ("bottom", bottomUp)] $ \(name, basis) -> it ("renders a reviewed " ++ name ++ " sequence with one camera and scale") $ do
     result <- right (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) False (allFrames file))
     case result of

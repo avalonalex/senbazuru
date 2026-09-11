@@ -14,6 +14,7 @@ import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Surface qualified as Paper
 import StudyCase
 import Test.Hspec
 import Test.QuickCheck
@@ -57,6 +58,8 @@ spec = describe "authored material-study cases" $ do
       let panels = length (poseFaces pose)
           expectedPairs = panels * (panels - 1) `div` 2
       poseContact pose `shouldBe` Just (ContactCheck expectedPairs [] [] [] [])
+      fmap fst (Paper.surfaceLayerRequirements (poseSurface pose)) `shouldBe` fmap orderDirection (caseContact entry)
+      fmap (length . snd) (Paper.surfaceLayerRequirements (poseSurface pose)) `shouldBe` fmap (length . panelOrders) (caseContact entry)
     -- The rabbit ear's moving panels exchange vertical order during the turn.
     -- Its case declares only stable relations to the fixed paper; RabbitEarSpec
     -- checks the complete closed stacking separately, including missing orders.
@@ -123,7 +126,7 @@ finalPose entry = case reverse (caseSteps entry) of
   step : _ -> pure step
   [] -> expectationFailure "case has no folding states" >> fail "empty case"
 
-pointAt :: (Double, Double) -> Mesh -> Maybe V3
+pointAt :: (Double, Double) -> MaterialMesh -> Maybe V3
 pointAt (u, v) mesh = position <$> find (\s -> materialU s == u && materialV s == v) (samples mesh)
 
 near :: V3 -> V3 -> Bool

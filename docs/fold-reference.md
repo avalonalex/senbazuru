@@ -21,7 +21,12 @@ are `edges_vertices[7]`.
 
 Almost everything is optional; `{}` is a valid FOLD file. Unrecognised keys must
 not be choked on, and vendor extensions are namespaced with a colon
-(`"cpedit:page"`). senbazuru does not interpret them, but it does keep them.
+(`"cpedit:page"`). The decoder keeps them verbatim. The material-surface layer
+recognises our study's `senbazuru:material_coords`: one pair of finite original
+sheet coordinates per vertex. It validates that map separately from decoding
+FOLD, and `materialFrame` writes it from a surface with known material points.
+Other vendor fields remain uninterpreted. Physical thickness and directional
+layer requirements are currently library data, not additional FOLD fields.
 
 ## File metadata
 

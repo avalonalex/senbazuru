@@ -66,19 +66,19 @@ spec = describe "fold-length relaxation" $ do
             abs (areaRatio fitted - 1) `shouldSatisfy` (< 1e-5)
     relaxPacket defaultSettings Single (sharpMesh 4 Single) `shouldBe` relaxLengths defaultSettings (sharpMesh 4 Single)
   it "measures stretches in directions other than triangle edges" $ do
-    let a = Sample 0 0 (V3 0 0 0)
-        b = Sample 1 0 (V3 2 0 0)
-        c = Sample 0 1 (V3 0 0.5 0)
+    let a = materialSample 0 0 (V3 0 0 0)
+        b = materialSample 1 0 (V3 2 0 0)
+        c = materialSample 0 1 (V3 0 0.5 0)
     principalStrains (a, b, c) `shouldBe` Just (-0.5, 1)
   it "measures zero strain after a rigid rotation and translation" $ do
-    let a = Sample 0 0 (V3 3 4 5)
-        b = Sample 1 0 (V3 3 5 5)
-        c = Sample 0 1 (V3 3 4 6)
+    let a = materialSample 0 0 (V3 3 4 5)
+        b = materialSample 1 0 (V3 3 5 5)
+        c = materialSample 0 1 (V3 3 4 6)
     principalStrains (a, b, c) `shouldBe` Just (0, 0)
   it "rejects malformed meshes and numerical settings before projecting" $ do
-    let a = Sample 0 0 (V3 0 0 0)
-        b = Sample 1 0 (V3 1 0 0)
-        c = Sample 0 1 (V3 0 1 0)
+    let a = materialSample 0 0 (V3 0 0 0)
+        b = materialSample 1 0 (V3 1 0 0)
+        c = materialSample 0 1 (V3 0 1 0)
         triangle = Mesh [a, b, c] [(0, 1, 2)]
     relaxLengths (Settings (-1) 1e-5) triangle `shouldBe` Left InvalidSettings
     relaxLengths (Settings 10 (0 / 0)) triangle `shouldBe` Left InvalidSettings
@@ -88,5 +88,5 @@ spec = describe "fold-length relaxation" $ do
     relaxLengths defaultSettings (Mesh [a, b {position = position a}, c] [(0, 1, 2)]) `shouldBe` Left (CollapsedEdge 0 1)
     relaxLengths defaultSettings (Mesh [a {position = V3 (0 / 0) 0 0}, b, c] [(0, 1, 2)]) `shouldBe` Left (InvalidSample 0)
 
-meanPosition :: Mesh -> V3
+meanPosition :: MaterialMesh -> V3
 meanPosition mesh = (1 / fromIntegral (length (samples mesh))) *^ foldr ((^+^) . position) (V3 0 0 0) (samples mesh)

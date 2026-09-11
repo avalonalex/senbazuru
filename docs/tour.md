@@ -488,6 +488,19 @@ to determine how the pocket expands. Pressure and cavity modelling can follow
 a controlled opening. These operations are not implemented by the current
 exporter, and the schematic `puffed-square.fold` does not establish them.
 
+The study now builds a shared `Origami.Surface` in the library. It keeps
+material coordinates and current positions together, preserves crease and
+panel ids through refinement, and records physical thickness separately from
+drawing settings. `surfaceDiagram` and `renderSurfaceGlb` accept that surface;
+the base gallery and frog guide use it directly. A standalone folded FOLD file
+can still be rendered without an original-sheet map, but cannot use those
+missing coordinates for material measurements. The next stage replaces the
+glTF spacing described above; this representation change does not yet remove
+its crease gaps. Refinement supports convex planar panels whose first-corner
+fan has no zero-area triangles; concave and curved panels need further work.
+It preserves cuts whose sides already have distinct vertex ids and refuses
+refinement across an unsplit cut edge.
+
 ## What it creases
 
 Every other command turns a file into a picture. This one turns a file into

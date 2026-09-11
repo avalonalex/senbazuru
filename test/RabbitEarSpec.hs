@@ -256,7 +256,7 @@ alongZ faces (FaceOrder a b stacking) = do
   stacking `shouldSatisfy` (/= Unordered)
   pure (if (stacking == Above) == (z > 0) then (unFaceId b, unFaceId a) else (unFaceId a, unFaceId b))
 
-pointAt :: (Double, Double) -> Mesh -> IO V3
+pointAt :: (Double, Double) -> MaterialMesh -> IO V3
 pointAt (u, v) mesh = position <$> requireJust (find (\p -> abs (materialU p - u) < 1e-12 && abs (materialV p - v) < 1e-12) (samples mesh))
 
 requireRight :: (Show e) => Either e a -> IO a

@@ -39,6 +39,9 @@ One direction of flow, no cycles:
      |                               +--> Senbazuru.Origami.Folding
      |                               |    fold it: a Frame in, a folded Frame
      |                               |    out, straight back into this pipeline
+     |                               +--> Senbazuru.Origami.Surface
+     |                               |    shared material ids, current positions,
+     |                               |    crease topology and optional properties
      |                               +--> Senbazuru.Origami.Layers
      |                               |    which face is in front, and how deep
      |                               |    in the stack, given where the viewer
@@ -106,6 +109,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form, and the rigid motion that placed each face. |
+| `Senbazuru.Origami.Surface` | Shared material surface with original-sheet coordinates when known, current positions, crease/panel identities, coplanar orders, directional layer requirements and optional physical thickness. Owns the study's mesh types and shared midpoint refinement. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. Reads orders; never computes them. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. Also `layerOrderFor`, the one policy for *which* orders a frame gets — its own, or solved, or none — shared by the SVG and 3D backends. |
 | `Senbazuru.Origami.Step` | Two frames → what moved between them. |
@@ -115,7 +119,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Projected` | Convex open panels → viewing relations over their overlapping shadows → the existing flat visible-region machinery. Temporary projected frames never become material exports. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
-| `Senbazuru.Render.Gltf` | FOLD frame → glTF binary: a 3D model, with a flat-folded model's layers lifted apart so a depth buffer can tell them apart. |
+| `Senbazuru.Render.Gltf` | Shared surface → glTF binary. The FOLD entry point prepares faces and constructs a surface; legacy layer spacing is still applied only to the output buffer. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
 ## Where the files are
@@ -167,10 +171,9 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   gap the way it deals with a `.fold` file that left the same key out.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
-  is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` reads
-  `Fold.Query`'s faces directly. That is a stated exception, chosen over a 3D
-  intermediate representation for a single consumer; a second 3D format would
-  be the moment to build one. It still must not import `Render.CreasePattern`:
+  is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes
+  `Origami.Surface`. The study and `Render.CreasePattern.surfaceDiagram` use
+  that representation too. It still must not import `Render.CreasePattern`:
   what the two share — which layer order to use — is
   `Origami.Stacking.layerOrderFor`.
 
@@ -183,8 +186,9 @@ why each, is in [AGENTS.md](../AGENTS.md#testing).
 ## Material study
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
-with the project but not exported by the library. It generates sharp and rounded
-versions of two prescribed surfaces in `FoldMaterial`. `FoldRelaxation` corrects
+with the project. Its mesh types now live in `Origami.Surface`, while the
+experimental formulas and solvers remain outside the library. It generates
+sharp and rounded versions of two prescribed surfaces in `FoldMaterial`. `FoldRelaxation` corrects
 their material edge lengths; `FoldContact` supplies separation constraints and
 checks for violations of the known packet order. The coupled solve treats paper
 as having zero thickness and only handles these nearly flat study packets.
@@ -196,8 +200,9 @@ same samples. Nothing in the library imports these study modules; see
 a physically valid model.
 
 `StudyCase` adds authored rigid cases beside those controls. It consumes a FOLD
-`Frame` and an explicit angle state, reuses `Origami.Folding`, and builds a shared
-triangle mesh from the returned cut pattern. The gallery's JSON manifest is read
+`Frame` and an explicit angle state, reuses `Origami.Folding`, and constructs an
+`Origami.Surface` from the returned cut pattern and folded frame. The library's
+`refineSurface` builds its shared triangle mesh. The gallery's JSON manifest is read
 by the study executable; it is not a new library input format. Panel ids travel
 with the mesh so the viewer can split lighting at arbitrary crease directions.
 These cases do not use the packet-specific contact solver. `PanelContact` checks
@@ -228,10 +233,22 @@ the study. `Render.Projected` uses actual depth to order separated panels in
 each view, then reuses `Origami.Visible` for visible regions and edges; it
 knows nothing about bird petals or the study manifest.
 
-The next planned handoff is [#146](https://github.com/avalonalex/senbazuru/issues/146):
-one connected material surface shared by the study, SVG projection and 3D
-export. Physical thickness remains an optional property, distinct from display
-offsets. [The design note](notes/connected-paper-surface.md) records this
-direction and the later requirements for bending and opening a folded pocket.
-This is a planned replacement of the competing geometry paths, not an
-additional implemented layer in the pipeline above.
+The first stage of [#146](https://github.com/avalonalex/senbazuru/issues/146)
+is `Origami.Surface`. It stores material identity, current positions, crease
+topology and optional physical thickness. Folding provides `Surface V2` with a
+known original-sheet map; a standalone folded file can provide only
+`Surface (Maybe V2)`. Its missing coordinates stay unknown unless the file
+supplies the study's `senbazuru:material_coords` extension. The surface owns
+positions once and reconstructs its FOLD frame when a consumer needs one.
+
+`surfaceDiagram` and `renderSurfaceGlb` accept this shared surface. The glTF
+FOLD entry point also constructs it after preparing faces. The six-base SVG
+gallery and frog guide now consume surfaces directly. The study's mesh types
+and refinement no longer have separate implementations.
+
+This establishes the representation, not the renderer replacement. glTF still
+uses the old per-face display spacing in its output buffer, and the older SVG
+visibility fallbacks remain. Replacing that display policy, preserving material
+identity in graphics exports and refreshing the README's three-example gallery
+are the next stage of #146. [The design note](notes/connected-paper-surface.md)
+records the later bending and opening work.

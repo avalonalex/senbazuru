@@ -10,42 +10,25 @@
 -- most things that can show a mesh at all. It is the first output someone can
 -- turn over in their hands, and the fastest way to see that a fold went wrong.
 --
--- == The one thing that makes this more than a mesh writer
+-- == Current display policy
 --
--- __Paper has no thickness, and a depth buffer needs it to.__ Fold a square into
--- quarters and every one of its four faces lands in the same plane — the same
--- @z@, to the last bit. An SVG copes because it paints in an order, and the
--- order is the picture. A 3D renderer does not paint in order; it keeps, at
--- every pixel, whichever triangle is nearest, and when two triangles are at
--- exactly the same depth it keeps whichever one rounding favours. Coincident
--- layers come out as noise, a phenomenon called /z-fighting/, and a flat-folded
--- model is nothing but coincident layers.
+-- A zero-thickness quarter fold places four faces at the same depth. A generic
+-- 3D viewer has no FOLD layer orders and may alternate between those faces as
+-- its depth comparisons round differently: z-fighting. This exporter currently
+-- separates flat layers by their longest-chain layer number times a spacing.
+-- Zero spacing writes the current positions without asking for layer order.
+-- A cyclic stacking can only use that zero-spacing path today.
 --
--- So the layers are given a thickness. Each face is lifted along the sheet's
--- normal by its layer number times a small amount — the layer number being
--- 'Senbazuru.Origami.Layers.layerDepths', the longest chain of faces beneath
--- it, so that four faces stacked come out at heights 0, 1, 2 and 3 and two
--- faces lying side by side come out level. That is how thick paper actually
--- sits: a face with three sheets under it is three sheets up. The amount is a
--- thousandth of the model's size by default, which is about the thickness of
--- paper on a hand-sized square and comfortably more than any depth buffer
--- needs, and a caller may set it — including to zero, which asks for the paper
--- exactly as folded and skips the layer order entirely. A twist, whose layers
--- run in a circle and have no numbers, exports that way and no other.
+-- Each face owns its graphics corners so the spacing can differ between faces.
+-- This leaves gaps at shared creases. It is a legacy display convention, not a
+-- physical model of paper thickness. 'renderSurfaceGlb' consumes the shared
+-- material surface, then applies this convention only to the output buffer;
+-- its 'Thickness' argument is unrelated to the surface's optional physical
+-- thickness. Replacing the display convention is the next stage of #146.
 --
--- Lifting a face means every face has to __own its corners__. Two faces meet
--- along a crease and share its two vertices in the file; lifted to different
--- heights, that shared vertex has to be in two places at once. So the mesh is
--- built with a fresh copy of every corner for every face, and the crease
--- between layers 3 and 7 steps by four thicknesses — which is, again, exactly
--- what a stack of paper does.
---
--- Only a model folded /flat/ is separated this way, for now. Its normal is one
--- direction for the whole sheet, and its layer order is the one thing
--- senbazuru can work out or is given. A form with paper still in the air is
--- written as it stands, and where two of its faces happen to be coplanar they
--- will fight; the general case separates each coplanar group along its own
--- normal and is not built.
+-- Open forms are written without separation. Coplanar patches in an open
+-- model can still fight in a generic viewer. A connected representation alone
+-- does not solve that visibility problem.
 --
 -- == Two sides, two primitives
 --
@@ -69,7 +52,7 @@
 -- No crease lines are written either, and no animation: the per-face rigid
 -- transforms an animation would need come back from
 -- 'Senbazuru.Origami.Folding.foldFrameWith', but the intermediate angles that
--- close their loops do not exist yet (#56).
+-- close their loops require a suitable sequence (#56).
 --
 -- Because the front /is/ the file's winding, a file whose faces are all wound
 -- backwards comes out here with its two colours swapped, exactly as it does on
@@ -81,9 +64,10 @@
 -- Every other backend consumes a 'Senbazuru.Diagram.Diagram', and the
 -- architecture says new ones should. A 'Diagram' is two-dimensional — it has
 -- 'Senbazuru.Geometry.V2' and no depth — so a 3D exporter is the first thing
--- that genuinely cannot, and this module reads "Senbazuru.Fold.Query"\'s faces
--- directly. That is the stated exception to the rule, chosen over inventing a
--- 3D intermediate representation for a single consumer.
+-- that genuinely cannot. It consumes "Senbazuru.Origami.Surface" and obtains
+-- its validated panels through that representation. The FOLD entry point
+-- traces absent faces once before constructing the surface. Geometry stays
+-- shared until the display policy above assembles the graphics buffer.
 --
 -- == Things that read as mistakes and are not
 --
@@ -111,6 +95,7 @@
 module Senbazuru.Render.Gltf
   ( -- * Export
     renderGlb,
+    renderSurfaceGlb,
     Thickness (..),
 
     -- * Errors
@@ -143,8 +128,6 @@ import Senbazuru.Fold.Query
   ( Face (..),
     FoldError (..),
     FrameKind (..),
-    frameFaceOrders,
-    frameFaces,
     frameKind,
     frameVertices,
   )
@@ -154,6 +137,7 @@ import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace (norm)
 import Senbazuru.Origami.Layers (layerDepths, layerOf)
 import Senbazuru.Origami.Stacking (Budget, layerOrderFor)
+import Senbazuru.Origami.Surface (Surface, SurfaceError (..), surfaceFaces, surfaceFrame, surfaceFromFrame)
 import Senbazuru.Render.Camera (basisFrom, project)
 
 -- | How far apart to place the layers of a flat-folded model.
@@ -173,6 +157,7 @@ data GltfError
     -- error is the frame's own, so that everything a file can be wrong about
     -- reaches a caller as one type.
     GltfRefused !FoldError
+  | GltfSurfaceError !SurfaceError
   | -- | A face is not convex, and the fan this cuts each face into would
     -- cover paper that is not there. Ear clipping would handle it and is not
     -- built.
@@ -201,6 +186,7 @@ instance Explain GltfError where
         <> ", so there is no height to lift each face to; with a thickness of"
         <> " zero the model is written exactly as folded, circle and all"
     GltfRefused err -> explain err
+    GltfSurfaceError err -> explain err
     GltfConcaveFace (FaceId f) ->
       "face "
         <> tshow f
@@ -258,8 +244,22 @@ renderGlb budget thickness name fr0 = do
   -- do with one.
   fr <- refused (withPlanarFaces fr0)
   verts <- refused (frameVertices fr)
-  faces <- refused (frameFaces fr)
-  _ <- refused (frameFaceOrders fr)
+  mapM_ writable verts
+  sheet <- first surfaceError (surfaceFromFrame fr)
+  renderSurfaceGlb budget thickness name sheet
+  where
+    refused = first GltfRefused
+
+-- | Export a shared material surface. This first integration retains the
+-- legacy flat-layer DISPLAY spacing selected by 'Thickness'. It is computed
+-- only for the output buffer: it never changes the surface or reads its
+-- optional physical thickness as a spacing. Replacing this display policy is
+-- the next renderer step in #146; zero spacing exports the shared positions.
+renderSurfaceGlb :: Budget -> Thickness -> Maybe Text -> Surface material -> Either GltfError ByteString
+renderSurfaceGlb budget thickness name sheet = do
+  let fr = surfaceFrame sheet
+  verts <- first GltfRefused (frameVertices fr)
+  faces <- first surfaceError (surfaceFaces sheet)
   if null faces then Left GltfNoFaces else Right ()
   mapM_ writable verts
   let span' = modelSpan verts
@@ -275,12 +275,15 @@ renderGlb budget thickness name fr0 = do
   let corners f = [toGltfAxes (lift (fromIntegral (layer (faceId f)) * step) c) | c <- faceCorners f]
   pure (assemble name [(faceId f, map (packable quantum) (corners f)) | f <- faces])
   where
-    refused :: Either FoldError a -> Either GltfError a
-    refused = first GltfRefused
-
     lift dz (V3 x y z) = V3 x y (z + dz)
 
-    writable (V3 x y z) = mapM_ component [x, y, z]
+surfaceError :: SurfaceError -> GltfError
+surfaceError (SurfaceFrameError err) = GltfRefused err
+surfaceError err = GltfSurfaceError err
+
+writable :: V3 -> Either GltfError ()
+writable (V3 x y z) = mapM_ component [x, y, z]
+  where
     component c
       | isNaN c || isInfinite c || abs c > singleMax = Left (GltfUnwritableCoordinate c)
       | otherwise = Right ()

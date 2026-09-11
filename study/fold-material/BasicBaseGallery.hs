@@ -18,16 +18,17 @@ import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), diagramWithExte
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Explain (Explain, explain)
-import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
+import Senbazuru.Fold.Query (Face (..), frameFaces)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..))
-import Senbazuru.Geometry.Rigid (Rigid (..), after, applyRigid, identity, matIdentity, rotationAbout)
+import Senbazuru.Geometry.Rigid (Rigid (..), after, identity, matIdentity, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
 import Senbazuru.Origami.Stacking (defaultBudget, solveStacking)
+import Senbazuru.Origami.Surface qualified as Paper
 import Senbazuru.Render.Camera (View (..), basisFrom, bottomUp, topDown)
-import Senbazuru.Render.CreasePattern (creasePatternAuto)
+import Senbazuru.Render.CreasePattern (surfaceDiagram)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, escapeXml, renderSvg)
 import StudyCase (PoseSpec (..), StudyPose (..), buildPose)
@@ -47,29 +48,32 @@ writeBasicBases destination = do
 
 writeBase :: FilePath -> Base -> IO (T.Text, Value)
 writeBase destination base = do
-  (file, final, measurements) <- checkedBase base
+  (file, paper, measurements) <- checkedBase base
   let source = keyFrame file
+      final = Paper.surfaceFrame paper
       count = length (facesVertices final)
   BL.writeFile (path "cp.fold") (encode file)
   BL.writeFile (path "folded.fold") (encode file {keyFrame = final})
-  draw "cp" defaultTheme topDown source
+  original <- checked (Paper.surfaceFromFrame source)
+  draw "cp" defaultTheme topDown original
   forM_ [("front", topDown), ("reverse", bottomUp)] $ \(view, basis) -> do
-    draw view defaultTheme basis final
-    draw (view ++ "-layers") defaultTheme {themeLayerOffset = 4} basis final
+    draw view defaultTheme basis paper
+    draw (view ++ "-layers") defaultTheme {themeLayerOffset = 4} basis paper
   pure (card base count (count * (count - 1) `div` 2), measurements)
   where
     path suffix = destination </> baseId base ++ "-base-" ++ suffix
     draw name theme basis sheet = do
-      diagram <- checked (creasePatternAuto theme defaultBudget (View (Just basis) 0) sheet)
+      diagram <- checked (surfaceDiagram theme defaultBudget (View (Just basis) 0) sheet)
       TIO.writeFile (path (name ++ ".svg")) (renderSvg defaultPage {pageWidth = 400, pageHeight = 400, pageMargin = 36} diagram)
 
-checkedBase :: Base -> IO (FoldFile, Frame, Value)
+checkedBase :: Base -> IO (FoldFile, Paper.Surface V2, Value)
 checkedBase base = do
   source <- checked (baseFrame base)
   let file = baseFile base source
   result <- checked (foldFrameWith source)
   orders <- checked (solveStacking (foldedFrame result))
   let final = (foldedFrame result) {faceOrders = orders}
+  paper <- checked (Paper.surfaceFromFolded result {foldedFrame = final})
   pose <- checked (buildPose 1 source (PoseSpec "closed endpoint" (edgesFoldAngle source)))
   faces <- checked (frameFaces final)
   alongZ <- forM orders $ \(FaceOrder a b stacking) -> do
@@ -86,7 +90,7 @@ checkedBase base = do
     die (baseId base ++ ": endpoint failed material or contact checks")
   pure
     ( file,
-      final,
+      paper,
       object
         [ "base" .= baseId base,
           "vertices" .= length (verticesCoords final),
@@ -111,9 +115,8 @@ checkedBase base = do
 writeFrogGuide :: FilePath -> IO ()
 writeFrogGuide destination = do
   entries <- forM frogMilestones $ \(key, base) -> do
-    (file, final, report) <- checkedBase base
-    positions <- checked (frameVertices final)
-    let material = zip (verticesCoords (keyFrame file)) positions
+    (file, paper, report) <- checkedBase base
+    let material = [([materialU p, materialV p], position p) | p <- Paper.surfaceSamples paper]
         point xy = maybe (die "frog guide is missing a material landmark") pure (lookup xy material)
     origin <- point [0, 0]
     closed <- point [0.5, 0.5]
@@ -122,15 +125,15 @@ writeFrogGuide destination = do
         upright = rotationAbout zero (V3 0 0 1) (pi / 2 - atan2 dy dx)
         turnover = if key `elem` ["square", "one-squash"] then identity else rotationAbout zero (V3 0 1 0) pi
         placement = turnover `after` upright `after` Rigid matIdentity (zero ^-^ origin)
-        coords p = let V3 x y z = applyRigid placement p in [x, y, z]
-        presented = final {verticesCoords = map coords positions}
-    drawing <- checked (creasePatternAuto defaultTheme defaultBudget (View (Just topDown) 0) presented)
+    presented <- checked (Paper.transformSurface placement paper)
+    let frame = Paper.surfaceFrame presented
+    drawing <- checked (surfaceDiagram defaultTheme defaultBudget (View (Just topDown) 0) presented)
     let labels = [Label (Colour "#756956") 12 (V2 0 0.77) "Closed point", Label (Colour "#756956") 12 (V2 0 (-0.06)) "Four loose corners"]
         aligned = diagramWithExtent (Box (V2 (-0.4) (-0.09)) (V2 0.4 0.82)) (diagramShapes drawing ++ labels)
         path suffix = destination </> "frog-guide-" ++ key ++ suffix
     TIO.writeFile (path ".svg") (renderSvg defaultPage {pageWidth = 380, pageHeight = 420, pageMargin = 20} aligned)
-    BL.writeFile (path ".fold") (encode file {keyFrame = presented})
-    pure (file {keyFrame = presented}, report)
+    BL.writeFile (path ".fold") (encode file {keyFrame = frame})
+    pure (file {keyFrame = frame}, report)
   case entries of
     [] -> die "frog guide has no milestones"
     (first, _) : _ -> do
