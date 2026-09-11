@@ -158,6 +158,7 @@ test-suite senbazuru-test
     BaseCollapseSpec
     FlapPatternSpec
     RabbitEarSpec
+    PetalFoldSpec
     FoldContact
     FoldContactSpec
     StudyCase

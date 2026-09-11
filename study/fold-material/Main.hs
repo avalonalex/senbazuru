@@ -7,8 +7,9 @@ import Data.Aeson (Value, eitherDecode, encode, object, (.=))
 import Data.Aeson.Key qualified as Key
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (isAsciiLower, isDigit)
-import Data.List (nub, sortOn)
-import Data.Maybe (mapMaybe)
+import Data.IntMap.Strict qualified as IM
+import Data.List (foldl', nub, sortOn)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ord (Down (..))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -56,7 +57,7 @@ generate destination = do
       fitted = [(checkpointName name point, Relaxed, which, checkpointMesh point) | (name, which, result) <- runs, point <- checkpoints result]
       models = starting ++ fitted
       dataSet = object ([Key.fromString name .= modelValue surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= authoredValue pose | (_, poses) <- authored, (key, _, pose) <- poses])
-      catalog = object [Key.fromString (caseId spec) .= object ["title" .= caseTitle spec, "description" .= caseDescription spec, "source" .= caseSource spec, "contact" .= caseContact spec, "steps" .= [object ["key" .= key, "label" .= poseLabel step, "angles" .= poseAngles step] | (key, step, _) <- poses]] | (spec, poses) <- authored]
+      catalog = object [Key.fromString (caseId spec) .= object ["title" .= caseTitle spec, "description" .= caseDescription spec, "source" .= caseSource spec, "fixedPanel" .= caseFixedPanel spec, "contact" .= caseContact spec, "steps" .= [object ["key" .= key, "label" .= poseLabel step, "angles" .= poseAngles step] | (key, step, _) <- poses]] | (spec, poses) <- authored]
       progress = object [Key.fromString name .= progressValue name which result | (name, which, result) <- runs]
   mapM_ (writeModel destination) models
   mapM_ (writeAuthored destination) [pose | (_, poses) <- authored, pose <- poses]
@@ -93,12 +94,28 @@ writeAuthored destination (key, step, pose) = do
 authoredValue :: StudyPose -> Value
 authoredValue pose =
   let mesh = poseMesh pose
+      (axis, orders) = fromMaybe (V3 0 0 1, []) (poseOrders pose)
+      -- Each pass carries a lower panel's level to its upper neighbour.
+      -- Contact validation has already refused cycles; N panels need at most
+      -- N-1 passes. These levels only break depth ties in the viewer.
+      initial = IM.fromList [(i, 0 :: Int) | (i, _) <- poseFaces pose]
+      advance current = foldl' (\next (a, b) -> IM.insertWith max b (1 + IM.findWithDefault 0 a current) next) current orders
+      levels = foldl' (\current _ -> advance current) initial (poseFaces pose)
+      middle :: Double
+      middle = fromIntegral (maximum (0 : IM.elems levels)) / 2
+      rank i = fromIntegral (IM.findWithDefault 0 i levels) - middle
+      -- A crease belongs to both incident panels. Draw each copy at its own
+      -- depth level so viewing from either side reveals the right one.
+      featureLines = [(a, b, rank i) | ((a, b), owners) <- zip (poseLines pose) (poseLinePanels pose), i <- owners]
    in object
         [ "positions" .= map (coords . position) (samples mesh),
           "material" .= map (\s -> [materialU s, materialV s]) (samples mesh),
           "triangles" .= map indices (triangles mesh),
           "panels" .= posePanels pose,
-          "lines" .= [[coords a, coords b] | (a, b) <- poseLines pose],
+          "lines" .= [[coords a, coords b] | (a, b, _) <- featureLines],
+          "depthRanks" .= map rank (posePanels pose),
+          "lineDepthRanks" .= [r | (_, _, r) <- featureLines],
+          "orderDirection" .= coords ((1 / norm axis) *^ axis),
           "metrics" .= meshMetrics Nothing (poseContact pose) mesh,
           "strain" .= measuredStrain mesh,
           "measuredStrain" .= measuredStrain mesh

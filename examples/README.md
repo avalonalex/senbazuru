@@ -216,5 +216,6 @@ edge lengths, area, achieved crease magnitudes, a valid flat layer order and
 all panel pairs for contact. The material-study gallery also uses `fish-base.fold`
 for [fifteen states folding both rabbit ears in sequence](../docs/notes/two-rabbit-ears.md).
 The first ear stays nearly closed while the second moves, and the final view
-leaves both slightly open for inspection. The bird's petal-fold motion remains
-to be added.
+leaves both slightly open for inspection. The gallery also uses `bird-base.fold`
+for [eight states of the first petal fold](../docs/notes/petal-fold-motion.md),
+starting from a square base. The second petal stays folded down.

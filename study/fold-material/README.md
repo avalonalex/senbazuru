@@ -36,7 +36,7 @@ those positions and measurements.
 
 ## Folding states
 
-All seven examples have a **Folding state** selector. Single and double folds
+All eight examples have a **Folding state** selector. Single and double folds
 include the unfolded square and the first fold at 90° and 175°. Their final
 option returns to the original packet comparison, where **Shape** chooses the
 rounded, sharp or length-corrected surface. For the double fold this final
@@ -61,6 +61,8 @@ vertices or claim to simulate the motion between them.
 - `source`, an ordinary FOLD crease pattern, relative to the repository root;
 - `steps`, each with a `label` and a complete `angles` list in degrees, in the
   source file's `edges_vertices` order (including zeroes for boundary edges);
+- optional `fixedPanel: [u, v]`, a point strictly inside the material panel
+  to hold still instead of the largest panel;
 - optional `contact` requirements, with named panels, an ordering direction,
   and pairs written `[lower, upper]`.
 
@@ -72,9 +74,10 @@ angles to open its flaps upwards. The source file is unchanged.
 
 `StudyCase.buildPose` calls the production rigid folding code, uses its returned
 cut pattern, holds the largest panel still, and subdivides the resulting convex
-panels three times. Material indices are shared across creases; lighting normals
+panels three times. `buildCasePose` can instead hold the panel selected by
+`fixedPanel` still. Material indices are shared across creases; lighting normals
 are split by panel. Boundaries and actual creases get lines, triangle subdivisions
-do not. Adding another case of this kind needs a FOLD file and a manifest entry,
+do not. A source guide also gets a line when the current state bends it. Adding another case of this kind needs a FOLD file and a manifest entry,
 with no new shape formula or viewer branch.
 
 This first format is limited to a unit square with convex panels and explicitly
@@ -193,7 +196,7 @@ fixture's angles and landmarks. Tests reject changing either ear's crease
 independently, uniformly scaling the final angles, and folding towards the wrong
 side. See [the two-ear construction](../../docs/notes/two-rabbit-ears.md).
 These checks do not certify continuous self-collision freedom within an ear
-or finite thickness. Intermediate bird petal folds remain future work.
+or finite thickness. The first bird petal is described below.
 
 ## Fish and bird endpoints
 
@@ -201,10 +204,32 @@ The complete fish and bird bases have
 [crease patterns and verified closed endpoints](../../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps),
 with SVG previews and layer inspection views. `FlapPatternSpec` checks material
 lengths, shared vertices, achieved crease magnitudes, contact and flat layer
-orders. The fish now has both rabbit-ear stages in the gallery; the bird still
-has endpoint previews only. See
+orders. The fish has both rabbit-ear stages in the gallery; the bird has the
+first petal motion below as well as its complete endpoint preview. See
 [the endpoint note](../../docs/notes/fish-and-bird-endpoints.md) for why the bird
 needs two additional hinges beyond our old CP fixture.
+
+## The first bird-base petal
+
+Select **Bird base · first petal**. Eight states start with the collapsed square
+base and lift its south-east corner, folding both sides inward. The body and
+second petal stay still. The final inspection state leaves a five-degree hinge
+opening; the exact one-petal endpoint is also tested. The second petal is not
+part of this sequence yet.
+
+Seven crease angles change together. Four side creases close as the petal lifts,
+while two old square-base folds open towards zero. The moving tip is the largest
+panel, so this case uses `fixedPanel: [0.58, 0.4]` to hold the stationary base
+instead. See [the angle derivation](../../docs/notes/petal-fold-motion.md).
+
+`PetalFoldSpec` checks tip landmarks, stationary material, shared vertices,
+achieved crease magnitudes, material lengths and area, and all 120 panel pairs
+in a half-degree sweep and at random states. Its declared orders agree with
+both flat endpoints' unique stackings. The viewer uses those checked orders to
+break depth ties between touching faces and their feature lines, reversing the
+adjustment when viewed from underneath. It disables the adjustment if contact
+fails or in the original-sheet view. Exported geometry remains unchanged.
+These checks do not certify continuous collisions or finite paper thickness.
 
 ## Original fold controls
 

@@ -32,8 +32,8 @@ spec = describe "authored material-study cases" $ do
       abs (areaRatio mesh - 1) `shouldSatisfy` (< 1e-12)
       resolvedTriangles mesh `shouldSatisfy` all (\(a, b, c) -> norm (cross (position b ^-^ position a) (position c ^-^ position a)) > 1e-10)
       length (posePanels pose) `shouldBe` length (triangles mesh)
-      -- Flat guides subdivide the material but are omitted from the 3D edges.
-      length (poseLines pose) `shouldBe` length (filter (`elem` [Border, Mountain, Valley]) (edgesAssignment source))
+      -- Guides are omitted from the 3D edges only while they remain flat.
+      length (poseLines pose) `shouldBe` length [() | (assignment, angle) <- zip (edgesAssignment source) (poseAngles step), assignment `elem` [Border, Mountain, Valley] || abs angle > 1e-10]
     unless (coupledCreases entry) $
       it "preserves lengths for arbitrary independent hinge angles and refinements" $
         forAll (choose (-175, 175)) $ \angle ->
@@ -60,7 +60,9 @@ spec = describe "authored material-study cases" $ do
     -- The rabbit ear's moving panels exchange vertical order during the turn.
     -- Its case declares only stable relations to the fixed paper; RabbitEarSpec
     -- checks the complete closed stacking separately, including missing orders.
-    unless (caseId entry == "rabbit-ear") $
+    -- The petal also unfolds two old creases to zero, so rounding every active
+    -- crease to 180 would describe a different, incompatible state.
+    unless (caseId entry `elem` ["rabbit-ear", "bird-petal"]) $
       it "accepts ordered contact when all flaps close to 180 degrees" $ do
         finalStep <- finalPose entry
         let angles = map (\angle -> signum angle * 180) (poseAngles finalStep)
@@ -112,7 +114,7 @@ requireRight (Left err) = expectationFailure (show err) >> fail "fixture failed"
 requireRight (Right value) = pure value
 
 coupledCreases :: CaseSpec -> Bool
-coupledCreases entry = caseId entry `elem` ["square", "waterbomb", "rabbit-ear"]
+coupledCreases entry = caseId entry `elem` ["square", "waterbomb", "rabbit-ear", "bird-petal"]
 
 finalPose :: CaseSpec -> IO PoseSpec
 finalPose entry = case reverse (caseSteps entry) of
