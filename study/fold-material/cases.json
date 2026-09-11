@@ -70,5 +70,63 @@
       {"label": "Lower-left corner · 90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 175, 90]},
       {"label": "Lower-left corner · 175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 175, 175, 175, 175]}
     ]
+  },
+  {
+    "id": "square",
+    "title": "Square base",
+    "source": "examples/square-base.fold",
+    "description": "Six creases collapse together around one shared centre. At intermediate states, the valleys fold further than the mountains to keep every panel joined. Two guide segments remain flat. The final state leaves a small opening so the layers are visible.",
+    "contact": {
+      "direction": [0, 0, 1],
+      "panels": [
+        {"name": "south-west", "at": [0.3, 0.1]},
+        {"name": "south-east", "at": [0.7, 0.1]},
+        {"name": "east-south", "at": [0.9, 0.3]},
+        {"name": "east-north", "at": [0.9, 0.7]},
+        {"name": "north-east", "at": [0.7, 0.9]},
+        {"name": "north-west", "at": [0.3, 0.9]},
+        {"name": "west-north", "at": [0.1, 0.7]},
+        {"name": "west-south", "at": [0.1, 0.3]}
+      ],
+      "orders": [["west-north", "west-south"], ["west-south", "south-west"], ["south-west", "south-east"], ["north-west", "north-east"], ["north-east", "east-north"], ["east-north", "east-south"]]
+    },
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+      {"label": "Collapse · mountains −30°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, -30, 41.5071419673696, 0, 41.5071419673696, -30, 41.5071419673696, 0, 41.5071419673696]},
+      {"label": "Collapse · mountains −60°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, -60, 78.46304096718451, 0, 78.46304096718451, -60, 78.46304096718451, 0, 78.46304096718451]},
+      {"label": "Collapse · mountains −90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, -90, 109.47122063449069, 0, 109.47122063449069, -90, 109.47122063449069, 0, 109.47122063449069]},
+      {"label": "Collapse · mountains −120°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, -120, 135.58469140280704, 0, 135.58469140280704, -120, 135.58469140280704, 0, 135.58469140280704]},
+      {"label": "Collapse · mountains −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, -150, 158.54283375678187, 0, 158.54283375678187, -150, 158.54283375678187, 0, 158.54283375678187]},
+      {"label": "Nearly closed · mountains −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, -175, 176.46334402094888, 0, 176.46334402094888, -175, 176.46334402094888, 0, 176.46334402094888]}
+    ]
+  },
+  {
+    "id": "waterbomb",
+    "title": "Waterbomb base",
+    "source": "examples/waterbomb-base.fold",
+    "description": "Six creases collapse together around one shared centre. At intermediate states, the valleys fold further than the mountains to keep every panel joined. Two guide segments remain flat. The final state leaves a small opening so the layers are visible.",
+    "contact": {
+      "direction": [0, 0, 1],
+      "panels": [
+        {"name": "south-west", "at": [0.3, 0.1]},
+        {"name": "south-east", "at": [0.7, 0.1]},
+        {"name": "east-south", "at": [0.9, 0.3]},
+        {"name": "east-north", "at": [0.9, 0.7]},
+        {"name": "north-east", "at": [0.7, 0.9]},
+        {"name": "north-west", "at": [0.3, 0.9]},
+        {"name": "west-north", "at": [0.1, 0.7]},
+        {"name": "west-south", "at": [0.1, 0.3]}
+      ],
+      "orders": [["south-west", "west-south"], ["west-south", "west-north"], ["west-north", "north-west"], ["south-east", "east-south"], ["east-south", "east-north"], ["east-north", "north-east"]]
+    },
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+      {"label": "Collapse · mountains −30°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 41.5071419673696, 0, 41.5071419673696, -30, 41.5071419673696, 0, 41.5071419673696, -30]},
+      {"label": "Collapse · mountains −60°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 78.46304096718451, 0, 78.46304096718451, -60, 78.46304096718451, 0, 78.46304096718451, -60]},
+      {"label": "Collapse · mountains −90°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 109.47122063449069, 0, 109.47122063449069, -90, 109.47122063449069, 0, 109.47122063449069, -90]},
+      {"label": "Collapse · mountains −120°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 135.58469140280704, 0, 135.58469140280704, -120, 135.58469140280704, 0, 135.58469140280704, -120]},
+      {"label": "Collapse · mountains −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 158.54283375678187, 0, 158.54283375678187, -150, 158.54283375678187, 0, 158.54283375678187, -150]},
+      {"label": "Nearly closed · mountains −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 176.46334402094888, 0, 176.46334402094888, -175, 176.46334402094888, 0, 176.46334402094888, -175]}
+    ]
   }
 ]

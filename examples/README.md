@@ -157,5 +157,6 @@ Both checks report one interior vertex with no violations. That alone is not
 proof of a valid folded sheet: `BasePatternSpec` also checks shared corners,
 preserved lengths, the expected collapsed coordinates and exactly one valid
 flat layer order. See [why a pre-crease can stay flat](../docs/notes/precreases-and-target-states.md).
-These fixtures establish the endpoints for the material study; intermediate
-collapse states and contact checks along that motion remain future work.
+These fixtures establish the endpoints for the material study. Its
+[square and waterbomb gallery states](../study/fold-material/README.md#square-and-waterbomb-collapse)
+sample a compatible symmetric collapse, with contact checks at each state.

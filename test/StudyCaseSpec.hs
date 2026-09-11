@@ -1,7 +1,7 @@
 -- | Geometry assertions independent of the viewer and of its chosen camera.
 module StudyCaseSpec (spec) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, unless)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy qualified as BL
 import Data.Either (isLeft)
@@ -32,14 +32,16 @@ spec = describe "authored material-study cases" $ do
       abs (areaRatio mesh - 1) `shouldSatisfy` (< 1e-12)
       resolvedTriangles mesh `shouldSatisfy` all (\(a, b, c) -> norm (cross (position b ^-^ position a) (position c ^-^ position a)) > 1e-10)
       length (posePanels pose) `shouldBe` length (triangles mesh)
-      length (poseLines pose) `shouldBe` length (edgesVertices source)
-    it "preserves lengths for arbitrary intermediate hinge angles and refinements" $
-      forAll (choose (-175, 175)) $ \angle ->
-        forAll (chooseInt (0, 3)) $ \level ->
-          let angles = if caseId entry == "double" then replicate 8 0 ++ [angle, 0, angle, 0] else [if a == 0 then 0 else angle | a <- edgesFoldAngle source]
-           in case buildPose level source (PoseSpec "arbitrary" angles) of
-                Left err -> counterexample (show (explain err)) False
-                Right pose -> property (all ((< 1e-12) . abs) (edgeStrains (poseMesh pose)))
+      -- The new bases have two flat guide segments, omitted from the 3D edges.
+      length (poseLines pose) `shouldBe` (if meetingCreases entry then 14 else length (edgesVertices source))
+    unless (meetingCreases entry) $
+      it "preserves lengths for arbitrary independent hinge angles and refinements" $
+        forAll (choose (-175, 175)) $ \angle ->
+          forAll (chooseInt (0, 3)) $ \level ->
+            let angles = if caseId entry == "double" then replicate 8 0 ++ [angle, 0, angle, 0] else [if a == 0 then 0 else angle | a <- edgesFoldAngle source]
+             in case buildPose level source (PoseSpec "arbitrary" angles) of
+                  Left err -> counterexample (show (explain err)) False
+                  Right pose -> property (all ((< 1e-12) . abs) (edgeStrains (poseMesh pose)))
     it "refuses an incomplete angle list instead of truncating it" $
       buildPose 1 source (PoseSpec "missing angles" []) `shouldSatisfy` isLeft
     it "refuses a non-finite crease angle" $ do
@@ -52,19 +54,24 @@ spec = describe "authored material-study cases" $ do
     source <- runIO $ keyFrame <$> (loadFoldFile (caseSource entry) >>= requireRight)
     forM_ (caseSteps entry) $ \step -> it (show (poseLabel step) ++ " meets contact and order requirements") $ do
       pose <- requireRight (buildCasePose 3 entry source step)
-      let expectedPairs = if caseId entry == "kite" then 3 else 10
+      let expectedPairs
+            | meetingCreases entry = 28
+            | caseId entry == "kite" = 3
+            | otherwise = 10
       poseContact pose `shouldBe` Just (ContactCheck expectedPairs [] [] [] [])
     it "accepts ordered contact when all flaps close to 180 degrees" $ do
-      let angles = [if a == 0 then 0 else 180 | a <- edgesFoldAngle source]
+      let angles = if meetingCreases entry then edgesFoldAngle source else [if a == 0 then 0 else 180 | a <- edgesFoldAngle source]
       pose <- requireRight (buildCasePose 1 entry source (PoseSpec "closed" angles))
       poseContact pose `shouldSatisfy` maybe False contactPassed
     it "reports the wrong folding side even without a panel crossing" $ do
-      let angles = [if a == 0 then 0 else -175 | a <- edgesFoldAngle source]
+      finalStep <- finalPose entry
+      let angles = map negate (poseAngles finalStep)
       pose <- requireRight (buildCasePose 1 entry source (PoseSpec "wrong side" angles))
       poseContact pose `shouldSatisfy` maybe False (not . null . reversedOrders)
       fmap crossingPanels (poseContact pose) `shouldBe` Just []
     it "keeps contact checks independent of mesh refinement and edge numbering" $ do
-      let angles = [if a == 0 then 0 else 175 | a <- edgesFoldAngle source]
+      finalStep <- finalPose entry
+      let angles = poseAngles finalStep
           reordered = source {edgesVertices = reverse (edgesVertices source), edgesAssignment = reverse (edgesAssignment source), edgesFoldAngle = reverse (edgesFoldAngle source)}
       coarse <- requireRight (buildCasePose 0 entry source (PoseSpec "coarse" angles))
       fine <- requireRight (buildCasePose 3 entry reordered (PoseSpec "fine" (reverse angles)))
@@ -100,6 +107,14 @@ spec = describe "authored material-study cases" $ do
 requireRight :: (Show e) => Either e a -> IO a
 requireRight (Left err) = expectationFailure (show err) >> fail "fixture failed"
 requireRight (Right value) = pure value
+
+meetingCreases :: CaseSpec -> Bool
+meetingCreases entry = caseId entry `elem` ["square", "waterbomb"]
+
+finalPose :: CaseSpec -> IO PoseSpec
+finalPose entry = case reverse (caseSteps entry) of
+  step : _ -> pure step
+  [] -> expectationFailure "case has no folding states" >> fail "empty case"
 
 pointAt :: (Double, Double) -> Mesh -> Maybe V3
 pointAt (u, v) mesh = position <$> find (\s -> materialU s == u && materialV s == v) (samples mesh)

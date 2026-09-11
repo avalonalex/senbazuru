@@ -23,6 +23,7 @@ read the Haddock module headers; for the domain, start with
 | [folding-by-transforms.md](folding-by-transforms.md) | How angles become positions: one rigid matrix per face, over a spanning tree |
 | [fold-angles-are-the-state.md](fold-angles-are-the-state.md) | Positions are derived from angles, and neither can be naively interpolated |
 | [precreases-and-target-states.md](precreases-and-target-states.md) | Square and waterbomb bases share eight guide segments, but only six bend in each chosen collapsed state |
+| [symmetric-base-collapse.md](symmetric-base-collapse.md) | A symmetric square/waterbomb collapse links four valley angles to two mountain angles without stretching the sheet |
 | [creasing-through-layers.md](creasing-through-layers.md) | Creasing a packet of layers alternates mountain and valley, because alternate layers are upside down |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
 | [taco-taco.md](taco-taco.md) | Every constraint on the layer order is one of four local rules |

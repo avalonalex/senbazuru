@@ -34,10 +34,11 @@ angles no sheet of paper can adopt.
 
 The folding algorithm reaches every face along a spanning tree, which by
 definition contains no cycles — so it cuts exactly these loops. It will
-happily produce positions for any angles you hand it, valid or not: each vertex
-simply takes whichever path the traversal reached it by. Inconsistent angles do
-not raise an error, they silently tear the model — geometry that looks plausible
-at a glance and is wrong.
+produce tentative positions for any angles you hand it, valid or not: each
+vertex takes whichever path the traversal reached it by. Without further
+checks, inconsistent angles silently tear the model. Our folding engine checks
+both shared positions and the achieved crease angles after the traversal, and
+refuses inconsistent states; see [folding-by-transforms.md](folding-by-transforms.md).
 
 ## The tractable corner
 
@@ -46,8 +47,11 @@ formulas you can write down. That is why the literature singles them out — the
 one case where a continuous folding motion has an explicit answer rather than
 needing to be solved for.
 
-Everything larger needs either a numerical solve for angles satisfying every
-loop at once, or a physical simulation that nudges the model until it settles.
+For larger vertices, a general solution may need a numerical solve for angles
+satisfying every loop at once, or a physical simulation that nudges the model
+until it settles. Special symmetry can still give an explicit path: our
+[square and waterbomb collapse](symmetric-base-collapse.md) links the six
+active crease angles through one parameter.
 See
 [no-sequence-solver.md](no-sequence-solver.md) is the neighbouring problem.
 
