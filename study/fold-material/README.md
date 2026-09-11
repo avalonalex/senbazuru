@@ -36,7 +36,7 @@ those positions and measurements.
 
 ## Folding states
 
-All four examples have a **Folding state** selector. Single and double folds
+All six examples have a **Folding state** selector. Single and double folds
 include the unfolded square and the first fold at 90° and 175°. Their final
 option returns to the original packet comparison, where **Shape** chooses the
 rounded, sharp or length-corrected surface. For the double fold this final
@@ -125,17 +125,39 @@ deliberately reversed folds. Independent polygon fixtures check 3D crossings,
 hinge contact, coplanar order, upright panels and rotated measuring directions.
 See [the note on sharing material vertices](../../docs/notes/sharing-material-vertices.md).
 
-## Next: creases that meet
+## Square and waterbomb collapse
 
 The [square and waterbomb crease patterns](../../examples/README.md#square-and-waterbomb-bases-meeting-creases)
-establish the next two examples. Both have a shared centre where six creases
-bend and two guide segments stay flat in the chosen collapsed state. The
-production folding and stacking code already verifies their final square and
-triangle shapes; `BasePatternSpec` checks those endpoints and material lengths.
-These are source fixtures and SVG previews, not additional gallery states yet.
-The next step is to find compatible intermediate crease angles, then check
-panel contact and layer order at those states. Scaling every crease angle by
-the same fraction is not a general way to close the loop around the centre.
+now have seven gallery states each. Both have a shared centre where six creases
+bend and two guide segments stay flat. Select **Square base** or **Waterbomb
+base**, then choose the unfolded sheet or mountain magnitudes 30°, 60°, 90°,
+120°, 150° and 175°. The last is nearly closed, leaving room to see the layers.
+
+These states follow a symmetric collapse: two equal mountain angles and four
+equal valley angles, with the valleys folded further. At mountains −90°, the
+valleys are +109.471220634°, not +90°. The explicit angle lists in `cases.json`
+come from [this relationship](../../docs/notes/symmetric-base-collapse.md).
+The existing folding engine derives positions and refuses states that fail
+either shared-vertex closure or the requested crease angles. No vertex
+interpolation or change to the case format is involved.
+
+Each case names all eight source triangles, including the pairs on either side
+of a flat guide. Names such as `south-west` identify the western triangle along
+the original south edge. Six above/below declarations encode two chains of four
+triangles from the fixture's final flat stacking; they use the fixed panel's
++z direction and stay independent of the camera. All 28 pairs pass crossing
+checks at every recorded state, and the declared orders pass wherever they
+overlap. Reports and angles use the same viewer and export fields as the other
+authored bases.
+
+`BaseCollapseSpec` checks the formula against the manifest, random intermediate
+angles and refinements, an integer-degree sweep including 0° and 180°, and
+independently derived distances between material points. It also checks that
+uniformly scaling all final angles, or changing one crease independently, is
+rejected. `StudyCaseSpec` checks all 14 new viewer states, closed endpoint contact,
+and the failures from reversing the folding side. These are sampled states of
+a chosen symmetric path; continuous collision certification, paper bending and
+finite thickness remain outside this study.
 
 ## Original fold controls
 

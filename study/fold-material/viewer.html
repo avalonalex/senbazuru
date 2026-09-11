@@ -17,7 +17,7 @@ canvas { display: block; width: 100%; height: 510px; touch-action: none; backgro
 [hidden] { display: none !important; }
 #status { font-weight: 550; }
 #comparison-labels { display: grid; grid-template-columns: 1fr 1fr; text-align: center; padding: 12px 0; background: #e7dfd1; color: #65584a; }
-#case-buttons { display: inline-flex; gap: 12px; }
+#case-buttons { display: inline-flex; flex-wrap: wrap; gap: 12px; }
 #contact { color: #8d3d22; }
 #contact[data-state=passed] { color: #305f51; }
 #metrics { display: flex; gap: 36px; flex-wrap: wrap; padding: 20px 0; border-bottom: 1px solid #cbbfad; }
@@ -39,7 +39,7 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 <header>
   <small>Senbazuru · material study / #114</small>
   <h1>One sheet, several folds</h1>
-  <p>Explore single and double folds, then kite and blintz bases. The new bases follow named angle states on one connected sheet; the double fold compares a prescribed shape with its length and layer-order correction.</p>
+  <p>Explore single and double folds, then kite, blintz, square and waterbomb bases. Follow named folding states on one connected sheet; the double fold also compares a prescribed shape with its length and layer-order correction.</p>
 </header>
 <div class="controls" aria-label="Model and view">
   <button id="single" aria-pressed="false">1 · Single fold</button>
@@ -81,7 +81,7 @@ footer { padding: 24px 0; color: #6d6359; font-size: 14px; }
 <p id="downloads"></p>
 <details>
   <summary>What this experiment measures</summary>
-  <p>Kite and blintz are authored rigid cases: their folding states supply angles to the existing folding engine. Each angle list includes every source edge, and the largest panel stays still. Material indices are shared across creases while lighting normals remain separate. Each state checks all rigid panel pairs for 3D crossings and compares declared above/below requirements. Coplanar overlap without an order is reported as unresolved. These checks do not adjust angles or certify the motion between states. The remaining details describe the original single/double controls.</p>
+  <p>The four bases supply crease angles to the existing folding engine. Square and waterbomb use a symmetric collapse: their four valleys fold further than their two mountains so neighbouring panels stay joined. Each angle list includes every source edge, and the largest panel stays still. Material indices are shared across creases while lighting normals remain separate. Each state checks all rigid panel pairs for 3D crossings and compares declared above/below requirements. Coplanar overlap without an order is reported as unresolved. These checks do not adjust angles or certify the motion between states. The remaining details describe the original single/double controls.</p>
   <p>The length comparison starts with the sharp examples. A coordinated least-squares correction reduces edge-length errors and penalises reversed layers. A line search keeps each accepted iteration from increasing that combined objective. The iteration selector displays recorded solutions, never interpolated vertex positions. A zero-iteration single fold is expected: its rigid panels already preserve lengths.</p>
   <p>For the before/after comparison, strain is measured from each triangle's original material coordinates and current positions. Its two principal strains describe the most compressed and most extended directions. The color uses whichever has larger magnitude; the cards still report actual mesh edges. The contact constraint keeps this nearly flat packet in its prescribed layer order; bending energy remains unsolved.</p>
   <p>The packet check compares the heights of triangles wherever their footprints overlap, using the expected bottom-to-top layer order. A lower layer rising above an upper one is an ordering violation. Length correction alone produced an ochre patch at the crease intersection where layers crossed. The coupled correction also penalises those crossings. This check applies to these nearly flat packets only: it does not check folds within a panel or motion between iterations. Once the packet check passes, the viewer breaks almost-equal depth ties using that same layer order, reversing it when viewed from underneath. This only adjusts display depth, not the mesh positions. States that fail the check receive no tie-break, so their crossings remain visible. Solver checkpoints have no SVG preview because the current SVG painter assumes a fixed layer order and would hide crossings in unfinished iterations.</p>

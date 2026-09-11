@@ -152,6 +152,7 @@ test-suite senbazuru-test
   hs-source-dirs:     test, study/fold-material
   main-is:            Spec.hs
   other-modules:
+    BaseCollapseSpec
     FoldContact
     FoldContactSpec
     StudyCase
