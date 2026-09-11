@@ -66,7 +66,7 @@ panel energy is below `2 × 10⁻¹⁶`. Its positions are solved, not written f
 the known rigid answer. Both double-fold runs ask every crease for 170° in
 its assigned direction. Their final measurements are:
 
-| Panel stiffness | First crease magnitude | Largest panel bend | Relative edge error | Crease energy | Panel energy |
+| Panel stiffness | First crease magnitude | Largest internal-edge bend | Relative edge error | Crease energy | Panel energy |
 | --- | --- | --- | --- | --- | --- |
 | 0.2 | 173.81–177.16° | 2.017° | `7.47 × 10⁻⁷` | 0.005364 | 0.002750 |
 | 5 | 179.30–179.71° | 0.205° | `2.82 × 10⁻⁷` | 0.013712 | 0.000726 |

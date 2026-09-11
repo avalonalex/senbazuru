@@ -98,7 +98,7 @@ function initialize() {
     }
     const rows=[['First crease · angle magnitude',range(start,'FirstCrease'),range(final,'FirstCrease'),run.firstTarget.toFixed(0)+'°'],
       ['Second crease · angle magnitude',range(start,'SecondCrease'),range(final,'SecondCrease'),range(final,'SecondCrease')==='—'?'—':run.secondTarget.toFixed(0)+'°'],
-      ['Bend inside panels',range(start,'PanelBend'),range(final,'PanelBend'),'0°'],
+      ['Panel bend · per triangle edge',range(start,'PanelBend'),range(final,'PanelBend'),'0°'],
       ['Crease energy',start.creaseEnergy.toFixed(6),final.creaseEnergy.toFixed(6),'minimum'],
       ['Panel bending energy',start.panelEnergy.toFixed(6),final.panelEnergy.toFixed(6),'minimum'],
       ['Principal strain · all directions',`${percent(start.minPrincipalStrain)} to ${percent(start.maxPrincipalStrain)}`,`${percent(final.minPrincipalStrain)} to ${percent(final.maxPrincipalStrain)}`,'near zero']];
