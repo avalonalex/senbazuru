@@ -209,6 +209,18 @@ orders and feature-edge ownership let the viewer break depth ties after contact
 passes, without changing exported material. Reports are exported and displayed;
 they do not change the prescribed pose or certify motion between states.
 
+`BasicBases` constructs six additional traditional flat endpoints from material
+crease segments, using the production crossing cutter and face tracer.
+`BasicBaseGallery` verifies their material and contact measurements and passes
+the folded frames and solved orders to `Render.CreasePattern` for front/reverse
+SVGs. The fixture tests independently identify their material landmarks and
+check visible coverage. These modules prescribe endpoints only, with no new
+fold-motion machinery in the library. The frog folding guide adds five flat
+checkpoints, including an open-page arrangement that exposes the working
+petal. `BasicBaseGallery` uses the closed and loose material tips to orient
+each packet, then exports an ordinary FOLD sequence. `Render.Steps` draws its
+five numbered figures through one camera at one scale, as for the bird page.
+
 The first production handoff is `examples/bird-base-sequence.fold`.
 `StudyCase.buildCaseSequence` writes unrefined panels and ordinary coplanar
 `faceOrders` after contact passes. The CLI reads that file without importing

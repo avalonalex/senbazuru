@@ -28,6 +28,8 @@ extra-source-files:
   study/fold-material/README.md
   study/fold-material/viewer.html
   study/fold-material/bird-sequence.html
+  study/fold-material/basic-bases.html
+  study/fold-material/frog-instructions.html
   study/fold-material/cases.json
   examples/book-base.fold
   examples/quarter-fold.fold
@@ -39,6 +41,12 @@ extra-source-files:
   examples/bird-base.fold
   examples/bird-base-sequence.fold
   examples/bird-base.cp
+  examples/helmet-base.fold
+  examples/organ-base.fold
+  examples/frog-base.fold
+  examples/boat-base.fold
+  examples/pig-base.fold
+  examples/diamond-base.fold
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.opx
@@ -141,7 +149,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact
+  other-modules: FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -158,6 +166,9 @@ test-suite senbazuru-test
   hs-source-dirs:     test, study/fold-material
   main-is:            Spec.hs
   other-modules:
+    BasicBaseGallery
+    BasicBases
+    BasicBaseSpec
     BaseCollapseSpec
     BirdSequenceSpec
     FlapPatternSpec

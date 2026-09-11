@@ -1,0 +1,51 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (constructed here; see study/fold-material/BasicBases.hs)",
+  "file_title": "Diamond base",
+  "frame_title": "Diamond base",
+  "frame_description": "Fold a kite, then fold its opposite two edges to the same diagonal through both layers. The crease direction reverses on the turned-over layer.",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "vertices_coords": [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [1, 0.41421356237309515],
+    [0.41421356237309515, 1],
+    [1, 0.17157287525381],
+    [0.7071067811865475, 0.29289321881345254],
+    [0.29289321881345254, 0.7071067811865475],
+    [0.17157287525381, 1]
+  ],
+  "edges_vertices": [
+    [0, 1],
+    [1, 6],
+    [6, 4],
+    [4, 2],
+    [2, 5],
+    [5, 9],
+    [9, 3],
+    [3, 0],
+    [0, 7],
+    [7, 4],
+    [0, 8],
+    [8, 5],
+    [6, 7],
+    [2, 7],
+    [2, 8],
+    [9, 8]
+  ],
+  "edges_assignment": ["B", "B", "B", "B", "B", "B", "B", "B", "V", "V", "V", "V", "M", "V", "V", "M"],
+  "edges_foldAngle": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, 180, 180, -180, 180, 180, -180],
+  "faces_vertices": [
+    [0, 1, 6, 7],
+    [6, 4, 7],
+    [4, 2, 7],
+    [2, 5, 8],
+    [5, 9, 8],
+    [9, 3, 0, 8],
+    [0, 7, 2, 8]
+  ]
+}

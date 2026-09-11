@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Six more bases · Senbazuru material study</title>
+<style>
+body { margin:0; background:#f5f1e9; color:#322f2a; font:16px/1.55 system-ui,sans-serif; }
+main { max-width:1100px; margin:auto; padding:36px 24px; }
+h1 { font-size:38px; letter-spacing:-1px; line-height:1.15; margin:12px 0; }
+h2 { font-size:23px; margin:0; }
+a { color:#39584e; }
+.eyebrow { text-transform:uppercase; letter-spacing:2px; font-size:12px; color:#756956; }
+.intro { max-width:850px; }
+nav, .controls { display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin:22px 0; }
+.controls { position:sticky; top:0; z-index:1; padding:12px 0; background:#f5f1e9; }
+select { padding:7px; border:1px solid #cbbfae; background:#fffaf2; border-radius:4px; font:inherit; }
+article { margin:24px 0; padding:22px; background:white; border:1px solid #ded6c8; border-radius:8px; }
+article header, footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+article header span, footer, figcaption, .note { font-size:14px; color:#6c6254; }
+article p { max-width:850px; }
+.figures { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+figure { margin:0; text-align:center; }
+img { display:block; width:100%; height:auto; }
+footer { justify-content:flex-start; margin-top:20px; }
+footer span { margin-left:auto; color:#39584e; }
+@media(max-width:640px) { main { padding:24px 14px; } article { padding:14px; } .figures { gap:0; } h1 { font-size:30px; } footer span { margin-left:0; } }
+</style>
+<main>
+<p class="eyebrow">Senbazuru · Material study / #144</p>
+<h1>Six more ways to gather a square</h1>
+<p class="intro">Helmet, organ, frog, boat, pig and diamond bases. Each begins with one unit square and ends as a connected sheet with checked crease angles and layer order. Switch sides to reveal the flaps hidden on the back.</p>
+<nav><a href="index.html">3D study viewer</a><a href="bird-sequence.html">Bird folding sequence</a><a href="frog-instructions.html">Frog folding sequence</a><a href="basic-base-measurements.json">Measurements</a></nav>
+<div class="controls"><label>View <select id="side"><option value="flaps">Flap side</option><option value="front">Front</option><option value="reverse">Reverse</option></select></label><label><input type="checkbox" id="spread"> Spread layers for inspection</label></div>
+<p class="note" id="view-note">Closed endpoints. Figures are fitted independently; their displayed sizes do not compare material scale.</p>
+<!--BASES-->
+<p class="note">Mountain creases use dash-dot-dot lines, valleys use dashes, and flat guides use thin grey lines. These are verified flat endpoints of zero-thickness paper. They do not yet prescribe the folding motion or certify collisions between states. Spreading layers is a drawing aid; the FOLD downloads retain the shared vertices of the exact closed sheet.</p>
+</main>
+<script>
+const side = document.getElementById('side');
+const spread = document.getElementById('spread');
+function updateViews() {
+  document.querySelectorAll('article').forEach(card => {
+    const image = card.querySelector('.endpoint');
+    const view = side.value === 'flaps' ? image.dataset.flapSide : side.value;
+    const label = `${spread.checked ? 'Layers spread for inspection' : 'Closed endpoint'} · ${view} view`;
+    const source = `${image.dataset.base}-base-${view}${spread.checked ? '-layers' : ''}.svg`;
+    image.src = source;
+    image.alt = `${card.querySelector('h2').textContent}, ${label}`;
+    card.querySelector('.view-label').textContent = label;
+    card.querySelector('.svg-download').href = source;
+  });
+  document.getElementById('view-note').textContent = spread.checked
+    ? 'Layers are shifted on the page to reveal their order. These gaps are not paper thickness or a folding state.'
+    : 'Closed endpoints. Figures are fitted independently; their displayed sizes do not compare material scale.';
+}
+side.addEventListener('change', updateViews);
+spread.addEventListener('change', updateViews);
+</script>
+</html>

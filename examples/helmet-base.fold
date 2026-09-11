@@ -1,0 +1,47 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (constructed here; see study/fold-material/BasicBases.hs)",
+  "file_title": "Helmet base",
+  "frame_title": "Helmet base",
+  "frame_description": "Fold diagonally, then bring both corners of the doubled triangle to its tip. The reverse view reveals the two flaps.",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "vertices_coords": [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [0.5, 0],
+    [0.5, 0.5],
+    [0.5, 1],
+    [0, 0.5],
+    [1, 0.5]
+  ],
+  "edges_vertices": [
+    [0, 4],
+    [4, 1],
+    [1, 8],
+    [8, 2],
+    [2, 6],
+    [6, 3],
+    [3, 7],
+    [7, 0],
+    [0, 5],
+    [5, 2],
+    [4, 5],
+    [5, 6],
+    [7, 5],
+    [5, 8]
+  ],
+  "edges_assignment": ["B", "B", "B", "B", "B", "B", "B", "B", "V", "V", "V", "M", "M", "V"],
+  "edges_foldAngle": [0, 0, 0, 0, 0, 0, 0, 0, 180, 180, 180, -180, -180, 180],
+  "faces_vertices": [
+    [0, 4, 5],
+    [4, 1, 8, 5],
+    [8, 2, 5],
+    [2, 6, 5],
+    [6, 3, 7, 5],
+    [7, 0, 5]
+  ]
+}
