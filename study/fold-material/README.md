@@ -159,6 +159,17 @@ and the failures from reversing the folding side. These are sampled states of
 a chosen symmetric path; continuous collision certification, paper bending and
 finite thickness remain outside this study.
 
+## Fish and bird endpoints
+
+The next bases, fish and bird, currently have
+[crease patterns and verified closed endpoints](../../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps),
+with SVG previews and layer inspection views. `FlapPatternSpec` checks material
+lengths, shared vertices, achieved crease magnitudes, contact and flat layer
+orders. They are not yet gallery cases: intermediate rabbit-ear and petal-fold
+states remain to be constructed. See
+[the endpoint note](../../docs/notes/fish-and-bird-endpoints.md) for why the bird
+needs two additional hinges beyond our old CP fixture.
+
 ## Original fold controls
 
 The rounded bend radius is 0.015 times the original square's side. The resulting layer

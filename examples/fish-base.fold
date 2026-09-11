@@ -1,0 +1,38 @@
+{
+  "file_spec": 1.2,
+  "file_creator": "senbazuru (constructed here)",
+  "file_title": "Fish base",
+  "frame_classes": ["creasePattern"],
+  "frame_attributes": ["2D"],
+  "frame_unit": "unit",
+  "frame_description": "Two rabbit-ear folds on opposite sides of the SW-NE diagonal. With r = 1 - 1/sqrt(2), their angle bisectors meet at (1-r,r) and (r,1-r). The short valley segments to the east and north boundaries lay both ears towards NE. The diagonal is a flat guide in this endpoint. This file describes the closed state, not a motion between states.",
+  "vertices_coords": [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [0.7071067811865475, 0.2928932188134525],
+    [0.2928932188134525, 0.7071067811865475],
+    [1, 0.2928932188134525],
+    [0.2928932188134525, 1]
+  ],
+  "edges_vertices": [
+    [0, 1],
+    [1, 6],
+    [6, 2],
+    [2, 7],
+    [7, 3],
+    [3, 0],
+    [0, 2],
+    [0, 4],
+    [2, 4],
+    [1, 4],
+    [4, 6],
+    [0, 5],
+    [2, 5],
+    [3, 5],
+    [5, 7]
+  ],
+  "edges_assignment": ["B", "B", "B", "B", "B", "B", "F", "V", "V", "M", "V", "V", "V", "M", "V"],
+  "edges_foldAngle": [0, 0, 0, 0, 0, 0, 0, 180, 180, -180, 180, 180, 180, -180, 180]
+}

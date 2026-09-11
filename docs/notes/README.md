@@ -24,6 +24,7 @@ read the Haddock module headers; for the domain, start with
 | [fold-angles-are-the-state.md](fold-angles-are-the-state.md) | Positions are derived from angles, and neither can be naively interpolated |
 | [precreases-and-target-states.md](precreases-and-target-states.md) | Square and waterbomb bases share eight guide segments, but only six bend in each chosen collapsed state |
 | [symmetric-base-collapse.md](symmetric-base-collapse.md) | A symmetric square/waterbomb collapse links four valley angles to two mountain angles without stretching the sheet |
+| [fish-and-bird-endpoints.md](fish-and-bird-endpoints.md) | A fish's rabbit ears and a bird's lifted petals need explicit endpoint creases; a valid flat packet alone does not identify the intended base |
 | [creasing-through-layers.md](creasing-through-layers.md) | Creasing a packet of layers alternates mountain and valley, because alternate layers are upside down |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |
 | [taco-taco.md](taco-taco.md) | Every constraint on the layer order is one of four local rules |
