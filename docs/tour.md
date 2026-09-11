@@ -768,9 +768,10 @@ The [fish and bird bases](../examples/README.md#fish-and-bird-bases-opening-and-
 introduce opening and reshaping flaps: a rabbit-ear
 fold gathers a pointed flap, while a petal fold lifts one and narrows its sides.
 The previews include separated layers to inspect each stack. Those separations
-are drawing offsets. The study viewer now has eight **Rabbit-ear fold** states
-for the first fish-base flap, with the opposite half held flat. Four linked
-crease angles gather and lay over the ear while preserving the material;
-[the worked example](notes/rabbit-ear-motion.md) explains the relation and
-checks. The second ear, intermediate bird petal folds and continuous collision
-certification remain future work.
+are drawing offsets. The study viewer has fifteen **Fish base** states:
+gather the first ear, then hold it nearly closed while gathering the second.
+Four linked crease angles per ear preserve the material; the original
+[angle derivation](notes/rabbit-ear-motion.md) and
+[two-ear construction](notes/two-rabbit-ears.md) explain the geometry and checks.
+Intermediate bird petal folds and general continuous collision certification
+remain future work.

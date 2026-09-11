@@ -159,33 +159,41 @@ and the failures from reversing the folding side. These are sampled states of
 a chosen symmetric path; continuous collision certification, paper bending and
 finite thickness remain outside this study.
 
-## One rabbit ear towards the fish base
+## Two rabbit ears form the fish base
 
-Choose **Rabbit-ear fold** to gather the south-east corner of the fish crease
-pattern into a pointed flap. Eight states cover the unfolded sheet and mountain
-magnitudes 15°, 30°, 60°, 90°, 120°, 150° and 175°. The four creases around one
-interior vertex turn together; the opposite half of the square stays flat.
-Two valleys turn faster than the other valley and mountain, so the ear begins
+Choose **Fish base** to gather the south-east corner into the first rabbit ear,
+then the north-west corner into the second. A rabbit ear gathers a triangular
+region into a pointed flap. Fifteen states cover the unfolded sheet followed
+by mountain magnitudes 15°, 30°, 60°, 90°, 120°, 150° and 175° for each ear.
+The second half stays flat during the first stage. During the second stage,
+the first ear holds its 175° inspection state. Each ear links four crease angles.
+Two valleys fold further than the other valley and mountain, so the ear begins
 laying over while it rises. At mountain −30°, those two valleys are already
 at +97.585148°. The [angle derivation](../../docs/notes/rabbit-ear-motion.md)
 explains this relation and provides independent corner positions.
 
 This uses the existing FOLD fixture and explicit angle-list format. All eight
-panels are named, and three order requirements keep the moving panels above
-the fixed central panel. Their order relative to each other along +z changes
-during the turn, so the final stack cannot be imposed throughout. At exactly
-180°, the partial requirements leave three contacts unresolved; `RabbitEarSpec`
+panels are named, and six order requirements keep each ear's moving panels above
+its fixed central panel. Within each ear the order along +z changes during the
+turn, so the final stack cannot be imposed throughout. The ears stay on opposite
+sides of the diagonal and need no order between them. With both ears at exactly
+180°, the partial requirements leave six contacts unresolved; `RabbitEarSpec`
 checks the complete endpoint order against the unique flat stacking separately.
-The viewer stops at mountain −175° with room to inspect the layers.
+The viewer stops with both mountains at −175° to leave room to inspect the layers.
+The case retains its original `rabbit-ear` id and export prefix.
 
-`RabbitEarSpec` checks the eight angle lists, random angles and refinements,
+`RabbitEarSpec` checks all fifteen angle lists, random angles and refinements,
 shared vertices, measured crease magnitudes, independent tip and shoulder
-positions, and the stationary half. All 28 panel pairs pass in a half-degree
-sweep short of closure, including both upright-panel configurations. The
-closed endpoint passes with its complete order. Tests reject independently
-changing a crease and uniformly scaling the final angles. These sampled
-states do not certify continuous collision freedom or finite thickness.
-The second rabbit ear and intermediate bird petal folds remain future work.
+positions, and that the first ear stays fixed during the second stage.
+All 28 panel pairs pass in a half-degree sweep of each stage, including both
+upright-panel configurations. Random pairs of independently chosen ear angles
+also check that each stays on its own side of the diagonal's vertical plane.
+The closed fish endpoint passes with its complete order and matches the source
+fixture's angles and landmarks. Tests reject changing either ear's crease
+independently, uniformly scaling the final angles, and folding towards the wrong
+side. See [the two-ear construction](../../docs/notes/two-rabbit-ears.md).
+These checks do not certify continuous self-collision freedom within an ear
+or finite thickness. Intermediate bird petal folds remain future work.
 
 ## Fish and bird endpoints
 
@@ -193,8 +201,8 @@ The complete fish and bird bases have
 [crease patterns and verified closed endpoints](../../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps),
 with SVG previews and layer inspection views. `FlapPatternSpec` checks material
 lengths, shared vertices, achieved crease magnitudes, contact and flat layer
-orders. The gallery currently moves only the first rabbit ear of the fish;
-the complete bases still have endpoint previews only. See
+orders. The fish now has both rabbit-ear stages in the gallery; the bird still
+has endpoint previews only. See
 [the endpoint note](../../docs/notes/fish-and-bird-endpoints.md) for why the bird
 needs two additional hinges beyond our old CP fixture.
 

@@ -131,9 +131,9 @@
   },
   {
     "id": "rabbit-ear",
-    "title": "Rabbit-ear fold",
+    "title": "Fish base",
     "source": "examples/fish-base.fold",
-    "description": "Gather the south-east corner into one pointed flap, the first rabbit ear of the fish base. Four creases bend together; the opposite half stays flat. The faster pair of valleys begins laying the ear towards the north-east corner as it rises. The last state leaves a small opening for inspection; the second rabbit ear is not folded yet.",
+    "description": "Gather the south-east corner into the first rabbit ear, then gather the north-west corner into the second to form the fish base. Each ear bends four linked creases. During the second stage, the first ear stays at its nearly closed inspection angles. The final state leaves both ears slightly open so their layers remain visible.",
     "contact": {
       "direction": [0, 0, 1],
       "panels": [
@@ -146,17 +146,24 @@
         {"name": "centre-north", "at": [0.4, 0.6]},
         {"name": "centre-south", "at": [0.6, 0.4]}
       ],
-      "orders": [["centre-south", "south-panel"], ["centre-south", "ear-tip"], ["centre-south", "east-panel"]]
+      "orders": [["centre-south", "south-panel"], ["centre-south", "ear-tip"], ["centre-south", "east-panel"], ["centre-north", "west-panel"], ["centre-north", "north-tip"], ["centre-north", "north-panel"]]
     },
     "steps": [
       {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
-      {"label": "Gather the flap · mountain −15°", "angles": [0, 0, 0, 0, 0, 0, 0, 58.59350846112558, 15, -15, 58.59350846112558, 0, 0, 0, 0]},
-      {"label": "Gather the flap · mountain −30°", "angles": [0, 0, 0, 0, 0, 0, 0, 97.58514830800293, 30, -30, 97.58514830800293, 0, 0, 0, 0]},
-      {"label": "Reshape the flap · mountain −60°", "angles": [0, 0, 0, 0, 0, 0, 0, 135.76669339651292, 60, -60, 135.76669339651292, 0, 0, 0, 0]},
-      {"label": "Reshape the flap · mountain −90°", "angles": [0, 0, 0, 0, 0, 0, 0, 153.5907403359954, 90, -90, 153.5907403359954, 0, 0, 0, 0]},
-      {"label": "Lay the ear over · mountain −120°", "angles": [0, 0, 0, 0, 0, 0, 0, 164.5707196616942, 120, -120, 164.5707196616942, 0, 0, 0, 0]},
-      {"label": "Lay the ear over · mountain −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 172.80512581901343, 150, -150, 172.80512581901343, 0, 0, 0, 0]},
-      {"label": "Nearly closed ear · mountain −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 0, 0, 0, 0]}
+      {"label": "First ear · gather · mountain −15°", "angles": [0, 0, 0, 0, 0, 0, 0, 58.59350846112558, 15, -15, 58.59350846112558, 0, 0, 0, 0]},
+      {"label": "First ear · gather · mountain −30°", "angles": [0, 0, 0, 0, 0, 0, 0, 97.58514830800293, 30, -30, 97.58514830800293, 0, 0, 0, 0]},
+      {"label": "First ear · reshape · mountain −60°", "angles": [0, 0, 0, 0, 0, 0, 0, 135.76669339651292, 60, -60, 135.76669339651292, 0, 0, 0, 0]},
+      {"label": "First ear · reshape · mountain −90°", "angles": [0, 0, 0, 0, 0, 0, 0, 153.5907403359954, 90, -90, 153.5907403359954, 0, 0, 0, 0]},
+      {"label": "First ear · lay over · mountain −120°", "angles": [0, 0, 0, 0, 0, 0, 0, 164.5707196616942, 120, -120, 164.5707196616942, 0, 0, 0, 0]},
+      {"label": "First ear · lay over · mountain −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 172.80512581901343, 150, -150, 172.80512581901343, 0, 0, 0, 0]},
+      {"label": "First ear nearly closed · mountain −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 0, 0, 0, 0]},
+      {"label": "Second ear · gather · mountain −15°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 58.59350846112558, 15, -15, 58.59350846112558]},
+      {"label": "Second ear · gather · mountain −30°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 97.58514830800293, 30, -30, 97.58514830800293]},
+      {"label": "Second ear · reshape · mountain −60°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 135.76669339651292, 60, -60, 135.76669339651292]},
+      {"label": "Second ear · reshape · mountain −90°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 153.5907403359954, 90, -90, 153.5907403359954]},
+      {"label": "Second ear · lay over · mountain −120°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 164.5707196616942, 120, -120, 164.5707196616942]},
+      {"label": "Second ear · lay over · mountain −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 172.80512581901343, 150, -150, 172.80512581901343]},
+      {"label": "Both ears nearly closed · mountains −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 178.8261303053405, 175, -175, 178.8261303053405]}
     ]
   }
 ]
