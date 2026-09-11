@@ -128,5 +128,35 @@
       {"label": "Collapse · mountains −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 158.54283375678187, 0, 158.54283375678187, -150, 158.54283375678187, 0, 158.54283375678187, -150]},
       {"label": "Nearly closed · mountains −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 176.46334402094888, 0, 176.46334402094888, -175, 176.46334402094888, 0, 176.46334402094888, -175]}
     ]
+  },
+  {
+    "id": "rabbit-ear",
+    "title": "Rabbit-ear fold",
+    "source": "examples/fish-base.fold",
+    "description": "Gather the south-east corner into one pointed flap, the first rabbit ear of the fish base. Four creases bend together; the opposite half stays flat. The faster pair of valleys begins laying the ear towards the north-east corner as it rises. The last state leaves a small opening for inspection; the second rabbit ear is not folded yet.",
+    "contact": {
+      "direction": [0, 0, 1],
+      "panels": [
+        {"name": "south-panel", "at": [0.6, 0.08]},
+        {"name": "ear-tip", "at": [0.9, 0.2]},
+        {"name": "east-panel", "at": [0.9, 0.6]},
+        {"name": "north-panel", "at": [0.6, 0.9]},
+        {"name": "north-tip", "at": [0.2, 0.9]},
+        {"name": "west-panel", "at": [0.08, 0.6]},
+        {"name": "centre-north", "at": [0.4, 0.6]},
+        {"name": "centre-south", "at": [0.6, 0.4]}
+      ],
+      "orders": [["centre-south", "south-panel"], ["centre-south", "ear-tip"], ["centre-south", "east-panel"]]
+    },
+    "steps": [
+      {"label": "Unfolded sheet", "angles": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]},
+      {"label": "Gather the flap · mountain −15°", "angles": [0, 0, 0, 0, 0, 0, 0, 58.59350846112558, 15, -15, 58.59350846112558, 0, 0, 0, 0]},
+      {"label": "Gather the flap · mountain −30°", "angles": [0, 0, 0, 0, 0, 0, 0, 97.58514830800293, 30, -30, 97.58514830800293, 0, 0, 0, 0]},
+      {"label": "Reshape the flap · mountain −60°", "angles": [0, 0, 0, 0, 0, 0, 0, 135.76669339651292, 60, -60, 135.76669339651292, 0, 0, 0, 0]},
+      {"label": "Reshape the flap · mountain −90°", "angles": [0, 0, 0, 0, 0, 0, 0, 153.5907403359954, 90, -90, 153.5907403359954, 0, 0, 0, 0]},
+      {"label": "Lay the ear over · mountain −120°", "angles": [0, 0, 0, 0, 0, 0, 0, 164.5707196616942, 120, -120, 164.5707196616942, 0, 0, 0, 0]},
+      {"label": "Lay the ear over · mountain −150°", "angles": [0, 0, 0, 0, 0, 0, 0, 172.80512581901343, 150, -150, 172.80512581901343, 0, 0, 0, 0]},
+      {"label": "Nearly closed ear · mountain −175°", "angles": [0, 0, 0, 0, 0, 0, 0, 178.8261303053405, 175, -175, 178.8261303053405, 0, 0, 0, 0]}
+    ]
   }
 ]

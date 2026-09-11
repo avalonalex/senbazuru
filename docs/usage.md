@@ -406,5 +406,7 @@ have no SVG preview because the study painter would hide intermediate crossings.
 The [fish and bird fixtures](../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps)
 can be drawn with `render examples/fish-base.fold --fold` and
 `render examples/bird-base.fold --fold`. Their crease patterns and closed
-endpoints are checked, but intermediate rabbit-ear and petal-fold states are
-not yet available in the study viewer.
+endpoints are checked. In the study viewer, select **Rabbit-ear fold** for
+eight states gathering the first fish-base flap while the opposite half stays
+flat. The second ear and intermediate bird petal folds remain unsupported;
+see [the study guide](../study/fold-material/README.md#one-rabbit-ear-towards-the-fish-base).

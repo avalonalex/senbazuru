@@ -764,9 +764,13 @@ thickness and general collision handling remain unsolved. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
 `render` or `export`.
 
-The next study examples are the [fish and bird bases](../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps).
-Their checked endpoints prepare for opening and reshaping flaps: a rabbit-ear
+The [fish and bird bases](../examples/README.md#fish-and-bird-bases-opening-and-reshaping-flaps)
+introduce opening and reshaping flaps: a rabbit-ear
 fold gathers a pointed flap, while a petal fold lifts one and narrows its sides.
 The previews include separated layers to inspect each stack. Those separations
-are drawing offsets; intermediate folding states and a collision-free motion
-between them are still future work.
+are drawing offsets. The study viewer now has eight **Rabbit-ear fold** states
+for the first fish-base flap, with the opposite half held flat. Four linked
+crease angles gather and lay over the ear while preserving the material;
+[the worked example](notes/rabbit-ear-motion.md) explains the relation and
+checks. The second ear, intermediate bird petal folds and continuous collision
+certification remain future work.

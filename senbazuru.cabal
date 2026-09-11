@@ -157,6 +157,7 @@ test-suite senbazuru-test
   other-modules:
     BaseCollapseSpec
     FlapPatternSpec
+    RabbitEarSpec
     FoldContact
     FoldContactSpec
     StudyCase

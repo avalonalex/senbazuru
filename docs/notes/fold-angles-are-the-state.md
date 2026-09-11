@@ -46,6 +46,8 @@ A degree-4 vertex — four creases meeting — has one degree of freedom: fix an
 formulas you can write down. That is why the literature singles them out — the
 one case where a continuous folding motion has an explicit answer rather than
 needing to be solved for.
+Our [rabbit-ear example](rabbit-ear-motion.md) works through one such formula,
+from the angles on the sheet to checked intermediate folding states.
 
 For larger vertices, a general solution may need a numerical solve for angles
 satisfying every loop at once, or a physical simulation that nudges the model

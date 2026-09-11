@@ -213,5 +213,7 @@ stack test --ta='--match flap-base'
 
 `FlapPatternSpec` checks the intended material landmarks, shared vertices,
 edge lengths, area, achieved crease magnitudes, a valid flat layer order and
-all panel pairs for contact. These fixtures do not yet provide intermediate
-rabbit-ear or petal-fold motion in the material-study gallery.
+all panel pairs for contact. The material-study gallery also uses `fish-base.fold`
+for [eight intermediate states of its first rabbit ear](../docs/notes/rabbit-ear-motion.md),
+with the opposite half held flat. The second ear and the bird's petal-fold
+motion remain to be added.
