@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bird base · SVG sequence</title>
+<style>
+body { margin:0; background:#f5f1e9; color:#322f2a; font:16px/1.55 system-ui,sans-serif; }
+main { max-width:1100px; margin:auto; padding:36px 24px; }
+h1 { font-size:36px; letter-spacing:-1px; line-height:1.15; }
+a { color:#39584e; }
+.eyebrow { text-transform:uppercase; letter-spacing:2px; font-size:12px; color:#756956; }
+.intro { max-width:780px; }
+nav { display:flex; flex-wrap:wrap; gap:18px; margin:22px 0; }
+figure { margin:24px 0; padding:18px; background:white; border:1px solid #ded6c8; border-radius:8px; }
+figcaption, summary { font-weight:600; }
+img { display:block; width:100%; height:auto; }
+ol { columns:2; padding-left:28px; }
+li { break-inside:avoid; padding:3px 8px; font-size:14px; }
+.note { color:#6c6254; font-size:14px; }
+@media(max-width:640px) { ol { columns:1; } main { padding:24px 14px; } }
+</style>
+<main>
+<p class="eyebrow">Senbazuru · From the material study to SVG</p>
+<h1>Two petals, one bird base</h1>
+<p class="intro">The same sixteen checked folding states now pass through Senbazuru’s main renderer. Each page keeps one camera and scale. Covered paper and buried creases are removed before the SVG is drawn; the two paper colours show which side faces you.</p>
+<nav><a href="index.html">3D study viewer</a><a href="bird-base-sequence.fold" download>FOLD sequence</a><a href="bird-sequence-iso.svg" download>SVG from above</a><a href="bird-sequence-bottom.svg" download>SVG from below</a></nav>
+<figure><figcaption>From above · the first petal opens toward you</figcaption><img src="bird-sequence-iso.svg" alt="Sixteen numbered bird-base folding states in an oblique view"></figure>
+<details><summary>View from underneath · follow the second petal</summary><figure><img src="bird-sequence-bottom.svg" alt="The same sixteen states viewed from underneath"></figure></details>
+<ol><!--STEPS--></ol>
+<p class="note">These are sampled states of a zero-thickness sheet. They preserve the study’s material geometry and checked contact order; they do not certify the motion between states. The sequence starts from the collapsed square base, with no arrows inferred between its checkpoints.</p>
+</main>
+</html>

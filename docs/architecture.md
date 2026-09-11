@@ -113,6 +113,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
+| `Senbazuru.Render.Projected` | Convex open panels → viewing relations over their overlapping shadows → the existing flat visible-region machinery. Temporary projected frames never become material exports. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
 | `Senbazuru.Render.Gltf` | FOLD frame → glTF binary: a 3D model, with a flat-folded model's layers lifted apart so a depth buffer can tell them apart. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
@@ -207,3 +208,10 @@ panel by a material point instead of holding the largest panel still. Resolved
 orders and feature-edge ownership let the viewer break depth ties after contact
 passes, without changing exported material. Reports are exported and displayed;
 they do not change the prescribed pose or certify motion between states.
+
+The first production handoff is `examples/bird-base-sequence.fold`.
+`StudyCase.buildCaseSequence` writes unrefined panels and ordinary coplanar
+`faceOrders` after contact passes. The CLI reads that file without importing
+the study. `Render.Projected` uses actual depth to order separated panels in
+each view, then reuses `Origami.Visible` for visible regions and edges; it
+knows nothing about bird petals or the study manifest.

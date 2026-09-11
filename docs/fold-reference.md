@@ -99,10 +99,11 @@ A folded form takes one of two routes. Folded flat, it is drawn as what can be
 *seen* of it — each face cut down to the part no nearer layer covers, each edge
 kept only where the paper differs across it, and the two sides of the sheet in
 different colours; `Senbazuru.Origami.Visible` works that out from a
-`faceOrders`, its own or one `Senbazuru.Origami.Stacking` solved. With paper
-still in the air it is filled face by face in the order the `faceOrders` gives,
-every crease drawn over the top, and with no `faceOrders` at all it stays a
-wireframe. `--no-fill` turns filling off entirely and draws every crease, which
+`faceOrders`, its own or one `Senbazuru.Origami.Stacking` solved. Open convex
+planar panels use `Render.Projected` to compare depth over their projected
+overlaps and reuse visible-region clipping. Equal depths still need explicit
+coplanar order. Unsupported open geometry retains whole-face painting with
+supplied orders, or a wireframe without them. `--no-fill` draws every crease, which
 is the escape hatch for a file none of this can make sense of.
 
 Note that senbazuru does **not** trust the stated winding for filling, and does

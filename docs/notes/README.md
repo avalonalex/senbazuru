@@ -28,6 +28,7 @@ read the Haddock module headers; for the domain, start with
 | [rabbit-ear-motion.md](rabbit-ear-motion.md) | Four linked crease angles gather one fish-base flap; its moving panels need different order requirements from the closed stack |
 | [petal-fold-motion.md](petal-fold-motion.md) | A bird-base petal lifts its tip while four side creases close and two old folds open; the flat body retains its layer order |
 | [two-petals.md](two-petals.md) | The two bird-base petals move on opposite sides of a stationary packet and close into the verified endpoint |
+| [projected-panel-visibility.md](projected-panel-visibility.md) | Compare open panels over their projected overlaps, then reuse flat visible regions to hide paper and creases |
 | [two-rabbit-ears.md](two-rabbit-ears.md) | The fish's ears can fold in sequence while staying on opposite sides of the diagonal; each closes into its own layer chain |
 | [creasing-through-layers.md](creasing-through-layers.md) | Creasing a packet of layers alternates mountain and valley, because alternate layers are upside down |
 | [layer-ordering.md](layer-ordering.md) | Why drawing a folded model is hard and a crease pattern isn't |

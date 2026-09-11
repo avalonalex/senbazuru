@@ -32,8 +32,8 @@ stack run -- render examples/quarter-fold.fold -o quarter-fold.svg
 
 `--no-fill` turns that off.
 
-A folded form is filled too, but only when the file says which face is in front.
-FOLD records that in `faceOrders`, and `examples/simple.fold` carries one:
+A folded form is filled when its visible layers can be determined.
+FOLD records touching layers in `faceOrders`, and `examples/simple.fold` carries one:
 
 ```bash
 stack run -- render examples/simple.fold --view iso -o simple.svg
@@ -43,9 +43,9 @@ The stacking is a fact about the paper rather than about the picture — it says
 face lies on the side another face's *normal* points to — so the drawing order
 depends on where you are looking from, and the same model seen from behind
 stacks the other way up. A folded form with no `faceOrders` gets one worked out,
-if it lies flat; see [What it stacks](#what-it-stacks). One with paper still in
-the air stays a wireframe: painting its faces in the order they happen to appear
-in the file would be a confident picture of the wrong thing.
+if it lies flat; see [What it stacks](#what-it-stacks). Open folds with convex
+planar panels compare actual depth over their projected overlaps. Touching
+panels still need explicit order; unresolved cases retain the wireframe fallback.
 
 Folded forms take a viewing angle:
 
@@ -226,10 +226,10 @@ neither can `check`, whose theorems are about one vertex at a time.
 `examples/big-little-big.fold` passes `check` and is refused here, for exactly
 the reason [its note](notes/big-little-big.md) gives.
 
-Two limits, both deliberate. The solver covers models folded *flat*; a folded
-form with paper in the air and no `faceOrders` is still drawn as a wireframe,
-and `info` says so. And every face has to be convex, which the faces of a
-flat-foldable pattern are whenever the sheet is.
+Two limits, both deliberate. The layer solver covers models folded *flat*;
+`info` reports open folds as outside its scope even when SVG can determine
+visibility directly from their depths. Every face the solver handles must
+also be convex, which the faces of a flat-foldable pattern are whenever the sheet is.
 
 ### Which stacking
 
@@ -296,10 +296,12 @@ the first one upside down: a different set of faces is on top, and they show the
 other side of the paper. How it works is in
 [notes/visible-regions.md](notes/visible-regions.md).
 
-A folded form that is *not* flat — paper still in the air — is still painted
-face by face in the order `faceOrders` gives, with every crease drawn, because
-none of the above has a plane to work in. `--no-fill` also draws every crease,
-which is what makes it the escape hatch for a file this cannot make sense of.
+An open fold with convex planar panels uses
+[projected visibility](notes/projected-panel-visibility.md): compare depths
+over each overlap, then remove covered regions and creases. Coplanar ties
+need `faceOrders`. Intersecting depths, unsupported faces or free edge-on
+outlines retain the older whole-face fallback when orders are supplied,
+or a wireframe otherwise. `--no-fill` always draws every crease.
 
 One caveat on the colours. Which side of the sheet a patch of paper shows is
 read from the order its corners are listed in, which FOLD says is
@@ -781,3 +783,12 @@ state presses both flat to match the existing bird-base endpoint.
 angles; [the two-petal sequence](notes/two-petals.md) explains the opposing
 motions and their contact checks. General continuous collision certification
 remains future work.
+
+The bird study also crosses into the main renderer as
+`examples/bird-base-sequence.fold`. Run
+`stack run -- render examples/bird-base-sequence.fold --steps --columns 4 --view iso --width 1000 --height 1000 -o bird-steps.svg`
+for all sixteen states at one scale. `--view bottom` follows the second petal
+from underneath. Each frame keeps the original rigid panels and checked
+coplanar order; no WebGL depth offset or triangle subdivision is needed by SVG.
+The [projected visibility note](notes/projected-panel-visibility.md) explains
+how open panels reuse the flat renderer's clipping.

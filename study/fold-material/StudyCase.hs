@@ -20,6 +20,8 @@
 -- solve bending, thickness, or motion between the supplied states. Optional
 -- named panel requirements go through PanelContact in buildCasePose; buildPose
 -- constructs geometry alone so tests can also inspect unconstrained states.
+-- buildCaseSequence exports checked unrefined panels and coplanar orders as
+-- ordinary FOLD, so the production renderer needs no study-specific reader.
 module StudyCase
   ( CaseSpec (..),
     PoseSpec (..),
@@ -27,6 +29,8 @@ module StudyCase
     CaseError (..),
     buildPose,
     buildCasePose,
+    buildCaseFrame,
+    buildCaseSequence,
   )
 where
 
@@ -36,6 +40,7 @@ import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (maximumBy)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -43,11 +48,11 @@ import FoldMaterial
 import PanelContact
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
-import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (signedArea, strictlyInside)
+import Senbazuru.Geometry.Polygon (clipConvex, signedArea, strictlyInside)
 import Senbazuru.Geometry.Rigid (applyRigid, inverse)
-import Senbazuru.Geometry.V3 (V3 (..), cross)
+import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
 
@@ -76,7 +81,9 @@ instance FromJSON PoseSpec where
   parseJSON = withObject "study pose" $ \o -> PoseSpec <$> o .: "label" <*> o .: "angles"
 
 data StudyPose = StudyPose
-  { poseMesh :: !Mesh,
+  { -- | Unrefined, cut FOLD topology in the same stationary reference frame.
+    poseFrame :: !Frame,
+    poseMesh :: !Mesh,
     -- | One original panel id per triangle, for normals split at creases.
     posePanels :: ![Int],
     -- | Boundary and crease segments, without triangle subdivision lines.
@@ -164,9 +171,71 @@ buildPoseAt anchor levels source step = do
       owners = [[unFaceId (faceId face) | face <- faces, a `elem` faceVertexIds face, b `elem` faceVertexIds face] | (a, b) <- features]
   lines3 <- mapM (\(a, b) -> (,) <$> lookupPoint a <*> lookupPoint b) features
   panels <- mapM wholePanel faces
-  pure (StudyPose (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3 owners panels Nothing Nothing)
+  let coordinates p = let V3 x y z = position p in [x, y, z]
+      frame = (foldedFrame folded) {verticesCoords = map coordinates points, frameTitle = Just (poseLabel step)}
+  pure (StudyPose frame (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3 owners panels Nothing Nothing)
   where
     inside (V3 u v z) = u >= 0 && u <= 1 && v >= 0 && v <= 1 && z == 0
+
+-- | A checked pose as ordinary FOLD, using the original panels rather than
+-- the viewer's subdivided triangles. Standard faceOrders describe coplanar
+-- material only: expand the study's order chains first, then keep the pairs
+-- actually touching over an area. The renderer must obtain separated panels'
+-- viewing order from geometry, not these material requirements.
+buildCaseFrame :: CaseSpec -> Frame -> PoseSpec -> Either CaseError Frame
+buildCaseFrame spec source step = do
+  pose <- buildCasePose 0 spec source step
+  unless (maybe False contactPassed (poseContact pose)) $
+    Left (CaseError "FOLD sequence export needs passing panel contact and order checks")
+  let frame = poseFrame pose
+      (axis, orders) = fromMaybe (V3 0 0 1, []) (poseOrders pose)
+      reach pairs =
+        let extended = S.union pairs (S.fromList [(a, c) | (a, b) <- S.toList pairs, (b', c) <- S.toList pairs, b == b'])
+         in if extended == pairs then pairs else reach extended
+      implied = reach (S.fromList orders)
+  faces <- first (CaseError . explain) (frameFaces frame)
+  let known = IM.fromList [(unFaceId (faceId face), face) | face <- faces]
+      relations =
+        [ FaceOrder (faceId lower) (faceId upper) (if dot (polygonNormal (faceCorners upper)) axis > 0 then Below else Above)
+          | (a, b) <- S.toList implied,
+            Just lower <- [IM.lookup a known],
+            Just upper <- [IM.lookup b known],
+            coplanarContact lower upper
+        ]
+      active assignment angle
+        | assignment == Flat && abs angle > 1e-10 = if angle < 0 then Mountain else Valley
+        | otherwise = assignment
+  pure frame {faceOrders = relations, edgesAssignment = zipWith active (edgesAssignment frame) (edgesFoldAngle frame)}
+
+-- | The study manifest stops at this boundary. Ordinary CLI readers need only
+-- the resulting self-contained FOLD frames, with no frame inheritance or
+-- knowledge of study panel names. A metadata-only key frame is not a step.
+buildCaseSequence :: CaseSpec -> FoldFile -> Either CaseError FoldFile
+buildCaseSequence spec source = do
+  frames <- traverse (buildCaseFrame spec (keyFrame source)) (caseSteps spec)
+  pure
+    source
+      { fileCreator = Just "senbazuru material study",
+        fileTitle = Just (caseTitle spec <> " folding sequence"),
+        fileDescription = Just (caseDescription spec),
+        fileClasses = ["diagrams"],
+        keyFrame = emptyFrame,
+        otherFrames = frames
+      }
+
+coplanarContact :: Face -> Face -> Bool
+coplanarContact a b = case faceCorners a of
+  [] -> False
+  origin : _ -> case normalize (polygonNormal (faceCorners a)) of
+    Nothing -> False
+    Just normal@(V3 nx ny nz) ->
+      let flatten (V3 x y z)
+            | abs nx >= max (abs ny) (abs nz) = V2 y z
+            | abs ny >= abs nz = V2 x z
+            | otherwise = V2 x y
+          outline face = let ring2 = map flatten (faceCorners face) in if signedArea ring2 < 0 then reverse ring2 else ring2
+       in all ((< 1e-9) . abs . dot normal . (^-^ origin)) (faceCorners b)
+            && abs (signedArea (clipConvex (outline a) (outline b))) > 1e-12
 
 -- | Equal-area panels occur in the half/quarter folds. Hold the lowest, then
 -- leftmost panel still so their angle states agree with the original controls.

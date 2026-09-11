@@ -179,11 +179,11 @@ spec = do
       shapeKinds defaultTheme FoldedFormNotation twoFaceSquare
         `shouldBe` Right (["fill"] <> replicate 5 "line")
 
-    it "leaves a folded form in the air as a wireframe" $
-      -- Ordering layers is only worked out for flat models. With paper still
-      -- in the air and no faceOrders, a wireframe says only what is known.
+    it "fills separated open panels from their geometric depth" $
+      -- Their projected interiors do not overlap, so no material layer order
+      -- is needed to show this bent sheet.
       shapeKinds defaultTheme FoldedFormNotation (twoFaceSquare {verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]]})
-        `shouldBe` Right (replicate 5 "line")
+        `shouldBe` Right (["fill"] <> replicate 5 "line")
 
     it "fills a folded form once the file supplies an ordering" $ do
       -- The half of layer ordering that is free: the file did the hard part.
@@ -202,10 +202,9 @@ spec = do
       shapeKinds defaultTheme FoldedFormNotation impossible
         `shouldBe` Left (ContradictoryStacking (FaceId 0) (FaceId 1))
 
-    it "still refuses a circle when it is painting whole faces" $ do
-      -- The same contradiction on a model with paper in the air, which no
-      -- amount of region finding covers, so the faces are painted in the order
-      -- paintOrder sorts them into -- and it will not invent one.
+    it "still refuses contradictory pair orders in an open fold" $ do
+      -- Projected visibility checks both directions of a supplied relation
+      -- before it computes a view, even when the paper is not flat.
       let impossible =
             twoFaceSquare
               { verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0.5], [0, 1, 0]],
@@ -215,7 +214,7 @@ spec = do
                   ]
               }
       shapeKinds defaultTheme FoldedFormNotation impossible
-        `shouldBe` Left (ImpossibleStacking (FaceId 0))
+        `shouldBe` Left (ContradictoryStacking (FaceId 0) (FaceId 1))
 
     it "draws only lines when the theme has no paper" $
       shapeKinds (defaultTheme {themePaper = Nothing}) CreasePatternNotation twoFaceSquare
@@ -225,12 +224,12 @@ spec = do
       shapeKinds defaultTheme CreasePatternNotation broken
         `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
 
-    it "draws a folded form in the air whose faces are corrupt, having never looked" $
-      -- With no ordering and none to be worked out there is nothing to fill,
-      -- so the faces are never resolved. An earlier version validated them
-      -- anyway and turned a file that had always rendered into a hard failure
-      -- over data it was going to discard.
+    it "rejects corrupt open panels now that it attempts to fill them" $
       shapeKinds defaultTheme FoldedFormNotation brokenInTheAir
+        `shouldBe` Left (FaceVertexOutOfRange (FaceId 0) (VertexId 9) 4)
+
+    it "still draws corrupt open panels when explicitly asked for a wireframe" $
+      shapeKinds (defaultTheme {themePaper = Nothing}) FoldedFormNotation brokenInTheAir
         `shouldBe` Right (replicate 5 "line")
 
     it "rejects a corrupt face in a flat folded form, because it was going to fill it" $

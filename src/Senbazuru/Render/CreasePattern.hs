@@ -13,7 +13,7 @@
 -- the same. What differs is which lines are drawn and how, and that is a
 -- 'Notation', chosen by 'defaultNotationFor'.
 --
--- == The four ways a frame gets drawn
+-- == How a frame gets drawn
 --
 -- A crease pattern is a flat subdivision of one sheet: nothing overlaps, so
 -- every face is filled and every crease drawn.
@@ -22,15 +22,19 @@
 -- "Senbazuru.Origami.Visible" cuts each face down to the part no nearer layer
 -- covers, and keeps each edge only where the paper differs across it. That
 -- picture has its hidden lines gone and its two sides of paper apart, and it is
--- the only one of the four that can draw a twist at all.
+-- handles twists whose overlapping flaps have no single painting order.
 --
--- Anything else — a folded form with paper still in the air — is filled face by
--- face, back to front, in the order "Senbazuru.Origami.Layers" sorts
--- @faceOrders@ into, with every crease drawn over the top. It is the oldest of
--- them and the fallback for everything the second cannot take apart.
+-- An open fold with convex planar panels uses "Senbazuru.Render.Projected":
+-- their overlapping shadows determine viewing order from depth, with the
+-- supplied layer orders breaking coplanar ties. The same visible-region code
+-- can then hide buried creases and show the correct paper side.
 --
--- The fourth is asked for rather than deduced, and is the subject of the next
--- section.
+-- Unsupported open folds retain the older fallback: whole faces in the order
+-- "Senbazuru.Origami.Layers" supplies, with every crease over the top, or a
+-- wireframe if no layer order is available.
+--
+-- The offset view is asked for rather than deduced, and is the subject of the
+-- next section.
 --
 -- == The offset view
 --
@@ -129,6 +133,7 @@ import Senbazuru.Origami.Stacking (Budget, defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, View (..), basisForward, isometric, project, topDown, turnedBy)
+import Senbazuru.Render.Projected (projectedForm)
 
 -- | Render one frame as a crease pattern, seen from directly above.
 --
@@ -174,8 +179,8 @@ creasePatternFrom theme budget notation basis fr = do
 -- A crease pattern is one sheet cut into faces that never overlap, so they are
 -- one area of paper and every crease is drawn: nothing to hide, no order to
 -- work out. A folded form is drawn from what is /visible/ when senbazuru can
--- work that out — which needs it to be folded flat, and needs to know which
--- layer is on top — and back to front, face by face, otherwise. A theme with no
+-- work that out, using layer order for flat paper and projected depth for open
+-- panels, and back to front, face by face, otherwise. A theme with no
 -- paper colour draws none of it: no fills, every crease, and no layer order
 -- asked for at all.
 --
@@ -200,12 +205,14 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
   (FoldedFormNotation, Just colours) -> do
     ordering <- layerOrderFor budget fr
     case ordering of
-      -- Nothing is known about the layers and the file says nothing either, so
-      -- there is no honest way to fill anything. A wireframe it is. That
-      -- includes a reader who asked for an offset view: with no layers there is
+      -- Without layer orders, separated panels can still be ordered by actual
+      -- depth. Unresolved coplanar contact remains a wireframe. An offset view
+      -- still requires physical layers: with no layers there is
       -- nothing to step apart, and stepping the faces apart by anything else
       -- would be inventing a stack.
-      Nothing -> everyCrease
+      Nothing -> case layerStep theme of
+        Nothing -> spatial colours [] everyCrease
+        Just _ -> everyCrease
       Just orders -> case layerStep theme of
         -- Asked for outright, so it is tried before the pictures that are
         -- deduced -- and it refuses rather than falling back, because every
@@ -214,10 +221,9 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
         Just step -> steppedApart step colours orders
         Nothing -> case visibleForm (seenFromAbove basis) fr orders of
           Right seen -> Right (whatIsVisible theme notation colours basis seen)
-          -- The model is not flat, or has a face the region finder cannot clip.
-          -- Fall back to painting whole faces in the order the layers give,
-          -- which is how every folded form was drawn before regions existed.
-          Left (PaperInTheAir _) -> backToFront colours orders
+          -- Open convex panels first try projected visibility. Other unsupported
+          -- geometry keeps the older whole-face fallback.
+          Left (PaperInTheAir _) -> spatial colours orders (backToFront colours orders)
           Left (ConcaveFace _) -> backToFront colours orders
           Left (FlatRefused err) -> Left err
   where
@@ -231,6 +237,12 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
         <$> frameCreases fr
 
     asDrawn c = (creaseAssignment c, creaseStart c, creaseEnd c)
+
+    spatial colours orders fallback = do
+      seen <- projectedForm basis fr orders
+      case seen of
+        Just visible -> pure (whatIsVisible theme notation colours basis visible)
+        Nothing -> fallback
 
     -- Whole faces, furthest from the viewer first, each its own area because
     -- they overlap and the order is the picture. Every crease is drawn over

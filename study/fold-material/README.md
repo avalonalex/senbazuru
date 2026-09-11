@@ -236,6 +236,21 @@ reversing the adjustment when viewed from underneath. Contact failures and the
 original-sheet view disable the adjustment. Exported geometry stays unchanged.
 These checks do not certify continuous collisions or finite paper thickness.
 
+The **SVG folding sequence** link opens `bird-sequence.html`, with two pages
+rendered through the main `Render.Steps` pipeline. The ordinary FOLD sequence
+keeps thirteen material vertices and sixteen panels per state. The other
+per-state FOLD downloads remain subdivided surface inspection meshes.
+To regenerate just the SVG handoff without the packet solver, run:
+
+```bash
+stack run senbazuru-material-study -- --bird-svg build/fold-material
+stack run -- render examples/bird-base-sequence.fold --steps --columns 4 --view iso --width 1000 --height 1000 -o bird-steps.svg
+```
+
+The [visibility note](../../docs/notes/projected-panel-visibility.md) records
+the distinction between material layer order and viewing order, and the
+current limits of projecting open panels to SVG.
+
 ## Original fold controls
 
 The rounded bend radius is 0.015 times the original square's side. The resulting layer

@@ -8,7 +8,7 @@ import Data.Aeson.Key qualified as Key
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (isAsciiLower, isDigit)
 import Data.IntMap.Strict qualified as IM
-import Data.List (foldl', nub, sortOn)
+import Data.List (find, foldl', nub, sortOn)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Ord (Down (..))
 import Data.Text qualified as T
@@ -19,14 +19,18 @@ import FoldMaterial
 import FoldRelaxation
 import PanelContact
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), solid)
+import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
+import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Render.Camera (depth, isometric, project)
-import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
+import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Render.Camera (View (..), bottomUp, depth, isometric, project)
+import Senbazuru.Render.Steps (stepPage)
+import Senbazuru.Render.Svg (Page (..), defaultPage, escapeXml, renderSvg)
 import StudyCase
 import System.Directory (createDirectoryIfMissing)
 import System.Environment (getArgs)
@@ -41,7 +45,8 @@ main = do
   args <- getArgs
   case args of
     [destination] -> generate destination
-    _ -> die "usage: stack run senbazuru-material-study -- OUTPUT_DIRECTORY (from repository root)"
+    ["--bird-svg", destination] -> writeBirdSequence destination
+    _ -> die "usage: stack run senbazuru-material-study -- [--bird-svg] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -61,6 +66,7 @@ generate destination = do
       progress = object [Key.fromString name .= progressValue name which result | (name, which, result) <- runs]
   mapM_ (writeModel destination) models
   mapM_ (writeAuthored destination) [pose | (_, poses) <- authored, pose <- poses]
+  writeBirdSequence destination
   BL.writeFile (destination </> "cases.json") (encode catalog)
   BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
   BL.writeFile (destination </> "relaxation.json") (encode progress)
@@ -72,6 +78,27 @@ generate destination = do
     solve (name, which) = case relaxPacket defaultSettings which (sharpMesh 16 which) of
       Left err -> die (T.unpack (explain err))
       Right result -> pure (name, which, result)
+
+-- | The first study-to-library handoff uses ordinary FOLD and the same page
+-- renderer as `senbazuru render --steps`. Keep the fast command available so
+-- regenerating this fixture does not rerun the unrelated packet relaxation.
+writeBirdSequence :: FilePath -> IO ()
+writeBirdSequence destination = do
+  createDirectoryIfMissing True destination
+  specs <- BL.readFile "study/fold-material/cases.json" >>= either die pure . eitherDecode
+  spec <- maybe (die "bird-petal case missing") pure (find ((== "bird-petal") . caseId) (specs :: [CaseSpec]))
+  source <- loadFoldFile (caseSource spec) >>= either (die . T.unpack . explain) pure
+  file <- either (die . T.unpack . explain) pure (buildCaseSequence spec source)
+  BL.writeFile (destination </> "bird-base-sequence.fold") (encode file)
+  mapM_ (writePage file) [("iso", isometric), ("bottom", bottomUp)]
+  template <- TIO.readFile "study/fold-material/bird-sequence.html"
+  let labels = T.concat ["<li>" <> escapeXml (poseLabel step) <> "</li>" | step <- caseSteps spec]
+  TIO.writeFile (destination </> "bird-sequence.html") (T.replace "<!--STEPS-->" labels template)
+  where
+    writePage file (name, basis) = do
+      result <- either (die . T.unpack . explain) pure (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) False (otherFrames file))
+      diagram <- maybe (die "bird sequence has no figures") pure result
+      TIO.writeFile (destination </> "bird-sequence-" ++ name ++ ".svg") (renderSvg defaultPage {pageWidth = 1000, pageHeight = 1000} diagram)
 
 validCase :: CaseSpec -> Bool
 validCase spec = not (null (caseId spec)) && all (\c -> isAsciiLower c || isDigit c || c == '-') (caseId spec) && not (null (caseSteps spec))
