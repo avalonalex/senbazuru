@@ -15,7 +15,7 @@ closes.
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,069 examples, including material and contact checks |
+| Tests | 1,084 examples, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -32,7 +32,7 @@ second generation.
 Senbazuru's focus is book-style diagrams from checked folding states: hidden
 lines, two paper colours and visible regions even when flaps stack in a circle.
 The study now shares its material representation with the renderer interfaces;
-replacing the old glTF display spacing is next. Authoring a folding sequence,
+glTF now keeps crease positions and material identities in two scenes. Authoring a folding sequence,
 handling larger models and installing without Stack remain separate pieces of
 work.
 
@@ -41,9 +41,9 @@ work.
 1. **One connected material surface** ([#146](https://github.com/avalonalex/senbazuru/issues/146)).
    `Origami.Surface` now holds material identity, current geometry, crease
    topology and optional properties. The study uses its mesh/refinement code,
-   and both renderer interfaces accept it. The next stage replaces glTF's
-   per-face display spacing and preserves material identities in graphics
-   exports. Physical thickness stays distinct from display offsets. Replace
+   and both renderer interfaces accept it. glTF now writes visible and complete
+   scenes at the same positions, retaining material references instead of
+   lifting faces apart. Physical thickness is metadata only. Replace
    obsolete internal paths rather than maintaining them for alpha compatibility.
    [The design note](notes/connected-paper-surface.md) separates this
    representation change from the bending and opening controls that follow.
@@ -93,9 +93,9 @@ work.
   cell and overlap-graph formulation rather than a faster map.
 - **[#114](https://github.com/avalonalex/senbazuru/issues/114) the material around a fold.**
   The study now has connected surfaces and a corrected sharp double fold that
-  meets length/contact tolerances. The production glTF path still separates
-  faces. [#146](https://github.com/avalonalex/senbazuru/issues/146) is the next
-  handoff: a shared connected surface, with thickness optional. The original
+  meets length/contact tolerances. The production glTF path now preserves
+  shared crease positions through the surface introduced by
+  [#146](https://github.com/avalonalex/senbazuru/issues/146), with thickness optional. The original
   rounded double-fold experiment showed that a 3:1 radius ratio can still
   stretch the paper; radius and connectivity alone do not settle its shape.
   Later work needs bending, crease preferences and compatible contact.
@@ -158,11 +158,10 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 1. [#146](https://github.com/avalonalex/senbazuru/issues/146), the shared connected
    surface, following the findings of [#114](https://github.com/avalonalex/senbazuru/issues/114).
-   The shared core is in place. Next replace the glTF display spacing, retaining
-   material identity and crease continuity when graphics vertices are duplicated
-   for lighting, then refresh the README's three-example gallery. Add bending
-   and crease preferences next; physical thickness is not a prerequisite for
-   the handoff.
+   The shared core and glTF replacement are in place, with material references
+   on graphics copies and refreshed README examples. Next add bending resistance
+   and crease preferences; physical thickness is not a prerequisite for that
+   first mechanics model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

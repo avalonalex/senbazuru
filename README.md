@@ -83,13 +83,13 @@ None of that shows in the output, which is rather the point.
 
 ## Three pictures a book would print
 
-**A sequence, with the arrows worked out.** FOLD has no key for an arrow, so
-senbazuru subtracts one frame from the next to find what moved and where it
-went, and lays the whole thing out at one scale — the model genuinely shrinks
-as it is folded, because that is what folding does.
+**A frog base, one checkpoint at a time.** Five verified folding states show
+the square base, one pocket flattened, all four flattened, one long flap
+lifted, and the completed frog base. Each picture has the same camera and scale;
+the [folding guide](study/fold-material/README.md) explains the operations.
 
 <p align="center">
-  <img src="docs/img/steps.svg" width="640" alt="A square folded into quarters, drawn as three numbered figures with fold arrows">
+  <img src="docs/img/frog-sequence.svg" width="1000" alt="Five checked frog-base checkpoints, from a square base through pocket flattening and lifted flaps to the completed base">
 </p>
 
 **The underside.** Origami paper is coloured on one side, and `--view bottom`
@@ -101,14 +101,13 @@ sheet. This is the twist whose flaps stack in a circle.
   <img src="docs/img/pinwheel-underside.svg" width="260" alt="A thirds pinwheel seen from below, its centre showing the back of the paper">
 </p>
 
-**The stack, opened out.** Fold a square into quarters and the four quadrants
-land exactly on top of one another. The honest picture is one square, and the
-reader learns nothing from it, so `--offset` steps the layers apart the way a
-book does. The step is in page units: six points whether the sheet is one unit
-across or four hundred.
+**A flap in mid-fold.** The first bird-base flap rises while the packet below
+it stays folded. The positions come from linked crease angles, with material
+lengths and contact checked at this state. SVG projects the same material
+surface that the glTF exporter lets you turn over.
 
 <p align="center">
-  <img src="docs/img/quarter-fold-offset.svg" width="260" alt="A square folded into quarters, its four layers drawn stepped apart up and to the right">
+  <img src="docs/img/bird-open.svg" width="420" alt="An intermediate bird-base fold with its first flap raised above the stationary packet">
 </p>
 
 ## What it does
@@ -126,9 +125,10 @@ across or four hundred.
 - **Opens the stack out**, infers the arrows, and lays a sequence out as one
   numbered page at one scale.
 - **Exports a 3D model.** glTF (`.glb`), both sides of the paper in their two
-  colours. The current exporter separates flat layers to prevent flickering
-  where faces coincide. Those display offsets leave gaps at creases; replacing
-  them with a shared connected surface is [planned](https://github.com/avalonalex/senbazuru/issues/146).
+  colours. Two scenes share the same material positions: exposed paper for
+  stable viewing and the complete sheet for inspection. Creases stay joined;
+  graphics corners retain their material references.
+  [Preview both scenes](study/gltf/README.md).
 - **Checks flat-foldability** at every interior vertex by Maekawa's theorem and
   Kawasaki's, and says which vertex fails and why — including the failure that
   is neither theorem, a crease that stops in the middle of the paper.
@@ -204,11 +204,11 @@ with every open issue tiered by how hard it is.
 
 1. **[One connected paper surface for folding and rendering.](https://github.com/avalonalex/senbazuru/issues/146)**
    The shared surface and study refinement are now in the library, with SVG
-   and glTF entry points. Next replace the glTF face-spacing display policy
-   and preserve material identities in graphics exports. Keep thickness
-   separate from display offsets. This is an alpha: obsolete internal paths
-   can be replaced once their replacements pass the verified base and sequence
-   cases.
+   and glTF entry points. The glTF replacement now preserves crease positions
+   and material identities, with visible and complete scenes. Physical thickness
+   remains optional; bending resistance and crease preferences are later work.
+   This is an alpha: obsolete internal paths can be replaced as verified cases
+   pass through their replacements.
    → [connected-paper-surface](docs/notes/connected-paper-surface.md)
 2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output came first, since nothing else can be built without it, and the

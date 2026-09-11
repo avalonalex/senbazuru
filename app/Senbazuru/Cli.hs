@@ -68,7 +68,7 @@ import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Origami.ThroughLayers (creaseThroughLayers)
 import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
-import Senbazuru.Render.Gltf (Thickness (..), renderGlb)
+import Senbazuru.Render.Gltf (ExportMode (..), renderGlb)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import System.Exit (exitFailure)
@@ -131,9 +131,9 @@ data ExportOptions = ExportOptions
     eoFold :: Bool,
     eoStacking :: [Int],
     eoBudget :: Budget,
-    -- | Model units between one layer of a flat-folded model and the next.
-    -- 'Nothing' takes the exporter's default, a thousandth of the model.
-    eoThickness :: Maybe Double
+    -- | Omit the derived visible scene and keep every material panel.
+    -- Useful for inspection in viewers without a scene selector.
+    eoAllLayers :: Bool
   }
   deriving stock (Eq, Show)
 
@@ -300,7 +300,7 @@ point = eitherReader $ \raw -> case break (== ',') raw of
   (x, ',' : y) -> (,) <$> number "x" x <*> number "y" y
   _ -> Left ("expected a point as x,y, not " <> raw)
   where
-    -- Finite, for the reason --rotate and --thickness are: a coordinate that
+    -- Finite, for the reason --rotate and --offset are: a coordinate that
     -- is not a number reaches the geometry and every question asked of it
     -- answers NaN, which formats as 0 and stacks half a model on the origin
     -- without a word. `reads` accepts "NaN" and "Infinity" quite happily.
@@ -328,24 +328,7 @@ exportOptions =
     <*> foldSwitch
     <*> stackingOption
     <*> budgetOption
-    <*> optional
-      ( option
-          -- Refused during parsing like --offset, and for the same reasons: a
-          -- non-number would land every vertex on one point, and a negative
-          -- distance is a guess about what someone meant.
-          (nonNegative "the thickness" "model units" =<< auto)
-          ( long "thickness"
-              <> metavar "UNITS"
-              <> help
-                ( "How far apart to place the layers of a flat-folded model, in"
-                    <> " the model's own units (default: a thousandth of its"
-                    <> " size). Coincident layers cannot be told apart by a 3D"
-                    <> " viewer, so this is what makes a flat model visible at"
-                    <> " all. 0 writes the paper exactly as folded, which is the"
-                    <> " only way to export a twist"
-                )
-          )
-      )
+    <*> switch (long "all-layers" <> help "Export only the complete paper scene; coincident layers may flicker in generic viewers")
 
 checkOptions :: Parser CheckOptions
 checkOptions =
@@ -433,10 +416,10 @@ toRadians d = d * pi / 180
 -- | Refuse a distance or a tolerance that is not one: negative, or not a
 -- number at all.
 --
--- One reader for the three flags that want it, each naming what it is and
+-- One reader for nonnegative quantities, each naming what it is and
 -- what it is measured in. Rejected during parsing rather than checked later,
 -- so the usage text says which flag and no file is opened first. A negative
--- tolerance would pass every vertex; a negative offset or thickness reads a
+-- tolerance would pass every vertex; a negative offset reads a
 -- minus sign as a direction, which is a guess about what someone meant; and
 -- NaN or Infinity reaches 'formatNumber' or the float32 packer, which write
 -- them as nothing in particular.
@@ -790,10 +773,10 @@ creaseFile o f = do
 exportFile :: ExportOptions -> FoldFile -> IO ()
 exportFile o f = do
   frame <- paperFor (eoInput o) (eoFrame o) (eoFold o) (eoBudget o) (eoStacking o) f
-  let thickness = maybe DefaultThickness Thickness (eoThickness o)
+  let mode = if eoAllLayers o then CompletePaper else VisiblePaper
   -- Named the way render titles its page: the frame's title, else the file's,
   -- since a file's title very often lives on the file and not the frame.
-  case renderGlb (eoBudget o) thickness (frameTitle frame <|> fileTitle f) frame of
+  case renderGlb (eoBudget o) mode (frameTitle frame <|> fileTitle f) frame of
     Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> explain err)
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
 

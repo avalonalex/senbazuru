@@ -165,26 +165,34 @@ model has no page.
 | `--fold` | Fold the crease pattern along its fold angles and export the result |
 | `--stacking N[,N...]` | Which layer order to use, as for `render` |
 | `--layer-budget N` | As for `render` |
-| `--thickness UNITS` | How far apart to place the layers of a flat-folded model, in the model's own units (default: a thousandth of its size) |
+| `--all-layers` | Export only the complete sheet for inspection; touching layers may flicker |
 
-A flat-folded model has every face in one plane, and a 3D viewer cannot tell
-coincident faces apart — it shows a shimmer of both, called z-fighting. So each
-face is lifted by its layer number times the requested spacing. This is a
-display convention: it leaves gaps at creases and is not a connected physical
-thickness model. The
-paper's two sides come out in the two colours the SVG uses. A model with paper
-still in the air is written exactly as folded, with no separation.
+The default GLB has two selectable scenes. **Visible paper** removes buried
+coplanar regions (overlapping paper in the same plane), on both sides, so a
+standard viewer can show the exposed paper without depth ties. **Complete
+paper** retains every panel. Neither scene moves a layer or opens a gap at a
+crease. Both use the same two paper colours as SVG. Viewers that show only the
+default scene open Visible paper; use `--all-layers` to open the complete sheet
+in such a viewer.
 
-`--thickness 0` writes the paper exactly as folded and asks for no layer order,
-which is the only way to export a twist — its layers run in a circle and have
-no numbers. [tour.md](tour.md#what-it-exports) has the reasoning and
-[notes/paper-thickness.md](notes/paper-thickness.md) the detail.
+The visible scene uses supplied `faceOrders`, or the existing layer solver for
+a whole flat-folded model. An open model with ambiguous coplanar overlaps needs
+explicit orders; `--all-layers` remains available for inspection. Cyclic
+interleavings such as the pinwheel are supported. Invalid face references and
+contradictory pair orders are still errors. Panels must be convex; the visible
+scene also requires them to be planar. This is visibility, not a new contact or
+collision certificate.
 
-There is no wing-spreading or body-inflation command yet. Both are future
-goals. The [connected-surface plan](notes/connected-paper-surface.md) describes
-the shared geometry, later bending/contact constraints and opening controls
-they need. The name `--thickness` currently controls layer display spacing;
-it does not enable those mechanics.
+Graphics corners and triangles retain their original material vertex/panel
+references in `extras`; the complete topology and supplied layer relationships
+are included too. See [the export note](notes/visible-paper-mesh.md) for the
+metadata layout and [the preview](../study/gltf/README.md) for a scene selector.
+The old `--thickness` display-spacing option has been removed. Physical
+thickness remains optional surface metadata and causes no displacement.
+
+Wing spreading and body inflation remain future goals. The
+[connected-surface plan](notes/connected-paper-surface.md) describes the
+material constraints and opening controls they need.
 
 Library callers can pass `Origami.Surface` to `surfaceDiagram` and
 `renderSurfaceGlb`. A surface produced from folding retains its original-sheet

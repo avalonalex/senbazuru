@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Connected paper · glTF preview</title>
+<style>
+  body { margin: 0; background: #f4efe7; color: #242722; font: 16px system-ui; }
+  header { padding: 26px 36px 18px; }
+  h1 { margin: 8px 0; font-size: 32px; }
+  p { max-width: 950px; line-height: 1.5; }
+  label, button, select { font: inherit; margin: 0 12px 10px 0; }
+  select, button { border: 1px solid #c9c0b1; background: #fffaf2; border-radius: 5px; padding: 8px; }
+  #view { height: 68vh; min-height: 450px; }
+  canvas { display: block; width: 100%; height: 100%; }
+  footer { padding: 15px 36px; }
+  #error { color: #a32d16; }
+</style>
+<header>
+  <small>SENBAZURU · SHARED MATERIAL GEOMETRY</small>
+  <h1>Connected creases, stable surfaces</h1>
+  <p>Turn the model over and inspect its edges. Visible paper hides buried regions;
+    Complete paper keeps every layer. Both use the same positions.</p>
+  <label>Model <select id="model"></select></label>
+  <label>Scene <select id="scene"></select></label>
+  <button id="above">45° above</button><button id="below">45° below</button>
+  <button id="edge">Edge-on</button>
+</header>
+<div id="view"></div>
+<footer>
+  <span id="status" role="status">Loading…</span>
+  <p>Drag to rotate · scroll to zoom. Complete paper may flicker where layers touch;
+    neither scene separates the layers.</p>
+  <p id="error" role="alert"></p>
+</footer>
+<script type="importmap">
+{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const host = document.querySelector('#view');
+const picker = document.querySelector('#model');
+const scenePicker = document.querySelector('#scene');
+const error = document.querySelector('#error');
+const requested = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#e8e0d2');
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8b8170, 2));
+const light = new THREE.DirectionalLight(0xffffff, 2);
+light.position.set(2, 4, 3);
+scene.add(light);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+let loaded, current, radius = 1, requestNumber = 0;
+
+function resize() {
+  renderer.setSize(host.clientWidth, host.clientHeight, false);
+  camera.aspect = host.clientWidth / host.clientHeight;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(host);
+function angle(x, y, z) {
+  camera.position.set(x, y, z).normalize().multiplyScalar(radius * 4.5);
+  // An unnecessarily tiny near plane wastes precision at touching edges.
+  camera.near = radius / 10;
+  camera.far = radius * 100;
+  camera.updateProjectionMatrix();
+  controls.minDistance = radius * 1.1;
+  controls.maxDistance = radius * 20;
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+function show() {
+  if (current) scene.remove(current);
+  current = loaded.scenes[Number(scenePicker.value)];
+  scene.add(current);
+  document.querySelector('#status').textContent =
+    `${picker.selectedOptions[0].text} · ${scenePicker.selectedOptions[0].text} · no layer displacement`;
+}
+function dispose(model) {
+  if (!model) return;
+  const geometries = new Set(), materials = new Set();
+  for (const s of model.scenes) s.traverse(object => {
+    if (object.geometry) geometries.add(object.geometry);
+    if (object.material) {
+      for (const material of [object.material].flat()) materials.add(material);
+    }
+  });
+  for (const geometry of geometries) geometry.dispose();
+  for (const material of materials) material.dispose();
+}
+async function load() {
+  const ticket = ++requestNumber;
+  error.textContent = '';
+  scenePicker.disabled = true;
+  try {
+    const next = await new GLTFLoader().loadAsync(picker.value);
+    if (ticket !== requestNumber) { dispose(next); return; }
+    if (current) { scene.remove(current); current = null; }
+    dispose(loaded);
+    loaded = next;
+    // Both scenes use one centre and scale, derived from the complete sheet.
+    const box = new THREE.Box3().setFromObject(loaded.scenes.at(-1));
+    const center = box.getCenter(new THREE.Vector3());
+    radius = box.getSize(new THREE.Vector3()).length() / 2;
+    scenePicker.replaceChildren();
+    loaded.scenes.forEach((s, i) => {
+      s.position.sub(center);
+      scenePicker.add(new Option(s.name.replaceAll('_', ' ') || `Scene ${i + 1}`, String(i)));
+    });
+    scenePicker.value = loaded.scenes[Number(requested.get('scene'))] ? requested.get('scene') || '0' : '0';
+    show();
+    angle(1, requested.get('side') === 'below' ? -1 : 1, 0);
+  } catch (e) {
+    if (ticket === requestNumber) error.textContent = e.message;
+  } finally {
+    if (ticket === requestNumber) scenePicker.disabled = !loaded;
+  }
+}
+picker.onchange = load;
+scenePicker.onchange = show;
+document.querySelector('#above').onclick = () => angle(1, 1, 0);
+document.querySelector('#below').onclick = () => angle(1, -1, 0);
+document.querySelector('#edge').onclick = () => angle(1, 0, 0);
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+try {
+  const response = await fetch('models.json');
+  if (!response.ok) throw new Error(`Cannot load models.json: ${response.status}`);
+  const models = await response.json();
+  for (const { title, path } of models) picker.add(new Option(title, path));
+  const desired = requested.get('model') || 'quarter-fold.glb';
+  picker.value = models.some(model => model.path === desired) ? desired : models[0].path;
+  await load();
+} catch (e) { error.textContent = e.message; }
+</script>
+</html>

@@ -38,7 +38,7 @@ read the Haddock module headers; for the domain, start with
 | [convex-clipping.md](convex-clipping.md) | Test whether two faces overlap by clipping them, not with predicates |
 | [visible-regions.md](visible-regions.md) | Draw a folded model by subtracting the layers over each face, not by painting faces in order |
 | [layer-numbers.md](layer-numbers.md) | Which sheet of the stack a face is in is the longest chain below it, not a count of what it covers |
-| [paper-thickness.md](paper-thickness.md) | A depth buffer cannot draw coincident layers; lift each by its layer number, and give every face its own corners |
+| [paper-thickness.md](paper-thickness.md) | Why independent layer lifting opened crease gaps and was replaced |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |
 | [two-bends-need-more-than-radii.md](two-bends-need-more-than-radii.md) | A single rounded fold preserves material, but composing two perpendicular bends can stretch the outer layer by 200%; an executable counterexample |
@@ -71,6 +71,7 @@ read the Haddock module headers; for the domain, start with
 | Note | Idea |
 | --- | --- |
 | [depth-ties-at-contact.md](depth-ties-at-contact.md) | Touching zero-thickness layers need an explicit display convention when depth precision runs out |
+| [visible-paper-mesh.md](visible-paper-mesh.md) | Two glTF scenes share material positions: clip buried coplanar paper for display and retain the complete sheet for inspection |
 | [sharing-material-vertices.md](sharing-material-vertices.md) | Shared material vertices keep creases connected; separate panel normals keep them sharp |
 
 ## Where to start

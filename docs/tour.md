@@ -437,36 +437,39 @@ the fastest way to see that a fold went wrong is to turn it over.
 
 ```bash
 stack run -- export examples/crane.fold --fold -o crane.glb
-stack run -- export examples/quarter-fold.fold --fold --thickness 0.02 -o stack.glb
+stack run -- export examples/quarter-fold.fold --fold --all-layers -o complete.glb
 ```
 
-writes glTF in its binary form, which opens in Blender, in three.js, and in the
-viewers built into macOS and Windows. The paper's two sides come out in the two
-colours the SVG uses, each face written twice and wound both ways, because
-glTF culls a triangle seen from behind and that is how a sheet gets a front
-and a back.
+writes glTF in its binary form. The first command includes two scenes: Visible
+paper, selected by default, and Complete paper. The second writes only the
+complete sheet for a viewer without a scene selector.
 
-The current exporter handles a visibility problem in the zero-thickness model.
-Fold a square into quarters and all four faces lie
-in one plane to the last bit. An SVG copes because it paints in an order. A 3D
-viewer does not — it keeps whichever triangle is nearest at each pixel, and
-when two are at the same depth it keeps whichever rounding favours, pixel by
-pixel. Coincident layers come out as a shimmer of both, and a flat-folded model
-is nothing but coincident layers.
+Fold a square into quarters and all four panels lie in `z = 0`. A depth buffer
+stores the nearest triangle at each pixel, but those depths tie. FOLD's layer
+orders say which paper is exposed; an ordinary glTF viewer does not understand
+them. Moving the panels apart would break their shared creases.
 
-So each face is lifted by its layer number — the same longest-chain number
-`--offset` steps by — times a thickness, a thousandth of the model by default.
-Four faces stacked come out at heights 0, 1, 2 and 3; two lying side by side
-come out level. Each face owns its corners, so the quarter fold has sixteen
-vertices rather than nine. The separated faces leave gaps at creases: this is
-a display convention, not a connected physical model of thick paper. The
-[connected-surface plan](notes/connected-paper-surface.md) replaces that
-representation and keeps any display separation distinct from material data.
+Instead, the default scene subtracts buried regions separately on each side
+of each plane. The quarter fold becomes two exposed squares, with four
+triangles in total. Its complete scene retains all four panels, sixteen
+triangles including their back sides. Both remain in `z = 0`. Open panels keep
+their actual positions, so the viewer can compare their depths as the camera
+turns. A cyclic pinwheel works too: visibility needs an answer over each
+patch, not one height for each whole flap.
 
-`--thickness 0` writes the paper exactly as folded and asks for no layer order,
-which is the only way to export a twist. A model with paper still in the air is
-written as it stands, unseparated. [notes/paper-thickness.md](notes/paper-thickness.md)
-has the detail, and what other tools do about the same problem.
+Two-sided colour comes from triangle winding. A front triangle uses the
+source panel's corner order; a back triangle reverses it. The viewer culls the
+side facing away. A graphics corner introduced by clipping carries weighted
+references to the original material vertices, while every triangle records
+its original panel. Graphics duplication therefore does not become a tear or
+weld in the material topology. The [export note](notes/visible-paper-mesh.md)
+gives a concrete example and the metadata layout.
+
+Ambiguous coplanar overlaps in an open model are refused by the default
+export; supply their layer order or use `--all-layers` for inspection. The
+complete scene can flicker where paper touches. Neither scene measures new
+contacts, bends panels, adds thickness or certifies the motion between states.
+The former `--thickness` option and independent face lifting are removed.
 
 One expectation to head off: the crane that comes out is **flat**, wings closed,
 because `examples/crane.fold` is the flat-folded crane — every crease in it is a
@@ -494,10 +497,10 @@ panel ids through refinement, and records physical thickness separately from
 drawing settings. `surfaceDiagram` and `renderSurfaceGlb` accept that surface;
 the base gallery and frog guide use it directly. A standalone folded FOLD file
 can still be rendered without an original-sheet map, but cannot use those
-missing coordinates for material measurements. The next stage replaces the
-glTF spacing described above; this representation change does not yet remove
-its crease gaps. Refinement supports convex planar panels whose first-corner
-fan has no zero-area triangles; concave and curved panels need further work.
+missing coordinates for material measurements. Both glTF scenes retain the
+surface positions and supplied layer relationships. Refinement supports convex
+planar panels whose first-corner fan has no zero-area triangles; concave and
+curved panels need further work.
 It preserves cuts whose sides already have distinct vertex ids and refuses
 refinement across an unsplit cut edge.
 
