@@ -236,8 +236,13 @@ reversing the adjustment when viewed from underneath. Contact failures and the
 original-sheet view disable the adjustment. Exported geometry stays unchanged.
 These checks do not certify continuous collisions or finite paper thickness.
 
-The **SVG folding sequence** link opens `bird-sequence.html`, with two pages
-rendered through the main `Render.Steps` pipeline. The ordinary FOLD sequence
+The **SVG folding sequence** link opens `bird-sequence.html`, with side views
+at 45° above and below the paper, rendered through the main `Render.Steps`
+pipeline. The above view is the default: looking across the petal shows its
+lift apart from the paper beneath it. Expand the below view to follow the
+second petal. The isometric and directly-underneath projections remain linked
+for comparison. Each page uses one camera and scale for all sixteen states.
+The ordinary FOLD sequence
 keeps thirteen material vertices and sixteen panels per state. The other
 per-state FOLD downloads remain subdivided surface inspection meshes.
 To regenerate just the SVG handoff without the packet solver, run:
