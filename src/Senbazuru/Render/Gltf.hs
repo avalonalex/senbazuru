@@ -386,8 +386,8 @@ canonicalPiece quantum piece = piece {pieceCorners = rotate (pieceCorners piece)
   where
     rotate corners = case zip [0 ..] corners of
       [] -> []
-      first : rest ->
-        let (i, _) = foldl' earlier first rest
+      initial : rest ->
+        let (i, _) = foldl' earlier initial rest
          in drop i corners ++ take i corners
     earlier old@(_, a) new@(_, b)
       | packable quantum (paperPosition b) < packable quantum (paperPosition a) = new
