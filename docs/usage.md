@@ -409,5 +409,7 @@ can be drawn with `render examples/fish-base.fold --fold` and
 endpoints are checked. In the study viewer, select **Fish base** for fifteen
 states gathering its two rabbit ears in sequence. The first stays at its 175°
 inspection state while the second moves; the final view leaves both slightly
-open. Intermediate bird petal folds remain unsupported;
-see [the study guide](../study/fold-material/README.md#two-rabbit-ears-form-the-fish-base).
+open. Select **Bird base · first petal** for eight states lifting one flap from
+the square base, with its body and second petal held still. The second petal
+and continuous collision certification remain unsupported; see
+[the study guide](../study/fold-material/README.md#the-first-bird-base-petal).

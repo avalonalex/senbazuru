@@ -8,7 +8,9 @@
 -- The existing folding code checks shared vertices AND crease angles. Its
 -- returned cut pattern owns the face ids used here, not the original input.
 --
--- We hold the largest panel still so a sequence has one reference frame. Each
+-- We hold the largest panel still unless the case supplies a material point
+-- inside another panel. A petal's largest panel is its moving tip, so that
+-- case anchors the stationary base instead. Each
 -- convex panel is triangulated, then every triangle is split into four. Shared
 -- edge midpoints have shared ids, including across creases: lighting may split
 -- there, but the material must not. These midpoints subdivide an already rigid
@@ -55,12 +57,14 @@ data CaseSpec = CaseSpec
     caseSource :: !FilePath,
     caseDescription :: !Text,
     caseSteps :: ![PoseSpec],
+    -- | A point strictly inside the panel held in its original position.
+    caseFixedPanel :: !(Maybe (Double, Double)),
     caseContact :: !(Maybe ContactSpec)
   }
   deriving stock (Eq, Show)
 
 instance FromJSON CaseSpec where
-  parseJSON = withObject "study case" $ \o -> CaseSpec <$> o .: "id" <*> o .: "title" <*> o .: "source" <*> o .: "description" <*> o .: "steps" <*> o .:? "contact"
+  parseJSON = withObject "study case" $ \o -> CaseSpec <$> o .: "id" <*> o .: "title" <*> o .: "source" <*> o .: "description" <*> o .: "steps" <*> o .:? "fixedPanel" <*> o .:? "contact"
 
 data PoseSpec = PoseSpec
   { poseLabel :: !Text,
@@ -77,9 +81,13 @@ data StudyPose = StudyPose
     posePanels :: ![Int],
     -- | Boundary and crease segments, without triangle subdivision lines.
     poseLines :: ![(V3, V3)],
+    -- | Incident material panels for each feature segment, in poseLines order.
+    poseLinePanels :: ![[Int]],
     -- | Whole rigid panels, before refinement, with their original material map.
     poseFaces :: ![(Int, [Sample])],
-    poseContact :: !(Maybe ContactCheck)
+    poseContact :: !(Maybe ContactCheck),
+    -- | Declared lower/upper relations resolved to the cut pattern's panels.
+    poseOrders :: !(Maybe (V3, [(Int, Int)]))
   }
   deriving stock (Eq, Show)
 
@@ -95,16 +103,19 @@ instance Explain CaseError where
 -- contact checks. The raw buildPose remains useful for unconstrained fixtures.
 buildCasePose :: Int -> CaseSpec -> Frame -> PoseSpec -> Either CaseError StudyPose
 buildCasePose levels spec source step = do
-  pose <- buildPose levels source step
-  report <- traverse (check pose) (caseContact spec)
-  pure pose {poseContact = report}
+  pose <- buildPoseAt (caseFixedPanel spec) levels source step
+  checked <- traverse (check pose) (caseContact spec)
+  pure pose {poseContact = fmap fst checked, poseOrders = fmap snd checked}
   where
     check pose requirements = do
       resolved <- mapM (resolve (poseFaces pose)) (namedPanels requirements)
       let ids = map fst resolved
       unless (length ids == length (poseFaces pose) && length ids == S.size (S.fromList ids)) $
         Left (CaseError "contact declarations must name every material panel exactly once")
-      first (CaseError . explain) (checkPanelContact (orderDirection requirements) (panelOrders requirements) (map snd resolved))
+      report <- first (CaseError . explain) (checkPanelContact (orderDirection requirements) (panelOrders requirements) (map snd resolved))
+      let idsByName = M.fromList [(panelName panel, i) | (i, panel) <- resolved]
+          orders = [(i, j) | (a, b) <- panelOrders requirements, Just i <- [M.lookup a idsByName], Just j <- [M.lookup b idsByName]]
+      pure (report, (orderDirection requirements, orders))
     resolve faces (PanelTag name point@(V2 u v))
       | any (\x -> isNaN x || isInfinite x) [u, v] = Left (CaseError ("panel " <> name <> " needs a finite material point"))
       | otherwise = case [(i, Panel name (map position ps)) | (i, ps) <- faces, strictlyInside 1e-10 (outline ps) point] of
@@ -113,7 +124,10 @@ buildCasePose levels spec source step = do
     outline ps = let ring2 = [V2 (materialU p) (materialV p) | p <- ps] in if signedArea ring2 < 0 then reverse ring2 else ring2
 
 buildPose :: Int -> Frame -> PoseSpec -> Either CaseError StudyPose
-buildPose levels source step = do
+buildPose = buildPoseAt Nothing
+
+buildPoseAt :: Maybe (Double, Double) -> Int -> Frame -> PoseSpec -> Either CaseError StudyPose
+buildPoseAt anchor levels source step = do
   unless (levels >= 0 && levels <= 5) (Left (CaseError "study subdivision level must be between 0 and 5"))
   unless (length (poseAngles step) == length (edgesVertices source)) $
     Left (CaseError ("state needs " <> tshow (length (edgesVertices source)) <> " angles, one per source edge"))
@@ -125,9 +139,16 @@ buildPose levels source step = do
   unless (all inside flat) (Left (CaseError "study material coordinates must lie in the unit square at z = 0"))
   unless (abs (sum (map faceArea faces) - 1) < 1e-9) (Left (CaseError "study panels must cover one unit of material area"))
   mapM_ convex faces
-  fixed <- case faces of
-    [] -> Left (CaseError "study needs at least one panel")
-    _ -> Right (maximumBy (comparing stationaryRank) faces)
+  fixed <- case anchor of
+    Nothing -> case faces of
+      [] -> Left (CaseError "study needs at least one panel")
+      _ -> Right (maximumBy (comparing stationaryRank) faces)
+    Just (u, v) -> do
+      unless (all (\x -> not (isNaN x || isInfinite x)) [u, v]) $
+        Left (CaseError "fixed panel needs a finite material point")
+      case [face | face <- faces, strictlyInside 1e-10 [V2 x y | V3 x y _ <- faceCorners face] (V2 u v)] of
+        [face] -> Right face
+        _ -> Left (CaseError "fixed panel needs a point strictly inside exactly one material face")
   placement <- maybe (Left (CaseError "fixed panel has no folding transform")) Right (IM.lookup (unFaceId (faceId fixed)) (foldedPlacements folded))
   let points = [Sample u v (applyRigid (inverse placement) q) | (V3 u v _, q) <- zip flat placed]
       tagged = [(triangle, unFaceId (faceId face)) | face <- faces, triangle <- fan (map unVertexId (faceVertexIds face))]
@@ -138,9 +159,12 @@ buildPose levels source step = do
       wholePanel face = do
         corners <- mapM lookupSample (faceVertexIds face)
         pure (unFaceId (faceId face), corners)
-  lines3 <- mapM (\(a, b) -> (,) <$> lookupPoint a <*> lookupPoint b) [(a, b) | ((a, b), assignment) <- zip (edgesVertices sheet) (edgesAssignment sheet), assignment `elem` [Border, Mountain, Valley]]
+  -- A guide flat in the source endpoint can bend earlier in a sequence.
+  let features = [(a, b) | ((a, b), assignment, angle) <- zip3 (edgesVertices sheet) (edgesAssignment sheet) (edgesFoldAngle sheet), assignment `elem` [Border, Mountain, Valley] || abs angle > 1e-10]
+      owners = [[unFaceId (faceId face) | face <- faces, a `elem` faceVertexIds face, b `elem` faceVertexIds face] | (a, b) <- features]
+  lines3 <- mapM (\(a, b) -> (,) <$> lookupPoint a <*> lookupPoint b) features
   panels <- mapM wholePanel faces
-  pure (StudyPose (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3 panels Nothing)
+  pure (StudyPose (Mesh refined (map fst refinedFaces)) (map snd refinedFaces) lines3 owners panels Nothing Nothing)
   where
     inside (V3 u v z) = u >= 0 && u <= 1 && v >= 0 && v <= 1 && z == 0
 

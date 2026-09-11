@@ -202,5 +202,8 @@ with the mesh so the viewer can split lighting at arbitrary crease directions.
 These cases do not use the packet-specific contact solver. `PanelContact` checks
 their whole convex panels for 3D crossings and for declared above/below order.
 `StudyCase.buildCasePose` resolves panel names from points on the original sheet,
-so the declarations survive face renumbering. Reports are exported and displayed;
+so the declarations survive face renumbering. A case may also anchor a stationary
+panel by a material point instead of holding the largest panel still. Resolved
+orders and feature-edge ownership let the viewer break depth ties after contact
+passes, without changing exported material. Reports are exported and displayed;
 they do not change the prescribed pose or certify motion between states.
