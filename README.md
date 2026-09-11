@@ -11,40 +11,29 @@ get back the picture a book would print.
 *Senbazuru* (千羽鶴) is the practice of folding a thousand paper cranes. This is
 the version where you fold none of them and still get the pictures.
 
-<table>
-<tr>
-<td align="center"><img src="docs/img/crane-pattern.svg" width="300" alt="The crease pattern of a traditional crane"></td>
-<td align="center"><img src="docs/img/crane-folded.svg" width="300" alt="The same crane, folded flat and drawn as paper"></td>
-</tr>
-<tr>
-<td align="center"><em>what the file says</em></td>
-<td align="center"><em>what senbazuru made of it</em></td>
-</tr>
-</table>
+<p align="center">
+  <img src="docs/img/bird-sequence-preview.svg" width="1000" alt="Four checked bird-base states: a square base, the first petal lifted, the second petal lifted underneath, and the completed bird base">
+</p>
 
-```bash
-stack run -- render examples/crane.fold          --rotate 180   -o pattern.svg
-stack run -- render examples/crane.fold --fold   --rotate 180   -o crane.svg
-```
-
-Same file both times, and the same half turn, so a corner of the square on the
-left can be followed to a wing tip on the right. For the second picture
-senbazuru folded the sheet along its own angles, worked out which of the
-seventy-two faces ends up on top of which, and drew only the parts you could
-actually see.
+One sheet becoming a [bird base](docs/glossary.md), from left to right: square base, first petal
+lifted, second petal lifted underneath, both pressed flat. These four checkpoints
+come from a [sixteen-state FOLD sequence](examples/bird-base-sequence.fold),
+drawn by the main renderer with one camera and scale. Material lengths, shared
+vertices, crease angles, contact and layer order are checked at the supplied
+states. The [study](study/fold-material/README.md) explains their construction;
+the checks do not certify collisions between checkpoints.
 
 > **Status: early**, and moving. Crease patterns, folding, layer order, hidden
 > lines, two-sided paper, opened-out stacks, fold arrows, step-by-step pages, a
 > flat-foldability checker, a 3D export, the `.cp` and `.opx` readers, and the
-> first authoring verb — draw a crease on a pattern, or straight through the
-> layers of a folded model, and write it back out. What it cannot yet do is
-> show a model part-way through a fold, or write a folding *sequence*.
+> first authoring verbs. Checked intermediate folds and exported sequences work
+> today. A general vocabulary for writing instructions, arbitrary fold-motion
+> solving, and operations to spread wings or inflate bodies are still ahead.
 > [Roadmap](#roadmap) · [everything that works, at length](docs/tour.md)
 
 ## Try it
 
-You need [Stack](https://docs.haskellstack.org/). The build is the slow part;
-after that every command is a fraction of a second.
+You need [Stack](https://docs.haskellstack.org/).
 
 ```bash
 git clone https://github.com/avalonalex/senbazuru && cd senbazuru
@@ -57,6 +46,7 @@ Then keep going:
 ```bash
 stack run -- render examples/crane.fold --fold --view bottom --rotate 180 -o underside.svg
 stack run -- render examples/quarter-fold-steps.fold --steps --arrows -o steps.svg
+stack run -- render examples/bird-base-sequence.fold --steps --columns 4 --view iso --width 1000 --height 1000 -o bird-steps.svg
 stack run -- render examples/quarter-fold.fold --fold --offset 6 -o stack.svg
 stack run -- render examples/bird-base.cp --fold -o bird-base.svg
 stack run -- check examples/crane.fold
@@ -64,8 +54,8 @@ stack run -- export examples/crane.fold --fold -o crane.glb
 stack run -- fold examples/crane.fold -o crane-folded.fold
 ```
 
-`stack test` runs the suite, which takes about a second once everything is
-built. Every flag is in [docs/usage.md](docs/usage.md).
+`stack test` runs the suite, including the material-study checks. Every flag
+is in [docs/usage.md](docs/usage.md).
 
 ## The interesting part is that paper is opaque
 
@@ -136,9 +126,9 @@ across or four hundred.
 - **Opens the stack out**, infers the arrows, and lays a sequence out as one
   numbered page at one scale.
 - **Exports a 3D model.** glTF (`.glb`), both sides of the paper in their two
-  colours, with a flat-folded model's layers lifted apart so a 3D viewer can
-  tell them apart at all — paper has no thickness, and a depth buffer needs
-  one.
+  colours. The current exporter separates flat layers to prevent flickering
+  where faces coincide. Those display offsets leave gaps at creases; replacing
+  them with a shared connected surface is [planned](https://github.com/avalonalex/senbazuru/issues/146).
 - **Checks flat-foldability** at every interior vertex by Maekawa's theorem and
   Kawasaki's, and says which vertex fails and why — including the failure that
   is neither theorem, a crease that stops in the middle of the paper.
@@ -160,17 +150,22 @@ across or four hundred.
 Each of those has a section in [the tour](docs/tour.md), with the command and
 the reasoning.
 
-## Things it will not do, so you do not have to find out by trying
+## Current limits and future work
 
-- **Turn a crease pattern into instructions.** Nobody can, and the obstacle is
-  not compute: the vocabulary of moves a solver would search over has never
-  been pinned down ([why](docs/notes/no-sequence-solver.md)). Senbazuru is
-  building that vocabulary so a *person* can write a sequence, which is the
-  tractable half of the same problem.
-- **Inflate a waterbomb.** Every face here is a flat polygon, and an inflated
-  balloon's are not. Wet-folding and shaping are outside the model for the same
-  reason. Spreading a crane's wings *looks* like the same problem and is not:
-  that is angles, and it is on the roadmap.
+- **Automatically turn a crease pattern into instructions.** The project is
+  building a vocabulary so a person can author a sequence; a general sequence
+  solver remains outside its scope ([why](docs/notes/no-sequence-solver.md)).
+- **Spread wings or inflate a body.** These are future goals, including the
+  traditional waterbomb balloon. A connected mesh lets us represent the paper,
+  but opening it also needs compatible crease motion, contact checks and,
+  where panels curve, bending behaviour. Start with a controlled opening
+  amount; a pressure-driven model would additionally need a defined cavity
+  and treatment of its openings. See [wing motion](https://github.com/avalonalex/senbazuru/issues/54),
+  [body opening](https://github.com/avalonalex/senbazuru/issues/106) and
+  [the connected-surface plan](docs/notes/connected-paper-surface.md).
+- **Model every paper treatment.** Wet-folding, damage and detailed crease
+  ageing are not current goals. Physical thickness is optional future input
+  for packing and clearance; it is not required simply to represent a surface.
 - **Guess.** A model with no valid layer order is refused with the reason, not
   drawn as something plausible. A file whose faces cannot be traced draws as a
   crease pattern and declines to fold. A mirrored model folds perfectly well
@@ -207,7 +202,13 @@ issues are the detail, and the smaller pieces in between are the rest of the
 [docs/roadmap.md](docs/roadmap.md) is the state of play behind this list,
 with every open issue tiered by how hard it is.
 
-1. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
+1. **[One connected paper surface for folding and rendering.](https://github.com/avalonalex/senbazuru/issues/146)**
+   Bring the study and production paths onto shared material geometry, crease
+   identities and layer relationships. Keep thickness separate from display
+   offsets. This is an alpha: obsolete internal paths can be replaced once
+   their replacements pass the verified base and sequence cases.
+   → [connected-paper-surface](docs/notes/connected-paper-surface.md)
+2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output came first, since nothing else can be built without it, and the
    first move is built: `crease` draws a line on a pattern, or through the
    layers of a folded model, and writes the result out. What is missing is the
@@ -216,20 +217,20 @@ with every open issue tiered by how hard it is.
    sequence *solver*; see above.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
-2. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
-   A model part-way through a fold, honestly: angles solved for rather than read
-   off, so the paper never stretches and never tears. Measure what real angles
-   look like first, then the degree-4 closed form, then rotating a flap — which
-   covers 41 of the crane's 48 interior vertices without a solver at all — then
-   the general solve, then animation over each face's rigid transform.
-   Somewhere along it the layers have to stay out of each other, or a spread
-   wing sweeps through the body.
+3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
+   Specific square/waterbomb collapses, fish folds and bird petals already have
+   checked intermediate states. Generalise those constructions to authored
+   flap and wing motion, with layers staying out of each other. Follow with
+   [controlled body opening](https://github.com/avalonalex/senbazuru/issues/106),
+   adding panel bending where the rigid model cannot reach the intended form.
+   A mesh supplies the geometry; it does not choose the motion by itself.
    → [fold-angles-are-the-state](docs/notes/fold-angles-are-the-state.md),
    [folding-by-transforms](docs/notes/folding-by-transforms.md)
-3. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
+4. **[A schematic side view of the stack.](https://github.com/avalonalex/senbazuru/issues/50)**
    What a book draws when a model has too many layers to show them all at once,
-   and the answer to where `--offset` runs out. The 3D export already gives
-   paper a thickness; this should reuse it rather than invent a second one.
+   and the answer to where `--offset` runs out. It should use the shared
+   surface's layer relationships, with any display separation labelled as a
+   drawing aid rather than a physical thickness.
    → [paper-thickness](docs/notes/paper-thickness.md)
 
 ## Documentation

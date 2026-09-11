@@ -227,3 +227,11 @@ The first production handoff is `examples/bird-base-sequence.fold`.
 the study. `Render.Projected` uses actual depth to order separated panels in
 each view, then reuses `Origami.Visible` for visible regions and edges; it
 knows nothing about bird petals or the study manifest.
+
+The next planned handoff is [#146](https://github.com/avalonalex/senbazuru/issues/146):
+one connected material surface shared by the study, SVG projection and 3D
+export. Physical thickness remains an optional property, distinct from display
+offsets. [The design note](notes/connected-paper-surface.md) records this
+direction and the later requirements for bending and opening a folded pocket.
+This is a planned replacement of the competing geometry paths, not an
+additional implemented layer in the pipeline above.

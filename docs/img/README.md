@@ -24,6 +24,7 @@ stack run -- render examples/puffed-square.fold --view iso                -o doc
 | --- | --- |
 | `crane-pattern.svg` | The traditional crane as its file stores it: a crease pattern, in the Yoshizawa–Randlett line notation. Turned to match the folded one beside it, so the two can be read together |
 | `crane-folded.svg` | The same file folded and drawn — 72 faces stacked, hidden edges gone. Turned half a turn, because the crane lands upside down: a folded model sits whichever way up its crease pattern was drawn |
+| `bird-sequence-preview.svg` | Four checked bird-base states at one scale, seen from 45° above: square base, each petal lifted to 90°, then the completed base. The main README preview, generated through the production step renderer |
 | `pinwheel-underside.svg` | A twist from below, where the back of the paper shows in the other colour |
 | `steps.svg` | A square folded into quarters as three numbered figures, with the arrows worked out by subtracting each frame from the next |
 | `quarter-fold-offset.svg` | The same quarter fold, its four coincident layers stepped apart. Drawn with a wider margin than the default, because the offset pushes the stack outside the extent the page is fitted to and would otherwise touch the edge |
@@ -50,3 +51,17 @@ Inspect them before copying. They illustrate the
 [rounded-bend counterexample](../notes/two-bends-need-more-than-radii.md) and
 [sharp-crease comparison](../notes/sharp-creases-and-opening-panels.md),
 not production `render` output.
+
+The main README's bird sequence preview is production `Render.Steps` output
+from the study's checked bird states, with the same 45° camera as the full
+sequence page. It selects zero-based state indices 0, 4, 11 and 15, without
+interpolating positions. Regenerate it with:
+
+```bash
+stack run senbazuru-material-study -- --bird-svg build/fold-material
+cp build/fold-material/bird-sequence-preview.svg docs/img/bird-sequence-preview.svg
+```
+
+Read the SVG diff and inspect the picture before committing it. The ordinary
+FOLD source is `examples/bird-base-sequence.fold`; the preview is a selection
+of its states, not a complete set of folding instructions.

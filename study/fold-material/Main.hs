@@ -95,7 +95,12 @@ writeBirdSequence destination = do
   BL.writeFile (destination </> "bird-base-sequence.fold") (encode file)
   above <- sideView (-1)
   below <- sideView 1
-  mapM_ (writePage file) [("side-above", above), ("side-below", below), ("iso", isometric), ("bottom", bottomUp)]
+  mapM_ (writePage grid (otherFrames file) 1000) [("side-above", above), ("side-below", below), ("iso", isometric), ("bottom", bottomUp)]
+  -- A compact README preview: the square, each petal lifted to 90 degrees,
+  -- then the finished base. Reuse the checked states and the page's camera.
+  let preview = [fr | (i, fr) <- zip [0 :: Int ..] (otherFrames file), i `elem` [0, 4, 11, 15]]
+  -- The caption names these snapshots; they are not four consecutive steps.
+  writePage grid {gridNumbering = Nothing} preview 300 ("preview", above)
   template <- TIO.readFile "study/fold-material/bird-sequence.html"
   let labels = T.concat ["<li>" <> escapeXml (poseLabel step) <> "</li>" | step <- caseSteps spec]
   TIO.writeFile (destination </> "bird-sequence.html") (T.replace "<!--STEPS-->" labels template)
@@ -104,10 +109,11 @@ writeBirdSequence destination = do
     -- 45 degrees above/below the sheet. Seeing the petal from its side makes
     -- its lift clearer than looking straight along its line of symmetry.
     sideView z = maybe (die "bird sequence side camera is invalid") pure (basisFrom (V3 (-1) 0 z) (V3 0 0 1))
-    writePage file (name, basis) = do
-      result <- either (die . T.unpack . explain) pure (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) False (otherFrames file))
+    grid = (defaultGrid defaultTheme) {gridColumns = 4}
+    writePage layout frames height (name, basis) = do
+      result <- either (die . T.unpack . explain) pure (stepPage defaultTheme defaultBudget layout (View (Just basis) 0) False frames)
       diagram <- maybe (die "bird sequence has no figures") pure result
-      TIO.writeFile (destination </> "bird-sequence-" ++ name ++ ".svg") (renderSvg defaultPage {pageWidth = 1000, pageHeight = 1000} diagram)
+      TIO.writeFile (destination </> "bird-sequence-" ++ name ++ ".svg") (renderSvg defaultPage {pageWidth = 1000, pageHeight = height} diagram)
 
 validCase :: CaseSpec -> Bool
 validCase spec = not (null (caseId spec)) && all (\c -> isAsciiLower c || isDigit c || c == '-') (caseId spec) && not (null (caseSteps spec))
