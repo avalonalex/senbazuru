@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <title>Square (preliminary) base</title>
+  <rect x="0" y="0" width="400" height="400" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 200 200 L 384 384" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 200 200 L 16 16" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 200 200 L 16 384" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 200 200 L 200 384" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 200 200 L 384 200" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 200 200 L 384 16" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 200 200 L 200 16" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 200 200 L 16 200" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 16 384 L 200 384" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 200 384 L 384 384" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 384 384 L 384 200" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 384 200 L 384 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 384 16 L 200 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 200 16 L 16 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 16 L 16 200" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 200 L 16 384" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>
