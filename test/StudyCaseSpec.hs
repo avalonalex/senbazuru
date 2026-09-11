@@ -60,17 +60,19 @@ spec = describe "authored material-study cases" $ do
     -- The rabbit ear's moving panels exchange vertical order during the turn.
     -- Its case declares only stable relations to the fixed paper; RabbitEarSpec
     -- checks the complete closed stacking separately, including missing orders.
-    -- The petal also unfolds two old creases to zero, so rounding every active
-    -- crease to 180 would describe a different, incompatible state.
-    unless (caseId entry `elem` ["rabbit-ear", "bird-petal"]) $
+    unless (caseId entry == "rabbit-ear") $
       it "accepts ordered contact when all flaps close to 180 degrees" $ do
         finalStep <- finalPose entry
         let angles = map (\angle -> signum angle * 180) (poseAngles finalStep)
         pose <- requireRight (buildCasePose 1 entry source (PoseSpec "closed" angles))
         poseContact pose `shouldSatisfy` maybe False contactPassed
     it "reports the wrong folding side even without a panel crossing" $ do
-      finalStep <- finalPose entry
-      let angles = map negate (poseAngles finalStep)
+      -- At signed 180 degrees the rigid geometry is identical on either side.
+      -- Use the last open pose, even when a sequence finishes completely flat.
+      step <- case find (any (\a -> abs a > 1e-10 && abs a < 180 - 1e-10) . poseAngles) (reverse (caseSteps entry)) of
+        Just open -> pure open
+        Nothing -> expectationFailure "case needs an open pose for the wrong-side check" >> fail "no open pose"
+      let angles = map negate (poseAngles step)
       pose <- requireRight (buildCasePose 1 entry source (PoseSpec "wrong side" angles))
       poseContact pose `shouldSatisfy` maybe False (not . null . reversedOrders)
       fmap crossingPanels (poseContact pose) `shouldBe` Just []

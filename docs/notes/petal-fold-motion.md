@@ -2,7 +2,8 @@
 
 A **petal fold** lifts a flap of the square base and folds its sides inward,
 making a longer, narrower flap. Two petal folds form the bird base. This study
-moves only the first, leaving the second and the underlying packet still.
+derivation covers the first, leaving the second and the underlying packet
+still. [The two-petal sequence](two-petals.md) continues it to the full bird base.
 The [endpoint construction](fish-and-bird-endpoints.md) explains the original
 material coordinates; the [glossary](../glossary.md) covers the fold vocabulary.
 
@@ -62,9 +63,10 @@ of holding the largest panel still would move the base around it. The optional
 triangle beside the hinge. It identifies original material, surviving face
 renumbering. It changes only the reference frame, not the fold.
 
-The flat body retains overlapping panels throughout. Nineteen declared
-lower/upper relations cover the union of the square and one-petal endpoint
-orders, with redundant relations removed. Each endpoint agrees with the unique
+The flat body retains overlapping panels throughout. The first stage originally
+needed nineteen lower/upper relations covering the square and one-petal endpoint
+orders. The [completed sequence](two-petals.md) extends and simplifies these
+requirements for both petals. Each endpoint agrees with the unique
 stacking found by the production solver. All 120 panel pairs also pass contact
 and order checks at every half degree from 0 through 180, and at random angles
 and mesh refinements. Removing orders exposes unresolved overlaps; folding the
@@ -77,6 +79,7 @@ double fold: the old 128 depth-units factor still left patches at the default
 90° petal view; 1024 removed them in the inspected views. Feature lines carry
 their incident panels' levels too, so buried creases do not shine through. Looking underneath reverses those depth ties. Positions in the
 OBJ/FOLD exports and material measurements are unchanged; failing contact
-reports disable the adjustment. The eight gallery states end at 175° for
-inspection. These are sampled rigid states, not a continuous collision proof,
-a thickness model, or the second petal's motion.
+reports disable the adjustment. The first eight gallery states end at 175°
+for inspection before continuing with [the second petal](two-petals.md).
+These are sampled rigid states, not a continuous collision proof or a
+thickness model.

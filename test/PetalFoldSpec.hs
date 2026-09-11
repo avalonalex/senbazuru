@@ -1,11 +1,13 @@
 -- | A petal fold lifts one tip of the square base while its two sides fold
 -- inward. Seven crease angles change together: four side folds close, two
 -- old folds open, and the tip turns about its hinge. Choosing those angles
--- independently would tear the paper. See docs/notes/petal-fold-motion.md.
+-- independently would tear the paper. The second petal folds on the opposite
+-- side of the same stationary packet; see docs/notes/two-petals.md and
+-- docs/notes/petal-fold-motion.md for the two stages and their geometry.
 --
 -- The body stays flat, making layer order essential even while the petal is
--- in the air. Tests check both flat endpoints against the production stacking
--- solver, and all panel pairs along sampled motion. This does not certify
+-- in the air. Tests check all three flat checkpoints against the production
+-- stacking solver, and all panel pairs along sampled motion. This does not certify
 -- continuous collision freedom or a finite-thickness sheet.
 module PetalFoldSpec (spec) where
 
@@ -31,18 +33,26 @@ import Test.Hspec
 import Test.QuickCheck
 
 spec :: Spec
-spec = describe "first petal motion" $ do
+spec = describe "bird petal motion" $ do
   cases <- runIO $ BL.readFile "study/fold-material/cases.json" >>= requireRight . eitherDecode
   entry <- runIO $ requireJust (find ((== "bird-petal") . caseId) (cases :: [CaseSpec]))
   source <- runIO $ keyFrame <$> (loadFoldFile (caseSource entry) >>= requireRight)
-  let at level t = requireRight (buildCasePose level entry source (PoseSpec "petal" (petalAngles t)))
-  it "records eight compatible states from the square base through a nearly closed first petal" $ do
+  let atBoth level t u = requireRight (buildCasePose level entry source (PoseSpec "petals" (birdAngles t u)))
+      at level t = atBoth level t 0
+  it "retains the eight first-petal states at the start of the sequence" $ do
     caseSource entry `shouldBe` "examples/bird-base.fold"
     caseFixedPanel entry `shouldBe` Just (0.58, 0.4)
-    length (caseSteps entry) `shouldBe` 8
+    length (caseSteps entry) `shouldBe` 16
     forM_ (zip (caseSteps entry) [0, 15, 30, 60, 90, 120, 150, 175]) $ \(step, t) -> do
       length (poseAngles step) `shouldBe` 28
       zipWith (-) (poseAngles step) (petalAngles t) `shouldSatisfy` all ((< 1e-12) . abs)
+  it "adds seven second-petal states with the first fixed, then presses both flat" $ do
+    let secondStage = take 7 (drop 8 (caseSteps entry))
+    length secondStage `shouldBe` 7
+    forM_ (zip secondStage [15, 30, 60, 90, 120, 150, 175]) $ \(step, u) -> do
+      length (poseAngles step) `shouldBe` 28
+      zipWith (-) (poseAngles step) (birdAngles 175 u) `shouldSatisfy` all ((< 1e-12) . abs)
+    map poseAngles (drop 15 (caseSteps entry)) `shouldBe` [edgesFoldAngle source]
   it "preserves material and contact at arbitrary compatible angles and refinements" $
     forAll (choose (0.01, 179.99)) $ \t ->
       forAll (chooseInt (0, 2)) $ \level ->
@@ -60,8 +70,8 @@ spec = describe "first petal motion" $ do
       pose <- at 0 t
       poseContact pose `shouldBe` Just (ContactCheck 120 [] [] [] [])
   it "agrees at every shared vertex and achieves angles measured independently from panel normals" $
-    forM_ [0, 15, 30, 60, 90, 120, 150, 175, 180] $ \t -> do
-      result <- requireRight (foldFrameWith source {edgesFoldAngle = petalAngles t})
+    forM_ ([(t, 0) | t <- [0, 15, 30, 60, 90, 120, 150, 175, 180]] ++ [(175, u) | u <- [15, 30, 60, 90, 120, 150, 175]] ++ [(180, 180)]) $ \(t, u) -> do
+      result <- requireRight (foldFrameWith source {edgesFoldAngle = birdAngles t u})
       let sheet = foldedPattern result
           final = foldedFrame result
       original <- IM.fromList . zip [0 ..] <$> requireRight (frameVertices sheet)
@@ -116,14 +126,9 @@ spec = describe "first petal motion" $ do
     forM_ [(0.5, 0), (1, 0.5)] $ \uv -> do
       shoulder <- pointAt uv (poseMesh end)
       norm (shoulder ^-^ V3 ((1 + r) / 2) (d / 2) 0) `shouldSatisfy` (< 1e-12)
-    -- Completing the other symmetric petal recovers the already verified
-    -- bird endpoint's angles. The current gallery intentionally stops first.
-    let secondEdges = [19, 20, 21, 23, 24, 25, 27]
-        complete = [if i `elem` secondEdges then final else first | (i, first, final) <- zip3 [0 :: Int ..] (petalAngles 180) (edgesFoldAngle source)]
-    complete `shouldBe` edgesFoldAngle source
-  forM_ [0, 180] $ \t -> it ("agrees with the unique flat stacking at hinge " ++ show t) $ do
-    pose <- at 0 t
-    result <- requireRight (foldFrameWith source {edgesFoldAngle = petalAngles t})
+  forM_ [(0, 0), (180, 0), (180, 180)] $ \(t, u) -> it ("agrees with the unique flat stacking at hinges " ++ show (t, u)) $ do
+    pose <- atBoth 0 t u
+    result <- requireRight (foldFrameWith source {edgesFoldAngle = birdAngles t u})
     let coords (V3 x y z) = [x, y, z]
         final = (foldedFrame result) {verticesCoords = map (coords . position) (samples (poseMesh pose))}
     space <- requireRight (stackingSpace defaultBudget final)
@@ -140,14 +145,82 @@ spec = describe "first petal motion" $ do
       pair `shouldSatisfy` (`S.member` declared)
     -- Missing order remains a failure even when there are no 3D crossings.
     let without = entry {caseContact = fmap (\c -> c {panelOrders = []}) (caseContact entry)}
-    unchecked <- requireRight (buildCasePose 0 without source (PoseSpec "unordered" (petalAngles t)))
+    unchecked <- requireRight (buildCasePose 0 without source (PoseSpec "unordered" (birdAngles t u)))
     report <- requireJust (poseContact unchecked)
     crossingPanels report `shouldBe` []
     unorderedContacts report `shouldSatisfy` (not . null)
+  it "checks the second-petal sweep and the final press at half-degree intervals" $ do
+    forM_ ([(175, u) | u <- [0, 0.5 .. 180]] ++ [(t, t) | t <- [175, 175.5 .. 180]]) $ \(t, u) -> do
+      pose <- atBoth 0 t u
+      poseContact pose `shouldBe` Just (ContactCheck 120 [] [] [] [])
+  it "keeps independently posed petals on opposite sides of the base plane" $
+    forAll (choose (0.01, 179.99)) $ \t ->
+      forAll (choose (0.01, 179.99)) $ \u ->
+        forAll (chooseInt (0, 2)) $ \level ->
+          case buildCasePose level entry source (PoseSpec "independent petals" (birdAngles t u)) of
+            Left err -> counterexample (show err) False
+            Right pose ->
+              let mesh = poseMesh pose
+                  indexed = IM.fromList (zip [0 ..] (samples mesh))
+                  onSide panel (V3 _ _ z)
+                    | panel `elem` [0, 1, 2, 3, 13] = z >= -1e-12
+                    | panel `elem` [4, 5, 6, 7, 15] = z <= 1e-12
+                    | otherwise = abs z < 1e-12
+                  separated = and [onSide panel (position p) | ((a, b, c), panel) <- zip (triangles mesh) (posePanels pose), i <- [a, b, c], Just p <- [IM.lookup i indexed]]
+               in counterexample (show (poseContact pose)) $
+                    separated
+                      && componentCount mesh == 1
+                      && all ((< 1e-12) . abs) (edgeStrains mesh)
+                      && abs (areaRatio mesh - 1) < 1e-12
+                      && poseContact pose == Just (ContactCheck 120 [] [] [] [])
+  it "reflects the second tip below the base and leaves all first-petal and body material fixed" $ do
+    resting <- atBoth 2 175 0
+    let secondPanels = [4, 5, 6, 7, 15]
+        fixedIndices = S.toList $ S.fromList [i | ((a, b, c), panel) <- zip (triangles (poseMesh resting)) (posePanels resting), panel `notElem` secondPanels, i <- [a, b, c]]
+        indexed = IM.fromList (zip [0 ..] (samples (poseMesh resting)))
+    forM_ [0, 15, 30, 60, 90, 120, 150, 175, 180] $ \u -> do
+      pose <- atBoth 2 175 u
+      let mesh = poseMesh pose
+          radians = u * pi / 180
+          d = 1 / sqrt 2
+          expected = V3 ((2 - d + d * cos radians) / 2) ((d - d * cos radians) / 2) (negate (sin radians / 2))
+      tip <- pointAt (0, 1) mesh
+      norm (tip ^-^ expected) `shouldSatisfy` (< 1e-12)
+      forM_ fixedIndices $ \i -> do
+        p <- requireJust (IM.lookup i indexed)
+        q <- pointAt (materialU p, materialV p) mesh
+        norm (position p ^-^ q) `shouldSatisfy` (< 1e-12)
+  it "matches all thirteen closed bird landmarks and the source's full angle state" $ do
+    birdAngles 180 180 `shouldBe` edgesFoldAngle source
+    pose <- atBoth 0 180 180
+    let d = 1 / sqrt 2
+        tip = V3 (1 - d) d 0
+        midpoint = V3 (1 - d / 2) (d / 2) 0
+        p = V3 0.5 (d - 0.5) 0
+        q = V3 (1.5 - d) 0.5 0
+        expected = [V3 1 0 0, tip, V3 1 0 0, tip] ++ replicate 4 midpoint ++ [V3 0.5 0.5 0, p, q, q, p]
+        actual = samples (poseMesh pose)
+    length actual `shouldBe` 13
+    -- Coincident folded corners still have distinct original material ids.
+    S.size (S.fromList [(materialU v, materialV v) | v <- actual]) `shouldBe` 13
+    forM_ (zip actual expected) $ \(v, target) ->
+      norm (position v ^-^ target) `shouldSatisfy` (< 1e-12)
+  it "reports missing order within the second petal at the completed endpoint" $ do
+    let omit contact = contact {panelOrders = filter (/= ("north-west-side", "second-petal")) (panelOrders contact)}
+    pose <- requireRight (buildCasePose 0 entry {caseContact = fmap omit (caseContact entry)} source (PoseSpec "missing second order" (birdAngles 180 180)))
+    report <- requireJust (poseContact pose)
+    crossingPanels report `shouldBe` []
+    unorderedContacts report `shouldSatisfy` elem ("north-west-side", "second-petal")
+  it "rejects an independently changed second-petal crease or linear angle interpolation" $ do
+    let angles = birdAngles 175 90
+        changed = [if i == (20 :: Int) then a + 1 else a | (i, a) <- zip [0 ..] angles]
+        halfway = zipWith (\a b -> (a + b) / 2) (birdAngles 175 0) (birdAngles 175 180)
+    buildPose 0 source (PoseSpec "wrong second side" changed) `shouldSatisfy` isLeft
+    buildPose 0 source (PoseSpec "linear second angles" halfway) `shouldSatisfy` isLeft
   it "keeps the anchor on the stationary panel even after edge renumbering" $ do
     let reordered = source {edgesVertices = reverse (edgesVertices source), edgesAssignment = reverse (edgesAssignment source)}
-    expected <- at 0 90
-    actual <- requireRight (buildCasePose 0 entry reordered (PoseSpec "reordered" (reverse (petalAngles 90))))
+    expected <- atBoth 0 175 90
+    actual <- requireRight (buildCasePose 0 entry reordered (PoseSpec "reordered" (reverse (birdAngles 175 90))))
     forM_ (samples (poseMesh expected)) $ \p -> do
       q <- pointAt (materialU p, materialV p) (poseMesh actual)
       norm (position p ^-^ q) `shouldSatisfy` (< 1e-12)
@@ -183,10 +256,20 @@ spec = describe "first petal motion" $ do
 -- tan(s/2) = sin(pi/8) * tan(t/2); atan2 stays defined at 180 degrees.
 -- The two outer midline folds open from -180 to zero, rather than closing.
 petalAngles :: Double -> [Double]
-petalAngles t =
+petalAngles t = birdAngles t 0
+
+-- The same signed angles open the second petal below the packet: its material
+-- faces the other way after the square-base collapse. Do not negate its angles.
+birdAngles :: Double -> Double -> [Double]
+birdAngles t u =
+  let s = sideAngle t
+      v = sideAngle u
+   in replicate 8 0 ++ [180, 180, -180, t - 180, -s, -s, -180, t - 180, -s, -s, -180, u - 180, -v, -v, -180, u - 180, -v, -v, t, u]
+
+sideAngle :: Double -> Double
+sideAngle t =
   let h = t * pi / 360
-      s = 360 / pi * atan2 (sin (pi / 8) * sin h) (cos h)
-   in replicate 8 0 ++ [180, 180, -180, t - 180, -s, -s, -180, t - 180, -s, -s, -180, -180, 0, 0, -180, -180, 0, 0, t, 0]
+   in 360 / pi * atan2 (sin (pi / 8) * sin h) (cos h)
 
 transitive :: (Ord a) => S.Set (a, a) -> S.Set (a, a)
 transitive pairs =

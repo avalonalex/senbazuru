@@ -74,4 +74,5 @@ contact sweeps including upright panels, independently chosen pairs of ear
 angles, material lengths and area, shared vertices, measured crease magnitudes,
 and the complete closed endpoint. The separation argument above does not
 extend to arbitrary folds or finite paper thickness; continuous self-collision
-checks within each ear and the bird's petal-fold motion remain future work.
+checks within each ear remain future work. The [bird's two petals](two-petals.md)
+now also have a sampled folding sequence.
