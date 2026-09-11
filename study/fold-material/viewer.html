@@ -338,7 +338,7 @@ function initialize() {
       'Two straight portions and a semicircle use exactly one unit of material. The small mesh compression comes from replacing curved arcs with straight chords.');
     element('legend').textContent = mode === 'orbit' ? 'Drag to rotate · scroll to zoom · arrow keys also rotate. Cream and ochre are the two sides of one sheet.' :
       fitting || authored() ? 'Measured triangle strain: blue = −1% · pale = 0% · red = +1%. Color shows the principal strain with the largest magnitude.' : `Analytic extension: pale = 0% · red = ${sharp ? '1%' : '200%'}. Color scale changes with the selected shape.`;
-    element('downloads').innerHTML = `Export this ${fitting ? 'checkpoint' : 'example'}: ${fitting || authored() ? '' : `<a href="${name}.svg">SVG preview</a> · `}<a href="${name}.obj" download>3D OBJ</a> · <a href="${name}.fold" download>FOLD surface</a> · <a href="measurements.json">measurements</a>${authored() ? ' · <a href="cases.json">angle states</a>' : fitting ? ' · <a href="relaxation.json">solver progress</a>' : ''}`;
+    element('downloads').innerHTML = `Export this ${fitting ? 'checkpoint' : 'example'}: ${fitting || authored() ? '' : `<a href="${name}.svg">SVG preview</a> · `}<a href="${name}.obj" download>3D OBJ</a> · <a href="${name}.fold" download>FOLD surface</a> · <a href="measurements.json">measurements</a>${authored() ? ' · <a href="cases.json">angle states</a>' : fitting ? ' · <a href="relaxation.json">solver progress</a>' : ''}${selected === 'bird-petal' ? ' · <a href="bird-sequence.html">SVG folding sequence</a>' : ''}`;
     upload();
   }
   function authoredContact(report) {

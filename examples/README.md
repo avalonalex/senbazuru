@@ -220,3 +220,12 @@ leaves both slightly open for inspection. The gallery also uses `bird-base.fold`
 for [sixteen states folding both petals](../docs/notes/two-petals.md), starting
 from a square base. The first petal stays fixed during the second stage; a
 final press closes both into the exact endpoint shown above.
+
+`bird-base-sequence.fold` is generated from those sixteen checked states. It
+retains the same source provenance as `bird-base.fold` above; we generate the
+intermediate coordinates, active assignments and coplanar orders ourselves.
+Frame zero contains metadata, and frames 1–16 contain unrefined folded panels.
+Render with `stack run -- render examples/bird-base-sequence.fold --steps --columns 4 --view iso`.
+Regenerate with `stack run senbazuru-material-study -- --bird-svg build/fold-material`
+and copy `build/fold-material/bird-base-sequence.fold` here. `BirdSequenceSpec`
+checks that this fixture matches the study and pins the SVG pages from both sides.

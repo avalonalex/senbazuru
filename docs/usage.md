@@ -414,3 +414,20 @@ the second petal on the underside, and a final press of both petals to the flat
 bird base. During the second stage, the first petal stays at 175°. Drag to see
 the underside. Continuous collision certification and paper thickness remain
 unsupported; see [the study guide](../study/fold-material/README.md#two-petals-form-the-bird-base).
+
+The checked bird sequence is also an ordinary FOLD example for the main CLI:
+
+```bash
+stack run -- render examples/bird-base-sequence.fold --steps --columns 4 --view iso --width 1000 --height 1000 -o bird-steps.svg
+stack run -- render examples/bird-base-sequence.fold --steps --columns 4 --view bottom --width 1000 --height 1000 -o bird-underneath.svg
+stack run -- render examples/bird-base-sequence.fold --frame 12 --view iso -o second-petal.svg
+```
+
+Frame zero holds file metadata; frames 1–16 are the folding states, so frame
+12 shows the second petal at 90°. These frames already contain folded geometry;
+omit `--fold`. The page keeps one camera and scale and adds no arrows unless
+requested. Open convex planar panels use depth over projected overlaps to hide
+covered paper and creases. Coplanar contact still needs `faceOrders`.
+Intersecting depths, unsupported faces and free edge-on outlines retain the
+older fallback. `--no-fill` remains available for a wireframe, including a file
+whose faces are malformed. See [the visibility note](notes/projected-panel-visibility.md).
