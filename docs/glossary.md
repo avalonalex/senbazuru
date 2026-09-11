@@ -32,7 +32,7 @@ For the ideas rather than the definitions, start with
 | **Squash fold** | Opening a doubled flap into a pocket, then pressing it flat along a different pair of creases. Four squash folds followed by four petal folds turn a square base into a frog base. |
 | **Rabbit-ear fold** | Gathering a triangular region along its angle bisectors into a pointed flap, then laying that flap to one side. Two make the traditional fish base. See [notes/fish-and-bird-endpoints.md](notes/fish-and-bird-endpoints.md). |
 | **Petal fold** | Lifting a flap while folding its sides inward to make a longer, narrower flap. Applying it to both sides of a square base makes a bird base. See [notes/fish-and-bird-endpoints.md](notes/fish-and-bird-endpoints.md). |
-| **Puff** | Rounding a flat pocket out into a solid by blowing into it, as the last step of a crane and the whole of a waterbomb. Not a fold: no fold angle expresses it, because what drives it is air pressure. See [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md). |
+| **Puff** | Expanding a folded pocket into a three-dimensional body, often by blowing into it, as with a crane's body or a waterbomb. Its motion can involve opening creases and bending panels. A prescribed opening and a pressure-driven simulation are different ways to model it; see [notes/connected-paper-surface.md](notes/connected-paper-surface.md). |
 | **Waterbomb** | The traditional paper balloon: folded flat, then puffed into something close to a cube. Distinct from the *waterbomb base* it is folded from, which is a base in the sense above. |
 | **Collapse** | Forming many creases at once rather than in sequence. How tessellations and most complex designs are actually folded. |
 | **Through all layers** | An instruction creasing every layer of paper under the line, as against one that catches only the near ones. On the flat sheet it is one crease per face the line crosses, and their kinds alternate — see [notes/creasing-through-layers.md](notes/creasing-through-layers.md). |
@@ -78,6 +78,7 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | Term | Meaning |
 | --- | --- |
 | **Face** | A region of paper bounded by edges — a polygon. |
+| **Material coordinates** | A point's position on the original, unfolded sheet. They identify the same piece of paper as its current position changes during folding; two touching layers can occupy the same current position while having different material coordinates. |
 | **Winding** | The direction a face's vertices are listed in. FOLD specifies counterclockwise, which would define the face's normal and therefore which side is up — but real files disagree, so senbazuru does not trust the stated winding. Filling does not care; anything needing a normal must compute the orientation. |
 | **Normal** | The direction perpendicular to a face, pointing out of the side the winding defines. |
 | **Rigid transform** | A motion that rotates and translates but never bends, stretches or scales. What a face undergoes when paper folds. See `Senbazuru.Geometry.Rigid`. |

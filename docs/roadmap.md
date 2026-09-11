@@ -1,10 +1,10 @@
 # Roadmap, and where we stand
 
-The README's [roadmap](../README.md#roadmap) is the map: three items, in
+The README's [roadmap](../README.md#roadmap) is the map: four items, in
 order, each an issue tagged `roadmap` that holds the approach and the
 acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-09**. The
+snapshot and will drift, so it carries a date: **as of 2026-09-11**. The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -12,13 +12,11 @@ closes.
 
 | | |
 | --- | --- |
-| Age | 7 days, 2026-09-03 to 2026-09-09 |
-| Commits / merged PRs | 62 / 52 |
-| Library / CLI / test lines | 11.3k / 1.1k / 7.9k |
-| Docs | 5.4k lines of markdown, 29 notes |
-| Tests | 661 examples, about a second once built |
-| Roadmap issues closed | 9 of 12 |
-| Largest real model in the suite | the crane, 72 faces |
+| Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
+| Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
+| Production handoff | Checked bird and frog states rendered as SVG sequences |
+| Tests | 1,042 examples, including material and contact checks |
+| Traditional crane fixture | 72 faces |
 | Releases | none |
 
 The first roadmap is done: fold arrows, the flat-foldability checker, filled
@@ -31,36 +29,43 @@ second generation.
 ### Against the field
 
 [related-projects.md](related-projects.md) has the tools and their licences.
-The short version: the layer solver matches Flat-Folder, which it is validated
-against, and nothing else draws a flat-folded model as a book would — hidden
-lines, two paper colours, the visible-region drawing that handles a twist whose
-flaps stack in a circle. Behind on four things: writing out what it computes,
-scale, the arrow vocabulary, and installing without Stack. The niche it is
-heading into — a vocabulary of folds that a person writes and a tool checks —
-has one dormant language (Doodle), one unreleased 2001 modeller (Foldinator)
-and, since 2026, four research papers in it.
+Senbazuru's focus is book-style diagrams from checked folding states: hidden
+lines, two paper colours and visible regions even when flaps stack in a circle.
+The study now supplies examples of connected paper in motion; the next step is
+to share that representation with the production renderers. Authoring a folding
+sequence, handling larger models and installing without Stack remain separate
+pieces of work.
 
-## The three roadmap items
+## The four roadmap items
 
-1. **A vocabulary of folds** ([#60](https://github.com/avalonalex/senbazuru/issues/60)). The first move exists, `crease`
+1. **One connected material surface** ([#146](https://github.com/avalonalex/senbazuru/issues/146)).
+   Share material coordinates, connectivity, crease identities and contact/order
+   relationships across the study, SVG projection and 3D export. Physical
+   thickness is optional and distinct from display offsets. Replace obsolete
+   internal paths rather than maintaining them for alpha compatibility.
+   [The design note](notes/connected-paper-surface.md) separates this
+   representation change from the bending and opening controls that follow.
+2. **A vocabulary of folds** ([#60](https://github.com/avalonalex/senbazuru/issues/60)). The first move exists, `crease`
    and `crease --folded`, with the mountain/valley alternation through the
    layers right. The done-when — reproduce `examples/quarter-fold-steps.fold`
    from a written scheme — is not met. What stands in the way is a decision,
    [#97](https://github.com/avalonalex/senbazuru/issues/97), on how a scheme is written down, before the second move
    [#95](https://github.com/avalonalex/senbazuru/issues/95) and the flap rotation [#54](https://github.com/avalonalex/senbazuru/issues/54).
-2. **Folding in three dimensions** ([#55](https://github.com/avalonalex/senbazuru/issues/55)). Not started. All five
-   sub-issues are open ([#52](https://github.com/avalonalex/senbazuru/issues/52), [#53](https://github.com/avalonalex/senbazuru/issues/53), [#54](https://github.com/avalonalex/senbazuru/issues/54),
-   [#56](https://github.com/avalonalex/senbazuru/issues/56), [#61](https://github.com/avalonalex/senbazuru/issues/61)), and so is the note that draws the boundary
-   ([#64](https://github.com/avalonalex/senbazuru/issues/64)).
-   If the solver proves intractable, the fallback is frames from outside — a
-   simulator's states ([#53](https://github.com/avalonalex/senbazuru/issues/53)) or a sequence a person edits by hand — which
-   the renderer draws face by face without asking where they came from. The
-   same route draws an inflated body, which no solver here will ever produce:
-   [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md), with
-   [#106](https://github.com/avalonalex/senbazuru/issues/106) to generate one and
-   [#104](https://github.com/avalonalex/senbazuru/issues/104) to draw it without its mesh.
-3. **A schematic side view** ([#50](https://github.com/avalonalex/senbazuru/issues/50)). Not started. It was gated on a
-   paper-thickness model, which the glTF export now has, so it is unblocked.
+3. **Folding in three dimensions** ([#55](https://github.com/avalonalex/senbazuru/issues/55)).
+   The studies now have verified intermediate square/waterbomb collapse,
+   rabbit-ear and bird-petal states. General flap/wing authoring, a general
+   angle solver and continuous collision certification remain open
+   ([#54](https://github.com/avalonalex/senbazuru/issues/54),
+   [#55](https://github.com/avalonalex/senbazuru/issues/55),
+   [#61](https://github.com/avalonalex/senbazuru/issues/61)).
+   Controlled pocket opening and body inflation are future goals in
+   [#106](https://github.com/avalonalex/senbazuru/issues/106), with bending where
+   rigid panels cannot reach the target. A pressure model comes after defining
+   a cavity and its openings. The earlier schematic-puff note is historical
+   context, not the current limit on what the project intends to compute.
+4. **A schematic side view** ([#50](https://github.com/avalonalex/senbazuru/issues/50)).
+   Not started. It should use shared material/layer relationships, keeping any
+   display separation distinct from physical paper thickness.
 
 ## The open issues, by how hard they are
 
@@ -71,8 +76,8 @@ and, since 2026, four research papers in it.
   Jacobian of rotation products, Newton steps in pure Haskell, and a singular
   starting point because the flat-folded state is where branches meet. Whether
   the crane is rigid-foldable end to end is not known. #61 is continuous
-  collision detection between moving panels on top of that. Everything in
-  roadmap item 2 hangs off #55.
+  collision detection between moving panels on top of that. These are general
+  motion problems beyond the authored study paths.
 - **[#60](https://github.com/avalonalex/senbazuru/issues/60) the vocabulary, and [#97](https://github.com/avalonalex/senbazuru/issues/97) the scheme format.** Hard as
   design rather than code: no reference implementation to lean on, a reference
   vocabulary (corner to corner, edge to crease) that matters as much as the
@@ -84,14 +89,19 @@ and, since 2026, four research papers in it.
   cutting and tracing, non-convex faces, and models the solver cannot settle
   in a minute. A real fix for the solver's propagation may be Flat-Folder's
   cell and overlap-graph formulation rather than a faster map.
-- **[#114](https://github.com/avalonalex/senbazuru/issues/114) the material around a fold.** Both renderers cut the sheet
-  at every crease: the offset view slides layers apart and the 3D export
-  lifts them and leaves a step, so a folded stack draws as loose plates. The
-  first rung is days — a cylindrical strip at each crease, layers a thickness
-  apart, one connected mesh — and the fixtures ([#115](https://github.com/avalonalex/senbazuru/pull/115)) and the
-  mechanics ([notes/a-crease-is-a-hinge.md](notes/a-crease-is-a-hinge.md)) are landed. What makes it hard is
-  the vertex: where creases meet, the rounded folds interact and the surface
-  stops being developable, and there is no clean rule for what to draw there.
+- **[#114](https://github.com/avalonalex/senbazuru/issues/114) the material around a fold.**
+  The study now has connected surfaces and a corrected sharp double fold that
+  meets length/contact tolerances. The production glTF path still separates
+  faces. [#146](https://github.com/avalonalex/senbazuru/issues/146) is the next
+  handoff: a shared connected surface, with thickness optional. The original
+  rounded double-fold experiment showed that a 3:1 radius ratio can still
+  stretch the paper; radius and connectivity alone do not settle its shape.
+  Later work needs bending, crease preferences and compatible contact.
+- **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
+  Representing a pocket is only the first step. Its expansion needs a driving
+  control, compatible crease motion, possible panel bending and contact checks.
+  Start with controlled opening; a pressure/volume model additionally needs a
+  defined cavity and treatment of its openings.
 
 ### Medium: days, with a picture or a format to design
 
@@ -100,7 +110,8 @@ and, since 2026, four research papers in it.
   where the cut-away circle comes from, does not.
 - **[#54](https://github.com/avalonalex/senbazuru/issues/54) rotating a flap.** Easy until the rotation reaches a vertex,
   then it is the degree-4 closed form of [#52](https://github.com/avalonalex/senbazuru/issues/52), and the result has paper
-  in the air, which every downstream module declines.
+  in the air. Production SVG now handles the study's open panels; the general
+  authoring operation and compatible-angle solve remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
   `Origami.Step` and scoping to the step are the work. Captions have no font
@@ -110,12 +121,12 @@ and, since 2026, four research papers in it.
 - **[#38](https://github.com/avalonalex/senbazuru/issues/38) assignment from a stacking**, **[#53](https://github.com/avalonalex/senbazuru/issues/53) reading a
   simulator's angles**, **[#56](https://github.com/avalonalex/senbazuru/issues/56) glTF animation.** Each is composition
   now that the `fold` verb writes a folded form out; #56 also waits on #55.
-- **[#104](https://github.com/avalonalex/senbazuru/issues/104) the silhouette** and **[#106](https://github.com/avalonalex/senbazuru/issues/106) generating a puff.**
+- **[#104](https://github.com/avalonalex/senbazuru/issues/104) the silhouette.**
   The rule for #104 is one sign test per shared edge; the care is that it
   changes what every existing folded form draws, so each golden's diff has to
-  be read edge by edge. #106 is subdivision, a bump and a per-layer height, and
-  its open question is how the reader names a region.
-  [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md) has both.
+  be read edge by edge. The earlier
+  [schematic-puff note](notes/the-puff-is-a-drawing.md) explains why a body
+  needs its silhouette even when triangulation edges are hidden.
 - **[#111](https://github.com/avalonalex/senbazuru/issues/111) one answer about fold angles.** Moving `foldAnglesOf` into
   `Fold.Query` is the easy half. The judgement is which of the other three
   callers can share it, since how far a crease turns and which way it turns are
@@ -143,13 +154,12 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 ## An order
 
-1. [#114](https://github.com/avalonalex/senbazuru/issues/114), the material around a fold, in three steps: get a
-   single fold right in the 3D export, with the test that the mesh has one
-   connected component written first because it fails today on every fixture;
-   then the stack, checked by rotating it in a glTF viewer; then project the
-   curved geometry back to SVG, which is where [#104](https://github.com/avalonalex/senbazuru/issues/104) lands. Taken ahead of the
-   sweep because the fixtures and the study are done and the picture is the
-   project's purpose.
+1. [#146](https://github.com/avalonalex/senbazuru/issues/146), the shared connected
+   surface, following the findings of [#114](https://github.com/avalonalex/senbazuru/issues/114).
+   Move verified study states through the common representation into both
+   rendering paths. Check material identity and crease continuity even when
+   graphics vertices are duplicated for lighting. Add bending and crease
+   preferences next; physical thickness is not a prerequisite for the handoff.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their
@@ -157,12 +167,13 @@ stacking and read the assignment off it. That drops the hardest precondition.
    [#94](https://github.com/avalonalex/senbazuru/issues/94) and [#36](https://github.com/avalonalex/senbazuru/issues/36), which give a written scheme its arrows and
    captions.
 4. [#98](https://github.com/avalonalex/senbazuru/issues/98), a release, once the sweep says the tool survives real files.
-5. Roadmap item 2 from its cheap ends, [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
+5. General fold-angle work, starting with [#52](https://github.com/avalonalex/senbazuru/issues/52) and [#53](https://github.com/avalonalex/senbazuru/issues/53), which
    produce the numbers [#55](https://github.com/avalonalex/senbazuru/issues/55) will be tested against.
 6. [#110](https://github.com/avalonalex/senbazuru/issues/110) and [#109](https://github.com/avalonalex/senbazuru/issues/109), the two follow-ups the `fold`
    verb left behind. #110 first, and before #38 or #53 rather than after them,
    because it is the value both of them will otherwise rebuild by hand.
-7. [#104](https://github.com/avalonalex/senbazuru/issues/104) then [#106](https://github.com/avalonalex/senbazuru/issues/106), the puff. The silhouette comes first
-   even though generating a body is the point: it is what makes any curved form
-   printable, and `examples/puffed-square.fold` already exists to test it
-   against, so it can be finished before anything can make a second one.
+7. [#104](https://github.com/avalonalex/senbazuru/issues/104) and
+   [#106](https://github.com/avalonalex/senbazuru/issues/106), readable silhouettes
+   and controlled pocket opening. The existing schematic puff tests drawing;
+   a new expanded body must additionally pass material/contact checks. These
+   are future work, not requirements for finishing the representation change.

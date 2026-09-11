@@ -1,5 +1,11 @@
 # The puff is a drawing, not a simulation
 
+This note records the earlier schematic-puff proposal. As of 2026-09-11,
+material-constrained body opening is a future goal in
+[#106](https://github.com/avalonalex/senbazuru/issues/106), following the
+[connected-surface representation](connected-paper-surface.md). The bump
+construction below remains a rendering example, not a valid folding state.
+
 The last step of a paper crane is not a fold. The model is finished flat, and
 then you hold the two wings, pull them gently apart, and blow into the small
 hole at the base of the body, which rounds out from a flat pocket into a solid.
@@ -7,10 +13,13 @@ Traditional diagram sheets end there, and the finished figure — the one with
 the rounded body — is the crane people recognise. A crane drawn flat is a crane
 that is not finished.
 
-senbazuru cannot fold that step and never will. Every face here is a flat
-polygon hinged to its neighbours at creases, and a bulged face is curved; what
-drives the bulge is air pressure, which no fold angle can express. That is the
-boundary [#64](https://github.com/avalonalex/senbazuru/issues/64) draws.
+senbazuru does not yet compute that opening. Rigid panels describe some
+opening motions; curved panels additionally need bending. A surface mesh can
+represent both, but it needs material/contact constraints and an opening
+control to determine the motion. Pressure-driven behaviour would require an
+additional loading and cavity model. The boundary described by
+[#64](https://github.com/avalonalex/senbazuru/issues/64) concerns the current
+rigid algorithm, not a permanent limit on the project.
 
 This note is the other half of that boundary. **A state senbazuru cannot
 compute can still be drawn, and drawing this one does not need the physics.**
@@ -139,14 +148,14 @@ solves for. Coordinates from outside sidestep that; angles do not.
 
 ## What accuracy would cost
 
-Should a physically correct puff ever be wanted, it is the airbag problem: a
+For a pressure-driven model, the related problem is an airbag: a
 thin sheet folded flat, creases as plastic hinges, pushed apart by internal
 pressure with every layer in contact with its neighbours. The tools that solve
 it, and what each would take, are in
 [related-projects.md](../related-projects.md#simulators-that-could-inflate-a-crane).
-The cheapest is an afternoon in a cloth simulator and the dearest is a week of
-setup in a commercial finite element package, and not one of them changes the
-last figure of a crane diagram.
+A controlled opening can come first, without predicting airflow. Either
+approach needs measurements of material deformation and contact to distinguish
+a valid shape from the schematic bump above.
 
 ## References
 

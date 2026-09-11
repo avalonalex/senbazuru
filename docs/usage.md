@@ -169,8 +169,9 @@ model has no page.
 
 A flat-folded model has every face in one plane, and a 3D viewer cannot tell
 coincident faces apart — it shows a shimmer of both, called z-fighting. So each
-face is lifted by its layer number times the thickness, which is what makes
-such a model viewable at all, and is also roughly what real paper does. The
+face is lifted by its layer number times the requested spacing. This is a
+display convention: it leaves gaps at creases and is not a connected physical
+thickness model. The
 paper's two sides come out in the two colours the SVG uses. A model with paper
 still in the air is written exactly as folded, with no separation.
 
@@ -178,6 +179,12 @@ still in the air is written exactly as folded, with no separation.
 which is the only way to export a twist — its layers run in a circle and have
 no numbers. [tour.md](tour.md#what-it-exports) has the reasoning and
 [notes/paper-thickness.md](notes/paper-thickness.md) the detail.
+
+There is no wing-spreading or body-inflation command yet. Both are future
+goals. The [connected-surface plan](notes/connected-paper-surface.md) describes
+the shared geometry, later bending/contact constraints and opening controls
+they need. The name `--thickness` currently controls layer display spacing;
+it does not enable those mechanics.
 
 ## `crease`
 
