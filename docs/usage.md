@@ -201,6 +201,7 @@ unknown. Stored physical thickness is not used by either renderer as a display
 offset or by the current contact checks. Shared refinement currently requires
 convex planar panels with nondegenerate triangles in their first-corner fan;
 it does not triangulate arbitrary concave or curved panels.
+
 Separate pieces at a cut need distinct vertex ids. Refinement refuses a `C`
 edge still shared by two panels rather than welding its new midpoints.
 
@@ -208,6 +209,13 @@ edge still shared by two panels rather than welding its new midpoints.
 `materialFrame` writes it when original-sheet coordinates are known. This map
 survives an explicit material export/reload. Physical thickness and directional
 requirements are not yet serialised to FOLD.
+
+For the experimental crease/panel mechanics, run
+`stack run senbazuru-material-study -- --bending build/fold-material` and open
+`build/fold-material/bending.html`. This solves only the study's single- and
+double-fold packets with illustrative stiffnesses; it does not add a general
+mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
+describes its measurements and contact limits.
 
 ## `crease`
 

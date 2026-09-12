@@ -26,6 +26,7 @@ extra-doc-files:
 
 extra-source-files:
   study/fold-material/README.md
+  study/fold-material/bending.html
   study/fold-material/viewer.html
   study/fold-material/bird-sequence.html
   study/fold-material/basic-bases.html
@@ -155,7 +156,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact, BasicBases, BasicBaseGallery
+  other-modules: BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -186,6 +187,8 @@ test-suite senbazuru-test
     StudyCaseSpec
     PanelContact
     PanelContactSpec
+    FoldBending
+    FoldBendingSpec
     FoldMaterial
     FoldMaterialSpec
     FoldRelaxation

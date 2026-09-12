@@ -5,7 +5,9 @@ again at right angles. It compares sharp creases, exaggerated rounded bends,
 and a length/contact correction of the sharp examples. The original double folds are
 **prescribed shapes with measured distortion**. The corrected double fold
 meets its length and packet-order tolerances. It still does not solve paper
-bending stiffness, crease angles or finite thickness.
+bending stiffness, crease angles or finite thickness. The separate
+[bending experiment](#crease-preferences-and-panel-bending) now adds the first two
+as energy preferences; it does not replace the original controls.
 
 ```bash
 stack run senbazuru-material-study -- build/fold-material
@@ -33,6 +35,34 @@ future general curved-surface visibility renderer.
 `stack test` includes the geometry checks. `make fmt` and `make lint` include
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
+
+## Crease preferences and panel bending
+
+```bash
+stack run senbazuru-material-study -- --bending build/fold-material
+```
+
+Open `build/fold-material/bending.html`, or
+[the served page](http://127.0.0.1:8000/bending.html) with the server above.
+It compares each starting shape with its energy-relaxed result from a shared
+camera 45° above the side. Choose the single fold or either double-fold stiffness.
+The page works offline; `bending.json` contains the indexed meshes, original
+material coordinates, signed achieved/rest angles and numerical measurements.
+
+The single fold's preferred angle is 150°, with panels that prefer to stay flat.
+Both double folds prefer 170° at each crease; their panel stiffnesses are 0.2
+and 5, with crease stiffness 1. These are illustrative values. A rest angle is
+what an angular spring prefers, not a hard constraint: the double fold balances
+missing that angle against bending inside its connected panels.
+
+All three final examples meet the existing length and packet-order tolerances,
+and a separate small-movement test establishes numerical convergence. The
+penalty weights are tightened in four stages, with at most 100 iterations per
+stage; earlier states are not certified shapes or physical motion. The study
+uses a coarse 81-vertex mesh and a packet-specific contact checker. It does not
+provide arbitrary FOLD mechanics, paper calibration, finite thickness,
+intra-panel self-contact or continuous collision checks. See the
+[energy and solver note](../../docs/notes/crease-and-panel-energy.md).
 
 ## Folding states
 

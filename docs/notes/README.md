@@ -44,6 +44,7 @@ read the Haddock module headers; for the domain, start with
 | [two-bends-need-more-than-radii.md](two-bends-need-more-than-radii.md) | A single rounded fold preserves material, but composing two perpendicular bends can stretch the outer layer by 200%; an executable counterexample |
 | [sharp-creases-and-opening-panels.md](sharp-creases-and-opening-panels.md) | A sharp crease can join nonparallel panels; prescribed openings still need material-length checks |
 | [restoring-material-lengths.md](restoring-material-lengths.md) | Correct lengths alone let layers cross; a coupled length and packet-order correction meets both numerical targets |
+| [crease-and-panel-energy.md](crease-and-panel-energy.md) | Crease preferences and panel bending select among connected shapes; stiffer panels can miss their crease targets by more |
 | [connected-paper-surface.md](connected-paper-surface.md) | One material surface can support sharp folds and later bending; thickness, display offsets and the controls that open a pocket have separate roles |
 | [panel-contact-and-order.md](panel-contact-and-order.md) | Rigid panels need separate crossing and order checks; upright flaps and shared crease contact need both |
 | [a-crease-is-a-hinge.md](a-crease-is-a-hinge.md) | A crease is a torsional hinge with a rest angle set by the material and a radius set by what it wraps, and the two numbers a renderer needs are those |
