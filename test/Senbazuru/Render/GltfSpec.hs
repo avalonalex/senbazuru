@@ -5,7 +5,7 @@
 -- is what a viewer checks before it reads a byte of geometry, so it gets exact
 -- assertions. The geometry is read back out of our own output and compared
 -- with the frame it came from, which is the one test that would catch an axis
--- swapped the wrong way or a layer lifted by the wrong amount. And the whole
+-- swapped the wrong way or a shared crease split into different positions. And the whole
 -- file gets a golden, because "these exact bytes" is the contract a viewer
 -- holds us to.
 --
@@ -15,23 +15,25 @@
 -- offsets and alignments these tests exist to pin.
 module Senbazuru.Render.GltfSpec (spec) where
 
+import BasicBases (baseFrame, frogMilestones)
 import Control.Applicative ((<|>))
-import Data.Aeson (Value (..), decodeStrict)
+import Control.Monad (forM_)
+import Data.Aeson (Value (..), decodeStrict, toJSON)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
 import Data.Bits (shiftL, (.|.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
+import Data.Either (isLeft)
 import Data.Foldable (toList)
 import Data.List (nub, sort)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Word (Word32, Word8)
 import GHC.Float (castFloatToWord32, castWord32ToFloat)
 import Senbazuru.Diagram (Colour (..))
 import Senbazuru.Fold.Load (decodeFoldFile)
-import Senbazuru.Fold.Query (FoldError (..), frameVertices)
+import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId (..),
@@ -42,7 +44,8 @@ import Senbazuru.Fold.Types
     VertexId (..),
     emptyFrame,
   )
-import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
+import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
+import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (foldFrame, foldFrameWith)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface qualified as Paper
@@ -66,25 +69,12 @@ folded path = do
   either (fail . ("fold failed: " <>) . show) (pure . (,) name) (foldFrame fr)
 
 -- | Export, or fail the test saying why.
-export :: Thickness -> (Maybe Text, Frame) -> IO ByteString
+export :: ExportMode -> (Maybe Text, Frame) -> IO ByteString
 export t (name, fr) = either (fail . ("export failed: " <>) . show) pure (renderGlb defaultBudget t name fr)
 
 -- | Export a frame that has no file to take a name from.
-exportFrame :: Thickness -> Frame -> Either GltfError ByteString
+exportFrame :: ExportMode -> Frame -> Either GltfError ByteString
 exportFrame t = renderGlb defaultBudget t Nothing
-
--- | The span the exporter measures a frame by, for expectations that have to
--- go through the same rounding the output did.
-spanOf :: Frame -> Double
-spanOf fr = case frameVertices fr of
-  Right vs -> modelSpan vs
-  Left _ -> 0
-
--- | A height as the exporter would write it: quantised the way 'packable'
--- quantises, so that an expectation and the output agree to the bit rather
--- than by the coincidence of two rounding routes landing together.
-written :: Frame -> Double -> Float
-written fr h = let (_, y, _) = packable (quantumFor (spanOf fr)) (V3 0 h 0) in y
 
 -- | A binary glTF document taken apart: the header's declared total, the JSON
 -- chunk parsed, and the binary chunk as bytes.
@@ -215,7 +205,7 @@ spec :: Spec
 spec = do
   describe "the container" $ do
     it "is a well-formed binary glTF document" $ do
-      bytes <- folded "test/fixtures/quarter-fold.fold" >>= export DefaultThickness
+      bytes <- folded "test/fixtures/quarter-fold.fold" >>= export CompletePaper
       glb <- parseGlb bytes
       -- The header's declared length is the file's, and both chunks are
       -- padded to the four-byte boundary the specification requires -- the
@@ -233,37 +223,24 @@ spec = do
       -- makes them agree. Asserted against a copy of the frame with the noise
       -- put in by hand -- exporting one frame twice proves only that the
       -- function is a function.
-      (name, fr) <- folded "test/fixtures/quarter-fold.fold"
-      let noisy = fr {verticesCoords = map (zipWith (+) [6e-17, -0.0, 3e-17]) (verticesCoords fr)}
-      a <- export DefaultThickness (name, fr)
-      b <- export DefaultThickness (name, noisy)
-      b `shouldBe` a
+      forM_ ["quarter-fold", "crane"] $ \model -> do
+        (name, fr) <- folded ("test/fixtures/" ++ model ++ ".fold")
+        let noisy = fr {verticesCoords = map (zipWith (+) [6e-17, -0.0, 3e-17]) (verticesCoords fr)}
+        forM_ [CompletePaper, VisiblePaper] $ \mode -> do
+          a <- export mode (name, fr)
+          b <- export mode (name, noisy)
+          -- Keep a failure readable even though a GLB contains arbitrary bytes.
+          (model, mode, b == a) `shouldBe` (model, mode, True)
 
   describe "the geometry" $ do
-    it "lifts each layer of a flat model one thickness above the one below" $ do
-      -- The quarter fold: four faces landing on one quadrant. Every face owns
-      -- its four corners, so sixteen vertices, and the layer solver's order --
-      -- bottom-left quadrant lowest -- becomes height. glTF is y-up, so the
-      -- lift is in y.
-      named@(_, fr) <- folded "test/fixtures/quarter-fold.fold"
-      glb <- export DefaultThickness named >>= parseGlb
-      let ps = vec3s glb 0
-          heights = [y | (_, y, _) <- ps]
-          -- A thousandth of the folded model's span, which is 0.5. Expected
-          -- heights go through the exporter's own quantisation, since two
-          -- routes to a float32 agree only by luck.
-          t = spanOf fr / 1000
-          layer k = written fr (fromIntegral (k :: Int) * t)
-      length ps `shouldBe` 16
-      sort (nub heights) `shouldBe` map layer [0, 1, 2, 3]
-      -- Face 3 is the bottom-left quadrant of the pattern and is on the table;
-      -- face 2, the top-left, is on top. Corners are written face by face in
-      -- file order, four to a face.
-      take 4 (drop 12 heights) `shouldBe` replicate 4 (layer 0)
-      take 4 (drop 8 heights) `shouldBe` replicate 4 (layer 3)
+    it "keeps all four quarter-fold layers at their shared material positions" $ do
+      named <- folded "test/fixtures/quarter-fold.fold"
+      glb <- export CompletePaper named >>= parseGlb
+      length (vec3s glb 0) `shouldBe` 16
+      nub [y | (_, y, _) <- vec3s glb 0] `shouldBe` [0]
 
     it "states the bounds a POSITION accessor must carry, and states them truly" $ do
-      glb <- folded "test/fixtures/quarter-fold.fold" >>= export DefaultThickness >>= parseGlb
+      glb <- folded "test/fixtures/quarter-fold.fold" >>= export CompletePaper >>= parseGlb
       -- Compared as float32, which is what both are: the data is packed in
       -- single precision, and the bounds are written with the digits that
       -- single precision can hold. Widened to Double the two would disagree
@@ -278,7 +255,7 @@ spec = do
       stated "max" `shouldBe` [maximum xs, maximum ys, maximum zs]
 
     it "writes every face twice, wound both ways, in two materials" $ do
-      glb <- folded "test/fixtures/quarter-fold.fold" >>= export DefaultThickness >>= parseGlb
+      glb <- folded "test/fixtures/quarter-fold.fold" >>= export CompletePaper >>= parseGlb
       let json = glbJson glb
           primitives = at "primitives" (nth 0 (at "meshes" json))
           prims = items primitives
@@ -300,19 +277,19 @@ spec = do
       toGltfAxes (V3 1 2 3) `shouldBe` V3 1 3 (-2)
 
     it "names the model as it was asked to" $ do
-      glb <- folded "test/fixtures/quarter-fold.fold" >>= export DefaultThickness >>= parseGlb
+      glb <- folded "test/fixtures/quarter-fold.fold" >>= export CompletePaper >>= parseGlb
       at "name" (nth 0 (at "nodes" (glbJson glb))) `shouldBe` String "Quarter folds"
       -- The crane's title is on the file, not the frame, which is where most
       -- files keep it; the caller passes whichever it has, as render does.
-      glb' <- folded "test/fixtures/crane.fold" >>= export DefaultThickness >>= parseGlb
+      glb' <- folded "test/fixtures/crane.fold" >>= export CompletePaper >>= parseGlb
       at "name" (nth 0 (at "nodes" (glbJson glb'))) `shouldBe` String "Crane"
-      glb'' <- either (fail . show) parseGlb (exportFrame DefaultThickness flatSheet)
+      glb'' <- either (fail . show) parseGlb (exportFrame CompletePaper flatSheet)
       at "name" (nth 0 (at "nodes" (glbJson glb''))) `shouldBe` Null
 
     it "writes a crease pattern as one flat sheet" $ do
       -- Nothing overlaps, so nothing is lifted: every corner at height zero,
       -- and each of the two faces still owns its own three.
-      glb <- either (fail . show) parseGlb (exportFrame DefaultThickness flatSheet)
+      glb <- either (fail . show) parseGlb (exportFrame CompletePaper flatSheet)
       let ps = vec3s glb 0
       length ps `shouldBe` 6
       [y | (_, y, _) <- ps] `shouldBe` replicate 6 0
@@ -324,24 +301,23 @@ spec = do
       -- pattern has no layers for it to order anyway. A flag deciding which
       -- files are acceptable is the failure this guards against.
       let backwards = flatSheet {facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 3, 2]]}
-      glb <- either (fail . show) parseGlb (exportFrame DefaultThickness backwards)
+      glb <- either (fail . show) parseGlb (exportFrame CompletePaper backwards)
       length (vec3s glb 0) `shouldBe` 6
 
     it "writes a form with paper in the air exactly as folded" $ do
-      -- Its layers are not separated -- that is the general case this does not
-      -- do yet -- so the heights are the file's own z values, turned into y.
-      glb <- fixture "test/fixtures/simple.fold" >>= export DefaultThickness >>= parseGlb
+      -- The heights are the file's own z values, turned into y.
+      glb <- fixture "test/fixtures/simple.fold" >>= export CompletePaper >>= parseGlb
       sort (nub [y | (_, y, _) <- vec3s glb 0]) `shouldBe` [-1, 0, 1]
 
     it "checks a file's own faceOrders on every path, whether or not it uses them" $ do
       -- render refuses an order naming a face that is not there. The paths that
-      -- never consult the orders -- paper in the air, and a thickness of zero
-      -- -- used to skip the check and export the file without a word.
+      -- never consult the orders -- paper in the air, and complete-paper mode
+      -- used to skip the check and export the file without a word.
       (_, simple) <- fixture "test/fixtures/simple.fold"
       let bad = simple {faceOrders = faceOrders simple <> [FaceOrder (FaceId 99) (FaceId 0) Above]}
-      exportFrame DefaultThickness bad `shouldBe` Left (GltfRefused (FaceOrderOutOfRange (FaceId 99) 4))
+      exportFrame CompletePaper bad `shouldBe` Left (GltfRefused (FaceOrderOutOfRange (FaceId 99) 4))
       (_, quarter) <- folded "test/fixtures/quarter-fold.fold"
-      exportFrame (Thickness 0) quarter {faceOrders = [FaceOrder (FaceId 99) (FaceId 0) Above]}
+      exportFrame CompletePaper quarter {faceOrders = [FaceOrder (FaceId 99) (FaceId 0) Above]}
         `shouldBe` Left (GltfRefused (FaceOrderOutOfRange (FaceId 99) 4))
 
     it "writes more vertices than sixteen bits can index, with wider indices" $ do
@@ -359,78 +335,119 @@ spec = do
                       j <- [0 .. n - 1]
                   ]
               }
-      glb <- either (fail . show) parseGlb (exportFrame DefaultThickness grid)
+      glb <- either (fail . show) parseGlb (exportFrame CompletePaper grid)
       asInt (at "count" (nth 0 (at "accessors" (glbJson glb)))) `shouldBe` 65536
       -- 5125 is UNSIGNED_INT; 5123, the usual, is UNSIGNED_SHORT.
       asInt (at "componentType" (nth 1 (at "accessors" (glbJson glb)))) `shouldBe` 5125
 
-  describe "the thickness" $ do
-    it "keeps physical material thickness distinct from export display spacing" $ do
+  describe "material geometry and visible scenes" $ do
+    it "stores physical thickness without displacing material vertices" $ do
       (name, source) <- fixture "test/fixtures/quarter-fold.fold"
       result <- either (fail . show) pure (foldFrameWith source)
       sheet <- either (fail . show) pure (Paper.surfaceFromFolded result >>= Paper.withPhysicalThickness (Just 0.25))
-      bytes <- either (fail . show) pure (renderSurfaceGlb defaultBudget (Thickness 0) name sheet)
+      bytes <- either (fail . show) pure (renderSurfaceGlb defaultBudget CompletePaper name sheet)
       glb <- parseGlb bytes
-      -- Four layers remain at z = 0. A stored material property must not turn
-      -- into the old exporter offsets (0, .25, .5, .75) without asking for
-      -- that separate display operation.
+      -- Physical thickness is metadata, not an instruction to open crease gaps.
       nub [y | (_, y, _) <- vec3s glb 0] `shouldBe` [0]
       -- Graphics still duplicate corners for their per-face layout. Material
       -- identities belong to the nine-vertex surface, not those copies.
       length (Paper.surfaceSamples sheet) `shouldBe` 9
       length (vec3s glb 0) `shouldBe` 16
+      asDouble (at "physicalThickness" (at "senbazuru" (at "extras" (glbJson glb)))) `shouldBe` 0.25
+      checkMaterialReferences glb
 
-    it "is refused when finer than the rounding the coordinates go through" $ do
-      -- Rounded away, some layers would land a step apart and others on the
-      -- same height. The floor is a millionth of the model, which is also the
-      -- most single precision could hold.
-      named@(_, fr) <- folded "test/fixtures/quarter-fold.fold"
-      let q = quantumFor (spanOf fr)
-      exportFrame (Thickness (q / 2)) fr `shouldBe` Left (GltfThicknessTooFine (q / 2) q)
-      _ <- export (Thickness q) named
-      pure ()
+    it "preserves intentional cuts even where their graphics corners coincide" $ do
+      let cut = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]], facesVertices = map (map VertexId) [[0, 1, 2], [3, 4, 5]]}
+      glb <- either (fail . show) parseGlb (exportFrame VisiblePaper cut)
+      checkMaterialReferences glb
+      let stored = at "frame" (at "senbazuru" (at "extras" (glbJson glb)))
+      map (map asInt . items) (items (at "faces_vertices" stored)) `shouldBe` [[0, 1, 2], [3, 4, 5]]
 
-    it "scales with the model, so a tiny model is still separated" $ do
-      -- The same quarter fold a thousandth of a unit across. An absolute
-      -- rounding of six decimals would have put all four layers on one height;
-      -- rounding relative to the model keeps them four.
+    it "retains supplied material maps and layer constraints, but drops stale frame extras" $ do
+      (_, source) <- fixture "test/fixtures/quarter-fold.fold"
+      result <- either (fail . show) pure (foldFrameWith source)
+      known <- either (fail . show) pure (Paper.surfaceFromFolded result)
+      let supplied = (Paper.materialFrame known) {faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]}
+          stale = supplied {frameExtras = KM.insert "old-contact-check" (Bool True) (frameExtras supplied)}
+      sheet <- either (fail . show) pure (Paper.surfaceFromFrame stale >>= Paper.withLayerRequirements (V3 0 0 1) [(FaceId 0, FaceId 1)])
+      glb <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget CompletePaper Nothing sheet)
+      let metadata = at "senbazuru" (at "extras" (glbJson glb))
+          stored = at "frame" metadata
+      at "faceOrders" stored `shouldBe` toJSON (faceOrders supplied)
+      at "senbazuru:material_coords" stored `shouldBe` at "senbazuru:material_coords" (toJSON supplied)
+      at "old-contact-check" stored `shouldBe` Null
+      at "direction" (at "layerRequirements" metadata) `shouldBe` toJSON ([0, 0, 1] :: [Int])
+      at "lowerUpper" (at "layerRequirements" metadata) `shouldBe` toJSON ([[0, 1]] :: [[Int]])
+
+    it "provides a stable scene and a complete inspection scene for a quarter fold" $ do
+      named <- folded "test/fixtures/quarter-fold.fold"
+      glb <- export VisiblePaper named >>= parseGlb
+      let json = glbJson glb
+      map (at "name") (items (at "scenes" json)) `shouldBe` [String "Visible paper", String "Complete paper"]
+      -- Two exposed quads, one on each side. No buried duplicate triangles
+      -- remain in the default scene; every layer survives in the other one.
+      let primitives = items (at "primitives" (nth 0 (at "meshes" json)))
+      sum [length (triangles glb (asInt (at "indices" p))) | p <- primitives] `shouldBe` 4
+      forM_ (items (at "meshes" json)) $ \mesh -> do
+        let ps = items (at "primitives" mesh)
+        forM_ ps $ \primitive ->
+          nub [y | (_, y, _) <- vec3s glb (asInt (at "POSITION" (at "attributes" primitive)))] `shouldBe` [0]
+
+    it "exports a cyclic pinwheel without inventing layer heights" $ do
+      named <- folded "test/fixtures/thirds-pinwheel.fold"
+      glb <- export VisiblePaper named >>= parseGlb
+      length (items (at "scenes" (glbJson glb))) `shouldBe` 2
+
+    it "keeps tiny quarter folds unseparated" $ do
       (name, fr) <- folded "test/fixtures/quarter-fold.fold"
       let tiny = fr {verticesCoords = map (map (* 0.001)) (verticesCoords fr)}
-      glb <- export DefaultThickness (name, tiny) >>= parseGlb
-      length (nub [y | (_, y, _) <- vec3s glb 0]) `shouldBe` 4
+      glb <- export VisiblePaper (name, tiny) >>= parseGlb
+      nub [y | (_, y, _) <- vec3s glb 0] `shouldBe` [0]
 
-    it "is what separates a twist from a refusal" $ do
-      -- A twist's layers run in a circle and have no numbers, so with any
-      -- thickness at all there is nothing to lift each face by, and the export
-      -- says so. At zero no layer order is asked for and the paper is written
-      -- as folded, which is the one way to get a twist out.
-      named@(_, fr) <- folded "test/fixtures/thirds-pinwheel.fold"
-      case exportFrame DefaultThickness fr of
-        Left err@(GltfRefused (ImpossibleStacking _)) ->
-          -- Said in terms of height, not of painting, and with the way out.
-          renderGltfError err `shouldSatisfy` T.isInfixOf "thickness of zero"
-        other -> expectationFailure ("expected the twist to be refused, got " <> either show (const "a model") other)
-      _ <- export (Thickness 0) named
-      pure ()
+  describe "material identities across every basic base" $
+    forM_ ["book", "quarter-fold", "kite", "blintz", "square", "waterbomb", "fish", "bird", "helmet", "organ", "frog", "boat", "pig", "diamond"] $ \name ->
+      it (name ++ " keeps every graphics corner attached to its material") $ do
+        let path = if name == "quarter-fold" then "examples/quarter-fold.fold" else "examples/" ++ name ++ "-base.fold"
+        named <- folded path
+        glb <- export VisiblePaper named >>= parseGlb
+        checkMaterialReferences glb
 
-    it "is used as given" $ do
-      named <- folded "test/fixtures/quarter-fold.fold"
-      glb <- export (Thickness 0.25) named >>= parseGlb
-      sort (nub [y | (_, y, _) <- vec3s glb 0]) `shouldBe` [0, 0.25, 0.5, 0.75]
+  describe "moving and ambiguous paper" $ do
+    it "exports every checked bird state through both scenes" $ do
+      bytes <- BS.readFile "examples/bird-base-sequence.fold"
+      file <- either fail pure (decodeFoldFile bytes)
+      length (otherFrames file) `shouldBe` 16
+      forM_ (otherFrames file) $ \fr -> do
+        glb <- either (fail . show) parseGlb (exportFrame VisiblePaper fr)
+        checkMaterialReferences glb
 
-    it "refuses a thickness that is not a distance" $ do
-      (_, fr) <- folded "test/fixtures/quarter-fold.fold"
-      exportFrame (Thickness (-1)) fr `shouldBe` Left (GltfBadThickness (-1))
-      case exportFrame (Thickness (0 / 0)) fr of
-        Left (GltfBadThickness _) -> pure ()
-        _ -> expectationFailure "NaN was accepted as a thickness"
+    it "exports all five frog guide milestones through both scenes" $ do
+      length frogMilestones `shouldBe` 5
+      forM_ frogMilestones $ \(_, base) -> do
+        source <- either (fail . show) pure (baseFrame base)
+        fr <- either (fail . show) pure (foldFrame source)
+        glb <- either (fail . show) parseGlb (exportFrame VisiblePaper fr)
+        checkMaterialReferences glb
+
+    it "refuses unresolved coplanar contact in an open model but keeps the inspection export" $ do
+      -- Two touching squares and one upright triangle. No relation tells us
+      -- which square is exposed; actual depth cannot decide a tie.
+      let ambiguous = emptyFrame {frameClasses = ["foldedForm"], verticesCoords = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1]], facesVertices = map (map VertexId) [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 8]]}
+      exportFrame VisiblePaper ambiguous `shouldSatisfy` isLeft
+      _ <- either (fail . show) parseGlb (exportFrame CompletePaper ambiguous)
+      ordered <- either (fail . show) parseGlb (exportFrame VisiblePaper ambiguous {faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]})
+      checkMaterialReferences ordered
+
+    it "refuses contradictory order over a common patch instead of exporting a hole" $ do
+      let wrong = emptyFrame {frameClasses = ["foldedForm"], verticesCoords = [[0, 0], [1, 0], [0, 1]], facesVertices = replicate 3 (map VertexId [0, 1, 2]), faceOrders = [FaceOrder (FaceId a) (FaceId b) Above | (a, b) <- [(0, 1), (1, 2), (2, 0)]]}
+      exportFrame VisiblePaper wrong `shouldSatisfy` isLeft
 
   describe "what is refused" $ do
     it "refuses a face the fan would triangulate wrongly" $
       -- A concave quad, planar and tilted out of the sheet so that no layer
       -- solver sees it first. A fan from its first corner would cover paper
       -- that is not there.
-      exportFrame DefaultThickness concaveInTheAir
+      exportFrame CompletePaper concaveInTheAir
         `shouldBe` Left (GltfConcaveFace (FaceId 0))
 
     it "refuses a face too thin to have a plane, not only one with none at all" $
@@ -438,7 +455,7 @@ spec = do
       -- exactly zero, and a face that fans into triangles of no area. Judged
       -- by area, like everything else that asks whether a polygon is one.
       exportFrame
-        (Thickness 0)
+        CompletePaper
         emptyFrame
           { frameClasses = ["foldedForm"],
             verticesCoords = [[0, 0, 0], [1, 0, 0.5], [2, 0, 1 + 1e-12]],
@@ -452,8 +469,8 @@ spec = do
       -- success. Not a number is refused for the same reason, with its own
       -- message rather than one about a face's normal.
       let huge = flatSheet {verticesCoords = [[1e40, 0], [1, 0], [1, 1], [0, 1]]}
-      exportFrame (Thickness 0) huge `shouldBe` Left (GltfUnwritableCoordinate 1e40)
-      case exportFrame (Thickness 0) flatSheet {verticesCoords = [[0 / 0, 0], [1, 0], [1, 1], [0, 1]]} of
+      exportFrame CompletePaper huge `shouldBe` Left (GltfUnwritableCoordinate 1e40)
+      case exportFrame CompletePaper flatSheet {verticesCoords = [[0 / 0, 0], [1, 0], [1, 1], [0, 1]]} of
         Left (GltfUnwritableCoordinate _) -> pure ()
         other -> expectationFailure ("NaN was not refused as a coordinate: " <> either show (const "exported") other)
 
@@ -488,7 +505,7 @@ spec = do
                     [VertexId 2, VertexId 3, VertexId 0]
                   ]
               }
-      exportFrame DefaultThickness square `shouldBe` exportFrame DefaultThickness stated
+      exportFrame CompletePaper square `shouldBe` exportFrame CompletePaper stated
 
     it "cuts creases that cross, rather than refusing the frame they are in" $ do
       -- unit-square.fold has been refused here twice over: for recording no
@@ -527,11 +544,11 @@ spec = do
                 edgesFoldAngle =
                   replicate 8 0 <> [180, 180, -180, -180, 0, 0]
               }
-      exportFrame DefaultThickness fr `shouldBe` exportFrame DefaultThickness byHand
+      exportFrame CompletePaper fr `shouldBe` exportFrame CompletePaper byHand
 
     it "refuses a frame with no creases at all, which has no surface to write" $ do
       let bare = flatSheet {facesVertices = [], edgesVertices = [], edgesAssignment = []}
-      exportFrame DefaultThickness bare `shouldBe` Left GltfNoFaces
+      exportFrame CompletePaper bare `shouldBe` Left GltfNoFaces
 
   describe "the pieces" $ do
     it "rounds a coordinate to the quantum and forgets the sign of zero" $ do
@@ -564,15 +581,79 @@ spec = do
     -- is a change of geometry.
     it "writes the quarter fold exactly as recorded" $
       folded "test/fixtures/quarter-fold.fold"
-        >>= export DefaultThickness
+        >>= export VisiblePaper
         >>= goldenBytes "test/golden/quarter-fold-folded.glb"
 
     it "writes the crane exactly as recorded" $
       folded "test/fixtures/crane.fold"
-        >>= export DefaultThickness
+        >>= export VisiblePaper
         >>= goldenBytes "test/golden/crane-folded.glb"
 
     it "writes a form with paper in the air exactly as recorded" $
       fixture "test/fixtures/simple.fold"
-        >>= export DefaultThickness
+        >>= export VisiblePaper
         >>= goldenBytes "test/golden/simple.glb"
+
+-- Reconstruct every graphics vertex from its source material ids. Clipping
+-- introduces weighted corners; complete-paper copies must keep a single id.
+checkMaterialReferences :: Glb -> Expectation
+checkMaterialReferences glb = do
+  let json = glbJson glb
+      originals = at "vertices_coords" (at "frame" (at "senbazuru" (at "extras" json)))
+      original = items originals
+      sourceFaces = items (at "faces_vertices" (at "frame" (at "senbazuru" (at "extras" json))))
+      point i = case map asDouble (items (nth i originals)) of
+        [x, y, z] -> (x, z, -y)
+        _ -> (0, 0, 0)
+  forM_ (items (at "meshes" json)) $ \mesh -> do
+    let primitives = items (at "primitives" mesh)
+        weights = items (at "materialWeights" (at "extras" mesh))
+    forM_ primitives $ \primitive -> do
+      let ps = vec3s glb (asInt (at "POSITION" (at "attributes" primitive)))
+      length ps `shouldBe` length weights
+      forM_ (zip ps weights) $ \((x, y, z), anchors) -> do
+        let refs = [(asInt (nth 0 pair), asDouble (nth 1 pair)) | pair <- items anchors]
+        refs `shouldSatisfy` (not . null)
+        forM_ refs $ \(vid, weight) -> do
+          vid `shouldSatisfy` (>= 0)
+          vid `shouldSatisfy` (< length original)
+          weight `shouldSatisfy` (>= (-1e-8))
+        abs (sum (map snd refs) - 1) `shouldSatisfy` (< 1e-8)
+        let expected component = sum [weight * component (point vid) | (vid, weight) <- refs]
+        abs (realToFrac x - expected (\(a, _, _) -> a)) `shouldSatisfy` (< 3e-6)
+        abs (realToFrac y - expected (\(_, b, _) -> b)) `shouldSatisfy` (< 3e-6)
+        abs (realToFrac z - expected (\(_, _, c) -> c)) `shouldSatisfy` (< 3e-6)
+
+      let indices = triangles glb (asInt (at "indices" primitive))
+          panels = map asInt (items (at "materialFaces" (at "extras" primitive)))
+          graphics = zip [0 ..] [V3 (realToFrac x) (realToFrac y) (realToFrac z) | (x, y, z) <- ps]
+          sourcePoint vid = let (x, y, z) = point vid in V3 x y z
+      length panels `shouldBe` length indices
+      forM_ (zip panels indices) $ \(fid, (a, b, c)) -> do
+        fid `shouldSatisfy` (>= 0)
+        fid `shouldSatisfy` (< length sourceFaces)
+        let ids = case drop fid sourceFaces of
+              face : _ -> map asInt (items face)
+              [] -> []
+        forM_ [a, b, c] $ \i -> do
+          i `shouldSatisfy` (>= 0)
+          i `shouldSatisfy` (< length ps)
+          let anchors = case drop i weights of
+                value : _ -> items value
+                [] -> []
+          map (asInt . nth 0) anchors `shouldSatisfy` all (`elem` ids)
+        case (lookup a graphics, lookup b graphics, lookup c graphics) of
+          (Just pa, Just pb, Just pc) -> do
+            let actualNormal = cross (pb ^-^ pa) (pc ^-^ pa)
+                sourceNormal = polygonNormal (map sourcePoint ids)
+                side = if asInt (at "material" primitive) == 0 then 1 else -1
+            side * dot actualNormal sourceNormal `shouldSatisfy` (> 0)
+          _ -> expectationFailure "triangle names a missing graphics corner"
+      -- A graphics copy with one material id must pack to exactly that id's
+      -- position. Sharing lighting vertices must never open a crease gap.
+      forM_ (zip ps weights) $ \(actual, anchors) ->
+        case items anchors of
+          [pair] | asDouble (nth 1 pair) == 1 -> do
+            let (x, y, z) = point (asInt (nth 0 pair))
+            actual `shouldBe` (realToFrac x, realToFrac y, realToFrac z)
+          _ -> pure ()

@@ -107,17 +107,9 @@ num x = T.pack (showGFloat (Just 6) x "")
 -- @tshow v@, because a reader chasing a fault wants @vertex 12@ and not
 -- @vertex (VertexId 12)@.
 --
--- It is also right for a 'Double' the /user/ supplied, and
--- "Senbazuru.Render.Gltf" uses it that way on purpose. @senbazuru export
--- examples\/crane.fold --fold --thickness 0.0000007@ is refused with
--- @a thickness of 7.0e-7 is finer than …@ — the number as @show@ writes it,
--- which is how the reader matches the message against what they typed.
--- Reaching for 'num' there because the value is a distance would answer
--- @7.000000e-7@ and break that match.
---
--- So the rule is not the type. It is whether the number came from the reader
--- or from us. That same message goes on to print a number that came from us,
--- and prints it with 'tshow' too; see the note at the alternative in
--- "Senbazuru.Render.Gltf".
+-- It is also right for a 'Double' the /user/ supplied. A coordinate outside
+-- glTF's range is printed with 'tshow' so the reader can match it to the file;
+-- a distance measured while checking that file belongs with 'num'. The rule
+-- is where the number came from, not its Haskell type.
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show

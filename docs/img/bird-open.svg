@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="360" viewBox="0 0 420 360">
+  <title>First petal · lift · hinge 90°</title>
+  <rect x="0" y="0" width="420" height="360" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 376.396 247.931 L 329.157 220.657 L 210 344 Z M 90.843 220.657 L 43.604 247.931 L 210 344 Z" fill="#faf8f3"/>
+    <path d="M 112.527 208.138 L 64.859 193.761 L 210 344 Z M 112.527 208.138 L 210 16 L 64.859 193.761 Z M 307.473 208.138 L 355.141 193.761 L 210 16 Z M 307.473 208.138 L 210 344 L 355.141 193.761 Z M 210 344 L 210 208.138 L 112.527 208.138 Z M 210 208.138 L 210 344 L 307.473 208.138 Z M 307.473 208.138 L 210 16 L 112.527 208.138 Z" fill="#e5ded1"/>
+    <path d="M 210 344 L 210 208.138" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 90.843 220.657 L 43.604 247.931" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 112.527 208.138 L 64.859 193.761" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 112.527 208.138 L 210 344" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 112.527 208.138 L 210 16" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 329.157 220.657 L 376.396 247.931" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 307.473 208.138 L 355.141 193.761" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 307.473 208.138 L 210 16" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 307.473 208.138 L 210 344" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 112.527 208.138 L 307.473 208.138" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 210 344 L 64.859 193.761" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 64.859 193.761 L 210 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 210 16 L 355.141 193.761" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 355.141 193.761 L 210 344" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 210 344 L 376.396 247.931" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 210 344 L 43.604 247.931" stroke="#1a1a1a" stroke-width="1.6"/>
+  </g>
+</svg>

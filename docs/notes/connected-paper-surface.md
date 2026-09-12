@@ -20,7 +20,9 @@ carry those properties without representing the sheet as a solid volume. Our
 first shared representation supports zero-thickness geometry and explicit
 layer order. A rendering depth adjustment must not silently become a material
 parameter. Ordinary glTF viewers cannot read FOLD's layer orders, so stable
-viewing of coincident surfaces remains an explicit export/viewer design task.
+viewing of coincident surfaces needs an explicit export policy. Our
+[visible glTF scene](visible-paper-mesh.md) removes buried coplanar regions;
+a second scene keeps the complete sheet, with neither moving the paper.
 
 Connectivity alone does not say how the sheet should move. The corrected double
 fold already preserves lengths and packet order within its declared tolerances,
@@ -58,8 +60,8 @@ this representation across the study, SVG projection and 3D export.
 The first stage is now `Origami.Surface`: known material coordinates are typed
 separately from a folded file's possibly missing map, and the study uses the
 library's shared midpoint refinement. Both renderer interfaces accept the
-surface. The old glTF display spacing is still present; replacing it and
-carrying material identity into graphics exports remain under that issue.
+surface. glTF now derives visible pieces without displacing panels, retains a
+complete inspection scene, and records material identities in graphics extras.
 [Issue #106](https://github.com/avalonalex/senbazuru/issues/106) tracks later
 pocket opening. The earlier [schematic puff](the-puff-is-a-drawing.md) remains
 an illustration of what a drawing can fake, not a substitute for the material

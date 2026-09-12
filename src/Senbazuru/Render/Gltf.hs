@@ -10,36 +10,32 @@
 -- most things that can show a mesh at all. It is the first output someone can
 -- turn over in their hands, and the fastest way to see that a fold went wrong.
 --
--- == Current display policy
+-- == Two scenes, one geometry
 --
--- A zero-thickness quarter fold places four faces at the same depth. A generic
--- 3D viewer has no FOLD layer orders and may alternate between those faces as
--- its depth comparisons round differently: z-fighting. This exporter currently
--- separates flat layers by their longest-chain layer number times a spacing.
--- Zero spacing writes the current positions without asking for layer order.
--- A cyclic stacking can only use that zero-spacing path today.
+-- The default scene draws only exposed paper on each side of each plane.
+-- Removing buried coplanar regions resolves depth ties without moving any
+-- panel or opening gaps at its creases. A second scene retains every layer.
+-- 'CompletePaper' exports that inspection scene alone; a generic viewer may
+-- show depth flicker there because it cannot interpret origami layer orders.
 --
--- Each face owns its graphics corners so the spacing can differ between faces.
--- This leaves gaps at shared creases. It is a legacy display convention, not a
--- physical model of paper thickness. 'renderSurfaceGlb' consumes the shared
--- material surface, then applies this convention only to the output buffer;
--- its 'Thickness' argument is unrelated to the surface's optional physical
--- thickness. Replacing the display convention is the next stage of #146.
+-- "Senbazuru.Render.PaperMesh" derives the visible pieces. Its clipped corners
+-- retain weighted references to original material vertices. Both scenes store
+-- those references and original panel ids in glTF extras, alongside the source
+-- frame and its layer requirements. Graphics copies never become material ids.
+-- Optional physical thickness remains a property; it does not move vertices.
 --
--- Open forms are written without separation. Coplanar patches in an open
--- model can still fight in a generic viewer. A connected representation alone
--- does not solve that visibility problem.
---
--- == Two sides, two primitives
+-- == Two sides, up to two primitives
 --
 -- Origami paper is coloured on one side and white on the other, and the export
 -- says so. glTF has no notion of a material with two colours, but it culls
 -- triangles seen from behind by default, and a triangle's front is decided by
--- the order its corners are listed in. So every face is written twice: once
--- wound as the file has it, in the paper's colour, and once wound the other
+-- the order its corners are listed in. In the complete scene each face is
+-- written twice: once wound as the file has it, in the paper's colour, and once
+-- wound the other
 -- way, in the underside's. Each copy shows from one side only, and together
 -- they are a sheet with a front and a back. The two share one set of positions
--- and differ only in their index lists.
+-- and differ only in their index lists. The visible scene omits buried sides;
+-- an unused colour has no primitive.
 --
 -- The winding is the file's, as "Senbazuru.Origami.Layers" takes it, because a
 -- face's front /is/ its winding in FOLD. Frames from
@@ -96,7 +92,7 @@ module Senbazuru.Render.Gltf
   ( -- * Export
     renderGlb,
     renderSurfaceGlb,
-    Thickness (..),
+    ExportMode (..),
 
     -- * Errors
     GltfError (..),
@@ -110,6 +106,9 @@ module Senbazuru.Render.Gltf
   )
 where
 
+import Data.Aeson ((.=))
+import Data.Aeson qualified as A
+import Data.Aeson.KeyMap qualified as KM
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -127,28 +126,21 @@ import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Query
   ( Face (..),
     FoldError (..),
-    FrameKind (..),
-    frameKind,
     frameVertices,
   )
-import Senbazuru.Fold.Types (FaceId (..), Frame (..))
+import Senbazuru.Fold.Types (FaceId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry.Polygon (isConvex)
-import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, polygonNormal)
+import Senbazuru.Geometry.V3 (V3 (..), modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace (norm)
-import Senbazuru.Origami.Layers (layerDepths, layerOf)
-import Senbazuru.Origami.Stacking (Budget, layerOrderFor)
-import Senbazuru.Origami.Surface (Surface, SurfaceError (..), surfaceFaces, surfaceFrame, surfaceFromFrame)
+import Senbazuru.Origami.Stacking (Budget)
+import Senbazuru.Origami.Surface (Surface, SurfaceError (..), surfaceFaces, surfaceFrame, surfaceFromFrame, surfaceLayerRequirements, surfaceThickness)
 import Senbazuru.Render.Camera (basisFrom, project)
+import Senbazuru.Render.PaperMesh (PaperMeshError, PaperPiece (..), PaperVertex (..), completePaper, visiblePaper)
 
--- | How far apart to place the layers of a flat-folded model.
-data Thickness
-  = -- | A thousandth of the model's span: paper on a hand-sized square, and
-    -- well clear of what any depth buffer can tell apart.
-    DefaultThickness
-  | -- | Exactly this much, in model units. Zero writes the paper exactly as
-    -- folded and asks for no layer order at all, which is the only way to
-    -- export a model whose layers run in a circle.
-    Thickness !Double
+-- | The default includes a stable visible scene and the complete sheet.
+-- The inspection mode needs no visibility solution and writes all layers only.
+-- Both preserve shared positions; neither applies display displacement.
+data ExportMode = VisiblePaper | CompletePaper
   deriving stock (Eq, Show)
 
 -- | Why a frame could not be written out.
@@ -158,18 +150,13 @@ data GltfError
     -- reaches a caller as one type.
     GltfRefused !FoldError
   | GltfSurfaceError !SurfaceError
+  | GltfPaperMeshError !PaperMeshError
   | -- | A face is not convex, and the fan this cuts each face into would
     -- cover paper that is not there. Ear clipping would handle it and is not
     -- built.
     GltfConcaveFace !FaceId
   | -- | Nothing to build: no faces, and no creases to trace any from either.
     GltfNoFaces
-  | -- | A thickness that is not a distance: negative, or not a number.
-    GltfBadThickness !Double
-  | -- | A thickness finer than the rounding the coordinates go through, which
-    -- would lift some layers by a step and others by none. Carries the
-    -- thickness asked for and the finest one this model can hold.
-    GltfThicknessTooFine !Double !Double
   | -- | A coordinate that single precision cannot hold: not a number, or
     -- beyond about 3.4e38. Written through, it would arrive as the bare token
     -- @Infinity@ in the JSON, which no parser accepts.
@@ -178,44 +165,15 @@ data GltfError
 
 instance Explain GltfError where
   explain = \case
-    -- The frame's own message is about painting, which is what the layer order
-    -- was first for; here it is about height, and the reader has a way out.
-    GltfRefused (ImpossibleStacking (FaceId f)) ->
-      "the layers run in a circle through face "
-        <> tshow f
-        <> ", so there is no height to lift each face to; with a thickness of"
-        <> " zero the model is written exactly as folded, circle and all"
     GltfRefused err -> explain err
     GltfSurfaceError err -> explain err
+    GltfPaperMeshError err -> explain err
     GltfConcaveFace (FaceId f) ->
       "face "
         <> tshow f
         <> " is not convex, and a 3D model is built from triangles fanned out"
         <> " from each face's first corner, which is only right for convex faces"
     GltfNoFaces -> "there are no creases here, so there is no surface to write"
-    -- 'tshow' and not 'num' for the four numbers below, although every one of
-    -- them is a distance. Two of them are the thickness the user typed, and
-    -- quoting that back the way @show@ writes it is what lets them match the
-    -- message against their own command line: @--thickness 0.0000007@ is
-    -- refused as @a thickness of 7.0e-7@, where @num@ would answer
-    -- @7.000000e-7@.
-    --
-    -- The other two came from us, not from the reader — @finest@ is
-    -- 'quantumFor' of the model's span, and @c@ is a coordinate after the
-    -- layers were lifted — so by "Senbazuru.Explain"'s own rule they want
-    -- 'num', which would print @7.071068e-7@ rather than
-    -- @7.071067811865761e-7@. They are left as they are only because changing
-    -- them changes what the tool prints, which the change that hoisted these
-    -- helpers had ruled out for itself. It is a loose end, not a decision.
-    GltfBadThickness t ->
-      "a thickness of " <> tshow t <> " is not a distance"
-    GltfThicknessTooFine t finest ->
-      "a thickness of "
-        <> tshow t
-        <> " is finer than the rounding this model's coordinates go through,"
-        <> " which is "
-        <> tshow finest
-        <> "; some layers would be lifted and others not"
     GltfUnwritableCoordinate c ->
       "the coordinate " <> tshow c <> " cannot be written in single precision"
 
@@ -235,8 +193,8 @@ renderGltfError = explain
 -- The frame's @faceOrders@ are checked on every path, whether or not they end
 -- up used, because @render@ refuses a file whose orders name a face that is
 -- not there and a flag should not decide which files are acceptable.
-renderGlb :: Budget -> Thickness -> Maybe Text -> Frame -> Either GltfError ByteString
-renderGlb budget thickness name fr0 = do
+renderGlb :: Budget -> ExportMode -> Maybe Text -> Frame -> Either GltfError ByteString
+renderGlb budget mode name fr0 = do
   -- The same tracing "Senbazuru.Origami.Folding" does, and here for the same
   -- reason it takes a --layer-budget: a policy that reaches only one backend
   -- is a policy that is wrong on the other. A crease pattern that records no
@@ -246,17 +204,16 @@ renderGlb budget thickness name fr0 = do
   verts <- refused (frameVertices fr)
   mapM_ writable verts
   sheet <- first surfaceError (surfaceFromFrame fr)
-  renderSurfaceGlb budget thickness name sheet
+  renderSurfaceGlb budget mode name sheet
   where
     refused = first GltfRefused
 
--- | Export a shared material surface. This first integration retains the
--- legacy flat-layer DISPLAY spacing selected by 'Thickness'. It is computed
--- only for the output buffer: it never changes the surface or reads its
--- optional physical thickness as a spacing. Replacing this display policy is
--- the next renderer step in #146; zero spacing exports the shared positions.
-renderSurfaceGlb :: Budget -> Thickness -> Maybe Text -> Surface material -> Either GltfError ByteString
-renderSurfaceGlb budget thickness name sheet = do
+-- | Export the same material geometry used by the SVG path. The default
+-- includes a derived visible scene and a complete inspection scene. All
+-- exported corners retain their source material references, even when clipping
+-- introduces a new corner inside a panel. Physical thickness is metadata only.
+renderSurfaceGlb :: Budget -> ExportMode -> Maybe Text -> Surface material -> Either GltfError ByteString
+renderSurfaceGlb budget mode name sheet = do
   let fr = surfaceFrame sheet
   verts <- first GltfRefused (frameVertices fr)
   faces <- first surfaceError (surfaceFaces sheet)
@@ -264,18 +221,22 @@ renderSurfaceGlb budget thickness name sheet = do
   mapM_ writable verts
   let span' = modelSpan verts
       quantum = quantumFor span'
-      -- The same rule "Senbazuru.Origami.Flat" uses for a face with no area,
-      -- over the model's size in any direction rather than in the plane, since
-      -- a face here may lie in any plane: a hair wide and as long as the
-      -- model. Computed once, not once per face.
       speck = 1e-9 * max 1 span' * max 1 span'
-  step <- resolve thickness span' quantum
-  layer <- layersFor budget step fr verts faces
   mapM_ (convexOrRefuse speck) faces
-  let corners f = [toGltfAxes (lift (fromIntegral (layer (faceId f)) * step) c) | c <- faceCorners f]
-  pure (assemble name [(faceId f, map (packable quantum) (corners f)) | f <- faces])
-  where
-    lift dz (V3 x y z) = V3 x y (z + dz)
+  complete <- first GltfPaperMeshError (completePaper sheet)
+  scenes <- case mode of
+    CompletePaper -> Right [("Complete paper", complete)]
+    VisiblePaper -> do
+      shown <- first GltfPaperMeshError (visiblePaper budget sheet)
+      Right [("Visible paper", map (canonicalPiece quantum) shown), ("Complete paper", complete)]
+  let requirements = [A.object ["direction" .= [x, y, z], "lowerUpper" .= [[unFaceId a, unFaceId b] | (a, b) <- pairs]] | (V3 x y z, pairs) <- maybe [] pure (surfaceLayerRequirements sheet)]
+      storedPoint p = let (x, y, z) = packable quantum p in map (realToFrac :: Float -> Double) [x, y, z]
+      -- Packing changes positions. Keep only our original-sheet map, whose
+      -- meaning is independent of the posed coordinates; discard unknown
+      -- metadata, including study contact reports that rounding could stale.
+      storedFrame = fr {verticesCoords = map storedPoint verts, frameExtras = KM.filterWithKey (\key _ -> key == "senbazuru:material_coords") (frameExtras fr)}
+      metadata = A.object (["version" .= (1 :: Int), "frame" .= storedFrame] ++ ["physicalThickness" .= t | Just t <- [surfaceThickness sheet]] ++ ["layerRequirements" .= r | r <- requirements])
+  pure (assemble name quantum metadata scenes)
 
 surfaceError :: SurfaceError -> GltfError
 surfaceError (SurfaceFrameError err) = GltfRefused err
@@ -296,55 +257,6 @@ quantumFor :: Double -> Double
 quantumFor span'
   | span' > 0 = 1e-6 * span'
   | otherwise = 1e-6
-
--- | The thickness to use, as a number.
---
--- A thickness finer than the rounding step is refused rather than rounded
--- away: rounded, some layers would land a step apart and others on the same
--- height, and a face might even straddle two rounding cells and kink. The
--- default is a thousand steps, so it never comes near.
-resolve :: Thickness -> Double -> Double -> Either GltfError Double
-resolve thickness span' quantum = case thickness of
-  DefaultThickness -> Right (span' / 1000)
-  Thickness t
-    | isNaN t || isInfinite t || t < 0 -> Left (GltfBadThickness t)
-    | t > 0 && t < quantum -> Left (GltfThicknessTooFine t quantum)
-    | otherwise -> Right t
-
--- | Each face's layer number, or zero for every face when there is nothing to
--- separate: a thickness of zero, a crease pattern, a model with paper in the
--- air, or one whose layers the solver declines to order.
---
--- A crease pattern is decided the way "Senbazuru.Render.CreasePattern" decides
--- it, by 'frameKind', and never reaches the solver. Its faces do not overlap,
--- so there is nothing to order — and the solver, asked anyway, would refuse a
--- file with a face wound backwards or a short @edges_foldAngle@, both of which
--- @render@ draws without complaint. A flag deciding which files are acceptable
--- is the failure that module was rewritten to avoid.
---
--- Declining is not refusing. A flat model with a concave face is one the
--- solver does not cover, and it comes back unseparated here so that the
--- convexity check can refuse it with the right message rather than this one
--- refusing it with a message about layers.
-layersFor :: Budget -> Double -> Frame -> [V3] -> [Face] -> Either GltfError (FaceId -> Int)
-layersFor budget step fr verts faces
-  | step == 0 || hasRelief verts = Right (const 0)
-  | frameKind (frameClasses fr) verts == CreasePattern = Right (const 0)
-  | otherwise = do
-      -- The whole frame, not the vertices and faces already in hand: the solver
-      -- reads the creases and their assignments, which is where every rule
-      -- about which layer can go where comes from. The first version rebuilt a
-      -- frame from the faces alone and the solver, finding no creases, found
-      -- nothing to constrain -- and stacked every model flat.
-      ordering <- first GltfRefused (layerOrderFor budget fr)
-      case ordering of
-        Nothing -> Right (const 0)
-        Just orders -> do
-          -- Numbered from the +z side, so that layer zero is the sheet on the
-          -- table and the stack rises out of it. There is no viewer here to
-          -- ask; +z is where FOLD says up is.
-          depths <- first GltfRefused (layerDepths (V3 0 0 1) faces orders)
-          Right (layerOf depths)
 
 -- | Refuse a face the fan would triangulate wrongly.
 --
@@ -411,14 +323,12 @@ linearOf c = case colourComponents c of
       | v <= 0.04045 = v / 12.92
       | otherwise = ((v + 0.055) / 1.055) ** 2.4
 
--- | The whole document: a header, the JSON chunk, the binary chunk.
---
--- Every face arrives with its own corners already placed, and this decides
--- nothing about geometry. It lays the corners out one after another in the
--- position buffer, fans each face into triangles by index, writes the fans
--- once forwards and once reversed, and wraps the lot.
-assemble :: Maybe Text -> [(FaceId, [(Float, Float, Float)])] -> ByteString
-assemble title faces =
+-- | Pack each scene independently, with the same coordinates and material
+-- references. Extras use original FOLD ids; POSITION indices belong only to
+-- this graphics buffer. Empty colour channels have no accessor or primitive,
+-- because glTF forbids zero-count accessors.
+assemble :: Maybe Text -> Double -> A.Value -> [(Text, [PaperPiece])] -> ByteString
+assemble title quantum metadata scenes =
   BL.toStrict . B.toLazyByteString $
     B.string7 "glTF"
       <> B.word32LE 2
@@ -426,150 +336,70 @@ assemble title faces =
       <> chunk "JSON" spaces jsonBytes
       <> chunk "BIN\0" zeros binBytes
   where
-    positions = concatMap snd faces
-    vertexCount = length positions
-
-    -- Where each face's corners start in the position buffer.
-    starts = scanl (+) 0 [length cs | (_, cs) <- faces]
-
-    -- A fan from each face's first corner, and the same fan wound the other
-    -- way. Reversing the two later corners is what turns the triangle over:
-    -- its front is on the side its corners go round anticlockwise from.
-    front = concat [fan start (length cs) | (start, (_, cs)) <- zip starts faces]
-    back = map turnOver front
-    fan start n = [(start, start + i, start + i + 1) | i <- [1 .. n - 2]]
-    turnOver (a, b, c) = (a, c, b)
-    indexCount = 3 * length front
-
-    -- Sixteen-bit indices unless the model is too big for them, which no
-    -- origami model is but a file could be.
-    wide = vertexCount > 65535
-    indexType, indexSize :: Int
-    indexType = if wide then 5125 else 5123
-    indexSize = if wide then 4 else 2
-    packIndex i = if wide then B.word32LE (fromIntegral i) else B.word16LE (fromIntegral i)
-    packTriangles ts = mconcat [packIndex a <> packIndex b <> packIndex c | (a, b, c) <- ts]
-
-    positionBytes = 12 * vertexCount
-    indexBytes = indexSize * indexCount
-    positionsOffset = 0
-    frontOffset = positionsOffset + positionBytes
-    backOffset = frontOffset + padded indexBytes
-    binLength = backOffset + padded indexBytes
-
-    binBytes =
-      BL.toStrict . B.toLazyByteString $
-        mconcat [B.floatLE x <> B.floatLE y <> B.floatLE z | (x, y, z) <- positions]
-          <> packTriangles front
-          <> zeros (padded indexBytes - indexBytes)
-          <> packTriangles back
-          <> zeros (padded indexBytes - indexBytes)
-
+    channelPieces ps side = [(start, p) | (start, p) <- zip (scanl (+) 0 (map (length . pieceCorners) ps)) ps, side `elem` pieceSides p]
+    channel ps side = [(piecePanel p, if side then (start, start + i, start + i + 1) else (start, start + i + 1, start + i)) | (start, p) <- channelPieces ps side, i <- [1 .. length (pieceCorners p) - 2]]
+    channels ps = [(side, ts) | side <- [True, False], let ts = channel ps side, not (null ts)]
+    starts = scanl (+) 0 [1 + length (channels ps) | (_, ps) <- scenes]
+    built = [buildMesh start ps | (start, (_, ps)) <- zip starts scenes]
+    sections = concatMap snd built
+    offsets = scanl (+) 0 [padded (BS.length bytes) | (bytes, _, _) <- sections]
+    binBytes = BS.concat [bytes <> BS.replicate (padded (BS.length bytes) - BS.length bytes) 0 | (bytes, _, _) <- sections]
     jsonBytes = BL.toStrict (B.toLazyByteString json)
-
-    -- Each chunk is padded to the four-byte boundary the specification
-    -- requires, with the filler it requires: spaces for JSON, zeros for binary.
-    chunk tag filler bytes =
-      B.word32LE (fromIntegral (padded (BS.length bytes)))
-        <> B.string7 tag
-        <> B.byteString bytes
-        <> filler (padded (BS.length bytes) - BS.length bytes)
-
     total = 12 + 8 + padded (BS.length jsonBytes) + 8 + padded (BS.length binBytes)
-
-    (lo, hi) = bounds positions
-
+    chunk tag filler bytes = B.word32LE (fromIntegral (padded (BS.length bytes))) <> B.string7 tag <> B.byteString bytes <> filler (padded (BS.length bytes) - BS.length bytes)
+    encoded = B.lazyByteString . A.encode
     json =
       object
         [ ("asset", object [("version", string "2.0"), ("generator", string "senbazuru")]),
           ("scene", int 0),
-          ("scenes", array [object [("nodes", array [int 0])]]),
-          ("nodes", array [object (("mesh", int 0) : [("name", string t) | Just t <- [title]])]),
-          ( "meshes",
-            array
-              [ object
-                  [ ( "primitives",
-                      array
-                        [ primitive 1 0,
-                          primitive 2 1
-                        ]
-                    )
-                  ]
-              ]
-          ),
-          ( "materials",
-            array
-              [ material "paper" paper,
-                material "paper underside" paperUnderside
-              ]
-          ),
-          ( "accessors",
-            array
-              [ object
-                  [ ("bufferView", int 0),
-                    ("componentType", int 5126),
-                    ("count", int vertexCount),
-                    ("type", string "VEC3"),
-                    ("min", triple lo),
-                    ("max", triple hi)
-                  ],
-                indexAccessor 1,
-                indexAccessor 2
-              ]
-          ),
-          ( "bufferViews",
-            array
-              [ view positionsOffset positionBytes 34962,
-                view frontOffset indexBytes 34963,
-                view backOffset indexBytes 34963
-              ]
-          ),
-          ("buffers", array [object [("byteLength", int binLength)]])
+          ("scenes", array [object [("name", string name), ("nodes", array [int i])] | (i, (name, _)) <- zip [0 ..] scenes]),
+          ("nodes", array [object (("mesh", int i) : [("name", string t) | Just t <- [title]]) | i <- [0 .. length scenes - 1]]),
+          ("meshes", array (map fst built)),
+          ("extras", object [("senbazuru", encoded metadata)]),
+          ("materials", array [material "paper" paper, material "paper underside" paperUnderside]),
+          ("accessors", array [object (("bufferView", int i) : fields) | (i, (_, _, fields)) <- zip [0 ..] sections]),
+          ("bufferViews", array [object [("buffer", int 0), ("byteOffset", int offset), ("byteLength", int (BS.length bytes)), ("target", int target)] | (offset, (bytes, target, _)) <- zip offsets sections]),
+          ("buffers", array [object [("byteLength", int (BS.length binBytes))]])
         ]
+    buildMesh start ps =
+      let vertices = concatMap pieceCorners ps
+          positions = map (packable quantum . toGltfAxes . paperPosition) vertices
+          count = length positions
+          wide = count > 65535
+          indexType = if wide then 5125 else 5123
+          packIndex i = if wide then B.word32LE (fromIntegral i) else B.word16LE (fromIntegral i)
+          bytes builder = BL.toStrict (B.toLazyByteString builder)
+          (lo, hi) = bounds positions
+          positionSection = (bytes (mconcat [B.floatLE x <> B.floatLE y <> B.floatLE z | (x, y, z) <- positions]), 34962, [("componentType", int 5126), ("count", int count), ("type", string "VEC3"), ("min", triple lo), ("max", triple hi)])
+          indexSection (_, ts) = (bytes (mconcat [packIndex a <> packIndex b <> packIndex c | (_, (a, b, c)) <- ts]), 34963, [("componentType", int indexType), ("count", int (3 * length ts)), ("type", string "SCALAR")])
+          primitive i (side, ts) = object [("attributes", object [("POSITION", int start)]), ("indices", int i), ("material", int (if side then 0 else 1)), ("extras", object [("materialFaces", array [int (unFaceId fid) | (fid, _) <- ts])])]
+          weights = A.toJSON [[A.toJSON [A.toJSON (unVertexId vid), A.toJSON (packedWeight w)] | (vid, w) <- materialWeights v] | v <- vertices]
+          mesh = object [("primitives", array [primitive i ch | (i, ch) <- zip [start + 1 ..] (channels ps)]), ("extras", object [("materialWeights", encoded weights)])]
+       in (mesh, positionSection : map indexSection (channels ps))
+    material name colour = object [("name", string name), ("pbrMetallicRoughness", object [("baseColorFactor", array (let (r, g, b) = linearOf colour in [number r, number g, number b, int 1])), ("metallicFactor", int 0), ("roughnessFactor", int 1)])]
 
-    primitive indices materialIx =
-      object
-        [ ("attributes", object [("POSITION", int 0)]),
-          ("indices", int indices),
-          ("material", int materialIx)
-        ]
+-- Clipping may start the same polygon at a different corner after roundoff.
+-- Choose the least packed position as its first corner, preserving winding.
+-- Otherwise its fan and metadata change even when its visible region does not.
+canonicalPiece :: Double -> PaperPiece -> PaperPiece
+canonicalPiece quantum piece = piece {pieceCorners = rotate (pieceCorners piece)}
+  where
+    rotate corners = case zip [0 ..] corners of
+      [] -> []
+      initial : rest ->
+        let (i, _) = foldl' earlier initial rest
+         in drop i corners ++ take i corners
+    earlier old@(_, a) new@(_, b)
+      | packable quantum (paperPosition b) < packable quantum (paperPosition a) = new
+      | otherwise = old
 
-    -- Matte paper: no metal, fully rough, and culled from behind so that the
-    -- other copy of the face can show its other colour.
-    material name colour =
-      object
-        [ ("name", string name),
-          ( "pbrMetallicRoughness",
-            object
-              [ ("baseColorFactor", array (let (r, g, b) = linearOf colour in [number r, number g, number b, int 1])),
-                ("metallicFactor", int 0),
-                ("roughnessFactor", int 1)
-              ]
-          )
-        ]
+-- Clipping leaves arithmetic noise in material weights too. Stabilise their
+-- metadata at 1e-10, well below the millionth used for positions, or
+-- geometrically identical exports differ only in their JSON's last digits.
+-- This does not change the display piece or its packed position.
+packedWeight :: Double -> Double
+packedWeight w = fromInteger (round (w * 1e10)) / 1e10
 
-    indexAccessor viewIx =
-      object
-        [ ("bufferView", int viewIx),
-          ("componentType", int indexType),
-          ("count", int indexCount),
-          ("type", string "SCALAR")
-        ]
-
-    view offset len target =
-      object
-        [ ("buffer", int 0),
-          ("byteOffset", int offset),
-          ("byteLength", int len),
-          ("target", int target)
-        ]
-
-    triple (x, y, z) = array [single x, single y, single z]
-
--- | The smallest and largest of each coordinate, which a @POSITION@ accessor
--- is required to state. The list is never empty here: 'renderGlb' refuses a
--- frame with no faces before this is reached, and a face has three corners at
--- least.
 bounds :: [(Float, Float, Float)] -> ((Float, Float, Float), (Float, Float, Float))
 bounds [] = ((0, 0, 0), (0, 0, 0))
 bounds (p : ps) = foldl' grow (p, p) ps
@@ -614,6 +444,9 @@ int = B.intDec
 -- the stated bounds against the packed data finds them equal.
 single :: Float -> B.Builder
 single f = B.string7 (showFFloat Nothing f "")
+
+triple :: (Float, Float, Float) -> B.Builder
+triple (x, y, z) = array (map single [x, y, z])
 
 -- | A colour channel, to four places.
 number :: Double -> B.Builder

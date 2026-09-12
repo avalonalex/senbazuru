@@ -2,6 +2,12 @@
 
 Terms used here are defined in [../glossary.md](../glossary.md).
 
+This records an early material-study hypothesis. The later
+[double-fold experiment](two-bends-need-more-than-radii.md) showed that radius
+and connectivity alone do not preserve material. Current rendering uses the
+[shared surface](connected-paper-surface.md) and does not infer a physical
+crease radius from a display layer number.
+
 Everything senbazuru draws treats a crease as a line where two flat planes
 meet at a fold angle. That is the right model for deciding where the paper
 goes. It is the wrong model for drawing what the paper looks like once it is
@@ -85,8 +91,10 @@ The two numbers separate cleanly, and that is the useful result.
 
 - **The radius is geometry.** It is set by how many layers the fold wraps,
   with a floor of about one thickness for a fold wrapping nothing. Both inputs
-  exist in senbazuru today: `layerDepths` says what a fold wraps, and
-  `--thickness` says how thick the paper is.
+  were initially approximated by layer numbers and a display-spacing option.
+  That option has been removed: physical thickness is now separate surface
+  data, and a display layer number does not determine how much material a
+  crease wraps.
 - **The rest angle is material.** It is a constant of the paper, independent
   of thickness and of what the fold wraps. For a drawing, a small fixed opening
   is defensible and there is nothing in the file to derive it from.
@@ -118,4 +126,4 @@ geometry and mechanics runs.
   https://workflowhelp.kodak.com/display/PREPS75/Shingling+the+page+images+for+creep+compensation
 - [the-puff-is-a-drawing.md](the-puff-is-a-drawing.md) surveys what the full
   mechanics would cost, and [paper-thickness.md](paper-thickness.md) is where
-  senbazuru's own thickness comes from.
+  the old display-spacing approach was retired.

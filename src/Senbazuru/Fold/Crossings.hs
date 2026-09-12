@@ -155,7 +155,7 @@ withPlanarFaces fr = withTracedFaces =<< splitCrossings fr
 -- Checked immediately before the rebuild and not a step earlier. It exists
 -- only to keep 'rebuilt' total — each piece looks its parent's assignment up
 -- by edge id — so a frame with nothing to cut must not be refused by it. That
--- frame was acceptable to @export --thickness 0@, which consults no
+-- frame was acceptable to @export --all-layers@, which consults no
 -- assignments at all, and adding a refusal it has no use for on the way past
 -- is how a transform that was supposed to be invisible stops being invisible.
 -- "Senbazuru.Fold.Query" still refuses the same file wherever the arrays are

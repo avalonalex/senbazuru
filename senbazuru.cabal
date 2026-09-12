@@ -31,6 +31,10 @@ extra-source-files:
   study/fold-material/basic-bases.html
   study/fold-material/frog-instructions.html
   study/fold-material/cases.json
+  study/gltf/README.md
+  study/gltf/viewer.html
+  study/gltf/generate.py
+  study/gltf/validate.cjs
   examples/book-base.fold
   examples/quarter-fold.fold
   examples/kite-base.fold
@@ -119,6 +123,7 @@ library
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
     Senbazuru.Render.Gltf
+    Senbazuru.Render.PaperMesh
     Senbazuru.Render.Projected
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg

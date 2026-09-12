@@ -119,7 +119,8 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Projected` | Convex open panels → viewing relations over their overlapping shadows → the existing flat visible-region machinery. Temporary projected frames never become material exports. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
-| `Senbazuru.Render.Gltf` | Shared surface → glTF binary. The FOLD entry point prepares faces and constructs a surface; legacy layer spacing is still applied only to the output buffer. |
+| `Senbazuru.Render.PaperMesh` | Shared surface → complete panels or exposed pieces on both sides of each plane. Clipped corners retain weighted material vertex references. |
+| `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
 ## Where the files are
@@ -246,9 +247,11 @@ FOLD entry point also constructs it after preparing faces. The six-base SVG
 gallery and frog guide now consume surfaces directly. The study's mesh types
 and refinement no longer have separate implementations.
 
-This establishes the representation, not the renderer replacement. glTF still
-uses the old per-face display spacing in its output buffer, and the older SVG
-visibility fallbacks remain. Replacing that display policy, preserving material
-identity in graphics exports and refreshing the README's three-example gallery
-are the next stage of #146. [The design note](notes/connected-paper-surface.md)
-records the later bending and opening work.
+`Render.PaperMesh` groups coplanar panels and asks `Render.Projected` for
+visible pieces from each side. Those pieces are attached back to their source
+panels with weighted material vertex references, then packed by `Render.Gltf`.
+The default GLB includes this visible scene and a complete scene; neither
+applies per-face lifting. The SVG visibility fallbacks remain separate drawing
+policies. [The export note](notes/visible-paper-mesh.md) records the metadata
+and limits; [the design note](notes/connected-paper-surface.md) records later
+bending and opening work.

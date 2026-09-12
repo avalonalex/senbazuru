@@ -101,12 +101,6 @@ spec = do
       explain (ImportFailed "a.cp" EmptyPattern)
         `shouldSatisfy` T.isSuffixOf (explain EmptyPattern)
 
-    -- And one is replaced outright: the frame's message is about painting,
-    -- and here the reader has a way out that only the glTF backend knows.
-    it "is replaced where the outer error knows a way out the inner does not" $
-      explain (GltfRefused (ImpossibleStacking (FaceId 3)))
-        `shouldSatisfy` T.isInfixOf "thickness of"
-
   -- Nothing prints these two today: every caller of 'flatSheet' flattens a
   -- 'FlatError' into its own error first, and the CLI takes a 'StepError'
   -- apart to put the file name between the frame number and the reason.
