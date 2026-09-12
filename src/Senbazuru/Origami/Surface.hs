@@ -8,7 +8,8 @@
 -- frame has no coordinates: 'surfaceFrame' restores them from the samples.
 -- There is consequently only one place to change a material point's position.
 -- Crease edges and panel ids survive triangulation; subdivision diagonals are
--- numerical edges, not extra creases. 'refineSurface' interpolates WITHIN an
+-- numerical edges, not extra creases. 'refineSurfaceWithEdges' carries source
+-- edge ids through midpoint subdivision. 'refineSurface' interpolates WITHIN an
 -- already placed rigid panel, never between folding states.
 --
 -- The material parameter records what we know about the original sheet.
@@ -48,6 +49,8 @@ module Senbazuru.Origami.Surface
     surfaceLayerRequirements,
     withLayerRequirements,
     refineSurface,
+    RefinedSurface (..),
+    refineSurfaceWithEdges,
   )
 where
 
@@ -88,6 +91,18 @@ data Mesh material = Mesh
 type MaterialSample = Sample V2
 
 type MaterialMesh = Mesh V2
+
+-- | A triangle mesh with its source panel and edge identities. Edge segments
+-- keep the source edge's direction and id as shared midpoints are inserted.
+-- Only source edges present in the triangulation occur here; a caller needing
+-- a particular crease must check that it is represented. Fan diagonals have
+-- no source id unless the input explicitly records that edge.
+data RefinedSurface = RefinedSurface
+  { refinedMesh :: !MaterialMesh,
+    refinedPanels :: ![FaceId],
+    refinedEdges :: ![(EdgeId, (Int, Int))]
+  }
+  deriving stock (Eq, Show)
 
 materialSample :: Double -> Double -> V3 -> MaterialSample
 materialSample u v = Sample (V2 u v)
@@ -298,14 +313,24 @@ withLayerRequirements direction pairs sheet = do
 -- crease graph or creates new physical creases.
 refineSurface :: Int -> Surface V2 -> Either SurfaceError (MaterialMesh, [FaceId])
 refineSurface levels sheet = do
+  refined <- refineSurfaceWithEdges levels sheet
+  pure (refinedMesh refined, refinedPanels refined)
+
+-- | Subdivide geometry and source-edge ownership together. Matching starts
+-- from vertex ids, never material or spatial coordinates: two cut edges can
+-- occupy exactly the same line and still remain separate material.
+refineSurfaceWithEdges :: Int -> Surface V2 -> Either SurfaceError RefinedSurface
+refineSurfaceWithEdges levels sheet = do
   unless (levels >= 0 && levels <= 5) (Left (SurfaceBadRefinement levels))
   faces <- surfaceFaces sheet
   features <- surfaceFeatures sheet
   mapM_ (\(edge, owners) -> unless (creaseAssignment edge /= Cut || length owners <= 1) (Left (SurfaceJoinedCut (creaseId edge)))) features
   mapM_ planarConvex faces
   let tagged = [(triangle, faceId face) | face <- faces, triangle <- fan (map unVertexId (faceVertexIds face))]
-  (points, refined) <- subdivide levels (surfaceSamples sheet) tagged
-  pure (Mesh points (map fst refined), map snd refined)
+      meshKeys = S.fromList [edgeKey (VertexId a) (VertexId b) | ((i, j, k), _) <- tagged, (a, b) <- [(i, j), (j, k), (k, i)]]
+      edges = [(EdgeId i, (unVertexId a, unVertexId b)) | (i, (a, b)) <- zip [0 ..] (edgesVertices (surfaceFrame sheet)), S.member (edgeKey a b) meshKeys]
+  (points, refined, segments) <- subdivide levels (surfaceSamples sheet) tagged edges
+  pure (RefinedSurface (Mesh points (map fst refined)) (map snd refined) segments)
   where
     span' = modelSpan (map position (surfaceSamples sheet))
     scale = if span' > 0 then span' else 1
@@ -328,9 +353,9 @@ fan :: [a] -> [(a, a, a)]
 fan (a : b : c : rest) = (a, b, c) : fan (a : c : rest)
 fan _ = []
 
-subdivide :: Int -> [MaterialSample] -> [(Triangle, FaceId)] -> Either SurfaceError ([MaterialSample], [(Triangle, FaceId)])
-subdivide 0 points faces = Right (points, faces)
-subdivide n points faces = do
+subdivide :: Int -> [MaterialSample] -> [(Triangle, FaceId)] -> [(EdgeId, (Int, Int))] -> Either SurfaceError ([MaterialSample], [(Triangle, FaceId)], [(EdgeId, (Int, Int))])
+subdivide 0 points faces edges = Right (points, faces, edges)
+subdivide n points faces edges = do
   let indexed = IM.fromList (zip [0 ..] points)
       keys = S.toList (S.fromList [ordered i j | ((a, b, c), _) <- faces, (i, j) <- [(a, b), (b, c), (c, a)]])
       lookupPoint i = maybe (Left (SurfaceMissingVertex (VertexId i))) Right (IM.lookup i indexed)
@@ -347,7 +372,8 @@ subdivide n points faces = do
         ca <- lookupMid c a
         pure [((a, ab, ca), panel), ((ab, b, bc), panel), ((ca, bc, c), panel), ((ab, bc, ca), panel)]
   refined <- concat <$> traverse split faces
-  subdivide (n - 1) (points ++ added) refined
+  segments <- concat <$> traverse (\(eid, (a, b)) -> do mid <- lookupMid a b; pure [(eid, (a, mid)), (eid, (mid, b))]) edges
+  subdivide (n - 1) (points ++ added) refined segments
   where
     ordered a b = (min a b, max a b)
 

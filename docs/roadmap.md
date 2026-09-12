@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: four items, in
 order, each an issue tagged `roadmap` that holds the approach and the
 acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-11**. The
+snapshot and will drift, so it carries a date: **as of 2026-09-12**. The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -15,7 +15,7 @@ closes.
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,086 examples, including material and contact checks |
+| Tests | 1,112 examples, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -99,9 +99,11 @@ work.
   rounded double-fold experiment showed that a 3:1 radius ratio can still
   stretch the paper; radius and connectivity alone do not settle its shape.
   The [angular-energy study](notes/crease-and-panel-energy.md) now adds crease
-  preferences and panel bending for the two original packets. Taking their
-  crease identities from arbitrary shared surfaces, calibrating stiffness and
-  supporting general contact remain open.
+  preferences and panel bending for the original packets. The
+  [shared-crease adapter](notes/crease-identity-through-refinement.md) extends
+  this to diagonal and kite equilibria, with source ids preserved through
+  refinement and independent triangle contact diagnostics. Calibrating
+  stiffness and adding general contact forces remain open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.
@@ -164,9 +166,10 @@ stacking and read the assignment off it. That drops the hardest precondition.
    The shared core and glTF replacement are in place, with material references
    on graphics copies and refreshed README examples. The first
    crease/panel energy experiment is [#150](https://github.com/avalonalex/senbazuru/issues/150);
-   extend it beyond the two packet controls before adding general opening
-   mechanics. Physical thickness is not a prerequisite for that first mechanics
-   model.
+   [#152](https://github.com/avalonalex/senbazuru/issues/152) now extends it to
+   shared crease identities and diagonal/kite controls. Next add contact
+   correction for open panels before general opening mechanics. Physical thickness
+   is not a prerequisite for this mechanics model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

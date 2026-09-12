@@ -1,7 +1,9 @@
 -- | Contact checks for the study's rigid convex panels: each panel is a flat
 -- polygon, regardless of how finely the viewer subdivides it into triangles.
 -- Convex means every segment between points in the panel stays in the panel;
--- see docs/glossary.md for the geometry vocabulary.
+-- see docs/glossary.md for the geometry vocabulary. 'checkTriangleContact'
+-- also applies these tests to a deformed mesh, using each triangle as a small
+-- planar polygon while retaining its source panel's order requirements.
 -- This is separate from FoldContact's curved-packet constraints because an
 -- upright flap cannot be described as a height above the original sheet.
 --
@@ -26,21 +28,25 @@ module PanelContact
     ContactError (..),
     panelTolerance,
     checkPanelContact,
+    checkTriangleContact,
     contactPassed,
   )
 where
 
 import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=))
+import Data.IntMap.Strict qualified as IM
 import Data.List (tails)
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
-import Senbazuru.Explain (Explain (..))
+import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Fold.Types (FaceId)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, cross2, isConvex, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 
 data PanelTag = PanelTag {tagName :: !Text, tagAt :: !V2}
   deriving stock (Eq, Show)
@@ -111,6 +117,23 @@ contactPassed result =
     && null (unorderedContacts result)
     && null (reversedOrders result)
     && null (uncheckedOrders result)
+
+-- | Independently inspect a deformed mesh at one recorded state. Each triangle
+-- is planar even when its source panel bends. Check ALL triangle pairs,
+-- including pairs within a panel, and expand source-panel orders to their
+-- triangles. This supplies diagnostics, not contact forces or certification
+-- between saved states. The same strict crossing/touching tolerances apply.
+checkTriangleContact :: V3 -> [(FaceId, FaceId)] -> [FaceId] -> MaterialMesh -> Either ContactError ContactCheck
+checkTriangleContact direction orders owners mesh = do
+  unless (length owners == length (triangles mesh)) (Left (ContactError "triangle contact needs one source panel id per triangle"))
+  unless (all (\(a, b) -> a `elem` owners && b `elem` owners) orders) (Left (ContactError "triangle contact order names an absent source panel"))
+  let vertices = IM.fromList (zip [0 ..] (samples mesh))
+      point i = maybe (Left (ContactError ("triangle contact refers to missing vertex " <> tshow i))) (Right . position) (IM.lookup i vertices)
+      name i = "triangle-" <> tshow (i :: Int)
+      tags = zip [0 ..] owners
+      expanded = [(name i, name j) | (a, b) <- orders, (i, owner) <- tags, owner == a, (j, other) <- tags, other == b]
+  panels <- mapM (\(i, (a, b, c)) -> Panel (name i) <$> mapM point [a, b, c]) (zip [0 ..] (triangles mesh))
+  checkPanelContact direction expanded panels
 
 -- | Each order is (lower, upper), along the supplied direction in model space.
 -- Invalid declarations are errors; a valid declaration that the geometry fails

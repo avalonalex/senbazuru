@@ -21,10 +21,10 @@
   @media(max-width:650px) {body{padding:24px 14px}canvas{height:300px}.metrics{grid-template-columns:repeat(2,1fr)}th,td{padding:8px 3px;font-size:12px}}
 </style>
 <header>
-  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150</div>
+  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152</div>
   <h1>Creases remember; panels resist</h1>
   <p>A crease prefers a particular angle. The paper between creases prefers to stay flat.
-    These examples let the connected sheet settle under both preferences, while checking its material lengths and the packet’s known layer order.</p>
+    These examples let the connected sheet settle under both preferences. Diagonal and kite folds use the original crease identities, with independent checks of the resulting triangles and layer order.</p>
 </header>
 <main>
   <div class="controls">
@@ -42,14 +42,16 @@
     <tbody id="measurements"></tbody>
   </table>
   <p id="interpretation"></p>
+  <p id="contact-scope" class="hint"></p>
   <details open>
     <summary>What this checks</summary>
     <p>The same indexed vertices join neighboring triangles throughout the solve. Original sheet coordinates and triangle connections stay fixed.
       The final maximum edge-length error must be at most 0.001%, and reversed layer gaps at most 0.0000001 of the unit sheet’s side.
       “Settled” additionally requires the solver’s full proposed movement to be below that same distance. Merely reaching the iteration limit does not pass.</p>
-    <p>The layer check covers overlapping triangles from different panels in these nearly flat packets. It does not certify contact within a panel,
-      collision-free motion, finite thickness, or a globally optimal shape. Numerical iterations are not folding instructions.
-      Touching surfaces receive a small display-depth tie-break only when their contact check passes; the saved positions do not change.</p>
+    <p>The original single/double-fold solver enforces the known packet order. Diagonal and kite examples solve lengths and angular energy without contact forces;
+      a separate check inspects every pair of triangles in each saved state for strict crossings, unresolved coplanar overlap and declared layer order.
+      These diagnostics do not certify collision-free motion, finite thickness, or a globally optimal shape. Numerical iterations are not folding instructions.
+      Only the original packets receive a display-depth tie-break after their contact check passes; the saved positions do not change.</p>
     <p>Stiffness and energy use illustrative units. The crease stiffness is 1; the double-fold examples compare panel stiffnesses 0.2 and 5 on the same mesh.
       This is a first angular-spring experiment, not a calibrated prediction for a particular paper stock.</p>
   </details>
@@ -65,7 +67,7 @@ else {el('paper').hidden=true;document.querySelector('.controls').hidden=true;}
 function initialize() {
   const canvas=el('paper'), gl=canvas.getContext('webgl',{antialias:true});
   data.runs.forEach((run,i)=>{const option=document.createElement('option');option.value=i;option.textContent=run.title;el('example').append(option);});
-  let yaw=-Math.PI/4, pitch=Math.PI/4, zoom=1, views=[], buffers=[], center=[0,0,0];
+  let yaw=-Math.PI/4, pitch=Math.PI/4, zoom=1, views=[], buffers=[], center=[0,0,0], radius=1;
   const subtract=(a,b)=>a.map((v,i)=>v-b[i]);
   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
   const program=gl && gl.createProgram();
@@ -86,40 +88,55 @@ function initialize() {
     gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
   }
   const percent=x=>{const value=100*x;return (Math.abs(value)<0.0000005?0:value).toFixed(6)+'%';}
-  const range=(state,role)=>{const a=state.angles.filter(h=>h.role===role).map(h=>Math.abs(h.angle));return a.length?`${Math.min(...a).toFixed(2)}–${Math.max(...a).toFixed(2)}°`:'—';};
+  const angleRange=(angles,absolute=false)=>{const a=angles.map(h=>absolute?Math.abs(h.angle):h.angle);return a.length?`${Math.min(...a).toFixed(2)}–${Math.max(...a).toFixed(2)}°`:'—';};
+  const range=(state,role)=>angleRange(state.angles.filter(h=>h.role===role),true);
   function update(){
     const run=data.runs[Number(el('example').value)], start=run.states[0], final=run.states[run.states.length-1];
-    const passed=run.converged && final.lengthError<=data.lengthTolerance && final.maxOrderViolation<=data.contactTolerance && final.uncheckedTriangles===0;
+    const packet=run.kind==='packet', contact=final.contact;
+    const materialOK=final.lengthError<=data.lengthTolerance && final.components===1;
+    const contactOK=packet?final.maxOrderViolation<=data.contactTolerance && final.uncheckedTriangles===0:contact.passed;
+    const passed=run.converged && materialOK && contactOK;
     el('status').className=passed?'good':'pending';
-    el('status').textContent=`${passed?'Settled; length and packet-order checks passed.':'Not settled within the iteration budget.'} ${final.iteration} numerical iterations.${gl?'':' WebGL is unavailable; measurements remain readable.'}`;
+    el('status').textContent=`${run.converged?'Settled':'Not settled within the iteration budget'}; material checks ${materialOK?'passed':'need attention'}; ${packet?'packet-order':'endpoint contact'} checks ${contactOK?'passed':'need attention'}. ${final.iteration} numerical iterations.${gl?'':' WebGL is unavailable; measurements remain readable.'}`;
+    el('contact-scope').textContent=packet?'Contact correction covers the known order of this nearly flat packet; it is not a general collision solver.':
+      `Independent endpoint check: ${contact.checkedPanelPairs} triangle pairs; ${contact.crossingPanels.length} strict crossings, ${contact.unorderedContacts.length} unresolved overlaps, ${contact.reversedOrders.length} reversed orders, ${contact.uncheckedOrders.length} uncheckable orders. This check reports problems; it supplies no corrective force and does not certify the path between states.`;
     el('metrics').replaceChildren();
-    for(const [value,label] of [[percent(final.lengthError),'largest edge-length error'],[final.maxOrderViolation.toExponential(2),'largest layer-order reversal'],[String(final.components),'connected sheet'],[(final.creaseEnergy+final.panelEnergy).toFixed(6),'total angular energy']]){
+    for(const [value,label] of [[percent(final.lengthError),'largest edge-length error'],[packet?final.maxOrderViolation.toExponential(2):String(contact.crossingPanels.length),packet?'largest layer-order reversal':'endpoint triangle crossings'],[String(final.components),'connected sheet'],[(final.creaseEnergy+final.panelEnergy).toFixed(6),'total angular energy']]){
       const card=document.createElement('div');card.className='metric';const v=document.createElement('strong'),l=document.createElement('span');v.textContent=value;l.textContent=label;card.append(v,l);el('metrics').append(card);
     }
-    const rows=[['First crease · angle magnitude',range(start,'FirstCrease'),range(final,'FirstCrease'),run.firstTarget.toFixed(0)+'°'],
-      ['Second crease · angle magnitude',range(start,'SecondCrease'),range(final,'SecondCrease'),range(final,'SecondCrease')==='—'?'—':run.secondTarget.toFixed(0)+'°'],
+    const creaseRows=packet?[
+      ['First crease · angle magnitude',range(start,'FirstCrease'),range(final,'FirstCrease'),run.firstTarget.toFixed(0)+'°'],
+      ['Second crease · angle magnitude',range(start,'SecondCrease'),range(final,'SecondCrease'),range(final,'SecondCrease')==='—'?'—':run.secondTarget.toFixed(0)+'°']
+    ]:[...new Set(final.angles.filter(h=>h.role==='SurfaceCrease').map(h=>h.sourceEdge))].sort((a,b)=>a-b).map(id=>{
+      const select=state=>state.angles.filter(h=>h.sourceEdge===id);
+      return [`Source crease ${id} · signed angle`,angleRange(select(start)),angleRange(select(final)),select(final)[0].rest.toFixed(0)+'°'];
+    });
+    const rows=[...creaseRows,
       ['Panel bend · per triangle edge',range(start,'PanelBend'),range(final,'PanelBend'),'0°'],
       ['Crease energy',start.creaseEnergy.toFixed(6),final.creaseEnergy.toFixed(6),'minimum'],
       ['Panel bending energy',start.panelEnergy.toFixed(6),final.panelEnergy.toFixed(6),'minimum'],
       ['Principal strain · all directions',`${percent(start.minPrincipalStrain)} to ${percent(start.maxPrincipalStrain)}`,`${percent(final.minPrincipalStrain)} to ${percent(final.maxPrincipalStrain)}`,'near zero']];
     el('measurements').replaceChildren();rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td);});el('measurements').append(tr);});
-    el('interpretation').textContent=Number(el('example').value)===0?
+    el('interpretation').textContent=!packet?
+      `${run.title} has a known rigid answer: its panels can stay flat while each crease reaches the listed preference. These positions were found by energy relaxation. Crease ids come from ${run.source}; subdivision adds panel-bending edges without inventing creases. Signed angles are positive for valleys and negative for mountains.`:
+      Number(el('example').value)===0?
       'The single fold has a known answer: flat panels meeting at the preferred 150° fold angle. It is a control for the mechanics, not an extra hand-authored pose.':
       `Both creases prefer 170°. They cannot all achieve that while keeping these four panels flat and joined. With panel stiffness ${run.panelStiffness}, the energy balances bending inside panels against missing the crease targets. Compare the two double-fold examples using the same camera.`;
     if(!gl)return;
     buffers.forEach(b=>gl.deleteBuffer(b));buffers=[];views=[start,final].map(upload);
-    const points=[...start.positions,...final.positions];center=[0,1,2].map(k=>(Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);draw();
+    const points=[...start.positions,...final.positions];center=[0,1,2].map(k=>(Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);radius=Math.max(1e-8,...points.map(p=>Math.hypot(...subtract(p,center))));draw();
   }
   function buffer(values){const b=gl.createBuffer();buffers.push(b);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(values),gl.STATIC_DRAW);return b;}
   function upload(state){
     const points=state.positions,normals=new Map(),faces=[],lines=[];
     state.triangles.forEach(([a,b,c],j)=>{const n=cross(subtract(points[b],points[a]),subtract(points[c],points[a]));for(const i of [a,b,c]){const key=`${state.panels[j]}:${i}`,sum=normals.get(key)||[0,0,0];normals.set(key,sum.map((v,k)=>v+n[k]));}});
-    const checked=state.uncheckedTriangles===0 && state.maxOrderViolation<=data.contactTolerance;
+    const checked=state.packetContact && state.uncheckedTriangles===0 && state.maxOrderViolation<=data.contactTolerance;
+    const edgeKey=(a,b)=>`${Math.min(a,b)}:${Math.max(a,b)}`;
+    const features=new Set(state.featureEdges.map(([a,b])=>edgeKey(a,b)));
     state.triangles.forEach((triangle,j)=>{
       const rank=checked?state.panels[j]:0;
       triangle.forEach(i=>faces.push(...points[i],...normals.get(`${state.panels[j]}:${i}`),rank));
-      const feature=(a,b)=>[0,1].some(k=>[0,.5,1].some(t=>Math.abs(state.material[a][k]-t)<1e-10 && Math.abs(state.material[b][k]-t)<1e-10 && (t!==.5 || k===0 || state.angles.some(h=>h.role==='SecondCrease'))));
-      for(let k=0;k<3;k++){const a=triangle[k],b=triangle[(k+1)%3];if(el('wire').checked||feature(a,b))for(const i of [a,b])lines.push(...points[i],0,0,1,rank);}
+      for(let k=0;k<3;k++){const a=triangle[k],b=triangle[(k+1)%3];if(el('wire').checked||features.has(edgeKey(a,b)))for(const i of [a,b])lines.push(...points[i],0,0,1,rank);}
     });
     return {faces:buffer(faces),lines:buffer(lines),faceCount:faces.length/7,lineCount:lines.length/7};
   }
@@ -129,7 +146,7 @@ function initialize() {
     const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
     gl.uniformMatrix3fv(gl.getUniformLocation(program,'rotation'),false,new Float32Array([cy,-sy*sp,sy*cp,sy,cy*sp,-cy*cp,0,cp,sp]));
     gl.uniform3fv(gl.getUniformLocation(program,'center'),center);gl.uniform1f(gl.getUniformLocation(program,'bias'),128/(2**gl.getParameter(gl.DEPTH_BITS)-1));
-    views.forEach((view,i)=>{const width=Math.floor(w/2),size=1.65*zoom*Math.min(width,h);gl.viewport(i*width,0,width,h);gl.uniform2f(gl.getUniformLocation(program,'scale'),size/width,size/h);
+    views.forEach((view,i)=>{const width=Math.floor(w/2),size=.9*zoom*Math.min(width,h)/radius;gl.viewport(i*width,0,width,h);gl.uniform2f(gl.getUniformLocation(program,'scale'),size/width,size/h);
       gl.uniform1f(gl.getUniformLocation(program,'ink'),0);bind(view.faces);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(0,1);gl.drawArrays(gl.TRIANGLES,0,view.faceCount);gl.disable(gl.POLYGON_OFFSET_FILL);
       gl.uniform1f(gl.getUniformLocation(program,'ink'),1);bind(view.lines);gl.drawArrays(gl.LINES,0,view.lineCount);
     });
