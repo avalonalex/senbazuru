@@ -205,8 +205,12 @@ separation residuals and moving-overlap derivatives for supplied directional
 orders; `relaxSurfaceContact` couples them to the same length/angular solve.
 `ContactExample` constructs a connected opposing-flap control for tests and the
 gallery. Its small numerical clearance applies only to unjoined source panels.
-The independent triangle check still judges the corrected endpoint. Mechanics
-remain in the study, not the shared `Origami.Surface` representation.
+`SurfaceContact.overlapCandidates` also discovers projected triangle overlaps
+without a pair list. `ContactDiscovery` infers order from a separated reference
+and guards later overlaps against that fixed relation; `relaxDiscoveredContact`
+uses it in the same numerical solve. Ambiguous references and new unrelated
+pairs are refused. The independent triangle check still judges the endpoint.
+Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very
 layer order those meshes can violate. Indexed OBJ and FOLD exports inspect the

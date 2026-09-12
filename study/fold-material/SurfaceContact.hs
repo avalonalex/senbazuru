@@ -28,6 +28,8 @@
 module SurfaceContact
   ( OrderedContact,
     ContactError (..),
+    ContactCandidate (..),
+    overlapCandidates,
     prepareContact,
     orderedContacts,
   )
@@ -41,12 +43,23 @@ import FoldContact (ContactRow (..))
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Types (FaceId (..))
 import Senbazuru.Geometry (V2)
-import Senbazuru.Geometry.V3 (V3 (..), cross)
+import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), Triangle)
 
 -- Prepared ownership and material are immutable; only positions may change.
 data OrderedContact = OrderedContact !(V3, V3, V3) ![Triangle] ![V2] ![(Int, Int, Double)]
+  deriving stock (Eq, Show)
+
+-- | A geometric overlap between triangles from distinct source panels. Panel
+-- ids are in ascending order; the gap is SECOND minus FIRST along the axis.
+-- Nothing means both triangles are upright, so this direction cannot resolve
+-- their order. These candidates do not say which side ought to remain on top.
+data ContactCandidate = ContactCandidate
+  { candidateTriangles :: !(Int, Int),
+    candidatePanels :: !(FaceId, FaceId),
+    candidateGapRange :: !(Maybe (Double, Double))
+  }
   deriving stock (Eq, Show)
 
 data ContactError
@@ -79,19 +92,15 @@ instance Explain ContactError where
 prepareContact :: Double -> V3 -> [(FaceId, FaceId)] -> [FaceId] -> MaterialMesh -> Either ContactError OrderedContact
 prepareContact clearance direction requirements owners mesh = do
   unless (finite clearance && clearance >= 0) (Left InvalidContactClearance)
-  unless (finitePoint direction && finite (norm direction) && norm direction > 1e-12) (Left InvalidContactDirection)
-  unless (not (null (triangles mesh)) && length owners == length (triangles mesh)) (Left InvalidContactOwners)
+  basis <- projectionBasis direction
+  validateOwners owners mesh
   mapM_ (\fid -> unless (fid `elem` owners) (Left (UnknownContactPanel fid))) [fid | (a, b) <- requirements, fid <- [a, b]]
   let reachable = closure (S.fromList requirements)
   unless (all (uncurry (/=)) (S.toList reachable)) (Left CyclicContactOrder)
-  let axis = (1 / norm direction) *^ direction
-      side = cross axis (if abs (v3x axis) < 0.9 then V3 1 0 0 else V3 0 1 0)
-      u = (1 / norm side) *^ side
-      v = cross axis u
-      panelVertices = IM.fromListWith S.union [(unFaceId owner, S.fromList [a, b, c]) | (owner, (a, b, c)) <- zip owners (triangles mesh)]
+  let panelVertices = IM.fromListWith S.union [(unFaceId owner, S.fromList [a, b, c]) | (owner, (a, b, c)) <- zip owners (triangles mesh)]
       joined a b = not (S.null (S.intersection (IM.findWithDefault S.empty (unFaceId a) panelVertices) (IM.findWithDefault S.empty (unFaceId b) panelVertices)))
       pairs = [(i, j, if joined a b then 0 else clearance) | (i, a) <- zip [0 ..] owners, (j, b) <- zip [0 ..] owners, S.member (a, b) reachable]
-      model = OrderedContact (u, v, axis) (triangles mesh) (map sampleMaterial (samples mesh)) pairs
+      model = OrderedContact basis (triangles mesh) (map sampleMaterial (samples mesh)) pairs
   _ <- orderedContacts model mesh
   pure model
   where
@@ -104,18 +113,7 @@ prepareContact clearance direction requirements owners mesh = do
 orderedContacts :: OrderedContact -> MaterialMesh -> Either ContactError [ContactRow]
 orderedContacts (OrderedContact basis topology material pairs) mesh = do
   unless (triangles mesh == topology && map sampleMaterial (samples mesh) == material) (Left ChangedContactMaterial)
-  let vertices = IM.fromList (zip [0 ..] (samples mesh))
-      point i = maybe (Left (MissingContactVertex i)) (Right . position) (IM.lookup i vertices)
-      prepare (i, (a, b, c)) = do
-        pa <- point a
-        pb <- point b
-        pc <- point c
-        let normal = cross (pb ^-^ pa) (pc ^-^ pa)
-            area = norm normal
-            (_, _, axis) = basis
-        unless (all finitePoint [pa, pb, pc] && finite area && area > 1e-14) (Left (InvalidContactTriangle i))
-        pure (i, ([project basis a pa, project basis b pb, project basis c pc], abs (dot normal axis) / area))
-  projected <- IM.fromList <$> mapM prepare (zip [0 ..] topology)
+  projected <- projectMesh basis mesh
   let triangle i = maybe (Left (InvalidContactTriangle i)) Right (IM.lookup i projected)
       pair (i, j, clearance) = do
         (lower, lowerAlignment) <- triangle i
@@ -131,16 +129,88 @@ orderedContacts (OrderedContact basis topology material pairs) mesh = do
         pure [ContactRow (value gap - clearance) (IM.toList (derivative gap)) | gap <- gaps]
   concat <$> mapM pair pairs
 
+-- | Find overlaps from CURRENT geometry, without an authored pair list.
+-- A positive-area piece of a 3D triangle must lie in the other's projected
+-- footprint. Mere shared edges/vertices do not discover an order. Upright
+-- triangles retain their actual 3D area; two upright triangles whose projected
+-- boxes meet are conservatively reported as uncheckable candidates.
+overlapCandidates :: V3 -> [FaceId] -> MaterialMesh -> Either ContactError [ContactCandidate]
+overlapCandidates direction owners mesh = do
+  basis <- projectionBasis direction
+  validateOwners owners mesh
+  projected <- projectMesh basis mesh
+  let pair i j a b = do
+        (firstTriangle, firstAlignment) <- maybe (Left (InvalidContactTriangle i)) Right (IM.lookup i projected)
+        (secondTriangle, secondAlignment) <- maybe (Left (InvalidContactTriangle j)) Right (IM.lookup j projected)
+        if not (boxesMeet firstTriangle secondTriangle)
+          then pure []
+          else
+            if max firstAlignment secondAlignment <= 1e-8
+              then pure [ContactCandidate (i, j) (a, b) Nothing]
+              else do
+                (clipped, gaps) <-
+                  if firstAlignment >= secondAlignment
+                    then clippedSeparation i firstTriangle secondTriangle
+                    else do
+                      (ps, ds) <- clippedSeparation j secondTriangle firstTriangle
+                      pure (ps, map negate ds)
+                unless (all validD gaps) (Left (NonFiniteContact i j))
+                let area = norm (polygonNormal [V3 (value x) (value y) (value z) | (x, y, z) <- clipped]) / 2
+                pure $ case map value gaps of
+                  [] -> []
+                  ds | area > 1e-14 -> [ContactCandidate (i, j) (a, b) (Just (minimum ds, maximum ds))]
+                  _ -> []
+  concat <$> sequence [pair i j a b | (i, a) <- zip [0 ..] owners, (j, b) <- zip [0 ..] owners, a < b]
+
+projectionBasis :: V3 -> Either ContactError (V3, V3, V3)
+projectionBasis direction = do
+  unless (finitePoint direction && finite (norm direction) && norm direction > 1e-12) (Left InvalidContactDirection)
+  let axis = (1 / norm direction) *^ direction
+      side = cross axis (if abs (v3x axis) < 0.9 then V3 1 0 0 else V3 0 1 0)
+      u = (1 / norm side) *^ side
+  pure (u, cross axis u, axis)
+
+validateOwners :: [FaceId] -> MaterialMesh -> Either ContactError ()
+validateOwners owners mesh = unless (not (null (triangles mesh)) && length owners == length (triangles mesh)) (Left InvalidContactOwners)
+
+projectMesh :: (V3, V3, V3) -> MaterialMesh -> Either ContactError (IM.IntMap ([Point], Double))
+projectMesh basis mesh = do
+  let vertices = IM.fromList (zip [0 ..] (samples mesh))
+      point i = maybe (Left (MissingContactVertex i)) (Right . position) (IM.lookup i vertices)
+      prepare (i, (a, b, c)) = do
+        pa <- point a
+        pb <- point b
+        pc <- point c
+        let normal = cross (pb ^-^ pa) (pc ^-^ pa)
+            area = norm normal
+            (_, _, axis) = basis
+        unless (all finitePoint [pa, pb, pc] && finite area && area > 1e-14) (Left (InvalidContactTriangle i))
+        pure (i, ([project basis a pa, project basis b pb, project basis c pc], abs (dot normal axis) / area))
+  IM.fromList <$> mapM prepare (zip [0 ..] (triangles mesh))
+
+-- Projected boxes are only a cheap rejection test. The clipping above decides
+-- actual overlap; touching boxes must not discard a possible upright flap.
+boxesMeet :: [Point] -> [Point] -> Bool
+boxesMeet as bs = all overlap [\(x, _, _) -> value x, \(_, y, _) -> value y]
+  where
+    overlap coordinate = case (map coordinate as, map coordinate bs) of
+      ([], _) -> False
+      (_, []) -> False
+      (xs, ys) -> maximum xs >= minimum ys - 1e-12 && maximum ys >= minimum xs - 1e-12
+
 -- A triangle's height varies linearly, so the smallest/largest gaps occur at
 -- the clipped 3D polygon's corners. Both corners of an upright edge are retained.
 separation :: Int -> [Point] -> [Point] -> Either ContactError [D]
-separation i base moving = case base of
+separation i base moving = snd <$> clippedSeparation i base moving
+
+clippedSeparation :: Int -> [Point] -> [Point] -> Either ContactError ([Point], [D])
+clippedSeparation i base moving = case base of
   [a, b, c] ->
     let determinant = crossXY (sub b a) (sub c a)
         outline = if value determinant > 0 then base else reverse base
         clipped = foldl' clip moving (ring outline)
         gap p = zOf p - zOf a - crossXY (sub p a) (sub c a) / determinant * (zOf b - zOf a) - crossXY (sub b a) (sub p a) / determinant * (zOf c - zOf a)
-     in Right (map gap clipped)
+     in Right (clipped, map gap clipped)
   _ -> Left (InvalidContactTriangle i)
   where
     clip ps (a, b) =
