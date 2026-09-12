@@ -3,6 +3,7 @@
 -- the saved meshes. The unit-square packet assumptions live in FoldContact.
 module BendingGallery (writeBendingStudy) where
 
+import ContactDiscovery qualified as Discovery
 import ContactExample
 import Control.Monad (when)
 import Data.Aeson (Value, encode, object, (.=))
@@ -27,6 +28,7 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Surface qualified as Paper
 import StudyCase
+import SurfaceContact qualified as Contact
 import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath ((</>))
@@ -47,8 +49,8 @@ writeBendingStudy destination = do
       [ ("Diagonal fold", "examples/diagonal-cp.fold", [0, 0, 0, 0, 60], [(EdgeId 4, 120)], [("base", V2 0.2 0.2), ("flap", V2 0.8 0.8)], [("base", "flap")]),
         ("Kite base", "examples/kite-base.fold", [0, 0, 0, 0, 0, 0, 75, 110], [(EdgeId 6, 150), (EdgeId 7, 165)], [("base", V2 0.6 0.6), ("right flap", V2 0.8 0.1), ("left flap", V2 0.1 0.8)], [("base", "right flap"), ("base", "left flap")])
       ]
-  contact <- generateContact
-  let document = encode (object ["runs" .= (packets ++ surfaces ++ [contact]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
+  contacts <- mapM generateContact [False, True]
+  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
   TIO.writeFile (destination </> "bending.html") (T.replace "/*BENDING_DATA*/null" (TE.decodeUtf8 (BL.toStrict document)) template)
@@ -85,24 +87,43 @@ generateSurface (title, sourcePath, startingAngles, targetDegrees, tags, orders)
 
 -- Both results use identical initial material and crease preferences. The
 -- baseline is the unconstrained ENDPOINT, not the corrected run's first iterate.
-generateContact :: IO Value
-generateContact = do
-  fixture <- checked (opposingFlaps 1)
+generateContact :: Bool -> IO Value
+generateContact discover = do
+  fixture <- checked (if discover then opposingFlapsAt 1 145 125 else opposingFlaps 1)
   let refined = exampleRefined fixture
       mesh = Paper.refinedMesh refined
       hinges = exampleHinges fixture
   free <- checked (relaxHinges defaultSettings hinges mesh)
-  corrected <- checked (relaxSurfaceContact defaultSettings hinges (exampleContact fixture) mesh)
-  which <- surfaceCase (exampleSurface fixture) refined
+  let axis = V3 0 0 1
+  reference <- if discover then Just <$> checked (Discovery.discoverReference (exampleClearance fixture) axis (Paper.refinedPanels refined) mesh) else pure Nothing
+  corrected <- checked $ case reference of
+    Nothing -> relaxSurfaceContact defaultSettings hinges (exampleContact fixture) mesh
+    Just learned -> relaxDiscoveredContact defaultSettings hinges learned mesh
+  surface <- case reference of
+    Nothing -> pure (exampleSurface fixture)
+    Just learned -> checked (Paper.withLayerRequirements axis (Discovery.referenceOrders learned) (exampleSurface fixture))
+  which <- surfaceCase surface refined
   baseline <- case reverse (checkpoints free) of
     point : _ -> snapshot hinges which point
     [] -> die "contact comparison needs an unconstrained endpoint"
   states <- mapM (snapshot hinges which) (checkpoints corrected)
-  putStrLn ("Opposing flaps: free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
+  discovery <- case reference of
+    Nothing -> pure Nothing
+    Just learned -> do
+      counts <-
+        mapM
+          ( \point -> do
+              candidates <- checked (Contact.overlapCandidates axis (Paper.refinedPanels refined) (checkpointMesh point))
+              pure (object ["iteration" .= completedIterations point, "trianglePairs" .= length candidates, "panelPairs" .= S.size (S.fromList (map Contact.candidatePanels candidates))])
+          )
+          (checkpoints corrected)
+      pure (Just (object ["referenceTrianglePairs" .= length (Discovery.referenceCandidates learned), "orders" .= [[unFaceId a, unFaceId b] | (a, b) <- Discovery.referenceOrders learned], "candidateCounts" .= counts]))
+  putStrLn ((if discover then "Discovered opposing flaps" else "Opposing flaps") ++ ": free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
   pure
     ( object
-        [ "kind" .= ("contact" :: String),
-          "title" .= ("Opposing flaps · contact correction" :: String),
+        [ "kind" .= (if discover then "discovery" else "contact" :: String),
+          "title" .= (if discover then "Opposing flaps · discovered contact" else "Opposing flaps · contact correction" :: String),
+          "discovery" .= discovery,
           "converged" .= converged corrected,
           "baselineConverged" .= converged free,
           "baseline" .= baseline,

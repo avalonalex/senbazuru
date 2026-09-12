@@ -218,7 +218,9 @@ crease ids and independent endpoint contact diagnostics, without contact forces.
 The opposing-flap comparison adds corrective forces for declared directional
 panel orders. Its unconstrained endpoint crosses; the corrected endpoint keeps
 the order while missing the preferred crease angles. The numerical clearance
-between unjoined panels is separate from physical thickness.
+between unjoined panels is separate from physical thickness. The discovered-contact
+variant learns those orders from a separated reference pose and rescans later
+shapes; a new pair whose order the reference cannot establish is refused.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

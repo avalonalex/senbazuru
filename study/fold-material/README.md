@@ -45,7 +45,7 @@ stack run senbazuru-material-study -- --bending build/fold-material
 Open `build/fold-material/bending.html`, or
 [the served page](http://127.0.0.1:8000/bending.html) with the server above.
 It compares shapes from a shared camera 45° above the side. Choose the single fold, either double-fold stiffness,
-diagonal/kite examples, or opposing flaps with contact correction. The last
+diagonal/kite examples, or opposing flaps with authored or discovered contact. The last
 comparison shows unconstrained and corrected endpoints from the same starting
 pose; its initial pose remains in the downloaded JSON.
 The page works offline; `bending.json` contains the indexed meshes, original
@@ -83,8 +83,16 @@ keep zero clearance. This is not physical thickness. Its independent check
 still examines every triangle pair. See the
 [contact note](../../docs/notes/ordered-flap-contact.md) for measurements and
 why a different starting order can stall the solve.
-Physical thickness, paper calibration, contact discovery and correction within
-a source panel remain open. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
+**Opposing flaps · discovered contact** starts at 145° / 125°, where geometry
+can establish the three panel relationships without an authored pair list.
+The viewer reports 46 reference triangle overlaps and 78 at the corrected
+endpoint. Learned orders stay fixed; a new overlap must have an order already
+implied by the reference. Ambiguous or crossed references are errors. The
+correction matches explicit orders on that same pose and passes all endpoint
+checks. See the [discovery note](../../docs/notes/reference-contact-discovery.md).
+
+Physical thickness, paper calibration, contact-history inference for initially
+unrelated panels, and correction within a source panel remain open. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).
 
 ## Folding states

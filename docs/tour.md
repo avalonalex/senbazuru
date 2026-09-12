@@ -805,6 +805,11 @@ those preferences. The comparison uses an unconstrained endpoint on the left
 and a corrected endpoint on the right, both found from the same starting pose.
 A small numerical clearance separates unjoined panels while shared creases
 remain connected. Independent diagnostics check the corrected mesh.
+A [reference-pose discovery control](notes/reference-contact-discovery.md) now
+learns the overlapping panels' order without an authored pair list. It keeps
+that order fixed while rescanning later shapes; new overlaps must already have
+an order implied by the reference. Its endpoint matches explicit orders on the
+same pose. Ambiguous, crossed or insufficient reference geometry is reported.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

@@ -5,7 +5,7 @@
 -- Start the left flap farther closed so it approaches below the right, as
 -- declared. The 1e-6 numerical clearance applies only to those disjoint flaps;
 -- both remain joined to the middle panel with zero clearance at their creases.
-module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps) where
+module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps, opposingFlapsAt) where
 
 import Data.Bifunctor (first)
 import Data.Map.Strict qualified as M
@@ -36,8 +36,13 @@ instance Explain ExampleError where
   explain (ExampleError message) = message
 
 opposingFlaps :: Int -> Either ExampleError ContactExample
-opposingFlaps level = do
-  pose <- first (ExampleError . explain) (buildCasePose 0 spec sheet (PoseSpec "Open flaps" (replicate 8 0 ++ [145, 105])))
+opposingFlaps level = opposingFlapsAt level 145 105
+
+-- | Vary the reference pose while retaining the same material and targets.
+-- The authored order remains an independent oracle for discovery tests.
+opposingFlapsAt :: Int -> Double -> Double -> Either ExampleError ContactExample
+opposingFlapsAt level leftAngle rightAngle = do
+  pose <- first (ExampleError . explain) (buildCasePose 0 spec sheet (PoseSpec "Open flaps" (replicate 8 0 ++ [leftAngle, rightAngle])))
   let surface = poseSurface pose
       clearance = 1e-6
       targets = M.fromList [(EdgeId 8, 150 * pi / 180), (EdgeId 9, 150 * pi / 180)]

@@ -45,6 +45,7 @@ read the Haddock module headers; for the domain, start with
 | [sharp-creases-and-opening-panels.md](sharp-creases-and-opening-panels.md) | A sharp crease can join nonparallel panels; prescribed openings still need material-length checks |
 | [restoring-material-lengths.md](restoring-material-lengths.md) | Correct lengths alone let layers cross; a coupled length and packet-order correction meets both numerical targets |
 | [crease-identity-through-refinement.md](crease-identity-through-refinement.md) | Source crease ids survive subdivision; current fold angles and preferred rest angles are separate inputs |
+| [reference-contact-discovery.md](reference-contact-discovery.md) | A separated reference pose supplies contact order; later overlaps must respect that fixed history |
 | [ordered-flap-contact.md](ordered-flap-contact.md) | Declared panel order stops opposing flaps from crossing; moving overlap corners need derivatives too |
 | [crease-and-panel-energy.md](crease-and-panel-energy.md) | Crease preferences and panel bending select among connected shapes; stiffer panels can miss their crease targets by more |
 | [connected-paper-surface.md](connected-paper-surface.md) | One material surface can support sharp folds and later bending; thickness, display offsets and the controls that open a pocket have separate roles |

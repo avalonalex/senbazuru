@@ -20,7 +20,9 @@
 -- Its final convergence also checks the proposed movement, so valid lengths
 -- alone cannot masquerade as an elastic equilibrium. 'relaxSurfaceContact'
 -- extends that same solve to declared directional panel orders, supplied by
--- SurfaceContact. Independent triangle checks still judge its endpoint.
+-- SurfaceContact. 'relaxDiscoveredContact' learns those orders from a separate
+-- reference pose and refuses new unrelated overlaps. Independent triangle
+-- checks still judge each endpoint.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -32,11 +34,13 @@ module FoldRelaxation
     relaxBending,
     relaxHinges,
     relaxSurfaceContact,
+    relaxDiscoveredContact,
     principalStrains,
     maxLengthError,
   )
 where
 
+import ContactDiscovery qualified as Discovery
 import Control.Monad (foldM)
 import Data.Bifunctor (second)
 import Data.IntMap.Strict qualified as IM
@@ -70,11 +74,13 @@ data RelaxError
   | UncheckablePacket !Int
   | BendingFailure !BendingError
   | SurfaceContactFailure !Contact.ContactError
+  | ContactDiscoveryFailure !Discovery.DiscoveryError
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
   explain (BendingFailure err) = explain err
   explain (SurfaceContactFailure err) = explain err
+  explain (ContactDiscoveryFailure err) = explain err
   explain InvalidSettings = "length relaxation needs a nonnegative iteration limit and a finite positive tolerance"
   explain EmptyMesh = "length relaxation needs at least one triangle"
   explain (InvalidSample i) = "study vertex " <> tshow i <> " has a non-finite material or spatial coordinate"
@@ -160,7 +166,12 @@ relaxHinges = relaxAngular NoContact
 relaxSurfaceContact :: Settings -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError Relaxation
 relaxSurfaceContact settings hinges contact = relaxAngular (SurfaceOrder contact) settings hinges
 
-data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.OrderedContact
+-- | Use orders learned from a separated reference, refusing newly overlapping
+-- pairs whose order that reference cannot establish. No pair list is supplied.
+relaxDiscoveredContact :: Settings -> [Hinge] -> Discovery.ReferenceContact -> MaterialMesh -> Either RelaxError Relaxation
+relaxDiscoveredContact settings hinges reference = relaxAngular (DiscoveredOrder reference) settings hinges
+
+data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.OrderedContact | DiscoveredOrder Discovery.ReferenceContact
 
 relaxAngular :: ContactMode -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
 relaxAngular packet settings hinges mesh = do
@@ -215,6 +226,7 @@ relaxWith packet bending settings original = do
     meshFrom current = original {samples = IM.elems current}
     contacts current = case packet of
       NoContact -> Right []
+      DiscoveredOrder reference -> either (Left . ContactDiscoveryFailure) Right (Discovery.discoveredContacts reference (meshFrom current))
       SurfaceOrder contact -> either (Left . SurfaceContactFailure) Right (Contact.orderedContacts contact (meshFrom current))
       PacketContact which -> case packetContacts which (meshFrom current) of
         (rows, 0) -> Right rows
