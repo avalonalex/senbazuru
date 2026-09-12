@@ -212,9 +212,14 @@ uses it in the same numerical solve. Ambiguous references and new unrelated
 pairs are refused during correction. `observeContactPose` can extend that
 history at a supplied approach pose after checking old orders, new encounters
 and independent triangle contact. It records additions transactionally; solver
-trials cannot change them. `ContactExample.opposingApproach` generates the
-angle-defined control. Neither API certifies motion between samples. The
-independent triangle check still judges the endpoint.
+trials cannot change them. `HingeSweep` bounds triangle projections over a
+specified fixed-axis rotation, subdividing unresolved angular intervals and
+refusing exhausted work limits. `observeContactSweep` checks that motion before
+accepting its endpoint; `ContactExample.opposingApproach` uses it for each
+right-flap rotation. Raw pose observations and numerical solver iterates still
+have no checked motion between them. The independent triangle check also judges
+each accepted endpoint. See [the sweep note](notes/hinge-sweep-contact.md) for the
+shared-hinge exception and numerical scope.
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

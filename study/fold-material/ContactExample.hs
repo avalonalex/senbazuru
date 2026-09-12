@@ -5,13 +5,14 @@
 -- Start the left flap farther closed so it approaches below the right, as
 -- declared. The 1e-6 numerical clearance applies only to those disjoint flaps;
 -- both remain joined to the middle panel with zero clearance at their creases.
-module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps, opposingFlapsAt, ApproachPose (..), opposingApproach) where
+module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps, opposingFlapsAt, ApproachPose (..), opposingApproach, rightFlapSweep) where
 
 import ContactDiscovery qualified as Discovery
 import Data.Bifunctor (first)
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import FoldBending
+import HingeSweep qualified as Sweep
 import PanelContact
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), Frame (..), VertexId (..), emptyFrame)
@@ -54,15 +55,23 @@ opposingApproach level = do
   initial <- opposingFlapsAt level 145 105
   let refined = exampleRefined initial
   reference <- first (ExampleError . explain) (Discovery.discoverReference (exampleClearance initial) (V3 0 0 1) (Paper.refinedPanels refined) (Paper.refinedMesh refined))
-  later <- observe reference [110, 115, 120, 121]
+  later <- observe reference initial 105 [110, 115, 120, 121]
   pure (ApproachPose (145, 105) initial reference : later)
   where
-    observe _ [] = Right []
-    observe reference (angle : rest) = do
+    observe _ _ _ [] = Right []
+    observe reference previous from (angle : rest) = do
       fixture <- opposingFlapsAt level 145 angle
-      learned <- first (ExampleError . explain) (Discovery.observeContactPose reference (Paper.refinedMesh (exampleRefined fixture)))
-      later <- observe learned rest
+      motion <- first (ExampleError . explain) (rightFlapSweep (angle - from) (Paper.refinedMesh (exampleRefined previous)))
+      learned <- first (ExampleError . explain) (Discovery.observeContactSweep Sweep.defaultSweepSettings reference motion (Paper.refinedMesh (exampleRefined fixture)))
+      later <- observe learned fixture angle rest
       pure (ApproachPose (145, angle) fixture learned : later)
+
+-- | Signed angular travel in degrees for this unit-sheet control. Increasing
+-- its valley angle lifts the right side, hence the NEGATIVE y hinge direction.
+rightFlapSweep :: Double -> Paper.MaterialMesh -> Either Sweep.SweepError Sweep.HingeSweep
+rightFlapSweep angle mesh = Sweep.prepareSweep (V3 0.7 0 0) (V3 0 (-1) 0) (angle * pi / 180) moving mesh
+  where
+    moving = [i | (i, sample) <- zip [0 ..] (Paper.samples mesh), let V2 u _ = Paper.sampleMaterial sample, u >= 0.7]
 
 opposingFlaps :: Int -> Either ExampleError ContactExample
 opposingFlaps level = opposingFlapsAt level 145 105

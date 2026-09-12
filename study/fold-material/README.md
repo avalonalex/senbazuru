@@ -100,9 +100,19 @@ independent triangle check. The JSON includes the observation history; the
 solver then uses its final relationships without changing them. Re-contact on
 the opposite side is refused. See the [history note](../../docs/notes/first-contact-history.md).
 
-Physical thickness, paper calibration, automatic approach selection, continuous
-collision checking and correction within a source panel remain open. A crossing
-and separation between sampled poses can still go undetected. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
+Each of those four approach rotations now also passes a check over its entire
+angular interval before the endpoint is accepted. **Rejected route · full turn**
+shows why that matters: a full turn has a valid endpoint but crosses the other
+flap during its motion. The viewer shows an interior witness 45° into the turn,
+not the first impact time. Collision and unresolved results leave history
+unchanged. This check covers one specified rigid hinge rotation of at most
+360°; see the [sweep note](../../docs/notes/hinge-sweep-contact.md) for its
+separation bounds, shared-hinge handling and numerical limits.
+
+Physical thickness, paper calibration, automatic approach selection, general
+continuous collision checking and correction within a source panel remain open.
+Raw sampled observations and numerical correction checkpoints still have no
+motion check. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).
 
 ## Folding states

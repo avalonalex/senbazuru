@@ -814,8 +814,12 @@ The [first-contact control](notes/first-contact-history.md) adds a recorded
 approach whose flap projections initially do not overlap. Its angle-defined
 poses establish a new order at their first separated overlap; earlier orders
 survive separation and re-contact. The viewer exposes these poses separately
-from numerical correction. A failed observation leaves history unchanged, and
-crossings between samples can still go undetected.
+from numerical correction. A failed observation leaves history unchanged.
+The [hinge-sweep check](notes/hinge-sweep-contact.md) now covers each of those
+four rigid approach rotations over its entire angular interval. Its rejected
+full-turn example returns to a valid endpoint but crosses the other flap along
+the way. Collision witnesses and exhausted work limits both block observation;
+raw pose observations and numerical correction still have no motion check.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
