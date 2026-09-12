@@ -45,7 +45,8 @@ stack run senbazuru-material-study -- --bending build/fold-material
 Open `build/fold-material/bending.html`, or
 [the served page](http://127.0.0.1:8000/bending.html) with the server above.
 It compares each starting shape with its energy-relaxed result from a shared
-camera 45° above the side. Choose the single fold or either double-fold stiffness.
+camera 45° above the side. Choose the single fold, either double-fold stiffness,
+or the new diagonal and kite examples.
 The page works offline; `bending.json` contains the indexed meshes, original
 material coordinates, signed achieved/rest angles and numerical measurements.
 
@@ -55,14 +56,26 @@ and 5, with crease stiffness 1. These are illustrative values. A rest angle is
 what an angular spring prefers, not a hard constraint: the double fold balances
 missing that angle against bending inside its connected panels.
 
-All three final examples meet the existing length and packet-order tolerances,
-and a separate small-movement test establishes numerical convergence. The
-penalty weights are tightened in four stages, with at most 100 iterations per
-stage; earlier states are not certified shapes or physical motion. The study
-uses a coarse 81-vertex mesh and a packet-specific contact checker. It does not
-provide arbitrary FOLD mechanics, paper calibration, finite thickness,
-intra-panel self-contact or continuous collision checks. See the
-[energy and solver note](../../docs/notes/crease-and-panel-energy.md).
+The original three packet examples meet their length and packet-order
+tolerances. A separate small-movement test establishes numerical convergence.
+The penalty weights tighten in four stages, with at most 100 iterations per
+stage; earlier states are numerical attempts, not physical motion.
+
+The diagonal starts at 60° and settles at 120°. The kite flaps start at 75° and
+110°, then settle at their separate 150° and 165° preferences. These examples
+use actual source crease ids carried through shared refinement, with explicit
+rest angles independent of the starting pose. Their triangles retain source
+panel ids; mesh diagonals are panel bends, not new creases. The JSON includes
+source crease ids, signed controls/achieved angles, feature edges and declared
+layer requirements. The viewer draws those edges without guessing coordinates.
+
+The new solves have no contact forces. Independent diagnostics inspect every
+triangle pair in each saved state, including within a panel, and check the
+declared source-panel orders. Both final endpoints pass; this neither repairs
+a failed contact nor certifies collision-free motion between saved states.
+Physical thickness, paper calibration and general contact correction remain
+open. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
+[crease identity note](../../docs/notes/crease-identity-through-refinement.md).
 
 ## Folding states
 

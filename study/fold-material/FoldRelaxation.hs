@@ -28,6 +28,7 @@ module FoldRelaxation
     relaxLengths,
     relaxPacket,
     relaxBending,
+    relaxHinges,
     principalStrains,
     maxLengthError,
   )
@@ -136,21 +137,31 @@ relaxPacket settings which = relaxWith (Just which) Nothing settings
 -- correction to be below 1e-7 sheet units at the final penalty. The iteration
 -- limit applies to each of four penalty stages. A shortened line-search step alone
 -- must never count as equilibrium.
-relaxBending :: Settings -> Bending -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
-relaxBending settings bending which mesh = do
-  hinges <- either (Left . BendingFailure) Right (buildHinges bending which mesh)
+relaxBending :: Settings -> Bending -> PacketRestAngles -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
+relaxBending settings bending targets which mesh = do
+  hinges <- either (Left . BendingFailure) Right (buildHinges bending targets which mesh)
+  relaxAngular (Just which) settings hinges mesh
+
+-- | Lengths and supplied angular springs, with NO contact force. This is for
+-- open-surface controls whose endpoint contact is checked independently. A
+-- converged result certifies numerical/material tolerances, not layer order.
+relaxHinges :: Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
+relaxHinges = relaxAngular Nothing
+
+relaxAngular :: Maybe FoldCase -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
+relaxAngular packet settings hinges mesh = do
   if iterationLimit settings == 0
-    then relaxWith (Just which) (Just (hinges, 1e8)) settings mesh
+    then relaxWith packet (Just (hinges, 1e8)) settings mesh
     else do
       -- A strong length penalty from the outset makes even a rigid rotation
       -- crawl: its straight tangent step violates lengths at second order.
       -- Solve easier problems first, then tighten the SAME final constraints.
       -- Only the final stage can establish the result's convergence.
-      (_, history, settled) <- foldM (stage hinges) (mesh, [], False) [1e2, 1e4, 1e6, 1e8]
+      (_, history, settled) <- foldM stage (mesh, [], False) [1e2, 1e4, 1e6, 1e8]
       Right (Relaxation history settled)
   where
-    stage hinges (current, history, _) weight = do
-      result <- relaxWith (Just which) (Just (hinges, weight)) settings current
+    stage (current, history, _) weight = do
+      result <- relaxWith packet (Just (hinges, weight)) settings current
       let offset = case reverse history of [] -> 0; previous : _ -> completedIterations previous
           shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
           combined = history ++ (if null history then shifted else drop 1 shifted)

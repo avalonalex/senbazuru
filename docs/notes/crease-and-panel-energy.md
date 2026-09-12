@@ -12,7 +12,9 @@ single- and double-fold controls. It uses `Origami.Surface`'s material mesh:
 shared vertex ids remain shared, and positions move without changing the
 original sheet coordinates. Creases are classified at `u = 0.5`, and for the
 double fold also `v = 0.5`, on that original unit square. This fixture-specific
-classification is not yet an adapter for arbitrary FOLD crease patterns.
+classification remains an adapter for those fixtures. The later
+[shared-crease adapter](crease-identity-through-refinement.md) instead follows
+source edge ids through refinement for diagonal and kite examples.
 
 Each shared edge contributes `E = k (θ − θ₀)² / 2`. Here `θ` is the signed
 angle between its triangles, `θ₀` the preferred angle, and `k` its stiffness.
@@ -80,8 +82,9 @@ The viewer reports achieved ranges, both energies and principal strains
 This is a local equilibrium experiment on nearly flat, zero-thickness packets.
 It does not certify general self-contact, contact inside a panel, collision-free
 motion, a unique/global energy minimum, or behavior of a specified paper stock.
-The next useful extension is to take crease identity and rest angles from a
-shared surface, with constraints that also cover open panels. Physical
+The shared-crease adapter now supplies explicit rest-angle controls and
+independent triangle contact diagnostics. Contact forces that also cover open
+panels remain the next extension. Physical
 thickness can be added separately; it was not necessary to distinguish these
 shapes. Work is tracked in [#150](https://github.com/avalonalex/senbazuru/issues/150),
 following [#114](https://github.com/avalonalex/senbazuru/issues/114).

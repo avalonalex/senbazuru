@@ -196,7 +196,11 @@ as having zero thickness and only handles these nearly flat study packets.
 `FoldBending` assigns rest angles to their material creases and a zero-angle
 preference to internal panel edges. `FoldRelaxation.relaxBending` adds those
 energies with staged numerical penalties; `BendingGallery` exports a separate
-comparison page and measurements. These fixture-specific mechanics remain in
+comparison page and measurements. `refineSurfaceWithEdges` preserves source edge
+ids through subdivision, and `buildSurfaceHinges` attaches explicit signed
+rest-angle controls to them. Diagonal and kite controls use `relaxHinges`
+without contact forces; `PanelContact.checkTriangleContact` independently
+checks the resulting triangles and source-panel orders. Mechanics remain in
 the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

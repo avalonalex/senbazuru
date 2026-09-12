@@ -793,6 +793,12 @@ two packets. Run `stack run senbazuru-material-study -- --bending build/fold-mat
 and open `build/fold-material/bending.html` to compare a known single-fold
 equilibrium and the double fold with softer/stiffer panels. It checks lengths,
 connectivity and known packet order independently of the angular energy.
+The same page now includes diagonal and kite equilibria through the
+[shared-crease adapter](notes/crease-identity-through-refinement.md). Their
+preferred angles are explicit controls, separate from the starting pose;
+source crease ids survive subdivision. Every saved state has independent
+triangle crossing and layer-order diagnostics, but these open-surface solves
+have no contact force.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

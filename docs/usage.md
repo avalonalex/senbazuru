@@ -212,9 +212,10 @@ requirements are not yet serialised to FOLD.
 
 For the experimental crease/panel mechanics, run
 `stack run senbazuru-material-study -- --bending build/fold-material` and open
-`build/fold-material/bending.html`. This solves only the study's single- and
-double-fold packets with illustrative stiffnesses; it does not add a general
-mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
+`build/fold-material/bending.html`. This compares single/double packets and
+diagonal/kite controls with illustrative stiffnesses. The latter use shared
+crease ids and independent endpoint contact diagnostics, without contact forces.
+This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 
 ## `crease`
