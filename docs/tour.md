@@ -798,7 +798,13 @@ The same page now includes diagonal and kite equilibria through the
 preferred angles are explicit controls, separate from the starting pose;
 source crease ids survive subdivision. Every saved state has independent
 triangle crossing and layer-order diagnostics, but these open-surface solves
-have no contact force.
+have no contact force. The [opposing-flap control](notes/ordered-flap-contact.md)
+adds correction for supplied directional panel orders. Both flaps prefer 150°,
+which makes them cross; contact causes the resulting angles to differ from
+those preferences. The comparison uses an unconstrained endpoint on the left
+and a corrected endpoint on the right, both found from the same starting pose.
+A small numerical clearance separates unjoined panels while shared creases
+remain connected. Independent diagnostics check the corrected mesh.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

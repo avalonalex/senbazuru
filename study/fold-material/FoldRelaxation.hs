@@ -18,7 +18,9 @@
 -- The separate 'relaxBending' experiment adds angular preferences from
 -- FoldBending and tightens numerical length/contact penalties in four stages.
 -- Its final convergence also checks the proposed movement, so valid lengths
--- alone cannot masquerade as an elastic equilibrium.
+-- alone cannot masquerade as an elastic equilibrium. 'relaxSurfaceContact'
+-- extends that same solve to declared directional panel orders, supplied by
+-- SurfaceContact. Independent triangle checks still judge its endpoint.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -29,6 +31,7 @@ module FoldRelaxation
     relaxPacket,
     relaxBending,
     relaxHinges,
+    relaxSurfaceContact,
     principalStrains,
     maxLengthError,
   )
@@ -45,6 +48,7 @@ import FoldMaterial
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import SurfaceContact qualified as Contact
 
 -- | Tolerance is fractional edge-length error, not a percentage or thickness.
 data Settings = Settings
@@ -65,10 +69,12 @@ data RelaxError
   | CollapsedEdge !Int !Int
   | UncheckablePacket !Int
   | BendingFailure !BendingError
+  | SurfaceContactFailure !Contact.ContactError
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
   explain (BendingFailure err) = explain err
+  explain (SurfaceContactFailure err) = explain err
   explain InvalidSettings = "length relaxation needs a nonnegative iteration limit and a finite positive tolerance"
   explain EmptyMesh = "length relaxation needs at least one triangle"
   explain (InvalidSample i) = "study vertex " <> tshow i <> " has a non-finite material or spatial coordinate"
@@ -124,12 +130,12 @@ maxLengthError :: MaterialMesh -> Double
 maxLengthError mesh = maximum (0 : map abs (edgeStrains mesh))
 
 relaxLengths :: Settings -> MaterialMesh -> Either RelaxError Relaxation
-relaxLengths = relaxWith Nothing Nothing
+relaxLengths = relaxWith NoContact Nothing
 
 -- | Also keep the known nearly flat packet's layers in order. This is a
 -- zero-thickness inequality, not a general paper collision implementation.
 relaxPacket :: Settings -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
-relaxPacket settings which = relaxWith (Just which) Nothing settings
+relaxPacket settings which = relaxWith (PacketContact which) Nothing settings
 
 -- | Prefer crease rest angles and flat panels, while retaining the packet's
 -- length/contact checks. Large numerical penalties approximate those constraints;
@@ -140,15 +146,23 @@ relaxPacket settings which = relaxWith (Just which) Nothing settings
 relaxBending :: Settings -> Bending -> PacketRestAngles -> FoldCase -> MaterialMesh -> Either RelaxError Relaxation
 relaxBending settings bending targets which mesh = do
   hinges <- either (Left . BendingFailure) Right (buildHinges bending targets which mesh)
-  relaxAngular (Just which) settings hinges mesh
+  relaxAngular (PacketContact which) settings hinges mesh
 
 -- | Lengths and supplied angular springs, with NO contact force. This is for
 -- open-surface controls whose endpoint contact is checked independently. A
 -- converged result certifies numerical/material tolerances, not layer order.
 relaxHinges :: Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
-relaxHinges = relaxAngular Nothing
+relaxHinges = relaxAngular NoContact
 
-relaxAngular :: Maybe FoldCase -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
+-- | Add directional separation for the shared mesh's declared panel order.
+-- The same staged length/bending solve now penalises reversed gaps. Independent
+-- triangle diagnostics still judge the endpoint; no motion certificate follows.
+relaxSurfaceContact :: Settings -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError Relaxation
+relaxSurfaceContact settings hinges contact = relaxAngular (SurfaceOrder contact) settings hinges
+
+data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.OrderedContact
+
+relaxAngular :: ContactMode -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
 relaxAngular packet settings hinges mesh = do
   if iterationLimit settings == 0
     then relaxWith packet (Just (hinges, 1e8)) settings mesh
@@ -169,7 +183,7 @@ relaxAngular packet settings hinges mesh = do
         [] -> Left EmptyMesh
         final : _ -> Right (checkpointMesh final, combined, converged result)
 
-relaxWith :: Maybe FoldCase -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError Relaxation
+relaxWith :: ContactMode -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError Relaxation
 relaxWith packet bending settings original = do
   if iterationLimit settings < 0 || lengthTolerance settings <= 0 || not (finite (lengthTolerance settings))
     then Left InvalidSettings
@@ -200,8 +214,9 @@ relaxWith packet bending settings original = do
       Right (i, j, sqrt (du * du + dv * dv))
     meshFrom current = original {samples = IM.elems current}
     contacts current = case packet of
-      Nothing -> Right []
-      Just which -> case packetContacts which (meshFrom current) of
+      NoContact -> Right []
+      SurfaceOrder contact -> either (Left . SurfaceContactFailure) Right (Contact.orderedContacts contact (meshFrom current))
+      PacketContact which -> case packetContacts which (meshFrom current) of
         (rows, 0) -> Right rows
         (_, count) -> Left (UncheckablePacket count)
     angularRows current = case bending of
@@ -247,9 +262,9 @@ relaxWith packet bending settings original = do
                 square (V3 x y z) = V3 (x * x) (y * y) (z * z)
                 diagonal = foldl' (\values (i, g) -> IM.adjust (^+^ square g) i values) (IM.map (const (V3 damping damping damping)) zero) (concatMap fst rows)
                 divide (V3 x y z) (V3 dx dy dz) = V3 (x / dx) (y / dy) (z / dz)
-                -- Contact acts mostly vertically on these nearly flat sheets.
-                -- Diagonal preconditioning rescales that stiff direction so
-                -- it does not drown out the in-plane length corrections.
+                -- Contact penalties can be much stiffer along one direction.
+                -- Diagonal preconditioning rescales each coordinate so
+                -- those forces do not drown out the length corrections.
                 precondition values = if null contactRows && isNothing bending then values else IM.intersectionWith divide values diagonal
              in conjugateGradient (if isJust bending then 3000 else if null contactRows then 300 else 600) (if isJust bending then 1e-6 else 1e-15) precondition action rhs
           -- Penalise only negative gaps: separated layers must not attract

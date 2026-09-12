@@ -21,10 +21,10 @@
   @media(max-width:650px) {body{padding:24px 14px}canvas{height:300px}.metrics{grid-template-columns:repeat(2,1fr)}th,td{padding:8px 3px;font-size:12px}}
 </style>
 <header>
-  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152</div>
+  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154</div>
   <h1>Creases remember; panels resist</h1>
   <p>A crease prefers a particular angle. The paper between creases prefers to stay flat.
-    These examples let the connected sheet settle under both preferences. Diagonal and kite folds use the original crease identities, with independent checks of the resulting triangles and layer order.</p>
+    These examples let the connected sheet settle under both preferences. Opposing flaps add contact correction: their preferred angles would make them cross, so a declared layer order limits how far they can close.</p>
 </header>
 <main>
   <div class="controls">
@@ -33,12 +33,12 @@
     <label><input type="checkbox" id="wire"> Triangle mesh</label>
   </div>
   <p id="status" aria-live="polite">Generate this page from the repository root to see the recorded models.</p>
-  <div class="captions"><span>Prescribed starting shape</span><span>After energy relaxation</span></div>
+  <div class="captions"><span id="left-caption">Prescribed starting shape</span><span id="right-caption">After energy relaxation</span></div>
   <canvas id="paper" tabindex="0" aria-label="Starting and relaxed paper, with shared camera and scale. Drag or use arrow keys to rotate."></canvas>
   <p class="hint">Drag to rotate · scroll to zoom · arrow keys also rotate · cream and ochre are the two sides of the same sheet.</p>
   <div class="metrics" id="metrics"></div>
   <table>
-    <thead><tr><th>Measurement</th><th>Starting shape</th><th>Relaxed shape</th><th>Preference</th></tr></thead>
+    <thead><tr><th>Measurement</th><th id="left-column">Starting shape</th><th id="right-column">Relaxed shape</th><th>Preference</th></tr></thead>
     <tbody id="measurements"></tbody>
   </table>
   <p id="interpretation"></p>
@@ -49,7 +49,9 @@
       The final maximum edge-length error must be at most 0.001%, and reversed layer gaps at most 0.0000001 of the unit sheet’s side.
       “Settled” additionally requires the solver’s full proposed movement to be below that same distance. Merely reaching the iteration limit does not pass.</p>
     <p>The original single/double-fold solver enforces the known packet order. Diagonal and kite examples solve lengths and angular energy without contact forces;
-      a separate check inspects every pair of triangles in each saved state for strict crossings, unresolved coplanar overlap and declared layer order.
+      the opposing-flap example adds forces for declared panel order along a fixed direction in the model. A separate check inspects every pair of triangles in each saved state for strict crossings, unresolved coplanar overlap and declared layer order.
+      The opposing flaps use a numerical clearance of 0.000001 sheet units between panels that share no material vertices.
+      Joined panels keep zero clearance. This margin is not physical paper thickness.
       These diagnostics do not certify collision-free motion, finite thickness, or a globally optimal shape. Numerical iterations are not folding instructions.
       Only the original packets receive a display-depth tie-break after their contact check passes; the saved positions do not change.</p>
     <p>Stiffness and energy use illustrative units. The crease stiffness is 1; the double-fold examples compare panel stiffnesses 0.2 and 5 on the same mesh.
@@ -67,6 +69,7 @@ else {el('paper').hidden=true;document.querySelector('.controls').hidden=true;}
 function initialize() {
   const canvas=el('paper'), gl=canvas.getContext('webgl',{antialias:true});
   data.runs.forEach((run,i)=>{const option=document.createElement('option');option.value=i;option.textContent=run.title;el('example').append(option);});
+  const contactIndex=data.runs.findIndex(run=>run.kind==='contact');if(contactIndex>=0)el('example').value=contactIndex;
   let yaw=-Math.PI/4, pitch=Math.PI/4, zoom=1, views=[], buffers=[], center=[0,0,0], radius=1;
   const subtract=(a,b)=>a.map((v,i)=>v-b[i]);
   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -91,15 +94,18 @@ function initialize() {
   const angleRange=(angles,absolute=false)=>{const a=angles.map(h=>absolute?Math.abs(h.angle):h.angle);return a.length?`${Math.min(...a).toFixed(2)}–${Math.max(...a).toFixed(2)}°`:'—';};
   const range=(state,role)=>angleRange(state.angles.filter(h=>h.role===role),true);
   function update(){
-    const run=data.runs[Number(el('example').value)], start=run.states[0], final=run.states[run.states.length-1];
-    const packet=run.kind==='packet', contact=final.contact;
+    const run=data.runs[Number(el('example').value)], start=run.baseline||run.states[0], final=run.states[run.states.length-1];
+    const packet=run.kind==='packet', correcting=run.kind==='contact', contact=final.contact;
+    canvas.setAttribute('aria-label',`${correcting?'Unconstrained and contact-corrected':'Starting and relaxed'} paper, with shared camera and scale. Drag or use arrow keys to rotate.`);
+    el('left-caption').textContent=el('left-column').textContent=correcting?'Without contact forces':'Prescribed starting shape';
+    el('right-caption').textContent=el('right-column').textContent=correcting?'With contact correction':'After energy relaxation';
     const materialOK=final.lengthError<=data.lengthTolerance && final.components===1;
     const contactOK=packet?final.maxOrderViolation<=data.contactTolerance && final.uncheckedTriangles===0:contact.passed;
     const passed=run.converged && materialOK && contactOK;
     el('status').className=passed?'good':'pending';
     el('status').textContent=`${run.converged?'Settled':'Not settled within the iteration budget'}; material checks ${materialOK?'passed':'need attention'}; ${packet?'packet-order':'endpoint contact'} checks ${contactOK?'passed':'need attention'}. ${final.iteration} numerical iterations.${gl?'':' WebGL is unavailable; measurements remain readable.'}`;
     el('contact-scope').textContent=packet?'Contact correction covers the known order of this nearly flat packet; it is not a general collision solver.':
-      `Independent endpoint check: ${contact.checkedPanelPairs} triangle pairs; ${contact.crossingPanels.length} strict crossings, ${contact.unorderedContacts.length} unresolved overlaps, ${contact.reversedOrders.length} reversed orders, ${contact.uncheckedOrders.length} uncheckable orders. This check reports problems; it supplies no corrective force and does not certify the path between states.`;
+      `Independent endpoint check: ${contact.checkedPanelPairs} triangle pairs; ${contact.crossingPanels.length} strict crossings, ${contact.unorderedContacts.length} unresolved overlaps, ${contact.reversedOrders.length} reversed orders, ${contact.uncheckedOrders.length} uncheckable orders. ${correcting?'The solve enforces declared panel order; this separate check judges its endpoint.':'This check reports problems; this example supplies no corrective force.'} It does not certify the path between states.`;
     el('metrics').replaceChildren();
     for(const [value,label] of [[percent(final.lengthError),'largest edge-length error'],[packet?final.maxOrderViolation.toExponential(2):String(contact.crossingPanels.length),packet?'largest layer-order reversal':'endpoint triangle crossings'],[String(final.components),'connected sheet'],[(final.creaseEnergy+final.panelEnergy).toFixed(6),'total angular energy']]){
       const card=document.createElement('div');card.className='metric';const v=document.createElement('strong'),l=document.createElement('span');v.textContent=value;l.textContent=label;card.append(v,l);el('metrics').append(card);
@@ -117,7 +123,8 @@ function initialize() {
       ['Panel bending energy',start.panelEnergy.toFixed(6),final.panelEnergy.toFixed(6),'minimum'],
       ['Principal strain · all directions',`${percent(start.minPrincipalStrain)} to ${percent(start.maxPrincipalStrain)}`,`${percent(final.minPrincipalStrain)} to ${percent(final.maxPrincipalStrain)}`,'near zero']];
     el('measurements').replaceChildren();rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td);});el('measurements').append(tr);});
-    el('interpretation').textContent=!packet?
+    el('interpretation').textContent=correcting?
+      `Both flaps prefer 150°. Without contact forces they reach that angle but cross (${start.contact.crossingPanels.length} triangle pairs). Declaring the left flap below the right makes their achieved angles differ from the preferences. Both solves start from the same 145° / 105° pose; the left picture is the unconstrained endpoint. The corrected solve also targets a ${run.numericalClearance.toExponential(0)}-unit numerical clearance between the two flaps. Original material vertices remain joined to the middle panel.`:!packet?
       `${run.title} has a known rigid answer: its panels can stay flat while each crease reaches the listed preference. These positions were found by energy relaxation. Crease ids come from ${run.source}; subdivision adds panel-bending edges without inventing creases. Signed angles are positive for valleys and negative for mountains.`:
       Number(el('example').value)===0?
       'The single fold has a known answer: flat panels meeting at the preferred 150° fold angle. It is a control for the mechanics, not an extra hand-authored pose.':

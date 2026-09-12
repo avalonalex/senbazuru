@@ -44,9 +44,10 @@ stack run senbazuru-material-study -- --bending build/fold-material
 
 Open `build/fold-material/bending.html`, or
 [the served page](http://127.0.0.1:8000/bending.html) with the server above.
-It compares each starting shape with its energy-relaxed result from a shared
-camera 45° above the side. Choose the single fold, either double-fold stiffness,
-or the new diagonal and kite examples.
+It compares shapes from a shared camera 45° above the side. Choose the single fold, either double-fold stiffness,
+diagonal/kite examples, or opposing flaps with contact correction. The last
+comparison shows unconstrained and corrected endpoints from the same starting
+pose; its initial pose remains in the downloaded JSON.
 The page works offline; `bending.json` contains the indexed meshes, original
 material coordinates, signed achieved/rest angles and numerical measurements.
 
@@ -69,12 +70,21 @@ panel ids; mesh diagonals are panel bends, not new creases. The JSON includes
 source crease ids, signed controls/achieved angles, feature edges and declared
 layer requirements. The viewer draws those edges without guessing coordinates.
 
-The new solves have no contact forces. Independent diagnostics inspect every
-triangle pair in each saved state, including within a panel, and check the
+The diagonal and kite solves have no contact forces. Independent diagnostics
+inspect every triangle pair in each saved state, including within a panel, and check the
 declared source-panel orders. Both final endpoints pass; this neither repairs
 a failed contact nor certifies collision-free motion between saved states.
-Physical thickness, paper calibration and general contact correction remain
-open. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
+The opposing-flap control now adds correction for supplied source-panel orders
+along a fixed material direction. Both creases prefer 150°, which would make
+the flaps cross. Starting at 145° / 105°, the correction settles near 160° / 139°
+with no endpoint crossings and maximum relative edge error below `9e-8`.
+A `1e-6` numerical clearance applies between unjoined panels; shared creases
+keep zero clearance. This is not physical thickness. Its independent check
+still examines every triangle pair. See the
+[contact note](../../docs/notes/ordered-flap-contact.md) for measurements and
+why a different starting order can stall the solve.
+Physical thickness, paper calibration, contact discovery and correction within
+a source panel remain open. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).
 
 ## Folding states

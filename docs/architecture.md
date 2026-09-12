@@ -192,7 +192,7 @@ experimental formulas and solvers remain outside the library. It generates
 sharp and rounded versions of two prescribed surfaces in `FoldMaterial`. `FoldRelaxation` corrects
 their material edge lengths; `FoldContact` supplies separation constraints and
 checks for violations of the known packet order. The coupled solve treats paper
-as having zero thickness and only handles these nearly flat study packets.
+as having zero thickness; this original adapter handles nearly flat packets.
 `FoldBending` assigns rest angles to their material creases and a zero-angle
 preference to internal panel edges. `FoldRelaxation.relaxBending` adds those
 energies with staged numerical penalties; `BendingGallery` exports a separate
@@ -200,8 +200,13 @@ comparison page and measurements. `refineSurfaceWithEdges` preserves source edge
 ids through subdivision, and `buildSurfaceHinges` attaches explicit signed
 rest-angle controls to them. Diagonal and kite controls use `relaxHinges`
 without contact forces; `PanelContact.checkTriangleContact` independently
-checks the resulting triangles and source-panel orders. Mechanics remain in
-the study, not the shared `Origami.Surface` representation.
+checks the resulting triangles and source-panel orders. `SurfaceContact` adds
+separation residuals and moving-overlap derivatives for supplied directional
+orders; `relaxSurfaceContact` couples them to the same length/angular solve.
+`ContactExample` constructs a connected opposing-flap control for tests and the
+gallery. Its small numerical clearance applies only to unjoined source panels.
+The independent triangle check still judges the corrected endpoint. Mechanics
+remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very
 layer order those meshes can violate. Indexed OBJ and FOLD exports inspect the
