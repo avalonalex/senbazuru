@@ -5,8 +5,9 @@
 -- Start the left flap farther closed so it approaches below the right, as
 -- declared. The 1e-6 numerical clearance applies only to those disjoint flaps;
 -- both remain joined to the middle panel with zero clearance at their creases.
-module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps, opposingFlapsAt) where
+module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps, opposingFlapsAt, ApproachPose (..), opposingApproach) where
 
+import ContactDiscovery qualified as Discovery
 import Data.Bifunctor (first)
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
@@ -34,6 +35,34 @@ newtype ExampleError = ExampleError Text
 
 instance Explain ExampleError where
   explain (ExampleError message) = message
+
+-- | Each pose comes from crease angles on the same sheet. Its history contains
+-- only the observations up to that pose, never knowledge from later frames.
+data ApproachPose = ApproachPose
+  { approachAngles :: !(Double, Double),
+    approachExample :: !ContactExample,
+    approachHistory :: !Discovery.ReferenceContact
+  }
+  deriving stock (Eq, Show)
+
+-- | Start with separated flap projections, then close the right flap until
+-- the first sampled overlap. This is an authored approach, not motion planning.
+-- The fixture's declared pairs remain an independent test oracle; discovery
+-- consumes only mesh positions, source-panel ownership and a model direction.
+opposingApproach :: Int -> Either ExampleError [ApproachPose]
+opposingApproach level = do
+  initial <- opposingFlapsAt level 145 105
+  let refined = exampleRefined initial
+  reference <- first (ExampleError . explain) (Discovery.discoverReference (exampleClearance initial) (V3 0 0 1) (Paper.refinedPanels refined) (Paper.refinedMesh refined))
+  later <- observe reference [110, 115, 120, 121]
+  pure (ApproachPose (145, 105) initial reference : later)
+  where
+    observe _ [] = Right []
+    observe reference (angle : rest) = do
+      fixture <- opposingFlapsAt level 145 angle
+      learned <- first (ExampleError . explain) (Discovery.observeContactPose reference (Paper.refinedMesh (exampleRefined fixture)))
+      later <- observe learned rest
+      pure (ApproachPose (145, angle) fixture learned : later)
 
 opposingFlaps :: Int -> Either ExampleError ContactExample
 opposingFlaps level = opposingFlapsAt level 145 105

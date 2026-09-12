@@ -21,14 +21,15 @@
   @media(max-width:650px) {body{padding:24px 14px}canvas{height:300px}.metrics{grid-template-columns:repeat(2,1fr)}th,td{padding:8px 3px;font-size:12px}}
 </style>
 <header>
-  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154 · #156</div>
+  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154 · #156 · #158</div>
   <h1>Creases remember; panels resist</h1>
   <p>A crease prefers a particular angle. The paper between creases prefers to stay flat.
-    These examples let the connected sheet settle under both preferences. Opposing flaps add contact correction: their preferred angles would make them cross. The newest example learns their order from a separated reference pose, then preserves it as the flaps close.</p>
+    These examples let the connected sheet settle under both preferences. Opposing flaps add contact correction: their preferred angles would make them cross. The newest example starts with flaps whose projections do not overlap, records their first separated overlap, then keeps the learned order during correction.</p>
 </header>
 <main>
   <div class="controls">
     <label>Example <select id="example"></select></label>
+    <label id="approach-control" hidden>Folding state <select id="approach"></select></label>
     <button id="reset">Side view · 45° above</button>
     <label><input type="checkbox" id="wire"> Triangle mesh</label>
   </div>
@@ -53,6 +54,7 @@
       The opposing flaps use a numerical clearance of 0.000001 sheet units between panels that share no material vertices.
       The discovered-contact example learns order from overlapping projections in its separated reference pose, and rescans each candidate shape.
       A new overlap must have an order already implied by that reference; otherwise it is refused. Ambiguous or crossed references need more information.
+      The first-contact example can extend this history at supplied, angle-defined approach poses. New relationships are accepted only after the pose passes earlier orders and an independent triangle check. Rejected observations leave the history unchanged. A crossing and separation between samples can still be missed.
       Joined panels keep zero clearance. This margin is not physical paper thickness.
       These diagnostics do not certify collision-free motion, finite thickness, or a globally optimal shape. Numerical iterations are not folding instructions.
       Only the original packets receive a display-depth tie-break after their contact check passes; the saved positions do not change.</p>
@@ -71,7 +73,7 @@ else {el('paper').hidden=true;document.querySelector('.controls').hidden=true;}
 function initialize() {
   const canvas=el('paper'), gl=canvas.getContext('webgl',{antialias:true});
   data.runs.forEach((run,i)=>{const option=document.createElement('option');option.value=i;option.textContent=run.title;el('example').append(option);});
-  const contactIndex=data.runs.findIndex(run=>run.kind==='discovery');if(contactIndex>=0)el('example').value=contactIndex;
+  const contactIndex=data.runs.findIndex(run=>run.kind==='history');if(contactIndex>=0)el('example').value=contactIndex;
   let yaw=-Math.PI/4, pitch=Math.PI/4, zoom=1, views=[], buffers=[], center=[0,0,0], radius=1;
   const subtract=(a,b)=>a.map((v,i)=>v-b[i]);
   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -95,21 +97,35 @@ function initialize() {
   const percent=x=>{const value=100*x;return (Math.abs(value)<0.0000005?0:value).toFixed(6)+'%';}
   const angleRange=(angles,absolute=false)=>{const a=angles.map(h=>absolute?Math.abs(h.angle):h.angle);return a.length?`${Math.min(...a).toFixed(2)}–${Math.max(...a).toFixed(2)}°`:'—';};
   const range=(state,role)=>angleRange(state.angles.filter(h=>h.role===role),true);
+  function selectExample(){
+    const run=data.runs[Number(el('example').value)];
+    el('approach-control').hidden=run.kind!=='history';
+    el('approach').replaceChildren();
+    (run.approach||[]).forEach((pose,i)=>{
+      const option=document.createElement('option');option.value=i;
+      option.textContent=`${pose.leftAngle}° / ${pose.rightAngle}° · ${i===0?'start':pose.newOrders.length?'first sampled overlap':'approaching'}`;
+      el('approach').append(option);
+    });
+    const option=document.createElement('option');option.value='final';option.textContent='Contact-corrected endpoint';el('approach').append(option);el('approach').value='final';
+    update();
+  }
   function update(){
-    const run=data.runs[Number(el('example').value)], start=run.baseline||run.states[0], final=run.states[run.states.length-1];
-    const packet=run.kind==='packet', discovering=run.kind==='discovery', correcting=run.kind==='contact'||discovering, contact=final.contact;
-    canvas.setAttribute('aria-label',`${correcting?'Unconstrained and contact-corrected':'Starting and relaxed'} paper, with shared camera and scale. Drag or use arrow keys to rotate.`);
-    el('left-caption').textContent=el('left-column').textContent=correcting?'Without contact forces':'Prescribed starting shape';
-    el('right-caption').textContent=el('right-column').textContent=discovering?'With discovered contact':correcting?'With contact correction':'After energy relaxation';
+    const run=data.runs[Number(el('example').value)], history=run.kind==='history';
+    const pose=history && el('approach').value!=='final'?run.approach[Number(el('approach').value)]:null;
+    const start=pose?run.approach[0].state:run.baseline||run.states[0], final=pose?pose.state:run.states[run.states.length-1];
+    const packet=run.kind==='packet', discovering=run.kind==='discovery'||history, correcting=!pose&&(run.kind==='contact'||discovering), contact=final.contact;
+    canvas.setAttribute('aria-label',`${pose?'Initial and selected approach':correcting?'Unconstrained and contact-corrected':'Starting and relaxed'} paper, with shared camera and scale. Drag or use arrow keys to rotate.`);
+    el('left-caption').textContent=el('left-column').textContent=pose?'Approach start · 145° / 105°':correcting?'Without contact forces':'Prescribed starting shape';
+    el('right-caption').textContent=el('right-column').textContent=pose?`Approach · ${pose.leftAngle}° / ${pose.rightAngle}°`:discovering?'With discovered contact':correcting?'With contact correction':'After energy relaxation';
     const materialOK=final.lengthError<=data.lengthTolerance && final.components===1;
     const contactOK=packet?final.maxOrderViolation<=data.contactTolerance && final.uncheckedTriangles===0:contact.passed;
-    const passed=run.converged && materialOK && contactOK;
+    const passed=(pose||run.converged) && materialOK && contactOK;
     el('status').className=passed?'good':'pending';
-    el('status').textContent=`${run.converged?'Settled':'Not settled within the iteration budget'}; material checks ${materialOK?'passed':'need attention'}; ${packet?'packet-order':'endpoint contact'} checks ${contactOK?'passed':'need attention'}. ${final.iteration} numerical iterations.${gl?'':' WebGL is unavailable; measurements remain readable.'}`;
+    el('status').textContent=pose?`Approach pose ${pose.index+1} of ${run.approach.length}; material checks ${materialOK?'passed':'need attention'}; sampled contact checks ${contactOK?'passed':'need attention'}. ${pose.orders.length} panel relationships learned so far.${gl?'':' WebGL is unavailable; measurements remain readable.'}`:`${run.converged?'Settled':'Not settled within the iteration budget'}; material checks ${materialOK?'passed':'need attention'}; ${packet?'packet-order':'endpoint contact'} checks ${contactOK?'passed':'need attention'}. ${final.iteration} numerical iterations.${gl?'':' WebGL is unavailable; measurements remain readable.'}`;
     el('contact-scope').textContent=packet?'Contact correction covers the known order of this nearly flat packet; it is not a general collision solver.':
-      `Independent endpoint check: ${contact.checkedPanelPairs} triangle pairs; ${contact.crossingPanels.length} strict crossings, ${contact.unorderedContacts.length} unresolved overlaps, ${contact.reversedOrders.length} reversed orders, ${contact.uncheckedOrders.length} uncheckable orders. ${discovering?`Reference discovery found ${run.discovery.referenceTrianglePairs} triangle overlaps and learned ${run.discovery.orders.length} panel relationships. The endpoint rescan finds ${run.discovery.candidateCounts[run.discovery.candidateCounts.length-1].trianglePairs} overlaps. Order remains fixed from the reference.`:correcting?'The solve enforces declared panel order; this separate check judges its endpoint.':'This check reports problems; this example supplies no corrective force.'} It does not certify the path between states.`;
+      `Independent ${pose?'sampled-pose':'endpoint'} check: ${contact.checkedPanelPairs} triangle pairs; ${contact.crossingPanels.length} strict crossings, ${contact.unorderedContacts.length} unresolved overlaps, ${contact.reversedOrders.length} reversed orders, ${contact.uncheckedOrders.length} uncheckable orders. ${history?`The approach starts with ${run.approach[0].orders.length} panel relationships and learns ${run.discovery.orders.length} before correction. Each accepted pose preserves all earlier orders.`:discovering?`Reference discovery found ${run.discovery.referenceTrianglePairs} triangle overlaps and learned ${run.discovery.orders.length} panel relationships. The endpoint rescan finds ${run.discovery.candidateCounts[run.discovery.candidateCounts.length-1].trianglePairs} overlaps. Order remains fixed from the reference.`:correcting?'The solve enforces declared panel order; this separate check judges its endpoint.':'This check reports problems; this example supplies no corrective force.'} It does not certify the path between states.`;
     el('metrics').replaceChildren();
-    for(const [value,label] of [[percent(final.lengthError),'largest edge-length error'],[packet?final.maxOrderViolation.toExponential(2):String(contact.crossingPanels.length),packet?'largest layer-order reversal':'endpoint triangle crossings'],[String(final.components),'connected sheet'],[discovering?String(run.discovery.orders.length):(final.creaseEnergy+final.panelEnergy).toFixed(6),discovering?'panel orders learned from geometry':'total angular energy']]){
+    for(const [value,label] of [[percent(final.lengthError),'largest edge-length error'],[packet?final.maxOrderViolation.toExponential(2):String(contact.crossingPanels.length),packet?'largest layer-order reversal':pose?'sampled triangle crossings':'endpoint triangle crossings'],[String(final.components),'connected sheet'],[discovering?String(pose?pose.orders.length:run.discovery.orders.length):(final.creaseEnergy+final.panelEnergy).toFixed(6),discovering?'panel orders learned from geometry':'total angular energy']]){
       const card=document.createElement('div');card.className='metric';const v=document.createElement('strong'),l=document.createElement('span');v.textContent=value;l.textContent=label;card.append(v,l);el('metrics').append(card);
     }
     const creaseRows=packet?[
@@ -125,7 +141,9 @@ function initialize() {
       ['Panel bending energy',start.panelEnergy.toFixed(6),final.panelEnergy.toFixed(6),'minimum'],
       ['Principal strain · all directions',`${percent(start.minPrincipalStrain)} to ${percent(start.maxPrincipalStrain)}`,`${percent(final.minPrincipalStrain)} to ${percent(final.maxPrincipalStrain)}`,'near zero']];
     el('measurements').replaceChildren();rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td);});el('measurements').append(tr);});
-    el('interpretation').textContent=discovering?
+    el('interpretation').textContent=history?
+      (pose?`The left flap stays at 145° while the right flap closes from 105°. ${pose.index===0?'The middle panel is below both flaps; the flap projections do not yet overlap.':pose.newOrders.length?'This is the first sampled overlap between the flaps. They remain separated: the left flap is below the right, so that relationship is now recorded.':'The flap projections remain separate, so no order between them is invented.'} These poses come from crease angles on the connected sheet.`:
+      `The approach from 145° / 105° to 145° / 121° establishes the left flap below the right without an authored pair list. The correction then preserves that history while both creases prefer 150°. The left picture shows what happens without contact forces. Use Folding state to inspect the earlier approach; the same camera and scale cover all its poses. This is a sampled approach, not automatic motion planning or a collision-free path certificate.`):discovering?
       `Both flaps prefer 150°. Without contact forces they reach that angle but cross (${start.contact.crossingPanels.length} triangle pairs). The 145° / 125° reference pose is separated in 3D while its projections overlap, which gives geometry enough information to order the overlapping panels. The correction consumes no authored pair list. It gives the same result as explicit orders on this pose; the learned relationships stay fixed throughout the solve. Numerical clearance remains ${run.numericalClearance.toExponential(0)} sheet units between unjoined panels.`:correcting?
       `Both flaps prefer 150°. Without contact forces they reach that angle but cross (${start.contact.crossingPanels.length} triangle pairs). Declaring the left flap below the right makes their achieved angles differ from the preferences. Both solves start from the same 145° / 105° pose; the left picture is the unconstrained endpoint. The corrected solve also targets a ${run.numericalClearance.toExponential(0)}-unit numerical clearance between the two flaps. Original material vertices remain joined to the middle panel.`:!packet?
       `${run.title} has a known rigid answer: its panels can stay flat while each crease reaches the listed preference. These positions were found by energy relaxation. Crease ids come from ${run.source}; subdivision adds panel-bending edges without inventing creases. Signed angles are positive for valleys and negative for mountains.`:
@@ -134,7 +152,7 @@ function initialize() {
       `Both creases prefer 170°. They cannot all achieve that while keeping these four panels flat and joined. With panel stiffness ${run.panelStiffness}, the energy balances bending inside panels against missing the crease targets. Compare the two double-fold examples using the same camera.`;
     if(!gl)return;
     buffers.forEach(b=>gl.deleteBuffer(b));buffers=[];views=[start,final].map(upload);
-    const points=[...start.positions,...final.positions];center=[0,1,2].map(k=>(Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);radius=Math.max(1e-8,...points.map(p=>Math.hypot(...subtract(p,center))));draw();
+    const points=history?[...run.approach.flatMap(pose=>pose.state.positions),...run.baseline.positions,...run.states.flatMap(state=>state.positions)]:[...start.positions,...final.positions];center=[0,1,2].map(k=>(Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);radius=Math.max(1e-8,...points.map(p=>Math.hypot(...subtract(p,center))));draw();
   }
   function buffer(values){const b=gl.createBuffer();buffers.push(b);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(values),gl.STATIC_DRAW);return b;}
   function upload(state){
@@ -167,8 +185,8 @@ function initialize() {
   canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
   canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.5,Math.min(3,zoom*Math.exp(-e.deltaY*.001)));draw();},{passive:false});
   canvas.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();if(e.key==='ArrowLeft')yaw-=.1;if(e.key==='ArrowRight')yaw+=.1;if(e.key==='ArrowUp')pitch=Math.min(1.55,pitch+.1);if(e.key==='ArrowDown')pitch=Math.max(-1.55,pitch-.1);draw();});
-  el('example').addEventListener('change',update);el('wire').addEventListener('change',update);
-  el('reset').addEventListener('click',()=>{yaw=-Math.PI/4;pitch=Math.PI/4;zoom=1;draw();});window.addEventListener('resize',draw);update();
+  el('example').addEventListener('change',selectExample);el('approach').addEventListener('change',update);el('wire').addEventListener('change',update);
+  el('reset').addEventListener('click',()=>{yaw=-Math.PI/4;pitch=Math.PI/4;zoom=1;draw();});window.addEventListener('resize',draw);selectExample();
 }
 </script>
 </html>

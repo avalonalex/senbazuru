@@ -810,6 +810,12 @@ learns the overlapping panels' order without an authored pair list. It keeps
 that order fixed while rescanning later shapes; new overlaps must already have
 an order implied by the reference. Its endpoint matches explicit orders on the
 same pose. Ambiguous, crossed or insufficient reference geometry is reported.
+The [first-contact control](notes/first-contact-history.md) adds a recorded
+approach whose flap projections initially do not overlap. Its angle-defined
+poses establish a new order at their first separated overlap; earlier orders
+survive separation and re-contact. The viewer exposes these poses separately
+from numerical correction. A failed observation leaves history unchanged, and
+crossings between samples can still go undetected.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

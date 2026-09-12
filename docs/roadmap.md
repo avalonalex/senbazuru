@@ -15,7 +15,7 @@ closes.
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,139 examples, including material and contact checks |
+| Tests | 1,147 examples, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -106,8 +106,10 @@ work.
   [opposing-flap control](notes/ordered-flap-contact.md) now adds correction
   for declared directional panel orders. [Reference-pose discovery](notes/reference-contact-discovery.md)
   can now learn those relationships where starting projections overlap clearly.
-  Calibrating stiffness, inferring initially unrelated contacts and handling
-  general self-contact remain open.
+  [Sampled approach history](notes/first-contact-history.md) extends those orders
+  when initially unrelated panels first overlap while separated. Calibrating
+  stiffness, continuous collision checking, automatic motion planning and
+  correction of general self-contact remain open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.
@@ -174,8 +176,11 @@ stacking and read the assignment off it. That drops the hardest precondition.
    shared crease identities and diagonal/kite controls. [#154](https://github.com/avalonalex/senbazuru/issues/154)
    adds a first open-flap contact correction using declared directional order.
    [#156](https://github.com/avalonalex/senbazuru/issues/156) learns order from a
-   separated reference and guards later overlaps. Next handle initially unrelated
-   contacts and contact within bent panels before general opening mechanics.
+   separated reference and guards later overlaps.
+   [#158](https://github.com/avalonalex/senbazuru/issues/158) adds newly encountered
+   pairs during a supplied sampled approach, retaining their order afterwards.
+   Next handle crossings between samples and contact within bent panels before
+   general opening mechanics.
    Physical thickness is not a prerequisite for this mechanics model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
