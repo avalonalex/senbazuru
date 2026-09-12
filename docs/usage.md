@@ -215,6 +215,10 @@ For the experimental crease/panel mechanics, run
 `build/fold-material/bending.html`. This compares single/double packets and
 diagonal/kite controls with illustrative stiffnesses. The latter use shared
 crease ids and independent endpoint contact diagnostics, without contact forces.
+The opposing-flap comparison adds corrective forces for declared directional
+panel orders. Its unconstrained endpoint crosses; the corrected endpoint keeps
+the order while missing the preferred crease angles. The numerical clearance
+between unjoined panels is separate from physical thickness.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

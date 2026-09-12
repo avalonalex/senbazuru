@@ -3,6 +3,7 @@
 -- the saved meshes. The unit-square packet assumptions live in FoldContact.
 module BendingGallery (writeBendingStudy) where
 
+import ContactExample
 import Control.Monad (when)
 import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString.Lazy qualified as BL
@@ -46,7 +47,8 @@ writeBendingStudy destination = do
       [ ("Diagonal fold", "examples/diagonal-cp.fold", [0, 0, 0, 0, 60], [(EdgeId 4, 120)], [("base", V2 0.2 0.2), ("flap", V2 0.8 0.8)], [("base", "flap")]),
         ("Kite base", "examples/kite-base.fold", [0, 0, 0, 0, 0, 0, 75, 110], [(EdgeId 6, 150), (EdgeId 7, 165)], [("base", V2 0.6 0.6), ("right flap", V2 0.8 0.1), ("left flap", V2 0.1 0.8)], [("base", "right flap"), ("base", "left flap")])
       ]
-  let document = encode (object ["runs" .= (packets ++ surfaces), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
+  contact <- generateContact
+  let document = encode (object ["runs" .= (packets ++ surfaces ++ [contact]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
   TIO.writeFile (destination </> "bending.html") (T.replace "/*BENDING_DATA*/null" (TE.decodeUtf8 (BL.toStrict document)) template)
@@ -76,13 +78,48 @@ generateSurface (title, sourcePath, startingAngles, targetDegrees, tags, orders)
   (refined, hinges) <- checked (buildSurfaceHinges defaultBending 2 (poseSurface pose) targets)
   let mesh = Paper.refinedMesh refined
   result <- checked (relaxHinges defaultSettings hinges mesh)
-  features <- checked (Paper.surfaceFeatures (poseSurface pose))
-  let visible = S.fromList [creaseId edge | (edge, _) <- features]
-      lines' = [segment | (eid, segment) <- Paper.refinedEdges refined, S.member eid visible]
-  (axis, requirements) <- maybe (die "surface bending example needs explicit panel order") pure (Paper.surfaceLayerRequirements (poseSurface pose))
-  states <- mapM (snapshot hinges (SurfaceCase (Paper.refinedPanels refined) lines' axis requirements)) (checkpoints result)
+  which <- surfaceCase (poseSurface pose) refined
+  states <- mapM (snapshot hinges which) (checkpoints result)
   putStrLn (title ++ ": equilibrium checks " ++ show (converged result))
   pure (object ["kind" .= ("surface" :: String), "title" .= title, "source" .= sourcePath, "converged" .= converged result, "panelStiffness" .= panelStiffness defaultBending, "creaseStiffness" .= creaseStiffness defaultBending, "states" .= states])
+
+-- Both results use identical initial material and crease preferences. The
+-- baseline is the unconstrained ENDPOINT, not the corrected run's first iterate.
+generateContact :: IO Value
+generateContact = do
+  fixture <- checked (opposingFlaps 1)
+  let refined = exampleRefined fixture
+      mesh = Paper.refinedMesh refined
+      hinges = exampleHinges fixture
+  free <- checked (relaxHinges defaultSettings hinges mesh)
+  corrected <- checked (relaxSurfaceContact defaultSettings hinges (exampleContact fixture) mesh)
+  which <- surfaceCase (exampleSurface fixture) refined
+  baseline <- case reverse (checkpoints free) of
+    point : _ -> snapshot hinges which point
+    [] -> die "contact comparison needs an unconstrained endpoint"
+  states <- mapM (snapshot hinges which) (checkpoints corrected)
+  putStrLn ("Opposing flaps: free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
+  pure
+    ( object
+        [ "kind" .= ("contact" :: String),
+          "title" .= ("Opposing flaps · contact correction" :: String),
+          "converged" .= converged corrected,
+          "baselineConverged" .= converged free,
+          "baseline" .= baseline,
+          "numericalClearance" .= exampleClearance fixture,
+          "panelStiffness" .= panelStiffness defaultBending,
+          "creaseStiffness" .= creaseStiffness defaultBending,
+          "states" .= states
+        ]
+    )
+
+surfaceCase :: Paper.Surface V2 -> Paper.RefinedSurface -> IO SnapshotCase
+surfaceCase surface refined = do
+  features <- checked (Paper.surfaceFeatures surface)
+  let visible = S.fromList [creaseId edge | (edge, _) <- features]
+      segments = [segment | (eid, segment) <- Paper.refinedEdges refined, S.member eid visible]
+  (axis, requirements) <- maybe (die "surface bending example needs explicit panel order") pure (Paper.surfaceLayerRequirements surface)
+  pure (SurfaceCase (Paper.refinedPanels refined) segments axis requirements)
 
 data SnapshotCase = Packet FoldCase | SurfaceCase [FaceId] [(Int, Int)] V3 [(FaceId, FaceId)]
 

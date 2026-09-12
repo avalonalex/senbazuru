@@ -15,7 +15,7 @@ closes.
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,112 examples, including material and contact checks |
+| Tests | 1,125 examples, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -102,8 +102,10 @@ work.
   preferences and panel bending for the original packets. The
   [shared-crease adapter](notes/crease-identity-through-refinement.md) extends
   this to diagonal and kite equilibria, with source ids preserved through
-  refinement and independent triangle contact diagnostics. Calibrating
-  stiffness and adding general contact forces remain open.
+  refinement and independent triangle contact diagnostics. The
+  [opposing-flap control](notes/ordered-flap-contact.md) now adds correction
+  for declared directional panel orders. Calibrating stiffness, discovering
+  contacts and handling general self-contact remain open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.
@@ -167,8 +169,10 @@ stacking and read the assignment off it. That drops the hardest precondition.
    on graphics copies and refreshed README examples. The first
    crease/panel energy experiment is [#150](https://github.com/avalonalex/senbazuru/issues/150);
    [#152](https://github.com/avalonalex/senbazuru/issues/152) now extends it to
-   shared crease identities and diagonal/kite controls. Next add contact
-   correction for open panels before general opening mechanics. Physical thickness
+   shared crease identities and diagonal/kite controls. [#154](https://github.com/avalonalex/senbazuru/issues/154)
+   adds a first open-flap contact correction using declared directional order.
+   Next broaden contact discovery and correction beyond supplied orders before
+   general opening mechanics. Physical thickness
    is not a prerequisite for this mechanics model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
