@@ -209,7 +209,12 @@ gallery. Its small numerical clearance applies only to unjoined source panels.
 without a pair list. `ContactDiscovery` infers order from a separated reference
 and guards later overlaps against that fixed relation; `relaxDiscoveredContact`
 uses it in the same numerical solve. Ambiguous references and new unrelated
-pairs are refused. The independent triangle check still judges the endpoint.
+pairs are refused during correction. `observeContactPose` can extend that
+history at a supplied approach pose after checking old orders, new encounters
+and independent triangle contact. It records additions transactionally; solver
+trials cannot change them. `ContactExample.opposingApproach` generates the
+angle-defined control. Neither API certifies motion between samples. The
+independent triangle check still judges the endpoint.
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

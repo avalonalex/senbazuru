@@ -62,3 +62,7 @@ iterates. The unchanged `10⁻⁶` numerical clearance between unjoined panels i
 still separate from physical thickness. The [correction note](ordered-flap-contact.md)
 explains that margin and the solver. This increment is tracked in
 [#156](https://github.com/avalonalex/senbazuru/issues/156).
+
+[Sampled approach history](first-contact-history.md) extends this API in #158:
+a separately accepted pose can establish a previously absent relationship.
+Numerical correction still uses a frozen history.

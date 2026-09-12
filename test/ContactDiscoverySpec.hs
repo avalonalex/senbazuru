@@ -3,12 +3,15 @@ module ContactDiscoverySpec (spec) where
 import ContactDiscovery
 import ContactExample
 import Control.Monad (forM_)
+import Data.Either (isLeft)
+import Data.IntMap.Strict qualified as IM
 import Data.List (sort)
+import FoldBending (Hinge (..), HingeRole (..), hingeAngle)
 import FoldContact (ContactRow (..), contactTolerance)
 import FoldMaterial (componentCount)
 import FoldRelaxation
 import PanelContact (checkTriangleContact, contactPassed)
-import Senbazuru.Fold.Types (FaceId (..))
+import Senbazuru.Fold.Types (EdgeId (..), FaceId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -127,6 +130,122 @@ spec = describe "reference-pose contact discovery" $ do
     reference <- right (discoverReference (exampleClearance fixture) axis (refinedPanels refined) mesh)
     result <- right (relaxDiscoveredContact defaultSettings {iterationLimit = 1} (exampleHinges fixture) reference mesh)
     converged result `shouldBe` False
+
+  describe "sampled first-contact history" $ do
+    it "learns the previously absent flap order during an angle-defined approach" $ do
+      poses <- right (opposingApproach 1)
+      map approachAngles poses `shouldBe` [(145, 105), (145, 110), (145, 115), (145, 120), (145, 121)]
+      map (length . referenceOrders . approachHistory) poses `shouldBe` [2, 2, 2, 2, 3]
+      firstPose <- case poses of p : _ -> pure p; [] -> fail "no approach"
+      lastPose <- case reverse poses of p : _ -> pure p; [] -> fail "no approach"
+      let initial = refinedMesh (exampleRefined (approachExample firstPose))
+          fixture = approachExample lastPose
+          refined = exampleRefined fixture
+          mesh = refinedMesh refined
+          learned = approachHistory lastPose
+      referenceOrders (approachHistory firstPose) `shouldNotContain` [(FaceId 0, FaceId 2)]
+      map observationNewOrders (drop 1 (referenceObservations learned)) `shouldBe` [[], [], [], [(FaceId 0, FaceId 2)]]
+      map observationNumber (referenceObservations learned) `shouldBe` [0 .. 4]
+      forM_ poses $ \pose -> do
+        let current = refinedMesh (exampleRefined (approachExample pose))
+        triangles current `shouldBe` triangles initial
+        map sampleMaterial (samples current) `shouldBe` map sampleMaterial (samples initial)
+        componentCount current `shouldBe` 1
+        maxLengthError current `shouldSatisfy` (< 1e-12)
+        let vertices = IM.fromList (zip [0 ..] (samples current))
+            (leftAngle, rightAngle) = approachAngles pose
+        forM_ (exampleHinges (approachExample pose)) $ \hinge -> do
+          (angle, _) <- right (hingeAngle hinge vertices)
+          let expected = case hingeRole hinge of
+                SurfaceCrease (EdgeId 8) -> leftAngle
+                SurfaceCrease (EdgeId 9) -> rightAngle
+                _ -> 0
+          abs (angle * 180 / pi - expected) `shouldSatisfy` (< 1e-10)
+        report <- right (checkTriangleContact axis (referenceOrders (approachHistory pose)) (refinedPanels refined) current)
+        contactPassed report `shouldBe` True
+      corrected <- right (relaxDiscoveredContact defaultSettings (exampleHinges fixture) learned mesh)
+      authored <- right (relaxSurfaceContact defaultSettings (exampleHinges fixture) (exampleContact fixture) mesh)
+      final <- finalMesh corrected
+      manual <- finalMesh authored
+      converged corrected `shouldBe` True
+      final `shouldBe` manual
+      report <- right (checkTriangleContact axis (referenceOrders learned) (refinedPanels refined) final)
+      contactPassed report `shouldBe` True
+      maxLengthError final `shouldSatisfy` (<= lengthTolerance defaultSettings)
+      forM_ (checkpoints corrected) $ \point -> do
+        triangles (checkpointMesh point) `shouldBe` triangles initial
+        map sampleMaterial (samples (checkpointMesh point)) `shouldBe` map sampleMaterial (samples initial)
+        componentCount (checkpointMesh point) `shouldBe` 1
+
+    it "remembers the first side through separation and refuses reversed re-contact" $ do
+      let apart = makeMesh (triangleAt 0 0 ++ triangleAt 2 1)
+          together = mapIndexed (\i p -> if i >= 3 then p ^-^ V3 1.5 0 0 else p) apart
+          reversed = mapIndexed (\i p -> if i >= 3 then p ^-^ V3 0 0 2 else p) together
+      reference <- right (discoverReference 0 axis owners apart)
+      learned <- right (observeContactPose reference together)
+      withdrawn <- right (observeContactPose learned apart)
+      referenceOrders withdrawn `shouldBe` [(FaceId 0, FaceId 1)]
+      length (referenceObservations withdrawn) `shouldBe` 3
+      observeContactPose withdrawn reversed `shouldSatisfy` isLeft
+      again <- right (observeContactPose withdrawn together)
+      map observationNewOrders (referenceObservations again) `shouldBe` [[], [(FaceId 0, FaceId 1)], [], []]
+      referenceOrders reference `shouldBe` []
+      length (referenceObservations withdrawn) `shouldBe` 3
+      -- A failed observation cannot change the frozen solver constraints either.
+      rows <- right (discoveredContacts withdrawn reversed)
+      minimum (0 : map contactGap rows) `shouldSatisfy` (< (-0.9))
+
+    it "learns the opposite first-encounter side from geometry" $ do
+      let apart = makeMesh (triangleAt 0 0 ++ triangleAt 2 (-1))
+          together = mapIndexed (\i p -> if i >= 3 then p ^-^ V3 1.5 0 0 else p) apart
+      reference <- right (discoverReference 0 axis owners apart)
+      learned <- right (observeContactPose reference together)
+      referenceOrders learned `shouldBe` [(FaceId 1, FaceId 0)]
+
+    it "refuses a crossed or ambiguous first encounter without recording it" $ do
+      let apart = mapIndexed (\i p -> if i >= 3 then p ^+^ V3 5 0 0 else p) separated
+          crossed = mapIndexed (\i (V3 x y z) -> V3 x y (if i == 4 then -0.2 else z)) separated
+          coplanar = mapIndexed (\_ (V3 x y _) -> V3 x y 0) separated
+      reference <- right (discoverReference 0 axis owners apart)
+      observeContactPose reference crossed `shouldBe` Left (CrossedReferencePanels (FaceId 0) (FaceId 1))
+      observeContactPose reference coplanar `shouldBe` Left (AmbiguousReferenceOrder (FaceId 0) (FaceId 1))
+      referenceOrders reference `shouldBe` []
+      length (referenceObservations reference) `shouldBe` 1
+      learned <- right (observeContactPose reference separated)
+      length (referenceObservations learned) `shouldBe` 2
+
+    it "refuses a new encounter with insufficient numerical clearance" $ do
+      let apart = makeMesh (triangleAt 0 0 ++ triangleAt 2 1e-5)
+          close = mapIndexed (\i p -> if i >= 3 then p ^-^ V3 1.5 0 0 else p) apart
+      reference <- right (discoverReference 1e-4 axis owners apart)
+      observeContactPose reference close `shouldSatisfy` isLeft
+      referenceOrders reference `shouldBe` []
+
+    it "refuses uncheckable first encounters and changed original-sheet coordinates" $ do
+      let upright = makeMesh [V3 0 0 0, V3 0 1 0, V3 0 0 1, V3 0 0 2, V3 0 1 2, V3 0 0 3]
+          apart = mapIndexed (\i p -> if i >= 3 then p ^+^ V3 2 0 0 else p) upright
+      reference <- right (discoverReference 0 axis owners apart)
+      observeContactPose reference upright `shouldBe` Left (UncheckableReferenceOrder (FaceId 0) (FaceId 1))
+      let remapped = apart {samples = [s {sampleMaterial = V2 9 9} | s <- samples apart]}
+      observeContactPose reference remapped `shouldBe` Left (DiscoveryGeometry Contact.ChangedContactMaterial)
+
+    it "does not overwrite a transitive order when the pair first overlaps" $ do
+      let initial = (makeMesh (triangleAt 0 0 ++ triangleAt 0.7 1 ++ triangleAt 1.4 2)) {triangles = [(0, 1, 2), (3, 4, 5), (6, 7, 8)]}
+          together = mapIndexed (\i p -> if i >= 6 then p ^-^ V3 1.3 0 0 else p) initial
+      reference <- right (discoverReference 0 axis [FaceId 0, FaceId 1, FaceId 2] initial)
+      learned <- right (observeContactPose reference together)
+      referenceOrders learned `shouldBe` referenceOrders reference
+      map observationNewOrders (drop 1 (referenceObservations learned)) `shouldBe` [[]]
+
+    it "checks material identity and independent triangle crossings before accepting a pose" $ do
+      reference <- right (discoverReference 0 axis owners separated)
+      observeContactPose reference separated {triangles = reverse (triangles separated)} `shouldBe` Left (DiscoveryGeometry Contact.ChangedContactMaterial)
+      -- Same source panel: directional discovery has no partner, but the
+      -- independent observation check must still reject its self-crossing.
+      let crossed = mapIndexed (\i (V3 x y z) -> V3 x y (if i == 4 then -0.2 else z)) separated
+          samePanel = [FaceId 0, FaceId 0]
+      one <- right (discoverReference 0 axis samePanel separated)
+      observeContactPose one crossed `shouldSatisfy` isLeft
 
 axis :: V3
 axis = V3 0 0 1

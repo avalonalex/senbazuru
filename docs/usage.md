@@ -221,6 +221,11 @@ the order while missing the preferred crease angles. The numerical clearance
 between unjoined panels is separate from physical thickness. The discovered-contact
 variant learns those orders from a separated reference pose and rescans later
 shapes; a new pair whose order the reference cannot establish is refused.
+**Opposing flaps · first contact** adds a **Folding state** selector for a
+supplied approach from 145° / 105° to 145° / 121°. It learns the previously absent
+flap relationship at the first sampled overlap, then freezes that history for
+correction. Failed observations add no relationships. This does not detect
+crossings between samples or plan the approach automatically.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

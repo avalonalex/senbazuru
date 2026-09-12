@@ -49,7 +49,7 @@ writeBendingStudy destination = do
       [ ("Diagonal fold", "examples/diagonal-cp.fold", [0, 0, 0, 0, 60], [(EdgeId 4, 120)], [("base", V2 0.2 0.2), ("flap", V2 0.8 0.8)], [("base", "flap")]),
         ("Kite base", "examples/kite-base.fold", [0, 0, 0, 0, 0, 0, 75, 110], [(EdgeId 6, 150), (EdgeId 7, 165)], [("base", V2 0.6 0.6), ("right flap", V2 0.8 0.1), ("left flap", V2 0.1 0.8)], [("base", "right flap"), ("base", "left flap")])
       ]
-  contacts <- mapM generateContact [False, True]
+  contacts <- mapM generateContact [DeclaredStart, ReferenceStart, ApproachStart]
   let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
@@ -87,15 +87,24 @@ generateSurface (title, sourcePath, startingAngles, targetDegrees, tags, orders)
 
 -- Both results use identical initial material and crease preferences. The
 -- baseline is the unconstrained ENDPOINT, not the corrected run's first iterate.
-generateContact :: Bool -> IO Value
-generateContact discover = do
-  fixture <- checked (if discover then opposingFlapsAt 1 145 125 else opposingFlaps 1)
+data ContactStart = DeclaredStart | ReferenceStart | ApproachStart
+  deriving stock (Eq)
+
+generateContact :: ContactStart -> IO Value
+generateContact mode = do
+  approach <- if mode == ApproachStart then checked (opposingApproach 1) else pure []
+  fixture <- case reverse approach of
+    pose : _ -> pure (approachExample pose)
+    [] -> checked (if mode == ReferenceStart then opposingFlapsAt 1 145 125 else opposingFlaps 1)
   let refined = exampleRefined fixture
       mesh = Paper.refinedMesh refined
       hinges = exampleHinges fixture
   free <- checked (relaxHinges defaultSettings hinges mesh)
   let axis = V3 0 0 1
-  reference <- if discover then Just <$> checked (Discovery.discoverReference (exampleClearance fixture) axis (Paper.refinedPanels refined) mesh) else pure Nothing
+  reference <- case reverse approach of
+    pose : _ -> pure (Just (approachHistory pose))
+    [] -> if mode == ReferenceStart then Just <$> checked (Discovery.discoverReference (exampleClearance fixture) axis (Paper.refinedPanels refined) mesh) else pure Nothing
+  approachStates <- mapM approachSnapshot approach
   corrected <- checked $ case reference of
     Nothing -> relaxSurfaceContact defaultSettings hinges (exampleContact fixture) mesh
     Just learned -> relaxDiscoveredContact defaultSettings hinges learned mesh
@@ -118,11 +127,16 @@ generateContact discover = do
           )
           (checkpoints corrected)
       pure (Just (object ["referenceTrianglePairs" .= length (Discovery.referenceCandidates learned), "orders" .= [[unFaceId a, unFaceId b] | (a, b) <- Discovery.referenceOrders learned], "candidateCounts" .= counts]))
-  putStrLn ((if discover then "Discovered opposing flaps" else "Opposing flaps") ++ ": free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
+  let (kind, title) = case mode of
+        DeclaredStart -> ("contact", "Opposing flaps · contact correction")
+        ReferenceStart -> ("discovery", "Opposing flaps · discovered contact")
+        ApproachStart -> ("history", "Opposing flaps · first contact")
+  putStrLn (title ++ ": free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
   pure
     ( object
-        [ "kind" .= (if discover then "discovery" else "contact" :: String),
-          "title" .= (if discover then "Opposing flaps · discovered contact" else "Opposing flaps · contact correction" :: String),
+        [ "kind" .= (kind :: String),
+          "title" .= title,
+          "approach" .= approachStates,
           "discovery" .= discovery,
           "converged" .= converged corrected,
           "baselineConverged" .= converged free,
@@ -133,6 +147,27 @@ generateContact discover = do
           "states" .= states
         ]
     )
+
+-- Approach frames are angle-defined observations, not relaxation iterates.
+-- Each snapshot carries only the orders known at that point in the sequence.
+approachSnapshot :: ApproachPose -> IO Value
+approachSnapshot pose = do
+  let fixture = approachExample pose
+      learned = approachHistory pose
+      refined = exampleRefined fixture
+      mesh = Paper.refinedMesh refined
+      axis = V3 0 0 1
+      orders = Discovery.referenceOrders learned
+      (leftAngle, rightAngle) = approachAngles pose
+  observation <- case reverse (Discovery.referenceObservations learned) of
+    item : _ -> pure item
+    [] -> die "approach pose needs a contact observation"
+  surface <- checked (Paper.withLayerRequirements axis orders (exampleSurface fixture))
+  which <- surfaceCase surface refined
+  state <- snapshot (exampleHinges fixture) which (Checkpoint 0 mesh (maxLengthError mesh))
+  let pairs values = [[unFaceId a, unFaceId b] | (a, b) <- values]
+      gap candidate = object ["triangles" .= Contact.candidateTriangles candidate, "panels" .= pairs [Contact.candidatePanels candidate], "gapRange" .= Contact.candidateGapRange candidate]
+  pure (object ["index" .= Discovery.observationNumber observation, "leftAngle" .= leftAngle, "rightAngle" .= rightAngle, "orders" .= pairs orders, "newOrders" .= pairs (Discovery.observationNewOrders observation), "overlaps" .= map gap (Discovery.observationCandidates observation), "state" .= state])
 
 surfaceCase :: Paper.Surface V2 -> Paper.RefinedSurface -> IO SnapshotCase
 surfaceCase surface refined = do

@@ -45,9 +45,10 @@ stack run senbazuru-material-study -- --bending build/fold-material
 Open `build/fold-material/bending.html`, or
 [the served page](http://127.0.0.1:8000/bending.html) with the server above.
 It compares shapes from a shared camera 45° above the side. Choose the single fold, either double-fold stiffness,
-diagonal/kite examples, or opposing flaps with authored or discovered contact. The last
-comparison shows unconstrained and corrected endpoints from the same starting
-pose; its initial pose remains in the downloaded JSON.
+diagonal/kite examples, or opposing flaps with authored or discovered contact.
+The contact comparisons show unconstrained and corrected endpoints from the same
+starting pose. **Opposing flaps · first contact** also has a **Folding state**
+selector for its angle-defined approach, at the same camera and scale.
 The page works offline; `bending.json` contains the indexed meshes, original
 material coordinates, signed achieved/rest angles and numerical measurements.
 
@@ -91,8 +92,17 @@ implied by the reference. Ambiguous or crossed references are errors. The
 correction matches explicit orders on that same pose and passes all endpoint
 checks. See the [discovery note](../../docs/notes/reference-contact-discovery.md).
 
-Physical thickness, paper calibration, contact-history inference for initially
-unrelated panels, and correction within a source panel remain open. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
+**Opposing flaps · first contact** starts at 145° / 105° with two known orders:
+the middle panel below both flaps. Closing the right crease through 110°, 115°,
+120° and 121° establishes the left flap below the right at the first sampled
+projected overlap. Each accepted pose preserves prior orders and passes an
+independent triangle check. The JSON includes the observation history; the
+solver then uses its final relationships without changing them. Re-contact on
+the opposite side is refused. See the [history note](../../docs/notes/first-contact-history.md).
+
+Physical thickness, paper calibration, automatic approach selection, continuous
+collision checking and correction within a source panel remain open. A crossing
+and separation between sampled poses can still go undetected. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).
 
 ## Folding states
