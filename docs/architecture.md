@@ -294,7 +294,7 @@ the study. `Render.Projected` uses actual depth to order separated panels in
 each view, then reuses `Origami.Visible` for visible regions and edges; it
 knows nothing about bird petals or the study manifest.
 
-The first stage of [#146](https://github.com/avalonalex/senbazuru/issues/146)
+The shared representation introduced by [#146](https://github.com/avalonalex/senbazuru/issues/146)
 is `Origami.Surface`. It stores material identity, current positions, crease
 topology and optional physical thickness. Folding provides `Surface V2` with a
 known original-sheet map; a standalone folded file can provide only

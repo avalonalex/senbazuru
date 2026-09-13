@@ -194,7 +194,7 @@ way.
 
 ## Roadmap
 
-Roughly in order. Each item is an issue tagged
+One completed foundation and three open goals. Each item is an issue tagged
 [`roadmap`](https://github.com/avalonalex/senbazuru/labels/roadmap), where the
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail, and the smaller pieces in between are the rest of the
@@ -202,13 +202,13 @@ issues are the detail, and the smaller pieces in between are the rest of the
 [docs/roadmap.md](docs/roadmap.md) is the state of play behind this list,
 with every open issue tiered by how hard it is.
 
-1. **[One connected paper surface for folding and rendering.](https://github.com/avalonalex/senbazuru/issues/146)**
+1. **Complete: [one connected paper surface for folding and rendering.](https://github.com/avalonalex/senbazuru/issues/146)**
    The shared surface and study refinement are now in the library, with SVG
    and glTF entry points. The glTF replacement now preserves crease positions
    and material identities, with visible and complete scenes. Physical thickness
-   remains optional; bending resistance and crease preferences are later work.
-   This is an alpha: obsolete internal paths can be replaced as verified cases
-   pass through their replacements.
+   remains optional metadata. The study also has bending resistance, crease
+   preferences and contact correction; general folding motion and rendering
+   bent panels remain separate work.
    → [connected-paper-surface](docs/notes/connected-paper-surface.md)
 2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output came first, since nothing else can be built without it, and the
@@ -221,8 +221,11 @@ with every open issue tiered by how hard it is.
    [round-trips](docs/notes/round-trips.md)
 3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
    Specific square/waterbomb collapses, fish folds and bird petals already have
-   checked intermediate states. Generalise those constructions to authored
-   flap and wing motion, with layers staying out of each other. Follow with
+   checked intermediate states. Next, connect the study's fixed-hinge motion
+   check to [one authored flap rotation](https://github.com/avalonalex/senbazuru/issues/54),
+   checking [contact throughout the move](https://github.com/avalonalex/senbazuru/issues/61)
+   before producing SVG steps and glTF from the same surface. Motion where
+   several creases must move together remains open. Follow with
    [controlled body opening](https://github.com/avalonalex/senbazuru/issues/106),
    adding panel bending where the rigid model cannot reach the intended form.
    A mesh supplies the geometry; it does not choose the motion by itself.
