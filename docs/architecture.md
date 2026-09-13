@@ -220,6 +220,13 @@ can also support an unjoined stack boundary, while the same plane separation
 check still covers the turning interior. Sliding contact remains unsupported.
 See [the operation note](notes/checked-flap-operation.md).
 
+`CraneWing` adds four crease segments to the existing crane fixture, chooses
+one wing and checks its 90-degree departure. `CraneGallery` exports four SVG,
+FOLD and glTF illustrations. The study owns the fixture selection and crease
+recipe. `Flap` and `HingeSweep` own the general rule that a hinge may rest on
+another layer while its moving interior separates to one side; the departure
+order is checked against the supplied starting order.
+
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the
 experimental formulas and solvers remain outside the library. It generates

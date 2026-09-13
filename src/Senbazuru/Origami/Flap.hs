@@ -41,6 +41,11 @@
 -- can be a contact witness, contradictory order or an unresolved interval,
 -- never a claim to have found the earliest impact. Stale face orders are
 -- not used to exempt untested pairs from contact checks.
+-- A hinge may rest on an initially coplanar layer's interior while the moving
+-- paper lifts strictly to one side. Coplanar pairs, including pairs meeting
+-- only at an edge, are offered to HingeSweep's resting-plane check; this names
+-- candidates, not accepted contact. Any resulting departure orders must agree
+-- with the supplied order. See docs/notes/a-wing-resting-on-paper.md.
 module Senbazuru.Origami.Flap
   ( FlapMotion,
     CheckedFlap,
@@ -243,6 +248,7 @@ connected links visited (face : rest)
 
 checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap
 checkFlap settings motion = do
+  faces <- first FlapGeometry (frameFaces (foldedFrame (initialFold motion)))
   let ordered a b = any (\o -> (orderFace o == a && orderRelativeTo o == b) || (orderFace o == b && orderRelativeTo o == a)) (rigidOrders motion)
       contacts =
         [ (i, j)
@@ -251,7 +257,17 @@ checkFlap settings motion = do
             i < j,
             ordered a b
         ]
-  result <- first FlapSweep (checkSweepWithRigidContacts settings contacts (checkedPath motion))
+      resting =
+        [ (i, j)
+          | (i, a) <- zip [0 ..] (triangleOwners motion),
+            (j, b) <- zip [0 ..] (triangleOwners motion),
+            i < j,
+            (a `elem` movingFaces motion) /= (b `elem` movingFaces motion),
+            Just f <- [find ((== a) . faceId) faces],
+            Just g <- [find ((== b) . faceId) faces],
+            coplanarFaces (checkScale motion) f g
+        ]
+  result <- first FlapSweep (checkSweepWithLayerContacts settings contacts resting (checkedPath motion))
   let owners = IM.fromList (zip [0 ..] (triangleOwners motion))
       sourcePairs pairs = sort (nub [(min a b, max a b) | (i, j) <- pairs, Just a <- [IM.lookup i owners], Just b <- [IM.lookup j owners]])
   case sweepOutcome result of

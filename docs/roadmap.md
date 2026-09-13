@@ -14,7 +14,8 @@ a complete checked blintz sequence in [#183](https://github.com/avalonalex/senba
 the continuously checked first bird petal in [#185](https://github.com/avalonalex/senbazuru/issues/185),
 the second petal and final press in [#187](https://github.com/avalonalex/senbazuru/issues/187),
 the initial square-base collapse in [#189](https://github.com/avalonalex/senbazuru/issues/189),
-and the checked helmet sequence in [#191](https://github.com/avalonalex/senbazuru/issues/191). The
+the checked helmet sequence in [#191](https://github.com/avalonalex/senbazuru/issues/191),
+and the checked crane wing in [#193](https://github.com/avalonalex/senbazuru/issues/193). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -24,10 +25,10 @@ closes.
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
-| Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
+| Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,322 examples pass, including complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
-| Traditional crane fixture | 72 faces |
+| Tests | 1,329 examples pass, including a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
 The first roadmap is done: fold arrows, the flat-foldability checker, filled
@@ -262,8 +263,15 @@ checked coupled angles.
    adds a third checked join and completes the route from a prepared open sheet.
    The helmet route in #191 now selects several aligned segments for one
    physical hinge, then turns paired material creases on touching layers.
-   **Next: exercise the same operation on a crane wing**, selecting its moving
-   stack from the real folded fixture and recording any concrete blockers.
+   The crane-wing recipe in #193 adds a crease to the real fixture and checks
+   a 90-degree departure while its hinge rests across the other wing. The
+   opposite direction is refused by the starting order. Its selected stacking
+   keeps the tail between the body layers on both sides.
+   **Next: study a curved crane wing on the shared mesh** in
+   [#195](https://github.com/avalonalex/senbazuru/issues/195), measuring bending
+   within the panels and the body freedom needed for a compatible shape.
+   Returning the rigid wing onto its resting surface and a joined sequence
+   lowering both wings remain useful motion extensions.
    Sliding contact and general coupled-angle solving remain later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.

@@ -61,6 +61,12 @@ four complete corner folds and a reopening into the [blintz sequence](../../docs
 It writes `blintz.html` and `checked-blintz/`, sharing the checked-flap viewer's
 local Three.js installation.
 
+`stack run senbazuru-material-study -- --crane build/fold-material` lowers
+one wing of the existing crane fixture through a checked 90-degree turn.
+It writes four SVG/FOLD/GLB states and contact measurements to `checked-crane/`,
+plus `crane.html`. See [the crane instructions](../../docs/usage.md#checked-crane-wing-movement)
+for the supported contact and remaining limits.
+
 `stack run senbazuru-material-study -- --helmet build/fold-material` checks
 three turns to the [helmet base](../../docs/usage.md#checked-helmet-sequence),
 including paired creases on touching layers. It writes seven SVG/FOLD/glTF

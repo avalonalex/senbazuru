@@ -6,6 +6,7 @@ import BasicBaseGallery (writeBasicBases)
 import BendingGallery (writeBendingStudy)
 import BlintzGallery (writeBlintzGallery)
 import Control.Monad (unless)
+import CraneGallery (writeCraneGallery)
 import Data.Aeson (Value, eitherDecode, encode, object, (.=))
 import Data.Aeson.Key qualified as Key
 import Data.ByteString.Lazy qualified as BL
@@ -55,10 +56,11 @@ main = do
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
     ["--petal", destination] -> writePetalGallery destination
+    ["--crane", destination] -> writeCraneGallery destination
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -83,6 +85,7 @@ generate destination = do
   writeBendingStudy destination
   writeFlapGallery destination
   writeBlintzGallery destination
+  writeCraneGallery destination
   writeHelmetGallery destination
   writePetalGallery destination
   BL.writeFile (destination </> "cases.json") (encode catalog)

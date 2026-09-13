@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A checked crane wing · Senbazuru</title>
+<style>
+  :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; color: #292d28; background: #f4efe7; }
+  body { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 12px 0; line-height: 1.15; }
+  h2 { font-size: 1.35rem; }
+  p { max-width: 900px; }
+  a { color: #385e50; text-underline-offset: 3px; }
+  small { letter-spacing: .12em; }
+  section { background: #fffaf2; border: 1px solid #d8cebd; border-radius: 8px; padding: 24px; margin: 28px 0; }
+  img { width: 100%; height: auto; display: block; }
+  ol { columns: 2; gap: 40px; padding-left: 24px; }
+  li { break-inside: avoid; margin-bottom: 6px; }
+  iframe { width: 100%; height: 760px; border: 0; }
+  @media (max-width: 650px) { ol { columns: 1; } section { padding: 12px; } }
+</style>
+<header>
+  <small>SENBAZURU · CHECKED WING MOVEMENT</small>
+  <h1>Give one wing room to open</h1>
+  <p>Start with the traditional folded crane. Mark a crease across one wing,
+    then lower it through 90°. The other wing, neck, tail and body stay still.</p>
+  <p>The crease keeps resting against the other wing while the moving paper
+    lifts away. Every angle along the turn is checked for contact, and the
+    starting layer order decides which direction is allowed.</p>
+  <a href="index.html">All fold examples</a> · <a href="petal.html">Bird base</a> · <a href="helmet.html">Helmet base</a>
+</header>
+<section>
+  <h2>One wing, four views</h2>
+  <p>The new crease sits a quarter of the original sheet’s side from the wing
+    tip. It crosses four material faces, folded onto two layers. Both layers
+    turn together; the paper stays connected along the whole crease.</p>
+  <p>The tail starts tucked between the body’s layers on both sides. This
+    selects the traditional arrangement from the fixture’s five possible
+    layer orders; choosing the first valid order leaves its root exposed.</p>
+  <p><strong>Scope of this example:</strong> spreading the wings like real
+    paper, with curved wings and an opening body, is out of scope here.
+    This checks a rigid wing rotating at one crease. Realistic spreading needs
+    <a href="https://github.com/avalonalex/senbazuru/issues/195">further material study</a>
+    of bending and contact on the connected paper mesh.</p>
+  <img src="checked-crane/sequence.svg" alt="The folded crane with one wing lowered through 0, 30, 60 and 90 degrees">
+  <ol><!--STATES--></ol>
+  <p><a href="checked-crane/sequence.svg">Full SVG page</a> ·
+    <a href="checked-crane/sequence.fold">FOLD sequence</a></p>
+</section>
+<section>
+  <h2>Inspect the open wing</h2>
+  <p>Choose a folding state and rotate the crane to inspect the hinge.
+    Complete paper shows every connected layer; the default visible scene
+    removes buried coplanar regions without moving any paper.</p>
+  <iframe src="checked-crane/index.html?model=state-3.glb&amp;angle=other-corner&amp;side=below" title="Checked crane wing in 3D" loading="lazy"></iframe>
+  <p><a href="checked-crane/index.html?model=state-3.glb&amp;angle=other-corner&amp;side=below">Open the 3D viewer</a> ·
+    <a href="checked-crane/checks.json">Angles, layer orders and measurements</a></p>
+</section>
+<section>
+  <h2>Why the direction matters</h2>
+  <p>Turning the same wing the other way would depart through the layer it
+    rests on. That control is refused because its departure contradicts the
+    starting order. A crease gives a line to rotate around; the layers tell
+    us which side the wing can move into.</p>
+  <p>The check covers the entire prescribed turn using floating-point interval
+    bounds and numerical guards. The four illustrations are selected from
+    that checked route. Separate measurements verify material lengths,
+    shared vertices, achieved crease angles, contact and the fixed body.</p>
+</section>
+<p>This is one rigid movement of zero-thickness paper on the existing crane
+  fixture. It does not check the preceding construction of the crane, lower
+  its second wing, or inflate its body. The wing is still a flat panel rotating
+  at a sharp crease. The curved wings and opened body of a finished crane need
+  bending within the paper and coordinated movement, with their own material
+  and contact checks.</p>
+</html>

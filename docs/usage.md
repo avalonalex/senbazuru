@@ -317,6 +317,41 @@ poses and orders into the next move. This remains an explicit fixture recipe
 with floating-point numerical guards, not automatic route planning or a
 solver for creases on different axes. See [the hinge note](notes/aligned-crease-hinges.md).
 
+### Checked crane-wing movement
+
+The crane study adds a crease across the wing containing the original sheet's
+`(0,1)` corner, then lowers its two touching layers through 90°. The crease
+lies a quarter sheet-side from the wing tip. The other wing, neck, tail and
+body stay fixed. The complete turn passes the continuous contact check;
+turning the other way is refused by the starting layer order.
+The chosen order tucks the tail between the body layers on both sides; the
+fixture's default order exposes its root on one side. See
+[choosing the intended stacking](notes/several-stackings.md).
+
+```bash
+stack run senbazuru-material-study -- --crane build/fold-material
+npm install --prefix build/fold-material/checked-flap --no-audit --no-fund three@0.186.0
+python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
+```
+
+Open [the crane-wing demonstration](http://127.0.0.1:8000/crane.html).
+`checked-crane/` contains four illustrations at 0°, 30°, 60° and 90°, a material
+FOLD sequence, four GLBs with visible/complete scenes, and `checks.json` with
+angles, orders, length errors and the rejected direction. The SVG page uses
+one camera and scale. These are selected poses from a continuously checked
+route, not a contact test limited to those four poses.
+
+The hinge rests across the stationary wing's interior. The moving interior
+must stay strictly on one side of that plane throughout the turn, and its
+departure must agree with the initial order. No paper is displaced or joined
+across the touching layers. See [the contact note](notes/a-wing-resting-on-paper.md).
+This fixture recipe does not check the preceding construction of the crane,
+return the wing to its flat resting surface, move the second wing or expand
+the body. It is a rigid, zero-thickness movement with floating-point numerical
+guards, not a flexible-paper solve. The curved wing profile and compatible
+body opening are the follow-up mesh study in
+[#195](https://github.com/avalonalex/senbazuru/issues/195).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base
