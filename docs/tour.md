@@ -254,7 +254,7 @@ actually choose. `--stacking` takes one index per component with a choice in it:
 stack run -- render examples/crane.fold --fold --stacking 3 -o crane-3.svg
 ```
 
-which puts a different flap on top of the crane's right wing. Most of the
+which exposes the tail's root on the other side of the crane. Most of the
 difference between orders is buried, though: all sixteen of the 2×2 grid's are
 the same picture from either side, and all nine of the kabuto's are one picture
 from above and four from below. A count of orders is a count of *models*, not of
@@ -548,11 +548,13 @@ turn together; [the hinge note](notes/aligned-crease-hinges.md) explains why.
 
 The [checked crane wing](usage.md#checked-crane-wing-movement) adds a crease
 across one wing of the real crane fixture and lowers its two layers through
-90°, keeping the body still. Its hinge rests on the other wing's interior.
+90°, keeping the body still and the tail tucked between its layers. Its hinge
+rests on the other wing's interior.
 The whole-turn check establishes that the moving interior lifts to one side;
 the starting layer order refuses the opposite direction. Returning to that
-resting surface, moving the second wing and expanding the body remain later
-work.
+resting surface and moving the second wing remain later work. The next mesh
+study, [#195](https://github.com/avalonalex/senbazuru/issues/195), studies a
+curved wing and the body freedom needed for it.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

@@ -33,6 +33,14 @@
   <p>The new crease sits a quarter of the original sheet’s side from the wing
     tip. It crosses four material faces, folded onto two layers. Both layers
     turn together; the paper stays connected along the whole crease.</p>
+  <p>The tail starts tucked between the body’s layers on both sides. This
+    selects the traditional arrangement from the fixture’s five possible
+    layer orders; choosing the first valid order leaves its root exposed.</p>
+  <p><strong>Scope of this example:</strong> spreading the wings like real
+    paper, with curved wings and an opening body, is out of scope here.
+    This checks a rigid wing rotating at one crease. Realistic spreading needs
+    <a href="https://github.com/avalonalex/senbazuru/issues/195">further material study</a>
+    of bending and contact on the connected paper mesh.</p>
   <img src="checked-crane/sequence.svg" alt="The folded crane with one wing lowered through 0, 30, 60 and 90 degrees">
   <ol><!--STATES--></ol>
   <p><a href="checked-crane/sequence.svg">Full SVG page</a> ·
@@ -60,6 +68,8 @@
 </section>
 <p>This is one rigid movement of zero-thickness paper on the existing crane
   fixture. It does not check the preceding construction of the crane, lower
-  its second wing, or inflate its body. Bending, sliding contact and finding
-  coordinated movements remain separate work.</p>
+  its second wing, or inflate its body. The wing is still a flat panel rotating
+  at a sharp crease. The curved wings and opened body of a finished crane need
+  bending within the paper and coordinated movement, with their own material
+  and contact checks.</p>
 </html>

@@ -1,9 +1,18 @@
 # A model usually has many layer orders, and they multiply
 
 Fold a crane and press it flat. There is not *one* way its seventy-two faces can
-be stacked — there are five. All five fold from the same creases without the
-paper passing through itself, and two of them are different pictures: a flap on
-the right wing is on top in one and buried in the other.
+be stacked — this fixture admits five under the layer-order constraints. That
+does not prove a continuous folding route to each arrangement. Some give
+different pictures: the tail's root is exposed on one side in the default
+order, but buried between the body layers in another.
+
+The [checked wing example](a-wing-resting-on-paper.md) needs that second
+arrangement. Its starting order is index 2, whose eight tail faces sit between
+the body on both sides. Indices 0 and 1 expose the root on one side; 3 and 4
+expose it on the other. A regression checks the actual relations between tail
+and body faces, resolved through their material rings after adding the wing
+crease. The index selects an answer; the relations say why it is the intended
+crane. Contact constraints alone cannot make that choice for us.
 
 That is the ordinary case, not a curiosity. Of the models senbazuru has been run
 against, the kabuto has nine orders, Ku's pinwheel pockets has forty-seven, and
@@ -65,7 +74,8 @@ match Flat-Folder's model for model — not only the totals but the shape:
 
 Most of the difference between orders is buried. All sixteen of the grid's are
 the same picture from either side; all nine of the kabuto's are one picture from
-above and four from below. The crane's five make two pictures. A count of orders
+above and four from below. The crane's five make two pictures from either fixed
+side, with different groupings on the two sides. A count of orders
 is a count of *models*, and how many of them a reader could tell apart is a
 different and smaller number.
 

@@ -324,6 +324,9 @@ The crane study adds a crease across the wing containing the original sheet's
 lies a quarter sheet-side from the wing tip. The other wing, neck, tail and
 body stay fixed. The complete turn passes the continuous contact check;
 turning the other way is refused by the starting layer order.
+The chosen order tucks the tail between the body layers on both sides; the
+fixture's default order exposes its root on one side. See
+[choosing the intended stacking](notes/several-stackings.md).
 
 ```bash
 stack run senbazuru-material-study -- --crane build/fold-material
@@ -345,7 +348,9 @@ across the touching layers. See [the contact note](notes/a-wing-resting-on-paper
 This fixture recipe does not check the preceding construction of the crane,
 return the wing to its flat resting surface, move the second wing or expand
 the body. It is a rigid, zero-thickness movement with floating-point numerical
-guards, not a flexible-paper solve.
+guards, not a flexible-paper solve. The curved wing profile and compatible
+body opening are the follow-up mesh study in
+[#195](https://github.com/avalonalex/senbazuru/issues/195).
 
 <a id="continuously-checked-bird-petal"></a>
 

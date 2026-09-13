@@ -12,8 +12,11 @@
 -- are then selected from their result, never carried across that boundary.
 --
 -- Keep the original face zero first so adding the crease does not move the
--- crane's anchor. Solve the starting order once. Flap checks departure against
--- that order, including where the moving hinge rests on the other wing.
+-- crane's anchor. Choose the starting order with the tail tucked between the
+-- body layers: the fixture's first valid order exposes it on one side. Flap
+-- checks departure against the chosen order, including where the moving
+-- hinge rests on the other wing. Valid contact alone does not identify the
+-- traditional arrangement of a model with several possible stackings.
 -- This recipe does not construct the crane from a square, move its other wing,
 -- or expand its body. It exercises the production operation on a real fixture.
 module CraneWing (CraneWing (..), buildCraneWing, craneStates, craneFile) where
@@ -34,7 +37,7 @@ import Senbazuru.Origami.Flap
 import Senbazuru.Origami.Flat (Panel (..), Sheet (..), flatSheet)
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.HingeSweep (defaultSweepSettings)
-import Senbazuru.Origami.Stacking (solveStacking)
+import Senbazuru.Origami.Stacking (defaultBudget, solveStackingAs)
 import Senbazuru.Origami.Surface
 
 data CraneWing = CraneWing
@@ -69,7 +72,10 @@ buildCraneWing source = do
   side <- case [FaceId i | (i, ring) <- zip [0 ..] (facesVertices frame), all (`elem` ring) [u, v, VertexId 2]] of
     [fid] -> Right fid
     _ -> Left "expected the wing tip on exactly one side of the hinge"
-  orders <- first explain (solveStacking frame)
+  -- Of this fixture's five orders, index 2 puts all eight tail faces between
+  -- the two sides of the body. The regression checks these relations using
+  -- material rings, so a change in enumeration cannot silently untuck it.
+  orders <- first explain (solveStackingAs defaultBudget [2] frame)
   let start = folded {foldedFrame = frame {faceOrders = orders}}
   motion <- first explain (prepareFlapAlong hinge side 90 start >>= checkFlap defaultSweepSettings)
   refusal <- case prepareFlapAlong hinge side (-90) start >>= checkFlap defaultSweepSettings of
