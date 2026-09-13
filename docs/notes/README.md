@@ -50,6 +50,7 @@ read the Haddock module headers; for the domain, start with
 | [checked-flap-operation.md](checked-flap-operation.md) | Check a whole turn before a library flap operation supplies angle-derived surfaces to SVG and glTF |
 | [flat-flap-endpoints.md](flat-flap-endpoints.md) | A one-sided approach permits endpoint contact and records which layer rests on which |
 | [moving-touching-layers.md](moving-touching-layers.md) | Touching layers with the same rigid motion retain their order, while other pairs still need a collision check |
+| [free-edges-on-a-hinge.md](free-edges-on-a-hinge.md) | A declared stack can support its free edge on a shared hinge without welding the material vertices |
 | [endpoints-and-routes.md](endpoints-and-routes.md) | A valid state, a checked route and the existence of some route are different questions |
 | [checking-numerical-corrections.md](checking-numerical-corrections.md) | Bound contact throughout numerical vertex corrections, and expose a solver that stalls when unsafe shortcuts are refused |
 | [rejected-bending-trials.md](rejected-bending-trials.md) | Distinguish energy, history and motion refusals; stop identical failed searches and expose a discontinuous layer penalty |

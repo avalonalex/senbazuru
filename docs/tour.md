@@ -509,8 +509,9 @@ Select one crease and a face on the side to move; the operation finds every
 face belonging to that flap. It checks the entire rigid turn before supplying
 angle-derived surfaces for rendering. The [checked flap demo](usage.md#checked-flap-motion)
 shows a single fold from 0° to 180°, its reopening, and a short move between
-two opposing flaps. It also folds a narrow panel onto a wider one, lifts that
-two-layer flap through 90°, and lowers it without separating the layers.
+two opposing flaps. It also folds one third of the square onto the middle
+third, lifts that two-layer flap through 90°, and lowers it without separating
+the layers.
 A full turn of the opposing flap, including its two-layer version, returns to
 the same endpoint but is refused because it crosses the other flap on the way. Rejecting that
 route says nothing about other routes: doing nothing reaches its identical
@@ -520,8 +521,10 @@ At a flat endpoint, the [one-sided approach](notes/flat-flap-endpoints.md)
 determines which layer rests on which. Reopening must respect a supplied
 initial order. A [touching stack](notes/moving-touching-layers.md) preserves its
 supplied order when the layers share one rigid motion; the geometric check
-still covers every other pair involving those layers. Sliding contact,
-unjoined edges on the hinge and creases that need other angles to change
+still covers every other pair involving those layers. The upper layer's
+[free edge can rest on the hinge](notes/free-edges-on-a-hinge.md) when the
+declared stack supports that boundary and the plane separation check passes.
+Sliding contact, unsupported seams and creases that need other angles to change
 remain refused. Each exported pose retains material identities and is re-folded
 to check shared vertices and achieved angles; it is never interpolated between
 saved positions. The [design note](notes/checked-flap-operation.md) explains

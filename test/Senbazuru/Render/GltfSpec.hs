@@ -30,7 +30,7 @@ import Data.List (nub, sort)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Word (Word32, Word8)
-import FlapExample (opposingFlap, singleFlap, touchingFlap)
+import FlapExample (alignedFlap, opposingFlap, singleFlap, touchingFlap)
 import GHC.Float (castFloatToWord32, castWord32ToFloat)
 import Senbazuru.Diagram (Colour (..))
 import Senbazuru.Fold.Load (decodeFoldFile)
@@ -445,15 +445,15 @@ spec = do
             sort (nub (concatMap (map asInt . items . at "materialFaces" . at "extras") visible)) `shouldBe` [0, 1]
           checkMaterialReferences glb
 
-    it "exports a checked touching stack with retained orders and both material scenes" $ do
-      start <- either (fail . show) pure (foldFrameWith touchingFlap)
+    it "exports a checked touching stack with retained orders and both material scenes" $ forM_ [touchingFlap, alignedFlap] $ \sheetFixture -> do
+      start <- either (fail . show) pure (foldFrameWith sheetFixture)
       motion <- either (fail . show) pure (prepareFlap (EdgeId 8) (FaceId 1) 90 start >>= checkFlap defaultSweepSettings)
       forM_ [0, 1 / 3, 2 / 3, 1] $ \t -> do
         surface <- either (fail . show) pure (flapAt motion t)
         glb <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget VisiblePaper Nothing surface)
         let json = glbJson glb
             stored = at "frame" (at "senbazuru" (at "extras" json))
-        at "faceOrders" stored `shouldBe` toJSON (faceOrders touchingFlap)
+        at "faceOrders" stored `shouldBe` toJSON (faceOrders sheetFixture)
         length (items (at "scenes" json)) `shouldBe` 2
         checkMaterialReferences glb
 

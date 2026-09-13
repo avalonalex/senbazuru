@@ -39,17 +39,17 @@ writeFlapGallery destination = do
   let closedFrame = surfaceFrame closed
       reopening = singleFlap {edgesFoldAngle = edgesFoldAngle closedFrame, faceOrders = faceOrders closedFrame}
   firstEntry <- writeMotion output "single" "Fold completely flat" "One square, folded in half from 0° to 180°." closing
-  let stackUnfolded = touchingFlap {edgesFoldAngle = replicate 10 0, faceOrders = []}
+  let stackUnfolded = alignedFlap {edgesFoldAngle = replicate 10 0, faceOrders = []}
   stackStart <- checked (foldFrameWith stackUnfolded)
   forming <- checked (prepareFlap (EdgeId 9) (FaceId 2) 180 stackStart >>= checkFlap defaultSweepSettings)
   formed <- checked (flapAt forming 1)
-  let packet = touchingFlap {edgesFoldAngle = edgesFoldAngle (surfaceFrame formed), faceOrders = faceOrders (surfaceFrame formed)}
+  let packet = alignedFlap {edgesFoldAngle = edgesFoldAngle (surfaceFrame formed), faceOrders = faceOrders (surfaceFrame formed)}
   packetStart <- checked (foldFrameWith packet)
   lifting <- checked (prepareFlap (EdgeId 8) (FaceId 1) 90 packetStart >>= checkFlap defaultSweepSettings)
   lifted <- checked (flapAt lifting 1)
   let raised = packet {edgesFoldAngle = edgesFoldAngle (surfaceFrame lifted), faceOrders = faceOrders (surfaceFrame lifted)}
-  formEntry <- writeMotion output "stack-form" "1 · Make a two-layer flap" "Fold the narrow right panel onto the middle panel. The left panel stays flat. The narrow layer stops short of the next crease, leaving part of the middle panel exposed." forming
-  liftEntry <- writeMotion output "stack-lift" "2 · Lift both layers together" "Now turn the middle and narrow panels together, from 0° to 90°. Their internal crease stays at 180°: the two layers remain touching in the same order, while the left panel stays still." lifting
+  formEntry <- writeMotion output "stack-form" "1 · Make a two-layer flap" "Fold the right third onto the middle third. Its free edge reaches the next crease exactly. These corners touch the hinge but remain different parts of the sheet." forming
+  liftEntry <- writeMotion output "stack-lift" "2 · Lift both layers together" "Now turn the two equal-width panels together, from 0° to 90°. Their internal crease stays at 180°: the two layers remain touching in the same order, while the left panel stays still." lifting
   raisedStart <- checked (foldFrameWith raised)
   lowering <- checked (prepareFlap (EdgeId 8) (FaceId 1) (-90) raisedStart >>= checkFlap defaultSweepSettings)
   lowerEntry <- writeMotion output "stack-lower" "3 · Lower the two-layer flap" "Return both layers to the starting plane. Their existing contact and order survive the return, including the final flat pose." lowering

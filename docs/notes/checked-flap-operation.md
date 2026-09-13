@@ -43,7 +43,8 @@ the resulting layer order; supplied orders at a touching start must agree with
 departure.
 [Touching layers with the same rigid motion](moving-touching-layers.md) retain
 their supplied order throughout the turn; other pairs need separation in its
-interior. Sliding contact and unjoined stack edges on the hinge remain refused.
+interior, apart from [supported free hinge edges](free-edges-on-a-hinge.md).
+Sliding contact and unsupported hinge seams remain refused.
 Physical thickness, several creases moving together, and a checked complete bird sequence remain
 separate work under #54/#55/#61. This handoff is
 [#175](https://github.com/avalonalex/senbazuru/issues/175), extended with

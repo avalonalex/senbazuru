@@ -6,7 +6,7 @@ through 90°. The narrow panel travels with it. These are two layers of the
 same sheet, still joined at their original crease; they are not two separate
 objects or vertices welded because their folded positions coincide.
 
-The [flap demo](../usage.md#checked-flap-motion) records the narrow panel as
+The original [flap demo](../usage.md#checked-flap-motion) recorded the narrow panel as
 face 2 above face 1, against face 1's normal. A normal is the direction
 perpendicular to the panel given by its vertex winding; see
 [the glossary](../glossary.md). That direction turns with the panel. Keeping
@@ -42,6 +42,7 @@ the moving stack onto the stationary panel.
 Coplanarity uses the same `64 * 2^-52` allowance on a normalized unit sheet as
 the [endpoint rule](flat-flap-endpoints.md); positions are not snapped or
 separated. This is a zero-thickness numerical model. The narrow demo layer
-stops short of the lifting crease: unjoined stack edges resting along that
-hinge still need a contact rule. Sliding, changing internal stack angles,
-several hinges moving together, and panel bending remain separate work.
+stops short of the lifting crease. The demo now uses equal-width panels with
+the separate [free hinge edge rule](free-edges-on-a-hinge.md). Sliding,
+changing internal stack angles, several hinges moving together, and panel
+bending remain separate work.
