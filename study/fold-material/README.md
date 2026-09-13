@@ -147,6 +147,13 @@ closing control reports its measured outcome; it stalls with material error on
 the recorded macOS run but can settle on another numerical platform. Its
 JSON includes every accepted correction's endpoints and interval report.
 See [checking numerical corrections](../../docs/notes/checking-numerical-corrections.md).
+The rejection table separates energy, contact-history, invalid-trial and motion
+failures. JSON retains counts and the first/last witness per category, including
+positions, known orders and numerical settings. A fully refused line search
+ends that penalty stage without claiming convergence. On the recorded Mac this
+removes repeated work, with the same closing endpoint; it does not solve the
+abrupt layer-penalty change when projected triangles begin overlapping. See
+[rejected bending trials](../../docs/notes/rejected-bending-trials.md).
 
 Physical thickness, paper calibration, automatic approach selection and general
 continuous collision checking remain open. Raw sampled observations and the

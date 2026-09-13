@@ -848,6 +848,13 @@ closing solve reports its measured outcome: it stalls in the recorded local
 run, but can converge on another numerical platform.
 These numerical paths can stretch triangles, so passing them does not establish
 a physical folding sequence.
+The [rejection audit](notes/rejected-bending-trials.md) separates lack of energy
+decrease from contact-history refusals, actual crossings and unresolved bounds.
+The recorded closing route is limited mainly by energy/contact evaluation;
+a tiny newly overlapping shadow can suddenly add a finite reversed-order
+penalty. Exhausted line searches now end their stage, retaining the same checked
+endpoint without repeating identical work. Finding a better direction remains
+open; rejected witnesses never become accepted geometry or learned contact.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

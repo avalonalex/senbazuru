@@ -252,6 +252,12 @@ separation before accepting any correction or new contact history. The opening
 settles; the closing solve reports whether it settles or stalls with remaining
 length error, since the numerical route can vary across platforms. Numerical
 straight vertex paths can stretch, so these are not physical folding steps.
+The checked-strip views include **Why trial corrections were refused**, with
+counts and first/last examples for energy, contact-history and motion failures.
+The downloaded JSON includes their positions and settings. An exhausted line
+search ends its penalty stage as unconverged instead of repeating identical
+work; this does not repair the closing strip's remaining material error. See
+[the rejection diagnosis](notes/rejected-bending-trials.md).
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

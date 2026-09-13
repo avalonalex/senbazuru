@@ -66,7 +66,9 @@ of the passive springs preferring zero. Their balance opens it to 21.6 degrees.
 On the local macOS run it settles after three checked corrections, with maximum
 relative edge-length error `6.56e-8`. The final shape passes all 496 independent triangle-pair checks.
 
-The original closing controls expose the harder problem. They prefer 30 degrees,
+The original closing controls expose the harder problem. The measurements in
+this paragraph precede [the rejection audit](rejected-bending-trials.md), which
+now ends fully refused searches early without changing the recorded endpoint. They prefer 30 degrees,
 and the local macOS run stops after 25 accepted corrections; its 400-iteration
 budget ends unconverged, with about 1.13% edge-length error. Linux CI instead
 reaches convergence. Near contact, numerical rounding can change which route
@@ -77,8 +79,10 @@ measured outcome. The local stretched result is not a finished fold.
 Rejecting intersections does not itself provide a direction that can move
 along contact while restoring lengths. The guard also refuses unresolved
 bounds; this comparison does not classify every rejected trial as a collision.
-Diagnosing the limiting trials and finding admissible corrections is the next
-solver problem, rather than accepting more iterations as evidence of success. All eleven earlier
+The subsequent [rejection diagnosis](rejected-bending-trials.md) identifies
+energy and contact-history refusals as the dominant local blocker. Finding
+admissible corrections remains a solver problem; more iterations alone are
+not evidence of success. All eleven earlier
 gallery runs retain their exact meshes and measurements.
 
 This increment is [#168](https://github.com/avalonalex/senbazuru/issues/168).

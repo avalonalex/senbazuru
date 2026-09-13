@@ -21,7 +21,7 @@
   @media(max-width:650px) {body{padding:24px 14px}canvas{height:300px}.metrics{grid-template-columns:repeat(2,1fr)}th,td{padding:8px 3px;font-size:12px}}
 </style>
 <header>
-  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154 · #156 · #158 · #160 · #162 · #164 · #166 · #168</div>
+  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154 · #156 · #158 · #160 · #162 · #164 · #166 · #168 · #170</div>
   <h1>Creases remember; panels resist</h1>
   <p>A crease prefers a particular angle. The paper between creases prefers to stay flat.
     These examples let the connected sheet settle under both preferences. Opposing flaps add contact correction: their preferred angles would make them cross. A curled strip tests supplied and automatically discovered contact between parts of one uncreased panel. Separate bending controls curl it; local contact requirements keep its returning end above its starting end.</p>
@@ -46,6 +46,15 @@
   </table>
   <p id="interpretation"></p>
   <p id="contact-scope" class="hint"></p>
+  <details id="trial-audit" hidden open>
+    <summary>Why trial corrections were refused</summary>
+    <p id="trial-summary"></p>
+    <table>
+      <thead><tr><th>Reason</th><th>Trials</th><th>First refusal</th><th>Last refusal</th></tr></thead>
+      <tbody id="trial-rows"></tbody>
+    </table>
+    <p class="hint">Energy is checked before motion, so a trial rejected for energy may never reach the collision checker. Counts describe the first failed check, not every possible defect. Stopping checks also test trials; a settled run can refuse them when its full proposed movement is already small enough. First and last examples retain their positions, known orders and numerical settings in the downloaded JSON. Rejected trials add no accepted paper or contact history.</p>
+  </details>
   <details open>
     <summary>What this checks</summary>
     <p>The same indexed vertices join neighboring triangles throughout the solve. Original sheet coordinates and triangle connections stay fixed.
@@ -105,7 +114,7 @@ function initialize() {
     el('motion-control').hidden=run.kind!=='correction';
     el('motion-view').replaceChildren();
     (run.views||[]).forEach((view,i)=>{const option=document.createElement('option');option.value=i;option.textContent=view.title;el('motion-view').append(option);});
-    if(run.kind==='correction')el('motion-view').value='1';
+    if(run.kind==='correction')el('motion-view').value='2';
     el('encounter-control').hidden=run.kind!=='localhistory';
     el('encounter').replaceChildren();
     if(run.kind==='localhistory'){
@@ -126,6 +135,7 @@ function initialize() {
     update();
   }
   function update(){
+    el('trial-audit').hidden=true;
     const selectedRun=data.runs[Number(el('example').value)];
     if(selectedRun.kind==='correction'){updateCorrection(selectedRun);return;}
     const run=data.runs[Number(el('example').value)], history=run.kind==='history', localDiscovery=run.kind==='localdiscovery', localHistory=run.kind==='localhistory', selfContact=run.kind==='selfcontact'||localDiscovery||localHistory;
@@ -202,6 +212,25 @@ function initialize() {
     const rows=[['Largest edge-length error',percent(start.lengthError),percent(final.lengthError),'at most '+percent(data.lengthTolerance)],['Strict triangle crossings',String(start.contact.crossingPanels.length),String(final.contact.crossingPanels.length),'0'],['Unresolved coplanar overlaps',String(start.contact.unorderedContacts.length),String(final.contact.unorderedContacts.length),'0'],['Independent triangle pairs',String(start.contact.checkedPanelPairs),String(final.contact.checkedPanelPairs),'all pairs']];
     el('measurements').replaceChildren();rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td);});el('measurements').append(tr);});
     el('interpretation').textContent=view.description;
+    const audit=view.trialAudit;
+    el('trial-audit').hidden=!audit;
+    if(audit){
+      const labels={NoDescent:'Energy did not decrease',ContactRefusal:'Contact discovery or history',InvalidTrial:'Invalid numerical trial',PathCollision:'Witnessed path collision',PathCollapse:'Witnessed triangle collapse',PathUnresolved:'Motion bounds unresolved'};
+      const count=audit.rejections.reduce((sum,row)=>sum+row.count,0);
+      const blocks=audit.blockedStages.map(stage=>`iteration ${stage.iteration} (length weight ${stage.lengthWeight.toExponential(0)})`);
+      el('trial-summary').textContent=`${count} refused trial corrections. ${blocks.length?`Search exhausted at ${blocks.join(', ')}. Every step size was refused; the solver advances to the next penalty weight or returns not settled, without repeating the identical search.`:'No blocked penalty stages.'}`;
+      const witness=trial=>{
+        if(!trial)return '—';
+        const energy=trial.afterEnergy===null?'unavailable':trial.afterEnergy.toPrecision(7);
+        return `Iteration ${trial.iteration}; weight ${trial.lengthWeight.toExponential(0)}; step fraction ${trial.scale.toExponential(2)}. Energy ${trial.beforeEnergy.toPrecision(7)} → ${energy}. ${trial.reason}.`;
+      };
+      el('trial-rows').replaceChildren();
+      for(const row of audit.rejections){
+        const tr=document.createElement('tr');
+        for(const text of [labels[row.kind],String(row.count),witness(row.first),witness(row.last)]){const td=document.createElement('td');td.textContent=text;tr.append(td);}
+        el('trial-rows').append(tr);
+      }
+    }
     el('contact-scope').textContent='Exact bounds check triangle separation and nonzero triangle area throughout each accepted straight vertex path. Shared edges and corners remain joined. A collision witness or exhausted interval budget refuses the trial before it can add contact history. This is zero-thickness collision prevention; it does not preserve material lengths between numerical iterates or certify a physical folding motion.';
     const points=view.status==='rejected'?run.views.slice(0,2).flatMap(v=>[...v.left.positions,...v.right.positions]):[...start.positions,...view.states.flatMap(s=>s.positions)];
     showMeshes(start,final,points);

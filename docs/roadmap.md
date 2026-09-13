@@ -124,6 +124,10 @@ work.
   guard straight optimizer paths with exact separation bounds. The opening
   control settles; the closing strip can stall when crossed or unresolved paths
   are refused, with its outcome varying across numerical platforms.
+  [Rejected-trial diagnostics](notes/rejected-bending-trials.md) distinguish
+  energy and history refusals from motion failures and stop identical failed
+  searches. The recorded closing route is limited mainly by a discontinuous
+  directional layer penalty as projected overlap reappears.
   Finding directions that restore lengths while respecting contact remains open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
