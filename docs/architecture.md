@@ -109,7 +109,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form, and the rigid motion that placed each face. |
-| `Senbazuru.Origami.Flap` | One crease and its moving side → a checked rigid turn → angle-derived surfaces with the stationary side fixed. Refuses graph loops requiring other creases to move. |
+| `Senbazuru.Origami.Flap` | Selected aligned creases and a moving side → a checked rigid turn → angle-derived surfaces with the stationary side fixed. Refuses incomplete cuts and hinges on different axes. |
 | `Senbazuru.Origami.HingeSweep` | Bounds a fixed-axis rotation over angular intervals; returns clear, contact witness or unresolved. Shared by the library flap operation and the study. |
 | `Senbazuru.Origami.Contact` | Independent zero-thickness panel/triangle contact diagnostics and directional order checks, before any drawing or solver force. |
 | `Senbazuru.Origami.Surface` | Shared material surface with original-sheet coordinates when known, current positions, crease/panel identities, coplanar orders, directional layer requirements and optional physical thickness. Owns the study's mesh types and shared midpoint refinement. |
@@ -191,8 +191,10 @@ why each, is in [AGENTS.md](../AGENTS.md#testing).
 
 `Origami.Flap` is the first library operation using the motion checks. Its
 input is a `Folded` result and crease/face ids from the returned cut pattern.
-Removing one crease identifies the moving component; an alternate connection
-is a refusal requiring coupled angles. `checkFlap` uses `Origami.HingeSweep`
+Removing the selected crease segments identifies the moving component; every
+segment must separate moving from stationary paper on one common folded hinge
+line. An alternate connection is a refusal requiring a different selection or
+coupled angles. `checkFlap` uses `Origami.HingeSweep`
 on a normalized mesh and returns an opaque accepted motion. `flapAt` re-folds
 the requested angle state, aligns its stationary face and checks that the
 result agrees with the hinge path before handing it to the renderers.
@@ -203,6 +205,10 @@ position continuity at each join. It puts the stationary central face first
 before folding, because the folding walk anchors that face. `BlintzGallery`
 exports the resulting sequence through the ordinary renderers; neither module
 introduces a second contact checker or a general instruction format.
+`HelmetSequence` chains three turns with the same handoff policy, using
+`prepareFlapAlong` to select the two segments of its diagonal and the paired
+material creases of its doubled corners. `HelmetGallery` exports seven
+illustrations through those same renderers; see [aligned hinges](notes/aligned-crease-hinges.md).
 `HingeSweep.checkSweepWithFlatEndpoints` returns one-sided endpoint contacts
 as triangle ids and signs against stationary normals. `Flap` maps them to
 source-face orders and checks supplied initial orders on each contact plane.

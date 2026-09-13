@@ -1,7 +1,9 @@
 -- | Turn one connected flap and check its entire path before exporting poses.
--- A flap here is the set of faces reached after removing ONE crease from the
--- face graph. If the other side can still be reached, other creases must move
--- too: this operation refuses that coupled motion rather than cutting a loop.
+-- A flap here is the set of faces reached after removing the selected creases
+-- from the face graph. Those creases must all separate moving from stationary
+-- paper and lie on one line in the CURRENT folded shape. A hinge can therefore
+-- cross several graph edges, or turn several touching layers together. An
+-- incomplete cut is refused; this operation does not discover coupled motions.
 -- See docs/glossary.md for faces, creases, material coordinates and fold angles.
 --
 -- Start with 'foldFrameWith' and select ids from its 'foldedPattern', since
@@ -9,6 +11,10 @@
 -- crease's FOLD angle, in degrees. The stationary face's counterclockwise edge
 -- direction needs the NEGATIVE of that travel as a right-hand rotation; this
 -- is the same convention used by "Senbazuru.Origami.Folding".
+-- With several segments, the first crease defines the sign. A stationary face
+-- on an upside-down layer can orient its segment the other way, so its FOLD
+-- angle must change with the OPPOSITE sign for the same physical rotation.
+-- See docs/notes/aligned-crease-hinges.md for the helmet-base example.
 --
 -- Preparation identifies the flap. Checking produces an opaque 'CheckedFlap';
 -- only that value supplies public poses. Each pose is independently re-folded
@@ -40,6 +46,7 @@ module Senbazuru.Origami.Flap
     CheckedFlap,
     FlapError (..),
     prepareFlap,
+    prepareFlapAlong,
     checkFlap,
     flapAt,
     flapCheck,
@@ -52,13 +59,14 @@ import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (find, nub, sort)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError, edgeKey, facesAlongEdges, frameCreases, frameFaces, frameVertices, ringEdges)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), Frame (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.Rigid (Rigid, after, inverse)
-import Senbazuru.Geometry.V3 (V3 (..), modelSpan, polygonNormal)
+import Senbazuru.Geometry.V3 (V3 (..), cross, modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep
@@ -67,10 +75,9 @@ import Senbazuru.Origami.Surface
 
 data FlapMotion = FlapMotion
   { initialFold :: !Folded,
-    movingCrease :: !EdgeId,
+    creaseTravels :: ![(EdgeId, Double)],
     movingFaces :: ![FaceId],
     stationaryFace :: !FaceId,
-    angularTravel :: !Double,
     checkOrigin :: !V3,
     checkScale :: !Double,
     checkedPath :: !HingeSweep,
@@ -92,6 +99,10 @@ data FlapError
   | FlapNotHinge !EdgeId
   | FlapWrongSide !EdgeId !FaceId
   | FlapCoupled !EdgeId ![VertexId]
+  | FlapEmptyHinge
+  | FlapDuplicateCrease !EdgeId
+  | FlapNotBoundary !EdgeId
+  | FlapUnalignedCrease !EdgeId
   | FlapMissingFace !FaceId
   | FlapMissingOwner !Int
   | FlapMissingVertex !VertexId
@@ -115,6 +126,10 @@ instance Explain FlapError where
     FlapNotHinge eid -> "edge " <> tshow (unEdgeId eid) <> " must be a crease joining exactly two faces"
     FlapWrongSide eid fid -> "moving face " <> tshow (unFaceId fid) <> " must touch crease " <> tshow (unEdgeId eid)
     FlapCoupled eid vertices -> "crease " <> tshow (unEdgeId eid) <> " does not separate a flap: other creases must move around vertices " <> tshow (map unVertexId vertices)
+    FlapEmptyHinge -> "a flap hinge needs at least one crease"
+    FlapDuplicateCrease eid -> "flap hinge repeats crease " <> tshow (unEdgeId eid)
+    FlapNotBoundary eid -> "selected crease " <> tshow (unEdgeId eid) <> " must separate moving from stationary paper"
+    FlapUnalignedCrease eid -> "selected crease " <> tshow (unEdgeId eid) <> " is not on the common hinge line in the folded paper"
     FlapMissingFace fid -> "flap is missing face or placement " <> tshow (unFaceId fid)
     FlapMissingOwner i -> "flap contact triangle " <> tshow i <> " is missing its source face"
     FlapMissingVertex vid -> "flap is missing material vertex " <> tshow (unVertexId vid)
@@ -132,8 +147,20 @@ instance Explain FlapError where
 -- | Crease id, incident face on the moving side, signed travel in degrees,
 -- and a folding result. The ids belong to its returned cut pattern.
 prepareFlap :: EdgeId -> FaceId -> Double -> Folded -> Either FlapError FlapMotion
-prepareFlap eid side travel supplied = do
+prepareFlap eid = prepareFlapAlong [eid]
+
+-- | Select every segment of one physical hinge. The first crease must touch
+-- the supplied moving face, and travel is the change in THAT crease's FOLD
+-- angle. Other segments receive the sign required by their stationary face's
+-- orientation. Ids need not be consecutive or share material vertices: two
+-- layers can have distinct creases on the same line in the folded paper.
+prepareFlapAlong :: [EdgeId] -> FaceId -> Double -> Folded -> Either FlapError FlapMotion
+prepareFlapAlong [] _ _ _ = Left FlapEmptyHinge
+prepareFlapAlong eids@(eid : _) side travel supplied = do
   unless (finite travel && abs travel <= 360) (Left (FlapInvalidTravel travel))
+  case [e | (i, e) <- zip [0 :: Int ..] eids, e `elem` take i eids] of
+    repeated : _ -> Left (FlapDuplicateCrease repeated)
+    [] -> pure ()
   -- Folded's constructor is public. Rebuild its angle state instead of trusting
   -- supplied transforms or using arbitrary coordinates as the starting paper.
   let suppliedFrame = foldedFrame supplied
@@ -149,18 +176,20 @@ prepareFlap eid side travel supplied = do
   unless (finite scale && scale > 0 && length actual == length expected && and (zipWith (\a b -> norm (a ^-^ b) / scale < 1e-9) actual expected)) (Left FlapStartMismatch)
   faces <- first FlapGeometry (frameFaces (foldedFrame start))
   neighbours <- first FlapGeometry (facesAlongEdges faces)
-  (a, b) <- maybe (Left (FlapMissingCrease eid)) Right (lookup eid (zip (map EdgeId [0 ..]) (edgesVertices flat)))
   creases <- first FlapGeometry (frameCreases (foldedFrame start))
-  crease <- maybe (Left (FlapMissingCrease eid)) Right (find ((== eid) . creaseId) creases)
-  unless (creaseAssignment crease `elem` [Mountain, Valley, Unassigned]) (Left (FlapNotHinge eid))
+  let segment e = do
+        crease <- maybe (Left (FlapMissingCrease e)) Right (find ((== e) . creaseId) creases)
+        unless (creaseAssignment crease `elem` [Mountain, Valley, Unassigned]) (Left (FlapNotHinge e))
+        (a, b) <- maybe (Left (FlapMissingCrease e)) Right (lookup e (zip (map EdgeId [0 ..]) (edgesVertices flat)))
+        case M.findWithDefault [] (edgeKey a b) neighbours of
+          [left, right] -> Right (e, a, b, left, right)
+          _ -> Left (FlapNotHinge e)
+  segments <- traverse segment eids
+  (_, a, b, leftFace, rightFace) <- segment eid
   let key = edgeKey a b
-  fixed <- case M.findWithDefault [] key neighbours of
-    [left, right]
-      | side == left -> Right right
-      | side == right -> Right left
-      | otherwise -> Left (FlapWrongSide eid side)
-    _ -> Left (FlapNotHinge eid)
-  let links = [(x, y) | (edge, [x, y]) <- M.toList neighbours, edge /= key]
+  fixed <- if side == leftFace then Right rightFace else if side == rightFace then Right leftFace else Left (FlapWrongSide eid side)
+  let removed = S.fromList [edgeKey x y | (_, x, y, _, _) <- segments]
+      links = [(x, y) | (edge, [x, y]) <- M.toList neighbours, S.notMember edge removed]
       selected = connected links S.empty [side]
   when (S.member fixed selected) (Left (FlapCoupled eid [a, b]))
   fixedPanel <- maybe (Left (FlapMissingFace fixed)) Right (find ((== fixed) . faceId) faces)
@@ -169,6 +198,18 @@ prepareFlap eid side travel supplied = do
       point vid = maybe (Left (FlapMissingVertex vid)) Right (IM.lookup (unVertexId vid) vertices)
   origin <- point from
   finish <- point to
+  let axis = (1 / norm (finish ^-^ origin)) *^ (finish ^-^ origin)
+      onLine p = norm (cross axis ((1 / scale) *^ (p ^-^ origin))) < 1e-12
+      segmentTravel (e, x, y, left, right) = do
+        unless (S.member left selected /= S.member right selected) (Left (FlapNotBoundary e))
+        let stationary = if S.member left selected then right else left
+        panel <- maybe (Left (FlapMissingFace stationary)) Right (find ((== stationary) . faceId) faces)
+        (u, v) <- maybe (Left (FlapNotHinge e)) Right (find (\(p, q) -> edgeKey p q == edgeKey x y) (ringEdges (faceVertexIds panel)))
+        p <- point u
+        q <- point v
+        unless (onLine p && onLine q) (Left (FlapUnalignedCrease e))
+        pure (e, if dot axis (q ^-^ p) > 0 then travel else negate travel)
+  travels <- traverse segmentTravel segments
   sheet <- first FlapSurface (surfaceFromFolded start)
   (mesh, owners) <- first FlapSurface (refineSurface 0 sheet)
   let normalized = mesh {samples = [p {position = (1 / scale) *^ (position p ^-^ origin)} | p <- samples mesh]}
@@ -185,10 +226,11 @@ prepareFlap eid side travel supplied = do
             Just g <- [find ((== orderRelativeTo o) . faceId) faces],
             coplanarFaces scale f g
         ]
-      motion = FlapMotion start eid (S.toList selected) fixed travel origin scale sweep owners suppliedOrders retained
+      motion = FlapMotion start travels (S.toList selected) fixed origin scale sweep owners suppliedOrders retained
   checkOrders FlapStackOrder scale faces retained
   -- The same refolding/anchoring path supplies all subsequent public poses.
   _ <- surfaceAt motion 1
+  _ <- surfaceAt motion 0.5
   pure motion
 
 connected :: [(FaceId, FaceId)] -> S.Set FaceId -> [FaceId] -> S.Set FaceId
@@ -282,7 +324,7 @@ surfaceAt motion progress = do
   unless (finite progress && progress >= 0 && progress <= 1) (Left (FlapInvalidProgress progress))
   let start = initialFold motion
       frame = foldedFrame start
-      angles = [if EdgeId i == movingCrease motion then angle + progress * angularTravel motion else angle | (i, angle) <- zip [0 ..] (edgesFoldAngle frame)]
+      angles = [angle + progress * fromMaybe 0 (lookup (EdgeId i) (creaseTravels motion)) | (i, angle) <- zip [0 ..] (edgesFoldAngle frame)]
       sheet = (foldedPattern start) {edgesFoldAngle = angles, faceOrders = [], frameExtras = mempty}
   placed <- first FlapFolding (foldFrameWith sheet)
   before <- placement (stationaryFace motion) start

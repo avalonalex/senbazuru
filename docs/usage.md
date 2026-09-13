@@ -239,7 +239,7 @@ their distinct material ids. An opposing flap blocks an
 attempted full revolution of a two-layer stack. The single fold and its
 reopening remain, alongside the original short 105°–121° opposing-flap route.
 
-This supports one crease separating a rigid flap from stationary paper, with
+This supports a fixed hinge separating a rigid flap from stationary paper, with
 convex planar panels. A flat touching endpoint is supported when a half-turn
 or shorter approach stays on one side of a stationary plane containing the
 hinge. Its `faceOrders` record that side. At a touching start, any supplied
@@ -250,7 +250,7 @@ nonzero order, and contradictory orders are refused even when the stack is
 upright. Other stale orders are discarded. An unjoined edge may rest on the
 hinge when its declared partner supplies the shared boundary and the turning
 interior stays on one side of the stationary plane. Sliding contact,
-unsupported hinge seams, creases requiring other angles to change, and
+unsupported hinge seams, turns requiring different hinge axes, and
 exhausted interval work are refused.
 The check uses
 zero-thickness geometry normalized to sheet scale, with floating-point bounds
@@ -289,9 +289,33 @@ mountain folds come towards the viewer and the resting flaps remain visible.
 Figure 9 completes the base; figures 10–11 reopen its first corner.
 
 This is a recipe for the existing fixture, with explicit ids in its reordered
-material pattern. It is not yet a general instruction format or a way to
-move several crease angles together. The same numerical scope and refusals
+material pattern. It is not yet a general instruction format. The same numerical scope and refusals
 as the single-flap operation apply to each complete turn.
+
+### Checked helmet sequence
+
+A helmet base folds a square diagonally in half, then brings both corners
+of the doubled triangle to its opposite tip. Each corner turns two touching
+layers together. `prepareFlapAlong` explicitly selects all crease segments
+on the physical hinge; they must separate the moving faces from the fixed
+ones and lie on one line in the current folded shape. The first segment
+defines the signed travel. Other segments receive the angle signs required
+by their stationary faces' orientation.
+
+```bash
+stack run senbazuru-material-study -- --helmet build/fold-material
+npm install --prefix build/fold-material/checked-flap --no-audit --no-fund three@0.186.0
+python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
+```
+
+Open [the helmet instructions](http://127.0.0.1:8000/helmet.html).
+`checked-helmet/` contains seven illustrated states as SVG, material FOLD and
+GLBs with visible/complete scenes, plus angles, layer orders and measurements
+in `checks.json`. The camera looks from the tip side at 45° above the paper.
+All three turns pass the continuous hinge-sweep check and carry their accepted
+poses and orders into the next move. This remains an explicit fixture recipe
+with floating-point numerical guards, not automatic route planning or a
+solver for creases on different axes. See [the hinge note](notes/aligned-crease-hinges.md).
 
 <a id="continuously-checked-bird-petal"></a>
 

@@ -10,8 +10,10 @@ face on the moving side, and signed angular travel in degrees. The ids refer
 to the returned cut pattern: cutting a crossing may have renumbered the input.
 Removing that crease from the face graph identifies the entire moving flap,
 including faces already folded relative to one another. If another path still
-joins the two sides, other crease angles must change too. The operation names
-the crease and its endpoint vertices and refuses that case.
+joins the two sides, the single-crease selection is refused. A physical hinge
+can span several graph segments: `prepareFlapAlong` selects them together and
+derives their signed angle changes. See [aligned hinges](aligned-crease-hinges.md).
+Creases on different axes still require a separate coupled motion.
 
 Only a successful interval check constructs `CheckedFlap`, whose constructor
 is hidden. `flapAt` requires that value, so exported poses belong to an accepted
