@@ -81,5 +81,6 @@ their incident panels' levels too, so buried creases do not shine through. Looki
 OBJ/FOLD exports and material measurements are unchanged; failing contact
 reports disable the adjustment. The first eight gallery states end at 175°
 for inspection before continuing with [the second petal](two-petals.md).
-These are sampled rigid states, not a continuous collision proof or a
-thickness model.
+These gallery states remain sampled rigid states. The separate
+[first-petal certificate](checked-petal.md) now checks this first stage
+continuously, through its flat landing. It does not model thickness.

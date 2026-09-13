@@ -9,8 +9,9 @@ the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
 and touching stacks in [#179](https://github.com/avalonalex/senbazuru/issues/179),
-including free edges on the hinge in [#181](https://github.com/avalonalex/senbazuru/issues/181)
-and a complete checked blintz sequence in [#183](https://github.com/avalonalex/senbazuru/issues/183). The
+including free edges on the hinge in [#181](https://github.com/avalonalex/senbazuru/issues/181),
+a complete checked blintz sequence in [#183](https://github.com/avalonalex/senbazuru/issues/183),
+and the continuously checked first bird petal in [#185](https://github.com/avalonalex/senbazuru/issues/185). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -20,9 +21,9 @@ closes.
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
-| Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, while bird/frog sequences have checked states |
+| Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, and the first bird petal has an exact ideal-path certificate; the other bird/frog stages have checked states |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,271 examples pass, including the five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,286 examples pass, including the first-petal certificate and five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -70,7 +71,8 @@ pieces of work.
 3. **Folding in three dimensions** ([#55](https://github.com/avalonalex/senbazuru/issues/55)).
    The studies now have verified intermediate square/waterbomb collapse,
    rabbit-ear and bird-petal states. The contact study checks entire intervals
-   for two specified kinds of motion, described below. Connecting the
+   for fixed-hinge turns, numerical corrections and the first bird petal.
+   Connecting the
    fixed-hinge check to one authored flap rotation is now implemented in
    [#175](https://github.com/avalonalex/senbazuru/issues/175), with a single-fold
    SVG/glTF demo and an opposing-flap collision witness. Flat touching
@@ -80,8 +82,10 @@ pieces of work.
    in #181, while the plane check still separates the turning interior.
    A complete blintz recipe now chains four corner folds and a reopening in
    #183, carrying accepted angles/orders and checking continuity at every join.
-   General flap/wing authoring, a general angle solver and collision checking
-   along motion where several creases must move together remain open
+   The first bird petal now has an exact ideal-path contact/length certificate
+   and checked flat endpoint orders in #185. The next step is the second petal
+   and final pressing, followed by square-base collapse. General flap/wing
+   authoring, an angle solver and checks for arbitrary coupled motions remain open
    ([#54](https://github.com/avalonalex/senbazuru/issues/54),
    [#55](https://github.com/avalonalex/senbazuru/issues/55),
    [#61](https://github.com/avalonalex/senbazuru/issues/61)).
@@ -102,8 +106,8 @@ pieces of work.
   of paper along the way.** Nonlinear loop closure at every interior vertex, a
   Jacobian of rotation products, Newton steps in pure Haskell, and a singular
   starting point because the flat-folded state is where branches meet. Whether
-  the crane is rigid-foldable end to end is not known. #61 has two useful study
-  implementations: [fixed-hinge sweeps](notes/hinge-sweep-contact.md) bound a
+  the crane is rigid-foldable end to end is not known. #61 has three bounded motion
+  checks: [fixed-hinge sweeps](notes/hinge-sweep-contact.md) bound a
   rigid rotation over angular intervals using floating-point arithmetic and a
   numerical guard; [correction sweeps](notes/checking-numerical-corrections.md)
   use exact rational bounds for straight numerical vertex paths. Both refuse
@@ -111,8 +115,10 @@ pieces of work.
   skipping all neighbours. Straight numerical paths can stretch the sheet and
   are not folding instructions. The fixed-hinge check now backs the library's
   [flap operation](notes/checked-flap-operation.md) and the complete
-  [blintz route](notes/chaining-checked-folds.md), but has not checked the
-  intervals of the actual bird sequence. The checkers
+  [blintz route](notes/chaining-checked-folds.md). The
+  [first-petal certificate](notes/checked-petal.md) checks the seven coupled
+  angles of one known bird petal using exact polynomial signs. The second
+  petal and square-base collapse still need continuous checks. The checkers
   report a colliding pose or an unresolved interval, not a guaranteed first
   impact time; #61 remains open.
 - **[#60](https://github.com/avalonalex/senbazuru/issues/60) the vocabulary, and [#97](https://github.com/avalonalex/senbazuru/issues/97) the scheme format.** Hard as
@@ -178,7 +184,9 @@ pieces of work.
   isolated fixed crease, including flat endpoints with a checked one-sided
   approach and departure order. Touching stacks with a common rigid motion
   now retain their orders, including aligned free edges supported by a
-  declared partner's shared hinge. Sliding contact, unsupported hinge seams
+  declared partner's shared hinge. A separate study recipe now checks the
+  first bird petal continuously; it has a known compatible angle formula.
+  Sliding contact, unsupported hinge seams
   and the solve for compatible crease angles remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
@@ -224,7 +232,8 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 The shared-surface milestone #146 is complete. The contact study through #173
 now supplies one checked library motion in #175, extended with one-sided flat
-endpoints in #177 and touching stacks in #179/#181.
+endpoints in #177 and touching stacks in #179/#181. The first bird petal in
+#185 adds a bounded study of continuously checked motion with coupled angles.
 
 1. **One checked flap rotation**, a bounded part of
    [#54](https://github.com/avalonalex/senbazuru/issues/54) and
@@ -236,12 +245,14 @@ endpoints in #177 and touching stacks in #179/#181.
    without overlooking other crossings, including a free upper edge reaching
    the lifting hinge. The complete blintz sequence now folds all four corners
    and reopens one, retaining endpoint orders and a stable central anchor.
-   **Next: the helmet base's folds through a doubled triangle.** First record
-   the exact selection blocker: one physical hinge can comprise several
-   aligned crease segments, so removing a single graph edge may not separate
-   the moving stack. Establish a small supported case and a refusal case
-   before widening the selection API. The general coupled-angle solver and
-   full bird folding path remain later work.
+   The first bird petal now checks seven coordinated angles from the square
+   base through its flat landing, with an exact certificate for its ideal path.
+   **Next: the second petal and final pressing**, carrying the first petal's
+   accepted geometry and layer order, then the initial square-base collapse.
+   The helmet base remains a useful separate selection test: one physical
+   hinge can comprise several aligned crease segments, so removing a single
+   graph edge may not separate the moving stack. General coupled-angle solving
+   remains later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

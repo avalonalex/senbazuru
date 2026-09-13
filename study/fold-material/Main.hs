@@ -21,6 +21,7 @@ import FlapGallery (writeFlapGallery)
 import FoldContact
 import FoldMaterial
 import FoldRelaxation
+import PetalGallery (writePetalGallery)
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), solid)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
@@ -52,9 +53,10 @@ main = do
     ["--bending", destination] -> writeBendingStudy destination
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
+    ["--petal", destination] -> writePetalGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -79,6 +81,7 @@ generate destination = do
   writeBendingStudy destination
   writeFlapGallery destination
   writeBlintzGallery destination
+  writePetalGallery destination
   BL.writeFile (destination </> "cases.json") (encode catalog)
   BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
   BL.writeFile (destination </> "relaxation.json") (encode progress)

@@ -3,7 +3,7 @@
   <title>fixture</title>
   <rect x="0" y="0" width="400" height="200" fill="#ffffff"/>
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 69.375 100 L 69.375 159.375 L 128.75 159.375 L 128.75 100 Z M 69.375 100 L 128.75 100 L 128.75 40.625 L 69.375 40.625 Z M 69.375 100 L 69.375 40.625 L 10 40.625 L 10 100 Z M 69.375 100 L 10 100 L 10 159.375 L 69.375 159.375 Z" fill="#faf8f3"/>
+    <path d="M 128.75 100 L 69.375 100 L 69.375 159.375 L 128.75 159.375 Z M 128.75 100 L 128.75 40.625 L 69.375 40.625 L 69.375 100 Z M 10 100 L 69.375 100 L 69.375 40.625 L 10 40.625 Z M 10 100 L 10 159.375 L 69.375 159.375 L 69.375 100 Z" fill="#faf8f3"/>
     <path d="M 69.375 100 L 69.375 159.375" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
     <path d="M 69.375 100 L 128.75 100" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
     <path d="M 69.375 100 L 69.375 40.625" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
@@ -28,7 +28,7 @@
     <path d="M 200 70.312 Q 214.844 100 204.919 119.849" stroke="#1a1a1a" stroke-width="1.8"/>
     <path d="M 200 129.688 L 200.984 117.881 L 208.855 121.817 Z" fill="#1a1a1a"/>
     <text x="170.312" y="54.875" font-size="14" font-family="sans-serif" fill="#1a1a1a">2</text>
-    <path d="M 300.938 70.312 L 300.938 129.688 L 360.312 129.688 L 360.312 70.312 Z" fill="#faf8f3"/>
+    <path d="M 300.938 129.688 L 360.312 129.688 L 360.312 70.312 L 300.938 70.312 Z" fill="#faf8f3"/>
     <path d="M 300.938 70.312 L 300.938 129.688" stroke="#1a1a1a" stroke-width="1"/>
     <path d="M 300.938 70.312 L 360.312 70.312" stroke="#1a1a1a" stroke-width="1"/>
     <path d="M 360.312 129.688 L 300.938 129.688" stroke="#1a1a1a" stroke-width="1.6"/>

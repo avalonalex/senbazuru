@@ -536,8 +536,15 @@ reopen the first one. It carries each accepted endpoint into the next move,
 including the resting layers' order. The central face stays fixed, and each
 join is checked for a change of position. Eleven illustrations show the
 open sheet and the halfway/end states of five complete checked turns. This
-supplies a complete route for one traditional base; the bird sequence's
-several moving crease angles still need their own motion check.
+supplies a complete route for one traditional base.
+
+The [first bird petal](usage.md#continuously-checked-bird-petal) now has a
+continuous check too. Starting from the square base, seven crease angles move
+together to lift one tip and fold both sides inward. Exact polynomial signs
+check the ideal path between all eight illustrations; each exported pose is
+rebuilt from angles and compared with it. Material lengths stay constant and
+flat endpoint orders agree with departure and landing. The second petal and
+the initial square-base collapse still need continuous checks.
 
 ## What it creases
 

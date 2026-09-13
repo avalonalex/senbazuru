@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One continuously checked bird petal · Senbazuru</title>
+<style>
+  :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; color: #292d28; background: #f4efe7; }
+  body { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 12px 0; line-height: 1.15; }
+  h2 { font-size: 1.35rem; }
+  p { max-width: 900px; }
+  a { color: #385e50; text-underline-offset: 3px; }
+  small { letter-spacing: .12em; }
+  section { background: #fffaf2; border: 1px solid #d8cebd; border-radius: 8px; padding: 24px; margin: 28px 0; }
+  img { width: 100%; height: auto; display: block; }
+  ol { columns: 2; gap: 40px; padding-left: 24px; }
+  li { break-inside: avoid; margin-bottom: 6px; }
+  iframe { width: 100%; height: 760px; border: 0; }
+  @media (max-width: 650px) { ol { columns: 1; } section { padding: 12px; } }
+</style>
+<header>
+  <small>SENBAZURU · CHECKED FOLDING SEQUENCE</small>
+  <h1>One tip rises, two sides fold inward</h1>
+  <p>Start with the square base: a collapsed square with several touching layers.
+    Lift its top tip and guide both sides inward. The result is one long, narrow
+    flap called a petal. The lower flap stays still; folding it later would
+    complete the bird base.</p>
+  <p>Seven creases move together. Two old folds open as four side folds close
+    and the tip rises. The check covers the entire motion, including leaving
+    the flat square base and pressing the petal flat.</p>
+  <a href="index.html">All fold examples</a> · <a href="blintz.html">Checked blintz sequence</a> ·
+  <a href="bird-sequence.html">Both petals, illustrated states</a>
+</header>
+<section>
+  <h2>Follow the petal</h2>
+  <p>One camera and one scale, looking down from the side at 45°.
+    Raise the tip, bring both sides inward, then press flat. The penultimate
+    figure leaves a small opening to make the layers easier to inspect.</p>
+  <img src="checked-petal/sequence.svg" alt="Eight numbered views from a square base through one complete bird petal">
+  <ol><!--STATES--></ol>
+  <p><a href="checked-petal/sequence.svg">Full SVG page</a> ·
+    <a href="checked-petal/sequence.fold">FOLD sequence</a></p>
+</section>
+<section>
+  <h2>Inspect the moving sides</h2>
+  <p>The tip starts halfway through its turn. Choose any numbered figure to see
+    the square base, the lifted petal, or its flat landing. Drag to rotate.</p>
+  <iframe src="checked-petal/index.html?model=state-3.glb" title="Continuously checked bird petal in 3D" loading="lazy"></iframe>
+  <p><a href="checked-petal/index.html?model=state-3.glb">Open the 3D viewer</a> ·
+    <a href="checked-petal/checks.json">Angles, layer orders and measurements</a></p>
+</section>
+<section>
+  <h2>What was checked</h2>
+  <p>All 120 panel pairs, all 28 material edge lengths, and 71 overlapping
+    panel pairs across the two flat endpoints. Exact arithmetic checks the
+    ideal motion between the pictures. Every displayed pose is rebuilt from
+    crease angles and agrees with that path within 0.000000000001 of the
+    sheet’s side length; shared vertices, achieved angles and contact are
+    checked again.</p>
+  <p>This is zero-thickness paper following one known petal route. It does not
+    yet check the square-base collapse, the second petal, or find a route for
+    an arbitrary crease pattern. Complete paper in the 3D viewer retains
+    coincident buried layers; Visible paper removes them for stable display.</p>
+</section>
+</html>

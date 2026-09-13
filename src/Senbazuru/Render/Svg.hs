@@ -22,6 +22,14 @@
 -- weights. Doing the arithmetic in "Senbazuru.Geometry" instead keeps line
 -- weight independent of the model's scale, and keeps the mapping in code that
 -- can be property-tested rather than buried in an attribute string.
+--
+-- A filled polygon has no distinguished first corner. Clipping can choose a
+-- different cyclic start on macOS and Linux because their trigonometry differs
+-- in the last bits. Closed fill paths choose the lexicographically smallest
+-- rotation of their FORMATTED page coordinates. Comparing unrounded Doubles
+-- would let invisible numerical noise choose different visible bytes again.
+-- This preserves winding, subpath order and all geometry; open strokes and
+-- arrows retain their meaningful endpoints.
 module Senbazuru.Render.Svg
   ( -- * Page setup
     Page (..),
@@ -37,7 +45,7 @@ module Senbazuru.Render.Svg
   )
 where
 
-import Data.List (dropWhileEnd)
+import Data.List (dropWhileEnd, foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -271,7 +279,19 @@ quadratic a b c =
 
 -- | An SVG path closed with @Z@, so the fill has a boundary all the way round.
 closedPathData :: [V2] -> Text
-closedPathData pts = pathData pts <> " Z"
+closedPathData pts = case map point pts of
+  [] -> " Z"
+  first : rest ->
+    let initial = first : rest
+        ordered = foldl' min initial (rotations rest [first])
+     in "M " <> T.intercalate " L " ordered <> " Z"
+  where
+    point (V2 x y) = formatNumber x <> " " <> formatNumber y
+    -- Compare the whole rotation when rounded corners tie. Selecting only
+    -- the smallest corner would still depend on the input's cyclic start.
+    rotations [] _ = []
+    rotations remaining@(next : rest) preceding =
+      (remaining ++ reverse preceding) : rotations rest (next : preceding)
 
 -- | An SVG path: move to the first point, then draw straight lines to the rest.
 pathData :: [V2] -> Text
