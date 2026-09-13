@@ -45,7 +45,8 @@ stack run senbazuru-material-study -- --bending build/fold-material
 Open `build/fold-material/bending.html`, or
 [the served page](http://127.0.0.1:8000/bending.html) with the server above.
 It compares shapes from a shared camera 45° above the side. Choose the single fold, either double-fold stiffness,
-diagonal/kite examples, or opposing flaps with authored or discovered contact.
+diagonal/kite examples, opposing flaps with authored or discovered contact,
+or the curled-panel self-contact control.
 The contact comparisons show unconstrained and corrected endpoints from the same
 starting pose. **Opposing flaps · first contact** also has a **Folding state**
 selector for its angle-defined approach, at the same camera and scale.
@@ -109,8 +110,20 @@ unchanged. This check covers one specified rigid hinge rotation of at most
 360°; see the [sweep note](../../docs/notes/hinge-sweep-contact.md) for its
 separation bounds, shared-hinge handling and numerical limits.
 
+**Curled panel · self-contact** keeps one source panel while allowing its
+returning end to contact its starting end. Eight spans form a connected strip
+with no material creases. Passive panel springs prefer flatness; separate bend
+controls prefer 60° with four times the passive stiffness. Without contact,
+their combined preference is 48° and the strip crosses itself. Four supplied
+local triangle requirements correct that contact without renaming panels or
+moving their display layers. The endpoint passes all 120 triangle pairs and
+has maximum relative edge error below `1e-7`. The JSON includes local triangle
+orders and their smallest separation residual. See the
+[local contact note](../../docs/notes/local-panel-contact.md) for the control,
+finer-mesh comparison and numerical scope.
+
 Physical thickness, paper calibration, automatic approach selection, general
-continuous collision checking and correction within a source panel remain open.
+continuous collision checking and automatic self-contact discovery remain open.
 Raw sampled observations and numerical correction checkpoints still have no
 motion check. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).

@@ -220,6 +220,13 @@ right-flap rotation. Raw pose observations and numerical solver iterates still
 have no checked motion between them. The independent triangle check also judges
 each accepted endpoint. See [the sweep note](notes/hinge-sweep-contact.md) for the
 shared-hinge exception and numerical scope.
+`SurfaceContact.prepareTriangleContact` also accepts local lower/upper triangle
+requirements without changing their source-panel ownership. `SelfContactExample`
+uses these on the two ends of one curled panel. `FoldBending.buildPanelHinges`
+supplies passive flatness; separate `BendControl` springs impose its curl without
+creating creases. The same `relaxSurfaceContact` solve corrects its endpoint,
+and `PanelContact.checkLocalTriangleContact` independently checks every pair,
+including neighbors. See [local panel contact](notes/local-panel-contact.md).
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

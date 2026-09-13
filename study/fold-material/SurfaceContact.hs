@@ -20,6 +20,10 @@
 -- vertex. Joined panels use zero, since opening their common crease would
 -- tear the sheet. This small solver margin is not physical paper thickness;
 -- it keeps a tolerated negative residual from becoming a strict intersection.
+-- 'prepareTriangleContact' instead names separated material triangles directly,
+-- so two regions of ONE bending panel can meet without inventing new panels.
+-- Its requirements stay attached to those triangle ids; adjacent triangles
+-- sharing a vertex are refused because separating them would open the sheet.
 --
 -- FoldRelaxation penalises only negative separation after subtracting the
 -- clearance: separated flaps do not attract. These are zero-thickness inequalities at numerical iterates,
@@ -31,23 +35,25 @@ module SurfaceContact
     ContactCandidate (..),
     overlapCandidates,
     prepareContact,
+    prepareTriangleContact,
     orderedContacts,
   )
 where
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
 import Data.Set qualified as S
 import FoldContact (ContactRow (..))
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Types (FaceId (..))
-import Senbazuru.Geometry (V2)
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), Triangle)
 
--- Prepared ownership and material are immutable; only positions may change.
+-- Prepared triangle requirements and material are immutable; only positions
+-- may change. Whole-panel preparation expands its owners into these same ids.
 data OrderedContact = OrderedContact !(V3, V3, V3) ![Triangle] ![V2] ![(Int, Int, Double)]
   deriving stock (Eq, Show)
 
@@ -73,6 +79,10 @@ data ContactError
   | MissingContactVertex !Int
   | UncheckableContactPair !Int !Int
   | NonFiniteContact !Int !Int
+  | UnknownContactTriangle !Int
+  | AdjacentContactTriangles !Int !Int
+  | EmptyContactMesh
+  | InvalidContactMaterial !Int
   deriving stock (Eq, Show)
 
 instance Explain ContactError where
@@ -86,6 +96,10 @@ instance Explain ContactError where
   explain (MissingContactVertex i) = "surface contact refers to missing vertex " <> tshow i
   explain (UncheckableContactPair a b) = "triangles " <> tshow a <> " and " <> tshow b <> " both stand parallel to the contact direction; this order cannot be corrected as a height inequality"
   explain (NonFiniteContact a b) = "contact between triangles " <> tshow a <> " and " <> tshow b <> " produced a non-finite gap or derivative"
+  explain (UnknownContactTriangle i) = "local contact refers to absent triangle " <> tshow i
+  explain (AdjacentContactTriangles a b) = "local contact triangles " <> tshow a <> " and " <> tshow b <> " share material vertices; their connection must remain joined"
+  explain EmptyContactMesh = "local triangle contact needs a nonempty mesh"
+  explain (InvalidContactMaterial i) = "local contact vertex " <> tshow i <> " needs finite original-sheet coordinates"
 
 -- | Prepare numerical clearance, direction, lower/upper panel pairs and one
 -- owner per triangle. Only position changes are allowed after preparation.
@@ -103,10 +117,39 @@ prepareContact clearance direction requirements owners mesh = do
       model = OrderedContact basis (triangles mesh) (map sampleMaterial (samples mesh)) pairs
   _ <- orderedContacts model mesh
   pure model
-  where
-    closure pairs =
-      let more = S.union pairs (S.fromList [(a, c) | (a, b) <- S.toList pairs, (b', c) <- S.toList pairs, b == b'])
-       in if more == pairs then pairs else closure more
+
+-- | Numerical clearance, model direction and (lower, upper) triangle ids.
+-- This is an explicit local requirement, not automatic contact discovery.
+-- Requirements include their transitive consequences, just as panel orders do;
+-- every resulting pair must have disjoint material vertices. Source-panel ids
+-- are neither consumed nor changed, so a panel need not be above itself.
+prepareTriangleContact :: Double -> V3 -> [(Int, Int)] -> MaterialMesh -> Either ContactError OrderedContact
+prepareTriangleContact clearance direction requirements mesh = do
+  unless (finite clearance && clearance >= 0) (Left InvalidContactClearance)
+  basis <- projectionBasis direction
+  when (null (triangles mesh)) (Left EmptyContactMesh)
+  mapM_ (\(i, sample) -> let V2 u v = sampleMaterial sample in unless (all finite [u, v]) (Left (InvalidContactMaterial i))) (zip [0 ..] (samples mesh))
+  let topology = IM.fromList (zip [0 ..] (triangles mesh))
+      vertices i = case IM.lookup i topology of
+        Nothing -> Left (UnknownContactTriangle i)
+        Just (a, b, c) -> Right [a, b, c]
+      reachable = closure (S.fromList requirements)
+  mapM_ vertices [i | (a, b) <- requirements, i <- [a, b]]
+  unless (all (uncurry (/=)) (S.toList reachable)) (Left CyclicContactOrder)
+  let pair (a, b) = do
+        av <- vertices a
+        bv <- vertices b
+        unless (all (`notElem` bv) av) (Left (AdjacentContactTriangles a b))
+        pure (a, b, clearance)
+  pairs <- mapM pair (S.toList reachable)
+  let model = OrderedContact basis (triangles mesh) (map sampleMaterial (samples mesh)) pairs
+  _ <- orderedContacts model mesh
+  pure model
+
+closure :: (Ord a) => S.Set (a, a) -> S.Set (a, a)
+closure pairs =
+  let more = S.union pairs (S.fromList [(a, c) | (a, b) <- S.toList pairs, (b', c) <- S.toList pairs, b == b'])
+   in if more == pairs then pairs else closure more
 
 -- | Return separation MINUS numerical clearance, with positional gradients.
 -- A negative residual asks the solver to separate the panels further.
