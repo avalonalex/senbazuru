@@ -4,11 +4,14 @@ import ContactDiscovery
 import ContactExample
 import Control.Monad (forM_)
 import Data.Either (isLeft)
+import FlapExample (singleFlap)
 import FoldRelaxation (maxLengthError)
+import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Contact (checkTriangleContact, contactPassed)
+import Senbazuru.Origami.Contact (checkLocalTriangleContact, checkTriangleContact, contactPassed)
+import Senbazuru.Origami.Folding (foldFrameWith)
 import Senbazuru.Origami.HingeSweep
 import Senbazuru.Origami.Surface
 import Test.Hspec
@@ -89,6 +92,39 @@ spec = describe "rigid hinge sweep contact" $ do
     start <- fixtureMesh 145 105
     prepareSweep (V3 0 0 0) (V3 0 1 0) 1 (rightIds start) start `shouldSatisfy` isLeft
     prepareSweep (V3 0.7 0 0) (V3 0 (-1) 0) 1 [3] start `shouldSatisfy` isLeft
+
+  it "checks a flat endpoint without weakening the strict caller's contact policy" $ do
+    folded <- right (foldFrameWith singleFlap {edgesFoldAngle = replicate 7 0})
+    sheet <- right (surfaceFromFolded folded)
+    (mesh, _) <- right (refineSurface 0 sheet)
+    -- A general proper rotation, not just a permutation of coordinate axes.
+    let axis = (1 / sqrt 14) *^ V3 1 2 3
+        rotate p = cos 0.7 *^ p ^+^ sin 0.7 *^ cross axis p ^+^ ((1 - cos 0.7) * dot axis p) *^ axis
+        move p = rotate p ^+^ V3 3 (-2) 5
+        moved = mesh {samples = [s {position = move (position s)} | s <- samples mesh]}
+    sweep <- right (prepareSweep (move (V3 0.5 0 0)) (rotate (V3 0 1 0)) (-pi) [1, 2, 3, 4] moved)
+    strict <- right (checkSweep defaultSweepSettings sweep)
+    sweepOutcome strict `shouldNotBe` SweepClear
+    accepted <- right (checkSweepWithFlatEndpoints defaultSweepSettings sweep)
+    sweepOutcome accepted `shouldBe` SweepClear
+    sweepEndpointContacts accepted `shouldSatisfy` (not . null)
+    map contactProgress (sweepEndpointContacts accepted) `shouldSatisfy` all (== 1)
+    map contactSide (sweepEndpointContacts accepted) `shouldSatisfy` all (== 1)
+    -- Check interiors independently with the ordinary static contact test.
+    forM_ [0.01, 0.02 .. 0.99] $ \t -> do
+      current <- right (sweepMeshAt sweep t)
+      report <- right (checkLocalTriangleContact (V3 0 0 1) [] current)
+      contactPassed report `shouldBe` True
+
+  it "does not excuse a separate hinge seam or an axis outside the fixed plane" $ do
+    let mesh = Mesh [Sample (V2 x y) (V3 x y z) | (x, y, z) <- [(0, 0, 0), (-1, 0, 0), (0, 1, 0), (0, 0, 0), (1, 0, 0), (0, 1, 0)]] [(0, 1, 2), (3, 4, 5)]
+    detached <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) pi [3, 4, 5] mesh)
+    result <- right (checkSweepWithFlatEndpoints defaultSweepSettings detached)
+    sweepOutcome result `shouldNotBe` SweepClear
+    let shifted = mesh {samples = [s {position = position s ^+^ V3 0 0 (if i < 3 then 1e-8 else 0)} | (i, s) <- zip [0 :: Int ..] (samples mesh)]}
+    offPlane <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (-pi) [3, 4, 5] shifted)
+    refused <- right (checkSweepWithFlatEndpoints defaultSweepSettings offPlane)
+    sweepOutcome refused `shouldNotBe` SweepClear
 
   prop "bounds every interior sample of finite sinusoid intervals" $
     forAll (choose (-10, 10)) $ \a -> forAll (choose (-10, 10)) $ \b ->

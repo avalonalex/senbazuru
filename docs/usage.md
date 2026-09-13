@@ -230,16 +230,26 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
 
 Open [the checked flap demo](http://127.0.0.1:8000/flap.html). Its SVG/FOLD files
 need no JavaScript dependencies; the 3D viewer uses the local Three.js install.
-`checked-flap/` contains two SVG/FOLD sequences, eight GLBs with both scenes,
-and `checks.json` with interval counts, length errors and a rejected full turn.
+`checked-flap/` contains three SVG/FOLD sequences, twelve GLBs with both scenes,
+and `checks.json` with interval counts, length errors, endpoint layer orders
+and a rejected full turn. The single fold closes from 0° to 180° and reopens;
+the opposing-flap example retains its short 105°–121° route.
 
 This supports one crease separating a rigid flap from stationary paper, with
-convex planar panels. It refuses flat touching endpoints, creases requiring
-other angles to change, and exhausted interval work. The check uses
+convex planar panels. A flat touching endpoint is supported when a half-turn
+or shorter approach stays on one side of a stationary plane containing the
+hinge. Its `faceOrders` record that side. At a touching start, any supplied
+orders must agree with departure; if absent, departure selects the unknown
+order. Other poses discard stale orders. Persistent touching stacks, creases
+requiring other angles to change, and exhausted interval work are refused.
+The check uses
 zero-thickness geometry normalized to sheet scale, with floating-point bounds
-and a numerical guard. A contact parameter is a witness, not the first impact
+and numerical guards, including a `1.42e-14` allowance for rounded endpoint
+coplanarity. This does not establish exact separation below that scale.
+A contact parameter is a witness, not the first impact
 time. There is no general flap CLI verb or route planning yet. See
-[the operation note](notes/checked-flap-operation.md).
+[the operation note](notes/checked-flap-operation.md) and
+[the endpoint rule](notes/flat-flap-endpoints.md).
 
 ### Experimental bending
 

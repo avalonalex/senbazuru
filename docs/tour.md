@@ -508,12 +508,16 @@ The first library operation using the motion checks is `Origami.Flap`.
 Select one crease and a face on the side to move; the operation finds every
 face belonging to that flap. It checks the entire rigid turn before supplying
 angle-derived surfaces for rendering. The [checked flap demo](usage.md#checked-flap-motion)
-shows a single fold from 15° to 165° and a short move between two opposing
-flaps. A full turn of the latter returns to the same endpoint but is refused
-because it crosses the other flap on the way.
+shows a single fold from 0° to 180°, its reopening, and a short move between
+two opposing flaps. A full turn of the latter returns to the same endpoint
+but is refused because it crosses the other flap on the way. Rejecting that
+route says nothing about other routes: doing nothing reaches its identical
+endpoint. See [valid states versus reachable states](notes/endpoints-and-routes.md).
 
-Flat touching endpoints and creases that need other angles to change remain
-refused. Each exported pose retains material identities and is re-folded to
+At a flat endpoint, the [one-sided approach](notes/flat-flap-endpoints.md)
+determines which layer rests on which. Reopening must respect a supplied
+initial order. Persistent touching stacks and creases that need other angles
+to change remain refused. Each exported pose retains material identities and is re-folded to
 check shared vertices and achieved angles; it is never interpolated between
 saved positions. The [design note](notes/checked-flap-operation.md) explains
 how the checked motion stays consistent with what the renderers receive.

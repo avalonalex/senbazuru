@@ -33,10 +33,17 @@ writeFlapGallery :: FilePath -> IO ()
 writeFlapGallery destination = do
   let output = destination </> "checked-flap"
   createDirectoryIfMissing True output
-  entries <- forM [("single", "Single fold", singleFlap, EdgeId 6, FaceId 1, 150), ("opposing", "Between two flaps", opposingFlap, EdgeId 9, FaceId 2, 16)] $ \(key, title, frame, crease, side, travel) -> do
+  closingStart <- checked (foldFrameWith singleFlap {edgesFoldAngle = replicate 7 0})
+  closing <- checked (prepareFlap (EdgeId 6) (FaceId 1) 180 closingStart >>= checkFlap defaultSweepSettings)
+  closed <- checked (flapAt closing 1)
+  let closedFrame = surfaceFrame closed
+      reopening = singleFlap {edgesFoldAngle = edgesFoldAngle closedFrame, faceOrders = faceOrders closedFrame}
+  firstEntry <- writeMotion output "single" "Fold completely flat" closing
+  otherEntries <- forM [("reopen", "Reopen the same fold", reopening, EdgeId 6, FaceId 1, -180), ("opposing", "Between two flaps", opposingFlap, EdgeId 9, FaceId 2, 16)] $ \(key, title, frame, crease, side, travel) -> do
     start <- checked (foldFrameWith frame)
     motion <- checked (prepareFlap crease side travel start >>= checkFlap defaultSweepSettings)
     writeMotion output key title motion
+  let entries = firstEntry : otherEntries
   start <- checked (foldFrameWith opposingFlap)
   rejected <- checked (prepareFlap (EdgeId 9) (FaceId 2) 360 start)
   refusal <- case checkFlap defaultSweepSettings rejected of
@@ -68,8 +75,8 @@ writeMotion output key title motion = do
     pure (object ["title" .= label, "path" .= file], maxLengthError mesh)
   let intervals = sweepIntervals (flapCheck motion)
       error' = maximum (0 : map snd exports)
-      card = "<section><h2>" <> escapeXml title <> "</h2><img src=\"checked-flap/" <> T.pack key <> ".svg\" alt=\"Four checked angle states, viewed from 45 degrees above a corner\"><p>Whole rotation cleared in " <> T.pack (show intervals) <> " interval checks. <a href=\"checked-flap/" <> T.pack key <> ".fold\">FOLD sequence</a> · <a href=\"checked-flap/" <> T.pack key <> ".svg\">SVG page</a></p></section>"
-      report = object ["name" .= title, "intervals" .= intervals, "movingFaces" .= map unFaceId (flapMovingFaces motion), "maxRelativeEdgeError" .= error', "angles" .= map edgesFoldAngle frames]
+      card = "<section><h2>" <> escapeXml title <> "</h2><img src=\"checked-flap/" <> T.pack key <> ".svg\" alt=\"Four checked angle states, viewed from 45 degrees above a corner\"><p>Whole rotation cleared. Interval checks: " <> T.pack (show intervals) <> ". <a href=\"checked-flap/" <> T.pack key <> ".fold\">FOLD sequence</a> · <a href=\"checked-flap/" <> T.pack key <> ".svg\">SVG page</a></p></section>"
+      report = object ["name" .= title, "intervals" .= intervals, "movingFaces" .= map unFaceId (flapMovingFaces motion), "maxRelativeEdgeError" .= error', "angles" .= map edgesFoldAngle frames, "faceOrders" .= map faceOrders frames]
   pure (card, map fst exports, report)
 
 sequenceFile :: T.Text -> [Frame] -> FoldFile
