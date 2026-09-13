@@ -137,7 +137,7 @@ The JSON records each accepted encounter's iteration, new orders, measured gap
 ranges and unchanged material mesh. Earlier checkpoints carry only the orders
 known at their iteration. See the [history note](../../docs/notes/growing-local-contact-history.md).
 
-**Contact between numerical poses** adds four **Correction case** views:
+**Contact between numerical poses** starts with four **Correction case** views:
 the safe endpoints of a diagonal-fold shortcut, its interior collision witness,
 the closing strip with strict motion checks, and a safe opening control. The
 new solver mode checks whole straight correction paths before accepting a pose
@@ -154,6 +154,18 @@ ends that penalty stage without claiming convergence. On the recorded Mac this
 removes repeated work, with the same closing endpoint; it does not solve the
 abrupt layer-penalty change when projected triangles begin overlapping. See
 [rejected bending trials](../../docs/notes/rejected-bending-trials.md).
+
+Two further views, **Distance barrier · closing** and **Distance barrier · opening**,
+use distance to violating a retained triangle order. This supplies a force
+before projected overlap appears, while keeping the same accepted-path check.
+The closing comparison puts the old strict solver on the left and the new
+energy on the right. Both new controls settle in the recorded run; the closing
+strip has relative material-edge error `1.18e-8`, no failed endpoint triangle
+checks and 99 accepted, checked paths. The activation range is `0.001` model
+units beyond clearance, not physical thickness. JSON identifies the energy and
+range so rejected-trial energies can be replayed. This still requires separated
+encounters and retained directional orders; see
+[the distance formulation](../../docs/notes/directional-contact-distance.md).
 
 Physical thickness, paper calibration, automatic approach selection and general
 continuous collision checking remain open. Raw sampled observations and the

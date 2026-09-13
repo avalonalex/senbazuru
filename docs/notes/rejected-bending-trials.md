@@ -74,7 +74,7 @@ Counts describe only the first failed check, not every defect of a candidate.
 These are measurements of one numerical route, not cross-platform constants.
 Linux may take a different route and settle; tests require the same material,
 contact and full-path guarantees in either case. A contact formulation that
-supplies a useful direction before this overlap boundary remains the next
-solver problem. Increasing damping or relaxing collision tolerances is not an
-established solution. This increment is [#170](https://github.com/avalonalex/senbazuru/issues/170),
+supplies a useful direction before this overlap boundary is developed in
+[directional contact distance](directional-contact-distance.md), while this
+original mode remains available for comparison. This increment is [#170](https://github.com/avalonalex/senbazuru/issues/170),
 following [the numerical path check](checking-numerical-corrections.md).

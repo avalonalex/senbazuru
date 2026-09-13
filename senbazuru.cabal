@@ -157,7 +157,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, HingeSweep, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact, BasicBases, BasicBaseGallery
+  other-modules: DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, HingeSweep, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -192,6 +192,8 @@ test-suite senbazuru-test
     FoldBendingSpec
     SurfaceBendingSpec
     SurfaceContact
+    DirectionalDistance
+    DirectionalDistanceSpec
     SurfaceContactSpec
     CorrectionExample
     CorrectionSweep

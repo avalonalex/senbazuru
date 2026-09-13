@@ -40,6 +40,7 @@ module LocalContactDiscovery
     localReferenceOrders,
     localReferenceCandidates,
     localDiscoveredContacts,
+    localBarrierContacts,
   )
 where
 
@@ -163,6 +164,12 @@ localDiscoveredContacts reference mesh = do
     orders = referenceOrders reference
     model = referenceModel reference
     known candidate = let (a, b) = localTriangles candidate in unless (related orders a b) (Left (NewLocalContactPair a b))
+
+-- | Retain the same discovery guard while changing only the contact energy.
+localBarrierContacts :: Double -> LocalReference -> MaterialMesh -> Either LocalDiscoveryError [ContactRow]
+localBarrierContacts activation reference mesh = do
+  _ <- localDiscoveredContacts reference mesh
+  first LocalDiscoveryGeometry (orderedBarrierContacts activation (referenceModel reference) mesh)
 
 -- | Propose a monotone extension: callers keep it only if they accept this pose.
 -- First enforce the OLD guard, so a newly crossed/touching pair cannot explain

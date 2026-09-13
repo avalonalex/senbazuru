@@ -68,6 +68,7 @@
       The first-contact example can extend this history at supplied, angle-defined approach poses. New relationships are accepted only after the pose passes earlier orders and an independent triangle check. Rejected observations leave the history unchanged. Each of its four approach intervals now has a specified rigid rotation about the right crease. Bounds over the whole angular interval check separation; a collision or unresolved interval blocks the observation. This does not check the numerical correction trajectory or arbitrary bending.
       The curled-panel controls use nonadjacent material triangles inside one panel. The original example supplies the pairs. The new discovered-contact example scans a separated 44.5° reference curl and learns nearby pairs along model direction (−3, 0, 1). A 0.03-unit search distance limits discovery to approaching paper; the 0.000001-unit clearance supplies the much smaller solver margin. Connected flat triangles share discovered partners so contact can cross their triangulation diagonal. The learned order stays fixed, and an unknown pair reaching contact clearance is refused. The sixteen-span growing-history example adds new partners from separated trial poses and retains them only when the solver accepts that step. The frozen reference remains as its comparison. Newly implied orders must also have positive clearance; earlier orders are never reversed or removed. Known contact errors can remain while early penalty stages correct them. These numerical observations do not check the intervening motion. Triangles sharing a material vertex cannot receive these separating requirements. This does not discover arbitrary self-contact or guarantee collision-free solver motion. Joined panels keep zero clearance. This margin is not physical paper thickness.
       The separate numerical-correction cases bound the whole straight path of every vertex with exact arithmetic. Shared material may touch, but other intersections and triangle collapse must be ruled out. Unresolved intervals block acceptance. The checked curl reports whether it settles or retains material error; its numerical route can vary across platforms. The opening control settles. These checks do not make the intermediate optimizer shapes inextensible.
+      The distance-barrier cases also resist approach to a forbidden above/below relationship before projected overlap appears. Their 0.001-unit activation range is numerical, not thickness. They keep earlier orders, the unknown-partner guard and the same path check. Their closing and opening controls settle in the recorded run; they do not discover arbitrary new contact partners.
       Other motions, finite-thickness contact and global optimality remain outside these checks. Numerical iterations are not folding instructions.
       Only the original packets receive a display-depth tie-break after their contact check passes; the saved positions do not change.</p>
     <p>Stiffness and energy use illustrative units. The crease stiffness is 1; the double-fold examples compare panel stiffnesses 0.2 and 5 on the same mesh.
@@ -114,7 +115,7 @@ function initialize() {
     el('motion-control').hidden=run.kind!=='correction';
     el('motion-view').replaceChildren();
     (run.views||[]).forEach((view,i)=>{const option=document.createElement('option');option.value=i;option.textContent=view.title;el('motion-view').append(option);});
-    if(run.kind==='correction')el('motion-view').value='2';
+    if(run.kind==='correction')el('motion-view').value='4';
     el('encounter-control').hidden=run.kind!=='localhistory';
     el('encounter').replaceChildren();
     if(run.kind==='localhistory'){
@@ -218,7 +219,7 @@ function initialize() {
       const labels={NoDescent:'Energy did not decrease',ContactRefusal:'Contact discovery or history',InvalidTrial:'Invalid numerical trial',PathCollision:'Witnessed path collision',PathCollapse:'Witnessed triangle collapse',PathUnresolved:'Motion bounds unresolved'};
       const count=audit.rejections.reduce((sum,row)=>sum+row.count,0);
       const blocks=audit.blockedStages.map(stage=>`iteration ${stage.iteration} (length weight ${stage.lengthWeight.toExponential(0)})`);
-      el('trial-summary').textContent=`${count} refused trial corrections. ${blocks.length?`Search exhausted at ${blocks.join(', ')}. Every step size was refused; the solver advances to the next penalty weight or returns not settled, without repeating the identical search.`:'No blocked penalty stages.'}`;
+      el('trial-summary').textContent=`Contact energy: ${audit.contactEnergy}${audit.barrierActivation===null?'':`; activation ${audit.barrierActivation} model units beyond clearance`}. ${count} refused trial corrections. ${blocks.length?`Search exhausted at ${blocks.join(', ')}. Every step size was refused; the solver advances to the next penalty weight or returns not settled, without repeating the identical search.`:'No blocked penalty stages.'}`;
       const witness=trial=>{
         if(!trial)return '—';
         const energy=trial.afterEnergy===null?'unavailable':trial.afterEnergy.toPrecision(7);
