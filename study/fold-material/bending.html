@@ -21,7 +21,7 @@
   @media(max-width:650px) {body{padding:24px 14px}canvas{height:300px}.metrics{grid-template-columns:repeat(2,1fr)}th,td{padding:8px 3px;font-size:12px}}
 </style>
 <header>
-  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154 · #156 · #158 · #160 · #162 · #164 · #166</div>
+  <div class="eyebrow">SENBAZURU · MATERIAL STUDY / #150 · #152 · #154 · #156 · #158 · #160 · #162 · #164 · #166 · #168</div>
   <h1>Creases remember; panels resist</h1>
   <p>A crease prefers a particular angle. The paper between creases prefers to stay flat.
     These examples let the connected sheet settle under both preferences. Opposing flaps add contact correction: their preferred angles would make them cross. A curled strip tests supplied and automatically discovered contact between parts of one uncreased panel. Separate bending controls curl it; local contact requirements keep its returning end above its starting end.</p>
@@ -31,6 +31,7 @@
     <label>Example <select id="example"></select></label>
     <label id="approach-control" hidden>Folding state <select id="approach"></select></label>
     <label id="encounter-control" hidden>Contact history <select id="encounter"></select></label>
+    <label id="motion-control" hidden>Correction case <select id="motion-view"></select></label>
     <button id="reset">Side view · 45° above</button>
     <label><input type="checkbox" id="wire"> Triangle mesh</label>
   </div>
@@ -57,6 +58,7 @@
       A new overlap must have an order already implied by that reference; otherwise it is refused. Ambiguous or crossed references need more information.
       The first-contact example can extend this history at supplied, angle-defined approach poses. New relationships are accepted only after the pose passes earlier orders and an independent triangle check. Rejected observations leave the history unchanged. Each of its four approach intervals now has a specified rigid rotation about the right crease. Bounds over the whole angular interval check separation; a collision or unresolved interval blocks the observation. This does not check the numerical correction trajectory or arbitrary bending.
       The curled-panel controls use nonadjacent material triangles inside one panel. The original example supplies the pairs. The new discovered-contact example scans a separated 44.5° reference curl and learns nearby pairs along model direction (−3, 0, 1). A 0.03-unit search distance limits discovery to approaching paper; the 0.000001-unit clearance supplies the much smaller solver margin. Connected flat triangles share discovered partners so contact can cross their triangulation diagonal. The learned order stays fixed, and an unknown pair reaching contact clearance is refused. The sixteen-span growing-history example adds new partners from separated trial poses and retains them only when the solver accepts that step. The frozen reference remains as its comparison. Newly implied orders must also have positive clearance; earlier orders are never reversed or removed. Known contact errors can remain while early penalty stages correct them. These numerical observations do not check the intervening motion. Triangles sharing a material vertex cannot receive these separating requirements. This does not discover arbitrary self-contact or guarantee collision-free solver motion. Joined panels keep zero clearance. This margin is not physical paper thickness.
+      The separate numerical-correction cases bound the whole straight path of every vertex with exact arithmetic. Shared material may touch, but other intersections and triangle collapse must be ruled out. Unresolved intervals block acceptance. The checked curl currently stalls with remaining material error; the opening control settles. These checks do not make the intermediate optimizer shapes inextensible.
       Other motions, finite-thickness contact and global optimality remain outside these checks. Numerical iterations are not folding instructions.
       Only the original packets receive a display-depth tie-break after their contact check passes; the saved positions do not change.</p>
     <p>Stiffness and energy use illustrative units. The crease stiffness is 1; the double-fold examples compare panel stiffnesses 0.2 and 5 on the same mesh.
@@ -74,7 +76,7 @@ else {el('paper').hidden=true;document.querySelector('.controls').hidden=true;}
 function initialize() {
   const canvas=el('paper'), gl=canvas.getContext('webgl',{antialias:true});
   data.runs.forEach((run,i)=>{const option=document.createElement('option');option.value=i;option.textContent=run.title;el('example').append(option);});
-  const contactIndex=data.runs.findIndex(run=>run.kind==='localhistory');if(contactIndex>=0)el('example').value=contactIndex;
+  const contactIndex=data.runs.findIndex(run=>run.kind==='correction');if(contactIndex>=0)el('example').value=contactIndex;
   let yaw=-Math.PI/4, pitch=Math.PI/4, zoom=1, views=[], buffers=[], center=[0,0,0], radius=1;
   const subtract=(a,b)=>a.map((v,i)=>v-b[i]);
   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -100,6 +102,10 @@ function initialize() {
   const range=(state,role)=>angleRange(state.angles.filter(h=>h.role===role),true);
   function selectExample(){
     const run=data.runs[Number(el('example').value)];
+    el('motion-control').hidden=run.kind!=='correction';
+    el('motion-view').replaceChildren();
+    (run.views||[]).forEach((view,i)=>{const option=document.createElement('option');option.value=i;option.textContent=view.title;el('motion-view').append(option);});
+    if(run.kind==='correction')el('motion-view').value='1';
     el('encounter-control').hidden=run.kind!=='localhistory';
     el('encounter').replaceChildren();
     if(run.kind==='localhistory'){
@@ -120,6 +126,8 @@ function initialize() {
     update();
   }
   function update(){
+    const selectedRun=data.runs[Number(el('example').value)];
+    if(selectedRun.kind==='correction'){updateCorrection(selectedRun);return;}
     const run=data.runs[Number(el('example').value)], history=run.kind==='history', localDiscovery=run.kind==='localdiscovery', localHistory=run.kind==='localhistory', selfContact=run.kind==='selfcontact'||localDiscovery||localHistory;
     const selected=localHistory?el('encounter').value:'final', encounter=localHistory&&!['initial','final'].includes(selected)?run.encounters[Number(selected)]:null;
     const observed=localHistory&&selected!=='final';
@@ -174,9 +182,34 @@ function initialize() {
       Number(el('example').value)===0?
       'The single fold has a known answer: flat panels meeting at the preferred 150° fold angle. It is a control for the mechanics, not an extra hand-authored pose.':
       `Both creases prefer 170°. They cannot all achieve that while keeping these four panels flat and joined. With panel stiffness ${run.panelStiffness}, the energy balances bending inside panels against missing the crease targets. Compare the two double-fold examples using the same camera.`;
+    const points=localHistory?[...run.baseline.positions,...run.states.flatMap(state=>state.positions),...run.encounters.flatMap(event=>event.state.positions)]:history?[...run.approach.flatMap(pose=>pose.state.positions),...run.baseline.positions,...run.states.flatMap(state=>state.positions),...(run.motionProbe?run.motionProbe.state.positions:[])]:[...start.positions,...final.positions];
+    showMeshes(start,final,points);
+  }
+  function updateCorrection(run){
+    const view=run.views[Number(el('motion-view').value)], start=view.left, final=view.right;
+    const checks=view.motions, count=checks.length, materialOK=final.lengthError<=data.lengthTolerance, contactOK=final.contact.passed;
+    el('left-caption').textContent=el('left-column').textContent=view.leftCaption;
+    el('right-caption').textContent=el('right-column').textContent=view.rightCaption;
+    const settled=view.status==='settled'&&materialOK&&contactOK;
+    el('status').className=settled?'good':'pending';
+    el('status').textContent=view.status==='rejected'?`Rejected numerical shortcut: its endpoints pass, but the path has a collision witness at ${(100*view.motion.progress).toFixed(0)}%.`:
+      `${settled?'Settled':'Not settled'}; ${count} accepted numerical corrections cleared over their full intervals. Endpoint material checks ${materialOK?'passed':'need attention'}; contact checks ${contactOK?'passed':'need attention'}.`;
+    canvas.setAttribute('aria-label',`${view.leftCaption} and ${view.rightCaption}, with shared camera and scale. These are numerical correction examples, not folding instructions.`);
+    el('metrics').replaceChildren();
+    for(const [value,label] of [[percent(final.lengthError),'largest edge-length error'],[`${final.contact.crossingPanels.length} / ${final.contact.unorderedContacts.length}`,'crossings / unresolved overlaps'],[String(final.components),'connected sheet'],[String(count),'cleared numerical corrections']]){
+      const card=document.createElement('div');card.className='metric';const v=document.createElement('strong'),l=document.createElement('span');v.textContent=value;l.textContent=label;card.append(v,l);el('metrics').append(card);
+    }
+    const rows=[['Largest edge-length error',percent(start.lengthError),percent(final.lengthError),'at most '+percent(data.lengthTolerance)],['Strict triangle crossings',String(start.contact.crossingPanels.length),String(final.contact.crossingPanels.length),'0'],['Unresolved coplanar overlaps',String(start.contact.unorderedContacts.length),String(final.contact.unorderedContacts.length),'0'],['Independent triangle pairs',String(start.contact.checkedPanelPairs),String(final.contact.checkedPanelPairs),'all pairs']];
+    el('measurements').replaceChildren();rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td);});el('measurements').append(tr);});
+    el('interpretation').textContent=view.description;
+    el('contact-scope').textContent='Exact bounds check triangle separation and nonzero triangle area throughout each accepted straight vertex path. Shared edges and corners remain joined. A collision witness or exhausted interval budget refuses the trial before it can add contact history. This is zero-thickness collision prevention; it does not preserve material lengths between numerical iterates or certify a physical folding motion.';
+    const points=view.status==='rejected'?run.views.slice(0,2).flatMap(v=>[...v.left.positions,...v.right.positions]):[...start.positions,...view.states.flatMap(s=>s.positions)];
+    showMeshes(start,final,points);
+  }
+  function showMeshes(start,final,points){
     if(!gl)return;
     buffers.forEach(b=>gl.deleteBuffer(b));buffers=[];views=[start,final].map(upload);
-    const points=localHistory?[...run.baseline.positions,...run.states.flatMap(state=>state.positions),...run.encounters.flatMap(event=>event.state.positions)]:history?[...run.approach.flatMap(pose=>pose.state.positions),...run.baseline.positions,...run.states.flatMap(state=>state.positions),...(run.motionProbe?run.motionProbe.state.positions:[])]:[...start.positions,...final.positions];center=[0,1,2].map(k=>(Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);radius=Math.max(1e-8,...points.map(p=>Math.hypot(...subtract(p,center))));draw();
+    center=[0,1,2].map(k=>(Math.min(...points.map(p=>p[k]))+Math.max(...points.map(p=>p[k])))/2);radius=Math.max(1e-8,...points.map(p=>Math.hypot(...subtract(p,center))));draw();
   }
   function buffer(values){const b=gl.createBuffer();buffers.push(b);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(values),gl.STATIC_DRAW);return b;}
   function upload(state){
@@ -209,7 +242,7 @@ function initialize() {
   canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
   canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.5,Math.min(3,zoom*Math.exp(-e.deltaY*.001)));draw();},{passive:false});
   canvas.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();if(e.key==='ArrowLeft')yaw-=.1;if(e.key==='ArrowRight')yaw+=.1;if(e.key==='ArrowUp')pitch=Math.min(1.55,pitch+.1);if(e.key==='ArrowDown')pitch=Math.max(-1.55,pitch-.1);draw();});
-  el('example').addEventListener('change',selectExample);el('encounter').addEventListener('change',update);
+  el('example').addEventListener('change',selectExample);el('motion-view').addEventListener('change',update);el('encounter').addEventListener('change',update);
   el('approach').addEventListener('change',update);el('wire').addEventListener('change',update);
   el('reset').addEventListener('click',()=>{yaw=-Math.PI/4;pitch=Math.PI/4;zoom=1;draw();});window.addEventListener('resize',draw);selectExample();
 }

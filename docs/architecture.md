@@ -216,8 +216,8 @@ trials cannot change them. `HingeSweep` bounds triangle projections over a
 specified fixed-axis rotation, subdividing unresolved angular intervals and
 refusing exhausted work limits. `observeContactSweep` checks that motion before
 accepting its endpoint; `ContactExample.opposingApproach` uses it for each
-right-flap rotation. Raw pose observations and numerical solver iterates still
-have no checked motion between them. The independent triangle check also judges
+right-flap rotation. Raw pose observations and the original numerical solver
+modes still have no checked motion between them. The independent triangle check also judges
 each accepted endpoint. See [the sweep note](notes/hinge-sweep-contact.md) for the
 shared-hinge exception and numerical scope.
 `SurfaceContact.prepareTriangleContact` also accepts local lower/upper triangle
@@ -235,6 +235,13 @@ history during bending in its fixed mode. `relaxLocalHistory` instead threads
 proposed extensions through accepted solver steps and all penalty stages;
 rejected trials leave its history unchanged. See [local discovery](notes/local-contact-discovery.md)
 and [growing history](notes/growing-local-contact-history.md).
+`CorrectionSweep` separately bounds triangle separation and nondegeneracy over
+straight numerical vertex paths, using exact rational Bernstein coefficients.
+`relaxSweptLocalHistory` gates accepted corrections with it before growing the
+contact history, and returns an audit of accepted paths. `CorrectionExample`
+supplies a connected square's unsafe shortcut and a safe strip-opening control.
+This verifies an optimizer path, not a length-preserving folding instruction;
+the guarded closing strip currently stalls. See [the correction note](notes/checking-numerical-corrections.md).
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

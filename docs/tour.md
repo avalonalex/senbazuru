@@ -839,7 +839,14 @@ new orders and carries them across the solver's penalty stages. The finer
 sixteen-span strip then settles with ten learned relationships; its fixed
 reference stalls. The gallery exposes the learning pose, and the final shape
 passes all 496 independent triangle-pair checks. The numerical path between
-observations is still unchecked.
+observations is still unchecked in that mode.
+The [numerical-correction check](notes/checking-numerical-corrections.md) bounds
+whole straight vertex paths with exact arithmetic. Its new gallery control
+shows a diagonal-fold shortcut whose endpoints pass but whose interior meets
+paper. A safe strip-opening solve settles with every correction checked; the
+closing solve stalls under this conservative guard, and remains unconverged.
+These numerical paths can stretch triangles, so passing them does not establish
+a physical folding sequence.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

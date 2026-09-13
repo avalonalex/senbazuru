@@ -6,6 +6,8 @@ module BendingGallery (writeBendingStudy) where
 import ContactDiscovery qualified as Discovery
 import ContactExample
 import Control.Monad (when)
+import CorrectionExample
+import CorrectionSweep qualified as Motion
 import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
@@ -56,7 +58,8 @@ writeBendingStudy destination = do
   selfContact <- generateSelfContact
   localDiscovery <- generateLocalDiscovery
   localHistory <- generateLocalHistory
-  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact, localDiscovery, localHistory]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
+  corrections <- generateCorrectionStudy
+  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact, localDiscovery, localHistory, corrections]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
   TIO.writeFile (destination </> "bending.html") (T.replace "/*BENDING_DATA*/null" (TE.decodeUtf8 (BL.toStrict document)) template)
@@ -230,6 +233,64 @@ generateLocalHistory = do
   encounters <- mapM observation events
   putStrLn ("Curled panel history: " ++ show (length initialOrders) ++ " initial relationships, " ++ show (length (Local.localReferenceOrders learned)) ++ " final; frozen equilibrium " ++ show (converged frozen) ++ "; growing equilibrium " ++ show (converged corrected))
   pure (object ["kind" .= ("localhistory" :: String), "title" .= ("Curled panel · growing contact history" :: String), "converged" .= converged corrected, "baselineConverged" .= converged frozen, "baseline" .= baseline, "states" .= states, "encounters" .= encounters, "initialOrders" .= initialOrders, "triangleOrders" .= Local.localReferenceOrders learned, "numericalClearance" .= clearance, "searchDistance" .= searchDistance, "sourcePanels" .= (1 :: Int), "startingBend" .= (22.25 :: Double), "controlTarget" .= (30 :: Int), "controlStrength" .= (4 :: Int)])
+
+-- One deliberately invalid shortcut and two solver controls. The failed curl
+-- stays visibly unconverged; a path check supplies no new search direction.
+generateCorrectionStudy :: IO Value
+generateCorrectionStudy = do
+  let (start, finish) = crossingCorrection
+      owners = [FaceId 0, FaceId 1]
+      boundary = [(0, 1), (1, 3), (3, 2), (2, 0), (1, 2)]
+      capture mesh = do
+        model <- checked (Contact.prepareTriangleContact 0 (V3 0 0 1) [] mesh)
+        snapshot [] (LocalCase owners boundary (V3 0 0 1) [] model) (Checkpoint 0 mesh (maxLengthError mesh))
+  motion <- checked (Motion.prepareCorrection start finish)
+  report <- checked (Motion.checkCorrection Motion.defaultCorrectionSettings motion)
+  progress <- case Motion.correctionOutcome report of
+    Motion.CorrectionCollision t _ | t > 0 && t < 1 -> pure t
+    _ -> die "correction shortcut needs an interior collision witness"
+  middle <- checked (Motion.correctionMeshAt motion progress)
+  a <- capture start
+  b <- capture finish
+  witness <- capture middle
+  curl <- checked (curledPanelAt 16 22.25) >>= checkedCurl False
+  opened <- checked openingStrip >>= checkedCurl True
+  let explanation = "The square is folded 120 degrees to opposite sides of its diagonal at the two endpoints. Both keep material lengths and pass static contact checks. The straight numerical shortcut sends the lifted corner through the base halfway across. Unfolding and refolding is a different path; these samples are not folding instructions."
+      probe label right caption = object ["title" .= (label :: String), "left" .= a, "right" .= right, "leftCaption" .= ("Valid starting pose" :: String), "rightCaption" .= (caption :: String), "status" .= ("rejected" :: String), "description" .= (explanation :: String), "motion" .= correctionValue report, "motions" .= ([] :: [Value])]
+  pure (object ["kind" .= ("correction" :: String), "title" .= ("Contact between numerical poses" :: String), "views" .= [probe "Shortcut · clear endpoints" b "Valid endpoint · unsafe route", probe "Shortcut · interior collision" witness "Rejected correction · halfway", curl, opened]])
+  where
+    checkedCurl isOpening fixture = do
+      let mesh = curlMesh fixture
+          hinges = curlHinges fixture
+          axis = V3 (-3) 0 1
+          clearance = curlClearance fixture
+      reference <- checked (Local.discoverLocalReference clearance 0.03 axis mesh)
+      guarded <- checked (relaxSweptLocalHistory defaultSettings Motion.defaultCorrectionSettings hinges reference mesh)
+      (baseline, baselineReference) <- if isOpening then pure (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False, reference) else checked (relaxLocalHistory defaultSettings hinges reference mesh)
+      let learned = sweptReference guarded
+          result = sweptRelaxation guarded
+          atIteration n = S.toAscList (S.fromList (Local.localReferenceOrders reference ++ concatMap Local.encounterOrders (filter ((<= n) . Local.encounterIteration) (Local.localReferenceEncounters learned))))
+          capture orders point = do
+            model <- checked (Contact.prepareTriangleContact clearance axis orders (checkpointMesh point))
+            snapshot hinges (LocalCase (curlOwners fixture) (curlBoundary fixture) axis orders model) point
+      left <- case reverse (checkpoints baseline) of point : _ -> capture (Local.localReferenceOrders baselineReference) point; [] -> die "missing correction baseline"
+      states <- mapM (\point -> capture (atIteration (completedIterations point)) point) (checkpoints result)
+      right <- case reverse states of state : _ -> pure state; [] -> die "missing checked correction endpoint"
+      let coords (V3 x y z) = [x, y, z]
+          stepValue step = object ["iteration" .= correctionIteration step, "startPositions" .= map (coords . position) (samples (correctionStart step)), "finishPositions" .= map (coords . position) (samples (correctionFinish step)), "check" .= correctionValue (correctionCheck step)]
+          label = if isOpening then "Checked opening · settled control" else "Checked curl · stalled correction"
+          description = if isOpening then "The same sixteen-span strip starts at 22.25 degrees per bend. Controls prefer 27 degrees and passive springs prefer zero, with a 4:1 stiffness ratio; their balance opens the strip to 21.6 degrees. Every accepted straight correction clears the full-interval check. Material lengths are checked again at the settled endpoint; intermediate optimizer shapes can stretch." else "The left solver checks only poses and finds a length-correct endpoint. The right solver also refuses crossed or unresolved paths. It keeps the paper from passing through itself, but stalls before restoring material lengths. This is an unresolved relaxation problem, not a finished folded shape. Collision prevention must be paired with a search direction that can move along contact."
+      putStrLn (label ++ ": settled " ++ show (converged result) ++ "; " ++ show (length (sweptSteps guarded)) ++ " accepted checked corrections")
+      pure (object ["title" .= (label :: String), "left" .= left, "right" .= right, "leftCaption" .= (if isOpening then "Starting strip" else "Endpoint checks only" :: String), "rightCaption" .= (if converged result then "Checked path · settled" else "Checked path · not settled" :: String), "status" .= (if converged result then "settled" else "stalled" :: String), "description" .= (description :: String), "states" .= states, "motions" .= map stepValue (sweptSteps guarded)])
+
+correctionValue :: Motion.CorrectionCheck -> Value
+correctionValue report = object ("intervals" .= Motion.correctionIntervals report : fields)
+  where
+    fields = case Motion.correctionOutcome report of
+      Motion.CorrectionClear -> ["status" .= ("clear" :: String)]
+      Motion.CorrectionCollision progress pairs -> ["status" .= ("collision" :: String), "progress" .= progress, "pairs" .= pairs]
+      Motion.CorrectionDegenerate progress faces -> ["status" .= ("degenerate" :: String), "progress" .= progress, "triangles" .= faces]
+      Motion.CorrectionUnresolved lo hi pairs faces -> ["status" .= ("unresolved" :: String), "interval" .= [lo, hi], "pairs" .= pairs, "triangles" .= faces]
 
 -- Approach frames are angle-defined observations, not relaxation iterates.
 -- Each snapshot carries only the orders known at that point in the sequence.

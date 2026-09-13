@@ -51,7 +51,9 @@ material, contradictory implied orders and cycles.
 
 These observations are numerical iterations, not a folding instruction sequence
 or a continuous motion check. A pair could pass through another between sampled
-poses; this increment does not bound that motion. The final all-pair check stays
+poses; this endpoint-only mode does not bound that motion. The later
+[numerical-correction check](checking-numerical-corrections.md) adds a strict
+motion guard and records the closing solver's resulting stall. The final all-pair check stays
 necessary, especially for joined neighbors that cannot receive separating
 forces. A fixed direction also cannot express every possible arrangement of
 curved paper. This closes the finer strip's reference-coverage gap in
