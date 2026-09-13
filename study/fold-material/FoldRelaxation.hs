@@ -19,7 +19,7 @@
 -- FoldBending and tightens numerical length/contact penalties in four stages.
 -- Its final convergence also checks the proposed movement, so valid lengths
 -- alone cannot masquerade as an elastic equilibrium. 'relaxSurfaceContact'
--- extends that same solve to declared directional panel orders, supplied by
+-- extends that same solve to declared directional panel or local triangle orders, supplied by
 -- SurfaceContact. 'relaxDiscoveredContact' learns those orders from a separate
 -- reference pose and refuses new unrelated overlaps. Independent triangle
 -- checks still judge each endpoint.
@@ -160,7 +160,7 @@ relaxBending settings bending targets which mesh = do
 relaxHinges :: Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
 relaxHinges = relaxAngular NoContact
 
--- | Add directional separation for the shared mesh's declared panel order.
+-- | Add directional separation for declared panel or local triangle orders.
 -- The same staged length/bending solve now penalises reversed gaps. Independent
 -- triangle diagnostics still judge the endpoint; no motion certificate follows.
 relaxSurfaceContact :: Settings -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError Relaxation

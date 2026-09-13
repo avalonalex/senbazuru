@@ -229,6 +229,11 @@ interval before accepting the next pose. **Rejected route · full turn** shows
 a crossing between valid endpoints. Failed or unresolved motions add no
 relationships. This does not check arbitrary bending or the numerical
 correction trajectory, or plan an approach automatically.
+**Curled panel · self-contact** compares one uncreased strip with and without
+local contact correction. Additional bending controls curl the strip while
+its passive springs prefer flatness. Supplied triangle pairs keep the returning
+end above the starting end without splitting the panel. These contacts are not
+discovered automatically, and the check still applies only to saved states.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

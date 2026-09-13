@@ -820,6 +820,13 @@ four rigid approach rotations over its entire angular interval. Its rejected
 full-turn example returns to a valid endpoint but crosses the other flap along
 the way. Collision witnesses and exhausted work limits both block observation;
 raw pose observations and numerical correction still have no motion check.
+The [curled-panel control](notes/local-panel-contact.md) now corrects contact
+inside one uncreased panel. Local triangle requirements distinguish its
+returning end from its starting end; their shared panel id remains unchanged.
+Passive bending prefers flatness, while separate experimental controls impose
+a curl. The comparison has three crossing pairs without correction and none
+at the corrected endpoint. The contacts are supplied explicitly along a fixed
+model direction; this does not discover general self-contact.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

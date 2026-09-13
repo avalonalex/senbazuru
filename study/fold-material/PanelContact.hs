@@ -4,6 +4,8 @@
 -- see docs/glossary.md for the geometry vocabulary. 'checkTriangleContact'
 -- also applies these tests to a deformed mesh, using each triangle as a small
 -- planar polygon while retaining its source panel's order requirements.
+-- 'checkLocalTriangleContact' instead names triangle pairs directly, so two
+-- regions of the same bending panel need no fictitious source-panel split.
 -- This is separate from FoldContact's curved-packet constraints because an
 -- upright flap cannot be described as a height above the original sheet.
 --
@@ -29,6 +31,7 @@ module PanelContact
     panelTolerance,
     checkPanelContact,
     checkTriangleContact,
+    checkLocalTriangleContact,
     contactPassed,
   )
 where
@@ -127,13 +130,23 @@ checkTriangleContact :: V3 -> [(FaceId, FaceId)] -> [FaceId] -> MaterialMesh -> 
 checkTriangleContact direction orders owners mesh = do
   unless (length owners == length (triangles mesh)) (Left (ContactError "triangle contact needs one source panel id per triangle"))
   unless (all (\(a, b) -> a `elem` owners && b `elem` owners) orders) (Left (ContactError "triangle contact order names an absent source panel"))
+  let tags = zip [0 ..] owners
+      expanded = [(i, j) | (a, b) <- orders, (i, owner) <- tags, owner == a, (j, other) <- tags, other == b]
+  checkLocalTriangleContact direction expanded mesh
+
+-- | Independently check every triangle pair, with explicit lower/upper
+-- requirements on triangle ids. A bending panel may contact another part of
+-- itself; these local requirements do not rename or split its source panel.
+-- As with source-panel orders, the requirements must be acyclic.
+checkLocalTriangleContact :: V3 -> [(Int, Int)] -> MaterialMesh -> Either ContactError ContactCheck
+checkLocalTriangleContact direction orders mesh = do
+  let known i = unless (i >= 0 && i < length (triangles mesh)) (Left (ContactError ("local contact order refers to absent triangle " <> tshow i)))
+  mapM_ known [i | (a, b) <- orders, i <- [a, b]]
   let vertices = IM.fromList (zip [0 ..] (samples mesh))
       point i = maybe (Left (ContactError ("triangle contact refers to missing vertex " <> tshow i))) (Right . position) (IM.lookup i vertices)
       name i = "triangle-" <> tshow (i :: Int)
-      tags = zip [0 ..] owners
-      expanded = [(name i, name j) | (a, b) <- orders, (i, owner) <- tags, owner == a, (j, other) <- tags, other == b]
   panels <- mapM (\(i, (a, b, c)) -> Panel (name i) <$> mapM point [a, b, c]) (zip [0 ..] (triangles mesh))
-  checkPanelContact direction expanded panels
+  checkPanelContact direction [(name a, name b) | (a, b) <- orders] panels
 
 -- | Each order is (lower, upper), along the supplied direction in model space.
 -- Invalid declarations are errors; a valid declaration that the geometry fails

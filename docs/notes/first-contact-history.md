@@ -56,7 +56,9 @@ between two samples without either endpoint revealing it. We do not interpolate 
 or claim a collision-free path: approach positions come from crease angles,
 and numerical correction checkpoints are not folding instructions. Continuous
 collision checking for arbitrary motion, automatic approach selection and
-correction within a bent source panel remain open. A subsequent
+automatic contact discovery within a bent source panel remain open. The later
+[curled-panel control](local-panel-contact.md) corrects explicitly supplied
+local triangle requirements. A subsequent
 [hinge-sweep guard](hinge-sweep-contact.md) now checks the four specified rigid
 rotations in this example before accepting their endpoints. The existing `1e-6`
 numerical clearance between unjoined panels remains separate from physical thickness. This increment is

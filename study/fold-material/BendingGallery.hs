@@ -21,6 +21,7 @@ import FoldMaterial
 import FoldRelaxation
 import HingeSweep qualified as Sweep
 import PanelContact
+import SelfContactExample
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Crease (..))
@@ -51,7 +52,8 @@ writeBendingStudy destination = do
         ("Kite base", "examples/kite-base.fold", [0, 0, 0, 0, 0, 0, 75, 110], [(EdgeId 6, 150), (EdgeId 7, 165)], [("base", V2 0.6 0.6), ("right flap", V2 0.8 0.1), ("left flap", V2 0.1 0.8)], [("base", "right flap"), ("base", "left flap")])
       ]
   contacts <- mapM generateContact [DeclaredStart, ReferenceStart, ApproachStart]
-  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
+  selfContact <- generateSelfContact
+  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
   TIO.writeFile (destination </> "bending.html") (T.replace "/*BENDING_DATA*/null" (TE.decodeUtf8 (BL.toStrict document)) template)
@@ -153,6 +155,22 @@ generateContact mode = do
         ]
     )
 
+-- One uncreased panel: the contact ids name local triangles, not new panels.
+generateSelfContact :: IO Value
+generateSelfContact = do
+  fixture <- checked (curledPanel 8)
+  let mesh = curlMesh fixture
+      hinges = curlHinges fixture
+      which = LocalCase (curlOwners fixture) (curlBoundary fixture) (V3 0 0 1) (curlPairs fixture) (curlContact fixture)
+  free <- checked (relaxHinges defaultSettings hinges mesh)
+  corrected <- checked (relaxSurfaceContact defaultSettings hinges (curlContact fixture) mesh)
+  baseline <- case reverse (checkpoints free) of
+    point : _ -> snapshot hinges which point
+    [] -> die "curled panel comparison needs an unconstrained endpoint"
+  states <- mapM (snapshot hinges which) (checkpoints corrected)
+  putStrLn ("Curled panel: free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
+  pure (object ["kind" .= ("selfcontact" :: String), "title" .= ("Curled panel · self-contact" :: String), "converged" .= converged corrected, "baselineConverged" .= converged free, "baseline" .= baseline, "states" .= states, "numericalClearance" .= curlClearance fixture, "triangleOrders" .= curlPairs fixture, "sourcePanels" .= (1 :: Int), "startingBend" .= (40 :: Int), "controlTarget" .= (60 :: Int), "controlStrength" .= (4 :: Int)])
+
 -- Approach frames are angle-defined observations, not relaxation iterates.
 -- Each snapshot carries only the orders known at that point in the sequence.
 approachSnapshot :: ApproachPose -> IO Value
@@ -213,7 +231,7 @@ surfaceCase surface refined = do
   (axis, requirements) <- maybe (die "surface bending example needs explicit panel order") pure (Paper.surfaceLayerRequirements surface)
   pure (SurfaceCase (Paper.refinedPanels refined) segments axis requirements)
 
-data SnapshotCase = Packet FoldCase | SurfaceCase [FaceId] [(Int, Int)] V3 [(FaceId, FaceId)]
+data SnapshotCase = Packet FoldCase | SurfaceCase [FaceId] [(Int, Int)] V3 [(FaceId, FaceId)] | LocalCase [FaceId] [(Int, Int)] V3 [(Int, Int)] Contact.OrderedContact
 
 snapshot :: [Hinge] -> SnapshotCase -> Checkpoint -> IO Value
 snapshot hinges which checkpoint = do
@@ -237,6 +255,11 @@ snapshot hinges which checkpoint = do
     SurfaceCase owners segments axis requirements -> do
       contacts <- checked (checkTriangleContact axis requirements owners mesh)
       pure (map unFaceId owners, segments, ["contact" .= contacts, "packetContact" .= False, "orderDirection" .= coords axis, "panelOrders" .= [[unFaceId a, unFaceId b] | (a, b) <- requirements]])
+    LocalCase owners segments axis requirements model -> do
+      contacts <- checked (checkLocalTriangleContact axis requirements mesh)
+      rows <- checked (Contact.orderedContacts model mesh)
+      let smallest = case map contactGap rows of [] -> Nothing; gaps -> Just (minimum gaps)
+      pure (map unFaceId owners, segments, ["contact" .= contacts, "packetContact" .= False, "orderDirection" .= coords axis, "panelOrders" .= ([] :: [[Int]]), "triangleOrders" .= requirements, "minimumContactResidual" .= smallest])
   (crease, panel) <- checked (bendingEnergy hinges mesh)
   let angleValue hinge = do
         (angle, _) <- checked (hingeAngle hinge vertices)

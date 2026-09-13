@@ -3,6 +3,8 @@
 -- Two triangles sharing an edge can turn like a door about its hinge without
 -- changing their lengths. At a crease (a deliberately folded line) this model
 -- prefers an authored rest angle; inside an uncreased panel it prefers zero.
+-- An explicit 'BendControl' is an additional experimental angular spring,
+-- representing an imposed curl. It does not create a material crease.
 -- These are energies, not rigid angle constraints: conflicting preferences can
 -- leave both a bent panel and a crease short of its target.
 --
@@ -29,6 +31,7 @@ module FoldBending
     BendingError (..),
     buildHinges,
     buildSurfaceHinges,
+    buildPanelHinges,
     hingeAngle,
     angleError,
     bendingRows,
@@ -73,7 +76,7 @@ data PacketRestAngles = PacketRestAngles
 defaultPacketRestAngles :: PacketRestAngles
 defaultPacketRestAngles = PacketRestAngles (170 * pi / 180) (170 * pi / 180)
 
-data HingeRole = FirstCrease | SecondCrease | SurfaceCrease !EdgeId | PanelBend
+data HingeRole = FirstCrease | SecondCrease | SurfaceCrease !EdgeId | PanelBend | BendControl
   deriving stock (Eq, Ord, Show)
 
 data Hinge = Hinge
@@ -169,6 +172,12 @@ buildSurfaceHinges settings levels sheet targets = do
 key :: Int -> Int -> (Int, Int)
 key a b = (min a b, max a b)
 
+-- | Passive resistance to bending in an uncreased material mesh. Every
+-- internal edge is a panel bend with zero preferred angle; boundaries have
+-- no spring. Separate experimental controls may act on the same hinges.
+buildPanelHinges :: Bending -> MaterialMesh -> Either BendingError [Hinge]
+buildPanelHinges settings = hingesWith settings (\_ _ _ -> Right (PanelBend, 0))
+
 hingesWith :: Bending -> ((Int, Int) -> MaterialSample -> MaterialSample -> Either BendingError (HingeRole, Double)) -> MaterialMesh -> Either BendingError [Hinge]
 hingesWith settings classify mesh = do
   unless (all (\x -> finite x && x > 0) [creaseStiffness settings, panelStiffness settings]) (Left InvalidBending)
@@ -246,9 +255,10 @@ bendingRows hinges mesh = mapM row hinges
       let weight = sqrt (hingeStiffness hinge)
       Right (map (second (weight *^)) gradient, weight * angleError angle (hingeRest hinge))
 
--- | Crease and panel contributions, in that order, in illustrative energy units.
+-- | Crease and panel/control contributions, in that order, in illustrative
+-- energy units. An imposed bending control is not a material crease.
 bendingEnergy :: [Hinge] -> MaterialMesh -> Either BendingError (Double, Double)
 bendingEnergy hinges mesh = do
   rows <- bendingRows hinges mesh
   let contributions = [(hingeRole hinge, residual * residual / 2) | (hinge, (_, residual)) <- zip hinges rows]
-  Right (sum [e | (role, e) <- contributions, role /= PanelBend], sum [e | (role, e) <- contributions, role == PanelBend])
+  Right (sum [e | (role, e) <- contributions, role `notElem` [PanelBend, BendControl]], sum [e | (role, e) <- contributions, role `elem` [PanelBend, BendControl]])
