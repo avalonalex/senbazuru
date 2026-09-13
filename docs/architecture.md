@@ -231,7 +231,10 @@ including neighbors. See [local panel contact](notes/local-panel-contact.md).
 across connected flat reference patches, and freezes their order for
 `relaxLocalContact`. Its reference search distance is separate from numerical
 clearance; an unknown pair reaching contact blocks a trial. It does not update
-history during bending. See [local discovery](notes/local-contact-discovery.md).
+history during bending in its fixed mode. `relaxLocalHistory` instead threads
+proposed extensions through accepted solver steps and all penalty stages;
+rejected trials leave its history unchanged. See [local discovery](notes/local-contact-discovery.md)
+and [growing history](notes/growing-local-contact-history.md).
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

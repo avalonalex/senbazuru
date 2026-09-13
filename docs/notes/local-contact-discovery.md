@@ -33,7 +33,7 @@ with the reference, even if they subsequently bend. Shared-vertex pairs are
 still excluded, cycles and incompatible transitive requirements are refused,
 and the independent reference check inspects every pair, including neighbors.
 
-Correction keeps these learned orders. It rescans every trial shape, but never
+The fixed-reference correction keeps these learned orders. It rescans every trial shape, but never
 learns a new order from that trial: an intersection could otherwise legitimise
 the reversed side. An unknown separated pair needs no contact force. If it
 reaches clearance plus the contact tolerance, or crosses, the trial is refused.
@@ -57,7 +57,7 @@ smallest gap is about `9.999e-7` model units along the contact direction.
 Without contact forces, the same controls produce three crossing pairs.
 All nine previous gallery runs retain their exact meshes and measurements.
 
-The sixteen-span regression exposes the remaining history limitation. Its
+The sixteen-span regression exposes the fixed reference’s history limitation. Its
 22.25° reference also discovers the end patches, but early correction steps
 meet the neighboring spans (including triangle pairs 2/30 and 0/28). Those pairs
 are absent from the reference. The ordinary fixed-pair solve reaches a valid
@@ -67,8 +67,10 @@ correction or evidence that its intervening route is safe.
 
 This is reference-based discovery under specified controls, not automatic
 approach selection. A flat starting sheet may provide no partners. New contacts
-must be covered by another suitable reference or explicit requirements; the
-solver does not yet maintain an evolving bending-contact history. Neither its
+must be covered by another suitable reference or explicit requirements in this
+fixed mode. The later [growing-history experiment](growing-local-contact-history.md)
+learns additional separated encounters during correction and resolves this
+sixteen-span regression without changing the fixed-reference control. Neither its
 numerical iterates nor the pose construction certify collision-free motion.
 These boundaries, and a fixed direction's inability to describe all possible
 self-contact arrangements, remain part of [#146](https://github.com/avalonalex/senbazuru/issues/146).

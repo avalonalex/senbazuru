@@ -7,10 +7,12 @@
 -- Nearby overlapping shadows in a separated reference pose supply a lower/upper
 -- relationship along a caller's model direction. We keep that relationship
 -- fixed during correction: learning it again after penetration would accept
--- the reversed order. A newly contacting pair needs a reference order;
--- otherwise the solver must refuse that trial. A suitable reference is required,
--- not an arbitrary flat stack. This is endpoint correction, not a collision-free
--- motion model, and does not automatically learn new encounters during bending.
+-- the reversed order. A newly contacting pair needs an earlier order;
+-- otherwise the solver must refuse that trial. 'extendLocalReference' can learn
+-- additional partners while they are still separated. Its result is a proposed
+-- history: the solver retains it only if the step is accepted. A rejected trial
+-- cannot leave behind either an order or an audit event. These numerical poses
+-- do not certify collision-free motion between them.
 --
 -- The reference search distance is measured along the model direction over overlapping
 -- shadows, not as closest distance in 3D. It must exceed numerical clearance;
@@ -19,17 +21,22 @@
 -- Separated, unknown pairs have no force or promised order, but
 -- learned orders remain active even after separation. Flat connected reference
 -- triangles share their discovered partners so a sliding contact does not lose
--- its order at a triangulation diagonal. This does not merge material ids.
+-- its order at a triangulation diagonal. Each extension finds flat patches in
+-- its own pose; an initially flat sheet cannot exempt all its future internal
+-- contact. This does not merge material ids.
 --
 -- Triangles sharing material vertices cannot be pulled apart. Discovery skips
 -- them, but independent reference checks still inspect every pair, so a shared
 -- corner cannot excuse a crossing. Acyclic directional orders are intentionally
 -- narrower than general self-contact. SurfaceContact owns clipping and forces;
--- this module owns only discovery and the immutable reference policy.
+-- this module owns discovery and the history of retained relationships.
 module LocalContactDiscovery
   ( LocalReference,
     LocalDiscoveryError (..),
     discoverLocalReference,
+    extendLocalReference,
+    LocalEncounter (..),
+    localReferenceEncounters,
     localReferenceOrders,
     localReferenceCandidates,
     localDiscoveredContacts,
@@ -51,14 +58,36 @@ import SurfaceContact
 
 -- Ordinary accessors preserve the private constructor's guarantee: callers
 -- cannot replace learned orders while retaining different prepared forces.
-data LocalReference = LocalReference !Double !V3 ![(Int, Int)] ![TriangleCandidate] !OrderedContact
+data LocalReference = LocalReference
+  { referenceClearance :: !Double,
+    referenceSearchDistance :: !Double,
+    referenceAxis :: !V3,
+    referenceOrders :: ![(Int, Int)],
+    referenceCandidates :: ![TriangleCandidate],
+    referenceModel :: !OrderedContact,
+    referenceEncounters :: ![LocalEncounter]
+  }
   deriving stock (Eq, Show)
 
 localReferenceOrders :: LocalReference -> [(Int, Int)]
-localReferenceOrders (LocalReference _ _ orders _ _) = orders
+localReferenceOrders = referenceOrders
 
 localReferenceCandidates :: LocalReference -> [TriangleCandidate]
-localReferenceCandidates (LocalReference _ _ _ candidates _) = candidates
+localReferenceCandidates = referenceCandidates
+
+-- | A successful extension records its separated witnesses and unchanged mesh.
+-- The iteration is an audit label supplied by the solver, not physical time.
+-- Orders include patch partners; candidates contain the direct encounters.
+data LocalEncounter = LocalEncounter
+  { encounterIteration :: !Int,
+    encounterOrders :: ![(Int, Int)],
+    encounterCandidates :: ![TriangleCandidate],
+    encounterMesh :: !MaterialMesh
+  }
+  deriving stock (Eq, Show)
+
+localReferenceEncounters :: LocalReference -> [LocalEncounter]
+localReferenceEncounters = referenceEncounters
 
 data LocalDiscoveryError
   = InvalidLocalSearchDistance
@@ -106,7 +135,7 @@ discoverLocalReference clearance searchDistance axis mesh = do
   unless (gap >= negate contactTolerance) (Left (LocalReferenceClearance gap))
   report <- first LocalReferenceGeometry (Panel.checkLocalTriangleContact axis orders mesh)
   unless (Panel.contactPassed report) (Left (UnsafeLocalReference report))
-  pure (LocalReference clearance axis orders candidates model)
+  pure (LocalReference clearance searchDistance axis orders candidates model [])
   where
     infer candidate = case localGapRange candidate of
       Nothing -> Left (UncheckableLocalOrder a b)
@@ -123,17 +152,73 @@ discoverLocalReference clearance searchDistance axis mesh = do
 -- numerical clearance or crossing is an error,
 -- never a new order inferred from a possibly crossed numerical trial.
 localDiscoveredContacts :: LocalReference -> MaterialMesh -> Either LocalDiscoveryError [ContactRow]
-localDiscoveredContacts (LocalReference clearance axis orders _ model) mesh = do
+localDiscoveredContacts reference mesh = do
   rows <- first LocalDiscoveryGeometry (orderedContacts model mesh)
   candidates <- first LocalDiscoveryGeometry (localOverlapCandidates axis mesh)
   mapM_ known (filter (nearby (clearance + contactTolerance)) candidates)
   pure rows
   where
-    known candidate = let (a, b) = localTriangles candidate in unless (reaches S.empty a b || reaches S.empty b a) (Left (NewLocalContactPair a b))
-    reaches seen from to
+    clearance = referenceClearance reference
+    axis = referenceAxis reference
+    orders = referenceOrders reference
+    model = referenceModel reference
+    known candidate = let (a, b) = localTriangles candidate in unless (related orders a b) (Left (NewLocalContactPair a b))
+
+-- | Propose a monotone extension: callers keep it only if they accept this pose.
+-- First enforce the OLD guard, so a newly crossed/touching pair cannot explain
+-- itself by supplying a new order. Previously known negative gaps remain solver
+-- residuals; their direction is never relearned. Every newly implied relation
+-- must have positive clearance wherever its shadows overlap, including partners
+-- added by flat patches or by transitivity (A below B below C means A below C).
+extendLocalReference :: Int -> LocalReference -> MaterialMesh -> Either LocalDiscoveryError LocalReference
+extendLocalReference iteration reference mesh = do
+  _ <- localDiscoveredContacts reference mesh
+  candidates <- first LocalDiscoveryGeometry (localOverlapCandidates axis mesh)
+  let fresh candidate = let (a, b) = localTriangles candidate in not (related oldOrders a b)
+      encounters = filter (\candidate -> fresh candidate && nearby (referenceSearchDistance reference) candidate) candidates
+  if null encounters
+    then pure reference
+    else do
+      detected <- mapM infer encounters
+      patches <- referencePatches mesh
+      let patch i = IM.findWithDefault [i] i patches
+          topology = IM.fromList (zip [0 ..] (triangles mesh))
+          vertices i = case IM.lookup i topology of Nothing -> []; Just (a, b, c) -> [a, b, c]
+          additions = [(a, b) | (lower, upper) <- detected, a <- patch lower, b <- patch upper, all (`notElem` vertices b) (vertices a), not (reaches oldOrders a b)]
+          orders = S.toAscList (S.fromList (oldOrders ++ additions))
+      model <- first LocalDiscoveryGeometry (prepareTriangleContact clearance axis orders mesh)
+      mapM_ (checkNew orders) (filter fresh candidates)
+      let learned = S.toAscList (S.fromList additions)
+          event = LocalEncounter iteration learned encounters mesh
+      pure reference {referenceOrders = orders, referenceModel = model, referenceEncounters = referenceEncounters reference ++ [event]}
+  where
+    clearance = referenceClearance reference
+    axis = referenceAxis reference
+    oldOrders = referenceOrders reference
+    infer candidate = case localGapRange candidate of
+      Just (lo, _) | lo > clearance + contactTolerance -> Right (localTriangles candidate)
+      Just (_, hi) | hi < negate (clearance + contactTolerance) -> let (a, b) = localTriangles candidate in Right (b, a)
+      _ -> let (a, b) = localTriangles candidate in Left (NewLocalContactPair a b)
+    checkNew orders candidate =
+      let (a, b) = localTriangles candidate
+       in if not (related orders a b)
+            then pure ()
+            else case localGapRange candidate of
+              Nothing -> Left (UncheckableLocalOrder a b)
+              Just (lo, hi) ->
+                let gap = (if reaches orders a b then lo else negate hi) - clearance
+                 in unless (gap > contactTolerance) (Left (LocalReferenceClearance gap))
+
+related :: [(Int, Int)] -> Int -> Int -> Bool
+related orders a b = reaches orders a b || reaches orders b a
+
+reaches :: [(Int, Int)] -> Int -> Int -> Bool
+reaches orders = go S.empty
+  where
+    go seen from to
       | from == to = True
       | S.member from seen = False
-      | otherwise = any (\next -> reaches (S.insert from seen) next to) [next | (lower, next) <- orders, lower == from]
+      | otherwise = any (\next -> go (S.insert from seen) next to) [next | (lower, next) <- orders, lower == from]
 
 -- Only nearby projected overlaps need a contact relationship. Distant parts of
 -- a curved sheet can exchange height order while their shadows are separate;
@@ -147,8 +232,8 @@ nearby distance candidate = case localGapRange candidate of
 -- A flat patch is a connected set of coplanar reference triangles, not a source
 -- panel: one bent panel can contain many patches. Expand an encountered pair to
 -- its two patches so a contact sliding across a triangulation diagonal keeps
--- the same order. Patch membership is frozen with the reference, even if these
--- triangles subsequently bend. No source identity or material position changes.
+-- the same order. The resulting relationships survive later bending, but new
+-- encounters use that later pose's patches. No material identity changes.
 referencePatches :: MaterialMesh -> Either LocalDiscoveryError (IM.IntMap [Int])
 referencePatches mesh = do
   let vertices = IM.fromList (zip [0 ..] (samples mesh))

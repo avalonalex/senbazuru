@@ -129,8 +129,16 @@ patches share their discovered partners, keeping an order as contact slides
 across triangle diagonals. The JSON records both detected overlaps and expanded
 triangle orders. See [local discovery](../../docs/notes/local-contact-discovery.md).
 
-Physical thickness, paper calibration, automatic approach selection, general
-continuous collision checking and evolving local contact history remain open.
+**Curled panel · growing contact history** compares the fixed reference with a
+history that learns new separated encounters during correction. The sixteen-span
+strip grows from four to ten relationships and settles; the fixed reference
+stalls. **Contact history** selects the reference, learning pose or endpoint.
+The JSON records each accepted encounter's iteration, new orders, measured gap
+ranges and unchanged material mesh. Earlier checkpoints carry only the orders
+known at their iteration. See the [history note](../../docs/notes/growing-local-contact-history.md).
+
+Physical thickness, paper calibration, automatic approach selection and general
+continuous collision checking remain open.
 Raw sampled observations and numerical correction checkpoints still have no
 motion check. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).

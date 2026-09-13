@@ -24,6 +24,10 @@
 -- reference pose and refuses new unrelated overlaps. Independent triangle
 -- checks still judge each endpoint. 'relaxLocalContact' uses nearby triangle
 -- discovery inside bending panels with the same fixed-reference policy.
+-- 'relaxLocalHistory' extends the history from accepted separated encounters.
+-- Known negative gaps remain penalty residuals during early stages; new orders
+-- must have positive clearance before entering the objective. The typed policy
+-- threads history through all stages without mutating it during trial evaluation.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -37,6 +41,7 @@ module FoldRelaxation
     relaxSurfaceContact,
     relaxDiscoveredContact,
     relaxLocalContact,
+    relaxLocalHistory,
     principalStrains,
     maxLengthError,
   )
@@ -184,38 +189,77 @@ relaxLocalContact settings hinges reference = relaxAngular (LocalOrder reference
 
 data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.OrderedContact | DiscoveredOrder Discovery.ReferenceContact | LocalOrder Local.LocalReference
 
+-- | Learn additional partners from accepted separated poses. The returned
+-- reference includes an audit of growth. Iteration labels belong to this solve;
+-- pass a newly discovered reference when starting a separately numbered run.
+-- Rejected line-search trials never contribute orders or audit events.
+relaxLocalHistory :: Settings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError (Relaxation, Local.LocalReference)
+relaxLocalHistory = relaxAngularWith localHistoryPolicy
+
+-- The solver owns acceptance, while a policy owns contact measurements and
+-- provisional history. Parameterising the state keeps the history result typed:
+-- a fixed mode returns that mode, and growing local contact returns its reference.
+data ContactPolicy state = ContactPolicy
+  { measureContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
+    proposeContacts :: Int -> state -> MaterialMesh -> Either RelaxError state
+  }
+
+localHistoryPolicy :: ContactPolicy Local.LocalReference
+localHistoryPolicy = ContactPolicy measure propose
+  where
+    measure reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference mesh)
+    propose iteration reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration reference mesh)
+
+fixedPolicy :: ContactPolicy ContactMode
+fixedPolicy = ContactPolicy measure (\_ state _ -> Right state)
+  where
+    measure packet mesh = case packet of
+      NoContact -> Right []
+      LocalOrder reference -> either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference mesh)
+      DiscoveredOrder reference -> either (Left . ContactDiscoveryFailure) Right (Discovery.discoveredContacts reference mesh)
+      SurfaceOrder contact -> either (Left . SurfaceContactFailure) Right (Contact.orderedContacts contact mesh)
+      PacketContact which -> case packetContacts which mesh of
+        (rows, 0) -> Right rows
+        (_, count) -> Left (UncheckablePacket count)
+
 relaxAngular :: ContactMode -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
-relaxAngular packet settings hinges mesh = do
+relaxAngular packet settings hinges mesh = fst <$> relaxAngularWith fixedPolicy settings hinges packet mesh
+
+relaxAngularWith :: ContactPolicy state -> Settings -> [Hinge] -> state -> MaterialMesh -> Either RelaxError (Relaxation, state)
+relaxAngularWith policy settings hinges initial mesh = do
   if iterationLimit settings == 0
-    then relaxWith packet (Just (hinges, 1e8)) settings mesh
+    then relaxWithPolicy policy 0 initial (Just (hinges, 1e8)) settings mesh
     else do
       -- A strong length penalty from the outset makes even a rigid rotation
       -- crawl: its straight tangent step violates lengths at second order.
       -- Solve easier problems first, then tighten the SAME final constraints.
       -- Only the final stage can establish the result's convergence.
-      (_, history, settled) <- foldM stage (mesh, [], False) [1e2, 1e4, 1e6, 1e8]
-      Right (Relaxation history settled)
+      (_, history, settled, finalState) <- foldM stage (mesh, [], False, initial) [1e2, 1e4, 1e6, 1e8]
+      Right (Relaxation history settled, finalState)
   where
-    stage (current, history, _) weight = do
-      result <- relaxWith packet (Just (hinges, weight)) settings current
+    stage (current, history, _, state) weight = do
       let offset = case reverse history of [] -> 0; previous : _ -> completedIterations previous
-          shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
+      (result, nextState) <- relaxWithPolicy policy offset state (Just (hinges, weight)) settings current
+      let shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
           combined = history ++ (if null history then shifted else drop 1 shifted)
       case reverse (checkpoints result) of
         [] -> Left EmptyMesh
-        final : _ -> Right (checkpointMesh final, combined, converged result)
+        final : _ -> Right (checkpointMesh final, combined, converged result, nextState)
 
 relaxWith :: ContactMode -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError Relaxation
-relaxWith packet bending settings original = do
+relaxWith packet bending settings mesh = fst <$> relaxWithPolicy fixedPolicy 0 packet bending settings mesh
+
+relaxWithPolicy :: ContactPolicy state -> Int -> state -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError (Relaxation, state)
+relaxWithPolicy policy offset initial bending settings original = do
   if iterationLimit settings < 0 || lengthTolerance settings <= 0 || not (finite (lengthTolerance settings))
     then Left InvalidSettings
     else Right ()
   if null (triangles original) then Left EmptyMesh else Right ()
   mapM_ validateSample (IM.toList vertices)
   mapM_ validateTriangle (zip [0 ..] (triangles original))
-  _ <- contacts vertices
+  _ <- contacts initial vertices
   edges <- mapM materialEdge (meshEdges original)
-  advance edges 0 vertices []
+  advance edges 0 initial vertices []
   where
     vertices = IM.fromList (zip [0 ..] (samples original))
     validateSample (i, s) =
@@ -235,38 +279,31 @@ relaxWith packet bending settings original = do
           dv = materialV a - materialV b
       Right (i, j, sqrt (du * du + dv * dv))
     meshFrom current = original {samples = IM.elems current}
-    contacts current = case packet of
-      NoContact -> Right []
-      LocalOrder reference -> either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference (meshFrom current))
-      DiscoveredOrder reference -> either (Left . ContactDiscoveryFailure) Right (Discovery.discoveredContacts reference (meshFrom current))
-      SurfaceOrder contact -> either (Left . SurfaceContactFailure) Right (Contact.orderedContacts contact (meshFrom current))
-      PacketContact which -> case packetContacts which (meshFrom current) of
-        (rows, 0) -> Right rows
-        (_, count) -> Left (UncheckablePacket count)
+    contacts state current = measureContacts policy state (meshFrom current)
     angularRows current = case bending of
       Nothing -> Right []
       Just (hinges, _) -> either (Left . BendingFailure) Right (bendingRows hinges (meshFrom current))
-    advance edges count current history = do
-      contactRows <- contacts current
+    advance edges count state current history = do
+      contactRows <- contacts state current
       let mesh = meshFrom current
           residual = maxLengthError mesh
           constraintsMet = residual <= lengthTolerance settings && all ((>= negate contactTolerance) . contactGap) contactRows
           exhausted = count >= iterationLimit settings
       -- The old length-only solve stops immediately on its valid rigid control.
       -- An elastic solve must still check whether an angular force wants to move it.
-      (next, stationary) <-
+      (next, nextState, stationary) <-
         if exhausted || (isNothing bending && constraintsMet)
-          then Right (current, False)
-          else coordinatedStep edges contactRows current
+          then Right (current, state, False)
+          else coordinatedStep edges contactRows count state current
       let warmingUp = maybe False ((< 1e8) . snd) bending
           done = if isNothing bending then constraintsMet else stationary && (warmingUp || constraintsMet)
           snapshot = Checkpoint count mesh residual
           keep = count `elem` [0, 1, 2, 5, 10, 20, 50] || done || exhausted
           history' = if keep then snapshot : history else history
       if done || exhausted
-        then Right (Relaxation (reverse history') done)
-        else advance edges (count + 1) next history'
-    coordinatedStep edges contactRows current = do
+        then Right (Relaxation (reverse history') done, state)
+        else advance edges (count + 1) nextState next history'
+    coordinatedStep edges contactRows count state current = do
       lengthRows <- mapM (edgeRow current) edges
       angles <- angularRows current
       let zero = IM.map (const (V3 0 0 0)) current
@@ -297,19 +334,21 @@ relaxWith packet bending settings original = do
           -- Omitting their derivatives can make a non-descent step stall.
           activeRows = [(map (second (sqrt contactWeight *^)) (contactGradient row), sqrt contactWeight * contactGap row) | row <- contactRows, contactGap row < 0]
           (correction, linearSolved) = solve (map (scaleRow (sqrt lengthWeight)) lengthRows ++ activeRows ++ angles)
-          objective candidate = case (contacts candidate, angularRows candidate) of
+          objective candidateState candidate = case (contacts candidateState candidate, angularRows candidate) of
             (Right rows, Right bends) ->
               lengthWeight * sum [let d = norm (position (atSample j candidate) ^-^ position (atSample i candidate)) - rest in d * d | (i, j, rest) <- edges]
                 + contactWeight * sum [let d = min 0 (contactGap row) in d * d | row <- rows]
                 + sum [r * r | (_, r) <- bends]
             _ -> 1 / 0
-          before = objective current
+          before = objective state current
           attempt scale remaining =
             let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
-             in if objective candidate < before
-                  then candidate
-                  else if remaining <= (0 :: Int) then current else attempt (scale / 2) (remaining - 1)
-      Right (attempt 1 30, linearSolved && finite before && maximum (0 : map norm (IM.elems correction)) <= 1e-7)
+                proposed = proposeContacts policy (offset + count + 1) state (meshFrom candidate)
+             in case proposed of
+                  Right candidateState | objective candidateState candidate < before -> (candidate, candidateState)
+                  _ -> if remaining <= (0 :: Int) then (current, state) else attempt (scale / 2) (remaining - 1)
+          (next, nextState) = attempt 1 30
+      Right (next, nextState, linearSolved && finite before && maximum (0 : map norm (IM.elems correction)) <= 1e-7)
     edgeRow current (i, j, rest) = do
       a <- maybe (Left (MissingVertex 0 i)) Right (IM.lookup i current)
       b <- maybe (Left (MissingVertex 0 j)) Right (IM.lookup j current)
