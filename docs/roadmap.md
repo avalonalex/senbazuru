@@ -1,10 +1,11 @@
 # Roadmap, and where we stand
 
-The README's [roadmap](../README.md#roadmap) is the map: four items, in
-order, each an issue tagged `roadmap` that holds the approach and the
-acceptance criteria. This is the state of play behind it — what is done, what
+The README's [roadmap](../README.md#roadmap) is the map: one completed
+foundation and three open goals, each an issue tagged `roadmap` that holds the
+approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-12**. The
+snapshot and will drift, so it carries a date: **as of 2026-09-13**, after
+[#173](https://github.com/avalonalex/senbazuru/pull/173). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -14,8 +15,9 @@ closes.
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
-| Production handoff | Checked bird and frog states rendered as SVG sequences |
-| Tests | 1,147 examples, including material and contact checks |
+| Production handoff | Shared material surfaces reach SVG and two glTF scenes; checked bird and frog states render as SVG sequences |
+| Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
+| Tests | 1,221 examples pass in the cold build for #173, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -31,20 +33,27 @@ second generation.
 [related-projects.md](related-projects.md) has the tools and their licences.
 Senbazuru's focus is book-style diagrams from checked folding states: hidden
 lines, two paper colours and visible regions even when flaps stack in a circle.
-The study now shares its material representation with the renderer interfaces;
-glTF now keeps crease positions and material identities in two scenes. Authoring a folding sequence,
-handling larger models and installing without Stack remain separate pieces of
-work.
+The study shares its material representation with the renderer interfaces;
+glTF keeps crease positions and material identities in two scenes. Production
+rendering handles planar panels, including panels lifted into the air. General
+bent-panel rendering remains a study-to-production gap. Authoring a folding
+sequence, handling larger models and installing without Stack remain separate
+pieces of work.
 
 ## The four roadmap items
 
-1. **One connected material surface** ([#146](https://github.com/avalonalex/senbazuru/issues/146)).
+1. **Complete: one connected material surface** ([#146](https://github.com/avalonalex/senbazuru/issues/146)).
    `Origami.Surface` now holds material identity, current geometry, crease
    topology and optional properties. The study uses its mesh/refinement code,
    and both renderer interfaces accept it. glTF now writes visible and complete
    scenes at the same positions, retaining material references instead of
-   lifting faces apart. Physical thickness is metadata only. Replace
-   obsolete internal paths rather than maintaining them for alpha compatibility.
+   lifting faces apart. Physical thickness is metadata only. The six acceptance
+   criteria are met by [#148](https://github.com/avalonalex/senbazuru/pull/148)
+   and [#149](https://github.com/avalonalex/senbazuru/pull/149): shared geometry,
+   material connectivity, renderer handoff, optional thickness, regression
+   coverage and documentation. Tests cover all thirteen base fixtures plus the
+   quarter fold, sixteen bird states and five frog milestones. The duplicate
+   study mesh/refinement and glTF face-lifting implementations are removed.
    [The design note](notes/connected-paper-surface.md) separates this
    representation change from the bending and opening controls that follow.
 2. **A vocabulary of folds** ([#60](https://github.com/avalonalex/senbazuru/issues/60)). The first move exists, `crease`
@@ -55,8 +64,11 @@ work.
    [#95](https://github.com/avalonalex/senbazuru/issues/95) and the flap rotation [#54](https://github.com/avalonalex/senbazuru/issues/54).
 3. **Folding in three dimensions** ([#55](https://github.com/avalonalex/senbazuru/issues/55)).
    The studies now have verified intermediate square/waterbomb collapse,
-   rabbit-ear and bird-petal states. General flap/wing authoring, a general
-   angle solver and continuous collision certification remain open
+   rabbit-ear and bird-petal states. The contact study checks entire intervals
+   for two specified kinds of motion, described below. Connecting the
+   fixed-hinge check to one authored flap rotation is the next bounded step.
+   General flap/wing authoring, a general angle solver and collision checking
+   along motion where several creases must move together remain open
    ([#54](https://github.com/avalonalex/senbazuru/issues/54),
    [#55](https://github.com/avalonalex/senbazuru/issues/55),
    [#61](https://github.com/avalonalex/senbazuru/issues/61)).
@@ -77,9 +89,17 @@ work.
   of paper along the way.** Nonlinear loop closure at every interior vertex, a
   Jacobian of rotation products, Newton steps in pure Haskell, and a singular
   starting point because the flat-folded state is where branches meet. Whether
-  the crane is rigid-foldable end to end is not known. #61 is continuous
-  collision detection between moving panels on top of that. These are general
-  motion problems beyond the authored study paths.
+  the crane is rigid-foldable end to end is not known. #61 has two useful study
+  implementations: [fixed-hinge sweeps](notes/hinge-sweep-contact.md) bound a
+  rigid rotation over angular intervals using floating-point arithmetic and a
+  numerical guard; [correction sweeps](notes/checking-numerical-corrections.md)
+  use exact rational bounds for straight numerical vertex paths. Both refuse
+  unresolved intervals and check pairs sharing material vertices rather than
+  skipping all neighbours. Straight numerical paths can stretch the sheet and
+  are not folding instructions. These checks have not yet become a production
+  flap operation or checked the intervals of the actual bird sequence. They
+  report a colliding pose or an unresolved interval, not a guaranteed first
+  impact time; #61 remains open.
 - **[#60](https://github.com/avalonalex/senbazuru/issues/60) the vocabulary, and [#97](https://github.com/avalonalex/senbazuru/issues/97) the scheme format.** Hard as
   design rather than code: no reference implementation to lean on, a reference
   vocabulary (corner to corner, edge to crease) that matters as much as the
@@ -98,40 +118,31 @@ work.
   [#146](https://github.com/avalonalex/senbazuru/issues/146), with thickness optional. The original
   rounded double-fold experiment showed that a 3:1 radius ratio can still
   stretch the paper; radius and connectivity alone do not settle its shape.
-  The [angular-energy study](notes/crease-and-panel-energy.md) now adds crease
-  preferences and panel bending for the original packets. The
-  [shared-crease adapter](notes/crease-identity-through-refinement.md) extends
-  this to diagonal and kite equilibria, with source ids preserved through
-  refinement and independent triangle contact diagnostics. The
-  [opposing-flap control](notes/ordered-flap-contact.md) now adds correction
-  for declared directional panel orders. [Reference-pose discovery](notes/reference-contact-discovery.md)
-  can now learn those relationships where starting projections overlap clearly.
-  [Sampled approach history](notes/first-contact-history.md) extends those orders
-  when initially unrelated panels first overlap while separated. The
-  [hinge-sweep check](notes/hinge-sweep-contact.md) now checks specified rigid
-  rotations between those poses and rejects an interior crossing despite valid
-  endpoints. A [curled-panel control](notes/local-panel-contact.md) now corrects
-  contact between explicitly chosen triangles inside one source panel.
-  [Local discovery](notes/local-contact-discovery.md) also learns nearby
-  triangle partners from a separated reference without an authored list.
-  Calibrating stiffness, general continuous collision checking, automatic motion
-  planning and discovery/correction of general self-contact remain open.
-  [Growing local history](notes/growing-local-contact-history.md) covers the
-  finer sixteen-span strip by retaining new separated encounters from accepted
-  numerical corrections. It passes all 496 endpoint triangle-pair checks;
-  the intervening bending motion remains unchecked in that mode.
-  [Numerical correction sweeps](notes/checking-numerical-corrections.md) now
-  guard straight optimizer paths with exact separation bounds. The opening
-  control settles; the closing strip can stall when crossed or unresolved paths
-  are refused, with its outcome varying across numerical platforms.
-  [Rejected-trial diagnostics](notes/rejected-bending-trials.md) distinguish
-  energy and history refusals from motion failures and stop identical failed
-  searches. The recorded closing route is limited mainly by a discontinuous
-  directional layer penalty as projected overlap reappears.
-  A separate [directional-distance barrier](notes/directional-contact-distance.md)
-  acts before that boundary and settles both closing and opening controls in the
-  recorded run, preserving the strict motion and endpoint checks. General
-  self-contact beyond retained directional orders remains open.
+  The [angular-energy study](notes/crease-and-panel-energy.md) adds crease
+  preferences and panel bending. [Shared crease identities](notes/crease-identity-through-refinement.md)
+  survive refinement, and [contact correction](notes/ordered-flap-contact.md)
+  keeps declared lower/upper panels in order. The study can also
+  [discover nearby triangle partners](notes/local-contact-discovery.md) within
+  one bent panel and [retain newly encountered orders](notes/growing-local-contact-history.md)
+  during numerical corrections. Discovery needs an encounter while the
+  triangles are still separated.
+
+  The latest [distance barrier](notes/directional-contact-distance.md), a
+  penalty that grows as the required layer separation vanishes, acts before
+  projected overlap reappears. It settles the recorded closing control after
+  99 accepted corrections, with maximum relative material-edge error
+  `1.18e-8`, all 496 endpoint triangle-pair checks passing, and every accepted
+  straight numerical path checked. The opening control settles in three
+  corrections at `6.56e-8`. These are the measured #173 runs, not promised
+  iteration counts on every platform. [Rejected-trial diagnostics](notes/rejected-bending-trials.md)
+  explain refusals and let the saved energies be replayed.
+
+  These results cover retained directional orders: they can forbid passing
+  around a layer even when there is no collision. The path check establishes
+  separation, not preservation of directional order throughout the interval.
+  Calibrating stiffness, general self-contact discovery/correction, automatic
+  route planning and length-preserving folding motions remain open. None is a
+  prerequisite for completing the representation milestone #146.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.
@@ -143,10 +154,13 @@ work.
 - **[#50](https://github.com/avalonalex/senbazuru/issues/50) side view** and **[#49](https://github.com/avalonalex/senbazuru/issues/49) cut-away.** The geometry
   exists. What a schematic side view of a 32-layer crane should look like, and
   where the cut-away circle comes from, does not.
-- **[#54](https://github.com/avalonalex/senbazuru/issues/54) rotating a flap.** Easy until the rotation reaches a vertex,
-  then it is the degree-4 closed form of [#52](https://github.com/avalonalex/senbazuru/issues/52), and the result has paper
-  in the air. Production SVG now handles the study's open panels; the general
-  authoring operation and compatible-angle solve remain to be built.
+- **[#54](https://github.com/avalonalex/senbazuru/issues/54) rotating a flap.**
+  Start with one rigid flap about a fixed crease, reusing the study's interval
+  contact check. Where several moving creases meet at a vertex, their angles
+  must change together to keep the paper joined; the four-crease case is
+  [#52](https://github.com/avalonalex/senbazuru/issues/52). Production SVG
+  handles open planar panels, but the reusable authoring operation and the
+  solve for compatible crease angles remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
   `Origami.Step` and scoping to the step are the work. Captions have no font
@@ -189,26 +203,19 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 ## An order
 
-1. [#146](https://github.com/avalonalex/senbazuru/issues/146), the shared connected
-   surface, following the findings of [#114](https://github.com/avalonalex/senbazuru/issues/114).
-   The shared core and glTF replacement are in place, with material references
-   on graphics copies and refreshed README examples. The first
-   crease/panel energy experiment is [#150](https://github.com/avalonalex/senbazuru/issues/150);
-   [#152](https://github.com/avalonalex/senbazuru/issues/152) now extends it to
-   shared crease identities and diagonal/kite controls. [#154](https://github.com/avalonalex/senbazuru/issues/154)
-   adds a first open-flap contact correction using declared directional order.
-   [#156](https://github.com/avalonalex/senbazuru/issues/156) learns order from a
-   separated reference and guards later overlaps.
-   [#158](https://github.com/avalonalex/senbazuru/issues/158) adds newly encountered
-   pairs during a supplied sampled approach, retaining their order afterwards.
-   [#160](https://github.com/avalonalex/senbazuru/issues/160) checks the supplied
-   rigid rotations between those samples. [#162](https://github.com/avalonalex/senbazuru/issues/162)
-   adds local triangle requirements and a corrected self-contacting panel.
-   [#164](https://github.com/avalonalex/senbazuru/issues/164) discovers nearby
-   triangle partners from a separated bent reference. Next extend that local
-   history through bending and check motion beyond a fixed hinge before general
-   opening mechanics.
-   Physical thickness is not a prerequisite for this mechanics model.
+The shared-surface milestone #146 is complete. After the contact study through
+#173, the next increment should put one checked motion into ordinary use.
+
+1. **One checked flap rotation**, a bounded part of
+   [#54](https://github.com/avalonalex/senbazuru/issues/54) and
+   [#61](https://github.com/avalonalex/senbazuru/issues/61). Start with a single
+   fold or an isolated kite flap about one fixed crease. Define poses by the
+   crease angle, retain material identities, and check lengths, shared vertices
+   and achieved angles. Exercise a safe route and a deliberately colliding
+   route through the interval checker, preserving its collision or unresolved
+   result. Produce ordinary SVG steps and glTF from the same surface. This
+   connects the existing study to a reusable library operation; it does not
+   finish the coupled-angle solver or certify the full bird folding path.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their
