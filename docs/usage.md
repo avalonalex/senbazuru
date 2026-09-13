@@ -249,7 +249,8 @@ iterations still do not certify the continuous bending route.
 connected square's clear endpoints and its rejected numerical shortcut, plus
 checked closing and opening strips. The new mode requires whole-interval
 separation before accepting any correction or new contact history. The opening
-settles; the closing solve stalls with remaining length error. Numerical
+settles; the closing solve reports whether it settles or stalls with remaining
+length error, since the numerical route can vary across platforms. Numerical
 straight vertex paths can stretch, so these are not physical folding steps.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.

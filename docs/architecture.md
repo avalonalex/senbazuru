@@ -241,7 +241,7 @@ straight numerical vertex paths, using exact rational Bernstein coefficients.
 contact history, and returns an audit of accepted paths. `CorrectionExample`
 supplies a connected square's unsafe shortcut and a safe strip-opening control.
 This verifies an optimizer path, not a length-preserving folding instruction;
-the guarded closing strip currently stalls. See [the correction note](notes/checking-numerical-corrections.md).
+the guarded closing strip reports its measured convergence. See [the correction note](notes/checking-numerical-corrections.md).
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

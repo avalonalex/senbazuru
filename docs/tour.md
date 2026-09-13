@@ -844,7 +844,8 @@ The [numerical-correction check](notes/checking-numerical-corrections.md) bounds
 whole straight vertex paths with exact arithmetic. Its new gallery control
 shows a diagonal-fold shortcut whose endpoints pass but whose interior meets
 paper. A safe strip-opening solve settles with every correction checked; the
-closing solve stalls under this conservative guard, and remains unconverged.
+closing solve reports its measured outcome: it stalls in the recorded local
+run, but can converge on another numerical platform.
 These numerical paths can stretch triangles, so passing them does not establish
 a physical folding sequence.
 Arbitrary folded-surface mechanics, finite thickness and general collision

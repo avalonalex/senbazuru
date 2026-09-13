@@ -122,8 +122,8 @@ work.
   the intervening bending motion remains unchecked in that mode.
   [Numerical correction sweeps](notes/checking-numerical-corrections.md) now
   guard straight optimizer paths with exact separation bounds. The opening
-  control settles; the closing strip stalls when crossed or unresolved paths
-  are refused.
+  control settles; the closing strip can stall when crossed or unresolved paths
+  are refused, with its outcome varying across numerical platforms.
   Finding directions that restore lengths while respecting contact remains open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving

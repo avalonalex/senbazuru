@@ -32,7 +32,7 @@
 -- certificate for each accepted straight numerical correction. It can stall
 -- where endpoint penalties took shortcuts through paper; refusing such a path
 -- does not supply a better search direction. See
--- docs/notes/checking-numerical-corrections.md for that failed closing case and
+-- docs/notes/checking-numerical-corrections.md for the closing comparison and
 -- a settled opening control. These numerical paths can still stretch triangles.
 module FoldRelaxation
   ( Settings (..),

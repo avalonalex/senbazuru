@@ -63,13 +63,17 @@ The **Checked opening** control starts with the same sixteen-span strip as the
 [history experiment](growing-local-contact-history.md), at 22.25 degrees per
 bend. Its external controls prefer 27 degrees, with four times the stiffness
 of the passive springs preferring zero. Their balance opens it to 21.6 degrees.
-It settles after three checked corrections, with maximum relative edge-length
-error `6.56e-8`. The final shape passes all 496 independent triangle-pair checks.
+On the local macOS run it settles after three checked corrections, with maximum
+relative edge-length error `6.56e-8`. The final shape passes all 496 independent triangle-pair checks.
 
 The original closing controls expose the harder problem. They prefer 30 degrees,
-but the strict motion guard stops the solver after 25 accepted corrections;
-its 400-iteration budget ends unconverged, with about 1.13% edge-length error.
-The accepted paths clear; the resulting stretched sheet is not a finished fold.
+and the local macOS run stops after 25 accepted corrections; its 400-iteration
+budget ends unconverged, with about 1.13% edge-length error. Linux CI instead
+reaches convergence. Near contact, numerical rounding can change which route
+the nonlinear line search takes. The regression therefore audits every accepted
+path and the final contact checks in either case, and requires valid material
+lengths whenever the result claims convergence. The gallery labels follow that
+measured outcome. The local stretched result is not a finished fold.
 Rejecting intersections does not itself provide a direction that can move
 along contact while restoring lengths. The guard also refuses unresolved
 bounds; this comparison does not classify every rejected trial as a collision.

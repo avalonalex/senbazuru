@@ -142,8 +142,9 @@ the safe endpoints of a diagonal-fold shortcut, its interior collision witness,
 the closing strip with strict motion checks, and a safe opening control. The
 new solver mode checks whole straight correction paths before accepting a pose
 or learning contact. Exact separation bounds also cover shared neighbors and
-triangle collapse; exhausted checks refuse the trial. The opening settles, while
-the closing control remains explicitly unconverged with material error. Its
+triangle collapse; exhausted checks refuse the trial. The opening settles. The
+closing control reports its measured outcome; it stalls with material error on
+the recorded macOS run but can settle on another numerical platform. Its
 JSON includes every accepted correction's endpoints and interval report.
 See [checking numerical corrections](../../docs/notes/checking-numerical-corrections.md).
 

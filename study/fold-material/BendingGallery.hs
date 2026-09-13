@@ -234,8 +234,8 @@ generateLocalHistory = do
   putStrLn ("Curled panel history: " ++ show (length initialOrders) ++ " initial relationships, " ++ show (length (Local.localReferenceOrders learned)) ++ " final; frozen equilibrium " ++ show (converged frozen) ++ "; growing equilibrium " ++ show (converged corrected))
   pure (object ["kind" .= ("localhistory" :: String), "title" .= ("Curled panel · growing contact history" :: String), "converged" .= converged corrected, "baselineConverged" .= converged frozen, "baseline" .= baseline, "states" .= states, "encounters" .= encounters, "initialOrders" .= initialOrders, "triangleOrders" .= Local.localReferenceOrders learned, "numericalClearance" .= clearance, "searchDistance" .= searchDistance, "sourcePanels" .= (1 :: Int), "startingBend" .= (22.25 :: Double), "controlTarget" .= (30 :: Int), "controlStrength" .= (4 :: Int)])
 
--- One deliberately invalid shortcut and two solver controls. The failed curl
--- stays visibly unconverged; a path check supplies no new search direction.
+-- One deliberately invalid shortcut and two solver controls. Report the
+-- measured outcome: near-contact line searches can differ across platforms.
 generateCorrectionStudy :: IO Value
 generateCorrectionStudy = do
   let (start, finish) = crossingCorrection
@@ -278,8 +278,10 @@ generateCorrectionStudy = do
       right <- case reverse states of state : _ -> pure state; [] -> die "missing checked correction endpoint"
       let coords (V3 x y z) = [x, y, z]
           stepValue step = object ["iteration" .= correctionIteration step, "startPositions" .= map (coords . position) (samples (correctionStart step)), "finishPositions" .= map (coords . position) (samples (correctionFinish step)), "check" .= correctionValue (correctionCheck step)]
-          label = if isOpening then "Checked opening · settled control" else "Checked curl · stalled correction"
-          description = if isOpening then "The same sixteen-span strip starts at 22.25 degrees per bend. Controls prefer 27 degrees and passive springs prefer zero, with a 4:1 stiffness ratio; their balance opens the strip to 21.6 degrees. Every accepted straight correction clears the full-interval check. Material lengths are checked again at the settled endpoint; intermediate optimizer shapes can stretch." else "The left solver checks only poses and finds a length-correct endpoint. The right solver also refuses crossed or unresolved paths. It keeps the paper from passing through itself, but stalls before restoring material lengths. This is an unresolved relaxation problem, not a finished folded shape. Collision prevention must be paired with a search direction that can move along contact."
+          outcome = if converged result then "settled" else "not settled"
+          label = (if isOpening then "Checked opening" else "Checked curl") ++ " · " ++ outcome
+          closingOutcome = if converged result then "This run settles with material lengths restored and every accepted correction checked." else "This run stalls before restoring material lengths. It is an unresolved relaxation result, not a finished folded shape."
+          description = if isOpening then "The same sixteen-span strip starts at 22.25 degrees per bend. Controls prefer 27 degrees and passive springs prefer zero, with a 4:1 stiffness ratio; their balance opens the strip to 21.6 degrees. Every accepted straight correction clears the full-interval check. The status reports whether the endpoint meets the solver's stopping checks; intermediate optimizer shapes can stretch." else "The left solver checks only poses and finds a length-correct endpoint. The right solver also refuses crossed or unresolved paths. " ++ closingOutcome ++ " Near contact, numerical rounding can change the line search's route, so convergence can differ across platforms. The separation requirement applies to every accepted correction in either outcome."
       putStrLn (label ++ ": settled " ++ show (converged result) ++ "; " ++ show (length (sweptSteps guarded)) ++ " accepted checked corrections")
       pure (object ["title" .= (label :: String), "left" .= left, "right" .= right, "leftCaption" .= (if isOpening then "Starting strip" else "Endpoint checks only" :: String), "rightCaption" .= (if converged result then "Checked path · settled" else "Checked path · not settled" :: String), "status" .= (if converged result then "settled" else "stalled" :: String), "description" .= (description :: String), "states" .= states, "motions" .= map stepValue (sweptSteps guarded)])
 
