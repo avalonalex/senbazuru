@@ -227,6 +227,11 @@ supplies passive flatness; separate `BendControl` springs impose its curl withou
 creating creases. The same `relaxSurfaceContact` solve corrects its endpoint,
 and `PanelContact.checkLocalTriangleContact` independently checks every pair,
 including neighbors. See [local panel contact](notes/local-panel-contact.md).
+`LocalContactDiscovery` scans nearby triangles within panels, extends partners
+across connected flat reference patches, and freezes their order for
+`relaxLocalContact`. Its reference search distance is separate from numerical
+clearance; an unknown pair reaching contact blocks a trial. It does not update
+history during bending. See [local discovery](notes/local-contact-discovery.md).
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

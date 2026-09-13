@@ -20,6 +20,7 @@ import FoldContact
 import FoldMaterial
 import FoldRelaxation
 import HingeSweep qualified as Sweep
+import LocalContactDiscovery qualified as Local
 import PanelContact
 import SelfContactExample
 import Senbazuru.Explain (Explain (..))
@@ -53,7 +54,8 @@ writeBendingStudy destination = do
       ]
   contacts <- mapM generateContact [DeclaredStart, ReferenceStart, ApproachStart]
   selfContact <- generateSelfContact
-  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
+  localDiscovery <- generateLocalDiscovery
+  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact, localDiscovery]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
   TIO.writeFile (destination </> "bending.html") (T.replace "/*BENDING_DATA*/null" (TE.decodeUtf8 (BL.toStrict document)) template)
@@ -170,6 +172,29 @@ generateSelfContact = do
   states <- mapM (snapshot hinges which) (checkpoints corrected)
   putStrLn ("Curled panel: free equilibrium " ++ show (converged free) ++ "; corrected equilibrium " ++ show (converged corrected))
   pure (object ["kind" .= ("selfcontact" :: String), "title" .= ("Curled panel · self-contact" :: String), "converged" .= converged corrected, "baselineConverged" .= converged free, "baseline" .= baseline, "states" .= states, "numericalClearance" .= curlClearance fixture, "triangleOrders" .= curlPairs fixture, "sourcePanels" .= (1 :: Int), "startingBend" .= (40 :: Int), "controlTarget" .= (60 :: Int), "controlStrength" .= (4 :: Int)])
+
+-- A tighter separated curl lets near-contact discovery see the returning end.
+-- No authored fixture pairs or contact model enter this correction.
+generateLocalDiscovery :: IO Value
+generateLocalDiscovery = do
+  fixture <- checked (curledPanelAt 8 44.5)
+  let mesh = curlMesh fixture
+      hinges = curlHinges fixture
+      axis = V3 (-3) 0 1
+      searchDistance = 0.03
+  reference <- checked (Local.discoverLocalReference (curlClearance fixture) searchDistance axis mesh)
+  let orders = Local.localReferenceOrders reference
+  model <- checked (Contact.prepareTriangleContact (curlClearance fixture) axis orders mesh)
+  let which = LocalCase (curlOwners fixture) (curlBoundary fixture) axis orders model
+  free <- checked (relaxHinges defaultSettings hinges mesh)
+  corrected <- checked (relaxLocalContact defaultSettings hinges reference mesh)
+  baseline <- case reverse (checkpoints free) of
+    point : _ -> snapshot hinges which point
+    [] -> die "local discovery comparison needs an unconstrained endpoint"
+  states <- mapM (snapshot hinges which) (checkpoints corrected)
+  let candidate row = object ["triangles" .= Contact.localTriangles row, "gapRange" .= Contact.localGapRange row]
+  putStrLn ("Curled panel discovery: " ++ show (length orders) ++ " relationships; equilibrium " ++ show (converged corrected))
+  pure (object ["kind" .= ("localdiscovery" :: String), "title" .= ("Curled panel · discovered contact" :: String), "converged" .= converged corrected, "baselineConverged" .= converged free, "baseline" .= baseline, "states" .= states, "numericalClearance" .= curlClearance fixture, "searchDistance" .= searchDistance, "referenceCandidates" .= map candidate (Local.localReferenceCandidates reference), "triangleOrders" .= orders, "sourcePanels" .= (1 :: Int), "startingBend" .= (44.5 :: Double), "controlTarget" .= (60 :: Int), "controlStrength" .= (4 :: Int)])
 
 -- Approach frames are angle-defined observations, not relaxation iterates.
 -- Each snapshot carries only the orders known at that point in the sequence.

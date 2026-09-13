@@ -66,3 +66,6 @@ explains that margin and the solver. This increment is tracked in
 [Sampled approach history](first-contact-history.md) extends this API in #158:
 a separately accepted pose can establish a previously absent relationship.
 Numerical correction still uses a frozen history.
+
+[Local triangle discovery](local-contact-discovery.md) in #164 handles nearby
+parts of one bent panel without grouping contact by source-panel identity.

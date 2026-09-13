@@ -34,6 +34,8 @@ module SurfaceContact
     ContactError (..),
     ContactCandidate (..),
     overlapCandidates,
+    TriangleCandidate (..),
+    localOverlapCandidates,
     prepareContact,
     prepareTriangleContact,
     orderedContacts,
@@ -65,6 +67,16 @@ data ContactCandidate = ContactCandidate
   { candidateTriangles :: !(Int, Int),
     candidatePanels :: !(FaceId, FaceId),
     candidateGapRange :: !(Maybe (Double, Double))
+  }
+  deriving stock (Eq, Show)
+
+-- | Local overlap without source-panel grouping. The local scan orders ids
+-- ascending (the panel adapter keeps its panel order instead);
+-- the gap is SECOND minus FIRST along the model direction. No gap means that
+-- both triangles stand parallel to that direction and cannot supply heights.
+data TriangleCandidate = TriangleCandidate
+  { localTriangles :: !(Int, Int),
+    localGapRange :: !(Maybe (Double, Double))
   }
   deriving stock (Eq, Show)
 
@@ -179,17 +191,43 @@ orderedContacts (OrderedContact basis topology material pairs) mesh = do
 -- boxes meet are conservatively reported as uncheckable candidates.
 overlapCandidates :: V3 -> [FaceId] -> MaterialMesh -> Either ContactError [ContactCandidate]
 overlapCandidates direction owners mesh = do
-  basis <- projectionBasis direction
   validateOwners owners mesh
+  let pairs = [(i, j) | (i, a) <- zip [0 ..] owners, (j, b) <- zip [0 ..] owners, a < b]
+      ownership = IM.fromList (zip [0 ..] owners)
+      attach candidate = do
+        let (i, j) = localTriangles candidate
+        a <- maybe (Left InvalidContactOwners) Right (IM.lookup i ownership)
+        b <- maybe (Left InvalidContactOwners) Right (IM.lookup j ownership)
+        pure (ContactCandidate (i, j) (a, b) (localGapRange candidate))
+  candidates <- scanOverlaps direction pairs mesh
+  mapM attach candidates
+
+-- | Discover local partners anywhere in the mesh, including within one panel.
+-- Shared material vertices exclude a separating constraint, regardless of
+-- current positions. This exclusion is NOT a collision verdict: the independent
+-- triangle check must still inspect neighbors for overlap beyond their join.
+localOverlapCandidates :: V3 -> MaterialMesh -> Either ContactError [TriangleCandidate]
+localOverlapCandidates direction mesh = do
+  when (null (triangles mesh)) (Left EmptyContactMesh)
+  let indexed = zip [0 ..] (triangles mesh)
+      separate (a, b, c) (d, e, f) = all (`notElem` [d, e, f]) [a, b, c]
+      pairs = [(i, j) | (i, a) <- indexed, (j, b) <- indexed, i < j, separate a b]
+  scanOverlaps direction pairs mesh
+
+-- Both discovery policies use the same geometric test. Neither source-panel
+-- ids nor adjacency alter clipping or the sign of the measured separation.
+scanOverlaps :: V3 -> [(Int, Int)] -> MaterialMesh -> Either ContactError [TriangleCandidate]
+scanOverlaps direction pairs mesh = do
+  basis <- projectionBasis direction
   projected <- projectMesh basis mesh
-  let pair i j a b = do
+  let pair (i, j) = do
         (firstTriangle, firstAlignment) <- maybe (Left (InvalidContactTriangle i)) Right (IM.lookup i projected)
         (secondTriangle, secondAlignment) <- maybe (Left (InvalidContactTriangle j)) Right (IM.lookup j projected)
         if not (boxesMeet firstTriangle secondTriangle)
           then pure []
           else
             if max firstAlignment secondAlignment <= 1e-8
-              then pure [ContactCandidate (i, j) (a, b) Nothing]
+              then pure [TriangleCandidate (i, j) Nothing]
               else do
                 (clipped, gaps) <-
                   if firstAlignment >= secondAlignment
@@ -201,9 +239,9 @@ overlapCandidates direction owners mesh = do
                 let area = norm (polygonNormal [V3 (value x) (value y) (value z) | (x, y, z) <- clipped]) / 2
                 pure $ case map value gaps of
                   [] -> []
-                  ds | area > 1e-14 -> [ContactCandidate (i, j) (a, b) (Just (minimum ds, maximum ds))]
+                  ds | area > 1e-14 -> [TriangleCandidate (i, j) (Just (minimum ds, maximum ds))]
                   _ -> []
-  concat <$> sequence [pair i j a b | (i, a) <- zip [0 ..] owners, (j, b) <- zip [0 ..] owners, a < b]
+  concat <$> mapM pair pairs
 
 projectionBasis :: V3 -> Either ContactError (V3, V3, V3)
 projectionBasis direction = do

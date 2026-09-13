@@ -112,6 +112,8 @@ work.
   rotations between those poses and rejects an interior crossing despite valid
   endpoints. A [curled-panel control](notes/local-panel-contact.md) now corrects
   contact between explicitly chosen triangles inside one source panel.
+  [Local discovery](notes/local-contact-discovery.md) also learns nearby
+  triangle partners from a separated reference without an authored list.
   Calibrating stiffness, general continuous collision checking, automatic motion
   planning and discovery/correction of general self-contact remain open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
@@ -186,8 +188,10 @@ stacking and read the assignment off it. That drops the hardest precondition.
    [#160](https://github.com/avalonalex/senbazuru/issues/160) checks the supplied
    rigid rotations between those samples. [#162](https://github.com/avalonalex/senbazuru/issues/162)
    adds local triangle requirements and a corrected self-contacting panel.
-   Next discover local contacts during bending and extend motion checks beyond
-   a fixed hinge before general opening mechanics.
+   [#164](https://github.com/avalonalex/senbazuru/issues/164) discovers nearby
+   triangle partners from a separated bent reference. Next extend that local
+   history through bending and check motion beyond a fixed hinge before general
+   opening mechanics.
    Physical thickness is not a prerequisite for this mechanics model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
