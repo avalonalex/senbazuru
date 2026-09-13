@@ -17,7 +17,7 @@ module Senbazuru.Render.GltfSpec (spec) where
 
 import BasicBases (baseFrame, frogMilestones)
 import Control.Applicative ((<|>))
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Data.Aeson (Value (..), decodeStrict, toJSON)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
@@ -425,6 +425,24 @@ spec = do
           surface <- either (fail . show) pure (flapAt motion t)
           glb <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget VisiblePaper Nothing surface)
           length (items (at "scenes" (glbJson glb))) `shouldBe` 2
+          checkMaterialReferences glb
+
+    it "exports checked flat contacts with approach order and the correct exposed sides" $ do
+      forM_ [-1, 1] $ \sign -> do
+        start <- either (fail . show) pure (foldFrameWith singleFlap {edgesFoldAngle = replicate 7 0})
+        motion <- either (fail . show) pure (prepareFlap (EdgeId 6) (FaceId 1) (sign * 180) start >>= checkFlap defaultSweepSettings)
+        forM_ [0, 1 / 3, 2 / 3, 1] $ \t -> do
+          surface <- either (fail . show) pure (flapAt motion t)
+          glb <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget VisiblePaper Nothing surface)
+          let json = glbJson glb
+              original = at "frame" (at "senbazuru" (at "extras" json))
+              visible = items (at "primitives" (nth 0 (at "meshes" json)))
+              expectedOrders = [FaceOrder (FaceId 1) (FaceId 0) (if sign > 0 then Above else Below) | t == 1]
+          length (items (at "scenes" json)) `shouldBe` 2
+          when (t == 1) $ do
+            at "faceOrders" original `shouldBe` toJSON expectedOrders
+            map (asInt . at "material") visible `shouldSatisfy` all (== if sign > 0 then 1 else 0)
+            sort (nub (concatMap (map asInt . items . at "materialFaces" . at "extras") visible)) `shouldBe` [0, 1]
           checkMaterialReferences glb
 
     it "exports every checked bird state through both scenes" $ do

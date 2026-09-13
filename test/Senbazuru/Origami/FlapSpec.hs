@@ -13,7 +13,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Face (..), frameFaces)
-import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), FoldFile (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
@@ -139,6 +139,15 @@ spec = describe "checked flap rotation" $ do
       Left err -> expectationFailure (show err)
       Right _ -> expectationFailure "exhausted motion was accepted"
 
+  it "renders a reviewed SVG page including the checked flat endpoint" $ do
+    start <- right (foldFrameWith (singleAt 0))
+    motion <- right (prepareFlap (EdgeId 6) (FaceId 1) 180 start >>= checkFlap defaultSweepSettings)
+    states <- right (traverse (flapAt motion) [0, 1 / 3, 2 / 3, 1])
+    basis <- maybe (fail "invalid camera") pure (basisFrom (V3 (-1) 1 (negate (sqrt 2))) (V3 0 0 1))
+    page <- right (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) True (map materialFrame states))
+    diagram <- maybe (fail "no endpoint states to draw") pure page
+    goldenText "test/golden/checked-flat-flap.svg" (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Fold completely flat"} diagram)
+
   it "refuses the quarter fold's coupled crease without tearing a graph loop" $ do
     file <- loadFoldFile "examples/quarter-fold.fold" >>= right
     let fr = keyFrame file
@@ -168,10 +177,59 @@ spec = describe "checked flap rotation" $ do
     motion <- right (prepareFlap (EdgeId 6) (FaceId 1) 10 start >>= checkFlap defaultSweepSettings)
     forM_ [0 / 0, -0.1, 1.1] $ \t -> flapAt motion t `shouldSatisfy` isLeft
 
-  it "keeps flat touching endpoints outside the accepted scope" $ do
-    start <- right (foldFrameWith singleFlap)
-    closing <- right (prepareFlap (EdgeId 6) (FaceId 1) 165 start)
-    checkFlap defaultSweepSettings closing `shouldSatisfy` isLeft
+  it "closes completely and reopens with either moving side and either angle sign" $ do
+    forM_ [FaceId 0, FaceId 1] $ \side -> forM_ [-1, 1] $ \sign -> do
+      start <- right (foldFrameWith (singleAt 0))
+      closing <- right (prepareFlap (EdgeId 6) side (sign * 180) start >>= checkFlap defaultSweepSettings)
+      let fixed = if side == FaceId 0 then FaceId 1 else FaceId 0
+          expectedOrder = FaceOrder side fixed (if sign > 0 then Above else Below)
+      forM_ [0, 1e-6, 1 / 3, 2 / 3, 1 - 1e-6, 1] $ \t -> do
+        current <- right (flapAt closing t)
+        materialError current `shouldSatisfy` (< 1e-12)
+        length (surfaceSamples current) `shouldBe` 6
+        edgesFoldAngle (surfaceFrame current) `shouldBe` replicate 6 0 ++ [sign * 180 * t]
+        faceOrders (surfaceFrame current) `shouldBe` [expectedOrder | t == 1]
+      closed <- right (flapAt closing 1)
+      again <- right (foldFrameWith (singleAt (sign * 180)) {faceOrders = faceOrders (surfaceFrame closed)})
+      opening <- right (prepareFlap (EdgeId 6) side (negate sign * 180) again >>= checkFlap defaultSweepSettings)
+      initially <- right (flapAt opening 0)
+      faceOrders (surfaceFrame initially) `shouldBe` [expectedOrder]
+      reopened <- right (flapAt opening 1)
+      faceOrders (surfaceFrame reopened) `shouldBe` []
+      materialError reopened `shouldSatisfy` (< 1e-12)
+      faces <- right (frameFaces (surfaceFrame reopened))
+      case faces of
+        [a, b] -> angleBetween a b `shouldSatisfy` (< 1e-6)
+        _ -> expectationFailure "reopening changed panel count"
+
+  it "rejects departure through the declared resting layer, including reversed order notation" $ do
+    forM_ [FaceOrder (FaceId 1) (FaceId 0) Above, FaceOrder (FaceId 0) (FaceId 1) Above] $ \order -> do
+      start <- right (foldFrameWith (singleAt 180) {faceOrders = [order]})
+      wrong <- right (prepareFlap (EdgeId 6) (FaceId 1) 180 start)
+      case checkFlap defaultSweepSettings wrong of
+        Left FlapEndpointOrder {} -> pure ()
+        other -> expectationFailure (show other)
+      good <- right (prepareFlap (EdgeId 6) (FaceId 1) (-180) start >>= checkFlap defaultSweepSettings)
+      firstPose <- right (flapAt good 0)
+      faceOrders (surfaceFrame firstPose) `shouldBe` [FaceOrder (FaceId 1) (FaceId 0) Above]
+
+  it "does not accept a small overshoot or a full turn as endpoint touching" $ do
+    forM_ [(0, 180.000001), (15, 165.000001), (0, 360), (0, -180.000001)] $ \(from, travel) -> do
+      start <- right (foldFrameWith (singleAt from))
+      motion <- right (prepareFlap (EdgeId 6) (FaceId 1) travel start)
+      checkFlap defaultSweepSettings motion `shouldSatisfy` isLeft
+
+  it "handles partial approaches to flat endpoints and scaled, reversed material winding" $ do
+    forM_ [1e-5, 1, 1e5] $ \scale -> forM_ [(15, 180), (-15, -180), (15, 0), (180, 15)] $ \(from, to) -> do
+      let sheet = (singleAt from) {verticesCoords = map (map (* scale)) (verticesCoords singleFlap), facesVertices = map reverse (facesVertices singleFlap)}
+      start <- right (foldFrameWith sheet)
+      motion <- right (prepareFlap (EdgeId 6) (FaceId 1) (to - from) start >>= checkFlap defaultSweepSettings)
+      forM_ [0, 0.5, 1] $ \t -> right (flapAt motion t) >>= (\surface -> materialError surface `shouldSatisfy` (< 1e-10))
+
+  it "does not authorize persistent coplanar layers elsewhere in the sheet" $ do
+    start <- right (foldFrameWith opposingFlap {edgesFoldAngle = replicate 8 0 ++ [180, 15]})
+    motion <- right (prepareFlap (EdgeId 9) (FaceId 2) 15 start)
+    checkFlap defaultSweepSettings motion `shouldSatisfy` isLeft
 
   it "accepts explicit angles when FOLD leaves assignments unspecified" $ do
     start <- right (foldFrameWith singleFlap {edgesAssignment = []})
@@ -185,6 +243,9 @@ materialError sheet = maximum (0 : errors)
     points = zip (map VertexId [0 ..]) (surfaceSamples sheet)
     edges = nub [(a, b) | ring <- facesVertices (surfaceFrame sheet), a <- ring, b <- ring, a < b]
     errors = [abs (norm (position p ^-^ position q) / norm (sampleMaterial p ^-^ sampleMaterial q) - 1) | (a, b) <- edges, Just p <- [lookup a points], Just q <- [lookup b points]]
+
+singleAt :: Double -> Frame
+singleAt angle = singleFlap {edgesFoldAngle = replicate 6 0 ++ [angle]}
 
 angleBetween :: Face -> Face -> Double
 angleBetween a b = acos (max (-1) (min 1 (dot (normal a) (normal b)))) * 180 / pi

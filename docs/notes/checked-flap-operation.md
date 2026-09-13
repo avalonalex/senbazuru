@@ -1,6 +1,6 @@
 # Check the turn before handing out its poses
 
-The single-fold demo starts at 15° and ends at 165°. Those numbers describe
+The single-fold demo starts at 0° and ends at 180°. Those numbers describe
 the crease angle, not a straight path for each corner. Linear interpolation
 between the endpoints shortens the paper; rotation about the crease preserves
 distances throughout the turn.
@@ -29,16 +29,20 @@ model units. Exported surfaces keep their original units and material ids.
 The interval bounds use floating-point arithmetic with a separation guard,
 not formally rounded interval arithmetic.
 
-Run the [demo](../usage.md#checked-flap-motion). The recorded single fold clears
-in seven interval checks, with relative edge-length error below `3e-16` in its
-four saved states. The opposing-flap route, 105° to 121° with the other flap
+Run the [demo](../usage.md#checked-flap-motion). It now includes the complete
+flat fold and its reopening under the [endpoint contact rule](flat-flap-endpoints.md).
+The opposing-flap route, 105° to 121° with the other flap
 held at 145°, clears in one check. A full turn returns to its starting position
 but is refused: faces 0 and 2 cross at progress 0.125. That is a witnessed
 collision, not a guarantee of the earliest impact time.
+Rejecting this one route does not establish that the endpoint is unreachable;
+[reachability is a separate question](endpoints-and-routes.md).
 
-This first operation accepts separated, convex planar panels. Flat touching
-endpoints remain refused; it does not infer their layer order or exempt them
-from interval checking. Stale face orders are discarded. Physical thickness,
+This operation accepts convex planar panels with separation in the interior
+of the motion. One-sided endpoint contacts carry the resulting layer order;
+supplied orders at a touching start must agree with departure. Persistent
+touching stacks remain refused. Physical thickness,
 several creases moving together, and a checked complete bird sequence remain
 separate work under #54/#55/#61. This handoff is
-[#175](https://github.com/avalonalex/senbazuru/issues/175).
+[#175](https://github.com/avalonalex/senbazuru/issues/175), extended with
+flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177).

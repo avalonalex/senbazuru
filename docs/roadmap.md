@@ -6,7 +6,8 @@ approach and the acceptance criteria. This is the state of play behind it — wh
 is open, how hard each open piece is, and an order to take them in. It is a
 snapshot and will drift, so it carries a date: **as of 2026-09-13**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
-and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175). The
+and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
+with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -18,7 +19,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared material surfaces reach SVG and two glTF scenes; checked bird and frog states render as SVG sequences |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,235 examples pass in the cold build for the checked flap operation, including material and contact checks |
+| Tests | 1,243 examples pass in the cold build, including complete flat folds, reopening order and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -165,8 +166,9 @@ pieces of work.
   must change together to keep the paper joined; the four-crease case is
   [#52](https://github.com/avalonalex/senbazuru/issues/52). Production SVG
   handles open planar panels. The first reusable operation now handles an
-  isolated fixed crease; flat touching endpoints and the solve for compatible
-  crease angles remain to be built.
+  isolated fixed crease, including flat endpoints with a checked one-sided
+  approach and departure order. Persistent touching stacks and the solve for
+  compatible crease angles remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
   `Origami.Step` and scoping to the step are the work. Captions have no font
@@ -210,15 +212,17 @@ stacking and read the assignment off it. That drops the hardest precondition.
 ## An order
 
 The shared-surface milestone #146 is complete. The contact study through #173
-now supplies one checked library motion in #175.
+now supplies one checked library motion in #175, extended with one-sided flat
+endpoints in #177.
 
 1. **One checked flap rotation**, a bounded part of
    [#54](https://github.com/avalonalex/senbazuru/issues/54) and
    [#61](https://github.com/avalonalex/senbazuru/issues/61). The first operation
    checks lengths, shared vertices and achieved angles, rejects a crossing
-   route, and supplies SVG steps and glTF from the accepted surfaces. Next
-   handle lawful flat touching endpoints without overlooking a crossing or
-   weakening unresolved-interval refusals. The coupled-angle solver and the
+   route, and supplies SVG steps and glTF from the accepted surfaces. A complete
+   single fold and reopening now preserve the order at flat touching endpoints.
+   Next handle a small stack that stays in contact during a move, retaining its
+   order without overlooking other crossings. The coupled-angle solver and
    full bird folding path remain later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.

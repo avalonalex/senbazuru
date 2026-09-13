@@ -197,7 +197,11 @@ on a normalized mesh and returns an opaque accepted motion. `flapAt` re-folds
 the requested angle state, aligns its stationary face and checks that the
 result agrees with the hinge path before handing it to the renderers.
 `FlapGallery` is only an executable driver; the library imports no study code.
-Flat touching endpoints remain unsupported. See [the operation note](notes/checked-flap-operation.md).
+`HingeSweep.checkSweepWithFlatEndpoints` returns one-sided endpoint contacts
+as triangle ids and signs against stationary normals. `Flap` maps them to
+source-face orders and checks supplied initial orders on each contact plane.
+The strict `checkSweep` entry point retains the study's existing contact policy.
+Persistent touching stacks remain unsupported. See [the operation note](notes/checked-flap-operation.md).
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the

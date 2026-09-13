@@ -18,6 +18,16 @@
 -- We do not skip all pairs sharing a corner. Independent static triangle checks
 -- supply collision witnesses, not a supposed first impact time.
 --
+-- 'checkSweepWithFlatEndpoints' also admits a one-sided flat contact. The
+-- stationary plane must contain the hinge, and a coplanar endpoint makes each
+-- moving point's signed distance a multiple of sin(theta - thetaEndpoint).
+-- A half-turn or shorter has no interior zero; common hinge boundaries still
+-- need matching material ids. Its endpoint orders are returned explicitly.
+-- Coplanarity is recognized within 64 machine epsilons on a unit sheet
+-- (about 1.42e-14), to accommodate the residual of sin(pi). This is a numerical
+-- convention, not an exact proof for arbitrarily small gaps. No time interval
+-- or unrelated pair is omitted. Persistent touching stacks remain refused.
+--
 -- This is a numerical interval check for ONE fixed-axis rotation, with a 1e-10
 -- separation guard on unit sheets. It is not formally rounded
 -- interval arithmetic, arbitrary bending, thickness, or a solver motion model.
@@ -27,11 +37,13 @@ module Senbazuru.Origami.HingeSweep
     defaultSweepSettings,
     SweepOutcome (..),
     SweepCheck (..),
+    EndpointContact (..),
     SweepError (..),
     prepareSweep,
     sweepStart,
     sweepMeshAt,
     checkSweep,
+    checkSweepWithFlatEndpoints,
     sinusoidRange,
   )
 where
@@ -40,6 +52,8 @@ import Control.Monad (filterM, unless, when)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (tails)
+import Data.Map.Strict qualified as M
+import Data.Maybe (listToMaybe)
 import Data.Set qualified as S
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry (V2 (..))
@@ -63,7 +77,18 @@ defaultSweepSettings = SweepSettings 20 4096
 data SweepOutcome = SweepClear | SweepCollision !Double ![(Int, Int)] | SweepUnresolved !Double !Double ![(Int, Int)]
   deriving stock (Eq, Show)
 
-data SweepCheck = SweepCheck {sweepOutcome :: !SweepOutcome, sweepIntervals :: !Int}
+data SweepCheck = SweepCheck {sweepOutcome :: !SweepOutcome, sweepIntervals :: !Int, sweepEndpointContacts :: ![EndpointContact]}
+  deriving stock (Eq, Show)
+
+-- | Overlapping triangles at an accepted endpoint. The sign names the side
+-- of the stationary triangle's wound normal occupied just inside the motion.
+-- It is geometric layer information, independent of the camera.
+data EndpointContact = EndpointContact
+  { contactProgress :: !Double,
+    contactFixed :: !Int,
+    contactMoving :: !Int,
+    contactSide :: !Int
+  }
   deriving stock (Eq, Show)
 
 data SweepError
@@ -164,17 +189,29 @@ rangeWithin a b from to = (minimum values, maximum values)
     values = [a * cos lo + b * sin lo, a * cos hi + b * sin hi] ++ [radius | contains phase] ++ [-radius | contains (phase + pi)]
 
 checkSweep :: SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkSweep settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis angle) = do
+checkSweep = checkWithEndpoints False
+
+-- | Permit coplanar overlap only at a boundary of the motion, with a
+-- one-sided approach/departure. The returned contacts supply its layer order.
+-- Persistent touching pairs still fail. 'checkSweep' retains its strict
+-- endpoint policy for callers without a way to carry layer information.
+checkSweepWithFlatEndpoints :: SweepSettings -> HingeSweep -> Either SweepError SweepCheck
+checkSweepWithFlatEndpoints = checkWithEndpoints True
+
+checkWithEndpoints :: Bool -> SweepSettings -> HingeSweep -> Either SweepError SweepCheck
+checkWithEndpoints allowEndpoints settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis angle) = do
   unless (sweepDepth settings >= 0 && sweepDepth settings <= 30 && sweepBudget settings > 0) (Left InvalidSweepSettings)
-  initialBad <- collisions mesh pairs
+  (initialBad, initialContacts) <- endpoint 0 mesh
   if not (null initialBad)
-    then pure (SweepCheck (SweepCollision 0 initialBad) 0)
+    then pure (SweepCheck (SweepCollision 0 initialBad) 0 [])
     else do
       final <- sweepMeshAt sweep 1
-      finalBad <- collisions final pairs
+      (finalBad, finalContacts) <- endpoint 1 final
       if not (null finalBad)
-        then pure (SweepCheck (SweepCollision 1 finalBad) 0)
-        else walk 0 (sweepDepth settings) 0 1 movingPairs
+        then pure (SweepCheck (SweepCollision 1 finalBad) 0 [])
+        else do
+          result <- walk 0 (sweepDepth settings) 0 1 movingPairs
+          pure result {sweepEndpointContacts = [c | sweepOutcome result == SweepClear, c <- initialContacts ++ finalContacts]}
   where
     indexed = zip3 [0 ..] (triangles mesh) turning
     pairs = [(i, j) | (i, _, _) : rest <- tails indexed, (j, _, _) <- rest]
@@ -185,11 +222,61 @@ checkSweep settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis 
     pointAt t i = maybe (V3 0 0 0) (`orbitAt` (t * angle)) (IM.lookup i orbits)
     points t i = map (pointAt t) (ids i)
     guardDistance = 1e-10
+    -- This much smaller bound only recognizes a rounded coplanar endpoint.
+    -- It does not enlarge the contact tolerance or skip a short time interval.
+    endpointRoundoff = 64 * encodeFloat 1 (-52)
+    endpointPlanes = M.fromList [(pair, proof) | allowEndpoints, pair <- movingPairs, Just proof <- [endpointPlane pair]]
+    endpointPlane (i, j) = listToMaybe [proof | (fixed, moving) <- [(i, j), (j, i)], t <- [0, 1], Just proof <- [oneSided t fixed moving]]
+    oneSided t fixed moving =
+      let n = unit (normal (points 0 fixed))
+          origin = pointAt 0 (minimum (ids fixed))
+          onHinge v = norm (cross hingeAxis (pointAt 0 v ^-^ hingeOrigin)) <= 1e-12
+          stationary = all (\v -> case IM.lookup v orbits of Just (Fixed _) -> True; _ -> False) (ids fixed)
+          rotating = all (\v -> case IM.lookup v orbits of Just Turning {} -> True; _ -> False) (filter (not . onHinge) (ids moving))
+          interior = filter (not . onHinge) (ids moving)
+          inPlane p = abs (dot n (p ^-^ origin)) <= endpointRoundoff
+          derivative v = dot n (cross hingeAxis (pointAt t v ^-^ hingeOrigin))
+          -- With the hinge and endpoint in the plane, signed distance is
+          -- derivative * sin(theta - thetaEndpoint). On at most a half-turn
+          -- this sine has no interior zero. Its sign inside the motion is
+          -- the sign of travel away from that endpoint; no sampling is used.
+          heights = [derivative v * signum (angle * (0.5 - t)) | v <- interior]
+          side
+            | all (> guardDistance) heights = Just 1
+            | all (< negate guardDistance) heights = Just (-1)
+            | otherwise = Nothing
+          across = unit (cross n hingeAxis)
+          fixedSides = [dot across (pointAt 0 v ^-^ hingeOrigin) | v <- ids fixed, not (onHinge v)]
+          fixedOneSide = not (null fixedSides) && (all (> guardDistance) fixedSides || all (< negate guardDistance) fixedSides)
+       in if stationary
+            && rotating
+            && not (null interior)
+            && angle /= 0
+            && abs angle <= pi
+            && inPlane hingeOrigin
+            && abs (dot n hingeAxis) <= endpointRoundoff
+            && all (inPlane . pointAt t) (ids moving)
+            && fixedOneSide
+            && sharedBoundaryOnly onHinge fixed moving
+            then (fixed,moving,) <$> side
+            else Nothing
+    sharedBoundaryOnly onHinge fixed moving =
+      let extent vs = let ds = map (\v -> dot hingeAxis (pointAt 0 v ^-^ hingeOrigin)) vs in (minimum ds, maximum ds)
+          common = filter (`elem` ids fixed) (ids moving)
+       in case (filter onHinge (ids fixed), filter onHinge (ids moving)) of
+            ([], _) -> True
+            (_, []) -> True
+            (fs, ms) ->
+              let (fa, fb) = extent fs
+                  (ma, mb) = extent ms
+               in case common of
+                    [] -> max fa ma > min fb mb + guardDistance
+                    _ -> let (ca, cb) = extent common in max fa ma >= ca && min fb mb <= cb
     projected axis origin lo hi i = case IM.lookup i orbits of
       Just (Fixed p) -> let d = dot axis (p ^-^ origin) in (d, d)
       Just (Turning c u v) -> let d = dot axis (c ^-^ origin); (a, b) = rangeWithin (dot axis u) (dot axis v) (lo * angle) (hi * angle) in (d + a, d + b)
       Nothing -> (negate (1 / 0), 1 / 0)
-    separated lo hi (i, j) = any along axes || hingeSide i j || hingeSide j i
+    separated lo hi (i, j) = M.member (i, j) endpointPlanes || any along axes || hingeSide i j || hingeSide j i
       where
         as = points ((lo + hi) / 2) i
         bs = points ((lo + hi) / 2) j
@@ -232,29 +319,40 @@ checkSweep settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis 
                           sharedOnly = max fa ma >= ca && min fb mb <= cb
                        in abs (dot axis hingeAxis) <= 1e-12 && oneSide ranges && oneSide fixedSides && sharedOnly
                 _ -> False
-    collisions current candidates = do
+    inspect current (i, j) = do
       let vertices = IM.fromList (zip [0 ..] (samples current))
-          panel i = Panel.Panel (tshow i) [position p | v <- ids i, Just p <- [IM.lookup v vertices]]
-          inspect pair@(i, j) = do
-            report <- first SweepGeometry (Panel.checkPanelContact (V3 0 0 1) [] [panel i, panel j])
-            pure [pair | not (Panel.contactPassed report)]
-      concat <$> mapM inspect candidates
+          panel index = Panel.Panel (tshow index) [position p | v <- ids index, Just p <- [IM.lookup v vertices]]
+      first SweepGeometry (Panel.checkPanelContact (V3 0 0 1) [] [panel i, panel j])
+    collisions current candidates = concat <$> mapM (\pair -> do report <- inspect current pair; pure [pair | not (Panel.contactPassed report)]) candidates
+    endpoint t current = do
+      reports <- mapM (\pair -> (,) pair <$> inspect current pair) pairs
+      let contact pair = do
+            (fixed, moving, side) <- M.lookup pair endpointPlanes
+            -- A separating plane can also certify an OPEN endpoint. Only
+            -- record contact when this endpoint actually lies in that plane.
+            let n = unit (normal (points 0 fixed))
+                origin = pointAt 0 (minimum (ids fixed))
+            if all (\p -> abs (dot n (p ^-^ origin)) <= endpointRoundoff) (points t moving)
+              then Just (EndpointContact t fixed moving side)
+              else Nothing
+          accepted = [(pair, c) | (pair, report) <- reports, null (Panel.crossingPanels report), not (null (Panel.unorderedContacts report)), Just c <- [contact pair]]
+      pure ([pair | (pair, report) <- reports, not (Panel.contactPassed report), pair `notElem` map fst accepted], map snd accepted)
     walk count depth lo hi candidates
-      | count >= sweepBudget settings = pure (SweepCheck (SweepUnresolved lo hi candidates) count)
+      | count >= sweepBudget settings = pure (SweepCheck (SweepUnresolved lo hi candidates) count [])
       | otherwise = do
           let remaining = filter (not . separated lo hi) candidates
               midpoint = (lo + hi) / 2
               used = count + 1
           if null remaining
-            then pure (SweepCheck SweepClear used)
+            then pure (SweepCheck SweepClear used [])
             else do
               middle <- sweepMeshAt sweep midpoint
               bad <- collisions middle remaining
               if not (null bad)
-                then pure (SweepCheck (SweepCollision midpoint bad) used)
+                then pure (SweepCheck (SweepCollision midpoint bad) used [])
                 else
                   if depth == 0
-                    then pure (SweepCheck (SweepUnresolved lo hi remaining) used)
+                    then pure (SweepCheck (SweepUnresolved lo hi remaining) used [])
                     else do
                       left <- walk used (depth - 1) lo midpoint remaining
                       case sweepOutcome left of

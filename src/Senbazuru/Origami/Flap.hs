@@ -20,10 +20,14 @@
 -- The interval checker works on geometry normalized by the original sheet's
 -- span. Exported coordinates keep their original units and material ids. This
 -- inherits HingeSweep's numerical guard, zero-thickness model and conservative
--- refusals: coplanar touching layers and flat fold endpoints are not yet
--- supported. A refusal can be a contact witness or an unresolved interval,
+-- refusals. Flat endpoints need a one-sided half-turn (or shorter) approach
+-- in a plane containing the hinge; persistent touching stacks remain refused.
+-- Endpoint layers follow that approach. At the start they must agree with any
+-- supplied orders; without orders, departure selects the previously unknown
+-- touching side. Other poses discard stale orders. A refusal can be a contact
+-- witness, contradictory endpoint order or an unresolved interval,
 -- never a claim to have found the earliest impact. Stale face orders are
--- discarded; this first operation accepts separated panels, not a layer stack.
+-- not used to exempt untested pairs from contact checks.
 module Senbazuru.Origami.Flap
   ( FlapMotion,
     CheckedFlap,
@@ -44,13 +48,14 @@ import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError, edgeKey, facesAlongEdges, frameCreases, frameFaces, frameVertices, ringEdges)
-import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), Frame (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.Rigid (Rigid, after, inverse)
-import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
+import Senbazuru.Geometry.V3 (V3 (..), modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep
+import Senbazuru.Origami.Layers (layerDepths)
 import Senbazuru.Origami.Surface
 
 data FlapMotion = FlapMotion
@@ -62,7 +67,8 @@ data FlapMotion = FlapMotion
     checkOrigin :: !V3,
     checkScale :: !Double,
     checkedPath :: !HingeSweep,
-    triangleOwners :: ![FaceId]
+    triangleOwners :: ![FaceId],
+    startingOrders :: ![FaceOrder]
   }
   deriving stock (Show)
 
@@ -79,6 +85,7 @@ data FlapError
   | FlapWrongSide !EdgeId !FaceId
   | FlapCoupled !EdgeId ![VertexId]
   | FlapMissingFace !FaceId
+  | FlapMissingOwner !Int
   | FlapMissingVertex !VertexId
   | FlapStartMismatch
   | FlapInvalidTravel !Double
@@ -86,6 +93,7 @@ data FlapError
   | FlapPathMismatch !VertexId
   | FlapCollision !Double ![(FaceId, FaceId)]
   | FlapUnresolved !Double !Double ![(FaceId, FaceId)]
+  | FlapEndpointOrder !Double !FoldError
   deriving stock (Eq, Show)
 
 instance Explain FlapError where
@@ -99,6 +107,7 @@ instance Explain FlapError where
     FlapWrongSide eid fid -> "moving face " <> tshow (unFaceId fid) <> " must touch crease " <> tshow (unEdgeId eid)
     FlapCoupled eid vertices -> "crease " <> tshow (unEdgeId eid) <> " does not separate a flap: other creases must move around vertices " <> tshow (map unVertexId vertices)
     FlapMissingFace fid -> "flap is missing face or placement " <> tshow (unFaceId fid)
+    FlapMissingOwner i -> "flap contact triangle " <> tshow i <> " is missing its source face"
     FlapMissingVertex vid -> "flap is missing material vertex " <> tshow (unVertexId vid)
     FlapStartMismatch -> "flap start must be the unmodified result of foldFrameWith, including its cut pattern and explicit angles"
     FlapInvalidTravel value -> "flap travel must be finite and at most 360 degrees; got " <> tshow value
@@ -106,6 +115,7 @@ instance Explain FlapError where
     FlapPathMismatch vid -> "angle-derived flap pose disagrees with the checked hinge path at vertex " <> tshow (unVertexId vid)
     FlapCollision t pairs -> "flap path refused: contact between faces " <> facePairs pairs <> " at progress " <> num t <> " (a witness, not the first impact time)"
     FlapUnresolved lo hi pairs -> "flap path unresolved between progress " <> num lo <> " and " <> num hi <> " for faces " <> facePairs pairs
+    FlapEndpointOrder t err -> "flap layer order contradicts its approach/departure at progress " <> num t <> ": " <> explain err
     where
       facePairs pairs = tshow [(unFaceId a, unFaceId b) | (a, b) <- pairs]
 
@@ -125,6 +135,7 @@ prepareFlap eid side travel supplied = do
   actual <- first FlapGeometry (frameVertices suppliedFrame)
   expected <- first FlapGeometry (frameVertices (foldedFrame start))
   let scale = modelSpan material
+  unless (facesVertices suppliedFrame == facesVertices (foldedFrame start)) (Left FlapStartMismatch)
   unless (finite scale && scale > 0 && length actual == length expected && and (zipWith (\a b -> norm (a ^-^ b) / scale < 1e-9) actual expected)) (Left FlapStartMismatch)
   faces <- first FlapGeometry (frameFaces (foldedFrame start))
   neighbours <- first FlapGeometry (facesAlongEdges faces)
@@ -153,7 +164,7 @@ prepareFlap eid side travel supplied = do
   let normalized = mesh {samples = [p {position = (1 / scale) *^ (position p ^-^ origin)} | p <- samples mesh]}
       moving = S.toList (S.fromList [unVertexId vid | face <- faces, S.member (faceId face) selected, vid <- faceVertexIds face])
   sweep <- first FlapSweep (prepareSweep (V3 0 0 0) ((1 / scale) *^ (finish ^-^ origin)) (negate travel * pi / 180) moving normalized)
-  let motion = FlapMotion start eid (S.toList selected) fixed travel origin scale sweep owners
+  let motion = FlapMotion start eid (S.toList selected) fixed travel origin scale sweep owners (faceOrders suppliedFrame)
   -- The same refolding/anchoring path supplies all subsequent public poses.
   _ <- surfaceAt motion 1
   pure motion
@@ -168,11 +179,15 @@ connected links visited (face : rest)
 
 checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap
 checkFlap settings motion = do
-  result <- first FlapSweep (checkSweep settings (checkedPath motion))
+  result <- first FlapSweep (checkSweepWithFlatEndpoints settings (checkedPath motion))
   let owners = IM.fromList (zip [0 ..] (triangleOwners motion))
       sourcePairs pairs = sort (nub [(min a b, max a b) | (i, j) <- pairs, Just a <- [IM.lookup i owners], Just b <- [IM.lookup j owners]])
   case sweepOutcome result of
-    SweepClear -> Right (CheckedFlap motion result)
+    SweepClear -> do
+      -- Fan triangles retain their source face's winding, so each contact's
+      -- side is already a FOLD order against the stationary face's normal.
+      mapM_ (checkEndpointOrder motion result) [0, 1]
+      Right (CheckedFlap motion result)
     SweepCollision t pairs -> Left (FlapCollision t (sourcePairs pairs))
     SweepUnresolved lo hi pairs -> Left (FlapUnresolved lo hi (sourcePairs pairs))
 
@@ -185,7 +200,40 @@ flapMovingFaces (CheckedFlap motion _) = movingFaces motion
 -- | A checked angle state at a fraction of the accepted motion. The returned
 -- surface supplies both renderers and its materialFrame supplies FOLD output.
 flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)
-flapAt (CheckedFlap motion _) = surfaceAt motion
+flapAt (CheckedFlap motion result) progress = do
+  surface <- surfaceAt motion progress
+  orders <- endpointOrders motion result progress
+  first FlapSurface (withFaceOrders orders surface)
+
+endpointOrders :: FlapMotion -> SweepCheck -> Double -> Either FlapError [FaceOrder]
+endpointOrders motion report progress = nub <$> traverse order [c | c <- sweepEndpointContacts report, contactProgress c == progress]
+  where
+    owners = IM.fromList (zip [0 ..] (triangleOwners motion))
+    owner i = maybe (Left (FlapMissingOwner i)) Right (IM.lookup i owners)
+    order c = FaceOrder <$> owner (contactMoving c) <*> owner (contactFixed c) <*> pure (if contactSide c > 0 then Above else Below)
+
+checkEndpointOrder :: FlapMotion -> SweepCheck -> Double -> Either FlapError ()
+checkEndpointOrder motion report progress = do
+  surface <- surfaceAt motion progress
+  faces <- first FlapGeometry (frameFaces (surfaceFrame surface))
+  orders <- endpointOrders motion report progress
+  -- Test each contact plane separately: orders on different planes are not a
+  -- global painting order. Include the given initial orders so reopening a
+  -- flat flap cannot silently put it through the layer it was resting on.
+  let supplied = [o | progress == 0, o <- startingOrders motion]
+      check order = case find ((== orderRelativeTo order) . faceId) faces of
+        Nothing -> Left (FlapMissingFace (orderRelativeTo order))
+        Just fixed -> case faceCorners fixed of
+          [] -> Left (FlapMissingFace (faceId fixed))
+          origin : _ -> do
+            let n = polygonNormal (faceCorners fixed)
+                coplanar face = all (\p -> abs (dot n (p ^-^ origin)) <= 1e-12 * checkScale motion * norm n) (faceCorners face)
+                group = filter coplanar faces
+                members = map faceId group
+                relevant = [o | o <- supplied ++ orders, orderFace o `elem` members, orderRelativeTo o `elem` members]
+            _ <- first (FlapEndpointOrder progress) (layerDepths n group relevant)
+            pure ()
+  mapM_ check orders
 
 surfaceAt :: FlapMotion -> Double -> Either FlapError (Surface V2)
 surfaceAt motion progress = do

@@ -223,8 +223,9 @@ with every open issue tiered by how hard it is.
    Specific square/waterbomb collapses, fish folds and bird petals already have
    checked intermediate states. The library now checks
    [one rigid flap rotation](docs/notes/checked-flap-operation.md) before
-   producing SVG steps and glTF from the same surface. Flat touching endpoints
-   and motion where several creases must move together remain open under
+   producing SVG steps and glTF from the same surface, including a complete
+   flat fold and its reopening with checked endpoint layer order. Persistent
+   touching stacks and motion where several creases must move together remain open under
    [#54](https://github.com/avalonalex/senbazuru/issues/54) and
    [#61](https://github.com/avalonalex/senbazuru/issues/61). Follow with
    [controlled body opening](https://github.com/avalonalex/senbazuru/issues/106),
