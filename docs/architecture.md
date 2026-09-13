@@ -203,8 +203,10 @@ source-face orders and checks supplied initial orders on each contact plane.
 `checkSweepWithRigidContacts` also verifies explicitly named coplanar pairs with
 the same motion. `Flap` supplies these from consistent, same-motion face orders
 and preserves those orders in every pose. The strict `checkSweep` entry point
-retains the study's existing contact policy. Sliding contact and unjoined stack
-edges on the hinge remain unsupported. See [the operation note](notes/checked-flap-operation.md).
+retains the study's existing contact policy. A declared partner's shared hinge
+can also support an unjoined stack boundary, while the same plane separation
+check still covers the turning interior. Sliding contact remains unsupported.
+See [the operation note](notes/checked-flap-operation.md).
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the

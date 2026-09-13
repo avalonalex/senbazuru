@@ -109,13 +109,13 @@ spec = describe "checked flap rotation" $ do
       edgesFoldAngle (surfaceFrame current) `shouldBe` replicate 8 0 ++ [145 - 10 * t, 105]
       materialError current `shouldSatisfy` (< 1e-12)
 
-  it "forms a two-layer flap and retains its order throughout lifting and lowering" $ do
-    unfolded <- right (foldFrameWith touchingFlap {edgesFoldAngle = replicate 10 0, faceOrders = []})
+  it "forms a two-layer flap and retains its order throughout lifting and lowering" $ forM_ [touchingFlap, alignedFlap] $ \sheetFixture -> do
+    unfolded <- right (foldFrameWith sheetFixture {edgesFoldAngle = replicate 10 0, faceOrders = []})
     forming <- right (prepareFlap (EdgeId 9) (FaceId 2) 180 unfolded >>= checkFlap defaultSweepSettings)
     formed <- right (flapAt forming 1)
-    faceOrders (surfaceFrame formed) `shouldBe` faceOrders touchingFlap
+    faceOrders (surfaceFrame formed) `shouldBe` faceOrders sheetFixture
     forM_ [(0, 90), (90, 0), (30, 150), (150, 30), (0, -90), (-90, 0)] $ \(from, to) -> do
-      start <- right (foldFrameWith touchingFlap {edgesFoldAngle = replicate 8 0 ++ [from, 180]})
+      start <- right (foldFrameWith sheetFixture {edgesFoldAngle = replicate 8 0 ++ [from, 180]})
       original <- right (surfaceFromFolded start)
       motion <- right (prepareFlap (EdgeId 8) (FaceId 1) (to - from) start >>= checkFlap defaultSweepSettings)
       flapMovingFaces motion `shouldBe` [FaceId 1, FaceId 2]
@@ -123,7 +123,7 @@ spec = describe "checked flap rotation" $ do
         current <- right (flapAt motion t)
         let fr = surfaceFrame current
         edgesFoldAngle fr `shouldBe` replicate 8 0 ++ [from + t * (to - from), 180]
-        faceOrders fr `shouldBe` faceOrders touchingFlap
+        faceOrders fr `shouldBe` faceOrders sheetFixture
         map sampleMaterial (surfaceSamples current) `shouldBe` map sampleMaterial (surfaceSamples original)
         facesVertices fr `shouldBe` facesVertices (surfaceFrame original)
         length (surfaceSamples current) `shouldBe` 8
@@ -146,37 +146,63 @@ spec = describe "checked flap rotation" $ do
             contactPassed report `shouldBe` True
           _ -> expectationFailure "stack changed panel count"
 
-  it "keeps the stack stationary when the opposite side is selected" $ do
-    start <- right (foldFrameWith touchingFlap)
+  it "lifts a full-width stack with an unjoined edge along the hinge" $ do
+    start <- right (foldFrameWith alignedFlap)
+    motion <- right (prepareFlap (EdgeId 8) (FaceId 1) 90 start >>= checkFlap defaultSweepSettings)
+    sweepOutcome (flapCheck motion) `shouldBe` SweepClear
+    forM_ [0, 0.1 .. 1] $ \t -> do
+      state <- right (flapAt motion t)
+      let vertices = zip [0 :: Int ..] (surfaceSamples state)
+      -- Upper free corners coincide with the lower hinge, but their original
+      -- positions and ids must not be merged. The mesh still has eight samples.
+      length vertices `shouldBe` 8
+      forM_ [(1, 3), (6, 4)] $ \(a, b) -> case (lookup a vertices, lookup b vertices) of
+        (Just p, Just q) -> do
+          norm (position p ^-^ position q) `shouldSatisfy` (< 1e-12)
+          norm (sampleMaterial p ^-^ sampleMaterial q) `shouldSatisfy` (> 0.6)
+        _ -> expectationFailure "hinge corner disappeared"
+      faces <- right (frameFaces (surfaceFrame state))
+      case faces of
+        [fixed, middle, _] -> abs (angleBetween fixed middle - 90 * t) `shouldSatisfy` (< 1e-6)
+        _ -> expectationFailure "full-width stack changed panels"
+
+  it "does not widen the hinge rule to an upper layer extending across the crease" $ do
+    let overhanging = alignedFlap {verticesCoords = [[0, 0], [1 / 3, 0], [2 / 3, 0], [1.01, 0], [1.01, 1], [2 / 3, 1], [1 / 3, 1], [0, 1]]}
+    start <- right (foldFrameWith overhanging)
+    motion <- right (prepareFlap (EdgeId 8) (FaceId 1) 90 start)
+    checkFlap defaultSweepSettings motion `shouldSatisfy` isLeft
+
+  it "keeps the stack stationary when the opposite side is selected" $ forM_ [touchingFlap, alignedFlap] $ \sheetFixture -> do
+    start <- right (foldFrameWith sheetFixture)
     original <- right (surfaceFromFolded start >>= surfacePanelSamples)
     motion <- right (prepareFlap (EdgeId 8) (FaceId 0) 90 start >>= checkFlap defaultSweepSettings)
     flapMovingFaces motion `shouldBe` [FaceId 0]
     forM_ [0, 0.5, 1] $ \t -> do
       current <- right (flapAt motion t)
-      faceOrders (surfaceFrame current) `shouldBe` faceOrders touchingFlap
+      faceOrders (surfaceFrame current) `shouldBe` faceOrders sheetFixture
       panels <- right (surfacePanelSamples current)
       forM_ [FaceId 1, FaceId 2] $ \fid -> case (lookup fid original, lookup fid panels) of
         (Just ps, Just qs) -> maximum (0 : zipWith (\p q -> norm (position p ^-^ position q)) ps qs) `shouldSatisfy` (< 1e-12)
         _ -> expectationFailure "stationary stack disappeared"
 
-  it "combines the stack's retained order with flat landing and departure orders" $ do
-    start <- right (foldFrameWith touchingFlap)
+  it "combines the stack's retained order with flat landing and departure orders" $ forM_ [touchingFlap, alignedFlap] $ \sheetFixture -> do
+    start <- right (foldFrameWith sheetFixture)
     closing <- right (prepareFlap (EdgeId 8) (FaceId 1) 180 start >>= checkFlap defaultSweepSettings)
     closed <- right (flapAt closing 1)
     let landed = surfaceFrame closed
     faceOrders landed `shouldMatchList` [FaceOrder (FaceId 2) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 0) Above, FaceOrder (FaceId 2) (FaceId 0) Above]
-    rest <- right (foldFrameWith touchingFlap {edgesFoldAngle = edgesFoldAngle landed, faceOrders = faceOrders landed})
+    rest <- right (foldFrameWith sheetFixture {edgesFoldAngle = edgesFoldAngle landed, faceOrders = faceOrders landed})
     opening <- right (prepareFlap (EdgeId 8) (FaceId 1) (-180) rest >>= checkFlap defaultSweepSettings)
     open <- right (flapAt opening 1)
-    faceOrders (surfaceFrame open) `shouldBe` faceOrders touchingFlap
+    faceOrders (surfaceFrame open) `shouldBe` faceOrders sheetFixture
     wrong <- right (prepareFlap (EdgeId 8) (FaceId 1) 180 rest)
     case checkFlap defaultSweepSettings wrong of
       Left FlapEndpointOrder {} -> pure ()
       other -> expectationFailure (show other)
 
-  it "refuses a stack without orders or with contradictory orders even when upright" $ do
+  it "refuses a stack without orders or with contradictory orders even when upright" $ forM_ [touchingFlap, alignedFlap] $ \sheetFixture -> do
     forM_ [0, 90] $ \angle -> do
-      let sheet = touchingFlap {edgesFoldAngle = replicate 8 0 ++ [angle, 180]}
+      let sheet = sheetFixture {edgesFoldAngle = replicate 8 0 ++ [angle, 180]}
       missing <- right (foldFrameWith sheet {faceOrders = []})
       motion <- right (prepareFlap (EdgeId 8) (FaceId 1) 15 missing)
       checkFlap defaultSweepSettings motion `shouldSatisfy` isLeft
@@ -185,12 +211,12 @@ spec = describe "checked flap rotation" $ do
         Left err@FlapStackOrder {} -> explain err `shouldSatisfy` (not . T.null)
         other -> expectationFailure (show other)
 
-  it "preserves stack orders under winding changes, reverse notation and model scale" $ do
+  it "preserves stack orders under winding changes, reverse notation and model scale" $ forM_ [touchingFlap, alignedFlap] $ \sheetFixture -> do
     forM_ [1e-5, 1, 1e5] $ \scale -> forM_ [False, True] $ \backwards -> do
       let sheet =
-            touchingFlap
-              { verticesCoords = map (map (* scale)) (verticesCoords touchingFlap),
-                facesVertices = (if backwards then map reverse else id) (facesVertices touchingFlap),
+            sheetFixture
+              { verticesCoords = map (map (* scale)) (verticesCoords sheetFixture),
+                facesVertices = (if backwards then map reverse else id) (facesVertices sheetFixture),
                 faceOrders = [FaceOrder (FaceId 1) (FaceId 2) (if backwards then Below else Above)]
               }
       start <- right (foldFrameWith sheet)
@@ -218,7 +244,7 @@ spec = describe "checked flap rotation" $ do
   it "retains three contacting layers and refuses a cycle across their orders" $ do
     let sheet =
           blockedStack
-            { verticesCoords = [[0, 0], [0.4, 0], [0.8, 0], [0.9, 0], [1, 0], [1, 1], [0.9, 1], [0.8, 1], [0.4, 1], [0, 1]],
+            { verticesCoords = [[0, 0], [0.25, 0], [0.5, 0], [0.75, 0], [1, 0], [1, 1], [0.75, 1], [0.5, 1], [0.25, 1], [0, 1]],
               edgesFoldAngle = replicate 10 0 ++ [0, 180, 180],
               faceOrders = [FaceOrder (FaceId 2) (FaceId 1) Above, FaceOrder (FaceId 3) (FaceId 1) Above, FaceOrder (FaceId 2) (FaceId 3) Above]
             }
@@ -273,14 +299,14 @@ spec = describe "checked flap rotation" $ do
     diagram <- maybe (fail "no endpoint states to draw") pure page
     goldenText "test/golden/checked-flat-flap.svg" (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Fold completely flat"} diagram)
 
-  it "renders a reviewed SVG sequence of the touching stack lifting" $ do
-    start <- right (foldFrameWith touchingFlap)
+  it "renders a reviewed SVG sequence of the touching stack lifting" $ forM_ [(touchingFlap, "test/golden/checked-stack-flap.svg"), (alignedFlap, "test/golden/checked-aligned-stack.svg")] $ \(sheetFixture, golden) -> do
+    start <- right (foldFrameWith sheetFixture)
     motion <- right (prepareFlap (EdgeId 8) (FaceId 1) 90 start >>= checkFlap defaultSweepSettings)
     states <- right (traverse (flapAt motion) [0, 1 / 3, 2 / 3, 1])
     basis <- maybe (fail "invalid camera") pure (basisFrom (V3 (-1) 1 (negate (sqrt 2))) (V3 0 0 1))
     page <- right (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) True (map materialFrame states))
     diagram <- maybe (fail "no stack states to draw") pure page
-    goldenText "test/golden/checked-stack-flap.svg" (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Lift both layers together"} diagram)
+    goldenText golden (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Lift both layers together"} diagram)
 
   it "refuses the quarter fold's coupled crease without tearing a graph loop" $ do
     file <- loadFoldFile "examples/quarter-fold.fold" >>= right

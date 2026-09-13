@@ -232,8 +232,10 @@ Open [the checked flap demo](http://127.0.0.1:8000/flap.html). Its SVG/FOLD file
 need no JavaScript dependencies; the 3D viewer uses the local Three.js install.
 `checked-flap/` contains seven SVG/FOLD sequences, twenty-eight GLBs with both
 scenes, and `checks.json` with interval counts, length errors, layer orders
-and rejected full turns. The new sequence forms a two-layer flap, lifts both
-layers together through 90°, then lowers them. An opposing flap blocks an
+and rejected full turns. The sequence folds one third of the square onto the
+middle third, lifts both layers together through 90°, then lowers them. The
+upper layer's free edge reaches the lifting crease exactly; its corners keep
+their distinct material ids. An opposing flap blocks an
 attempted full revolution of a two-layer stack. The single fold and its
 reopening remain, alongside the original short 105°–121° opposing-flap route.
 
@@ -245,18 +247,22 @@ orders must agree with departure; if absent, departure selects the unknown
 order. Coplanar layers that move together, or both stay still, retain their
 supplied orders throughout the motion. Each overlapping pair needs an explicit
 nonzero order, and contradictory orders are refused even when the stack is
-upright. Other stale orders are discarded. Sliding contact, unjoined layer
-edges resting on the hinge, creases requiring other angles to change, and
+upright. Other stale orders are discarded. An unjoined edge may rest on the
+hinge when its declared partner supplies the shared boundary and the turning
+interior stays on one side of the stationary plane. Sliding contact,
+unsupported hinge seams, creases requiring other angles to change, and
 exhausted interval work are refused.
 The check uses
 zero-thickness geometry normalized to sheet scale, with floating-point bounds
 and numerical guards, including a `1.42e-14` allowance for rounded endpoint
-coplanarity. This does not establish exact separation below that scale.
+coplanarity and free hinge boundaries. This does not establish exact separation
+below that scale.
 A contact parameter is a witness, not the first impact
 time. There is no general flap CLI verb or route planning yet. See
 [the operation note](notes/checked-flap-operation.md),
-[the endpoint rule](notes/flat-flap-endpoints.md) and
-[moving touching layers](notes/moving-touching-layers.md).
+[the endpoint rule](notes/flat-flap-endpoints.md),
+[moving touching layers](notes/moving-touching-layers.md) and
+[free edges on a hinge](notes/free-edges-on-a-hinge.md).
 
 ### Experimental bending
 

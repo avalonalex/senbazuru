@@ -35,6 +35,11 @@
 -- cannot choose which side of coincident paper is above. Merely naming a pair
 -- does not exempt it: different motions or noncoplanar geometry are refused,
 -- and every pair outside that contact retains its ordinary interval check.
+-- A declared stack also supports an unjoined edge resting on the hinge: its
+-- contact with the opposite triangle must fit inside a real shared hinge of
+-- a declared partner. This only authorizes the boundary. The stationary plane
+-- must still separate the moving interior, just as for a shared crease.
+-- Coincident corners keep their distinct material ids; no seam is welded.
 --
 -- This is a numerical interval check for ONE fixed-axis rotation, with a 1e-10
 -- separation guard on unit sheets. It is not formally rounded
@@ -213,6 +218,8 @@ checkSweepWithFlatEndpoints = checkWithEndpoints True []
 -- together with the one-sided flat endpoint rule. Pair indices refer to the
 -- starting mesh's triangles. The caller owns the consistent layer ordering;
 -- this function verifies coplanarity and common motion for every named pair.
+-- A partner's shared hinge may support an unjoined stack boundary along that
+-- same segment, provided the one-sided plane check also passes.
 checkSweepWithRigidContacts :: SweepSettings -> [(Int, Int)] -> HingeSweep -> Either SweepError SweepCheck
 checkSweepWithRigidContacts settings contacts = checkWithEndpoints True contacts settings
 
@@ -283,7 +290,7 @@ checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbit
             && abs (dot n hingeAxis) <= endpointRoundoff
             && all (inPlane . pointAt t) (ids moving)
             && fixedOneSide
-            && sharedBoundaryOnly onHinge fixed moving
+            && (sharedBoundaryOnly onHinge fixed moving || stackBoundaryOnly fixed moving)
             then (fixed,moving,) <$> side
             else Nothing
     sharedBoundaryOnly onHinge fixed moving =
@@ -298,11 +305,41 @@ checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbit
                in case common of
                     [] -> max fa ma > min fb mb + guardDistance
                     _ -> let (ca, cb) = extent common in max fa ma >= ca && min fb mb <= cb
+    -- A free stack edge is not a shared crease. Require a declared coplanar
+    -- partner with the same motion, and REAL shared material on the other side.
+    -- That shared segment must cover this pair's entire boundary contact.
+    -- A fan triangle may touch the hinge only at its corner; a shared corner
+    -- then supports only that point, never a longer unjoined edge.
+    -- Supporting either side also handles a stationary stack and moving flap.
+    -- Use the coplanarity allowance here, not the larger axis preparation
+    -- tolerance: a nearly hinged free edge must not become a contact exemption.
+    stackBoundaryOnly fixed moving =
+      let onAxis v = norm (cross hingeAxis (pointAt 0 v ^-^ hingeOrigin)) <= endpointRoundoff
+          extent vs = let ds = map (\v -> dot hingeAxis (pointAt 0 v ^-^ hingeOrigin)) vs in (minimum ds, maximum ds)
+          partners i = [if a == i then b else a | (a, b) <- S.toList rigidContacts, a == i || b == i]
+          supports lo hi a b = case filter (\v -> v `elem` ids b && onAxis v) (ids a) of
+            common@(_ : _) -> let (ca, cb) = extent common in lo >= ca - endpointRoundoff && hi <= cb + endpointRoundoff
+            _ -> False
+       in case (filter onAxis (ids fixed), filter onAxis (ids moving)) of
+            ([], _) -> False
+            (_, []) -> False
+            (fs, ms) ->
+              let (fa, fb) = extent fs
+                  (ma, mb) = extent ms
+                  lo = max fa ma
+                  hi = min fb mb
+                  -- Every boundary corner recognized by preparation must
+                  -- meet the tighter test, including corners beyond overlap.
+                  tight i = all (\v -> norm (cross hingeAxis (pointAt 0 v ^-^ hingeOrigin)) > 1e-12 || onAxis v) (ids i)
+               in lo <= hi + endpointRoundoff
+                    && tight fixed
+                    && tight moving
+                    && (any (supports lo hi fixed) (partners moving) || any (\p -> supports lo hi p moving) (partners fixed))
     projected axis origin lo hi i = case IM.lookup i orbits of
       Just (Fixed p) -> let d = dot axis (p ^-^ origin) in (d, d)
       Just (Turning c u v) -> let d = dot axis (c ^-^ origin); (a, b) = rangeWithin (dot axis u) (dot axis v) (lo * angle) (hi * angle) in (d + a, d + b)
       Nothing -> (negate (1 / 0), 1 / 0)
-    separated lo hi (i, j) = M.member (i, j) endpointPlanes || any along axes || hingeSide i j || hingeSide j i
+    separated lo hi (i, j) = M.member (i, j) endpointPlanes || any along axes || hingeSide i j || hingeSide j i || stackHingeSide i j || stackHingeSide j i
       where
         as = points ((lo + hi) / 2) i
         bs = points ((lo + hi) / 2) j
@@ -345,6 +382,26 @@ checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbit
                           sharedOnly = max fa ma >= ca && min fb mb <= cb
                        in abs (dot axis hingeAxis) <= 1e-12 && oneSide ranges && oneSide fixedSides && sharedOnly
                 _ -> False
+        -- The same stationary plane argument, with the stack-supported
+        -- boundary above instead of shared ids between these two triangles.
+        stackHingeSide fixed moving =
+          let axis = unit (normal (points 0 fixed))
+              origin = pointAt 0 (minimum (ids fixed))
+              onHinge v = norm (cross hingeAxis (pointAt 0 v ^-^ hingeOrigin)) <= endpointRoundoff
+              fixedInterior = filter (not . onHinge) (ids fixed)
+              movingInterior = filter (not . onHinge) (ids moving)
+              stationary = all (\v -> case IM.lookup v orbits of Just (Fixed _) -> True; _ -> False) (ids fixed)
+              oneSide ranges = not (null ranges) && (all ((> guardDistance) . fst) ranges || all ((< negate guardDistance) . snd) ranges)
+              across = unit (cross axis hingeAxis)
+              -- This distance is from the hinge, not the plane's arbitrary
+              -- origin (which may itself be an off-hinge triangle corner).
+              fixedSides = [let d = dot across (pointAt 0 v ^-^ hingeOrigin) in (d, d) | v <- fixedInterior]
+           in stationary
+                && stackBoundaryOnly fixed moving
+                && abs (dot axis (hingeOrigin ^-^ origin)) <= endpointRoundoff
+                && abs (dot axis hingeAxis) <= endpointRoundoff
+                && oneSide fixedSides
+                && oneSide (map (projected axis origin lo hi) movingInterior)
     inspect current (i, j) = do
       let vertices = IM.fromList (zip [0 ..] (samples current))
           panel index = Panel.Panel (tshow index) [position p | v <- ids index, Just p <- [IM.lookup v vertices]]

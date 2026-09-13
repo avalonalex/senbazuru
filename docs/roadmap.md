@@ -8,7 +8,8 @@ snapshot and will drift, so it carries a date: **as of 2026-09-13**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
-and touching stacks in [#179](https://github.com/avalonalex/senbazuru/issues/179). The
+and touching stacks in [#179](https://github.com/avalonalex/senbazuru/issues/179),
+including free edges on the hinge in [#181](https://github.com/avalonalex/senbazuru/issues/181). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -20,7 +21,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared material surfaces reach SVG and two glTF scenes; checked bird and frog states render as SVG sequences |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,254 examples pass, including two-/three-layer flap motion, flat landing/reopening and material/contact checks |
+| Tests | 1,260 examples pass, including aligned two-/three-layer flaps, supported free hinge edges, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -73,7 +74,9 @@ pieces of work.
    [#175](https://github.com/avalonalex/senbazuru/issues/175), with a single-fold
    SVG/glTF demo and an opposing-flap collision witness. Flat touching
    endpoints now carry approach/departure order. Touching layers sharing a
-   rigid motion retain their supplied order through the turn in #179.
+   rigid motion retain their supplied order through the turn in #179. A
+   declared partner's shared hinge now supports an aligned free layer edge
+   in #181, while the plane check still separates the turning interior.
    General flap/wing authoring, a general angle solver and collision checking
    along motion where several creases must move together remain open
    ([#54](https://github.com/avalonalex/senbazuru/issues/54),
@@ -170,7 +173,8 @@ pieces of work.
   handles open planar panels. The first reusable operation now handles an
   isolated fixed crease, including flat endpoints with a checked one-sided
   approach and departure order. Touching stacks with a common rigid motion
-  now retain their orders. Sliding contact, unjoined layer edges on the hinge
+  now retain their orders, including aligned free edges supported by a
+  declared partner's shared hinge. Sliding contact, unsupported hinge seams
   and the solve for compatible crease angles remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
@@ -216,7 +220,7 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 The shared-surface milestone #146 is complete. The contact study through #173
 now supplies one checked library motion in #175, extended with one-sided flat
-endpoints in #177 and touching stacks in #179.
+endpoints in #177 and touching stacks in #179/#181.
 
 1. **One checked flap rotation**, a bounded part of
    [#54](https://github.com/avalonalex/senbazuru/issues/54) and
@@ -225,10 +229,10 @@ endpoints in #177 and touching stacks in #179.
    route, and supplies SVG steps and glTF from the accepted surfaces. A complete
    single fold and reopening now preserve the order at flat touching endpoints.
    A small stack can now stay in contact during a move, retaining its order
-   without overlooking other crossings. Next handle unjoined stack edges
-   resting along the lifting hinge; the current narrow top layer stops short
-   of it. The coupled-angle solver and
-   full bird folding path remain later work.
+   without overlooking other crossings, including a free upper edge reaching
+   the lifting hinge. Next exercise this operation on an existing folded base,
+   recording the first unsupported move as a small fixture. The coupled-angle
+   solver and full bird folding path remain later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

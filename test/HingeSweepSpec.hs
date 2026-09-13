@@ -161,6 +161,55 @@ spec = describe "rigid hinge sweep contact" $ do
       otherResult -> expectationFailure (show otherResult)
     checkSweepWithRigidContacts defaultSweepSettings [(0, 2)] sweep `shouldBe` Left (InvalidRigidContact 0 2)
 
+  it "supports a free hinge edge only through its declared touching partner" $ do
+    forM_ [0, pi / 6] $ \from -> forM_ [False, True] $ \transformed -> do
+      let mesh = hingeStack from
+          axis = (1 / sqrt 14) *^ V3 1 2 3
+          rotate p = cos 0.7 *^ p ^+^ sin 0.7 *^ cross axis p ^+^ ((1 - cos 0.7) * dot axis p) *^ axis
+          turn = if transformed then rotate else id
+          move p = turn p ^+^ (if transformed then V3 3 (-2) 5 else V3 0 0 0)
+          moved = mesh {samples = [s {position = move (position s)} | s <- samples mesh]}
+      sweep <- right (prepareSweep (move (V3 0 0 0)) (turn (V3 0 1 0)) (pi / 3) [0, 2, 3, 4, 5, 6] moved)
+      accepted <- right (checkSweepWithRigidContacts defaultSweepSettings [(1, 2)] sweep)
+      sweepOutcome accepted `shouldBe` SweepClear
+      -- The bare seam still has no authorizing stack, and the old callers
+      -- must retain their strict policy even on this otherwise legal motion.
+      forM_ [checkSweep, checkSweepWithFlatEndpoints, (`checkSweepWithRigidContacts` [])] $ \check -> do
+        strict <- right (check defaultSweepSettings sweep)
+        sweepOutcome strict `shouldNotBe` SweepClear
+      forM_ [0, 0.25, 0.5, 0.75, 1] $ \t -> do
+        current <- right (sweepMeshAt sweep t)
+        triangles current `shouldBe` triangles mesh
+        length (samples current) `shouldBe` 7
+        let n = turn (V3 (sin (from + t * pi / 3)) 0 (cos (from + t * pi / 3)))
+        report <- right (checkLocalTriangleContact n [(1, 2)] current)
+        contactPassed report `shouldBe` True
+
+  it "does not let a shared corner support a longer free hinge edge" $ do
+    let mesh = hingeStack 0
+        -- The partner meets the hinge only at one shared corner. Its other
+        -- corners are off the hinge, so it alone is a legal turning triangle.
+        cornerOnly = mesh {samples = samples mesh ++ [Sample (V2 1 1) (V3 1 1 0)], triangles = [(0, 1, 2), (0, 3, 7), (4, 5, 6)]}
+    support <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (pi / 3) [0, 2, 3, 7] cornerOnly {triangles = [(0, 1, 2), (0, 3, 7)]})
+    supportCheck <- right (checkSweepWithFlatEndpoints defaultSweepSettings support)
+    sweepOutcome supportCheck `shouldBe` SweepClear
+    sweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (pi / 3) [0, 2, 3, 4, 5, 6, 7] cornerOnly)
+    result <- right (checkSweepWithRigidContacts defaultSweepSettings [(1, 2)] sweep)
+    sweepOutcome result `shouldNotBe` SweepClear
+
+  it "refuses nearly hinged free corners outside the contact roundoff allowance" $ do
+    forM_ [-1e-13, 1e-13] $ \offset -> do
+      let mesh = hingeStack 0
+          moved = mesh {samples = [s {position = position s ^+^ (if i `elem` [4, 6] then V3 offset 0 0 else V3 0 0 0)} | (i, s) <- zip [0 :: Int ..] (samples mesh)]}
+      sweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (pi / 3) [0, 2, 3, 4, 5, 6] moved)
+      result <- right (checkSweepWithRigidContacts defaultSweepSettings [(1, 2)] sweep)
+      sweepOutcome result `shouldNotBe` SweepClear
+
+  it "checks the whole route of a stack with a free hinge edge" $ do
+    sweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (2 * pi) [0, 2, 3, 4, 5, 6] (hingeStack (pi / 6)))
+    result <- right (checkSweepWithRigidContacts defaultSweepSettings [(1, 2)] sweep)
+    sweepOutcome result `shouldNotBe` SweepClear
+
   prop "bounds every interior sample of finite sinusoid intervals" $
     forAll (choose (-10, 10)) $ \a -> forAll (choose (-10, 10)) $ \b ->
       forAll (choose (-(2 * pi), 2 * pi)) $ \from -> forAll (choose (-(2 * pi), 2 * pi)) $ \to ->
@@ -235,6 +284,13 @@ spec = describe "rigid hinge sweep contact" $ do
 
 fixtureMesh :: Double -> Double -> IO MaterialMesh
 fixtureMesh leftAngle rightAngle = refinedMesh . exampleRefined <$> right (opposingFlapsAt 1 leftAngle rightAngle)
+
+-- Fixed left triangle, a right triangle joined at ids 0/2, then a touching
+-- copy with a distinct free edge (ids 4/6) in exactly the same hinge positions.
+hingeStack :: Double -> MaterialMesh
+hingeStack angle = Mesh [Sample (V2 x y) p | p@(V3 x y _) <- ps] [(0, 1, 2), (0, 3, 2), (4, 5, 6)]
+  where
+    ps = [V3 0 0 0, V3 (-1) 0 0, V3 0 1 0, V3 (cos angle) 0 (negate (sin angle)), V3 0 0 0, V3 (cos angle) 0 (negate (sin angle)), V3 0 1 0]
 
 rightIds :: MaterialMesh -> [Int]
 rightIds mesh = [i | (i, s) <- zip [0 ..] (samples mesh), let V2 u _ = sampleMaterial s, u >= 0.7]

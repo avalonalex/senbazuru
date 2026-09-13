@@ -16,7 +16,9 @@ needed for this particular pair. Other pairs still need their own checks.
 
 `HingeSweep.checkSweepWithFlatEndpoints` uses this argument at either end.
 It also checks the boundaries on the hinge: a permanent shared edge must
-have shared material ids. Merely sharing a corner does not exempt a pair.
+have shared material ids in this endpoint-only entry point. The separate
+[stack rule](free-edges-on-a-hinge.md) can support an unjoined boundary.
+Merely sharing a corner does not exempt a pair.
 An overlapping endpoint records the stationary triangle, moving triangle and
 side. Splitting a face into triangles sharing its first corner (a fan)
 preserves its [winding](../glossary.md), so `Flap` can

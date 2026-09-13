@@ -26,6 +26,9 @@
 -- The common rigid motion preserves those orders against panel normals even
 -- as the whole stack turns over. Each overlapping pair needs a supplied order;
 -- this operation does not infer a stack from coincident positions.
+-- An unjoined stack edge may rest on the lifting hinge when its declared
+-- partner supplies the shared boundary and the plane separation check passes;
+-- see docs/notes/free-edges-on-a-hinge.md. Material vertices stay distinct.
 -- Endpoint layers follow that approach. At the start they must agree with any
 -- supplied orders; without orders, departure selects the previously unknown
 -- touching side. Other poses retain only the validated stack orders. A refusal
