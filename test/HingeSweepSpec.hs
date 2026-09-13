@@ -161,6 +161,36 @@ spec = describe "rigid hinge sweep contact" $ do
       otherResult -> expectationFailure (show otherResult)
     checkSweepWithRigidContacts defaultSweepSettings [(0, 2)] sweep `shouldBe` Left (InvalidRigidContact 0 2)
 
+  it "lifts a flap whose hinge rests across another panel's interior" $ do
+    let ps = [V3 (-2) (-2) 0, V3 2 (-2) 0, V3 0 3 0, V3 0 0 0, V3 1 0 0, V3 0 1 0]
+        mesh = Mesh [Sample (V2 x y) p | p@(V3 x y _) <- ps] [(0, 1, 2), (3, 4, 5)]
+    forM_ [pi / 2, negate (pi / 2)] $ \angle -> do
+      sweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) angle [3, 4, 5] mesh)
+      strict <- right (checkSweepWithRigidContacts defaultSweepSettings [] sweep)
+      sweepOutcome strict `shouldNotBe` SweepClear
+      result <- right (checkSweepWithLayerContacts defaultSweepSettings [] [(0, 1)] sweep)
+      sweepOutcome result `shouldBe` SweepClear
+      sweepEndpointContacts result `shouldBe` [EndpointContact 0 0 1 (if angle > 0 then -1 else 1)]
+      forM_ [0.01, 0.25, 0.5, 0.75, 1] $ \t -> do
+        current <- right (sweepMeshAt sweep t)
+        report <- right (checkLocalTriangleContact (V3 0 0 1) [] current)
+        contactPassed report `shouldBe` True
+      forM_ [[(0, 0)], [(0, 2)], [(-1, 1)]] $ \pairs ->
+        checkSweepWithLayerContacts defaultSweepSettings [] pairs sweep `shouldSatisfy` isLeft
+    -- Naming contact cannot hide a full revolution, an initial gap or a
+    -- nearly hinged corner fixed on the wrong side by preparation's tolerance.
+    full <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (2 * pi) [3, 4, 5] mesh)
+    result <- right (checkSweepWithLayerContacts defaultSweepSettings [] [(0, 1)] full)
+    sweepOutcome result `shouldNotBe` SweepClear
+    forM_ [1e-13, -1e-13] $ \offset -> do
+      let shifted = mesh {samples = [s {position = position s ^+^ (if i `elem` [3, 5] then V3 offset 0 0 else V3 0 0 0)} | (i, s) <- zip [0 :: Int ..] (samples mesh)]}
+      sweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (pi / 2) [3, 4, 5] shifted)
+      report <- right (checkSweepWithLayerContacts defaultSweepSettings [] [(0, 1)] sweep)
+      sweepOutcome report `shouldNotBe` SweepClear
+    let raised = mesh {samples = [s {position = position s ^+^ (if i >= 3 then V3 0 0 1e-8 else V3 0 0 0)} | (i, s) <- zip [0 :: Int ..] (samples mesh)]}
+    offPlane <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) (pi / 2) [3, 4, 5] raised)
+    checkSweepWithLayerContacts defaultSweepSettings [] [(0, 1)] offPlane `shouldBe` Left (InvalidRestingContact 0 1)
+
   it "supports a free hinge edge only through its declared touching partner" $ do
     forM_ [0, pi / 6] $ \from -> forM_ [False, True] $ \transformed -> do
       let mesh = hingeStack from

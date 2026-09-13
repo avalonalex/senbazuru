@@ -546,6 +546,14 @@ segments lets the existing checker follow the whole rigid turn. A crease on
 an upside-down layer needs the opposite angle sign even though both layers
 turn together; [the hinge note](notes/aligned-crease-hinges.md) explains why.
 
+The [checked crane wing](usage.md#checked-crane-wing-movement) adds a crease
+across one wing of the real crane fixture and lowers its two layers through
+90°, keeping the body still. Its hinge rests on the other wing's interior.
+The whole-turn check establishes that the moving interior lifts to one side;
+the starting layer order refuses the opposite direction. Returning to that
+resting surface, moving the second wing and expanding the body remain later
+work.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

@@ -40,6 +40,11 @@
 -- a declared partner. This only authorizes the boundary. The stationary plane
 -- must still separate the moving interior, just as for a shared crease.
 -- Coincident corners keep their distinct material ids; no seam is welded.
+-- 'checkSweepWithLayerContacts' additionally accepts a resting hinge across
+-- another panel's interior. The moving interior must leave that panel's plane
+-- to one side for the whole turn. This does not require the stationary panel
+-- to lie on one side of the hinge: a wing can rest over the middle of another
+-- wing. The returned departure side still needs the caller's order check.
 --
 -- This is a numerical interval check for ONE fixed-axis rotation, with a 1e-10
 -- separation guard on unit sheets. It is not formally rounded
@@ -58,6 +63,7 @@ module Senbazuru.Origami.HingeSweep
     checkSweep,
     checkSweepWithFlatEndpoints,
     checkSweepWithRigidContacts,
+    checkSweepWithLayerContacts,
     sinusoidRange,
   )
 where
@@ -116,6 +122,7 @@ data SweepError
   | MissingSweepVertex !Int
   | NonRigidSweepTriangle !Int
   | InvalidRigidContact !Int !Int
+  | InvalidRestingContact !Int !Int
   | SweepGeometry !Panel.ContactError
   deriving stock (Eq, Show)
 
@@ -130,6 +137,7 @@ instance Explain SweepError where
   explain (MissingSweepVertex i) = "hinge sweep refers to missing material vertex " <> tshow i
   explain (NonRigidSweepTriangle i) = "hinge sweep would stretch triangle " <> tshow i <> "; a triangle cannot mix stationary and moving vertices away from the hinge"
   explain (InvalidRigidContact i j) = "persistent contact needs distinct coplanar triangles with the same rigid motion; got triangles " <> tshow i <> " and " <> tshow j
+  explain (InvalidRestingContact i j) = "resting contact needs distinct initially coplanar triangles with different motions; got triangles " <> tshow i <> " and " <> tshow j
   explain (SweepGeometry err) = explain err
 
 -- | Origin, direction, signed angular travel in radians, moving vertex ids,
@@ -205,14 +213,14 @@ rangeWithin a b from to = (minimum values, maximum values)
     values = [a * cos lo + b * sin lo, a * cos hi + b * sin hi] ++ [radius | contains phase] ++ [-radius | contains (phase + pi)]
 
 checkSweep :: SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkSweep = checkWithEndpoints False []
+checkSweep = checkWithEndpoints False [] []
 
 -- | Permit coplanar overlap only at a boundary of the motion, with a
 -- one-sided approach/departure. The returned contacts supply its layer order.
 -- Persistent touching pairs still fail. 'checkSweep' retains its strict
 -- endpoint policy for callers without a way to carry layer information.
 checkSweepWithFlatEndpoints :: SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkSweepWithFlatEndpoints = checkWithEndpoints True []
+checkSweepWithFlatEndpoints = checkWithEndpoints True [] []
 
 -- | Permit declared coplanar contacts with unchanged relative geometry,
 -- together with the one-sided flat endpoint rule. Pair indices refer to the
@@ -221,12 +229,22 @@ checkSweepWithFlatEndpoints = checkWithEndpoints True []
 -- A partner's shared hinge may support an unjoined stack boundary along that
 -- same segment, provided the one-sided plane check also passes.
 checkSweepWithRigidContacts :: SweepSettings -> [(Int, Int)] -> HingeSweep -> Either SweepError SweepCheck
-checkSweepWithRigidContacts settings contacts = checkWithEndpoints True contacts settings
+checkSweepWithRigidContacts settings contacts = checkWithEndpoints True contacts [] settings
 
-checkWithEndpoints :: Bool -> [(Int, Int)] -> SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis angle) = do
+-- | In addition to rigid contacts, name initially coplanar layers that can
+-- separate. A wing can lift while its hinge rests across another layer's
+-- interior. The moving interior must still stay strictly on one side of that
+-- layer's plane for the whole turn; only the stationary hinge may keep touching.
+-- The caller must check the returned departure side against its initial order.
+-- Declaring a pair does not exempt it from the plane or interval checks.
+checkSweepWithLayerContacts :: SweepSettings -> [(Int, Int)] -> [(Int, Int)] -> HingeSweep -> Either SweepError SweepCheck
+checkSweepWithLayerContacts settings rigid resting = checkWithEndpoints True rigid resting settings
+
+checkWithEndpoints :: Bool -> [(Int, Int)] -> [(Int, Int)] -> SweepSettings -> HingeSweep -> Either SweepError SweepCheck
+checkWithEndpoints allowEndpoints contacts resting settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis angle) = do
   unless (sweepDepth settings >= 0 && sweepDepth settings <= 30 && sweepBudget settings > 0) (Left InvalidSweepSettings)
   mapM_ validateContact contacts
+  mapM_ validateResting resting
   (initialBad, initialContacts) <- endpoint 0 mesh
   if not (null initialBad)
     then pure (SweepCheck (SweepCollision 0 initialBad) 0 [])
@@ -252,6 +270,13 @@ checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbit
     -- It does not enlarge the contact tolerance or skip a short time interval.
     endpointRoundoff = 64 * encodeFloat 1 (-52)
     rigidContacts = S.fromList [(min i j, max i j) | (i, j) <- contacts]
+    restingContacts = S.fromList [(min i j, max i j) | (i, j) <- resting]
+    validateResting (i, j) =
+      let flags = IM.fromList (zip [0 ..] turning)
+          inPlane a b = case points 0 a of
+            origin : _ -> all (\p -> abs (dot (unit (normal (points 0 a))) (p ^-^ origin)) <= endpointRoundoff) (points 0 b)
+            [] -> False
+       in unless (i /= j && IM.member i flags && IM.member j flags && IM.lookup i flags /= IM.lookup j flags && inPlane i j && inPlane j i) (Left (InvalidRestingContact i j))
     validateContact (i, j) =
       let flags = IM.fromList (zip [0 ..] turning)
           inPlane a b = case points 0 a of
@@ -289,10 +314,15 @@ checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbit
             && inPlane hingeOrigin
             && abs (dot n hingeAxis) <= endpointRoundoff
             && all (inPlane . pointAt t) (ids moving)
-            && fixedOneSide
-            && (sharedBoundaryOnly onHinge fixed moving || stackBoundaryOnly fixed moving)
+            && (restingBoundary fixed moving || (fixedOneSide && (sharedBoundaryOnly onHinge fixed moving || stackBoundaryOnly fixed moving)))
             then (fixed,moving,) <$> side
             else Nothing
+    -- Preparation fixes vertices within 1e-12 of the axis. Such a vertex must
+    -- also meet the much tighter contact allowance: otherwise a nearly hinged
+    -- corner could stay on the wrong side while its interior lifts away.
+    restingBoundary fixed moving =
+      S.member (min fixed moving, max fixed moving) restingContacts
+        && all (\v -> let distance = norm (cross hingeAxis (pointAt 0 v ^-^ hingeOrigin)) in distance > 1e-12 || distance <= endpointRoundoff) (ids moving)
     sharedBoundaryOnly onHinge fixed moving =
       let extent vs = let ds = map (\v -> dot hingeAxis (pointAt 0 v ^-^ hingeOrigin)) vs in (minimum ds, maximum ds)
           common = filter (`elem` ids fixed) (ids moving)
