@@ -299,14 +299,15 @@ spec = describe "checked flap rotation" $ do
     diagram <- maybe (fail "no endpoint states to draw") pure page
     goldenText "test/golden/checked-flat-flap.svg" (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Fold completely flat"} diagram)
 
-  it "renders a reviewed SVG sequence of the touching stack lifting" $ forM_ [(touchingFlap, "test/golden/checked-stack-flap.svg"), (alignedFlap, "test/golden/checked-aligned-stack.svg")] $ \(sheetFixture, golden) -> do
-    start <- right (foldFrameWith sheetFixture)
-    motion <- right (prepareFlap (EdgeId 8) (FaceId 1) 90 start >>= checkFlap defaultSweepSettings)
-    states <- right (traverse (flapAt motion) [0, 1 / 3, 2 / 3, 1])
-    basis <- maybe (fail "invalid camera") pure (basisFrom (V3 (-1) 1 (negate (sqrt 2))) (V3 0 0 1))
-    page <- right (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) True (map materialFrame states))
-    diagram <- maybe (fail "no stack states to draw") pure page
-    goldenText golden (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Lift both layers together"} diagram)
+  forM_ [("touching stack", touchingFlap, "test/golden/checked-stack-flap.svg"), ("aligned stack", alignedFlap, "test/golden/checked-aligned-stack.svg")] $ \(stackName, sheetFixture, golden) ->
+    it ("renders a reviewed SVG sequence of the " ++ stackName ++ " lifting") $ do
+      start <- right (foldFrameWith sheetFixture)
+      motion <- right (prepareFlap (EdgeId 8) (FaceId 1) 90 start >>= checkFlap defaultSweepSettings)
+      states <- right (traverse (flapAt motion) [0, 1 / 3, 2 / 3, 1])
+      basis <- maybe (fail "invalid camera") pure (basisFrom (V3 (-1) 1 (negate (sqrt 2))) (V3 0 0 1))
+      page <- right (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = 4} (View (Just basis) 0) True (map materialFrame states))
+      diagram <- maybe (fail "no stack states to draw") pure page
+      goldenText golden (renderSvg defaultPage {pageWidth = 1120, pageHeight = 340, pageMargin = 30, pageBackground = Nothing, pageTitle = Just "Lift both layers together"} diagram)
 
   it "refuses the quarter fold's coupled crease without tearing a graph loop" $ do
     file <- loadFoldFile "examples/quarter-fold.fold" >>= right
