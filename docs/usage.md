@@ -239,6 +239,12 @@ nearby triangle partners from a separated 44.5° curl, extending their order
 across flat reference patches. Search distance, model direction and numerical
 clearance are supplied controls. Uncovered new contacts are refused; it does
 not discover or certify a continuous bending route.
+**Curled panel · growing contact history** adds separated encounters from accepted
+solver steps. Its sixteen-span strip learns six new relationships while keeping
+the original four, and passes independent endpoint checks. **Contact history**
+selects the reference, learning pose or settled endpoint; the left picture keeps
+the stalled fixed-reference result. Rejected trials add nothing. Numerical
+iterations still do not certify the continuous bending route.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

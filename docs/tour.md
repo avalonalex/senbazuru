@@ -833,6 +833,13 @@ patches share partners across triangulation diagonals; source panels stay
 unchanged. The learned order remains fixed, and a new pair reaching contact
 without reference evidence is refused. Selecting the reference and contact
 direction still requires a caller.
+The [growing-history control](notes/growing-local-contact-history.md) handles
+new separated encounters during correction. It retains only accepted trials'
+new orders and carries them across the solver's penalty stages. The finer
+sixteen-span strip then settles with ten learned relationships; its fixed
+reference stalls. The gallery exposes the learning pose, and the final shape
+passes all 496 independent triangle-pair checks. The numerical path between
+observations is still unchecked.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

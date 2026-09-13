@@ -1,6 +1,6 @@
 module LocalContactDiscoverySpec (spec) where
 
-import Control.Monad (forM_)
+import Control.Monad (foldM, forM_)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sort)
@@ -206,6 +206,122 @@ spec = describe "local contact discovery in bending paper" $ do
     converged result `shouldBe` True
     exhausted <- right (relaxLocalContact defaultSettings {iterationLimit = 0} (curlHinges fixture) reference mesh)
     converged exhausted `shouldBe` False
+
+  it "grows the finer strip's history only at accepted separated encounters" $ do
+    fixture <- right (curledPanelAt 16 22.25)
+    let mesh = curlMesh fixture
+        direction = V3 (-3) 0 1
+        clearance = curlClearance fixture
+    reference <- right (discoverLocalReference clearance 0.03 direction mesh)
+    (result, learned) <- right (relaxLocalHistory defaultSettings (curlHinges fixture) reference mesh)
+    converged result `shouldBe` True
+    length (localReferenceOrders reference) `shouldBe` 4
+    length (localReferenceOrders learned) `shouldBe` 10
+    let events = localReferenceEncounters learned
+    events `shouldSatisfy` (not . null)
+    replayed <- foldM (\prior event -> right (extendLocalReference (encounterIteration event) prior (encounterMesh event))) reference events
+    replayed `shouldBe` learned
+    forM_ events $ \event -> do
+      -- This regression learns at a saved accepted checkpoint. A trial that
+      -- failed line search must not leave an observation at a different pose.
+      checkpoints result `shouldSatisfy` any (\point -> completedIterations point == encounterIteration event && checkpointMesh point == encounterMesh event)
+      forM_ (encounterCandidates event) $ \candidate -> case Contact.localGapRange candidate of
+        Just (lo, hi) -> (lo > clearance + contactTolerance || hi < negate (clearance + contactTolerance)) `shouldBe` True
+        Nothing -> expectationFailure "learned an unmeasurable encounter"
+    forM_ (checkpoints result) $ \point -> do
+      let current = checkpointMesh point
+          previous = filter ((<= completedIterations point) . encounterIteration) events
+      known <- foldM (\prior event -> right (extendLocalReference (encounterIteration event) prior (encounterMesh event))) reference previous
+      localDiscoveredContacts known current `shouldSatisfy` (not . isLeft)
+      localReferenceOrders reference `shouldSatisfy` all (`elem` localReferenceOrders known)
+      triangles current `shouldBe` triangles mesh
+      map sampleMaterial (samples current) `shouldBe` map sampleMaterial (samples mesh)
+      componentCount current `shouldBe` 1
+    final <- finalMesh result
+    maxLengthError final `shouldSatisfy` (< 1e-7)
+    report <- right (checkLocalTriangleContact direction (localReferenceOrders learned) final)
+    checkedPanelPairs report `shouldBe` 496
+    contactPassed report `shouldBe` True
+    rows <- right (localDiscoveredContacts learned final)
+    minimum (map contactGap rows) `shouldSatisfy` (>= negate contactTolerance)
+    curlOwners fixture `shouldBe` replicate 32 (FaceId 0)
+
+  it "keeps the eight-span result and records nothing for exhausted or stationary trials" $ do
+    fixture <- right (curledPanelAt 8 44.5)
+    let mesh = curlMesh fixture
+        hinges = curlHinges fixture
+    reference <- right (discoverLocalReference (curlClearance fixture) 0.03 (V3 (-3) 0 1) mesh)
+    fixed <- right (relaxLocalContact defaultSettings hinges reference mesh)
+    growing <- right (relaxLocalHistory defaultSettings hinges reference mesh)
+    growing `shouldBe` (fixed, reference)
+    (exhausted, unchanged) <- right (relaxLocalHistory defaultSettings {iterationLimit = 0} hinges reference mesh)
+    converged exhausted `shouldBe` False
+    unchanged `shouldBe` reference
+    -- A proposed history must also be discarded when the current shape is
+    -- already at rest: an equal-energy trial is not accepted.
+    let shape = pairMesh (triangleAt 0 0 ++ triangleAt 0 1)
+        far = shape {samples = [sample {sampleMaterial = let V3 x y _ = position sample in V2 x y} | sample <- samples shape]}
+        near = move (\i p -> if i >= 3 then p ^-^ V3 0 0 0.99 else p) far
+    empty <- right (discoverLocalReference 1e-6 0.03 axis far)
+    (resting, retained) <- right (relaxLocalHistory defaultSettings [] empty near)
+    converged resting `shouldBe` True
+    retained `shouldBe` empty
+    finalMesh resting `shouldReturn` near
+
+  it "learns a new neighbor before contact and retains its side after separation" $ do
+    let near = move (\i p -> if i >= 3 then p ^-^ V3 0 0 0.19 else p) separated
+        reversed = move (\i p -> if i >= 3 then p ^-^ V3 0 0 1 else p) separated
+    empty <- right (discoverLocalReference 1e-6 0.03 axis separated)
+    learned <- right (extendLocalReference 1 empty near)
+    localReferenceOrders learned `shouldBe` [(0, 1)]
+    rows <- right (localDiscoveredContacts learned near)
+    rows `shouldSatisfy` all ((> 0) . contactGap)
+    extendLocalReference 2 learned separated `shouldBe` Right learned
+    extendLocalReference 3 learned reversed `shouldBe` Right learned
+    reversedRows <- right (localDiscoveredContacts learned reversed)
+    minimum (map contactGap reversedRows) `shouldSatisfy` (< (-0.7))
+    localReferenceOrders empty `shouldBe` []
+    localReferenceEncounters empty `shouldBe` []
+
+  it "refuses unknown touching, crossed and within-clearance encounters without learning" $ do
+    empty <- right (discoverLocalReference 0.01 0.03 axis separated)
+    let touching = move (\i (V3 x y z) -> V3 x y (if i >= 3 then 0 else z)) separated
+        crossed = move (\i (V3 x y z) -> V3 x y (if i == 4 then -0.2 else z)) separated
+        tooClose = move (\i (V3 x y z) -> V3 x y (if i >= 3 then 0.005 else z)) separated
+    forM_ [touching, crossed, tooClose] $ \mesh -> do
+      extendLocalReference 1 empty mesh `shouldBe` Left (NewLocalContactPair 0 1)
+      relaxLocalHistory defaultSettings [] empty mesh `shouldBe` Left (LocalDiscoveryFailure (NewLocalContactPair 0 1))
+    localReferenceEncounters empty `shouldBe` []
+    let remapped = separated {samples = [s {sampleMaterial = V2 9 9} | s <- samples separated]}
+    forM_ [remapped, separated {triangles = reverse (triangles separated)}] $ \mesh ->
+      extendLocalReference 1 empty mesh `shouldBe` Left (LocalDiscoveryGeometry Contact.ChangedContactMaterial)
+
+  it "uses the current flat patches when learning inside an initially flat sheet" $ do
+    fixture <- right (curledPanelAt 8 44.5)
+    let bent = curlMesh fixture
+        flat = bent {samples = [sample {position = let V2 u v = sampleMaterial sample in V3 u v 0} | sample <- samples bent]}
+        direction = V3 (-3) 0 1
+    empty <- right (discoverLocalReference 1e-6 0.03 direction flat)
+    learned <- right (extendLocalReference 1 empty bent)
+    localReferenceOrders learned `shouldBe` [(0, 14), (0, 15), (1, 14), (1, 15)]
+    localReferenceOrders empty `shouldBe` []
+
+  it "checks new transitive orders outside the search radius and rejects cycles" $ do
+    let initial = threeHeights [0, 0.2, 2]
+    reference <- right (discoverLocalReference 1e-6 0.3 axis initial)
+    localReferenceOrders reference `shouldBe` [(0, 1)]
+    learned <- right (extendLocalReference 1 reference (threeHeights [0, 0.2, 0.4]))
+    localReferenceOrders learned `shouldBe` [(0, 1), (1, 2)]
+    -- B remains above A in history even while its numerical correction puts
+    -- B below A. Learning B < C would imply the wrong A < C outside the buffer.
+    case extendLocalReference 1 reference (threeHeights [0, -1, -0.8]) of
+      Left (LocalReferenceClearance gap) -> gap `shouldSatisfy` (< (-0.7))
+      other -> expectationFailure (show other)
+    wider <- right (discoverLocalReference 1e-6 0.6 axis initial)
+    extendLocalReference 1 wider (threeHeights [0, -1, -0.5]) `shouldBe` Left (LocalDiscoveryGeometry Contact.CyclicContactOrder)
+
+threeHeights :: [Double] -> MaterialMesh
+threeHeights heights = Mesh (zipWith Sample (cycle [V2 0 0, V2 1 0, V2 0 1]) (concatMap (triangleAt 0) heights)) [(0, 1, 2), (3, 4, 5), (6, 7, 8)]
 
 axis :: V3
 axis = V3 0 0 1

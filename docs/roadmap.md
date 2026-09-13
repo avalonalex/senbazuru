@@ -116,6 +116,10 @@ work.
   triangle partners from a separated reference without an authored list.
   Calibrating stiffness, general continuous collision checking, automatic motion
   planning and discovery/correction of general self-contact remain open.
+  [Growing local history](notes/growing-local-contact-history.md) covers the
+  finer sixteen-span strip by retaining new separated encounters from accepted
+  numerical corrections. It passes all 496 endpoint triangle-pair checks;
+  the intervening bending motion remains unchecked.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.

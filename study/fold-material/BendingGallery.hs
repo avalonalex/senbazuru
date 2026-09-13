@@ -55,7 +55,8 @@ writeBendingStudy destination = do
   contacts <- mapM generateContact [DeclaredStart, ReferenceStart, ApproachStart]
   selfContact <- generateSelfContact
   localDiscovery <- generateLocalDiscovery
-  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact, localDiscovery]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
+  localHistory <- generateLocalHistory
+  let document = encode (object ["runs" .= (packets ++ surfaces ++ contacts ++ [selfContact, localDiscovery, localHistory]), "lengthTolerance" .= lengthTolerance settings, "contactTolerance" .= contactTolerance])
   BL.writeFile (destination </> "bending.json") document
   template <- TIO.readFile "study/fold-material/bending.html"
   TIO.writeFile (destination </> "bending.html") (T.replace "/*BENDING_DATA*/null" (TE.decodeUtf8 (BL.toStrict document)) template)
@@ -195,6 +196,40 @@ generateLocalDiscovery = do
   let candidate row = object ["triangles" .= Contact.localTriangles row, "gapRange" .= Contact.localGapRange row]
   putStrLn ("Curled panel discovery: " ++ show (length orders) ++ " relationships; equilibrium " ++ show (converged corrected))
   pure (object ["kind" .= ("localdiscovery" :: String), "title" .= ("Curled panel · discovered contact" :: String), "converged" .= converged corrected, "baselineConverged" .= converged free, "baseline" .= baseline, "states" .= states, "numericalClearance" .= curlClearance fixture, "searchDistance" .= searchDistance, "referenceCandidates" .= map candidate (Local.localReferenceCandidates reference), "triangleOrders" .= orders, "sourcePanels" .= (1 :: Int), "startingBend" .= (44.5 :: Double), "controlTarget" .= (60 :: Int), "controlStrength" .= (4 :: Int)])
+
+-- Compare the stalled frozen reference against growth on the same finer strip.
+-- Each checkpoint uses only relationships learned by its own iteration. Audit
+-- poses are exported too, so the positive gaps can be inspected independently.
+generateLocalHistory :: IO Value
+generateLocalHistory = do
+  fixture <- checked (curledPanelAt 16 22.25)
+  let mesh = curlMesh fixture
+      hinges = curlHinges fixture
+      axis = V3 (-3) 0 1
+      clearance = curlClearance fixture
+      searchDistance = 0.03
+  reference <- checked (Local.discoverLocalReference clearance searchDistance axis mesh)
+  frozen <- checked (relaxLocalContact defaultSettings hinges reference mesh)
+  (corrected, learned) <- checked (relaxLocalHistory defaultSettings hinges reference mesh)
+  let initialOrders = Local.localReferenceOrders reference
+      events = Local.localReferenceEncounters learned
+      atIteration count = S.toAscList (S.fromList (initialOrders ++ concatMap Local.encounterOrders (filter ((<= count) . Local.encounterIteration) events)))
+      capture orders point = do
+        model <- checked (Contact.prepareTriangleContact clearance axis orders (checkpointMesh point))
+        snapshot hinges (LocalCase (curlOwners fixture) (curlBoundary fixture) axis orders model) point
+      candidate row = object ["triangles" .= Contact.localTriangles row, "gapRange" .= Contact.localGapRange row]
+      observation event = do
+        let count = Local.encounterIteration event
+            current = Local.encounterMesh event
+        state <- capture (atIteration count) (Checkpoint count current (maxLengthError current))
+        pure (object ["iteration" .= count, "newOrders" .= Local.encounterOrders event, "candidates" .= map candidate (Local.encounterCandidates event), "state" .= state])
+  baseline <- case reverse (checkpoints frozen) of
+    point : _ -> capture initialOrders point
+    [] -> die "local history comparison needs a frozen-reference endpoint"
+  states <- mapM (\point -> capture (atIteration (completedIterations point)) point) (checkpoints corrected)
+  encounters <- mapM observation events
+  putStrLn ("Curled panel history: " ++ show (length initialOrders) ++ " initial relationships, " ++ show (length (Local.localReferenceOrders learned)) ++ " final; frozen equilibrium " ++ show (converged frozen) ++ "; growing equilibrium " ++ show (converged corrected))
+  pure (object ["kind" .= ("localhistory" :: String), "title" .= ("Curled panel · growing contact history" :: String), "converged" .= converged corrected, "baselineConverged" .= converged frozen, "baseline" .= baseline, "states" .= states, "encounters" .= encounters, "initialOrders" .= initialOrders, "triangleOrders" .= Local.localReferenceOrders learned, "numericalClearance" .= clearance, "searchDistance" .= searchDistance, "sourcePanels" .= (1 :: Int), "startingBend" .= (22.25 :: Double), "controlTarget" .= (30 :: Int), "controlStrength" .= (4 :: Int)])
 
 -- Approach frames are angle-defined observations, not relaxation iterates.
 -- Each snapshot carries only the orders known at that point in the sequence.
