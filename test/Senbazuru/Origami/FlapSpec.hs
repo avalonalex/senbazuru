@@ -33,6 +33,20 @@ import Test.QuickCheck (choose, forAll)
 
 spec :: Spec
 spec = describe "checked flap rotation" $ do
+  it "folds the quarter-fold fixture by selecting both segments of each hinge" $ do
+    source <- keyFrame <$> (loadFoldFile "examples/quarter-fold.fold" >>= right)
+    start <- right (foldFrameWith source {edgesFoldAngle = replicate 12 0})
+    firstTurn <- right (prepareFlapAlong [EdgeId 8, EdgeId 10] (FaceId 3) (-180) start >>= checkFlap defaultSweepSettings)
+    firstEnd <- right (flapAt firstTurn 1)
+    let accepted = surfaceFrame firstEnd
+    next <- right (foldFrameWith (foldedPattern start) {edgesFoldAngle = edgesFoldAngle accepted, faceOrders = faceOrders accepted})
+    secondTurn <- right (prepareFlapAlong [EdgeId 9, EdgeId 11] (FaceId 1) 180 next >>= checkFlap defaultSweepSettings)
+    final <- right (flapAt secondTurn 1)
+    edgesFoldAngle (surfaceFrame final) `shouldBe` edgesFoldAngle source
+    forM_ [firstTurn, secondTurn] $ \motion -> forM_ [0, 0.25, 0.5, 0.75, 1] $ \t -> do
+      pose <- right (flapAt motion t)
+      materialError pose `shouldSatisfy` (< 1e-12)
+
   forM_ [FaceId 0, FaceId 1] $ \side ->
     it ("keeps the opposite face still when moving face " ++ show side) $ do
       start <- right (foldFrameWith singleFlap)

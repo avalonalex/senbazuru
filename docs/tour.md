@@ -505,7 +505,7 @@ It preserves cuts whose sides already have distinct vertex ids and refuses
 refinement across an unsplit cut edge.
 
 The first library operation using the motion checks is `Origami.Flap`.
-Select one crease and a face on the side to move; the operation finds every
+Select a crease (or its aligned segments) and a face on the side to move; the operation finds every
 face belonging to that flap. It checks the entire rigid turn before supplying
 angle-derived surfaces for rendering. The [checked flap demo](usage.md#checked-flap-motion)
 shows a single fold from 0° to 180°, its reopening, and a short move between
@@ -524,7 +524,7 @@ supplied order when the layers share one rigid motion; the geometric check
 still covers every other pair involving those layers. The upper layer's
 [free edge can rest on the hinge](notes/free-edges-on-a-hinge.md) when the
 declared stack supports that boundary and the plane separation check passes.
-Sliding contact, unsupported seams and creases that need other angles to change
+Sliding contact, unsupported seams and turns requiring different hinge axes
 remain refused. Each exported pose retains material identities and is re-folded
 to check shared vertices and achieved angles; it is never interpolated between
 saved positions. The [design note](notes/checked-flap-operation.md) explains
@@ -537,6 +537,14 @@ including the resting layers' order. The central face stays fixed, and each
 join is checked for a change of position. Eleven illustrations show the
 open sheet and the halfway/end states of five complete checked turns. This
 supplies a complete route for one traditional base.
+
+The [checked helmet sequence](usage.md#checked-helmet-sequence) folds a square
+diagonally, then turns both corners of the doubled triangle to its tip. The
+first hinge crosses two graph segments; the later hinges each join two
+distinct material creases that now occupy the same line. Selecting all the
+segments lets the existing checker follow the whole rigid turn. A crease on
+an upside-down layer needs the opposite angle sign even though both layers
+turn together; [the hinge note](notes/aligned-crease-hinges.md) explains why.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

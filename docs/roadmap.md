@@ -13,7 +13,8 @@ including free edges on the hinge in [#181](https://github.com/avalonalex/senbaz
 a complete checked blintz sequence in [#183](https://github.com/avalonalex/senbazuru/issues/183),
 the continuously checked first bird petal in [#185](https://github.com/avalonalex/senbazuru/issues/185),
 the second petal and final press in [#187](https://github.com/avalonalex/senbazuru/issues/187),
-and the initial square-base collapse in [#189](https://github.com/avalonalex/senbazuru/issues/189). The
+the initial square-base collapse in [#189](https://github.com/avalonalex/senbazuru/issues/189),
+and the checked helmet sequence in [#191](https://github.com/avalonalex/senbazuru/issues/191). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -23,9 +24,9 @@ closes.
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
-| Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
+| Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,303 examples pass, including square-base collapse, both bird petals, final pressing and the five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,322 examples pass, including complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -182,15 +183,15 @@ pieces of work.
   exists. What a schematic side view of a 32-layer crane should look like, and
   where the cut-away circle comes from, does not.
 - **[#54](https://github.com/avalonalex/senbazuru/issues/54) rotating a flap.**
-  The rigid flap operation and complete checked blintz recipe are implemented.
+  The rigid flap operation and complete checked blintz and helmet recipes are implemented.
   Where several moving creases meet at a vertex, their angles
   must change together to keep the paper joined; the four-crease case is
   [#52](https://github.com/avalonalex/senbazuru/issues/52). Production SVG
-  handles open planar panels. The first reusable operation now handles an
-  isolated fixed crease, including flat endpoints with a checked one-sided
+  handles open planar panels. The reusable operation now handles a fixed
+  hinge with explicitly selected aligned segments, including flat endpoints with a checked one-sided
   approach and departure order. Touching stacks with a common rigid motion
   now retain their orders, including aligned free edges supported by a
-  declared partner's shared hinge. A separate study recipe now checks the
+  declared partner's shared hinge. A separate study recipe now checks
   both bird petals and final pressing continuously, with accepted geometry
   and layer requirements retained at both joins. It uses known compatible angle formulas.
   Sliding contact, unsupported hinge seams
@@ -259,10 +260,11 @@ checked coupled angles.
    The second petal and final pressing now preserve accepted geometry and
    layer order through two checked stage joins. The initial square-base collapse
    adds a third checked join and completes the route from a prepared open sheet.
-   **Next: a hinge made of several aligned crease segments**, using the helmet
-   base as a selection test. One physical hinge can comprise several segments, so removing a single
-   graph edge may not separate the moving stack. General coupled-angle solving
-   remains later work.
+   The helmet route in #191 now selects several aligned segments for one
+   physical hinge, then turns paired material creases on touching layers.
+   **Next: exercise the same operation on a crane wing**, selecting its moving
+   stack from the real folded fixture and recording any concrete blockers.
+   Sliding contact and general coupled-angle solving remain later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

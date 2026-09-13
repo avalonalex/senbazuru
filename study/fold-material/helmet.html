@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A checked helmet base · Senbazuru</title>
+<style>
+  :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; color: #292d28; background: #f4efe7; }
+  body { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 12px 0; line-height: 1.15; }
+  h2 { font-size: 1.35rem; }
+  p { max-width: 900px; }
+  a { color: #385e50; text-underline-offset: 3px; }
+  small { letter-spacing: .12em; }
+  section { background: #fffaf2; border: 1px solid #d8cebd; border-radius: 8px; padding: 24px; margin: 28px 0; }
+  img { width: 100%; height: auto; display: block; }
+  ol { columns: 2; gap: 40px; padding-left: 24px; }
+  li { break-inside: avoid; margin-bottom: 6px; }
+  iframe { width: 100%; height: 760px; border: 0; }
+  @media (max-width: 650px) { ol { columns: 1; } section { padding: 12px; } }
+</style>
+<header>
+  <small>SENBAZURU · CHECKED FOLDING SEQUENCE</small>
+  <h1>Two layers, one turning flap</h1>
+  <p>Fold a square diagonally in half, then bring each corner of the doubled
+    triangle to its opposite tip. Turn both layers together each time.
+    The resulting smaller square is the traditional helmet base.</p>
+  <p>Every turn starts where the previous one finished. The sheet stays joined,
+    touching layers keep their order, and the contact check covers the whole
+    turn, including its flat landing.</p>
+  <a href="index.html">All fold examples</a> · <a href="blintz.html">Blintz sequence</a> · <a href="petal.html">Bird sequence</a>
+</header>
+<section>
+  <h2>Fold along with the paper</h2>
+  <p>One camera and one scale throughout, looking from the tip side at 45° above
+    the sheet. The diagonal fold is shown at 120°, the corner folds at 90°,
+    and each turn ends pressed flat. Figure 7 is the
+    completed base; rotate it in 3D to inspect both sides.</p>
+  <img src="checked-helmet/sequence.svg" alt="Seven numbered views: the open square, diagonal fold, and two doubled corners folding to the tip">
+  <ol><!--STATES--></ol>
+  <p><a href="checked-helmet/sequence.svg">Full SVG page</a> ·
+    <a href="checked-helmet/sequence.fold">FOLD sequence</a></p>
+</section>
+<section>
+  <h2>Inspect each state in 3D</h2>
+  <p>The finished base starts here. Choose any numbered figure to inspect its
+    layers, or select Complete paper to see the whole connected sheet.</p>
+  <iframe src="checked-helmet/index.html?model=state-6.glb&amp;angle=other-corner" title="Checked helmet sequence in 3D" loading="lazy"></iframe>
+  <p><a href="checked-helmet/index.html?model=state-6.glb&amp;angle=other-corner">Open the 3D viewer</a> ·
+    <a href="checked-helmet/checks.json">Angles, layer orders and measurements</a></p>
+</section>
+<p>These are three checked rigid turns of zero-thickness paper. The checker
+  uses floating-point interval bounds with numerical guards and refuses
+  unresolved intervals. Every pose comes from crease angles. A turn may use
+  several aligned crease segments, including separate creases on touching
+  layers. Bending, sliding contact and finding a route automatically remain
+  separate work.</p>
+</html>

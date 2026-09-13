@@ -33,6 +33,7 @@ extra-source-files:
   study/fold-material/frog-instructions.html
   study/fold-material/flap.html
   study/fold-material/petal.html
+  study/fold-material/helmet.html
   study/fold-material/cases.json
   study/gltf/README.md
   study/gltf/viewer.html
@@ -162,7 +163,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
+  other-modules: HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -190,6 +191,9 @@ test-suite senbazuru-test
     CheckedBirdSpec
     PetalCertificate
     PetalGallery
+    HelmetSequenceSpec
+    HelmetSequence
+    HelmetGallery
     BlintzSequenceSpec
     BlintzSequence
     BlintzGallery
