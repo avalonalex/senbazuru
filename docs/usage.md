@@ -264,6 +264,35 @@ time. There is no general flap CLI verb or route planning yet. See
 [moving touching layers](notes/moving-touching-layers.md) and
 [free edges on a hinge](notes/free-edges-on-a-hinge.md).
 
+### Checked blintz sequence
+
+A blintz base folds the square's four corners to its centre. This recipe uses
+five successive `CheckedFlap` operations: four complete folds, then reopening
+the first corner. Each move inherits the accepted endpoint's angles and layer
+orders. The central face is first in the recipe's material pattern, so the
+folding algorithm anchors it throughout; the recipe also checks every join
+for an unintended change of position. See [the handoff note](notes/chaining-checked-folds.md).
+
+```bash
+stack run senbazuru-material-study -- --blintz build/fold-material
+npm install --prefix build/fold-material/checked-flap --no-audit --no-fund three@0.186.0
+python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
+```
+
+Open [the blintz instructions](http://127.0.0.1:8000/blintz.html). The viewer
+shares the existing checked-flap Three.js installation. `checked-blintz/`
+contains an eleven-figure SVG, its material FOLD sequence, eleven GLBs with
+visible/complete scenes, and `checks.json` with whole-turn interval counts,
+angles, layer orders and sampled length errors. The SVG has one camera and
+scale. It looks from below the source fixture's xy plane, at 45°, so its
+mountain folds come towards the viewer and the resting flaps remain visible.
+Figure 9 completes the base; figures 10–11 reopen its first corner.
+
+This is a recipe for the existing fixture, with explicit ids in its reordered
+material pattern. It is not yet a general instruction format or a way to
+move several crease angles together. The same numerical scope and refusals
+as the single-flap operation apply to each complete turn.
+
 ### Experimental bending
 
 For the experimental crease/panel mechanics, run

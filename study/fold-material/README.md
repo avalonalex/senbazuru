@@ -45,6 +45,11 @@ For the library's separate fixed-crease operation, see
 angle-defined motion; the numerical bending corrections below serve a
 different purpose.
 
+`stack run senbazuru-material-study -- --blintz build/fold-material` composes
+four complete corner folds and a reopening into the [blintz sequence](../../docs/usage.md#checked-blintz-sequence).
+It writes `blintz.html` and `checked-blintz/`, sharing the checked-flap viewer's
+local Three.js installation.
+
 ```bash
 stack run senbazuru-material-study -- --bending build/fold-material
 ```

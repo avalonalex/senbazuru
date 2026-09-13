@@ -530,6 +530,15 @@ to check shared vertices and achieved angles; it is never interpolated between
 saved positions. The [design note](notes/checked-flap-operation.md) explains
 how the checked motion stays consistent with what the renderers receive.
 
+The [checked blintz sequence](usage.md#checked-blintz-sequence) now puts those
+operations together: fold all four corners of a square to the centre, then
+reopen the first one. It carries each accepted endpoint into the next move,
+including the resting layers' order. The central face stays fixed, and each
+join is checked for a change of position. Eleven illustrations show the
+open sheet and the halfway/end states of five complete checked turns. This
+supplies a complete route for one traditional base; the bird sequence's
+several moving crease angles still need their own motion check.
+
 ## What it creases
 
 Every other command turns a file into a picture. This one turns a file into

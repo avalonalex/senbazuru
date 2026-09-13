@@ -4,6 +4,7 @@ module Main (main) where
 
 import BasicBaseGallery (writeBasicBases)
 import BendingGallery (writeBendingStudy)
+import BlintzGallery (writeBlintzGallery)
 import Control.Monad (unless)
 import Data.Aeson (Value, eitherDecode, encode, object, (.=))
 import Data.Aeson.Key qualified as Key
@@ -51,8 +52,9 @@ main = do
     ["--bending", destination] -> writeBendingStudy destination
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
+    ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -76,6 +78,7 @@ generate destination = do
   writeBasicBases destination
   writeBendingStudy destination
   writeFlapGallery destination
+  writeBlintzGallery destination
   BL.writeFile (destination </> "cases.json") (encode catalog)
   BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
   BL.writeFile (destination </> "relaxation.json") (encode progress)
