@@ -9,7 +9,8 @@ the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
 and touching stacks in [#179](https://github.com/avalonalex/senbazuru/issues/179),
-including free edges on the hinge in [#181](https://github.com/avalonalex/senbazuru/issues/181). The
+including free edges on the hinge in [#181](https://github.com/avalonalex/senbazuru/issues/181)
+and a complete checked blintz sequence in [#183](https://github.com/avalonalex/senbazuru/issues/183). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -19,9 +20,9 @@ closes.
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
-| Production handoff | Shared material surfaces reach SVG and two glTF scenes; checked bird and frog states render as SVG sequences |
+| Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, while bird/frog sequences have checked states |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,260 examples pass, including aligned two-/three-layer flaps, supported free hinge edges, flat landing/reopening and material/contact checks |
+| Tests | 1,271 examples pass, including the five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -77,6 +78,8 @@ pieces of work.
    rigid motion retain their supplied order through the turn in #179. A
    declared partner's shared hinge now supports an aligned free layer edge
    in #181, while the plane check still separates the turning interior.
+   A complete blintz recipe now chains four corner folds and a reopening in
+   #183, carrying accepted angles/orders and checking continuity at every join.
    General flap/wing authoring, a general angle solver and collision checking
    along motion where several creases must move together remain open
    ([#54](https://github.com/avalonalex/senbazuru/issues/54),
@@ -107,7 +110,8 @@ pieces of work.
   unresolved intervals and check pairs sharing material vertices rather than
   skipping all neighbours. Straight numerical paths can stretch the sheet and
   are not folding instructions. The fixed-hinge check now backs the library's
-  [flap operation](notes/checked-flap-operation.md), but has not checked the
+  [flap operation](notes/checked-flap-operation.md) and the complete
+  [blintz route](notes/chaining-checked-folds.md), but has not checked the
   intervals of the actual bird sequence. The checkers
   report a colliding pose or an unresolved interval, not a guaranteed first
   impact time; #61 remains open.
@@ -166,8 +170,8 @@ pieces of work.
   exists. What a schematic side view of a 32-layer crane should look like, and
   where the cut-away circle comes from, does not.
 - **[#54](https://github.com/avalonalex/senbazuru/issues/54) rotating a flap.**
-  Start with one rigid flap about a fixed crease, reusing the study's interval
-  contact check. Where several moving creases meet at a vertex, their angles
+  The rigid flap operation and complete checked blintz recipe are implemented.
+  Where several moving creases meet at a vertex, their angles
   must change together to keep the paper joined; the four-crease case is
   [#52](https://github.com/avalonalex/senbazuru/issues/52). Production SVG
   handles open planar panels. The first reusable operation now handles an
@@ -230,9 +234,14 @@ endpoints in #177 and touching stacks in #179/#181.
    single fold and reopening now preserve the order at flat touching endpoints.
    A small stack can now stay in contact during a move, retaining its order
    without overlooking other crossings, including a free upper edge reaching
-   the lifting hinge. Next exercise this operation on an existing folded base,
-   recording the first unsupported move as a small fixture. The coupled-angle
-   solver and full bird folding path remain later work.
+   the lifting hinge. The complete blintz sequence now folds all four corners
+   and reopens one, retaining endpoint orders and a stable central anchor.
+   **Next: the helmet base's folds through a doubled triangle.** First record
+   the exact selection blocker: one physical hinge can comprise several
+   aligned crease segments, so removing a single graph edge may not separate
+   the moving stack. Establish a small supported case and a refusal case
+   before widening the selection API. The general coupled-angle solver and
+   full bird folding path remain later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

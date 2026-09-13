@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A checked blintz base · Senbazuru</title>
+<style>
+  :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; color: #292d28; background: #f4efe7; }
+  body { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 12px 0; line-height: 1.15; }
+  h2 { font-size: 1.35rem; }
+  p { max-width: 900px; }
+  a { color: #385e50; text-underline-offset: 3px; }
+  small { letter-spacing: .12em; }
+  section { background: #fffaf2; border: 1px solid #d8cebd; border-radius: 8px; padding: 24px; margin: 28px 0; }
+  img { width: 100%; height: auto; display: block; }
+  ol { columns: 2; gap: 40px; padding-left: 24px; }
+  li { break-inside: avoid; margin-bottom: 6px; }
+  iframe { width: 100%; height: 760px; border: 0; }
+  @media (max-width: 650px) { ol { columns: 1; } section { padding: 12px; } }
+</style>
+<header>
+  <small>SENBAZURU · CHECKED FOLDING SEQUENCE</small>
+  <h1>Four corners, one blintz base</h1>
+  <p>Start with the coloured side facing you. Fold each corner to the centre;
+    the four triangular flaps make a smaller square called a blintz base.
+    Then reopen the first corner, leaving the other three folded.</p>
+  <p>Every turn starts where the previous one finished. The central square
+    stays still, the sheet stays joined, and resting layers keep their order.
+    The contact check covers each entire turn, including the flat landing
+    and reopening.</p>
+  <a href="index.html">All fold examples</a> · <a href="flap.html">Single folds and touching stacks</a>
+</header>
+<section>
+  <h2>Fold along with the paper</h2>
+  <p>One camera and one scale throughout, looking from the coloured side at
+    45°. Each corner is shown halfway through its turn and pressed flat.
+    Figure 9 is the completed base; figures 10–11 reopen its first flap.</p>
+  <img src="checked-blintz/sequence.svg" alt="Eleven numbered views: the open square, four corner folds to the centre, and the first corner reopening">
+  <ol><!--STATES--></ol>
+  <p><a href="checked-blintz/sequence.svg">Full SVG page</a> ·
+    <a href="checked-blintz/sequence.fold">FOLD sequence</a></p>
+</section>
+<section>
+  <h2>Inspect each state in 3D</h2>
+  <p>The finished base starts here. Choose any numbered figure to inspect its
+    layers, or select Complete paper to see the whole connected sheet.</p>
+  <iframe src="checked-blintz/index.html?model=state-8.glb&amp;side=below" title="Checked blintz sequence in 3D" loading="lazy"></iframe>
+  <p><a href="checked-blintz/index.html?model=state-8.glb&amp;side=below">Open the 3D viewer</a> ·
+    <a href="checked-blintz/checks.json">Angles, layer orders and measurements</a></p>
+</section>
+<p>These are five checked rigid turns of zero-thickness paper. The checker uses
+  floating-point bounds with numerical guards and refuses unresolved intervals.
+  Each drawing comes from crease angles; the corners are never interpolated
+  along straight lines. This example supplies a route for this base. Moves
+  requiring several crease angles to change together remain separate work.</p>
+</html>

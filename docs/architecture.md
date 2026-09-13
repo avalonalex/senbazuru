@@ -197,6 +197,12 @@ on a normalized mesh and returns an opaque accepted motion. `flapAt` re-folds
 the requested angle state, aligns its stationary face and checks that the
 result agrees with the hinge path before handing it to the renderers.
 `FlapGallery` is only an executable driver; the library imports no study code.
+`BlintzSequence` composes five accepted turns on the existing blintz fixture,
+carrying angles and endpoint orders onto its material pattern and checking
+position continuity at each join. It puts the stationary central face first
+before folding, because the folding walk anchors that face. `BlintzGallery`
+exports the resulting sequence through the ordinary renderers; neither module
+introduces a second contact checker or a general instruction format.
 `HingeSweep.checkSweepWithFlatEndpoints` returns one-sided endpoint contacts
 as triangle ids and signs against stationary normals. `Flap` maps them to
 source-face orders and checks supplied initial orders on each contact plane.
