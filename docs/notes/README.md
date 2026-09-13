@@ -50,6 +50,7 @@ read the Haddock module headers; for the domain, start with
 | [checked-flap-operation.md](checked-flap-operation.md) | Check a whole turn before a library flap operation supplies angle-derived surfaces to SVG and glTF |
 | [flat-flap-endpoints.md](flat-flap-endpoints.md) | A one-sided approach permits endpoint contact and records which layer rests on which |
 | [moving-touching-layers.md](moving-touching-layers.md) | Touching layers with the same rigid motion retain their order, while other pairs still need a collision check |
+| [checked-petal.md](checked-petal.md) | Exact polynomial signs check seven coordinated crease angles throughout one bird petal |
 | [chaining-checked-folds.md](chaining-checked-folds.md) | Carry angles, orders and a consistent anchor between the five checked turns of a blintz sequence |
 | [free-edges-on-a-hinge.md](free-edges-on-a-hinge.md) | A declared stack can support its free edge on a shared hinge without welding the material vertices |
 | [endpoints-and-routes.md](endpoints-and-routes.md) | A valid state, a checked route and the existence of some route are different questions |
