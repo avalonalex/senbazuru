@@ -44,7 +44,7 @@ angular errors. It does not use the known final positions. Original material
 coordinates, triangle connectivity and crease ownership stay fixed.
 
 These two solves have no contact force. Separately,
-`PanelContact.checkTriangleContact` checks every pair of triangles in each
+`Origami.Contact.checkTriangleContact` checks every pair of triangles in each
 recorded state, including pairs within a source panel. Declared source-panel
 orders expand to their triangles along the stored material direction. The
 final diagonal and kite states pass 496 and 2,016 pair checks respectively:

@@ -13,7 +13,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import FoldMaterial
-import PanelContact
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), diagramWithExtent)
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
@@ -24,6 +23,7 @@ import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.Rigid (Rigid (..), after, identity, matIdentity, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
 import Senbazuru.Origami.Stacking (defaultBudget, solveStacking)
 import Senbazuru.Origami.Surface qualified as Paper

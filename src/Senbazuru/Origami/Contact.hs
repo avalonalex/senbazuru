@@ -1,4 +1,4 @@
--- | Contact checks for the study's rigid convex panels: each panel is a flat
+-- | Contact checks for rigid convex panels: each panel is a flat
 -- polygon, regardless of how finely the viewer subdivides it into triangles.
 -- Convex means every segment between points in the panel stays in the panel;
 -- see docs/glossary.md for the geometry vocabulary. 'checkTriangleContact'
@@ -6,8 +6,8 @@
 -- planar polygon while retaining its source panel's order requirements.
 -- 'checkLocalTriangleContact' instead names triangle pairs directly, so two
 -- regions of the same bending panel need no fictitious source-panel split.
--- This is separate from FoldContact's curved-packet constraints because an
--- upright flap cannot be described as a height above the original sheet.
+-- This module checks geometry independently of any solver force: an upright
+-- flap cannot be described as a height above the original sheet.
 --
 -- Two questions need separate answers. Panels can cross through each other in
 -- 3D, or sit on the wrong side without crossing at all. For crossings, cut each
@@ -20,12 +20,11 @@
 -- Orders name panels, not paper colours or camera-facing sides. They form a
 -- partial order: unrelated flaps need no invented ranking. Coplanar overlap
 -- without a known order is reported as unresolved. The tolerance is a distance
--- on this study's unit sheet. These are tests of individual zero-thickness
+-- in the input coordinates; callers checking arbitrary model units should
+-- normalize their geometry to a unit sheet first. These are tests of individual zero-thickness
 -- states, not constraints on the path between them or a finite-thickness solve.
-module PanelContact
-  ( PanelTag (..),
-    ContactSpec (..),
-    Panel (..),
+module Senbazuru.Origami.Contact
+  ( Panel (..),
     ContactCheck (..),
     ContactError (..),
     panelTolerance,
@@ -37,7 +36,7 @@ module PanelContact
 where
 
 import Control.Monad (unless)
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=))
+import Data.Aeson (ToJSON (..), object, (.=))
 import Data.IntMap.Strict qualified as IM
 import Data.List (tails)
 import Data.Map.Strict qualified as M
@@ -50,36 +49,6 @@ import Senbazuru.Geometry.Polygon (clipConvex, cross2, isConvex, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
-
-data PanelTag = PanelTag {tagName :: !Text, tagAt :: !V2}
-  deriving stock (Eq, Show)
-
-instance FromJSON PanelTag where
-  parseJSON = withObject "panel name and material point" $ \o -> do
-    name <- o .: "name"
-    point <- o .: "at"
-    case point of
-      [x, y] -> pure (PanelTag name (V2 x y))
-      _ -> fail "panel at needs two material coordinates"
-
-instance ToJSON PanelTag where
-  toJSON (PanelTag name (V2 x y)) = object ["name" .= name, "at" .= [x, y]]
-
-data ContactSpec = ContactSpec
-  {orderDirection :: !V3, namedPanels :: ![PanelTag], panelOrders :: ![(Text, Text)]}
-  deriving stock (Eq, Show)
-
-instance FromJSON ContactSpec where
-  parseJSON = withObject "panel contact requirements" $ \o -> do
-    direction <- o .: "direction"
-    case direction of
-      [x, y, z] -> ContactSpec (V3 x y z) <$> o .: "panels" <*> o .: "orders"
-      _ -> fail "contact direction needs three coordinates"
-
-instance ToJSON ContactSpec where
-  toJSON (ContactSpec (V3 x y z) panels orders) =
-    object
-      ["direction" .= [x, y, z], "panels" .= panels, "orders" .= orders]
 
 data Panel = Panel {panelName :: !Text, panelCorners :: ![V3]}
   deriving stock (Eq, Show)

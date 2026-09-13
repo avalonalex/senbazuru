@@ -44,6 +44,7 @@ const picker = document.querySelector('#model');
 const scenePicker = document.querySelector('#scene');
 const error = document.querySelector('#error');
 const requested = new URLSearchParams(location.search);
+const cornerView = requested.get('angle') === 'corner';
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -74,6 +75,9 @@ function angle(x, y, z) {
   controls.maxDistance = radius * 20;
   controls.target.set(0, 0, 0);
   controls.update();
+}
+function side(sign) {
+  angle(1, sign * (cornerView ? Math.SQRT2 : 1), cornerView ? -1 : 0);
 }
 function show() {
   if (current) scene.remove(current);
@@ -115,7 +119,7 @@ async function load() {
     });
     scenePicker.value = loaded.scenes[Number(requested.get('scene'))] ? requested.get('scene') || '0' : '0';
     show();
-    angle(1, requested.get('side') === 'below' ? -1 : 1, 0);
+    side(requested.get('side') === 'below' ? -1 : 1);
   } catch (e) {
     if (ticket === requestNumber) error.textContent = e.message;
   } finally {
@@ -124,8 +128,8 @@ async function load() {
 }
 picker.onchange = load;
 scenePicker.onchange = show;
-document.querySelector('#above').onclick = () => angle(1, 1, 0);
-document.querySelector('#below').onclick = () => angle(1, -1, 0);
+document.querySelector('#above').onclick = () => side(1);
+document.querySelector('#below').onclick = () => side(-1);
 document.querySelector('#edge').onclick = () => angle(1, 0, 0);
 renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
 try {

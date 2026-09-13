@@ -5,6 +5,7 @@ module BendingGallery (writeBendingStudy) where
 
 import ContactDiscovery qualified as Discovery
 import ContactExample
+import ContactSpec
 import Control.Monad (when)
 import CorrectionExample
 import CorrectionSweep qualified as Motion
@@ -21,9 +22,7 @@ import FoldBending
 import FoldContact
 import FoldMaterial
 import FoldRelaxation
-import HingeSweep qualified as Sweep
 import LocalContactDiscovery qualified as Local
-import PanelContact
 import SelfContactExample
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -31,6 +30,8 @@ import Senbazuru.Fold.Query (Crease (..))
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), FoldFile (..), Frame (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.Contact
+import Senbazuru.Origami.HingeSweep qualified as Sweep
 import Senbazuru.Origami.Surface qualified as Paper
 import StudyCase
 import SurfaceContact qualified as Contact

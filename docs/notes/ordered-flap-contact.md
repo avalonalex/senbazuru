@@ -49,7 +49,7 @@ angles 145° and 105°, placing the left flap underneath as they approach. On it
 
 The corrected solve takes 139 numerical iterations. All saved iterates retain
 one connected sheet, original material coordinates and triangle ids. The
-independent `PanelContact.checkTriangleContact` checks all 276 triangle pairs,
+independent `Origami.Contact.checkTriangleContact` checks all 276 triangle pairs,
 including pairs inside one source panel. It judges the endpoint separately
 from the solver's clearance residual and convergence test.
 

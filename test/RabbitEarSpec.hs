@@ -14,6 +14,7 @@
 -- checked separately against the production flat-stacking solver.
 module RabbitEarSpec (spec) where
 
+import ContactSpec
 import Control.Monad (forM_)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy qualified as BL
@@ -21,13 +22,13 @@ import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.List (find)
 import FoldMaterial
-import PanelContact
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Frame (..), Stacking (..), VertexId (..), keyFrame)
 import Senbazuru.Geometry.Rigid (applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.Stacking (defaultBudget, solveStacking, stackingSpace, stateCount)
 import StudyCase

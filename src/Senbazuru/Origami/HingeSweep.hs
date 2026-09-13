@@ -19,9 +19,9 @@
 -- supply collision witnesses, not a supposed first impact time.
 --
 -- This is a numerical interval check for ONE fixed-axis rotation, with a 1e-10
--- separation guard on the study's unit sheets. It is not formally rounded
+-- separation guard on unit sheets. It is not formally rounded
 -- interval arithmetic, arbitrary bending, thickness, or a solver motion model.
-module HingeSweep
+module Senbazuru.Origami.HingeSweep
   ( HingeSweep,
     SweepSettings (..),
     defaultSweepSettings,
@@ -41,11 +41,11 @@ import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (tails)
 import Data.Set qualified as S
-import PanelContact qualified as Panel
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact qualified as Panel
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), Triangle)
 
 data Orbit = Fixed !V3 | Turning !V3 !V3 !V3

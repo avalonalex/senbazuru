@@ -4,8 +4,8 @@ module PanelContactSpec (spec) where
 
 import Data.Either (isLeft)
 import Data.Text (Text)
-import PanelContact
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.Contact
 import Test.Hspec
 import Test.QuickCheck
 

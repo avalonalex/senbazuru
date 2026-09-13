@@ -5,11 +5,11 @@ import ContactExample
 import Control.Monad (forM_)
 import Data.Either (isLeft)
 import FoldRelaxation (maxLengthError)
-import HingeSweep
-import PanelContact (checkTriangleContact, contactPassed)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact (checkTriangleContact, contactPassed)
+import Senbazuru.Origami.HingeSweep
 import Senbazuru.Origami.Surface
 import Test.Hspec
 import Test.Hspec.QuickCheck (prop)

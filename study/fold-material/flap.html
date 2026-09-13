@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One checked flap · Senbazuru</title>
+<style>
+  :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; color: #292d28; background: #f4efe7; }
+  body { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 12px 0; line-height: 1.15; }
+  h2 { margin: 0 0 12px; font-size: 1.35rem; }
+  p { max-width: 900px; }
+  a { color: #385e50; text-underline-offset: 3px; }
+  small { letter-spacing: .12em; }
+  section { background: #fffaf2; border: 1px solid #d8cebd; border-radius: 8px; padding: 24px; margin: 28px 0; }
+  img { width: 100%; height: auto; display: block; }
+  .rejected { border-left: 5px solid #b75a37; }
+  iframe { width: 100%; height: 760px; border: 0; }
+  code { overflow-wrap: anywhere; }
+</style>
+<header>
+  <small>SENBAZURU · CHECKED FOLDING MOTION</small>
+  <h1>One flap, one continuous turn</h1>
+  <p>Choose a crease and the side to move. The library checks the entire turn,
+    then supplies these poses from crease angles. Every corner keeps its place
+    on the original sheet; the stationary side stays still.</p>
+  <p>The single fold moves from 15° to 165°. The opposing right flap moves from
+    105° to 121°, while the left stays at 145°. Each row uses one camera and one scale.</p>
+  <a href="index.html">All fold examples</a> · <a href="bending.html">Bending study</a>
+</header>
+<!--MOTIONS-->
+<section class="rejected">
+  <h2>A good endpoint can hide a bad route</h2>
+  <p>A full turn of the right flap returns to its starting position, but hits
+    the left flap on the way. That route supplies no accepted sequence.</p>
+  <p><!--REFUSAL--></p>
+</section>
+<section>
+  <h2>Inspect the same paper in 3D</h2>
+  <p>Each saved state includes Visible paper and Complete paper scenes at the
+    same material positions. Select a state, turn it over, and inspect its crease.</p>
+  <iframe src="checked-flap/index.html?model=single-3.glb&amp;angle=corner" title="Checked flap glTF states" loading="lazy"></iframe>
+  <p><a href="checked-flap/checks.json">Measurements and refusal report</a> ·
+    <a href="checked-flap/index.html?model=single-3.glb&amp;angle=corner">Open the 3D viewer</a></p>
+</section>
+<p>This first operation handles one rigid flap about a fixed crease. Flat
+  touching endpoints and moves where several creases must change together
+  remain unsupported. The interval check uses a numerical separation guard;
+  an exhausted check is refused. This is zero-thickness geometry.</p>
+</html>

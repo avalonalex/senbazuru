@@ -8,11 +8,11 @@ import FoldBending
 import FoldContact (ContactRow (..), contactTolerance)
 import FoldMaterial (componentCount)
 import FoldRelaxation
-import PanelContact
 import Senbazuru.Fold.Types (FaceId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Surface
 import SurfaceContact qualified as Contact
 import Test.Hspec

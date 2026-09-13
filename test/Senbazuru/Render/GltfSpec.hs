@@ -30,12 +30,14 @@ import Data.List (nub, sort)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Word (Word32, Word8)
+import FlapExample (opposingFlap, singleFlap)
 import GHC.Float (castFloatToWord32, castWord32ToFloat)
 import Senbazuru.Diagram (Colour (..))
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
+    EdgeId (..),
     FaceId (..),
     FaceOrder (..),
     FoldFile (..),
@@ -46,7 +48,9 @@ import Senbazuru.Fold.Types
   )
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Flap (checkFlap, flapAt, prepareFlap)
 import Senbazuru.Origami.Folding (foldFrame, foldFrameWith)
+import Senbazuru.Origami.HingeSweep (defaultSweepSettings)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface qualified as Paper
 import Senbazuru.Render.Gltf
@@ -413,6 +417,16 @@ spec = do
         checkMaterialReferences glb
 
   describe "moving and ambiguous paper" $ do
+    it "exports both checked flap motions without losing material references" $ do
+      forM_ [(singleFlap, EdgeId 6, FaceId 1, 150), (opposingFlap, EdgeId 9, FaceId 2, 16)] $ \(source, crease, side, travel) -> do
+        start <- either (fail . show) pure (foldFrameWith source)
+        motion <- either (fail . show) pure (prepareFlap crease side travel start >>= checkFlap defaultSweepSettings)
+        forM_ [0, 1 / 3, 2 / 3, 1] $ \t -> do
+          surface <- either (fail . show) pure (flapAt motion t)
+          glb <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget VisiblePaper Nothing surface)
+          length (items (at "scenes" (glbJson glb))) `shouldBe` 2
+          checkMaterialReferences glb
+
     it "exports every checked bird state through both scenes" $ do
       bytes <- BS.readFile "examples/bird-base-sequence.fold"
       file <- either fail pure (decodeFoldFile bytes)

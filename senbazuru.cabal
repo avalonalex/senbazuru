@@ -31,6 +31,7 @@ extra-source-files:
   study/fold-material/bird-sequence.html
   study/fold-material/basic-bases.html
   study/fold-material/frog-instructions.html
+  study/fold-material/flap.html
   study/fold-material/cases.json
   study/gltf/README.md
   study/gltf/viewer.html
@@ -113,6 +114,9 @@ library
     Senbazuru.Import.Cp
     Senbazuru.Import.Opx
     Senbazuru.Import.Segments
+    Senbazuru.Origami.Contact
+    Senbazuru.Origami.Flap
+    Senbazuru.Origami.HingeSweep
     Senbazuru.Origami.Flat
     Senbazuru.Origami.FlatFold
     Senbazuru.Origami.Folding
@@ -157,7 +161,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, HingeSweep, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, PanelContact, BasicBases, BasicBaseGallery
+  other-modules: FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -180,13 +184,14 @@ test-suite senbazuru-test
     BaseCollapseSpec
     BirdSequenceSpec
     FlapPatternSpec
+    FlapExample
     RabbitEarSpec
     PetalFoldSpec
     FoldContact
     FoldContactSpec
     StudyCase
     StudyCaseSpec
-    PanelContact
+    ContactSpec
     PanelContactSpec
     FoldBending
     FoldBendingSpec
@@ -198,7 +203,6 @@ test-suite senbazuru-test
     CorrectionExample
     CorrectionSweep
     CorrectionSweepSpec
-    HingeSweep
     HingeSweepSpec
     LocalContactDiscovery
     LocalContactDiscoverySpec
@@ -229,6 +233,7 @@ test-suite senbazuru-test
     Senbazuru.Origami.BasePatternSpec
     Senbazuru.Origami.FlatFoldSpec
     Senbazuru.Origami.FoldingSpec
+    Senbazuru.Origami.FlapSpec
     Senbazuru.Origami.LayersSpec
     Senbazuru.Origami.StackingSpec
     Senbazuru.Origami.StepSpec
