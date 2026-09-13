@@ -21,11 +21,15 @@
 -- span. Exported coordinates keep their original units and material ids. This
 -- inherits HingeSweep's numerical guard, zero-thickness model and conservative
 -- refusals. Flat endpoints need a one-sided half-turn (or shorter) approach
--- in a plane containing the hinge; persistent touching stacks remain refused.
+-- in a plane containing the hinge. A touching stack may move together, or stay
+-- still, when its supplied face orders are consistent and its panels coplanar.
+-- The common rigid motion preserves those orders against panel normals even
+-- as the whole stack turns over. Each overlapping pair needs a supplied order;
+-- this operation does not infer a stack from coincident positions.
 -- Endpoint layers follow that approach. At the start they must agree with any
 -- supplied orders; without orders, departure selects the previously unknown
--- touching side. Other poses discard stale orders. A refusal can be a contact
--- witness, contradictory endpoint order or an unresolved interval,
+-- touching side. Other poses retain only the validated stack orders. A refusal
+-- can be a contact witness, contradictory order or an unresolved interval,
 -- never a claim to have found the earliest impact. Stale face orders are
 -- not used to exempt untested pairs from contact checks.
 module Senbazuru.Origami.Flap
@@ -68,7 +72,8 @@ data FlapMotion = FlapMotion
     checkScale :: !Double,
     checkedPath :: !HingeSweep,
     triangleOwners :: ![FaceId],
-    startingOrders :: ![FaceOrder]
+    startingOrders :: ![FaceOrder],
+    rigidOrders :: ![FaceOrder]
   }
   deriving stock (Show)
 
@@ -94,6 +99,7 @@ data FlapError
   | FlapCollision !Double ![(FaceId, FaceId)]
   | FlapUnresolved !Double !Double ![(FaceId, FaceId)]
   | FlapEndpointOrder !Double !FoldError
+  | FlapStackOrder !FoldError
   deriving stock (Eq, Show)
 
 instance Explain FlapError where
@@ -116,6 +122,7 @@ instance Explain FlapError where
     FlapCollision t pairs -> "flap path refused: contact between faces " <> facePairs pairs <> " at progress " <> num t <> " (a witness, not the first impact time)"
     FlapUnresolved lo hi pairs -> "flap path unresolved between progress " <> num lo <> " and " <> num hi <> " for faces " <> facePairs pairs
     FlapEndpointOrder t err -> "flap layer order contradicts its approach/departure at progress " <> num t <> ": " <> explain err
+    FlapStackOrder err -> "flap stack has contradictory layer orders: " <> explain err
     where
       facePairs pairs = tshow [(unFaceId a, unFaceId b) | (a, b) <- pairs]
 
@@ -164,7 +171,19 @@ prepareFlap eid side travel supplied = do
   let normalized = mesh {samples = [p {position = (1 / scale) *^ (position p ^-^ origin)} | p <- samples mesh]}
       moving = S.toList (S.fromList [unVertexId vid | face <- faces, S.member (faceId face) selected, vid <- faceVertexIds face])
   sweep <- first FlapSweep (prepareSweep (V3 0 0 0) ((1 / scale) *^ (finish ^-^ origin)) (negate travel * pi / 180) moving normalized)
-  let motion = FlapMotion start eid (S.toList selected) fixed travel origin scale sweep owners (faceOrders suppliedFrame)
+  let suppliedOrders = faceOrders suppliedFrame
+      sameMotion o = S.member (orderFace o) selected == S.member (orderRelativeTo o) selected
+      retained =
+        [ o
+          | o <- suppliedOrders,
+            orderStacking o /= Unordered,
+            sameMotion o,
+            Just f <- [find ((== orderFace o) . faceId) faces],
+            Just g <- [find ((== orderRelativeTo o) . faceId) faces],
+            coplanarFaces scale f g
+        ]
+      motion = FlapMotion start eid (S.toList selected) fixed travel origin scale sweep owners suppliedOrders retained
+  checkOrders FlapStackOrder scale faces retained
   -- The same refolding/anchoring path supplies all subsequent public poses.
   _ <- surfaceAt motion 1
   pure motion
@@ -179,7 +198,15 @@ connected links visited (face : rest)
 
 checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap
 checkFlap settings motion = do
-  result <- first FlapSweep (checkSweepWithFlatEndpoints settings (checkedPath motion))
+  let ordered a b = any (\o -> (orderFace o == a && orderRelativeTo o == b) || (orderFace o == b && orderRelativeTo o == a)) (rigidOrders motion)
+      contacts =
+        [ (i, j)
+          | (i, a) <- zip [0 ..] (triangleOwners motion),
+            (j, b) <- zip [0 ..] (triangleOwners motion),
+            i < j,
+            ordered a b
+        ]
+  result <- first FlapSweep (checkSweepWithRigidContacts settings contacts (checkedPath motion))
   let owners = IM.fromList (zip [0 ..] (triangleOwners motion))
       sourcePairs pairs = sort (nub [(min a b, max a b) | (i, j) <- pairs, Just a <- [IM.lookup i owners], Just b <- [IM.lookup j owners]])
   case sweepOutcome result of
@@ -203,7 +230,7 @@ flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)
 flapAt (CheckedFlap motion result) progress = do
   surface <- surfaceAt motion progress
   orders <- endpointOrders motion result progress
-  first FlapSurface (withFaceOrders orders surface)
+  first FlapSurface (withFaceOrders (nub (rigidOrders motion ++ orders)) surface)
 
 endpointOrders :: FlapMotion -> SweepCheck -> Double -> Either FlapError [FaceOrder]
 endpointOrders motion report progress = nub <$> traverse order [c | c <- sweepEndpointContacts report, contactProgress c == progress]
@@ -221,19 +248,31 @@ checkEndpointOrder motion report progress = do
   -- global painting order. Include the given initial orders so reopening a
   -- flat flap cannot silently put it through the layer it was resting on.
   let supplied = [o | progress == 0, o <- startingOrders motion]
-      check order = case find ((== orderRelativeTo order) . faceId) faces of
-        Nothing -> Left (FlapMissingFace (orderRelativeTo order))
-        Just fixed -> case faceCorners fixed of
-          [] -> Left (FlapMissingFace (faceId fixed))
-          origin : _ -> do
-            let n = polygonNormal (faceCorners fixed)
-                coplanar face = all (\p -> abs (dot n (p ^-^ origin)) <= 1e-12 * checkScale motion * norm n) (faceCorners face)
-                group = filter coplanar faces
-                members = map faceId group
-                relevant = [o | o <- supplied ++ orders, orderFace o `elem` members, orderRelativeTo o `elem` members]
-            _ <- first (FlapEndpointOrder progress) (layerDepths n group relevant)
-            pure ()
-  mapM_ check orders
+  checkOrders (FlapEndpointOrder progress) (checkScale motion) faces (supplied ++ rigidOrders motion ++ orders)
+
+-- Check each plane independently. A paper-relative order rotates with its
+-- panels, so using world z would miss contradictory orders on an upright stack.
+checkOrders :: (FoldError -> FlapError) -> Double -> [Face] -> [FaceOrder] -> Either FlapError ()
+checkOrders mapError scale faces orders = mapM_ check orders
+  where
+    check order = case find ((== orderRelativeTo order) . faceId) faces of
+      Nothing -> Left (FlapMissingFace (orderRelativeTo order))
+      Just fixed -> case faceCorners fixed of
+        [] -> Left (FlapMissingFace (faceId fixed))
+        _ : _ -> do
+          let n = polygonNormal (faceCorners fixed)
+              group = filter (coplanarFaces scale fixed) faces
+              members = map faceId group
+              relevant = [o | o <- orders, orderFace o `elem` members, orderRelativeTo o `elem` members]
+          _ <- first mapError (layerDepths n group relevant)
+          pure ()
+
+coplanarFaces :: Double -> Face -> Face -> Bool
+coplanarFaces scale a b = inPlane a b && inPlane b a
+  where
+    inPlane f g = case faceCorners f of
+      [] -> False
+      origin : _ -> let n = polygonNormal (faceCorners f) in norm n > 0 && all (\p -> abs (dot n (p ^-^ origin)) <= 64 * encodeFloat 1 (-52) * scale * norm n) (faceCorners g)
 
 surfaceAt :: FlapMotion -> Double -> Either FlapError (Surface V2)
 surfaceAt motion progress = do

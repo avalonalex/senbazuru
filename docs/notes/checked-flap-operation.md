@@ -38,11 +38,14 @@ collision, not a guarantee of the earliest impact time.
 Rejecting this one route does not establish that the endpoint is unreachable;
 [reachability is a separate question](endpoints-and-routes.md).
 
-This operation accepts convex planar panels with separation in the interior
-of the motion. One-sided endpoint contacts carry the resulting layer order;
-supplied orders at a touching start must agree with departure. Persistent
-touching stacks remain refused. Physical thickness,
-several creases moving together, and a checked complete bird sequence remain
+This operation accepts convex planar panels. One-sided endpoint contacts carry
+the resulting layer order; supplied orders at a touching start must agree with
+departure.
+[Touching layers with the same rigid motion](moving-touching-layers.md) retain
+their supplied order throughout the turn; other pairs need separation in its
+interior. Sliding contact and unjoined stack edges on the hinge remain refused.
+Physical thickness, several creases moving together, and a checked complete bird sequence remain
 separate work under #54/#55/#61. This handoff is
 [#175](https://github.com/avalonalex/senbazuru/issues/175), extended with
-flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177).
+flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
+and touching stacks in [#179](https://github.com/avalonalex/senbazuru/issues/179).

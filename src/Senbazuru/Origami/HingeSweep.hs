@@ -26,7 +26,15 @@
 -- Coplanarity is recognized within 64 machine epsilons on a unit sheet
 -- (about 1.42e-14), to accommodate the residual of sin(pi). This is a numerical
 -- convention, not an exact proof for arbitrarily small gaps. No time interval
--- or unrelated pair is omitted. Persistent touching stacks remain refused.
+-- or unrelated pair is omitted.
+--
+-- 'checkSweepWithRigidContacts' additionally accepts explicitly named pairs
+-- that start coplanar and undergo the SAME rigid motion (or both stay still).
+-- Their relative geometry cannot change, so contact persists without crossing.
+-- The caller must supply and retain the layer order; this geometric check
+-- cannot choose which side of coincident paper is above. Merely naming a pair
+-- does not exempt it: different motions or noncoplanar geometry are refused,
+-- and every pair outside that contact retains its ordinary interval check.
 --
 -- This is a numerical interval check for ONE fixed-axis rotation, with a 1e-10
 -- separation guard on unit sheets. It is not formally rounded
@@ -44,6 +52,7 @@ module Senbazuru.Origami.HingeSweep
     sweepMeshAt,
     checkSweep,
     checkSweepWithFlatEndpoints,
+    checkSweepWithRigidContacts,
     sinusoidRange,
   )
 where
@@ -101,6 +110,7 @@ data SweepError
   | InvalidSweepTriangle !Int
   | MissingSweepVertex !Int
   | NonRigidSweepTriangle !Int
+  | InvalidRigidContact !Int !Int
   | SweepGeometry !Panel.ContactError
   deriving stock (Eq, Show)
 
@@ -114,6 +124,7 @@ instance Explain SweepError where
   explain (InvalidSweepTriangle i) = "hinge sweep triangle " <> tshow i <> " is missing or degenerate"
   explain (MissingSweepVertex i) = "hinge sweep refers to missing material vertex " <> tshow i
   explain (NonRigidSweepTriangle i) = "hinge sweep would stretch triangle " <> tshow i <> "; a triangle cannot mix stationary and moving vertices away from the hinge"
+  explain (InvalidRigidContact i j) = "persistent contact needs distinct coplanar triangles with the same rigid motion; got triangles " <> tshow i <> " and " <> tshow j
   explain (SweepGeometry err) = explain err
 
 -- | Origin, direction, signed angular travel in radians, moving vertex ids,
@@ -189,18 +200,26 @@ rangeWithin a b from to = (minimum values, maximum values)
     values = [a * cos lo + b * sin lo, a * cos hi + b * sin hi] ++ [radius | contains phase] ++ [-radius | contains (phase + pi)]
 
 checkSweep :: SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkSweep = checkWithEndpoints False
+checkSweep = checkWithEndpoints False []
 
 -- | Permit coplanar overlap only at a boundary of the motion, with a
 -- one-sided approach/departure. The returned contacts supply its layer order.
 -- Persistent touching pairs still fail. 'checkSweep' retains its strict
 -- endpoint policy for callers without a way to carry layer information.
 checkSweepWithFlatEndpoints :: SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkSweepWithFlatEndpoints = checkWithEndpoints True
+checkSweepWithFlatEndpoints = checkWithEndpoints True []
 
-checkWithEndpoints :: Bool -> SweepSettings -> HingeSweep -> Either SweepError SweepCheck
-checkWithEndpoints allowEndpoints settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis angle) = do
+-- | Permit declared coplanar contacts with unchanged relative geometry,
+-- together with the one-sided flat endpoint rule. Pair indices refer to the
+-- starting mesh's triangles. The caller owns the consistent layer ordering;
+-- this function verifies coplanarity and common motion for every named pair.
+checkSweepWithRigidContacts :: SweepSettings -> [(Int, Int)] -> HingeSweep -> Either SweepError SweepCheck
+checkSweepWithRigidContacts settings contacts = checkWithEndpoints True contacts settings
+
+checkWithEndpoints :: Bool -> [(Int, Int)] -> SweepSettings -> HingeSweep -> Either SweepError SweepCheck
+checkWithEndpoints allowEndpoints contacts settings sweep@(HingeSweep mesh orbits turning hingeOrigin hingeAxis angle) = do
   unless (sweepDepth settings >= 0 && sweepDepth settings <= 30 && sweepBudget settings > 0) (Left InvalidSweepSettings)
+  mapM_ validateContact contacts
   (initialBad, initialContacts) <- endpoint 0 mesh
   if not (null initialBad)
     then pure (SweepCheck (SweepCollision 0 initialBad) 0 [])
@@ -225,6 +244,13 @@ checkWithEndpoints allowEndpoints settings sweep@(HingeSweep mesh orbits turning
     -- This much smaller bound only recognizes a rounded coplanar endpoint.
     -- It does not enlarge the contact tolerance or skip a short time interval.
     endpointRoundoff = 64 * encodeFloat 1 (-52)
+    rigidContacts = S.fromList [(min i j, max i j) | (i, j) <- contacts]
+    validateContact (i, j) =
+      let flags = IM.fromList (zip [0 ..] turning)
+          inPlane a b = case points 0 a of
+            origin : _ -> all (\p -> abs (dot (unit (normal (points 0 a))) (p ^-^ origin)) <= endpointRoundoff) (points 0 b)
+            [] -> False
+       in unless (i /= j && IM.member i flags && IM.member j flags && IM.lookup i flags == IM.lookup j flags && inPlane i j && inPlane j i) (Left (InvalidRigidContact i j))
     endpointPlanes = M.fromList [(pair, proof) | allowEndpoints, pair <- movingPairs, Just proof <- [endpointPlane pair]]
     endpointPlane (i, j) = listToMaybe [proof | (fixed, moving) <- [(i, j), (j, i)], t <- [0, 1], Just proof <- [oneSided t fixed moving]]
     oneSided t fixed moving =
@@ -336,7 +362,8 @@ checkWithEndpoints allowEndpoints settings sweep@(HingeSweep mesh orbits turning
               then Just (EndpointContact t fixed moving side)
               else Nothing
           accepted = [(pair, c) | (pair, report) <- reports, null (Panel.crossingPanels report), not (null (Panel.unorderedContacts report)), Just c <- [contact pair]]
-      pure ([pair | (pair, report) <- reports, not (Panel.contactPassed report), pair `notElem` map fst accepted], map snd accepted)
+          retained pair report = S.member pair rigidContacts && null (Panel.crossingPanels report)
+      pure ([pair | (pair, report) <- reports, not (Panel.contactPassed report), pair `notElem` map fst accepted, not (retained pair report)], map snd accepted)
     walk count depth lo hi candidates
       | count >= sweepBudget settings = pure (SweepCheck (SweepUnresolved lo hi candidates) count [])
       | otherwise = do
