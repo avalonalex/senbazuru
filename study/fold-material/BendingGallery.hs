@@ -19,6 +19,7 @@ import FoldBending
 import FoldContact
 import FoldMaterial
 import FoldRelaxation
+import HingeSweep qualified as Sweep
 import PanelContact
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -105,6 +106,9 @@ generateContact mode = do
     pose : _ -> pure (Just (approachHistory pose))
     [] -> if mode == ReferenceStart then Just <$> checked (Discovery.discoverReference (exampleClearance fixture) axis (Paper.refinedPanels refined) mesh) else pure Nothing
   approachStates <- mapM approachSnapshot approach
+  probe <- case approach of
+    firstPose : _ -> Just <$> sweepProbe firstPose
+    [] -> pure Nothing
   corrected <- checked $ case reference of
     Nothing -> relaxSurfaceContact defaultSettings hinges (exampleContact fixture) mesh
     Just learned -> relaxDiscoveredContact defaultSettings hinges learned mesh
@@ -137,6 +141,7 @@ generateContact mode = do
         [ "kind" .= (kind :: String),
           "title" .= title,
           "approach" .= approachStates,
+          "motionProbe" .= probe,
           "discovery" .= discovery,
           "converged" .= converged corrected,
           "baselineConverged" .= converged free,
@@ -167,7 +172,38 @@ approachSnapshot pose = do
   state <- snapshot (exampleHinges fixture) which (Checkpoint 0 mesh (maxLengthError mesh))
   let pairs values = [[unFaceId a, unFaceId b] | (a, b) <- values]
       gap candidate = object ["triangles" .= Contact.candidateTriangles candidate, "panels" .= pairs [Contact.candidatePanels candidate], "gapRange" .= Contact.candidateGapRange candidate]
-  pure (object ["index" .= Discovery.observationNumber observation, "leftAngle" .= leftAngle, "rightAngle" .= rightAngle, "orders" .= pairs orders, "newOrders" .= pairs (Discovery.observationNewOrders observation), "overlaps" .= map gap (Discovery.observationCandidates observation), "state" .= state])
+  pure (object ["index" .= Discovery.observationNumber observation, "leftAngle" .= leftAngle, "rightAngle" .= rightAngle, "orders" .= pairs orders, "newOrders" .= pairs (Discovery.observationNewOrders observation), "motion" .= fmap sweepValue (Discovery.observationMotion observation), "overlaps" .= map gap (Discovery.observationCandidates observation), "state" .= state])
+
+-- A deliberately unsafe route: one full turn returns the same endpoint,
+-- while an interior pose intersects another flap. It is never observed into
+-- the accepted history or sent to the relaxation solver.
+sweepProbe :: ApproachPose -> IO Value
+sweepProbe pose = do
+  let fixture = approachExample pose
+      refined = exampleRefined fixture
+      mesh = Paper.refinedMesh refined
+      orders = Discovery.referenceOrders (approachHistory pose)
+  motion <- checked (rightFlapSweep 360 mesh)
+  result <- checked (Sweep.checkSweep Sweep.defaultSweepSettings motion)
+  progress <- case Sweep.sweepOutcome result of
+    Sweep.SweepCollision t _ | t > 0 && t < 1 -> pure t
+    _ -> die "full-turn regression needs a collision strictly between its endpoints"
+  witness <- checked (Sweep.sweepMeshAt motion progress)
+  endpoint <- checked (Sweep.sweepMeshAt motion 1)
+  surface <- checked (Paper.withLayerRequirements (V3 0 0 1) orders (exampleSurface fixture))
+  which <- surfaceCase surface refined
+  state <- snapshot (exampleHinges fixture) which (Checkpoint 0 witness (maxLengthError witness))
+  endState <- snapshot (exampleHinges fixture) which (Checkpoint 0 endpoint (maxLengthError endpoint))
+  pure (object ["check" .= sweepValue result, "state" .= state, "endpoint" .= endState, "travelDegrees" .= (360 :: Int), "progress" .= progress])
+
+sweepValue :: Sweep.SweepCheck -> Value
+sweepValue report =
+  object
+    ( ("intervals" .= Sweep.sweepIntervals report) : case Sweep.sweepOutcome report of
+        Sweep.SweepClear -> ["status" .= ("clear" :: String)]
+        Sweep.SweepCollision t pairs -> ["status" .= ("collision" :: String), "progress" .= t, "trianglePairs" .= pairs]
+        Sweep.SweepUnresolved a b pairs -> ["status" .= ("unresolved" :: String), "from" .= a, "to" .= b, "trianglePairs" .= pairs]
+    )
 
 surfaceCase :: Paper.Surface V2 -> Paper.RefinedSurface -> IO SnapshotCase
 surfaceCase surface refined = do

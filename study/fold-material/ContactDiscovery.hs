@@ -18,7 +18,10 @@
 --
 -- This intentionally studies contacts between distinct source panels only.
 -- It does not discover general self-contact within a bent panel, infer a route
--- around another flap, or certify the continuous motion between iterates.
+-- around another flap, or certify the continuous motion between solver iterates.
+-- A separate HingeSweep guard checks a caller-specified rigid crease rotation
+-- before observeContactSweep accepts its endpoint; raw pose observations still
+-- say nothing about the motion between them.
 module ContactDiscovery
   ( ReferenceContact,
     DiscoveryError (..),
@@ -28,6 +31,7 @@ module ContactDiscovery
     ContactObservation (..),
     referenceObservations,
     observeContactPose,
+    observeContactSweep,
     discoveredContacts,
   )
 where
@@ -38,11 +42,13 @@ import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
 import FoldContact (ContactRow (..), contactTolerance)
+import HingeSweep qualified as Sweep
 import PanelContact qualified as Panel
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Types (FaceId)
 import Senbazuru.Geometry.V3 (V3)
-import Senbazuru.Origami.Surface (MaterialMesh)
+import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 import SurfaceContact
 
 -- The constructor is private: callers cannot replace the reference orders
@@ -54,7 +60,8 @@ data ReferenceContact = ReferenceContact
     referenceOwners :: ![FaceId],
     referenceModel :: !OrderedContact,
     referenceClearance :: !Double,
-    savedObservations :: ![ContactObservation]
+    savedObservations :: ![ContactObservation],
+    lastObservedMesh :: !MaterialMesh
   }
   deriving stock (Eq, Show)
 
@@ -72,7 +79,8 @@ referenceCandidates = savedCandidates
 data ContactObservation = ContactObservation
   { observationNumber :: !Int,
     observationNewOrders :: ![(FaceId, FaceId)],
-    observationCandidates :: ![ContactCandidate]
+    observationCandidates :: ![ContactCandidate],
+    observationMotion :: !(Maybe Sweep.SweepCheck)
   }
   deriving stock (Eq, Show)
 
@@ -88,6 +96,10 @@ data DiscoveryError
   | HistoryOrderViolation !Double
   | ObservationGeometry !Panel.ContactError
   | UnsafeContactObservation !Panel.ContactCheck
+  | MotionGeometry !Sweep.SweepError
+  | MotionStartMismatch
+  | MotionEndMismatch
+  | UnsafeContactMotion !Sweep.SweepCheck
   deriving stock (Eq, Show)
 
 instance Explain DiscoveryError where
@@ -99,6 +111,13 @@ instance Explain DiscoveryError where
   explain (HistoryOrderViolation gap) = "contact observation violates an already learned order or its numerical clearance by " <> num (negate gap) <> " model units; history was not changed"
   explain (ObservationGeometry err) = explain err
   explain (UnsafeContactObservation report) = "contact observation failed the independent triangle check: " <> tshow (length (Panel.crossingPanels report)) <> " crossing pairs, " <> tshow (length (Panel.unorderedContacts report)) <> " unresolved overlaps, " <> tshow (length (Panel.reversedOrders report)) <> " reversed orders and " <> tshow (length (Panel.uncheckedOrders report)) <> " uncheckable orders; history was not changed"
+  explain (MotionGeometry err) = explain err
+  explain MotionStartMismatch = "hinge motion must start at the last accepted contact pose; history was not changed"
+  explain MotionEndMismatch = "the proposed contact pose does not match the hinge motion's material and endpoint within 1e-12 model units; history was not changed"
+  explain (UnsafeContactMotion report) = case Sweep.sweepOutcome report of
+    Sweep.SweepCollision t pairs -> "hinge motion meets paper at progress " <> num t <> " between triangle pairs " <> tshow pairs <> "; history was not changed"
+    Sweep.SweepUnresolved a b pairs -> "hinge motion could not clear progress " <> num a <> " to " <> num b <> " between triangle pairs " <> tshow pairs <> "; history was not changed"
+    Sweep.SweepClear -> "hinge motion is clear"
 
 pairName :: FaceId -> FaceId -> Text
 pairName a b = "panels " <> tshow a <> " and " <> tshow b
@@ -112,7 +131,7 @@ discoverReference clearance axis owners mesh = do
   candidates <- first DiscoveryGeometry (overlapCandidates axis owners mesh)
   orders <- inferOrders candidates
   model <- first DiscoveryGeometry (prepareContact clearance axis orders owners mesh)
-  pure (ReferenceContact orders candidates axis owners model clearance [ContactObservation 0 orders candidates])
+  pure (ReferenceContact orders candidates axis owners model clearance [ContactObservation 0 orders candidates Nothing] mesh)
 
 -- | Accept one sampled approach pose, preserving every earlier relationship
 -- even after the panels separate. A new projected overlap must still be
@@ -121,7 +140,29 @@ discoverReference clearance axis owners mesh = do
 -- No positions or constraints are changed on failure. This validates sampled
 -- poses ONLY: a crossing and separation between samples can go undetected.
 observeContactPose :: ReferenceContact -> MaterialMesh -> Either DiscoveryError ReferenceContact
-observeContactPose reference mesh = do
+observeContactPose = observePose Nothing
+
+-- | Check a specified rigid motion before accepting its endpoint. The start
+-- must be the last accepted pose; the separately angle-derived endpoint must
+-- agree with the rotation within roundoff (1e-12 unit-sheet coordinates).
+-- Collision and unresolved results add neither orders nor audit entries.
+-- The correction solver still has no motion model and never calls this API.
+observeContactSweep :: Sweep.SweepSettings -> ReferenceContact -> Sweep.HingeSweep -> MaterialMesh -> Either DiscoveryError ReferenceContact
+observeContactSweep settings reference motion endpoint = do
+  unless (Sweep.sweepStart motion == lastObservedMesh reference) (Left MotionStartMismatch)
+  derived <- first MotionGeometry (Sweep.sweepMeshAt motion 1)
+  unless
+    ( triangles derived == triangles endpoint
+        && map sampleMaterial (samples derived) == map sampleMaterial (samples endpoint)
+        && and (zipWith (\a b -> norm (position a ^-^ position b) <= 1e-12) (samples derived) (samples endpoint))
+    )
+    (Left MotionEndMismatch)
+  report <- first MotionGeometry (Sweep.checkSweep settings motion)
+  unless (Sweep.sweepOutcome report == Sweep.SweepClear) (Left (UnsafeContactMotion report))
+  observePose (Just report) reference endpoint
+
+observePose :: Maybe Sweep.SweepCheck -> ReferenceContact -> MaterialMesh -> Either DiscoveryError ReferenceContact
+observePose motion reference mesh = do
   -- This also validates unchanged material ids before looking for new pairs.
   oldRows <- first DiscoveryGeometry (orderedContacts (referenceModel reference) mesh)
   checkGaps oldRows
@@ -133,8 +174,8 @@ observeContactPose reference mesh = do
   first DiscoveryGeometry (orderedContacts model mesh) >>= checkGaps
   report <- first ObservationGeometry (Panel.checkTriangleContact axis orders owners mesh)
   unless (Panel.contactPassed report) (Left (UnsafeContactObservation report))
-  let observation = ContactObservation (length (savedObservations reference)) additions candidates
-  pure reference {savedOrders = orders, referenceModel = model, savedObservations = savedObservations reference ++ [observation]}
+  let observation = ContactObservation (length (savedObservations reference)) additions candidates motion
+  pure reference {savedOrders = orders, referenceModel = model, savedObservations = savedObservations reference ++ [observation], lastObservedMesh = mesh}
   where
     axis = referenceAxis reference
     owners = referenceOwners reference

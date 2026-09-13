@@ -224,8 +224,11 @@ shapes; a new pair whose order the reference cannot establish is refused.
 **Opposing flaps · first contact** adds a **Folding state** selector for a
 supplied approach from 145° / 105° to 145° / 121°. It learns the previously absent
 flap relationship at the first sampled overlap, then freezes that history for
-correction. Failed observations add no relationships. This does not detect
-crossings between samples or plan the approach automatically.
+correction. Each of its four rigid crease rotations is checked over its angular
+interval before accepting the next pose. **Rejected route · full turn** shows
+a crossing between valid endpoints. Failed or unresolved motions add no
+relationships. This does not check arbitrary bending or the numerical
+correction trajectory, or plan an approach automatically.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

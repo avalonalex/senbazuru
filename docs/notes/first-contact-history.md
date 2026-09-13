@@ -51,13 +51,15 @@ retain their geometry and measurements. Tests also cover opposite approaches,
 reversed re-contact, invalid material, insufficient clearance and rejected
 observations that leave the history unchanged.
 
-These are checks of sampled poses. Paper could cross and separate between two
-samples without either endpoint revealing it. We do not interpolate positions
+The raw observation API checks sampled poses. Paper could cross and separate
+between two samples without either endpoint revealing it. We do not interpolate positions
 or claim a collision-free path: approach positions come from crease angles,
 and numerical correction checkpoints are not folding instructions. Continuous
-collision checking, automatic approach selection and correction within a bent
-source panel remain open. The existing `1e-6` numerical clearance between
-unjoined panels remains separate from physical thickness. This increment is
+collision checking for arbitrary motion, automatic approach selection and
+correction within a bent source panel remain open. A subsequent
+[hinge-sweep guard](hinge-sweep-contact.md) now checks the four specified rigid
+rotations in this example before accepting their endpoints. The existing `1e-6`
+numerical clearance between unjoined panels remains separate from physical thickness. This increment is
 [#158](https://github.com/avalonalex/senbazuru/issues/158), following
 [reference discovery](reference-contact-discovery.md) and
 [ordered correction](ordered-flap-contact.md).

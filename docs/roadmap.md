@@ -107,9 +107,11 @@ work.
   for declared directional panel orders. [Reference-pose discovery](notes/reference-contact-discovery.md)
   can now learn those relationships where starting projections overlap clearly.
   [Sampled approach history](notes/first-contact-history.md) extends those orders
-  when initially unrelated panels first overlap while separated. Calibrating
-  stiffness, continuous collision checking, automatic motion planning and
-  correction of general self-contact remain open.
+  when initially unrelated panels first overlap while separated. The
+  [hinge-sweep check](notes/hinge-sweep-contact.md) now checks specified rigid
+  rotations between those poses and rejects an interior crossing despite valid
+  endpoints. Calibrating stiffness, general continuous collision checking,
+  automatic motion planning and correction of general self-contact remain open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.
@@ -179,8 +181,10 @@ stacking and read the assignment off it. That drops the hardest precondition.
    separated reference and guards later overlaps.
    [#158](https://github.com/avalonalex/senbazuru/issues/158) adds newly encountered
    pairs during a supplied sampled approach, retaining their order afterwards.
-   Next handle crossings between samples and contact within bent panels before
-   general opening mechanics.
+   [#160](https://github.com/avalonalex/senbazuru/issues/160) checks the supplied
+   rigid rotations between those samples. Next extend motion checks beyond a
+   fixed hinge and handle contact within bent panels before general opening
+   mechanics.
    Physical thickness is not a prerequisite for this mechanics model.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
