@@ -66,6 +66,8 @@ endpoint. Touching is permitted for this zero-thickness model.
 
 The original material lengths and area, shared vertices and achieved crease
 angles are checked for both stages. Display-depth ties reuse those checked
-orders and leave exported material untouched. This completes the two-petal
-study; it does not certify continuous self-collision freedom within a petal,
-model paper thickness, or provide a general folding-sequence solver.
+orders and leave exported material untouched. These sampled checks do not
+certify motion between states. The separate [complete-route certificate](checked-bird-base.md)
+now checks both petals and their final press continuously, retaining the
+accepted material and order at both joins. Neither study models paper thickness
+or provides a general folding-sequence solver.

@@ -41,6 +41,12 @@ spec = describe "continuously checked bird petal" $ do
 
   it "certifies all pairs, edge lengths and both flat endpoint orders over one whole interval" $
     petalCheck motion `shouldBe` PetalCertificate 1 120 71 28
+  it "certifies the held first petal while the second moves, then both pressing" $ do
+    certifySecondPetal True orders `shouldSatisfy` isRight
+    certifyPress True orders `shouldSatisfy` isRight
+  it "refuses the second petal moving to the front side of the packet" $ do
+    certifySecondPetal False orders `shouldSatisfy` isLeft
+    certifyPress False orders `shouldSatisfy` isLeft
   it "rejects a length-preserving route below the packet" $
     certifyPetal False orders `shouldSatisfy` isLeft
   it "rejects missing and cyclic orders rather than treating coincidence as clear" $ do
