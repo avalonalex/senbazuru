@@ -14,7 +14,6 @@ import Data.List (sort, tails)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import FoldMaterial
-import PanelContact
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -25,6 +24,7 @@ import Senbazuru.Geometry.Polygon (clipConvex, signedArea)
 import Senbazuru.Geometry.Rigid (applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.FlatFold
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.Stacking (defaultBudget, solveStacking, stackingSpace, stateCount)

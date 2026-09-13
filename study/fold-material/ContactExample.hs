@@ -8,16 +8,16 @@
 module ContactExample (ContactExample (..), ExampleError (..), opposingFlaps, opposingFlapsAt, ApproachPose (..), opposingApproach, rightFlapSweep) where
 
 import ContactDiscovery qualified as Discovery
+import ContactSpec
 import Data.Bifunctor (first)
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
 import FoldBending
-import HingeSweep qualified as Sweep
-import PanelContact
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), Frame (..), VertexId (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.HingeSweep qualified as Sweep
 import Senbazuru.Origami.Surface qualified as Paper
 import StudyCase
 import SurfaceContact qualified as Contact

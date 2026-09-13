@@ -47,6 +47,7 @@ read the Haddock module headers; for the domain, start with
 | [crease-identity-through-refinement.md](crease-identity-through-refinement.md) | Source crease ids survive subdivision; current fold angles and preferred rest angles are separate inputs |
 | [first-contact-history.md](first-contact-history.md) | Learn a new panel order during a sampled approach, then retain it through separation and correction |
 | [hinge-sweep-contact.md](hinge-sweep-contact.md) | Check a specified rigid flap rotation between poses; valid endpoints can conceal an interior crossing |
+| [checked-flap-operation.md](checked-flap-operation.md) | Check a whole turn before a library flap operation supplies angle-derived surfaces to SVG and glTF |
 | [checking-numerical-corrections.md](checking-numerical-corrections.md) | Bound contact throughout numerical vertex corrections, and expose a solver that stalls when unsafe shortcuts are refused |
 | [rejected-bending-trials.md](rejected-bending-trials.md) | Distinguish energy, history and motion refusals; stop identical failed searches and expose a discontinuous layer penalty |
 | [directional-contact-distance.md](directional-contact-distance.md) | Resist a retained layer reversal before projected overlap, restoring the closing strip's material lengths with every accepted path checked |

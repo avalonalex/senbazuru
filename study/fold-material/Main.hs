@@ -16,10 +16,10 @@ import Data.Ord (Down (..))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
+import FlapGallery (writeFlapGallery)
 import FoldContact
 import FoldMaterial
 import FoldRelaxation
-import PanelContact
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), solid)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
@@ -29,6 +29,7 @@ import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Render.Camera (View (..), basisFrom, bottomUp, depth, isometric, project)
 import Senbazuru.Render.Steps (stepPage)
@@ -50,7 +51,8 @@ main = do
     ["--bending", destination] -> writeBendingStudy destination
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases] OUTPUT_DIRECTORY (from repository root)"
+    ["--flap", destination] -> writeFlapGallery destination
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -73,6 +75,7 @@ generate destination = do
   writeBirdSequence destination
   writeBasicBases destination
   writeBendingStudy destination
+  writeFlapGallery destination
   BL.writeFile (destination </> "cases.json") (encode catalog)
   BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
   BL.writeFile (destination </> "relaxation.json") (encode progress)

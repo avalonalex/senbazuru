@@ -50,10 +50,10 @@ import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
 import Data.Text (Text)
 import FoldContact (ContactRow (..), contactTolerance)
-import PanelContact qualified as Panel
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Geometry.V3 (V3, cross)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact qualified as Panel
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 import SurfaceContact
 

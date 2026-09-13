@@ -38,6 +38,13 @@ those positions and measurements.
 
 ## Crease preferences and panel bending
 
+For the library's separate fixed-crease operation, see
+[One checked flap](../../docs/usage.md#checked-flap-motion):
+`stack run senbazuru-material-study -- --flap build/fold-material` writes
+`flap.html`, SVG steps, FOLD states, GLBs and interval-check reports. It checks
+angle-defined motion; the numerical bending corrections below serve a
+different purpose.
+
 ```bash
 stack run senbazuru-material-study -- --bending build/fold-material
 ```
@@ -241,7 +248,7 @@ face numbering or the viewer's camera cannot change which panel a rule means.
 Every material panel must be named exactly once; unknown names and cyclic orders
 are rejected.
 
-`StudyCase.buildCasePose` runs `PanelContact` on the original rigid polygons,
+`StudyCase.buildCasePose` runs `Origami.Contact` on the original rigid polygons,
 independently of mesh subdivision. All pairs are checked for crossings in 3D,
 including upright flaps. Declared order is checked wherever the panels' projections
 overlap along the ordering direction. Touching is allowed; a coplanar interior

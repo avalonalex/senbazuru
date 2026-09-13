@@ -62,7 +62,7 @@ One direction of flow, no cycles:
      |
      |    Senbazuru.Render.Gltf       the one backend that does not go through
      |      |                         Diagram, because Diagram is 2D: faces in
-     |      v                         space, layers lifted apart, two-sided paper
+     |      v                         space, shared positions, two-sided paper
      |    .glb bytes
      v
  Diagram                             Senbazuru.Diagram
@@ -109,6 +109,9 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form, and the rigid motion that placed each face. |
+| `Senbazuru.Origami.Flap` | One crease and its moving side → a checked rigid turn → angle-derived surfaces with the stationary side fixed. Refuses graph loops requiring other creases to move. |
+| `Senbazuru.Origami.HingeSweep` | Bounds a fixed-axis rotation over angular intervals; returns clear, contact witness or unresolved. Shared by the library flap operation and the study. |
+| `Senbazuru.Origami.Contact` | Independent zero-thickness panel/triangle contact diagnostics and directional order checks, before any drawing or solver force. |
 | `Senbazuru.Origami.Surface` | Shared material surface with original-sheet coordinates when known, current positions, crease/panel identities, coplanar orders, directional layer requirements and optional physical thickness. Owns the study's mesh types and shared midpoint refinement. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. Reads orders; never computes them. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. Also `layerOrderFor`, the one policy for *which* orders a frame gets — its own, or solved, or none — shared by the SVG and 3D backends. |
@@ -186,6 +189,16 @@ why each, is in [AGENTS.md](../AGENTS.md#testing).
 
 ## Material study
 
+`Origami.Flap` is the first library operation using the motion checks. Its
+input is a `Folded` result and crease/face ids from the returned cut pattern.
+Removing one crease identifies the moving component; an alternate connection
+is a refusal requiring coupled angles. `checkFlap` uses `Origami.HingeSweep`
+on a normalized mesh and returns an opaque accepted motion. `flapAt` re-folds
+the requested angle state, aligns its stationary face and checks that the
+result agrees with the hinge path before handing it to the renderers.
+`FlapGallery` is only an executable driver; the library imports no study code.
+Flat touching endpoints remain unsupported. See [the operation note](notes/checked-flap-operation.md).
+
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the
 experimental formulas and solvers remain outside the library. It generates
@@ -199,7 +212,7 @@ energies with staged numerical penalties; `BendingGallery` exports a separate
 comparison page and measurements. `refineSurfaceWithEdges` preserves source edge
 ids through subdivision, and `buildSurfaceHinges` attaches explicit signed
 rest-angle controls to them. Diagonal and kite controls use `relaxHinges`
-without contact forces; `PanelContact.checkTriangleContact` independently
+without contact forces; `Origami.Contact.checkTriangleContact` independently
 checks the resulting triangles and source-panel orders. `SurfaceContact` adds
 separation residuals and moving-overlap derivatives for supplied directional
 orders; `relaxSurfaceContact` couples them to the same length/angular solve.
@@ -212,7 +225,7 @@ uses it in the same numerical solve. Ambiguous references and new unrelated
 pairs are refused during correction. `observeContactPose` can extend that
 history at a supplied approach pose after checking old orders, new encounters
 and independent triangle contact. It records additions transactionally; solver
-trials cannot change them. `HingeSweep` bounds triangle projections over a
+trials cannot change them. The shared `Origami.HingeSweep` bounds triangle projections over a
 specified fixed-axis rotation, subdividing unresolved angular intervals and
 refusing exhausted work limits. `observeContactSweep` checks that motion before
 accepting its endpoint; `ContactExample.opposingApproach` uses it for each
@@ -225,7 +238,7 @@ requirements without changing their source-panel ownership. `SelfContactExample`
 uses these on the two ends of one curled panel. `FoldBending.buildPanelHinges`
 supplies passive flatness; separate `BendControl` springs impose its curl without
 creating creases. The same `relaxSurfaceContact` solve corrects its endpoint,
-and `PanelContact.checkLocalTriangleContact` independently checks every pair,
+and `Origami.Contact.checkLocalTriangleContact` independently checks every pair,
 including neighbors. See [local panel contact](notes/local-panel-contact.md).
 `LocalContactDiscovery` scans nearby triangles within panels, extends partners
 across connected flat reference patches, and freezes their order for
@@ -266,7 +279,7 @@ a physically valid model.
 `refineSurface` builds its shared triangle mesh. The gallery's JSON manifest is read
 by the study executable; it is not a new library input format. Panel ids travel
 with the mesh so the viewer can split lighting at arbitrary crease directions.
-These cases do not use the packet-specific contact solver. `PanelContact` checks
+These cases do not use the packet-specific contact solver. `Origami.Contact` checks
 their whole convex panels for 3D crossings and for declared above/below order.
 `StudyCase.buildCasePose` resolves panel names from points on the original sheet,
 so the declarations survive face renumbering. A case may also anchor a stationary

@@ -11,11 +11,11 @@ import FoldContact (ContactRow (..))
 import FoldMaterial (componentCount, meshEdges)
 import FoldRelaxation
 import LocalContactDiscovery
-import PanelContact (checkLocalTriangleContact, contactPassed)
 import SelfContactExample
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact (checkLocalTriangleContact, contactPassed)
 import Senbazuru.Origami.Surface
 import SurfaceContact qualified as Contact
 import Test.Hspec hiding (before)

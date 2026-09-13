@@ -19,13 +19,13 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (sort, tails)
 import Data.Text qualified as T
 import FoldMaterial
-import PanelContact
 import Senbazuru.Fold.Load (loadFile, loadFoldFile)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder (..), Frame (..), Stacking (..), VertexId (..), keyFrame)
 import Senbazuru.Geometry.Rigid (applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.FlatFold
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.Stacking (defaultBudget, solveStacking, stackingSpace, stateCount)

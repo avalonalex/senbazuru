@@ -504,6 +504,20 @@ curved panels need further work.
 It preserves cuts whose sides already have distinct vertex ids and refuses
 refinement across an unsplit cut edge.
 
+The first library operation using the motion checks is `Origami.Flap`.
+Select one crease and a face on the side to move; the operation finds every
+face belonging to that flap. It checks the entire rigid turn before supplying
+angle-derived surfaces for rendering. The [checked flap demo](usage.md#checked-flap-motion)
+shows a single fold from 15° to 165° and a short move between two opposing
+flaps. A full turn of the latter returns to the same endpoint but is refused
+because it crosses the other flap on the way.
+
+Flat touching endpoints and creases that need other angles to change remain
+refused. Each exported pose retains material identities and is re-folded to
+check shared vertices and achieved angles; it is never interpolated between
+saved positions. The [design note](notes/checked-flap-operation.md) explains
+how the checked motion stays consistent with what the renderers receive.
+
 ## What it creases
 
 Every other command turns a file into a picture. This one turns a file into

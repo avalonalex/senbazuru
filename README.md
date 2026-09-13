@@ -221,11 +221,12 @@ with every open issue tiered by how hard it is.
    [round-trips](docs/notes/round-trips.md)
 3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**
    Specific square/waterbomb collapses, fish folds and bird petals already have
-   checked intermediate states. Next, connect the study's fixed-hinge motion
-   check to [one authored flap rotation](https://github.com/avalonalex/senbazuru/issues/54),
-   checking [contact throughout the move](https://github.com/avalonalex/senbazuru/issues/61)
-   before producing SVG steps and glTF from the same surface. Motion where
-   several creases must move together remains open. Follow with
+   checked intermediate states. The library now checks
+   [one rigid flap rotation](docs/notes/checked-flap-operation.md) before
+   producing SVG steps and glTF from the same surface. Flat touching endpoints
+   and motion where several creases must move together remain open under
+   [#54](https://github.com/avalonalex/senbazuru/issues/54) and
+   [#61](https://github.com/avalonalex/senbazuru/issues/61). Follow with
    [controlled body opening](https://github.com/avalonalex/senbazuru/issues/106),
    adding panel bending where the rigid model cannot reach the intended form.
    A mesh supplies the geometry; it does not choose the motion by itself.

@@ -42,12 +42,12 @@ import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
 import FoldContact (ContactRow (..), contactTolerance)
-import HingeSweep qualified as Sweep
-import PanelContact qualified as Panel
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Types (FaceId)
 import Senbazuru.Geometry.V3 (V3)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact qualified as Panel
+import Senbazuru.Origami.HingeSweep qualified as Sweep
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 import SurfaceContact
 

@@ -36,6 +36,7 @@ module StudyCase
   )
 where
 
+import ContactSpec
 import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), withObject, (.:), (.:?))
 import Data.Bifunctor (first)
@@ -47,7 +48,6 @@ import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import FoldMaterial
-import PanelContact
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (Crease (..), Face (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), emptyFrame)
@@ -56,6 +56,7 @@ import Senbazuru.Geometry.Polygon (clipConvex, signedArea, strictlyInside)
 import Senbazuru.Geometry.Rigid (inverse)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
 import Senbazuru.Origami.Surface qualified as Paper
 

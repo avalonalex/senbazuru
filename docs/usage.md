@@ -210,6 +210,39 @@ edge still shared by two panels rather than welding its new midpoints.
 survives an explicit material export/reload. Physical thickness and directional
 requirements are not yet serialised to FOLD.
 
+### Checked flap motion
+
+`Origami.Flap.prepareFlap` takes a crease id, its moving incident face, signed
+travel in degrees and the result of `foldFrameWith`. Use ids from that result's
+`foldedPattern`, which includes any vertices/faces created by cutting crossings.
+`checkFlap defaultSweepSettings` returns an opaque `CheckedFlap` only if the
+whole rotation clears the interval contact check. `flapAt checked progress`
+supplies a shared surface for progress from 0 to 1, derived from crease angles
+with the stationary side fixed. SVG and glTF consume that same surface.
+
+Run the reproducible driver from the repository root:
+
+```bash
+stack run senbazuru-material-study -- --flap build/fold-material
+npm install --prefix build/fold-material/checked-flap --no-audit --no-fund three@0.186.0
+python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
+```
+
+Open [the checked flap demo](http://127.0.0.1:8000/flap.html). Its SVG/FOLD files
+need no JavaScript dependencies; the 3D viewer uses the local Three.js install.
+`checked-flap/` contains two SVG/FOLD sequences, eight GLBs with both scenes,
+and `checks.json` with interval counts, length errors and a rejected full turn.
+
+This supports one crease separating a rigid flap from stationary paper, with
+convex planar panels. It refuses flat touching endpoints, creases requiring
+other angles to change, and exhausted interval work. The check uses
+zero-thickness geometry normalized to sheet scale, with floating-point bounds
+and a numerical guard. A contact parameter is a witness, not the first impact
+time. There is no general flap CLI verb or route planning yet. See
+[the operation note](notes/checked-flap-operation.md).
+
+### Experimental bending
+
 For the experimental crease/panel mechanics, run
 `stack run senbazuru-material-study -- --bending build/fold-material` and open
 `build/fold-material/bending.html`. This compares single/double packets and

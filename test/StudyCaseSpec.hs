@@ -1,19 +1,20 @@
 -- | Geometry assertions independent of the viewer and of its chosen camera.
 module StudyCaseSpec (spec) where
 
+import ContactSpec
 import Control.Monad (forM_, unless)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy qualified as BL
 import Data.Either (isLeft)
 import Data.List (find)
 import FoldMaterial
-import PanelContact
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Surface qualified as Paper
 import StudyCase
 import Test.Hspec

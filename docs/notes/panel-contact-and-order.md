@@ -37,4 +37,4 @@ no interior crossings. The distance tolerance is `1e-7` on the unit sheet.
 These reports inspect individual rigid, zero-thickness states. They neither
 correct a failed pose nor prove the motion between states safe; those remain
 separate work. The implementation and assumptions live in
-[PanelContact](../../study/fold-material/PanelContact.hs).
+[Origami.Contact](../../src/Senbazuru/Origami/Contact.hs).

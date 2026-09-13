@@ -16,11 +16,11 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either (isLeft)
 import Data.List (find)
 import FoldMaterial
-import PanelContact
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (Assignment (..), Frame (..), keyFrame)
 import Senbazuru.Geometry.V3 (V3)
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact
 import StudyCase
 import Test.Hspec
 import Test.QuickCheck

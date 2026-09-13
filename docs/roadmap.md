@@ -4,8 +4,9 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-13**, after
-[#173](https://github.com/avalonalex/senbazuru/pull/173). The
+snapshot and will drift, so it carries a date: **as of 2026-09-13**, through
+the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
+and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -17,7 +18,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared material surfaces reach SVG and two glTF scenes; checked bird and frog states render as SVG sequences |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,221 examples pass in the cold build for #173, including material and contact checks |
+| Tests | 1,235 examples pass in the cold build for the checked flap operation, including material and contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -66,7 +67,10 @@ pieces of work.
    The studies now have verified intermediate square/waterbomb collapse,
    rabbit-ear and bird-petal states. The contact study checks entire intervals
    for two specified kinds of motion, described below. Connecting the
-   fixed-hinge check to one authored flap rotation is the next bounded step.
+   fixed-hinge check to one authored flap rotation is now implemented in
+   [#175](https://github.com/avalonalex/senbazuru/issues/175), with a single-fold
+   SVG/glTF demo and an opposing-flap collision witness. Flat touching
+   endpoints remain refused.
    General flap/wing authoring, a general angle solver and collision checking
    along motion where several creases must move together remain open
    ([#54](https://github.com/avalonalex/senbazuru/issues/54),
@@ -96,8 +100,9 @@ pieces of work.
   use exact rational bounds for straight numerical vertex paths. Both refuse
   unresolved intervals and check pairs sharing material vertices rather than
   skipping all neighbours. Straight numerical paths can stretch the sheet and
-  are not folding instructions. These checks have not yet become a production
-  flap operation or checked the intervals of the actual bird sequence. They
+  are not folding instructions. The fixed-hinge check now backs the library's
+  [flap operation](notes/checked-flap-operation.md), but has not checked the
+  intervals of the actual bird sequence. The checkers
   report a colliding pose or an unresolved interval, not a guaranteed first
   impact time; #61 remains open.
 - **[#60](https://github.com/avalonalex/senbazuru/issues/60) the vocabulary, and [#97](https://github.com/avalonalex/senbazuru/issues/97) the scheme format.** Hard as
@@ -159,8 +164,9 @@ pieces of work.
   contact check. Where several moving creases meet at a vertex, their angles
   must change together to keep the paper joined; the four-crease case is
   [#52](https://github.com/avalonalex/senbazuru/issues/52). Production SVG
-  handles open planar panels, but the reusable authoring operation and the
-  solve for compatible crease angles remain to be built.
+  handles open planar panels. The first reusable operation now handles an
+  isolated fixed crease; flat touching endpoints and the solve for compatible
+  crease angles remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
   `Origami.Step` and scoping to the step are the work. Captions have no font
@@ -203,19 +209,17 @@ stacking and read the assignment off it. That drops the hardest precondition.
 
 ## An order
 
-The shared-surface milestone #146 is complete. After the contact study through
-#173, the next increment should put one checked motion into ordinary use.
+The shared-surface milestone #146 is complete. The contact study through #173
+now supplies one checked library motion in #175.
 
 1. **One checked flap rotation**, a bounded part of
    [#54](https://github.com/avalonalex/senbazuru/issues/54) and
-   [#61](https://github.com/avalonalex/senbazuru/issues/61). Start with a single
-   fold or an isolated kite flap about one fixed crease. Define poses by the
-   crease angle, retain material identities, and check lengths, shared vertices
-   and achieved angles. Exercise a safe route and a deliberately colliding
-   route through the interval checker, preserving its collision or unresolved
-   result. Produce ordinary SVG steps and glTF from the same surface. This
-   connects the existing study to a reusable library operation; it does not
-   finish the coupled-angle solver or certify the full bird folding path.
+   [#61](https://github.com/avalonalex/senbazuru/issues/61). The first operation
+   checks lengths, shared vertices and achieved angles, rejects a crossing
+   route, and supplies SVG steps and glTF from the accepted surfaces. Next
+   handle lawful flat touching endpoints without overlooking a crossing or
+   weakening unresolved-interval refusals. The coupled-angle solver and the
+   full bird folding path remain later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what
    the next roadmap edit says. File the fixes it finds as small fixtures.
 3. [#96](https://github.com/avalonalex/senbazuru/issues/96) then [#97](https://github.com/avalonalex/senbazuru/issues/97): read what the 2026 papers use as their

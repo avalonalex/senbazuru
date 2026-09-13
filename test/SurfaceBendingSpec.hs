@@ -2,6 +2,7 @@
 -- drawing. Known rigid equilibria independently test its signed controls.
 module SurfaceBendingSpec (spec) where
 
+import ContactSpec
 import Control.Monad (forM_)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
@@ -10,11 +11,11 @@ import Data.Map.Strict qualified as M
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
-import PanelContact
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FoldFile (..), Frame (..), VertexId (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Folding (foldFrameWith)
 import Senbazuru.Origami.Surface
 import StudyCase

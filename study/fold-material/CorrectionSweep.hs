@@ -36,11 +36,11 @@ import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', tails)
-import PanelContact qualified as Panel
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact qualified as Panel
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), Triangle)
 
 -- Polynomials use increasing powers of local interval progress. Three scalar

@@ -10,11 +10,11 @@ import FoldBending (Hinge (..), HingeRole (..), hingeAngle)
 import FoldContact (ContactRow (..), contactTolerance)
 import FoldMaterial (componentCount)
 import FoldRelaxation
-import PanelContact (checkTriangleContact, contactPassed)
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact (checkTriangleContact, contactPassed)
 import Senbazuru.Origami.Surface
 import SurfaceContact qualified as Contact
 import Test.Hspec
