@@ -137,10 +137,21 @@ The JSON records each accepted encounter's iteration, new orders, measured gap
 ranges and unchanged material mesh. Earlier checkpoints carry only the orders
 known at their iteration. See the [history note](../../docs/notes/growing-local-contact-history.md).
 
+**Contact between numerical poses** adds four **Correction case** views:
+the safe endpoints of a diagonal-fold shortcut, its interior collision witness,
+the closing strip with strict motion checks, and a safe opening control. The
+new solver mode checks whole straight correction paths before accepting a pose
+or learning contact. Exact separation bounds also cover shared neighbors and
+triangle collapse; exhausted checks refuse the trial. The opening settles. The
+closing control reports its measured outcome; it stalls with material error on
+the recorded macOS run but can settle on another numerical platform. Its
+JSON includes every accepted correction's endpoints and interval report.
+See [checking numerical corrections](../../docs/notes/checking-numerical-corrections.md).
+
 Physical thickness, paper calibration, automatic approach selection and general
-continuous collision checking remain open.
-Raw sampled observations and numerical correction checkpoints still have no
-motion check. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
+continuous collision checking remain open. Raw sampled observations and the
+original numerical modes still have no motion check. The new mode checks its
+specified numerical paths; it does not preserve lengths throughout them. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).
 
 ## Folding states

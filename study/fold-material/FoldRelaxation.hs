@@ -28,6 +28,12 @@
 -- Known negative gaps remain penalty residuals during early stages; new orders
 -- must have positive clearance before entering the objective. The typed policy
 -- threads history through all stages without mutating it during trial evaluation.
+-- 'relaxSweptLocalHistory' additionally requires a full-interval separation
+-- certificate for each accepted straight numerical correction. It can stall
+-- where endpoint penalties took shortcuts through paper; refusing such a path
+-- does not supply a better search direction. See
+-- docs/notes/checking-numerical-corrections.md for the closing comparison and
+-- a settled opening control. These numerical paths can still stretch triangles.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -42,6 +48,9 @@ module FoldRelaxation
     relaxDiscoveredContact,
     relaxLocalContact,
     relaxLocalHistory,
+    relaxSweptLocalHistory,
+    SweptRelaxation (..),
+    CorrectionStep (..),
     principalStrains,
     maxLengthError,
   )
@@ -49,6 +58,7 @@ where
 
 import ContactDiscovery qualified as Discovery
 import Control.Monad (foldM)
+import CorrectionSweep qualified as Motion
 import Data.Bifunctor (second)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
@@ -57,7 +67,7 @@ import FoldBending
 import FoldContact
 import FoldMaterial
 import LocalContactDiscovery qualified as Local
-import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import SurfaceContact qualified as Contact
@@ -84,9 +94,17 @@ data RelaxError
   | SurfaceContactFailure !Contact.ContactError
   | ContactDiscoveryFailure !Discovery.DiscoveryError
   | LocalDiscoveryFailure !Local.LocalDiscoveryError
+  | CorrectionFailure !Motion.CorrectionError
+  | UnsafeCorrection !Motion.CorrectionCheck
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
+  explain (CorrectionFailure err) = explain err
+  explain (UnsafeCorrection result) = case Motion.correctionOutcome result of
+    Motion.CorrectionCollision progress pairs -> "numerical correction meets paper at progress " <> num progress <> "; triangle pairs " <> tshow pairs
+    Motion.CorrectionDegenerate progress faces -> "numerical correction collapses triangles " <> tshow faces <> " at progress " <> num progress
+    Motion.CorrectionUnresolved lo hi pairs faces -> "numerical correction could not establish separation between progress " <> num lo <> " and " <> num hi <> "; triangle pairs " <> tshow pairs <> ", possible collapsing triangles " <> tshow faces
+    Motion.CorrectionClear -> "numerical correction was refused despite a clear motion report"
   explain (BendingFailure err) = explain err
   explain (SurfaceContactFailure err) = explain err
   explain (ContactDiscoveryFailure err) = explain err
@@ -196,22 +214,61 @@ data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.Ord
 relaxLocalHistory :: Settings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError (Relaxation, Local.LocalReference)
 relaxLocalHistory = relaxAngularWith localHistoryPolicy
 
+-- | Audit only accepted numerical corrections. Both endpoint meshes retain
+-- the original material; their intervening straight paths may stretch it.
+data CorrectionStep = CorrectionStep
+  { correctionIteration :: !Int,
+    correctionStart :: !MaterialMesh,
+    correctionFinish :: !MaterialMesh,
+    correctionCheck :: !Motion.CorrectionCheck
+  }
+  deriving stock (Eq, Show)
+
+data SweptRelaxation = SweptRelaxation
+  { sweptRelaxation :: !Relaxation,
+    sweptReference :: !Local.LocalReference,
+    sweptSteps :: ![CorrectionStep]
+  }
+  deriving stock (Eq, Show)
+
+-- | A separate strict mode: no collision or unresolved path can contribute a
+-- new pose or contact history. This may stall when endpoint-only penalties
+-- previously stepped through paper; exhaustion still means unconverged.
+relaxSweptLocalHistory :: Settings -> Motion.CorrectionSettings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError SweptRelaxation
+relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
+  _ <- clearMotion mesh mesh
+  (result, (learned, steps)) <- relaxAngularWith policy settings hinges (reference, []) mesh
+  pure (SweptRelaxation result learned steps)
+  where
+    clearMotion start finish = do
+      motion <- either (Left . CorrectionFailure) Right (Motion.prepareCorrection start finish)
+      report <- either (Left . CorrectionFailure) Right (Motion.checkCorrection motionSettings motion)
+      case Motion.correctionOutcome report of
+        Motion.CorrectionClear -> Right report
+        _ -> Left (UnsafeCorrection report)
+    policy = ContactPolicy measure propose
+    measure (learned, _) current = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts learned current)
+    propose iteration (learned, steps) start finish = do
+      report <- clearMotion start finish
+      next <- either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration learned finish)
+      pure (next, steps ++ [CorrectionStep iteration start finish report])
+
 -- The solver owns acceptance, while a policy owns contact measurements and
 -- provisional history. Parameterising the state keeps the history result typed:
 -- a fixed mode returns that mode, and growing local contact returns its reference.
 data ContactPolicy state = ContactPolicy
   { measureContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
-    proposeContacts :: Int -> state -> MaterialMesh -> Either RelaxError state
+    proposeContacts :: Int -> state -> MaterialMesh -> MaterialMesh -> Either RelaxError state
   }
 
 localHistoryPolicy :: ContactPolicy Local.LocalReference
 localHistoryPolicy = ContactPolicy measure propose
   where
     measure reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference mesh)
-    propose iteration reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration reference mesh)
+    propose iteration reference _ mesh = either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration reference mesh)
 
 fixedPolicy :: ContactPolicy ContactMode
-fixedPolicy = ContactPolicy measure (\_ state _ -> Right state)
+fixedPolicy = ContactPolicy measure (\_ state _ _ -> Right state)
   where
     measure packet mesh = case packet of
       NoContact -> Right []
@@ -343,10 +400,13 @@ relaxWithPolicy policy offset initial bending settings original = do
           before = objective state current
           attempt scale remaining =
             let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
-                proposed = proposeContacts policy (offset + count + 1) state (meshFrom candidate)
-             in case proposed of
-                  Right candidateState | objective candidateState candidate < before -> (candidate, candidateState)
-                  _ -> if remaining <= (0 :: Int) then (current, state) else attempt (scale / 2) (remaining - 1)
+                proposed = proposeContacts policy (offset + count + 1) state (meshFrom current) (meshFrom candidate)
+                retry = if remaining <= (0 :: Int) then (current, state) else attempt (scale / 2) (remaining - 1)
+             in if objective state candidate >= before
+                  then retry
+                  else case proposed of
+                    Right candidateState | objective candidateState candidate < before -> (candidate, candidateState)
+                    _ -> retry
           (next, nextState) = attempt 1 30
       Right (next, nextState, linearSolved && finite before && maximum (0 : map norm (IM.elems correction)) <= 1e-7)
     edgeRow current (i, j, rest) = do
