@@ -200,8 +200,11 @@ result agrees with the hinge path before handing it to the renderers.
 `HingeSweep.checkSweepWithFlatEndpoints` returns one-sided endpoint contacts
 as triangle ids and signs against stationary normals. `Flap` maps them to
 source-face orders and checks supplied initial orders on each contact plane.
-The strict `checkSweep` entry point retains the study's existing contact policy.
-Persistent touching stacks remain unsupported. See [the operation note](notes/checked-flap-operation.md).
+`checkSweepWithRigidContacts` also verifies explicitly named coplanar pairs with
+the same motion. `Flap` supplies these from consistent, same-motion face orders
+and preserves those orders in every pose. The strict `checkSweep` entry point
+retains the study's existing contact policy. Sliding contact and unjoined stack
+edges on the hinge remain unsupported. See [the operation note](notes/checked-flap-operation.md).
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the

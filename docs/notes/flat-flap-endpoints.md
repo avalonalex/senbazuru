@@ -38,5 +38,6 @@ The [demo](../usage.md#checked-flap-motion) closes a fold from 0° to 180° and
 reopens it. Each motion clears in one interval check, with maximum relative
 edge-length error `1.11e-16` across its four saved states. Tests cover either sign and moving side, reverse order notation,
 scaled and rotated geometry, small overshoots, separate hinge seams, and
-departure through the resting layer. Persistent touching stacks, a contact
-plane away from the hinge, and coupled crease motion remain outside this rule.
+departure through the resting layer. A contact plane away from the hinge and
+coupled crease motion remain outside this rule. Persistent contact within a
+rigid stack is covered by the separate [common-motion rule](moving-touching-layers.md).

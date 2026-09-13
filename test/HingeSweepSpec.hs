@@ -126,6 +126,41 @@ spec = describe "rigid hinge sweep contact" $ do
     refused <- right (checkSweepWithFlatEndpoints defaultSweepSettings offPlane)
     sweepOutcome refused `shouldNotBe` SweepClear
 
+  it "retains only declared coplanar contacts whose relative motion is constant" $ do
+    let points = [V3 1 0 0, V3 2 0 0, V3 1 1 0]
+        mesh = Mesh [Sample (V2 x y) p | p@(V3 x y _) <- points ++ points] [(0, 1, 2), (3, 4, 5)]
+    forM_ [[], [0 .. 5]] $ \moving -> do
+      sweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) pi moving mesh)
+      strict <- right (checkSweepWithFlatEndpoints defaultSweepSettings sweep)
+      sweepOutcome strict `shouldBe` SweepCollision 0 [(0, 1)]
+      result <- right (checkSweepWithRigidContacts defaultSweepSettings [(1, 0)] sweep)
+      sweepOutcome result `shouldBe` SweepClear
+      forM_ [0, 0.5, 1] $ \t -> do
+        current <- right (sweepMeshAt sweep t)
+        let normalAt = case samples current of
+              a : b : c : _ -> cross (position b ^-^ position a) (position c ^-^ position a)
+              _ -> V3 0 0 1
+        report <- right (checkLocalTriangleContact normalAt [(0, 1)] current)
+        contactPassed report `shouldBe` True
+      forM_ [[(-1, 1)], [(0, 2)], [(0, 0)]] $ \pairs ->
+        checkSweepWithRigidContacts defaultSweepSettings pairs sweep `shouldSatisfy` isLeft
+    differing <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) pi [0 .. 2] mesh)
+    checkSweepWithRigidContacts defaultSweepSettings [(0, 1)] differing `shouldBe` Left (InvalidRigidContact 0 1)
+    let separated = mesh {samples = [s {position = position s ^+^ V3 0 0 (if i < 3 then 0 else 1e-8)} | (i, s) <- zip [0 :: Int ..] (samples mesh)]}
+    separatedSweep <- right (prepareSweep (V3 0 0 0) (V3 0 1 0) pi [0 .. 5] separated)
+    checkSweepWithRigidContacts defaultSweepSettings [(0, 1)] separatedSweep `shouldBe` Left (InvalidRigidContact 0 1)
+
+  it "does not hide a constant crossing behind another pair's rigid contact" $ do
+    let points = [V3 (-2) (-2) 0, V3 2 (-2) 0, V3 0 3 0]
+        other = [V3 0 0 (-1), V3 0 1 1, V3 1 0 0]
+        mesh = Mesh [Sample (V2 x y) p | p@(V3 x y _) <- points ++ points ++ other] [(0, 1, 2), (3, 4, 5), (6, 7, 8)]
+    sweep <- right (prepareSweep (V3 0 0 5) (V3 0 1 0) 0 [] mesh)
+    result <- right (checkSweepWithRigidContacts defaultSweepSettings [(0, 1)] sweep)
+    case sweepOutcome result of
+      SweepCollision 0 pairs -> pairs `shouldContain` [(0, 2), (1, 2)]
+      otherResult -> expectationFailure (show otherResult)
+    checkSweepWithRigidContacts defaultSweepSettings [(0, 2)] sweep `shouldBe` Left (InvalidRigidContact 0 2)
+
   prop "bounds every interior sample of finite sinusoid intervals" $
     forAll (choose (-10, 10)) $ \a -> forAll (choose (-10, 10)) $ \b ->
       forAll (choose (-(2 * pi), 2 * pi)) $ \from -> forAll (choose (-(2 * pi), 2 * pi)) $ \to ->

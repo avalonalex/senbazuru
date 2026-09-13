@@ -38,27 +38,53 @@ writeFlapGallery destination = do
   closed <- checked (flapAt closing 1)
   let closedFrame = surfaceFrame closed
       reopening = singleFlap {edgesFoldAngle = edgesFoldAngle closedFrame, faceOrders = faceOrders closedFrame}
-  firstEntry <- writeMotion output "single" "Fold completely flat" closing
-  otherEntries <- forM [("reopen", "Reopen the same fold", reopening, EdgeId 6, FaceId 1, -180), ("opposing", "Between two flaps", opposingFlap, EdgeId 9, FaceId 2, 16)] $ \(key, title, frame, crease, side, travel) -> do
-    start <- checked (foldFrameWith frame)
-    motion <- checked (prepareFlap crease side travel start >>= checkFlap defaultSweepSettings)
-    writeMotion output key title motion
-  let entries = firstEntry : otherEntries
+  firstEntry <- writeMotion output "single" "Fold completely flat" "One square, folded in half from 0° to 180°." closing
+  let stackUnfolded = touchingFlap {edgesFoldAngle = replicate 10 0, faceOrders = []}
+  stackStart <- checked (foldFrameWith stackUnfolded)
+  forming <- checked (prepareFlap (EdgeId 9) (FaceId 2) 180 stackStart >>= checkFlap defaultSweepSettings)
+  formed <- checked (flapAt forming 1)
+  let packet = touchingFlap {edgesFoldAngle = edgesFoldAngle (surfaceFrame formed), faceOrders = faceOrders (surfaceFrame formed)}
+  packetStart <- checked (foldFrameWith packet)
+  lifting <- checked (prepareFlap (EdgeId 8) (FaceId 1) 90 packetStart >>= checkFlap defaultSweepSettings)
+  lifted <- checked (flapAt lifting 1)
+  let raised = packet {edgesFoldAngle = edgesFoldAngle (surfaceFrame lifted), faceOrders = faceOrders (surfaceFrame lifted)}
+  formEntry <- writeMotion output "stack-form" "1 · Make a two-layer flap" "Fold the narrow right panel onto the middle panel. The left panel stays flat. The narrow layer stops short of the next crease, leaving part of the middle panel exposed." forming
+  liftEntry <- writeMotion output "stack-lift" "2 · Lift both layers together" "Now turn the middle and narrow panels together, from 0° to 90°. Their internal crease stays at 180°: the two layers remain touching in the same order, while the left panel stays still." lifting
+  raisedStart <- checked (foldFrameWith raised)
+  lowering <- checked (prepareFlap (EdgeId 8) (FaceId 1) (-90) raisedStart >>= checkFlap defaultSweepSettings)
+  lowerEntry <- writeMotion output "stack-lower" "3 · Lower the two-layer flap" "Return both layers to the starting plane. Their existing contact and order survive the return, including the final flat pose." lowering
+  stackObstacle <- checked (foldFrameWith blockedStack)
+  approaching <- checked (prepareFlap (EdgeId 11) (FaceId 2) 16 stackObstacle >>= checkFlap defaultSweepSettings)
+  approachEntry <- writeMotion output "stack-opposing" "A stack approaching another flap" "A fourth panel is folded onto the right flap. Both right-hand layers turn from 105° to 121° while the left flap stays at 145°. The full revolution below is blocked by that left flap." approaching
+  otherEntries <- forM
+    [ ("reopen", "Reopen the same fold", "The same single fold returns to 0°, departing on the side established when it closed.", reopening, EdgeId 6, FaceId 1, -180),
+      ("opposing", "Move one flap toward another", "Only the right flap moves, from 105° to 121°. The left stays at 145°. These are four moments in one small turn.", opposingFlap, EdgeId 9, FaceId 2, 16)
+    ]
+    $ \(key, title, caption, frame, crease, side, travel) -> do
+      start <- checked (foldFrameWith frame)
+      motion <- checked (prepareFlap crease side travel start >>= checkFlap defaultSweepSettings)
+      writeMotion output key title caption motion
+  let entries = [formEntry, liftEntry, lowerEntry, approachEntry, firstEntry] ++ otherEntries
   start <- checked (foldFrameWith opposingFlap)
   rejected <- checked (prepareFlap (EdgeId 9) (FaceId 2) 360 start)
   refusal <- case checkFlap defaultSweepSettings rejected of
     Left err@FlapCollision {} -> pure (explain err)
     Left err -> die ("expected a collision witness for the full turn: " ++ T.unpack (explain err))
     Right _ -> die "unsafe full turn unexpectedly accepted"
+  rejectedStack <- checked (prepareFlap (EdgeId 11) (FaceId 2) 360 stackObstacle)
+  stackRefusal <- case checkFlap defaultSweepSettings rejectedStack of
+    Left err@FlapCollision {} -> pure (explain err)
+    Left err -> die ("expected a collision witness for the stack turn: " ++ T.unpack (explain err))
+    Right _ -> die "unsafe stack turn unexpectedly accepted"
   BL.writeFile (output </> "models.json") (encode (concatMap (\(_, models, _) -> models) entries))
-  BL.writeFile (output </> "checks.json") (encode (object ["motions" .= [report | (_, _, report) <- entries], "rejectedRoute" .= refusal]))
+  BL.writeFile (output </> "checks.json") (encode (object ["motions" .= [report | (_, _, report) <- entries], "rejectedRoute" .= refusal, "rejectedStackRoute" .= stackRefusal]))
   copyFile "study/gltf/viewer.html" (output </> "index.html")
   template <- TIO.readFile "study/fold-material/flap.html"
-  TIO.writeFile (destination </> "flap.html") (T.replace "<!--MOTIONS-->" (T.concat [card | (card, _, _) <- entries]) (T.replace "<!--REFUSAL-->" (escapeXml refusal) template))
+  TIO.writeFile (destination </> "flap.html") (T.replace "<!--MOTIONS-->" (T.concat [card | (card, _, _) <- entries]) (T.replace "<!--STACK-REFUSAL-->" (escapeXml stackRefusal) (T.replace "<!--REFUSAL-->" (escapeXml refusal) template)))
   putStrLn ("Wrote checked flap SVGs, FOLD states, GLBs, audit and flap.html to " ++ destination)
 
-writeMotion :: FilePath -> String -> T.Text -> CheckedFlap -> IO (T.Text, [Value], Value)
-writeMotion output key title motion = do
+writeMotion :: FilePath -> String -> T.Text -> T.Text -> CheckedFlap -> IO (T.Text, [Value], Value)
+writeMotion output key title caption motion = do
   states <- checked (traverse (flapAt motion) [0, 1 / 3, 2 / 3, 1])
   let frames = [(materialFrame surface) {frameTitle = Just (title <> " · state " <> T.pack (show i))} | (i, surface) <- zip [1 :: Int ..] states]
   BL.writeFile (output </> key ++ ".fold") (encode (sequenceFile title frames))
@@ -75,7 +101,7 @@ writeMotion output key title motion = do
     pure (object ["title" .= label, "path" .= file], maxLengthError mesh)
   let intervals = sweepIntervals (flapCheck motion)
       error' = maximum (0 : map snd exports)
-      card = "<section><h2>" <> escapeXml title <> "</h2><img src=\"checked-flap/" <> T.pack key <> ".svg\" alt=\"Four checked angle states, viewed from 45 degrees above a corner\"><p>Whole rotation cleared. Interval checks: " <> T.pack (show intervals) <> ". <a href=\"checked-flap/" <> T.pack key <> ".fold\">FOLD sequence</a> · <a href=\"checked-flap/" <> T.pack key <> ".svg\">SVG page</a></p></section>"
+      card = "<section><h2>" <> escapeXml title <> "</h2><p>" <> escapeXml caption <> "</p><img src=\"checked-flap/" <> T.pack key <> ".svg\" alt=\"Four checked angle states, viewed from 45 degrees above a corner\"><p>Whole rotation cleared. Interval checks: " <> T.pack (show intervals) <> ". <a href=\"checked-flap/" <> T.pack key <> ".fold\">FOLD sequence</a> · <a href=\"checked-flap/" <> T.pack key <> ".svg\">SVG page</a> · <a href=\"checked-flap/index.html?model=" <> T.pack key <> "-3.glb&amp;angle=corner\">Inspect in 3D</a></p></section>"
       report = object ["name" .= title, "intervals" .= intervals, "movingFaces" .= map unFaceId (flapMovingFaces motion), "maxRelativeEdgeError" .= error', "angles" .= map edgesFoldAngle frames, "faceOrders" .= map faceOrders frames]
   pure (card, map fst exports, report)
 
