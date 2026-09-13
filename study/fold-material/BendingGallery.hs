@@ -278,12 +278,49 @@ generateCorrectionStudy = do
       right <- case reverse states of state : _ -> pure state; [] -> die "missing checked correction endpoint"
       let coords (V3 x y z) = [x, y, z]
           stepValue step = object ["iteration" .= correctionIteration step, "startPositions" .= map (coords . position) (samples (correctionStart step)), "finishPositions" .= map (coords . position) (samples (correctionFinish step)), "check" .= correctionValue (correctionCheck step)]
+          trialValue trial =
+            let known = atIteration (trialIteration trial - 1)
+                failure = case trialReason trial of TrialProposalFailed (UnsafeCorrection report) -> Just (correctionValue report); _ -> Nothing
+             in object
+                  [ "iteration" .= trialIteration trial,
+                    "lengthWeight" .= trialLengthWeight trial,
+                    "scale" .= trialScale trial,
+                    "beforeEnergy" .= trialBeforeEnergy trial,
+                    "afterEnergy" .= trialAfterEnergy trial,
+                    "reason" .= explain (trialReason trial),
+                    "startPositions" .= map (coords . position) (samples (trialStart trial)),
+                    "finishPositions" .= map (coords . position) (samples (trialFinish trial)),
+                    "triangleOrders" .= known,
+                    "motion" .= failure
+                  ]
+          summaries = M.fromList [(rejectionKind row, row) | row <- rejectionSummaries (sweptDiagnostics guarded)]
+          rejectionValue kind =
+            object
+              [ "kind" .= show kind,
+                "count" .= maybe 0 rejectionCount (M.lookup kind summaries),
+                "first" .= (trialValue . firstRejection <$> M.lookup kind summaries),
+                "last" .= (trialValue . lastRejection <$> M.lookup kind summaries)
+              ]
+          blockValue block = object ["iteration" .= blockedIteration block, "lengthWeight" .= blockedLengthWeight block]
+          hingeValue hinge = object ["vertices" .= hingeVertices hinge, "role" .= show (hingeRole hinge), "restRadians" .= hingeRest hinge, "stiffness" .= hingeStiffness hinge]
+          audit =
+            object
+              [ "rejections" .= map rejectionValue [minBound .. maxBound],
+                "blockedStages" .= map blockValue (blockedStages (sweptDiagnostics guarded)),
+                "direction" .= coords axis,
+                "clearance" .= clearance,
+                "searchDistance" .= (0.03 :: Double),
+                "motionDepth" .= Motion.correctionDepth Motion.defaultCorrectionSettings,
+                "motionBudget" .= Motion.correctionBudget Motion.defaultCorrectionSettings,
+                "hinges" .= map hingeValue hinges
+              ]
           outcome = if converged result then "settled" else "not settled"
           label = (if isOpening then "Checked opening" else "Checked curl") ++ " · " ++ outcome
           closingOutcome = if converged result then "This run settles with material lengths restored and every accepted correction checked." else "This run stalls before restoring material lengths. It is an unresolved relaxation result, not a finished folded shape."
           description = if isOpening then "The same sixteen-span strip starts at 22.25 degrees per bend. Controls prefer 27 degrees and passive springs prefer zero, with a 4:1 stiffness ratio; their balance opens the strip to 21.6 degrees. Every accepted straight correction clears the full-interval check. The status reports whether the endpoint meets the solver's stopping checks; intermediate optimizer shapes can stretch." else "The left solver checks only poses and finds a length-correct endpoint. The right solver also refuses crossed or unresolved paths. " ++ closingOutcome ++ " Near contact, numerical rounding can change the line search's route, so convergence can differ across platforms. The separation requirement applies to every accepted correction in either outcome."
+      putStrLn ("Trial refusals: " ++ show [(rejectionKind row, rejectionCount row) | row <- rejectionSummaries (sweptDiagnostics guarded)] ++ "; blocked stages " ++ show (blockedStages (sweptDiagnostics guarded)))
       putStrLn (label ++ ": settled " ++ show (converged result) ++ "; " ++ show (length (sweptSteps guarded)) ++ " accepted checked corrections")
-      pure (object ["title" .= (label :: String), "left" .= left, "right" .= right, "leftCaption" .= (if isOpening then "Starting strip" else "Endpoint checks only" :: String), "rightCaption" .= (if converged result then "Checked path · settled" else "Checked path · not settled" :: String), "status" .= (if converged result then "settled" else "stalled" :: String), "description" .= (description :: String), "states" .= states, "motions" .= map stepValue (sweptSteps guarded)])
+      pure (object ["title" .= (label :: String), "left" .= left, "right" .= right, "leftCaption" .= (if isOpening then "Starting strip" else "Endpoint checks only" :: String), "rightCaption" .= (if converged result then "Checked path · settled" else "Checked path · not settled" :: String), "status" .= (if converged result then "settled" else "stalled" :: String), "description" .= (description :: String), "states" .= states, "motions" .= map stepValue (sweptSteps guarded), "trialAudit" .= audit])
 
 correctionValue :: Motion.CorrectionCheck -> Value
 correctionValue report = object ("intervals" .= Motion.correctionIntervals report : fields)

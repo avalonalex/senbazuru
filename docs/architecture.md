@@ -238,7 +238,11 @@ and [growing history](notes/growing-local-contact-history.md).
 `CorrectionSweep` separately bounds triangle separation and nondegeneracy over
 straight numerical vertex paths, using exact rational Bernstein coefficients.
 `relaxSweptLocalHistory` gates accepted corrections with it before growing the
-contact history, and returns an audit of accepted paths. `CorrectionExample`
+contact history, and returns an audit of accepted paths. A separate bounded
+`TrialDiagnostics` records first/last refusals and exhausted line-search stages;
+none of that data enters accepted contact state. A blocked stage advances its
+penalty or returns unconverged, without repeating identical work. See
+[rejected trials](notes/rejected-bending-trials.md). `CorrectionExample`
 supplies a connected square's unsafe shortcut and a safe strip-opening control.
 This verifies an optimizer path, not a length-preserving folding instruction;
 the guarded closing strip reports its measured convergence. See [the correction note](notes/checking-numerical-corrections.md).

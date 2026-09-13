@@ -34,6 +34,12 @@
 -- does not supply a better search direction. See
 -- docs/notes/checking-numerical-corrections.md for the closing comparison and
 -- a settled opening control. These numerical paths can still stretch triangles.
+--
+-- Strict runs retain a bounded rejection audit, separately from accepted contact
+-- history. A failed line search ends its penalty stage as unconverged: identical
+-- inputs would only repeat the same refusal. The next weight may supply a new
+-- direction, but none of these diagnostics repairs a discontinuous contact
+-- objective. See docs/notes/rejected-bending-trials.md.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -51,6 +57,14 @@ module FoldRelaxation
     relaxSweptLocalHistory,
     SweptRelaxation (..),
     CorrectionStep (..),
+    TrialDiagnostics,
+    RejectionKind (..),
+    TrialReason (..),
+    RejectedTrial (..),
+    RejectionSummary (..),
+    rejectionSummaries,
+    BlockedStage (..),
+    blockedStages,
     principalStrains,
     maxLengthError,
   )
@@ -62,6 +76,7 @@ import CorrectionSweep qualified as Motion
 import Data.Bifunctor (second)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
+import Data.Map.Strict qualified as M
 import Data.Maybe (isJust, isNothing)
 import FoldBending
 import FoldContact
@@ -96,9 +111,11 @@ data RelaxError
   | LocalDiscoveryFailure !Local.LocalDiscoveryError
   | CorrectionFailure !Motion.CorrectionError
   | UnsafeCorrection !Motion.CorrectionCheck
+  | NonFiniteObjective
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
+  explain NonFiniteObjective = "numerical correction produced a non-finite energy"
   explain (CorrectionFailure err) = explain err
   explain (UnsafeCorrection result) = case Motion.correctionOutcome result of
     Motion.CorrectionCollision progress pairs -> "numerical correction meets paper at progress " <> num progress <> "; triangle pairs " <> tshow pairs
@@ -212,7 +229,9 @@ data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.Ord
 -- pass a newly discovered reference when starting a separately numbered run.
 -- Rejected line-search trials never contribute orders or audit events.
 relaxLocalHistory :: Settings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError (Relaxation, Local.LocalReference)
-relaxLocalHistory = relaxAngularWith localHistoryPolicy
+relaxLocalHistory settings hinges reference mesh = do
+  (result, learned, _) <- relaxAngularWith localHistoryPolicy settings hinges reference mesh
+  pure (result, learned)
 
 -- | Audit only accepted numerical corrections. Both endpoint meshes retain
 -- the original material; their intervening straight paths may stretch it.
@@ -227,9 +246,89 @@ data CorrectionStep = CorrectionStep
 data SweptRelaxation = SweptRelaxation
   { sweptRelaxation :: !Relaxation,
     sweptReference :: !Local.LocalReference,
-    sweptSteps :: ![CorrectionStep]
+    sweptSteps :: ![CorrectionStep],
+    sweptDiagnostics :: !TrialDiagnostics
   }
   deriving stock (Eq, Show)
+
+-- | Rejections are observations, not accepted paper or learned contact. Keep
+-- counts and the first/last witness per category, so even an exhausted solve
+-- retains only a bounded number of meshes. Energy failures are distinct from
+-- motion failures: many trials never reach the more expensive path check.
+data RejectionKind = NoDescent | ContactRefusal | InvalidTrial | PathCollision | PathCollapse | PathUnresolved
+  deriving stock (Eq, Ord, Show, Enum, Bounded)
+
+data TrialReason
+  = EnergyDidNotDecrease
+  | TrialEvaluationFailed !RelaxError
+  | TrialProposalFailed !RelaxError
+  deriving stock (Eq, Show)
+
+instance Explain TrialReason where
+  explain EnergyDidNotDecrease = "the candidate energy did not decrease"
+  explain (TrialEvaluationFailed err) = "the candidate could not be evaluated: " <> explain err
+  explain (TrialProposalFailed err) = "the candidate was refused: " <> explain err
+
+data RejectedTrial = RejectedTrial
+  { trialIteration :: !Int,
+    trialLengthWeight :: !Double,
+    trialScale :: !Double,
+    trialBeforeEnergy :: !Double,
+    trialAfterEnergy :: !(Maybe Double),
+    trialReason :: !TrialReason,
+    trialStart :: !MaterialMesh,
+    trialFinish :: !MaterialMesh
+  }
+  deriving stock (Eq, Show)
+
+data RejectionSummary = RejectionSummary
+  { rejectionKind :: !RejectionKind,
+    rejectionCount :: !Int,
+    firstRejection :: !RejectedTrial,
+    lastRejection :: !RejectedTrial
+  }
+  deriving stock (Eq, Show)
+
+-- | Every available step size was refused at this penalty weight. Moving to
+-- the next weight may change the direction; repeating the same solve cannot.
+data BlockedStage = BlockedStage
+  { blockedIteration :: !Int,
+    blockedLengthWeight :: !Double
+  }
+  deriving stock (Eq, Show)
+
+data TrialDiagnostics = TrialDiagnostics !(M.Map RejectionKind RejectionSummary) ![BlockedStage]
+  deriving stock (Eq, Show)
+
+rejectionSummaries :: TrialDiagnostics -> [RejectionSummary]
+rejectionSummaries (TrialDiagnostics rows _) = M.elems rows
+
+blockedStages :: TrialDiagnostics -> [BlockedStage]
+blockedStages (TrialDiagnostics _ stages) = stages
+
+emptyDiagnostics :: TrialDiagnostics
+emptyDiagnostics = TrialDiagnostics M.empty []
+
+mergeDiagnostics :: TrialDiagnostics -> TrialDiagnostics -> TrialDiagnostics
+mergeDiagnostics (TrialDiagnostics earlier aStages) (TrialDiagnostics later bStages) = TrialDiagnostics (M.unionWith combine earlier later) (aStages ++ bStages)
+  where
+    combine a b = a {rejectionCount = rejectionCount a + rejectionCount b, lastRejection = lastRejection b}
+
+recordRejection :: RejectedTrial -> TrialDiagnostics -> TrialDiagnostics
+recordRejection trial diagnostics = mergeDiagnostics diagnostics (TrialDiagnostics (M.singleton kind (RejectionSummary kind 1 trial trial)) [])
+  where
+    kind = case trialReason trial of
+      EnergyDidNotDecrease -> NoDescent
+      TrialEvaluationFailed err -> errorKind err
+      TrialProposalFailed err -> errorKind err
+    errorKind (UnsafeCorrection report) = case Motion.correctionOutcome report of
+      Motion.CorrectionCollision {} -> PathCollision
+      Motion.CorrectionDegenerate {} -> PathCollapse
+      Motion.CorrectionUnresolved {} -> PathUnresolved
+      Motion.CorrectionClear -> InvalidTrial
+    errorKind LocalDiscoveryFailure {} = ContactRefusal
+    errorKind ContactDiscoveryFailure {} = ContactRefusal
+    errorKind _ = InvalidTrial
 
 -- | A separate strict mode: no collision or unresolved path can contribute a
 -- new pose or contact history. This may stall when endpoint-only penalties
@@ -237,8 +336,8 @@ data SweptRelaxation = SweptRelaxation
 relaxSweptLocalHistory :: Settings -> Motion.CorrectionSettings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError SweptRelaxation
 relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
   _ <- clearMotion mesh mesh
-  (result, (learned, steps)) <- relaxAngularWith policy settings hinges (reference, []) mesh
-  pure (SweptRelaxation result learned steps)
+  (result, (learned, steps), diagnostics) <- relaxAngularWith policy settings hinges (reference, []) mesh
+  pure (SweptRelaxation result learned steps diagnostics)
   where
     clearMotion start finish = do
       motion <- either (Left . CorrectionFailure) Right (Motion.prepareCorrection start finish)
@@ -246,7 +345,7 @@ relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
       case Motion.correctionOutcome report of
         Motion.CorrectionClear -> Right report
         _ -> Left (UnsafeCorrection report)
-    policy = ContactPolicy measure propose
+    policy = ContactPolicy measure propose True True
     measure (learned, _) current = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts learned current)
     propose iteration (learned, steps) start finish = do
       report <- clearMotion start finish
@@ -258,17 +357,19 @@ relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
 -- a fixed mode returns that mode, and growing local contact returns its reference.
 data ContactPolicy state = ContactPolicy
   { measureContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
-    proposeContacts :: Int -> state -> MaterialMesh -> MaterialMesh -> Either RelaxError state
+    proposeContacts :: Int -> state -> MaterialMesh -> MaterialMesh -> Either RelaxError state,
+    retainTrials :: !Bool,
+    stopOnFailedSearch :: !Bool
   }
 
 localHistoryPolicy :: ContactPolicy Local.LocalReference
-localHistoryPolicy = ContactPolicy measure propose
+localHistoryPolicy = ContactPolicy measure propose False False
   where
     measure reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference mesh)
     propose iteration reference _ mesh = either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration reference mesh)
 
 fixedPolicy :: ContactPolicy ContactMode
-fixedPolicy = ContactPolicy measure (\_ state _ _ -> Right state)
+fixedPolicy = ContactPolicy measure (\_ state _ _ -> Right state) False False
   where
     measure packet mesh = case packet of
       NoContact -> Right []
@@ -280,9 +381,11 @@ fixedPolicy = ContactPolicy measure (\_ state _ _ -> Right state)
         (_, count) -> Left (UncheckablePacket count)
 
 relaxAngular :: ContactMode -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
-relaxAngular packet settings hinges mesh = fst <$> relaxAngularWith fixedPolicy settings hinges packet mesh
+relaxAngular packet settings hinges mesh = do
+  (result, _, _) <- relaxAngularWith fixedPolicy settings hinges packet mesh
+  pure result
 
-relaxAngularWith :: ContactPolicy state -> Settings -> [Hinge] -> state -> MaterialMesh -> Either RelaxError (Relaxation, state)
+relaxAngularWith :: ContactPolicy state -> Settings -> [Hinge] -> state -> MaterialMesh -> Either RelaxError (Relaxation, state, TrialDiagnostics)
 relaxAngularWith policy settings hinges initial mesh = do
   if iterationLimit settings == 0
     then relaxWithPolicy policy 0 initial (Just (hinges, 1e8)) settings mesh
@@ -291,22 +394,24 @@ relaxAngularWith policy settings hinges initial mesh = do
       -- crawl: its straight tangent step violates lengths at second order.
       -- Solve easier problems first, then tighten the SAME final constraints.
       -- Only the final stage can establish the result's convergence.
-      (_, history, settled, finalState) <- foldM stage (mesh, [], False, initial) [1e2, 1e4, 1e6, 1e8]
-      Right (Relaxation history settled, finalState)
+      (_, history, settled, finalState, diagnostics) <- foldM stage (mesh, [], False, initial, emptyDiagnostics) [1e2, 1e4, 1e6, 1e8]
+      Right (Relaxation history settled, finalState, diagnostics)
   where
-    stage (current, history, _, state) weight = do
+    stage (current, history, _, state, earlierDiagnostics) weight = do
       let offset = case reverse history of [] -> 0; previous : _ -> completedIterations previous
-      (result, nextState) <- relaxWithPolicy policy offset state (Just (hinges, weight)) settings current
+      (result, nextState, diagnostics) <- relaxWithPolicy policy offset state (Just (hinges, weight)) settings current
       let shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
           combined = history ++ (if null history then shifted else drop 1 shifted)
       case reverse (checkpoints result) of
         [] -> Left EmptyMesh
-        final : _ -> Right (checkpointMesh final, combined, converged result, nextState)
+        final : _ -> Right (checkpointMesh final, combined, converged result, nextState, mergeDiagnostics earlierDiagnostics diagnostics)
 
 relaxWith :: ContactMode -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError Relaxation
-relaxWith packet bending settings mesh = fst <$> relaxWithPolicy fixedPolicy 0 packet bending settings mesh
+relaxWith packet bending settings mesh = do
+  (result, _, _) <- relaxWithPolicy fixedPolicy 0 packet bending settings mesh
+  pure result
 
-relaxWithPolicy :: ContactPolicy state -> Int -> state -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError (Relaxation, state)
+relaxWithPolicy :: ContactPolicy state -> Int -> state -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError (Relaxation, state, TrialDiagnostics)
 relaxWithPolicy policy offset initial bending settings original = do
   if iterationLimit settings < 0 || lengthTolerance settings <= 0 || not (finite (lengthTolerance settings))
     then Left InvalidSettings
@@ -316,7 +421,7 @@ relaxWithPolicy policy offset initial bending settings original = do
   mapM_ validateTriangle (zip [0 ..] (triangles original))
   _ <- contacts initial vertices
   edges <- mapM materialEdge (meshEdges original)
-  advance edges 0 initial vertices []
+  advance edges 0 initial vertices [] emptyDiagnostics
   where
     vertices = IM.fromList (zip [0 ..] (samples original))
     validateSample (i, s) =
@@ -340,7 +445,7 @@ relaxWithPolicy policy offset initial bending settings original = do
     angularRows current = case bending of
       Nothing -> Right []
       Just (hinges, _) -> either (Left . BendingFailure) Right (bendingRows hinges (meshFrom current))
-    advance edges count state current history = do
+    advance edges count state current history diagnostics = do
       contactRows <- contacts state current
       let mesh = meshFrom current
           residual = maxLengthError mesh
@@ -348,18 +453,23 @@ relaxWithPolicy policy offset initial bending settings original = do
           exhausted = count >= iterationLimit settings
       -- The old length-only solve stops immediately on its valid rigid control.
       -- An elastic solve must still check whether an angular force wants to move it.
-      (next, nextState, stationary) <-
+      (next, nextState, stationary, accepted, trials) <-
         if exhausted || (isNothing bending && constraintsMet)
-          then Right (current, state, False)
+          then Right (current, state, False, False, emptyDiagnostics)
           else coordinatedStep edges contactRows count state current
       let warmingUp = maybe False ((< 1e8) . snd) bending
           done = if isNothing bending then constraintsMet else stationary && (warmingUp || constraintsMet)
+          blocked = stopOnFailedSearch policy && not exhausted && not done && not accepted
+          -- A failed search still consumed one iteration. Count it before
+          -- advancing the penalty so its trial/history labels stay distinct.
           snapshot = Checkpoint count mesh residual
-          keep = count `elem` [0, 1, 2, 5, 10, 20, 50] || done || exhausted
+          keep = count `elem` [0, 1, 2, 5, 10, 20, 50] || done || exhausted || blocked
           history' = if keep then snapshot : history else history
-      if done || exhausted
-        then Right (Relaxation (reverse history') done, state)
-        else advance edges (count + 1) nextState next history'
+          block = TrialDiagnostics M.empty [BlockedStage (offset + count + 1) (maybe 1 snd bending) | blocked]
+          diagnostics' = mergeDiagnostics diagnostics (mergeDiagnostics trials block)
+      if done || exhausted || blocked
+        then Right (Relaxation (reverse (if blocked then Checkpoint (count + 1) mesh residual : history' else history')) done, state, diagnostics')
+        else advance edges (count + 1) nextState next history' diagnostics'
     coordinatedStep edges contactRows count state current = do
       lengthRows <- mapM (edgeRow current) edges
       angles <- angularRows current
@@ -391,24 +501,33 @@ relaxWithPolicy policy offset initial bending settings original = do
           -- Omitting their derivatives can make a non-descent step stall.
           activeRows = [(map (second (sqrt contactWeight *^)) (contactGradient row), sqrt contactWeight * contactGap row) | row <- contactRows, contactGap row < 0]
           (correction, linearSolved) = solve (map (scaleRow (sqrt lengthWeight)) lengthRows ++ activeRows ++ angles)
-          objective candidateState candidate = case (contacts candidateState candidate, angularRows candidate) of
-            (Right rows, Right bends) ->
-              lengthWeight * sum [let d = norm (position (atSample j candidate) ^-^ position (atSample i candidate)) - rest in d * d | (i, j, rest) <- edges]
-                + contactWeight * sum [let d = min 0 (contactGap row) in d * d | row <- rows]
-                + sum [r * r | (_, r) <- bends]
-            _ -> 1 / 0
-          before = objective state current
-          attempt scale remaining =
+          objective candidateState candidate = do
+            rows <- contacts candidateState candidate
+            bends <- angularRows candidate
+            let energy =
+                  lengthWeight * sum [let d = norm (position (atSample j candidate) ^-^ position (atSample i candidate)) - rest in d * d | (i, j, rest) <- edges]
+                    + contactWeight * sum [let d = min 0 (contactGap row) in d * d | row <- rows]
+                    + sum [r * r | (_, r) <- bends]
+            if finite energy then Right energy else Left NonFiniteObjective
+      before <- objective state current
+      let attempt scale remaining earlier =
             let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
                 proposed = proposeContacts policy (offset + count + 1) state (meshFrom current) (meshFrom candidate)
-                retry = if remaining <= (0 :: Int) then (current, state) else attempt (scale / 2) (remaining - 1)
-             in if objective state candidate >= before
-                  then retry
-                  else case proposed of
-                    Right candidateState | objective candidateState candidate < before -> (candidate, candidateState)
-                    _ -> retry
-          (next, nextState) = attempt 1 30
-      Right (next, nextState, linearSolved && finite before && maximum (0 : map norm (IM.elems correction)) <= 1e-7)
+                reject reason after =
+                  let trial = RejectedTrial (offset + count + 1) lengthWeight scale before after reason (meshFrom current) (meshFrom candidate)
+                      recorded = if retainTrials policy then recordRejection trial earlier else earlier
+                   in if remaining <= (0 :: Int) then (current, state, False, recorded) else attempt (scale / 2) (remaining - 1) recorded
+             in case objective state candidate of
+                  Left err -> reject (TrialEvaluationFailed err) Nothing
+                  Right after | after >= before -> reject EnergyDidNotDecrease (Just after)
+                  Right beforeProposal -> case proposed of
+                    Left err -> reject (TrialProposalFailed err) (Just beforeProposal)
+                    Right candidateState -> case objective candidateState candidate of
+                      Left err -> reject (TrialEvaluationFailed err) Nothing
+                      Right after | after < before -> (candidate, candidateState, True, earlier)
+                      Right after -> reject EnergyDidNotDecrease (Just after)
+          (next, nextState, accepted, diagnostics) = attempt 1 30 emptyDiagnostics
+      Right (next, nextState, linearSolved && maximum (0 : map norm (IM.elems correction)) <= 1e-7, accepted, diagnostics)
     edgeRow current (i, j, rest) = do
       a <- maybe (Left (MissingVertex 0 i)) Right (IM.lookup i current)
       b <- maybe (Left (MissingVertex 0 j)) Right (IM.lookup j current)

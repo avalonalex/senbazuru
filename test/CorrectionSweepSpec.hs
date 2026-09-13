@@ -1,11 +1,14 @@
 module CorrectionSweepSpec (spec) where
 
-import Control.Monad (forM_, when)
+import Control.Monad (foldM, forM_, when)
 import CorrectionExample
 import CorrectionSweep
 import Data.Either (isLeft)
+import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
-import FoldMaterial (componentCount)
+import FoldBending (Hinge (..), HingeRole (PanelBend), bendingRows)
+import FoldContact (ContactRow (..))
+import FoldMaterial (componentCount, meshEdges)
 import FoldRelaxation
 import LocalContactDiscovery
 import PanelContact (checkLocalTriangleContact, contactPassed)
@@ -14,7 +17,8 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
-import Test.Hspec
+import SurfaceContact qualified as Contact
+import Test.Hspec hiding (before)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (choose, forAll)
 
@@ -122,6 +126,7 @@ spec = describe "numerical correction sweep" $ do
     result <- right (relaxSweptLocalHistory defaultSettings defaultCorrectionSettings (curlHinges fixture) reference (curlMesh fixture))
     converged (sweptRelaxation result) `shouldBe` True
     verifyAccepted fixture result
+    verifyDiagnostics fixture reference result
     final <- lastMesh (sweptRelaxation result)
     maxLengthError final `shouldSatisfy` (< 1e-7)
     localReferenceOrders (sweptReference result) `shouldBe` localReferenceOrders reference
@@ -129,12 +134,15 @@ spec = describe "numerical correction sweep" $ do
     converged (sweptRelaxation exhausted) `shouldBe` False
     sweptSteps exhausted `shouldBe` []
     sweptReference exhausted `shouldBe` reference
+    rejectionSummaries (sweptDiagnostics exhausted) `shouldBe` []
+    blockedStages (sweptDiagnostics exhausted) `shouldBe` []
 
   it "checks every closing correction and requires valid lengths when it settles" $ do
     fixture <- right (curledPanelAt 16 22.25)
     reference <- right (discoverLocalReference (curlClearance fixture) 0.03 (V3 (-3) 0 1) (curlMesh fixture))
     result <- right (relaxSweptLocalHistory defaultSettings defaultCorrectionSettings (curlHinges fixture) reference (curlMesh fixture))
     verifyAccepted fixture result
+    verifyDiagnostics fixture reference result
     final <- lastMesh (sweptRelaxation result)
     -- Near contact, platform rounding can change which trial the nonlinear
     -- line search accepts. A stalled run and a settled run must BOTH keep the
@@ -144,6 +152,42 @@ spec = describe "numerical correction sweep" $ do
     right (checkLocalTriangleContact (V3 (-3) 0 1) (localReferenceOrders (sweptReference result)) final) >>= (`shouldSatisfy` contactPassed)
     forM_ (localReferenceEncounters (sweptReference result)) $ \event ->
       sweptSteps result `shouldSatisfy` any (\step -> correctionIteration step == encounterIteration event && correctionFinish step == encounterMesh event)
+
+  it "ends each blocked penalty stage without mistaking a failed linear solve for equilibrium" $ do
+    -- A flat, small square has large angular derivatives. The spring's
+    -- energy remains finite, but its normal-equation diagonal overflows.
+    -- Waiting out the iteration budget cannot repair that failed solve.
+    let mesh = Mesh [Sample (V2 x y) (V3 x y 0) | (x, y) <- [(0, 0), (0.01, 0), (0.01, 0.01), (0, 0.01)]] [(0, 1, 2), (0, 2, 3)]
+        hinges = [Hinge (0, 2, 1, 3) PanelBend 0.01 1e308]
+    reference <- right (discoverLocalReference 1e-6 0.03 (V3 0 0 1) mesh)
+    result <- right (relaxSweptLocalHistory defaultSettings defaultCorrectionSettings hinges reference mesh)
+    converged (sweptRelaxation result) `shouldBe` False
+    sweptSteps result `shouldBe` []
+    sweptReference result `shouldBe` reference
+    map checkpointMesh (checkpoints (sweptRelaxation result)) `shouldSatisfy` all (== mesh)
+    map blockedIteration (blockedStages (sweptDiagnostics result)) `shouldBe` [1, 2, 3, 4]
+    map blockedLengthWeight (blockedStages (sweptDiagnostics result)) `shouldBe` [1e2, 1e4, 1e6, 1e8]
+    rejectionSummaries (sweptDiagnostics result) `shouldSatisfy` (not . null)
+
+  it "reports non-finite initial energy as an error value" $ do
+    fixture <- right openingStrip
+    case curlHinges fixture of
+      hinge : _ -> relaxHinges defaultSettings [hinge {hingeRest = pi, hingeStiffness = 1e308}] (curlMesh fixture) `shouldBe` Left NonFiniteObjective
+      [] -> expectationFailure "opening control needs angular springs"
+
+  it "distinguishes a reappearing reversed layer order from a path collision" $ do
+    let pose x = meshFrom [V3 0 0 0, V3 1 0 0, V3 0 1 0, V3 x 0 (-0.05), V3 (x + 1) 0 (-0.05), V3 x 1 (-0.05)] [(0, 1, 2), (3, 4, 5)]
+        initial = pose 1.00001
+        finish = pose 0.99999
+        axis = V3 0 0 1
+    sweep <- right (prepareCorrection initial finish)
+    correctionOutcome <$> checkCorrection defaultCorrectionSettings sweep `shouldBe` Right CorrectionClear
+    model <- right (Contact.prepareTriangleContact 1e-6 axis [(0, 1)] initial)
+    Contact.orderedContacts model initial `shouldBe` Right []
+    rows <- right (Contact.orderedContacts model finish)
+    rows `shouldSatisfy` (not . null)
+    map contactGap rows `shouldSatisfy` all (< (-0.05))
+    right (checkLocalTriangleContact axis [(0, 1)] finish) >>= (`shouldSatisfy` (not . contactPassed))
 
   it "refuses invalid settings, progress and changed material or topology" $ do
     sweep <- right (prepareCorrection start start)
@@ -176,6 +220,69 @@ verifyAccepted fixture result = do
     replay `shouldBe` correctionCheck step
     correctionOutcome replay `shouldBe` CorrectionClear
   lastMesh (sweptRelaxation result) `shouldReturn` foldl' (\_ step -> correctionFinish step) initial steps
+
+-- Rebuild the contact context from ACCEPTED encounters, then replay each
+-- retained first/last refusal. A rejected trial cannot contribute that context.
+verifyDiagnostics :: CurledPanel -> LocalReference -> SweptRelaxation -> IO ()
+verifyDiagnostics fixture initialReference result = do
+  let summaries = rejectionSummaries (sweptDiagnostics result)
+      initial = curlMesh fixture
+      steps = sweptSteps result
+  length summaries `shouldSatisfy` (<= length [minBound .. maxBound :: RejectionKind])
+  let blocks = blockedStages (sweptDiagnostics result)
+  length blocks `shouldSatisfy` (<= 4)
+  forM_ blocks $ \block -> do
+    forM_ (concatMap (\summary -> [firstRejection summary, lastRejection summary]) summaries) $ \trial ->
+      when (trialLengthWeight trial == blockedLengthWeight block) $
+        trialIteration trial `shouldSatisfy` (<= blockedIteration block)
+    checkpoints (sweptRelaxation result) `shouldSatisfy` any ((== blockedIteration block) . completedIterations)
+    sweptSteps result `shouldSatisfy` all ((/= blockedIteration block) . correctionIteration)
+  forM_ summaries $ \summary -> do
+    rejectionCount summary `shouldSatisfy` (> 0)
+    trialIteration (firstRejection summary) `shouldSatisfy` (<= trialIteration (lastRejection summary))
+    forM_ [firstRejection summary, lastRejection summary] $ \trial -> do
+      let earlier = filter ((< trialIteration trial) . correctionIteration) steps
+          before = foldl' (\_ step -> correctionFinish step) initial earlier
+          encounters = filter ((< trialIteration trial) . encounterIteration) (localReferenceEncounters (sweptReference result))
+      trialStart trial `shouldBe` before
+      trialScale trial `shouldSatisfy` (\s -> s >= 2 ** (-30) && s <= 1)
+      trialLengthWeight trial `shouldSatisfy` (`elem` [1e2, 1e4, 1e6, 1e8])
+      triangles (trialFinish trial) `shouldBe` triangles initial
+      map sampleMaterial (samples (trialFinish trial)) `shouldBe` map sampleMaterial (samples initial)
+      steps `shouldSatisfy` all (\step -> correctionIteration step /= trialIteration trial || correctionFinish step /= trialFinish trial)
+      reference <- foldM (\known event -> right (extendLocalReference (encounterIteration event) known (encounterMesh event))) initialReference encounters
+      beforeEnergy <- replayEnergy fixture reference (trialLengthWeight trial) before
+      near (trialBeforeEnergy trial) beforeEnergy
+      case trialAfterEnergy trial of
+        Just expected -> replayEnergy fixture reference (trialLengthWeight trial) (trialFinish trial) >>= near expected
+        Nothing -> pure ()
+      case trialReason trial of
+        EnergyDidNotDecrease -> trialAfterEnergy trial `shouldSatisfy` maybe False (>= trialBeforeEnergy trial)
+        TrialProposalFailed (UnsafeCorrection expected) ->
+          (prepareCorrection before (trialFinish trial) >>= checkCorrection defaultCorrectionSettings) `shouldBe` Right expected
+        TrialEvaluationFailed (LocalDiscoveryFailure expected) ->
+          localDiscoveredContacts reference (trialFinish trial) `shouldBe` Left expected
+        TrialProposalFailed (LocalDiscoveryFailure expected) ->
+          extendLocalReference (trialIteration trial) reference (trialFinish trial) `shouldBe` Left expected
+        reason -> expectationFailure ("unexpected fixture rejection: " ++ show reason)
+  where
+    near expected actual = abs (expected - actual) `shouldSatisfy` (<= 1e-10 * max 1 (abs expected))
+
+replayEnergy :: CurledPanel -> LocalReference -> Double -> MaterialMesh -> IO Double
+replayEnergy fixture reference weight mesh = do
+  rows <- right (localDiscoveredContacts reference mesh)
+  bends <- right (bendingRows (curlHinges fixture) mesh)
+  let vertices = IM.fromList (zip [0 ..] (samples mesh))
+      edgeError (i, j) = do
+        a <- maybe (fail "missing replay vertex") pure (IM.lookup i vertices)
+        b <- maybe (fail "missing replay vertex") pure (IM.lookup j vertices)
+        let V2 u v = sampleMaterial a
+            V2 s t = sampleMaterial b
+            rest = sqrt ((u - s) * (u - s) + (v - t) * (v - t))
+            residual = norm (position b ^-^ position a) - rest
+        pure (residual * residual)
+  lengths <- mapM edgeError (meshEdges mesh)
+  pure (weight * sum lengths + 100 * weight * sum [min 0 (contactGap row) ** 2 | row <- rows] + sum [r * r | (_, r) <- bends])
 
 lastMesh :: Relaxation -> IO MaterialMesh
 lastMesh result = case reverse (checkpoints result) of
