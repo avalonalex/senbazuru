@@ -44,6 +44,10 @@
 -- retained directional order, resisting reversal before shadows overlap. Raw
 -- endpoint constraints, the full-step convergence test and the accepted-motion
 -- gate remain shared. See docs/notes/directional-contact-distance.md.
+-- 'relaxPinnedHinges' holds named material vertices at prescribed positions.
+-- Removing their corrections from the linear solve keeps a grip exact instead
+-- of approximating it with another stiff spring. Installing a new grip starts
+-- a static solve; neither that installation nor its iterations is a folding path.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -54,6 +58,7 @@ module FoldRelaxation
     relaxPacket,
     relaxBending,
     relaxHinges,
+    relaxPinnedHinges,
     relaxSurfaceContact,
     relaxDiscoveredContact,
     relaxLocalContact,
@@ -116,10 +121,12 @@ data RelaxError
   | LocalDiscoveryFailure !Local.LocalDiscoveryError
   | CorrectionFailure !Motion.CorrectionError
   | UnsafeCorrection !Motion.CorrectionCheck
+  | InvalidPositionConstraint !Int
   | NonFiniteObjective
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
+  explain (InvalidPositionConstraint i) = "position constraint " <> tshow i <> " needs an existing material vertex and a finite target"
   explain NonFiniteObjective = "numerical correction produced a non-finite energy"
   explain (CorrectionFailure err) = explain err
   explain (UnsafeCorrection result) = case Motion.correctionOutcome result of
@@ -209,6 +216,15 @@ relaxBending settings bending targets which mesh = do
 -- converged result certifies numerical/material tolerances, not layer order.
 relaxHinges :: Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
 relaxHinges = relaxAngular NoContact
+
+-- | Fix a root or grip exactly while the remaining vertices settle. Map keys
+-- are mesh vertex ids, not positions or source-panel ids. Targets are installed
+-- before measuring the initial pose, so moving a grip can initially strain it.
+-- No contact force or physical-motion certificate is implied by convergence.
+relaxPinnedHinges :: Settings -> IM.IntMap V3 -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
+relaxPinnedHinges settings pins hinges mesh = do
+  (result, _, _) <- relaxAngularWithPins pins fixedPolicy settings hinges NoContact mesh
+  pure result
 
 -- | Add directional separation for declared panel or local triangle orders.
 -- The same staged length/bending solve now penalises reversed gaps. Independent
@@ -410,9 +426,12 @@ relaxAngular packet settings hinges mesh = do
   pure result
 
 relaxAngularWith :: ContactPolicy state -> Settings -> [Hinge] -> state -> MaterialMesh -> Either RelaxError (Relaxation, state, TrialDiagnostics)
-relaxAngularWith policy settings hinges initial mesh = do
+relaxAngularWith = relaxAngularWithPins IM.empty
+
+relaxAngularWithPins :: IM.IntMap V3 -> ContactPolicy state -> Settings -> [Hinge] -> state -> MaterialMesh -> Either RelaxError (Relaxation, state, TrialDiagnostics)
+relaxAngularWithPins pins policy settings hinges initial mesh = do
   if iterationLimit settings == 0
-    then relaxWithPolicy policy 0 initial (Just (hinges, 1e8)) settings mesh
+    then relaxWithPins pins policy 0 initial (Just (hinges, 1e8)) settings mesh
     else do
       -- A strong length penalty from the outset makes even a rigid rotation
       -- crawl: its straight tangent step violates lengths at second order.
@@ -423,7 +442,7 @@ relaxAngularWith policy settings hinges initial mesh = do
   where
     stage (current, history, _, state, earlierDiagnostics) weight = do
       let offset = case reverse history of [] -> 0; previous : _ -> completedIterations previous
-      (result, nextState, diagnostics) <- relaxWithPolicy policy offset state (Just (hinges, weight)) settings current
+      (result, nextState, diagnostics) <- relaxWithPins pins policy offset state (Just (hinges, weight)) settings current
       let shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
           combined = history ++ (if null history then shifted else drop 1 shifted)
       case reverse (checkpoints result) of
@@ -436,18 +455,25 @@ relaxWith packet bending settings mesh = do
   pure result
 
 relaxWithPolicy :: ContactPolicy state -> Int -> state -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError (Relaxation, state, TrialDiagnostics)
-relaxWithPolicy policy offset initial bending settings original = do
+relaxWithPolicy = relaxWithPins IM.empty
+
+relaxWithPins :: IM.IntMap V3 -> ContactPolicy state -> Int -> state -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError (Relaxation, state, TrialDiagnostics)
+relaxWithPins pins policy offset initial bending settings original = do
   if iterationLimit settings < 0 || lengthTolerance settings <= 0 || not (finite (lengthTolerance settings))
     then Left InvalidSettings
     else Right ()
   if null (triangles original) then Left EmptyMesh else Right ()
-  mapM_ validateSample (IM.toList vertices)
+  mapM_ validatePin (IM.toList pins)
+  mapM_ validateSample (zip [0 ..] (samples original))
   mapM_ validateTriangle (zip [0 ..] (triangles original))
   _ <- contacts initial vertices
   edges <- mapM materialEdge (meshEdges original)
   advance edges 0 initial vertices [] emptyDiagnostics
   where
-    vertices = IM.fromList (zip [0 ..] (samples original))
+    vertices = IM.fromList [(i, sample {position = IM.findWithDefault (position sample) i pins}) | (i, sample) <- zip [0 ..] (samples original)]
+    validatePin (i, V3 x y z)
+      | IM.member i vertices && all finite [x, y, z] = Right ()
+      | otherwise = Left (InvalidPositionConstraint i)
     validateSample (i, s) =
       let V3 x y z = position s
        in if all finite [materialU s, materialV s, x, y, z] then Right () else Left (InvalidSample i)
@@ -498,10 +524,12 @@ relaxWithPolicy policy offset initial bending settings original = do
       forceRows <- energyContacts policy state (meshFrom current)
       lengthRows <- mapM (edgeRow current) edges
       angles <- angularRows current
-      let zero = IM.map (const (V3 0 0 0)) current
+      let zero = IM.map (const (V3 0 0 0)) (IM.difference current pins)
           -- Linearise all lengths together. A small penalty on movement makes
           -- the underdetermined system solvable without pinning arbitrary
           -- vertices. Conjugate gradients applies J^T J without storing it.
+          -- Explicitly held vertices are absent from this system. Their
+          -- correction is zero in linearChange and when updating positions.
           damping = if isNothing bending then 1e-8 else 1e-3
           lengthWeight = maybe 1 snd bending
           contactWeight = 100 * lengthWeight

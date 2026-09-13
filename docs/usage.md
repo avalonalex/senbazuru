@@ -352,6 +352,35 @@ guards, not a flexible-paper solve. The curved wing profile and compatible
 body opening are the follow-up mesh study in
 [#195](https://github.com/avalonalex/senbazuru/issues/195).
 
+### Controlled wing bending
+
+Hold a triangular sheet's wide root and move a small grip near its tip. The
+free paper settles under passive bending resistance and material-length
+penalties. The grip angle controls the held region's orientation; there are
+no material creases in this experiment.
+
+```bash
+stack run senbazuru-material-study -- --wing-bending build/fold-material
+npm install --prefix build/fold-material/checked-flap --no-audit --no-fund three@0.186.0
+python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
+```
+
+Open [the controlled bending study](http://127.0.0.1:8000/wing-bending.html).
+`wing-bending/` contains nine wing and three strip FOLD/GLB pairs, SVG
+comparisons and `checks.json`. Select 8, 16 or 24 mesh divisions to compare
+flat, 20-degree and 40-degree grip placements. Every SVG comparison has one
+camera and scale. The table compares length error, exact held positions,
+bending energy, convergence and independent endpoint contact. The known strip
+benchmark checks the same solver against an independently constructed shape.
+
+This is one uncreased, zero-thickness sheet with illustrative stiffness,
+not the crane fixture. Subdivision edges are joins, with no added crease
+strokes. There is no contact correction in these solves; the finished shapes
+are checked independently. Numerical iterations can stretch paper and are not
+physical motion, so the three grip states have no continuous-motion certificate.
+Touching layers, compatible crane-body freedom and realistic spreading remain
+in #195. See [the experiment and refinement measurements](notes/held-wing-bending.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

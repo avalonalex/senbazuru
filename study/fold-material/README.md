@@ -67,6 +67,15 @@ It writes four SVG/FOLD/GLB states and contact measurements to `checked-crane/`,
 plus `crane.html`. See [the crane instructions](../../docs/usage.md#checked-crane-wing-movement)
 for the supported contact and remaining limits.
 
+`stack run senbazuru-material-study -- --wing-bending build/fold-material`
+solves a separate uncreased wing-shaped sheet held at its root and tip.
+`wing-bending.html` compares three grip placements at three resolutions, with
+a known bent-strip benchmark and independent endpoint measurements. SVG, FOLD
+and glTF share the solved triangles; the 3D viewer uses the same local Three.js
+installation as the checked-flap pages. See [the instructions](../../docs/usage.md#controlled-wing-bending)
+and [the measurements](../../docs/notes/held-wing-bending.md). These static
+shapes do not certify a flexible folding motion or realistic crane spreading.
+
 `stack run senbazuru-material-study -- --helmet build/fold-material` checks
 three turns to the [helmet base](../../docs/usage.md#checked-helmet-sequence),
 including paired creases on touching layers. It writes seven SVG/FOLD/glTF

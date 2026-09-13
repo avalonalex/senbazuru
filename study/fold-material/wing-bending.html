@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A wing that bends · Senbazuru</title>
+<style>
+  :root { color-scheme:light; font:16px/1.6 system-ui,sans-serif; color:#292d28; background:#f4efe7; }
+  body { max-width:1180px; margin:auto; padding:32px 24px 60px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.15; margin:12px 0; }
+  h2 { font-size:1.35rem; } p { max-width:920px; } a { color:#385e50; text-underline-offset:3px; }
+  small { letter-spacing:.12em; } section { background:#fffaf2; border:1px solid #d8cebd; border-radius:8px; padding:24px; margin:28px 0; }
+  img { display:block; width:100%; height:auto; } select { font:inherit; padding:6px 12px; margin-left:8px; }
+  .controls { display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+  .control-map { width:280px; max-width:100%; } .captions { display:grid; grid-template-columns:repeat(3,1fr); text-align:center; }
+  .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
+  iframe { width:100%; height:760px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
+  @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } }
+</style>
+<header>
+  <small>SENBAZURU · MATERIAL STUDY / #196</small>
+  <h1>A wing that bends</h1>
+  <p>Hold the wide root of a triangular sheet. Turn and move a small grip near
+    its tip. The paper between them settles into a curve while resisting bending
+    and stretching. This is one uncreased sheet, shaped like a wing.</p>
+  <p><a href="index.html">All fold examples</a> · <a href="crane.html">Rigid crane wing</a> ·
+    <a href="bending.html">Earlier bending experiments</a></p>
+</header>
+<section>
+  <h2>Held at two ends, free in between</h2>
+  <div class="controls">
+    <svg class="control-map" viewBox="-4 -4 308 108" role="img" aria-label="Original triangular sheet: green root on the left, orange grip near the right tip">
+      <path d="M0 0 L300 50 L0 100 Z" fill="#e6ddca" stroke="#70685b"/>
+      <path d="M0 0 L37.5 6.25 L37.5 93.75 L0 100 Z" fill="#759486"/>
+      <path d="M262.5 43.75 L300 50 L262.5 56.25 Z" fill="#c78b55"/>
+    </svg>
+    <p>Green: fixed root. Orange: moved grip.<br>These mark held regions on the original sheet; they are not crease lines.</p>
+  </div>
+  <p>The root stays flat. The grip is placed at 0°, 20° or 40°, with its position
+    following a circular guide. Only those held regions follow the guide;
+    the solver chooses the paper between them. Every mesh uses the same regions
+    and grip positions.</p>
+  <label>Mesh divisions <select id="resolution"><option>8</option><option>16</option><option selected>24</option></select></label>
+  <img id="sequence" src="wing-bending/sequence-24.svg" alt="Solved wing shapes with the grip at zero, twenty and forty degrees">
+  <div class="captions"><span>1 · Flat grip</span><span>2 · Grip at 20°</span><span>3 · Grip at 40°</span></div>
+  <p id="status" aria-live="polite"></p>
+  <p class="note"><strong>These are separately solved shapes.</strong> The circular
+    starting guess has small length errors; the solver corrects it. Numerical
+    iterations can stretch the paper and are not a verified folding motion.
+    No motion certificate connects these three shapes.</p>
+</section>
+<section>
+  <h2>Does refining the mesh change the answer?</h2>
+  <p>These rows compare the 40° grip. More divisions add triangles inside the
+    same material panel, with zero added creases. Edge error measures stretching
+    against the original sheet; bending energy uses illustrative stiffness.</p>
+  <div class="table-wrap"><table><thead><tr><th>Divisions</th><th>Triangles</th><th>Edge error</th><th>Held-point error</th><th>Bending energy</th><th>Converged</th><th>Endpoint contact</th></tr></thead><tbody id="measurements"></tbody></table></div>
+  <p id="refinement"></p>
+  <p>Check shape and energy together. Agreement at finer resolutions is evidence
+    about this experiment, not calibration to a particular paper stock.</p>
+</section>
+<section>
+  <h2>Inspect the actual surface</h2>
+  <p>Choose any grip and mesh in the viewer. The SVG and 3D model use the same
+    solved triangles. Their internal joins are hidden as drawing lines; the
+    downloadable FOLD file retains them and their original material coordinates.</p>
+  <iframe id="viewer" src="wing-bending/index.html?model=wing-24-40.glb&amp;angle=profile" title="Controlled wing bending in 3D" loading="lazy"></iframe>
+  <p><a id="fold" href="wing-bending/wing-24-40.fold">40° FOLD at the selected mesh resolution</a> ·
+    <a href="wing-bending/checks.json">All measurements</a> · <a href="wing-bending/index.html?model=wing-24-40.glb&amp;angle=profile">Full 3D viewer</a></p>
+</section>
+<section>
+  <h2>A strip with a known answer</h2>
+  <p>Equal-length strip spans with equal turns give an exactly length-preserving
+    bent shape. With the two end regions held, the solver starts from a perturbed
+    version and recovers that reference. This checks the positional controls
+    and the bending model before applying them to the wider wing.</p>
+  <div class="table-wrap"><table><thead><tr><th>Spans</th><th>Largest position error</th><th>Edge error</th><th>Converged</th></tr></thead><tbody id="benchmarks"></tbody></table></div>
+</section>
+<p class="note"><strong>Scope:</strong> one sheet, controlled grips, and independent
+  checks of the settled shapes. Touching wing layers, a connected crane body,
+  realistic wing spreading and the motion between equilibria remain in
+  <a href="https://github.com/avalonalex/senbazuru/issues/195">#195</a>.
+  The current experiment does not predict forces for a measured paper stock.</p>
+<script>
+const data=/*WING_DATA*/null;
+const number=x=>x===0?'0':x.toExponential(2);
+function row(target,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}target.append(tr);}
+for(const state of data.wings.filter(s=>s.gripDegrees===40)) row(document.querySelector('#measurements'),[state.divisions,state.triangles,number(state.maxRelativeEdgeError),number(state.heldPositionError),state.panelEnergy.toFixed(6),state.converged?'Yes':'No',state.contact.passed?'Pass':'Failed']);
+document.querySelector('#refinement').textContent=data.refinement.map(r=>`${r.fromTriangles} → ${r.toTriangles} triangles: largest shape change ${number(r.maxPositionChange)} sheet lengths at ${r.commonVertices} shared material points.`).join(' ');
+for(const state of data.benchmarks) row(document.querySelector('#benchmarks'),[state.divisions,number(state.referencePositionError),number(state.maxRelativeEdgeError),state.converged?'Yes':'No']);
+function update(){const n=Number(document.querySelector('#resolution').value);const states=data.wings.filter(s=>s.divisions===n);const good=states.every(s=>s.converged&&s.contact.passed);const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three shapes meet solver tolerances and pass independent endpoint contact checks. Root and grip positions are held exactly.':'At least one shape is unconverged or fails contact; inspect checks.json before treating it as an accepted shape.';document.querySelector('#sequence').src=`wing-bending/sequence-${n}.svg`;document.querySelector('#viewer').src=`wing-bending/index.html?model=wing-${n}-40.glb&angle=profile`;document.querySelector('#fold').href=`wing-bending/wing-${n}-40.fold`;}
+document.querySelector('#resolution').addEventListener('change',update);update();
+</script>
+</html>

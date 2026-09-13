@@ -556,6 +556,16 @@ resting surface and moving the second wing remain later work. The next mesh
 study, [#195](https://github.com/avalonalex/senbazuru/issues/195), studies a
 curved wing and the body freedom needed for it.
 
+Its first [controlled bending experiment](usage.md#controlled-wing-bending)
+uses a separate triangular sheet. Holding the root and a small tip region
+exactly lets the free paper bend between them. A strip with a known answer
+checks the positional controls, while three mesh resolutions expose how the
+wing's shape and energy change with subdivision. SVG and glTF show the same
+solved triangles, without turning their internal joins into crease lines.
+These are static equilibria with independent endpoint checks; touching crane
+layers and the motion between shapes remain later work. The
+[experiment note](notes/held-wing-bending.md) records the measured differences.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

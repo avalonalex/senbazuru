@@ -15,7 +15,8 @@ the continuously checked first bird petal in [#185](https://github.com/avalonale
 the second petal and final press in [#187](https://github.com/avalonalex/senbazuru/issues/187),
 the initial square-base collapse in [#189](https://github.com/avalonalex/senbazuru/issues/189),
 the checked helmet sequence in [#191](https://github.com/avalonalex/senbazuru/issues/191),
-and the checked crane wing in [#193](https://github.com/avalonalex/senbazuru/issues/193). The
+the checked crane wing in [#193](https://github.com/avalonalex/senbazuru/issues/193),
+and the controlled wing-bending experiment in [#196](https://github.com/avalonalex/senbazuru/issues/196). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -27,7 +28,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,329 examples pass, including a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,356 examples pass, including exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -267,9 +268,13 @@ checked coupled angles.
    a 90-degree departure while its hinge rests across the other wing. The
    opposite direction is refused by the starting order. Its selected stacking
    keeps the tail between the body layers on both sides.
-   **Next: study a curved crane wing on the shared mesh** in
-   [#195](https://github.com/avalonalex/senbazuru/issues/195), measuring bending
-   within the panels and the body freedom needed for a compatible shape.
+   The first experiment under [#195](https://github.com/avalonalex/senbazuru/issues/195)
+   holds the root and tip of a separate uncreased wing-shaped sheet. [#196](https://github.com/avalonalex/senbazuru/issues/196)
+   checks its static solves against a known strip and three mesh resolutions;
+   [the measurements](notes/held-wing-bending.md) show remaining mesh sensitivity.
+   **Next: bend two touching layers with compatible grips and an explicit
+   initial order**, preserving distinct material identities. Then attach the
+   wing to the crane and measure what body freedom a compatible shape needs.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.
    Sliding contact and general coupled-angle solving remain later work.
