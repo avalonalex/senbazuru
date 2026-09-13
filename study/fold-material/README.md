@@ -45,14 +45,15 @@ For the library's separate fixed-crease operation, see
 angle-defined motion; the numerical bending corrections below serve a
 different purpose.
 
-`stack run senbazuru-material-study -- --petal build/fold-material` checks one
-complete bird petal from the square base. It writes `petal.html` and
-`checked-petal/` with eight SVG/FOLD/glTF states, sharing the checked-flap
+`stack run senbazuru-material-study -- --petal build/fold-material` checks both
+bird petals and their final pressing from the square base. It writes `petal.html`
+and `checked-petal/` with sixteen SVG/FOLD/glTF states and SVG views from above
+and below, sharing the checked-flap
 viewer's Three.js installation. Exact signs check the ideal motion continuously;
 each illustrated pose is independently rebuilt from angles. See
-[usage](../../docs/usage.md#continuously-checked-bird-petal) and
-[the derivation](../../docs/notes/checked-petal.md). This certificate covers
-only the first petal, not the other stages in the original bird sequence.
+[usage](../../docs/usage.md#continuously-checked-bird-base) and
+[the derivation](../../docs/notes/checked-bird-base.md). The initial square-base
+collapse still needs a continuous check.
 
 `stack run senbazuru-material-study -- --blintz build/fold-material` composes
 four complete corner folds and a reopening into the [blintz sequence](../../docs/usage.md#checked-blintz-sequence).
@@ -402,7 +403,9 @@ complete bird endpoints' unique stackings. The viewer uses those checked
 orders to break depth ties between touching faces and their feature lines,
 reversing the adjustment when viewed from underneath. Contact failures and the
 original-sheet view disable the adjustment. Exported geometry stays unchanged.
-These checks do not certify continuous collisions or finite paper thickness.
+These sampled checks do not certify motion between states or finite paper
+thickness. The separate `petal.html` route now checks both petals and final
+pressing continuously; see [its certificate](../../docs/notes/checked-bird-base.md).
 
 The **SVG folding sequence** link opens `bird-sequence.html`, with side views
 at 45° above and below the paper, rendered through the main `Render.Steps`

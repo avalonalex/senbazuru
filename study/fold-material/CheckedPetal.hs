@@ -15,6 +15,7 @@ module CheckedPetal
     checkedPetalFrame,
     checkedPetalSurface,
     petalAngles,
+    birdAngles,
     petalStates,
     petalFile,
   )
@@ -95,10 +96,18 @@ samePoints :: [V3] -> [V3] -> Bool
 samePoints as bs = length as == length bs && and (zipWith (\a b -> norm (a ^-^ b) < 1e-12) as bs)
 
 petalAngles :: Double -> [Double]
-petalAngles t =
-  let half = t * pi / 360
-      s = if t == 180 then 180 else 360 / pi * atan2 (sin (pi / 8) * sin half) (cos half)
-   in replicate 8 0 ++ [180, 180, -180, t - 180, -s, -s, -180, t - 180, -s, -s, -180, -180, 0, 0, -180, -180, 0, 0, t, 0]
+petalAngles t = birdAngles t 0
+
+-- | The back petal already faces the other way in the square base. It uses
+-- the SAME signed crease angles even though its motion is below the packet.
+birdAngles :: Double -> Double -> [Double]
+birdAngles t u =
+  let sideAngle degrees =
+        let half = degrees * pi / 360
+         in if degrees == 180 then 180 else 360 / pi * atan2 (sin (pi / 8) * sin half) (cos half)
+      s = sideAngle t
+      v = sideAngle u
+   in replicate 8 0 ++ [180, 180, -180, t - 180, -s, -s, -180, t - 180, -s, -s, -180, u - 180, -v, -v, -180, u - 180, -v, -v, t, u]
 
 title :: Double -> Text
 title 0 = "Square base · start with the top flap"

@@ -63,9 +63,9 @@ the unit sheet, and its contact report must pass. The exact result concerns
 the ideal path; that tolerance is a comparison with floating-point output,
 not a physical clearance guarantee.
 
-Run `stack run senbazuru-material-study -- --petal build/fold-material` for
-eight illustrations and their FOLD/glTF exports. This is one known route for
-zero-thickness paper. The square-base collapse, the second petal and general
-motion discovery remain separate work. The next useful extension is to check
-the second petal and their final pressing, retaining the first petal's accepted
-geometry and layer order.
+`CheckedPetal.petalFile` retains eight first-petal illustrations as a regression
+case. Run `stack run senbazuru-material-study -- --petal build/fold-material`
+for the [complete checked two-petal route](checked-bird-base.md), which continues
+with the back petal and final pressing while preserving the accepted geometry
+and layer order. The initial square-base collapse and general motion discovery
+remain separate work. These paths concern zero-thickness paper.

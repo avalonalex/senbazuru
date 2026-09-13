@@ -1,8 +1,9 @@
--- | A continuous certificate for ONE traditional bird petal, starting at the
--- square base. This is a fixture-specific experiment, not a general coupled
--- fold solver. See docs/notes/checked-petal.md for the construction and limits.
+-- | Continuous certificates for the two traditional bird petals and their
+-- final press, starting at the square base. This is a fixture-specific
+-- experiment, not a general coupled fold solver. See docs/notes/checked-petal.md
+-- and docs/notes/checked-bird-base.md for the construction and limits.
 --
--- Only three vertices move. With u = tan(t/2)/(1+tan(t/2)), their coordinates
+-- Only three vertices per petal move. With u = tan(t/2)/(1+tan(t/2)), their coordinates
 -- are rational functions whose coefficients have the form a + b*sqrt(2).
 -- Keeping a and b rational preserves shared-plane zeros exactly. Clearing a
 -- common POSITIVE denominator lets polynomial signs bound the entire motion.
@@ -15,7 +16,10 @@
 module PetalCertificate
   ( PetalCertificate (..),
     certifyPetal,
+    certifySecondPetal,
+    certifyPress,
     petalPoints,
+    birdPoints,
     petalMaterial,
     petalFaces,
   )
@@ -23,6 +27,7 @@ where
 
 import Control.Monad (unless)
 import Data.List (foldl', tails)
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Senbazuru.Explain (tshow)
@@ -175,12 +180,48 @@ pointDouble :: Point -> V3
 pointDouble (x, y, z) = V3 (approx x) (approx y) (approx z)
 
 petalPoints :: Double -> [V3]
-petalPoints degrees =
+petalPoints degrees = map pointDouble (pathPoints (parameter degrees) (paths True))
+
+parameter :: Double -> Q
+parameter degrees =
   let half = degrees * pi / 360
       u = if degrees == 180 then 1 else sin half / (sin half + cos half)
-      t = Q (toRational u) 0
-      den = value t denominator
-   in [pointDouble (quotient x den, quotient y den, quotient z den) | path <- paths True, let (x, y, z) = at t path]
+   in Q (toRational u) 0
+
+pathPoints :: Q -> [Path] -> [Point]
+pathPoints t ps =
+  let den = value t denominator
+   in [(quotient x den, quotient y den, quotient z den) | path <- ps, let (x, y, z) = at t path]
+
+-- The back petal uses the opposite material corner. Its tip is vertex 3;
+-- its shoulders 6 and 7 match front shoulders 5 and 4, respectively.
+-- Reflect HEIGHT only: the material identities and angle signs survive.
+secondVertices :: [(Int, Int)]
+secondVertices = [(3, 1), (6, 5), (7, 4)]
+
+combinePetals :: [a] -> [a] -> [a]
+combinePetals front back = [select i p | (i, p) <- zip [0 :: Int ..] front]
+  where
+    indexed = zip [0 ..] back
+    select i p = case lookup i secondVertices of
+      Nothing -> p
+      Just j -> fromMaybe p (lookup j indexed)
+
+birdPoints :: Double -> Double -> [V3]
+birdPoints t u = map pointDouble (combinePetals (pathPoints (parameter t) (paths True)) (pathPoints (parameter u) (paths False)))
+
+-- 175 degrees is represented by the exact rational value of its computed
+-- half-angle parameter. This binds the held pose to the certificate; the
+-- angle-derived Double output must still agree within 1e-12 model units.
+secondPaths :: Bool -> [Path]
+secondPaths below =
+  let held = [(scale x denominator, scale y denominator, scale z denominator) | (x, y, z) <- pathPoints (parameter 175) (paths True)]
+   in combinePetals held (paths (not below))
+
+-- Check a larger interval than the final press needs: both petals may move
+-- together from 0 to 180. Its 175-to-180 suffix is therefore checked too.
+pressPaths :: Bool -> [Path]
+pressPaths below = combinePetals (paths True) (paths (not below))
 
 data PetalCertificate = PetalCertificate
   { petalIntervals :: !Int,
@@ -194,26 +235,39 @@ data PetalCertificate = PetalCertificate
 -- packet so tests can reject the reflected, length-preserving wrong route.
 -- Orders are (lower, upper); their transitive consequences are included.
 certifyPetal :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
-certifyPetal above requirements = do
+certifyPetal above = certifyPaths (paths above)
+
+-- | Full back-petal turn with the accepted front petal held at 175 degrees.
+-- The recipe uses its 0-to-175 prefix. False deliberately takes the wrong side.
+certifySecondPetal :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
+certifySecondPetal below = certifyPaths (secondPaths below)
+
+-- | Both petals move together; the recipe uses the final 175-to-180 suffix.
+certifyPress :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
+certifyPress below = certifyPaths (pressPaths below)
+
+certifyPaths :: [Path] -> [(Int, Int)] -> Either Text PetalCertificate
+certifyPaths ps requirements = do
   unless (all (\(a, b) -> a >= 0 && a < 16 && b >= 0 && b < 16 && a /= b && (b, a) `notElem` orders) orders) (Left "petal layer orders are invalid or cyclic")
   unless (positiveInside denominator && value 0 denominator > 0 && value 1 denominator > 0) (Left "petal denominator is not positive")
   unless (all nondegenerate petalFaces) (Left "petal contains a degenerate material panel")
   mapM_ checkLength edges
   endpointCounts <- traverse checkEndpoint [0, 1]
-  let unresolved = [(i, j) | (i, j, a, b) <- pairs, not (fixed i && fixed j), not (separated a b)]
+  let unresolved = [(i, j) | (i, j, a, b) <- pairs, not (separated a b || fixed i && fixed j && coplanar (map (at 0) a) (map (at 0) b))]
   unless (null unresolved) (Left ("petal contact unresolved for panels " <> tshow unresolved))
   pure (PetalCertificate 1 (length pairs) (sum endpointCounts) (length edges))
   where
     orders = S.toList (close (S.fromList requirements))
     close xs = let more = S.union xs (S.fromList [(a, c) | (a, b) <- S.toList xs, (bb, c) <- S.toList xs, b == bb]) in if more == xs then xs else close more
-    ps = paths above
     pick vertices ids = [p | (i, p) <- zip [0 ..] vertices, i `elem` ids]
     nondegenerate ids = let n = normal (pick (map constant material) ids) in value 0 (dotP n n) > 0
     faces = map (pick ps) petalFaces
     indexed = zip3 [0 :: Int ..] petalFaces faces
     pairs = [(i, j, a, b) | (i, _, a) : rest <- tails indexed, (j, _, b) <- rest]
-    moving = any (`elem` [1, 4, 5])
-    fixed i = maybe False (not . moving) (lookup i (zip [0 ..] petalFaces))
+    -- Derive stationarity from the rational paths, not a hand-written list.
+    -- A coordinate N/D is constant iff N*D(0) - N(0)*D is identically zero.
+    stationary (x, y, z) = all (\p -> all (== 0) (add (scale (value 0 denominator) p) (neg (scale (value 0 p) denominator)))) [x, y, z]
+    fixed i = maybe False (all stationary) (lookup i (zip [0 ..] faces))
     edges = [(i, j) | i <- [0 .. 12], j <- [i + 1 .. 12], any (\vs -> i `elem` vs && j `elem` vs) petalFaces]
     get vertices i = maybe (Left ("missing petal vertex " <> tshow i)) Right (lookup i (zip [0 :: Int ..] vertices))
     checkLength (i, j) = do
@@ -228,9 +282,13 @@ certifyPetal above requirements = do
     checkEndpoint end = do
       let den = value end denominator
           points p = let (x, y, z) = at end p in (quotient x den, quotient y den, quotient z den)
+      -- Projecting onto xy must retain each endpoint panel's area. The held
+      -- front petal is not flat during the second turn, but none of its panels
+      -- is vertical. Refuse unsupported endpoints instead of overlooking one.
+      unless (all (\face -> let (_, _, nz) = normal face in value end nz /= 0) faces) (Left "petal endpoint contains a vertical panel")
       counts <-
         traverse
-          ( \(i, j, a, b) -> case overlap (map points a) (map points b) of
+          ( \(i, j, a, b) -> case if coplanar (map points a) (map points b) then overlap (map points a) (map points b) else Nothing of
               Nothing -> Right 0
               Just xy -> do
                 (lower, upper) <- if (i, j) `elem` orders then Right (a, b) else if (j, i) `elem` orders then Right (b, a) else Left ("missing endpoint order " <> tshow (approx end, i, j))
@@ -240,12 +298,21 @@ certifyPetal above requirements = do
           pairs
       pure (sum counts)
 
+-- A shadow overlap is a paper contact only when both panels occupy the same
+-- plane. This distinction matters while the first petal is held in the air.
+coplanar :: [Point] -> [Point] -> Bool
+coplanar aa bb = case map constant aa of
+  a : rest -> let n = normal (a : rest) in all (\b -> value 0 (dotP n (minus (constant b) a)) == 0) bb
+  [] -> False
+
 -- Strict separation of triangle INTERIORS permits seams and point/edge touch.
 -- One vertex strictly off the separating plane makes every interior point of
 -- that triangle strictly off it. No adjacent triangle pair is simply skipped.
 separated :: [Path] -> [Path] -> Bool
-separated as bs = any plane (planes as ++ planes bs)
+separated as bs = any plane ((([0], [0], [1]), ([], [], [])) : planes as ++ planes bs)
   where
+    -- Opposite petals can be separated by the stationary base plane even
+    -- when neither petal's moving planes works over the entire interval.
     planes points = case points of
       a : b : c : _ -> let n = normal points in (n, a) : [(crossP n (minus y x), x) | (x, y) <- [(a, b), (b, c), (c, a)]]
       _ -> []
@@ -267,8 +334,9 @@ approach end (x, y) lower upper =
       leading = case dropWhile (== 0) local of c : _ -> signum c; [] -> 0
    in leading * signum (value end az * value end bz)
 
--- Exact convex clipping at z=0. The centroid of a nonzero-area overlap is
--- strictly inside both panels, so endpoint height comparison is meaningful.
+-- Exact clipping of the xy projections of already coplanar panels. Endpoint
+-- panels are required to have nonzero projected area. The centroid of a
+-- nonzero-area overlap is strictly inside both, so height comparison is meaningful.
 overlap :: [Point] -> [Point] -> Maybe (Q, Q)
 overlap aa bb =
   let xy (x, y, _) = (x, y)

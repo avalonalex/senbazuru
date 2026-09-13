@@ -2,7 +2,7 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>One continuously checked bird petal · Senbazuru</title>
+<title>A continuously checked bird base · Senbazuru</title>
 <style>
   :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; color: #292d28; background: #f4efe7; }
   body { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
@@ -16,50 +16,74 @@
   ol { columns: 2; gap: 40px; padding-left: 24px; }
   li { break-inside: avoid; margin-bottom: 6px; }
   iframe { width: 100%; height: 760px; border: 0; }
+  .views { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+  button { font: inherit; padding: 8px 16px; border: 1px solid #8d9f93; border-radius: 5px; background: #fffaf2; color: #385e50; cursor: pointer; }
+  button[aria-pressed="true"] { background: #385e50; color: white; }
+  button:focus-visible { outline: 3px solid #bd8544; outline-offset: 3px; }
   @media (max-width: 650px) { ol { columns: 1; } section { padding: 12px; } }
 </style>
 <header>
   <small>SENBAZURU · CHECKED FOLDING SEQUENCE</small>
-  <h1>One tip rises, two sides fold inward</h1>
+  <h1>Two petals become a bird base</h1>
   <p>Start with the square base: a collapsed square with several touching layers.
     Lift its top tip and guide both sides inward. The result is one long, narrow
-    flap called a petal. The lower flap stays still; folding it later would
-    complete the bird base.</p>
-  <p>Seven creases move together. Two old folds open as four side folds close
-    and the tip rises. The check covers the entire motion, including leaving
-    the flat square base and pressing the petal flat.</p>
+    flap called a petal. Hold it nearly flat, fold the back petal underneath,
+    then press both flat to complete the bird base.</p>
+  <p>Seven creases move together within each petal. Two old folds open as four
+    side folds close and the tip rises. All three stages are checked throughout
+    their motion, including leaving the square base and the final flat landing.</p>
   <a href="index.html">All fold examples</a> · <a href="blintz.html">Checked blintz sequence</a> ·
-  <a href="bird-sequence.html">Both petals, illustrated states</a>
+  <a href="bird-sequence.html">Earlier illustrated sequence</a>
 </header>
 <section>
-  <h2>Follow the petal</h2>
-  <p>One camera and one scale, looking down from the side at 45°.
-    Raise the tip, bring both sides inward, then press flat. The penultimate
-    figure leaves a small opening to make the layers easier to inspect.</p>
-  <img src="checked-petal/sequence.svg" alt="Eight numbered views from a square base through one complete bird petal">
+  <h2>Follow both petals</h2>
+  <p>Figures 1–7 fold the front petal to 175°. Figures 8–14 fold the back petal
+    underneath while the front stays still. Figures 15–16 press both from 175°
+    to 180°. The small opening before pressing makes the layers easier to inspect.</p>
+  <p>Each view keeps one camera and one scale across the whole page, at 45° from
+    the side. Switch to the underside to see the back petal clearly. This changes
+    your viewpoint; the paper stays in the same reference frame.</p>
+  <div class="views" role="group" aria-label="Sequence viewpoint">
+    <button type="button" data-view="above" aria-pressed="true">Side · 45° above</button>
+    <button type="button" data-view="below" aria-pressed="false">Side · 45° below</button>
+  </div>
+  <img id="sequence" src="checked-petal/sequence.svg" alt="Sixteen numbered views from a square base through both bird petals and their final pressing, seen from above">
   <ol><!--STATES--></ol>
-  <p><a href="checked-petal/sequence.svg">Full SVG page</a> ·
+  <p><a href="checked-petal/sequence.svg">SVG from above</a> ·
+    <a href="checked-petal/sequence-below.svg">SVG from below</a> ·
     <a href="checked-petal/sequence.fold">FOLD sequence</a></p>
 </section>
 <section>
   <h2>Inspect the moving sides</h2>
-  <p>The tip starts halfway through its turn. Choose any numbered figure to see
-    the square base, the lifted petal, or its flat landing. Drag to rotate.</p>
-  <iframe src="checked-petal/index.html?model=state-3.glb" title="Continuously checked bird petal in 3D" loading="lazy"></iframe>
-  <p><a href="checked-petal/index.html?model=state-3.glb">Open the 3D viewer</a> ·
+  <p>The back petal starts halfway through its turn. Choose any numbered figure
+    to inspect either petal or the final press. Drag to look underneath the packet.</p>
+  <iframe src="checked-petal/index.html?model=state-10.glb" title="Continuously checked bird base in 3D" loading="lazy"></iframe>
+  <p><a href="checked-petal/index.html?model=state-10.glb">Open the 3D viewer</a> ·
     <a href="checked-petal/checks.json">Angles, layer orders and measurements</a></p>
 </section>
 <section>
   <h2>What was checked</h2>
-  <p>All 120 panel pairs, all 28 material edge lengths, and 71 overlapping
-    panel pairs across the two flat endpoints. Exact arithmetic checks the
-    ideal motion between the pictures. Every displayed pose is rebuilt from
+  <p>All 120 panel pairs and all 28 material edge lengths in each of three stages,
+    together with the approach and departure order of touching layers. Both
+    stage joins preserve positions, crease angles, material identities and layer
+    requirements. Exact arithmetic checks the ideal motion between the pictures.
+    Every displayed pose is rebuilt from
     crease angles and agrees with that path within 0.000000000001 of the
     sheet’s side length; shared vertices, achieved angles and contact are
     checked again.</p>
-  <p>This is zero-thickness paper following one known petal route. It does not
-    yet check the square-base collapse, the second petal, or find a route for
+  <p>This is zero-thickness paper following one known two-petal route. It does not
+    yet check the initial square-base collapse or find a route for
     an arbitrary crease pattern. Complete paper in the 3D viewer retains
     coincident buried layers; Visible paper removes them for stable display.</p>
 </section>
+<script>
+  const sequence = document.getElementById('sequence');
+  const views = document.querySelectorAll('[data-view]');
+  views.forEach(button => button.addEventListener('click', () => {
+    const below = button.dataset.view === 'below';
+    sequence.src = below ? 'checked-petal/sequence-below.svg' : 'checked-petal/sequence.svg';
+    sequence.alt = `Sixteen numbered views from a square base through both bird petals and their final pressing, seen from ${below ? 'below' : 'above'}`;
+    views.forEach(choice => choice.setAttribute('aria-pressed', String(choice === button)));
+  }));
+</script>
 </html>

@@ -322,14 +322,18 @@ the study. `Render.Projected` uses actual depth to order separated panels in
 each view, then reuses `Origami.Visible` for visible regions and edges; it
 knows nothing about bird petals or the study manifest.
 
-`PetalCertificate` is an exact, fixture-specific check of the first bird
-petal's known path. It keeps polynomial coefficients as two rational numbers
+`PetalCertificate` is an exact, fixture-specific check of the bird petals'
+known paths. It keeps polynomial coefficients as two rational numbers
 representing `a + b*sqrt(2)`, proves material edge-length identities, and bounds
 panel separation over the whole turn. Flat endpoints separately check approach
 and departure against declared order. `CheckedPetal` binds that certificate
 to the bird fixture and rebuilds requested poses through `Folding`, comparing
-them with the ideal path. `PetalGallery` supplies eight SVG/FOLD/glTF states
-through the existing renderers. These study modules do not extend the library's
+them with the ideal path. `CheckedBird` continues to the back petal and final
+press, checking both joins and retaining the first petal's material and orders.
+The stationary base plane is an additional separating-plane candidate, and
+endpoint overlap checks first establish coplanarity because the held front
+petal is in the air. `PetalGallery` supplies sixteen SVG/FOLD/glTF states and
+above/below SVG views through the existing renderers. These study modules do not extend the library's
 single-hinge `Flap` API or claim a general coupled-angle solver.
 
 The shared representation introduced by [#146](https://github.com/avalonalex/senbazuru/issues/146)
