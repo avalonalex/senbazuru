@@ -539,15 +539,17 @@ open sheet and the halfway/end states of five complete checked turns. This
 supplies a complete route for one traditional base.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
-continuous checks too. Starting from the square base, seven crease angles move
+continuous checks too. Six meeting creases first collapse the prepared open
+sheet into the square base. Then seven crease angles move
 together to lift the front tip and fold its sides inward. The back petal folds
 underneath while the front stays still, then both press flat. Exact polynomial
-signs check the ideal paths between sixteen illustrations; each exported pose
+signs check the ideal paths between twenty-three illustrations; each exported pose
 is rebuilt from angles and compared with them. Material lengths stay constant,
-touching orders agree with departure and landing, and both stage joins retain
-the accepted paper. The initial square-base collapse still needs a continuous
-check. [The construction](notes/checked-bird-base.md) explains why the stationary
-base plane helps separate the opposite petals.
+touching orders agree with departure and landing, and all three stage joins retain
+the accepted paper. [The collapse check](notes/checked-square-collapse.md)
+verifies its landing order before handing the packet to the first petal.
+[The construction](notes/checked-bird-base.md) explains why the stationary base
+plane helps separate the opposite petals.
 
 ## What it creases
 

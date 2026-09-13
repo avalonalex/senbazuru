@@ -1,6 +1,6 @@
--- | Illustrations of the checked route from square base to bird base. Motion
+-- | Illustrations of the checked route from open sheet to bird base. Motion
 -- and certification live in CheckedPetal and CheckedBird. Both SVG views use
--- one camera and scale across all sixteen figures; looking from underneath
+-- one camera and scale across all twenty-three figures; looking from underneath
 -- reveals the back petal without changing the material or folding sequence.
 module PetalGallery (writePetalGallery, petalSvg, birdSvg) where
 
@@ -37,7 +37,7 @@ petalSvg :: FoldFile -> Either Text Text
 petalSvg = sequenceSvg False 700
 
 birdSvg :: Bool -> FoldFile -> Either Text Text
-birdSvg underside = sequenceSvg underside 1280
+birdSvg underside = sequenceSvg underside 1920
 
 sequenceSvg :: Bool -> Double -> FoldFile -> Either Text Text
 sequenceSvg underside height file = do
@@ -69,16 +69,16 @@ writePetalGallery destination = do
   reports <- forM birdStates $ \(stage, progress) -> do
     pose <- checked (checkedBirdAt motion stage progress)
     frame <- checked (checkedBirdFrame motion stage progress)
-    pure (object ["stage" .= show stage, "progress" .= progress, "hingeDegrees" .= birdHinges stage progress, "maxRelativeEdgeError" .= maxLengthError (poseMesh pose), "angles" .= edgesFoldAngle frame, "faceOrders" .= faceOrders frame])
+    pure (object ["stage" .= show stage, "progress" .= progress, "petalHingeDegrees" .= birdHinges stage progress, "collapseDiagonalDegrees" .= (if stage == SquareCollapse then Just (180 * progress) else Nothing), "maxRelativeEdgeError" .= maxLengthError (poseMesh pose), "angles" .= edgesFoldAngle frame, "faceOrders" .= faceOrders frame])
   let certificates = [object ["stage" .= show stage, "intervals" .= petalIntervals report, "panelPairs" .= petalPairs report, "endpointOrders" .= petalEndpointOrders report, "materialEdges" .= petalEdges report] | (stage, report) <- birdChecks motion]
   BL.writeFile (output </> "models.json") (encode models)
-  BL.writeFile (output </> "checks.json") (encode (object ["stages" .= certificates, "joins" .= (2 :: Int), "certificate" .= ("Exact ideal paths; exported angle poses agree within 1e-12 model units. Front and back use 0-to-175 prefixes of full turns; pressing uses the 175-to-180 suffix of the equal-hinge path." :: Text), "states" .= reports]))
+  BL.writeFile (output </> "checks.json") (encode (object ["stages" .= certificates, "joins" .= (3 :: Int), "certificate" .= ("Exact ideal paths; exported angle poses agree within 1e-12 model units. Collapse covers the full open-sheet-to-square route with landing order checked at contact. Front and back use 0-to-175 prefixes of full turns; pressing uses the 175-to-180 suffix of the equal-hinge path." :: Text), "states" .= reports]))
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
   template <- TIO.readFile "study/fold-material/petal.html"
   let captions = T.concat ["<li>" <> escapeXml (fromMaybe "Petal" (frameTitle fr)) <> "</li>" | fr <- otherFrames file]
   TIO.writeFile (destination </> "petal.html") (T.replace "<!--STATES-->" captions template)
-  putStrLn ("Wrote continuously checked bird SVGs, FOLD, sixteen GLBs and petal.html to " ++ destination)
+  putStrLn ("Wrote continuously checked bird SVGs, FOLD, twenty-three GLBs and petal.html to " ++ destination)
 
 checked :: Either Text a -> IO a
 checked = either (die . T.unpack) pure

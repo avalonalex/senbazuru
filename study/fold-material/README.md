@@ -45,15 +45,16 @@ For the library's separate fixed-crease operation, see
 angle-defined motion; the numerical bending corrections below serve a
 different purpose.
 
-`stack run senbazuru-material-study -- --petal build/fold-material` checks both
-bird petals and their final pressing from the square base. It writes `petal.html`
-and `checked-petal/` with sixteen SVG/FOLD/glTF states and SVG views from above
+`stack run senbazuru-material-study -- --petal build/fold-material` checks the
+square-base collapse, both bird petals and their final pressing. It writes `petal.html`
+and `checked-petal/` with twenty-three SVG/FOLD/glTF states and SVG views from above
 and below, sharing the checked-flap
 viewer's Three.js installation. Exact signs check the ideal motion continuously;
 each illustrated pose is independently rebuilt from angles. See
 [usage](../../docs/usage.md#continuously-checked-bird-base) and
-[the derivation](../../docs/notes/checked-bird-base.md). The initial square-base
-collapse still needs a continuous check.
+[the two-petal derivation](../../docs/notes/checked-bird-base.md). The
+[initial collapse](../../docs/notes/checked-square-collapse.md) has the same
+continuous check and a verified join to the first petal.
 
 `stack run senbazuru-material-study -- --blintz build/fold-material` composes
 four complete corner folds and a reopening into the [blintz sequence](../../docs/usage.md#checked-blintz-sequence).

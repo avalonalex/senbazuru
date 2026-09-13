@@ -1,13 +1,14 @@
 # Two petals can share a stationary separating plane
 
 The [first-petal certificate](checked-petal.md) checks a pointed flap lifted
-from the square base while its sides fold inward. The complete bird-base route
-uses three stages: the front petal reaches 175°, the back petal folds underneath
+from the square base while its sides fold inward. The petal portion of the
+bird-base route uses three stages: the front petal reaches 175°, the back petal folds underneath
 to 175° while the front stays still, then both reach 180° together. The small
 opening before pressing makes the layers easier to see. This starts with an
-already collapsed square base; its initial collapse is separate work.
+already collapsed square base. The [checked initial collapse](checked-square-collapse.md)
+now connects the prepared open sheet to that starting state.
 
-In figure 11 of `--petal`, the held front tip is approximately
+In figure 18 of `--petal`, the held front tip is approximately
 `(0.2942385962, 0.7057614038, 0.0435778714)`. The back tip is
 `(0.6464466094, 0.3535533906, -0.5)`. These are original model coordinates from
 `checked-petal/sequence.fold`, not page coordinates. They show why the back
@@ -55,7 +56,7 @@ have nonzero projected area. Fixed pairs also need a separation proof or a
 coplanar ordered contact; they are no longer assumed to belong to a flat body.
 
 `CheckedBird` retains the fixture and requirements accepted by `CheckedPetal`.
-At both stage joins it compares positions, crease angles, connectivity,
+At the two petal-stage joins it compares positions, crease angles, connectivity,
 original material coordinates and resolved layer requirements. Requested poses
 are rebuilt by the folding engine, which checks shared vertices and achieved
 angles, then compared with the certified ideal positions and checked for
@@ -63,7 +64,8 @@ contact. Removing the back petal's landing order leaves the first certificate
 valid but refuses the complete sequence. Sending the back petal above the
 packet is another rejected control.
 
-`--petal` exports sixteen FOLD states, sixteen GLBs and two SVG pages with a
-common camera and scale per page. All geometry remains zero-thickness paper.
+`--petal` now includes the initial collapse and exports twenty-three FOLD
+states, twenty-three GLBs and two SVG pages with a common camera and scale
+per page. All geometry remains zero-thickness paper.
 The exact result covers these known paths, not arbitrary paired angles,
 finite-thickness contact, or an algorithm to discover folding instructions.

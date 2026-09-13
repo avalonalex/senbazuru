@@ -1,4 +1,4 @@
--- | Independently measure the angle-derived three-stage bird route. The exact
+-- | Independently measure the angle-derived four-stage bird route. The exact
 -- certificates cover intervals; these measurements check their connection to
 -- the actual folding engine, accepted stage joins and exported material.
 module CheckedBirdSpec (spec) where
@@ -39,14 +39,14 @@ spec = describe "continuously checked complete bird base" $ do
   source <- runIO (keyFrame <$> (loadFoldFile (caseSource entry) >>= right))
   bird <- runIO (right (prepareBird entry source))
 
-  it "checks all 120 pairs and 28 material edges in each of the three stages" $ do
-    map fst (birdChecks bird) `shouldBe` [FrontPetal, BackPetal, PressPetals]
-    map snd (birdChecks bird) `shouldBe` [PetalCertificate 1 120 71 28, PetalCertificate 1 120 48 28, PetalCertificate 1 120 92 28]
+  it "checks all 120 pairs and 28 material edges in each of the four stages" $ do
+    map fst (birdChecks bird) `shouldBe` [SquareCollapse, FrontPetal, BackPetal, PressPetals]
+    map snd (birdChecks bird) `shouldBe` [PetalCertificate 1 120 32 28, PetalCertificate 1 120 71 28, PetalCertificate 1 120 48 28, PetalCertificate 1 120 92 28]
   it "inherits the accepted first petal and preserves every stage join" $ do
     front <- right (preparePetal entry source >>= (`checkedPetalAt` 175))
     second <- right (checkedBirdAt bird BackPetal 0)
     samePose front second
-    forM_ [(FrontPetal, BackPetal), (BackPetal, PressPetals)] $ \(earlier, later) -> do
+    forM_ [(SquareCollapse, FrontPetal), (FrontPetal, BackPetal), (BackPetal, PressPetals)] $ \(earlier, later) -> do
       a <- right (checkedBirdAt bird earlier 1)
       b <- right (checkedBirdAt bird later 0)
       samePose a b
@@ -55,11 +55,12 @@ spec = describe "continuously checked complete bird base" $ do
       faceOrders fa `shouldBe` faceOrders fb
       frameExtras fa `shouldBe` frameExtras fb
   it "refuses invalid progress and changed fixture or order inputs" $ do
-    forM_ [FrontPetal, BackPetal, PressPetals] $ \stage ->
+    forM_ [SquareCollapse, FrontPetal, BackPetal, PressPetals] $ \stage ->
       forM_ [-0.01, 1.01, 0 / 0, 1 / 0] $ \progress ->
         checkedBirdAt bird stage progress `shouldSatisfy` isLeft
     prepareBird entry source {verticesCoords = [0.01, 0] : drop 1 (verticesCoords source)} `shouldSatisfy` isLeft
     prepareBird entry {caseFixedPanel = Nothing} source `shouldSatisfy` isLeft
+    certifyCollapse True [] `shouldSatisfy` isLeft
     certifySecondPetal True [] `shouldSatisfy` isLeft
     certifyPress True [] `shouldSatisfy` isLeft
   it "requires the new second-petal landing order even when the first petal remains accepted" $ do
@@ -70,6 +71,42 @@ spec = describe "continuously checked complete bird base" $ do
     (_, orders) <- require "orders" (poseOrders start)
     certifySecondPetal True [(b, a) | (a, b) <- orders] `shouldSatisfy` isLeft
     certifyPress True [(b, a) | (a, b) <- orders] `shouldSatisfy` isLeft
+  it "starts at the original open sheet and ends at the existing square-base pose" $ do
+    open <- right (checkedBirdAt bird SquareCollapse 0)
+    material <- right (frameVertices source)
+    placed <- right (frameVertices (poseFrame open))
+    length placed `shouldBe` 13
+    forM_ (zip material placed) $ \(a, b) -> norm (a ^-^ b) `shouldSatisfy` (< 1e-12)
+    edgesFoldAngle (poseFrame open) `shouldBe` replicate 28 0
+    square <- right (checkedBirdAt bird SquareCollapse 1)
+    front <- right (preparePetal entry source >>= (`checkedPetalAt` 0))
+    samePose square front
+  it "checks collapse landmarks independently, with one quarter held still" $
+    forAll (choose (0, 1)) $ \progress -> case checkedBirdAt bird SquareCollapse progress of
+      Left err -> counterexample (show err) False
+      Right pose ->
+        let m = pi * progress
+            s = sin (m / 2)
+            c = cos (m / 2)
+            cosine = (c * c - 2 * s * s) / (1 + s * s)
+            height = negate (sqrt 2 * s * c / (1 + s * s))
+            expected = [(0, V3 ((1 - cosine) / 2) 0 height), (2, V3 1 ((1 + cosine) / 2) height), (3, V3 ((1 - cos m) / 2) ((1 + cos m) / 2) (negate (sin m / sqrt 2)))]
+            fixed = [(i, V3 x y 0) | (i, [x, y]) <- zip [0 :: Int ..] (verticesCoords source), i `elem` [1, 4, 5, 8, 9, 10]]
+            indexed = zip [0 :: Int ..] (map position (samples (poseMesh pose)))
+         in counterexample (show progress) (all (\(i, p) -> maybe False (\q -> norm (p ^-^ q) < 1e-12) (lookup i indexed)) (expected ++ fixed))
+  it "rejects a length-preserving reflected collapse and its reversed landing order" $ do
+    square <- right (checkedBirdAt bird SquareCollapse 1)
+    (_, orders) <- require "orders" (poseOrders square)
+    certifyCollapse False orders `shouldSatisfy` isLeft
+    certifyCollapse True [(b, a) | (a, b) <- orders] `shouldSatisfy` isLeft
+    certifyCollapse False [(b, a) | (a, b) <- orders] `shouldBe` Right (PetalCertificate 1 120 32 28)
+    -- A flat endpoint cannot distinguish the reflected route; the approach can.
+    collapsePoints 180 `shouldBe` birdPoints 0 0
+  it "refuses independent crease interpolation that fails to close the meeting creases" $ do
+    foldFrameWith source {edgesFoldAngle = map (/ 2) (collapseAngles 180)} `shouldSatisfy` isLeft
+    let angles = collapseAngles 90
+        wrong = take 8 angles ++ [91] ++ drop 9 angles
+    foldFrameWith source {edgesFoldAngle = wrong} `shouldSatisfy` isLeft
   it "holds every front-petal and body vertex fixed during the second turn" $ do
     startPose <- right (checkedBirdAt bird BackPetal 0)
     start <- right (frameVertices (poseFrame startPose))
@@ -88,7 +125,7 @@ spec = describe "continuously checked complete bird base" $ do
               indexed = zip [0 :: Int ..] (map position (samples (poseMesh pose)))
            in counterexample (show (stage, progress)) (all (\(i, expected) -> maybe False (\p -> norm (p ^-^ expected) < 1e-12) (lookup i indexed)) [(1, tip t 1), (3, tip u (-1))])
   it "keeps material lengths, shared vertices and signed achieved angles throughout all stages" $
-    forM_ [FrontPetal, BackPetal, PressPetals] $ \stage ->
+    forM_ [SquareCollapse, FrontPetal, BackPetal, PressPetals] $ \stage ->
       forM_ [0, 0.00001, 0.2, 0.5, 0.8, 0.99999, 1] $ \progress -> do
         pose <- right (checkedBirdAt bird stage progress)
         poseContact pose `shouldBe` Just (ContactCheck 120 [] [] [] [])
@@ -116,13 +153,15 @@ spec = describe "continuously checked complete bird base" $ do
         expected = [V3 1 0 0, tip, V3 1 0 0, tip] ++ replicate 4 midpoint ++ [V3 0.5 0.5 0, p, q, q, p]
     length points `shouldBe` 13
     forM_ (zip points expected) $ \(a, b) -> norm (a ^-^ b) `shouldSatisfy` (< 1e-12)
-  it "exports sixteen self-contained material frames and stable GLBs including both flat endpoints" $ do
+  it "exports twenty-three self-contained material frames and stable GLBs including both flat endpoints" $ do
     file <- right (birdFile bird)
     eitherDecode (encode file) `shouldBe` Right file
-    length (otherFrames file) `shouldBe` 16
+    length (otherFrames file) `shouldBe` 23
     forM_ (zip birdStates (otherFrames file)) $ \((stage, progress), frame) -> do
       frameInherit frame `shouldBe` False
-      faceOrders frame `shouldSatisfy` (not . null)
+      if stage == SquareCollapse && progress < 1
+        then faceOrders frame `shouldBe` []
+        else faceOrders frame `shouldSatisfy` (not . null)
       paper <- right (surfaceFromFrame frame >>= requireMaterialCoordinates)
       map sampleMaterial (surfaceSamples paper) `shouldBe` [V2 x y | [x, y] <- verticesCoords source]
       surface <- right (checkedBirdSurface bird stage progress)
