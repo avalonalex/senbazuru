@@ -22,7 +22,8 @@
 -- extends that same solve to declared directional panel or local triangle orders, supplied by
 -- SurfaceContact. 'relaxDiscoveredContact' learns those orders from a separate
 -- reference pose and refuses new unrelated overlaps. Independent triangle
--- checks still judge each endpoint.
+-- checks still judge each endpoint. 'relaxLocalContact' uses nearby triangle
+-- discovery inside bending panels with the same fixed-reference policy.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -35,6 +36,7 @@ module FoldRelaxation
     relaxHinges,
     relaxSurfaceContact,
     relaxDiscoveredContact,
+    relaxLocalContact,
     principalStrains,
     maxLengthError,
   )
@@ -49,6 +51,7 @@ import Data.Maybe (isJust, isNothing)
 import FoldBending
 import FoldContact
 import FoldMaterial
+import LocalContactDiscovery qualified as Local
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -75,12 +78,14 @@ data RelaxError
   | BendingFailure !BendingError
   | SurfaceContactFailure !Contact.ContactError
   | ContactDiscoveryFailure !Discovery.DiscoveryError
+  | LocalDiscoveryFailure !Local.LocalDiscoveryError
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
   explain (BendingFailure err) = explain err
   explain (SurfaceContactFailure err) = explain err
   explain (ContactDiscoveryFailure err) = explain err
+  explain (LocalDiscoveryFailure err) = explain err
   explain InvalidSettings = "length relaxation needs a nonnegative iteration limit and a finite positive tolerance"
   explain EmptyMesh = "length relaxation needs at least one triangle"
   explain (InvalidSample i) = "study vertex " <> tshow i <> " has a non-finite material or spatial coordinate"
@@ -171,7 +176,13 @@ relaxSurfaceContact settings hinges contact = relaxAngular (SurfaceOrder contact
 relaxDiscoveredContact :: Settings -> [Hinge] -> Discovery.ReferenceContact -> MaterialMesh -> Either RelaxError Relaxation
 relaxDiscoveredContact settings hinges reference = relaxAngular (DiscoveredOrder reference) settings hinges
 
-data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.OrderedContact | DiscoveredOrder Discovery.ReferenceContact
+-- | The same solve with automatically discovered material-triangle partners.
+-- Reference relationships remain fixed; an unknown pair reaching contact
+-- rejects a trial. Separated overlaps do not by themselves need an order.
+relaxLocalContact :: Settings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError Relaxation
+relaxLocalContact settings hinges reference = relaxAngular (LocalOrder reference) settings hinges
+
+data ContactMode = NoContact | PacketContact FoldCase | SurfaceOrder Contact.OrderedContact | DiscoveredOrder Discovery.ReferenceContact | LocalOrder Local.LocalReference
 
 relaxAngular :: ContactMode -> Settings -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
 relaxAngular packet settings hinges mesh = do
@@ -226,6 +237,7 @@ relaxWith packet bending settings original = do
     meshFrom current = original {samples = IM.elems current}
     contacts current = case packet of
       NoContact -> Right []
+      LocalOrder reference -> either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference (meshFrom current))
       DiscoveredOrder reference -> either (Left . ContactDiscoveryFailure) Right (Discovery.discoveredContacts reference (meshFrom current))
       SurfaceOrder contact -> either (Left . SurfaceContactFailure) Right (Contact.orderedContacts contact (meshFrom current))
       PacketContact which -> case packetContacts which (meshFrom current) of

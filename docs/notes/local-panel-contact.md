@@ -63,3 +63,6 @@ orders cannot represent every self-contact arrangement. The result establishes
 an endpoint under illustrative controls, not a calibrated material law or a
 collision-free route. General bending motion is still outside the
 [rigid hinge-sweep check](hinge-sweep-contact.md).
+
+[Local discovery](local-contact-discovery.md) in #164 adds a separate control
+that learns nearby triangle partners from a separated reference pose.

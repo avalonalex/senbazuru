@@ -46,7 +46,7 @@ Open `build/fold-material/bending.html`, or
 [the served page](http://127.0.0.1:8000/bending.html) with the server above.
 It compares shapes from a shared camera 45° above the side. Choose the single fold, either double-fold stiffness,
 diagonal/kite examples, opposing flaps with authored or discovered contact,
-or the curled-panel self-contact control.
+or the curled-panel controls with authored or discovered local contact.
 The contact comparisons show unconstrained and corrected endpoints from the same
 starting pose. **Opposing flaps · first contact** also has a **Folding state**
 selector for its angle-defined approach, at the same camera and scale.
@@ -122,8 +122,15 @@ orders and their smallest separation residual. See the
 [local contact note](../../docs/notes/local-panel-contact.md) for the control,
 finer-mesh comparison and numerical scope.
 
+**Curled panel · discovered contact** replaces the pair list with a scan of a
+separated 44.5° reference curl. The search distance is `0.03` along model
+direction `(-3, 0, 1)`, while numerical clearance remains `1e-6`. Flat reference
+patches share their discovered partners, keeping an order as contact slides
+across triangle diagonals. The JSON records both detected overlaps and expanded
+triangle orders. See [local discovery](../../docs/notes/local-contact-discovery.md).
+
 Physical thickness, paper calibration, automatic approach selection, general
-continuous collision checking and automatic self-contact discovery remain open.
+continuous collision checking and evolving local contact history remain open.
 Raw sampled observations and numerical correction checkpoints still have no
 motion check. See the [energy note](../../docs/notes/crease-and-panel-energy.md) and
 [crease identity note](../../docs/notes/crease-identity-through-refinement.md).

@@ -234,6 +234,11 @@ local contact correction. Additional bending controls curl the strip while
 its passive springs prefer flatness. Supplied triangle pairs keep the returning
 end above the starting end without splitting the panel. These contacts are not
 discovered automatically, and the check still applies only to saved states.
+**Curled panel · discovered contact** removes that pair list. It discovers
+nearby triangle partners from a separated 44.5° curl, extending their order
+across flat reference patches. Search distance, model direction and numerical
+clearance are supplied controls. Uncovered new contacts are refused; it does
+not discover or certify a continuous bending route.
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

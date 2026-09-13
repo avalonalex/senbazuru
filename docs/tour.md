@@ -827,6 +827,12 @@ Passive bending prefers flatness, while separate experimental controls impose
 a curl. The comparison has three crossing pairs without correction and none
 at the corrected endpoint. The contacts are supplied explicitly along a fixed
 model direction; this does not discover general self-contact.
+The [local discovery control](notes/local-contact-discovery.md) removes the
+pair list, using nearby overlaps in a separated reference. Flat reference
+patches share partners across triangulation diagonals; source panels stay
+unchanged. The learned order remains fixed, and a new pair reaching contact
+without reference evidence is refused. Selecting the reference and contact
+direction still requires a caller.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

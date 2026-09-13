@@ -10,7 +10,7 @@
 -- prefers 60 degrees and is four times its passive spring's stiffness, so the
 -- free equilibrium prefers 48 degrees: (0 + 4*60)/5. That curl crosses itself.
 -- Local requirements hold the returning end above the starting end instead.
-module SelfContactExample (CurledPanel (..), CurlError (..), curledPanel) where
+module SelfContactExample (CurledPanel (..), CurlError (..), curledPanel, curledPanelAt) where
 
 import Control.Monad (unless)
 import Data.Bifunctor (first)
@@ -45,10 +45,17 @@ instance Explain CurlError where
 -- | The span count controls this strip's mesh; multiples of eight retain the
 -- same material regions at its two ends. Only those regions receive contact forces.
 curledPanel :: Int -> Either CurlError CurledPanel
-curledPanel count = do
+curledPanel count = curledPanelAt count (320 / fromIntegral count)
+
+-- | Choose a starting bend in degrees between spans, keeping the original
+-- span lengths and the same imposed curl controls. This constructs a pose;
+-- it does not interpolate positions or certify motion from another pose.
+curledPanelAt :: Int -> Double -> Either CurlError CurledPanel
+curledPanelAt count startingBend = do
   unless (count >= 8 && count <= 64 && count `mod` 8 == 0) (Left (CurlError "curled panel needs a multiple of eight spans, from 8 to 64"))
+  unless (not (isNaN startingBend || isInfinite startingBend) && startingBend > 0 && startingBend < 90) (Left (CurlError "curled panel starting bend must be finite and between 0 and 90 degrees"))
   let n = fromIntegral count
-      tangent i = let angle = fromIntegral i * 320 / n * pi / 180 in V3 (cos angle / n) 0 (sin angle / n)
+      tangent i = let angle = fromIntegral i * startingBend * pi / 180 in V3 (cos angle / n) 0 (sin angle / n)
       centerline = scanl (^+^) (V3 0 0 0) [tangent i | i <- [0 .. count - 1]]
       row (i, p) = [Sample (V2 (fromIntegral i / n) y) (p ^+^ V3 0 y 0) | y <- [0, 0.3]]
       spanTriangles i = let a = 2 * i in [(a, a + 2, a + 3), (a, a + 3, a + 1)]
