@@ -12,7 +12,8 @@ and touching stacks in [#179](https://github.com/avalonalex/senbazuru/issues/179
 including free edges on the hinge in [#181](https://github.com/avalonalex/senbazuru/issues/181),
 a complete checked blintz sequence in [#183](https://github.com/avalonalex/senbazuru/issues/183),
 the continuously checked first bird petal in [#185](https://github.com/avalonalex/senbazuru/issues/185),
-and the second petal and final press in [#187](https://github.com/avalonalex/senbazuru/issues/187). The
+the second petal and final press in [#187](https://github.com/avalonalex/senbazuru/issues/187),
+and the initial square-base collapse in [#189](https://github.com/avalonalex/senbazuru/issues/189). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -22,9 +23,9 @@ closes.
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
-| Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, and both bird petals and final pressing have exact ideal-path certificates; square-base collapse and frog stages have checked states |
+| Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,299 examples pass, including both bird petals, final pressing and the five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,303 examples pass, including square-base collapse, both bird petals, final pressing and the five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 
@@ -72,7 +73,8 @@ pieces of work.
 3. **Folding in three dimensions** ([#55](https://github.com/avalonalex/senbazuru/issues/55)).
    The studies now have verified intermediate square/waterbomb collapse,
    rabbit-ear and bird-petal states. The contact study checks entire intervals
-   for fixed-hinge turns, numerical corrections, both bird petals and final pressing.
+   for fixed-hinge turns, numerical corrections, square-base collapse, both bird petals
+   and final pressing.
    Connecting the
    fixed-hinge check to one authored flap rotation is now implemented in
    [#175](https://github.com/avalonalex/senbazuru/issues/175), with a single-fold
@@ -86,7 +88,7 @@ pieces of work.
    The first bird petal now has an exact ideal-path contact/length certificate
    and checked flat endpoint orders in #185. The second petal and final pressing
    now continue that checked route in #187, preserving both stage joins.
-   The next step is continuously checking square-base collapse. General flap/wing
+   The initial square-base collapse now joins that route in #189. General flap/wing
    authoring, an angle solver and checks for arbitrary coupled motions remain open
    ([#54](https://github.com/avalonalex/senbazuru/issues/54),
    [#55](https://github.com/avalonalex/senbazuru/issues/55),
@@ -121,8 +123,8 @@ pieces of work.
   [first-petal certificate](notes/checked-petal.md) checks the seven coupled
   angles of one known bird petal using exact polynomial signs. The
   [complete bird route](notes/checked-bird-base.md) adds the second petal and
-  final pressing with checked joins. Square-base collapse still needs a
-  continuous check. The checkers
+  final pressing with checked joins. The [initial collapse](notes/checked-square-collapse.md)
+  now connects the prepared open sheet to that route. The checkers
   report a colliding pose or an unresolved interval, not a guaranteed first
   impact time; #61 remains open.
 - **[#60](https://github.com/avalonalex/senbazuru/issues/60) the vocabulary, and [#97](https://github.com/avalonalex/senbazuru/issues/97) the scheme format.** Hard as
@@ -238,8 +240,9 @@ stacking and read the assignment off it. That drops the hardest precondition.
 The shared-surface milestone #146 is complete. The contact study through #173
 now supplies one checked library motion in #175, extended with one-sided flat
 endpoints in #177 and touching stacks in #179/#181. The first bird petal in
-#185, extended through the second petal and final press in #187, adds a bounded
-study of continuously checked motion with coupled angles.
+#185, extended through the second petal and final press in #187 and back to
+the prepared open sheet in #189, adds a complete known route with continuously
+checked coupled angles.
 
 1. **One checked flap rotation**, a bounded part of
    [#54](https://github.com/avalonalex/senbazuru/issues/54) and
@@ -254,10 +257,10 @@ study of continuously checked motion with coupled angles.
    The first bird petal now checks seven coordinated angles from the square
    base through its flat landing, with an exact certificate for its ideal path.
    The second petal and final pressing now preserve accepted geometry and
-   layer order through two checked stage joins. **Next: continuously check
-   the initial square-base collapse**, connecting an open square to that route.
-   The helmet base remains a useful separate selection test: one physical
-   hinge can comprise several aligned crease segments, so removing a single
+   layer order through two checked stage joins. The initial square-base collapse
+   adds a third checked join and completes the route from a prepared open sheet.
+   **Next: a hinge made of several aligned crease segments**, using the helmet
+   base as a selection test. One physical hinge can comprise several segments, so removing a single
    graph edge may not separate the moving stack. General coupled-angle solving
    remains later work.
 2. [#93](https://github.com/avalonalex/senbazuru/issues/93), the sweep, to learn what actually breaks before deciding what

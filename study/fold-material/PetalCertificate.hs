@@ -1,20 +1,22 @@
--- | Continuous certificates for the two traditional bird petals and their
--- final press, starting at the square base. This is a fixture-specific
+-- | Continuous certificates for one traditional bird-base route: square-base
+-- collapse, two petals and their final press. This is a fixture-specific
 -- experiment, not a general coupled fold solver. See docs/notes/checked-petal.md
--- and docs/notes/checked-bird-base.md for the construction and limits.
+-- and docs/notes/checked-square-collapse.md for the construction and limits.
 --
--- Only three vertices per petal move. With u = tan(t/2)/(1+tan(t/2)), their coordinates
--- are rational functions whose coefficients have the form a + b*sqrt(2).
+-- Each stage has rational coordinate paths with coefficients a + b*sqrt(2).
+-- Petals use u = tan(t/2)/(1+tan(t/2)); collapse uses u = tan(m/4).
 -- Keeping a and b rational preserves shared-plane zeros exactly. Clearing a
 -- common POSITIVE denominator lets polynomial signs bound the entire motion.
 -- Bernstein coefficients bound a polynomial on the whole interval. A failed
 -- bound means unresolved, never clear; this recipe needs no subdivision.
 --
--- The certificate concerns the ideal mathematical sheet. CheckedPetal compares
+-- The certificate concerns the ideal mathematical sheet. CheckedBird compares
 -- every requested angle-derived Double pose with it under a stated roundoff
 -- tolerance. Paper has zero thickness; touching boundaries are allowed.
 module PetalCertificate
   ( PetalCertificate (..),
+    certifyCollapse,
+    collapsePoints,
     certifyPetal,
     certifySecondPetal,
     certifyPress,
@@ -180,7 +182,7 @@ pointDouble :: Point -> V3
 pointDouble (x, y, z) = V3 (approx x) (approx y) (approx z)
 
 petalPoints :: Double -> [V3]
-petalPoints degrees = map pointDouble (pathPoints (parameter degrees) (paths True))
+petalPoints degrees = map pointDouble (pathPoints denominator (parameter degrees) (paths True))
 
 parameter :: Double -> Q
 parameter degrees =
@@ -188,9 +190,9 @@ parameter degrees =
       u = if degrees == 180 then 1 else sin half / (sin half + cos half)
    in Q (toRational u) 0
 
-pathPoints :: Q -> [Path] -> [Point]
-pathPoints t ps =
-  let den = value t denominator
+pathPoints :: Poly -> Q -> [Path] -> [Point]
+pathPoints denPoly t ps =
+  let den = value t denPoly
    in [(quotient x den, quotient y den, quotient z den) | path <- ps, let (x, y, z) = at t path]
 
 -- The back petal uses the opposite material corner. Its tip is vertex 3;
@@ -208,20 +210,62 @@ combinePetals front back = [select i p | (i, p) <- zip [0 :: Int ..] front]
       Just j -> fromMaybe p (lookup j indexed)
 
 birdPoints :: Double -> Double -> [V3]
-birdPoints t u = map pointDouble (combinePetals (pathPoints (parameter t) (paths True)) (pathPoints (parameter u) (paths False)))
+birdPoints t u = map pointDouble (combinePetals (pathPoints denominator (parameter t) (paths True)) (pathPoints denominator (parameter u) (paths False)))
 
 -- 175 degrees is represented by the exact rational value of its computed
 -- half-angle parameter. This binds the held pose to the certificate; the
 -- angle-derived Double output must still agree within 1e-12 model units.
 secondPaths :: Bool -> [Path]
 secondPaths below =
-  let held = [(scale x denominator, scale y denominator, scale z denominator) | (x, y, z) <- pathPoints (parameter 175) (paths True)]
+  let held = [(scale x denominator, scale y denominator, scale z denominator) | (x, y, z) <- pathPoints denominator (parameter 175) (paths True)]
    in combinePetals held (paths (not below))
 
 -- Check a larger interval than the final press needs: both petals may move
 -- together from 0 to 180. Its 175-to-180 suffix is therefore checked too.
 pressPaths :: Bool -> [Path]
 pressPaths below = combinePetals (paths True) (paths (not below))
+
+-- The square collapse uses u = tan(m/4), from 0 to 1. This makes both
+-- sin(m/2) and cos(m/2) rational, and therefore the coupled midline angle too.
+-- Keep the south-east quarter fixed, exactly as the later petal anchor does.
+-- The two kinds of turning rays need different positive denominators.
+collapseDenominator :: Poly
+-- (1+u^2)^2 * (1+6u^2+u^4): positive on the closed interval.
+collapseDenominator = mul [1, 0, 2, 0, 1] [1, 0, 6, 0, 1]
+
+collapsePaths :: Bool -> [Path]
+collapsePaths below =
+  let d = collapseDenominator
+      dm = [1, 0, 2, 0, 1]
+      dv = [1, 0, 6, 0, 1]
+      -- Cosine/sine numerators for the diagonal angle m and midline v,
+      -- all expressed over the same denominator d.
+      cm = mul [1, 0, -6, 0, 1] dv
+      sm = mul [0, 4, 0, -4] dv
+      cv = mul [1, 0, -10, 0, 1] dm
+      sv = mul (scale (Q 0 1) [0, 4, 0, -4]) dm
+      h = Q (1 / 2) 0
+      quarter = Q (1 / 4) 0
+      height = if below then -1 else 1
+      fixed (x, y, z) = (scale x d, scale y d, scale z d)
+      centre = fixed (h, h, 0)
+      corner0 = (scale h (add d (neg cv)), [], scale (height * h) sv)
+      corner2 = (d, scale h (add d cv), scale (height * h) sv)
+      corner3 = (scale h (add d (neg cm)), scale h (add d cm), scale (height * diagonal) sm)
+      midpoint6 = (add (scale (3 * quarter) d) (scale (-quarter) cm), add (scale (3 * quarter) d) (scale quarter cm), scale (height * diagonal * h) sm)
+      midpoint7 = (scale quarter (add d (neg cm)), scale quarter (add d cm), scale (height * diagonal * h) sm)
+      inner p = let (x, y, z) = minus p centre; ratio = 2 - 2 * diagonal in plus centre (scale ratio x, scale ratio y, scale ratio z)
+   in [corner0, fixed (1, 0, 0), corner2, corner3, fixed (h, 0, 0), fixed (1, h, 0), midpoint6, midpoint7, centre, fixed (h, diagonal - h, 0), fixed (1 + h - diagonal, h, 0), inner midpoint6, inner midpoint7]
+
+-- | The Boolean reflects the collapse through the stationary paper plane.
+-- Both routes preserve lengths; only the lower route lands in the bird order.
+certifyCollapse :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
+certifyCollapse below = certifyPaths collapseDenominator (collapsePaths below)
+
+collapsePoints :: Double -> [V3]
+collapsePoints degrees =
+  let u = if degrees == 180 then 1 else tan (degrees * pi / 720)
+   in map pointDouble (pathPoints collapseDenominator (Q (toRational u) 0) (collapsePaths True))
 
 data PetalCertificate = PetalCertificate
   { petalIntervals :: !Int,
@@ -235,26 +279,26 @@ data PetalCertificate = PetalCertificate
 -- packet so tests can reject the reflected, length-preserving wrong route.
 -- Orders are (lower, upper); their transitive consequences are included.
 certifyPetal :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
-certifyPetal above = certifyPaths (paths above)
+certifyPetal above = certifyPaths denominator (paths above)
 
 -- | Full back-petal turn with the accepted front petal held at 175 degrees.
 -- The recipe uses its 0-to-175 prefix. False deliberately takes the wrong side.
 certifySecondPetal :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
-certifySecondPetal below = certifyPaths (secondPaths below)
+certifySecondPetal below = certifyPaths denominator (secondPaths below)
 
 -- | Both petals move together; the recipe uses the final 175-to-180 suffix.
 certifyPress :: Bool -> [(Int, Int)] -> Either Text PetalCertificate
-certifyPress below = certifyPaths (pressPaths below)
+certifyPress below = certifyPaths denominator (pressPaths below)
 
-certifyPaths :: [Path] -> [(Int, Int)] -> Either Text PetalCertificate
-certifyPaths ps requirements = do
-  unless (all (\(a, b) -> a >= 0 && a < 16 && b >= 0 && b < 16 && a /= b && (b, a) `notElem` orders) orders) (Left "petal layer orders are invalid or cyclic")
-  unless (positiveInside denominator && value 0 denominator > 0 && value 1 denominator > 0) (Left "petal denominator is not positive")
-  unless (all nondegenerate petalFaces) (Left "petal contains a degenerate material panel")
+certifyPaths :: Poly -> [Path] -> [(Int, Int)] -> Either Text PetalCertificate
+certifyPaths denPoly ps requirements = do
+  unless (all (\(a, b) -> a >= 0 && a < 16 && b >= 0 && b < 16 && a /= b && (b, a) `notElem` orders) orders) (Left "bird path layer orders are invalid or cyclic")
+  unless (positiveInside denPoly && value 0 denPoly > 0 && value 1 denPoly > 0) (Left "bird path denominator is not positive")
+  unless (all nondegenerate petalFaces) (Left "bird path contains a degenerate material panel")
   mapM_ checkLength edges
   endpointCounts <- traverse checkEndpoint [0, 1]
   let unresolved = [(i, j) | (i, j, a, b) <- pairs, not (separated a b || fixed i && fixed j && coplanar (map (at 0) a) (map (at 0) b))]
-  unless (null unresolved) (Left ("petal contact unresolved for panels " <> tshow unresolved))
+  unless (null unresolved) (Left ("bird path contact unresolved for panels " <> tshow unresolved))
   pure (PetalCertificate 1 (length pairs) (sum endpointCounts) (length edges))
   where
     orders = S.toList (close (S.fromList requirements))
@@ -266,7 +310,7 @@ certifyPaths ps requirements = do
     pairs = [(i, j, a, b) | (i, _, a) : rest <- tails indexed, (j, _, b) <- rest]
     -- Derive stationarity from the rational paths, not a hand-written list.
     -- A coordinate N/D is constant iff N*D(0) - N(0)*D is identically zero.
-    stationary (x, y, z) = all (\p -> all (== 0) (add (scale (value 0 denominator) p) (neg (scale (value 0 p) denominator)))) [x, y, z]
+    stationary (x, y, z) = all (\p -> all (== 0) (add (scale (value 0 denPoly) p) (neg (scale (value 0 p) denPoly)))) [x, y, z]
     fixed i = maybe False (all stationary) (lookup i (zip [0 ..] faces))
     edges = [(i, j) | i <- [0 .. 12], j <- [i + 1 .. 12], any (\vs -> i `elem` vs && j `elem` vs) petalFaces]
     get vertices i = maybe (Left ("missing petal vertex " <> tshow i)) Right (lookup i (zip [0 :: Int ..] vertices))
@@ -278,21 +322,21 @@ certifyPaths ps requirements = do
       let v = minus a b
           m = minus ma mb
           squared = value 0 (dotP m m)
-      unless (all (== 0) (add (dotP v v) (neg (scale squared (mul denominator denominator))))) (Left ("petal changes material edge " <> tshow (i, j)))
+      unless (all (== 0) (add (dotP v v) (neg (scale squared (mul denPoly denPoly))))) (Left ("bird path changes material edge " <> tshow (i, j)))
     checkEndpoint end = do
-      let den = value end denominator
+      let den = value end denPoly
           points p = let (x, y, z) = at end p in (quotient x den, quotient y den, quotient z den)
       -- Projecting onto xy must retain each endpoint panel's area. The held
       -- front petal is not flat during the second turn, but none of its panels
       -- is vertical. Refuse unsupported endpoints instead of overlooking one.
-      unless (all (\face -> let (_, _, nz) = normal face in value end nz /= 0) faces) (Left "petal endpoint contains a vertical panel")
+      unless (all (\face -> let (_, _, nz) = normal face in value end nz /= 0) faces) (Left "bird path endpoint contains a vertical panel")
       counts <-
         traverse
           ( \(i, j, a, b) -> case if coplanar (map points a) (map points b) then overlap (map points a) (map points b) else Nothing of
               Nothing -> Right 0
               Just xy -> do
                 (lower, upper) <- if (i, j) `elem` orders then Right (a, b) else if (j, i) `elem` orders then Right (b, a) else Left ("missing endpoint order " <> tshow (approx end, i, j))
-                unless (fixed i && fixed j || approach end xy lower upper > 0) (Left ("petal approaches endpoint against layer order " <> tshow (i, j) <> " at " <> tshow (approx end)))
+                unless (fixed i && fixed j || approach denPoly end xy lower upper > 0) (Left ("bird path approaches endpoint against layer order " <> tshow (i, j) <> " at " <> tshow (approx end)))
                 Right 1
           )
           pairs
@@ -322,10 +366,10 @@ separated as bs = any plane ((([0], [0], [1]), ([], [], [])) : planes as ++ plan
 -- At an endpoint with area overlap, compare plane heights at an exact point
 -- inside that overlap. The first nonzero Taylor coefficient gives the sign
 -- just inside the motion, even when the gap itself is zero at the endpoint.
-approach :: Q -> (Q, Q) -> [Path] -> [Path] -> Q
-approach end (x, y) lower upper =
+approach :: Poly -> Q -> (Q, Q) -> [Path] -> [Path] -> Q
+approach denPoly end (x, y) lower upper =
   let height points = case points of
-        o : _ -> let n@(nx, ny, nz) = normal points in (add (dotP n o) (neg (mul denominator (add (scale x nx) (scale y ny)))), nz)
+        o : _ -> let n@(nx, ny, nz) = normal points in (add (dotP n o) (neg (mul denPoly (add (scale x nx) (scale y ny)))), nz)
         _ -> ([], [])
       (a, az) = height lower
       (b, bz) = height upper

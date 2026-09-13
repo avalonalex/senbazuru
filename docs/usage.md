@@ -298,10 +298,10 @@ as the single-flap operation apply to each complete turn.
 ### Continuously checked bird base
 
 A petal fold lifts one flap of the square base and folds its sides inward.
-This recipe starts at the already collapsed square base: fold the front petal
-to 175°, hold it while folding the back petal underneath to 175°, then press
-both to 180°. Seven crease angles per petal change together;
-this is a separate study recipe from the single-hinge `CheckedFlap` operation.
+This recipe first collapses the prepared open sheet into the square base,
+then folds the front petal to 175°, holds it while folding the back petal
+underneath to 175°, and presses both to 180°. Seven crease angles per petal
+change together; this is a separate study recipe from the single-hinge `CheckedFlap` operation.
 
 ```bash
 stack run senbazuru-material-study -- --petal build/fold-material
@@ -310,19 +310,20 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
 ```
 
 Open [the petal instructions](http://127.0.0.1:8000/petal.html). `checked-petal/`
-contains sixteen-figure SVGs from above and below, each with a common side
-camera at 45°, a FOLD sequence, sixteen GLBs with visible/complete scenes, and
+contains twenty-three-figure SVGs from above and below, each with a common side
+camera at 45°, a FOLD sequence, twenty-three GLBs with visible/complete scenes, and
 measurements in `checks.json`. The viewer shares the checked-flap Three.js
 installation. Each stage checks all 120 panel pairs and all 28 material edge
 lengths using exact arithmetic on the ideal path. Certificates cover full
 turns; the route uses their appropriate prefixes or suffix. Touching endpoint
-orders and both stage joins are checked separately.
+orders and all three stage joins are checked separately.
 Each displayed pose is rebuilt from crease angles and compared with that path
 within `1e-12` model units, with shared-vertex, achieved-angle and contact checks.
 
 This accepts the known bird fixture and its declared layer order. It does not
-find arbitrary coupled motions, simulate thickness, or continuously check the
-initial square-base collapse. See [the complete-route note](notes/checked-bird-base.md)
+find arbitrary coupled motions, simulate thickness, or check how the initial
+pre-creases were made. See [the collapse note](notes/checked-square-collapse.md)
+and [the two-petal note](notes/checked-bird-base.md)
 for why flat endpoint order and the floating-point comparison remain separate
 from the exact interval result.
 

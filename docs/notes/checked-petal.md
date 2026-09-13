@@ -67,5 +67,6 @@ not a physical clearance guarantee.
 case. Run `stack run senbazuru-material-study -- --petal build/fold-material`
 for the [complete checked two-petal route](checked-bird-base.md), which continues
 with the back petal and final pressing while preserving the accepted geometry
-and layer order. The initial square-base collapse and general motion discovery
-remain separate work. These paths concern zero-thickness paper.
+and layer order. The [initial square-base collapse](checked-square-collapse.md)
+now joins that route. General motion discovery remains separate work. These
+paths concern zero-thickness paper.

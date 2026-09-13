@@ -52,6 +52,7 @@ read the Haddock module headers; for the domain, start with
 | [moving-touching-layers.md](moving-touching-layers.md) | Touching layers with the same rigid motion retain their order, while other pairs still need a collision check |
 | [checked-petal.md](checked-petal.md) | Exact polynomial signs check seven coordinated crease angles throughout one bird petal |
 | [checked-bird-base.md](checked-bird-base.md) | The stationary base plane separates opposite petals; exact checks carry their material and layer order through the final press |
+| [checked-square-collapse.md](checked-square-collapse.md) | Exact checks carry the prepared open sheet into the square base and verify its landing order before either petal opens |
 | [chaining-checked-folds.md](chaining-checked-folds.md) | Carry angles, orders and a consistent anchor between the five checked turns of a blintz sequence |
 | [free-edges-on-a-hinge.md](free-edges-on-a-hinge.md) | A declared stack can support its free edge on a shared hinge without welding the material vertices |
 | [endpoints-and-routes.md](endpoints-and-routes.md) | A valid state, a checked route and the existence of some route are different questions |

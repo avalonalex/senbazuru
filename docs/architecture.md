@@ -332,7 +332,12 @@ them with the ideal path. `CheckedBird` continues to the back petal and final
 press, checking both joins and retaining the first petal's material and orders.
 The stationary base plane is an additional separating-plane candidate, and
 endpoint overlap checks first establish coplanarity because the held front
-petal is in the air. `PetalGallery` supplies sixteen SVG/FOLD/glTF states and
+petal is in the air. The same certificate machinery now checks the initial
+square-base collapse with a different positive denominator. `CheckedBird`
+compares its angle-derived poses and verifies the join to the first petal.
+Future landing orders apply at contact, while separated collapse panels use
+intersection checks without imposing that order on their shadows.
+`PetalGallery` supplies twenty-three SVG/FOLD/glTF states and
 above/below SVG views through the existing renderers. These study modules do not extend the library's
 single-hinge `Flap` API or claim a general coupled-angle solver.
 
