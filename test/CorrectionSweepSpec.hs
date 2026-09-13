@@ -186,6 +186,17 @@ spec = describe "numerical correction sweep" $ do
       relaxBarrierLocalHistory defaultSettings defaultCorrectionSettings 0 (curlHinges fixture) reference (curlMesh fixture) `shouldBe` Left (LocalDiscoveryFailure (LocalDiscoveryGeometry Contact.InvalidBarrierDistance))
       relaxBarrierLocalHistory defaultSettings {iterationLimit = 0} defaultCorrectionSettings 0 (curlHinges fixture) reference (curlMesh fixture) `shouldBe` Left (LocalDiscoveryFailure (LocalDiscoveryGeometry Contact.InvalidBarrierDistance))
 
+  it "replays barrier trials whose provisional history adds contact energy" $ do
+    -- A deliberately wide force range makes a newly discovered pair add
+    -- energy immediately. That proposed relationship must remain tentative.
+    fixture <- right (curledPanelAt 16 20)
+    reference <- right (discoverLocalReference (curlClearance fixture) 0.03 (V3 (-3) 0 1) (curlMesh fixture))
+    localReferenceOrders reference `shouldBe` []
+    result <- right (relaxBarrierLocalHistory defaultSettings {iterationLimit = 1} defaultCorrectionSettings 0.1 (curlHinges fixture) reference (curlMesh fixture))
+    concatMap (\row -> [firstRejection row, lastRejection row]) (rejectionSummaries (sweptDiagnostics result)) `shouldSatisfy` any trialIncludesProposedContacts
+    verifyDiagnostics (Just 0.1) fixture reference result
+    localReferenceOrders (sweptReference result) `shouldBe` []
+
   it "ends each blocked penalty stage without mistaking a failed linear solve for equilibrium" $ do
     -- A flat, small square has large angular derivatives. The spring's
     -- energy remains finite, but its normal-equation diagonal overflows.
@@ -286,15 +297,16 @@ verifyDiagnostics barrier fixture initialReference result = do
       reference <- foldM (\known event -> right (extendLocalReference (encounterIteration event) known (encounterMesh event))) initialReference encounters
       beforeEnergy <- replayEnergy barrier fixture reference (trialLengthWeight trial) before
       near (trialBeforeEnergy trial) beforeEnergy
+      evaluationReference <- if trialIncludesProposedContacts trial then right (extendLocalReference (trialIteration trial) reference (trialFinish trial)) else pure reference
       case trialAfterEnergy trial of
-        Just expected -> replayEnergy barrier fixture reference (trialLengthWeight trial) (trialFinish trial) >>= near expected
+        Just expected -> replayEnergy barrier fixture evaluationReference (trialLengthWeight trial) (trialFinish trial) >>= near expected
         Nothing -> pure ()
       case trialReason trial of
         EnergyDidNotDecrease -> trialAfterEnergy trial `shouldSatisfy` maybe False (>= trialBeforeEnergy trial)
         TrialProposalFailed (UnsafeCorrection expected) ->
           (prepareCorrection before (trialFinish trial) >>= checkCorrection defaultCorrectionSettings) `shouldBe` Right expected
         TrialEvaluationFailed (LocalDiscoveryFailure expected) ->
-          energyRows barrier reference (trialFinish trial) `shouldBe` Left expected
+          energyRows barrier evaluationReference (trialFinish trial) `shouldBe` Left expected
         TrialProposalFailed (LocalDiscoveryFailure expected) ->
           extendLocalReference (trialIteration trial) reference (trialFinish trial) `shouldBe` Left expected
         reason -> expectationFailure ("unexpected fixture rejection: " ++ show reason)

@@ -223,7 +223,7 @@ function initialize() {
       const witness=trial=>{
         if(!trial)return '—';
         const energy=trial.afterEnergy===null?'unavailable':trial.afterEnergy.toPrecision(7);
-        return `Iteration ${trial.iteration}; weight ${trial.lengthWeight.toExponential(0)}; step fraction ${trial.scale.toExponential(2)}. Energy ${trial.beforeEnergy.toPrecision(7)} → ${energy}. ${trial.reason}.`;
+        return `Iteration ${trial.iteration}; weight ${trial.lengthWeight.toExponential(0)}; step fraction ${trial.scale.toExponential(2)}. Energy ${trial.beforeEnergy.toPrecision(7)} → ${energy}${trial.includesProposedContacts?' (including proposed contact history)':''}. ${trial.reason}.`;
       };
       el('trial-rows').replaceChildren();
       for(const row of audit.rejections){

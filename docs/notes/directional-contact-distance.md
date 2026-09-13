@@ -66,6 +66,11 @@ Its convergence test still examines the full proposed correction, before line
 search shortening; a tiny accepted fraction alone cannot establish equilibrium.
 Regression tests replay every accepted path and retained rejected-trial energy.
 JSON records which contact energy and activation range produced the audit.
+It also marks candidate energies evaluated with **proposed** contact history:
+newly discovered pairs can add barrier energy before the move is accepted.
+The saved orders describe retained history; replay extends it at the trial pose
+when that flag is set. A wider-range regression rejects such a proposal and
+replays its added energy without retaining its new pairs.
 
 The remaining scope matters: this preserves retained directional orders, which
 can forbid passing around another layer even without physical collision. New

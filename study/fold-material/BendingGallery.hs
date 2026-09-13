@@ -298,6 +298,7 @@ generateCorrectionStudy = do
                     "scale" .= trialScale trial,
                     "beforeEnergy" .= trialBeforeEnergy trial,
                     "afterEnergy" .= trialAfterEnergy trial,
+                    "includesProposedContacts" .= trialIncludesProposedContacts trial,
                     "reason" .= explain (trialReason trial),
                     "startPositions" .= map (coords . position) (samples (trialStart trial)),
                     "finishPositions" .= map (coords . position) (samples (trialFinish trial)),

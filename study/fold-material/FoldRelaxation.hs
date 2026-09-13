@@ -280,6 +280,9 @@ data RejectedTrial = RejectedTrial
     trialScale :: !Double,
     trialBeforeEnergy :: !Double,
     trialAfterEnergy :: !(Maybe Double),
+    -- | The candidate energy used a tentative history extension. The starting
+    -- energy always uses retained history; neither history is mutated here.
+    trialIncludesProposedContacts :: !Bool,
     trialReason :: !TrialReason,
     trialStart :: !MaterialMesh,
     trialFinish :: !MaterialMesh
@@ -535,19 +538,19 @@ relaxWithPolicy policy offset initial bending settings original = do
       let attempt scale remaining earlier =
             let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
                 proposed = proposeContacts policy (offset + count + 1) state (meshFrom current) (meshFrom candidate)
-                reject reason after =
-                  let trial = RejectedTrial (offset + count + 1) lengthWeight scale before after reason (meshFrom current) (meshFrom candidate)
+                reject includesProposed reason after =
+                  let trial = RejectedTrial (offset + count + 1) lengthWeight scale before after includesProposed reason (meshFrom current) (meshFrom candidate)
                       recorded = if retainTrials policy then recordRejection trial earlier else earlier
                    in if remaining <= (0 :: Int) then (current, state, False, recorded) else attempt (scale / 2) (remaining - 1) recorded
              in case objective state candidate of
-                  Left err -> reject (TrialEvaluationFailed err) Nothing
-                  Right after | after >= before -> reject EnergyDidNotDecrease (Just after)
+                  Left err -> reject False (TrialEvaluationFailed err) Nothing
+                  Right after | after >= before -> reject False EnergyDidNotDecrease (Just after)
                   Right beforeProposal -> case proposed of
-                    Left err -> reject (TrialProposalFailed err) (Just beforeProposal)
+                    Left err -> reject False (TrialProposalFailed err) (Just beforeProposal)
                     Right candidateState -> case objective candidateState candidate of
-                      Left err -> reject (TrialEvaluationFailed err) Nothing
+                      Left err -> reject True (TrialEvaluationFailed err) Nothing
                       Right after | after < before -> (candidate, candidateState, True, earlier)
-                      Right after -> reject EnergyDidNotDecrease (Just after)
+                      Right after -> reject True EnergyDidNotDecrease (Just after)
           (next, nextState, accepted, diagnostics) = attempt 1 30 emptyDiagnostics
       Right (next, nextState, linearSolved && maximum (0 : map norm (IM.elems correction)) <= 1e-7, accepted, diagnostics)
     edgeRow current (i, j, rest) = do
