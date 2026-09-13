@@ -23,7 +23,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; a complete blintz route uses checked flap operations, and the first bird petal has an exact ideal-path certificate; the other bird/frog stages have checked states |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,283 examples pass, including the first-petal certificate and five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,285 examples pass, including the first-petal certificate and five-move blintz route, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces |
 | Releases | none |
 

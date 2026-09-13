@@ -73,6 +73,7 @@ read the Haddock module headers; for the domain, start with
 | Note | Idea |
 | --- | --- |
 | [cp-and-opx.md](cp-and-opx.md) | The two formats crease patterns are actually shared in are one format twice: a flat list of coloured segments, with the vertices left out |
+| [closed-path-starts.md](closed-path-starts.md) | Choose a filled polygon’s first corner after formatting, so cyclic starts cannot make SVG goldens platform-dependent |
 | [round-trips.md](round-trips.md) | A decode/encode round trip only tests the parts the decoder kept, so keep the parts you do not understand |
 
 ## Haskell

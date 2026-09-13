@@ -7,6 +7,7 @@
 -- "these exact bytes" and enumerating that by hand would be worse than useless.
 module Senbazuru.Render.SvgSpec (spec) where
 
+import Control.Monad (forM_)
 import Data.ByteString qualified as BS
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -207,7 +208,7 @@ spec = do
               (Box (V2 0 0) (V2 1 1))
               [Fill (Colour "#abcdef") [[V2 0 0, V2 1 0, V2 0 1]]]
           out = renderSvg testPage tri
-      out `shouldSatisfy` T.isInfixOf "M 10 190 L 190 190 L 10 10 Z"
+      out `shouldSatisfy` T.isInfixOf "M 10 10 L 10 190 L 190 190 Z"
       out `shouldSatisfy` T.isInfixOf "fill=\"#abcdef\""
       -- No stroke on the path: the group sets fill="none" and leaves stroke at
       -- its initial "none", so a polygon that names only a fill is unstroked.
@@ -225,7 +226,18 @@ spec = do
               [Fill (Colour "#abcdef") [[V2 0 0, V2 1 0, V2 0 1], [V2 1 0, V2 1 1, V2 0 1]]]
           out = renderSvg testPage two
       T.count "<path" out `shouldBe` 1
-      out `shouldSatisfy` T.isInfixOf "M 10 190 L 190 190 L 10 10 Z M 190 190 L 190 10 L 10 10 Z"
+      out `shouldSatisfy` T.isInfixOf "M 10 10 L 10 190 L 190 190 Z M 10 10 L 190 190 L 190 10 Z"
+
+    it "writes identical filled paths for cyclic starts and reversed winding" $ do
+      let ring = [V2 0 0, V2 1 0, V2 1 1, V2 0 1]
+          draw vertices = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Fill (Colour "#abcdef") [vertices]])
+          starts vertices = [drop i vertices ++ take i vertices | i <- [0 .. length vertices - 1]]
+      mapM_ (\vertices -> draw vertices `shouldBe` draw ring) (starts ring ++ starts (reverse ring))
+
+    it "chooses a stable fill start when distinct corners round to the same page point" $ do
+      let ring = [V2 0 0, V2 1 0, V2 1 1, V2 0 1, V2 0 (1 - 1e-10)]
+          draw vertices = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Fill (Colour "#abcdef") [vertices]])
+      forM_ [0 .. length ring - 1] $ \i -> draw (drop i ring ++ take i ring) `shouldBe` draw ring
 
     it "draws an arrow as a curve and a solid head" $ do
       let out = renderSvg testPage (arrowDiagram 1)
