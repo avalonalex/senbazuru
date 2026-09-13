@@ -128,7 +128,10 @@ work.
   energy and history refusals from motion failures and stop identical failed
   searches. The recorded closing route is limited mainly by a discontinuous
   directional layer penalty as projected overlap reappears.
-  Finding directions that restore lengths while respecting contact remains open.
+  A separate [directional-distance barrier](notes/directional-contact-distance.md)
+  acts before that boundary and settles both closing and opening controls in the
+  recorded run, preserving the strict motion and endpoint checks. General
+  self-contact beyond retained directional orders remains open.
 - **[#106](https://github.com/avalonalex/senbazuru/issues/106) body opening.**
   Representing a pocket is only the first step. Its expansion needs a driving
   control, compatible crease motion, possible panel bending and contact checks.

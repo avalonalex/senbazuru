@@ -253,20 +253,31 @@ generateCorrectionStudy = do
   a <- capture start
   b <- capture finish
   witness <- capture middle
-  curl <- checked (curledPanelAt 16 22.25) >>= checkedCurl False
-  opened <- checked openingStrip >>= checkedCurl True
+  closingFixture <- checked (curledPanelAt 16 22.25)
+  openingFixture <- checked openingStrip
+  curl <- checkedCurl Nothing False closingFixture
+  opened <- checkedCurl Nothing True openingFixture
+  barrierCurl <- checkedCurl (Just 0.001) False closingFixture
+  barrierOpened <- checkedCurl (Just 0.001) True openingFixture
   let explanation = "The square is folded 120 degrees to opposite sides of its diagonal at the two endpoints. Both keep material lengths and pass static contact checks. The straight numerical shortcut sends the lifted corner through the base halfway across. Unfolding and refolding is a different path; these samples are not folding instructions."
       probe label right caption = object ["title" .= (label :: String), "left" .= a, "right" .= right, "leftCaption" .= ("Valid starting pose" :: String), "rightCaption" .= (caption :: String), "status" .= ("rejected" :: String), "description" .= (explanation :: String), "motion" .= correctionValue report, "motions" .= ([] :: [Value])]
-  pure (object ["kind" .= ("correction" :: String), "title" .= ("Contact between numerical poses" :: String), "views" .= [probe "Shortcut · clear endpoints" b "Valid endpoint · unsafe route", probe "Shortcut · interior collision" witness "Rejected correction · halfway", curl, opened]])
+  pure (object ["kind" .= ("correction" :: String), "title" .= ("Contact between numerical poses" :: String), "views" .= [probe "Shortcut · clear endpoints" b "Valid endpoint · unsafe route", probe "Shortcut · interior collision" witness "Rejected correction · halfway", curl, opened, barrierCurl, barrierOpened]])
   where
-    checkedCurl isOpening fixture = do
+    checkedCurl barrier isOpening fixture = do
       let mesh = curlMesh fixture
           hinges = curlHinges fixture
           axis = V3 (-3) 0 1
           clearance = curlClearance fixture
       reference <- checked (Local.discoverLocalReference clearance 0.03 axis mesh)
-      guarded <- checked (relaxSweptLocalHistory defaultSettings Motion.defaultCorrectionSettings hinges reference mesh)
-      (baseline, baselineReference) <- if isOpening then pure (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False, reference) else checked (relaxLocalHistory defaultSettings hinges reference mesh)
+      guarded <- checked (case barrier of Nothing -> relaxSweptLocalHistory defaultSettings Motion.defaultCorrectionSettings hinges reference mesh; Just activation -> relaxBarrierLocalHistory defaultSettings Motion.defaultCorrectionSettings activation hinges reference mesh)
+      (baseline, baselineReference) <-
+        if isOpening
+          then pure (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False, reference)
+          else case barrier of
+            Nothing -> checked (relaxLocalHistory defaultSettings hinges reference mesh)
+            Just _ -> do
+              old <- checked (relaxSweptLocalHistory defaultSettings Motion.defaultCorrectionSettings hinges reference mesh)
+              pure (sweptRelaxation old, sweptReference old)
       let learned = sweptReference guarded
           result = sweptRelaxation guarded
           atIteration n = S.toAscList (S.fromList (Local.localReferenceOrders reference ++ concatMap Local.encounterOrders (filter ((<= n) . Local.encounterIteration) (Local.localReferenceEncounters learned))))
@@ -287,6 +298,7 @@ generateCorrectionStudy = do
                     "scale" .= trialScale trial,
                     "beforeEnergy" .= trialBeforeEnergy trial,
                     "afterEnergy" .= trialAfterEnergy trial,
+                    "includesProposedContacts" .= trialIncludesProposedContacts trial,
                     "reason" .= explain (trialReason trial),
                     "startPositions" .= map (coords . position) (samples (trialStart trial)),
                     "finishPositions" .= map (coords . position) (samples (trialFinish trial)),
@@ -310,17 +322,23 @@ generateCorrectionStudy = do
                 "direction" .= coords axis,
                 "clearance" .= clearance,
                 "searchDistance" .= (0.03 :: Double),
+                "contactEnergy" .= (case barrier of Nothing -> "overlap-height penalty"; Just _ -> "directional-distance barrier" :: String),
+                "barrierActivation" .= barrier,
                 "motionDepth" .= Motion.correctionDepth Motion.defaultCorrectionSettings,
                 "motionBudget" .= Motion.correctionBudget Motion.defaultCorrectionSettings,
                 "hinges" .= map hingeValue hinges
               ]
           outcome = if converged result then "settled" else "not settled"
-          label = (if isOpening then "Checked opening" else "Checked curl") ++ " · " ++ outcome
+          label = (case barrier of Nothing -> if isOpening then "Checked opening" else "Checked curl"; Just _ -> if isOpening then "Distance barrier · opening" else "Distance barrier · closing") ++ " · " ++ outcome
           closingOutcome = if converged result then "This run settles with material lengths restored and every accepted correction checked." else "This run stalls before restoring material lengths. It is an unresolved relaxation result, not a finished folded shape."
-          description = if isOpening then "The same sixteen-span strip starts at 22.25 degrees per bend. Controls prefer 27 degrees and passive springs prefer zero, with a 4:1 stiffness ratio; their balance opens the strip to 21.6 degrees. Every accepted straight correction clears the full-interval check. The status reports whether the endpoint meets the solver's stopping checks; intermediate optimizer shapes can stretch." else "The left solver checks only poses and finds a length-correct endpoint. The right solver also refuses crossed or unresolved paths. " ++ closingOutcome ++ " Near contact, numerical rounding can change the line search's route, so convergence can differ across platforms. The separation requirement applies to every accepted correction in either outcome."
+          description = case barrier of
+            Just activation -> (if isOpening then "The opening control keeps the same spring preferences and collision checks. The left view is its starting strip. " else "Both solvers check every accepted path. The left uses the old overlap-height penalty; the right starts resisting before an established above/below relationship can reverse, even when the triangles' projected shapes are still separate. ") ++ closingOutcome ++ " The barrier activates within " ++ show activation ++ " model units beyond numerical clearance. This is a force range, not paper thickness. Earlier layer orders remain fixed. Intermediate optimizer shapes can stretch."
+            Nothing -> if isOpening then "The same sixteen-span strip starts at 22.25 degrees per bend. Controls prefer 27 degrees and passive springs prefer zero, with a 4:1 stiffness ratio; their balance opens the strip to 21.6 degrees. Every accepted straight correction clears the full-interval check. The status reports whether the endpoint meets the solver's stopping checks; intermediate optimizer shapes can stretch." else "The left solver checks only poses and finds a length-correct endpoint. The right solver also refuses crossed or unresolved paths. " ++ closingOutcome ++ " Near contact, numerical rounding can change the line search's route, so convergence can differ across platforms. The separation requirement applies to every accepted correction in either outcome."
+          leftCaption = if isOpening then "Starting strip" else case barrier of Nothing -> "Endpoint checks only"; Just _ -> "Overlap-height penalty"
+          rightCaption = (case barrier of Nothing -> "Checked path"; Just _ -> "Distance barrier") ++ if converged result then " · settled" else " · not settled"
       putStrLn ("Trial refusals: " ++ show [(rejectionKind row, rejectionCount row) | row <- rejectionSummaries (sweptDiagnostics guarded)] ++ "; blocked stages " ++ show (blockedStages (sweptDiagnostics guarded)))
       putStrLn (label ++ ": settled " ++ show (converged result) ++ "; " ++ show (length (sweptSteps guarded)) ++ " accepted checked corrections")
-      pure (object ["title" .= (label :: String), "left" .= left, "right" .= right, "leftCaption" .= (if isOpening then "Starting strip" else "Endpoint checks only" :: String), "rightCaption" .= (if converged result then "Checked path · settled" else "Checked path · not settled" :: String), "status" .= (if converged result then "settled" else "stalled" :: String), "description" .= (description :: String), "states" .= states, "motions" .= map stepValue (sweptSteps guarded), "trialAudit" .= audit])
+      pure (object ["title" .= (label :: String), "left" .= left, "right" .= right, "leftCaption" .= (leftCaption :: String), "rightCaption" .= (rightCaption :: String), "status" .= (if converged result then "settled" else "stalled" :: String), "description" .= (description :: String), "states" .= states, "motions" .= map stepValue (sweptSteps guarded), "trialAudit" .= audit])
 
 correctionValue :: Motion.CorrectionCheck -> Value
 correctionValue report = object ("intervals" .= Motion.correctionIntervals report : fields)

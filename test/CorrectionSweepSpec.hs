@@ -1,6 +1,6 @@
 module CorrectionSweepSpec (spec) where
 
-import Control.Monad (foldM, forM_, when)
+import Control.Monad (foldM, foldM_, forM_, when)
 import CorrectionExample
 import CorrectionSweep
 import Data.Either (isLeft)
@@ -126,7 +126,7 @@ spec = describe "numerical correction sweep" $ do
     result <- right (relaxSweptLocalHistory defaultSettings defaultCorrectionSettings (curlHinges fixture) reference (curlMesh fixture))
     converged (sweptRelaxation result) `shouldBe` True
     verifyAccepted fixture result
-    verifyDiagnostics fixture reference result
+    verifyDiagnostics Nothing fixture reference result
     final <- lastMesh (sweptRelaxation result)
     maxLengthError final `shouldSatisfy` (< 1e-7)
     localReferenceOrders (sweptReference result) `shouldBe` localReferenceOrders reference
@@ -142,7 +142,7 @@ spec = describe "numerical correction sweep" $ do
     reference <- right (discoverLocalReference (curlClearance fixture) 0.03 (V3 (-3) 0 1) (curlMesh fixture))
     result <- right (relaxSweptLocalHistory defaultSettings defaultCorrectionSettings (curlHinges fixture) reference (curlMesh fixture))
     verifyAccepted fixture result
-    verifyDiagnostics fixture reference result
+    verifyDiagnostics Nothing fixture reference result
     final <- lastMesh (sweptRelaxation result)
     -- Near contact, platform rounding can change which trial the nonlinear
     -- line search accepts. A stalled run and a settled run must BOTH keep the
@@ -152,6 +152,50 @@ spec = describe "numerical correction sweep" $ do
     right (checkLocalTriangleContact (V3 (-3) 0 1) (localReferenceOrders (sweptReference result)) final) >>= (`shouldSatisfy` contactPassed)
     forM_ (localReferenceEncounters (sweptReference result)) $ \event ->
       sweptSteps result `shouldSatisfy` any (\step -> correctionIteration step == encounterIteration event && correctionFinish step == encounterMesh event)
+
+  it "settles closing and opening with a directional barrier and replays every accepted path" $ do
+    closed <- right (curledPanelAt 16 22.25)
+    opened <- right openingStrip
+    forM_ [closed, opened] $ \fixture -> do
+      reference <- right (discoverLocalReference (curlClearance fixture) 0.03 (V3 (-3) 0 1) (curlMesh fixture))
+      result <- right (relaxBarrierLocalHistory defaultSettings defaultCorrectionSettings 0.001 (curlHinges fixture) reference (curlMesh fixture))
+      converged (sweptRelaxation result) `shouldBe` True
+      verifyAccepted fixture result
+      verifyDiagnostics (Just 0.001) fixture reference result
+      final <- lastMesh (sweptRelaxation result)
+      maxLengthError final `shouldSatisfy` (<= lengthTolerance defaultSettings)
+      let learned = localReferenceOrders (sweptReference result)
+      learned `shouldSatisfy` (\orders -> all (`elem` orders) (localReferenceOrders reference))
+      right (checkLocalTriangleContact (V3 (-3) 0 1) learned final) >>= (`shouldSatisfy` contactPassed)
+      forM_ (localReferenceEncounters (sweptReference result)) $ \event ->
+        sweptSteps result `shouldSatisfy` any (\step -> correctionIteration step == encounterIteration event && correctionFinish step == encounterMesh event)
+      -- The barrier must remain in its domain after EACH accepted step and
+      -- each history extension, not merely at the final, length-correct pose.
+      foldM_
+        ( \known step -> do
+            next <- right (extendLocalReference (correctionIteration step) known (correctionFinish step))
+            _ <- right (localBarrierContacts 0.001 next (correctionFinish step))
+            pure next
+        )
+        reference
+        (sweptSteps result)
+      exhausted <- right (relaxBarrierLocalHistory defaultSettings {iterationLimit = 0} defaultCorrectionSettings 0.001 (curlHinges fixture) reference (curlMesh fixture))
+      converged (sweptRelaxation exhausted) `shouldBe` False
+      sweptSteps exhausted `shouldBe` []
+      sweptReference exhausted `shouldBe` reference
+      relaxBarrierLocalHistory defaultSettings defaultCorrectionSettings 0 (curlHinges fixture) reference (curlMesh fixture) `shouldBe` Left (LocalDiscoveryFailure (LocalDiscoveryGeometry Contact.InvalidBarrierDistance))
+      relaxBarrierLocalHistory defaultSettings {iterationLimit = 0} defaultCorrectionSettings 0 (curlHinges fixture) reference (curlMesh fixture) `shouldBe` Left (LocalDiscoveryFailure (LocalDiscoveryGeometry Contact.InvalidBarrierDistance))
+
+  it "replays barrier trials whose provisional history adds contact energy" $ do
+    -- A deliberately wide force range makes a newly discovered pair add
+    -- energy immediately. That proposed relationship must remain tentative.
+    fixture <- right (curledPanelAt 16 20)
+    reference <- right (discoverLocalReference (curlClearance fixture) 0.03 (V3 (-3) 0 1) (curlMesh fixture))
+    localReferenceOrders reference `shouldBe` []
+    result <- right (relaxBarrierLocalHistory defaultSettings {iterationLimit = 1} defaultCorrectionSettings 0.1 (curlHinges fixture) reference (curlMesh fixture))
+    concatMap (\row -> [firstRejection row, lastRejection row]) (rejectionSummaries (sweptDiagnostics result)) `shouldSatisfy` any trialIncludesProposedContacts
+    verifyDiagnostics (Just 0.1) fixture reference result
+    localReferenceOrders (sweptReference result) `shouldBe` []
 
   it "ends each blocked penalty stage without mistaking a failed linear solve for equilibrium" $ do
     -- A flat, small square has large angular derivatives. The spring's
@@ -223,8 +267,8 @@ verifyAccepted fixture result = do
 
 -- Rebuild the contact context from ACCEPTED encounters, then replay each
 -- retained first/last refusal. A rejected trial cannot contribute that context.
-verifyDiagnostics :: CurledPanel -> LocalReference -> SweptRelaxation -> IO ()
-verifyDiagnostics fixture initialReference result = do
+verifyDiagnostics :: Maybe Double -> CurledPanel -> LocalReference -> SweptRelaxation -> IO ()
+verifyDiagnostics barrier fixture initialReference result = do
   let summaries = rejectionSummaries (sweptDiagnostics result)
       initial = curlMesh fixture
       steps = sweptSteps result
@@ -251,26 +295,31 @@ verifyDiagnostics fixture initialReference result = do
       map sampleMaterial (samples (trialFinish trial)) `shouldBe` map sampleMaterial (samples initial)
       steps `shouldSatisfy` all (\step -> correctionIteration step /= trialIteration trial || correctionFinish step /= trialFinish trial)
       reference <- foldM (\known event -> right (extendLocalReference (encounterIteration event) known (encounterMesh event))) initialReference encounters
-      beforeEnergy <- replayEnergy fixture reference (trialLengthWeight trial) before
+      beforeEnergy <- replayEnergy barrier fixture reference (trialLengthWeight trial) before
       near (trialBeforeEnergy trial) beforeEnergy
+      evaluationReference <- if trialIncludesProposedContacts trial then right (extendLocalReference (trialIteration trial) reference (trialFinish trial)) else pure reference
       case trialAfterEnergy trial of
-        Just expected -> replayEnergy fixture reference (trialLengthWeight trial) (trialFinish trial) >>= near expected
+        Just expected -> replayEnergy barrier fixture evaluationReference (trialLengthWeight trial) (trialFinish trial) >>= near expected
         Nothing -> pure ()
       case trialReason trial of
         EnergyDidNotDecrease -> trialAfterEnergy trial `shouldSatisfy` maybe False (>= trialBeforeEnergy trial)
         TrialProposalFailed (UnsafeCorrection expected) ->
           (prepareCorrection before (trialFinish trial) >>= checkCorrection defaultCorrectionSettings) `shouldBe` Right expected
         TrialEvaluationFailed (LocalDiscoveryFailure expected) ->
-          localDiscoveredContacts reference (trialFinish trial) `shouldBe` Left expected
+          energyRows barrier evaluationReference (trialFinish trial) `shouldBe` Left expected
         TrialProposalFailed (LocalDiscoveryFailure expected) ->
           extendLocalReference (trialIteration trial) reference (trialFinish trial) `shouldBe` Left expected
         reason -> expectationFailure ("unexpected fixture rejection: " ++ show reason)
   where
     near expected actual = abs (expected - actual) `shouldSatisfy` (<= 1e-10 * max 1 (abs expected))
 
-replayEnergy :: CurledPanel -> LocalReference -> Double -> MaterialMesh -> IO Double
-replayEnergy fixture reference weight mesh = do
-  rows <- right (localDiscoveredContacts reference mesh)
+energyRows :: Maybe Double -> LocalReference -> MaterialMesh -> Either LocalDiscoveryError [ContactRow]
+energyRows Nothing = localDiscoveredContacts
+energyRows (Just activation) = localBarrierContacts activation
+
+replayEnergy :: Maybe Double -> CurledPanel -> LocalReference -> Double -> MaterialMesh -> IO Double
+replayEnergy barrier fixture reference weight mesh = do
+  rows <- right (energyRows barrier reference mesh)
   bends <- right (bendingRows (curlHinges fixture) mesh)
   let vertices = IM.fromList (zip [0 ..] (samples mesh))
       edgeError (i, j) = do

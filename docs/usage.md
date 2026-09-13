@@ -258,6 +258,13 @@ The downloaded JSON includes their positions and settings. An exhausted line
 search ends its penalty stage as unconverged instead of repeating identical
 work; this does not repair the closing strip's remaining material error. See
 [the rejection diagnosis](notes/rejected-bending-trials.md).
+**Distance barrier · closing** compares that strict solver with an energy that
+resists a layer reversal before projected overlap. **Distance barrier · opening**
+keeps the opening control. Both settle in the recorded run, with the same path,
+material and endpoint contact checks. JSON includes the contact-energy name and
+activation range; these are numerical settings, not paper thickness. Retained
+directional orders and discovery from separated encounters still limit this
+mode. See [the distance formulation](notes/directional-contact-distance.md).
 This experiment does not add a general mechanics flag to `render` or `export`. The [study guide](../study/fold-material/README.md#crease-preferences-and-panel-bending)
 describes its measurements and contact limits.
 

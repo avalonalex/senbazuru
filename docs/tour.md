@@ -853,8 +853,15 @@ decrease from contact-history refusals, actual crossings and unresolved bounds.
 The recorded closing route is limited mainly by energy/contact evaluation;
 a tiny newly overlapping shadow can suddenly add a finite reversed-order
 penalty. Exhausted line searches now end their stage, retaining the same checked
-endpoint without repeating identical work. Finding a better direction remains
-open; rejected witnesses never become accepted geometry or learned contact.
+endpoint without repeating identical work; rejected witnesses never become
+accepted geometry or learned contact. A separate
+[directional-distance barrier](notes/directional-contact-distance.md) now acts
+before a retained layer order becomes invalid, even when triangle shadows do
+not overlap. Its closing and opening controls settle in the recorded run,
+with the original material, endpoint order and accepted-path checks. The gallery
+keeps the old strict mode alongside it. The activation range is numerical;
+partners still need separated reference encounters, and retained directional
+orders remain narrower than general self-contact.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

@@ -49,6 +49,7 @@ read the Haddock module headers; for the domain, start with
 | [hinge-sweep-contact.md](hinge-sweep-contact.md) | Check a specified rigid flap rotation between poses; valid endpoints can conceal an interior crossing |
 | [checking-numerical-corrections.md](checking-numerical-corrections.md) | Bound contact throughout numerical vertex corrections, and expose a solver that stalls when unsafe shortcuts are refused |
 | [rejected-bending-trials.md](rejected-bending-trials.md) | Distinguish energy, history and motion refusals; stop identical failed searches and expose a discontinuous layer penalty |
+| [directional-contact-distance.md](directional-contact-distance.md) | Resist a retained layer reversal before projected overlap, restoring the closing strip's material lengths with every accepted path checked |
 | [growing-local-contact-history.md](growing-local-contact-history.md) | Learn new triangle partners at accepted separated poses while retaining earlier contact orders |
 | [local-contact-discovery.md](local-contact-discovery.md) | Discover nearby material triangles within bending paper and retain their reference order across flat patches |
 | [local-panel-contact.md](local-panel-contact.md) | Keep two regions of one bending panel apart using local triangle requirements and a curled-strip control |

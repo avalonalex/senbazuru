@@ -40,6 +40,10 @@
 -- inputs would only repeat the same refusal. The next weight may supply a new
 -- direction, but none of these diagnostics repairs a discontinuous contact
 -- objective. See docs/notes/rejected-bending-trials.md.
+-- 'relaxBarrierLocalHistory' replaces that energy with distance to violating a
+-- retained directional order, resisting reversal before shadows overlap. Raw
+-- endpoint constraints, the full-step convergence test and the accepted-motion
+-- gate remain shared. See docs/notes/directional-contact-distance.md.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -55,6 +59,7 @@ module FoldRelaxation
     relaxLocalContact,
     relaxLocalHistory,
     relaxSweptLocalHistory,
+    relaxBarrierLocalHistory,
     SweptRelaxation (..),
     CorrectionStep (..),
     TrialDiagnostics,
@@ -275,6 +280,9 @@ data RejectedTrial = RejectedTrial
     trialScale :: !Double,
     trialBeforeEnergy :: !Double,
     trialAfterEnergy :: !(Maybe Double),
+    -- | The candidate energy used a tentative history extension. The starting
+    -- energy always uses retained history; neither history is mutated here.
+    trialIncludesProposedContacts :: !Bool,
     trialReason :: !TrialReason,
     trialStart :: !MaterialMesh,
     trialFinish :: !MaterialMesh
@@ -334,8 +342,20 @@ recordRejection trial diagnostics = mergeDiagnostics diagnostics (TrialDiagnosti
 -- new pose or contact history. This may stall when endpoint-only penalties
 -- previously stepped through paper; exhaustion still means unconverged.
 relaxSweptLocalHistory :: Settings -> Motion.CorrectionSettings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError SweptRelaxation
-relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
+relaxSweptLocalHistory = relaxSweptWith Nothing
+
+-- | The same accepted-motion and endpoint rules, using a smooth directional
+-- distance barrier as contact energy. The activation range is numerical.
+relaxBarrierLocalHistory :: Settings -> Motion.CorrectionSettings -> Double -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError SweptRelaxation
+relaxBarrierLocalHistory settings motionSettings activation = relaxSweptWith (Just activation) settings motionSettings
+
+relaxSweptWith :: Maybe Double -> Settings -> Motion.CorrectionSettings -> [Hinge] -> Local.LocalReference -> MaterialMesh -> Either RelaxError SweptRelaxation
+relaxSweptWith barrier settings motionSettings hinges reference mesh = do
   _ <- clearMotion mesh mesh
+  -- Even a zero-iteration request must start inside the barrier's domain.
+  _ <- case barrier of
+    Nothing -> Right []
+    Just activation -> either (Left . LocalDiscoveryFailure) Right (Local.localBarrierContacts activation reference mesh)
   (result, (learned, steps), diagnostics) <- relaxAngularWith policy settings hinges (reference, []) mesh
   pure (SweptRelaxation result learned steps diagnostics)
   where
@@ -345,7 +365,10 @@ relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
       case Motion.correctionOutcome report of
         Motion.CorrectionClear -> Right report
         _ -> Left (UnsafeCorrection report)
-    policy = ContactPolicy measure propose True True
+    policy = ContactPolicy measure energy propose True True
+    energy state@(learned, _) current = case barrier of
+      Nothing -> measure state current
+      Just activation -> either (Left . LocalDiscoveryFailure) Right (Local.localBarrierContacts activation learned current)
     measure (learned, _) current = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts learned current)
     propose iteration (learned, steps) start finish = do
       report <- clearMotion start finish
@@ -357,19 +380,20 @@ relaxSweptLocalHistory settings motionSettings hinges reference mesh = do
 -- a fixed mode returns that mode, and growing local contact returns its reference.
 data ContactPolicy state = ContactPolicy
   { measureContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
+    energyContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
     proposeContacts :: Int -> state -> MaterialMesh -> MaterialMesh -> Either RelaxError state,
     retainTrials :: !Bool,
     stopOnFailedSearch :: !Bool
   }
 
 localHistoryPolicy :: ContactPolicy Local.LocalReference
-localHistoryPolicy = ContactPolicy measure propose False False
+localHistoryPolicy = ContactPolicy measure measure propose False False
   where
     measure reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference mesh)
     propose iteration reference _ mesh = either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration reference mesh)
 
 fixedPolicy :: ContactPolicy ContactMode
-fixedPolicy = ContactPolicy measure (\_ state _ _ -> Right state) False False
+fixedPolicy = ContactPolicy measure measure (\_ state _ _ -> Right state) False False
   where
     measure packet mesh = case packet of
       NoContact -> Right []
@@ -471,6 +495,7 @@ relaxWithPolicy policy offset initial bending settings original = do
         then Right (Relaxation (reverse (if blocked then Checkpoint (count + 1) mesh residual : history' else history')) done, state, diagnostics')
         else advance edges (count + 1) nextState next history' diagnostics'
     coordinatedStep edges contactRows count state current = do
+      forceRows <- energyContacts policy state (meshFrom current)
       lengthRows <- mapM (edgeRow current) edges
       angles <- angularRows current
       let zero = IM.map (const (V3 0 0 0)) current
@@ -499,10 +524,10 @@ relaxWithPolicy policy offset initial bending settings original = do
           -- each other like glued surfaces. Include errors BELOW the stopping
           -- tolerance too, since the line-search objective includes them.
           -- Omitting their derivatives can make a non-descent step stall.
-          activeRows = [(map (second (sqrt contactWeight *^)) (contactGradient row), sqrt contactWeight * contactGap row) | row <- contactRows, contactGap row < 0]
+          activeRows = [(map (second (sqrt contactWeight *^)) (contactGradient row), sqrt contactWeight * contactGap row) | row <- forceRows, contactGap row < 0]
           (correction, linearSolved) = solve (map (scaleRow (sqrt lengthWeight)) lengthRows ++ activeRows ++ angles)
           objective candidateState candidate = do
-            rows <- contacts candidateState candidate
+            rows <- energyContacts policy candidateState (meshFrom candidate)
             bends <- angularRows candidate
             let energy =
                   lengthWeight * sum [let d = norm (position (atSample j candidate) ^-^ position (atSample i candidate)) - rest in d * d | (i, j, rest) <- edges]
@@ -513,19 +538,19 @@ relaxWithPolicy policy offset initial bending settings original = do
       let attempt scale remaining earlier =
             let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
                 proposed = proposeContacts policy (offset + count + 1) state (meshFrom current) (meshFrom candidate)
-                reject reason after =
-                  let trial = RejectedTrial (offset + count + 1) lengthWeight scale before after reason (meshFrom current) (meshFrom candidate)
+                reject includesProposed reason after =
+                  let trial = RejectedTrial (offset + count + 1) lengthWeight scale before after includesProposed reason (meshFrom current) (meshFrom candidate)
                       recorded = if retainTrials policy then recordRejection trial earlier else earlier
                    in if remaining <= (0 :: Int) then (current, state, False, recorded) else attempt (scale / 2) (remaining - 1) recorded
              in case objective state candidate of
-                  Left err -> reject (TrialEvaluationFailed err) Nothing
-                  Right after | after >= before -> reject EnergyDidNotDecrease (Just after)
+                  Left err -> reject False (TrialEvaluationFailed err) Nothing
+                  Right after | after >= before -> reject False EnergyDidNotDecrease (Just after)
                   Right beforeProposal -> case proposed of
-                    Left err -> reject (TrialProposalFailed err) (Just beforeProposal)
+                    Left err -> reject False (TrialProposalFailed err) (Just beforeProposal)
                     Right candidateState -> case objective candidateState candidate of
-                      Left err -> reject (TrialEvaluationFailed err) Nothing
+                      Left err -> reject True (TrialEvaluationFailed err) Nothing
                       Right after | after < before -> (candidate, candidateState, True, earlier)
-                      Right after -> reject EnergyDidNotDecrease (Just after)
+                      Right after -> reject True EnergyDidNotDecrease (Just after)
           (next, nextState, accepted, diagnostics) = attempt 1 30 emptyDiagnostics
       Right (next, nextState, linearSolved && maximum (0 : map norm (IM.elems correction)) <= 1e-7, accepted, diagnostics)
     edgeRow current (i, j, rest) = do

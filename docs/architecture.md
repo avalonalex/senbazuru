@@ -246,6 +246,12 @@ penalty or returns unconverged, without repeating identical work. See
 supplies a connected square's unsafe shortcut and a safe strip-opening control.
 This verifies an optimizer path, not a length-preserving folding instruction;
 the guarded closing strip reports its measured convergence. See [the correction note](notes/checking-numerical-corrections.md).
+`DirectionalDistance` measures distance to violating a retained triangle order;
+`SurfaceContact` converts that distance into a barrier residual and gradient.
+`LocalContactDiscovery` keeps its unknown-pair guard around that energy, while
+`relaxBarrierLocalHistory` uses it separately from the raw endpoint contact
+measurements. The accepted-motion and history policies are shared with the
+older strict mode. See [directional contact distance](notes/directional-contact-distance.md).
 Mechanics remain in the study, not the shared `Origami.Surface` representation.
 `Main` uses `Camera`, `Diagram` and `Render.Svg` for baseline previews. Corrected
 meshes use the depth-buffered viewer because the SVG painter assumes the very

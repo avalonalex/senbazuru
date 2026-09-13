@@ -29,6 +29,13 @@
 -- clearance: separated flaps do not attract. These are zero-thickness inequalities at numerical iterates,
 -- not continuous collision detection, friction or general self-contact. The
 -- distances and small-area tolerances here are for the study's unit sheets.
+--
+-- 'orderedBarrierContacts' supplies a separate energy for disjoint triangles.
+-- DirectionalDistance measures approach to violating a retained order even
+-- before shadows overlap; this module subtracts clearance and turns that
+-- distance into a barrier residual, a penalty growing without bound at zero.
+-- Raw height rows still serve endpoint measurements. The barrier range is
+-- numerical, and these forces do not replace the independent motion check.
 module SurfaceContact
   ( OrderedContact,
     ContactError (..),
@@ -39,6 +46,7 @@ module SurfaceContact
     prepareContact,
     prepareTriangleContact,
     orderedContacts,
+    orderedBarrierContacts,
   )
 where
 
@@ -46,6 +54,7 @@ import Control.Monad (unless, when)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
 import Data.Set qualified as S
+import DirectionalDistance (DistanceSample (..), orderDistance)
 import FoldContact (ContactRow (..))
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Types (FaceId (..))
@@ -93,11 +102,15 @@ data ContactError
   | NonFiniteContact !Int !Int
   | UnknownContactTriangle !Int
   | AdjacentContactTriangles !Int !Int
+  | InvalidBarrierDistance
+  | OutsideBarrierDomain !Int !Int
   | EmptyContactMesh
   | InvalidContactMaterial !Int
   deriving stock (Eq, Show)
 
 instance Explain ContactError where
+  explain InvalidBarrierDistance = "contact activation distance must be finite and positive"
+  explain (OutsideBarrierDomain a b) = "triangles " <> tshow a <> " and " <> tshow b <> " have no positive ordered-distance clearance"
   explain InvalidContactClearance = "surface contact needs a finite nonnegative numerical clearance"
   explain InvalidContactDirection = "surface contact needs a finite nonzero material direction"
   explain InvalidContactOwners = "surface contact needs a nonempty mesh and one source-panel owner per triangle"
@@ -183,6 +196,43 @@ orderedContacts (OrderedContact basis topology material pairs) mesh = do
         unless (all validD gaps) (Left (NonFiniteContact i j))
         pure [ContactRow (value gap - clearance) (IM.toList (derivative gap)) | gap <- gaps]
   concat <$> mapM pair pairs
+
+-- | Smoothly activate a distance barrier before a directional order fails.
+-- Activation is an extra numerical range beyond clearance, not paper thickness.
+-- The squared residual is -(h-d)^2 log(d/h) for 0 < d < h, zero outside.
+-- Its value and first derivative vanish at h; a distance at or below clearance
+-- is outside its domain. Use disjoint triangle pairs from
+-- 'prepareTriangleContact': connected neighbors cannot open a positive gap.
+-- Existing height and motion checks still decide accepted validity.
+orderedBarrierContacts :: Double -> OrderedContact -> MaterialMesh -> Either ContactError [ContactRow]
+orderedBarrierContacts activation (OrderedContact basis@(_, _, axis) topology material pairs) mesh = do
+  unless (finite activation && activation > 0) (Left InvalidBarrierDistance)
+  unless (triangles mesh == topology && map sampleMaterial (samples mesh) == material) (Left ChangedContactMaterial)
+  _ <- projectMesh basis mesh
+  let vertices = IM.fromList (zip [0 ..] (samples mesh))
+      faces = IM.fromList (zip [0 ..] topology)
+      point i = maybe (Left (MissingContactVertex i)) (Right . (i,) . position) (IM.lookup i vertices)
+      triangle i = case IM.lookup i faces of
+        Nothing -> Left (InvalidContactTriangle i)
+        Just (a, b, c) -> (,,) <$> point a <*> point b <*> point c
+      pair (i, j, clearance) = do
+        lower <- triangle i
+        upper <- triangle j
+        let DistanceSample distance gradient = orderDistance axis lower upper
+            gap = distance - clearance
+        unless (finite gap && all (finitePoint . snd) gradient) (Left (NonFiniteContact i j))
+        unless (gap > 0) (Left (OutsideBarrierDomain i j))
+        if gap >= activation
+          then pure (ContactRow 0 [])
+          else do
+            let root = sqrt (-log (gap / activation))
+                residual = -((activation - gap) * root)
+                slope = root + (activation - gap) / (2 * gap * root)
+                row = ContactRow residual [(v, slope *^ g) | (v, g) <- gradient]
+            if root == 0
+              then pure (ContactRow 0 [])
+              else if finite residual && finite slope then pure row else Left (NonFiniteContact i j)
+  mapM pair pairs
 
 -- | Find overlaps from CURRENT geometry, without an authored pair list.
 -- A positive-area piece of a 3D triangle must lie in the other's projected
