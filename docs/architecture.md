@@ -296,6 +296,13 @@ checker, and can recheck saved crane endpoints without solving them again.
 The [near-crease note](notes/near-closed-crease.md) explains the corrected plane
 section and the remaining tolerance-sized crossing. These are prescribed
 static controls, not new material equilibria.
+`CreaseCorrection` holds that lower reference fixed while its upper panel
+settles with or without contact forces. Its exact triangle clipping measures
+the corrected shape without assuming the upper remains a side profile.
+`CreaseCorrectionGallery` publishes before/after diagnostic surfaces and
+negative-gap plots, separating numerical acceptance from exact order.
+[The correction note](notes/contact-correction-at-a-crease.md) records the
+remaining finite-penalty residual; the solver itself is unchanged.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

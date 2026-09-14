@@ -105,7 +105,7 @@ The small gallery shows same-scale profiles and a separately magnified gap
 plot. Only the ordinary touching/opening controls get 3D views: GLB rounds
 positions for display and cannot preserve these microscopic separations.
 All controls retain diagnostic FOLDs and exact reference fractions in JSON.
-No equilibrium solve or checked motion is claimed. The next experiment can
-use these controls to test contact correction at a shared crease, retaining
-the independent reference and measuring penetration instead of assuming a
-small force residual proves nonintersection.
+No equilibrium solve or checked motion is claimed here. The subsequent
+[contact-correction experiment](contact-correction-at-a-crease.md) uses the
+held lower panel as a reference for a solved upper mesh. It measures remaining
+penetration instead of assuming a small force residual proves nonintersection.

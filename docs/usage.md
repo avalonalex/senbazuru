@@ -567,6 +567,31 @@ All six endpoint FOLDs must exist; missing or mismatched material is an error.
 Results go to `closed-crease/crane-recheck.json`; old reports stay intact.
 See [the contact finding](notes/near-closed-crease.md).
 
+### Contact correction beside a crease
+
+```bash
+stack run senbazuru-material-study -- --crease-correction build/fold-material
+```
+
+Open [the correction comparison](http://127.0.0.1:8000/crease-correction.html).
+Five controls at 32 and 64 triangles hold the lower panel and the outer upper
+strip while the remaining upper paper settles. Compare contact on/off,
+touching and penetrating guesses, and an impossible hold. The corrected
+upper need not keep identical cross sections across its width: an exact
+triangle-based gap reference checks all of it against the fixed lower panel.
+
+Before/after negative-gap plots enlarge their vertical scales independently.
+Convergence, lengths, holds, crease angles and numerical contact acceptance
+remain separate from the exact order result. All ten endpoints retain a
+negative gap, including the six passing all numerical checks. They are
+static diagnostics, not certified folded shapes or a checked motion.
+
+The `crease-correction/` directory holds complete-sheet diagnostic FOLDs and
+GLBs, plus exact fractions and bounded solver reports in `checks.json`.
+The 3D iframe reuses `checked-flap/node_modules`; GLB coordinate rounding
+cannot preserve the microscopic residuals. Use FOLD and measurements for
+those. See [the finding](notes/contact-correction-at-a-crease.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

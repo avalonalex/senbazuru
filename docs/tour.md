@@ -625,6 +625,15 @@ crossing caused by including an off-plane corner in a plane cut. Correcting
 the cut preserves the tolerances and the real-crossing controls. These are
 known geometries for studying contact, not a new body-opening solution.
 
+The [contact-correction comparison](notes/contact-correction-at-a-crease.md)
+then holds the lower panel and lets the upper settle from touching or
+penetrating guesses. Contact reduces the ordinary penetration by more than
+twenty million times and passes the numerical checks at both resolutions.
+An exact check over every upper triangle still finds a negative gap—even
+from the perfectly touching start. A large finite penalty can balance forces
+with a small overlap; the demo keeps that distinct from exact layer order.
+No-contact and impossible-hold controls expose larger failures.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --crease-correction build/fold-material`
+writes `crease-correction.html`: five contact-correction controls at two
+resolutions, before/after negative-gap plots, exact gap measurements and
+complete-sheet diagnostic FOLDs/GLBs. The lower panel stays fixed; the upper
+can warp across its width. Numerical passes still have negative exact gaps.
+See [usage](../../docs/usage.md#contact-correction-beside-a-crease) and
+[the finite-penalty finding](../../docs/notes/contact-correction-at-a-crease.md).
+
 `stack run senbazuru-material-study -- --closed-crease build/fold-material`
 writes `closed-crease.html`, seven prescribed contact controls at two mesh
 resolutions, exact side profiles, gap plots and diagnostic FOLDs. The ordinary
