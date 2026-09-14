@@ -27,8 +27,11 @@ with omitted forces present. All controls use the same 609 vertices, 1,176
 triangles, 50-degree tip grip, material springs and acceptance tolerances.
 The whole-patch-held reference changes only the boundary holds.
 
-The solver tries progressively smaller fractions of a correction until its
-objective decreases. Its bounded audit records the first and last refusal of
+The objective is a score built from squared length, angle and contact errors.
+Numerical penalties multiply the length and contact terms: increasing those
+weights over four stages makes violations progressively more expensive without
+changing the chosen material springs. A line search tries progressively smaller
+fractions of a correction until this score decreases. Its bounded audit records the first and last refusal of
 each kind, including length, angle and contact energy before and after the
 proposal. These are numerical proposals, which may stretch or cross paper;
 they are not physical folding steps. Recording them reproduces the original
@@ -83,8 +86,8 @@ final penalty weight.
 
 An optimized, compiled profile of `original-short` runs two iterations per
 penalty stage (eight total). About 68% of the time attributed to the solve is
-inside contact-row evaluation, and 31% inside sparse factorization: solving the
-coupled linear equations for all free vertices. Contact evaluation computes
+inside contact evaluation, and 31% inside sparse factorization, which rewrites
+the coupled linear equations into a form solved by substitution. Contact evaluation computes
 both a gap and its derivatives, which say how that gap changes when vertices
 move. The scalar energy checks in a line search do not need those derivatives,
 but currently pay for them. A value-only evaluation is a bounded performance
@@ -116,7 +119,6 @@ stack --profile exec -- ghc -O2 -prof -fprof-auto -rtsopts \
   -o /tmp/senbazuru-profile-internal
 /tmp/senbazuru-profile-internal +RTS -p -po/tmp/senbazuru-internal -RTS
 ```
-
 
 The next geometric experiment should extract one nearly closed shared crease
 and its two bending panels, with the same contact order and boundary holds.
