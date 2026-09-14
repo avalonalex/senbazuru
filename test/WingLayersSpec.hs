@@ -16,6 +16,7 @@ import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Surface
+import SparseSolve (LinearReport (..))
 import SurfaceContact qualified as Contact
 import Test.Hspec
 import WingBending (finalMesh)
@@ -47,6 +48,7 @@ spec = describe "two held touching layers" $ do
     beforeAll (settled modify) $ do
       it ("settles " ++ name ++ " without changing material or held vertices") $ \(fixture, result, mesh) -> do
         converged result `shouldBe` True
+        checkEquilibrium result
         triangles mesh `shouldBe` triangles (layersMesh fixture)
         map sampleMaterial (samples mesh) `shouldBe` map sampleMaterial (samples (layersMesh fixture))
         maxLengthError mesh `shouldSatisfy` (< 1e-6)
@@ -81,6 +83,23 @@ spec = describe "two held touching layers" $ do
         decoded <- right (eitherDecode (encode frame))
         restored <- right (surfaceFromFrame decoded >>= requireMaterialCoordinates)
         surfaceSamples restored `shouldBe` samples mesh
+
+  it "converges on the formerly stalled fine touching mesh" $ do
+    fixture <- right (wingLayers 16 40)
+    result <- right (solveLayers defaultSettings fixture)
+    converged result `shouldBe` True
+    checkEquilibrium result
+    mesh <- right (finalMesh result)
+    maxLengthError mesh `shouldSatisfy` (< 1e-6)
+    triangles mesh `shouldBe` triangles (layersMesh fixture)
+    map sampleMaterial (samples mesh) `shouldBe` map sampleMaterial (samples (layersMesh fixture))
+    forM_ (resolvedTriangles mesh) $ \triangle -> case principalStrains triangle of
+      Nothing -> expectationFailure "degenerate refined triangle"
+      Just (lo, hi) -> max (abs lo) (abs hi) `shouldSatisfy` (< 1e-6)
+    heldAndClosed fixture result
+    endpoint <- right (checkTriangleContact up order (layersOwners fixture) mesh)
+    contactPassed endpoint `shouldBe` True
+    checkedPanelPairs endpoint `shouldBe` 512 * 511 `div` 2
 
   it "keeps an incompatible grip exact and refuses to call it settled" $ do
     fixture <- offsetUpperGrip (-0.01) <$> right (wingLayers 8 40)
@@ -126,3 +145,13 @@ order = [(FaceId 0, FaceId 1)]
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
+
+checkEquilibrium :: Relaxation -> IO ()
+checkEquilibrium result = case equilibriumCheck result of
+  Nothing -> expectationFailure "missing equilibrium check"
+  Just check -> do
+    let report = equilibriumLinear check
+    linearConverged report `shouldBe` True
+    linearResidual report `shouldSatisfy` (<= linearThreshold report)
+    equilibriumMovement check `shouldSatisfy` (<= 1e-7)
+    equilibriumFactored check `shouldBe` True

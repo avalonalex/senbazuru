@@ -251,8 +251,13 @@ directional inequalities. `WingLayers` constructs a connected folded diamond,
 preserves its two material panels and root crease in triangle-surface exports,
 and supplies distinct grips for the two layers. `WingLayersGallery` publishes
 accepted static shapes separately from failed diagnostics. It does not add
-motion certification or general crane-body deformation; the [two-layer note](notes/two-held-paper-layers.md)
-records the fine-mesh convergence limit.
+motion certification or general crane-body deformation. `SparseSolve` owns
+conjugate gradients and a sparse factor of the coupled normal equations for
+held-contact solves. The factor accelerates shared layer movement; the
+original row operator still verifies the linear residual. `EquilibriumCheck`
+retains that residual and the full proposed movement for the gallery. See
+[the coupled-solve note](notes/coupled-touching-layer-solve.md) for the
+resolution comparison and memory limits.
 `refineSurfaceWithEdges` preserves source edge
 ids through subdivision, and `buildSurfaceHinges` attaches explicit signed
 rest-angle controls to them. Diagonal and kite controls use `relaxHinges`

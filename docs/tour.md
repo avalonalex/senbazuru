@@ -570,9 +570,11 @@ The [two-layer experiment](usage.md#two-held-touching-layers) folds a diamond
 in half and bends both touching halves with exact grips. Material points on
 the two halves stay distinct except along the root crease. Contact prevents
 reversed order without gluing the layers: lifting only the upper grip opens
-a gap. Coarse controls pass, while a finer touching bend exposes a solver
-convergence limit. The [study note](notes/two-held-paper-layers.md) records
-that limit and why small length errors alone cannot certify equilibrium.
+a gap. The 40-degree bend now converges at 8, 16 and 24 divisions. A coupled
+linear solve resolves the earlier fine-mesh stall without changing material
+constraints. The [resolution comparison](notes/coupled-touching-layer-solve.md)
+records shape and energy changes; small length errors alone still cannot
+certify equilibrium.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

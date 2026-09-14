@@ -70,9 +70,10 @@ for the supported contact and remaining limits.
 `stack run senbazuru-material-study -- --wing-layers build/fold-material`
 adds two touching layers joined along the root crease of one folded diamond.
 `wing-layers.html` compares exact-grip bends, correction of an initially
-penetrating guess and a lifted upper grip. Fine-mesh and incompatible-grip
-controls remain diagnostics if they do not converge. See [the instructions](../../docs/usage.md#two-held-touching-layers)
-and [the measured solver limitation](../../docs/notes/two-held-paper-layers.md).
+penetrating guess and a lifted upper grip. The 40-degree bend now converges at
+three mesh resolutions, with position and energy comparisons; incompatible
+grips remain a diagnostic. See [the instructions](../../docs/usage.md#two-held-touching-layers)
+and [the coupled-solve measurements](../../docs/notes/coupled-touching-layer-solve.md).
 The generated SVG, FOLD and glTF use the same positions; this is static contact,
 not a checked flexible motion or finite-thickness mechanics.
 

@@ -273,7 +273,7 @@ generateCorrectionStudy = do
       guarded <- checked (case barrier of Nothing -> relaxSweptLocalHistory defaultSettings Motion.defaultCorrectionSettings hinges reference mesh; Just activation -> relaxBarrierLocalHistory defaultSettings Motion.defaultCorrectionSettings activation hinges reference mesh)
       (baseline, baselineReference) <-
         if isOpening
-          then pure (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False, reference)
+          then pure (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False Nothing, reference)
           else case barrier of
             Nothing -> checked (relaxLocalHistory defaultSettings hinges reference mesh)
             Just _ -> do

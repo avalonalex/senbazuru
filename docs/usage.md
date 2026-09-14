@@ -395,18 +395,21 @@ permits touching and separation while penalizing penetration.
 
 The page compares flat, 20-degree and 40-degree grips at eight divisions, an
 initially penetrating guess and a lifted upper grip. Accepted shapes have
-SVG/FOLD/GLB exports in `wing-layers/`. The finer bent mesh and incompatible
-grip are bounded diagnostics: their FOLD geometry and `checks.json` remain
-available even when they fail. Only converged shapes passing the independent
-endpoint checks appear in the model selector. The finer bent case allows
-12 iterations per penalty stage, the incompatible grip eight, and the other
-controls 100. Generation can take several minutes.
+SVG/FOLD/GLB exports in `wing-layers/`. The 40-degree bend also runs at 16 and
+24 divisions, with a shared-camera comparison in `refinement.svg` and material
+position/energy changes in `checks.json`. Only converged shapes passing the
+independent endpoint checks appear in the model selector. Each run records its
+last equilibrium check when available: original-system linear residual,
+threshold and full proposed movement. The incompatible grip is a bounded
+diagnostic with eight iterations per penalty stage; regular controls allow
+100. Unaccepted runs retain diagnostic FOLD geometry. Generation can take
+several minutes.
 
 The complete sheet and stable-view glTF scenes use the same positions and
 material identities. These zero-thickness, static shapes do not establish a
 physical motion, finite-thickness behavior, friction or a connected crane
-body. Fine-mesh convergence remains open; see [the measurements and numerical
-limitation](notes/two-held-paper-layers.md).
+body. Refinement now converges with coupled preconditioning; the measured
+shape and energy still vary with mesh size. See [the resolution comparison](notes/coupled-touching-layer-solve.md).
 
 <a id="continuously-checked-bird-petal"></a>
 
