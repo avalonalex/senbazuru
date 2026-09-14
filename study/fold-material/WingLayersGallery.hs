@@ -19,6 +19,7 @@ import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (FaceId (..), FoldFile (..))
+import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact
@@ -69,6 +70,9 @@ writeWingLayers destination = do
     ordered <- checked (Contact.prepareContact 0 (V3 0 0 1) [(FaceId 0, FaceId 1)] (layersOwners fixture) mesh)
     rows <- checked (Contact.orderedContacts ordered mesh)
     let accepted = converged result && contactPassed contact && heldError == 0 && maximum (0 : angles) < 1e-7
+        -- FoldMaterial's areaRatio assumes a unit square. This diamond has
+        -- area 0.6, so normalize by its actual material triangles instead.
+        restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
         strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         pairedDistances = [norm (position a ^-^ position b) | (i, j) <- layersPairs fixture, Just a <- [IM.lookup i vertices], Just b <- [IM.lookup j vertices]]
         report =
@@ -86,7 +90,7 @@ writeWingLayers destination = do
               "components" .= componentCount mesh,
               "sourcePanels" .= (2 :: Int),
               "materialCreases" .= (1 :: Int),
-              "areaRatio" .= areaRatio mesh,
+              "areaRatio" .= (areaRatio mesh / restArea),
               "minPrincipalStrain" .= minimum (0 : map fst strains),
               "maxPrincipalStrain" .= maximum (0 : map snd strains),
               "maxRelativeEdgeError" .= maxLengthError mesh,
