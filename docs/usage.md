@@ -471,6 +471,23 @@ that line into uncreased panel material. These are illustrative static solves,
 not measured paper stiffness or a certified spreading route. See
 [the findings and remaining limitation](notes/wing-root-holds.md).
 
+### Crane pocket material map
+
+The crane pocket map traces the same starting sheet before a coupled opening
+solve:
+
+```bash
+stack run senbazuru-material-study -- --crane-pocket build/fold-material
+```
+
+Open [the pocket map](http://127.0.0.1:8000/crane-pocket.html) on the same server.
+The page selects original-sheet regions and folded x-ray highlights, and lists
+shared material interfaces separately from layer orders. `crane-pocket/map.json`
+records every source edge's owners and proposed angle role. FOLD and GLB retain
+the unchanged crane; no body opening, cavity volume or pressure is computed.
+The core's perimeter is internal paper, not an exposed rim. See
+[the map note](notes/crane-pocket-map.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

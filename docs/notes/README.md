@@ -70,6 +70,7 @@ read the Haddock module headers; for the domain, start with
 | [two-held-paper-layers.md](two-held-paper-layers.md) | One folded diamond bends as two distinct touching layers, sharing only the real root crease |
 | [wing-root-holds.md](wing-root-holds.md) | Separate an exact root hold from a crease preference, and retain contact requirements through held body layers |
 | [opening-a-crane.md](opening-a-crane.md) | Real crane finishing couples both wings to the body pocket; crease identities can survive while angles and neck/tail attachments move |
+| [crane-pocket-map.md](crane-pocket-map.md) | The central body patch has an internal perimeter, while four separate sheet-edge landmarks meet underneath; a material map is not yet a cavity |
 | [spreading-connected-wing.md](spreading-connected-wing.md) | A held curved wing on the existing crane preserves the body, material creases and tail order |
 | [coupled-touching-layer-solve.md](coupled-touching-layer-solve.md) | Coupled preconditioning resolves a fine touching-mesh stall; original residuals and refinement still judge the result |
 | [held-wing-bending.md](held-wing-bending.md) | Exact root and grip controls bend an uncreased wing; a known strip and three mesh resolutions check the static solve |
