@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where the wing meets the body · Senbazuru</title>
+<style>
+  :root { color-scheme:light; font:16px/1.6 system-ui,sans-serif; color:#292d28; background:#f4efe7; }
+  body { max-width:1180px; margin:auto; padding:32px 24px 60px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.15; margin:12px 0; }
+  h2 { font-size:1.35rem; } p { max-width:940px; } a { color:#385e50; text-underline-offset:3px; }
+  small { letter-spacing:.12em; } section { background:#fffaf2; border:1px solid #d8cebd; border-radius:8px; padding:24px; margin:28px 0; }
+  img { display:block; width:100%; height:auto; } .captions { display:flex; text-align:center; gap:16px; } .captions>* { flex:1; }
+  .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
+  iframe { width:100%; height:720px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
+  .legend { display:flex; flex-wrap:wrap; gap:20px; } .legend span { border-bottom:3px solid; }
+  @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } iframe { height:560px; } }
+</style>
+<header>
+  <small>SENBAZURU · MATERIAL STUDY / #195 · #205</small>
+  <h1>Where the wing meets the body</h1>
+  <p>The previous crane holds a strip at the wing's root at 30°. Does releasing
+    that hold make the transition smoother? Keep the same tip grip and compare
+    the holds, the crease's preferred angle, and the freedom of nearby body paper.</p>
+  <p><a href="index.html">All fold examples</a> · <a href="crane-spreading.html">Held-root crane</a> ·
+    <a href="wing-layers.html">Two touching layers</a></p>
+</header>
+<section>
+  <h2>A hold and a preference are different</h2>
+  <p>A <strong>hold</strong> fixes material points exactly. A crease spring
+    <strong>prefers</strong> an angle, but can settle at another angle as the rest
+    of the sheet resists. All controls keep the same 50° tip grip. Releasing the
+    root strip leaves only the body and the tip held.</p>
+  <img src="crane-root/comparison.svg" alt="Accepted crane controls from one camera at the same scale">
+  <div class="captions" id="captions"></div>
+  <p class="note">These are physical mesh comparisons: the renderer, material
+    identities and layer orders are unchanged. No display gap or smoothing of
+    crease normals is used to disguise the transition.</p>
+</section>
+<section>
+  <h2>Measure the turn at the root</h2>
+  <p id="finding"></p>
+  <img src="crane-root/profile.svg" alt="Measured side profiles along the wing's middle, continuing into the body">
+  <div class="legend" id="legend"></div>
+  <p>The dashed vertical line marks the original root position. Each curve
+    follows material vertices on one layer along the middle of the wing.
+    The tip is held at the same position in every control. A weaker crease
+    can make rotation cheaper at the root, allowing a larger sharp turn there.</p>
+</section>
+<section>
+  <h2>Inspect accepted shapes</h2>
+  <iframe id="viewer" title="Accepted wing-root comparisons in 3D" loading="lazy"></iframe>
+  <p>Drag to rotate; scroll to zoom. The model selector includes only accepted
+    endpoints with a working stable view. “Complete paper” retains the entire connected sheet, including
+    buried layers. The default scene resolves visibility at export precision.</p>
+  <p id="rendering"></p>
+  <p><a href="crane-root/index.html?model=flat.glb&amp;angle=other-corner&amp;side=below">Full 3D viewer</a> ·
+    <a href="crane-root/checks.json">All measurements</a></p>
+</section>
+<section>
+  <h2>Give nearby body paper room to move</h2>
+  <p>The last body control releases the four material panels directly across
+    the wing-root edges. Material shared with any other panel stays held, so
+    the distant boundary, other wing, neck and tucked tail remain in place.
+    The source layer orders also constrain these newly moving body panels.</p>
+  <p id="body-result"></p>
+  <p class="note">A failed numerical solve does not prove that a compatible
+    smoother crane cannot exist. It identifies a limit of this particular
+    grip, held region, material model and solve budget. Its FOLD download is
+    a diagnostic, not an accepted paper shape.</p>
+</section>
+<section>
+  <h2>What passes the checks?</h2>
+  <p>Acceptance requires solver equilibrium, relative material edge errors
+    at most 0.001%, exact remaining holds, and an independent check of all
+    triangle contacts and 902 source layer orders. Original mountain/valley
+    crease angles must stay within 0.00001 radians. The four wing-root springs
+    are measured separately: their preferred angles are deliberately soft.</p>
+  <div class="table-wrap"><table><thead><tr><th>Control / FOLD</th><th>Root turn</th><th>Edge error</th><th>Body motion</th><th>Contact</th><th>Accepted</th></tr></thead><tbody id="measurements"></tbody></table></div>
+  <p>The incompatible control pushes the upper tip grip through its lower
+    partner. Exact holds cannot move to hide that conflict. Regular controls
+    allow forty iterations per penalty stage; this negative control allows two.</p>
+  <p>Contact uses the existing 0.0000001 model-unit distance tolerance. The
+    sheet has zero physical thickness; touching layers remain distinct material.</p>
+</section>
+<section>
+  <h2>Does refinement change the conclusion?</h2>
+  <p>Both sides of the root receive dense triangles: four wing panels and four
+    neighbouring body panels. Every inserted midpoint is shared by its material
+    neighbours. The flat-preference control repeats with sixteen spans per
+    source edge instead of eight, with the same held regions and stiffness.</p>
+  <p id="refinement"></p>
+</section>
+<p class="note"><strong>Scope:</strong> independently checked static endpoints.
+  Numerical iterates can stretch or cross paper and are not a flexible folding
+  route. The illustrative stiffness is not fitted to a real paper sample.
+  Two-wing spreading, body inflation and friction remain later studies.</p>
+<script>
+const data = /*ROOT_DATA*/null;
+const percent = n => (100 * n).toPrecision(3) + '%';
+const number = n => n === 0 ? '0' : n.toPrecision(3);
+const angle = run => run.minRootDegrees.toFixed(2) + '–' + run.maxRootDegrees.toFixed(2) + '°';
+const colors = {held:'#675949',released:'#a94e32',weaker:'#bc862b',flat:'#267364',body:'#5654a0'};
+for (const run of data.runs) {
+  const row = document.createElement('tr');
+  const name = document.createElement('td');
+  const link = document.createElement('a'); link.href = 'crane-root/' + run.id + '.fold'; link.textContent = run.title;
+  name.append(link); row.append(name);
+  for (const text of [angle(run), percent(run.maxRelativeEdgeError), number(run.bodyMovement),
+    run.contact.passed ? 'Pass' : 'Fail', run.accepted ? 'Yes' : 'No']) {
+    const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
+  }
+  row.className = run.accepted ? 'good' : 'bad'; document.querySelector('#measurements').append(row);
+  if (run.accepted && colors[run.id]) {
+    const label = document.createElement('span'); label.textContent = run.title; label.style.color = colors[run.id]; document.querySelector('#legend').append(label);
+  }
+  if (run.visibleGlbAvailable && ['held','flat','body'].includes(run.id)) {
+    const label = document.createElement('span'); label.textContent = run.title; document.querySelector('#captions').append(label);
+  }
+}
+const flat = data.runs.find(run => run.id === 'flat');
+const released = data.runs.find(run => run.id === 'released');
+const weaker = data.runs.find(run => run.id === 'weaker');
+document.querySelector('#finding').textContent = 'Releasing the held strip gives a root turn of ' + angle(released) +
+  '; weakening its spring gives ' + angle(weaker) + '. A flat-angle preference gives ' + angle(flat) +
+  '. The sharp turn remains substantial with these body and tip holds.';
+const shown = flat.visibleGlbAvailable ? flat : data.runs.find(run => run.visibleGlbAvailable);
+if (shown) document.querySelector('#viewer').src = 'crane-root/index.html?model=' + shown.id + '.glb&angle=other-corner&side=below';
+for (const run of data.runs.filter(run => run.accepted && !run.visibleGlbAvailable)) {
+  const note = document.createElement('span');
+  note.textContent = run.title + ' passes the physical checks, but its stable-view export is unavailable. ';
+  const link = document.createElement('a'); link.href = 'crane-root/' + run.id + '-complete.glb'; link.textContent = 'Download its complete-sheet GLB';
+  note.append(link, ' for inspection; touching layers may overlap on screen. '); document.querySelector('#rendering').append(note);
+}
+const body = data.runs.find(run => run.id === 'body');
+document.querySelector('#body-result').textContent = body.accepted
+  ? 'This endpoint passes: the body moves by at most ' + number(body.bodyMovement) + ' model units and the root turn is ' + angle(body) + '.'
+  : 'This attempt is not accepted. Solver convergence: ' + (body.converged ? 'yes' : 'no') +
+    '; maximum edge error: ' + percent(body.maxRelativeEdgeError) + '; original fold-angle error: ' + number(body.maxOriginalCreaseErrorRadians) + ' radians; contact: ' + (body.contact.passed ? 'pass' : 'fail') +
+    '. The maximum body displacement is ' + number(body.bodyMovement) + ' model units. Its smaller root angle alone does not make it valid paper.';
+const change = data.refinement[0];
+const fine = data.runs.find(run => run.id === 'fine');
+document.querySelector('#refinement').textContent = change
+  ? 'The finer endpoint passes, with root angles of ' + angle(fine) + '. Total bending energy changes by ' + percent(change.relativeTotalEnergyChange) +
+    '. Position differences at matching material points are in the measurements download. Two resolutions test sensitivity; they do not establish a mesh-independent answer.'
+  : 'The refinement comparison is incomplete because both endpoints did not pass. Inspect the measurements before drawing a resolution-independent conclusion.';
+</script>
+</html>

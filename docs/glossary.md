@@ -79,6 +79,10 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | --- | --- |
 | **Face** | A region of paper bounded by edges — a polygon. |
 | **Material coordinates** | A point's position on the original, unfolded sheet. They identify the same piece of paper as its current position changes during folding; two touching layers can occupy the same current position while having different material coordinates. |
+| **Panel** | A region of paper between material creases. A bending study can subdivide one panel into many numerical triangles without treating their internal edges as additional creases. |
+| **Rest angle** | The angle a crease spring prefers when other constraints do not oppose it. The achieved angle can differ; a rest angle is not an exact hold. |
+| **Bending stiffness** | How strongly the model resists a change in angle. The studies use illustrative values, not measurements of a particular paper. Crease and panel springs have different geometric weights; see [notes/wing-root-holds.md](notes/wing-root-holds.md). |
+| **Numerical equilibrium** | A solver state whose full proposed correction is below a stated tolerance and whose correction equations have passed their residual check. The material studies still check lengths, contact and holds separately; solver equilibrium alone does not certify valid paper. |
 | **Winding** | The direction a face's vertices are listed in. FOLD specifies counterclockwise, which would define the face's normal and therefore which side is up — but real files disagree, so senbazuru does not trust the stated winding. Filling does not care; anything needing a normal must compute the orientation. |
 | **Normal** | The direction perpendicular to a face, pointing out of the side the winding defines. |
 | **Rigid transform** | A motion that rotates and translates but never bends, stretches or scales. What a face undergoes when paper folds. See `Senbazuru.Geometry.Rigid`. |

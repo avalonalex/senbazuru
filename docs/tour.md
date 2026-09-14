@@ -586,6 +586,15 @@ panels share every inserted edge midpoint. The body can stay fixed for this
 modest bend. [The study note](notes/spreading-connected-wing.md) distinguishes
 that result from freer spreading or a continuously checked flexible motion.
 
+The [wing-root comparison](usage.md#wing-root-holds-and-material-preferences)
+separates what the experiment holds from what the material prefers. Removing
+the exact root-strip hold does not remove the crease spring at that line.
+Weakening that spring can allow a larger sharp turn; preferring a flat angle
+does not force the root flat. A separate control frees the four adjacent body
+panels while keeping their distant boundary held. Measured profiles, original
+crease angles and whole-sheet contact checks distinguish accepted changes from
+failed numerical attempts; [the note](notes/wing-root-holds.md) records the result.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

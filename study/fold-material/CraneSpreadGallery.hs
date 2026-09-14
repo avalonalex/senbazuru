@@ -2,7 +2,7 @@
 -- The coarse/fine comparison shares grips and a camera. Only independently
 -- accepted endpoints enter the SVG and glTF gallery; failed controls retain
 -- complete material FOLD files for diagnosis.
-module CraneSpreadGallery (writeCraneSpread) where
+module CraneSpreadGallery (writeCraneSpread, spreadSvg) where
 
 import Control.Exception (evaluate)
 import Control.Monad (forM, unless, when)
