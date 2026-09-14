@@ -23,7 +23,8 @@ the connected wing in [#203](https://github.com/avalonalex/senbazuru/issues/203)
 the root/body comparison in [#205](https://github.com/avalonalex/senbazuru/issues/205),
 the pocket material map in [#210](https://github.com/avalonalex/senbazuru/issues/210),
 selected body-angle controls in [#212](https://github.com/avalonalex/senbazuru/issues/212),
-and internal crease diagnostics in [#214](https://github.com/avalonalex/senbazuru/issues/214). The
+internal crease diagnostics in [#214](https://github.com/avalonalex/senbazuru/issues/214),
+and the small closed-crease reference in [#216](https://github.com/avalonalex/senbazuru/issues/216). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -317,9 +318,14 @@ checked coupled angles.
    checks, and omitting surrounding forces makes the whole-sheet result worse.
    The original reaches its iteration budget without exhausting a line search;
    eighty more final-stage iterations reduce length error and crossing reports
-   but do not produce an accepted endpoint. **Next: extract one nearly closed
-   shared crease with bending panels and compare contact gaps, intersections
-   and achieved angles before changing tolerances or enlarging the free region.**
+   but do not produce an accepted endpoint. [#216](https://github.com/avalonalex/senbazuru/issues/216)
+   now [extracts one closed crease](notes/near-closed-crease.md) with exact
+   length-preserving profiles. The controls expose a real microscopic crossing
+   inside the tolerance and a separate false report from an overextended plane
+   cut; the latter is corrected without changing tolerances.
+   **Next: use the small reference to test contact correction at a shared crease,
+   measuring the remaining penetration and angle errors before returning to
+   the larger free body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

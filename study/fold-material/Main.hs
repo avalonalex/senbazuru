@@ -5,6 +5,7 @@ module Main (main) where
 import BasicBaseGallery (writeBasicBases)
 import BendingGallery (writeBendingStudy)
 import BlintzGallery (writeBlintzGallery)
+import ClosedCreaseGallery (writeClosedCrease, writeCraneRecheck)
 import Control.Monad (unless, void)
 import CraneBodyGallery (writeCraneBody)
 import CraneGallery (writeCraneGallery)
@@ -63,6 +64,8 @@ main = do
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
     ["--petal", destination] -> writePetalGallery destination
+    ["--closed-crease", destination] -> writeClosedCrease destination
+    ["--closed-crease", "--recheck-crane", source, destination] -> writeCraneRecheck source destination
     ["--crane-body", destination] -> writeCraneBody destination
     ["--crane-internal", destination] -> writeCraneInternal destination
     ["--crane-internal", control, destination] -> void (writeInternalTrial control destination)
@@ -75,7 +78,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -105,6 +108,7 @@ generate destination = do
   writeCranePocket destination
   writeCraneBody destination
   writeCraneInternal destination
+  writeClosedCrease destination
   writeWingLayers destination
   writeWingBending destination
   writeCraneGallery destination

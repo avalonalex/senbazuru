@@ -46,7 +46,10 @@ again by restarting the earlier stages. Its relative edge error falls from
 endpoint valid.
 
 Measured on 2026-09-14; crossing counts below are the unchanged independent
-checker's reports, not a measure of penetration depth:
+checker's reports, not a measure of penetration depth. The later
+[single-crease experiment](near-closed-crease.md) corrects an overextended plane
+cut and rechecks these same saved positions; its before/after table preserves
+this original record:
 
 | Control | Held vertices | Force orders | Iterations | Equilibrium | Relative edge error | Original-angle error (rad) | Crossing reports |
 | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |

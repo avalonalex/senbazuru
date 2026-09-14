@@ -618,6 +618,13 @@ surrounding contact forces makes the independent checks worse. The solver's
 rejected corrections and iteration budget are recorded separately: reaching
 a work limit does not mean that every smaller correction was refused.
 
+The [single-crease control](notes/near-closed-crease.md) reduces that problem
+to two bent rectangles whose side profiles have exact lengths and gaps. It
+exposes both a tiny real crossing inside the numerical tolerance and a false
+crossing caused by including an off-plane corner in a plane cut. Correcting
+the cut preserves the tolerances and the real-crossing controls. These are
+known geometries for studying contact, not a new body-opening solution.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

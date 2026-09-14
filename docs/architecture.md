@@ -289,6 +289,13 @@ existing bounded trial audit without changing the held-contact solve;
 `continuePinnedContact` resumes only its final penalty stage to distinguish
 an exhausted budget from a failed search. Neither provides a physical path.
 See [the internal-crease diagnosis](notes/internal-crease-diagnostic.md).
+`ClosedCrease` constructs two joined bending panels with exact rational side
+profiles. Their height difference independently measures contact and order;
+`ClosedCreaseGallery` compares that reference with force gaps and the library
+checker, and can recheck saved crane endpoints without solving them again.
+The [near-crease note](notes/near-closed-crease.md) explains the corrected plane
+section and the remaining tolerance-sized crossing. These are prescribed
+static controls, not new material equilibria.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own
