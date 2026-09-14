@@ -298,7 +298,12 @@ checked coupled angles.
    orders through held layers.
    **Next: compare the authored root spring with ordinary uncreased panel
    bending, and diagnose body-release failures before extending the free region.**
-   Paired grips on both wings follow once that boundary is understood.
+   [Photographed crane-opening references](notes/opening-a-crane.md) show why
+   the larger experiment should use both wings and an opening body pocket.
+   First identify which body creases may open and how the neck and tail connect:
+   keeping their material identities does not require keeping every old angle
+   or position fixed. Paired grips follow once that boundary is understood;
+   measure the neck/tail response rather than pinning it away.
    Keep these endpoint experiments distinct from a checked flexible route.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.
