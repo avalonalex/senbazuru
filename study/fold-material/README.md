@@ -76,6 +76,12 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --crane-pocket build/fold-material`
+writes `crane-pocket.html`: an original-sheet region map, folded x-ray
+highlights, material-interface and candidate-crease tables, and the unchanged
+crane FOLD/GLB. This identifies candidate body and attachment regions, not a
+closed cavity or an opening motion. See [the map note](../../docs/notes/crane-pocket-map.md).
+
 `stack run senbazuru-material-study -- --crane-root build/fold-material`
 compares the root-strip hold, released and weakened root springs, a flat-angle
 preference and a small free body region. `crane-root.html` includes side profiles,

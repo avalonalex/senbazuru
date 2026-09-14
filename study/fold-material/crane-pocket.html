@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One sheet, five connected regions · Senbazuru</title>
+<style>
+  :root { color-scheme:light; font:16px/1.6 system-ui,sans-serif; color:#292d28; background:#f4efe7; }
+  body { max-width:1200px; margin:auto; padding:32px 24px 60px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.15; margin:12px 0; }
+  h2 { font-size:1.35rem; } p { max-width:960px; } a { color:#385e50; text-underline-offset:3px; }
+  small { letter-spacing:.12em; } section { background:#fffaf2; border:1px solid #d8cebd; border-radius:8px; padding:24px; margin:28px 0; }
+  .maps { display:grid; grid-template-columns:1fr 1fr; gap:20px; } figure { margin:0; } figcaption { font-weight:600; }
+  img { display:block; width:100%; height:auto; } .note { border-left:3px solid #92744b; padding-left:14px; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; } button { font:inherit; padding:7px 12px; border:1px solid #c8beae; border-radius:5px; background:#fffaf2; cursor:pointer; }
+  button[aria-pressed=true] { border:2px solid #354f43; padding:6px 11px; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:left; padding:10px 12px; border-bottom:1px solid #dfd5c6; vertical-align:top; }
+  .table-wrap { overflow-x:auto; } .legend { display:flex; flex-wrap:wrap; gap:20px; font-size:.9rem; }
+  .candidate { border-bottom:3px solid #a13b1e; } .control { border-bottom:3px dashed #853b67; } .join { border-bottom:2px dotted #747469; }
+  details { margin:14px 0; } summary { cursor:pointer; } code { font-size:.9em; }
+  @media(max-width:750px) { .maps { grid-template-columns:1fr; } section { padding:14px; } }
+</style>
+<header>
+  <small>SENBAZURU · MATERIAL STUDY / #210</small>
+  <h1>One sheet, five connected regions</h1>
+  <p>Opening a crane's wings also moves the paper around its body. Before a new
+    solve, trace that paper on the original square: where do the wings, neck and
+    tail meet, and which folds might need to open?</p>
+  <p><a href="index.html">All fold examples</a> · <a href="crane-root.html">Root-hold comparisons</a> ·
+    <a href="crane-spreading.html">Curved wing study</a></p>
+</header>
+<section>
+  <h2>Follow the material</h2>
+  <div class="controls" id="regions" aria-label="Choose a material region"></div>
+  <p id="selection"></p>
+  <div class="maps">
+    <figure><figcaption>Original square · material map</figcaption><img id="material" src="crane-pocket/material-all.svg" alt="Five material regions on the original square"></figure>
+    <figure><figcaption>Folded flat · x-ray highlight</figcaption><img id="folded" src="crane-pocket/folded-all.svg" alt="The same material in the unchanged folded crane"></figure>
+  </div>
+  <div class="legend"><span class="candidate">Candidate opening crease</span><span class="control">Earlier authored root control</span><span class="join">Uncreased connection</span></div>
+  <p class="note">Colours identify material, not the two paper sides. The folded
+    highlight includes buried layers so you can locate a whole region; it does
+    not depict which layer is visible. Every selection keeps the same positions
+    and scale. The wing sectors include their base strips, not just the free tips.</p>
+  <p><a href="crane-pocket/index.html?model=crane.glb&amp;angle=other-corner&amp;side=below">Inspect the unchanged paper in 3D</a> ·
+    <a href="crane-pocket/crane.fold">Download FOLD</a> · <a href="crane-pocket/map.json">Full map and checks</a></p>
+</section>
+<section>
+  <h2>The body is connected around its sides too</h2>
+  <p>The eight panels meeting the square's centre form the <strong>body core</strong>
+    in this map. The surrounding sectors also join each other along their base
+    strips. They are not four independent flaps attached only to that core.</p>
+  <div class="table-wrap"><table><thead><tr><th>Material connection</th><th>Shared edges</th><th>Source edge IDs</th></tr></thead><tbody id="interfaces"></tbody></table></div>
+  <p>Each listed edge has two material owners. A supplied layer order between
+    overlapping panels is a different relationship: it does not glue them
+    together. The unchanged crane retains all <span id="orders"></span> source
+    layer orders, including the tucked tail.</p>
+</section>
+<section>
+  <h2>Four points meet underneath</h2>
+  <p>The magenta crosses mark the four midpoints of the original paper's outer
+    edges. In the folded-flat crane they coincide underneath, but remain four
+    different material vertices. Their separation is a candidate measurement
+    for a later opening experiment.</p>
+  <p id="lips"></p>
+  <p class="note">The core's 16 perimeter edges are internal connections to more
+    paper. They are <strong>not an exposed rim</strong>. This map does not yet
+    identify a closed cavity, a complete mouth boundary or an inflation volume.
+    Adding a cap across those edges would invent a surface.</p>
+</section>
+<section>
+  <h2>Which angles should be allowed to change?</h2>
+  <p>The orange lines are original mountain/valley creases either within the
+    body core or crossing a region interface. They form a candidate set for
+    opening; this is not a proof that every one must move, or that the set is
+    sufficient. A mountain/valley assignment identifies the fold direction,
+    while its achieved angle can change.</p>
+  <div class="table-wrap"><table><thead><tr><th>Role</th><th>Count</th><th>Next experiment</th></tr></thead><tbody id="roles"></tbody></table></div>
+  <details><summary>Candidate source crease IDs</summary><p id="candidate-ids"></p></details>
+  <p>The next solve should declare its grips and selected angle freedoms, and
+    measure neck/tail motion instead of pinning every old position. The earlier
+    requirement to keep all original crease angles unchanged remains a useful
+    control. No hold or angle constraint is changed by this map.</p>
+</section>
+<section>
+  <h2>What this checks</h2>
+  <p id="checks"></p>
+  <p>Region selection uses original-sheet coordinates and shared-edge incidence,
+    never similarity of folded positions. All five regions are connected along
+    material edges. The FOLD and 3D downloads preserve the starting surface.</p>
+  <p class="note"><strong>Scope:</strong> a checked material map of the existing
+    crane. It does not open the body, solve equilibrium, prove a folding route,
+    or predict pressure. The body core is a candidate region to study, not an
+    automatically recovered physical cavity.</p>
+</section>
+<script>
+const data = /*POCKET_DATA*/null;
+const regionByKey = new Map(data.regions.map(r => [r.key, r]));
+const selection = document.querySelector('#selection');
+const buttons = [];
+for (const r of [{key:'all',title:'All regions'}, ...data.regions]) {
+  const button = document.createElement('button'); button.textContent = r.title;
+  if (r.colour) button.style.background = r.colour;
+  button.setAttribute('aria-pressed', String(r.key === 'all'));
+  button.onclick = () => {
+    buttons.forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+    document.querySelector('#material').src = 'crane-pocket/material-' + r.key + '.svg';
+    document.querySelector('#folded').src = 'crane-pocket/folded-' + r.key + '.svg';
+    selection.textContent = r.faces ? r.title + ': ' + r.faces.length + ' panels, ' + (100*r.materialArea).toFixed(2) + '% of the sheet. Face IDs: ' + r.faces.join(', ') + '.' : 'Select a region to follow the same material into the folded crane.';
+  };
+  buttons.push(button); document.querySelector('#regions').append(button);
+}
+buttons[0].click();
+function row(id, values) {
+  const tr = document.createElement('tr');
+  values.forEach(value => {const td=document.createElement('td'); td.textContent=value; tr.append(td);});
+  document.querySelector(id).append(tr);
+}
+data.interfaces.forEach(pair => row('#interfaces', [pair.regions.map(key => regionByKey.get(key).title).join(' ↔ '), pair.edges.length, pair.edges.join(', ')]));
+const plans = {
+  'Candidate opening crease':'Allow selected angles to change; measure compatibility.',
+  'Retain fold preference':'Keep internal fold preferences; do not freeze whole regions in space.',
+  'Uncreased connection':'Keep paper continuous; subdivision is not a physical crease.',
+  'Authored root control':'Compare the earlier line spring with ordinary uncreased bending.',
+  'Paper edge':'Keep the actual sheet boundary; do not close it with invented paper.'
+};
+for (const [role, plan] of Object.entries(plans)) row('#roles', [role, data.edges.filter(e => e.role === role).length, plan]);
+document.querySelector('#candidate-ids').textContent = data.edges.filter(e => e.role === 'Candidate opening crease').map(e => e.id).join(', ');
+document.querySelector('#orders').textContent = data.checks.sourceOrders;
+document.querySelector('#lips').textContent = 'Vertex IDs: ' + data.undersideLandmarks.map(p => p.id).join(', ') + '. Maximum separation at this flat endpoint: ' + data.maxLipSeparation.toExponential(2) + ' model units.';
+document.querySelector('#checks').textContent = data.checks.faces + ' panels, ' + data.checks.vertices + ' shared material vertices and ' + data.checks.edges + ' source edges. Every panel belongs to exactly one region. Maximum relative material-length error: ' + data.checks.maxRelativeMaterialError.toExponential(2) + '. Geometry and layer orders are unchanged.';
+</script>
+</html>

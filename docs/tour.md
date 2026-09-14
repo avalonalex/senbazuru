@@ -597,6 +597,13 @@ failed numerical attempts. The SVG outlines still retain some buried crease
 lines in these meshes; use the stable 3D views to inspect occlusion.
 [The note](notes/wing-root-holds.md) records the result.
 
+The [crane pocket map](notes/crane-pocket-map.md) follows five connected regions
+from the original square into that same folded crane. Its x-ray highlights show
+buried material deliberately, and the edge inventory identifies 22 candidate
+opening creases. Four different boundary landmarks meet underneath; neither
+those points nor the central patch's internal perimeter define a closed cavity.
+This prepares a coupled opening study without claiming a new folded pose.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

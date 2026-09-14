@@ -269,6 +269,12 @@ so held intermediate panels cannot hide a needed contact requirement.
 `CraneRootGallery` adds measured side profiles and retains failed body/grip
 attempts as diagnostics. Rendering failures retain complete-sheet inspection
 exports separately from physical acceptance. See [the wing-root study](notes/wing-root-holds.md).
+`CranePocket` maps the same unchanged crane into five connected material
+regions and classifies candidate opening creases. It includes flat edge
+incidence as well as physical crease features, because those edges also connect
+the regions. `CranePocketGallery` draws original-sheet and folded x-ray maps
+through `Diagram` and exports the unmodified FOLD/GLB. It adds no cavity,
+pressure or new motion solver; see [the pocket map](notes/crane-pocket-map.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own
