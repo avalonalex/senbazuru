@@ -76,6 +76,12 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --crane-body build/fold-material`
+compares original, weaker and opened preferences at two body creases while
+retaining the same small free patch and tip grip. `crane-body.html` reports
+both angle policies, signed crease measurements and unchanged length/contact
+requirements. Released-body controls can take several minutes each.
+
 `stack run senbazuru-material-study -- --crane-pocket build/fold-material`
 writes `crane-pocket.html`: an original-sheet region map, folded x-ray
 highlights, material-interface and candidate-crease tables, and the unchanged

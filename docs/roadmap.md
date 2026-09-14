@@ -21,7 +21,8 @@ the two touching layers in [#198](https://github.com/avalonalex/senbazuru/issues
 their refined coupled solves in [#200](https://github.com/avalonalex/senbazuru/issues/200),
 the connected wing in [#203](https://github.com/avalonalex/senbazuru/issues/203),
 the root/body comparison in [#205](https://github.com/avalonalex/senbazuru/issues/205),
-and the pocket material map in [#210](https://github.com/avalonalex/senbazuru/issues/210). The
+the pocket material map in [#210](https://github.com/avalonalex/senbazuru/issues/210),
+and selected body-angle controls in [#212](https://github.com/avalonalex/senbazuru/issues/212). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -33,7 +34,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,392 examples pass, including the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,396 examples pass, including body-angle policy controls and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -305,9 +306,14 @@ checked coupled angles.
    connected material regions, including their side connections, and identifies
    22 candidate opening creases. [The map](notes/crane-pocket-map.md) distinguishes
    the core's internal perimeter from four separate underside landmarks; it
-   does not yet identify a closed cavity. Next declare which candidate angles
-   may change, resolve the earlier body solve, and test paired grips with the
-   neck/tail attachments free. Measure their response rather than pinning it away.
+   does not yet identify a closed cavity. [#212](https://github.com/avalonalex/senbazuru/issues/212)
+   [compares preferences](notes/body-angle-preferences.md) at two candidates
+   without changing the earlier free patch or grips. Weaker springs and a 170°
+   preference leave essentially the same failed shape; the selected-angle gate
+   was not the blocker. Next inspect contact and coupled freedom around the
+   retained internal folds 26/51 before enlarging the free region. Paired grips
+   with the central body and neck/tail attachments free follow as a separate
+   experiment; measure their response rather than prescribing it.
    Keep these endpoint experiments distinct from a checked flexible route.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.

@@ -275,6 +275,12 @@ incidence as well as physical crease features, because those edges also connect
 the regions. `CranePocketGallery` draws original-sheet and folded x-ray maps
 through `Diagram` and exports the unmodified FOLD/GLB. It adds no cavity,
 pressure or new motion solver; see [the pocket map](notes/crane-pocket-map.md).
+`CraneBody` selects the mapped candidate creases incident to the small
+`CraneRoot` free patch and changes only their angular preferences. It keeps
+original crease targets separately from edited spring targets, so the strict
+and selective acceptance policies measure the same reference. `CraneBodyGallery`
+publishes matched controls, complete diagnostics and only accepted 3D models.
+It introduces no solver changes; see [angle gates and springs](notes/body-angle-preferences.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

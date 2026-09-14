@@ -604,6 +604,13 @@ opening creases. Four different boundary landmarks meet underneath; neither
 those points nor the central patch's internal perimeter define a closed cavity.
 This prepares a coupled opening study without claiming a new folded pose.
 
+The [body-angle comparison](notes/body-angle-preferences.md) tests two of those
+candidate creases while retaining the earlier small free patch and tip grip.
+It distinguishes the old angle acceptance limit from the spring preferences
+used inside the solve, measuring selected and retained folds separately.
+Both acceptance policies still require lengths, contact, layer order and solver
+equilibrium to pass.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

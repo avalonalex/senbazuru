@@ -488,6 +488,27 @@ the unchanged crane; no body opening, cavity volume or pressure is computed.
 The core's perimeter is internal paper, not an exposed rim. See
 [the map note](notes/crane-pocket-map.md).
 
+### Selected body-crease preferences
+
+```bash
+stack run senbazuru-material-study -- --crane-body build/fold-material
+```
+
+Open [the body-angle study](http://127.0.0.1:8000/crane-body.html) on the same
+server. The original, weaker-spring and 170-degree preference trials free the
+same four root-neighbour panels with the same tip grip. They select only mapped
+candidate creases 21 and 46. The central body core, other wing, neck and tail
+stay held. Every solved mesh receives both the old strict-angle verdict and a
+verdict allowing the selected angles to vary; neither changes a solved position.
+
+`crane-body/` contains per-trial FOLDs, signed angles by source crease segment,
+all independent checks and an aggregate `checks.json`. Only accepted endpoints
+with a stable GLB enter the viewer; accepted complete-sheet exports remain
+available when visibility fails. The fixed-body reference and incompatible
+upper grip bound the comparison. Forty iterations per penalty stage are allowed
+for ordinary controls; these released-body solves can take several minutes each.
+The negative control allows two. See [the angle-policy note](notes/body-angle-preferences.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base
