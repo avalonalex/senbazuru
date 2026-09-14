@@ -7,7 +7,7 @@
 module CraneRootGallery (writeCraneRoot) where
 
 import Control.Exception (evaluate)
-import Control.Monad (forM)
+import Control.Monad (forM, when)
 import CraneRoot
 import CraneSpread
 import CraneSpreadGallery (spreadSvg)
@@ -78,18 +78,16 @@ writeCraneRoot destination = do
         visible = accepted && isRight visibleResult
         visibleError = if accepted then either (Just . explain) (const Nothing) visibleResult else Nothing
         svgError = if accepted then either Just (const Nothing) drawing else Nothing
-    if accepted
-      then do
-        case visibleResult of
-          Right bytes -> BS.writeFile (output </> stem ++ ".glb") bytes
-          Left err -> do
-            putStrLn (stem ++ ": stable-view export unavailable: " ++ T.unpack (explain err))
-            bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
-            BS.writeFile (output </> stem ++ "-complete.glb") bytes
-        case drawing of
-          Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
-          Left err -> putStrLn (stem ++ ": SVG unavailable: " ++ T.unpack err)
-      else pure ()
+    when accepted $ do
+      case visibleResult of
+        Right bytes -> BS.writeFile (output </> stem ++ ".glb") bytes
+        Left err -> do
+          putStrLn (stem ++ ": stable-view export unavailable: " ++ T.unpack (explain err))
+          bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
+          BS.writeFile (output </> stem ++ "-complete.glb") bytes
+      case drawing of
+        Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
+        Left err -> putStrLn (stem ++ ": SVG unavailable: " ++ T.unpack err)
     let degrees = map ((180 / pi *) . abs . snd) angles
         strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
