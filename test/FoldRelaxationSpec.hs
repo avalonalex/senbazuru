@@ -12,10 +12,10 @@ spec :: Spec
 spec = describe "fold-length relaxation" $ do
   it "leaves an isometric single fold unchanged without doing an iteration" $ do
     let mesh = sharpMesh 4 Single
-    relaxLengths defaultSettings mesh `shouldBe` Right (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] True)
+    relaxLengths defaultSettings mesh `shouldBe` Right (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] True Nothing)
   it "reports exhausted work as unconverged, including the unchanged starting mesh" $ do
     let mesh = sharpMesh 4 Double
-    relaxLengths (Settings 0 1e-8) mesh `shouldBe` Right (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False)
+    relaxLengths (Settings 0 1e-8) mesh `shouldBe` Right (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] False Nothing)
   it "reduces the double fold's material error and preserves its shared topology" $ do
     let mesh = sharpMesh 4 Double
     case relaxLengths defaultSettings mesh of

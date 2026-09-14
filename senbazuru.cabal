@@ -166,7 +166,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: WingLayersGallery, WingLayers, WingBendingGallery, WingBending, UncreasedSurface, CraneGallery, CraneWing, HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
+  other-modules: SparseSolve, WingLayersGallery, WingLayers, WingBendingGallery, WingBending, UncreasedSurface, CraneGallery, CraneWing, HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -196,6 +196,8 @@ test-suite senbazuru-test
     PetalGallery
     WingLayersSpec
     WingLayers
+    SparseSolve
+    SparseSolveSpec
     WingBendingSpec
     WingBending
     WingBendingGallery

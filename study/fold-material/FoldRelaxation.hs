@@ -2,8 +2,9 @@
 --
 -- Each edge remembers its length on the original sheet. Linearise all length
 -- errors about the current positions, then solve for a coordinated correction
--- (Gauss-Newton). Conjugate gradients solves that sparse linear system without
--- constructing a dense matrix; a small movement penalty removes its ambiguity.
+-- (Gauss-Newton). Conjugate gradients solves that sparse linear system; a
+-- small movement penalty removes its ambiguity. The held-contact variant also
+-- factors its coupled equations to accelerate the inner solve.
 -- A line search shortens a step until it reduces the total squared error.
 -- Numerical iterations are not time steps or a folding instruction sequence.
 --
@@ -49,6 +50,9 @@
 -- of approximating it with another stiff spring. Installing a new grip starts
 -- a static solve; neither that installation nor its iterations is a folding path.
 -- 'relaxPinnedContact' adds declared directional contact to the same exact grips.
+-- SparseSolve supplies coupled preconditioning for this stiff held-contact
+-- problem. Every accepted linear solve verifies its residual against the
+-- original rows; factorization changes no energy or success tolerance.
 -- It also stops a penalty stage on a failed line search, since retrying the
 -- identical held configuration supplies no new search direction.
 module FoldRelaxation
@@ -57,6 +61,7 @@ module FoldRelaxation
     RelaxError (..),
     Checkpoint (..),
     Relaxation (..),
+    EquilibriumCheck (..),
     relaxLengths,
     relaxPacket,
     relaxBending,
@@ -99,6 +104,8 @@ import LocalContactDiscovery qualified as Local
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import SparseSolve (LinearReport (..), conjugateGradient)
+import SparseSolve qualified as Sparse
 import SurfaceContact qualified as Contact
 
 -- | Tolerance is fractional edge-length error, not a percentage or thickness.
@@ -159,7 +166,18 @@ data Checkpoint = Checkpoint
 
 data Relaxation = Relaxation
   { checkpoints :: ![Checkpoint],
-    converged :: !Bool
+    converged :: !Bool,
+    equilibriumCheck :: !(Maybe EquilibriumCheck)
+  }
+  deriving stock (Eq, Show)
+
+-- | The final proposed full movement and its verified linear solve. A tiny
+-- shortened line-search step cannot certify equilibrium. Nothing here certifies
+-- a collision-free route through the numerical iterations.
+data EquilibriumCheck = EquilibriumCheck
+  { equilibriumLinear :: !LinearReport,
+    equilibriumMovement :: !Double,
+    equilibriumFactored :: !Bool
   }
   deriving stock (Eq, Show)
 
@@ -451,17 +469,17 @@ relaxAngularWithPins pins policy settings hinges initial mesh = do
       -- crawl: its straight tangent step violates lengths at second order.
       -- Solve easier problems first, then tighten the SAME final constraints.
       -- Only the final stage can establish the result's convergence.
-      (_, history, settled, finalState, diagnostics) <- foldM stage (mesh, [], False, initial, emptyDiagnostics) [1e2, 1e4, 1e6, 1e8]
-      Right (Relaxation history settled, finalState, diagnostics)
+      (_, history, settled, finalState, diagnostics, finalCheck) <- foldM stage (mesh, [], False, initial, emptyDiagnostics, Nothing) [1e2, 1e4, 1e6, 1e8]
+      Right (Relaxation history settled finalCheck, finalState, diagnostics)
   where
-    stage (current, history, _, state, earlierDiagnostics) weight = do
+    stage (current, history, _, state, earlierDiagnostics, _) weight = do
       let offset = case reverse history of [] -> 0; previous : _ -> completedIterations previous
       (result, nextState, diagnostics) <- relaxWithPins pins policy offset state (Just (hinges, weight)) settings current
       let shifted = [point {completedIterations = offset + completedIterations point} | point <- checkpoints result]
           combined = history ++ (if null history then shifted else drop 1 shifted)
       case reverse (checkpoints result) of
         [] -> Left EmptyMesh
-        final : _ -> Right (checkpointMesh final, combined, converged result, nextState, mergeDiagnostics earlierDiagnostics diagnostics)
+        final : _ -> Right (checkpointMesh final, combined, converged result, nextState, mergeDiagnostics earlierDiagnostics diagnostics, equilibriumCheck result)
 
 relaxWith :: ContactMode -> Maybe ([Hinge], Double) -> Settings -> MaterialMesh -> Either RelaxError Relaxation
 relaxWith packet bending settings mesh = do
@@ -517,9 +535,9 @@ relaxWithPins pins policy offset initial bending settings original = do
           exhausted = count >= iterationLimit settings
       -- The old length-only solve stops immediately on its valid rigid control.
       -- An elastic solve must still check whether an angular force wants to move it.
-      (next, nextState, stationary, accepted, trials) <-
+      (next, nextState, stationary, accepted, trials, check) <-
         if exhausted || (isNothing bending && constraintsMet)
-          then Right (current, state, False, False, emptyDiagnostics)
+          then Right (current, state, False, False, emptyDiagnostics, Nothing)
           else coordinatedStep edges contactRows count state current
       let warmingUp = maybe False ((< 1e8) . snd) bending
           done = if isNothing bending then constraintsMet else stationary && (warmingUp || constraintsMet)
@@ -532,7 +550,7 @@ relaxWithPins pins policy offset initial bending settings original = do
           block = TrialDiagnostics M.empty [BlockedStage (offset + count + 1) (maybe 1 snd bending) | blocked]
           diagnostics' = mergeDiagnostics diagnostics (mergeDiagnostics trials block)
       if done || exhausted || blocked
-        then Right (Relaxation (reverse (if blocked then Checkpoint (count + 1) mesh residual : history' else history')) done, state, diagnostics')
+        then Right (Relaxation (reverse (if blocked then Checkpoint (count + 1) mesh residual : history' else history')) done check, state, diagnostics')
         else advance edges (count + 1) nextState next history' diagnostics'
     coordinatedStep edges contactRows count state current = do
       forceRows <- energyContacts policy state (meshFrom current)
@@ -541,7 +559,7 @@ relaxWithPins pins policy offset initial bending settings original = do
       let zero = IM.map (const (V3 0 0 0)) (IM.difference current pins)
           -- Linearise all lengths together. A small penalty on movement makes
           -- the underdetermined system solvable without pinning arbitrary
-          -- vertices. Conjugate gradients applies J^T J without storing it.
+          -- vertices. The operator applies J^T J directly from its rows.
           -- Explicitly held vertices are absent from this system. Their
           -- correction is zero in linearChange and when updating positions.
           damping = if isNothing bending then 1e-8 else 1e-3
@@ -560,14 +578,24 @@ relaxWithPins pins policy offset initial bending settings original = do
                 -- Contact penalties can be much stiffer along one direction.
                 -- Diagonal preconditioning rescales each coordinate so
                 -- those forces do not drown out the length corrections.
-                precondition values = if null contactRows && isNothing bending then values else IM.intersectionWith divide values diagonal
-             in conjugateGradient (if isJust bending then 3000 else if null contactRows then 300 else 600) (if isJust bending then 1e-6 else 1e-15) precondition action rhs
+                diagonalScale values = if null contactRows && isNothing bending then values else IM.intersectionWith divide values diagonal
+                -- Give x/y/z separate scalar ids only inside the factor.
+                -- Combine repeated vertex gradients before squaring them:
+                -- contact rows may name a shared root vertex more than once.
+                scalar values = IM.fromList [(3 * i + k, component) | (i, V3 x y z) <- IM.toList values, (k, component) <- zip [0 ..] [x, y, z]]
+                vector values = IM.mapWithKey (\i _ -> V3 (get (3 * i)) (get (3 * i + 1)) (get (3 * i + 2))) zero where get k = IM.findWithDefault 0 k values
+                -- A full sparse factor captures joint layer movement. Other
+                -- study modes retain their diagonal preconditioner. Failed
+                -- factors fall back to it, never to a claimed convergence.
+                factor = if isJust bending && not (IM.null pins) && not (null contactRows) then Sparse.factorNormal damping (IM.keys (scalar zero)) [scalar (IM.fromListWith (^+^) gradient) | (gradient, _) <- rows] else Nothing
+                precondition = maybe diagonalScale (\f -> vector . Sparse.applyFactor f . scalar) factor
+             in (isJust factor, conjugateGradient (if isJust bending then 3000 else if null contactRows then 300 else 600) (if isJust bending then 1e-6 else 1e-15) precondition action rhs)
           -- Penalise only negative gaps: separated layers must not attract
           -- each other like glued surfaces. Include errors BELOW the stopping
           -- tolerance too, since the line-search objective includes them.
           -- Omitting their derivatives can make a non-descent step stall.
           activeRows = [(map (second (sqrt contactWeight *^)) (contactGradient row), sqrt contactWeight * contactGap row) | row <- forceRows, contactGap row < 0]
-          (correction, linearSolved) = solve (map (scaleRow (sqrt lengthWeight)) lengthRows ++ activeRows ++ angles)
+          (factored, (correction, linearReport)) = solve (map (scaleRow (sqrt lengthWeight)) lengthRows ++ activeRows ++ angles)
           objective candidateState candidate = do
             rows <- energyContacts policy candidateState (meshFrom candidate)
             bends <- angularRows candidate
@@ -594,7 +622,8 @@ relaxWithPins pins policy offset initial bending settings original = do
                       Right after | after < before -> (candidate, candidateState, True, earlier)
                       Right after -> reject True EnergyDidNotDecrease (Just after)
           (next, nextState, accepted, diagnostics) = attempt 1 30 emptyDiagnostics
-      Right (next, nextState, linearSolved && maximum (0 : map norm (IM.elems correction)) <= 1e-7, accepted, diagnostics)
+      let movement = maximum (0 : map norm (IM.elems correction))
+      Right (next, nextState, linearConverged linearReport && movement <= 1e-7, accepted, diagnostics, Just (EquilibriumCheck linearReport movement factored))
     edgeRow current (i, j, rest) = do
       a <- maybe (Left (MissingVertex 0 i)) Right (IM.lookup i current)
       b <- maybe (Left (MissingVertex 0 j)) Right (IM.lookup j current)
@@ -609,36 +638,3 @@ relaxWithPins pins policy offset initial bending settings original = do
 
 at :: Int -> IM.IntMap V3 -> V3
 at = IM.findWithDefault (V3 0 0 0)
-
--- | Solve a symmetric positive definite linear system by repeatedly choosing
--- a search direction conjugate to the earlier ones. Only matrix-vector
--- products are needed, so the edge graph stays sparse. This is an inner
--- numerical solve, not a physical time integration. The Boolean records
--- whether the linear residual passed: a failed solve returning no movement
--- must not make the outer elastic problem appear to be at equilibrium.
--- A residual floor is needed near a penalised equilibrium: forces from the
--- 1e8 length penalty nearly cancel the angular forces, and their floating-point
--- subtraction cannot promise a relative error on an arbitrarily tiny remainder.
-conjugateGradient :: Int -> Double -> (IM.IntMap V3 -> IM.IntMap V3) -> (IM.IntMap V3 -> IM.IntMap V3) -> IM.IntMap V3 -> (IM.IntMap V3, Bool)
-conjugateGradient limit residualFloor precondition action rhs = go limit zero rhs (precondition rhs) (inner rhs (precondition rhs))
-  where
-    zero = IM.map (const (V3 0 0 0)) rhs
-    threshold = max (residualFloor * residualFloor) (inner rhs rhs * 1e-16)
-    inner a b = sum (IM.elems (IM.intersectionWith dot a b))
-    add a scale b = IM.unionWith (^+^) a (IM.map (scale *^) b)
-    go remaining solution residual direction productResidual
-      | finite (inner residual residual) && inner residual residual <= threshold = (solution, True)
-      | remaining <= 0 = (solution, False)
-      | otherwise =
-          let product' = action direction
-              denominator = inner direction product'
-           in if denominator <= 0 || not (finite denominator)
-                then (solution, False)
-                else
-                  let alpha = productResidual / denominator
-                      solution' = add solution alpha direction
-                      residual' = add residual (-alpha) product'
-                      scaled = precondition residual'
-                      productResidual' = inner residual' scaled
-                      direction' = add scaled (productResidual' / productResidual) direction
-                   in go (remaining - 1) solution' residual' direction' productResidual'

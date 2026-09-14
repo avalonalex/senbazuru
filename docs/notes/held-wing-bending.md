@@ -65,8 +65,8 @@ contact is independently checked at each result. Neither the circular initial
 guesses nor the optimizer iterations are certified physical folding routes.
 The follow-up [two-layer experiment](two-held-paper-layers.md) adds an explicit
 initial order, separate material identities and compatible grips. Coarse
-controls pass; refinement exposes a numerical convergence limit. That isolates
-contact before attaching a wing to the crane body and deciding which body
-regions must move. Both continue
+controls pass, and [coupled preconditioning](coupled-touching-layer-solve.md)
+now resolves the initial fine-mesh stall. That isolates contact before
+attaching a wing to the crane body and deciding which body regions must move. Both continue
 [#195](https://github.com/avalonalex/senbazuru/issues/195); realistic spreading,
 body expansion and a verified flexible motion remain open.

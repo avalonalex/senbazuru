@@ -17,7 +17,7 @@
   @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } }
 </style>
 <header>
-  <small>SENBAZURU · MATERIAL STUDY / #198</small>
+  <small>SENBAZURU · MATERIAL STUDY / #198 · #200</small>
   <h1>Two layers, one bend</h1>
   <p>Fold a diamond in half along its middle crease. Hold the wide root and the
     narrow tip of both layers, then turn the tip grips together. The paper
@@ -57,11 +57,23 @@
     error on its own does not establish that the paper has settled.</p>
   <div class="table-wrap"><table><thead><tr><th>Control</th><th>Triangles</th><th>Edge error</th><th>Grip error</th><th>Converged</th><th>Contact</th><th>Accepted</th><th>CPU seconds</th></tr></thead><tbody id="measurements"></tbody></table></div>
   <p id="fine" class="note"></p>
-  <p>The finer bent mesh gets 12 iterations at each of four penalty strengths;
-    the incompatible grip gets eight. These bounded diagnostics expose solver
-    limits without treating unfinished results as accepted shapes. The other
-    controls use the normal limit of 100 per stage. Timings describe this run
-    and depend on the machine.</p>
+  <p>All regular controls use a limit of 100 iterations at each of four
+    penalty strengths. The deliberately incompatible grip gets eight and
+    remains a diagnostic. Timings describe this run and depend on the machine.</p>
+</section>
+<section>
+  <h2>Does finer paper give the same bend?</h2>
+  <p>Keep the same diamond, held regions and 40° grip placement, then divide
+    each layer into smaller triangles. All three shapes use the same camera
+    and scale. Refining the mesh should change the answer less and less.</p>
+  <img src="wing-layers/refinement.svg" alt="The solved forty-degree bend at eight, sixteen and twenty-four divisions">
+  <div class="captions"><span>8 divisions · 128 triangles</span><span>16 divisions · 512 triangles</span><span>24 divisions · 1,152 triangles</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Refinement</th><th>Shared material points</th><th>Largest position change</th><th>Bending energy change</th></tr></thead><tbody id="refinement"></tbody></table></div>
+  <p>Position changes compare the same points on the original sheet, including
+    the two distinct layers. Bending energy measures the model’s resistance to
+    curvature; it uses illustrative stiffness, not measured paper properties.
+    Smaller changes are evidence of improving agreement, not proof that this
+    discrete model has reached a resolution-independent answer.</p>
 </section>
 <section>
   <h2>Inspect the accepted surfaces</h2>
@@ -92,6 +104,11 @@ const main=data.runs.filter(r=>['flat','bend-20','bend-40'].includes(r.id));
 const good=main.length===3&&main.every(r=>r.accepted);
 const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three coarse-mesh shapes converge and pass independent endpoint checks. The grips stay exact and the original crease stays closed.':'At least one main control was not accepted; inspect the measurements.';
 const fine=data.runs.find(r=>r.id==='fine-bend');
-document.querySelector('#fine').textContent=fine.accepted?'The finer bent mesh also passed within this iteration budget. Compare its shape and energy in checks.json before claiming mesh independence.':`The finer bent mesh is not accepted in this run: convergence ${fine.converged?'passed':'not reached'}, contact ${fine.contact.passed?'passed':'failed'}. It has ${number(fine.maxRelativeEdgeError)} edge error. Refinement remains an open numerical question; this result is downloadable as diagnostic FOLD only.`;
+document.querySelector('#fine').textContent=fine.accepted?'The finer touching bend now converges. Its linear equations and full proposed movement pass the existing tolerances; grips, material lengths and endpoint contact are checked separately.':`The finer bent mesh is not accepted in this run: convergence ${fine.converged?'passed':'not reached'}, contact ${fine.contact.passed?'passed':'failed'}. It has ${number(fine.maxRelativeEdgeError)} edge error. Refinement remains an open numerical question; this result is downloadable as diagnostic FOLD only.`;
+for(const r of data.refinement){
+  const tr=document.createElement('tr'),g=r.geometry;
+  for(const value of [`${g.fromTriangles} → ${g.toTriangles} triangles`,g.commonVertices,number(g.maxPositionChange),`${(100*r.relativeEnergyChange).toFixed(2)}%`]){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+  document.querySelector('#refinement').append(tr);
+}
 </script>
 </html>

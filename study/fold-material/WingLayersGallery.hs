@@ -6,7 +6,7 @@ module WingLayersGallery (writeWingLayers) where
 
 import Control.Exception (evaluate)
 import Control.Monad (forM, unless, when)
-import Data.Aeson (encode, object, (.=))
+import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
@@ -26,13 +26,14 @@ import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
+import SparseSolve (LinearReport (..))
 import SurfaceContact qualified as Contact
 import System.CPUTime (getCPUTime)
 import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath ((</>))
 import WingBending (finalMesh)
-import WingBendingGallery (wingSvg)
+import WingBendingGallery (refinement, wingSvg)
 import WingLayers
 
 writeWingLayers :: FilePath -> IO ()
@@ -45,9 +46,9 @@ writeWingLayers destination = do
           ("perturbed", "Upper layer starts inside lower", 8, 40, perturbUpper (-0.002), defaultSettings),
           ("lifted", "Upper grip lifted · layers can separate", 8, 40, offsetUpperGrip 0.01, defaultSettings),
           ("fine-flat", "Finer mesh · flat", 16, 0, id, defaultSettings),
-          -- Bounded diagnostics make generation reproducible even when the
-          -- stiff linear solve cannot settle. They are not convergence tests.
-          ("fine-bend", "Finer mesh · 12 iterations per stage", 16, 40, id, Settings 12 1e-5),
+          ("fine-bend", "Finer mesh · grip at 40°", 16, 40, id, defaultSettings),
+          ("finest-bend", "Finest mesh · grip at 40°", 24, 40, id, defaultSettings),
+          -- This deliberately incompatible control has a bounded budget.
           ("bad-grip", "Upper grip held below lower · incompatible", 8, 40, offsetUpperGrip (-0.01), Settings 8 1e-5)
         ]
   createDirectoryIfMissing True output
@@ -83,6 +84,7 @@ writeWingLayers destination = do
               "gripDegrees" .= degrees,
               "accepted" .= accepted,
               "converged" .= converged result,
+              "equilibrium" .= fmap equilibriumValue (equilibriumCheck result),
               "iterationsPerStageLimit" .= iterationLimit settings,
               "iterations" .= maximum (0 : map completedIterations (checkpoints result)),
               "vertices" .= length (samples mesh),
@@ -113,15 +115,20 @@ writeWingLayers destination = do
       drawing <- either (die . T.unpack) pure (wingSvg [sheet])
       TIO.writeFile (output </> stem ++ ".svg") drawing
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic; see checks.json")
-    pure (stem, title, accepted, sheet, report)
-  let document = object ["runs" .= [report | (_, _, _, _, report) <- runs]]
-      mainShapes = [sheet | (stem, _, True, sheet, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
+    pure (stem, title, accepted, sheet, report, panel)
+  let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
+      comparisons = [object ["geometry" .= refinement a b, "fromEnergy" .= ea, "toEnergy" .= eb, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
+      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons]
+      mainShapes = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
   BL.writeFile (output </> "checks.json") (encode document)
-  unless (any (\(stem, _, accepted, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")
+  unless (any (\(stem, _, accepted, _, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")
   when (length mainShapes /= 3) (die "Two-layer comparison did not pass; refusing to publish a complete gallery")
+  when (length bent /= 3) (die "Resolution comparison did not converge; refusing to publish its illustration")
+  refined <- either (die . T.unpack) pure (wingSvg (map fst bent))
+  TIO.writeFile (output </> "refinement.svg") refined
   comparison <- either (die . T.unpack) pure (wingSvg mainShapes)
   TIO.writeFile (output </> "sequence.svg") comparison
-  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _) <- runs])
+  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
   template <- TIO.readFile "study/fold-material/wing-layers.html"
@@ -133,3 +140,17 @@ seconds n = fromIntegral n / 1e12
 
 checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure
+
+equilibriumValue :: EquilibriumCheck -> Value
+equilibriumValue check =
+  object
+    [ "linearConverged" .= linearConverged report,
+      "linearIterations" .= linearIterations report,
+      "linearResidual" .= linearResidual report,
+      "linearThreshold" .= linearThreshold report,
+      "fullMovement" .= equilibriumMovement check,
+      "movementThreshold" .= (1e-7 :: Double),
+      "coupledFactorUsed" .= equilibriumFactored check
+    ]
+  where
+    report = equilibriumLinear check

@@ -42,15 +42,16 @@ asks held upper material to lie underneath held lower material. The bounded
 solve retains the exact bad targets and reports nonconvergence and reversed
 order. It does not silently move the grip to manufacture a valid result.
 
-Refinement exposes a numerical limitation. A 16-division touching bend has
-512 triangles. In a compiled diagnostic with the normal 100-iteration limit
+The original solve exposed a numerical limitation under refinement. A
+16-division touching bend has 512 triangles. In a compiled diagnostic with the normal 100-iteration limit
 per penalty stage, it took about 701 CPU seconds and still did not converge.
 Its independent contact check passed and relative edge error was `5.91e-8`,
 but the inner linear solves repeatedly failed their residual test. Small
 length error alone therefore cannot be used as an equilibrium test. The
-gallery bounds this finer bent diagnostic at 12 iterations per stage and
-publishes its FOLD and measurements without presenting it as an accepted
-shape. The finer flat control passes. These observations were made on
+original gallery bounded this finer bent diagnostic at 12 iterations per stage and published its FOLD and measurements without presenting it as
+an accepted shape. [The follow-up coupled solve](coupled-touching-layer-solve.md)
+resolves that stall and replaces this diagnostic with a three-resolution
+comparison. The finer flat control passes. These observations were made on
 2026-09-13; runtime and convergence near numerical tolerances can vary by
 platform. The experiment has not established independence from mesh size.
 
@@ -74,8 +75,8 @@ Cartesian product. SVG and glTF use that same surface. The default glTF scene
 removes buried coplanar paper; the complete scene keeps both touching layers.
 Neither applies a display offset or turns numerical iterations into motion.
 
-The next step in [#195](https://github.com/avalonalex/senbazuru/issues/195) is
-to make the fine touching-layer solve reliable and compare shape and energy
-across resolutions before attaching this wing to the crane. Its exact body
-constraints, flexible motion, friction and finite-thickness mechanics remain
+[#200](https://github.com/avalonalex/senbazuru/issues/200) completes the fine
+static solve and compares shape and energy across resolutions. The next step
+in [#195](https://github.com/avalonalex/senbazuru/issues/195) is to attach this
+wing to the crane. Its exact body constraints, flexible motion, friction and finite-thickness mechanics remain
 separate open questions.

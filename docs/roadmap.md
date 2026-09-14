@@ -17,7 +17,8 @@ the initial square-base collapse in [#189](https://github.com/avalonalex/senbazu
 the checked helmet sequence in [#191](https://github.com/avalonalex/senbazuru/issues/191),
 the checked crane wing in [#193](https://github.com/avalonalex/senbazuru/issues/193),
 the controlled wing-bending experiment in [#196](https://github.com/avalonalex/senbazuru/issues/196),
-and the two touching layers in [#198](https://github.com/avalonalex/senbazuru/issues/198). The
+the two touching layers in [#198](https://github.com/avalonalex/senbazuru/issues/198),
+and their refined coupled solves in [#200](https://github.com/avalonalex/senbazuru/issues/200). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -275,13 +276,15 @@ checked coupled angles.
    [the measurements](notes/held-wing-bending.md) show remaining mesh sensitivity.
    [#198](https://github.com/avalonalex/senbazuru/issues/198) adds two touching
    layers of one folded diamond, exact grips and a declared initial order.
-   Coarse bending, initially penetrating and lifted-grip controls pass; the
-   finer touching bend has small length errors but does not establish solver
-   convergence. [The two-layer measurements](notes/two-held-paper-layers.md)
-   retain that failed refinement separately from accepted shapes.
-   **Next: resolve fine-mesh convergence and compare shape and energy across
-   resolutions.** Then attach the wing to the crane and measure what body
-   freedom a compatible shape needs.
+   Bending, initially penetrating and lifted-grip controls pass; incompatible
+   grips remain refused. [#200](https://github.com/avalonalex/senbazuru/issues/200)
+   resolves the fine-mesh linear stall with coupled preconditioning and checks
+   the original linear residual. [Three resolutions](notes/coupled-touching-layer-solve.md)
+   converge with decreasing observed shape/energy changes; this does not prove
+   independence from mesh size.
+   **Next: attach one wing to the crane and measure what body freedom a
+   compatible static shape needs.** Keep original creases, separate touching
+   layers and tail/body order; a checked flexible route remains separate.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.
    Sliding contact and general coupled-angle solving remain later work.

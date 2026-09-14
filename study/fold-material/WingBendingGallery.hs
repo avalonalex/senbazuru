@@ -1,7 +1,7 @@
 -- | Compare held-wing equilibria, not frames of a certified folding motion.
 -- The solver owns the positions. This module measures them and sends the same
 -- uncreased triangle surface to SVG, FOLD and glTF; HTML only selects results.
-module WingBendingGallery (writeWingBending, wingSvg) where
+module WingBendingGallery (writeWingBending, wingSvg, refinement) where
 
 import Control.Monad (forM)
 import Data.Aeson (Value, encode, object, (.=))
