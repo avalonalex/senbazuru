@@ -8,10 +8,13 @@ import Data.Aeson (Value (..), toJSON)
 import Data.Aeson.KeyMap qualified as KM
 import Data.Either (isLeft)
 import Data.List (nub, sort)
+import Data.Map.Strict qualified as M
+import Data.Set qualified as S
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Crease (..), frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.Rigid (Rigid (..), identity, matIdentity, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -128,6 +131,28 @@ spec = do
       [(creaseId c, owners) | (c, owners) <- features, creaseAssignment c == Valley]
         `shouldBe` [(EdgeId 4, [FaceId 0, FaceId 1])]
 
+    it "refines selected panels without leaving hanging vertices at their boundary" $ do
+      sheet <- requireRight (surfaceFromFrame twoPanels >>= requireMaterialCoordinates)
+      forM_ [1 .. 3] $ \level -> do
+        refined <- requireRight (refineSelectedSurfaceWithEdges level (S.singleton (FaceId 0)) sheet)
+        let mesh = refinedMesh refined
+        length (filter (== FaceId 0) (refinedPanels refined)) `shouldBe` 4 ^ level
+        length (triangles mesh) `shouldSatisfy` (< 2 * 4 ^ level)
+        checkSquareMesh mesh
+        let points = M.fromList (zip [0 ..] (map sampleMaterial (samples mesh)))
+            creaseLength = sum [norm (a ^-^ b) | (EdgeId 4, (i, j)) <- refinedEdges refined, Just a <- [M.lookup i points], Just b <- [M.lookup j points]]
+        abs (creaseLength - sqrt 2) `shouldSatisfy` (< 1e-12)
+      allPanels <- requireRight (refineSelectedSurfaceWithEdges 2 (S.fromList [FaceId 0, FaceId 1]) sheet)
+      uniform <- requireRight (refineSurfaceWithEdges 2 sheet)
+      allPanels `shouldBe` uniform
+      refineSelectedSurfaceWithEdges 1 (S.singleton (FaceId 9)) sheet `shouldBe` Left (SurfaceUnknownRefinementPanel (FaceId 9))
+
+    it "splits unselected triangles on two sides without reversing or duplicating material" $ do
+      let fan = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]], facesVertices = [map VertexId vs | vs <- [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]]]}
+      sheet <- requireRight (surfaceFromFrame fan >>= requireMaterialCoordinates)
+      refined <- requireRight (refineSelectedSurfaceWithEdges 2 (S.fromList [FaceId 0, FaceId 2]) sheet)
+      checkSquareMesh (refinedMesh refined)
+
     it "does not join distinct vertex ids just because their material coordinates coincide" $ do
       let cut = emptyFrame {verticesCoords = [[0, 0], [1, 0], [0, 1], [0, 0], [1, 0], [0, 1]], facesVertices = [map VertexId [0, 1, 2], map VertexId [3, 4, 5]], edgesVertices = [(VertexId 0, VertexId 1), (VertexId 3, VertexId 4)], edgesAssignment = [Cut, Cut]}
       sheet <- requireRight (surfaceFromFrame cut >>= requireMaterialCoordinates)
@@ -238,3 +263,18 @@ twoPanels =
       edgesAssignment = [Border, Border, Border, Border, Valley],
       facesVertices = [map VertexId [0, 1, 2], map VertexId [0, 2, 3]]
     }
+
+-- A boundary edge must lie on the square's outline. An interior edge seen
+-- once would be a hanging subdivision vertex: the neighbouring panel did
+-- not split the same material edge. Positive area also checks the winding.
+checkSquareMesh :: MaterialMesh -> Expectation
+checkSquareMesh mesh = do
+  let points = M.fromList (zip [0 ..] (map sampleMaterial (samples mesh)))
+      edges = M.fromListWith (+) [((min a b, max a b), 1 :: Int) | (i, j, k) <- triangles mesh, (a, b) <- [(i, j), (j, k), (k, i)]]
+      areas = [signedArea ps | (a, b, c) <- triangles mesh, let ps = [p | i <- [a, b, c], Just p <- [M.lookup i points]]]
+      onBoundary (V2 x y) (V2 u v) = (x == u && x `elem` [0, 1]) || (y == v && y `elem` [0, 1])
+  areas `shouldSatisfy` all (> 0)
+  abs (sum areas - 1) `shouldSatisfy` (< 1e-12)
+  forM_ (M.toList edges) $ \((i, j), count) -> case (M.lookup i points, M.lookup j points) of
+    (Just a, Just b) -> count `shouldBe` if onBoundary a b then 1 else 2
+    _ -> expectationFailure "missing material edge endpoint"

@@ -68,6 +68,7 @@ read the Haddock module headers; for the domain, start with
 | [ordered-flap-contact.md](ordered-flap-contact.md) | Declared panel order stops opposing flaps from crossing; moving overlap corners need derivatives too |
 | [crease-and-panel-energy.md](crease-and-panel-energy.md) | Crease preferences and panel bending select among connected shapes; stiffer panels can miss their crease targets by more |
 | [two-held-paper-layers.md](two-held-paper-layers.md) | One folded diamond bends as two distinct touching layers, sharing only the real root crease |
+| [spreading-connected-wing.md](spreading-connected-wing.md) | A held curved wing on the existing crane preserves the body, material creases and tail order |
 | [coupled-touching-layer-solve.md](coupled-touching-layer-solve.md) | Coupled preconditioning resolves a fine touching-mesh stall; original residuals and refinement still judge the result |
 | [held-wing-bending.md](held-wing-bending.md) | Exact root and grip controls bend an uncreased wing; a known strip and three mesh resolutions check the static solve |
 | [connected-paper-surface.md](connected-paper-surface.md) | One material surface can support sharp folds and later bending; thickness, display offsets and the controls that open a pocket have separate roles |

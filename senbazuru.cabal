@@ -33,6 +33,7 @@ extra-source-files:
   study/fold-material/frog-instructions.html
   study/fold-material/flap.html
   study/fold-material/petal.html
+  study/fold-material/crane-spreading.html
   study/fold-material/wing-layers.html
   study/fold-material/wing-bending.html
   study/fold-material/crane.html
@@ -166,7 +167,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: SparseSolve, WingLayersGallery, WingLayers, WingBendingGallery, WingBending, UncreasedSurface, CraneGallery, CraneWing, HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
+  other-modules: CraneSpreadGallery, CraneSpread, SparseSolve, WingLayersGallery, WingLayers, WingBendingGallery, WingBending, UncreasedSurface, CraneGallery, CraneWing, HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -202,6 +203,8 @@ test-suite senbazuru-test
     WingBending
     WingBendingGallery
     UncreasedSurface
+    CraneSpread
+    CraneSpreadSpec
     CraneWingSpec
     CraneWing
     CraneGallery

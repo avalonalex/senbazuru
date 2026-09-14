@@ -67,6 +67,15 @@ It writes four SVG/FOLD/GLB states and contact measurements to `checked-crane/`,
 plus `crane.html`. See [the crane instructions](../../docs/usage.md#checked-crane-wing-movement)
 for the supported contact and remaining limits.
 
+`stack run senbazuru-material-study -- --crane-spreading build/fold-material`
+spreads the existing crane wing with the body fixed. `crane-spreading.html`
+compares the rigid baseline, a curved 50-degree grip at two refinements and
+an incompatible upper grip. Complete material FOLDs and measurements are
+retained for every control; only accepted endpoints get SVG/GLB views. See
+[the instructions](../../docs/usage.md#spreading-one-connected-crane-wing) and
+[the study note](../../docs/notes/spreading-connected-wing.md). These static
+shapes do not certify the flexible path between them.
+
 `stack run senbazuru-material-study -- --wing-layers build/fold-material`
 adds two touching layers joined along the root crease of one folded diamond.
 `wing-layers.html` compares exact-grip bends, correction of an initially

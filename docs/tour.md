@@ -562,9 +562,8 @@ exactly lets the free paper bend between them. A strip with a known answer
 checks the positional controls, while three mesh resolutions expose how the
 wing's shape and energy change with subdivision. SVG and glTF show the same
 solved triangles, without turning their internal joins into crease lines.
-These are static equilibria with independent endpoint checks. Applying the
-same material model to spread a wing of the existing connected crane, and
-checking the motion between shapes, remain later work. The
+These are static equilibria with independent endpoint checks. The connected-crane experiment below applies the same material model to its
+existing wing; checking the flexible motion between shapes remains later work. The
 [experiment note](notes/held-wing-bending.md) records the measured differences.
 
 The [two-layer experiment](usage.md#two-held-touching-layers) folds a diamond
@@ -576,6 +575,16 @@ linear solve resolves the earlier fine-mesh stall without changing material
 constraints. The [resolution comparison](notes/coupled-touching-layer-solve.md)
 records shape and energy changes; small length errors alone still cannot
 certify equilibrium.
+
+The [connected crane study](usage.md#spreading-one-connected-crane-wing) holds
+the body and the selected wing's root, then turns the tip grip farther. The
+wing curves between its held strips while preserving the original creases,
+two touching layers and tucked tail. A rigid control and two curved mesh
+resolutions pass independent endpoint checks; pushing the upper grip through
+its partner is refused. Only the wing is finely subdivided; its neighbouring
+panels share every inserted edge midpoint. The body can stay fixed for this
+modest bend. [The study note](notes/spreading-connected-wing.md) distinguishes
+that result from freer spreading or a continuously checked flexible motion.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

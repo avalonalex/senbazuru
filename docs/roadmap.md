@@ -282,9 +282,16 @@ checked coupled angles.
    the original linear residual. [Three resolutions](notes/coupled-touching-layer-solve.md)
    converge with decreasing observed shape/energy changes; this does not prove
    independence from mesh size.
-   **Next: spread one wing of the existing connected crane and measure what
-   body freedom a compatible static shape needs.** Keep original creases,
-   separate touching layers and tail/body order; a checked flexible route remains separate.
+   [#203](https://github.com/avalonalex/senbazuru/issues/203) now spreads that
+   existing crane wing with a 30-degree root and 50-degree tip grip. Two local
+   refinements pass static length, crease and whole-sheet contact checks;
+   the body stays exactly fixed and the tucked tail retains its orders.
+   An upper grip pushed through its partner remains a failed diagnostic.
+   [The measurements](notes/spreading-connected-wing.md) retain the observed
+   mesh dependence and the coplanar seam distance tolerance.
+   **Next: apply paired grips to both existing wings, keeping the body fixed
+   first, and release only a small body region if compatibility requires it.**
+   Keep these endpoint experiments distinct from a checked flexible route.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.
    Sliding contact and general coupled-angle solving remain later work.

@@ -2,6 +2,7 @@
 -- small polygons distinguish touching, crossing and reversed panel order.
 module PanelContactSpec (spec) where
 
+import Control.Monad (forM_)
 import Data.Either (isLeft)
 import Data.Text (Text)
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -56,6 +57,16 @@ spec = describe "rigid study panel contact" $ do
     let next = Panel "flap" [V3 1 (-1) 0, V3 2 (-1) 0, V3 2 1 0, V3 1 1 0]
     result <- report [] [base, next]
     contactPassed result `shouldBe` True
+  it "uses the distance tolerance for narrow coplanar seam overlaps" $ do
+    forM_ [0.5, 2] $ \multiple -> do
+      let width = multiple * panelTolerance
+          next = Panel "flap" [V3 (1 - width) (-1) 0, V3 2 (-1) 0, V3 2 1 0, V3 (1 - width) 1 0]
+          rotate (V3 x y z) = V3 z x y
+      forM_ [id, rotate] $ \transform ->
+        forM_ [id, reverse] $ \winding -> do
+          result <- either (fail . show) pure (checkPanelContact (transform up) [] [p {panelCorners = map transform (winding (panelCorners p))} | p <- [base, next]])
+          contactPassed result `shouldBe` (multiple < 1)
+          unorderedContacts result `shouldBe` [("base", "flap") | multiple >= 1]
   it "uses transitive orders for coplanar stacks" $ do
     result <- report [("base", "middle"), ("middle", "top")] [base, horizontal "middle" 0, horizontal "top" 0]
     checkedPanelPairs result `shouldBe` 3

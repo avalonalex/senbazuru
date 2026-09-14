@@ -1,8 +1,9 @@
 -- | Graphics pieces derived from one material surface. A glTF viewer knows
 -- triangle depth, but not origami layer order. Moving each panel to give it a
 -- different depth tears shared creases. Instead, the display mesh removes only
--- paper buried by other panels in the SAME plane. Other panels keep their
--- real depth and the viewer handles their occlusion as the camera turns.
+-- paper buried by other panels within the export precision of the same plane.
+-- Other panels keep their real depth and the viewer handles their occlusion
+-- as the camera turns.
 --
 -- The complete mesh is retained separately. Clipping a display piece can add
 -- corners inside an original panel: each corner records a weighted combination
@@ -29,7 +30,7 @@ import Senbazuru.Fold.Query (Face (..), FoldError, FrameKind (..), frameKind)
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (cross2)
-import Senbazuru.Geometry.V3 (V3 (..), cross, modelSpan, polygonNormal)
+import Senbazuru.Geometry.V3 (V3 (..), modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Stacking (Budget, layerOrderFor)
 import Senbazuru.Origami.Surface (Surface, SurfaceError, surfaceFaces, surfaceFrame)
@@ -58,6 +59,7 @@ data PaperMeshError
   | PaperNotPlanar !FaceId
   | PaperUnresolved ![FaceId]
   | PaperMissingPoint !FaceId !V2
+  | PaperBadPrecision !Double
   deriving stock (Eq, Show)
 
 instance Explain PaperMeshError where
@@ -66,6 +68,7 @@ instance Explain PaperMeshError where
     PaperOrderError err -> explain err
     PaperNotPlanar (FaceId f) -> "panel " <> tshow f <> " needs a planar surface for the visible glTF scene"
     PaperUnresolved fs -> "cannot resolve coplanar visibility for panels " <> tshow (map unFaceId fs) <> "; provide their layer order or export --all-layers to inspect the complete geometry"
+    PaperBadPrecision value -> "paper visibility needs a finite positive coordinate quantum, received " <> tshow value
     PaperMissingPoint (FaceId f) p -> "a clipped corner " <> tshow p <> " could not be attached to material panel " <> tshow f
 
 completePaper :: Surface material -> Either PaperMeshError [PaperPiece]
@@ -74,10 +77,17 @@ completePaper sheet = map whole <$> first PaperSurfaceError (surfaceFaces sheet)
     whole f = PaperPiece (faceId f) [PaperVertex p [(vid, 1)] | (vid, p) <- zip (faceVertexIds f) (faceCorners f)] [True, False]
 
 -- | Remove coplanar overlaps on both sides, independently of a viewing camera.
+-- The second argument is the backend's coordinate quantum (rounding step).
+-- Two planes closer
+-- than that cannot reliably remain distinct after packing; use their supplied
+-- layer order for visibility, then attach clipped corners to ORIGINAL panels.
+-- Individual panels still need the stricter planarity check. This margin
+-- changes only display clipping, never material geometry or contact checks.
 -- A cycle with no common overlap (a pinwheel) is valid; contradictory orders
 -- over a shared patch are refused by the existing projected visibility check.
-visiblePaper :: Budget -> Surface material -> Either PaperMeshError [PaperPiece]
-visiblePaper budget sheet = do
+visiblePaper :: Budget -> Double -> Surface material -> Either PaperMeshError [PaperPiece]
+visiblePaper budget quantum sheet = do
+  unless (not (isNaN quantum || isInfinite quantum) && quantum > 0) (Left (PaperBadPrecision quantum))
   faces <- first PaperSurfaceError (surfaceFaces sheet)
   planes <- traverse plane faces
   concat <$> traverse drawGroup (groups planes)
@@ -94,12 +104,14 @@ visiblePaper budget sheet = do
         Nothing -> Left (PaperNotPlanar (faceId f))
       [] -> Left (PaperNotPlanar (faceId f))
     groups [] = []
-    groups (p@(_, origin, normal) : rest) =
-      let same (f, _, n) = norm (cross normal n) <= 1e-9 && all ((<= hair) . abs . dot normal . (^-^ origin)) (faceCorners f)
+    groups (p@(firstFace, origin, normal) : rest) =
+      let same (f, otherOrigin, n) =
+            all ((<= quantum) . abs . dot normal . (^-^ origin)) (faceCorners f)
+              && all ((<= quantum) . abs . dot n . (^-^ otherOrigin)) (faceCorners firstFace)
           (joined, others) = partition same rest
        in (p : joined) : groups others
     drawGroup [] = Right []
-    drawGroup group@((_, _, normal) : _) = do
+    drawGroup group@((_, origin, normal) : _) = do
       basis <- maybe (Left (PaperUnresolved ids)) Right (basisFrom (negateV normal) (upHint normal))
       reverseBasis <- maybe (Left (PaperUnresolved ids)) Right (basisFrom normal (upHint normal))
       let local = M.fromList (zip ids (map FaceId [0 ..]))
@@ -113,7 +125,11 @@ visiblePaper budget sheet = do
         if not (null supplied) || length faces /= length (facesVertices fr) || frameKind (frameClasses fr) points == CreasePattern
           then Right supplied
           else fromMaybe [] <$> first PaperOrderError (layerOrderFor budget flat)
-      let geometry = groupFrame {edgesVertices = [], edgesAssignment = [], edgesFoldAngle = []}
+      -- Compare these planes at the precision the backend can retain. Using
+      -- their tiny original depth differences would override the supplied
+      -- order and emit both surfaces before rounding made them coincide.
+      let flatten p = let V3 x y z = p ^-^ (dot normal (p ^-^ origin) *^ normal) in [x, y, z]
+          geometry = groupFrame {verticesCoords = map flatten points, edgesVertices = [], edgesAssignment = [], edgesFoldAngle = []}
       concat <$> traverse (view geometry orders faces) [basis, reverseBasis]
       where
         faces = [f | (f, _, _) <- group]

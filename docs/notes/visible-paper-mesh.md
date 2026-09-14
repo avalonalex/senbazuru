@@ -6,13 +6,26 @@ opening the fold must separate them again. A generic glTF viewer compares
 triangle depths and cannot read origami layer order. The exporter must decide
 what to draw where those depths tie.
 
-`Render.PaperMesh` groups panels that lie in the same plane and finds the
+`Render.PaperMesh` groups panels that lie within the export precision of the same plane and finds the
 exposed regions from each side. It uses the existing layer solver for a whole
 flat model, or supplied orders for coplanar parts of an open model. It then
 subtracts buried regions using the same visibility code as SVG. The output is
 independent of the viewing camera: panels in different planes retain their
 actual depth. A circular interleaving such as the pinwheel is allowed, while
 contradictory orders over a common patch are refused.
+
+A relaxed crane wing exposed a boundary between geometry and storage precision.
+Two touching layers differed by much less than the `1e-6` model-span rounding step
+used to pack coordinates, but their tiny normal differences kept them in
+separate visibility groups. Both surfaces were emitted and flickered after
+packing. Group membership now checks both panels against the other's plane
+within one packing quantum. Visibility compares those grouped panels in a
+common plane, then reattaches every clipped point to its original panel.
+Individual panel planarity still uses the stricter geometric tolerance. The
+complete scene and material/contact measurements retain the original geometry;
+this display approximation does not certify that the layers are collision-free.
+A regression retains layers separated by more than the packing margin and
+checks every exported corner's material references.
 
 The resulting graphics pieces are a view of the material, not a replacement
 for it. A quarter-fold export contains four triangles in the default Visible

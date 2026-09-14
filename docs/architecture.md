@@ -251,7 +251,20 @@ directional inequalities. `WingLayers` constructs a connected folded diamond,
 preserves its two material panels and root crease in triangle-surface exports,
 and supplies distinct grips for the two layers. `WingLayersGallery` publishes
 accepted static shapes separately from failed diagnostics. It does not add
-motion certification or general crane-body deformation. `SparseSolve` owns
+motion certification or general crane-body deformation. `CraneSpread` takes
+that held-contact solve back to the existing crane, holding its body exactly
+while bending the selected wing. `refineSelectedSurfaceWithEdges` divides those
+panels densely and splits adjoining triangles at shared material edges;
+`buildSelectedSurfaceHinges` retains the original crease targets. The adapter
+exports triangle faces with source panel/edge metadata and expands retained
+orders relative to the upper triangle's normal. `CraneSpreadGallery` publishes
+only accepted static shapes, with a rigid baseline and an incompatible grip.
+See [spreading a connected wing](notes/spreading-connected-wing.md).
+`Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
+resolves near-coplanar groups at packing precision, then reattaches clipped
+points to their original material panels. Contact checks keep their own
+geometric tolerance.
+`SparseSolve` owns
 conjugate gradients and a sparse factor of the coupled normal equations for
 held-contact solves. The factor accelerates shared layer movement; the
 original row operator still verifies the linear residual. `EquilibriumCheck`

@@ -231,7 +231,7 @@ renderSurfaceGlb budget mode name sheet = do
   scenes <- case mode of
     CompletePaper -> Right [("Complete paper", complete)]
     VisiblePaper -> do
-      shown <- first GltfPaperMeshError (visiblePaper budget sheet)
+      shown <- first GltfPaperMeshError (visiblePaper budget quantum sheet)
       Right [("Visible paper", map (canonicalPiece quantum) shown), ("Complete paper", complete)]
   let requirements = [A.object ["direction" .= [x, y, z], "lowerUpper" .= [[unFaceId a, unFaceId b] | (a, b) <- pairs]] | (V3 x y z, pairs) <- maybe [] pure (surfaceLayerRequirements sheet)]
       storedPoint p = let (x, y, z) = packable quantum p in map (realToFrac :: Float -> Double) [x, y, z]
