@@ -220,7 +220,12 @@ crosses a b
 
 section :: Plane -> Plane -> [V3]
 section plane polygon =
-  [p | p <- corners polygon, abs (signedDistance plane p) <= panelTolerance]
+  -- A corner close to a plane need not be close to the planes' intersection
+  -- line: when the planes meet at a small angle it can be far along a panel.
+  -- Including it would lengthen the cut beyond the polygon and invent a
+  -- crossing. Tolerances belong to straddling and interval overlap above;
+  -- construct the actual section from on-plane corners and edge crossings.
+  [p | p <- corners polygon, signedDistance plane p == 0]
     ++ [ p ^+^ ((dp / (dp - dq)) *^ (q ^-^ p)) | (p, q) <- ring (corners polygon), let dp = signedDistance plane p, let dq = signedDistance plane q, dp * dq < 0
        ]
 

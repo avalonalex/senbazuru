@@ -537,6 +537,36 @@ The endpoint and last rejected correction are saved as diagnostic FOLDs.
 The gallery keeps failed meshes out of accepted-model views. No flexible
 motion certificate is implied. See [the diagnostic findings](notes/internal-crease-diagnostic.md).
 
+### One nearly closed crease
+
+```bash
+stack run senbazuru-material-study -- --closed-crease build/fold-material
+```
+
+Open [the small crease experiment](http://127.0.0.1:8000/closed-crease.html).
+Seven prescribed controls compare exact touching, opening, crossings and
+reversed order on 32- and 64-triangle versions of the same connected sheet.
+Side profiles use equal scales; the signed gap plot magnifies its vertical
+axis explicitly. Length error, crease angles, raw force gaps and independent
+contact reports accompany the exact profile reference. A microscopic crossing
+passes the current tolerance check but remains labelled invalid.
+
+The ordinary touching/opening controls have GLBs using the existing
+`checked-flap/node_modules` viewer dependencies. Microscopic or invalid controls
+retain diagnostic FOLDs and measurements without a misleading rounded GLB.
+These shapes are not solved equilibria or certified motion.
+
+To recheck the six retained crane diagnostics without repeating their solves:
+
+```bash
+stack run senbazuru-material-study -- --closed-crease --recheck-crane \
+  build/fold-material/crane-internal build/fold-material
+```
+
+All six endpoint FOLDs must exist; missing or mismatched material is an error.
+Results go to `closed-crease/crane-recheck.json`; old reports stay intact.
+See [the contact finding](notes/near-closed-crease.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

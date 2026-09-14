@@ -8,7 +8,7 @@
 </style>
 <header><small>SENBAZURU · MATERIAL STUDY / #214</small><h1>Two creases inside the body</h1>
 <p>The earlier body release reaches its iteration limit with errors near two folded seams. Separate two questions: does holding those crease lines help, and does removing forces from surrounding contacts help? Every endpoint still receives the same independent whole-sheet checks.</p>
-<p><a href="crane-body.html">Angle preferences</a> · <a href="crane-pocket.html">Material map</a> · <a href="index.html">All fold examples</a></p></header>
+<p><a href="closed-crease.html">One crease with a known answer</a> · <a href="crane-body.html">Angle preferences</a> · <a href="crane-pocket.html">Material map</a> · <a href="index.html">All fold examples</a></p></header>
 <section><h2>Locate the shared lines</h2>
 <div class="maps"><figure><img src="crane-internal/material.svg" alt="Original sheet with crease 26 in teal and crease 51 in rust"><figcaption>Original sheet: teal is crease 26, rust is crease 51.</figcaption></figure><figure><img src="crane-internal/folded.svg" alt="Folded x-ray close-up of the same two joined panel pairs"><figcaption>Folded x-ray close-up. Buried layers are included; this is a material map.</figcaption></figure></div>
 <p>Crease 26 joins panels 8 and 27; crease 51 joins panels 7 and 43. Both are mountain folds, where the paper's front side bends outward. Each line has nine shared mesh vertices. The original boundary holds one endpoint (+); eight vertices (·) can move. The held-line control holds those sixteen additional vertices in their original positions.</p>
@@ -23,7 +23,7 @@
 <div class="table-wrap"><table><thead><tr><th>Crease</th><th>Held shared vertices</th><th>Angle error</th></tr></thead><tbody id="creases"></tbody></table></div>
 <p id="checks"></p><p id="gaps"></p>
 <div class="table-wrap"><table><thead><tr><th>Original panel pair</th><th>Reported crossing triangle pairs</th></tr></thead><tbody id="pairs"></tbody></table></div>
-<p>Up to eight pairs with the most reports are shown; the JSON contains the complete list. These are the unchanged checker's reports at its geometric tolerance.</p>
+<p>Up to eight pairs with the most reports are shown; the JSON contains the complete list. Counts reflect the checker used when generating this page. The <a href="closed-crease.html">single-crease study</a> corrects an overextended plane cut and rechecks these saved positions.</p>
 <p id="work"></p><p id="blocked"></p>
 <h3>Rejected corrections</h3><p>A line search tries smaller fractions of a proposed correction until its energy decreases. These rows show the last refusal of each kind, not a physical fold. A very small rejected movement is different from equilibrium.</p>
 <div class="table-wrap"><table><thead><tr><th>Reason</th><th>Count</th><th>Iteration</th><th>Step fraction</th><th>Largest movement</th><th>Energy change</th></tr></thead><tbody id="refusals"></tbody></table></div>

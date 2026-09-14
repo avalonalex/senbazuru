@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One crease, two bending panels · Senbazuru</title>
+<style>
+:root{font:16px/1.6 system-ui,sans-serif;color:#292d28;background:#f4efe7;color-scheme:light}body{max-width:1180px;margin:auto;padding:32px 24px 60px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15}h2{font-size:1.4rem}p{max-width:970px}a{color:#385e50;text-underline-offset:3px}small{letter-spacing:.12em}section{background:#fffaf2;border:1px solid #d8cebd;border-radius:8px;padding:24px;margin:28px 0}.plots{display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0}img{width:100%;height:auto}figcaption{font-size:.9rem}.note{border-left:3px solid #92744b;padding-left:14px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #dfd5c6;vertical-align:top}select{font:inherit;max-width:100%;padding:8px}.controls{display:flex;gap:24px;flex-wrap:wrap}.good{color:#385e50}.bad{color:#a74622}.teal{color:#397f88}.rust{color:#b35836}iframe{width:100%;height:760px;border:0}[hidden]{display:none!important}@media(max-width:700px){.plots{grid-template-columns:1fr}section{padding:14px}td,th{padding:8px}}
+</style>
+<header><small>SENBAZURU · MATERIAL STUDY / #216</small>
+<h1>One crease, two bending panels</h1>
+<p>Fold a square in half, almost closed. Let each half bend while keeping every piece of paper the same size. With only one shared crease, we can tell exactly where the two layers touch, separate or cross.</p>
+<p><a href="crane-internal.html">Why the crane needs this test</a> · <a href="index.html">All fold examples</a> · <a href="closed-crease/checks.json">Measurements and exact profiles</a></p></header>
+<section><h2>A small shape with a known answer</h2>
+<p>Each panel follows four straight segments, extended along the crease. The segments can turn without stretching. Their joins approximate flexible panel bending; only the fold joining the two halves is an authored crease. The shared line uses three common vertices. Touching material elsewhere keeps separate identities.</p>
+<div class="controls"><label>Shape <select id="shape"></select></label><label>Mesh <select id="resolution"><option value="1">32 triangles</option><option value="2">64 triangles</option></select></label></div>
+<p id="description"></p>
+<div class="plots"><figure><img id="profile" alt="Side profiles of the lower and upper bending panels"><figcaption>Side view, equal horizontal and vertical scales. <span class="teal">Teal: lower panel.</span> <span class="rust">Dashed rust: upper panel.</span> Coincident strokes mean exact touching.</figcaption></figure>
+<figure><img id="gap" alt="Signed upper-minus-lower height over the shared horizontal range"><figcaption id="gap-caption"></figcaption></figure></div>
+<p id="verdict" aria-live="polite"></p><p id="geometry"></p>
+<p><a id="fold">This diagnostic FOLD</a>. Coordinates retain the measured shape; failed controls are included for inspection.</p>
+<p class="note">These shapes are prescribed mathematical controls. They are not solved equilibria, and switching between them is not a checked folding motion. Refining the mesh subdivides the same four segments; it does not smooth or change the ideal shape.</p>
+</section>
+<section><h2>Does the numerical check agree?</h2>
+<p>The exact profile is a separate reference: positive upper-minus-lower height means ordered separation; zero means touching; negative means reversed order. A change of sign inside the panels means a crossing. The production checker inspects all triangle pairs and the declared lower/upper order.</p>
+<div class="table-wrap"><table><thead><tr><th>Shape</th><th>Exact minimum gap</th><th>Force minimum gap</th><th>Crossing reports</th><th>Reversed reports</th><th>Within tolerance?</th></tr></thead><tbody id="comparison"></tbody></table></div>
+<p class="note">The microscopic crossing really crosses in the ideal geometry, even though the current checker passes it. Its penetration is smaller than the 1e-7 sheet-length distance tolerance. “Within tolerance” is not proof of exact nonintersection. No tolerance is loosened for this experiment.</p>
+</section>
+<section><h2>Turn the paper in 3D</h2>
+<p id="model-note"></p><iframe id="viewer" title="Nearly closed connected paper in 3D" loading="lazy"></iframe>
+<p>Use the side-profile measurements to inspect tiny gaps. The 3D export rounds positions for display and cannot represent the microscopic controls reliably. The teal/rust profile colours identify panels; the 3D viewer colours the two sides of the paper.</p>
+</section>
+<section><h2>A nearby point can invent a crossing</h2>
+<p>The investigation also found a concrete checker bug. Two triangles lie in nearly parallel planes. The line where those planes meet is x = 0. One triangle reaches y = 10/21 on that line; the other starts at y = 39/80. Their intervals are separated by 19/1680, so the triangles do not cross.</p>
+<p>A corner off the line reaches y = 1/2. It is only 1.25e-8 from the other plane, so the old checker treated it as on the cut and invented an overlap. The corrected checker constructs the actual plane cuts, then applies the existing crossing tolerances. Moving the second triangle's start to y = 15/32 produces a real crossing and remains rejected.</p>
+<p>This fixes a false report without repairing an intersecting mesh. Rechecking the saved crane shapes reduces the held-crease case from 19 crossing reports to 13; the original still has 49. All previously failed shapes still fail contact. The larger body-opening problem remains open.</p>
+</section>
+<script>
+const data=/*CLOSED_CREASE_DATA*/null;
+const descriptions={flat:'Both panels lie flat in exact contact.',touching:'Both panels follow the same bent profile, in exact contact.',open:'The upper panel opens about 5.72° away from fully closed, while both panels bend.','open-sliver':'The upper panel opens only about 0.00000115°. Its positive gap is too small to see at physical scale.',crossed:'The upper panel starts above its partner, then bends through it.','crossed-sliver':'The same crossing idea at microscopic scale: the exact profile still changes sign.','wrong-side':'The upper panel is entirely on the wrong side after leaving the crease. This reverses the order without an interior crossing.'};
+const el=id=>document.getElementById(id),number=x=>x===0?'0':x.toExponential(3);
+for(const r of data.runs.filter(r=>r.subdivision===1)){const option=document.createElement('option');option.value=r.shape;option.textContent=r.title;el('shape').append(option);}
+el('shape').value='open';
+function update(){const n=Number(el('resolution').value),r=data.runs.find(r=>r.subdivision===n&&r.shape===el('shape').value);el('description').textContent=descriptions[r.shape];el('profile').src=`closed-crease/${r.id}-profile.svg`;el('gap').src=`closed-crease/${r.id}-gap.svg`;el('fold').href=`closed-crease/${r.id}.fold`;
+el('gap-caption').textContent=`Gap plot: vertical scale magnified independently; labelled range ±${number(r.gapPlotScale)} sheet lengths. Below the grey zero line means reversed layer order.`;
+el('verdict').className=r.idealOrdered?'good':'bad';el('verdict').textContent=r.idealOrdered?'Exact reference: correctly ordered touching or separated paper.':r.contact.passed?'Exact reference: the panels cross. The production checker passes this tolerance-sized violation.':'Exact reference: invalid layer order. The production checker also rejects this shape.';
+el('geometry').textContent=`${r.components} connected sheet · ${r.sharedCreaseVertices.length} shared crease vertices · largest relative length error ${number(r.maxRelativeEdgeError)} · measured crease angle ${r.creaseDegrees.map(x=>Math.abs(x).toFixed(8)+'°').join(', ')}. An angle of 180° is closed.`;
+el('comparison').replaceChildren();for(const s of data.runs.filter(s=>s.subdivision===n)){const tr=document.createElement('tr');for(const value of [s.title,number(s.minGap.value),number(s.minForceGap),s.contact.crossingPanels.length,s.contact.reversedOrders.length,s.contact.passed?'Yes':'No']){const td=document.createElement('td');td.textContent=value;tr.append(td);}el('comparison').append(tr);}
+el('viewer').hidden=!r.hasModel;if(r.hasModel){el('viewer').src=`closed-crease/index.html?model=${r.id}.glb&angle=profile`;el('model-note').textContent='The same connected mesh, with a stable view and a complete-sheet inspection scene. Drag to rotate.';}else{el('viewer').removeAttribute('src');el('model-note').textContent='This control is inspected through its profile, gap plot and full-precision FOLD. Choose “Small opening” or either touching control for the 3D view.';}}
+el('shape').addEventListener('change',update);el('resolution').addEventListener('change',update);update();
+</script>
+</html>

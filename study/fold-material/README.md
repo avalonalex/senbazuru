@@ -76,6 +76,15 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --closed-crease build/fold-material`
+writes `closed-crease.html`, seven prescribed contact controls at two mesh
+resolutions, exact side profiles, gap plots and diagnostic FOLDs. The ordinary
+touching/opening controls have 3D views; microscopic gaps remain in the
+measurements because display packing would round them away. This is an
+independent geometry reference, not a relaxation or motion experiment.
+See [usage](../../docs/usage.md#one-nearly-closed-crease) for rechecking saved
+crane endpoints without repeating their solves, and [the finding](../../docs/notes/near-closed-crease.md).
+
 `stack run senbazuru-material-study -- --crane-internal build/fold-material`
 locates creases 26/51 and compares shared-line holds with internal-only contact
 forces. Every endpoint keeps the independent whole-sheet checks. A continuation

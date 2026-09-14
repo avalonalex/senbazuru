@@ -20,6 +20,23 @@ spec = describe "rigid study panel contact" $ do
     result <- report [] [base, vertical 0 2 3 (-1) 1]
     crossingPanels result `shouldBe` []
     contactPassed result `shouldBe` True
+  it "does not extend a plane section to a nearby off-plane corner" $ do
+    -- The planes meet at x=0. The lower cut ends at y=10/21, whereas
+    -- the upper cut begins at 39/80: their separation is 19/1680.
+    -- The lower tip is only 1.25e-8 from the upper plane, but including
+    -- its y=1/2 would invent an overlap. Moving the upper base to 15/32
+    -- makes a real crossing and must still fail at the same tolerance.
+    forM_ [39 / 80, 15 / 32] $ \baseY ->
+      forM_ [id, reverse] $ \winding ->
+        forM_ [id, \(V3 x y z) -> V3 (z + 0.1) (x - 0.2) (y + 0.3)] $ \transform -> do
+          let lower = Panel "lower" [V3 (-0.25) 0 0, V3 0.25 0 0, V3 0.0125 0.5 0]
+              upper = Panel "upper" [V3 (-0.25) baseY (-2.5e-7), V3 0.25 baseY 2.5e-7, V3 0 0.75 0]
+              -- Subtract the transformed origin: directions do not translate.
+              axis = case (transform up, transform (V3 0 0 0)) of
+                (V3 x y z, V3 a b c) -> V3 (x - a) (y - b) (z - c)
+          checked <- either (fail . show) pure (checkPanelContact axis [("lower", "upper")] [p {panelCorners = map transform (winding (panelCorners p))} | p <- [lower, upper]])
+          crossingPanels checked `shouldBe` [("lower", "upper") | baseY < 10 / 21]
+          contactPassed checked `shouldBe` (baseY > 10 / 21)
   it "allows a shared hinge and checks the height of its upright flap" $ do
     result <- report [("base", "flap")] [base, vertical 1 (-1) 1 0 1]
     checkedPanelPairs result `shouldBe` 1
