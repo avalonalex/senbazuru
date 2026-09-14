@@ -6,6 +6,7 @@ import BasicBaseGallery (writeBasicBases)
 import BendingGallery (writeBendingStudy)
 import BlintzGallery (writeBlintzGallery)
 import Control.Monad (unless)
+import CraneBodyGallery (writeCraneBody)
 import CraneGallery (writeCraneGallery)
 import CranePocketGallery (writeCranePocket)
 import CraneRootGallery (writeCraneRoot)
@@ -61,6 +62,7 @@ main = do
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
     ["--petal", destination] -> writePetalGallery destination
+    ["--crane-body", destination] -> writeCraneBody destination
     ["--crane-pocket", destination] -> writeCranePocket destination
     ["--crane-root", destination] -> writeCraneRoot destination
     ["--crane-spreading", destination] -> writeCraneSpread destination
@@ -70,7 +72,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -98,6 +100,7 @@ generate destination = do
   writeCraneSpread destination
   writeCraneRoot destination
   writeCranePocket destination
+  writeCraneBody destination
   writeWingLayers destination
   writeWingBending destination
   writeCraneGallery destination

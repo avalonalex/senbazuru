@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing body fold preferences · Senbazuru</title>
+<style>
+  :root { color-scheme:light; font:16px/1.6 system-ui,sans-serif; color:#292d28; background:#f4efe7; }
+  body { max-width:1180px; margin:auto; padding:32px 24px 60px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.15; margin:12px 0; }
+  h2 { font-size:1.35rem; } p { max-width:960px; } a { color:#385e50; text-underline-offset:3px; }
+  small { letter-spacing:.12em; } section { background:#fffaf2; border:1px solid #d8cebd; border-radius:8px; padding:24px; margin:28px 0; }
+  .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:left; padding:10px 12px; border-bottom:1px solid #dfd5c6; vertical-align:top; }
+  select { font:inherit; padding:8px; max-width:100%; } iframe { width:100%; height:650px; border:0; }
+  .good { color:#385e50; } .bad { color:#a74622; } .facts { display:flex; flex-wrap:wrap; gap:24px; } .facts strong { display:block; font-size:1.5rem; }
+  @media(max-width:650px) { section { padding:14px; } th,td { padding:8px; } iframe { height:480px; } }
+</style>
+<header>
+  <small>SENBAZURU · MATERIAL STUDY / #212</small>
+  <h1>Testing body fold preferences</h1>
+  <p>Two folds beside the crane's wing can prefer a different angle. Does that
+    let the small released body patch settle? Keep the same paper and grips,
+    change those two springs, and check what still prevents acceptance.</p>
+  <p><a href="crane-pocket.html">Material map</a> · <a href="crane-root.html">Earlier root/body comparison</a> · <a href="index.html">All fold examples</a></p>
+</header>
+<section>
+  <h2>One patch, two selected creases</h2>
+  <p>The four panels directly beside one wing's root can move. Their outer
+    boundary stays held wherever it joins other panels. The central body core,
+    other wing, neck and tail remain fixed. The same tip grip asks for the earlier 50° bend.</p>
+  <div class="facts"><div><strong>4</strong>released neighbouring panels</div><div><strong>21 · 46</strong>selected source crease IDs</div><div><strong>902</strong>retained source layer orders</div></div>
+  <p>Both selected lines are valley creases: they form a trough when seen from the paper's front side.
+    They come from the material map's candidate opening set. Other candidates
+    lie outside this small patch. The four authored wing-root springs keep
+    their earlier flat-angle preference in every trial.</p>
+  <p class="note">The old 0.00001-radian angle limit was a final acceptance check,
+    not a hard constraint in the solver. Removing that check alone cannot move
+    paper. The two verdicts below evaluate the <em>same</em> endpoint; only
+    changing the springs produces a different numerical trial.</p>
+</section>
+<section>
+  <h2>What changes the result?</h2>
+  <p>The three free-patch trials have identical holds, mesh, starting guess and
+    contact rules. They change only the selected springs: original stiffness
+    and 180° preference, one tenth of that stiffness, or a 170° preference at
+    the original stiffness. These illustrative values are not measured paper properties.</p>
+  <div class="table-wrap"><table><thead><tr><th>Trial</th><th>Strict angles</th><th>Selected preferences</th><th>Patch displacement</th><th>Length error</th></tr></thead><tbody id="comparison"></tbody></table></div>
+  <p id="finding"></p>
+  <p>The fixed-body reference checks the earlier accepted setup. The incompatible
+    control pushes an upper grip 0.005 model units through its lower partner;
+    a flexible crease cannot make those exact holds compatible.</p>
+</section>
+<section>
+  <h2>Inspect a trial's checks</h2>
+  <label for="trial">Trial </label><select id="trial"></select>
+  <div id="details" aria-live="polite">
+    <p id="verdict"></p>
+    <div class="table-wrap"><table><thead><tr><th>Requirement</th><th>Measurement</th><th>Pass</th></tr></thead><tbody id="gates"></tbody></table></div>
+    <h3>Selected angles along the crease</h3>
+    <p>Refined segments can turn by different amounts along one source crease.
+      Values below are angle magnitudes in degrees; the JSON retains signs.
+      Departure is always measured against the original 180° fold, including
+      when the preferred angle is changed to 170°.</p>
+    <div class="table-wrap"><table><thead><tr><th>Source crease</th><th>Achieved range</th><th>Preference</th><th>Largest departure from original</th></tr></thead><tbody id="angles"></tbody></table></div>
+    <h3>Retained folds outside the angle limit</h3>
+    <p id="retained"></p>
+    <div class="table-wrap"><table><thead><tr><th>Source crease</th><th>Largest original-angle error</th></tr></thead><tbody id="retained-angles"></tbody></table></div>
+    <p id="contact"></p><p id="work"></p>
+    <p><a id="fold" href="crane-body/original.fold">Download this trial's FOLD</a> · <a id="json" href="crane-body/original-check.json">Full trial measurements</a></p>
+  </div>
+</section>
+<section>
+  <h2>Accepted paper only</h2>
+  <p id="models"></p>
+  <iframe id="viewer" title="Accepted body preference endpoints" loading="lazy"></iframe>
+  <p id="exports"></p>
+  <p>Drag to rotate; scroll to zoom. Stable and complete-paper scenes share
+    positions. Failed trials remain diagnostic FOLD downloads above, outside
+    this model selector.</p>
+</section>
+<p class="note"><strong>Scope:</strong> static endpoints with the same small
+  free patch, using zero-thickness paper with distinct touching layers. Numerical iterates can stretch and cross paper; they are not
+  physical folding steps. A failure here does not prove that a larger coupled
+  body opening is impossible. Paired wing grips, a pocket boundary and pressure
+  remain later work.</p>
+<script>
+const data = /*BODY_DATA*/null;
+const byId = new Map(data.runs.map(r => [r.id,r]));
+const number = n => n === 0 ? '0' : n.toPrecision(3);
+const degrees = n => Math.abs(n) * 180 / Math.PI;
+const percent = n => number(100*n) + '%';
+const pass = b => b ? 'Yes' : 'No';
+const difference = a => Math.abs(Math.atan2(Math.sin(a.achievedRadians-a.originalRadians),Math.cos(a.achievedRadians-a.originalRadians)));
+function row(target,values) { const tr=document.createElement('tr'); for (const value of values) {const td=document.createElement('td');td.textContent=value;tr.append(td);} document.querySelector(target).append(tr); }
+for (const run of data.runs) {
+  row('#comparison',[run.title,pass(run.strictAccepted),pass(run.selectedAccepted),number(run.bodyMovement),percent(run.maxRelativeEdgeError)]);
+  const option=document.createElement('option');option.value=run.id;option.textContent=run.title;document.querySelector('#trial').append(option);
+}
+const free=data.runs.filter(r => ['original','weaker','open'].includes(r.id));
+document.querySelector('#finding').textContent=free.length<3
+  ? 'The experiment is still running: '+free.length+' of three free-patch trials has finished. The tables show completed measurements only.'
+  : free.every(r => !r.selectedAccepted)
+  ? 'None of the three free-patch trials passes the selected-preference policy. The detailed checks below show what remains wrong; dropping the selected angle gate alone does not establish valid paper.'
+  : 'At least one free-patch trial passes the selected-preference policy. Compare its remaining checks and measured angles before extending the free body region.';
+function show() {
+  const r=byId.get(document.querySelector('#trial').value);
+  document.querySelector('#verdict').textContent=r.selectedAccepted ? 'Accepted static endpoint under the selected-preference policy.' : 'Diagnostic endpoint: not accepted under the selected-preference policy.';
+  document.querySelector('#verdict').className=r.selectedAccepted?'good':'bad';
+  document.querySelector('#gates').replaceChildren();
+  for (const values of [
+    ['Solver equilibrium',r.equilibrium ? 'Proposed correction '+number(r.equilibrium.fullMovement)+' model units' : 'Equilibrium not established',pass(r.converged)],
+    ['Material lengths ≤ 0.001%',percent(r.maxRelativeEdgeError),pass(r.maxRelativeEdgeError<=1e-5)],
+    ['Remaining holds exact',number(r.heldPositionError),pass(r.heldPositionError===0)],
+    ['Retained folds < 0.00001 rad',number(r.maxRetainedOriginalErrorRadians)+' rad',pass(r.maxRetainedOriginalErrorRadians<1e-5)],
+    ['Whole-sheet contact and layer order',r.contact.passed?'Clear':'See counts below',pass(r.contact.passed)],
+    ['Selected departure from original',number(r.maxSelectedOriginalErrorRadians)+' rad','Measured; no exact gate']]) row('#gates',values);
+  document.querySelector('#angles').replaceChildren();
+  for (const id of r.selectedCreases) {const as=r.angles.filter(a=>a.selected&&a.sourceEdge===id);const ds=as.map(a=>degrees(a.achievedRadians));row('#angles',[id,Math.min(...ds).toFixed(3)+'–'+Math.max(...ds).toFixed(3)+'°',degrees(as[0].preferredRadians).toFixed(1)+'°',degrees(Math.max(...as.map(difference))).toFixed(3)+'°']);}
+  const retained=new Map();for(const a of r.angles.filter(a=>!a.selected)) retained.set(a.sourceEdge,Math.max(retained.get(a.sourceEdge)||0,difference(a)));
+  const outside=[...retained].filter(([,error])=>error>=1e-5).sort((a,b)=>b[1]-a[1]);
+  document.querySelector('#retained-angles').replaceChildren();for(const [id,error] of outside) row('#retained-angles',[id,number(error)+' rad']);
+  document.querySelector('#retained').textContent=outside.length ? 'These original folds remain required by both policies. Their errors must still be resolved.' : 'Every retained fold stays within the original angle limit.';
+  document.querySelector('#contact').textContent='Independent contact check: '+r.contact.crossingPanels.length+' crossing triangle pairs, '+r.contact.unorderedContacts.length+' touching pairs without an order, '+r.contact.reversedOrders.length+' reversed orders, '+r.contact.uncheckedOrders.length+' uncheckable orders.';
+  document.querySelector('#work').textContent=r.iterations+' iterations used; limit '+r.iterationLimitPerStage+' per penalty stage. '+r.vertices+' shared material vertices, '+r.triangles+' triangles; '+r.heldVertices+' vertices held. Solve CPU time: '+number(r.solveCpuSeconds)+' seconds.';
+  document.querySelector('#fold').href='crane-body/'+r.id+'.fold';document.querySelector('#json').href='crane-body/'+r.id+'-check.json';
+}
+document.querySelector('#trial').value='original';document.querySelector('#trial').onchange=show;show();
+const shown=data.exports.filter(e=>e.stableAvailable);
+document.querySelector('#models').textContent=shown.length ? 'Available: '+shown.map(e=>byId.get(e.id).title).join('; ')+'.' : 'No accepted endpoint has an available stable view.';
+if(shown.length) document.querySelector('#viewer').src='crane-body/index.html?model='+shown[0].id+'.glb&angle=other-corner&side=below';else document.querySelector('#viewer').hidden=true;
+for(const e of data.exports.filter(e=>e.error)) {const link=document.createElement('a');link.href='crane-body/'+e.id+'-complete.glb';link.textContent=byId.get(e.id).title+' · complete-sheet GLB';document.querySelector('#exports').append('Stable view unavailable for this accepted mesh: ',link,'. ');}
+</script>
+</html>
