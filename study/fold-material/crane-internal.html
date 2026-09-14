@@ -28,7 +28,7 @@
 <h3>Rejected corrections</h3><p>A line search tries smaller fractions of a proposed correction until its energy decreases. These rows show the last refusal of each kind, not a physical fold. A very small rejected movement is different from equilibrium.</p>
 <div class="table-wrap"><table><thead><tr><th>Reason</th><th>Count</th><th>Iteration</th><th>Step fraction</th><th>Largest movement</th><th>Energy change</th></tr></thead><tbody id="refusals"></tbody></table></div>
 <p id="energy"></p>
-<p><a id="fold">Diagnostic FOLD</a> · <a id="json">Full measurements and first/last refusal</a></p></div></section>
+<p><a id="fold">Diagnostic FOLD</a> · <a id="json">Measurements and rejection audit</a></p></div></section>
 <p class="note">Scope: one connected zero-thickness sheet, the same small body patch and 50° tip grip. No larger body release, pressure, new material fit or certificate for a flexible folding route.</p>
 <script>
 const data=/*INTERNAL_DATA*/null;
@@ -45,10 +45,10 @@ function show(){
  document.getElementById('creases').replaceChildren();for(const c of r.endpoint.creases)row('creases',[c.crease,c.heldLineVertices+' / '+c.sharedVertices,number(c.maxAngleError)+' rad']);
  document.getElementById('checks').textContent='Whole-sheet checks: '+r.contact.crossingPanels.length+' crossing triangle pairs; '+r.contact.unorderedContacts.length+' unordered contacts; '+r.contact.reversedOrders.length+' reversed orders; '+r.contact.uncheckedOrders.length+' uncheckable orders. Largest original-angle error: '+number(r.maxOriginalAngleError)+' rad. Held-position error: '+number(r.heldError)+'.';
  document.getElementById('gaps').textContent='Smallest signed gap among active force rows: '+number(r.endpoint.forceContacts.minGap)+' model units (negative means reversed along the body-height direction). The independent order check tolerates gaps down to −1e-7; its separate triangle-crossing test can still report intersections near a folded seam.';
- document.getElementById('pairs').replaceChildren();for(const p of [...r.crossingsBySourcePair.pairs].sort((a,b)=>b.count-a.count).slice(0,8))row('pairs',[p.panels.join(' / '),p.count]);
+ document.getElementById('pairs').replaceChildren();if(!r.crossingsBySourcePair.pairs.length)row('pairs',['None',0]);for(const p of [...r.crossingsBySourcePair.pairs].sort((a,b)=>b.count-a.count).slice(0,8))row('pairs',[p.panels.join(' / '),p.count]);
  document.getElementById('work').textContent='Solve CPU time: '+number(r.solveCpuSeconds)+' seconds. '+r.checkpoints.at(-1).iteration+(r.continuedFromOriginal?' additional iterations at the final penalty weight; limit '+r.iterationLimitPerStage+'. ':' iterations; limit '+r.iterationLimitPerStage+' per penalty stage. ')+(r.equilibrium?'Final proposed full movement: '+number(r.equilibrium.fullMovement)+' model units.':'No final equilibrium established.');
  document.getElementById('blocked').textContent=r.blockedStages.length?'All available step sizes were refused at iterations '+r.blockedStages.map(b=>b.iteration).join(', ')+'.':'No penalty stage was classified as blocked by the line search; iteration limits and equilibrium are separate checks.';
- document.getElementById('refusals').replaceChildren();for(const s of r.refusals){const t=s.last;row('refusals',[s.reason,s.count,t.iteration,number(t.scale),number(t.maxMovement),t.afterEnergy===null?'Unavailable':number(t.afterEnergy-t.beforeEnergy)]);}
+ document.getElementById('refusals').replaceChildren();if(!r.refusals.length)row('refusals',['None recorded',0,'—','—','—','—']);for(const s of r.refusals){const t=s.last;row('refusals',[s.reason,s.count,t.iteration,number(t.scale),number(t.maxMovement),t.afterEnergy===null?'Unavailable':number(t.afterEnergy-t.beforeEnergy)]);}
  document.getElementById('energy').textContent='The JSON separates material-length, angular and contact terms before and after each recorded refusal. Multiply lengthSquared by its recorded lengthWeight and squaredPenetration by 100 × lengthWeight; angleSquared already includes the springs. Their sum is the solver objective.';
  document.getElementById('fold').href='crane-internal/'+r.id+'.fold';document.getElementById('json').href='crane-internal/'+r.id+'-check.json';
 }

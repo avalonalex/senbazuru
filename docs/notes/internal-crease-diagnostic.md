@@ -5,6 +5,8 @@ reports between panels joined by two internal creases. Crease 26 joins panels
 8 and 27; crease 51 joins panels 7 and 43. Both are mountain folds, with the
 paper's front side bending outward. Before freeing more of the body, locate
 these shared material lines and separate boundary effects from contact forces.
+The ids refer to the study's cut source pattern, which already contains the
+wing-root lines; subdivision carries each source id onto its mesh segments.
 The [glossary](../glossary.md) defines panels, creases and layer orders.
 
 ```bash
@@ -49,6 +51,7 @@ checker's reports, not a measure of penetration depth:
 | Crease lines held | 135 | 164 | 99 | Yes | 8.08e-6 | 7.24e-5 | 19 |
 | Internal forces only | 119 | 2 | 80 | No | 3.86e-5 | 0.0180 | 282 |
 | Held lines + internal forces | 135 | 2 | 70 | No | 1.69e-5 | 0.00895 | 375 |
+| Whole patch held | 495 | 34 | 17 | Yes | 1.73e-7 | 7.48e-8 | 0 |
 | Original continued | 119 | 164 | 80 more | No | 2.07e-5 | 0.0194 | 23 |
 
 All holds remain exact. Only the whole-patch-held reference passes acceptance.
