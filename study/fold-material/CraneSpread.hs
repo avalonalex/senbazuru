@@ -13,8 +13,11 @@
 module CraneSpread
   ( CraneSpread (..),
     SpreadError (..),
+    SpreadRefinement (..),
     craneSpread,
+    craneSpreadWith,
     solveSpread,
+    spreadContactOrders,
     crossedGrip,
     spreadCheck,
     spreadAccepted,
@@ -59,6 +62,11 @@ data CraneSpread = CraneSpread
   }
   deriving stock (Show)
 
+-- | Refinement changes resolution, not which vertices are held. The root
+-- study needs triangles on both sides of the root before releasing body pins.
+data SpreadRefinement = WingOnly | WingAndRootNeighbours
+  deriving stock (Eq, Show)
+
 newtype SpreadError = SpreadError Text deriving stock (Eq, Show)
 
 instance Explain SpreadError where explain (SpreadError message) = message
@@ -67,7 +75,10 @@ instance Explain SpreadError where explain (SpreadError message) = message
 -- rotation 0..20 degrees, refinement 3 or 4 (eight or sixteen spans per wing).
 -- These levels represent the same 1/8-span root and tip strips exactly.
 craneSpread :: Frame -> Int -> Double -> Either SpreadError CraneSpread
-craneSpread source level degrees = do
+craneSpread = craneSpreadWith WingOnly
+
+craneSpreadWith :: SpreadRefinement -> Frame -> Int -> Double -> Either SpreadError CraneSpread
+craneSpreadWith selection source level degrees = do
   unless (level `elem` [3, 4] && finite degrees && degrees >= 0 && degrees <= 20) $
     Left (SpreadError "crane spreading requires refinement 3 or 4 and a finite extra grip angle from 0 to 20 degrees")
   wing <- first SpreadError (buildCraneWing source)
@@ -81,7 +92,10 @@ craneSpread source level degrees = do
         | creaseAssignment edge == Mountain = -pi
         | otherwise = pi
       targets = M.fromList [(creaseId edge, rest edge) | (edge, _) <- features, creaseAssignment edge `notElem` [Border, Cut]]
-  (refined, hinges) <- checked (buildSelectedSurfaceHinges (Bending 1 0.2) level moving sheet targets)
+      selectedPanels = case selection of
+        WingOnly -> moving
+        WingAndRootNeighbours -> S.union moving (S.fromList [owner | (edge, owners) <- features, creaseId edge `elem` craneHinge wing, owner <- owners])
+  (refined, hinges) <- checked (buildSelectedSurfaceHinges (Bending 1 0.2) level selectedPanels sheet targets)
   let base = refinedMesh refined
       tagged = zip (triangles base) (refinedPanels refined)
       body = S.fromList [v | (tri, owner) <- tagged, S.notMember owner moving, v <- vertices tri]
@@ -121,13 +135,19 @@ bentPoint degrees (V3 x y _) =
 
 solveSpread :: Settings -> CraneSpread -> Either SpreadError Relaxation
 solveSpread settings fixture = do
-  -- Body/body constraints stay exactly constant because every body vertex is
-  -- pinned. Solve only orders involving the moving wing, then independently
-  -- check ALL triangles and source orders in spreadCheck.
-  let moving = spreadMoving fixture
-      active = [(a, b) | (a, b) <- spreadOrders fixture, S.member a moving || S.member b moving]
-  contact <- checked (Contact.prepareContact 0 (V3 0 0 1) active (refinedPanels (spreadRefined fixture)) (spreadMesh fixture))
+  contact <- checked (Contact.prepareContact 0 (V3 0 0 1) (spreadContactOrders fixture) (refinedPanels (spreadRefined fixture)) (spreadMesh fixture))
   checked (relaxPinnedContact settings (spreadPins fixture) (spreadHinges fixture) contact (spreadMesh fixture))
+
+-- | An order needs force rows whenever either panel has a free vertex. In the
+-- original experiment this is just the wing; releasing body pins must also
+-- activate body/body contacts. The independent check still examines ALL
+-- triangles and source orders, including those between entirely held panels.
+-- Expand transitive orders BEFORE dropping constant pairs: A below held B,
+-- and B below held C, still requires moving A below C when they overlap.
+spreadContactOrders :: CraneSpread -> [(FaceId, FaceId)]
+spreadContactOrders fixture = [(a, b) | (a, b) <- S.toAscList (closure (S.fromList (spreadOrders fixture))), S.member a moving || S.member b moving]
+  where
+    moving = S.fromList [owner | (tri, owner) <- zip (triangles (spreadMesh fixture)) (refinedPanels (spreadRefined fixture)), any (`IM.notMember` spreadPins fixture) (vertices tri)]
 
 -- | Deliberately push an upper grip through its lower partner. Shared material
 -- vertices remain shared; only independent upper-layer grip vertices move.

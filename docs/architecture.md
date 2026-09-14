@@ -260,6 +260,15 @@ exports triangle faces with source panel/edge metadata and expands retained
 orders relative to the upper triangle's normal. `CraneSpreadGallery` publishes
 only accepted static shapes, with a rigid baseline and an incompatible grip.
 See [spreading a connected wing](notes/spreading-connected-wing.md).
+`CraneRoot` separates the exact root-strip hold from the four authored root
+springs, then releases their four neighbouring body panels. Its comparisons
+share refinement, material and tip grips; original mountain/valley angles are
+checked separately from the soft root preferences. `spreadContactOrders`
+expands inherited source orders before selecting those involving free vertices,
+so held intermediate panels cannot hide a needed contact requirement.
+`CraneRootGallery` adds measured side profiles and retains failed body/grip
+attempts as diagnostics. Rendering failures retain complete-sheet inspection
+exports separately from physical acceptance. See [the wing-root study](notes/wing-root-holds.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

@@ -68,9 +68,10 @@ maximum edge error is 12.4%. This endpoint stays a diagnostic FOLD file and
 never appears as an accepted model. A numerical solve cannot rescue an
 incompatible exact grip by silently moving it.
 
-A fixed body therefore suffices for this modest held bend. The next bounded
-experiment can apply paired grips to both wings, initially keeping the body
-fixed, and release a small body region only if the checks expose a conflict.
+A fixed body therefore suffices for this modest held bend. The follow-up
+[wing-root study](wing-root-holds.md) separates the exact root-strip hold from
+the crease preference and tests a small free body region. Paired grips on
+both wings remain a later comparison.
 These are static endpoints: optimizer iterates can stretch or cross paper,
 and neither this experiment nor its rigid baseline certifies the flexible
 route between them. Freer spreading, body expansion, friction and measured

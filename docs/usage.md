@@ -440,6 +440,37 @@ scenes. A fixed body suffices for this modest controlled bend; this does not
 establish an unheld crane's shape or a continuous flexible path. See
 [the measurements and next experiment](notes/spreading-connected-wing.md).
 
+### Wing-root holds and material preferences
+
+```bash
+stack run senbazuru-material-study -- --crane-root build/fold-material
+```
+
+Open [the wing-root study](http://127.0.0.1:8000/crane-root.html) with the same
+server and Three.js installation. Its controls share the 50-degree tip grip:
+hold the root strip, release it, weaken its spring, prefer a flat root, and
+release the four body panels immediately across the root. Any vertex shared
+with other body panels stays held. Both sides of the root are subdivided.
+The flat-preference control repeats at a finer resolution.
+
+`crane-root/` contains full material FOLDs and per-control measurements, accepted
+SVG/GLB shapes, a side-profile comparison and `checks.json`. The independent
+checks preserve original creases and all source orders; root spring angles are
+reported separately because a preference is not an exact hold. Failed controls
+remain diagnostic FOLDs outside the accepted model selector. A physically valid
+mesh whose stable-view export fails keeps a complete-sheet GLB and the rendering
+error; it is excluded from the stable-view selector.
+[#206](https://github.com/avalonalex/senbazuru/issues/206) tracks that export
+limitation on the finer root control. The SVG outline path also retains some
+buried crease lines here; the stable 3D views show surface occlusion. Forty iterations
+per penalty stage are allowed, or two for an intentionally crossed grip.
+Body relaxation and the finer mesh can take several minutes.
+
+A flat rest angle still leaves a crease spring at the root; it does not turn
+that line into uncreased panel material. These are illustrative static solves,
+not measured paper stiffness or a certified spreading route. See
+[the findings and remaining limitation](notes/wing-root-holds.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

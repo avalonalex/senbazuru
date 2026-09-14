@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --crane-root build/fold-material`
+compares the root-strip hold, released and weakened root springs, a flat-angle
+preference and a small free body region. `crane-root.html` includes side profiles,
+accepted 3D shapes and a refinement comparison; failed attempts keep diagnostic
+FOLDs and measured failures. Both sides of the root share their inserted material
+vertices. See [the instructions](../../docs/usage.md#wing-root-holds-and-material-preferences)
+and [the study note](../../docs/notes/wing-root-holds.md).
+
 `stack run senbazuru-material-study -- --wing-layers build/fold-material`
 adds two touching layers joined along the root crease of one folded diamond.
 `wing-layers.html` compares exact-grip bends, correction of an initially

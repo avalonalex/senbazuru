@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-13**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-14**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -18,7 +18,9 @@ the checked helmet sequence in [#191](https://github.com/avalonalex/senbazuru/is
 the checked crane wing in [#193](https://github.com/avalonalex/senbazuru/issues/193),
 the controlled wing-bending experiment in [#196](https://github.com/avalonalex/senbazuru/issues/196),
 the two touching layers in [#198](https://github.com/avalonalex/senbazuru/issues/198),
-and their refined coupled solves in [#200](https://github.com/avalonalex/senbazuru/issues/200). The
+their refined coupled solves in [#200](https://github.com/avalonalex/senbazuru/issues/200),
+the connected wing in [#203](https://github.com/avalonalex/senbazuru/issues/203),
+and the root/body comparison in [#205](https://github.com/avalonalex/senbazuru/issues/205). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -30,7 +32,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,368 examples pass, including exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,387 examples pass, including wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -289,8 +291,14 @@ checked coupled angles.
    An upper grip pushed through its partner remains a failed diagnostic.
    [The measurements](notes/spreading-connected-wing.md) retain the observed
    mesh dependence and the coplanar seam distance tolerance.
-   **Next: apply paired grips to both existing wings, keeping the body fixed
-   first, and release only a small body region if compatibility requires it.**
+   [#205](https://github.com/avalonalex/senbazuru/issues/205) separates the root
+   hold from crease stiffness/rest-angle preferences and tests a small released
+   body patch. [Its measurements](notes/wing-root-holds.md) distinguish accepted
+   static shapes from failed body attempts, and preserve inherited contact
+   orders through held layers.
+   **Next: compare the authored root spring with ordinary uncreased panel
+   bending, and diagnose body-release failures before extending the free region.**
+   Paired grips on both wings follow once that boundary is understood.
    Keep these endpoint experiments distinct from a checked flexible route.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.
