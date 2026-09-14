@@ -611,6 +611,13 @@ used inside the solve, measuring selected and retained folds separately.
 Both acceptance policies still require lengths, contact, layer order and solver
 equilibrium to pass.
 
+The [internal-crease diagnosis](notes/internal-crease-diagnostic.md) then
+locates the two retained mountain folds carrying most of the failure.
+Holding their shared lines improves numerical convergence, while dropping
+surrounding contact forces makes the independent checks worse. The solver's
+rejected corrections and iteration budget are recorded separately: reaching
+a work limit does not mean that every smaller correction was refused.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

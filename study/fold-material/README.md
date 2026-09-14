@@ -76,6 +76,13 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --crane-internal build/fold-material`
+locates creases 26/51 and compares shared-line holds with internal-only contact
+forces. Every endpoint keeps the independent whole-sheet checks. A continuation
+separates reaching the iteration limit from exhausting the line search.
+These slow controls stay outside CI; see [usage](../../docs/usage.md#internal-body-crease-diagnosis)
+and [findings](../../docs/notes/internal-crease-diagnostic.md).
+
 `stack run senbazuru-material-study -- --crane-body build/fold-material`
 compares original, weaker and opened preferences at two body creases while
 retaining the same small free patch and tip grip. `crane-body.html` reports

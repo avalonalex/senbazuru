@@ -88,8 +88,9 @@ This is a reproducible diagnostic, not proof that the held region has no
 compatible shape: the solves fail equilibrium and material/contact checks,
 so their positions cannot decide that physical question.
 
-Next, inspect the contact constraints and coupled fold freedom around those
-internal folds before enlarging the free region. Merely changing the selected
+The [follow-up diagnosis](internal-crease-diagnostic.md) inspects contact
+and coupled freedom around those internal folds before enlarging the free region.
+It distinguishes reaching the iteration budget from an exhausted line search. Merely changing the selected
 angle gate cannot repair these endpoints. A broader body release and paired
 wing grips should be a distinct experiment, with the current failed trial kept
 as a control. Pocket pressure and continuously checked flexible paths remain

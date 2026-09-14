@@ -72,6 +72,7 @@ read the Haddock module headers; for the domain, start with
 | [opening-a-crane.md](opening-a-crane.md) | Real crane finishing couples both wings to the body pocket; crease identities can survive while angles and neck/tail attachments move |
 | [crane-pocket-map.md](crane-pocket-map.md) | The central body patch has an internal perimeter, while four separate sheet-edge landmarks meet underneath; a material map is not yet a cavity |
 | [body-angle-preferences.md](body-angle-preferences.md) | Matched body-angle controls separate material preferences from endpoint acceptance. |
+| [internal-crease-diagnostic.md](internal-crease-diagnostic.md) | Holding shared crease lines improves convergence, but equilibrium, contact tolerance and valid paper remain separate checks |
 | [spreading-connected-wing.md](spreading-connected-wing.md) | A held curved wing on the existing crane preserves the body, material creases and tail order |
 | [coupled-touching-layer-solve.md](coupled-touching-layer-solve.md) | Coupled preconditioning resolves a fine touching-mesh stall; original residuals and refinement still judge the result |
 | [held-wing-bending.md](held-wing-bending.md) | Exact root and grip controls bend an uncreased wing; a known strip and three mesh resolutions check the static solve |

@@ -281,6 +281,14 @@ original crease targets separately from edited spring targets, so the strict
 and selective acceptance policies measure the same reference. `CraneBodyGallery`
 publishes matched controls, complete diagnostics and only accepted 3D models.
 It introduces no solver changes; see [angle gates and springs](notes/body-angle-preferences.md).
+`CraneInternal` makes matched boundary/contact controls around two retained
+body folds, preserving shared material ids and all independent checks.
+`CraneInternalGallery` records rejected-trial energies and groups crossing
+reports by original panel pair. `FoldRelaxation.diagnosePinnedContact` adds the
+existing bounded trial audit without changing the held-contact solve;
+`continuePinnedContact` resumes only its final penalty stage to distinguish
+an exhausted budget from a failed search. Neither provides a physical path.
+See [the internal-crease diagnosis](notes/internal-crease-diagnostic.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

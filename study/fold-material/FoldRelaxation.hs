@@ -68,6 +68,8 @@ module FoldRelaxation
     relaxHinges,
     relaxPinnedHinges,
     relaxPinnedContact,
+    diagnosePinnedContact,
+    continuePinnedContact,
     relaxSurfaceContact,
     relaxDiscoveredContact,
     relaxLocalContact,
@@ -257,6 +259,23 @@ relaxPinnedContact settings pins hinges contact mesh = do
   -- cannot improve the same stage; advance its penalty, or return unconverged.
   (result, _, _) <- relaxAngularWithPins pins fixedPolicy {stopOnFailedSearch = True} settings hinges (SurfaceOrder contact) mesh
   pure result
+
+-- | Replay the held-contact solve with a bounded audit of rejected trials.
+-- Recording first/last refusals changes neither its objective nor its search
+-- policy. The diagnostic meshes are numerical proposals, not folding states.
+diagnosePinnedContact :: Settings -> IM.IntMap V3 -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError (Relaxation, TrialDiagnostics)
+diagnosePinnedContact settings pins hinges contact mesh = do
+  (result, _, audit) <- relaxAngularWithPins pins fixedPolicy {stopOnFailedSearch = True, retainTrials = True} settings hinges (SurfaceOrder contact) mesh
+  pure (result, audit)
+
+-- | Continue an already warmed-up held-contact solve at the final penalty.
+-- Restarting all four stages would soften the lengths again and undo the
+-- comparison with the exhausted endpoint. This changes only the work budget;
+-- the final length/contact weights and acceptance tolerances remain identical.
+continuePinnedContact :: Settings -> IM.IntMap V3 -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError (Relaxation, TrialDiagnostics)
+continuePinnedContact settings pins hinges contact mesh = do
+  (result, _, audit) <- relaxWithPins pins fixedPolicy {stopOnFailedSearch = True, retainTrials = True} 0 (SurfaceOrder contact) (Just (hinges, 1e8)) settings mesh
+  pure (result, audit)
 
 -- | Add directional separation for declared panel or local triangle orders.
 -- The same staged length/bending solve now penalises reversed gaps. Independent
