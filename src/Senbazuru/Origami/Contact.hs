@@ -150,9 +150,18 @@ checkPanelContact direction orders panels = do
       }
 
 closure :: S.Set (Text, Text) -> S.Set (Text, Text)
-closure pairs =
-  let next = pairs `S.union` S.fromList [(a, c) | (a, b) <- S.toList pairs, (b', c) <- S.toList pairs, b == b']
-   in if next == pairs then pairs else closure next
+closure pairs = S.fromList [(a, b) | a <- M.keys neighbors, b <- S.toList (visit (next a) S.empty)]
+  where
+    -- A refined lower/upper panel order contains many triangle pairs. Walk
+    -- each source's reachable neighbors instead of comparing every pair with
+    -- every other pair just to discover that the upper layer has no successor.
+    neighbors = M.fromListWith S.union [(a, S.singleton b) | (a, b) <- S.toList pairs]
+    next a = M.findWithDefault S.empty a neighbors
+    visit pending seen = case S.minView pending of
+      Nothing -> seen
+      Just (a, rest)
+        | S.member a seen -> visit rest seen
+        | otherwise -> visit (S.union rest (next a)) (S.insert a seen)
 
 data Plane = Plane {planeName :: !Text, corners :: ![V3], origin :: !V3, normal :: !V3}
 

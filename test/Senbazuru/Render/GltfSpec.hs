@@ -367,18 +367,25 @@ spec = do
       let stored = at "frame" (at "senbazuru" (at "extras" (glbJson glb)))
       map (map asInt . items) (items (at "faces_vertices" stored)) `shouldBe` [[0, 1, 2], [3, 4, 5]]
 
-    it "retains supplied material maps and layer constraints, but drops stale frame extras" $ do
+    it "retains material maps, provenance and layer constraints, but drops stale frame extras" $ do
       (_, source) <- fixture "test/fixtures/quarter-fold.fold"
       result <- either (fail . show) pure (foldFrameWith source)
       known <- either (fail . show) pure (Paper.surfaceFromFolded result)
       let supplied = (Paper.materialFrame known) {faceOrders = [FaceOrder (FaceId 0) (FaceId 1) Above]}
-          stale = supplied {frameExtras = KM.insert "old-contact-check" (Bool True) (frameExtras supplied)}
+          -- Different ids from this frame's array indices expose accidental
+          -- reassignment while preserving a nullable subdivision-edge map.
+          panels = toJSON (replicate (length (facesVertices supplied)) (17 :: Int))
+          edges = toJSON [if i == (0 :: Int) then Just (73 :: Int) else Nothing | (i, _) <- zip [0 ..] (edgesVertices supplied)]
+          provenance = KM.fromList [("senbazuru:source_panels", panels), ("senbazuru:source_edges", edges)]
+          stale = supplied {frameExtras = KM.insert "old-contact-check" (Bool True) (KM.union provenance (frameExtras supplied))}
       sheet <- either (fail . show) pure (Paper.surfaceFromFrame stale >>= Paper.withLayerRequirements (V3 0 0 1) [(FaceId 0, FaceId 1)])
       glb <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget CompletePaper Nothing sheet)
       let metadata = at "senbazuru" (at "extras" (glbJson glb))
           stored = at "frame" metadata
       at "faceOrders" stored `shouldBe` toJSON (faceOrders supplied)
       at "senbazuru:material_coords" stored `shouldBe` at "senbazuru:material_coords" (toJSON supplied)
+      at "senbazuru:source_panels" stored `shouldBe` panels
+      at "senbazuru:source_edges" stored `shouldBe` edges
       at "old-contact-check" stored `shouldBe` Null
       at "direction" (at "layerRequirements" metadata) `shouldBe` toJSON ([0, 0, 1] :: [Int])
       at "lowerUpper" (at "layerRequirements" metadata) `shouldBe` toJSON ([[0, 1]] :: [[Int]])

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two layers, one bend · Senbazuru</title>
+<style>
+  :root { color-scheme:light; font:16px/1.6 system-ui,sans-serif; color:#292d28; background:#f4efe7; }
+  body { max-width:1180px; margin:auto; padding:32px 24px 60px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.15; margin:12px 0; }
+  h2 { font-size:1.35rem; } p { max-width:920px; } a { color:#385e50; text-underline-offset:3px; }
+  small { letter-spacing:.12em; } section { background:#fffaf2; border:1px solid #d8cebd; border-radius:8px; padding:24px; margin:28px 0; }
+  img { display:block; width:100%; height:auto; } select { font:inherit; padding:6px 12px; max-width:100%; }
+  .captions { display:grid; grid-template-columns:repeat(3,1fr); text-align:center; }
+  .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
+  iframe { width:100%; height:760px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
+  @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } }
+</style>
+<header>
+  <small>SENBAZURU · MATERIAL STUDY / #198</small>
+  <h1>Two layers, one bend</h1>
+  <p>Fold a diamond in half along its middle crease. Hold the wide root and the
+    narrow tip of both layers, then turn the tip grips together. The paper
+    between them can bend, while the upper layer must stay above the lower one.</p>
+  <p><a href="index.html">All fold examples</a> · <a href="wing-bending.html">One held wing</a> ·
+    <a href="crane.html">Rigid crane wing</a></p>
+</header>
+<section>
+  <h2>Touching is allowed</h2>
+  <p>These are two halves of one connected sheet. Only points along the original
+    root crease are shared. Everywhere else, two points that occupy the same
+    place still belong to different parts of the paper and can move apart.</p>
+  <img src="wing-layers/sequence.svg" alt="Both touching layers held flat, then with both tip grips at twenty and forty degrees">
+  <div class="captions"><span>1 · Flat grips</span><span>2 · Both grips at 20°</span><span>3 · Both grips at 40°</span></div>
+  <p id="status" aria-live="polite"></p>
+  <p class="note">The paper has zero thickness here. When both layers touch
+    exactly, their outside outline looks like a single surface. The declared
+    layer order chooses which side is visible. No display gap is added.</p>
+</section>
+<section>
+  <h2>Contact does not glue the layers</h2>
+  <p>Lift only the upper grip by 0.01 model units—one percent of the root-to-tip
+    length. The upper layer can separate, while the original root crease stays
+    closed. The solver holds the grips exactly and corrects the free paper.</p>
+  <img src="wing-layers/lifted.svg" alt="Checked bent layers with the upper grip lifted slightly away from the lower grip">
+  <p>The other control starts with the free upper layer slightly inside the
+    lower layer. Its corrected endpoint must pass a separate contact check.
+    A grip deliberately held underneath the lower one is incompatible with the
+    declared order and is reported as a failure.</p>
+</section>
+<section>
+  <h2>Check the shape and the solve</h2>
+  <p>“Accepted” requires solver convergence, fixed grips, a closed root crease
+    and an independent contact check over every triangle pair. Area and
+    principal strain (stretch along the most and least stretched directions)
+    are also recorded in the measurements download. A small length
+    error on its own does not establish that the paper has settled.</p>
+  <div class="table-wrap"><table><thead><tr><th>Control</th><th>Triangles</th><th>Edge error</th><th>Grip error</th><th>Converged</th><th>Contact</th><th>Accepted</th><th>CPU seconds</th></tr></thead><tbody id="measurements"></tbody></table></div>
+  <p id="fine" class="note"></p>
+  <p>The finer bent mesh gets 12 iterations at each of four penalty strengths;
+    the incompatible grip gets eight. These bounded diagnostics expose solver
+    limits without treating unfinished results as accepted shapes. The other
+    controls use the normal limit of 100 per stage. Timings describe this run
+    and depend on the machine.</p>
+</section>
+<section>
+  <h2>Inspect the accepted surfaces</h2>
+  <iframe id="viewer" src="wing-layers/index.html?model=lifted.glb&amp;angle=profile" title="Two bent paper layers in 3D" loading="lazy"></iframe>
+  <p>SVG, FOLD and glTF use the same solved positions. The default glTF scene
+    removes buried coplanar paper; “Complete paper” retains both
+    layers for inspection. Internal triangle joins are subdivisions, not new
+    creases. The root remains the one original crease.</p>
+  <p>Download each control’s FOLD from its name in the table above.
+    <a id="full" href="wing-layers/index.html?model=lifted.glb&amp;angle=profile">Full 3D viewer</a> ·
+    <a href="wing-layers/checks.json">All measurements</a></p>
+</section>
+<p class="note"><strong>Scope:</strong> independent static shapes of a held,
+  zero-thickness sheet. The numerical iterations can stretch or cross paper;
+  they are not physical folding steps. Friction, measured paper stiffness,
+  finite thickness, a connected crane body and a verified flexible motion remain
+  outside this experiment. See <a href="https://github.com/avalonalex/senbazuru/issues/195">#195</a>.</p>
+<script>
+const data=/*LAYER_DATA*/null;
+const number=x=>x===0?'0':x.toExponential(2);
+for(const r of data.runs){
+  const tr=document.createElement('tr');
+  const first=document.createElement('td');const link=document.createElement('a');link.href=`wing-layers/${r.id}.fold`;link.textContent=r.title;first.append(link);tr.append(first);
+  for(const value of [r.triangles,number(r.maxRelativeEdgeError),number(r.heldPositionError),r.converged?'Yes':'No',r.contact.passed?'Pass':'Failed',r.accepted?'Yes':'No',r.solveCpuSeconds.toFixed(2)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+  document.querySelector('#measurements').append(tr);
+}
+const main=data.runs.filter(r=>['flat','bend-20','bend-40'].includes(r.id));
+const good=main.length===3&&main.every(r=>r.accepted);
+const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three coarse-mesh shapes converge and pass independent endpoint checks. The grips stay exact and the original crease stays closed.':'At least one main control was not accepted; inspect the measurements.';
+const fine=data.runs.find(r=>r.id==='fine-bend');
+document.querySelector('#fine').textContent=fine.accepted?'The finer bent mesh also passed within this iteration budget. Compare its shape and energy in checks.json before claiming mesh independence.':`The finer bent mesh is not accepted in this run: convergence ${fine.converged?'passed':'not reached'}, contact ${fine.contact.passed?'passed':'failed'}. It has ${number(fine.maxRelativeEdgeError)} edge error. Refinement remains an open numerical question; this result is downloadable as diagnostic FOLD only.`;
+</script>
+</html>

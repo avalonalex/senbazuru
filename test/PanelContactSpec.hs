@@ -60,6 +60,14 @@ spec = describe "rigid study panel contact" $ do
     result <- report [("base", "middle"), ("middle", "top")] [base, horizontal "middle" 0, horizontal "top" 0]
     checkedPanelPairs result `shouldBe` 3
     contactPassed result `shouldBe` True
+  it "keeps branches unordered while following longer layer-order chains" $ do
+    let panels = [horizontal name 0 | name <- ["base", "middle", "top", "branch", "end"]]
+        links = [("base", "middle"), ("middle", "top"), ("middle", "branch"), ("top", "end"), ("branch", "end")]
+    result <- report links panels
+    unorderedContacts result `shouldBe` [("top", "branch")]
+    complete <- report (("top", "branch") : links) panels
+    contactPassed complete `shouldBe` True
+    checkPanelContact up (("end", "base") : links) panels `shouldSatisfy` isLeft
   it "reports an order parallel to both panels as unchecked" $ do
     result <- report [("base", "flap")] [(vertical 0 0 1 0 1) {panelName = "base"}, vertical 1 0 1 0 1]
     uncheckedOrders result `shouldBe` [("base", "flap")]

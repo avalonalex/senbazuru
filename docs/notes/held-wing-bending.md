@@ -63,9 +63,10 @@ or layer orders from a bare triangle mesh.
 These are separate static equilibria. There is no contact force in this solve;
 contact is independently checked at each result. Neither the circular initial
 guesses nor the optimizer iterations are certified physical folding routes.
-The next experiment should add two touching layers with an explicit initial
-order, keep their material identities separate, and apply compatible grips.
-That exposes the contact problem before attaching a wing to the crane body
-and deciding which body regions must move. It continues
+The follow-up [two-layer experiment](two-held-paper-layers.md) adds an explicit
+initial order, separate material identities and compatible grips. Coarse
+controls pass; refinement exposes a numerical convergence limit. That isolates
+contact before attaching a wing to the crane body and deciding which body
+regions must move. Both continue
 [#195](https://github.com/avalonalex/senbazuru/issues/195); realistic spreading,
 body expansion and a verified flexible motion remain open.

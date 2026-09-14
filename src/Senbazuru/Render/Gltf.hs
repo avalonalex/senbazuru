@@ -22,6 +22,10 @@
 -- retain weighted references to original material vertices. Both scenes store
 -- those references and original panel ids in glTF extras, alongside the source
 -- frame and its layer requirements. Graphics copies never become material ids.
+-- Optional per-face @senbazuru:source_panels@ and per-edge
+-- @senbazuru:source_edges@ arrays keep provenance through triangle subdivision.
+-- Packing rounds positions but changes no source-frame indices, so those arrays
+-- remain valid. Pose-dependent reports and unknown frame extras are discarded.
 -- Optional physical thickness remains a property; it does not move vertices.
 --
 -- == Two sides, up to two primitives
@@ -231,10 +235,11 @@ renderSurfaceGlb budget mode name sheet = do
       Right [("Visible paper", map (canonicalPiece quantum) shown), ("Complete paper", complete)]
   let requirements = [A.object ["direction" .= [x, y, z], "lowerUpper" .= [[unFaceId a, unFaceId b] | (a, b) <- pairs]] | (V3 x y z, pairs) <- maybe [] pure (surfaceLayerRequirements sheet)]
       storedPoint p = let (x, y, z) = packable quantum p in map (realToFrac :: Float -> Double) [x, y, z]
-      -- Packing changes positions. Keep only our original-sheet map, whose
-      -- meaning is independent of the posed coordinates; discard unknown
-      -- metadata, including study contact reports that rounding could stale.
-      storedFrame = fr {verticesCoords = map storedPoint verts, frameExtras = KM.filterWithKey (\key _ -> key == "senbazuru:material_coords") (frameExtras fr)}
+      -- Packing changes positions, not source-frame ids. Keep our material map
+      -- and per-face/per-edge provenance; discard unknown metadata, including
+      -- study contact reports that rounding could stale.
+      materialKey key = key `elem` ["senbazuru:material_coords", "senbazuru:source_panels", "senbazuru:source_edges"]
+      storedFrame = fr {verticesCoords = map storedPoint verts, frameExtras = KM.filterWithKey (\key _ -> materialKey key) (frameExtras fr)}
       metadata = A.object (["version" .= (1 :: Int), "frame" .= storedFrame] ++ ["physicalThickness" .= t | Just t <- [surfaceThickness sheet]] ++ ["layerRequirements" .= r | r <- requirements])
   pure (assemble name quantum metadata scenes)
 

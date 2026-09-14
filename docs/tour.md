@@ -562,9 +562,17 @@ exactly lets the free paper bend between them. A strip with a known answer
 checks the positional controls, while three mesh resolutions expose how the
 wing's shape and energy change with subdivision. SVG and glTF show the same
 solved triangles, without turning their internal joins into crease lines.
-These are static equilibria with independent endpoint checks; touching crane
-layers and the motion between shapes remain later work. The
+These are static equilibria with independent endpoint checks; attaching them
+to the crane and checking the motion between shapes remain later work. The
 [experiment note](notes/held-wing-bending.md) records the measured differences.
+
+The [two-layer experiment](usage.md#two-held-touching-layers) folds a diamond
+in half and bends both touching halves with exact grips. Material points on
+the two halves stay distinct except along the root crease. Contact prevents
+reversed order without gluing the layers: lifting only the upper grip opens
+a gap. Coarse controls pass, while a finer touching bend exposes a solver
+convergence limit. The [study note](notes/two-held-paper-layers.md) records
+that limit and why small length errors alone cannot certify equilibrium.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
