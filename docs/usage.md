@@ -459,8 +459,10 @@ checks preserve original creases and all source orders; root spring angles are
 reported separately because a preference is not an exact hold. Failed controls
 remain diagnostic FOLDs outside the accepted model selector. A physically valid
 mesh whose stable-view export fails keeps a complete-sheet GLB and the rendering
-error; it is excluded from the stable-view selector. [#206](https://github.com/avalonalex/senbazuru/issues/206)
-tracks that limitation on the finer root control. Forty iterations
+error; it is excluded from the stable-view selector.
+[#206](https://github.com/avalonalex/senbazuru/issues/206) tracks that export
+limitation on the finer root control. The SVG outline path also retains some
+buried crease lines here; the stable 3D views show surface occlusion. Forty iterations
 per penalty stage are allowed, or two for an intentionally crossed grip.
 Body relaxation and the finer mesh can take several minutes.
 

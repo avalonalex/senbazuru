@@ -593,7 +593,9 @@ Weakening that spring can allow a larger sharp turn; preferring a flat angle
 does not force the root flat. A separate control frees the four adjacent body
 panels while keeping their distant boundary held. Measured profiles, original
 crease angles and whole-sheet contact checks distinguish accepted changes from
-failed numerical attempts; [the note](notes/wing-root-holds.md) records the result.
+failed numerical attempts. The SVG outlines still retain some buried crease
+lines in these meshes; use the stable 3D views to inspect occlusion.
+[The note](notes/wing-root-holds.md) records the result.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

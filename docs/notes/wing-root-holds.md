@@ -70,6 +70,14 @@ select pairs involving free vertices: if A is below held B and B below held C,
 dropping B–C first loses the requirement that moving A remain below C. The
 regression keeps that inherited relation even when B and C cannot move.
 
+With forty iterations per penalty stage, the body-release trial does not
+converge. The body moves by at most `0.000459` model units, but relative edge
+error reaches `3.75e-5` and original crease-angle error reaches `0.0187`
+radians. Independent contact checking finds 49 crossing triangle pairs and
+18 touching pairs without a supplied order. Remaining holds stay exact and
+no retained order is reversed. Its 26.03–26.93° root turn is therefore only a
+failed diagnostic, not evidence of a valid smoother transition.
+
 The finer accepted mesh exposes a separate stable-view export refusal
 ([#206](https://github.com/avalonalex/senbazuru/issues/206)). Its complete-sheet
 GLB succeeds. The gallery retains physical acceptance, geometry and measurements
