@@ -51,6 +51,7 @@ module Senbazuru.Origami.Surface
     refineSurface,
     RefinedSurface (..),
     refineSurfaceWithEdges,
+    refineSelectedSurfaceWithEdges,
   )
 where
 
@@ -134,6 +135,7 @@ data SurfaceError
   | SurfaceBadDirection !V3
   | SurfaceBadLayerPair !FaceId !FaceId
   | SurfaceBadRefinement !Int
+  | SurfaceUnknownRefinementPanel !FaceId
   | SurfaceNonConvex !FaceId
   | SurfaceNonPlanar !FaceId
   | SurfaceDegenerateFan !FaceId
@@ -165,6 +167,7 @@ instance Explain SurfaceError where
     SurfaceBadLayerPair a b -> "layer requirement " <> tshow a <> " / " <> tshow b <> " must name two distinct surface panels"
     SurfaceBadRefinement n -> "surface subdivision level must be between 0 and 5, got " <> tshow n
     SurfaceNonConvex fid -> "surface panel " <> tshow fid <> " must be convex to triangulate by a fan"
+    SurfaceUnknownRefinementPanel fid -> "refinement refers to absent panel " <> tshow fid
     SurfaceNonPlanar fid -> "surface panel " <> tshow fid <> " must be planar to subdivide as a rigid panel"
     SurfaceDegenerateFan fid -> "surface panel " <> tshow fid <> " has a zero-area or unrepresentable triangle in its first-corner fan"
     SurfaceJoinedCut eid -> "cut edge " <> tshow eid <> " still shares vertices between panels; split the cut topology before refining it"
@@ -320,16 +323,28 @@ refineSurface levels sheet = do
 -- from vertex ids, never material or spatial coordinates: two cut edges can
 -- occupy exactly the same line and still remain separate material.
 refineSurfaceWithEdges :: Int -> Surface V2 -> Either SurfaceError RefinedSurface
-refineSurfaceWithEdges levels sheet = do
+refineSurfaceWithEdges levels = refineSurfaceUsing levels Nothing
+
+-- | Refine selected panels, splitting their neighbors only where needed to
+-- share an edge midpoint. Unselected triangles with one or two split edges
+-- become two or three triangles; no hanging vertex tears the material seam.
+-- Selection uses source face ids, never position or visibility.
+refineSelectedSurfaceWithEdges :: Int -> S.Set FaceId -> Surface V2 -> Either SurfaceError RefinedSurface
+refineSelectedSurfaceWithEdges levels selected = refineSurfaceUsing levels (Just selected)
+
+refineSurfaceUsing :: Int -> Maybe (S.Set FaceId) -> Surface V2 -> Either SurfaceError RefinedSurface
+refineSurfaceUsing levels selected sheet = do
   unless (levels >= 0 && levels <= 5) (Left (SurfaceBadRefinement levels))
   faces <- surfaceFaces sheet
   features <- surfaceFeatures sheet
+  let known = S.fromList (map faceId faces)
+  mapM_ (\fid -> unless (S.member fid known) (Left (SurfaceUnknownRefinementPanel fid))) (maybe [] S.toList selected)
   mapM_ (\(edge, owners) -> unless (creaseAssignment edge /= Cut || length owners <= 1) (Left (SurfaceJoinedCut (creaseId edge)))) features
   mapM_ planarConvex faces
   let tagged = [(triangle, faceId face) | face <- faces, triangle <- fan (map unVertexId (faceVertexIds face))]
       meshKeys = S.fromList [edgeKey (VertexId a) (VertexId b) | ((i, j, k), _) <- tagged, (a, b) <- [(i, j), (j, k), (k, i)]]
       edges = [(EdgeId i, (unVertexId a, unVertexId b)) | (i, (a, b)) <- zip [0 ..] (edgesVertices (surfaceFrame sheet)), S.member (edgeKey a b) meshKeys]
-  (points, refined, segments) <- subdivide levels (surfaceSamples sheet) tagged edges
+  (points, refined, segments) <- subdivide selected levels (surfaceSamples sheet) tagged edges
   pure (RefinedSurface (Mesh points (map fst refined)) (map snd refined) segments)
   where
     span' = modelSpan (map position (surfaceSamples sheet))
@@ -353,11 +368,11 @@ fan :: [a] -> [(a, a, a)]
 fan (a : b : c : rest) = (a, b, c) : fan (a : c : rest)
 fan _ = []
 
-subdivide :: Int -> [MaterialSample] -> [(Triangle, FaceId)] -> [(EdgeId, (Int, Int))] -> Either SurfaceError ([MaterialSample], [(Triangle, FaceId)], [(EdgeId, (Int, Int))])
-subdivide 0 points faces edges = Right (points, faces, edges)
-subdivide n points faces edges = do
+subdivide :: Maybe (S.Set FaceId) -> Int -> [MaterialSample] -> [(Triangle, FaceId)] -> [(EdgeId, (Int, Int))] -> Either SurfaceError ([MaterialSample], [(Triangle, FaceId)], [(EdgeId, (Int, Int))])
+subdivide _ 0 points faces edges = Right (points, faces, edges)
+subdivide selected n points faces edges = do
   let indexed = IM.fromList (zip [0 ..] points)
-      keys = S.toList (S.fromList [ordered i j | ((a, b, c), _) <- faces, (i, j) <- [(a, b), (b, c), (c, a)]])
+      keys = S.toList (S.fromList [ordered i j | ((a, b, c), owner) <- faces, maybe True (S.member owner) selected, (i, j) <- [(a, b), (b, c), (c, a)]])
       lookupPoint i = maybe (Left (SurfaceMissingVertex (VertexId i))) Right (IM.lookup i indexed)
       midpoint (a, b) = do
         p <- lookupPoint a
@@ -365,15 +380,23 @@ subdivide n points faces edges = do
         pure (materialSample ((materialU p + materialU q) / 2) ((materialV p + materialV q) / 2) (0.5 *^ (position p ^+^ position q)))
   added <- traverse midpoint keys
   let ids = M.fromList (zip keys [length points ..])
-      lookupMid a b = maybe (Left (SurfaceMissingVertex (VertexId a))) Right (M.lookup (ordered a b) ids)
-      split ((a, b, c), panel) = do
-        ab <- lookupMid a b
-        bc <- lookupMid b c
-        ca <- lookupMid c a
-        pure [((a, ab, ca), panel), ((ab, b, bc), panel), ((ca, bc, c), panel), ((ab, bc, ca), panel)]
-  refined <- concat <$> traverse split faces
-  segments <- concat <$> traverse (\(eid, (a, b)) -> do mid <- lookupMid a b; pure [(eid, (a, mid)), (eid, (mid, b))]) edges
-  subdivide (n - 1) (points ++ added) refined segments
+      midpointId a b = M.lookup (ordered a b) ids
+      split ((a, b, c), panel) =
+        let pieces = case (midpointId a b, midpointId b c, midpointId c a) of
+              (Nothing, Nothing, Nothing) -> [(a, b, c)]
+              (Just ab, Nothing, Nothing) -> one a b c ab
+              (Nothing, Just bc, Nothing) -> one b c a bc
+              (Nothing, Nothing, Just ca) -> one c a b ca
+              (Just ab, Just bc, Nothing) -> two a b c ab bc
+              (Nothing, Just bc, Just ca) -> two b c a bc ca
+              (Just ab, Nothing, Just ca) -> two c a b ca ab
+              (Just ab, Just bc, Just ca) -> [(a, ab, ca), (ab, b, bc), (ca, bc, c), (ab, bc, ca)]
+         in [(triangle, panel) | triangle <- pieces]
+      one a b c ab = [(a, ab, c), (ab, b, c)]
+      two a b c ab bc = [(b, bc, ab), (a, ab, c), (ab, bc, c)]
+      refined = concatMap split faces
+      segments = concat [case midpointId a b of Nothing -> [(eid, (a, b))]; Just mid -> [(eid, (a, mid)), (eid, (mid, b))] | (eid, (a, b)) <- edges]
+  subdivide selected (n - 1) (points ++ added) refined segments
   where
     ordered a b = (min a b, max a b)
 

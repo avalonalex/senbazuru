@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spreading a crane wing · Senbazuru</title>
+<style>
+  :root { color-scheme:light; font:16px/1.6 system-ui,sans-serif; color:#292d28; background:#f4efe7; }
+  body { max-width:1180px; margin:auto; padding:32px 24px 60px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.15; margin:12px 0; }
+  h2 { font-size:1.35rem; } p { max-width:940px; } a { color:#385e50; text-underline-offset:3px; }
+  small { letter-spacing:.12em; } section { background:#fffaf2; border:1px solid #d8cebd; border-radius:8px; padding:24px; margin:28px 0; }
+  img { display:block; width:100%; height:auto; } .captions { display:grid; grid-template-columns:repeat(2,1fr); text-align:center; }
+  .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
+  iframe { width:100%; height:760px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
+  @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } }
+</style>
+<header>
+  <small>SENBAZURU · MATERIAL STUDY / #195 · #203</small>
+  <h1>Spreading a crane wing</h1>
+  <p>The wing is already part of the crane. Hold its root and body in place,
+    then turn the tip grip a little farther. The paper between the two held
+    strips can curve while its two touching layers keep their order.</p>
+  <p><a href="index.html">All fold examples</a> · <a href="crane.html">Rigid crane wing</a> ·
+    <a href="wing-layers.html">Two touching layers</a></p>
+</header>
+<section>
+  <h2>The same connected sheet</h2>
+  <p>Both shapes hold the wing root at 30°. On the left, the wing stays flat.
+    On the right, the tip grip turns a further 20°, reaching 50°. Only the
+    selected wing can bend; the body, other wing, head and tucked tail stay
+    exactly where they started. These are separately checked static shapes.</p>
+  <img src="crane-spreading/comparison.svg" alt="The same crane with a flat wing and a gently curved wing, from one camera and at the same scale">
+  <div class="captions"><span>Flat wing · root and grip at 30°</span><span>Curved wing · root 30°, grip 50°</span></div>
+  <p class="note">The first and last eighth of the wing's length are held.
+    Its middle is free to bend. Existing crease lines remain sharp, and the
+    connection to the body uses the same material vertices. Coincident points
+    on separate layers remain independent: touching does not glue them together.</p>
+</section>
+<section>
+  <h2>Inspect the curve</h2>
+  <iframe id="viewer" src="crane-spreading/index.html?model=curved.glb&amp;angle=other-corner&amp;side=below" title="The connected crane with one curved wing in 3D" loading="lazy"></iframe>
+  <p>Drag to rotate and scroll to zoom. Compare the rigid and curved models,
+    or select the finer mesh. The default scene hides buried coplanar paper;
+    “Complete paper” keeps the entire connected sheet. The stable scene resolves touching planes at glTF's coordinate precision;
+    clipped points stay on their original panels. No display gap is added.</p>
+  <p><a href="crane-spreading/index.html?model=curved.glb&amp;angle=other-corner&amp;side=below">Full 3D viewer</a> ·
+    <a href="crane-spreading/checks.json">All measurements</a></p>
+</section>
+<section>
+  <h2>Can the body stay fixed?</h2>
+  <p>For this modest held bend, yes. Acceptance requires unchanged body and grip
+    positions, relative edge-length error at most 0.001%, original crease angles
+    within 0.00001 radians, solver convergence, and an independent contact check
+    over every triangle pair. All retained source layer orders, including the
+    tail between the body layers, are checked.</p>
+  <div class="table-wrap"><table><thead><tr><th>Control / FOLD</th><th>Triangles</th><th>Edge error</th><th>Body error</th><th>Contact</th><th>Accepted</th><th>Solve CPU s</th></tr></thead><tbody id="measurements"></tbody></table></div>
+  <p>The invalid control pushes an upper tip grip through its lower partner.
+    Its exact grip cannot be moved to conceal the conflict; the failed shape
+    is saved for diagnosis and excluded from the model gallery. It uses two
+    iterations per penalty stage; the regular controls allow twenty.</p>
+  <p class="note">Contact uses a distance tolerance of 0.0000001 model units.
+    A seam overlap narrower than that margin counts as edge contact. Wider
+    unordered overlap, reversed layers and crossings remain failures. This
+    tolerance is numerical; the sheet still has zero physical thickness.</p>
+</section>
+<section>
+  <h2>Does a finer wing agree?</h2>
+  <p>Only the four material panels forming this wing receive dense refinement.
+    Neighbours split where they share a newly divided edge, keeping the sheet
+    connected. The held regions and stiffness stay the same in both solves.</p>
+  <img src="crane-spreading/refinement.svg" alt="The curved crane wing solved with eight and sixteen spans per wing panel">
+  <div class="captions"><span>8 spans per wing panel</span><span>16 spans per wing panel</span></div>
+  <p id="refinement"></p>
+  <p>Bending energy measures this model's resistance to curvature. The stiffness
+    is illustrative, not calibrated to a particular paper. Two resolutions
+    provide a useful comparison, but do not establish a resolution-independent
+    answer or predict the shape of an unheld crane.</p>
+</section>
+<p class="note"><strong>Scope:</strong> one gently curved, held wing on the
+  connected crane. The numerical solve can stretch or cross paper on its way
+  to an endpoint; these results do not certify a flexible folding route.
+  Freer wing spreading, body reshaping, pressure, friction and physical paper
+  thickness need further material study.</p>
+<script>
+const data = /*SPREAD_DATA*/null;
+const percent = n => (100 * n).toPrecision(3) + '%';
+const rows = document.querySelector('#measurements');
+for (const run of data.runs) {
+  const row = document.createElement('tr');
+  const name = document.createElement('td');
+  const link = document.createElement('a');
+  link.href = 'crane-spreading/' + run.id + '.fold'; link.textContent = run.title;
+  name.append(link); row.append(name);
+  for (const text of [run.triangles, percent(run.maxRelativeEdgeError), run.bodyPositionError,
+    run.contact.passed ? 'Pass' : 'Fail', run.accepted ? 'Yes' : 'No', run.solveCpuSeconds.toFixed(2)]) {
+    const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
+  }
+  row.className = run.accepted ? 'good' : 'bad'; rows.append(row);
+}
+const change = data.refinement[0];
+document.querySelector('#refinement').textContent = 'Bending energy changes by ' + percent(change.relativeEnergyChange) + '. Position differences at shared material points are included in the measurements download.';
+</script>
+</html>

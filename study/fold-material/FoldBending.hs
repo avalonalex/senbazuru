@@ -31,6 +31,7 @@ module FoldBending
     BendingError (..),
     buildHinges,
     buildSurfaceHinges,
+    buildSelectedSurfaceHinges,
     buildPanelHinges,
     hingeAngle,
     angleError,
@@ -47,7 +48,7 @@ import Data.Set qualified as S
 import FoldMaterial
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (Crease (..))
-import Senbazuru.Fold.Types (Assignment (..), EdgeId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId)
 import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
@@ -144,8 +145,19 @@ buildHinges settings targets which mesh = do
 -- No material coordinate test or spatial coincidence determines ownership.
 buildSurfaceHinges :: Bending -> Int -> Paper.Surface V2 -> M.Map EdgeId Double -> Either BendingError (Paper.RefinedSurface, [Hinge])
 buildSurfaceHinges settings levels sheet targets = do
-  features <- first SurfaceBendingFailure (Paper.surfaceFeatures sheet)
   refined <- first SurfaceBendingFailure (Paper.refineSurfaceWithEdges levels sheet)
+  hingesForSurface settings sheet targets refined
+
+-- | The same material controls with extra resolution only in named panels.
+-- Neighboring triangles are split to retain the shared boundary vertices.
+buildSelectedSurfaceHinges :: Bending -> Int -> S.Set FaceId -> Paper.Surface V2 -> M.Map EdgeId Double -> Either BendingError (Paper.RefinedSurface, [Hinge])
+buildSelectedSurfaceHinges settings levels selected sheet targets = do
+  refined <- first SurfaceBendingFailure (Paper.refineSelectedSurfaceWithEdges levels selected sheet)
+  hingesForSurface settings sheet targets refined
+
+hingesForSurface :: Bending -> Paper.Surface V2 -> M.Map EdgeId Double -> Paper.RefinedSurface -> Either BendingError (Paper.RefinedSurface, [Hinge])
+hingesForSurface settings sheet targets refined = do
+  features <- first SurfaceBendingFailure (Paper.surfaceFeatures sheet)
   let creases = [(edge, owners) | (edge, owners) <- features, creaseAssignment edge `notElem` [Border, Cut]]
       wanted = S.fromList [creaseId edge | (edge, _) <- creases]
       segments = [(eid, key a b) | (eid, (a, b)) <- Paper.refinedEdges refined, S.member eid wanted]

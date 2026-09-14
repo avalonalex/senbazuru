@@ -45,7 +45,7 @@ import Data.Text (Text)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Types (FaceId)
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (clipConvex, cross2, isConvex, signedArea)
+import Senbazuru.Geometry.Polygon (clipConvex, clipHalfPlane, cross2, isConvex, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
@@ -144,7 +144,7 @@ checkPanelContact direction orders panels = do
     ContactCheck
       { checkedPanelPairs = length pairs,
         crossingPanels = [(planeName a, planeName b) | (a, b) <- pairs, crosses a b],
-        unorderedContacts = [(planeName a, planeName b) | (a, b) <- pairs, coplanarOverlap a b && not (ordered a b)],
+        unorderedContacts = [(planeName a, planeName b) | (a, b) <- pairs, not (ordered a b) && coplanarOverlap a b],
         reversedOrders = [(a, b, negate gap) | (a, b, Just gap) <- checks, gap < negate panelTolerance],
         uncheckedOrders = [(a, b) | (a, b, Nothing) <- checks]
       }
@@ -229,7 +229,17 @@ coplanarOverlap a b =
   all ((<= panelTolerance) . abs . signedDistance a) (corners b)
     && all ((<= panelTolerance) . abs . signedDistance b) (corners a)
     && abs (signedArea (clipConvex (outline a) (outline b))) > 1e-12
+    && abs (signedArea (clipConvex (inset (outline a)) (inset (outline b)))) > 1e-12
   where
+    -- The same distance tolerance applies along a coplanar seam as normal
+    -- to a panel. An area-only test makes a long, very narrow sliver ask
+    -- for a layer order. Shrink both outlines inward by half the distance tolerance:
+    -- overlap deeper than that combined margin still needs an order.
+    inset polygon =
+      foldl
+        (flip clipHalfPlane)
+        polygon
+        [(p ^+^ offset, q ^+^ offset) | (p, q) <- ring polygon, let delta@(V2 x y) = q ^-^ p, norm delta > 0, let offset = (0.5 * panelTolerance / norm delta) *^ V2 (-y) x]
     outline = anticlockwise . map (project (normal a) . (^-^ origin a)) . corners
 
 anticlockwise :: [V2] -> [V2]

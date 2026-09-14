@@ -404,6 +404,18 @@ spec = do
         forM_ ps $ \primitive ->
           nub [y | (_, y, _) <- vec3s glb (asInt (at "POSITION" (at "attributes" primitive)))] `shouldBe` [0]
 
+    it "resolves touching layers at packed precision without deleting separated paper" $ do
+      -- Slightly different normals defeat an exact-plane grouping, although
+      -- these positions round onto the same glTF triangle. The third, upright
+      -- triangle makes this an open model with explicit source order.
+      forM_ [(1e-8, 4), (1e-4, 6)] $ \(gap, expected) -> do
+        let frame = emptyFrame {frameClasses = ["foldedForm"], verticesCoords = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, gap], [1, 0, 2 * gap], [0, 1, gap], [2, 0, 0], [2, 1, 0], [2, 0, 1]], facesVertices = map (map VertexId) [[0, 1, 2], [3, 4, 5], [6, 7, 8]], faceOrders = [FaceOrder (FaceId 1) (FaceId 0) Above]}
+        glb <- either (fail . show) parseGlb (exportFrame VisiblePaper frame)
+        let meshes = items (at "meshes" (glbJson glb))
+            triangleCount mesh = sum [length (triangles glb (asInt (at "indices" p))) | p <- items (at "primitives" mesh)]
+        map triangleCount meshes `shouldBe` [expected, 6]
+        checkMaterialReferences glb
+
     it "exports a cyclic pinwheel without inventing layer heights" $ do
       named <- folded "test/fixtures/thirds-pinwheel.fold"
       glb <- export VisiblePaper named >>= parseGlb
