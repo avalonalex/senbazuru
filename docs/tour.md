@@ -562,8 +562,9 @@ exactly lets the free paper bend between them. A strip with a known answer
 checks the positional controls, while three mesh resolutions expose how the
 wing's shape and energy change with subdivision. SVG and glTF show the same
 solved triangles, without turning their internal joins into crease lines.
-These are static equilibria with independent endpoint checks; attaching them
-to the crane and checking the motion between shapes remain later work. The
+These are static equilibria with independent endpoint checks. Applying the
+same material model to spread a wing of the existing connected crane, and
+checking the motion between shapes, remain later work. The
 [experiment note](notes/held-wing-bending.md) records the measured differences.
 
 The [two-layer experiment](usage.md#two-held-touching-layers) folds a diamond
