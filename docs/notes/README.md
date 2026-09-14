@@ -67,6 +67,7 @@ read the Haddock module headers; for the domain, start with
 | [reference-contact-discovery.md](reference-contact-discovery.md) | A separated reference pose supplies contact order; later overlaps must respect that fixed history |
 | [ordered-flap-contact.md](ordered-flap-contact.md) | Declared panel order stops opposing flaps from crossing; moving overlap corners need derivatives too |
 | [crease-and-panel-energy.md](crease-and-panel-energy.md) | Crease preferences and panel bending select among connected shapes; stiffer panels can miss their crease targets by more |
+| [held-wing-bending.md](held-wing-bending.md) | Exact root and grip controls bend an uncreased wing; a known strip and three mesh resolutions check the static solve |
 | [connected-paper-surface.md](connected-paper-surface.md) | One material surface can support sharp folds and later bending; thickness, display offsets and the controls that open a pocket have separate roles |
 | [panel-contact-and-order.md](panel-contact-and-order.md) | Rigid panels need separate crossing and order checks; upright flaps and shared crease contact need both |
 | [a-crease-is-a-hinge.md](a-crease-is-a-hinge.md) | A crease is a torsional hinge with a rest angle set by the material and a radius set by what it wraps, and the two numbers a renderer needs are those |

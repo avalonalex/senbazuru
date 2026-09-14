@@ -237,7 +237,16 @@ as having zero thickness; this original adapter handles nearly flat packets.
 `FoldBending` assigns rest angles to their material creases and a zero-angle
 preference to internal panel edges. `FoldRelaxation.relaxBending` adds those
 energies with staged numerical penalties; `BendingGallery` exports a separate
-comparison page and measurements. `refineSurfaceWithEdges` preserves source edge
+comparison page and measurements. `relaxPinnedHinges` excludes explicitly held
+material vertices from the unknowns of the same solve. `WingBending` supplies
+a held-root triangular sheet and a strip with a known bent solution;
+`WingBendingGallery` compares independent static solves at three resolutions.
+`UncreasedSurface` adapts this single uncreased panel to planar triangle faces,
+recording joins instead of creases and retaining original material coordinates
+and panel ownership in metadata. Both SVG and glTF consume that surface. This
+study adapter does not reconstruct multi-panel crease identities or orders.
+See [held wing bending](notes/held-wing-bending.md).
+`refineSurfaceWithEdges` preserves source edge
 ids through subdivision, and `buildSurfaceHinges` attaches explicit signed
 rest-angle controls to them. Diagonal and kite controls use `relaxHinges`
 without contact forces; `Origami.Contact.checkTriangleContact` independently

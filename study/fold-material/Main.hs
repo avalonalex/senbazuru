@@ -43,6 +43,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.Environment (getArgs)
 import System.Exit (die)
 import System.FilePath ((</>))
+import WingBendingGallery (writeWingBending)
 
 data Surface = Rounded | Sharp | Relaxed
   deriving stock (Eq, Show)
@@ -56,11 +57,12 @@ main = do
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
     ["--petal", destination] -> writePetalGallery destination
+    ["--wing-bending", destination] -> writeWingBending destination
     ["--crane", destination] -> writeCraneGallery destination
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -85,6 +87,7 @@ generate destination = do
   writeBendingStudy destination
   writeFlapGallery destination
   writeBlintzGallery destination
+  writeWingBending destination
   writeCraneGallery destination
   writeHelmetGallery destination
   writePetalGallery destination

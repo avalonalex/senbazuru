@@ -45,6 +45,9 @@ const scenePicker = document.querySelector('#scene');
 const error = document.querySelector('#error');
 const requested = new URLSearchParams(location.search);
 const cornerView = ['corner', 'other-corner'].includes(requested.get('angle'));
+// The bending strip runs along model x. Look across it, with closer framing,
+// so its curve reads left to right instead of pointing toward the camera.
+const profileView = requested.get('angle') === 'profile';
 const cornerDirection = requested.get('angle') === 'other-corner' ? 1 : -1;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -67,7 +70,7 @@ function resize() {
 }
 new ResizeObserver(resize).observe(host);
 function angle(x, y, z) {
-  camera.position.set(x, y, z).normalize().multiplyScalar(radius * 4.5);
+  camera.position.set(x, y, z).normalize().multiplyScalar(radius * (profileView ? 3 : 4.5));
   // An unnecessarily tiny near plane wastes precision at touching edges.
   camera.near = radius / 10;
   camera.far = radius * 100;
@@ -78,7 +81,8 @@ function angle(x, y, z) {
   controls.update();
 }
 function side(sign) {
-  angle(1, sign * (cornerView ? Math.SQRT2 : 1), cornerView ? cornerDirection : 0);
+  if (profileView) angle(0, sign, 1);
+  else angle(1, sign * (cornerView ? Math.SQRT2 : 1), cornerView ? cornerDirection : 0);
 }
 function show() {
   if (current) scene.remove(current);
@@ -131,7 +135,7 @@ picker.onchange = load;
 scenePicker.onchange = show;
 document.querySelector('#above').onclick = () => side(1);
 document.querySelector('#below').onclick = () => side(-1);
-document.querySelector('#edge').onclick = () => angle(1, 0, 0);
+document.querySelector('#edge').onclick = () => profileView ? angle(0, 0, 1) : angle(1, 0, 0);
 renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
 try {
   const response = await fetch('models.json');

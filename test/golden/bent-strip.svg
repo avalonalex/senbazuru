@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="340" viewBox="0 0 1080 340">
+  <title>Held wing shapes</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 195.627 312 L 286.08 312 L 286.08 158.496 Z M 195.627 158.496 L 195.627 312 L 286.08 158.496 Z M 286.08 312 L 376.28 307.22 L 376.28 153.716 Z M 286.08 158.496 L 286.08 312 L 376.28 153.716 Z M 376.28 307.22 L 465.723 297.688 L 465.723 144.183 Z M 376.28 153.716 L 376.28 307.22 L 465.723 144.183 Z M 465.723 297.688 L 553.908 283.455 L 553.908 129.951 Z M 465.723 144.183 L 465.723 297.688 L 553.908 129.951 Z M 553.908 283.455 L 640.343 264.603 L 640.343 111.098 Z M 553.908 129.951 L 553.908 283.455 L 640.343 111.098 Z M 640.343 264.603 L 724.543 241.235 L 724.543 87.731 Z M 640.343 111.098 L 640.343 264.603 L 724.543 87.731 Z M 724.543 241.235 L 806.039 213.484 L 806.039 59.98 Z M 724.543 241.235 L 806.039 59.98 L 724.543 87.731 Z M 806.039 213.484 L 884.373 181.504 L 884.373 28 Z M 806.039 213.484 L 884.373 28 L 806.039 59.98 Z" fill="#faf8f3"/>
+    <path d="M 195.627 312 L 195.627 158.496" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 195.627 312 L 286.08 312" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 195.627 158.496 L 286.08 158.496" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 286.08 312 L 376.28 307.22" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 286.08 158.496 L 376.28 153.716" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 376.28 307.22 L 465.723 297.688" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 376.28 153.716 L 465.723 144.183" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 465.723 297.688 L 553.908 283.455" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 465.723 144.183 L 553.908 129.951" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 553.908 283.455 L 640.343 264.603" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 553.908 129.951 L 640.343 111.098" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 640.343 264.603 L 724.543 241.235" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 640.343 111.098 L 724.543 87.731" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 724.543 241.235 L 806.039 213.484" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 724.543 87.731 L 806.039 59.98" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 806.039 213.484 L 884.373 181.504" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 806.039 59.98 L 884.373 28" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 884.373 181.504 L 884.373 28" stroke="#1a1a1a" stroke-width="1.6"/>
+    <text x="195.627" y="62.08" font-size="14" font-family="sans-serif" fill="#1a1a1a">1</text>
+  </g>
+</svg>
