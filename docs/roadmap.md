@@ -282,9 +282,9 @@ checked coupled angles.
    the original linear residual. [Three resolutions](notes/coupled-touching-layer-solve.md)
    converge with decreasing observed shape/energy changes; this does not prove
    independence from mesh size.
-   **Next: attach one wing to the crane and measure what body freedom a
-   compatible static shape needs.** Keep original creases, separate touching
-   layers and tail/body order; a checked flexible route remains separate.
+   **Next: spread one wing of the existing connected crane and measure what
+   body freedom a compatible static shape needs.** Keep original creases,
+   separate touching layers and tail/body order; a checked flexible route remains separate.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.
    Sliding contact and general coupled-angle solving remain later work.

@@ -77,6 +77,6 @@ Neither applies a display offset or turns numerical iterations into motion.
 
 [#200](https://github.com/avalonalex/senbazuru/issues/200) completes the fine
 static solve and compares shape and energy across resolutions. The next step
-in [#195](https://github.com/avalonalex/senbazuru/issues/195) is to attach this
-wing to the crane. Its exact body constraints, flexible motion, friction and finite-thickness mechanics remain
-separate open questions.
+in [#195](https://github.com/avalonalex/senbazuru/issues/195) is to spread one
+wing of the existing connected crane. Its exact body constraints, flexible
+motion, friction and finite-thickness mechanics remain separate open questions.

@@ -77,7 +77,7 @@ tolerances changed. Sparse factors can gain many entries on larger meshes;
 this study implementation is not a bounded-memory general-purpose solver.
 
 The next bounded experiment under [#195](https://github.com/avalonalex/senbazuru/issues/195)
-is to attach one wing to the crane and measure which body regions must move
-for a compatible static shape. Preserve the original creases and tail/body
-orders. Flexible motion, friction and finite-thickness mechanics remain
+is to spread one wing of the existing connected crane and measure which
+body regions must move for a compatible static shape. Preserve the original
+creases and tail/body orders. Flexible motion, friction and finite-thickness mechanics remain
 separate: these numerical correction paths can still stretch or cross paper.
