@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Can contact correction untangle one crease? · Senbazuru</title>
+<style>
+:root{font:16px/1.6 system-ui,sans-serif;color:#292d28;background:#f4efe7;color-scheme:light}body{max-width:1180px;margin:auto;padding:32px 24px 60px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15;max-width:950px}h2{font-size:1.4rem}p{max-width:960px}a{color:#385e50;text-underline-offset:3px}small{letter-spacing:.12em}section{background:#fffaf2;border:1px solid #d8cebd;border-radius:8px;padding:24px;margin:28px 0}.plots{display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0}img{width:100%;height:auto}figcaption{font-size:.9rem}.note{border-left:3px solid #92744b;padding-left:14px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #dfd5c6;vertical-align:top}select{font:inherit;max-width:100%;padding:8px}.controls{display:flex;gap:24px;flex-wrap:wrap}.bad{color:#a74622}iframe{width:100%;height:760px;border:0}summary{cursor:pointer}@media(max-width:700px){.plots{grid-template-columns:1fr}section{padding:14px}td,th{padding:8px}}
+</style>
+<header><small>SENBAZURU · MATERIAL STUDY / #218</small>
+<h1>Can contact correction untangle one crease?</h1>
+<p>A small bending sheet gives us a precise answer. Contact forces reduce penetration by millions of times and the numerical checks pass. A tiny negative gap remains—even when the two layers start in perfect contact.</p>
+<p><a href="closed-crease.html">The original crease controls</a> · <a href="index.html">All fold examples</a> · <a href="crease-correction/checks.json">All measurements, exact fractions and solver diagnostics</a></p></header>
+<section><h2>Keep one panel still, let the other settle</h2>
+<p>The lower panel stays at its known bent shape. The outer quarter of the upper panel is held against it. Between those holds, the upper paper can move in all three directions. The panels share one crease: its vertices stay fixed, but its angle has a flexible preference for 180° (closed). Bending inside each panel prefers flat paper.</p>
+<div class="controls"><label>Starting condition <select id="control"></select></label><label>Mesh <select id="resolution"><option value="1">32 triangles</option><option value="2">64 triangles</option></select></label></div>
+<p id="description"></p>
+<div class="plots"><figure><h3>Before correction</h3><img id="before" alt="Negative gaps before correction, magnified vertically"><figcaption id="before-caption"></figcaption></figure>
+<figure><h3>After correction</h3><img id="after" alt="Negative gaps after correction, magnified vertically"><figcaption id="after-caption"></figcaption></figure></div>
+<p class="note">These plots show only negative gaps, where upper paper lies below the lower panel. Their vertical scales are enlarged independently; equal-looking depths need not be equal distances. Touching and separated parts are omitted. Every triangle across the paper's width contributes, so this is more than a check of the outside edges.</p>
+<p id="verdict" class="bad" aria-live="polite"></p><p id="geometry"></p>
+<div class="table-wrap"><table><thead><tr><th>Measurement</th><th>Before</th><th>After</th></tr></thead><tbody id="details"></tbody></table></div>
+<p><a id="before-fold">Starting FOLD</a> · <a id="after-fold">Corrected diagnostic FOLD</a>. Both retain the original material identities and stored coordinates.</p>
+<p class="note">The penetrating starts are imperfect numerical guesses: they initially strain the material. They are not proposed folding states. Solver iterations are also not a checked physical route.</p>
+</section>
+<section><h2>Same paper, five controls</h2>
+<p>Contact on and off use exactly the same starting positions, holds and crease preferences. The touching, penetrating and tiny-penetration starts settle to nearly the same result. The conflicting hold deliberately asks one upper row to stay below the fixed lower paper.</p>
+<div class="table-wrap"><table><thead><tr><th>Control</th><th>Converged?</th><th>Length error</th><th>Minimum gap</th><th>Crease error (rad)</th><th>All numerical checks?</th></tr></thead><tbody id="comparison"></tbody></table></div>
+<p>“All numerical checks” requires convergence, relative edge-length error ≤ 1e-5, exact held positions, crease error ≤ 1e-5 radians, and the existing whole-mesh contact check. The contact check uses its existing 1e-7 distance tolerance. All ten endpoints still have a negative exact lower/upper gap; none is labelled exactly nonintersecting.</p>
+<details><summary>Why can a converged result still penetrate?</summary><p>The solver assigns a large but finite cost to penetration. It can trade a tiny amount of penetration against bending and length costs. At zero gap that quadratic contact cost has zero force; a small negative gap supplies a balancing force. Here even the perfectly touching start develops the same residual, so the result is not simply a leftover from the penetrating input. This is a repeatable test for stronger contact constraints.</p><p>The reference measurement clips each upper triangle over the fixed lower panel and evaluates the height difference at every resulting corner. Rational arithmetic preserves the exact values of the stored coordinates. It checks order against this lower panel; the separate whole-mesh checker covers other contact at its numerical tolerance.</p></details>
+</section>
+<section><h2>Inspect the connected paper</h2>
+<p>These are diagnostic meshes, including the failed controls. The complete sheet is exported without separating layers for display. Tiny residuals disappear in the rounded 3D export, and touching layers may flicker; the FOLD coordinates and gap measurements retain the evidence.</p>
+<label>Show <select id="stage"><option value="after">After correction</option><option value="before">Before correction</option></select></label>
+<iframe id="viewer" title="Diagnostic crease correction mesh" loading="lazy"></iframe>
+</section>
+<script>
+const data=/*CORRECTION_DATA*/null;
+const el=id=>document.getElementById(id),number=x=>x===0?'0':x.toExponential(3);
+const descriptions={touching:'Both bent panels start in exact contact. Only the free upper vertices can relax.',penetrating:'Free upper vertices start up to 0.002 sheet lengths below the lower panel. Contact forces are enabled.','without-contact':'The identical 0.002 penetrating guess, with contact forces disabled. Contact is still independently checked afterward.',tiny:'The same perturbation with a maximum depth of 2e-8 sheet lengths, already below the numerical contact tolerance.',conflicting:'An additional upper row is held 0.002 sheet lengths below the fixed lower panel. The solver cannot satisfy both this hold and the intended order.'};
+for(const r of data.runs.filter(r=>r.subdivision===1)){const option=document.createElement('option');option.value=r.control;option.textContent=r.title;el('control').append(option);}
+el('control').value='penetrating';
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+function current(){return data.runs.find(r=>r.subdivision===Number(el('resolution').value)&&r.control===el('control').value);}
+function model(){const r=current();el('viewer').src=`crease-correction/index.html?model=${r.id}-${el('stage').value}.glb&angle=profile`;}
+function update(){const r=current(),a=r.measurements.before,b=r.measurements.after;el('description').textContent=descriptions[r.control];
+for(const stage of ['before','after']){const m=r.measurements[stage];el(stage).src=`crease-correction/${r.id}-${stage}-gap.svg`;el(stage+'-caption').textContent=`Minimum signed gap: ${number(m.minGap.value)} sheet lengths. ${m.minGap.value<0?'Negative depth fills this plot’s scale.':'No penetration.'}`;el(stage+'-fold').href=`crease-correction/${r.id}-${stage}.fold`;}
+el('verdict').textContent=r.withinNumericalTolerances?'Within all numerical tolerances; exact lower/upper order still fails.':r.converged?'The solver converged, but the endpoint fails the physical checks.':'The solver did not converge, and the endpoint fails the physical checks.';
+el('geometry').textContent=`${r.components} connected sheet · ${r.sharedCreaseVertices.length} shared crease vertices · ${r.heldVertices.length} held vertices · ${r.iterations} solver iterations. No thickness or artificial layer offset.`;
+el('details').replaceChildren();for(const [label,key] of [['Largest relative edge-length error','maxRelativeEdgeError'],['Largest held-position error','heldPositionError'],['Largest crease error (radians)','maxCreaseErrorRadians'],['Minimum contact-force gap','minForceGap']])row(el('details'),[label,number(a[key]),number(b[key])]);row(el('details'),['Whole-mesh contact within tolerance',a.contact.passed?'Yes':'No',b.contact.passed?'Yes':'No']);
+el('comparison').replaceChildren();for(const s of data.runs.filter(s=>s.subdivision===r.subdivision)){const m=s.measurements.after;row(el('comparison'),[s.title,s.converged?'Yes':'No',number(m.maxRelativeEdgeError),number(m.minGap.value),number(m.maxCreaseErrorRadians),s.withinNumericalTolerances?'Yes':'No']);}model();}
+el('control').addEventListener('change',update);el('resolution').addEventListener('change',update);el('stage').addEventListener('change',model);update();
+</script>
+</html>

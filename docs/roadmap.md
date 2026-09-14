@@ -24,7 +24,8 @@ the root/body comparison in [#205](https://github.com/avalonalex/senbazuru/issue
 the pocket material map in [#210](https://github.com/avalonalex/senbazuru/issues/210),
 selected body-angle controls in [#212](https://github.com/avalonalex/senbazuru/issues/212),
 internal crease diagnostics in [#214](https://github.com/avalonalex/senbazuru/issues/214),
-and the small closed-crease reference in [#216](https://github.com/avalonalex/senbazuru/issues/216). The
+the small closed-crease reference in [#216](https://github.com/avalonalex/senbazuru/issues/216),
+and its contact-correction controls in [#218](https://github.com/avalonalex/senbazuru/issues/218). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -323,9 +324,16 @@ checked coupled angles.
    length-preserving profiles. The controls expose a real microscopic crossing
    inside the tolerance and a separate false report from an overextended plane
    cut; the latter is corrected without changing tolerances.
-   **Next: use the small reference to test contact correction at a shared crease,
-   measuring the remaining penetration and angle errors before returning to
-   the larger free body patch.**
+   [#218](https://github.com/avalonalex/senbazuru/issues/218) now
+   [tests contact correction](notes/contact-correction-at-a-crease.md) on that
+   fixture. Holding the lower panel and outer upper strip, three contact-enabled
+   starts converge and pass numerical length/angle/contact checks at both
+   resolutions. Exact gap checks still find penetration around `6e-11` and
+   `8e-11` sheet lengths, even from perfect touching. No-contact and impossible
+   hold controls fail independently. The solver and tolerances are unchanged.
+   **Next: enforce the lower/upper contact inequality on this same small
+   fixture and compare residuals, material errors and convergence with the
+   finite-penalty baseline before enlarging the free crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips
