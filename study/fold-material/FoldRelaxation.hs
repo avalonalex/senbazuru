@@ -48,6 +48,9 @@
 -- Removing their corrections from the linear solve keeps a grip exact instead
 -- of approximating it with another stiff spring. Installing a new grip starts
 -- a static solve; neither that installation nor its iterations is a folding path.
+-- 'relaxPinnedContact' adds declared directional contact to the same exact grips.
+-- It also stops a penalty stage on a failed line search, since retrying the
+-- identical held configuration supplies no new search direction.
 module FoldRelaxation
   ( Settings (..),
     defaultSettings,
@@ -59,6 +62,7 @@ module FoldRelaxation
     relaxBending,
     relaxHinges,
     relaxPinnedHinges,
+    relaxPinnedContact,
     relaxSurfaceContact,
     relaxDiscoveredContact,
     relaxLocalContact,
@@ -224,6 +228,16 @@ relaxHinges = relaxAngular NoContact
 relaxPinnedHinges :: Settings -> IM.IntMap V3 -> [Hinge] -> MaterialMesh -> Either RelaxError Relaxation
 relaxPinnedHinges settings pins hinges mesh = do
   (result, _, _) <- relaxAngularWithPins pins fixedPolicy settings hinges NoContact mesh
+  pure result
+
+-- | Exact grips plus the supplied lower/upper inequalities. Touching layers
+-- remain distinct unknowns, and contact resists penetration without attracting
+-- separated paper. Convergence is still a numerical endpoint claim.
+relaxPinnedContact :: Settings -> IM.IntMap V3 -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError Relaxation
+relaxPinnedContact settings pins hinges contact mesh = do
+  -- A rejected search leaves both grips and contact unchanged. Repeating it
+  -- cannot improve the same stage; advance its penalty, or return unconverged.
+  (result, _, _) <- relaxAngularWithPins pins fixedPolicy {stopOnFailedSearch = True} settings hinges (SurfaceOrder contact) mesh
   pure result
 
 -- | Add directional separation for declared panel or local triangle orders.

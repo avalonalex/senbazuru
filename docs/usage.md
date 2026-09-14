@@ -378,8 +378,35 @@ not the crane fixture. Subdivision edges are joins, with no added crease
 strokes. There is no contact correction in these solves; the finished shapes
 are checked independently. Numerical iterations can stretch paper and are not
 physical motion, so the three grip states have no continuous-motion certificate.
-Touching layers, compatible crane-body freedom and realistic spreading remain
-in #195. See [the experiment and refinement measurements](notes/held-wing-bending.md).
+A separate [two-layer experiment](#two-held-touching-layers) adds contact forces.
+Compatible crane-body freedom and realistic spreading remain in #195. See [the experiment and refinement measurements](notes/held-wing-bending.md).
+
+### Two held touching layers
+
+```bash
+stack run senbazuru-material-study -- --wing-layers build/fold-material
+```
+
+Use the same local server and Three.js installation as the controlled bending
+page, then open [the two-layer study](http://127.0.0.1:8000/wing-layers.html).
+A diamond folded in half has two distinct material layers joined only at its
+root crease. Exact root and tip grips shape both layers; a declared order
+permits touching and separation while penalizing penetration.
+
+The page compares flat, 20-degree and 40-degree grips at eight divisions, an
+initially penetrating guess and a lifted upper grip. Accepted shapes have
+SVG/FOLD/GLB exports in `wing-layers/`. The finer bent mesh and incompatible
+grip are bounded diagnostics: their FOLD geometry and `checks.json` remain
+available even when they fail. Only converged shapes passing the independent
+endpoint checks appear in the model selector. The finer bent case allows
+12 iterations per penalty stage, the incompatible grip eight, and the other
+controls 100. Generation can take several minutes.
+
+The complete sheet and stable-view glTF scenes use the same positions and
+material identities. These zero-thickness, static shapes do not establish a
+physical motion, finite-thickness behavior, friction or a connected crane
+body. Fine-mesh convergence remains open; see [the measurements and numerical
+limitation](notes/two-held-paper-layers.md).
 
 <a id="continuously-checked-bird-petal"></a>
 

@@ -190,9 +190,12 @@ orderedContacts (OrderedContact basis topology material pairs) mesh = do
           if max lowerAlignment upperAlignment <= 1e-8
             then Left (UncheckableContactPair i j)
             else
-              if lowerAlignment >= upperAlignment
-                then separation i lower upper
-                else map negate <$> separation j upper lower
+              if not (boxesMeet lower upper)
+                then Right []
+                else
+                  if lowerAlignment >= upperAlignment
+                    then separation i lower upper
+                    else map negate <$> separation j upper lower
         unless (all validD gaps) (Left (NonFiniteContact i j))
         pure [ContactRow (value gap - clearance) (IM.toList (derivative gap)) | gap <- gaps]
   concat <$> mapM pair pairs

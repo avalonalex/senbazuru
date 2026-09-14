@@ -77,6 +77,14 @@ spec = describe "open-flap contact correction" $ do
       let independent = maximum (0 : [gap | (_, _, gap) <- reversedOrders report])
       abs (independent + minimum (0 : map contactGap rows)) `shouldSatisfy` (< 1e-12)
 
+  it "rechecks disjoint bounds when declared partners move into overlap" $ do
+    let away = foldr (\i -> shiftVertex i (V3 10 0 0)) contained [3, 4, 5]
+    model <- prepare 0 away
+    empty <- right (Contact.orderedContacts model away)
+    empty `shouldBe` []
+    entered <- right (Contact.orderedContacts model contained)
+    minimum (map contactGap entered) `shouldSatisfy` (< 0)
+
   it "retains both heights of an upright flap with coincident projected corners" $ do
     let mesh = pairMesh [V3 (-2) (-2) 0, V3 2 (-2) 0, V3 0 3 0, V3 0 0 (-0.4), V3 0 0 0.6, V3 0 1 0.6]
     rows <- prepare 0 mesh >>= \model -> right (Contact.orderedContacts model mesh)

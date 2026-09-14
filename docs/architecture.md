@@ -246,6 +246,13 @@ recording joins instead of creases and retaining original material coordinates
 and panel ownership in metadata. Both SVG and glTF consume that surface. This
 study adapter does not reconstruct multi-panel crease identities or orders.
 See [held wing bending](notes/held-wing-bending.md).
+`relaxPinnedContact` combines those exact grips with `SurfaceContact`'s existing
+directional inequalities. `WingLayers` constructs a connected folded diamond,
+preserves its two material panels and root crease in triangle-surface exports,
+and supplies distinct grips for the two layers. `WingLayersGallery` publishes
+accepted static shapes separately from failed diagnostics. It does not add
+motion certification or general crane-body deformation; the [two-layer note](notes/two-held-paper-layers.md)
+records the fine-mesh convergence limit.
 `refineSurfaceWithEdges` preserves source edge
 ids through subdivision, and `buildSurfaceHinges` attaches explicit signed
 rest-angle controls to them. Diagonal and kite controls use `relaxHinges`
