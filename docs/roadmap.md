@@ -22,7 +22,8 @@ their refined coupled solves in [#200](https://github.com/avalonalex/senbazuru/i
 the connected wing in [#203](https://github.com/avalonalex/senbazuru/issues/203),
 the root/body comparison in [#205](https://github.com/avalonalex/senbazuru/issues/205),
 the pocket material map in [#210](https://github.com/avalonalex/senbazuru/issues/210),
-and selected body-angle controls in [#212](https://github.com/avalonalex/senbazuru/issues/212). The
+selected body-angle controls in [#212](https://github.com/avalonalex/senbazuru/issues/212),
+and internal crease diagnostics in [#214](https://github.com/avalonalex/senbazuru/issues/214). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -310,8 +311,18 @@ checked coupled angles.
    [compares preferences](notes/body-angle-preferences.md) at two candidates
    without changing the earlier free patch or grips. Weaker springs and a 170°
    preference leave essentially the same failed shape; the selected-angle gate
-   was not the blocker. Next inspect contact and coupled freedom around the
-   retained internal folds 26/51 before enlarging the free region. Paired grips
+   was not the blocker. [#214](https://github.com/avalonalex/senbazuru/issues/214)
+   [isolates folds 26/51](notes/internal-crease-diagnostic.md): holding their
+   shared lines reaches numerical equilibrium but still fails angle/contact
+   checks, and omitting surrounding forces makes the whole-sheet result worse.
+   The original reaches its iteration budget without exhausting a line search;
+   eighty more final-stage iterations reduce length error and crossing reports
+   but do not produce an accepted endpoint. **Next: extract one nearly closed
+   shared crease with bending panels and compare contact gaps, intersections
+   and achieved angles before changing tolerances or enlarging the free region.**
+   The short compiled profile points to contact derivatives and sparse
+   factorization; measure a value-only line-search evaluation under #208.
+   Paired grips
    with the central body and neck/tail attachments free follow as a separate
    experiment; measure their response rather than prescribing it.
    Keep these endpoint experiments distinct from a checked flexible route.

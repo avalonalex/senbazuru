@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two creases inside the body · Senbazuru</title>
+<style>
+:root{font:16px/1.6 system-ui,sans-serif;color:#292d28;background:#f4efe7;color-scheme:light}body{max-width:1180px;margin:auto;padding:32px 24px 60px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15}h2{font-size:1.4rem}p{max-width:970px}a{color:#385e50;text-underline-offset:3px}small{letter-spacing:.12em}section{background:#fffaf2;border:1px solid #d8cebd;border-radius:8px;padding:24px;margin:28px 0}.maps{display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0}img{width:100%;height:auto}figcaption{font-size:.9rem}.note{border-left:3px solid #92744b;padding-left:14px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #dfd5c6;vertical-align:top}select{font:inherit;max-width:100%;padding:8px}.good{color:#385e50}.bad{color:#a74622}code{font-size:.9em}@media(max-width:700px){.maps{grid-template-columns:1fr}section{padding:14px}td,th{padding:8px}}
+</style>
+<header><small>SENBAZURU · MATERIAL STUDY / #214</small><h1>Two creases inside the body</h1>
+<p>The earlier body release reaches its iteration limit with errors near two folded seams. Separate two questions: does holding those crease lines help, and does removing forces from surrounding contacts help? Every endpoint still receives the same independent whole-sheet checks.</p>
+<p><a href="crane-body.html">Angle preferences</a> · <a href="crane-pocket.html">Material map</a> · <a href="index.html">All fold examples</a></p></header>
+<section><h2>Locate the shared lines</h2>
+<div class="maps"><figure><img src="crane-internal/material.svg" alt="Original sheet with crease 26 in teal and crease 51 in rust"><figcaption>Original sheet: teal is crease 26, rust is crease 51.</figcaption></figure><figure><img src="crane-internal/folded.svg" alt="Folded x-ray close-up of the same two joined panel pairs"><figcaption>Folded x-ray close-up. Buried layers are included; this is a material map.</figcaption></figure></div>
+<p>Crease 26 joins panels 8 and 27; crease 51 joins panels 7 and 43. Both are mountain folds, where the paper's front side bends outward. Each line has nine shared mesh vertices. The original boundary holds one endpoint (+); eight vertices (·) can move. The held-line control holds those sixteen additional vertices in their original positions.</p>
+<p class="note">Holding a crease line fixes its position, not the angle between its two sides. The panels may still bend beside that line. All controls keep the tip grip and material springs unchanged.</p></section>
+<section><h2>Two independent controls</h2>
+<p>The first four trials vary crease-line holds and contact-force scope. “Internal only” keeps forces between panels 27 → 8 and 43 → 7, where the arrow means lower to upper. All 902 source orders remain in the independent check. The whole-patch-held row reproduces the accepted reference. The last trial continues the original endpoint for up to eighty more iterations at the final penalty weight.</p>
+<div class="table-wrap"><table><thead><tr><th>Trial</th><th>Held vertices</th><th>Force orders</th><th>Settled</th><th>Length error</th><th>Crossings</th><th>Accepted</th></tr></thead><tbody id="comparison"></tbody></table></div>
+<p id="finding"></p>
+<p class="note">Reduced-contact trials are always diagnostics. Even passing geometric checks would not establish equilibrium with omitted forces restored. These are static solver experiments; numerical corrections can stretch and cross the sheet.</p></section>
+<section><h2>Inspect the failure</h2><label for="trial">Trial </label><select id="trial"></select>
+<div aria-live="polite"><p id="verdict"></p>
+<div class="table-wrap"><table><thead><tr><th>Crease</th><th>Held shared vertices</th><th>Angle error</th></tr></thead><tbody id="creases"></tbody></table></div>
+<p id="checks"></p><p id="gaps"></p>
+<div class="table-wrap"><table><thead><tr><th>Original panel pair</th><th>Reported crossing triangle pairs</th></tr></thead><tbody id="pairs"></tbody></table></div>
+<p>Up to eight pairs with the most reports are shown; the JSON contains the complete list. These are the unchanged checker's reports at its geometric tolerance.</p>
+<p id="work"></p><p id="blocked"></p>
+<h3>Rejected corrections</h3><p>A line search tries smaller fractions of a proposed correction until its energy decreases. These rows show the last refusal of each kind, not a physical fold. A very small rejected movement is different from equilibrium.</p>
+<div class="table-wrap"><table><thead><tr><th>Reason</th><th>Count</th><th>Iteration</th><th>Step fraction</th><th>Largest movement</th><th>Energy change</th></tr></thead><tbody id="refusals"></tbody></table></div>
+<p id="energy"></p>
+<p><a id="fold">Diagnostic FOLD</a> · <a id="json">Full measurements and first/last refusal</a></p></div></section>
+<p class="note">Scope: one connected zero-thickness sheet, the same small body patch and 50° tip grip. No larger body release, pressure, new material fit or certificate for a flexible folding route.</p>
+<script>
+const data=/*INTERNAL_DATA*/null;
+const number=n=>n===0?'0':n.toPrecision(3);
+const yes=b=>b?'Yes':'No';
+const row=(id,values)=>{const tr=document.createElement('tr');for(const v of values){const td=document.createElement('td');td.textContent=v;tr.append(td);}document.getElementById(id).append(tr);};
+for(const r of data.runs){row('comparison',[r.title,r.heldVertices,r.forceOrders,yes(r.converged),number(100*r.maxRelativeEdgeError)+'%',r.contact.crossingPanels.length,yes(r.accepted)]);const option=document.createElement('option');option.value=r.id;option.textContent=r.title;document.getElementById('trial').append(option);}
+const held=data.runs.find(r=>r.id==='held'), continued=data.runs.find(r=>r.id==='continued');
+if(held&&continued)document.getElementById('finding').textContent='Holding both shared lines '+(held.converged?'reaches numerical equilibrium':'does not reach numerical equilibrium')+', with '+held.contact.crossingPanels.length+' crossing reports still present. Continuing the original endpoint leaves '+continued.contact.crossingPanels.length+' crossing reports and a length error of '+number(100*continued.maxRelativeEdgeError)+'%. '+(held.accepted||continued.accepted?'Inspect the accepted control and its limits below.':'Neither is accepted paper.');
+function show(){
+ const r=data.runs.find(r=>r.id===document.getElementById('trial').value);
+ document.getElementById('verdict').textContent=r.accepted?'Accepted static endpoint.':r.allContactForces?'Not accepted: inspect the independent checks and solver status below.':'Diagnostic with surrounding contact forces omitted; not an accepted endpoint.';
+ document.getElementById('verdict').className=r.accepted?'good':'bad';
+ document.getElementById('creases').replaceChildren();for(const c of r.endpoint.creases)row('creases',[c.crease,c.heldLineVertices+' / '+c.sharedVertices,number(c.maxAngleError)+' rad']);
+ document.getElementById('checks').textContent='Whole-sheet checks: '+r.contact.crossingPanels.length+' crossing triangle pairs; '+r.contact.unorderedContacts.length+' unordered contacts; '+r.contact.reversedOrders.length+' reversed orders; '+r.contact.uncheckedOrders.length+' uncheckable orders. Largest original-angle error: '+number(r.maxOriginalAngleError)+' rad. Held-position error: '+number(r.heldError)+'.';
+ document.getElementById('gaps').textContent='Smallest signed gap among active force rows: '+number(r.endpoint.forceContacts.minGap)+' model units (negative means reversed along the body-height direction). The independent order check tolerates gaps down to −1e-7; its separate triangle-crossing test can still report intersections near a folded seam.';
+ document.getElementById('pairs').replaceChildren();for(const p of [...r.crossingsBySourcePair.pairs].sort((a,b)=>b.count-a.count).slice(0,8))row('pairs',[p.panels.join(' / '),p.count]);
+ document.getElementById('work').textContent='Solve CPU time: '+number(r.solveCpuSeconds)+' seconds. '+r.checkpoints.at(-1).iteration+(r.continuedFromOriginal?' additional iterations at the final penalty weight; limit '+r.iterationLimitPerStage+'. ':' iterations; limit '+r.iterationLimitPerStage+' per penalty stage. ')+(r.equilibrium?'Final proposed full movement: '+number(r.equilibrium.fullMovement)+' model units.':'No final equilibrium established.');
+ document.getElementById('blocked').textContent=r.blockedStages.length?'All available step sizes were refused at iterations '+r.blockedStages.map(b=>b.iteration).join(', ')+'.':'No penalty stage was classified as blocked by the line search; iteration limits and equilibrium are separate checks.';
+ document.getElementById('refusals').replaceChildren();for(const s of r.refusals){const t=s.last;row('refusals',[s.reason,s.count,t.iteration,number(t.scale),number(t.maxMovement),t.afterEnergy===null?'Unavailable':number(t.afterEnergy-t.beforeEnergy)]);}
+ document.getElementById('energy').textContent='The JSON separates material-length, angular and contact terms before and after each recorded refusal. Multiply lengthSquared by its recorded lengthWeight and squaredPenetration by 100 × lengthWeight; angleSquared already includes the springs. Their sum is the solver objective.';
+ document.getElementById('fold').href='crane-internal/'+r.id+'.fold';document.getElementById('json').href='crane-internal/'+r.id+'-check.json';
+}
+document.getElementById('trial').onchange=show;show();
+</script></html>

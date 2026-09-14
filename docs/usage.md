@@ -509,6 +509,34 @@ upper grip bound the comparison. Forty iterations per penalty stage are allowed
 for ordinary controls; these released-body solves can take several minutes each.
 The negative control allows two. See [the angle-policy note](notes/body-angle-preferences.md).
 
+### Internal body-crease diagnosis
+
+```bash
+stack run senbazuru-material-study -- --crane-internal build/fold-material
+```
+
+Open [the internal-crease study](http://127.0.0.1:8000/crane-internal.html).
+It locates shared creases 26 and 51 on the original sheet and in a folded
+x-ray, then compares holding their vertices with removing surrounding contact
+forces. The independent whole-sheet check retains every source layer order.
+Reduced-force controls remain diagnostics even if their geometry passes.
+The fixed-body reference and an eighty-iteration continuation of the original
+failed endpoint complete the comparison.
+
+These long static solves run outside the test suite. A single control can be
+run as `--crane-internal CONTROL build/fold-material`, with `CONTROL` one of
+`original`, `held`, `internal`, `held-internal`, `fixed`, or `continued`.
+`continued` reads `crane-internal/original.fold` in the output directory;
+run `original` first. It keeps the final penalty weight instead of restarting
+the softer stages. `original-short` limits each stage to two iterations for
+profiling; it is not an acceptance control.
+
+Per-trial JSON records iteration limits, endpoint checks, contact rows and
+energy components for the first and last rejected corrections of each kind.
+The endpoint and last rejected correction are saved as diagnostic FOLDs.
+The gallery keeps failed meshes out of accepted-model views. No flexible
+motion certificate is implied. See [the diagnostic findings](notes/internal-crease-diagnostic.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base
