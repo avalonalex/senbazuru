@@ -634,6 +634,15 @@ from the perfectly touching start. A large finite penalty can balance forces
 with a small overlap; the demo keeps that distinct from exact layer order.
 No-contact and impossible-hold controls expose larger failures.
 
+The [nonnegative-gap experiment](notes/nonnegative-crease-contact.md) now
+constrains those same upper/lower overlaps. All six compatible endpoints have
+exactly nonnegative stored gaps with comparable length errors and passing
+angle/contact checks. A reported uniform lift repairs the initial guess and
+any proposed step that would penetrate; energy is tested after that repair.
+The impossible hold is refused before solving. This succeeds on the fixed
+lower reference, without adding thickness, and still does not certify a
+flexible folding motion or solve two freely bending partners.
+
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
 sheet into the square base. Then seven crease angles move

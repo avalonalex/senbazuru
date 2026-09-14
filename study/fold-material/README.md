@@ -76,6 +76,15 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --crease-inequality build/fold-material`
+writes `crease-inequality.html`: the same two-resolution controls compare the
+penalty baseline with explicit nonnegative gaps. Six constrained endpoints
+pass lengths, angles, holds and contact with exact lower/upper order. Initial
+repairs remain separate from endpoints; incompatible holds are refused.
+Complete FOLDs/GLBs and per-step diagnostics retain the evidence. See
+[usage](../../docs/usage.md#requiring-nonnegative-crease-contact) and
+[the constraint finding](../../docs/notes/nonnegative-crease-contact.md).
+
 `stack run senbazuru-material-study -- --crease-correction build/fold-material`
 writes `crease-correction.html`: five contact-correction controls at two
 resolutions, before/after negative-gap plots, exact gap measurements and

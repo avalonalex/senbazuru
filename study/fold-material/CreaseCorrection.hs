@@ -10,7 +10,7 @@
 -- vertical strips, including the finite width in y. Within each clipped
 -- piece the upper-minus-lower height is linear, so its extrema occur at the
 -- corners. Rational arithmetic measures the stored Double coordinates
--- exactly, independently of contact-force derivatives and distance snapping.
+-- exactly, independently of the penalty solver's contact-force derivatives and distance snapping.
 -- This checks order against the LOWER panel, not upper self-contact or a
 -- physical path. The ordinary whole-mesh checker remains a separate gate.
 module CreaseCorrection
@@ -18,6 +18,7 @@ module CreaseCorrection
     CreaseCorrection (..),
     CorrectionError (..),
     GapAudit (..),
+    GapWitness (..),
     creaseCorrection,
     solveCorrection,
     auditLowerGap,
@@ -61,7 +62,18 @@ instance Explain CorrectionError where explain (CorrectionError message) = messa
 data GapAudit = GapAudit
   { gapPolygons :: ![[(Rational, Rational)]],
     minimumGap :: !Rational,
-    maximumGap :: !Rational
+    maximumGap :: !Rational,
+    gapWitnesses :: ![GapWitness]
+  }
+  deriving stock (Eq, Show)
+
+-- | A clipped point is a convex combination of upper material vertices.
+-- These exact weights let a feasibility repair move only free upper vertices;
+-- an entirely held negative witness proves that those holds are incompatible.
+data GapWitness = GapWitness
+  { witnessGap :: !Rational,
+    witnessWeights :: !(IM.IntMap Rational),
+    witnessSlope :: !Rational
   }
   deriving stock (Eq, Show)
 
@@ -117,7 +129,10 @@ auditLowerGap fixture mesh = do
       profile = [(toRational x, toRational z) | p <- samples (closedMesh reference), materialU p >= 0, materialV p == -0.5, let V3 x _ z = position p]
       spans = zip profile (drop 1 profile)
   unless (not (null spans) && all (\((x, _), (y, _)) -> x < y) spans) (Left (CorrectionError "the lower reference must progress in positive x"))
-  upper <- forM [t | (t, owner) <- zip (triangles mesh) (closedOwners reference), owner == FaceId 1] $ \(a, b, c) -> mapM vertex [a, b, c]
+  upper <- forM [t | (t, owner) <- zip (triangles mesh) (closedOwners reference), owner == FaceId 1] $ \(a, b, c) ->
+    forM [a, b, c] $ \i -> do
+      (x, y, z) <- vertex i
+      pure (Point x y z (IM.singleton i 1))
   let pieces =
         [ map (gap spanEnds) clipped
           | triangle <- upper,
@@ -125,23 +140,24 @@ auditLowerGap fixture mesh = do
             let clipped = clipToStrip a b triangle,
             not (null clipped)
         ]
-      heights = [z | polygon <- pieces, (_, z) <- polygon]
+      witnesses = [w | polygon <- pieces, (_, w) <- polygon]
+      heights = map witnessGap witnesses
   case heights of
     [] -> Left (CorrectionError "the upper panel has no overlap with the lower reference")
-    _ -> pure (GapAudit pieces (minimum heights) (maximum heights))
+    _ -> pure (GapAudit [[(x, witnessGap w) | (x, w) <- polygon] | polygon <- pieces] (minimum heights) (maximum heights) witnesses)
   where
     rational (V3 x y z) = (toRational x, toRational y, toRational z)
-    gap ((a, u), (b, v)) (x, _, z) = (x, z - u - (x - a) * (v - u) / (b - a))
+    gap ((a, u), (b, v)) (Point x _ z weights) = (x, GapWitness (z - u - (x - a) * (v - u) / (b - a)) weights ((v - u) / (b - a)))
 
-type Point = (Rational, Rational, Rational)
+data Point = Point !Rational !Rational !Rational !(IM.IntMap Rational)
 
 -- Keep the overlap with one full-width strip of the held lower panel.
 clipToStrip :: Rational -> Rational -> [Point] -> [Point]
 clipToStrip a b triangle =
-  let afterLeft = clip (\(x, _, _) -> x - a) triangle
-      afterRight = clip (\(x, _, _) -> b - x) afterLeft
-      afterBottom = clip (\(_, y, _) -> y + 1 / 2) afterRight
-   in clip (\(_, y, _) -> 1 / 2 - y) afterBottom
+  let afterLeft = clip (\(Point x _ _ _) -> x - a) triangle
+      afterRight = clip (\(Point x _ _ _) -> b - x) afterLeft
+      afterBottom = clip (\(Point _ y _ _) -> y + 1 / 2) afterRight
+   in clip (\(Point _ y _ _) -> 1 / 2 - y) afterBottom
 
 -- Cut by a vertical half-space; the distance is linear, so interpolation
 -- gives an exact boundary point. Equality includes legal touching points.
@@ -154,7 +170,8 @@ clip distance points = concatMap edge (zip points (drop 1 points ++ take 1 point
       | otherwise = let hit = interpolate (dp / (dp - dq)) p q in if dq >= 0 then [hit, q] else [hit]
       where
         dp = distance p; dq = distance q
-    interpolate t (x, y, z) (a, b, c) = (x + t * (a - x), y + t * (b - y), z + t * (c - z))
+    interpolate t (Point x y z weights) (Point a b c other) =
+      Point (x + t * (a - x)) (y + t * (b - y)) (z + t * (c - z)) (IM.filter (/= 0) (IM.unionWith (+) (IM.map ((1 - t) *) weights) (IM.map (t *) other)))
 
 -- | Export only after checking the material and the orientation on which
 -- ClosedCrease's FOLD order signs depend. This is still a diagnostic export;

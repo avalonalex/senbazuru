@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Let paper touch without passing through · Senbazuru</title>
+<style>
+:root{font:16px/1.6 system-ui,sans-serif;color:#292d28;background:#f4efe7;color-scheme:light}body{max-width:1180px;margin:auto;padding:32px 24px 60px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15;max-width:950px}h2{font-size:1.4rem}p{max-width:960px}a{color:#385e50;text-underline-offset:3px}small{letter-spacing:.12em}section{background:#fffaf2;border:1px solid #d8cebd;border-radius:8px;padding:24px;margin:28px 0}.plots{display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0}img{width:100%;height:auto}figcaption{font-size:.9rem}.note{border-left:3px solid #92744b;padding-left:14px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #dfd5c6;vertical-align:top}select{font:inherit;max-width:100%;padding:8px}.controls{display:flex;gap:24px;flex-wrap:wrap}.status{background:#e8eee4;border-left:3px solid #496d51;padding:14px}.status.failed{background:#f8e7dd;border-color:#a74622}iframe{width:100%;height:760px;border:0}summary{cursor:pointer}#missing{padding:35px 12px;background:#f4efe7}#downloads a{white-space:nowrap}@media(max-width:700px){.plots{grid-template-columns:1fr}section{padding:14px}td,th{padding:8px}}
+</style>
+<header><small>SENBAZURU · MATERIAL STUDY / #220</small>
+<h1>Let paper touch without passing through</h1>
+<p>The same small crease now settles with no negative lower/upper gap in its stored coordinates. Lengths and crease angles still pass their original checks. Here we compare a finite cost for penetration with a constraint that requires the upper paper to stay above or touch its fixed partner.</p>
+<p><a href="crease-correction.html">The penalty experiment</a> · <a href="closed-crease.html">Known crease shapes</a> · <a href="index.html">All fold examples</a> · <a href="crease-inequality/checks.json">Measurements and solver diagnostics</a></p></header>
+<section><h2>One sheet, the same holds</h2>
+<p>The lower panel keeps its bent shape. The outer quarter of the upper panel is held against it, and both panels share the crease vertices. The remaining upper vertices can move in three dimensions. Bending prefers flat panels; the crease angle prefers 180°. No thickness or display separation is added.</p>
+<div class="controls"><label>Starting condition <select id="control"></select></label><label>Mesh <select id="resolution"><option value="1">32 triangles</option><option value="2">64 triangles</option></select></label></div>
+<p id="description"></p><p id="verdict" class="status" aria-live="polite"></p>
+<div class="plots"><figure><h3>Finite contact penalty</h3><img id="penalty" alt="Negative gaps remaining after the penalty solve, magnified"><figcaption id="penalty-caption"></figcaption></figure>
+<figure><h3>Nonnegative-gap constraint</h3><img id="constrained" alt="Negative gaps remaining after the constrained solve"><p id="missing" hidden></p><figcaption id="constrained-caption"></figcaption></figure></div>
+<p class="note">Only penetration is drawn: the upper paper lying below the lower panel. Vertical scales are enlarged independently. An empty plot means no negative gap, not that the entire sheet is touching. Every upper triangle contributes across the paper’s full width.</p>
+<p id="geometry"></p>
+<div class="table-wrap"><table><thead id="measurement-head"></thead><tbody id="details"></tbody></table></div>
+<p id="repair"></p><p id="solver"></p><p id="downloads"></p>
+<p class="note">The starting repair and solver iterations are numerical guesses, not folding steps. Intermediate guesses can strain the sheet. “Passed” describes the final static endpoint; no continuous motion is certified here.</p>
+</section>
+<section><h2>What changes across the controls?</h2>
+<div class="table-wrap"><table><thead><tr><th>Starting condition</th><th>Penalty minimum gap</th><th>Constrained minimum gap</th><th>Constrained endpoint</th></tr></thead><tbody id="comparison"></tbody></table></div>
+<p>The three compatible starts pass at both resolutions. An upper row held below the lower panel is refused before solving. The no-contact run remains a baseline control; the new method always enforces contact.</p>
+<p>A constrained pass requires solver convergence, relative edge-length error ≤ 1e-5, unchanged holds, crease error ≤ 1e-5 radians, the existing whole-sheet contact check, and an exact minimum lower/upper gap ≥ 0. The whole-sheet check keeps its 1e-7 distance tolerance. Exact fractions describe the stored coordinates, not uncertain physical paper measurements.</p>
+<details><summary>How does the constraint work?</summary><p>Clipping an upper triangle over the fixed lower panel gives small overlap polygons. The height difference is linear within each piece, so checking every corner bounds the entire piece. Each corner retains its weights on the upper vertices. The material solver uses those weights to constrain its next move. A separated contact supplies no pulling force.</p><p>A proposed move can change the overlaps. We clip again and, if needed, raise all free upper vertices by the smallest common height that removes negative gaps. Heights round toward the permitted side. The line search measures material energy after this repair; it accepts only a decrease. The initial repair is reported separately, and the JSON records every accepted repair.</p><p>This is a controlled experiment with a fixed lower panel and a known layer order. Moving both panels, discovering contact between arbitrary folds, and showing a physically possible route still need further work.</p></details>
+</section>
+<section><h2>Inspect the complete sheet</h2>
+<p>Choose the original guess, penalty endpoint, feasible starting guess or constrained endpoint. All triangles remain in the export. Rounded 3D coordinates can hide tiny residuals, and touching surfaces can flicker; use the measurements and FOLD files to inspect the actual gaps.</p>
+<label>Show <select id="stage"></select></label>
+<iframe id="viewer" title="Complete crease contact comparison mesh" loading="lazy"></iframe>
+</section>
+<script>
+const data=/*INEQUALITY_DATA*/null;
+const el=id=>document.getElementById(id),number=x=>x===0?'0':x.toExponential(3);
+const descriptions={touching:'Both bent panels start in exact contact. The penalty can introduce penetration even from this valid starting geometry.',penetrating:'Free upper vertices start up to 0.002 sheet lengths below the lower panel. Both methods use the same material and holds.','without-contact':'The identical penetrating guess with penalty contact forces disabled. This is a baseline-only control.',tiny:'A penetration of 2e-8 sheet lengths starts below the existing contact tolerance. The exact gap still detects it.',conflicting:'An extra upper row is held 0.002 sheet lengths below the fixed lower panel. These holds contradict the requested order.'};
+for(const r of data.runs.filter(r=>r.subdivision===1)){const option=document.createElement('option');option.value=r.control;option.textContent=r.title;el('control').append(option);}
+el('control').value='penetrating';
+function row(body,values,header=false){const tr=document.createElement('tr');for(const value of values){const td=document.createElement(header?'th':'td');td.textContent=value;tr.append(td);}body.append(tr);}
+function current(){return data.runs.find(r=>r.subdivision===Number(el('resolution').value)&&r.control===el('control').value);}
+function model(){el('viewer').src=`crease-inequality/index.html?model=${current().id}-${el('stage').value}.glb&angle=profile`;}
+function update(){const r=current(),c=r.constrained,m=r.measurements;el('description').textContent=descriptions[r.control];
+el('verdict').classList.toggle('failed',!r.constrainedPassed);el('verdict').textContent=r.constrainedPassed?'Passed: nonnegative stored gaps, material lengths, crease angles, holds and whole-sheet contact.':r.refusal?`Refused: ${r.refusal}`:c?'The constrained endpoint did not pass every check.':'Baseline only: contact forces are deliberately disabled.';
+el('penalty').src=`crease-inequality/${r.id}-penalty-gap.svg`;el('penalty-caption').textContent=`Minimum gap ${number(m.penalty.minGap.value)} sheet lengths. ${r.baselineWithinTolerances?'Within numerical tolerances; exact order fails.':'Fails the endpoint checks.'}`;
+el('constrained').hidden=!c;el('missing').hidden=!!c;if(c){el('constrained').src=`crease-inequality/${r.id}-constrained-gap.svg`;el('constrained-caption').textContent=`Minimum gap ${number(m.constrained.minGap.value)} sheet lengths. ${r.constrainedPassed?'No negative gap.':''}`;}else{el('missing').textContent=r.refusal?'No constrained endpoint: the holds are incompatible.':'No constrained run for this control.';el('constrained-caption').textContent='';}
+el('geometry').textContent=`${r.components} connected sheet · ${r.vertices} vertices · ${r.sharedCreaseVertices.length} shared crease vertices · ${r.heldVertices.length} held vertices.`;
+el('measurement-head').replaceChildren();row(el('measurement-head'),['Measurement',...r.stages.map(s=>s.label)],true);el('details').replaceChildren();
+for(const [label,get] of [['Minimum gap (sheet lengths)',v=>number(v.minGap.value)],['Largest relative length error',v=>number(v.maxRelativeEdgeError)],['Largest crease error (radians)',v=>number(v.maxCreaseErrorRadians)],['Largest held-position error',v=>number(v.heldPositionError)],['Whole-sheet contact within tolerance',v=>v.contact.passed?'Yes':'No']])row(el('details'),[label,...r.stages.map(s=>get(m[s.id]))]);
+el('repair').textContent=c?`Initial repair: a common lift of ${number(c.initialLift)} sheet lengths on free upper vertices; maximum extra height from directed rounding ${number(c.initialRoundingLift)}. This is the smallest uniform lift, not a nearest-point or physical-motion solution.`:'';
+el('solver').textContent=c?`${r.baselineIterations} penalty iterations; ${c.iterations} constrained iterations. Every recorded constrained iterate has a nonnegative exact gap. Convergence also requires a verified force balance and a full repaired step no larger than 1e-7 sheet lengths.`:`Penalty solver: ${r.baselineConverged?'converged':'not converged'} after ${r.baselineIterations} iterations.`;
+el('downloads').replaceChildren();el('stage').replaceChildren();for(const s of r.stages){const a=document.createElement('a');a.href=`crease-inequality/${r.id}-${s.id}.fold`;a.textContent=s.label+' FOLD';if(el('downloads').childNodes.length)el('downloads').append(' · ');el('downloads').append(a);const option=document.createElement('option');option.value=s.id;option.textContent=s.label;el('stage').append(option);}el('stage').value=c?'constrained':'penalty';
+el('comparison').replaceChildren();for(const s of data.runs.filter(s=>s.subdivision===r.subdivision))row(el('comparison'),[s.title,number(s.measurements.penalty.minGap.value),s.constrained?number(s.measurements.constrained.minGap.value):'—',s.constrainedPassed?'Passed':s.refusal?'Refused':s.constrained?'Failed checks':'Baseline only']);model();}
+el('control').addEventListener('change',update);el('resolution').addEventListener('change',update);el('stage').addEventListener('change',model);update();
+</script>
+</html>
