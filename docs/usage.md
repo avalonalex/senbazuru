@@ -646,6 +646,36 @@ material positions still change with refinement. This requires known order
 along z and both panels to remain height graphs over xy; it does not check
 a continuous motion. See [the two-panel finding](notes/coupled-crease-contact.md).
 
+### Giving crease panels unequal controls
+
+```bash
+stack run senbazuru-material-study -- --unequal-crease build/fold-material
+```
+
+Open [unequal panel controls](http://127.0.0.1:8000/unequal-crease.html).
+Compare matched holds, an opened upper grip, an upper bend preference, the
+same preference with contact disabled, and incompatible held rows at 32 and
+64 triangles. A narrow strip beside the crease and each outer edge stay
+held in every case, keeping the crease closed while both interiors respond.
+
+The side drawing projects three material rows from each panel onto x/z with
+equal axis scales. The gap plot magnifies all triangle-overlap corner gaps:
+positive is separation, negative is crossing. Its scale stays fixed across
+the stages of a control. These marks cover the width but do not measure
+contact area. The response table compares matching material points with the
+matched-holds endpoint; a separate comparison switches only contact on/off.
+
+The `unequal-crease/` directory retains original, numerical-start and endpoint
+FOLDs/GLBs plus plots and `checks.json`. A refused control has only its original
+guess. The contact-off endpoint remains diagnostic even if its material solve
+converges. Its starting guess is unchanged because that mode also disables
+contact repairs. The 3D iframe reuses `checked-flap/node_modules`; exact gaps
+refer to stored FOLD coordinates, not rounded GLB display positions.
+
+These static checks preserve the original material, crease and contact
+tolerances. They assume known order along z, and do not certify the flexible
+path or establish mesh independence. See [the finding](notes/unequal-crease-controls.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

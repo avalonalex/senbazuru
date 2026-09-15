@@ -52,6 +52,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.Environment (getArgs)
 import System.Exit (die)
 import System.FilePath ((</>))
+import UnequalCreaseGallery (writeUnequalCrease)
 import WingBendingGallery (writeWingBending)
 import WingLayersGallery (writeWingLayers)
 
@@ -67,6 +68,7 @@ main = do
     ["--bird-svg", destination] -> writeBirdSequence destination
     ["--basic-bases", destination] -> writeBasicBases destination
     ["--petal", destination] -> writePetalGallery destination
+    ["--unequal-crease", destination] -> writeUnequalCrease destination
     ["--coupled-crease", destination] -> writeCoupledCrease destination
     ["--crease-inequality", destination] -> writeCreaseInequality destination
     ["--crease-correction", destination] -> writeCreaseCorrection destination
@@ -84,7 +86,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
@@ -117,6 +119,7 @@ generate destination = do
   writeClosedCrease destination
   writeCreaseCorrection destination
   writeCreaseInequality destination
+  writeUnequalCrease destination
   writeCoupledCrease destination
   writeWingLayers destination
   writeWingBending destination

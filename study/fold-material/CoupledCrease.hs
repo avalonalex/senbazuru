@@ -11,11 +11,13 @@
 -- explicit numerical policy, not physical thickness or a prescribed motion.
 module CoupledCrease
   ( CoupledControl (..),
+    PairContactMode (..),
     CoupledFixture (..),
     coupledCrease,
     checkCoupledMaterial,
     repairCoupled,
     solveCoupled,
+    solveCoupledWith,
     coupledSurface,
   )
 where
@@ -36,6 +38,10 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
 
 data CoupledControl = BothTouching | BothPenetrating | BothTiny | IncompatibleHolds deriving stock (Eq, Show, Enum, Bounded)
+
+-- | Turning contact off is a diagnostic comparison, never an accepted order.
+-- It retains the same material equations, holds and endpoint measurements.
+data PairContactMode = EnforcePairOrder | WithoutPairContact deriving stock (Eq, Show)
 
 data CoupledFixture = CoupledFixture
   { coupledReference :: !ClosedCrease,
@@ -92,9 +98,12 @@ repairCoupled fixture mesh = do
   pure (FeasibleRepair result amount (maximum (0 : map snd moved)))
 
 solveCoupled :: Settings -> CoupledFixture -> Either InequalityError InequalityResult
-solveCoupled settings fixture = do
+solveCoupled = solveCoupledWith EnforcePairOrder
+
+solveCoupledWith :: PairContactMode -> Settings -> CoupledFixture -> Either InequalityError InequalityResult
+solveCoupledWith mode settings fixture = do
   unless (iterationLimit settings > 0 && finite (lengthTolerance settings) && lengthTolerance settings > 0) (Left (InequalityError "coupled correction needs positive finite settings"))
-  initial <- repairCoupled fixture (coupledSeed fixture)
+  initial <- feasible (coupledSeed fixture)
   (mesh, history, settled) <- foldM stage (repairedMesh initial, [], False) [1e2, 1e4, 1e6, 1e8]
   pure (InequalityResult initial mesh history settled)
   where
@@ -104,6 +113,12 @@ solveCoupled settings fixture = do
     ids = [i | (i, _) <- zip [0 ..] (samples (coupledSeed fixture)), free i]
     signs = IM.fromList [(i, toRational (outward p)) | (i, p) <- zip [0 ..] (samples (coupledSeed fixture)), free i]
     rows = materialRows (closedHinges reference) pins
+    feasible mesh = case mode of
+      EnforcePairOrder -> repairCoupled fixture mesh
+      WithoutPairContact -> do
+        checkCoupledMaterial fixture mesh
+        _ <- adapt (auditPairContact (closedOwners reference) mesh)
+        pure (FeasibleRepair mesh 0 0)
     energy weight mesh = do
       measured <- rows weight mesh
       let value = sum [r * r | (_, r) <- measured]
@@ -117,7 +132,8 @@ solveCoupled settings fixture = do
           gaps <- adapt (auditPairContact (closedOwners reference) mesh)
           let constraints =
                 [ (IM.map (\w -> fromRational (w / movable) *^ V3 (fromRational x) (fromRational y) (fromRational z)) weights, fromRational (pairGap witness / movable))
-                  | witness <- pairWitnesses gaps,
+                  | mode == EnforcePairOrder,
+                    witness <- pairWitnesses gaps,
                     let weights = IM.filterWithKey (\i _ -> free i) (pairWeights witness),
                     let movable = sum (IM.intersectionWith (*) signs weights),
                     movable > 0,
@@ -126,7 +142,7 @@ solveCoupled settings fixture = do
           (direction, quadratic) <- adapt (constrainedStep 2000 1e-3 ids material constraints)
           before <- energy weight mesh
           let candidate scale = mesh {samples = [p {position = position p ^+^ (scale *^ IM.findWithDefault (V3 0 0 0) i direction)} | (i, p) <- zip [0 ..] (samples mesh)]}
-              repair scale = repairCoupled fixture (candidate scale)
+              repair scale = feasible (candidate scale)
           full <- repair 1
           let movement = maximum (0 : [norm (position a ^-^ position b) | (a, b) <- zip (samples mesh) (samples (repairedMesh full))])
               settled = quadraticConverged quadratic && movement <= 1e-7 && (weight < 1e8 || maxLengthError mesh <= lengthTolerance settings)

@@ -90,11 +90,10 @@ shape or calibrated paper stiffness. Exact clipping supplies both constraints
 and repair; prescribed-profile tests and the separate whole-sheet contact
 checker provide additional verification.
 
-Next, break symmetry on this same small crease, for example with different
-outer holds or bending preferences. That should exercise separation and how
-one panel's movement affects the other before enlarging the crane body patch.
-This implementation assumes a known lower/upper order along z and triangles
-that remain height graphs over xy: each projected point has one height in
-each triangle, with the original facing direction retained. General contact
-discovery and a certificate
-for continuous flexible motion remain separate work.
+The [unequal-control follow-up](unequal-crease-controls.md) changes an upper
+grip or bend preference with narrow strips beside the crease held. It shows
+both separation and contact changing the lower panel, but the coarse and fine
+contact patterns differ. Further refinement is needed before returning to the
+crane body patch. Both experiments assume known order along z and triangles
+that retain their original facing directions. General contact discovery and a
+certificate for continuous flexible motion remain separate work.

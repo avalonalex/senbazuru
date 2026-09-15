@@ -76,6 +76,15 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --unequal-crease build/fold-material`
+writes `unequal-crease.html`: an upper grip or bend preference differs from
+its partner, with a held strip beside the crease keeping it closed. Side
+drawings, magnified exact gaps and matching-material comparisons distinguish
+separation from contact changing the other panel. Contact-off and impossible
+holds remain explicit diagnostics. See
+[usage](../../docs/usage.md#giving-crease-panels-unequal-controls) and
+[the finding](../../docs/notes/unequal-crease-controls.md).
+
 `stack run senbazuru-material-study -- --coupled-crease build/fold-material`
 writes `coupled-crease.html`: both interiors bend while the shared crease and
 outer strips stay held. Touching and two penetrating starts pass at two

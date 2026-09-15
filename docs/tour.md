@@ -649,8 +649,16 @@ uses both current triangle surfaces, and a symmetric repair moves free upper
 and lower vertices apart. All six compatible endpoints pass the same material
 and contact checks, with both interiors measurably moving. Equal holds and
 material preferences leave the layers almost coincident without welding them;
-refinement still changes their positions. Different holds or preferences are
-the next small test before returning to the crane body.
+refinement still changes their positions.
+
+The [unequal-control comparison](notes/unequal-crease-controls.md) then holds
+narrow strips beside the crease to keep its orientation fixed. Opening only
+the upper grip separates the layers without appreciably changing the lower
+shape. An upper bend preference instead changes the lower through contact;
+switching contact off restores its reference response but permits crossing.
+All six contact-enabled endpoints pass the unchanged checks. The preferred-bend
+case is nearly touching on the coarse mesh and visibly separated on the fine
+one, so contact shape needs further refinement before enlarging the body patch.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
