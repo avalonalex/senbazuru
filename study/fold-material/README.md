@@ -76,6 +76,15 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --coupled-crease build/fold-material`
+writes `coupled-crease.html`: both interiors bend while the shared crease and
+outer strips stay held. Touching and two penetrating starts pass at two
+resolutions; incompatible held rows are refused. The old fixed-lower solver
+remains a baseline. Shared-scale displacement plots, complete FOLDs/GLBs and
+per-step measurements show both panels moving and the remaining refinement
+difference. See [usage](../../docs/usage.md#bending-both-crease-panels) and
+[the two-panel finding](../../docs/notes/coupled-crease-contact.md).
+
 `stack run senbazuru-material-study -- --crease-inequality build/fold-material`
 writes `crease-inequality.html`: the same two-resolution controls compare the
 penalty baseline with explicit nonnegative gaps. Six constrained endpoints

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Let both panels bend · Senbazuru</title>
+<style>
+:root{font:16px/1.6 system-ui,sans-serif;color:#292d28;background:#f4efe7;color-scheme:light}body{max-width:1180px;margin:auto;padding:32px 24px 60px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15;max-width:950px}h2{font-size:1.4rem}p{max-width:960px}a{color:#385e50;text-underline-offset:3px}small{letter-spacing:.12em}section{background:#fffaf2;border:1px solid #d8cebd;border-radius:8px;padding:24px;margin:28px 0}.plots{display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0}img{width:100%;height:auto}figcaption{font-size:.9rem}.note{border-left:3px solid #92744b;padding-left:14px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #dfd5c6;vertical-align:top}select{font:inherit;max-width:100%;padding:8px}.controls{display:flex;gap:24px;flex-wrap:wrap}.status{background:#e8eee4;border-left:3px solid #496d51;padding:14px}.status.failed{background:#f8e7dd;border-color:#a74622}iframe{width:100%;height:760px;border:0}summary{cursor:pointer}#missing{padding:35px 12px;background:#f4efe7}#downloads a{white-space:nowrap}@media(max-width:700px){.plots{grid-template-columns:1fr}section{padding:14px}td,th{padding:8px}}
+</style>
+<header><small>SENBAZURU · MATERIAL STUDY / #222</small>
+<h1>Let both panels bend</h1>
+<p>Two touching halves of one sheet can now settle together. The shared crease and both outer strips stay held; both interiors are free. Contact is measured against their current triangles, so the lower panel no longer acts as a fixed surface.</p>
+<p><a href="crease-inequality.html">The fixed lower panel</a> · <a href="closed-crease.html">Known crease shapes</a> · <a href="index.html">All fold examples</a> · <a href="coupled-crease/checks.json">All measurements and solver diagnostics</a></p></header>
+<section><h2>Both interiors move; the sheet stays joined</h2>
+<p>The material and holds are symmetric between the two halves. They are free to separate: touching vertices on different layers are distinct, with no equations welding them together. Only the three vertices on the real crease are shared. These symmetric controls settle to almost coincident surfaces.</p>
+<div class="controls"><label>Control <select id="control"></select></label><label>Mesh <select id="resolution"><option value="1">32 triangles</option><option value="2">64 triangles</option></select></label><label>Show <select id="stage"></select></label></div>
+<p id="description"></p><p id="verdict" class="status" aria-live="polite"></p>
+<p id="shown"></p>
+<div class="plots"><figure><h3>Lower panel displacement</h3><img id="lower" alt="Lower panel displacement from the original bent reference"><figcaption id="lower-caption"></figcaption></figure>
+<figure><h3>Upper panel displacement</h3><img id="upper" alt="Upper panel displacement from the original bent reference"><figcaption id="upper-caption"></figcaption></figure></div>
+<p class="note">These are magnified movement measurements, not side profiles of the paper. Height on the graph is the full 3D distance from the unperturbed bent reference. The three curves follow the two outside edges and middle row. Both plots and every stage of a control share one scale.</p>
+<p id="geometry"></p><p id="repair"></p>
+<div class="table-wrap"><table><thead><tr><th>Measurement</th><th>Shown stage</th></tr></thead><tbody id="details"></tbody></table></div>
+<p><a id="fold">Shown FOLD</a> · <a id="glb">Complete-sheet GLB</a></p>
+<p class="note">The initial repair and solver iterations are numerical corrections. Some strain the sheet and are not physical folding states. The final static checks do not certify a continuous folding route.</p>
+</section>
+<section><h2>Compare the endpoints</h2>
+<div class="table-wrap"><table><thead><tr><th>Control</th><th>Lower movement</th><th>Upper movement</th><th>Minimum gap</th><th>Length error</th><th>Result</th></tr></thead><tbody id="comparison"></tbody></table></div>
+<p id="refinement"></p>
+<p>“Passed” requires convergence, relative edge-length error ≤ 1e-5, unchanged holds and material, crease error ≤ 1e-5 radians, the whole-sheet contact check at its existing 1e-7 distance tolerance, and nonnegative exact lower/upper gaps. Matching material positions still change with refinement: two resolutions do not establish a final, mesh-independent shape.</p>
+<details><summary>How can both sides move without crossing?</summary><p>Every overlap between a lower and upper triangle is checked at its corners, using exact fractions of the stored coordinates. The contact derivative includes both surfaces and the movement of the overlap corner itself. A shared crease vertex has one identity, so its contributions cancel instead of tearing the connection.</p><p>After a proposed step, the overlaps are measured again. If any gap is negative, the repair moves free upper vertices upward and free lower vertices downward by the same smallest common amount. Held vertices stay fixed, and rounding goes outward on each side. The material energy is measured after repair, and the stored mesh must have no negative gap.</p><p>This repair is an explicit numerical choice, not paper thickness or a physical deformation law. The fixed-lower baseline uses the earlier one-sided repair. Both approaches retain the original material objective and acceptance tolerances. Arbitrary folding directions, changing layer orders and a general crane-body opening remain outside this small experiment.</p></details>
+</section>
+<section><h2>Inspect the actual paper</h2>
+<p id="model-label"></p><p>All triangles are retained, with no display separation. Touching layers can flicker in the rounded GLB; use the FOLD coordinates and exact gap measurements for the microscopic contact.</p>
+<iframe id="viewer" title="Both panels bending on one connected sheet"></iframe>
+</section>
+<script>
+const data=/*COUPLED_DATA*/null;
+const el=id=>document.getElementById(id),number=x=>x===0?'0':x.toExponential(3);
+const descriptions={fixed:'Earlier baseline: the whole lower panel stays fixed. Only the upper interior settles from its penetrating guess.',touching:'Both bent panels start in exact contact. Their interiors can move independently in x, y and z.',penetrating:'Both free interiors start perturbed inward by up to 0.001 sheet lengths each, giving a relative penetration of 0.002.',tiny:'Each side starts up to 1e-8 sheet lengths inward. The 2e-8 relative penetration is below the ordinary contact tolerance but remains visible to the exact check.',conflicting:'One additional interior row on each panel is held through its partner. Moving other vertices cannot satisfy those contradictory holds.'};
+for(const r of data.runs.filter(r=>r.subdivision===1)){const o=document.createElement('option');o.value=r.control;o.textContent=r.title;el('control').append(o);}el('control').value='touching';
+function current(){return data.runs.find(r=>r.control===el('control').value&&r.subdivision===Number(el('resolution').value));}
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+function showStage(){const r=current(),stage=el('stage').value,m=r.measurements[stage],label=r.stages.find(s=>s.id===stage).label;el('shown').textContent='Shown: '+label+'.';
+for(const side of ['lower','upper']){el(side).src=`coupled-crease/${r.id}-${stage}-${side}.svg`;el(side+'-caption').textContent=`Maximum ${side} movement: ${number(m[side+'Movement'])} sheet lengths.`;}
+el('details').replaceChildren();for(const [label,value] of [['Minimum exact gap (sheet lengths)',number(m.minGap.value)],['Maximum gap (sheet lengths)',number(m.maxGap.value)],['Largest relative edge-length error',number(m.maxRelativeEdgeError)],['Largest crease error (radians)',number(m.maxCreaseErrorRadians)],['Held-position error',number(m.heldPositionError)],['Whole-sheet contact within tolerance',m.contact.passed?'Yes':'No']])row(el('details'),[label,value]);
+el('fold').href=`coupled-crease/${r.id}-${stage}.fold`;el('glb').href=`coupled-crease/${r.id}-${stage}.glb`;el('model-label').textContent=r.title+' · '+label+' · '+r.triangles+' triangles.';el('viewer').src=`coupled-crease/index.html?model=${r.id}-${stage}.glb&angle=corner`;}
+function update(){const r=current();el('description').textContent=descriptions[r.control];el('verdict').classList.toggle('failed',!r.passed);el('verdict').textContent=r.passed?'Solve endpoint passed: lengths, angles, holds, whole-sheet contact and exact nonnegative gaps.':r.refusal?'Refused: '+r.refusal:'The numerical result did not pass every endpoint check.';
+el('geometry').textContent=`${r.components} connected sheet · ${r.vertices} vertices · ${r.sharedCreaseVertices.length} shared crease vertices · ${r.heldVertices.length} held vertices${r.solve?' · '+r.solve.iterations+' solver iterations':''}.`;
+el('repair').textContent=r.solve?`Initial repair: ${number(r.solve.initialLift)} sheet lengths ${r.control==='fixed'?'upward on free upper vertices':'outward on each free side'}. Maximum extra height from rounding: ${number(r.solve.initialRoundingLift)}. Every recorded iterate keeps nonnegative exact gaps.`:'No repaired or solved endpoint is exported for this refusal.';
+el('stage').replaceChildren();for(const s of r.stages){const o=document.createElement('option');o.value=s.id;o.textContent=s.label;el('stage').append(o);}el('stage').value=r.solve?'after':'before';
+el('comparison').replaceChildren();for(const s of data.runs.filter(s=>s.subdivision===r.subdivision)){const m=s.measurements.after;row(el('comparison'),[s.title,...(m?[number(m.lowerMovement),number(m.upperMovement),number(m.minGap.value),number(m.maxRelativeEdgeError)]:['—','—','—','—']),s.passed?'Passed':s.refusal?'Refused':'Failed checks']);}
+const fine=data.refinement.find(s=>s.control===r.control);el('refinement').textContent=fine?`Refinement from 32 to 64 triangles changes matching material positions by up to ${number(fine.maxMatchingPositionChange)} sheet lengths for this control.`:'This control has no settled shape to compare across resolutions.';showStage();}
+el('control').addEventListener('change',update);el('resolution').addEventListener('change',update);el('stage').addEventListener('change',showStage);update();
+</script>
+</html>

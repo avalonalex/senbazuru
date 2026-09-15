@@ -100,10 +100,10 @@ analytic force balances, release and redundant constraints, budget exhaustion,
 outward rounding, exact repairs, invalid holds and both mesh resolutions.
 The older penalty regressions remain unchanged.
 
-This succeeds because the lower geometry and order are fixed. The next
-bounded experiment should let both panels move while retaining explicit
-holds and their known order, first on this small sheet. The present uniform
-vertical repair cannot be reused unchanged when both sides bend. Compare a
-symmetric touching control and an incompatible hold before returning to the
-crane body. General contact discovery, calibrated paper mechanics and a
-certificate for continuous flexible motion remain separate work.
+This succeeds because the lower geometry and order are fixed. The
+[two-panel follow-up](coupled-crease-contact.md) releases both interiors with
+explicit holds and known order. It measures both current triangle surfaces
+and repairs them in opposite directions, passing symmetric touching controls
+and refusing incompatible holds. Asymmetric bending, general contact discovery,
+calibrated paper mechanics and a certificate for continuous flexible motion
+remain separate work.

@@ -311,6 +311,16 @@ repair. `CreaseInequalityGallery` compares the unchanged penalty baseline,
 initial repairs and constrained endpoints. [The constraint note](notes/nonnegative-crease-contact.md)
 records why both methods need full endpoint checks and why this fixed-panel
 experiment does not yet handle general moving contact.
+`CreasePairContact` measures exact directional gaps between both current
+triangle surfaces, retaining the derivatives of moving overlap corners.
+`CoupledCrease` releases both interiors beside the held shared crease and
+repairs penetration by moving them apart. It reuses `ContactQuadratic` and
+the material rows extracted from `CreaseInequality`; the fixed-panel solver
+keeps its original equations. `CoupledCreaseGallery` compares both panels'
+displacements, independent endpoint checks and mesh refinement, reusing the
+constrained-step report. [The two-panel note](notes/coupled-crease-contact.md)
+records the symmetric controls and the known-order restriction. These remain
+study modules; no production surface or material solver changes.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own
