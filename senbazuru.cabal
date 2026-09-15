@@ -33,6 +33,7 @@ extra-source-files:
   study/fold-material/frog-instructions.html
   study/fold-material/flap.html
   study/fold-material/petal.html
+  study/fold-material/coupled-crease.html
   study/fold-material/crease-inequality.html
   study/fold-material/crease-correction.html
   study/fold-material/closed-crease.html
@@ -174,7 +175,7 @@ executable senbazuru-material-study
   import:         warnings
   hs-source-dirs: study/fold-material
   main-is:       Main.hs
-  other-modules: CreaseInequalityGallery, CreaseInequality, ContactQuadratic, CreaseCorrectionGallery, CreaseCorrection, ClosedCreaseGallery, ClosedCrease, CraneInternalGallery, CraneInternal, CraneBodyGallery, CraneBody, CranePocketGallery, CranePocket, CraneRootGallery, CraneRoot, CraneSpreadGallery, CraneSpread, SparseSolve, WingLayersGallery, WingLayers, WingBendingGallery, WingBending, UncreasedSurface, CraneGallery, CraneWing, HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
+  other-modules: CoupledCreaseGallery, CoupledCrease, CreasePairContact, CreaseInequalityGallery, CreaseInequality, ContactQuadratic, CreaseCorrectionGallery, CreaseCorrection, ClosedCreaseGallery, ClosedCrease, CraneInternalGallery, CraneInternal, CraneBodyGallery, CraneBody, CranePocketGallery, CranePocket, CraneRootGallery, CraneRoot, CraneSpreadGallery, CraneSpread, SparseSolve, WingLayersGallery, WingLayers, WingBendingGallery, WingBending, UncreasedSurface, CraneGallery, CraneWing, HelmetGallery, HelmetSequence, PetalGallery, CheckedPetal, CheckedBird, PetalCertificate, BlintzGallery, BlintzSequence, FlapGallery, FlapExample, DirectionalDistance, CorrectionExample, CorrectionSweep, LocalContactDiscovery, SelfContactExample, ContactDiscovery, ContactExample, SurfaceContact, BendingGallery, FoldBending, FoldMaterial, FoldRelaxation, FoldContact, StudyCase, ContactSpec, BasicBases, BasicBaseGallery
   build-depends:
     , base
     , aeson
@@ -191,6 +192,10 @@ test-suite senbazuru-test
   hs-source-dirs:     test, study/fold-material
   main-is:            Spec.hs
   other-modules:
+    CoupledCrease
+    CoupledCreaseSpec
+    CreasePairContact
+    CreasePairContactSpec
     CreaseInequality
     CreaseInequalitySpec
     ContactQuadraticSpec

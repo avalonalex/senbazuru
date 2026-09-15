@@ -641,7 +641,16 @@ angle/contact checks. A reported uniform lift repairs the initial guess and
 any proposed step that would penetrate; energy is tested after that repair.
 The impossible hold is refused before solving. This succeeds on the fixed
 lower reference, without adding thickness, and still does not certify a
-flexible folding motion or solve two freely bending partners.
+flexible folding motion.
+
+The [two-panel follow-up](notes/coupled-crease-contact.md) releases both
+interiors while holding the shared crease and both outer strips. Contact now
+uses both current triangle surfaces, and a symmetric repair moves free upper
+and lower vertices apart. All six compatible endpoints pass the same material
+and contact checks, with both interiors measurably moving. Equal holds and
+material preferences leave the layers almost coincident without welding them;
+refinement still changes their positions. Different holds or preferences are
+the next small test before returning to the crane body.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

@@ -22,6 +22,7 @@ module CreaseInequality
     restoreFeasible,
     solveInequality,
     ceilingDouble,
+    materialRows,
   )
 where
 
@@ -129,19 +130,7 @@ solveInequality settings fixture = do
     pins = correctionPins fixture
     free i = IM.notMember i pins
     ids = [i | (i, p) <- zip [0 ..] (samples (correctionSeed fixture)), free i, materialU p < 0]
-    rows weight mesh = do
-      let points = IM.fromList (zip [0 ..] (samples mesh))
-          vertex i = maybe (Left (InequalityError ("material edge lost vertex " <> tshow i))) Right (IM.lookup i points)
-      lengths <- forM (meshEdges mesh) $ \(a, b) -> do
-        p <- vertex a
-        q <- vertex b
-        let delta = position q ^-^ position p
-            actual = norm delta
-            rest = sqrt ((materialU q - materialU p) ^ (2 :: Int) + (materialV q - materialV p) ^ (2 :: Int))
-        unless (finite actual && actual > 0) (Left (InequalityError "a constrained correction collapsed a material edge"))
-        pure ([(a, ((-sqrt weight) / actual) *^ delta), (b, (sqrt weight / actual) *^ delta)], sqrt weight * (actual - rest))
-      bends <- adapt (bendingRows (closedHinges reference) mesh)
-      pure [(IM.filterWithKey (\i _ -> free i) (IM.fromListWith (^+^) gradient), r) | (gradient, r) <- lengths ++ bends]
+    rows = materialRows (closedHinges reference) pins
     energy weight mesh = do
       measured <- rows weight mesh
       let value = sum [r * r | (_, r) <- measured]
@@ -180,6 +169,23 @@ solveInequality settings fixture = do
           let record = InequalityStep (length history + 1) weight quadratic movement scale (fromRational (commonLift fixed)) (maxRoundingLift fixed) before after (minimumGap gap) (maxLengthError next) accepted settled
               history' = history ++ [record]
           if settled || not accepted then pure (next, history', settled) else advance weight next history' (count + 1)
+
+-- | The same material objective for fixed and moving contact partners. Holds
+-- remove unknown coordinates from gradients, without dropping their costs.
+materialRows :: [Hinge] -> IM.IntMap V3 -> Double -> MaterialMesh -> Either InequalityError [QuadraticRow]
+materialRows hinges pins weight mesh = do
+  let points = IM.fromList (zip [0 ..] (samples mesh))
+      vertex i = maybe (Left (InequalityError ("material edge lost vertex " <> tshow i))) Right (IM.lookup i points)
+  lengths <- forM (meshEdges mesh) $ \(a, b) -> do
+    p <- vertex a
+    q <- vertex b
+    let delta = position q ^-^ position p
+        actual = norm delta
+        rest = sqrt ((materialU q - materialU p) ^ (2 :: Int) + (materialV q - materialV p) ^ (2 :: Int))
+    unless (finite actual && actual > 0) (Left (InequalityError "a constrained correction collapsed a material edge"))
+    pure ([(a, ((-sqrt weight) / actual) *^ delta), (b, (sqrt weight / actual) *^ delta)], sqrt weight * (actual - rest))
+  bends <- adapt (bendingRows hinges mesh)
+  pure [(IM.filterWithKey (\i _ -> IM.notMember i pins) (IM.fromListWith (^+^) gradient), r) | (gradient, r) <- lengths ++ bends]
 
 adapt :: (Explain e) => Either e a -> Either InequalityError a
 adapt = first (InequalityError . explain)

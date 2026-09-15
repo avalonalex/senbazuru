@@ -2,7 +2,7 @@
 -- the same small sheet. Reuse the baseline's measurements and plots, retain
 -- its failed controls, and publish the initial feasibility repair separately.
 -- Only checked static endpoints pass; solver iterates are not folding steps.
-module CreaseInequalityGallery (writeCreaseInequality) where
+module CreaseInequalityGallery (writeCreaseInequality, resultReport) where
 
 import ClosedCrease
 import ContactQuadratic

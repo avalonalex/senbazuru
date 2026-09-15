@@ -74,6 +74,7 @@ read the Haddock module headers; for the domain, start with
 | [body-angle-preferences.md](body-angle-preferences.md) | Matched body-angle controls separate material preferences from endpoint acceptance. |
 | [contact-correction-at-a-crease.md](contact-correction-at-a-crease.md) | Contact correction passes numerical checks while an independent exact gap retains penetration |
 | [nonnegative-crease-contact.md](nonnegative-crease-contact.md) | Constrained material steps and exact repairs remove the small crease’s penetration without adding thickness |
+| [coupled-crease-contact.md](coupled-crease-contact.md) | Both interiors bend beside one held crease; current triangle contacts preserve order, while symmetry and refinement limit the result |
 | [near-closed-crease.md](near-closed-crease.md) | Exact strip profiles separate contact tolerances from a false triangle crossing |
 | [internal-crease-diagnostic.md](internal-crease-diagnostic.md) | Holding shared crease lines improves convergence, but equilibrium, contact tolerance and valid paper remain separate checks |
 | [spreading-connected-wing.md](spreading-connected-wing.md) | A held curved wing on the existing crane preserves the body, material creases and tail order |

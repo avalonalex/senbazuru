@@ -617,6 +617,35 @@ Exact clipping is shared by the constraints and repair; prescribed-profile
 tests and the separate whole-sheet check provide additional verification.
 No continuous physical motion is checked. See [the finding](notes/nonnegative-crease-contact.md).
 
+### Bending both crease panels
+
+```bash
+stack run senbazuru-material-study -- --coupled-crease build/fold-material
+```
+
+Open [both panels bending](http://127.0.0.1:8000/coupled-crease.html). Only the
+shared crease and both outer strips stay held. Select touching, ordinary or
+tiny penetrating starts, an incompatible pair of held rows, or the unchanged
+fixed-lower baseline. Each runs at 32 and 64 triangles.
+
+Successful runs offer original, repaired-start and settled shapes; refusals
+retain only their original guess. Lower and upper displacement plots share
+one magnified scale across all stages of a run, measured from the unperturbed
+bent reference. The repair amount is per side, upward on the upper panel and
+downward on the lower. It is a numerical correction, not a folding step.
+
+The `coupled-crease/` directory contains 26 complete material FOLDs, 26 GLBs,
+52 movement SVGs and `checks.json` with per-step diagnostics and refinement
+measurements. The 3D iframe reuses `checked-flap/node_modules`. GLB rounding
+cannot verify microscopic gaps; use the FOLD coordinates and exact reports.
+
+All six compatible two-panel endpoints pass lengths, angles, holds, numerical
+whole-sheet contact and exact nonnegative lower/upper gaps. The symmetric
+conditions leave them almost coincident without welding them. Matching
+material positions still change with refinement. This requires known order
+along z and both panels to remain height graphs over xy; it does not check
+a continuous motion. See [the two-panel finding](notes/coupled-crease-contact.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base
