@@ -321,6 +321,16 @@ displacements, independent endpoint checks and mesh refinement, reusing the
 constrained-step report. [The two-panel note](notes/coupled-crease-contact.md)
 records the symmetric controls and the known-order restriction. These remain
 study modules; no production surface or material solver changes.
+`UnequalCrease` keeps the crease-adjacent strips and outer edges held while
+changing only an upper grip or adding explicit upper bend controls. The
+control strength is per material line length, so refinement does not double
+it. `solveCoupledWith` exposes a contact-off diagnostic with the same material
+equations and holds; `solveCoupled` still enforces order by default.
+`UnequalCreaseGallery` reuses the endpoint checks and matching-material
+refinement comparison, then compares each panel's response and exports
+side projections and magnified gap marks. The
+[unequal-control note](notes/unequal-crease-controls.md) explains why holding
+the crease orientation makes the contact-on/off comparison useful.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

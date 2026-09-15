@@ -3,7 +3,7 @@
 -- they are magnified measurements, not distorted 3D geometry. Refusals retain
 -- the original guess only. Every successful solve still gets separate static
 -- endpoint checks and a two-resolution comparison at matching material points.
-module CoupledCreaseGallery (writeCoupledCrease) where
+module CoupledCreaseGallery (writeCoupledCrease, measure, matching) where
 
 import ClosedCrease
 import Control.Exception (evaluate)

@@ -27,7 +27,8 @@ internal crease diagnostics in [#214](https://github.com/avalonalex/senbazuru/is
 the small closed-crease reference in [#216](https://github.com/avalonalex/senbazuru/issues/216),
 its contact-correction controls in [#218](https://github.com/avalonalex/senbazuru/issues/218),
 nonnegative-gap constraints in [#220](https://github.com/avalonalex/senbazuru/issues/220),
-and both bending crease panels in [#222](https://github.com/avalonalex/senbazuru/issues/222). The
+both bending crease panels in [#222](https://github.com/avalonalex/senbazuru/issues/222),
+and unequal controls in [#224](https://github.com/avalonalex/senbazuru/issues/224). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -39,7 +40,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,433 examples pass, including both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,439 examples pass, including unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -345,10 +346,16 @@ checked coupled angles.
    repairs preserve exact order; six symmetric endpoints pass and incompatible
    holds are refused. Both panels move, but matching material positions change
    by up to `0.001558` sheet lengths under refinement.
-   **Next: break symmetry on this small crease with different outer holds or
-   bending preferences. Exercise separation and how each panel affects its
-   partner before enlarging the crane body patch. The present equal conditions
-   leave both surfaces almost coincident without welding them.**
+   [#224](https://github.com/avalonalex/senbazuru/issues/224) now
+   [compares unequal upper controls](notes/unequal-crease-controls.md), holding
+   narrow crease-adjacent strips and both outer edges. An opened upper grip
+   separates the paper; an upper bend preference changes the lower through
+   contact. The identical contact-off control crosses. All six constrained
+   endpoints pass, but the preferred-bend maximum gap changes from `7.271e-7`
+   to `0.007009` with refinement despite unchanged control strength.
+   **Next: refine the unequal-preference case, including across the panel's
+   width. Compare contact regions and maximum gaps as well as matching material
+   positions before enlarging the crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips
