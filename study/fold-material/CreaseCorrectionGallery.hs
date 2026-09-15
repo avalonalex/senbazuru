@@ -3,7 +3,7 @@
 -- All exported shapes are diagnostic endpoints, never a folding animation.
 -- The penetration plots clip away nonnegative gaps BEFORE normalizing their
 -- vertical scale, so a tiny residual remains visible beside a large input error.
-module CreaseCorrectionGallery (writeCreaseCorrection) where
+module CreaseCorrectionGallery (writeCreaseCorrection, controls, measure, creaseAngles, heldError, penetrationSvg) where
 
 import ClosedCrease
 import Control.Exception (evaluate)

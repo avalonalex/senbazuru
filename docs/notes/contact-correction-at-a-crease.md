@@ -91,10 +91,10 @@ the stored coordinates. Complete-sheet GLBs include all triangles but round
 positions for display, so their clean appearance cannot resolve the residual.
 No accepted-model label or continuous folding route is implied.
 
-The next bounded experiment is to require every upper-minus-lower gap to be
-nonnegative on this same fixture, comparing residuals, material error and
-convergence with the finite-penalty baseline. Increasing a penalty alone is not a guarantee of
-exact contact and can make the numerical system harder to solve. Keep the
+The [follow-up experiment](nonnegative-crease-contact.md) requires every
+upper-minus-lower gap to be nonnegative on this same fixture, comparing
+residuals, material error and convergence with this finite-penalty baseline.
+Increasing a penalty alone is not a guarantee of exact contact and can make the numerical system harder to solve. Keep the
 incompatible hold as a refusal control. Returning to the larger crane body,
 calibrating physical paper properties and certifying flexible motion remain
 separate work.

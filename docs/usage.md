@@ -592,6 +592,31 @@ The 3D iframe reuses `checked-flap/node_modules`; GLB coordinate rounding
 cannot preserve the microscopic residuals. Use FOLD and measurements for
 those. See [the finding](notes/contact-correction-at-a-crease.md).
 
+### Requiring nonnegative crease contact
+
+```bash
+stack run senbazuru-material-study -- --crease-inequality build/fold-material
+```
+
+Open [the constraint comparison](http://127.0.0.1:8000/crease-inequality.html).
+It reruns the same two-resolution penalty controls and constrains the three
+compatible starts. All six constrained endpoints have nonnegative exact
+lower/upper gaps while passing the original length, angle, hold and whole-sheet
+contact checks. Incompatible holds are refused; contact-off stays a baseline.
+
+Select a starting condition and resolution to compare measurements and
+negative-gap plots. The initial feasibility repair is a separate numerical
+guess, not a folding step. The `crease-inequality/` directory retains original,
+penalty, repaired-start and constrained FOLDs/GLBs for successful runs, plus
+`checks.json` with exact gaps, repairs and constrained-step diagnostics. Failed
+holds have only original and penalty exports. The 3D iframe reuses
+`checked-flap/node_modules`; GLB rounding cannot verify the microscopic gaps.
+
+This requires the whole lower panel to stay fixed and a known layer order.
+Exact clipping is shared by the constraints and repair; prescribed-profile
+tests and the separate whole-sheet check provide additional verification.
+No continuous physical motion is checked. See [the finding](notes/nonnegative-crease-contact.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

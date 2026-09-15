@@ -303,6 +303,14 @@ the corrected shape without assuming the upper remains a side profile.
 negative-gap plots, separating numerical acceptance from exact order.
 [The correction note](notes/contact-correction-at-a-crease.md) records the
 remaining finite-penalty residual; the solver itself is unchanged.
+`ContactQuadratic` uses `SparseSolve`’s material factor for a small constrained
+step, with a dense working set of touching inequalities. It knows no paper.
+`CreaseInequality` supplies exact clipped contact weights, restores nonnegative
+stored gaps against the fixed lower panel, and measures material energy after
+repair. `CreaseInequalityGallery` compares the unchanged penalty baseline,
+initial repairs and constrained endpoints. [The constraint note](notes/nonnegative-crease-contact.md)
+records why both methods need full endpoint checks and why this fixed-panel
+experiment does not yet handle general moving contact.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

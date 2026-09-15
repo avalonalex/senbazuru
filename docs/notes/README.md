@@ -73,6 +73,7 @@ read the Haddock module headers; for the domain, start with
 | [crane-pocket-map.md](crane-pocket-map.md) | The central body patch has an internal perimeter, while four separate sheet-edge landmarks meet underneath; a material map is not yet a cavity |
 | [body-angle-preferences.md](body-angle-preferences.md) | Matched body-angle controls separate material preferences from endpoint acceptance. |
 | [contact-correction-at-a-crease.md](contact-correction-at-a-crease.md) | Contact correction passes numerical checks while an independent exact gap retains penetration |
+| [nonnegative-crease-contact.md](nonnegative-crease-contact.md) | Constrained material steps and exact repairs remove the small crease’s penetration without adding thickness |
 | [near-closed-crease.md](near-closed-crease.md) | Exact strip profiles separate contact tolerances from a false triangle crossing |
 | [internal-crease-diagnostic.md](internal-crease-diagnostic.md) | Holding shared crease lines improves convergence, but equilibrium, contact tolerance and valid paper remain separate checks |
 | [spreading-connected-wing.md](spreading-connected-wing.md) | A held curved wing on the existing crane preserves the body, material creases and tail order |
