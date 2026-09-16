@@ -13,13 +13,23 @@
 -- Complementarity means a separated contact exerts no force. Force balance
 -- means material forces, contact forces and damping sum to zero. Numerically
 -- dependent rows stay in these checks even when omitted from the working set.
+-- The opt-in progressive exchange repairs several conflicting contacts one
+-- replacement at a time. Intermediate candidates may still violate gaps;
+-- reducing their aggregate error is progress inside this numerical solve,
+-- never permission to accept a material step. Only the unchanged final checks
+-- can report convergence. Detailed replay records stay separate from the
+-- compact report needed during a full material solve.
 -- This dense contact solve is deliberately limited to the small fixture.
 module ContactQuadratic
   ( QuadraticRow,
     QuadraticReport (..),
+    QuadraticDetails (..),
+    ContactResidual (..),
+    ContactExchange (..),
     QuadraticError (..),
     constrainedStep,
     constrainedStepWith,
+    constrainedStepDetailed,
     ContactMethod (..),
   )
 where
@@ -36,8 +46,10 @@ import SparseSolve qualified as Sparse
 -- | The comparison retains the original working-set policy as a baseline.
 -- Exchange permits a stricter, almost parallel contact to replace one of the
 -- selected equalities when the original policy stalls. All residual tests
--- still use every original inequality.
-data ContactMethod = OriginalWorkingSet | ExchangeNearDependent deriving stock (Eq, Show)
+-- still use every original inequality. Progressive exchange can take several
+-- replacements: each lowers the summed squared negative gaps, while the final
+-- residual caps remain unchanged. A partial repair is never convergence.
+data ContactMethod = OriginalWorkingSet | ExchangeNearDependent | ProgressiveContactExchange deriving stock (Eq, Show)
 
 type Vector = IM.IntMap V3
 
@@ -53,6 +65,36 @@ data QuadraticReport = QuadraticReport
     quadraticComplementarity :: !Double,
     quadraticBalance :: !Double,
     quadraticActive :: !Int
+  }
+  deriving stock (Eq, Show)
+
+-- | Optional replay evidence. Constraint ids index the deduplicated nonzero
+-- rows; source ids index the caller's original inequalities, including copies.
+-- Multipliers use the unit-diagonal contact scaling; divide by responseScale
+-- to recover the multiplier of an original row. These are numerical forces.
+data ContactResidual = ContactResidual
+  { contactConstraint :: !Int,
+    contactSources :: [Int],
+    contactSelected :: !Bool,
+    contactGap :: !Double,
+    contactNormalizedMultiplier :: !Double,
+    contactResponseScale :: !Double
+  }
+  deriving stock (Eq, Show)
+
+data ContactExchange = ContactExchange
+  { exchangeRemoved :: !Int,
+    exchangeInserted :: !Int,
+    exchangeViolationBefore :: !Double,
+    exchangeViolationAfter :: !Double
+  }
+  deriving stock (Eq, Show)
+
+-- | Detailed evidence is built lazily and discarded by the ordinary entry
+-- point. Long nonlinear runs need only the compact 'QuadraticReport'.
+data QuadraticDetails = QuadraticDetails
+  { quadraticContacts :: [ContactResidual],
+    quadraticExchanges :: [ContactExchange]
   }
   deriving stock (Eq, Show)
 
@@ -73,12 +115,20 @@ constrainedStep = constrainedStepWith OriginalWorkingSet
 
 constrainedStepWith :: ContactMethod -> Int -> Double -> [Int] -> [QuadraticRow] -> [QuadraticRow] -> Either QuadraticError (Vector, QuadraticReport)
 constrainedStepWith method budget damping ids rows inequalities = do
+  (step, report, _) <- constrainedStepDetailed method budget damping ids rows inequalities
+  pure (step, report)
+
+-- | Replay one linearized problem, retaining the contacts left unsatisfied
+-- and every accepted exchange. Unconverged steps remain invalid
+-- for the caller, even if their aggregate violation has decreased.
+constrainedStepDetailed :: ContactMethod -> Int -> Double -> [Int] -> [QuadraticRow] -> [QuadraticRow] -> Either QuadraticError (Vector, QuadraticReport, QuadraticDetails)
+constrainedStepDetailed method budget damping ids rows inequalities = do
   unless (budget > 0 && length ids == length (nub ids) && finite damping && damping > 0 && all valid (rows ++ inequalities)) (Left InvalidQuadratic)
   factor <- maybe (Left FailedFactor) Right (Sparse.factorNormal damping (IM.keys (scalar zero)) (map (scalar . fst) rows))
   let inverse = vector . Sparse.applyFactor factor . scalar
       rhs = foldl' (\b (a, r) -> add (-r) a b) zero rows
       initial = inverse rhs
-  responses <- forM (nub [(a, g) | (a, g) <- inequalities, squared a > 0]) $ \(a, g) -> do
+  responses <- forM unique $ \(a, g) -> do
     let response = inverse a
         diagonal = inner a response
     unless (finite diagonal && diagonal > 0 && all finiteVector (IM.elems response)) (Left InvalidResponse)
@@ -87,14 +137,16 @@ constrainedStepWith method budget damping ids rows inequalities = do
     let scale = sqrt diagonal
     pure (IM.map ((1 / scale) *^) a, g / scale, IM.map ((1 / scale) *^) response, scale)
   unless (all (\(a, g) -> squared a > 0 || g >= 0) inequalities && all ((>= 0) . snd) inequalities) (Left InvalidQuadratic)
-  go rhs initial (IM.fromList (zip [0 ..] responses)) zero [] 0
+  go rhs initial (IM.fromList (zip [0 ..] responses)) zero [] [] 0
   where
+    unique = nub [(a, g) | (a, g) <- inequalities, squared a > 0]
+    sources = IM.fromList [(i, [j | (j, original) <- zip [0 ..] inequalities, original == row]) | (i, row) <- zip [0 ..] unique]
     zero = IM.fromList [(i, V3 0 0 0) | i <- ids]
     valid (a, r) = finite r && all (\(i, v) -> IM.member i zero && finiteVector v) (IM.toList a)
     scalar values = IM.fromList [(3 * i + k, x) | (i, V3 a b c) <- IM.toList values, (k, x) <- zip [0 ..] [a, b, c]]
     vector values = IM.mapWithKey (\i _ -> V3 (get (3 * i)) (get (3 * i + 1)) (get (3 * i + 2))) zero where get k = IM.findWithDefault 0 k values
     action d = foldl' (\b (a, _) -> add (inner a d) a b) (IM.map (damping *^) d) rows
-    go rhs initial constraints d working count = do
+    go rhs initial constraints d working exchanges count = do
       active <- mapM (\i -> maybe (Left InvalidQuadratic) Right (IM.lookup i constraints)) working
       let matrix = [[inner a response | (_, _, response, _) <- active] | (a, _, _, _) <- active]
           demand = [-g - inner a initial | (a, g, _, _) <- active]
@@ -109,6 +161,7 @@ constrainedStepWith method budget damping ids rows inequalities = do
           balance = sqrt (squared (add (-1) force (action d)))
           okay = all finite [violation, complementarity, balance] && all (>= 0) multipliers && violation <= 1e-12 && complementarity <= 1e-12 && balance <= 1e-6
           report = QuadraticReport okay count violation complementarity balance (length working)
+          details = QuadraticDetails [ContactResidual i (IM.findWithDefault [] i sources) (i `elem` working) ((g + inner a d) * scale) (lambdaAt i) scale | (i, (a, g, _, scale)) <- IM.toList constraints] (reverse exchanges)
           blockers = [(max 0 ((g + inner a d) / negate (inner a p)), i) | (i, (a, g, _, scale)) <- IM.toList constraints, i `notElem` working, inner a p * scale < -1e-12]
           independent i = case IM.lookup i constraints of
             Nothing -> False
@@ -119,26 +172,31 @@ constrainedStepWith method budget damping ids rows inequalities = do
           firstBlock = foldl' min (1, -1) [(scale, i) | (scale, i) <- blockers, independent i]
           negative = [(lambda, i) | (i, lambda) <- paired, lambda < 0]
       if okay || count >= budget
-        then pure (d, report)
+        then pure (d, report, details)
         else
           if squared p <= 1e-26 && not (null negative)
-            then let (_, remove) = minimum negative in go rhs initial constraints d (filter (/= remove) working) (count + 1)
+            then let (_, remove) = minimum negative in go rhs initial constraints d (filter (/= remove) working) exchanges (count + 1)
             else case firstBlock of
-              (scale, i) | scale < 1 -> go rhs initial constraints (add scale p d) (working ++ [i]) (count + 1)
+              (scale, i) | scale < 1 -> go rhs initial constraints (add scale p d) (working ++ [i]) exchanges (count + 1)
               _ ->
                 if target == d
                   then case replacement initial constraints working d of
-                    Just (next, selected) -> go rhs initial constraints next selected (count + 1)
-                    Nothing -> pure (d, report)
-                  else go rhs initial constraints target working (count + 1)
+                    Just (next, selected, exchange) -> go rhs initial constraints next selected (exchange : exchanges) (count + 1)
+                    Nothing -> pure (d, report, details)
+                  else go rhs initial constraints target working exchanges (count + 1)
 
     -- A row too close to the current span to add can still have a stricter
     -- offset. Try replacing ONE equality, never dropping it from validation.
-    -- A candidate must satisfy all gaps and have nonnegative contact forces;
-    -- the next normal iteration rechecks the original force balance too.
+    -- The original exchange requires one replacement to fix every gap. Several
+    -- independent weak contacts can make that impossible. Progressive exchange
+    -- instead reduces the SUM of squared negative gaps in original row units:
+    -- the maximum alone would miss fixing one of two equally bad contacts.
+    -- Nonnegative forces are still required at each replacement. None of these
+    -- candidates reaches the caller as converged until ALL original residual
+    -- checks pass. The ordinary iteration budget also bounds the exchanges.
     replacement initial constraints working d
       | method == OriginalWorkingSet = Nothing
-      | otherwise = case [ (target, selected)
+      | otherwise = case [ (target, selected, ContactExchange removed i (score d) (score target))
                            | (i, (a, g, _, scale)) <- IM.toList constraints,
                              i `notElem` working,
                              (g + inner a d) * scale < -1e-12,
@@ -151,10 +209,12 @@ constrainedStepWith method budget damping ids rows inequalities = do
                              all (>= 0) forces,
                              let target = foldl' (\v ((_, _, response, _), force) -> add force response v) initial (zip active forces),
                              all finiteVector (IM.elems target),
-                             all (\(b, h, _, size) -> (h + inner b target) * size >= -1e-12) (IM.elems constraints)
+                             (if method == ProgressiveContactExchange then score target < score d else all (\(b, h, _, size) -> (h + inner b target) * size >= -1e-12) (IM.elems constraints))
                          ] of
           candidate : _ -> Just candidate
           [] -> Nothing
+      where
+        score q = sum [let violation = max 0 (negate ((h + inner b q) * size)) in violation * violation | (b, h, _, size) <- IM.elems constraints]
 
 -- The contact matrix is a Gram matrix in the material metric. Cholesky
 -- tests independence without pivoting or modifying the quadratic. Only the

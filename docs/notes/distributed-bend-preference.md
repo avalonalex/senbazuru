@@ -122,10 +122,13 @@ The accepted `4×1→4×2` width comparison changes matching positions by
 samples change from 894 to 630 of 1480 overlapping locations. Thus fixing the
 loading integrals does not by itself settle the shape or contact region.
 
-Next, isolate and replay the failed inner contact steps on the two middle
-band meshes while retaining these endpoints and residual limits. Separately
-test stronger length enforcement on the fine contact-off controls. Resolve
-those numerical failures before drawing conclusions from the length series
-or enlarging the crane body patch. Known z order, held crease strips,
+The [follow-up replay](several-contact-exchanges.md) isolates the two failed
+inner contact steps: several selected contact equalities need replacing.
+Progressive replacements give accepted endpoints on both middle meshes while
+retaining the original policy and all residual limits. The historical results
+above remain reproducible. Next, test stronger length enforcement on the fine
+contact-off controls, then rerun the full grid with one policy before drawing
+conclusions from the length series or enlarging the crane body patch.
+Known z order, held crease strips,
 uncalibrated stiffness and static endpoints remain limitations; this work
 does not certify a continuous flexible route.

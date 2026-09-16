@@ -703,6 +703,29 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Replaying the failed band contact steps
+
+```bash
+stack run senbazuru-material-study -- --band-contact build/fold-material
+```
+
+Open [the band contact replay](http://127.0.0.1:8000/band-contact.html).
+It compares the single-exchange and progressive-exchange policies on the
+`2×1` and `2×2` meshes, keeping all five band-study controls, holds, loading,
+length weights and acceptance limits unchanged. The progressive method can
+replace several selected contact equalities in succession; each reduces
+aggregate gap violation, but only the unchanged final checks permit convergence.
+
+For each width the page replays the original failed band endpoint using
+three contact methods. Downloadable `*-contact-step.json` files retain the
+equations, proposed steps, constraint/source-row mapping, residuals and
+exchange sequence. This replay is separate from the selected paper stage.
+The complete comparison saves sixty FOLD/GLB states and their gap/profile
+plots. It is opt-in, and reuses `checked-flap/node_modules` for the 3D view.
+Known z order, held crease strips, uncalibrated material, and static-endpoint
+limitations remain. This is a bounded solver fallback, not a guarantee of
+convergence for arbitrary contact. See [the study](notes/several-contact-exchanges.md).
+
 ### Distributed bending over a material band
 
 ```bash
