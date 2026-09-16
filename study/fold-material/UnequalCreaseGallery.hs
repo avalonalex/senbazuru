@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement) where
 
 import ClosedCrease
 import Control.Exception (evaluate)
@@ -45,12 +45,20 @@ controls :: [(String, Text, UnequalControl)]
 controls = [("matched", "Matched holds", MatchedHolds), ("open", "Open the upper grip", OpenUpperGrip), ("curl", "Upper bend preference", UpperCurl), ("off", "Same preference · contact off", CurlWithoutContact), ("conflicting", "Incompatible held rows", CrossedHolds)]
 
 writeUnequalCrease :: FilePath -> IO ()
-writeUnequalCrease destination = do
-  let output = destination </> "unequal-crease"
+writeUnequalCrease = writeGallery "unequal-crease" [(1, 1), (2, 1)] controls
+
+-- | Three lengths and an independent doubling across the width. Keep the
+-- matched and contact-off controls, but avoid repeating unrelated grip cases.
+writeUnequalRefinement :: FilePath -> IO ()
+writeUnequalRefinement = writeGallery "unequal-refinement" [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)] [c | c@(key, _, _) <- controls, key `elem` ["matched", "curl", "off"]]
+
+writeGallery :: String -> [(Int, Int)] -> [(String, Text, UnequalControl)] -> FilePath -> IO ()
+writeGallery gallery resolutions selected destination = do
+  let output = destination </> gallery
   createDirectoryIfMissing True output
-  runs <- forM [(n, c) | n <- [1, 2], c <- controls] $ \(n, (key, title, control)) -> do
-    fixture <- checked (unequalCrease n control)
-    let stem = key ++ "-" ++ show n
+  runs <- forM [(n, w, c) | (n, w) <- resolutions, c <- selected] $ \(n, w, (key, title, control)) -> do
+    fixture <- checked (unequalCreaseWithWidth n w control)
+    let stem = key ++ "-" ++ show n ++ if w == 1 then "" else "-w" ++ show w
         reference = coupledReference fixture
         mode = unequalContactMode control
         attempt = solveCoupledWith mode (Settings 40 1e-5) fixture
@@ -66,21 +74,25 @@ writeUnequalCrease destination = do
     let gapScale = maximum (1e-8 : [fromRational (max (abs (pairMinimum a)) (abs (pairMaximum a))) | a <- audits])
     stages <- forM (zip candidates audits) $ \((stage, label, mesh), audit) -> do
       (measurement, valid) <- measure fixture mesh
+      sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
       sheet <- checked (coupledSurface fixture mesh)
       let name = stem ++ "-" ++ stage
-          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n)) <> " triangles"
+          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles"
+      TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
       BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru unequal crease") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
       checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
-      pure (stage, label, measurement, valid, object ["title" .= caption, "path" .= (name ++ ".glb")])
-    let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _) -> s == "after" && valid) stages
+      pure (stage, label, measurement, valid, sampleReport sampled, object ["title" .= caption, "path" .= (name ++ ".glb")])
+    let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _, _) -> s == "after" && valid) stages
         report =
           object
             [ "id" .= stem,
               "control" .= key,
               "title" .= title,
               "subdivision" .= n,
+              "widthSubdivision" .= w,
+              "meshKey" .= meshKey n w,
               "triangles" .= length (triangles (coupledSeed fixture)),
               "vertices" .= length (samples (coupledSeed fixture)),
               "heldVertices" .= IM.keys (coupledPins fixture),
@@ -92,32 +104,42 @@ writeUnequalCrease destination = do
               "solve" .= fmap resultReport result,
               "solveCpuSeconds" .= (fromIntegral (finish - start) / 1e12 :: Double),
               "gapPlotScale" .= gapScale,
-              "measurements" .= object [Key.fromString s .= v | (s, _, v, _, _) <- stages],
-              "stages" .= [object ["id" .= s, "label" .= label] | (s, label, _, _, _) <- stages],
+              "measurements" .= object [Key.fromString s .= v | (s, _, v, _, _, _) <- stages],
+              "gapSamples" .= object [Key.fromString s .= v | (s, _, _, _, v, _) <- stages],
+              "stages" .= [object ["id" .= s, "label" .= label] | (s, label, _, _, _, _) <- stages],
               "continuousMotionChecked" .= False
             ]
     putStrLn (stem ++ ": endpoint passed " ++ show passed ++ maybe "" (\reason -> "; " ++ T.unpack reason) refusal)
     hFlush stdout
-    pure (key, n, report, [v | (_, _, _, _, v) <- stages], fmap inequalityMesh result)
-  refinement <- forM [(key, a, b) | (key, 1, _, _, Just a) <- runs, (other, 2, _, _, Just b) <- runs, key == other] $ \(key, a, b) -> do
+    pure (key, (n, w), report, [v | (_, _, _, _, _, v) <- stages], fmap inequalityMesh result)
+  refinement <- forM [(key, na, nb, a, b) | (key, na@(n, w), _, _, Just a) <- runs, (other, nb@(m, v), _, _, Just b) <- runs, key == other, (m == 2 * n && v == w) || (m == n && v == 2 * w)] $ \(key, na, nb, a, b) -> do
     difference <- checked (matching a b)
-    pure (object ["control" .= key, "maxMatchingPositionChange" .= difference])
+    pure (object ["control" .= key, "fromMesh" .= uncurry meshKey na, "toMesh" .= uncurry meshKey nb, "maxMatchingPositionChange" .= difference])
   responses <- forM [(key, n, a, b) | ("matched", n, _, _, Just a) <- runs, (key, k, _, _, Just b) <- runs, n == k] $ \(key, n, a, b) -> response key n a b
   contactEffect <- forM [(n, a, b) | ("off", n, _, _, Just a) <- runs, ("curl", k, _, _, Just b) <- runs, n == k] $ \(n, a, b) -> response "curl" n a b
-  let document = object ["runs" .= [r | (_, _, r, _, _) <- runs], "refinement" .= refinement, "responses" .= responses, "contactEffect" .= contactEffect]
+  let document = object ["gallery" .= gallery, "runs" .= [r | (_, _, r, _, _) <- runs], "refinement" .= refinement, "responses" .= responses, "contactEffect" .= contactEffect]
   BL.writeFile (output </> "checks.json") (encode document)
   BL.writeFile (output </> "models.json") (encode (concat [ms | (_, _, _, ms, _) <- runs]))
   viewer <- TIO.readFile "study/gltf/viewer.html"
   let compact = "header{padding:16px}header small,header h1,header p{display:none}#view{height:450px;min-height:450px}footer{padding:12px 16px}</style>"
   TIO.writeFile (output </> "index.html") (T.replace "</style>" compact (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer))
   template <- TIO.readFile "study/fold-material/unequal-crease.html"
-  TIO.writeFile (destination </> "unequal-crease.html") (T.replace "/*UNEQUAL_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
-  putStrLn ("Wrote unequal-crease.html and measurements to " ++ destination)
+  TIO.writeFile (destination </> gallery ++ ".html") (T.replace "/*UNEQUAL_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
+  putStrLn ("Wrote " ++ gallery ++ ".html and measurements to " ++ destination)
 
-response :: String -> Int -> MaterialMesh -> MaterialMesh -> IO Value
-response key n a b = do
+response :: String -> (Int, Int) -> MaterialMesh -> MaterialMesh -> IO Value
+response key (n, w) a b = do
   (lower, upper) <- checked (panelChanges a b)
-  pure (object ["control" .= key, "subdivision" .= n, "lowerChange" .= lower, "upperChange" .= upper])
+  pure
+    ( object
+        [ "control" .= key,
+          "subdivision" .= n,
+          "widthSubdivision" .= w,
+          "meshKey" .= meshKey n w,
+          "lowerChange" .= lower,
+          "upperChange" .= upper
+        ]
+    )
 
 profileSvg :: MaterialMesh -> Text
 profileSvg mesh = drawing "Projected material rows" (Box (V2 (-0.03) (-0.05)) (V2 0.54 0.21)) shapes
@@ -139,3 +161,28 @@ drawing title extent shapes = renderSvg defaultPage {pageWidth = 560, pageHeight
 
 checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure
+
+-- Cell centres avoid counting held boundaries as contact area. Locations and
+-- threshold are identical for every mesh; counts are samples, not exact areas.
+sampleLocations :: [(Rational, Rational)]
+sampleLocations = [(fromIntegral (2 * i + 1) / 160, fromIntegral (2 * j + 1) / 80 - 1 / 2) | j <- [0 :: Int .. 39], i <- [0 :: Int .. 39]]
+
+meshKey :: Int -> Int -> String
+meshKey n w = show n ++ "x" ++ show w
+
+sampleReport :: [Maybe Rational] -> Value
+sampleReport gaps = object ["threshold" .= (1e-7 :: Double), "locations" .= [[fromRational x :: Double, fromRational y] | (x, y) <- sampleLocations], "gaps" .= map (fmap (fromRational :: Rational -> Double)) gaps, "outside" .= length [() | Nothing <- gaps], "crossing" .= length [() | Just g <- gaps, g < 0], "nearContact" .= length [() | Just g <- gaps, g >= 0, g <= 1 / 10000000], "separated" .= length [() | Just g <- gaps, g > 1 / 10000000]]
+
+mapSvg :: [Maybe Rational] -> Text
+mapSvg gaps =
+  drawing
+    "Sampled gap map in projected x/y"
+    (Box (V2 0 (-0.5)) (V2 0.5 0.5))
+    [Fill (Colour colour) [cell x y | ((rx, ry), gap) <- zip sampleLocations gaps, colourFor gap == colour, let x = fromRational rx; y = fromRational ry] | colour <- ["#ddd7cd", "#b6412b", "#386d69", "#d3a052"]]
+  where
+    cell x y = [V2 (x - 0.00625) (y - 0.0125), V2 (x + 0.00625) (y - 0.0125), V2 (x + 0.00625) (y + 0.0125), V2 (x - 0.00625) (y + 0.0125)]
+    colourFor Nothing = "#ddd7cd"
+    colourFor (Just g)
+      | g < 0 = "#b6412b"
+      | g <= 1 / 10000000 = "#386d69"
+      | otherwise = "#d3a052"

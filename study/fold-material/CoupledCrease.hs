@@ -14,6 +14,7 @@ module CoupledCrease
     PairContactMode (..),
     CoupledFixture (..),
     coupledCrease,
+    coupledCreaseWithWidth,
     checkCoupledMaterial,
     repairCoupled,
     solveCoupled,
@@ -51,8 +52,11 @@ data CoupledFixture = CoupledFixture
   deriving stock (Show)
 
 coupledCrease :: Int -> CoupledControl -> Either InequalityError CoupledFixture
-coupledCrease count control = do
-  reference <- adapt (closedCrease count BentTouching)
+coupledCrease count = coupledCreaseWithWidth count 1
+
+coupledCreaseWithWidth :: Int -> Int -> CoupledControl -> Either InequalityError CoupledFixture
+coupledCreaseWithWidth count width control = do
+  reference <- adapt (closedCreaseWithWidth count width BentTouching)
   let original = closedMesh reference
       held p = materialU p == 0 || abs (materialU p) >= 0.375
       magnitude = case control of BothTouching -> 0; BothTiny -> 1e-8; _ -> 0.001

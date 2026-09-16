@@ -331,6 +331,12 @@ refinement comparison, then compares each panel's response and exports
 side projections and magnified gap marks. The
 [unequal-control note](notes/unequal-crease-controls.md) explains why holding
 the crease orientation makes the contact-on/off comparison useful.
+The opt-in refinement command uses independent profile and width subdivisions
+from `ClosedCrease`. `CreasePairContact.samplePairGaps` samples fixed projected
+locations for comparison; the complete overlap audit still decides validity.
+The gallery retains unconverged endpoints and separates sampled near-contact
+regions from exact maximum gaps. [The refinement note](notes/unequal-crease-refinement.md)
+records which changes are observed before returning to the crane body.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

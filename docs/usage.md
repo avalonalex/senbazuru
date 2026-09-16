@@ -676,6 +676,33 @@ These static checks preserve the original material, crease and contact
 tolerances. They assume known order along z, and do not certify the flexible
 path or establish mesh independence. See [the finding](notes/unequal-crease-controls.md).
 
+### Refining the unequal panels
+
+```bash
+stack run senbazuru-material-study -- --unequal-refinement build/fold-material
+```
+
+Open [the refinement comparison](http://127.0.0.1:8000/unequal-refinement.html).
+Length × width settings `1×1`, `2×1`, `4×1`, `1×2`, `2×2` refine the
+folded side profile and its extrusion independently. They contain 32, 64,
+128, 64 and 128 triangles. The held material regions and total upper bend
+control strength stay unchanged. Each mesh has a matched reference, upper
+bend preference and identical preference with contact disabled.
+
+The additional map samples the same 40 × 40 projected locations on every
+mesh. Teal means a nonnegative gap at most `1e-7` sheet lengths, ochre means
+more separation, red means crossing, and gray means no common projection.
+These samples describe regions; they neither measure exact contact area nor
+replace the exact all-triangle overlap check. The table compares maximum
+gaps, near-contact counts and bending energies, alongside matching material
+positions. Unconverged endpoints remain explicitly diagnostic.
+
+`unequal-refinement/` contains complete FOLDs, GLBs, side/gap/map SVGs and
+`checks.json`, including solver stopping information. The same known-z-order,
+static-endpoint and uncalibrated-material limitations apply. This more
+expensive comparison is opt-in, separate from generating the entire gallery.
+See [the refinement study](notes/unequal-crease-refinement.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

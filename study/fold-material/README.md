@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --unequal-refinement build/fold-material`
+writes `unequal-refinement.html`: five independently refined length/width
+meshes with matched, upper-preference and contact-off controls. A fixed-grid
+separation map complements exact maximum gaps and matching material points.
+Unconverged endpoints remain diagnostics. This opt-in study is not included
+in the all-gallery command. See [usage](../../docs/usage.md#refining-the-unequal-panels)
+and [the finding](../../docs/notes/unequal-crease-refinement.md).
+
 `stack run senbazuru-material-study -- --unequal-crease build/fold-material`
 writes `unequal-crease.html`: an upper grip or bend preference differs from
 its partner, with a held strip beside the crease keeping it closed. Side

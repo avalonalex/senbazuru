@@ -97,3 +97,6 @@ resolution across the panel's width. Compare contact regions and maximum gaps
 as well as matching material points before returning to the crane body patch.
 Known order along z, retained triangle facing directions and the held crease
 remain assumptions. Continuous flexible motion is still unchecked.
+
+The follow-up [independent refinement study](unequal-crease-refinement.md)
+keeps these controls fixed while varying both mesh directions.

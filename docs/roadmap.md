@@ -353,9 +353,16 @@ checked coupled angles.
    contact. The identical contact-off control crosses. All six constrained
    endpoints pass, but the preferred-bend maximum gap changes from `7.271e-7`
    to `0.007009` with refinement despite unchanged control strength.
-   **Next: refine the unequal-preference case, including across the panel's
-   width. Compare contact regions and maximum gaps as well as matching material
-   positions before enlarging the crane body patch.**
+   [#227](https://github.com/avalonalex/senbazuru/issues/227)
+   [refines length and width independently](notes/unequal-crease-refinement.md).
+   Doubling width retains the fine-length opening (maximum gap `0.006907`),
+   but the next length refinement fails: matched/contact-off length errors
+   exceed the cap and the upper-preference constrained step does not converge.
+   Eight constrained endpoints pass; the two finer-length failures remain
+   diagnostics, so shape convergence is not established.
+   **Next: isolate the fine-length penalty and constrained-step failures,
+   retaining the physical acceptance caps, before enlarging the crane body
+   patch or interpreting further mesh convergence.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

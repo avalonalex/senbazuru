@@ -13,6 +13,7 @@ import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sort)
 import FoldBending
+import FoldMaterial (componentCount)
 import FoldRelaxation
 import Senbazuru.Fold.Types (FaceId (..))
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -58,6 +59,46 @@ spec = describe "unequal controls beside one closed crease" $ do
         [1, 2]
     strengths `shouldBe` replicate 2 (replicate 6 4)
 
+  it "preserves the physical controls and shared crease while refining either direction" $
+    forM_ [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)] $ \(n, w) -> do
+      f <- right (unequalCreaseWithWidth n w UpperCurl)
+      off <- right (unequalCreaseWithWidth n w CurlWithoutContact)
+      let mesh = coupledSeed f
+          ref = coupledReference f
+          springs = [h | h <- closedHinges ref, hingeRole h == BendControl]
+          vertices = IM.fromList (zip [0 ..] (samples mesh))
+          roots = closedRoot ref
+      length (triangles mesh) `shouldBe` 32 * n * w
+      componentCount mesh `shouldBe` 1
+      length roots `shouldBe` 2 * w + 1
+      roots `shouldBe` [i | (i, p) <- zip [0 ..] (samples mesh), materialU p == 0]
+      maxLengthError mesh `shouldSatisfy` (< 1e-12)
+      coupledSeed off `shouldBe` mesh
+      coupledPins off `shouldBe` coupledPins f
+      closedHinges (coupledReference off) `shouldBe` closedHinges ref
+      length springs `shouldBe` 6 * w
+      sum (map hingeStiffness springs) `shouldBe` 24
+      sum [hingeStiffness h | h <- closedHinges ref, SurfaceCrease _ <- [hingeRole h]] `shouldBe` 1
+      forM_ springs $ \h -> do
+        let (a, b, _, _) = hingeVertices h
+        pa <- maybe (fail "missing control end") pure (IM.lookup a vertices)
+        pb <- maybe (fail "missing control end") pure (IM.lookup b vertices)
+        materialU pa `shouldBe` materialU pb
+        materialU pa `shouldSatisfy` (`elem` [-0.125, -0.25, -0.375])
+        hingeStiffness h `shouldBe` 8 * abs (materialV pa - materialV pb)
+        (angle, _) <- right (hingeAngle h vertices)
+        hingeRest h `shouldBe` 2 * angle
+      forM_ (zip [0 ..] (samples mesh)) $ \(i, p) ->
+        IM.member i (coupledPins f) `shouldBe` (abs (materialU p) <= 0.125 || abs (materialU p) == 0.5)
+
+  it "retains original fixtures at width one and rejects invalid widths" $ do
+    forM_ [1, 2] $ \n -> do
+      a <- right (unequalCrease n UpperCurl)
+      b <- right (unequalCreaseWithWidth n 1 UpperCurl)
+      coupledSeed a `shouldBe` coupledSeed b
+      closedHinges (coupledReference a) `shouldBe` closedHinges (coupledReference b)
+    forM_ [0, 9] $ \w -> unequalCreaseWithWidth 1 w UpperCurl `shouldSatisfy` isLeft
+
   it "opens a gap while preserving the closed crease and material checks" $ do
     (f, r) <- solved 1 OpenUpperGrip
     audit <- endpoint f r
@@ -82,6 +123,16 @@ spec = describe "unequal controls beside one closed crease" $ do
     (f, r) <- solved 2 UpperCurl
     audit <- endpoint f r
     pairMaximum audit `shouldSatisfy` (> 0.001)
+
+  it "checks a width-refined solve without welding its touching material" $ do
+    f <- right (unequalCreaseWithWidth 1 2 UpperCurl)
+    r <- right (solveCoupled (Settings 40 1e-5) f)
+    audit <- endpoint f r
+    pairMaximum audit `shouldSatisfy` (> 0)
+    pairMaximum audit `shouldSatisfy` (< 1 / 1000000)
+    let mesh = inequalityMesh r
+    length (closedRoot (coupledReference f)) `shouldBe` 5
+    componentCount mesh `shouldBe` 1
 
   it "refuses contradictory holds and comparisons with missing material" $ do
     forM_ [1, 2] $ \n -> do

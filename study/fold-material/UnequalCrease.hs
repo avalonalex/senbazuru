@@ -13,7 +13,7 @@
 -- Contact-off keeps exactly the curl controls and holds, isolating the effect
 -- of contact; its crossing endpoint remains a diagnostic. See docs/glossary.md
 -- for material coordinates, panels and crease angles.
-module UnequalCrease (UnequalControl (..), unequalCrease, unequalContactMode, panelChanges) where
+module UnequalCrease (UnequalControl (..), unequalCrease, unequalCreaseWithWidth, unequalContactMode, panelChanges) where
 
 import ClosedCrease
 import Control.Monad (forM, unless)
@@ -35,8 +35,11 @@ unequalContactMode CurlWithoutContact = WithoutPairContact
 unequalContactMode _ = EnforcePairOrder
 
 unequalCrease :: Int -> UnequalControl -> Either InequalityError CoupledFixture
-unequalCrease count control = do
-  original <- coupledCrease count BothTouching
+unequalCrease count = unequalCreaseWithWidth count 1
+
+unequalCreaseWithWidth :: Int -> Int -> UnequalControl -> Either InequalityError CoupledFixture
+unequalCreaseWithWidth count width control = do
+  original <- coupledCreaseWithWidth count width BothTouching
   let reference = coupledReference original
       mesh = coupledSeed original
       held p = abs (materialU p) <= 0.125 || abs (materialU p) == 0.5
