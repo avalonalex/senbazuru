@@ -671,7 +671,11 @@ endpoint, while each change alone leaves a different failure. The
 constrained endpoints, while all five contact-off controls still cross.
 Width refinement retains the opening, but length refinement still moves
 matching material points substantially. Solver convergence is necessary for
-that comparison; it does not establish a mesh-independent shape.
+that comparison; it does not establish a mesh-independent shape. The
+[`4×2` follow-up](notes/two-direction-crease-refinement.md) confirms that the
+length sensitivity persists at both widths. Separating passive material
+energy from imposed control energy exposes their changing competition at
+the three loaded lines.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

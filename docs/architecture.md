@@ -343,9 +343,11 @@ length schedules in `CoupledCrease` and an opt-in single-equality exchange in
 `coupledRows` reconstructs a recorded inner problem for replay; the gallery
 compares the two changes independently and saves those equations and residuals.
 The opt-in [combined refinement](notes/combined-crease-refinement.md) reuses
-the original five-mesh grid with both changes on every mesh. The gallery
-records the common solver settings alongside each result; no material or
-contact-solver implementation changes are needed for that comparison.
+the original five-mesh grid, now including `4×2`, with both changes on every
+mesh. `UnequalCrease.bendBreakdown` measures passive and imposed spring
+contributions separately, including achieved turns at each control segment.
+The gallery records these diagnostics and the common solver settings alongside
+each result; the comparison does not change the material/contact solver.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

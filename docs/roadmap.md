@@ -31,7 +31,8 @@ both bending crease panels in [#222](https://github.com/avalonalex/senbazuru/iss
 unequal controls in [#224](https://github.com/avalonalex/senbazuru/issues/224),
 independent mesh refinement in [#227](https://github.com/avalonalex/senbazuru/issues/227),
 the fine-mesh solver comparison in [#229](https://github.com/avalonalex/senbazuru/issues/229),
-and the common-policy grid in [#231](https://github.com/avalonalex/senbazuru/issues/231). The
+the common-policy grid in [#231](https://github.com/avalonalex/senbazuru/issues/231),
+and its `4×2` completion in [#233](https://github.com/avalonalex/senbazuru/issues/233). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -43,7 +44,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,445 examples pass, including a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,447 examples pass, including passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -379,10 +380,16 @@ checked coupled angles.
    but the upper-preference matching-position change grows from `0.001298`
    to `0.004552` across the two length doublings. The fine endpoint is accepted;
    shape convergence remains unestablished.
-   **Next: fill the missing `4×2` comparison under the same policy and inspect
-   achieved turns and passive/control bending energies at the three imposed
-   lines. Establish what drives the length sensitivity before enlarging the
-   crane body patch.**
+   [#233](https://github.com/avalonalex/senbazuru/issues/233) adds the missing
+   [`4×2` comparison](notes/two-direction-crease-refinement.md): all eighteen
+   solves converge and all twelve constrained endpoints pass. The second
+   length change remains large at width two (`0.004398`), while the `4×1→4×2`
+   width change is `0.0003004`. Passive stiffness beneath each imposed line
+   doubles with length refinement while control stiffness stays fixed;
+   achieved turns shrink and the separate passive/control energies rise.
+   **Next: compare the line loads with a bend preference over a fixed-width
+   material band, keeping its total desired turn fixed under refinement.
+   Test this loading representation before enlarging the crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

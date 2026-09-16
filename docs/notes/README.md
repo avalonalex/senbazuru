@@ -76,6 +76,7 @@ read the Haddock module headers; for the domain, start with
 | [nonnegative-crease-contact.md](nonnegative-crease-contact.md) | Constrained material steps and exact repairs remove the small crease’s penetration without adding thickness |
 | [coupled-crease-contact.md](coupled-crease-contact.md) | Both interiors bend beside one held crease; current triangle contacts preserve order, while symmetry and refinement limit the result |
 | [fine-crease-solver.md](fine-crease-solver.md) | A stronger length penalty and a stricter near-parallel contact address different fine-mesh failures without relaxing acceptance caps |
+| [two-direction-crease-refinement.md](two-direction-crease-refinement.md) | The missing 4×2 mesh retains length sensitivity; separate passive and imposed spring energies expose the competition at the control lines |
 | [combined-crease-refinement.md](combined-crease-refinement.md) | Repeat the length/width grid under one solver policy so numerical changes do not masquerade as mesh convergence |
 | [unequal-crease-refinement.md](unequal-crease-refinement.md) | Independent length and width refinement tests contact regions as well as matching vertices; solver convergence remains a separate requirement |
 | [unequal-crease-controls.md](unequal-crease-controls.md) | Unequal upper controls separate the layers or change the lower panel through contact; fixed crease-adjacent strips isolate that response |

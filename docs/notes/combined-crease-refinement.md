@@ -6,6 +6,8 @@ resolved that case with an extra length-penalty stage and an exchange of two
 nearly parallel contact constraints. Comparing that result directly with the
 older coarse endpoints would change both the mesh and the solver policy.
 Repeat every mesh with both numerical changes before judging its shape.
+The measurements below record the five-mesh run; the command now also
+includes `4×2`, documented in [the follow-up](two-direction-crease-refinement.md).
 
 ```bash
 stack run senbazuru-material-study -- --combined-refinement build/fold-material
@@ -85,12 +87,12 @@ contact transmits the upper preference, without asserting a unique physical
 shape. The reported panel-bending energy includes the imposed bend controls;
 its change across meshes is a diagnostic, not an acceptance criterion.
 
-The next bounded comparison is the missing `4×2` mesh under this same policy.
-It will test whether the large `2→4` length change persists at both widths.
-Alongside positions and gaps, inspect achieved turns and passive versus
-imposed bending energy around the three control lines. Holding their total
-stiffness fixed does not by itself establish a mesh-independent loading
-model. A finer grid should answer that question before returning to the crane
-body, rather than treating one successful solve as material calibration.
+The [follow-up comparison](two-direction-crease-refinement.md) fills the
+missing `4×2` mesh under this same policy. The large `2→4` length change
+persists at both widths.
+Its achieved-turn and passive/control energy diagnostics expose a changing
+competition at the three control lines. Holding their total stiffness fixed
+does not by itself establish a mesh-independent loading model; the follow-up
+records a bounded loading comparison before returning to the crane body.
 Known order along z, retained triangle facing directions and static endpoints
 remain limitations; no continuous flexible route is certified here.
