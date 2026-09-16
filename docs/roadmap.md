@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-14**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-15**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -28,7 +28,8 @@ the small closed-crease reference in [#216](https://github.com/avalonalex/senbaz
 its contact-correction controls in [#218](https://github.com/avalonalex/senbazuru/issues/218),
 nonnegative-gap constraints in [#220](https://github.com/avalonalex/senbazuru/issues/220),
 both bending crease panels in [#222](https://github.com/avalonalex/senbazuru/issues/222),
-and unequal controls in [#224](https://github.com/avalonalex/senbazuru/issues/224). The
+unequal controls in [#224](https://github.com/avalonalex/senbazuru/issues/224),
+and independent mesh refinement in [#227](https://github.com/avalonalex/senbazuru/issues/227). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -40,7 +41,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,439 examples pass, including unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,443 examples pass, including independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
