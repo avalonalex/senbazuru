@@ -75,7 +75,7 @@ writeCombinedRefinement :: FilePath -> IO ()
 writeCombinedRefinement =
   writeGallery
     "combined-refinement"
-    [(meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9], caseMethod = ExchangeNearDependent} | size <- refinementMeshes]
+    [(meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9], caseMethod = ExchangeNearDependent} | size <- refinementMeshes ++ [(4, 2)]]
     comparisonControls
 
 refinementMeshes :: [(Int, Int)]
@@ -122,6 +122,7 @@ writeGallery gallery resolutions selected destination = do
     let gapScale = maximum (1e-8 : [fromRational (max (abs (pairMinimum a)) (abs (pairMaximum a))) | a <- audits])
     stages <- forM (zip candidates audits) $ \((stage, label, mesh), audit) -> do
       (measurement, valid) <- measure fixture mesh
+      bending <- checked (bendBreakdown fixture mesh)
       sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
       sheet <- checked (coupledSurface fixture mesh)
       let name = stem ++ "-" ++ stage
@@ -135,13 +136,13 @@ writeGallery gallery resolutions selected destination = do
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
       BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru unequal crease") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
       checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
-      pure (stage, label, measurement, valid, sampleReport sampled, object ["title" .= caption, "path" .= (name ++ ".glb")])
+      pure (stage, label, measurement, valid, sampleReport sampled, bendReport bending, object ["title" .= caption, "path" .= (name ++ ".glb")])
     when (gallery == "fine-crease" && caseKey choice == "baseline" && control == UpperCurl) $ case result of
       Nothing -> pure ()
       Just r -> do
         replay <- replayContact fixture (inequalityMesh r)
         BL.writeFile (output </> "contact-step.json") (encode replay)
-    let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _, _) -> s == "after" && valid) stages
+    let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _, _, _) -> s == "after" && valid) stages
         report =
           object
             [ "id" .= stem,
@@ -166,14 +167,15 @@ writeGallery gallery resolutions selected destination = do
               "solve" .= fmap resultReport result,
               "solveCpuSeconds" .= (fromIntegral (finish - start) / 1e12 :: Double),
               "gapPlotScale" .= gapScale,
-              "measurements" .= object [Key.fromString s .= v | (s, _, v, _, _, _) <- stages],
-              "gapSamples" .= object [Key.fromString s .= v | (s, _, _, _, v, _) <- stages],
-              "stages" .= [object ["id" .= s, "label" .= label] | (s, label, _, _, _, _) <- stages],
+              "measurements" .= object [Key.fromString s .= v | (s, _, v, _, _, _, _) <- stages],
+              "bending" .= object [Key.fromString s .= v | (s, _, _, _, _, v, _) <- stages],
+              "gapSamples" .= object [Key.fromString s .= v | (s, _, _, _, v, _, _) <- stages],
+              "stages" .= [object ["id" .= s, "label" .= label] | (s, label, _, _, _, _, _) <- stages],
               "continuousMotionChecked" .= False
             ]
     putStrLn (stem ++ ": endpoint passed " ++ show passed ++ maybe "" (\reason -> "; " ++ T.unpack reason) refusal)
     hFlush stdout
-    pure (key, choice, report, [v | (_, _, _, _, _, v) <- stages], fmap inequalityMesh result)
+    pure (key, choice, report, [v | (_, _, _, _, _, _, v) <- stages], fmap inequalityMesh result)
   refinement <- forM [(key, na, nb, a, b) | (key, na, _, _, Just a) <- runs, (other, nb, _, _, Just b) <- runs, key == other, comparable na nb] $ \(key, na, nb, a, b) -> do
     difference <- checked (matching a b)
     pure (object ["control" .= key, "fromMesh" .= caseKey na, "toMesh" .= caseKey nb, "maxMatchingPositionChange" .= difference])
@@ -192,6 +194,28 @@ writeGallery gallery resolutions selected destination = do
     comparable a b
       | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
       | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
+
+bendReport :: BendBreakdown -> Value
+bendReport b =
+  object
+    [ "lowerPassiveEnergy" .= lowerPassiveEnergy b,
+      "upperPassiveEnergy" .= upperPassiveEnergy b,
+      "imposedEnergy" .= imposedBendEnergy b,
+      "controlTurns"
+        .= [ object
+               [ "vertices" .= turnVertices t,
+                 "materialU" .= turnU t,
+                 "materialVRange" .= turnVRange t,
+                 "actualRadians" .= turnActual t,
+                 "preferredRadians" .= turnPreferred t,
+                 "passiveStiffness" .= turnPassiveStiffness t,
+                 "imposedStiffness" .= turnImposedStiffness t,
+                 "passiveEnergy" .= turnPassiveEnergy t,
+                 "imposedEnergy" .= turnImposedEnergy t
+               ]
+             | t <- controlTurns b
+           ]
+    ]
 
 response :: String -> GalleryCase -> MaterialMesh -> MaterialMesh -> IO Value
 response key choice a b = do

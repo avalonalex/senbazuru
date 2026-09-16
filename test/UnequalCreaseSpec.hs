@@ -60,7 +60,7 @@ spec = describe "unequal controls beside one closed crease" $ do
     strengths `shouldBe` replicate 2 (replicate 6 4)
 
   it "preserves the physical controls and shared crease while refining either direction" $
-    forM_ [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)] $ \(n, w) -> do
+    forM_ [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2), (4, 2)] $ \(n, w) -> do
       f <- right (unequalCreaseWithWidth n w UpperCurl)
       off <- right (unequalCreaseWithWidth n w CurlWithoutContact)
       let mesh = coupledSeed f
@@ -90,6 +90,40 @@ spec = describe "unequal controls beside one closed crease" $ do
         hingeRest h `shouldBe` 2 * angle
       forM_ (zip [0 ..] (samples mesh)) $ \(i, p) ->
         IM.member i (coupledPins f) `shouldBe` (abs (materialU p) <= 0.125 || abs (materialU p) == 0.5)
+
+  it "separates passive and imposed energies without losing the panel total" $
+    forM_ [(n, w, c) | (n, w) <- [(1, 1), (2, 2), (4, 2)], c <- [MatchedHolds, UpperCurl, CurlWithoutContact]] $ \(n, w, c) -> do
+      f <- right (unequalCreaseWithWidth n w c)
+      let mesh = coupledSeed f
+          hinges = closedHinges (coupledReference f)
+      b <- right (bendBreakdown f mesh)
+      (_, total) <- right (bendingEnergy hinges mesh)
+      abs (lowerPassiveEnergy b + upperPassiveEnergy b + imposedBendEnergy b - total) `shouldSatisfy` (< 1e-12)
+      abs (lowerPassiveEnergy b - upperPassiveEnergy b) `shouldSatisfy` (< 1e-12)
+      if c == MatchedHolds
+        then do
+          controlTurns b `shouldBe` []
+          imposedBendEnergy b `shouldBe` 0
+        else do
+          length (controlTurns b) `shouldBe` 6 * w
+          abs (sum (map turnImposedEnergy (controlTurns b)) - imposedBendEnergy b) `shouldSatisfy` (< 1e-12)
+          forM_ [-0.125, -0.25, -0.375] $ \u -> do
+            let turns = filter ((== u) . turnU) (controlTurns b)
+            sum (map turnImposedStiffness turns) `shouldBe` 8
+            sum [hi - lo | t <- turns, let { (lo, hi) = turnVRange t }] `shouldBe` 1
+            forM_ turns $ \t -> do
+              turnPreferred t `shouldBe` 2 * turnActual t
+              -- The seed has half the imposed target angle and zero passive
+              -- rest angle, so both springs have the same squared error.
+              abs (turnPassiveEnergy t / turnPassiveStiffness t - turnImposedEnergy t / turnImposedStiffness t) `shouldSatisfy` (< 1e-12)
+
+  it "refuses a bend report with missing material or a missing passive partner" $ do
+    f <- right (unequalCrease 1 UpperCurl)
+    let mesh = coupledSeed f
+        ref = coupledReference f
+        missing = f {coupledReference = ref {closedHinges = filter ((/= PanelBend) . hingeRole) (closedHinges ref)}}
+    bendBreakdown f mesh {samples = drop 1 (samples mesh)} `shouldSatisfy` isLeft
+    bendBreakdown missing mesh `shouldSatisfy` isLeft
 
   it "retains original fixtures at width one and rejects invalid widths" $ do
     forM_ [1, 2] $ \n -> do

@@ -13,7 +13,7 @@
 -- Contact-off keeps exactly the curl controls and holds, isolating the effect
 -- of contact; its crossing endpoint remains a diagnostic. See docs/glossary.md
 -- for material coordinates, panels and crease angles.
-module UnequalCrease (UnequalControl (..), unequalCrease, unequalCreaseWithWidth, unequalContactMode, panelChanges) where
+module UnequalCrease (UnequalControl (..), unequalCrease, unequalCreaseWithWidth, unequalContactMode, panelChanges, BendBreakdown (..), ControlTurn (..), bendBreakdown) where
 
 import ClosedCrease
 import Control.Monad (forM, unless)
@@ -69,6 +69,67 @@ unequalCreaseWithWidth count width control = do
           else pure []
       else pure []
   pure original {coupledReference = reference {closedHinges = closedHinges reference ++ springs}, coupledSeed = seed, coupledPins = pins}
+
+-- | Passive energy resists bending inside an uncreased panel. Imposed energy
+-- comes from the extra upper springs, not the material itself. Their sum is
+-- the panel/control quantity reported by 'bendingEnergy'; neither includes
+-- the original shared crease. These are illustrative energy units.
+data BendBreakdown = BendBreakdown
+  { lowerPassiveEnergy :: !Double,
+    upperPassiveEnergy :: !Double,
+    imposedBendEnergy :: !Double,
+    controlTurns :: ![ControlTurn]
+  }
+  deriving stock (Eq, Show)
+
+-- | One width segment of an imposed line. Angles are signed radians, zero
+-- means coplanar triangles, and the preferred angle is a load rather than an
+-- achieved fold. Keep segments separate so a widthwise variation is visible.
+-- The passive spring at the same edge stays present underneath the control;
+-- its stiffness changes with triangle shape even when control strength stays
+-- fixed. Reporting both makes that competition inspectable.
+data ControlTurn = ControlTurn
+  { turnVertices :: !(Int, Int, Int, Int),
+    turnU :: !Double,
+    turnVRange :: !(Double, Double),
+    turnActual :: !Double,
+    turnPreferred :: !Double,
+    turnPassiveStiffness :: !Double,
+    turnImposedStiffness :: !Double,
+    turnPassiveEnergy :: !Double,
+    turnImposedEnergy :: !Double
+  }
+  deriving stock (Eq, Show)
+
+-- | Measure the existing springs without changing the objective or solving
+-- again. A missing passive partner is an error, never an apparent zero cost.
+bendBreakdown :: CoupledFixture -> MaterialMesh -> Either InequalityError BendBreakdown
+bendBreakdown fixture mesh = do
+  checkCoupledMaterial fixture mesh
+  passive <- forM [h | h <- hinges, hingeRole h == PanelBend] $ \h -> do
+    let (a, b, _, _) = hingeVertices h
+    p <- vertex a
+    q <- vertex b
+    e <- energy [h]
+    pure (materialU p + materialU q, e)
+  imposed <- energy [h | h <- hinges, hingeRole h == BendControl]
+  turns <- forM [h | h <- hinges, hingeRole h == BendControl] $ \h -> do
+    let (a, b, _, _) = hingeVertices h
+    p <- vertex a
+    q <- vertex b
+    partner <- case [s | s <- hinges, hingeRole s == PanelBend, hingeVertices s == hingeVertices h] of
+      [s] -> Right s
+      _ -> Left (InequalityError ("expected one passive spring under bend control " <> tshow (a, b)))
+    (actual, _) <- first (InequalityError . explain) (hingeAngle h vertices)
+    passiveEnergy <- energy [partner]
+    imposedEnergy <- energy [h]
+    pure (ControlTurn (hingeVertices h) (materialU p) (min (materialV p) (materialV q), max (materialV p) (materialV q)) actual (hingeRest h) (hingeStiffness partner) (hingeStiffness h) passiveEnergy imposedEnergy)
+  pure (BendBreakdown (sum [e | (u, e) <- passive, u > 0]) (sum [e | (u, e) <- passive, u < 0]) imposed turns)
+  where
+    hinges = closedHinges (coupledReference fixture)
+    vertices = IM.fromList (zip [0 ..] (samples mesh))
+    vertex i = maybe (Left (InequalityError ("bend diagnostic lost material vertex " <> tshow i))) Right (IM.lookup i vertices)
+    energy hs = snd <$> first (InequalityError . explain) (bendingEnergy hs mesh)
 
 -- | Compare the same material points, including holds, on each panel. The
 -- first value is lower, the second upper; a missing point is never a zero.

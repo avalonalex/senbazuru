@@ -710,8 +710,9 @@ stack run senbazuru-material-study -- --combined-refinement build/fold-material
 ```
 
 Open [the common-policy comparison](http://127.0.0.1:8000/combined-refinement.html).
-It repeats the original five length/width meshes with the same length stages
-through `1e9` and the contact-exchange method on every run. Each mesh has
+It extends the original five length/width meshes with `4×2` (256 triangles),
+using the same length stages through `1e9` and the contact-exchange method
+on every run. Each mesh has
 matched, upper-preference and contact-off controls. Holds, control strength,
 40-iteration stage budgets and acceptance limits are unchanged.
 
@@ -719,11 +720,16 @@ matched, upper-preference and contact-off controls. Holds, control strength,
 endpoints as complete FOLDs and GLBs, side profiles, magnified gap plots and
 fixed-grid gap maps. `checks.json` records solver settings, convergence,
 material/contact measurements and changes at matching material points.
+`bending` separates lower/upper passive energy from imposed control energy
+and records achieved/preferred turns, stiffnesses and energies per width
+segment at each imposed line. The page shows these turns for the selected
+stage and compares endpoint energies across meshes.
 The table shows edge error and convergence separately from geometric checks;
 an unconverged result remains diagnostic. The 3D view reuses
 `checked-flap/node_modules`. This command is opt-in; earlier gallery commands
 keep their original policies. Known z order, static endpoints and uncalibrated
-material remain limitations. See [the comparison](notes/combined-crease-refinement.md).
+material remain limitations. See [the five-mesh comparison](notes/combined-crease-refinement.md)
+and [the 4×2 follow-up](notes/two-direction-crease-refinement.md).
 
 ### Isolating fine-mesh solver failures
 
