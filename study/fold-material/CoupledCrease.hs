@@ -19,6 +19,9 @@ module CoupledCrease
     repairCoupled,
     solveCoupled,
     solveCoupledWith,
+    solveCoupledSchedule,
+    solveCoupledMethod,
+    coupledRows,
     coupledSurface,
   )
 where
@@ -105,17 +108,26 @@ solveCoupled :: Settings -> CoupledFixture -> Either InequalityError InequalityR
 solveCoupled = solveCoupledWith EnforcePairOrder
 
 solveCoupledWith :: PairContactMode -> Settings -> CoupledFixture -> Either InequalityError InequalityResult
-solveCoupledWith mode settings fixture = do
+solveCoupledWith = solveCoupledSchedule [1e2, 1e4, 1e6, 1e8]
+
+-- | Explicit length-penalty continuation for the fine-mesh study. Increasing
+-- a penalty is not relaxing an acceptance cap: the final stage must still
+-- meet the caller's original relative length tolerance.
+solveCoupledSchedule :: [Double] -> PairContactMode -> Settings -> CoupledFixture -> Either InequalityError InequalityResult
+solveCoupledSchedule = solveCoupledMethod OriginalWorkingSet
+
+solveCoupledMethod :: ContactMethod -> [Double] -> PairContactMode -> Settings -> CoupledFixture -> Either InequalityError InequalityResult
+solveCoupledMethod method weights mode settings fixture = do
+  unless (not (null weights) && all (\w -> finite w && w > 0) weights && and (zipWith (<) weights (drop 1 weights))) (Left (InequalityError "length weights must be positive, finite and strictly increasing"))
   unless (iterationLimit settings > 0 && finite (lengthTolerance settings) && lengthTolerance settings > 0) (Left (InequalityError "coupled correction needs positive finite settings"))
   initial <- feasible (coupledSeed fixture)
-  (mesh, history, settled) <- foldM stage (repairedMesh initial, [], False) [1e2, 1e4, 1e6, 1e8]
+  (mesh, history, settled) <- foldM stage (repairedMesh initial, [], False) weights
   pure (InequalityResult initial mesh history settled)
   where
     reference = coupledReference fixture
     pins = coupledPins fixture
     free i = IM.notMember i pins
     ids = [i | (i, _) <- zip [0 ..] (samples (coupledSeed fixture)), free i]
-    signs = IM.fromList [(i, toRational (outward p)) | (i, p) <- zip [0 ..] (samples (coupledSeed fixture)), free i]
     rows = materialRows (closedHinges reference) pins
     feasible mesh = case mode of
       EnforcePairOrder -> repairCoupled fixture mesh
@@ -132,24 +144,14 @@ solveCoupledWith mode settings fixture = do
     advance weight mesh history count
       | count >= iterationLimit settings = pure (mesh, history, False)
       | otherwise = do
-          material <- rows weight mesh
-          gaps <- adapt (auditPairContact (closedOwners reference) mesh)
-          let constraints =
-                [ (IM.map (\w -> fromRational (w / movable) *^ V3 (fromRational x) (fromRational y) (fromRational z)) weights, fromRational (pairGap witness / movable))
-                  | mode == EnforcePairOrder,
-                    witness <- pairWitnesses gaps,
-                    let weights = IM.filterWithKey (\i _ -> free i) (pairWeights witness),
-                    let movable = sum (IM.intersectionWith (*) signs weights),
-                    movable > 0,
-                    let (x, y, z) = pairNormal witness
-                ]
-          (direction, quadratic) <- adapt (constrainedStep 2000 1e-3 ids material constraints)
+          (material, constraints) <- coupledRows mode fixture weight mesh
+          (direction, quadratic) <- adapt (constrainedStepWith method 2000 1e-3 ids material constraints)
           before <- energy weight mesh
           let candidate scale = mesh {samples = [p {position = position p ^+^ (scale *^ IM.findWithDefault (V3 0 0 0) i direction)} | (i, p) <- zip [0 ..] (samples mesh)]}
               repair scale = feasible (candidate scale)
           full <- repair 1
           let movement = maximum (0 : [norm (position a ^-^ position b) | (a, b) <- zip (samples mesh) (samples (repairedMesh full))])
-              settled = quadraticConverged quadratic && movement <= 1e-7 && (weight < 1e8 || maxLengthError mesh <= lengthTolerance settings)
+              settled = quadraticConverged quadratic && movement <= 1e-7 && (weight < maximum (0 : weights) || maxLengthError mesh <= lengthTolerance settings)
               search scale remaining = case repair scale of
                 Left _ -> if remaining == 0 then pure Nothing else search (scale / 2) (remaining - 1)
                 Right fixed -> do
@@ -163,6 +165,28 @@ solveCoupledWith mode settings fixture = do
           let record = InequalityStep (length history + 1) weight quadratic movement scale (fromRational (commonLift fixed)) (maxRoundingLift fixed) before after (pairMinimum gap) (maxLengthError next) accepted settled
               history' = history ++ [record]
           if settled || not accepted then pure (next, history', settled) else advance weight next history' (count + 1)
+
+-- | Reconstruct the exact same linearized problem at a recorded endpoint.
+-- This makes a refused inner step inspectable without replaying the solve.
+coupledRows :: PairContactMode -> CoupledFixture -> Double -> MaterialMesh -> Either InequalityError ([QuadraticRow], [QuadraticRow])
+coupledRows mode fixture weight mesh = do
+  checkCoupledMaterial fixture mesh
+  material <- materialRows (closedHinges (coupledReference fixture)) pins weight mesh
+  gaps <- adapt (auditPairContact (closedOwners (coupledReference fixture)) mesh)
+  let constraints =
+        [ (IM.map (\w -> fromRational (w / movable) *^ V3 (fromRational x) (fromRational y) (fromRational z)) weights, fromRational (pairGap witness / movable))
+          | mode == EnforcePairOrder,
+            witness <- pairWitnesses gaps,
+            let weights = IM.filterWithKey (\i _ -> free i) (pairWeights witness),
+            let movable = sum (IM.intersectionWith (*) signs weights),
+            movable > 0,
+            let (x, y, z) = pairNormal witness
+        ]
+  pure (material, constraints)
+  where
+    pins = coupledPins fixture
+    free i = IM.notMember i pins
+    signs = IM.fromList [(i, toRational (outward p)) | (i, p) <- zip [0 ..] (samples (coupledSeed fixture)), free i]
 
 coupledSurface :: CoupledFixture -> MaterialMesh -> Either InequalityError (Surface V2)
 coupledSurface fixture mesh = do

@@ -703,6 +703,28 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Isolating fine-mesh solver failures
+
+```bash
+stack run senbazuru-material-study -- --fine-crease build/fold-material
+```
+
+Open [the fine-mesh solver comparison](http://127.0.0.1:8000/fine-crease.html).
+The same 128-triangle sheet is tested with the original policy, one extra
+length-penalty stage, a contact equality exchange, and both changes together.
+Each has matched, upper-preference and contact-off controls. No physical
+acceptance cap is changed. The policy selector, convergence row, plots and
+endpoint checks distinguish the two failure mechanisms.
+
+`fine-crease/` retains 36 complete FOLDs, 36 GLBs, 108 plot SVGs and
+`checks.json`. `contact-step.json` saves the original failed inner problem and
+its replay with both contact policies. The 3D view reuses
+`checked-flap/node_modules`. Contact-off and unconverged endpoints remain
+explicit diagnostics. A single equality exchange is not a general remedy
+for dependent constraints; the known-z-order and static-endpoint limits
+remain. The command is opt-in, outside the all-gallery run. See
+[the finding](notes/fine-crease-solver.md).
+
 <a id="continuously-checked-bird-petal"></a>
 
 ### Continuously checked bird base

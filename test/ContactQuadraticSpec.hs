@@ -44,6 +44,25 @@ spec = describe "small constrained material quadratic" $ do
     quadraticConverged report `shouldBe` True
     quadraticActive report `shouldBe` 1
 
+  it "exchanges a nearly parallel weaker contact without relaxing any residual" $ do
+    -- x >= 0 is selected first. At y = -1, x + e*y >= 0 is stricter,
+    -- but its extra direction is too small to add to the current dense factor.
+    let e = 1e-7
+        constraints = [row (V3 1 0 0) 0, row (V3 1 e 0) 0]
+        y = (e - 2) / (2 * (1 + e * e))
+    (_, old) <- right (constrainedStep 30 1 [0] material constraints)
+    quadraticConverged old `shouldBe` False
+    quadraticViolation old `shouldSatisfy` (> 1e-8)
+    forM_ [constraints, reverse constraints, constraints ++ take 1 constraints] $ \gaps -> do
+      (step, report) <- right (constrainedStepWith ExchangeNearDependent 30 1 [0] material gaps)
+      near step (V3 (-(e * y)) y 0)
+      quadraticConverged report `shouldBe` True
+      quadraticViolation report `shouldSatisfy` (<= 1e-12)
+      quadraticComplementarity report `shouldSatisfy` (<= 1e-12)
+      quadraticBalance report `shouldSatisfy` (<= 1e-6)
+    (_, exhausted) <- right (constrainedStepWith ExchangeNearDependent 2 1 [0] material constraints)
+    quadraticConverged exhausted `shouldBe` False
+
   it "does not call an exhausted working set converged" $ do
     (_, report) <- right (constrainedStep 1 1 [0] material [row (V3 1 1 0) 0])
     quadraticConverged report `shouldBe` False

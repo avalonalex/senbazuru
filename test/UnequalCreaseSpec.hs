@@ -134,6 +134,27 @@ spec = describe "unequal controls beside one closed crease" $ do
     length (closedRoot (coupledReference f)) `shouldBe` 5
     componentCount mesh `shouldBe` 1
 
+  it "reduces fine-mesh length error with an extra stage but still rejects crossing" $ do
+    f <- right (unequalCrease 4 CurlWithoutContact)
+    baseline <- right (solveCoupledWith WithoutPairContact (Settings 40 1e-5) f)
+    improved <- right (solveCoupledSchedule [1e2, 1e4, 1e6, 1e8, 1e9] WithoutPairContact (Settings 40 1e-5) f)
+    inequalityConverged baseline `shouldBe` False
+    maxLengthError (inequalityMesh baseline) `shouldSatisfy` (> 1e-5)
+    inequalityConverged improved `shouldBe` True
+    let mesh = inequalityMesh improved
+    maxLengthError mesh `shouldSatisfy` (< 2e-6)
+    checkCoupledMaterial f mesh `shouldBe` Right ()
+    audit <- right (auditPairContact (closedOwners (coupledReference f)) mesh)
+    pairMinimum audit `shouldSatisfy` (< -(1 / 1000))
+    case reverse (inequalitySteps improved) of
+      [] -> expectationFailure "missing continuation report"
+      lastStep : _ -> do
+        stepWeight lastStep `shouldBe` 1e9
+        stepSettled lastStep `shouldBe` True
+        stepMovement lastStep `shouldSatisfy` (<= 1e-7)
+    forM_ [[], [0], [1, 1], [2, 1], [1 / 0]] $ \weights ->
+      solveCoupledSchedule weights WithoutPairContact (Settings 40 1e-5) f `shouldSatisfy` isLeft
+
   it "refuses contradictory holds and comparisons with missing material" $ do
     forM_ [1, 2] $ \n -> do
       f <- right (unequalCrease n CrossedHolds)

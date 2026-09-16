@@ -3,11 +3,12 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease) where
 
 import ClosedCrease
+import ContactQuadratic
 import Control.Exception (evaluate)
-import Control.Monad (forM)
+import Control.Monad (forM, when)
 import CoupledCrease
 import CoupledCreaseGallery (matching, measure)
 import CreaseInequality
@@ -44,24 +45,57 @@ import UnequalCrease
 controls :: [(String, Text, UnequalControl)]
 controls = [("matched", "Matched holds", MatchedHolds), ("open", "Open the upper grip", OpenUpperGrip), ("curl", "Upper bend preference", UpperCurl), ("off", "Same preference · contact off", CurlWithoutContact), ("conflicting", "Incompatible held rows", CrossedHolds)]
 
+-- | A comparison can change a mesh or a numerical policy, but names both.
+-- Old commands retain their original solver and output names.
+data GalleryCase = GalleryCase
+  { caseLength :: Int,
+    caseWidth :: Int,
+    caseKey :: String,
+    caseLabel :: Text,
+    caseSuffix :: String,
+    caseWeights :: [Double],
+    caseMethod :: ContactMethod
+  }
+  deriving stock (Eq)
+
+meshCase :: (Int, Int) -> GalleryCase
+meshCase (n, w) = GalleryCase n w (meshKey n w) (T.pack (show (32 * n * w)) <> " triangles · length " <> T.pack (show n) <> " × width " <> T.pack (show w)) (show n ++ if w == 1 then "" else "-w" ++ show w) [1e2, 1e4, 1e6, 1e8] OriginalWorkingSet
+
 writeUnequalCrease :: FilePath -> IO ()
-writeUnequalCrease = writeGallery "unequal-crease" [(1, 1), (2, 1)] controls
+writeUnequalCrease = writeGallery "unequal-crease" (map meshCase [(1, 1), (2, 1)]) controls
 
--- | Three lengths and an independent doubling across the width. Keep the
--- matched and contact-off controls, but avoid repeating unrelated grip cases.
+-- | Three lengths and an independent doubling across the width.
 writeUnequalRefinement :: FilePath -> IO ()
-writeUnequalRefinement = writeGallery "unequal-refinement" [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)] [c | c@(key, _, _) <- controls, key `elem` ["matched", "curl", "off"]]
+writeUnequalRefinement = writeGallery "unequal-refinement" (map meshCase [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)]) comparisonControls
 
-writeGallery :: String -> [(Int, Int)] -> [(String, Text, UnequalControl)] -> FilePath -> IO ()
+writeFineCrease :: FilePath -> IO ()
+writeFineCrease =
+  writeGallery
+    "fine-crease"
+    [ (meshCase (4, 1)) {caseKey = key, caseLabel = label, caseSuffix = "4-" ++ key, caseWeights = weights, caseMethod = method}
+      | (key, label, weights, method) <-
+          [ ("baseline", "Original schedule and contacts", [1e2, 1e4, 1e6, 1e8], OriginalWorkingSet),
+            ("penalty", "Extra length stage only", [1e2, 1e4, 1e6, 1e8, 1e9], OriginalWorkingSet),
+            ("contact", "Contact exchange only", [1e2, 1e4, 1e6, 1e8], ExchangeNearDependent),
+            ("exchange", "Extra length stage + contact exchange", [1e2, 1e4, 1e6, 1e8, 1e9], ExchangeNearDependent)
+          ]
+    ]
+    comparisonControls
+
+comparisonControls :: [(String, Text, UnequalControl)]
+comparisonControls = [c | c@(key, _, _) <- controls, key `elem` ["matched", "curl", "off"]]
+
+writeGallery :: String -> [GalleryCase] -> [(String, Text, UnequalControl)] -> FilePath -> IO ()
 writeGallery gallery resolutions selected destination = do
   let output = destination </> gallery
   createDirectoryIfMissing True output
-  runs <- forM [(n, w, c) | (n, w) <- resolutions, c <- selected] $ \(n, w, (key, title, control)) -> do
+  runs <- forM [(choice, c) | choice <- resolutions, c <- selected] $ \(choice, (key, title, control)) -> do
+    let n = caseLength choice; w = caseWidth choice
     fixture <- checked (unequalCreaseWithWidth n w control)
-    let stem = key ++ "-" ++ show n ++ if w == 1 then "" else "-w" ++ show w
+    let stem = key ++ "-" ++ caseSuffix choice
         reference = coupledReference fixture
         mode = unequalContactMode control
-        attempt = solveCoupledWith mode (Settings 40 1e-5) fixture
+        attempt = solveCoupledMethod (caseMethod choice) (caseWeights choice) mode (Settings 40 1e-5) fixture
     putStrLn ("Solving " ++ stem)
     hFlush stdout
     start <- getCPUTime
@@ -77,13 +111,18 @@ writeGallery gallery resolutions selected destination = do
       sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
       sheet <- checked (coupledSurface fixture mesh)
       let name = stem ++ "-" ++ stage
-          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles"
+          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles" <> if gallery == "fine-crease" then " · " <> caseLabel choice else ""
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
       BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru unequal crease") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
       checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
       pure (stage, label, measurement, valid, sampleReport sampled, object ["title" .= caption, "path" .= (name ++ ".glb")])
+    when (gallery == "fine-crease" && caseKey choice == "baseline" && control == UpperCurl) $ case result of
+      Nothing -> pure ()
+      Just r -> do
+        replay <- replayContact fixture (inequalityMesh r)
+        BL.writeFile (output </> "contact-step.json") (encode replay)
     let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _, _) -> s == "after" && valid) stages
         report =
           object
@@ -92,7 +131,10 @@ writeGallery gallery resolutions selected destination = do
               "title" .= title,
               "subdivision" .= n,
               "widthSubdivision" .= w,
-              "meshKey" .= meshKey n w,
+              "meshKey" .= caseKey choice,
+              "choiceLabel" .= caseLabel choice,
+              "lengthWeights" .= caseWeights choice,
+              "contactMethod" .= show (caseMethod choice),
               "triangles" .= length (triangles (coupledSeed fixture)),
               "vertices" .= length (samples (coupledSeed fixture)),
               "heldVertices" .= IM.keys (coupledPins fixture),
@@ -111,10 +153,10 @@ writeGallery gallery resolutions selected destination = do
             ]
     putStrLn (stem ++ ": endpoint passed " ++ show passed ++ maybe "" (\reason -> "; " ++ T.unpack reason) refusal)
     hFlush stdout
-    pure (key, (n, w), report, [v | (_, _, _, _, _, v) <- stages], fmap inequalityMesh result)
-  refinement <- forM [(key, na, nb, a, b) | (key, na@(n, w), _, _, Just a) <- runs, (other, nb@(m, v), _, _, Just b) <- runs, key == other, (m == 2 * n && v == w) || (m == n && v == 2 * w)] $ \(key, na, nb, a, b) -> do
+    pure (key, choice, report, [v | (_, _, _, _, _, v) <- stages], fmap inequalityMesh result)
+  refinement <- forM [(key, na, nb, a, b) | (key, na, _, _, Just a) <- runs, (other, nb, _, _, Just b) <- runs, key == other, comparable na nb] $ \(key, na, nb, a, b) -> do
     difference <- checked (matching a b)
-    pure (object ["control" .= key, "fromMesh" .= uncurry meshKey na, "toMesh" .= uncurry meshKey nb, "maxMatchingPositionChange" .= difference])
+    pure (object ["control" .= key, "fromMesh" .= caseKey na, "toMesh" .= caseKey nb, "maxMatchingPositionChange" .= difference])
   responses <- forM [(key, n, a, b) | ("matched", n, _, _, Just a) <- runs, (key, k, _, _, Just b) <- runs, n == k] $ \(key, n, a, b) -> response key n a b
   contactEffect <- forM [(n, a, b) | ("off", n, _, _, Just a) <- runs, ("curl", k, _, _, Just b) <- runs, n == k] $ \(n, a, b) -> response "curl" n a b
   let document = object ["gallery" .= gallery, "runs" .= [r | (_, _, r, _, _) <- runs], "refinement" .= refinement, "responses" .= responses, "contactEffect" .= contactEffect]
@@ -126,16 +168,20 @@ writeGallery gallery resolutions selected destination = do
   template <- TIO.readFile "study/fold-material/unequal-crease.html"
   TIO.writeFile (destination </> gallery ++ ".html") (T.replace "/*UNEQUAL_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote " ++ gallery ++ ".html and measurements to " ++ destination)
+  where
+    comparable a b
+      | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
+      | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
 
-response :: String -> (Int, Int) -> MaterialMesh -> MaterialMesh -> IO Value
-response key (n, w) a b = do
+response :: String -> GalleryCase -> MaterialMesh -> MaterialMesh -> IO Value
+response key choice a b = do
   (lower, upper) <- checked (panelChanges a b)
   pure
     ( object
         [ "control" .= key,
-          "subdivision" .= n,
-          "widthSubdivision" .= w,
-          "meshKey" .= meshKey n w,
+          "subdivision" .= caseLength choice,
+          "widthSubdivision" .= caseWidth choice,
+          "meshKey" .= caseKey choice,
           "lowerChange" .= lower,
           "upperChange" .= upper
         ]
@@ -186,3 +232,16 @@ mapSvg gaps =
       | g < 0 = "#b6412b"
       | g <= 1 / 10000000 = "#386d69"
       | otherwise = "#d3a052"
+
+-- The same stored endpoint supplies both linearized problems. Saving the rows
+-- makes the numerical failure independently inspectable without a new route.
+replayContact :: CoupledFixture -> MaterialMesh -> IO Value
+replayContact fixture mesh = do
+  (material, gaps) <- checked (coupledRows EnforcePairOrder fixture 1e8 mesh)
+  let ids = [i | (i, _) <- zip [0 ..] (samples mesh), IM.notMember i (coupledPins fixture)]
+      row (coefficients, residual) = object ["residual" .= residual, "coefficients" .= [(i, [x, y, z]) | (i, V3 x y z) <- IM.toList coefficients]]
+      report method = do
+        (_, r) <- checked (constrainedStepWith method 2000 1e-3 ids material gaps)
+        pure (object ["method" .= show method, "converged" .= quadraticConverged r, "iterations" .= quadraticIterations r, "violation" .= quadraticViolation r, "complementarity" .= quadraticComplementarity r, "balance" .= quadraticBalance r, "activeConstraints" .= quadraticActive r])
+  reports <- mapM report [OriginalWorkingSet, ExchangeNearDependent]
+  pure (object ["lengthWeight" .= (1e8 :: Double), "damping" .= (1e-3 :: Double), "freeVertices" .= ids, "materialRows" .= map row material, "contactRows" .= map row gaps, "reports" .= reports])
