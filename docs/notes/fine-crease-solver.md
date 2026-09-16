@@ -77,8 +77,9 @@ change changes the objective, so energy is not compared across stages.
 The old entry points retain their original policies so earlier measurements
 remain reproducible. This new comparison is an opt-in study, not a general
 solver upgrade. It handles a single contact exchange, assumes known order
-along z and does not certify motion between endpoints. The next step is to
-rerun the length/width refinement grid with the same combined policy on every
-mesh. Comparing a stronger-penalty fine mesh directly with an older coarse
-mesh would change two things at once; this passing endpoint alone does not
-establish shape convergence or calibrated paper mechanics.
+along z and does not certify motion between endpoints. The follow-up
+[combined refinement](combined-crease-refinement.md) reruns the length/width
+grid with this policy on every mesh. Comparing a stronger-penalty fine mesh
+directly with an older coarse mesh would change two things at once; this
+passing endpoint alone does not establish shape convergence or calibrated
+paper mechanics.

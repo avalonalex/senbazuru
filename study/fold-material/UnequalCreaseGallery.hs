@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement) where
 
 import ClosedCrease
 import ContactQuadratic
@@ -66,7 +66,20 @@ writeUnequalCrease = writeGallery "unequal-crease" (map meshCase [(1, 1), (2, 1)
 
 -- | Three lengths and an independent doubling across the width.
 writeUnequalRefinement :: FilePath -> IO ()
-writeUnequalRefinement = writeGallery "unequal-refinement" (map meshCase [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)]) comparisonControls
+writeUnequalRefinement = writeGallery "unequal-refinement" (map meshCase refinementMeshes) comparisonControls
+
+-- | Repeat the same grid with one stronger policy on EVERY mesh. Changing
+-- only the finest solve would confound numerical policy and mesh resolution.
+-- The original grid stays available so its measurements remain reproducible.
+writeCombinedRefinement :: FilePath -> IO ()
+writeCombinedRefinement =
+  writeGallery
+    "combined-refinement"
+    [(meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9], caseMethod = ExchangeNearDependent} | size <- refinementMeshes]
+    comparisonControls
+
+refinementMeshes :: [(Int, Int)]
+refinementMeshes = [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)]
 
 writeFineCrease :: FilePath -> IO ()
 writeFineCrease =
@@ -95,7 +108,8 @@ writeGallery gallery resolutions selected destination = do
     let stem = key ++ "-" ++ caseSuffix choice
         reference = coupledReference fixture
         mode = unequalContactMode control
-        attempt = solveCoupledMethod (caseMethod choice) (caseWeights choice) mode (Settings 40 1e-5) fixture
+        settings = Settings 40 1e-5
+        attempt = solveCoupledMethod (caseMethod choice) (caseWeights choice) mode settings fixture
     putStrLn ("Solving " ++ stem)
     hFlush stdout
     start <- getCPUTime
@@ -111,7 +125,11 @@ writeGallery gallery resolutions selected destination = do
       sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
       sheet <- checked (coupledSurface fixture mesh)
       let name = stem ++ "-" ++ stage
-          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles" <> if gallery == "fine-crease" then " · " <> caseLabel choice else ""
+          detail = case gallery of
+            "fine-crease" -> " · " <> caseLabel choice
+            "combined-refinement" -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
+            _ -> ""
+          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles" <> detail
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
@@ -135,6 +153,8 @@ writeGallery gallery resolutions selected destination = do
               "choiceLabel" .= caseLabel choice,
               "lengthWeights" .= caseWeights choice,
               "contactMethod" .= show (caseMethod choice),
+              "iterationLimitPerStage" .= iterationLimit settings,
+              "lengthTolerance" .= lengthTolerance settings,
               "triangles" .= length (triangles (coupledSeed fixture)),
               "vertices" .= length (samples (coupledSeed fixture)),
               "heldVertices" .= IM.keys (coupledPins fixture),

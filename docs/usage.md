@@ -703,6 +703,28 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Refinement with one combined solver policy
+
+```bash
+stack run senbazuru-material-study -- --combined-refinement build/fold-material
+```
+
+Open [the common-policy comparison](http://127.0.0.1:8000/combined-refinement.html).
+It repeats the original five length/width meshes with the same length stages
+through `1e9` and the contact-exchange method on every run. Each mesh has
+matched, upper-preference and contact-off controls. Holds, control strength,
+40-iteration stage budgets and acceptance limits are unchanged.
+
+`combined-refinement/` retains all starting guesses, numerical starts and
+endpoints as complete FOLDs and GLBs, side profiles, magnified gap plots and
+fixed-grid gap maps. `checks.json` records solver settings, convergence,
+material/contact measurements and changes at matching material points.
+The table shows edge error and convergence separately from geometric checks;
+an unconverged result remains diagnostic. The 3D view reuses
+`checked-flap/node_modules`. This command is opt-in; earlier gallery commands
+keep their original policies. Known z order, static endpoints and uncalibrated
+material remain limitations. See [the comparison](notes/combined-crease-refinement.md).
+
 ### Isolating fine-mesh solver failures
 
 ```bash

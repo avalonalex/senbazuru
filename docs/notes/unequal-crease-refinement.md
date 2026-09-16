@@ -80,7 +80,7 @@ The follow-up [fine-mesh solver comparison](fine-crease-solver.md) isolates
 these failures: first the matched/contact-off length penalty, then the
 upper-preference constrained-step residual. It keeps all acceptance caps
 fixed and obtains a passing fine endpoint with both numerical changes.
-The refinement grid must now be rerun with that same policy on every mesh
-before interpreting shape convergence or returning to the crane body.
+The [common-policy rerun](combined-crease-refinement.md) then accepts all ten
+constrained endpoints, but the length-refined shapes still have not stabilized.
 Known order along z, retained triangle facing directions and static endpoints
 remain limitations; no continuous flexible route has been checked.
