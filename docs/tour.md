@@ -659,6 +659,10 @@ switching contact off restores its reference response but permits crossing.
 All six contact-enabled endpoints pass the unchanged checks. The preferred-bend
 case is nearly touching on the coarse mesh and visibly separated on the fine
 one, so contact shape needs further refinement before enlarging the body patch.
+The [independent refinement study](notes/unequal-crease-refinement.md) then varies
+length and width separately: width refinement retains the opening, but the
+next length refinement exposes solver failures. A displayed endpoint is not
+an accepted equilibrium unless convergence and every material check pass.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

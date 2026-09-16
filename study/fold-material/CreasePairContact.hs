@@ -18,6 +18,7 @@ module CreasePairContact
     PairWitness (..),
     PairAudit (..),
     auditPairContact,
+    samplePairGaps,
   )
 where
 
@@ -59,6 +60,30 @@ data Face = Face !((Int, R3), (Int, R3), (Int, R3)) !Rational !R3 !(Rational, Ra
 -- No geometric tolerance or snapping changes any reported gap.
 auditPairContact :: [FaceId] -> MaterialMesh -> Either PairContactError PairAudit
 auditPairContact owners mesh = do
+  faces <- pairFaces owners mesh
+  let witnesses = nub (concat [overlap a b | (FaceId 0, a) <- faces, (FaceId 1, b) <- faces, boxesMeet a b])
+  case map pairGap witnesses of
+    [] -> Left (PairContactError "the two panels have no projected contact region")
+    gaps -> pure (PairAudit witnesses (minimum gaps) (maximum gaps))
+
+-- | Sample the same projected locations on different meshes. Missing overlap
+-- is explicit, never a zero gap. This map is descriptive; the exact corner
+-- audit, not a finite sample grid, certifies non-crossing over all triangles.
+-- Multiple triangles on an edge must agree exactly on their height.
+samplePairGaps :: [FaceId] -> MaterialMesh -> [R2] -> Either PairContactError [Maybe Rational]
+samplePairGaps owners mesh locations = do
+  faces <- pairFaces owners mesh
+  let at owner p = case nub [height f p | (side, f) <- faces, side == owner, inside f p] of
+        [] -> Right Nothing
+        [z] -> Right (Just z)
+        _ -> Left (PairContactError "one panel has multiple heights at a sampled location")
+  forM locations $ \p -> do
+    lower <- at (FaceId 0) p
+    upper <- at (FaceId 1) p
+    pure ((-) <$> upper <*> lower)
+
+pairFaces :: [FaceId] -> MaterialMesh -> Either PairContactError [(FaceId, Face)]
+pairFaces owners mesh = do
   unless (length owners == length (triangles mesh) && all (`elem` [FaceId 0, FaceId 1]) owners && all (`elem` owners) [FaceId 0, FaceId 1]) (Left (PairContactError "pair contact needs both panels and one lower/upper owner per triangle"))
   points <- forM (zip [0 ..] (samples mesh)) $ \(i, p) -> do
     let V3 x y z = position p
@@ -66,7 +91,7 @@ auditPairContact owners mesh = do
     pure (i, (toRational x, toRational y, toRational z))
   let vertices = IM.fromList points
       vertex i = maybe (Left (PairContactError ("pair contact lost vertex " <> tshow i))) (Right . (i,)) (IM.lookup i vertices)
-  faces <- forM (zip3 [0 :: Int ..] owners (triangles mesh)) $ \(i, owner, (a, b, c)) -> do
+  forM (zip3 [0 :: Int ..] owners (triangles mesh)) $ \(i, owner, (a, b, c)) -> do
     ps <- mapM vertex [a, b, c]
     case map snd ps of
       [p, q, r] -> do
@@ -76,10 +101,6 @@ auditPairContact owners mesh = do
         unless (if owner == FaceId 0 then nz > 0 else nz < 0) (Left (PairContactError ("triangle " <> tshow i <> " must retain its lower/up or upper/down facing direction")))
         pure (owner, Face ((a, p), (b, q), (c, r)) nz (scale (1 / nz) n) (minimum xs, maximum xs, minimum ys, maximum ys))
       _ -> Left (PairContactError "pair contact expected three triangle corners")
-  let witnesses = nub (concat [overlap a b | (FaceId 0, a) <- faces, (FaceId 1, b) <- faces, boxesMeet a b])
-  case map pairGap witnesses of
-    [] -> Left (PairContactError "the two panels have no projected contact region")
-    gaps -> pure (PairAudit witnesses (minimum gaps) (maximum gaps))
 
 boxesMeet :: Face -> Face -> Bool
 boxesMeet (Face _ _ _ (a, b, c, d)) (Face _ _ _ (e, f, g, h)) = not (b < e || f < a || d < g || h < c)

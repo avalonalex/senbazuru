@@ -49,6 +49,17 @@ spec = describe "contact between two current crease panels" $ do
     abs (measured - predicted) `shouldSatisfy` (< 1e-8)
     pairLocation original `shouldBe` (1 / 2, 3 / 2)
 
+  it "samples fixed locations without treating missing overlap as contact" $ do
+    f <- right (closedCreaseWithWidth 2 2 FlatTouching)
+    samplePairGaps (closedOwners f) (closedMesh f) [(1 / 8, 0), (1 / 16, 1 / 8), (3 / 4, 0)] `shouldBe` Right [Just 0, Just 0, Nothing]
+    -- A sloping upper triangle has an independently known height 1/4 at
+    -- its first corner. Moving that entire triangle down crosses the lower.
+    let mesh = pairMesh 0
+        moved = mesh {samples = [if i >= 3 then let V3 x y z = position p in p {position = V3 x y (z - 1)} else p | (i, p) <- zip [0 :: Int ..] (samples mesh)]}
+    samplePairGaps [FaceId 0, FaceId 1] mesh [(1 / 2, 1 / 2), (0, 0)] `shouldBe` Right [Just (1 / 4), Nothing]
+    samplePairGaps [FaceId 0, FaceId 1] moved [(1 / 2, 1 / 2)] `shouldBe` Right [Just (-(3 / 4))]
+    samplePairGaps [] mesh [] `shouldSatisfy` isLeft
+
   it "refuses lost owners, vertices, facing directions and nonfinite coordinates" $ do
     f <- right (closedCrease 1 BentTouching)
     let m = closedMesh f

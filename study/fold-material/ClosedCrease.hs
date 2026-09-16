@@ -16,6 +16,7 @@ module ClosedCrease
     ClosedCreaseError (..),
     Profile,
     closedCrease,
+    closedCreaseWithWidth,
     profileGaps,
     profileCrossings,
     closedSurface,
@@ -57,7 +58,14 @@ newtype ClosedCreaseError = ClosedCreaseError Text deriving stock (Eq, Show)
 instance Explain ClosedCreaseError where explain (ClosedCreaseError message) = message
 
 closedCrease :: Int -> CreaseShape -> Either ClosedCreaseError ClosedCrease
-closedCrease subdivision shape = do
+closedCrease subdivision = closedCreaseWithWidth subdivision 1
+
+-- | Refine the extruded width independently. The original entry point keeps
+-- three rows exactly; added rows share the same continuous crease and retain
+-- distinct material vertices on the two contacting halves.
+closedCreaseWithWidth :: Int -> Int -> CreaseShape -> Either ClosedCreaseError ClosedCrease
+closedCreaseWithWidth subdivision width shape = do
+  unless (width >= 1 && width <= 8) (Left (ClosedCreaseError "closed-crease width subdivision must be between 1 and 8"))
   unless (subdivision >= 1 && subdivision <= 8) (Left (ClosedCreaseError "closed-crease subdivision must be between 1 and 8"))
   let directions = if shape == FlatTouching then replicate 4 (1, 0) else map rotation [0, 1 / 10, 1 / 5, 3 / 10]
       opening i = case shape of
@@ -73,17 +81,18 @@ closedCrease subdivision shape = do
       lower = profile directions
       upper = profile upperDirections
       count = 4 * subdivision
-      -- Three y rows keep a small 2D mesh, including triangles meeting only
-      -- at a corner. Material x is negative on the upper, folded-over half.
-      half side ps = [materialSample (side * fromIntegral i / fromIntegral (2 * count)) y (V3 (fromRational x) y (fromRational z)) | (i, (x, z)) <- zip [0 :: Int ..] ps, j <- [0 :: Int .. 2], let y = fromIntegral j / 2 - 0.5]
+      rows = 2 * width + 1
+      -- Material x is negative on the upper, folded-over half. Refinement
+      -- splits the original crease stiffness in proportion to segment length.
+      half side ps = [materialSample (side * fromIntegral i / fromIntegral (2 * count)) y (V3 (fromRational x) y (fromRational z)) | (i, (x, z)) <- zip [0 :: Int ..] ps, j <- [0 .. rows - 1], let y = fromIntegral j / fromIntegral (rows - 1) - 0.5]
       lowerSamples = half 1 lower
-      upperId i = if i < 3 then i else length lowerSamples + i - 3
-      cell i j = let a = 3 * i + j; b = 3 * (i + 1) + j in [(a, b, b + 1), (a, b + 1, a + 1)]
-      lowerTriangles = concat [cell i j | i <- [0 .. count - 1], j <- [0, 1]]
-      mesh = Mesh (lowerSamples ++ drop 3 (half (-1) upper)) (lowerTriangles ++ [(upperId a, upperId c, upperId b) | (a, b, c) <- lowerTriangles])
-      rootHinge h = let (a, b, _, _) = hingeVertices h in if a < 3 && b < 3 then h {hingeRole = SurfaceCrease (EdgeId 0), hingeRest = pi, hingeStiffness = 0.5} else h
+      upperId i = if i < rows then i else length lowerSamples + i - rows
+      cell i j = let a = rows * i + j; b = rows * (i + 1) + j in [(a, b, b + 1), (a, b + 1, a + 1)]
+      lowerTriangles = concat [cell i j | i <- [0 .. count - 1], j <- [0 .. rows - 2]]
+      mesh = Mesh (lowerSamples ++ drop rows (half (-1) upper)) (lowerTriangles ++ [(upperId a, upperId c, upperId b) | (a, b, c) <- lowerTriangles])
+      rootHinge h = let (a, b, _, _) = hingeVertices h in if a < rows && b < rows then h {hingeRole = SurfaceCrease (EdgeId 0), hingeRest = pi, hingeStiffness = 0.5 / fromIntegral width} else h
   hinges <- first (ClosedCreaseError . explain) (buildPanelHinges (Bending 1 0.2) mesh)
-  pure (ClosedCrease mesh (replicate (length lowerTriangles) (FaceId 0) ++ replicate (length lowerTriangles) (FaceId 1)) (map rootHinge hinges) [0, 1, 2] lower upper)
+  pure (ClosedCrease mesh (replicate (length lowerTriangles) (FaceId 0) ++ replicate (length lowerTriangles) (FaceId 1)) (map rootHinge hinges) [0 .. rows - 1] lower upper)
 
 rotation :: Rational -> (Rational, Rational)
 rotation t = ((1 - t * t) / (1 + t * t), 2 * t / (1 + t * t))
