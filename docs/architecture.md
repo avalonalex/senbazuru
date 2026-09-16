@@ -362,6 +362,12 @@ unchanged. `constrainedStepDetailed` supplies per-contact residuals, source-row
 mapping and an exchange record; the ordinary entry point discards that lazy
 detail and retains its compact report. `UnequalCreaseGallery` saves both
 failed inner problems and compares complete solves on the two affected meshes.
+The [fine-band length comparison](notes/fine-band-length-enforcement.md)
+reuses the same solver with an extra penalty stage, retaining its baseline.
+`UnequalCreaseGallery` measures every edge's original/current length and
+restarts the failed contact-off endpoints at unchanged and larger weights.
+Replay coordinates and step histories keep the numerical result inspectable;
+independent contact checks still reject crossing endpoints.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

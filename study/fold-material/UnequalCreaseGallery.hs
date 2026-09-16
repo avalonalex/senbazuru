@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeBandContact) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeBandContact, writeBandLength) where
 
 import ClosedCrease
 import ContactQuadratic
@@ -19,18 +19,21 @@ import Data.Aeson.Key qualified as Key
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
-import Data.List (nub)
+import Data.List (nub, sortOn)
+import Data.Ord (Down (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import FoldBending
+import FoldMaterial (meshEdges)
 import FoldRelaxation
 import Senbazuru.Diagram
-import Senbazuru.Explain (Explain (..), num)
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
@@ -94,6 +97,20 @@ writeBandContact = writeGallery "band-contact" choices bandControls
           (key, label, method) <- [("single", "Single exchange", ExchangeNearDependent), ("progressive", "Progressive exchanges", ProgressiveContactExchange)]
       ]
 
+-- | Separate a finite length penalty from insufficient work. Replaying the
+-- old contact-off endpoints at the SAME weight is the extra-work control;
+-- the complete comparison changes only the final length-weight schedule.
+-- A settled crossing sheet remains diagnostic, regardless of its lengths.
+writeBandLength :: FilePath -> IO ()
+writeBandLength = writeGallery "band-length" choices [c | c@(key, _, _) <- bandControls, key `elem` ["matched", "band-off"]]
+  where
+    choices =
+      [ base {caseKey = caseKey base ++ "-" ++ key, caseSuffix = caseSuffix base ++ "-" ++ key, caseLabel = caseLabel base <> " · " <> label, caseWeights = weights}
+        | base <- combinedMeshes,
+          caseLength base == 4,
+          (key, label, weights) <- [("baseline", "Through 1e9", caseWeights base), ("stronger", "Extra 1e10 stage", caseWeights base ++ [1e10])]
+      ]
+
 bandControls :: [(String, Text, UnequalControl)]
 bandControls = comparisonControls ++ [("band", "Distributed bend preference", UpperBand), ("band-off", "Distributed preference · contact off", BandWithoutContact)]
 
@@ -153,7 +170,7 @@ writeGallery gallery resolutions selected destination = do
             "fine-crease" -> " · " <> caseLabel choice
             _ | gallery `elem` ["combined-refinement", "band-refinement"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
-          description = if gallery == "band-contact" then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
+          description = if gallery `elem` ["band-contact", "band-length"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
           caption = title <> " · " <> label <> " · " <> description
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
@@ -175,6 +192,19 @@ writeGallery gallery resolutions selected destination = do
             BL.writeFile (output </> stem ++ "-contact-step.json") (encode evidence)
             pure (Just evidence)
         else pure Nothing
+    lengthDiagnostics <-
+      if gallery == "band-length"
+        then Just . object <$> mapM (\(stage, _, mesh) -> (Key.fromString stage .=) <$> lengthReport mesh) candidates
+        else pure Nothing
+    lengthReplay <-
+      if gallery == "band-length" && caseWeights choice == caseWeights (meshCase (n, w)) ++ [1e9] && control == BandWithoutContact
+        then case result of
+          Nothing -> pure Nothing
+          Just r -> do
+            evidence <- replayLength fixture (inequalityMesh r)
+            BL.writeFile (output </> stem ++ "-length-replay.json") (encode evidence)
+            pure (Just evidence)
+        else pure Nothing
     let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _, _, _) -> s == "after" && valid) stages
         report =
           object
@@ -194,6 +224,8 @@ writeGallery gallery resolutions selected destination = do
               "heldVertices" .= IM.keys (coupledPins fixture),
               "sharedCreaseVertices" .= closedRoot reference,
               "contactReplay" .= replay,
+              "lengthDiagnostics" .= lengthDiagnostics,
+              "lengthReplay" .= lengthReplay,
               "band" .= fmap (\b -> object ["bounds" .= bandBounds b, "desiredTurnRadians" .= bandDesiredTurn b, "bendingWeight" .= bandBendingWeight b, "flatReferenceEnergy" .= bandReferenceEnergy b]) band,
               "bendControls" .= [object ["vertices" .= hingeVertices h, "restRadians" .= hingeRest h, "stiffness" .= hingeStiffness h] | h <- closedHinges reference, hingeRole h == BendControl],
               "contactEnabled" .= (mode == EnforcePairOrder),
@@ -227,6 +259,7 @@ writeGallery gallery resolutions selected destination = do
   putStrLn ("Wrote " ++ gallery ++ ".html and measurements to " ++ destination)
   where
     comparable a b
+      | gallery == "band-length" = caseWidth a == caseWidth b && caseWeights b == caseWeights a ++ [1e10]
       | gallery == "band-contact" = caseWidth a == caseWidth b && caseMethod a == ExchangeNearDependent && caseMethod b == ProgressiveContactExchange
       | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
       | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
@@ -328,3 +361,40 @@ replayContact weight methods fixture mesh = do
         pure (object ["method" .= show method, "converged" .= quadraticConverged r, "iterations" .= quadraticIterations r, "violation" .= quadraticViolation r, "complementarity" .= quadraticComplementarity r, "balance" .= quadraticBalance r, "activeConstraints" .= quadraticActive r, "step" .= [(i, [x, y, z]) | (i, V3 x y z) <- IM.toList step], "contacts" .= contacts, "exchanges" .= exchanges])
   reports <- mapM report methods
   pure (object ["lengthWeight" .= weight, "damping" .= (1e-3 :: Double), "freeVertices" .= ids, "materialRows" .= map row material, "contactRows" .= map row gaps, "reports" .= reports])
+
+-- Original edge lengths are measured in material coordinates. The solver
+-- penalizes ABSOLUTE length errors, whereas acceptance uses RELATIVE error;
+-- short edges can therefore miss the cap even at a settled penalized shape.
+-- Retain every edge so the maximum and the length cost can be recomputed.
+lengthReport :: MaterialMesh -> IO Value
+lengthReport mesh = do
+  let vertices = IM.fromList (zip [0 ..] (samples mesh))
+      vertex i = checked (maybe (Left (InequalityError ("length report lost vertex " <> tshow i))) Right (IM.lookup i vertices))
+  edges <- forM (meshEdges mesh) $ \(a, b) -> do
+    p <- vertex a
+    q <- vertex b
+    let rest = sqrt ((materialU p - materialU q) ^ (2 :: Int) + (materialV p - materialV q) ^ (2 :: Int))
+        actual = norm (position p ^-^ position q)
+    pure (a, b, rest, actual, actual / rest - 1)
+  pure
+    ( object
+        [ "sumSquaredError" .= sum [(actual - rest) ^ (2 :: Int) | (_, _, rest, actual, _) <- edges],
+          "edges" .= [object ["vertices" .= [a, b], "rest" .= rest, "actual" .= actual, "relativeError" .= err] | (a, b, rest, actual, err) <- sortOn (\(_, _, _, _, err) -> Down (abs err)) edges]
+        ]
+    )
+
+-- The saved failed endpoint, not a softened fresh guess, starts both runs.
+-- This isolates more work at the same weight from a stronger penalty. The
+-- full vectors and step history remain available for independent checks.
+replayLength :: CoupledFixture -> MaterialMesh -> IO Value
+replayLength fixture mesh = do
+  reports <- forM [1e9, 1e10] $ \weight -> do
+    result <- checked (solveCoupledMethod ExchangeNearDependent [weight] WithoutPairContact (Settings 40 1e-5) fixture {coupledSeed = mesh})
+    let endpoint = inequalityMesh result
+    (measurement, _) <- measure fixture endpoint
+    lengths <- lengthReport endpoint
+    changes <- checked (panelChanges mesh endpoint)
+    pure (object ["lengthWeight" .= weight, "solve" .= resultReport result, "measurements" .= measurement, "lengthDiagnostics" .= lengths, "panelChanges" .= changes, "positions" .= coordinates endpoint])
+  pure (object ["sourcePositions" .= coordinates mesh, "iterationLimit" .= (40 :: Int), "lengthTolerance" .= (1e-5 :: Double), "reports" .= reports])
+  where
+    coordinates m = [[x, y, z] | p <- samples m, let V3 x y z = position p]

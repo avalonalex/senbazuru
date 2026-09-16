@@ -703,6 +703,28 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Enforcing lengths in the fine band controls
+
+```bash
+stack run senbazuru-material-study -- --band-length build/fold-material
+```
+
+Open [the fine-band length comparison](http://127.0.0.1:8000/band-length.html).
+It compares `4×1` and `4×2` schedules ending at `1e9` or `1e10`, with matched
+holds and the distributed preference with contact disabled. The original
+failures remain available; all controls, holds, iteration budgets and
+acceptance limits stay fixed. Crossing still fails independent contact checks,
+even if length enforcement permits numerical convergence.
+
+The page shows per-edge lengths and replays each original failed contact-off
+endpoint with a fresh budget at the same weight and at the larger weight.
+Downloadable `*-length-replay.json` files retain coordinates, step histories
+and endpoint measurements. This isolates additional work from stronger
+enforcement. The twenty-four FOLD/GLB states and gap/profile plots are static
+numerical states, not a folding route. The expensive comparison is opt-in;
+its 3D view reuses `checked-flap/node_modules`. See
+[the study](notes/fine-band-length-enforcement.md) for evidence and limits.
+
 ### Replaying the failed band contact steps
 
 ```bash

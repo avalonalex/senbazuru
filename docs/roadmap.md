@@ -403,10 +403,16 @@ checked coupled angles.
    and `2×2` band endpoints now pass, with relative edge errors `1.483e-6`
    and `6.541e-7` and exact minimum gap zero. The matched, original line-load
    and contact-off endpoints are unchanged; the original failures remain
-   reproducible controls. **Next: test stronger length enforcement on the fine
-   contact-off controls, which miss the length cap despite tiny proposed
-   movement. Then repeat the full band grid with one solver policy before
-   drawing refinement conclusions or enlarging the crane body patch.**
+   reproducible controls.
+   [#239](https://github.com/avalonalex/senbazuru/issues/239)
+   [isolates the fine contact-off length failures](notes/fine-band-length-enforcement.md).
+   Restarting either endpoint at `1e9` makes no movement; raising the weight
+   to `1e10` brings relative edge error below `2.3e-6` at both widths, with
+   the same `1e-5` cap. Both still cross and remain invalid paper. **Next:
+   repeat the full band grid with one common length/contact policy, including
+   the stronger length stage and progressive contact exchange. Recheck every
+   endpoint before drawing refinement conclusions or enlarging the crane
+   body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

@@ -683,10 +683,13 @@ meshes fail the inner contact solve. The [isolated replay](notes/several-contact
 shows that one contact replacement cannot repair all the violated inequalities.
 Several improving replacements pass the unchanged inner checks and give
 accepted endpoints on both meshes, while the other controls are unchanged.
-The original failures remain available for comparison. Fine contact-off
-length enforcement and a full grid under one policy are still needed before
-drawing refinement conclusions; accepted endpoints alone do not establish
-shape convergence.
+The original failures remain available for comparison.
+The [fine-band length study](notes/fine-band-length-enforcement.md) then
+restarts the failed contact-off endpoints: extra work at the same weight
+makes no movement, while a stronger penalty brings both below the unchanged
+length cap. Independent contact checks still reject their crossing. A full
+grid under one common policy remains necessary before drawing refinement
+conclusions; accepted endpoints alone do not establish shape convergence.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
