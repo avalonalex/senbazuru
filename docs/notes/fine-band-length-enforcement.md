@@ -89,7 +89,7 @@ downloads. The long solves remain opt-in and add no default CI test workload.
 This experiment does not change the solver, its default schedule, any
 acceptance cap, or the physical controls. It tests a bounded stronger penalty;
 it does not prove global optimality or provide an adaptive enforcement rule.
-The next step is a full band grid with one common length/contact policy,
-including the [progressive contact repair](several-contact-exchanges.md).
-Only then compare length and width refinement again. Static checks remain
+The [full-grid follow-up](combined-band-refinement.md) applies this schedule
+and the [progressive contact repair](several-contact-exchanges.md) to every
+mesh before comparing length and width refinement again. Static checks remain
 separate from mesh independence and a continuously checked flexible route.

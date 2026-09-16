@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeBandContact, writeBandLength) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandContact, writeBandLength) where
 
 import ClosedCrease
 import ContactQuadratic
@@ -83,6 +83,16 @@ writeCombinedRefinement =
 
 writeBandRefinement :: FilePath -> IO ()
 writeBandRefinement = writeGallery "band-refinement" combinedMeshes bandControls
+
+-- | Apply both isolated numerical repairs to every mesh and loading control.
+-- Keep the old band command reproducible: changing only its failed cases
+-- would mix different objectives and contact policies in one refinement grid.
+writeCombinedBandRefinement :: FilePath -> IO ()
+writeCombinedBandRefinement =
+  writeGallery
+    "combined-band-refinement"
+    [base {caseWeights = caseWeights base ++ [1e10], caseMethod = ProgressiveContactExchange} | base <- combinedMeshes]
+    bandControls
 
 -- | Replay the two failed band endpoints and compare complete solves, changing
 -- only the contact exchange policy. Fine contact-off length enforcement is a
@@ -168,7 +178,7 @@ writeGallery gallery resolutions selected destination = do
       let name = stem ++ "-" ++ stage
           detail = case gallery of
             "fine-crease" -> " · " <> caseLabel choice
-            _ | gallery `elem` ["combined-refinement", "band-refinement"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
+            _ | gallery `elem` ["combined-refinement", "band-refinement", "combined-band-refinement"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
           description = if gallery `elem` ["band-contact", "band-length"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
           caption = title <> " · " <> label <> " · " <> description

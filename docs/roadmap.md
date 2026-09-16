@@ -33,7 +33,8 @@ independent mesh refinement in [#227](https://github.com/avalonalex/senbazuru/is
 the fine-mesh solver comparison in [#229](https://github.com/avalonalex/senbazuru/issues/229),
 the common-policy grid in [#231](https://github.com/avalonalex/senbazuru/issues/231),
 its `4×2` completion in [#233](https://github.com/avalonalex/senbazuru/issues/233),
-and distributed bend preferences in [#235](https://github.com/avalonalex/senbazuru/issues/235). The
+distributed bend preferences in [#235](https://github.com/avalonalex/senbazuru/issues/235),
+and the common band policy in [#241](https://github.com/avalonalex/senbazuru/issues/241). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -408,11 +409,18 @@ checked coupled angles.
    [isolates the fine contact-off length failures](notes/fine-band-length-enforcement.md).
    Restarting either endpoint at `1e9` makes no movement; raising the weight
    to `1e10` brings relative edge error below `2.3e-6` at both widths, with
-   the same `1e-5` cap. Both still cross and remain invalid paper. **Next:
-   repeat the full band grid with one common length/contact policy, including
-   the stronger length stage and progressive contact exchange. Recheck every
-   endpoint before drawing refinement conclusions or enlarging the crane
-   body patch.**
+   the same `1e-5` cap. Both still cross and remain invalid paper.
+   [#241](https://github.com/avalonalex/senbazuru/issues/241)
+   [repeats the full band grid](notes/combined-band-refinement.md) with weights
+   through `1e10` and progressive contact exchange on every run. All thirty
+   solves converge and all eighteen constrained endpoints pass; all twelve
+   contact-off controls still cross. Fine band openings are `0.003760` and
+   `0.003287`, while middle-mesh gaps shrink roughly tenfold with the stronger
+   penalty. The second length doubling changes matching positions by
+   `0.003290` / `0.002800`, more than the first at either width. **Next:
+   test `8×1` matched, band and band contact-off controls under the same policy.
+   Compare the next length doubling and all endpoint checks before drawing
+   mesh-convergence conclusions or enlarging the crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

@@ -76,6 +76,16 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --combined-band-refinement build/fold-material`
+writes `combined-band-refinement.html`: all six meshes and five band-study
+controls under the same six-stage length schedule through `1e10` and
+progressive contact exchange. Earlier commands retain their policies.
+Ninety exported states retain independent checks, solver histories, gap maps,
+matching positions and passive/control energies. Crossing controls remain
+diagnostics. The expensive solves are opt-in; see
+[usage](../../docs/usage.md#refining-the-band-with-one-common-solver-policy)
+and [the study](../../docs/notes/combined-band-refinement.md).
+
 `stack run senbazuru-material-study -- --band-contact build/fold-material`
 writes `band-contact.html`: the two failed middle band meshes, their saved
 inner equations, and single/progressive contact-exchange comparisons with

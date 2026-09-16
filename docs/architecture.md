@@ -368,6 +368,10 @@ reuses the same solver with an extra penalty stage, retaining its baseline.
 restarts the failed contact-off endpoints at unchanged and larger weights.
 Replay coordinates and step histories keep the numerical result inspectable;
 independent contact checks still reject crossing endpoints.
+The [combined band grid](notes/combined-band-refinement.md) applies both
+isolated repairs to every mesh and control through another opt-in gallery
+entry point. It reuses the same fixtures, measurements and solver; the old
+commands retain their policies and reproducible failures.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

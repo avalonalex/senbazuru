@@ -703,6 +703,29 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Refining the band with one common solver policy
+
+```bash
+stack run senbazuru-material-study -- --combined-band-refinement build/fold-material
+```
+
+Open [the combined band grid](http://127.0.0.1:8000/combined-band-refinement.html).
+All six length × width meshes (`1×1`, `2×1`, `4×1`, `1×2`, `2×2`, `4×2`)
+use progressive contact exchange and length weights `1e2`, `1e4`, `1e6`,
+`1e8`, `1e9`, `1e10`, with forty iterations per stage. Each has matched holds,
+three-line and distributed-band preferences, and contact-off versions of both
+loads. Material, held regions, loading and acceptance caps are unchanged.
+Earlier commands retain their original numerical policies and results.
+
+The opt-in run exports ninety FOLD/GLB states, 270 SVG plots and `checks.json`
+with step histories, matching-material comparisons, fixed-grid gap samples,
+and separate passive/control energies. Numerical convergence is reported
+separately from physical acceptance; crossing contact-off endpoints remain
+diagnostics. The 3D view reuses `checked-flap/node_modules`. These are static
+states with known z order and illustrative material parameters, not a
+continuously checked flexible route or proof of mesh independence. See
+[the study](notes/combined-band-refinement.md) for the measured results.
+
 ### Enforcing lengths in the fine band controls
 
 ```bash
