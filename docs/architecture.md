@@ -342,6 +342,10 @@ length schedules in `CoupledCrease` and an opt-in single-equality exchange in
 `ContactQuadratic`. The existing entry points retain their original policies.
 `coupledRows` reconstructs a recorded inner problem for replay; the gallery
 compares the two changes independently and saves those equations and residuals.
+The opt-in [combined refinement](notes/combined-crease-refinement.md) reuses
+the original five-mesh grid with both changes on every mesh. The gallery
+records the common solver settings alongside each result; no material or
+contact-solver implementation changes are needed for that comparison.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

@@ -666,8 +666,12 @@ an accepted equilibrium unless convergence and every material check pass.
 The [fine-mesh follow-up](notes/fine-crease-solver.md) separates a finite
 length-penalty error from a skipped stricter contact. One additional length
 stage and a single contact exchange together produce a passing upper-preference
-endpoint, while each change alone leaves a different failure. The same policy must now
-be compared across meshes before judging shape convergence.
+endpoint, while each change alone leaves a different failure. The
+[common-policy grid](notes/combined-crease-refinement.md) then accepts all ten
+constrained endpoints, while all five contact-off controls still cross.
+Width refinement retains the opening, but length refinement still moves
+matching material points substantially. Solver convergence is necessary for
+that comparison; it does not establish a mesh-independent shape.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

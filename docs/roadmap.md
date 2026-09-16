@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-15**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-16**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -30,7 +30,8 @@ nonnegative-gap constraints in [#220](https://github.com/avalonalex/senbazuru/is
 both bending crease panels in [#222](https://github.com/avalonalex/senbazuru/issues/222),
 unequal controls in [#224](https://github.com/avalonalex/senbazuru/issues/224),
 independent mesh refinement in [#227](https://github.com/avalonalex/senbazuru/issues/227),
-and the fine-mesh solver comparison in [#229](https://github.com/avalonalex/senbazuru/issues/229). The
+the fine-mesh solver comparison in [#229](https://github.com/avalonalex/senbazuru/issues/229),
+and the common-policy grid in [#231](https://github.com/avalonalex/senbazuru/issues/231). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -371,10 +372,17 @@ checked coupled angles.
    relative length error `3.961e-6`; neither physical nor numerical acceptance
    caps change. Four combinations retain the original policies as controls,
    and the contact-off result still crosses.
-   **Next: rerun the length/width refinement grid with the same combined
-   solver policy on every mesh. A passing fine endpoint does not establish
-   shape convergence; settle that comparison before enlarging the crane
-   body patch.**
+   [#231](https://github.com/avalonalex/senbazuru/issues/231) now
+   [reruns all five meshes with that policy](notes/combined-crease-refinement.md).
+   All fifteen solves converge; all ten constrained endpoints pass, while all
+   five contact-off controls still cross. Width refinement retains the opening,
+   but the upper-preference matching-position change grows from `0.001298`
+   to `0.004552` across the two length doublings. The fine endpoint is accepted;
+   shape convergence remains unestablished.
+   **Next: fill the missing `4×2` comparison under the same policy and inspect
+   achieved turns and passive/control bending energies at the three imposed
+   lines. Establish what drives the length sensitivity before enlarging the
+   crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

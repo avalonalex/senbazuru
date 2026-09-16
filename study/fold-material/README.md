@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --combined-refinement build/fold-material`
+writes `combined-refinement.html`: the original five length/width meshes,
+each with the same extra length stage and contact exchange. It retains the
+matched and contact-off controls, exact endpoint checks and fixed-grid gap
+maps, with identical holds, control strength and acceptance limits. This
+comparison remains opt-in. See [usage](../../docs/usage.md#refinement-with-one-combined-solver-policy)
+and [the measurements](../../docs/notes/combined-crease-refinement.md).
+
 `stack run senbazuru-material-study -- --fine-crease build/fold-material`
 writes `fine-crease.html`: the same fine mesh under the original policy, an
 extra length stage, a near-parallel contact exchange, and both together.
