@@ -84,6 +84,16 @@ exports and replay diagnostics. See
 [usage](../../docs/usage.md#replaying-the-failed-band-contact-steps) and
 [the study](../../docs/notes/several-contact-exchanges.md).
 
+`stack run senbazuru-material-study -- --band-length build/fold-material`
+writes `band-length.html`: fine `4×1` / `4×2` matched and band contact-off
+controls with schedules through `1e9` or `1e10`. It also restarts each original
+failed contact-off endpoint at the same and stronger weights, retaining
+per-edge lengths, coordinates and step histories. Crossing remains a failure
+even when the numerical solve converges. This comparison is opt-in; see
+[usage](../../docs/usage.md#enforcing-lengths-in-the-fine-band-controls) and
+[the study](../../docs/notes/fine-band-length-enforcement.md).
+
+
 `stack run senbazuru-material-study -- --band-refinement build/fold-material`
 writes `band-refinement.html`, comparing the original line loads with a
 preference spread across a fixed material band. Total preferred turn and

@@ -126,9 +126,11 @@ The [follow-up replay](several-contact-exchanges.md) isolates the two failed
 inner contact steps: several selected contact equalities need replacing.
 Progressive replacements give accepted endpoints on both middle meshes while
 retaining the original policy and all residual limits. The historical results
-above remain reproducible. Next, test stronger length enforcement on the fine
-contact-off controls, then rerun the full grid with one policy before drawing
-conclusions from the length series or enlarging the crane body patch.
+above remain reproducible. The [fine-band length experiment](fine-band-length-enforcement.md)
+then tests stronger enforcement on the contact-off controls: increasing the
+final penalty resolves their length failure, while both still cross. Next,
+rerun the full grid with one policy before drawing conclusions from the
+length series or enlarging the crane body patch.
 Known z order, held crease strips,
 uncalibrated stiffness and static endpoints remain limitations; this work
 does not certify a continuous flexible route.

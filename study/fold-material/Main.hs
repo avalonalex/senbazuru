@@ -52,7 +52,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.Environment (getArgs)
 import System.Exit (die)
 import System.FilePath ((</>))
-import UnequalCreaseGallery (writeBandContact, writeBandRefinement, writeCombinedRefinement, writeFineCrease, writeUnequalCrease, writeUnequalRefinement)
+import UnequalCreaseGallery (writeBandContact, writeBandLength, writeBandRefinement, writeCombinedRefinement, writeFineCrease, writeUnequalCrease, writeUnequalRefinement)
 import WingBendingGallery (writeWingBending)
 import WingLayersGallery (writeWingLayers)
 
@@ -70,6 +70,7 @@ main = do
     ["--petal", destination] -> writePetalGallery destination
     ["--fine-crease", destination] -> writeFineCrease destination
     ["--band-contact", destination] -> writeBandContact destination
+    ["--band-length", destination] -> writeBandLength destination
     ["--band-refinement", destination] -> writeBandRefinement destination
     ["--combined-refinement", destination] -> writeCombinedRefinement destination
     ["--unequal-refinement", destination] -> writeUnequalRefinement destination
@@ -91,7 +92,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do

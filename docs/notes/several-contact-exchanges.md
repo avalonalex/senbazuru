@@ -102,8 +102,8 @@ exercise independent contacts, reordered/duplicated constraints and an
 exhausted work budget; the expensive material comparisons remain opt-in.
 
 This is a bounded numerical repair, not a general convergence guarantee or
-a calibrated paper model. The next separate experiment is stronger length
-enforcement for the `4×1` and `4×2` band contact-off controls. Then repeat the
-whole band grid with one solver policy before comparing refinement. These
-two corrected meshes alone do not establish a mesh-independent shape, and
+a calibrated paper model. The [next isolated experiment](fine-band-length-enforcement.md)
+tests stronger length enforcement for the `4×1` and `4×2` band contact-off
+controls. Repeat the whole band grid with one solver policy before comparing
+refinement. These two corrected meshes alone do not establish a mesh-independent shape, and
 static endpoint checks do not certify a continuous flexible route.
