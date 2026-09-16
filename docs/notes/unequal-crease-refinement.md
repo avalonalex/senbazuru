@@ -76,11 +76,11 @@ its separate `1e-6` cap. Length error remains `9.026e-4`. These failures are not
 simply the outer iteration limit, and their displayed shapes are not accepted
 equilibria. The apparent gap reduction at `4×1` cannot be read as convergence.
 
-The next bounded step is to isolate these fine-length solver failures:
-first the matched/contact-off length penalty, then the upper-preference
-constrained-step residual. Keep physical acceptance caps fixed and measure
-penalty scaling and numerical residuals before interpreting another shape
-comparison. Returning to the crane body would currently combine this solver
-uncertainty with a much larger geometric problem. Known order along z,
-retained triangle facing directions and static endpoints remain limitations;
-no continuous flexible route has been checked.
+The follow-up [fine-mesh solver comparison](fine-crease-solver.md) isolates
+these failures: first the matched/contact-off length penalty, then the
+upper-preference constrained-step residual. It keeps all acceptance caps
+fixed and obtains a passing fine endpoint with both numerical changes.
+The refinement grid must now be rerun with that same policy on every mesh
+before interpreting shape convergence or returning to the crane body.
+Known order along z, retained triangle facing directions and static endpoints
+remain limitations; no continuous flexible route has been checked.

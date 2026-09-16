@@ -337,6 +337,11 @@ locations for comparison; the complete overlap audit still decides validity.
 The gallery retains unconverged endpoints and separates sampled near-contact
 regions from exact maximum gaps. [The refinement note](notes/unequal-crease-refinement.md)
 records which changes are observed before returning to the crane body.
+The [fine-mesh solver study](notes/fine-crease-solver.md) exposes explicit
+length schedules in `CoupledCrease` and an opt-in single-equality exchange in
+`ContactQuadratic`. The existing entry points retain their original policies.
+`coupledRows` reconstructs a recorded inner problem for replay; the gallery
+compares the two changes independently and saves those equations and residuals.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

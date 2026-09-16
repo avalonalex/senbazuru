@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --fine-crease build/fold-material`
+writes `fine-crease.html`: the same fine mesh under the original policy, an
+extra length stage, a near-parallel contact exchange, and both together.
+Recorded equations replay the failed inner step independently of the route.
+This opt-in comparison preserves the earlier defaults and all acceptance caps.
+See [usage](../../docs/usage.md#isolating-fine-mesh-solver-failures) and
+[the finding](../../docs/notes/fine-crease-solver.md).
+
 `stack run senbazuru-material-study -- --unequal-refinement build/fold-material`
 writes `unequal-refinement.html`: five independently refined length/width
 meshes with matched, upper-preference and contact-off controls. A fixed-grid

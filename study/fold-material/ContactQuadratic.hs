@@ -19,6 +19,8 @@ module ContactQuadratic
     QuadraticReport (..),
     QuadraticError (..),
     constrainedStep,
+    constrainedStepWith,
+    ContactMethod (..),
   )
 where
 
@@ -30,6 +32,12 @@ import Senbazuru.Explain (Explain (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import SparseSolve qualified as Sparse
+
+-- | The comparison retains the original working-set policy as a baseline.
+-- Exchange permits a stricter, almost parallel contact to replace one of the
+-- selected equalities when the original policy stalls. All residual tests
+-- still use every original inequality.
+data ContactMethod = OriginalWorkingSet | ExchangeNearDependent deriving stock (Eq, Show)
 
 type Vector = IM.IntMap V3
 
@@ -61,7 +69,10 @@ instance Explain QuadraticError where
 -- here govern the inner optimization only; exact geometry checks still gate
 -- stored endpoints in the caller. Neither tolerances nor reports alter gaps.
 constrainedStep :: Int -> Double -> [Int] -> [QuadraticRow] -> [QuadraticRow] -> Either QuadraticError (Vector, QuadraticReport)
-constrainedStep budget damping ids rows inequalities = do
+constrainedStep = constrainedStepWith OriginalWorkingSet
+
+constrainedStepWith :: ContactMethod -> Int -> Double -> [Int] -> [QuadraticRow] -> [QuadraticRow] -> Either QuadraticError (Vector, QuadraticReport)
+constrainedStepWith method budget damping ids rows inequalities = do
   unless (budget > 0 && length ids == length (nub ids) && finite damping && damping > 0 && all valid (rows ++ inequalities)) (Left InvalidQuadratic)
   factor <- maybe (Left FailedFactor) Right (Sparse.factorNormal damping (IM.keys (scalar zero)) (map (scalar . fst) rows))
   let inverse = vector . Sparse.applyFactor factor . scalar
@@ -114,7 +125,36 @@ constrainedStep budget damping ids rows inequalities = do
             then let (_, remove) = minimum negative in go rhs initial constraints d (filter (/= remove) working) (count + 1)
             else case firstBlock of
               (scale, i) | scale < 1 -> go rhs initial constraints (add scale p d) (working ++ [i]) (count + 1)
-              _ -> if target == d then pure (d, report) else go rhs initial constraints target working (count + 1)
+              _ ->
+                if target == d
+                  then case replacement initial constraints working d of
+                    Just (next, selected) -> go rhs initial constraints next selected (count + 1)
+                    Nothing -> pure (d, report)
+                  else go rhs initial constraints target working (count + 1)
+
+    -- A row too close to the current span to add can still have a stricter
+    -- offset. Try replacing ONE equality, never dropping it from validation.
+    -- A candidate must satisfy all gaps and have nonnegative contact forces;
+    -- the next normal iteration rechecks the original force balance too.
+    replacement initial constraints working d
+      | method == OriginalWorkingSet = Nothing
+      | otherwise = case [ (target, selected)
+                           | (i, (a, g, _, scale)) <- IM.toList constraints,
+                             i `notElem` working,
+                             (g + inner a d) * scale < -1e-12,
+                             removed <- working,
+                             let selected = filter (/= removed) working ++ [i],
+                             Just active <- [mapM (`IM.lookup` constraints) selected],
+                             let matrix = [[inner b response | (_, _, response, _) <- active] | (b, _, _, _) <- active],
+                             let demand = [-h - inner b initial | (b, h, _, _) <- active],
+                             Just forces <- [solveDense matrix demand],
+                             all (>= 0) forces,
+                             let target = foldl' (\v ((_, _, response, _), force) -> add force response v) initial (zip active forces),
+                             all finiteVector (IM.elems target),
+                             all (\(b, h, _, size) -> (h + inner b target) * size >= -1e-12) (IM.elems constraints)
+                         ] of
+          candidate : _ -> Just candidate
+          [] -> Nothing
 
 -- The contact matrix is a Gram matrix in the material metric. Cholesky
 -- tests independence without pivoting or modifying the quadratic. Only the

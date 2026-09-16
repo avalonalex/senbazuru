@@ -29,7 +29,8 @@ its contact-correction controls in [#218](https://github.com/avalonalex/senbazur
 nonnegative-gap constraints in [#220](https://github.com/avalonalex/senbazuru/issues/220),
 both bending crease panels in [#222](https://github.com/avalonalex/senbazuru/issues/222),
 unequal controls in [#224](https://github.com/avalonalex/senbazuru/issues/224),
-and independent mesh refinement in [#227](https://github.com/avalonalex/senbazuru/issues/227). The
+independent mesh refinement in [#227](https://github.com/avalonalex/senbazuru/issues/227),
+and the fine-mesh solver comparison in [#229](https://github.com/avalonalex/senbazuru/issues/229). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -361,9 +362,19 @@ checked coupled angles.
    exceed the cap and the upper-preference constrained step does not converge.
    Eight constrained endpoints pass; the two finer-length failures remain
    diagnostics, so shape convergence is not established.
-   **Next: isolate the fine-length penalty and constrained-step failures,
-   retaining the physical acceptance caps, before enlarging the crane body
-   patch or interpreting further mesh convergence.**
+   [#229](https://github.com/avalonalex/senbazuru/issues/229) now
+   [separates the two numerical failures](notes/fine-crease-solver.md) on that
+   same fine mesh. An extra length-penalty stage fixes the matched/contact-off
+   length failure. Exchanging one selected contact equality for a stricter,
+   nearly parallel inequality resolves the upper-preference inner step.
+   Both changes together yield a passing upper-preference endpoint, with
+   relative length error `3.961e-6`; neither physical nor numerical acceptance
+   caps change. Four combinations retain the original policies as controls,
+   and the contact-off result still crosses.
+   **Next: rerun the length/width refinement grid with the same combined
+   solver policy on every mesh. A passing fine endpoint does not establish
+   shape convergence; settle that comparison before enlarging the crane
+   body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

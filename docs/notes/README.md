@@ -75,6 +75,7 @@ read the Haddock module headers; for the domain, start with
 | [contact-correction-at-a-crease.md](contact-correction-at-a-crease.md) | Contact correction passes numerical checks while an independent exact gap retains penetration |
 | [nonnegative-crease-contact.md](nonnegative-crease-contact.md) | Constrained material steps and exact repairs remove the small crease’s penetration without adding thickness |
 | [coupled-crease-contact.md](coupled-crease-contact.md) | Both interiors bend beside one held crease; current triangle contacts preserve order, while symmetry and refinement limit the result |
+| [fine-crease-solver.md](fine-crease-solver.md) | A stronger length penalty and a stricter near-parallel contact address different fine-mesh failures without relaxing acceptance caps |
 | [unequal-crease-refinement.md](unequal-crease-refinement.md) | Independent length and width refinement tests contact regions as well as matching vertices; solver convergence remains a separate requirement |
 | [unequal-crease-controls.md](unequal-crease-controls.md) | Unequal upper controls separate the layers or change the lower panel through contact; fixed crease-adjacent strips isolate that response |
 | [near-closed-crease.md](near-closed-crease.md) | Exact strip profiles separate contact tolerances from a false triangle crossing |
