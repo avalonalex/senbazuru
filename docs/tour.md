@@ -676,6 +676,12 @@ that comparison; it does not establish a mesh-independent shape. The
 length sensitivity persists at both widths. Separating passive material
 energy from imposed control energy exposes their changing competition at
 the three loaded lines.
+The [distributed-band comparison](notes/distributed-bend-preference.md)
+preserves band width, total desired turn and flat-paper control energy under
+refinement. Four of six constrained band endpoints pass, but both middle-length
+meshes fail the inner contact solve. Fixing the load normalization does not
+establish shape convergence; those numerical failures are the next isolated
+case, with the original line controls retained unchanged.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

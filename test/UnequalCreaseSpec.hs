@@ -125,6 +125,54 @@ spec = describe "unequal controls beside one closed crease" $ do
     bendBreakdown f mesh {samples = drop 1 (samples mesh)} `shouldSatisfy` isLeft
     bendBreakdown missing mesh `shouldSatisfy` isLeft
 
+  it "keeps band width, integrated turn and flat-reference energy under refinement" $ do
+    preference <- right bandPreference
+    forM_ [(n, w) | n <- [1, 2, 3, 4, 8], w <- [1, 2]] $ \(n, w) -> do
+      f <- right (unequalCreaseWithWidth n w UpperBand)
+      off <- right (unequalCreaseWithWidth n w BandWithoutContact)
+      base <- right (unequalCreaseWithWidth n w MatchedHolds)
+      let mesh = coupledSeed f
+          hinges = closedHinges (coupledReference f)
+          springs = filter ((== BendControl) . hingeRole) hinges
+          vertices = IM.fromList (zip [0 ..] (samples mesh))
+          flat = mesh {samples = [p {position = V3 (abs (materialU p)) (materialV p) 0} | p <- samples mesh]}
+      coupledSeed f `shouldBe` coupledSeed base
+      coupledPins f `shouldBe` coupledPins base
+      filter ((/= BendControl) . hingeRole) hinges `shouldBe` closedHinges (coupledReference base)
+      coupledSeed off `shouldBe` mesh
+      coupledPins off `shouldBe` coupledPins f
+      closedHinges (coupledReference off) `shouldBe` hinges
+      unequalContactMode UpperBand `shouldBe` EnforcePairOrder
+      unequalContactMode BandWithoutContact `shouldBe` WithoutPairContact
+      spans <-
+        mapM
+          ( \h -> do
+              let (a, b, _, _) = hingeVertices h
+              pa <- maybe (fail "missing band vertex") pure (IM.lookup a vertices)
+              pb <- maybe (fail "missing band vertex") pure (IM.lookup b vertices)
+              materialU pa `shouldBe` materialU pb
+              materialU pa `shouldSatisfy` (< 0)
+              (lo, hi) <- maybe (fail "missing band interval") pure (bandInterval n (round (abs (materialU pa) * fromIntegral (8 * n))))
+              hi `shouldSatisfy` (> lo)
+              let width = abs (materialV pa - materialV pb)
+              pure ((hi - lo) * width, hingeRest h * width)
+          )
+          springs
+      abs (sum (map fst spans) - 5 / 16) `shouldSatisfy` (< 1e-12)
+      abs (sum (map snd spans) - bandDesiredTurn preference) `shouldSatisfy` (< 1e-12)
+      (_, energy) <- right (bendingEnergy springs flat)
+      abs (energy - bandReferenceEnergy preference) `shouldSatisfy` (< 1e-12)
+      b <- right (bendBreakdown f mesh)
+      (_, total) <- right (bendingEnergy hinges mesh)
+      abs (lowerPassiveEnergy b + upperPassiveEnergy b + imposedBendEnergy b - total) `shouldSatisfy` (< 1e-12)
+
+  it "clips band boundaries without inventing a stiff floating-point sliver" $ do
+    bandInterval 1 1 `shouldBe` Just (1 / 8, 3 / 16)
+    bandInterval 4 4 `shouldBe` Just (1 / 8, 9 / 64)
+    bandInterval 4 14 `shouldBe` Just (27 / 64, 7 / 16)
+    bandInterval 3 11 `shouldBe` Nothing
+    forM_ [(0, 0), (9, 1), (1, -1), (1, 5)] $ \(n, c) -> bandInterval n c `shouldBe` Nothing
+
   it "retains original fixtures at width one and rejects invalid widths" $ do
     forM_ [1, 2] $ \n -> do
       a <- right (unequalCrease n UpperCurl)

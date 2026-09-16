@@ -85,11 +85,11 @@ shows ranges rather than hiding widthwise variation in an average.
 This identifies a changing competition between the passive material and a
 fixed-angle line load. It does not prove that loading is the only source of
 length sensitivity, or that the existing passive bending model is calibrated.
-The next bounded experiment should compare these line loads with a bend
-preference distributed over a fixed-width material band, keeping the band
-width and total desired turn fixed as its triangles are subdivided. That
-would test a finite region of curved paper instead of asking a shrinking
-triangle neighborhood to sustain the same angular jump. Retain this line-load
-case as the reference and compare energies, gaps and matching positions before
-returning to the crane body. Known z order and static endpoints remain
-limitations; no continuous flexible route is certified here.
+The [next experiment](distributed-bend-preference.md) compares these line
+loads with a bend preference distributed over a fixed-width material band, keeping the band
+width, total desired turn and flat-reference control energy fixed as its
+triangles are subdivided. It tests a finite region of curved paper while
+retaining this line-load case as the reference, comparing energies, gaps and
+matching positions before returning to the crane body. Known z order and
+static endpoints remain limitations; no continuous flexible route is
+certified here.

@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --band-refinement build/fold-material`
+writes `band-refinement.html`, comparing the original line loads with a
+preference spread across a fixed material band. Total preferred turn and
+flat-paper control energy stay fixed under refinement. Five controls on six
+meshes retain all diagnostic states; the solver and acceptance limits are
+unchanged. See [usage](../../docs/usage.md#distributed-bending-over-a-material-band)
+and [the study](../../docs/notes/distributed-bend-preference.md).
+
 `stack run senbazuru-material-study -- --combined-refinement build/fold-material`
 writes `combined-refinement.html`: the original five length/width meshes plus
 `4×2`, each with the same extra length stage and contact exchange. It retains the
