@@ -687,9 +687,13 @@ The original failures remain available for comparison.
 The [fine-band length study](notes/fine-band-length-enforcement.md) then
 restarts the failed contact-off endpoints: extra work at the same weight
 makes no movement, while a stronger penalty brings both below the unchanged
-length cap. Independent contact checks still reject their crossing. A full
-grid under one common policy remains necessary before drawing refinement
-conclusions; accepted endpoints alone do not establish shape convergence.
+length cap. Independent contact checks still reject their crossing.
+The [full band grid under one policy](notes/combined-band-refinement.md)
+now converges in all thirty runs and accepts all eighteen constrained
+endpoints. All twelve contact-off controls still cross. Band openings survive
+at the finest meshes, but the second length doubling moves matching points
+more than the first at both widths. Common numerical acceptance therefore
+still does not establish shape convergence; an `8×1` comparison is next.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

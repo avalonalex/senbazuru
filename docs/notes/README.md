@@ -80,6 +80,7 @@ read the Haddock module headers; for the domain, start with
 | [distributed-bend-preference.md](distributed-bend-preference.md) | A fixed material band preserves desired turn and flat-reference energy under refinement; numerical acceptance still has to be checked |
 | [several-contact-exchanges.md](several-contact-exchanges.md) | Several weak contacts can require a sequence of improving replacements while all final residual limits stay unchanged |
 | [fine-band-length-enforcement.md](fine-band-length-enforcement.md) | Restarting two stalled band endpoints separates more work from stronger length enforcement; converged crossing remains invalid paper |
+| [combined-band-refinement.md](combined-band-refinement.md) | Repeating the full band grid with one stronger length/contact policy separates numerical acceptance from mesh convergence |
 | [combined-crease-refinement.md](combined-crease-refinement.md) | Repeat the length/width grid under one solver policy so numerical changes do not masquerade as mesh convergence |
 | [unequal-crease-refinement.md](unequal-crease-refinement.md) | Independent length and width refinement tests contact regions as well as matching vertices; solver convergence remains a separate requirement |
 | [unequal-crease-controls.md](unequal-crease-controls.md) | Unequal upper controls separate the layers or change the lower panel through contact; fixed crease-adjacent strips isolate that response |
