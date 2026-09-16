@@ -355,6 +355,13 @@ turn and flat-paper control energy. `bandInterval` clips rational interval
 bounds before conversion so refinement cannot invent a microscopic boundary
 control. The opt-in gallery retains both loading styles and their contact-off
 comparisons without changing `CoupledCrease` or its acceptance policy.
+The [band contact replay](notes/several-contact-exchanges.md) adds an opt-in
+progressive exchange to `ContactQuadratic`: each replacement reduces summed
+squared negative gaps, while the final original-row residual checks stay
+unchanged. `constrainedStepDetailed` supplies per-contact residuals, source-row
+mapping and an exchange record; the ordinary entry point discards that lazy
+detail and retains its compact report. `UnequalCreaseGallery` saves both
+failed inner problems and compares complete solves on the two affected meshes.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

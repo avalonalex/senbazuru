@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeBandContact) where
 
 import ClosedCrease
 import ContactQuadratic
@@ -79,7 +79,23 @@ writeCombinedRefinement =
     comparisonControls
 
 writeBandRefinement :: FilePath -> IO ()
-writeBandRefinement = writeGallery "band-refinement" combinedMeshes (comparisonControls ++ [("band", "Distributed bend preference", UpperBand), ("band-off", "Distributed preference · contact off", BandWithoutContact)])
+writeBandRefinement = writeGallery "band-refinement" combinedMeshes bandControls
+
+-- | Replay the two failed band endpoints and compare complete solves, changing
+-- only the contact exchange policy. Fine contact-off length enforcement is a
+-- separate experiment; this keeps the original length schedule on every run.
+writeBandContact :: FilePath -> IO ()
+writeBandContact = writeGallery "band-contact" choices bandControls
+  where
+    choices =
+      [ base {caseKey = caseKey base ++ "-" ++ key, caseSuffix = caseSuffix base ++ "-" ++ key, caseLabel = caseLabel base <> " · " <> label, caseMethod = method}
+        | base <- combinedMeshes,
+          caseLength base == 2,
+          (key, label, method) <- [("single", "Single exchange", ExchangeNearDependent), ("progressive", "Progressive exchanges", ProgressiveContactExchange)]
+      ]
+
+bandControls :: [(String, Text, UnequalControl)]
+bandControls = comparisonControls ++ [("band", "Distributed bend preference", UpperBand), ("band-off", "Distributed preference · contact off", BandWithoutContact)]
 
 combinedMeshes :: [GalleryCase]
 combinedMeshes = [(meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9], caseMethod = ExchangeNearDependent} | size <- refinementMeshes ++ [(4, 2)]]
@@ -137,7 +153,8 @@ writeGallery gallery resolutions selected destination = do
             "fine-crease" -> " · " <> caseLabel choice
             _ | gallery `elem` ["combined-refinement", "band-refinement"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
-          caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles" <> detail
+          description = if gallery == "band-contact" then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
+          caption = title <> " · " <> label <> " · " <> description
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
@@ -147,8 +164,17 @@ writeGallery gallery resolutions selected destination = do
     when (gallery == "fine-crease" && caseKey choice == "baseline" && control == UpperCurl) $ case result of
       Nothing -> pure ()
       Just r -> do
-        replay <- replayContact fixture (inequalityMesh r)
+        replay <- replayContact 1e8 [OriginalWorkingSet, ExchangeNearDependent] fixture (inequalityMesh r)
         BL.writeFile (output </> "contact-step.json") (encode replay)
+    replay <-
+      if gallery == "band-contact" && caseMethod choice == ExchangeNearDependent && control == UpperBand
+        then case result of
+          Nothing -> pure Nothing
+          Just r -> do
+            evidence <- replayContact 1e9 [OriginalWorkingSet, ExchangeNearDependent, ProgressiveContactExchange] fixture (inequalityMesh r)
+            BL.writeFile (output </> stem ++ "-contact-step.json") (encode evidence)
+            pure (Just evidence)
+        else pure Nothing
     let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(s, _, _, valid, _, _, _) -> s == "after" && valid) stages
         report =
           object
@@ -167,6 +193,7 @@ writeGallery gallery resolutions selected destination = do
               "vertices" .= length (samples (coupledSeed fixture)),
               "heldVertices" .= IM.keys (coupledPins fixture),
               "sharedCreaseVertices" .= closedRoot reference,
+              "contactReplay" .= replay,
               "band" .= fmap (\b -> object ["bounds" .= bandBounds b, "desiredTurnRadians" .= bandDesiredTurn b, "bendingWeight" .= bandBendingWeight b, "flatReferenceEnergy" .= bandReferenceEnergy b]) band,
               "bendControls" .= [object ["vertices" .= hingeVertices h, "restRadians" .= hingeRest h, "stiffness" .= hingeStiffness h] | h <- closedHinges reference, hingeRole h == BendControl],
               "contactEnabled" .= (mode == EnforcePairOrder),
@@ -200,6 +227,7 @@ writeGallery gallery resolutions selected destination = do
   putStrLn ("Wrote " ++ gallery ++ ".html and measurements to " ++ destination)
   where
     comparable a b
+      | gallery == "band-contact" = caseWidth a == caseWidth b && caseMethod a == ExchangeNearDependent && caseMethod b == ProgressiveContactExchange
       | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
       | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
 
@@ -288,13 +316,15 @@ mapSvg gaps =
 
 -- The same stored endpoint supplies both linearized problems. Saving the rows
 -- makes the numerical failure independently inspectable without a new route.
-replayContact :: CoupledFixture -> MaterialMesh -> IO Value
-replayContact fixture mesh = do
-  (material, gaps) <- checked (coupledRows EnforcePairOrder fixture 1e8 mesh)
+replayContact :: Double -> [ContactMethod] -> CoupledFixture -> MaterialMesh -> IO Value
+replayContact weight methods fixture mesh = do
+  (material, gaps) <- checked (coupledRows EnforcePairOrder fixture weight mesh)
   let ids = [i | (i, _) <- zip [0 ..] (samples mesh), IM.notMember i (coupledPins fixture)]
       row (coefficients, residual) = object ["residual" .= residual, "coefficients" .= [(i, [x, y, z]) | (i, V3 x y z) <- IM.toList coefficients]]
       report method = do
-        (_, r) <- checked (constrainedStepWith method 2000 1e-3 ids material gaps)
-        pure (object ["method" .= show method, "converged" .= quadraticConverged r, "iterations" .= quadraticIterations r, "violation" .= quadraticViolation r, "complementarity" .= quadraticComplementarity r, "balance" .= quadraticBalance r, "activeConstraints" .= quadraticActive r])
-  reports <- mapM report [OriginalWorkingSet, ExchangeNearDependent]
-  pure (object ["lengthWeight" .= (1e8 :: Double), "damping" .= (1e-3 :: Double), "freeVertices" .= ids, "materialRows" .= map row material, "contactRows" .= map row gaps, "reports" .= reports])
+        (step, r, details) <- checked (constrainedStepDetailed method 2000 1e-3 ids material gaps)
+        let contacts = [object ["constraint" .= contactConstraint c, "sourceRows" .= contactSources c, "selected" .= contactSelected c, "gap" .= contactGap c, "normalizedMultiplier" .= contactNormalizedMultiplier c, "responseScale" .= contactResponseScale c] | c <- quadraticContacts details]
+            exchanges = [object ["removed" .= exchangeRemoved e, "inserted" .= exchangeInserted e, "squaredViolationBefore" .= exchangeViolationBefore e, "squaredViolationAfter" .= exchangeViolationAfter e] | e <- quadraticExchanges details]
+        pure (object ["method" .= show method, "converged" .= quadraticConverged r, "iterations" .= quadraticIterations r, "violation" .= quadraticViolation r, "complementarity" .= quadraticComplementarity r, "balance" .= quadraticBalance r, "activeConstraints" .= quadraticActive r, "step" .= [(i, [x, y, z]) | (i, V3 x y z) <- IM.toList step], "contacts" .= contacts, "exchanges" .= exchanges])
+  reports <- mapM report methods
+  pure (object ["lengthWeight" .= weight, "damping" .= (1e-3 :: Double), "freeVertices" .= ids, "materialRows" .= map row material, "contactRows" .= map row gaps, "reports" .= reports])

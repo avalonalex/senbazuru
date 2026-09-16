@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --band-contact build/fold-material`
+writes `band-contact.html`: the two failed middle band meshes, their saved
+inner equations, and single/progressive contact-exchange comparisons with
+unchanged loading and acceptance limits. All five controls retain complete
+exports and replay diagnostics. See
+[usage](../../docs/usage.md#replaying-the-failed-band-contact-steps) and
+[the study](../../docs/notes/several-contact-exchanges.md).
+
 `stack run senbazuru-material-study -- --band-refinement build/fold-material`
 writes `band-refinement.html`, comparing the original line loads with a
 preference spread across a fixed material band. Total preferred turn and

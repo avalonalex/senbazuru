@@ -45,7 +45,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,449 examples pass, including fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,451 examples pass, including several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -396,11 +396,17 @@ checked coupled angles.
    All fifty-four old reference states are unchanged. The accepted fine-width
    comparison still changes matching positions by `0.0005894` and near-contact
    samples from 894 to 630, so the shape is not established as mesh independent.
-   **Next: replay and isolate the failed inner contact steps on the two middle
-   band meshes, keeping residual limits fixed. Separately test stronger length
-   enforcement on the fine contact-off controls, which miss the length cap
-   despite tiny proposed movement. Resolve the numerical failures before
-   extending the refinement series or enlarging the crane body patch.**
+   [#237](https://github.com/avalonalex/senbazuru/issues/237)
+   [replays those two failures](notes/several-contact-exchanges.md): more than
+   one contact equality must be replaced. An opt-in sequence of improving
+   replacements passes every unchanged inner residual cap. Complete `2×1`
+   and `2×2` band endpoints now pass, with relative edge errors `1.483e-6`
+   and `6.541e-7` and exact minimum gap zero. The matched, original line-load
+   and contact-off endpoints are unchanged; the original failures remain
+   reproducible controls. **Next: test stronger length enforcement on the fine
+   contact-off controls, which miss the length cap despite tiny proposed
+   movement. Then repeat the full band grid with one solver policy before
+   drawing refinement conclusions or enlarging the crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

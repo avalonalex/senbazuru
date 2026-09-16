@@ -5,6 +5,7 @@ import ContactQuadratic
 import Control.Monad (forM_)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
+import Data.List (sort)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Test.Hspec
@@ -67,11 +68,45 @@ spec = describe "small constrained material quadratic" $ do
     (_, report) <- right (constrainedStep 1 1 [0] material [row (V3 1 1 0) 0])
     quadraticConverged report `shouldBe` False
 
+  it "repairs independent weak contacts through several bounded exchanges" $ do
+    -- Two copies of the one-contact example need two replacements. Fixing
+    -- either alone leaves the other violated by exactly the same amount, so
+    -- a decreasing maximum gap violation cannot detect that progress.
+    (_, old) <- right (constrainedStepWith ExchangeNearDependent 30 1 [0, 1] pairedMaterial pairedContacts)
+    quadraticConverged old `shouldBe` False
+    forM_ [pairedContacts, reverse pairedContacts, pairedContacts ++ take 1 pairedContacts] $ \gaps -> do
+      (step, report, details) <- right (constrainedStepDetailed ProgressiveContactExchange 30 1 [0, 1] pairedMaterial gaps)
+      let e = 1e-7
+          y = (e - 2) / (2 * (1 + e * e))
+      forM_ [0, 1] $ \i -> maybe (expectationFailure "lost a free vertex") (\v -> norm (v ^-^ V3 (-(e * y)) y 0) `shouldSatisfy` (< 1e-10)) (IM.lookup i step)
+      quadraticConverged report `shouldBe` True
+      quadraticViolation report `shouldSatisfy` (<= 1e-12)
+      quadraticComplementarity report `shouldSatisfy` (<= 1e-12)
+      quadraticBalance report `shouldSatisfy` (<= 1e-6)
+      sort (concatMap contactSources (quadraticContacts details)) `shouldBe` [0 .. length gaps - 1]
+      forM_ (quadraticContacts details) $ \c -> do
+        contactGap c `shouldSatisfy` (>= -1e-12)
+        contactNormalizedMultiplier c `shouldSatisfy` (>= 0)
+      forM_ (quadraticExchanges details) $ \exchange -> exchangeViolationAfter exchange `shouldSatisfy` (< exchangeViolationBefore exchange)
+
+  it "keeps a partially repaired contact problem unconverged when work expires" $ do
+    (_, old) <- right (constrainedStepWith ExchangeNearDependent 30 1 [0, 1] pairedMaterial pairedContacts)
+    (_, report, details) <- right (constrainedStepDetailed ProgressiveContactExchange (quadraticIterations old + 1) 1 [0, 1] pairedMaterial pairedContacts)
+    length (quadraticExchanges details) `shouldBe` 1
+    quadraticConverged report `shouldBe` False
+    quadraticViolation report `shouldSatisfy` (> 1e-8)
+
   it "refuses invalid equations and an infeasible starting gap" $ do
     forM_ [constrainedStep 0 1 [0] material [], constrainedStep 10 0 [0] material [], constrainedStep 10 1 [0, 0] material [], constrainedStep 10 1 [] material [], constrainedStep 10 1 [0] material [row (V3 1 0 0) (-1)], constrainedStep 10 1 [0] material [(IM.empty, -1)], constrainedStep 10 1 [0] [row (V3 (0 / 0) 0 0) 0] []] $ \result -> result `shouldSatisfy` isLeft
 
 material :: [QuadraticRow]
 material = [row (V3 1 0 0) 1, row (V3 0 1 0) 2]
+
+pairedMaterial :: [QuadraticRow]
+pairedMaterial = [(IM.singleton i v, r) | i <- [0, 1], (v, r) <- [(V3 1 0 0, 1), (V3 0 1 0, 2)]]
+
+pairedContacts :: [QuadraticRow]
+pairedContacts = [(IM.singleton i v, 0) | i <- [0, 1], v <- [V3 1 0 0, V3 1 1e-7 0]]
 
 row :: V3 -> Double -> QuadraticRow
 row v r = (IM.singleton 0 v, r)

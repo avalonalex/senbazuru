@@ -679,9 +679,14 @@ the three loaded lines.
 The [distributed-band comparison](notes/distributed-bend-preference.md)
 preserves band width, total desired turn and flat-paper control energy under
 refinement. Four of six constrained band endpoints pass, but both middle-length
-meshes fail the inner contact solve. Fixing the load normalization does not
-establish shape convergence; those numerical failures are the next isolated
-case, with the original line controls retained unchanged.
+meshes fail the inner contact solve. The [isolated replay](notes/several-contact-exchanges.md)
+shows that one contact replacement cannot repair all the violated inequalities.
+Several improving replacements pass the unchanged inner checks and give
+accepted endpoints on both meshes, while the other controls are unchanged.
+The original failures remain available for comparison. Fine contact-off
+length enforcement and a full grid under one policy are still needed before
+drawing refinement conclusions; accepted endpoints alone do not establish
+shape convergence.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open
