@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement) where
 
 import ClosedCrease
 import ContactQuadratic
@@ -75,8 +75,14 @@ writeCombinedRefinement :: FilePath -> IO ()
 writeCombinedRefinement =
   writeGallery
     "combined-refinement"
-    [(meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9], caseMethod = ExchangeNearDependent} | size <- refinementMeshes ++ [(4, 2)]]
+    combinedMeshes
     comparisonControls
+
+writeBandRefinement :: FilePath -> IO ()
+writeBandRefinement = writeGallery "band-refinement" combinedMeshes (comparisonControls ++ [("band", "Distributed bend preference", UpperBand), ("band-off", "Distributed preference · contact off", BandWithoutContact)])
+
+combinedMeshes :: [GalleryCase]
+combinedMeshes = [(meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9], caseMethod = ExchangeNearDependent} | size <- refinementMeshes ++ [(4, 2)]]
 
 refinementMeshes :: [(Int, Int)]
 refinementMeshes = [(1, 1), (2, 1), (4, 1), (1, 2), (2, 2)]
@@ -105,6 +111,7 @@ writeGallery gallery resolutions selected destination = do
   runs <- forM [(choice, c) | choice <- resolutions, c <- selected] $ \(choice, (key, title, control)) -> do
     let n = caseLength choice; w = caseWidth choice
     fixture <- checked (unequalCreaseWithWidth n w control)
+    band <- if control `elem` [UpperBand, BandWithoutContact] then Just <$> checked bandPreference else pure Nothing
     let stem = key ++ "-" ++ caseSuffix choice
         reference = coupledReference fixture
         mode = unequalContactMode control
@@ -128,7 +135,7 @@ writeGallery gallery resolutions selected destination = do
       let name = stem ++ "-" ++ stage
           detail = case gallery of
             "fine-crease" -> " · " <> caseLabel choice
-            "combined-refinement" -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
+            _ | gallery `elem` ["combined-refinement", "band-refinement"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
           caption = title <> " · " <> label <> " · " <> T.pack (show (32 * n * w)) <> " triangles" <> detail
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
@@ -136,7 +143,7 @@ writeGallery gallery resolutions selected destination = do
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
       BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru unequal crease") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
       checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
-      pure (stage, label, measurement, valid, sampleReport sampled, bendReport bending, object ["title" .= caption, "path" .= (name ++ ".glb")])
+      pure (stage, label, measurement, valid, sampleReport sampled, bendReport (n <$ band) bending, object ["title" .= caption, "path" .= (name ++ ".glb")])
     when (gallery == "fine-crease" && caseKey choice == "baseline" && control == UpperCurl) $ case result of
       Nothing -> pure ()
       Just r -> do
@@ -160,6 +167,7 @@ writeGallery gallery resolutions selected destination = do
               "vertices" .= length (samples (coupledSeed fixture)),
               "heldVertices" .= IM.keys (coupledPins fixture),
               "sharedCreaseVertices" .= closedRoot reference,
+              "band" .= fmap (\b -> object ["bounds" .= bandBounds b, "desiredTurnRadians" .= bandDesiredTurn b, "bendingWeight" .= bandBendingWeight b, "flatReferenceEnergy" .= bandReferenceEnergy b]) band,
               "bendControls" .= [object ["vertices" .= hingeVertices h, "restRadians" .= hingeRest h, "stiffness" .= hingeStiffness h] | h <- closedHinges reference, hingeRole h == BendControl],
               "contactEnabled" .= (mode == EnforcePairOrder),
               "passed" .= passed,
@@ -180,7 +188,7 @@ writeGallery gallery resolutions selected destination = do
     difference <- checked (matching a b)
     pure (object ["control" .= key, "fromMesh" .= caseKey na, "toMesh" .= caseKey nb, "maxMatchingPositionChange" .= difference])
   responses <- forM [(key, n, a, b) | ("matched", n, _, _, Just a) <- runs, (key, k, _, _, Just b) <- runs, n == k] $ \(key, n, a, b) -> response key n a b
-  contactEffect <- forM [(n, a, b) | ("off", n, _, _, Just a) <- runs, ("curl", k, _, _, Just b) <- runs, n == k] $ \(n, a, b) -> response "curl" n a b
+  contactEffect <- forM [(on, n, a, b) | (off, on) <- [("off", "curl"), ("band-off", "band")], (ca, n, _, _, Just a) <- runs, ca == off, (cb, k, _, _, Just b) <- runs, cb == on, n == k] $ \(on, n, a, b) -> response on n a b
   let document = object ["gallery" .= gallery, "runs" .= [r | (_, _, r, _, _) <- runs], "refinement" .= refinement, "responses" .= responses, "contactEffect" .= contactEffect]
   BL.writeFile (output </> "checks.json") (encode document)
   BL.writeFile (output </> "models.json") (encode (concat [ms | (_, _, _, ms, _) <- runs]))
@@ -195,8 +203,8 @@ writeGallery gallery resolutions selected destination = do
       | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
       | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
 
-bendReport :: BendBreakdown -> Value
-bendReport b =
+bendReport :: Maybe Int -> BendBreakdown -> Value
+bendReport subdivision b =
   object
     [ "lowerPassiveEnergy" .= lowerPassiveEnergy b,
       "upperPassiveEnergy" .= upperPassiveEnergy b,
@@ -206,6 +214,7 @@ bendReport b =
                [ "vertices" .= turnVertices t,
                  "materialU" .= turnU t,
                  "materialVRange" .= turnVRange t,
+                 "materialInterval" .= (subdivision >>= (\n -> bandInterval n (round (abs (turnU t) * fromIntegral (8 * n))))),
                  "actualRadians" .= turnActual t,
                  "preferredRadians" .= turnPreferred t,
                  "passiveStiffness" .= turnPassiveStiffness t,

@@ -703,6 +703,29 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Distributed bending over a material band
+
+```bash
+stack run senbazuru-material-study -- --band-refinement build/fold-material
+```
+
+Open [the band comparison](http://127.0.0.1:8000/band-refinement.html).
+It compares matched holds, the original three upper line loads and a
+preference distributed over the material interval `0.125` to `0.4375` from
+the shared crease. Both loading styles have a contact-off diagnostic. All
+six meshes use the unchanged combined solver and acceptance limits.
+
+The distributed preference keeps its total desired turn and flat-paper
+control energy fixed under refinement. Per-edge interval lengths determine
+both preferred angles and stiffnesses; boundary intervals are clipped using
+exact fractions. `band-refinement/checks.json` records those intervals, the
+band's normalization, achieved turns, energies and endpoint diagnostics.
+All stages have complete FOLD/GLB exports and the existing gap/profile plots.
+The command is opt-in and reuses `checked-flap/node_modules` for the 3D view.
+Known z order, the discrete treatment of band boundaries, static endpoints
+and uncalibrated material remain limitations. See
+[the study](notes/distributed-bend-preference.md).
+
 ### Refinement with one combined solver policy
 
 ```bash

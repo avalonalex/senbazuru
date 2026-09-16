@@ -348,6 +348,13 @@ mesh. `UnequalCrease.bendBreakdown` measures passive and imposed spring
 contributions separately, including achieved turns at each control segment.
 The gallery records these diagnostics and the common solver settings alongside
 each result; the comparison does not change the material/contact solver.
+The [band-loading comparison](notes/distributed-bend-preference.md) also lives
+in `UnequalCrease`: a fixed material interval determines preferred turns and
+spring stiffnesses, normalized against the original three-line load's total
+turn and flat-paper control energy. `bandInterval` clips rational interval
+bounds before conversion so refinement cannot invent a microscopic boundary
+control. The opt-in gallery retains both loading styles and their contact-off
+comparisons without changing `CoupledCrease` or its acceptance policy.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own
