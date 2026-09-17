@@ -693,7 +693,14 @@ now converges in all thirty runs and accepts all eighteen constrained
 endpoints. All twelve contact-off controls still cross. Band openings survive
 at the finest meshes, but the second length doubling moves matching points
 more than the first at both widths. Common numerical acceptance therefore
-still does not establish shape convergence; an `8×1` comparison is next.
+still does not establish shape convergence.
+The [next length doubling](notes/band-refinement-8.md) adds `8×1` with matched,
+band and contact-off controls under that policy. All six constrained endpoints
+across `2×1`, `4×1` and `8×1` pass; all three contact-off controls still cross.
+The latest band position change is `0.001233`, down from `0.003290`, while
+maximum opening grows from `0.003760` to `0.004151`. A smaller change is
+encouraging, but energies still shift and width sensitivity remains open.
+An `8×2` comparison is next before enlarging the crane body patch.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

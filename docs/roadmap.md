@@ -34,7 +34,8 @@ the fine-mesh solver comparison in [#229](https://github.com/avalonalex/senbazur
 the common-policy grid in [#231](https://github.com/avalonalex/senbazuru/issues/231),
 its `4×2` completion in [#233](https://github.com/avalonalex/senbazuru/issues/233),
 distributed bend preferences in [#235](https://github.com/avalonalex/senbazuru/issues/235),
-and the common band policy in [#241](https://github.com/avalonalex/senbazuru/issues/241). The
+the common band policy in [#241](https://github.com/avalonalex/senbazuru/issues/241),
+and its `8×1` follow-up in [#243](https://github.com/avalonalex/senbazuru/issues/243). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -417,10 +418,16 @@ checked coupled angles.
    contact-off controls still cross. Fine band openings are `0.003760` and
    `0.003287`, while middle-mesh gaps shrink roughly tenfold with the stronger
    penalty. The second length doubling changes matching positions by
-   `0.003290` / `0.002800`, more than the first at either width. **Next:
-   test `8×1` matched, band and band contact-off controls under the same policy.
-   Compare the next length doubling and all endpoint checks before drawing
-   mesh-convergence conclusions or enlarging the crane body patch.**
+   `0.003290` / `0.002800`, more than the first at either width.
+   [#243](https://github.com/avalonalex/senbazuru/issues/243)
+   [adds the next length doubling](notes/band-refinement-8.md): `8×1` matched
+   and band endpoints pass, while contact-off still crosses. The band change
+   from `4×1→8×1` shrinks to `0.001233`, with maximum opening `0.004151` and
+   relative edge error `3.570e-6`. Energies still shift, so this encouraging
+   result does not establish mesh convergence. **Next: test `8×2` with the
+   same three controls and policy. Compare `4×2→8×2` and `8×1→8×2`, checking
+   all endpoint requirements before interpreting shape or energy changes
+   or enlarging the crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

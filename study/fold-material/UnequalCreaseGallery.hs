@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandContact, writeBandLength) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandContact, writeBandLength) where
 
 import ClosedCrease
 import ContactQuadratic
@@ -91,8 +91,21 @@ writeCombinedBandRefinement :: FilePath -> IO ()
 writeCombinedBandRefinement =
   writeGallery
     "combined-band-refinement"
-    [base {caseWeights = caseWeights base ++ [1e10], caseMethod = ProgressiveContactExchange} | base <- combinedMeshes]
+    (map bandRefinementCase (refinementMeshes ++ [(4, 2)]))
     bandControls
+
+-- | One more length doubling, with width and numerical policy held fixed.
+-- Re-solve the two references so both successive changes are inspectable in
+-- one gallery; retain failed endpoints rather than tuning the finest case.
+writeBandRefinement8 :: FilePath -> IO ()
+writeBandRefinement8 =
+  writeGallery
+    "band-refinement-8"
+    (map bandRefinementCase [(2, 1), (4, 1), (8, 1)])
+    [c | c@(key, _, _) <- bandControls, key `elem` ["matched", "band", "band-off"]]
+
+bandRefinementCase :: (Int, Int) -> GalleryCase
+bandRefinementCase size = (meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9, 1e10], caseMethod = ProgressiveContactExchange}
 
 -- | Replay the two failed band endpoints and compare complete solves, changing
 -- only the contact exchange policy. Fine contact-off length enforcement is a
@@ -178,7 +191,7 @@ writeGallery gallery resolutions selected destination = do
       let name = stem ++ "-" ++ stage
           detail = case gallery of
             "fine-crease" -> " · " <> caseLabel choice
-            _ | gallery `elem` ["combined-refinement", "band-refinement", "combined-band-refinement"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
+            _ | gallery `elem` ["combined-refinement", "band-refinement", "combined-band-refinement", "band-refinement-8"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
           description = if gallery `elem` ["band-contact", "band-length"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
           caption = title <> " · " <> label <> " · " <> description

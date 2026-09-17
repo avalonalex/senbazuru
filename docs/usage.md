@@ -703,6 +703,29 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### One more band length doubling
+
+```bash
+stack run senbazuru-material-study -- --band-refinement-8 build/fold-material
+```
+
+Open [the 8×1 band comparison](http://127.0.0.1:8000/band-refinement-8.html).
+Matched holds, the distributed-band preference and its contact-off control
+are each solved on `2×1`, `4×1` and `8×1` (64, 128 and 256 triangles).
+All nine runs use the same six length weights through `1e10`, progressive
+contact exchange and forty iterations per stage. Width, material, holds,
+loading and every acceptance cap stay fixed. Earlier commands are unchanged.
+
+The twenty-seven complete FOLD/GLB states, 81 SVG plots and `checks.json`
+retain numerical and physical acceptance separately, including crossing or
+unconverged diagnostics. Compare matching positions, exact gap extrema,
+fixed-grid contact samples and passive/control energies across both length
+doublings. These static, known-order controls use illustrative material
+parameters; acceptance alone does not establish shape convergence or a
+continuous flexible route. This expensive command is opt-in, and its viewer
+reuses `checked-flap/node_modules`. See
+[the study](notes/band-refinement-8.md) for measurements and the next step.
+
 ### Refining the band with one common solver policy
 
 ```bash

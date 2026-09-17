@@ -76,6 +76,15 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --band-refinement-8 build/fold-material`
+writes `band-refinement-8.html`: matched, band and band contact-off controls
+on `2×1`, `4×1` and `8×1`, under the same stronger length/contact policy.
+Twenty-seven complete states compare successive length doublings with width,
+physical controls and acceptance caps fixed. Failed endpoints remain
+diagnostics. The expensive comparison is opt-in; see
+[usage](../../docs/usage.md#one-more-band-length-doubling) and
+[the study](../../docs/notes/band-refinement-8.md).
+
 `stack run senbazuru-material-study -- --combined-band-refinement build/fold-material`
 writes `combined-band-refinement.html`: all six meshes and five band-study
 controls under the same six-stage length schedule through `1e10` and
