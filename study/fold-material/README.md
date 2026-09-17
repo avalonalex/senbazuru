@@ -76,6 +76,15 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --band-refinement-8x2 build/fold-material`
+writes `band-refinement-8x2.html`: the same three controls on `4×2`, `8×1`
+and `8×2`, with a table comparing length/width changes against the agreed
+study targets. Endpoint validity, refinement targets and the outstanding
+tighter-solve confirmation are separate. Twenty-seven complete states retain
+all diagnostics; long solves stay opt-in. See
+[usage](../../docs/usage.md#the-8-by-2-refinement-decision) and
+[the study](../../docs/notes/band-refinement-8x2.md).
+
 `stack run senbazuru-material-study -- --band-refinement-8 build/fold-material`
 writes `band-refinement-8.html`: matched, band and band contact-off controls
 on `2×1`, `4×1` and `8×1`, under the same stronger length/contact policy.

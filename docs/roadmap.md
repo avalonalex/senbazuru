@@ -35,7 +35,8 @@ the common-policy grid in [#231](https://github.com/avalonalex/senbazuru/issues/
 its `4×2` completion in [#233](https://github.com/avalonalex/senbazuru/issues/233),
 distributed bend preferences in [#235](https://github.com/avalonalex/senbazuru/issues/235),
 the common band policy in [#241](https://github.com/avalonalex/senbazuru/issues/241),
-and its `8×1` follow-up in [#243](https://github.com/avalonalex/senbazuru/issues/243). The
+its `8×1` follow-up in [#243](https://github.com/avalonalex/senbazuru/issues/243),
+and the `8×2` decision study in [#245](https://github.com/avalonalex/senbazuru/issues/245). The
 README and the issues stay the source; update this when a roadmap issue
 closes.
 
@@ -424,10 +425,25 @@ checked coupled angles.
    and band endpoints pass, while contact-off still crosses. The band change
    from `4×1→8×1` shrinks to `0.001233`, with maximum opening `0.004151` and
    relative edge error `3.570e-6`. Energies still shift, so this encouraging
-   result does not establish mesh convergence. **Next: test `8×2` with the
-   same three controls and policy. Compare `4×2→8×2` and `8×1→8×2`, checking
-   all endpoint requirements before interpreting shape or energy changes
-   or enlarging the crane body patch.**
+   result does not establish mesh convergence. The agreed study exit targets
+   are less than 0.1% sheet-length movement and less than 5% changes in opening
+   and each nonzero bending-energy component under both length and width
+   refinement, with stable contact regions and all existing endpoint checks.
+   A tighter-solve confirmation must also stay within those budgets. These
+   are engineering targets, not calibrated real-paper standards.
+   [#245](https://github.com/avalonalex/senbazuru/issues/245)
+   [completes the `8×2` comparison](notes/band-refinement-8x2.md). All nine
+   solves converge and all six constrained endpoints pass; contact-off still
+   crosses. The band misses the shape target along length (`0.001770`) and
+   meets it across width (`0.0004075`), but opening changes 37.74% / 9.07%
+   and upper/imposed energies miss the 5% target in both directions. Matched
+   passive energies also change 6.47% along length. The accepted band solve
+   costs 2491.6 local CPU seconds; this work stays outside default CI.
+   **Next: evaluate prescribed bends on the existing meshes, without a solve,
+   comparing passive/control energies and the length penalty. Separate mesh
+   representation from the solver's chosen shape before increasing resolution
+   or the crane body patch. Profile the expensive accepted case under #208
+   before another large solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

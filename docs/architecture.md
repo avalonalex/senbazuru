@@ -374,7 +374,11 @@ entry point. It reuses the same fixtures, measurements and solver; the old
 commands retain their policies and reproducible failures. The
 [`8×1` length follow-up](notes/band-refinement-8.md) reuses that gallery and
 shares its policy constructor, comparing three controls over two successive
-length doublings without adding a new solver path.
+length doublings without adding a new solver path. The
+[`8×2` decision study](notes/band-refinement-8x2.md) reuses that same policy,
+adding display comparisons of the measured position, opening and energy
+changes against explicit study targets. These do not change endpoint
+acceptance or claim numerical robustness.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own
