@@ -371,7 +371,10 @@ independent contact checks still reject crossing endpoints.
 The [combined band grid](notes/combined-band-refinement.md) applies both
 isolated repairs to every mesh and control through another opt-in gallery
 entry point. It reuses the same fixtures, measurements and solver; the old
-commands retain their policies and reproducible failures.
+commands retain their policies and reproducible failures. The
+[`8×1` length follow-up](notes/band-refinement-8.md) reuses that gallery and
+shares its policy constructor, comparing three controls over two successive
+length doublings without adding a new solver path.
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

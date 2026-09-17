@@ -107,11 +107,12 @@ remain opt-in and add no default CI workload. All ninety browser selections
 show their corresponding plots, downloads and verdicts; the finest band
 endpoint was also inspected in 3D from above and below.
 
-The next bounded experiment is `8×1` with matched holds, the band preference
-and its contact-off control under this same policy. Compare `4×1→8×1` with
-`2×1→4×1`, checking acceptance before interpreting the new opening, energies
-or sampled contact region. This doubles length resolution without also
-changing width. A common numerical policy does not calibrate the material or
+The [next length doubling](band-refinement-8.md) adds `8×1` with matched
+holds, the band preference and its contact-off control under this same policy.
+The constrained endpoints pass; the band change from `4×1→8×1` is `0.001233`,
+smaller than `2×1→4×1`. That follow-up records the opening, energy and contact
+changes and proposes `8×2` to check width sensitivity next.
+A common numerical policy does not calibrate the material or
 prove a continuum limit: the absolute length penalty and discrete bending
 springs still depend on the mesh. Keep the crane body patch small until these
 shape changes are understood. General contact discovery and a continuously
