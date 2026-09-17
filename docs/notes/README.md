@@ -82,6 +82,7 @@ read the Haddock module headers; for the domain, start with
 | [fine-band-length-enforcement.md](fine-band-length-enforcement.md) | Restarting two stalled band endpoints separates more work from stronger length enforcement; converged crossing remains invalid paper |
 | [combined-band-refinement.md](combined-band-refinement.md) | Repeating the full band grid with one stronger length/contact policy separates numerical acceptance from mesh convergence |
 | [band-refinement-8x2.md](band-refinement-8x2.md) | Explicit shape, opening and energy targets judge the next length/width comparison separately from valid endpoints |
+| [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [band-refinement-8.md](band-refinement-8.md) | One more length doubling tests the band shape while keeping width, loading and numerical policy fixed |
 | [combined-crease-refinement.md](combined-crease-refinement.md) | Repeat the length/width grid under one solver policy so numerical changes do not masquerade as mesh convergence |
 | [unequal-crease-refinement.md](unequal-crease-refinement.md) | Independent length and width refinement tests contact regions as well as matching vertices; solver convergence remains a separate requirement |

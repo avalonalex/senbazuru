@@ -32,6 +32,7 @@ jobs:
 
       - run: stack build --test --no-run-tests
       - run: stack test
+      - run: node study/fold-material/check-illustration-metrics.mjs
 
   format:
     name: ormolu

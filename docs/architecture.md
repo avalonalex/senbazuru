@@ -379,6 +379,14 @@ length doublings without adding a new solver path. The
 adding display comparisons of the measured position, opening and energy
 changes against explicit study targets. These do not change endpoint
 acceptance or claim numerical robustness.
+`IllustrationComparison` intersects material triangles from two saved meshes
+to bound their positional difference over the entire sheet, then provides
+shared drawing extents and diagnostic masks. `IllustrationGallery` reads
+the saved endpoints, reruns geometry checks and calls the existing SVG and
+projected-visibility pipeline. It performs no solve and does not grade the
+renderer fallback when visibility is unresolved. The browser's small
+`illustration-metrics.js` compares sampled pixel masks; geometry and SVG
+projection remain in Haskell. See [the illustration study](notes/illustration-scale-refinement.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

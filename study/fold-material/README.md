@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
+reads the nine saved endpoints and source report, rechecks their geometry and
+writes `illustration-refinement.html` without running the material solver.
+Four fixed cameras and 600 pixels per sheet unit compare silhouettes, creases
+and exposed layers against a provisional two-pixel budget. Invalid controls
+and unresolved views cannot pass. See [usage](../../docs/usage.md#comparing-paper-at-illustration-scale)
+and [the study](../../docs/notes/illustration-scale-refinement.md).
+
 `stack run senbazuru-material-study -- --band-refinement-8x2 build/fold-material`
 writes `band-refinement-8x2.html`: the same three controls on `4×2`, `8×1`
 and `8×2`, with a table comparing length/width changes against the agreed
