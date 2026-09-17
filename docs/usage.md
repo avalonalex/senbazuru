@@ -703,7 +703,7 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
-### The 8×2 refinement decision
+### The 8 by 2 refinement decision
 
 ```bash
 stack run senbazuru-material-study -- --band-refinement-8x2 build/fold-material

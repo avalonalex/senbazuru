@@ -66,3 +66,75 @@ twenty-seven complete FOLD/GLB states, 81 SVG plots and solver diagnostics in
 counts describe sampled locations, not exact contact area. Numerical
 corrections are not a physical folding sequence. The long solves are opt-in
 and add no default CI workload.
+
+All nine solves converge. All six contact-enabled endpoints pass, and all
+three contact-off endpoints still cross. The new `8×2` outcomes are:
+
+| Control | Iterations | Relative edge error | Minimum exact gap | Maximum opening | Accepted |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Matched | 60 | 3.207e-7 | 0 | 2.943e-14 | Yes |
+| Band | 101 | 2.483e-6 | 0 | 0.004528 | Yes |
+| Band, contact off | 83 | 5.120e-6 | -0.001696 | 0.003863 | No |
+
+All 95 held vertices remain exact, the two panels retain their shared crease
+ids, and original crease error remains below `2.5e-16` radians. The band
+passes endpoint checks but misses the study's refinement targets:
+
+| Band quantity | 4×2 → 8×2 (length) | 8×1 → 8×2 (width) | Target |
+| --- | ---: | ---: | --- |
+| Matching positions | 0.001770 | 0.0004075 | Below 0.001 |
+| Maximum opening | +37.74% | +9.07% | Absolute change below 5% |
+| Lower passive energy | +6.67% | +0.06% | Absolute change below 5% |
+| Upper passive energy | +31.44% | -13.34% | Absolute change below 5% |
+| Imposed energy | -12.00% | +16.08% | Absolute change below 5% |
+
+The matched reference meets the position target in both directions
+(`0.0006160` and `0.0001068`) and remains nearly touching. Even there, length
+refinement changes each passive energy by `6.47%`, above the energy target;
+width changes them by only `0.0856%`. Contact-off band energies also remain
+sensitive: upper/imposed changes are `+37.58%` / `-15.59%` for length and
+`-12.63%` / `+17.20%` for width. That comparison stays invalid, but shows that
+contact alone cannot explain all of the sensitivity.
+
+At `8×2`, the band has 499 near-contact samples and 981 separated samples,
+with no crossing among the 1480 overlap samples. Compared with `8×1`, the
+near-contact count changes by only one, but 51 locations change between
+near contact and separation (25 one way, 26 the other). Compared with `4×2`,
+128 locations switch. Similar counts therefore do not mean identical contact
+regions. Visual comparison retains the broad held strip and separated area,
+but thin near-contact regions change shape and split; region stability is
+not established. Enabling contact changes the lower endpoint by `0.001105`
+and the upper by `0.0005861`; the upper preference still influences the lower panel.
+
+The compiled run records `2491.6` CPU seconds for the `8×2` band solve,
+about 41.5 minutes, versus `204.1` seconds for the replayed `8×1` band and
+`240.6` for `4×2`. The matched and contact-off `8×2` solves take `166.8` and
+`5.3` CPU seconds. These are local solve measurements, excluding exports and
+independent reports, not a profile identifying the bottleneck. The gallery
+exposes these times; no expensive solve was added to the default test suite.
+
+Independent coordinate checks cover all twenty-seven states' lengths, exact
+holds, material/shared topology, original crease angles, band integrals and
+control turns. Passive energies are reconstructed from material triangle
+heights and spatial normals, separately from the report's control-edge
+breakdown. Rational polygon clipping reproduces exact contact extrema at
+all nine endpoints and all 14,400 fixed-location gap samples. Matching
+positions and contact-mediated panel changes agree with the exported
+coordinates; all eighteen reference FOLD states reproduce #242/#244.
+Accepted corrections decrease their own stage's repaired energy and
+converged inner steps meet the unchanged residual caps. The cold build passes
+all 1451 tests without warnings; formatting, HLint 3.10 and the focused
+JavaScript reporting checks pass. All twenty-seven browser selections show
+the expected plots, downloads and target labels. Contact maps were compared
+at all three meshes, and the fine band was inspected in 3D from above and below.
+
+This completes the `8×2` experiment, not the material study's exit criteria.
+Stop increasing mesh size for now. The next bounded study should evaluate
+known prescribed bends on the existing meshes, without optimization or
+contact correction, and compare passive/control energies and the length
+penalty. That separates how the mesh represents the same bend from the
+solver's choice of shape. The current data does not identify which term
+causes the remaining drift. Profile the costly accepted band solve under
+[#208](https://github.com/avalonalex/senbazuru/issues/208) before another large
+solve. A tighter-solve confirmation, real-paper calibration, general contact
+discovery and a continuously checked flexible route remain open.

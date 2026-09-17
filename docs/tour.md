@@ -706,7 +706,13 @@ change and 5% changes in opening and each appreciably nonzero energy component.
 Contact maps must retain their main regions; endpoint validity and a separate
 tighter-solve confirmation remain requirements before enlarging the crane
 body patch. Passing a refinement number does not rehabilitate a crossing
-contact-off control.
+contact-off control. All constrained `8×2` endpoints pass, but the band opening
+changes by 37.74% under length refinement and 9.07% under width refinement;
+upper-panel and imposed energies also miss the 5% target. Even the matched
+reference's passive energies change 6.47% along length. The next step is a
+prescribed-bend energy comparison on the existing meshes, separating their
+representation of bending from the solver's chosen shape, before more
+refinement or a larger crane patch.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

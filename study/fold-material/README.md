@@ -82,7 +82,7 @@ and `8×2`, with a table comparing length/width changes against the agreed
 study targets. Endpoint validity, refinement targets and the outstanding
 tighter-solve confirmation are separate. Twenty-seven complete states retain
 all diagnostics; long solves stay opt-in. See
-[usage](../../docs/usage.md#the-8×2-refinement-decision) and
+[usage](../../docs/usage.md#the-8-by-2-refinement-decision) and
 [the study](../../docs/notes/band-refinement-8x2.md).
 
 `stack run senbazuru-material-study -- --band-refinement-8 build/fold-material`

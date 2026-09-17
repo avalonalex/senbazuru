@@ -91,10 +91,11 @@ also inspected in 3D from above and below. The cold build passes all 1451
 tests without warnings; formatting and HLint 3.10 are clean. Long solves
 remain opt-in and add no default CI workload.
 
-The next bounded experiment is `8×2` with these same three controls and
-numerical policy. Compare `4×2→8×2` for another length doubling and
-`8×1→8×2` for width sensitivity, checking acceptance before interpreting
-shape or energy. A shared numerical policy does not remove mesh dependence
+The [`8×2` follow-up](band-refinement-8x2.md) uses these same three controls
+and numerical policy. Its constrained endpoints pass, but length and width
+comparisons miss the agreed opening and energy targets. It records the
+remaining sensitivity and proposes a prescribed-bend energy check before
+further refinement. A shared numerical policy does not remove mesh dependence
 from finite length penalties or discrete bending springs. Keep the crane
 body patch small until these changes are understood. General contact
 discovery and a continuously checked flexible route remain separate work.
