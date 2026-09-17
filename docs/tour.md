@@ -700,7 +700,13 @@ across `2×1`, `4×1` and `8×1` pass; all three contact-off controls still cros
 The latest band position change is `0.001233`, down from `0.003290`, while
 maximum opening grows from `0.003760` to `0.004151`. A smaller change is
 encouraging, but energies still shift and width sensitivity remains open.
-An `8×2` comparison is next before enlarging the crane body patch.
+The [`8×2` decision study](notes/band-refinement-8x2.md) compares length and
+width separately against agreed engineering targets: less than 0.1% position
+change and 5% changes in opening and each appreciably nonzero energy component.
+Contact maps must retain their main regions; endpoint validity and a separate
+tighter-solve confirmation remain requirements before enlarging the crane
+body patch. Passing a refinement number does not rehabilitate a crossing
+contact-off control.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

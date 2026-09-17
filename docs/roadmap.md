@@ -424,10 +424,17 @@ checked coupled angles.
    and band endpoints pass, while contact-off still crosses. The band change
    from `4×1→8×1` shrinks to `0.001233`, with maximum opening `0.004151` and
    relative edge error `3.570e-6`. Energies still shift, so this encouraging
-   result does not establish mesh convergence. **Next: test `8×2` with the
-   same three controls and policy. Compare `4×2→8×2` and `8×1→8×2`, checking
-   all endpoint requirements before interpreting shape or energy changes
-   or enlarging the crane body patch.**
+   result does not establish mesh convergence. The agreed study exit targets
+   are less than 0.1% sheet-length movement and less than 5% changes in opening
+   and each nonzero bending-energy component under both length and width
+   refinement, with stable contact regions and all existing endpoint checks.
+   A tighter-solve confirmation must also stay within those budgets. These
+   are engineering targets, not calibrated real-paper standards.
+   **Next: judge `8×2` against those targets under the same three controls and
+   policy. Compare `4×2→8×2` and `8×1→8×2`. If sensitivity remains large,
+   investigate bending/length-enforcement scaling before further refinement;
+   if targets are met, make a focused numerical confirmation before enlarging
+   the crane body patch.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

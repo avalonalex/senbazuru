@@ -703,6 +703,28 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### The 8×2 refinement decision
+
+```bash
+stack run senbazuru-material-study -- --band-refinement-8x2 build/fold-material
+```
+
+Open [the 8×2 comparison](http://127.0.0.1:8000/band-refinement-8x2.html).
+Matched, distributed-band and band contact-off controls run on `4×2`, `8×1`
+and `8×2` (256, 256 and 512 triangles). Every run keeps the common six-stage
+length schedule through `1e10`, progressive contact exchange, forty iterations
+per stage, physical controls and endpoint acceptance caps.
+
+Twenty-seven complete FOLD/GLB states, 81 SVG plots and `checks.json` retain
+accepted and failed endpoints. A separate table compares length and width
+refinement against the study's 0.1% position, 5% opening and 5% separate-energy
+targets. Near-zero references show absolute changes; invalid endpoints cannot
+satisfy study targets. Inspect contact maps too. A tighter-solve confirmation
+remains a separate requirement; these static experiments do not establish
+calibrated material properties or a continuous flexible route. Earlier
+commands remain unchanged. This opt-in viewer reuses
+`checked-flap/node_modules`; see [the study](notes/band-refinement-8x2.md).
+
 ### One more band length doubling
 
 ```bash
