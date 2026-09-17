@@ -439,7 +439,18 @@ checked coupled angles.
    and upper/imposed energies miss the 5% target in both directions. Matched
    passive energies also change 6.47% along length. The accepted band solve
    costs 2491.6 local CPU seconds; this work stays outside default CI.
-   **Next: evaluate prescribed bends on the existing meshes, without a solve,
+   [#247](https://github.com/avalonalex/senbazuru/issues/247)
+   [compares the saved paper at illustration scale](notes/illustration-scale-refinement.md),
+   without another solve. All accepted position changes stay below 1.08 pixels
+   at 600 pixels per sheet unit; silhouettes and visible creases meet the
+   provisional two-pixel budget. Matched controls and the top-view band meet
+   every sampled check. Six oblique band comparisons still flag thin exposed
+   layer slivers and do not get an automatic all-checks pass. The original
+   material targets remain open; illustration readiness is a separate milestone.
+   **Illustration next: inspect the flagged slivers at the intended size and
+   distinguish actual exposure from subpixel mask-sampling sensitivity before
+   accepting oblique views. Material accuracy next: evaluate prescribed bends
+   on the existing meshes, without a solve,
    comparing passive/control energies and the length penalty. Separate mesh
    representation from the solver's chosen shape before increasing resolution
    or the crane body patch. Profile the expensive accepted case under #208

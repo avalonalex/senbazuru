@@ -713,6 +713,13 @@ reference's passive energies change 6.47% along length. The next step is a
 prescribed-bend energy comparison on the existing meshes, separating their
 representation of bending from the solver's chosen shape, before more
 refinement or a larger crane patch.
+The [illustration-scale comparison](notes/illustration-scale-refinement.md)
+adds a separate drawing milestone using the saved meshes, with no new solve.
+At 600 pixels per sheet unit, all accepted comparisons move by less than
+1.08 pixels, with silhouettes and visible creases inside a two-pixel budget.
+Oblique band views still flag thin exposed-layer slivers. These remain
+explicit review items; image similarity does not establish material
+convergence or rehabilitate the crossing controls.
 
 The [complete bird-base route](usage.md#continuously-checked-bird-base) now has
 continuous checks too. Six meeting creases first collapse the prepared open

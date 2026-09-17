@@ -1,10 +1,10 @@
-# Convenience wrappers. Everything here is a one-line stack/ormolu/hlint call;
+# Convenience wrappers for Stack, ormolu, HLint and the small Node.js check;
 # the Makefile exists so that `make check` names the exact set of gates that
 # should pass before a commit.
 
 HS_FILES := $(shell find src app test study -name '*.hs')
 
-.PHONY: build repl install test fmt fmt-check lint check examples clean
+.PHONY: build repl install test fmt fmt-check lint study-js-check check examples clean
 
 build:
 	stack build
@@ -32,8 +32,12 @@ fmt-check:
 lint:
 	hlint src app test study
 
+# Fast semantic-mask regressions for the illustration comparison (Node.js).
+study-js-check:
+	node study/fold-material/check-illustration-metrics.mjs
+
 # What CI should run.
-check: fmt-check lint test
+check: fmt-check lint study-js-check test
 
 # Re-render every example into build/, for eyeballing changes to the renderer.
 examples: build

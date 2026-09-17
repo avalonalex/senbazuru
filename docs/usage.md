@@ -703,6 +703,34 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Comparing paper at illustration scale
+
+```bash
+stack run senbazuru-material-study -- --illustration-refinement \
+  build/fold-material/band-refinement-8x2 build/fold-material
+```
+
+This postprocesses the saved `checks.json` and nine endpoint FOLD files from
+the 8×2 study below. It rechecks geometry and generates SVGs without running
+another material solve. Serve the output directory over HTTP and open
+[the illustration comparison](http://127.0.0.1:8000/illustration-refinement.html).
+The standalone page needs no npm install or 3D viewer dependencies.
+
+Four cameras compare length and width refinement at exactly 600 pixels per
+sheet unit, using a provisional two-pixel budget. Switch between paper,
+silhouette, visible crease and source-layer views; the overlay marks sampled
+differences beyond the budget. Magnification is labelled and does not change
+the measurements. “Check all views” runs the pixel audit in the browser;
+its JSON can be downloaded or read in the page. Missing source files require
+generating the earlier study first; this command never starts it implicitly.
+
+Paper validity, illustration suitability and material convergence are separate.
+Crossing controls remain ineligible and unresolved visibility gets no graded
+fallback. Half-pixel mask sampling can miss smaller features, so inspect the
+drawings as well as the numbers. See [the study](notes/illustration-scale-refinement.md).
+The fast mask regressions run with `make study-js-check` (Node.js 20 or later)
+and are included in `make check` and CI.
+
 ### The 8 by 2 refinement decision
 
 ```bash
