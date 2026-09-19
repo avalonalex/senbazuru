@@ -112,9 +112,9 @@ data AreaBounds = AreaBounds
 
 -- | Classify whole triangles, never just their sampled points. The same
 -- convex-distance upper bound as 'regionDistance' proves a triangle within
--- budget. Distance to any closed set changes by at most the distance moved,
--- so centroid distance minus the farthest corner radius bounds every point
--- from below. Only a strictly positive excess proves the whole cell outside.
+-- budget. Distance to the target region changes by at most the distance moved,
+-- so distance at the centroid (the mean of its corners) minus the farthest
+-- corner radius bounds every point from below. Only a strictly positive excess proves the whole cell outside.
 -- Split the largest unclassified area first. The stopping accuracy is an
 -- error allowance on this measurement, NOT an illustration acceptance rule.
 -- Each longest-edge bisection halves its parent's area; carry that weight

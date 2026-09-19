@@ -21,8 +21,9 @@ triangles. For each triangle it proves one of three things: all points are
 within the allowance, all are outside, or some remain unclassified. Distance
 to one convex target polygon reaches its maximum at a source corner; taking
 the smallest such maximum over target polygons gives an upper bound for the
-union. For the lower bound, start with the centroid's nearest-target distance
-and subtract the farthest corner's distance from that centroid. Moving a point
+union. For the lower bound, start at the triangle's center, the average of
+its three corners. Its nearest-target distance minus its farthest-corner
+distance gives a lower bound for the whole triangle. Moving a point
 by a distance cannot change its distance to a fixed set by more than that
 amount. Thus this lower bound holds for the whole triangle, unlike a sampled
 witness that proves only one point is outside.
@@ -89,9 +90,10 @@ and eight invalid contact-off comparisons remain diagnostic.
 Six small analytic regressions cover straight boundaries, a hole, disconnected
 targets, a circular boundary with known area, tiny distant exposure, alternate
 triangulation, winding, empty/lost exposure and exhausted work. An independent
-Python/Shapely calculation expands each convex target by an inscribed and a
-circumscribed regular 512-sided disk of radius two pixels. Subtracting these
-unions from the source gives separate outside-area intervals. All 64 overlap
+Python/Shapely calculation expands each convex target by two regular
+512-sided polygons: one sits inside a radius-two-pixel disk, the other encloses
+it. These approximate the allowed neighbourhood from inside and outside.
+Subtracting the expanded unions from the source gives separate outside-area intervals. All 64 overlap
 the Haskell intervals within 1e-8 px² floating-point tolerance; source interiors
 are independently checked for overlap. Original distances, geometry checks,
 source hashes and all nine copied FOLD files remain unchanged. The browser
