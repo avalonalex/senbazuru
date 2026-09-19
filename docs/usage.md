@@ -783,6 +783,28 @@ endpoints remain diagnostic. It copies the inputs without changing coordinates
 or running an optimizer. The maps do not prove a continuous route or satisfy
 the refinement criteria; see [the measured locations](notes/bending-energy-locations.md).
 
+### Refining only the strip outside the band
+
+```bash
+stack run senbazuru-material-study -- --outer-strip build/fold-material
+```
+
+Open `outer-strip.html` on the same server. This opt-in experiment runs 24
+solves: four meshes, two band rules, and matched, loaded and contact-off controls.
+The uniform meshes have 64 and 128 triangles. Adding only the material column
+at `15/32` to coarse gives 72 triangles; removing it from fine gives 120.
+Both panels change together; width, material holds, seed shape, physical band
+loading and numerical policy stay fixed. On the uneven meshes, spring
+coefficients use the actual neighboring strip widths; their supports are
+reported explicitly.
+
+The four cards and turn profiles always show solver endpoints. **Mesh** and
+**Show** select one numerical state for the detailed checks, FOLD/GLB downloads,
+region costs and optional 3D viewer. Missing endpoints are not compared, and
+failed or contact-off endpoints cannot pass. Differences at matching vertices
+do not bound all material points or certify a flexible motion. No new long
+solve is added to the regular test suite. See [the outer-strip study](notes/outer-strip-refinement.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

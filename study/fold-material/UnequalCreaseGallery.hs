@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBandContact, writeBandLength, writeBoundarySolves, writeBoundaryLength) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBandContact, writeBandLength, writeBoundarySolves, writeBoundaryLength, profileSvg, gapSvg, mapSvg, sampleLocations, sampleReport, bendReportWith) where
 
 import BandBoundary
 import ClosedCrease
@@ -329,7 +329,11 @@ writeGallery gallery resolutions selected destination = do
     adjacentMeshes a b = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
 
 bendReport :: Maybe Int -> BendBreakdown -> Maybe [BoundaryMeasure] -> Value
-bendReport subdivision b boundaries =
+bendReport subdivision = bendReportWith (\u -> subdivision >>= (\n -> bandInterval n (round (abs u * fromIntegral (8 * n)))))
+
+-- | The nonuniform study supplies material supports instead of a grid count.
+bendReportWith :: (Double -> Maybe (Double, Double)) -> BendBreakdown -> Maybe [BoundaryMeasure] -> Value
+bendReportWith intervalAt b boundaries =
   object
     [ "boundaryCosts" .= fmap (\rows -> object ["original" .= sum (map boundaryOldEnergy rows), "fractional" .= sum (map boundaryNewEnergy rows)]) boundaries,
       "lowerPassiveEnergy" .= lowerPassiveEnergy b,
@@ -340,7 +344,7 @@ bendReport subdivision b boundaries =
                [ "vertices" .= turnVertices t,
                  "materialU" .= turnU t,
                  "materialVRange" .= turnVRange t,
-                 "materialInterval" .= (subdivision >>= (\n -> bandInterval n (round (abs (turnU t) * fromIntegral (8 * n))))),
+                 "materialInterval" .= intervalAt (turnU t),
                  "actualRadians" .= turnActual t,
                  "preferredRadians" .= turnPreferred t,
                  "passiveStiffness" .= turnPassiveStiffness t,

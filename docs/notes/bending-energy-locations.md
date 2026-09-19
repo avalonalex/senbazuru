@@ -120,3 +120,6 @@ interior change remains a separate question. Do not infer convergence from
 these maps or promote either rule to the default: tighter-solve confirmation,
 `4×2`, physical calibration, the illustration decision and a checked flexible
 route remain open under [#195](https://github.com/avalonalex/senbazuru/issues/195).
+
+The [outer-strip experiment](outer-strip-refinement.md) now tests both local
+changes with matched and contact-off controls.

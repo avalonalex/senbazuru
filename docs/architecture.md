@@ -408,6 +408,13 @@ normalized by strip spacing. `BendLocationsGallery` rechecks geometry, binds
 source convergence and costs, and draws paired maps and cumulative/rate plots
 through `Diagram`. It calls no optimizer or repair. Fixed regions are discrete
 spring accounting, not area densities; see [the location study](notes/bending-energy-locations.md).
+`OuterStrip` selects nested columns from the existing rational starting profile,
+rebuilds the material cells and springs, and assigns band supports using the
+actual neighboring columns. The two uniform controls reproduce their existing
+fixtures exactly. `OuterStripGallery` reuses the coupled solver, independent
+checks, spring bookkeeping and SVG plots for the four-mesh comparison. It
+keeps failed states and original solver policies; [the outer-strip study](notes/outer-strip-refinement.md)
+separates local resolution effects from material convergence.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

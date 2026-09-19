@@ -109,6 +109,14 @@ turns, and keeps matched baselines beside both band rules. Original crease
 costs remain separate; contact-off shapes stay diagnostic. Saved inputs are
 copied unchanged. See [the location study](../../docs/notes/bending-energy-locations.md).
 
+`stack run senbazuru-material-study -- --outer-strip build/fold-material`
+compares coarse, outer-only, rest-only and fully refined meshes with 64, 72,
+120 and 128 triangles. All 24 opt-in solves keep width, holds, loading and
+numerical policy fixed, with original/fractional rules and matched/contact-off
+controls. `outer-strip.html` shows paired endpoint profiles and contact maps,
+separate spring costs, normalized turns, exact FOLDs and complete GLBs.
+Nonuniform support intervals are explicit. See [the outer-strip study](../../docs/notes/outer-strip-refinement.md).
+
 `stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
 reads the nine saved endpoints and source report, rechecks their geometry and
 writes `illustration-refinement.html` without running the material solver.
