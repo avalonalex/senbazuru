@@ -398,6 +398,10 @@ with identical holds and material and retain both band costs on each endpoint, p
 endpoint displacements and width comparisons within each rule. Original
 commands retain their policies; [the solve comparison](notes/fractional-band-solves.md)
 records the endpoint evidence and remaining refinement question.
+`--boundary-length` reuses those rule-specific fixtures and reports for a
+fixed-width length doubling. Comparison pairs keep the boundary rule fixed;
+the browser selects saved maps and counts category changes from the same
+projected samples. No new mechanics or acceptance policy is introduced.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

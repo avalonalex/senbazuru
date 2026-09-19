@@ -747,6 +747,22 @@ endpoints stay diagnostic, with unchanged acceptance limits and no claim of a
 continuous folding route. Original commands retain their previous rules.
 See [the measured comparison](notes/fractional-band-solves.md).
 
+### Length refinement under both band rules
+
+```bash
+stack run senbazuru-material-study -- --boundary-length build/fold-material
+```
+
+Open `boundary-length.html` on the same server. This runs twelve opt-in
+solves on `2×1` and `4×1`, with both rules and the same three controls.
+The width, held material regions, passive stiffness, length schedule, contact
+policy and acceptance limits stay fixed. The target table compares each
+rule's length doubling separately; paired contact maps use the same projected
+locations and report category changes. Both maps and the rule-comparison
+profiles always show solved endpoints, independently of **Show**. Failed and
+contact-off endpoints remain diagnostic. This does not perform a tighter
+solve or certify a flexible route. See [the length study](notes/fractional-band-length.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

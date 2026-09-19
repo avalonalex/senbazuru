@@ -95,6 +95,12 @@ progressive-contact policy, shows paired endpoint profiles and cross-measures
 band energy on identical coordinates. Old commands retain their behavior.
 See [the solve comparison](../../docs/notes/fractional-band-solves.md).
 
+`stack run senbazuru-material-study -- --boundary-length build/fold-material`
+compares `2×1` → `4×1` under both rules, keeping width and the solver policy
+fixed. `boundary-length.html` adds study-target comparisons and paired contact
+maps with changed-location counts. The same matched and contact-off controls
+remain visible. See [the length study](../../docs/notes/fractional-band-length.md).
+
 `stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
 reads the nine saved endpoints and source report, rechecks their geometry and
 writes `illustration-refinement.html` without running the material solver.

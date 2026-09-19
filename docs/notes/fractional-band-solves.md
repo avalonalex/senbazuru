@@ -117,3 +117,6 @@ measure shapes, separate energies and contact locations before considering
 `4×2` or returning to `8×2`. The tighter-solve confirmation, real-paper
 calibration, general contact discovery, continuous flexible motion and the
 illustration decision remain open under [#195](https://github.com/avalonalex/senbazuru/issues/195).
+
+The [fixed-width length comparison](fractional-band-length.md) now records
+that next experiment and its remaining sensitivity.
