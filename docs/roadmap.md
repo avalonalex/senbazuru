@@ -528,9 +528,16 @@ checked coupled angles.
    on the held boundary and 7/16 line fall by 0.005207. Their net, with the
    outer strip, is 0.008933 (8.9857%). Shared, added and removed material edges
    reconcile every contribution; both rule-labelled archives agree exactly.
-   Next: evaluate prescribed bends on these same nonuniform meshes, separating
-   the energy rule's response to a known shape from differences in solved
-   shapes. Keep the held-boundary transition and sampling/length errors explicit.
+   [#284](https://github.com/avalonalex/senbazuru/issues/284)
+   [prescribes bends on those same meshes](notes/prescribed-uneven-bends.md)
+   without optimization. Interior refinement raises cylinder cost by 3.57%
+   and the held-start bend by 2.38%; uncovered boundary intervals and transition
+   averaging account for their full differences. Full-length segments retain
+   those angular costs while removing chord shortening. The old outer grips
+   are not imposed, so this does not explain all the solved 8.99% change.
+   Next: compare a prescribed bend retaining the original inner and outer
+   grips on the same meshes, keeping sampling/length errors explicit, before
+   revisiting the solved response.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

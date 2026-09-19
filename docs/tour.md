@@ -1098,6 +1098,13 @@ added and removed material edges separate: even a shared edge can measure a
 turn over different neighboring triangles after refinement. Fresh endpoint
 checks and unchanged FOLD copies bind the maps to the stored shapes; the
 accounting does not establish a continuous energy density or material convergence.
+The [prescribed comparison](notes/prescribed-uneven-bends.md) puts known bends
+on those same four meshes, with no optimizer. Missing boundary intervals and
+averaging across the bend's start account for their energy differences.
+Full-length segments and exact curve samples have the same angular costs,
+but only the former preserve the material edge lengths. These diagnostic
+references do not keep the old outer grips or explain all the solved-shape
+energy difference.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
