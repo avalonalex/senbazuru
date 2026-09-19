@@ -10,6 +10,8 @@
 -- Visibility is a separate question. A small displacement may uncover a buried
 -- crease. The gallery therefore also renders the existing SVG backend and
 -- exports masks from its projected visible regions for a sampled pixel check.
+-- Polygon exposure measurements keep real strips distinct from pixels lost to
+-- opacity thresholds; isolated layers avoid colour-compositing bias.
 module IllustrationComparison
   ( IllustrationError (..),
     illustrationViews,
@@ -18,6 +20,8 @@ module IllustrationComparison
     sharedExtent,
     illustrationPage,
     visibleMasks,
+    layerRegions,
+    exposureMeasures,
     inkOverlay,
   )
 where
@@ -25,6 +29,7 @@ where
 import Control.Monad (unless)
 import Data.IntMap.Strict qualified as IM
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Style
@@ -110,18 +115,48 @@ illustrationPage title (Box (V2 x0 y0) (V2 x1 y1)) =
 -- paper colour. The masks do not change the paper or the ordinary SVG view.
 visibleMasks :: Basis -> Box -> [FaceId] -> VisibleForm -> Either IllustrationError [(Text, Diagram)]
 visibleMasks basis extent owners seen = do
-  regions <- traverse owned (formRegions seen)
+  regions <- layerRegions basis owners seen
   let rings = concatMap snd regions
       colour n = if n == FaceId 0 then Colour "#ff0000" else Colour "#0000ff"
       layers = [Fill (colour n) (concat [ps | (owner, ps) <- regions, owner == n]) | n <- [FaceId 0, FaceId 1]]
       creases = [Polyline (solid (Colour "#000000") 1) [project basis (visibleFrom e), project basis (visibleTo e)] | e <- formEdges seen, visibleAssignment e `elem` [Mountain, Valley, Flat, Unassigned]]
-  pure [("silhouette", diagramWithExtent extent [Fill (Colour "#000000") rings]), ("layers", diagramWithExtent extent layers), ("creases", diagramWithExtent extent creases)]
+  let isolated n = diagramWithExtent extent [Fill (Colour "#000000") (concat [ps | (owner, ps) <- regions, owner == n])]
+  pure [("silhouette", diagramWithExtent extent [Fill (Colour "#000000") rings]), ("layers", diagramWithExtent extent layers), ("creases", diagramWithExtent extent creases), ("lower", isolated (FaceId 0)), ("upper", isolated (FaceId 1))]
+
+-- | Visible convex pieces, still in projected model coordinates. Retain the
+-- source panel rather than inferring it from a composited red/blue pixel.
+layerRegions :: Basis -> [FaceId] -> VisibleForm -> Either IllustrationError [(FaceId, [[V2]])]
+layerRegions basis owners seen = traverse owned (formRegions seen)
   where
     byFace = IM.fromList (zip [0 ..] owners)
     owned region = do
       owner <- maybe (Left (IllustrationError "visible region has no source panel")) Right (IM.lookup (unFaceId (regionFace region)) byFace)
       unless (owner `elem` [FaceId 0, FaceId 1]) (Left (IllustrationError "expected two source panels"))
       pure (owner, map (map (project basis)) (regionPieces region))
+
+-- | Area and maximum total vertical span of disjoint convex visible pieces.
+-- Supply page coordinates to measure square pixels and pixels. This is a
+-- column's sum of exposed intervals, not a normal thickness or a distance
+-- between two shapes. Multiple separated strips contribute to that sum.
+--
+-- Between consecutive corner x coordinates, each edge intersection moves
+-- linearly, so the total span is linear too. Its maximum is at a one-sided
+-- interval endpoint. Selecting edges in the open interval avoids counting a
+-- shared vertical subdivision edge twice. No raster grid or alpha threshold
+-- participates; the usual floating-point clipping limits still apply.
+exposureMeasures :: [[V2]] -> (Double, Double)
+exposureMeasures input = (sum (map (abs . signedArea) pieces), maximum (0 : spans))
+  where
+    pieces = filter ((> 0) . abs . signedArea) input
+    xs = Set.toAscList (Set.fromList [x | ring <- pieces, V2 x _ <- ring])
+    spans = concat [atLimits left right | (left, right) <- zip xs (drop 1 xs)]
+    atLimits left right =
+      let middle = left + (right - left) / 2
+          crossings ring = [(a, b) | (a@(V2 ax _), b@(V2 bx _)) <- zip ring (drop 1 ring ++ take 1 ring), min ax bx < middle, middle < max ax bx]
+          active = map crossings pieces
+          height x (V2 ax ay, V2 bx by) = ay + (x - ax) / (bx - ax) * (by - ay)
+          spanAt x es = case map (height x) es of [] -> 0; ys -> maximum ys - minimum ys
+       in [sum (map (spanAt x) active) | x <- [left, right]]
 
 -- | Two coloured traces of the actual visible ink; no opacity, offset or
 -- magnified gap. Projection and scale are exactly those of the full drawings.

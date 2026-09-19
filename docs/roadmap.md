@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-16**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-18**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -447,9 +447,14 @@ checked coupled angles.
    every sampled check. Six oblique band comparisons still flag thin exposed
    layer slivers and do not get an automatic all-checks pass. The original
    material targets remain open; illustration readiness is a separate milestone.
-   **Illustration next: inspect the flagged slivers at the intended size and
-   distinguish actual exposure from subpixel mask-sampling sensitivity before
-   accepting oblique views. Material accuracy next: evaluate prescribed bends
+   [#249](https://github.com/avalonalex/senbazuru/issues/249)
+   [measures real polygon exposure and isolates each layer](notes/thin-layer-visibility.md).
+   All six oblique comparisons still flag the minority layer on all twelve
+   density/offset grids. Counts are sampling-sensitive; the underlying exposure
+   is real. No small-area waiver or all-camera acceptance is established.
+   **Illustration next: compare the exposed-layer polygons directly to separate
+   geometric displacement from gaps in thresholded sampling. Material accuracy
+   next: evaluate prescribed bends
    on the existing meshes, without a solve,
    comparing passive/control energies and the length penalty. Separate mesh
    representation from the solver's chosen shape before increasing resolution

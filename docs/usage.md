@@ -721,7 +721,13 @@ sheet unit, using a provisional two-pixel budget. Switch between paper,
 silhouette, visible crease and source-layer views; the overlay marks sampled
 differences beyond the budget. Magnification is labelled and does not change
 the measurements. “Check all views” runs the pixel audit in the browser;
-its JSON can be downloaded or read in the page. Missing source files require
+its JSON can be downloaded or read in the page. Separate lower/upper masks
+avoid compositing one layer over the other. Polygon area and maximum vertical
+span measure exposure before rasterization; span is not normal strip thickness.
+“Audit this comparison on 12 grids” tests three sampling densities and four
+offsets, with coverage and outlier counts included in the JSON. Any layer
+failure retains review status; incomplete audits cannot confer a pass. See
+[the thin-layer investigation](notes/thin-layer-visibility.md). Missing source files require
 generating the earlier study first; this command never starts it implicitly.
 
 Paper validity, illustration suitability and material convergence are separate.

@@ -52,12 +52,40 @@ export function compareMasks(a, b, width, height, { scale = 2, budget = 2, label
 }
 
 // Passing pixels never rehabilitates invalid paper or unresolved visibility.
-export function illustrationStatus(pair, metrics, budget = 2) {
+export function illustrationStatus(pair, metrics, budget = 2, reports = null) {
   if (!pair.eligible) return 'Diagnostic paper';
   if (!pair.resolved) return 'Visibility unresolved';
   if (!metrics) return 'Pixel check pending';
   const failed = metrics.filter(m => m.beyondBudget || m.missing);
   if (pair.maxProjectedPixels > budget || failed.some(m => !['Lower layer','Upper layer'].includes(m.name))) return 'Outside illustration budget';
   if (failed.length) return 'Layer visibility needs review';
+  if (reports !== null) {
+    const verdict = samplingVerdict(pair, reports);
+    if (verdict === 'Sampling audit incomplete') return verdict;
+    if (verdict !== 'Layers within budget on all sampled grids') return 'Layer visibility needs review';
+  }
   return 'Within sampled budget · inspect drawings';
+}
+
+// Integrate opacity before thresholding. Isolated black masks avoid losing a
+// minority layer when the next coloured layer paints an antialiased edge.
+export function coverageArea(rgba, scale) {
+  if (!(scale > 0) || !Number.isFinite(scale) || rgba.length % 4) throw new Error('Invalid coverage samples.');
+  let alpha = 0;
+  for (let i = 3; i < rgba.length; i += 4) alpha += rgba[i];
+  return alpha / (255 * scale * scale);
+}
+
+// Phase is measured in raster samples, not page pixels: a half-sample shift
+// stays a genuinely different sampling grid at every density.
+export const layerSamplings = [2,4,8].flatMap(scale =>
+  [[0,0],[0.5,0],[0,0.5],[0.5,0.5]].map(phase => ({key:`${scale}/${phase.join('/')}`,scale,phase})));
+
+export function samplingVerdict(pair, reports) {
+  if (!pair.eligible) return 'Diagnostic paper';
+  if (!pair.resolved) return 'Visibility unresolved';
+  if (reports.length !== layerSamplings.length || layerSamplings.some(s => reports.filter(r => r.key === s.key).length !== 1) || reports.some(r => r.metrics.length !== 2 || ['Lower layer','Upper layer'].some(name => r.metrics.filter(m => m.name === name).length !== 1))) return 'Sampling audit incomplete';
+  const failures = reports.filter(r => r.metrics.some(m => m.beyondBudget || m.missing)).length;
+  if (!failures) return 'Layers within budget on all sampled grids';
+  return failures === reports.length ? 'Layer difference on every sampled grid' : 'Layer comparison depends on sampling';
 }

@@ -81,7 +81,10 @@ reads the nine saved endpoints and source report, rechecks their geometry and
 writes `illustration-refinement.html` without running the material solver.
 Four fixed cameras and 600 pixels per sheet unit compare silhouettes, creases
 and exposed layers against a provisional two-pixel budget. Invalid controls
-and unresolved views cannot pass. See [usage](../../docs/usage.md#comparing-paper-at-illustration-scale)
+and unresolved views cannot pass. Isolated layer masks, polygon exposure
+measurements and an optional twelve-grid audit distinguish real slivers from
+sampling sensitivity; see [the follow-up](../../docs/notes/thin-layer-visibility.md).
+See [usage](../../docs/usage.md#comparing-paper-at-illustration-scale)
 and [the study](../../docs/notes/illustration-scale-refinement.md).
 
 `stack run senbazuru-material-study -- --band-refinement-8x2 build/fold-material`
