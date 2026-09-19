@@ -1112,7 +1112,11 @@ known-contact checks, but remain prescribed shapes rather than equilibria.
 The common smooth reference still gains 10.74% passive cost under interior
 refinement; fitting the grips gives an 11.98% change with different shapes.
 Keeping both comparisons avoids attributing every energy change to material
-behavior.
+behavior. The [smooth-transition control](notes/smooth-held-bend.md) then
+removes curvature jumps at both joins. Its fitted gap grows to 17.50%, as the
+same grips require a shorter, more concentrated bend. Yet the fine common-curve
+approximation is closer to its own analytic cost. A gap between two meshes
+alone therefore cannot establish accuracy or select a sufficient mesh.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

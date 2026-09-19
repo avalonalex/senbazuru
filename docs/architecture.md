@@ -457,6 +457,10 @@ than the material solver. `HeldBendGallery` retains raw fit residuals, grip
 copy sizes, diagnostic controls and separate energy components; all final
 edges and exact touching order are checked. See
 [the held-reference note](notes/prescribed-held-bend.md).
+The same modules also compare a fixed cubic tangent transition, with analytic
+parameter derivatives and mesh-independent numerical integration. The original
+circular exports remain reproducible; both families share measurement and
+plotting code. See [the smooth-transition control](notes/smooth-held-bend.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

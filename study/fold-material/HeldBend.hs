@@ -7,15 +7,26 @@
 --
 -- A circular arc alone cannot satisfy the grip position, tangent and available
 -- paper length. Adding a straight tangent section supplies the extra freedom.
--- One scalar bisection constructs the smooth reference. Sampling it shortens
+-- One scalar bisection constructs the circular reference. Sampling it shortens
 -- chords; restoring each chord's material length moves the outer grip. A small
 -- two-parameter fit therefore adjusts curvature and arc length per mesh. Its
 -- endpoint Jacobian (the matrix of coordinate changes per parameter change)
 -- comes from the curve, not the material/contact solver.
 -- Those fitted references are deliberately not called the same smooth shape.
+-- The smooth-transition control changes only the prescribed family, retaining
+-- the circular reference and all material/hold/contact rules. It tests mesh
+-- sensitivity; smooth curvature alone does not promise a smaller energy gap.
 module HeldBend
   ( HeldCurve,
     curveCurvature,
+    CurveTransition (..),
+    curveTransition,
+    makeCurveWith,
+    commonCurveWith,
+    commonCurveFit,
+    heldProbeWith,
+    curveCurvatureAt,
+    curveEnergyBetween,
     curveArcLength,
     heldStart,
     freeLength,
@@ -49,7 +60,13 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
 import UnequalCrease (UnequalControl (..))
 
-data HeldCurve = HeldCurve {curveCurvature :: !Double, curveArcLength :: !Double}
+-- | The old circular arc switches curvature abruptly. The cubic tangent
+-- transition has zero curvature at both joins; its fixed shape is never tuned
+-- against energy. Both families use mean curvature and bend length as parameters.
+data CurveTransition = CircularArc | SmoothTransition
+  deriving stock (Eq, Show)
+
+data HeldCurve = HeldCurve {curveTransition :: !CurveTransition, curveCurvature :: !Double, curveArcLength :: !Double}
   deriving stock (Eq, Show)
 
 heldStart, freeLength :: Double
@@ -59,8 +76,11 @@ freeLength = 3 / 8
 -- | This family progresses in +x, so the existing directional contact audit
 -- applies. Invalid parameters are refused before division or trigonometry.
 makeCurve :: Double -> Double -> Either InequalityError HeldCurve
-makeCurve k a
-  | all (\x -> not (isNaN x || isInfinite x)) [k, a] && k > 0 && a > 0 && a < freeLength && k * a < pi / 2 = Right (HeldCurve k a)
+makeCurve = makeCurveWith CircularArc
+
+makeCurveWith :: CurveTransition -> Double -> Double -> Either InequalityError HeldCurve
+makeCurveWith transition k a
+  | all (\x -> not (isNaN x || isInfinite x)) [k, a] && k > 0 && a > 0 && a < freeLength && k * a < pi / 2 = Right (HeldCurve transition k a)
   | otherwise = Left (InequalityError "held bend requires positive finite curvature and arc length, a remaining straight section, and a turn below 90 degrees")
 
 gripTarget :: Either InequalityError V3
@@ -88,6 +108,19 @@ commonCurve = do
       (r, _) = parts t
   makeCurve (1 / r) (r * t)
 
+-- | Retain the old closed-form construction verbatim. The smooth family
+-- solves the same endpoint equations using its integrated tangent instead.
+commonCurveWith :: CurveTransition -> Either InequalityError HeldCurve
+commonCurveWith transition = fst <$> commonCurveFit transition
+
+commonCurveFit :: CurveTransition -> Either InequalityError (HeldCurve, [FitStep])
+commonCurveFit CircularArc = do c <- commonCurve; pure (c, [])
+commonCurveFit SmoothTransition = do
+  old <- commonCurve
+  start <- makeCurveWith SmoothTransition (curveCurvature old) (curveArcLength old)
+  target <- gripTarget
+  fitEndpoint (`curveDifferential` 0.5) target start
+
 curvePoint :: HeldCurve -> Double -> Double -> V3
 curvePoint c distance y = let (V3 x _ z, _, _) = curveDifferential c distance in V3 x y z
 
@@ -95,6 +128,7 @@ curvePoint c distance y = let (V3 x _ z, _, _) = curveDifferential c distance in
 -- tangent is continuous at both joins, including where a join cuts a strip.
 curveDifferential :: HeldCurve -> Double -> (V3, V3, V3)
 curveDifferential c distance
+  | curveTransition c == SmoothTransition = smoothDifferential c distance
   | distance <= heldStart = (V3 distance 0 0, V3 0 0 0, V3 0 0 0)
   | otherwise =
       let t = min (distance - heldStart) a
@@ -110,6 +144,68 @@ curveDifferential c distance
   where
     k = curveCurvature c
     a = curveArcLength c
+
+-- | Let u run from zero to one through the bend. Its tangent angle is
+-- k*A*(3*u^2 - 2*u^3), hence curvature is 6*k*u*(1-u). Integrating the unit
+-- tangent preserves continuous material length. Derivatives include the
+-- moving integration limit: omitting -u*tangent would fit the wrong endpoint.
+smoothDifferential :: HeldCurve -> Double -> (V3, V3, V3)
+smoothDifferential c distance
+  | distance <= heldStart = (V3 distance 0 0, zero, zero)
+  | otherwise =
+      let u = min 1 ((distance - heldStart) / a)
+          q = max 0 (distance - heldStart - a)
+          angle = k * a
+          turn t = t * t * (3 - 2 * t)
+          tangent t = V3 (cos t) 0 (sin t)
+          normal t = V3 (negate (sin t)) 0 (cos t)
+          integral = integrate u (tangent . (angle *) . turn)
+          derivative = integrate u (\t -> turn t *^ normal (angle * turn t))
+          p = V3 heldStart 0 0 ^+^ a *^ integral ^+^ q *^ tangent angle
+          dk = (a * a) *^ derivative ^+^ (q * a) *^ normal angle
+          da = integral ^+^ (a * k) *^ derivative ^-^ u *^ tangent (angle * turn u) ^+^ (q * k) *^ normal angle
+       in (p, dk, da)
+  where
+    k = curveCurvature c
+    a = curveArcLength c
+    zero = V3 0 0 0
+
+-- Eight-point Gauss-Legendre integration on four equal subintervals. These
+-- weighted samples integrate degree-15 polynomials exactly in exact arithmetic.
+-- Independent Simpson sums check our trigonometric integrals; finite
+-- differences check their parameter derivatives.
+-- Integration resolution is fixed independently of the paper mesh.
+integrate :: Double -> (Double -> V3) -> V3
+integrate end f =
+  foldl'
+    (^+^)
+    (V3 0 0 0)
+    [ (weight * half) *^ f (mid + sign * half * node)
+      | part <- [0 :: Int .. 3],
+        let half = end / 8; mid = (fromIntegral part + 0.5) * end / 4,
+        (node, weight) <- [(0.1834346424956498, 0.362683783378362), (0.525532409916329, 0.3137066458778873), (0.7966664774136267, 0.2223810344533745), (0.9602898564975363, 0.1012285362903763)],
+        sign <- [-1, 1]
+    ]
+
+curveCurvatureAt :: HeldCurve -> Double -> Double
+curveCurvatureAt c distance
+  | distance <= heldStart || distance >= heldStart + curveArcLength c = 0
+  | curveTransition c == CircularArc = curveCurvature c
+  | otherwise = 6 * curveCurvature c * u * (1 - u)
+  where
+    u = (distance - heldStart) / curveArcLength c
+
+-- | Continuous comparison per unit-width panel. For the smooth family,
+-- integrate (6*k*u*(1-u))^2 analytically over each material interval.
+curveEnergyBetween :: HeldCurve -> Double -> Double -> Double
+curveEnergyBetween c left right
+  | right <= left = 0
+  | curveTransition c == CircularArc = 0.1 * k ^ (2 :: Int) * max 0 (min right (heldStart + a) - max left heldStart)
+  | otherwise = 0.1 * k * k * a * (primitive right - primitive left)
+  where
+    k = curveCurvature c
+    a = curveArcLength c
+    primitive s = let u = max 0 (min 1 ((s - heldStart) / a)) in u * u * u * (12 + u * (-18 + 7.2 * u))
 
 -- Each row is (material length, chord direction, d(direction)/dk, d/dA).
 segments :: OuterMesh -> HeldCurve -> [(Double, Double, Double, Double)]
@@ -136,7 +232,9 @@ polygonEndpoint mesh c = foldl' add (V3 0 0 0, V3 0 0 0, V3 0 0 0) (segments mes
        in (p ^+^ h *^ direction, k ^+^ dk *^ turn, a ^+^ da *^ turn)
 
 curveEnergy :: HeldCurve -> Double
-curveEnergy c = 0.1 * curveCurvature c ^ (2 :: Int) * curveArcLength c
+curveEnergy c
+  | curveTransition c == CircularArc = 0.1 * curveCurvature c ^ (2 :: Int) * curveArcLength c
+  | otherwise = 0.12 * curveCurvature c ^ (2 :: Int) * curveArcLength c
 
 -- | Independent one-dimensional angular cost, for either panel. End joins
 -- need not be mesh columns: use actual chord directions, not midpoint turns.
@@ -165,10 +263,13 @@ data HeldProbe = HeldProbe
 -- Newton step: solve linearized endpoint equations, shortening the step until
 -- the endpoint error decreases. Curve parameters may change; springs never do.
 fitCurveToGrips :: OuterMesh -> V3 -> HeldCurve -> Either InequalityError (HeldCurve, [FitStep])
-fitCurveToGrips mesh target = go 0 []
+fitCurveToGrips mesh = fitEndpoint (polygonEndpoint mesh)
+
+fitEndpoint :: (HeldCurve -> (V3, V3, V3)) -> V3 -> HeldCurve -> Either InequalityError (HeldCurve, [FitStep])
+fitEndpoint endpoint target = go 0 []
   where
     go iteration history c = do
-      let (p, V3 kx _ kz, V3 ax _ az) = polygonEndpoint mesh c
+      let (p, V3 kx _ kz, V3 ax _ az) = endpoint c
           residual = target ^-^ p
           distance = norm residual
           history' = history ++ [FitStep iteration c distance]
@@ -181,16 +282,19 @@ fitCurveToGrips mesh target = go 0 []
           let dk = (x * az - z * ax) / determinant
               da = (kx * z - kz * x) / determinant
               trial [] = Left (InequalityError "held-bend geometric fit cannot reduce the grip residual")
-              trial (scale : rest) = case makeCurve (curveCurvature c + scale * dk) (curveArcLength c + scale * da) of
-                Right candidate | let (q, _, _) = polygonEndpoint mesh candidate, norm (target ^-^ q) < distance -> pure candidate
+              trial (scale : rest) = case makeCurveWith (curveTransition c) (curveCurvature c + scale * dk) (curveArcLength c + scale * da) of
+                Right candidate | let (q, _, _) = endpoint candidate, norm (target ^-^ q) < distance -> pure candidate
                 _ -> trial rest
           next <- trial [0.5 ^ i | i <- [0 :: Int .. 12]]
           go (iteration + 1) history' next
 
 heldProbe :: OuterMesh -> HeldConstruction -> Either InequalityError HeldProbe
-heldProbe meshChoice construction = do
+heldProbe = heldProbeWith CircularArc
+
+heldProbeWith :: CurveTransition -> OuterMesh -> HeldConstruction -> Either InequalityError HeldProbe
+heldProbeWith transition meshChoice construction = do
   original <- outerFixture meshChoice OriginalTurns MatchedHolds
-  reference <- commonCurve
+  reference <- commonCurveWith transition
   target <- gripTarget
   (c, steps) <- if construction == FullLengthHeld then fitCurveToGrips meshChoice target reference else pure (reference, [])
   let base = coupledReference original
