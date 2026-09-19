@@ -34,6 +34,7 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.SequenceGen (genSequence, genSequenceWith)
+import Test.SequenceHelpers (plainHeader)
 
 -- | A file's words for a crease and for two stacked faces.
 fileWords :: ([Assignment], [Stacking])
@@ -180,18 +181,6 @@ spec = do
                      SourceFile "/abs/base.fold" "/abs/base.fold" (at 9),
                      SourceFile "half.fold" "examples/half.fold" (at 13)
                    ]
-
--- | The header a source gets from its required lines alone.
-plainHeader :: SheetSource -> Header
-plainHeader sheet =
-  Header
-    { hTitle = Nothing,
-      hSheet = Located NoSpan sheet,
-      hAnchor = Nothing,
-      hSide = ColouredUp,
-      hStart = Located NoSpan StartFlat,
-      hClosing = Nothing
-    }
 
 -- | 'canonical', seen through a one-step sequence holding the given moves.
 canonicalMoves :: [Move] -> [Move]

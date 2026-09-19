@@ -33,6 +33,7 @@ import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.SequenceExamples (blintz, quarterFold)
 import Test.SequenceGen (genSequence)
+import Test.SequenceHelpers (built, plainHeader)
 
 spec :: Spec
 spec = do
@@ -241,20 +242,6 @@ everyConstruct =
     ]
   where
     step' name caption moves = built (Step name caption (map built moves))
-
-built :: a -> Located a
-built = Located NoSpan
-
-plainHeader :: SheetSource -> Header
-plainHeader sheet =
-  Header
-    { hTitle = Nothing,
-      hSheet = built sheet,
-      hAnchor = Nothing,
-      hSide = ColouredUp,
-      hStart = built StartFlat,
-      hClosing = Nothing
-    }
 
 -- | The lines one move prints as, without the step around it.
 oneMove :: Move -> [Text]

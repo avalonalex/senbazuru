@@ -343,6 +343,7 @@ test-suite senbazuru-test
     Test.Golden
     Test.SequenceExamples
     Test.SequenceGen
+    Test.SequenceHelpers
 
   build-tool-depends: hspec-discover:hspec-discover
   build-depends:
