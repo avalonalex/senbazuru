@@ -196,15 +196,16 @@ know a frame came from anywhere but a `.fold`. `Senbazuru.Fold.Load` picks the
 reader from the extension.
 
 **A sequence source is the stated exception: a program, not an input format.**
-A `.foldseq` file says how a model is folded, step by step. Running it needs the
-code that folds paper and a second file, its sheet, so it cannot become a
-`Frame` at the door. `Fold.Load` reads it as text and nothing more;
-`Senbazuru.Sequence.*` parses, runs and writes it. The rule holds again on the
-way out: the file a run writes is plain FOLD, and nothing reading it may know it
+A `.foldseq` file says how a model is folded, step by step
+([glossary](docs/glossary.md#fold-sequences)). Running it needs the code that
+folds paper and a second file, its sheet, so it cannot become a `Frame` at the
+door. `Fold.Load` may read it as text and nothing more; parsing, running and
+writing it belong to `Senbazuru.Sequence.*`. The rule holds again on the way
+out: the file a run writes is plain FOLD, and nothing reading it may know it
 came from a sequence. A format that *describes paper* still becomes a `Frame`.
-The reader, the parser, the runner and the writer are not built yet; the rule is
-written down first so that they are built to it. `docs/architecture.md`,
-"Layering rules".
+This rule was written down before the parser was, so that the parser would be
+built to it. `docs/architecture.md`, "Layering rules", which also says what of
+`Sequence.*` exists so far.
 
 **Faces are the creases read another way, and one function rebuilds them.**
 Most files record none. Anything needing paper rather than lines calls
