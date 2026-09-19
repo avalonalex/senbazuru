@@ -465,8 +465,14 @@ checked coupled angles.
    length pair reaches 0.6165 px² outside in one direction, while several
    distant-fragment comparisons stay below 0.002 px². No area waiver is adopted;
    all existing verdicts and material/contact limits remain unchanged.
-   **Illustration next: inspect where the remaining outside area lies at
-   drawing size before deciding any feature-specific exception.
+   [#255](https://github.com/avalonalex/senbazuru/issues/255)
+   [locates these contributions at 1× and 32×](notes/exposed-area-highlights.md),
+   retaining unclassified regions and unrounded geometry. Two adjacent
+   16-pixel tiles hold 97.9% / 96.7% of the above/low-angle length mismatch:
+   a thin strip along the lower outline. Distant fragments contribute much less
+   area; no region is dropped and no review verdict changes.
+   **Illustration next: review these concrete strips at the intended drawing
+   size before deciding a feature-specific illustration rule.
    Material accuracy next: evaluate prescribed bends
    on the existing meshes, without a solve,
    comparing passive/control energies and the length penalty. Separate mesh

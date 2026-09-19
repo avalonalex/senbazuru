@@ -401,6 +401,12 @@ triangles, retaining unclassified area at the work limit. Source pieces must
 have disjoint interiors; no area threshold changes the review verdict. See
 [the distance study](notes/exposed-layer-distance.md) and
 [area follow-up](notes/exposed-area-budget.md).
+`IllustrationDistance` can retain the definite and unclassified triangles
+behind each area bound. `IllustrationHighlights` partitions them into fixed
+page-coordinate tiles, builds unstroked highlights and separate locator ink,
+and clips 32× details before SVG formatting. The gallery writes these assets
+and their unrounded JSON; the browser selects assets without computing
+geometry. See [the location study](notes/exposed-area-highlights.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

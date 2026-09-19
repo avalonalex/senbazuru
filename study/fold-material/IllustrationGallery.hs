@@ -25,12 +25,14 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import IllustrationComparison
 import IllustrationDistance
+import IllustrationHighlights
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), diagramWithExtent, solid)
 import Senbazuru.Diagram.Style (Notation (..), defaultTheme)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (Box (..), V2 (..))
+import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.VectorSpace (norm, (*^), (^+^), (^-^))
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
@@ -118,15 +120,19 @@ writeIllustrationComparison source destination = do
                 asset = endpointControl a <> "-" <> endpointMeshKey a <> "-" <> key <> "-distance-" <> T.pack (show (unFaceId owner)) <> ".svg"
             forward <- checked (regionDistance 0.01 (Just 2) 20000 (scaled x) (scaled y))
             backward <- checked (regionDistance 0.01 (Just 2) 20000 (scaled y) (scaled x))
-            forwardArea <- checked (areaBeyondBudget 2 0.00001 100000 (scaled x) (scaled y))
-            backwardArea <- checked (areaBeyondBudget 2 0.00001 100000 (scaled y) (scaled x))
+            forwardRegions <- checked (areaRegionsBeyondBudget 2 0.00001 100000 (scaled x) (scaled y))
+            backwardRegions <- checked (areaRegionsBeyondBudget 2 0.00001 100000 (scaled y) (scaled x))
+            let pixelBox = case extent of Box lo hi -> Box (600 *^ lo) (600 *^ hi)
+                highlightStem direction = endpointControl a <> "-" <> endpointMeshKey a <> "-" <> key <> "-area-" <> T.pack (show (unFaceId owner)) <> "-" <> direction
+            forwardHighlights <- writeHighlights output (highlightStem "forward") pixelBox (scaled (concatMap snd as)) (scaled y) forwardRegions
+            backwardHighlights <- writeHighlights output (highlightStem "backward") pixelBox (scaled (concatMap snd bs)) (scaled x) backwardRegions
             let drawing = diagramWithExtent extent ([Fill (Colour "#007d9b") x, Fill (Colour "#b83769") y] ++ witnessInk forward ++ witnessInk backward)
             TIO.writeFile (output </> T.unpack asset) (renderSvg page drawing)
-            pure (object ["owner" .= unFaceId owner, "forward" .= distanceJson forward, "backward" .= distanceJson backward, "forwardArea" .= areaJson forwardArea, "backwardArea" .= areaJson backwardArea, "image" .= asset])
+            pure (object ["owner" .= unFaceId owner, "forward" .= distanceJson forward, "backward" .= distanceJson backward, "forwardArea" .= areaJson (regionAreaBounds forwardRegions), "backwardArea" .= areaJson (regionAreaBounds backwardRegions), "forwardHighlights" .= forwardHighlights, "backwardHighlights" .= backwardHighlights, "image" .= asset])
         _ -> pure []
       pure (object ["regionDistances" .= distances, "control" .= endpointControl a, "from" .= endpointMeshKey a, "to" .= endpointMeshKey b, "a" .= endpointId a, "b" .= endpointId b, "eligible" .= (endpointValid a && endpointValid b), "resolved" .= resolved, "overlay" .= name, "maxProjectedPixels" .= (600 * projectedChange basis differences), "maxSpatialChange" .= maximum (0 : map norm differences), "overlapCorners" .= length differences])
     pure (object ["key" .= key, "label" .= label, "width" .= pageWidth page, "height" .= pageHeight page, "renders" .= [r | (_, _, r) <- rendered], "pairs" .= pairs])
-  BL.writeFile (output </> "comparison.json") (encode (object ["areaAccuracyPixelsSquared" .= (0.00001 :: Double), "areaSplitLimit" .= (100000 :: Int), "distanceAccuracyPixels" .= (0.01 :: Double), "distanceSplitLimit" .= (20000 :: Int), "pixelsPerUnit" .= (600 :: Int), "pixelBudget" .= (2 :: Int), "sampleScale" .= (2 :: Int), "endpoints" .= map endpointReport endpoints, "views" .= views]))
+  BL.writeFile (output </> "comparison.json") (encode (object ["highlightTilePixels" .= tileSide, "highlightMagnification" .= detailScale, "areaAccuracyPixelsSquared" .= (0.00001 :: Double), "areaSplitLimit" .= (100000 :: Int), "distanceAccuracyPixels" .= (0.01 :: Double), "distanceSplitLimit" .= (20000 :: Int), "pixelsPerUnit" .= (600 :: Int), "pixelBudget" .= (2 :: Int), "sampleScale" .= (2 :: Int), "endpoints" .= map endpointReport endpoints, "views" .= views]))
   copyFile "study/fold-material/illustration-metrics.js" (output </> "metrics.js")
   copyFile "study/fold-material/illustration-refinement.html" (destination </> "illustration-refinement.html")
   putStrLn ("Wrote illustration-refinement.html; source geometry was not changed or re-solved: " <> output)
@@ -209,3 +215,30 @@ distanceJson (BoundedDistance d) = object ["state" .= ("bounded" :: Text), "lowe
 -- still has its explicit distance state; its whole source area is outside.
 areaJson :: AreaBounds -> Value
 areaJson a = object ["totalPixelsSquared" .= areaTotal a, "outsideLowerPixelsSquared" .= areaOutside a, "outsideUpperPixelsSquared" .= (areaOutside a + areaUnresolved a), "unresolvedPixelsSquared" .= areaUnresolved a, "splits" .= areaSplits a, "accuracyMet" .= (areaUnresolved a <= 0.00001), "termination" .= (if areaUnresolved a <= 0.00001 then "accuracy" else "work-limit" :: Text)]
+
+-- Save unrounded cells separately from the compact comparison report. A
+-- magnified detail is rendered from these coordinates, never from a rounded
+-- overview SVG. Locator ink remains a separate, optional overlay.
+writeHighlights :: FilePath -> Text -> Box -> [[V2]] -> [[V2]] -> AreaRegions -> IO Value
+writeHighlights output stem extent paper target regions = do
+  let tiles = highlightTiles regions
+      outside = cellRings (outsideCells regions)
+      unresolved = cellRings (unresolvedCells regions)
+      overview = stem <> ".svg"
+      locators = stem <> "-locators.svg"
+      geometry = stem <> ".json"
+      write name page drawing = TIO.writeFile (output </> T.unpack name) (renderSvg page drawing)
+  write overview (highlightPage "Exposed-area contributions at drawing size" 1 extent) (highlightDrawing extent paper target outside unresolved)
+  write locators (highlightPage "Detail tile locators, not measured area" 1 extent) (locatorDrawing extent tiles)
+  details <- forM (zip [1 :: Int ..] tiles) $ \(n, tile) -> do
+    let name = stem <> "-tile-" <> T.pack (show n) <> ".svg"
+        page = highlightPage "32x detail of exposed-area contributions" detailScale (tileBox tile)
+        area = sum . map (abs . signedArea)
+    write name page (detailDrawing tile paper target)
+    pure (object ["number" .= n, "image" .= name, "boxPixels" .= boxJson (tileBox tile), "width" .= pageWidth page, "height" .= pageHeight page, "outsidePixelsSquared" .= area (tileOutside tile), "unresolvedPixelsSquared" .= area (tileUnresolved tile)])
+  let cellsJson cells = [object ["areaWeightPixelsSquared" .= cellArea cell, "cornersPixels" .= map coords ring] | (cell, ring) <- zip cells (cellRings cells)]
+  BL.writeFile (output </> T.unpack geometry) (encode (object ["coordinates" .= ("y-up page pixels before SVG rounding" :: Text), "outside" .= cellsJson (outsideCells regions), "unresolved" .= cellsJson (unresolvedCells regions)]))
+  pure (object ["overview" .= overview, "locators" .= locators, "geometry" .= geometry, "tiles" .= details])
+  where
+    coords (V2 x y) = [x, y]
+    boxJson (Box lo hi) = [coords lo, coords hi]

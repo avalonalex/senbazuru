@@ -31,6 +31,9 @@ module IllustrationDistance
     regionDistance,
     AreaBounds (..),
     areaBeyondBudget,
+    AreaRegions (..),
+    AreaCell (..),
+    areaRegionsBeyondBudget,
   )
 where
 
@@ -110,6 +113,23 @@ data AreaBounds = AreaBounds
   }
   deriving stock (Eq, Show)
 
+-- | Keep the very cells that establish the area interval, so a diagnostic
+-- drawing can locate its contributions without making another approximation.
+-- Cell coordinates use the input's y-up page units; the SVG backend handles
+-- the y flip. 'cellArea' is the bisection weight, before coordinate roundoff.
+data AreaCell = AreaCell
+  { cellArea :: Double,
+    cellTriangle :: (V2, V2, V2)
+  }
+  deriving stock (Eq, Show)
+
+data AreaRegions = AreaRegions
+  { regionAreaBounds :: AreaBounds,
+    outsideCells :: [AreaCell],
+    unresolvedCells :: [AreaCell]
+  }
+  deriving stock (Eq, Show)
+
 -- | Classify whole triangles, never just their sampled points. The same
 -- convex-distance upper bound as 'regionDistance' proves a triangle within
 -- budget. Distance to the target region changes by at most the distance moved,
@@ -120,21 +140,27 @@ data AreaBounds = AreaBounds
 -- Each longest-edge bisection halves its parent's area; carry that weight
 -- rather than repeatedly subtracting near-collinear coordinates for tiny cells.
 areaBeyondBudget :: Double -> Double -> Int -> [[V2]] -> [[V2]] -> Either DistanceError AreaBounds
-areaBeyondBudget budget accuracy limit source target
+areaBeyondBudget budget accuracy limit source target = regionAreaBounds <$> areaRegionsBeyondBudget budget accuracy limit source target
+
+-- | The same calculation as 'areaBeyondBudget', retaining the definite and
+-- unclassified source regions. Nothing is widened for display, and regions
+-- remaining at a work limit are not labelled definitely outside.
+areaRegionsBeyondBudget :: Double -> Double -> Int -> [[V2]] -> [[V2]] -> Either DistanceError AreaRegions
+areaRegionsBeyondBudget budget accuracy limit source target
   | not (finite budget) || budget < 0 || not (finite accuracy) || accuracy <= 0 || limit < 0 = Left (DistanceError "area accuracy must be positive and finite; distance budget and work limit must be nonnegative")
   | not (all valid (source ++ target)) = Left (DistanceError "area regions require finite convex polygons")
-  | null targets = Right (AreaBounds total total 0 0)
-  | otherwise = Right (search 0 outside unresolved queue)
+  | null targets = Right (AreaRegions (AreaBounds total total 0 0) [AreaCell area t | (area, t) <- initial, area > 0] [])
+  | otherwise = Right (search 0 outside unresolved retained queue)
   where
     sources = filter ((> 0) . abs . signedArea) source
     targets = map anticlockwise (filter ((> 0) . abs . signedArea) target)
     initial = [(abs (cross2 (b ^-^ a) (c ^-^ a)) / 2, t) | t@(a, b, c) <- concatMap fan sources]
     total = sum (map fst initial)
-    (outside, unresolved, queue) = foldl' classify (0, 0, Map.empty) (zip [0 ..] initial)
-    classify (out, pending, cells) (index, (area, t@(a, b, c)))
-      | area <= 0 || upper <= budget = (out, pending, cells)
-      | lower > budget = (out + area, pending, cells)
-      | otherwise = (out, pending + area, Map.insert (area, index) t cells)
+    (outside, unresolved, retained, queue) = foldl' classify (0, 0, [], Map.empty) (zip [0 ..] initial)
+    classify (out, pending, kept, cells) (index, (area, t@(a, b, c)))
+      | area <= 0 || upper <= budget = (out, pending, kept, cells)
+      | lower > budget = (out + area, pending, AreaCell area t : kept, cells)
+      | otherwise = (out, pending + area, kept, Map.insert (area, index) t cells)
       where
         corners = [a, b, c]
         upper = minimum [maximum [d | p <- corners, let Witness d _ _ = nearestIn ring p] | ring <- targets]
@@ -142,21 +168,24 @@ areaBeyondBudget budget accuracy limit source target
         nearest = minimum [d | ring <- targets, let Witness d _ _ = nearestIn ring middle]
         radius = maximum [norm (p ^-^ middle) | p <- corners]
         lower = nearest - radius
-    search count out pending cells
+    search count out pending kept cells
       | pending <= accuracy || count >= limit =
           -- Re-sum the actual remaining cells: incremental subtraction can
           -- leave a roundoff remainder even when every cell was classified.
           let remaining = sum [area | ((area, _), _) <- Map.toList cells]
            in if remaining <= accuracy || count >= limit
-                then AreaBounds total out remaining count
-                else step count out remaining cells
-      | otherwise = step count out pending cells
-    step count out pending cells = case Map.maxViewWithKey cells of
-      Nothing -> AreaBounds total out 0 count
+                then finish count out remaining kept cells
+                else step count out remaining kept cells
+      | otherwise = step count out pending kept cells
+    step count out pending kept cells = case Map.maxViewWithKey cells of
+      Nothing -> finish count out 0 kept cells
       Just (((area, _), triangle), rest) ->
         let children = [(area / 2, t) | t <- bisect triangle]
-            (nextOut, nextPending, nextCells) = foldl' classify (out, pending - area, rest) (zip [length initial + 2 * count ..] children)
-         in search (count + 1) nextOut nextPending nextCells
+            (nextOut, nextPending, nextKept, nextCells) = foldl' classify (out, pending - area, kept, rest) (zip [length initial + 2 * count ..] children)
+         in search (count + 1) nextOut nextPending nextKept nextCells
+
+    finish count out pending kept cells =
+      AreaRegions (AreaBounds total out pending count) (reverse kept) [AreaCell area t | ((area, _), t) <- Map.toList cells]
 
 valid :: [V2] -> Bool
 valid ring = all (\(V2 x y) -> finite x && finite y) ring && (finite (signedArea ring) && convex (anticlockwise ring))
