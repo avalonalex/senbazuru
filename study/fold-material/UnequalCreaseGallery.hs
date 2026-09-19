@@ -3,7 +3,7 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBandContact, writeBandLength, writeBoundarySolves) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBandContact, writeBandLength, writeBoundarySolves, writeBoundaryLength) where
 
 import BandBoundary
 import ClosedCrease
@@ -120,12 +120,20 @@ writeBandRefinement8x2 =
 -- refinement. Re-solve matched controls under both selections: their identical
 -- fixtures provide a reproducibility check, not a second physical experiment.
 writeBoundarySolves :: FilePath -> IO ()
-writeBoundarySolves = writeGallery "boundary-solves" choices [c | c@(key, _, _) <- bandControls, key `elem` ["matched", "band", "band-off"]]
+writeBoundarySolves = writeBoundaryGallery "boundary-solves" [(2, 1), (2, 2)]
+
+-- | Double only length under each rule. Re-solving the small references lets
+-- us compare archived endpoints and histories before interpreting refinement.
+writeBoundaryLength :: FilePath -> IO ()
+writeBoundaryLength = writeBoundaryGallery "boundary-length" [(2, 1), (4, 1)]
+
+writeBoundaryGallery :: String -> [(Int, Int)] -> FilePath -> IO ()
+writeBoundaryGallery gallery sizes = writeGallery gallery choices [c | c@(key, _, _) <- bandControls, key `elem` ["matched", "band", "band-off"]]
   where
     choices =
-      [ base {caseKey = caseKey base ++ "-" ++ key, caseSuffix = caseSuffix base ++ "-" ++ key, caseLabel = "2 × " <> tshow w <> " · " <> label, caseBoundary = rule}
-        | w <- [1, 2],
-          let base = bandRefinementCase (2, w),
+      [ base {caseKey = caseKey base ++ "-" ++ key, caseSuffix = caseSuffix base ++ "-" ++ key, caseLabel = tshow n <> " × " <> tshow w <> " · " <> label, caseBoundary = rule}
+        | (n, w) <- sizes,
+          let base = bandRefinementCase (n, w),
           (key, label, rule) <- [("original", "Original turns", OriginalTurns), ("fractional", "Fractional turns", FractionalTurns)]
       ]
 
@@ -191,8 +199,8 @@ writeGallery gallery resolutions selected destination = do
   createDirectoryIfMissing True output
   runs <- forM [(choice, c) | choice <- resolutions, c <- selected] $ \(choice, (key, title, control)) -> do
     let n = caseLength choice; w = caseWidth choice
-    fixture <- checked (if gallery == "boundary-solves" then bandBoundaryFixture (caseBoundary choice) n w control else unequalCreaseWithWidth n w control)
-    original <- if gallery == "boundary-solves" && control /= MatchedHolds then Just . coupledReference <$> checked (unequalCreaseWithWidth n w control) else pure Nothing
+    fixture <- checked (if gallery `elem` ["boundary-solves", "boundary-length"] then bandBoundaryFixture (caseBoundary choice) n w control else unequalCreaseWithWidth n w control)
+    original <- if gallery `elem` ["boundary-solves", "boundary-length"] && control /= MatchedHolds then Just . coupledReference <$> checked (unequalCreaseWithWidth n w control) else pure Nothing
     band <- if control `elem` [UpperBand, BandWithoutContact] then Just <$> checked bandPreference else pure Nothing
     let stem = key ++ "-" ++ caseSuffix choice
         reference = coupledReference fixture
@@ -220,7 +228,7 @@ writeGallery gallery resolutions selected destination = do
             "fine-crease" -> " · " <> caseLabel choice
             _ | gallery `elem` ["combined-refinement", "band-refinement", "combined-band-refinement", "band-refinement-8", "band-refinement-8x2"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
-          description = if gallery `elem` ["band-contact", "band-length", "boundary-solves"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
+          description = if gallery `elem` ["band-contact", "band-length", "boundary-solves", "boundary-length"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
           caption = title <> " · " <> label <> " · " <> description
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
@@ -313,11 +321,12 @@ writeGallery gallery resolutions selected destination = do
   putStrLn ("Wrote " ++ gallery ++ ".html and measurements to " ++ destination)
   where
     comparable a b
-      | gallery == "boundary-solves" = caseBoundary a == caseBoundary b && caseWidth b == 2 * caseWidth a
+      | gallery `elem` ["boundary-solves", "boundary-length"] = caseBoundary a == caseBoundary b && adjacentMeshes a b
       | gallery == "band-length" = caseWidth a == caseWidth b && caseWeights b == caseWeights a ++ [1e10]
       | gallery == "band-contact" = caseWidth a == caseWidth b && caseMethod a == ExchangeNearDependent && caseMethod b == ProgressiveContactExchange
       | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
-      | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
+      | otherwise = adjacentMeshes a b
+    adjacentMeshes a b = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
 
 bendReport :: Maybe Int -> BendBreakdown -> Maybe [BoundaryMeasure] -> Value
 bendReport subdivision b boundaries =

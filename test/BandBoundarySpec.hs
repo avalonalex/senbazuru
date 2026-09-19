@@ -19,10 +19,10 @@ import UnequalCrease
 spec :: Spec
 spec = describe "band-boundary turn fractions" $ do
   it "selects the candidate without changing material, holds or passive springs" $
-    forM_ [(w, c) | w <- [1, 2], c <- [MatchedHolds, UpperBand, BandWithoutContact]] $ \(w, c) -> do
-      baseline <- right (unequalCreaseWithWidth 2 w c)
-      old <- right (bandBoundaryFixture OriginalTurns 2 w c)
-      candidate <- right (bandBoundaryFixture FractionalTurns 2 w c)
+    forM_ [(n, w, c) | (n, w) <- [(2, 1), (2, 2), (4, 1)], c <- [MatchedHolds, UpperBand, BandWithoutContact]] $ \(n, w, c) -> do
+      baseline <- right (unequalCreaseWithWidth n w c)
+      old <- right (bandBoundaryFixture OriginalTurns n w c)
+      candidate <- right (bandBoundaryFixture FractionalTurns n w c)
       show old `shouldBe` show baseline
       let a = coupledReference old
           b = coupledReference candidate
@@ -37,15 +37,15 @@ spec = describe "band-boundary turn fractions" $ do
       if c == MatchedHolds
         then show candidate `shouldBe` show old
         else do
-          rows <- right (measureBandBoundary 2 a)
+          rows <- right (measureBandBoundary n a)
           filter ((== BendControl) . hingeRole) (closedHinges b) `shouldBe` map boundaryCandidate rows
           measured <- right (bendBreakdown candidate (coupledSeed candidate))
           near (imposedBendEnergy measured) (sum (map boundaryNewEnergy rows))
 
   it "keeps contact-off controls identical and flat normalization intact" $
-    forM_ [(rule, w) | rule <- [OriginalTurns, FractionalTurns], w <- [1, 2]] $ \(rule, w) -> do
-      on <- right (bandBoundaryFixture rule 2 w UpperBand)
-      off <- right (bandBoundaryFixture rule 2 w BandWithoutContact)
+    forM_ [(rule, n, w) | rule <- [OriginalTurns, FractionalTurns], (n, w) <- [(2, 1), (2, 2), (4, 1)]] $ \(rule, n, w) -> do
+      on <- right (bandBoundaryFixture rule n w UpperBand)
+      off <- right (bandBoundaryFixture rule n w BandWithoutContact)
       show on `shouldBe` show off
       preference <- right bandPreference
       let mesh = coupledSeed on

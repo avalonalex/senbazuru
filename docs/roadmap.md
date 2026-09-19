@@ -48,7 +48,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,497 examples pass, including isolated fractional-band solve fixtures, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,497 examples pass, including isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -494,8 +494,17 @@ checked coupled angles.
    endpoints cross. Original references and matched controls reproduce exactly.
    The candidate moves both panels by about 0.00065 sheet lengths; width
    sensitivity does not improve; tiny openings remain dependent on numerical policy.
-   Next: compare both rules at `4×1` against `2×1`, retaining matched/contact-off
-   controls, the same holds and numerical policy, and all acceptance caps.
+   [#263](https://github.com/avalonalex/senbazuru/issues/263)
+   [doubles length at fixed width](notes/fractional-band-length.md): all twelve
+   solves converge and eight constrained endpoints pass, but the fractional
+   rule only reduces the shape change from 0.003290 to 0.003016 sheet lengths.
+   Both miss the 0.001 target; opening and all nonzero energy components miss
+   5%. Even matched passive energies change by 9.33%, without a band.
+   Next: locate turns and bending costs on the saved `2×1`/`4×1` endpoints,
+   separating the held-strip boundary, band ends and interior, with matched
+   controls alongside. This needs no new solve; use it to choose the next
+   numerical or modeling experiment before considering `4×2`. No default rule
+   or material/illustration target changes, and tighter-solve confirmation remains open.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
