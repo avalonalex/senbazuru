@@ -738,6 +738,14 @@ JSON includes unrounded polygons, witnesses and termination reasons; see
 [the distance study](notes/exposed-layer-distance.md). Missing source files require
 generating the earlier study first; this command never starts it implicitly.
 
+The area table measures exposure farther than two pixels from its counterpart
+in each direction. It reports source area, outside-area bounds and unclassified
+area; JSON also retains split counts and termination. The precision target is
+0.00001 px² unclassified, with at most 100,000 splits per direction. A work cap
+leaves its interval visible. This is measurement accuracy, not an acceptance
+waiver: small area never overrides distance, pixel or material/contact checks.
+See [the area study](notes/exposed-area-budget.md).
+
 Paper validity, illustration suitability and material convergence are separate.
 Crossing controls remain ineligible and unresolved visibility gets no graded
 fallback. Half-pixel mask sampling can miss smaller features, so inspect the

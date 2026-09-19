@@ -62,4 +62,11 @@ const geometricPair={...good,regionDistances:[geometric,{...geometric,owner:1,fo
 assert.equal(illustrationStatus(geometricPair,metrics),'Layer visibility needs review');
 assert.equal(illustrationStatus({...good,regionDistances:[geometric]},metrics),'Geometric check incomplete');
 assert.equal(illustrationStatus({...geometricPair,eligible:false},metrics),'Diagnostic paper');
+// Area describes the failure; even microscopic exposure cannot waive it.
+const tinyArea={totalPixelsSquared:0.00001,outsideLowerPixelsSquared:0.000001,outsideUpperPixelsSquared:0.000001,unresolvedPixelsSquared:0,accuracyMet:true};
+const tinyPair={...geometricPair,regionDistances:geometricPair.regionDistances.map(layer=>({...layer,forwardArea:tinyArea,backwardArea:tinyArea}))};
+assert.equal(illustrationStatus(tinyPair,metrics),'Layer visibility needs review');
+assert.equal(illustrationStatus({...tinyPair,eligible:false},metrics),'Diagnostic paper');
+const zeroPair={...good,regionDistances:[0,1].map(owner=>({...geometric,owner,forwardArea:{...tinyArea,outsideLowerPixelsSquared:0,outsideUpperPixelsSquared:0},backwardArea:{...tinyArea,outsideLowerPixelsSquared:0,outsideUpperPixelsSquared:0}}))};
+assert.equal(illustrationStatus(zeroPair,[{name:'Lower layer',...compare(a,mask(8,3))}]),'Layer visibility needs review');
 console.log('All illustration-mask counterexamples pass.');

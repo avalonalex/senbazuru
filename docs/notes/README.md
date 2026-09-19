@@ -85,6 +85,7 @@ read the Haddock module headers; for the domain, start with
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |
 | [exposed-layer-distance.md](exposed-layer-distance.md) | Bound filled-region distances before sampling; a tiny distant fragment can dominate the maximum |
+| [exposed-area-budget.md](exposed-area-budget.md) | Bound exposed area beyond two pixels without discarding small fragments or waiving distance failures |
 | [band-refinement-8.md](band-refinement-8.md) | One more length doubling tests the band shape while keeping width, loading and numerical policy fixed |
 | [combined-crease-refinement.md](combined-crease-refinement.md) | Repeat the length/width grid under one solver policy so numerical changes do not masquerade as mesh convergence |
 | [unequal-crease-refinement.md](unequal-crease-refinement.md) | Independent length and width refinement tests contact regions as well as matching vertices; solver convergence remains a separate requirement |
