@@ -843,6 +843,25 @@ unchanged; output must not overlap the source directory. This is discrete
 energy accounting, not a continuous energy density or evidence of material
 convergence. See [the findings](notes/matched-energy-locations.md).
 
+To evaluate known bends on those same four meshes, without optimization:
+
+```bash
+stack run senbazuru-material-study -- --uneven-bends build/fold-material
+```
+
+Open `uneven-bends.html`. **Shape** selects a cylinder or a bend beginning
+at the held-strip boundary; **Construction** selects exact surface samples
+or full-length straight segments. **Panel** and **Mesh** expose both layers
+and each of the sixteen references. Profile, cumulative-energy and turning-rate
+plots share scales. Interval formulas account for missing boundary costs and
+transition averaging; FOLD and JSON retain every material edge and spring.
+Sampled chords fail the unchanged length cap and remain labelled diagnostic.
+Full-length references preserve material lengths but move matching vertices.
+Neither construction imposes the original outer grips or represents an
+equilibrium; grip displacements, length costs and known-order contact checks
+are explicit. No saved endpoint is read or changed. See
+[the prescribed comparison](notes/prescribed-uneven-bends.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

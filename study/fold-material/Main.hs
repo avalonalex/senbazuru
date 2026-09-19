@@ -59,6 +59,7 @@ import System.Environment (getArgs)
 import System.Exit (die)
 import System.FilePath ((</>))
 import UnequalCreaseGallery (writeBandContact, writeBandLength, writeBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBoundaryLength, writeBoundarySolves, writeCombinedBandRefinement, writeCombinedRefinement, writeFineCrease, writeUnequalCrease, writeUnequalRefinement)
+import UnevenBendGallery (writeUnevenBends)
 import WingBendingGallery (writeWingBending)
 import WingLayersGallery (writeWingLayers)
 
@@ -69,6 +70,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["--uneven-bends", destination] -> writeUnevenBends destination
     ["--matched-energy", source, destination] -> writeMatchedEnergy source destination
     ["--outer-continuation", source, destination] -> writeOuterContinuation source destination
     ["--outer-strip", destination] -> writeOuterStrip destination
@@ -109,7 +111,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
