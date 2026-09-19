@@ -1,0 +1,14 @@
+foldseq 1
+title "A square folded into quarters"
+sheet "examples/quarter-fold-steps.fold"
+anchor (3/4, 1/4)
+
+step half "Fold the left half behind, onto the right." {
+  fold mountain edge west to edge east
+}
+
+step quarter "Fold the top half down in front, onto the bottom." {
+  fold valley edge north to edge south
+}
+
+closing "Folded into quarters."

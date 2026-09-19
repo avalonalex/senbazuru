@@ -10,13 +10,14 @@
 module Test.SequenceExamples
   ( blintz,
     blintzCaptions,
+    quarterFold,
   )
 where
 
 import Control.Monad (forM_)
 import Data.Text (Text)
 import Senbazuru.Sequence.Build
-import Senbazuru.Sequence.Syntax (Corner (..), Sequence)
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Header (..), Line (..), Sequence)
 
 -- | A /blintz/ folds the four corners of a square to its centre. This one then
 -- reopens the first corner, so that the sequence has a move that refers back
@@ -52,3 +53,27 @@ blintzCaptions =
     "Fold the south-west corner behind, to the centre.",
     "Reopen the first corner."
   ]
+
+-- | The quarter fold: a square folded in half, then in half again. It is the
+-- sequence the language's design reads line by line
+-- (@PRDs\/04-prd-sequence-source-and-cli.md@), and the fixture it names,
+-- @examples\/quarter-fold-steps.fold@, is the one a run will be compared with.
+--
+-- Each fold is named by the two sides of the sheet it brings together. There
+-- is no builder for that form, a line laid onto a line, so it is written with
+-- the tree's own constructor, 'LineOnto'. The 'Nothing' is its optional
+-- @nearest@ point, which two parallel sides do not need: only one fold lays
+-- the west side onto the east.
+--
+-- The anchor, @(3\/4, 1\/4)@, is in the south-east quarter, the one piece of
+-- paper neither step moves.
+quarterFold :: Sequence
+quarterFold = sequenceOf top $ do
+  _ <- step "half" "Fold the left half behind, onto the right." $ fold behind (LineOnto (edge West) (edge East) Nothing)
+  _ <- step "quarter" "Fold the top half down in front, onto the bottom." $ fold inFront (LineOnto (edge North) (edge South) Nothing)
+  pure ()
+  where
+    top =
+      (header "A square folded into quarters" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4))))
+        { hClosing = Just "Folded into quarters."
+        }
