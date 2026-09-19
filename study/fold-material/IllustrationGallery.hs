@@ -118,13 +118,15 @@ writeIllustrationComparison source destination = do
                 asset = endpointControl a <> "-" <> endpointMeshKey a <> "-" <> key <> "-distance-" <> T.pack (show (unFaceId owner)) <> ".svg"
             forward <- checked (regionDistance 0.01 (Just 2) 20000 (scaled x) (scaled y))
             backward <- checked (regionDistance 0.01 (Just 2) 20000 (scaled y) (scaled x))
+            forwardArea <- checked (areaBeyondBudget 2 0.00001 100000 (scaled x) (scaled y))
+            backwardArea <- checked (areaBeyondBudget 2 0.00001 100000 (scaled y) (scaled x))
             let drawing = diagramWithExtent extent ([Fill (Colour "#007d9b") x, Fill (Colour "#b83769") y] ++ witnessInk forward ++ witnessInk backward)
             TIO.writeFile (output </> T.unpack asset) (renderSvg page drawing)
-            pure (object ["owner" .= unFaceId owner, "forward" .= distanceJson forward, "backward" .= distanceJson backward, "image" .= asset])
+            pure (object ["owner" .= unFaceId owner, "forward" .= distanceJson forward, "backward" .= distanceJson backward, "forwardArea" .= areaJson forwardArea, "backwardArea" .= areaJson backwardArea, "image" .= asset])
         _ -> pure []
       pure (object ["regionDistances" .= distances, "control" .= endpointControl a, "from" .= endpointMeshKey a, "to" .= endpointMeshKey b, "a" .= endpointId a, "b" .= endpointId b, "eligible" .= (endpointValid a && endpointValid b), "resolved" .= resolved, "overlay" .= name, "maxProjectedPixels" .= (600 * projectedChange basis differences), "maxSpatialChange" .= maximum (0 : map norm differences), "overlapCorners" .= length differences])
     pure (object ["key" .= key, "label" .= label, "width" .= pageWidth page, "height" .= pageHeight page, "renders" .= [r | (_, _, r) <- rendered], "pairs" .= pairs])
-  BL.writeFile (output </> "comparison.json") (encode (object ["distanceAccuracyPixels" .= (0.01 :: Double), "distanceSplitLimit" .= (20000 :: Int), "pixelsPerUnit" .= (600 :: Int), "pixelBudget" .= (2 :: Int), "sampleScale" .= (2 :: Int), "endpoints" .= map endpointReport endpoints, "views" .= views]))
+  BL.writeFile (output </> "comparison.json") (encode (object ["areaAccuracyPixelsSquared" .= (0.00001 :: Double), "areaSplitLimit" .= (100000 :: Int), "distanceAccuracyPixels" .= (0.01 :: Double), "distanceSplitLimit" .= (20000 :: Int), "pixelsPerUnit" .= (600 :: Int), "pixelBudget" .= (2 :: Int), "sampleScale" .= (2 :: Int), "endpoints" .= map endpointReport endpoints, "views" .= views]))
   copyFile "study/fold-material/illustration-metrics.js" (output </> "metrics.js")
   copyFile "study/fold-material/illustration-refinement.html" (destination </> "illustration-refinement.html")
   putStrLn ("Wrote illustration-refinement.html; source geometry was not changed or re-solved: " <> output)
@@ -202,3 +204,8 @@ distanceJson MissingTarget = object ["state" .= ("missing-target" :: Text)]
 distanceJson (BoundedDistance d) = object ["state" .= ("bounded" :: Text), "lowerPixels" .= distanceLower d, "upperPixels" .= distanceUpper d, "sourcePoint" .= coords (witnessFrom d), "targetPoint" .= coords (witnessTo d), "splits" .= distanceSplits d, "accuracyMet" .= (distanceUpper d - distanceLower d <= 0.01), "termination" .= (if distanceUpper d - distanceLower d <= 0.01 then "accuracy" else if distanceLower d > 2 || distanceUpper d <= 2 then "budget" else "work-limit" :: Text)]
   where
     coords (V2 x y) = [x, y]
+
+-- Area is additional evidence, never an acceptance waiver. A missing target
+-- still has its explicit distance state; its whole source area is outside.
+areaJson :: AreaBounds -> Value
+areaJson a = object ["totalPixelsSquared" .= areaTotal a, "outsideLowerPixelsSquared" .= areaOutside a, "outsideUpperPixelsSquared" .= (areaOutside a + areaUnresolved a), "unresolvedPixelsSquared" .= areaUnresolved a, "splits" .= areaSplits a, "accuracyMet" .= (areaUnresolved a <= 0.00001), "termination" .= (if areaUnresolved a <= 0.00001 then "accuracy" else "work-limit" :: Text)]

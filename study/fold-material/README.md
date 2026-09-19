@@ -87,6 +87,9 @@ sampling sensitivity; see [the follow-up](../../docs/notes/thin-layer-visibility
 Continuous filled-region distance bounds and witness SVGs retain both directions
 of geometric/pixel disagreement; [the distance study](../../docs/notes/exposed-layer-distance.md)
 explains why a tiny exposed fragment can dominate the maximum.
+The [area follow-up](../../docs/notes/exposed-area-budget.md) adds directional
+bounds on exposure beyond two pixels, with explicit unclassified area and a
+work cap. Small area does not waive an existing failure.
 See [usage](../../docs/usage.md#comparing-paper-at-illustration-scale)
 and [the study](../../docs/notes/illustration-scale-refinement.md).
 

@@ -459,8 +459,14 @@ checked coupled angles.
    come from exposed fragments smaller than 0.001 px², so maximum distance alone
    does not express their visual importance. All eight band pairs remain in
    review; matched controls pass and contact-off remains diagnostic.
-   **Illustration next: bound the exposed area farther than two pixels from
-   its counterpart, retaining maximum distance and explicit unresolved area.
+   [#253](https://github.com/avalonalex/senbazuru/issues/253)
+   [bounds area beyond two pixels](notes/exposed-area-budget.md) in both
+   directions. All 64 measurements reach 0.00001 px² precision; the low-angle
+   length pair reaches 0.6165 px² outside in one direction, while several
+   distant-fragment comparisons stay below 0.002 px². No area waiver is adopted;
+   all existing verdicts and material/contact limits remain unchanged.
+   **Illustration next: inspect where the remaining outside area lies at
+   drawing size before deciding any feature-specific exception.
    Material accuracy next: evaluate prescribed bends
    on the existing meshes, without a solve,
    comparing passive/control energies and the length penalty. Separate mesh

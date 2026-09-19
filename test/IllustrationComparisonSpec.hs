@@ -127,6 +127,64 @@ spec = describe "illustration-scale material comparison" $ do
     distanceLower d `shouldSatisfy` close 10
     distanceUpper d `shouldSatisfy` close 10
 
+  it "bounds known area past a straight two-pixel neighbourhood" $ do
+    a <- right (areaBeyondBudget 2 0.001 20000 [rectangle 0 0 4 1] [rectangle 0 0 1 1])
+    areaTotal a `shouldSatisfy` close 4
+    bracketsArea 1 a
+    areaUnresolved a `shouldSatisfy` (<= 0.001)
+
+  it "measures area in an interior hole and across a disconnected target" $ do
+    let surround = [rectangle 0 0 4 1, rectangle 0 3 4 4, rectangle 0 1 1 3, rectangle 3 1 4 3]
+    a <- right (areaBeyondBudget 0.5 0.002 50000 [rectangle 0 0 4 4] surround)
+    bracketsArea 1 a
+    areaUnresolved a `shouldSatisfy` (<= 0.002)
+    b <- right (areaBeyondBudget 0.5 0.002 50000 [rectangle 0 0 4 1] [rectangle 0 0 1 1, rectangle 3 0 4 1])
+    bracketsArea 1 b
+    areaUnresolved b `shouldSatisfy` (<= 0.002)
+
+  it "bounds area around a round target corner, including the circular boundary" $ do
+    a <- right (areaBeyondBudget 0.5 0.001 50000 [rectangle 0 0 1 1] [rectangle (-1) (-1) 0 0])
+    bracketsArea (1 - pi / 16) a
+    areaUnresolved a `shouldSatisfy` (<= 0.001)
+
+  it "keeps microscopic distant exposure instead of thresholding it away" $ do
+    let base = rectangle 0 0 1 1
+    a <- right (areaBeyondBudget 2 1e-9 100 [base, rectangle 10 0 11 1e-6] [base])
+    areaOutside a `shouldSatisfy` close 1e-6
+    areaUnresolved a `shouldSatisfy` close 0
+
+  it "keeps area invariant under winding, subdivision and overlapping targets" $ do
+    let source = rectangle 0 0 4 1
+        split = [[V2 0 0, V2 4 0, V2 4 1], [V2 0 0, V2 4 1, V2 0 1]]
+        target = rectangle 0 0 1 1
+    mapM_
+      ( \pieces -> do
+          a <- right (areaBeyondBudget 2 0.002 20000 pieces [target, reverse target])
+          bracketsArea 1 a
+          areaTotal a `shouldSatisfy` close 4
+          areaUnresolved a `shouldSatisfy` (<= 0.002)
+      )
+      [split, [reverse source], [V2 0 0 : source]]
+
+  it "reports unresolved area at a work cap and handles empty or lost exposure" $ do
+    a <- right (areaBeyondBudget 2 0.001 0 [rectangle 0 0 4 1] [rectangle 0 0 1 1])
+    bracketsArea 1 a
+    areaUnresolved a `shouldSatisfy` (> 0.001)
+    areaSplits a `shouldBe` 0
+    areaBeyondBudget 2 0.001 0 [] [] `shouldBe` Right (AreaBounds 0 0 0 0)
+    areaBeyondBudget 2 0.001 0 [rectangle 0 0 4 1] [] `shouldBe` Right (AreaBounds 4 4 0 0)
+    a0 <- right (areaBeyondBudget 0 0.001 20 [rectangle 0 0 4 1] [rectangle 0 0 4 1])
+    a0 `shouldBe` AreaBounds 4 0 0 0
+    areaBeyondBudget (-1) 0.001 20 [] [] `shouldSatisfy` isLeft
+    areaBeyondBudget 2 0 20 [] [] `shouldSatisfy` isLeft
+    areaBeyondBudget 2 0.001 (-1) [] [] `shouldSatisfy` isLeft
+    areaBeyondBudget 2 0.001 20 [[V2 (0 / 0) 0]] [] `shouldSatisfy` isLeft
+
+bracketsArea :: Double -> AreaBounds -> Expectation
+bracketsArea expected a = do
+  areaOutside a `shouldSatisfy` (<= expected + 1e-10)
+  (areaOutside a + areaUnresolved a) `shouldSatisfy` (>= expected - 1e-10)
+
 rectangle :: Double -> Double -> Double -> Double -> [V2]
 rectangle x0 y0 x1 y1 = [V2 x0 y0, V2 x1 y0, V2 x1 y1, V2 x0 y1]
 

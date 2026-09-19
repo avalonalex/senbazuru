@@ -17,6 +17,11 @@
 -- bound until the global interval is narrow enough or the work limit is met.
 -- An optional drawing budget also stops subdivision once the whole interval
 -- is on one side of that budget; that decision does not need a precise maximum.
+-- The area measurement instead classifies whole triangles against a distance
+-- budget, retaining every unclassified cell in its error bound. Distance and
+-- area answer different questions: a remote sliver can dominate distance while
+-- contributing almost no area. Neither measurement waives the other.
+--
 -- Bounds use ordinary floating-point geometry, not interval arithmetic; they
 -- retain its roundoff limits. No positive area is discarded as "too small".
 module IllustrationDistance
@@ -24,6 +29,8 @@ module IllustrationDistance
     RegionDistance (..),
     DistanceBounds (..),
     regionDistance,
+    AreaBounds (..),
+    areaBeyondBudget,
   )
 where
 
@@ -69,11 +76,6 @@ regionDistance accuracy budget limit source target
   where
     sources = filter ((> 0) . abs . signedArea) source
     targets = map anticlockwise (filter ((> 0) . abs . signedArea) target)
-    valid ring = all (\(V2 x y) -> finite x && finite y) ring && (finite (signedArea ring) && convex (anticlockwise ring))
-    anticlockwise ring = if signedArea ring < 0 then reverse ring else ring
-    convex ring = all (\(a, b) -> all (\p -> cross2 (b ^-^ a) (p ^-^ a) >= 0) ring) (edges ring)
-    fan (a : b : c : rest) = (a, b, c) : fan (a : c : rest)
-    fan _ = []
     initial = map measure (concatMap fan sources)
     initialWitness = foldl' farther (Witness 0 (V2 0 0) (V2 0 0)) [w | (_, w, _) <- initial]
     initialQueue = Map.fromList [((upper, index), triangle) | (index, (upper, _, triangle)) <- zip [0 ..] initial]
@@ -94,6 +96,79 @@ regionDistance accuracy budget limit source target
                 nextWitness = foldl' farther witness [w | (_, w, _) <- children]
                 nextQueue = foldl' (\q (index, (u, _, t)) -> Map.insert (u, index) t q) remaining (zip [length initial + 2 * count ..] children)
              in search (count + 1) nextWitness nextQueue
+
+-- | Area is in squared page units. The true area beyond the distance budget
+-- lies between 'areaOutside' and 'areaOutside' + 'areaUnresolved'. Source
+-- polygons must have disjoint interiors, as visible-region pieces do; shared
+-- edges are harmless. This precondition is not checked here. Target polygons
+-- are a union and may overlap. Empty targets put all source area outside.
+data AreaBounds = AreaBounds
+  { areaTotal :: Double,
+    areaOutside :: Double,
+    areaUnresolved :: Double,
+    areaSplits :: Int
+  }
+  deriving stock (Eq, Show)
+
+-- | Classify whole triangles, never just their sampled points. The same
+-- convex-distance upper bound as 'regionDistance' proves a triangle within
+-- budget. Distance to the target region changes by at most the distance moved,
+-- so distance at the centroid (the mean of its corners) minus the farthest
+-- corner radius bounds every point from below. Only a strictly positive excess proves the whole cell outside.
+-- Split the largest unclassified area first. The stopping accuracy is an
+-- error allowance on this measurement, NOT an illustration acceptance rule.
+-- Each longest-edge bisection halves its parent's area; carry that weight
+-- rather than repeatedly subtracting near-collinear coordinates for tiny cells.
+areaBeyondBudget :: Double -> Double -> Int -> [[V2]] -> [[V2]] -> Either DistanceError AreaBounds
+areaBeyondBudget budget accuracy limit source target
+  | not (finite budget) || budget < 0 || not (finite accuracy) || accuracy <= 0 || limit < 0 = Left (DistanceError "area accuracy must be positive and finite; distance budget and work limit must be nonnegative")
+  | not (all valid (source ++ target)) = Left (DistanceError "area regions require finite convex polygons")
+  | null targets = Right (AreaBounds total total 0 0)
+  | otherwise = Right (search 0 outside unresolved queue)
+  where
+    sources = filter ((> 0) . abs . signedArea) source
+    targets = map anticlockwise (filter ((> 0) . abs . signedArea) target)
+    initial = [(abs (cross2 (b ^-^ a) (c ^-^ a)) / 2, t) | t@(a, b, c) <- concatMap fan sources]
+    total = sum (map fst initial)
+    (outside, unresolved, queue) = foldl' classify (0, 0, Map.empty) (zip [0 ..] initial)
+    classify (out, pending, cells) (index, (area, t@(a, b, c)))
+      | area <= 0 || upper <= budget = (out, pending, cells)
+      | lower > budget = (out + area, pending, cells)
+      | otherwise = (out, pending + area, Map.insert (area, index) t cells)
+      where
+        corners = [a, b, c]
+        upper = minimum [maximum [d | p <- corners, let Witness d _ _ = nearestIn ring p] | ring <- targets]
+        middle = (1 / 3) *^ (a ^+^ b ^+^ c)
+        nearest = minimum [d | ring <- targets, let Witness d _ _ = nearestIn ring middle]
+        radius = maximum [norm (p ^-^ middle) | p <- corners]
+        lower = nearest - radius
+    search count out pending cells
+      | pending <= accuracy || count >= limit =
+          -- Re-sum the actual remaining cells: incremental subtraction can
+          -- leave a roundoff remainder even when every cell was classified.
+          let remaining = sum [area | ((area, _), _) <- Map.toList cells]
+           in if remaining <= accuracy || count >= limit
+                then AreaBounds total out remaining count
+                else step count out remaining cells
+      | otherwise = step count out pending cells
+    step count out pending cells = case Map.maxViewWithKey cells of
+      Nothing -> AreaBounds total out 0 count
+      Just (((area, _), triangle), rest) ->
+        let children = [(area / 2, t) | t <- bisect triangle]
+            (nextOut, nextPending, nextCells) = foldl' classify (out, pending - area, rest) (zip [length initial + 2 * count ..] children)
+         in search (count + 1) nextOut nextPending nextCells
+
+valid :: [V2] -> Bool
+valid ring = all (\(V2 x y) -> finite x && finite y) ring && (finite (signedArea ring) && convex (anticlockwise ring))
+  where
+    convex points = all (\(a, b) -> all (\p -> cross2 (b ^-^ a) (p ^-^ a) >= 0) points) (edges points)
+
+anticlockwise :: [V2] -> [V2]
+anticlockwise ring = if signedArea ring < 0 then reverse ring else ring
+
+fan :: [V2] -> [Triangle]
+fan (a : b : c : rest) = (a, b, c) : fan (a : c : rest)
+fan _ = []
 
 finite :: Double -> Bool
 finite x = not (isNaN x || isInfinite x)

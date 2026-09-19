@@ -396,7 +396,11 @@ convex polygons. It is study-only geometry: it imports no paper or rendering
 modules, and returns explicit empty/missing states and finite work-limited
 intervals. `IllustrationGallery` supplies projected layer regions and draws
 lower-bound witnesses through `Diagram`; the browser only displays the bounds.
-See [the distance study](notes/exposed-layer-distance.md).
+It also bounds area beyond a distance budget by classifying whole source
+triangles, retaining unclassified area at the work limit. Source pieces must
+have disjoint interiors; no area threshold changes the review verdict. See
+[the distance study](notes/exposed-layer-distance.md) and
+[area follow-up](notes/exposed-area-budget.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

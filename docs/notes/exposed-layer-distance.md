@@ -95,11 +95,9 @@ saved source hashes and nine copied FOLD files remain unchanged. Browser
 checks exercise all 24 comparisons and both directions of pixel/geometric
 disagreement. The long material solve remains outside CI.
 
-For illustration quality, the next bounded experiment is to measure how much
-exposed area lies farther than two pixels from its counterpart, with an
-explicit unresolved-area bound. Retain the maximum distance alongside it:
-an area statistic alone could hide a lost but important feature. This would
-put the microscopic fragments and larger visible differences on a common
-scale without adopting an arbitrary waiver. The independent material-accuracy
-next step remains evaluating prescribed bends on the existing meshes, without
-optimization or higher resolution.
+The [area follow-up](exposed-area-budget.md) now measures exposed area farther
+than two pixels from its counterpart, with an explicit unresolved-area bound.
+It retains maximum distance alongside area and introduces no acceptance
+waiver. The independent material-accuracy next step remains evaluating
+prescribed bends on the existing meshes, without optimization or higher
+resolution.
