@@ -21,7 +21,7 @@ This requires the saved `checks.json` and nine `*-after.fold` files from
 first; this command never silently starts that expensive calculation.
 Serve `build/fold-material` over HTTP and open `illustration-refinement.html`.
 The page includes the measurements, complete input FOLD files, source solver
-report and 112 SVGs: paper illustrations, silhouette/crease/layer masks and
+report and, in the original comparison, 112 SVGs: paper illustrations, silhouette/crease/layer masks and
 visible-ink overlays. A mask is a diagnostic drawing showing just one kind
 of feature. The [glossary](../glossary.md) defines material coordinates,
 creases, panels and layer order.
@@ -125,3 +125,7 @@ rounding. Wrong-study input and an altered held vertex are refused. All
 four cameras. The cold build passes 1458 tests without compiler warnings;
 formatting, HLint 3.10 and the JavaScript checks pass. No long solve was added
 to CI.
+
+The [thin-layer follow-up](thin-layer-visibility.md) adds isolated masks and
+polygon measurements (160 SVGs total). The six oblique comparisons still
+flag exposed layers on every tested grid; no subpixel waiver was adopted.

@@ -6,8 +6,9 @@
 -- drawing resembles an accepted one.
 --
 -- Four cameras share a fixed 600 page units per sheet unit. The browser's
--- half-pixel mask samples complement the exact-on-triangles position bound;
--- they are a screen-scale diagnostic, not a visibility or motion certificate.
+-- mask samples and polygon exposure complement the exact-on-triangles
+-- position bound. Changing the sampling grid can diagnose pixel sensitivity;
+-- it cannot certify visibility stability or a physical folding movement.
 module IllustrationGallery (writeIllustrationComparison) where
 
 import ClosedCrease (closedOwners)
@@ -28,7 +29,7 @@ import Senbazuru.Diagram.Style (Notation (..), defaultTheme)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry.VectorSpace (norm)
+import Senbazuru.Geometry.VectorSpace (norm, (*^))
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.CreasePattern (creasePatternFrom)
@@ -90,7 +91,12 @@ writeIllustrationComparison source destination = do
           TIO.writeFile (output </> T.unpack stem <> ".svg") (renderSvg page {pageBackground = Just (Colour "#ffffff")} ordinary {diagramExtent = extent})
           masks <- checked (visibleMasks basis extent (endpointOwners endpoint) seen)
           forM_ masks $ \(kind, drawing) -> TIO.writeFile (output </> T.unpack (stem <> "-" <> kind) <> ".svg") (renderSvg page drawing)
-          pure (endpointId endpoint, Just seen, object ["id" .= endpointId endpoint, "stem" .= stem, "resolved" .= True])
+          regions <- checked (layerRegions basis (endpointOwners endpoint) seen)
+          let exposure owner =
+                let pieces = concat [rs | (n, rs) <- regions, n == owner]
+                    (area, spanPixels) = exposureMeasures (map (map (600 *^)) pieces)
+                 in object ["owner" .= unFaceId owner, "areaPixelsSquared" .= area, "maxColumnSpanPixels" .= spanPixels]
+          pure (endpointId endpoint, Just seen, object ["id" .= endpointId endpoint, "stem" .= stem, "resolved" .= True, "exposure" .= map exposure [FaceId 0, FaceId 1]])
         _ -> pure (endpointId endpoint, Nothing, object ["id" .= endpointId endpoint, "resolved" .= False, "reason" .= either explain (const "View has unresolved projected visibility; no fallback is graded.") attempt])
     pairs <- forM comparisons $ \(a, b, differences) -> do
       let seen eid = case [form | (i, Just form, _) <- rendered, i == eid] of form : _ -> Just form; [] -> Nothing

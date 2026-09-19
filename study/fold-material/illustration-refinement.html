@@ -5,7 +5,7 @@
 [hidden]{display:none!important}
 :root{font-family:system-ui,sans-serif;color:#292820;background:#f6f2e9;line-height:1.5}body{max-width:1440px;margin:36px auto;padding:0 24px}h1{font-size:2.15rem;line-height:1.15;margin:.3em 0}h2{font-size:1.2rem;margin-top:2rem}small,.muted{color:#716958}a{color:#37685f}button,select{font:inherit;background:#fffaf1;border:1px solid #cfc5b4;border-radius:4px;padding:7px 10px}label{display:inline-flex;align-items:center;gap:8px}.controls{display:flex;gap:14px;flex-wrap:wrap;margin:22px 0}.notice{border-left:4px solid #537668;background:#e7eee4;padding:12px 16px}.notice.failed{border-color:#ae5830;background:#f7e8d9}.comparison{display:flex;align-items:start;gap:18px;overflow:auto;background:#eae4d8;padding:18px}.figure{flex:none;margin:0;background:white;text-align:center}.figure figcaption{padding:8px;background:#e2dacb;font-size:.9rem}.figure img{display:block;max-width:none}.plot{overflow:auto}.plot img{display:block;background:white;max-width:none}.legend{display:flex;gap:18px;flex-wrap:wrap}.coarse{color:#007d9b}.fine{color:#b83769}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;border-bottom:1px solid #d7d0c2;padding:8px}th{font-weight:600;background:#eae4d8}.tables{overflow:auto}code{background:#e9e4d8;padding:1px 4px}button:disabled{opacity:.5}#error{color:#9b311f;white-space:pre-wrap}details{margin:1.5em 0}summary{cursor:pointer}nav{font-size:.9rem}#zoom-note{font-weight:600}#audit-status{min-height:1.5em}
 </style>
-<header><small>SENBAZURU · ILLUSTRATION STUDY / #247</small><h1>How much of the change reaches the drawing?</h1>
+<header><small>SENBAZURU · ILLUSTRATION STUDY / #247 · #249</small><h1>How much of the change reaches the drawing?</h1>
 <p>Compare saved paper at <strong>600 pixels per sheet unit</strong>. A provisional two-pixel budget allows small bulging differences while retaining the existing checks for connected paper, material lengths, creases and contact. This is a drawing-size decision; the stronger material-study criteria remain open.</p>
 <nav><a href="band-refinement-8x2.html">Material comparison</a> · <a href="index.html">All fold examples</a> · <a href="illustration-refinement/comparison.json">Projection and fresh geometry checks</a> · <a href="illustration-refinement/source-checks.json">Original solver report</a></nav></header>
 <p id="error" role="alert"></p>
@@ -13,61 +13,101 @@
 <label>Example <select id="control"><option value="band">Distributed bend preference</option><option value="matched">Matched holds</option><option value="band-off">Contact off · invalid control</option></select></label>
 <label>Refinement <select id="direction"><option value="4x2">Length · 4×2 → 8×2</option><option value="8x1">Width · 8×1 → 8×2</option></select></label>
 <label>Camera <select id="camera"></select></label>
-<label>Display <select id="display"><option value="paper">Paper illustration</option><option value="layers">Source layers</option><option value="creases">Visible creases</option><option value="silhouette">Silhouette</option></select></label>
+<label>Display <select id="display"><option value="paper">Paper illustration</option><option value="layers">Source layers</option><option value="lower">Exposed lower layer</option><option value="upper">Exposed upper layer</option><option value="creases">Visible creases</option><option value="silhouette">Silhouette</option></select></label>
 <label>Inspection <select id="zoom"><option value="1">Actual size · 1×</option><option value="2">Magnified · 2×</option></select></label>
 </div>
 <p id="verdict" class="notice" role="status">Loading saved endpoints…</p>
 <p id="description"></p><p id="zoom-note">Actual size: one SVG page unit is one CSS pixel.</p>
 <div class="comparison"><figure class="figure"><figcaption id="label-a"></figcaption><img id="a" alt="Coarser paper mesh"></figure><figure class="figure"><figcaption id="label-b"></figcaption><img id="b" alt="Finer paper mesh"></figure></div>
-<p id="layer-legend" hidden>Diagnostic colours identify material layers: <span style="color:#b22">red = lower panel</span>, <span style="color:#22b">blue = upper panel</span>. They are not the two sides' paper colours. Crease masks use one-pixel strokes; subdivision joins are omitted.</p>
+<p id="layer-legend" hidden>Diagnostic colours identify material layers: <span style="color:#b22">red = lower panel</span>, <span style="color:#22b">blue = upper panel</span>. They are not the two sides' paper colours. Isolated layer masks are black on transparency; neither layer paints over the other. Crease masks use one-pixel strokes; subdivision joins are omitted.</p>
 <p><a id="download-a">Coarser SVG</a> · <a id="download-b">Finer SVG</a> · <a id="fold-a">Coarser FOLD</a> · <a id="fold-b">Finer FOLD</a></p>
 <h2>Visible ink overlay</h2><p class="legend"><span class="coarse">Cyan: coarser mesh</span><span class="fine">Magenta: 8×2 mesh</span><span>Shared camera, scale and position; no alignment fitted afterward.</span></p>
 <p><label><input id="highlights" type="checkbox" checked> Mark samples outside the budget</label> <span class="muted">Orange circles locate up to 200 flagged samples per mask. Their radius is an inspection aid, not the size of the difference.</span></p>
 <div class="plot"><div id="overlay-box" style="position:relative;width:max-content"><img id="overlay" alt="Overlay of the two visible outlines and crease traces"><canvas id="outliers" style="position:absolute;left:0;top:0;pointer-events:none" aria-label="Locations of mask samples outside the two-pixel budget"></canvas></div></div>
 <h2>Measurements for this comparison</h2><div class="tables"><table><thead><tr><th>Quantity</th><th>Change</th><th>Result</th></tr></thead><tbody id="measurements"></tbody></table></div>
 <p class="muted">The position bound covers every overlap of the two material triangulations, including new vertices and crossing subdivision edges. Mask distances use half-pixel samples of the rendered silhouette, visible crease strokes and each source layer. “Within sampled budget” still needs visual inspection: subpixel features may escape sampling, and a near-threshold result depends on rasterization. Empty crease masks are reported explicitly.</p>
+<h2>Real exposure before pixel sampling</h2>
+<p>Area and vertical span come from the visible polygons, before SVG rounding or rasterization. Span adds the exposed intervals in one vertical column, then takes the largest total over all columns. It is camera-dependent, not perpendicular strip thickness or a difference between the meshes.</p>
+<div class="tables"><table><thead><tr><th>Layer</th><th>Coarser area (px²)</th><th>Finer area (px²)</th><th>Coarser max span (px)</th><th>Finer max span (px)</th></tr></thead><tbody id="exposure"></tbody></table></div>
+<p id="legacy"></p>
+<h2>Does the layer comparison depend on the sampling grid?</h2>
+<p>The regular check now uses separate black masks for each layer. This audit repeats it at 2, 4 and 8 samples per pixel, with four common grid offsets at each density. Offset values below are raster samples: 0.5 shifts both images by half a sample. The camera, geometry, drawing scale and two-pixel budget stay fixed. Coverage integrates opacity before applying the half-opacity threshold.</p>
+<button id="sampling">Audit this comparison on 12 grids</button><p id="sampling-status" role="status"></p>
+<div class="tables"><table><thead><tr><th>Samples / px</th><th>Offset</th><th>Lower outliers</th><th>Upper outliers</th><th>Lower coverage A / B (px²)</th><th>Upper coverage A / B (px²)</th></tr></thead><tbody id="sampling-rows"></tbody></table></div>
+<p class="muted">Illustration policy: require the existing paper, position, outline and crease checks; any layer failure on these grids keeps this view in review. Small area, a subpixel span, or one passing grid does not waive a lost layer. Even twelve passing grids are sampled evidence, not proof of visibility stability. Changes in sampling never move or hide paper in the actual illustration.</p>
 <h2>All cameras and both refinement directions</h2><p>Check all 24 comparisons, including the invalid controls. This reads the saved SVGs and never runs the material solver.</p>
 <button id="audit">Check all views</button> <button id="download" disabled>Download pixel measurements</button><p id="audit-status" role="status"></p>
 <div class="tables"><table><thead><tr><th>Example</th><th>Direction</th><th>Camera</th><th>Position (px)</th><th>Result</th></tr></thead><tbody id="summary"></tbody></table></div>
 <details><summary>Raw pixel measurements</summary><pre id="raw" style="max-height:350px;overflow:auto;font-size:.8rem"></pre></details>
 <details><summary>What this does and does not establish</summary><p>Both endpoints must retain their original accepted status, reported numerical convergence and fresh material/contact checks. Contact-off remains diagnostic regardless of image similarity. Views with unresolved projected visibility receive no graded image. Energy changes stay in the material report; they do not gate this illustration experiment.</p><p>The two-pixel budget is an engineering choice for this scale and these four cameras. It is not a tolerance on paper penetration, permission to stretch the sheet, evidence of calibrated paper mechanics or a certificate covering a folding movement. Changing the output size or camera calls for another comparison.</p></details>
 <script type="module">
-import {classifyMask,compareMasks,illustrationStatus} from './illustration-refinement/metrics.js';
-const root='illustration-refinement/', el=id=>document.getElementById(id), rows=new Map(), cache=new Map();
+import {classifyMask,compareMasks,illustrationStatus,coverageArea,layerSamplings,samplingVerdict} from './illustration-refinement/metrics.js';
+const root='illustration-refinement/', el=id=>document.getElementById(id), rows=new Map(), cache=new Map(), samplingRows=new Map();
 let data,revision=0;
 const row=(body,values)=>{const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);};
+function busy(value){for(const id of ['sampling','audit','control','direction','camera'])el(id).disabled=value;}
 const resultKey=(view,pair)=>`${view.key}/${pair.control}/${pair.from}`;
 function current(){const view=data.views.find(v=>v.key===el('camera').value);return {view,pair:view.pairs.find(p=>p.control===el('control').value&&p.from===el('direction').value)};}
-async function mask(view,id,kind){
- const key=`${view.key}/${id}/${kind}`;if(cache.has(key))return cache.get(key);
- const result=(async()=>{const r=view.renders.find(r=>r.id===id);if(!r.resolved)throw new Error('Visibility unresolved');const img=new Image();img.src=root+r.stem+'-'+kind+'.svg';await img.decode();const canvas=document.createElement('canvas');canvas.width=Math.ceil(view.width*data.sampleScale);canvas.height=Math.ceil(view.height*data.sampleScale);const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.scale(data.sampleScale,data.sampleScale);ctx.drawImage(img,0,0,view.width,view.height);return {width:canvas.width,height:canvas.height,labels:classifyMask(ctx.getImageData(0,0,canvas.width,canvas.height).data,kind==='layers')};})();
+async function mask(view,id,kind,setting=layerSamplings[0]){
+ const key=`${view.key}/${id}/${kind}/${setting.key}`;if(cache.has(key))return cache.get(key);
+ const result=(async()=>{const r=view.renders.find(r=>r.id===id);if(!r.resolved)throw new Error('Visibility unresolved');const img=new Image();img.src=root+r.stem+'-'+kind+'.svg';await img.decode();const canvas=document.createElement('canvas');canvas.width=Math.ceil(view.width*setting.scale);canvas.height=Math.ceil(view.height*setting.scale);const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.translate(...setting.phase);ctx.scale(setting.scale,setting.scale);ctx.drawImage(img,0,0,view.width,view.height);const rgba=ctx.getImageData(0,0,canvas.width,canvas.height).data;return {width:canvas.width,height:canvas.height,labels:classifyMask(rgba,kind==='layers'),coverage:coverageArea(rgba,setting.scale)};})();
  cache.set(key,result);try{return await result;}catch(error){cache.delete(key);throw error;}
 }
 async function check(view,pair){
  const key=resultKey(view,pair);if(rows.has(key))return rows.get(key);
- const metrics=[];
- if(pair.resolved)for(const kind of ['silhouette','creases','layers']){
+ const metrics=[],legacy=[];
+ if(pair.resolved)for(const kind of ['silhouette','creases','lower','upper','layers']){
   const [a,b]=await Promise.all([mask(view,pair.a,kind),mask(view,pair.b,kind)]);
-  for(const label of kind==='layers'?[1,2]:[null])metrics.push({name:kind==='layers'?(label===1?'Lower layer':'Upper layer'):kind==='creases'?'Visible creases':'Silhouette',...compareMasks(a.labels,b.labels,a.width,a.height,{scale:data.sampleScale,budget:data.pixelBudget,label})});
+  for(const label of kind==='layers'?[1,2]:[null]){
+   const name=kind==='lower'||label===1?'Lower layer':kind==='upper'||label===2?'Upper layer':kind==='creases'?'Visible creases':'Silhouette';
+   const metric={name,...compareMasks(a.labels,b.labels,a.width,a.height,{scale:data.sampleScale,budget:data.pixelBudget,label})};
+   (kind==='layers'?legacy:metrics).push(metric);
+  }
  }
- const result={view:view.key,control:pair.control,from:pair.from,to:pair.to,maxProjectedPixels:pair.maxProjectedPixels,metrics,status:illustrationStatus(pair,metrics,data.pixelBudget)};rows.set(key,result);return result;
+ const result={view:view.key,control:pair.control,from:pair.from,to:pair.to,maxProjectedPixels:pair.maxProjectedPixels,metrics,legacy,status:illustrationStatus(pair,metrics,data.pixelBudget)};rows.set(key,result);return result;
 }
 function sizes(view){const zoom=Number(el('zoom').value);for(const id of ['a','b','overlay']){el(id).style.width=view.width*zoom+'px';el(id).style.height=view.height*zoom+'px';}el('zoom-note').textContent=zoom===1?'Actual size: one SVG page unit is one CSS pixel.':'Magnified 2× for inspection. Measurements still use the declared 600-pixel scale.';}
 function markOutliers(view,result){const canvas=el('outliers'),zoom=Number(el('zoom').value);canvas.width=Math.ceil(view.width*data.sampleScale);canvas.height=Math.ceil(view.height*data.sampleScale);canvas.style.width=view.width*zoom+'px';canvas.style.height=view.height*zoom+'px';canvas.hidden=!el('highlights').checked||!result;const ctx=canvas.getContext('2d');ctx.scale(data.sampleScale,data.sampleScale);ctx.strokeStyle='#d26416';ctx.lineWidth=.8;for(const m of result?.metrics??[])for(const [x,y] of m.outliers){ctx.beginPath();ctx.arc((x+.5)/data.sampleScale,(y+.5)/data.sampleScale,3,0,2*Math.PI);ctx.stroke();}}
 async function update(){
  const ticket=++revision,{view,pair}=current(),kind=el('display').value;
- el('error').textContent='';el('layer-legend').hidden=kind==='paper';sizes(view);
+ el('error').textContent='';el('legacy').textContent='';el('layer-legend').hidden=kind==='paper';sizes(view);showExposure(view,pair);showSampling(view,pair);
  for(const [side,id] of [['a',pair.a],['b',pair.b]]){const r=view.renders.find(r=>r.id===id),src=root+r.stem+(kind==='paper'?'':'-'+kind)+'.svg';el(side).hidden=!r.resolved;if(r.resolved){el(side).src=src;el('download-'+side).href=src;}else el('download-'+side).removeAttribute('href');el('label-'+side).textContent=(side==='a'?pair.from:pair.to)+' · '+view.label+(r.resolved?'':' · visibility unresolved');el('fold-'+side).href=root+data.endpoints.find(e=>e.id===id).fold;}
  el('overlay').hidden=!pair.resolved;if(pair.resolved)el('overlay').src=root+pair.overlay;
  markOutliers(view,null);
  el('verdict').textContent=illustrationStatus(pair,null,data.pixelBudget);el('verdict').classList.toggle('failed',!pair.eligible||!pair.resolved);
  el('description').textContent=`${pair.overlapCorners} material-overlap corners checked. Maximum spatial difference: ${pair.maxSpatialChange.toPrecision(5)} sheet lengths. Creases and paper have the same stroke widths in every image.`;
  el('measurements').replaceChildren();row(el('measurements'),['Whole-surface projected positions',pair.maxProjectedPixels.toFixed(3)+' px',pair.maxProjectedPixels<=data.pixelBudget?'Within two-pixel budget':'Outside two-pixel budget']);
- try{const result=await check(view,pair);if(ticket!==revision)return;el('verdict').textContent=result.status;el('verdict').classList.toggle('failed',!result.status.startsWith('Within'));for(const m of result.metrics)row(el('measurements'),[m.name,m.beyondBudget?`${m.beyondBudget} samples beyond 2 px`:m.maxDistancePixels.toFixed(3)+' px',m.status]);markOutliers(view,result);refreshSummary();}catch(error){if(ticket===revision){el('error').textContent='Pixel check failed: '+error.message;el('verdict').textContent='Pixel check incomplete';}}
+ try{const result=await check(view,pair);if(ticket!==revision)return;result.status=illustrationStatus(pair,result.metrics,data.pixelBudget,samplingRows.get(resultKey(view,pair))?.reports??null);el('verdict').textContent=result.status;el('verdict').classList.toggle('failed',!result.status.startsWith('Within'));for(const m of result.metrics)row(el('measurements'),[m.name,m.beyondBudget?`${m.beyondBudget} samples beyond 2 px`:m.maxDistancePixels.toFixed(3)+' px',m.status]);markOutliers(view,result);el('legacy').textContent='Original composited-colour check: '+result.legacy.map(m=>`${m.name}: ${m.beyondBudget} outliers`).join('; ')+'. Separate-layer results are shown above.';refreshSummary();}catch(error){if(ticket===revision){el('error').textContent='Pixel check failed: '+error.message;el('verdict').textContent='Pixel check incomplete';}}
 }
-function measurements(){return {pixelsPerUnit:data.pixelsPerUnit,sampleScale:data.sampleScale,budget:data.pixelBudget,userAgent:navigator.userAgent,comparisons:[...rows.values()]};}
-function refreshSummary(){el('summary').replaceChildren();for(const view of data.views)for(const pair of view.pairs){const r=rows.get(resultKey(view,pair));if(r)row(el('summary'),[pair.control,`${pair.from} → ${pair.to}`,view.label,r.maxProjectedPixels.toFixed(3),r.status]);}el('download').disabled=rows.size===0;el('raw').textContent=JSON.stringify(measurements(),null,2);}
-el('audit').addEventListener('click',async()=>{el('audit').disabled=true;try{let n=0;for(const view of data.views){cache.clear();for(const pair of view.pairs){el('audit-status').textContent=`Checking ${++n}/24: ${pair.control}, ${pair.from} → ${pair.to}, ${view.label}`;await check(view,pair);refreshSummary();}}el('audit-status').textContent='All 24 comparisons checked. Review the drawings before judging illustration readiness.';}catch(error){el('audit-status').textContent='Audit incomplete: '+error.message;}finally{el('audit').disabled=false;}});
+function measurements(){return {pixelsPerUnit:data.pixelsPerUnit,sampleScale:data.sampleScale,budget:data.pixelBudget,userAgent:navigator.userAgent,comparisons:[...rows.values()],layerSampling:[...samplingRows.values()]};}
+function refreshSummary(){el('summary').replaceChildren();for(const view of data.views)for(const pair of view.pairs){const r=rows.get(resultKey(view,pair));if(r){r.status=illustrationStatus(pair,r.metrics,data.pixelBudget,samplingRows.get(resultKey(view,pair))?.reports??null);row(el('summary'),[pair.control,`${pair.from} → ${pair.to}`,view.label,r.maxProjectedPixels.toFixed(3),r.status]);}}el('download').disabled=rows.size===0;el('raw').textContent=JSON.stringify(measurements(),null,2);}
+function showExposure(view,pair){
+ el('exposure').replaceChildren();
+ const a=view.renders.find(r=>r.id===pair.a),b=view.renders.find(r=>r.id===pair.b);
+ if(!a.resolved||!b.resolved){row(el('exposure'),['Unresolved visibility — no exposure measurement']);return;}
+ for(const owner of [0,1]){const x=a.exposure.find(e=>e.owner===owner),y=b.exposure.find(e=>e.owner===owner);row(el('exposure'),[owner?'Upper':'Lower',x.areaPixelsSquared.toFixed(4),y.areaPixelsSquared.toFixed(4),x.maxColumnSpanPixels.toFixed(4),y.maxColumnSpanPixels.toFixed(4)]);}
+}
+function showSampling(view,pair){
+ const saved=samplingRows.get(resultKey(view,pair));el('sampling-rows').replaceChildren();
+ el('sampling-status').textContent=saved?saved.status:!pair.eligible?'Diagnostic paper':!pair.resolved?'Visibility unresolved':'Not yet audited on all grids.';
+ for(const r of saved?.reports??[]){const [a,b]=r.metrics;row(el('sampling-rows'),[r.scale,r.phase.join(', '),a.beyondBudget,b.beyondBudget,a.coverage.map(x=>x.toFixed(3)).join(' / '),b.coverage.map(x=>x.toFixed(3)).join(' / ')]);}
+}
+el('sampling').addEventListener('click',async()=>{
+ const {view,pair}=current(),key=resultKey(view,pair),reports=[];
+ busy(true);
+ samplingRows.set(key,{view:view.key,control:pair.control,from:pair.from,reports,status:samplingVerdict(pair,reports)});showSampling(view,pair);refreshSummary();
+ try{
+  if(pair.eligible&&pair.resolved)for(const setting of layerSamplings){
+   cache.clear();const metrics=[];
+   for(const kind of ['lower','upper']){const a=await mask(view,pair.a,kind,setting),b=await mask(view,pair.b,kind,setting);metrics.push({name:kind==='lower'?'Lower layer':'Upper layer',coverage:[a.coverage,b.coverage],...compareMasks(a.labels,b.labels,a.width,a.height,{scale:setting.scale,budget:data.pixelBudget})});}
+   reports.push({...setting,metrics});samplingRows.set(key,{view:view.key,control:pair.control,from:pair.from,reports,status:samplingVerdict(pair,reports)});showSampling(view,pair);el('sampling-status').textContent=`Checked ${reports.length}/12 grids.`;
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+  }
+  samplingRows.set(key,{view:view.key,control:pair.control,from:pair.from,reports,status:samplingVerdict(pair,reports)});showSampling(view,pair);refreshSummary();
+ }catch(error){el('sampling-status').textContent='Sampling audit incomplete: '+error.message;}
+ finally{cache.clear();refreshSummary();await update();busy(false);}
+});
+el('audit').addEventListener('click',async()=>{busy(true);try{let n=0;for(const view of data.views){cache.clear();for(const pair of view.pairs){el('audit-status').textContent=`Checking ${++n}/24: ${pair.control}, ${pair.from} → ${pair.to}, ${view.label}`;await check(view,pair);refreshSummary();}}el('audit-status').textContent='All 24 comparisons checked. Review the drawings before judging illustration readiness.';}catch(error){el('audit-status').textContent='Audit incomplete: '+error.message;}finally{cache.clear();busy(false);}});
 el('download').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(measurements(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='illustration-pixels.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 el('highlights').addEventListener('change',()=>{const {view,pair}=current();markOutliers(view,rows.get(resultKey(view,pair)));});
 for(const id of ['control','direction','camera','display','zoom'])el(id).addEventListener('change',update);

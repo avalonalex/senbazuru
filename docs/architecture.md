@@ -386,7 +386,11 @@ the saved endpoints, reruns geometry checks and calls the existing SVG and
 projected-visibility pipeline. It performs no solve and does not grade the
 renderer fallback when visibility is unresolved. The browser's small
 `illustration-metrics.js` compares sampled pixel masks; geometry and SVG
-projection remain in Haskell. See [the illustration study](notes/illustration-scale-refinement.md).
+projection remain in Haskell. `IllustrationComparison` also measures exposed
+polygon area and maximum vertical column span; isolated layer masks let the
+browser test sampling density and phase without colour compositing. See
+[the illustration study](notes/illustration-scale-refinement.md) and
+[thin-layer follow-up](notes/thin-layer-visibility.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

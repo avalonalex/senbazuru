@@ -52,6 +52,26 @@ spec = describe "illustration-scale material comparison" $ do
     let moved = flat {samples = [p {position = position p ^+^ V3 0.01 0 0} | p <- samples flat]}
     sharedExtent topDown [flat, moved] `shouldBe` Right (Box (V2 0 0) (V2 1.01 1))
 
+  it "measures real subpixel exposure without an alpha threshold" $ do
+    let (area, spanPixels) = exposureMeasures [rectangle 0 0 10 0.1]
+    area `shouldSatisfy` close 1
+    spanPixels `shouldSatisfy` close 0.1
+
+  it "does not double-count a shared vertical subdivision edge" $ do
+    exposureMeasures [rectangle 0 0 1 2, rectangle 1 0 2 2] `shouldBe` (4, 2)
+    exposureMeasures [[V2 0 0, V2 2 0, V2 2 2], [V2 0 0, V2 2 2, V2 0 2]] `shouldBe` (4, 2)
+
+  it "counts separated intervals without counting the gap between them" $ do
+    exposureMeasures [rectangle 0 0 1 1, rectangle 0 5 1 6] `shouldBe` (2, 2)
+
+  it "finds the span at a corner and handles winding and empty exposure" $ do
+    let triangle = [V2 0 0, V2 2 0, V2 1 3]
+    exposureMeasures [reverse triangle] `shouldBe` (3, 3)
+    exposureMeasures [] `shouldBe` (0, 0)
+
+rectangle :: Double -> Double -> Double -> Double -> [V2]
+rectangle x0 y0 x1 y1 = [V2 x0 y0, V2 x1 y0, V2 x1 y1, V2 x0 y1]
+
 flat :: MaterialMesh
 flat = Mesh [point 0 0 0, point 1 0 0, point 1 1 0, point 0 1 0] [(0, 1, 2), (0, 2, 3)]
 
