@@ -1092,6 +1092,12 @@ with the original material, endpoint order and accepted-path checks. The gallery
 keeps the old strict mode alongside it. The activation range is numerical;
 partners still need separated reference encounters, and retained directional
 orders remain narrower than general self-contact.
+The [saved matched-energy analysis](notes/matched-energy-locations.md) locates
+passive bending costs across four meshes without solving again. It keeps
+added and removed material edges separate: even a shared edge can measure a
+turn over different neighboring triangles after refinement. Fresh endpoint
+checks and unchanged FOLD copies bind the maps to the stored shapes; the
+accounting does not establish a continuous energy density or material convergence.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

@@ -823,6 +823,26 @@ fixed. Source mismatches are refused before solving; crossing or unfinished
 results remain diagnostic. No continuous route or material convergence is
 claimed. See [the continuation study](notes/outer-strip-continuation.md).
 
+To locate the remaining matched-hold energy difference using the four saved
+outer-strip meshes, without a new solve or contact repair:
+
+```bash
+stack run senbazuru-material-study -- --matched-energy \
+  build/fold-material/outer-strip build/fold-material
+```
+
+Open `matched-energy.html`. **Comparison** and **Panel** select signed maps,
+region/direction totals, cumulative costs and transverse angular rates. Maps
+use material edge locations, compress panel width equally and share a scale
+across all comparisons. Shared, added and removed springs are counted
+separately; the full report retains coefficients, turns and each contribution.
+Both rule-labelled matched archives must agree, and all four endpoints must
+retain convergence and pass fresh checks against the authored material. Missing,
+failed or mismatched inputs are refused. Source FOLDs and reports are copied
+unchanged; output must not overlap the source directory. This is discrete
+energy accounting, not a continuous energy density or evidence of material
+convergence. See [the findings](notes/matched-energy-locations.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

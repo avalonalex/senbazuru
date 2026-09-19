@@ -422,6 +422,12 @@ identical measurements and exports, preserves the original files, and runs
 at most 40 more iterations at the same final weight. See the
 [continuation study](notes/outer-strip-continuation.md) for the outcomes and
 why a converged contact-off endpoint still cannot pass.
+`MatchedEnergy` pairs passive bends by material edge endpoints and accounts for
+shared, added and removed locations. Shared edges retain both coefficients and
+turns because their neighboring triangles can change. `MatchedEnergyGallery`
+binds both matched-rule archives, reuses fresh outer-strip measurements, and
+draws signed maps and common-scale plots without a solver or repair. See
+[the matched-energy note](notes/matched-energy-locations.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads
