@@ -386,6 +386,12 @@ measurements, including the original-grip displacement and exact known-order
 contact audit. It calls no optimizer or repair and does not change the material
 objective. The [prescribed-bend note](notes/prescribed-bend-energy.md) separates
 sampling a smooth surface from preserving every straight material edge.
+`BandBoundary` compares the original band controls with fractional actual turns
+on those same prescribed shapes. It exposes an equivalent full-angle spring
+for checking both energies and derivatives, without changing default fixtures
+or calling a solver. `PrescribedBendGallery` retains both policies' per-interval
+records and draws their material support. The [boundary note](notes/band-boundary-fractions.md)
+records the constant-cylinder check and the still-changing fixed-corner control.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

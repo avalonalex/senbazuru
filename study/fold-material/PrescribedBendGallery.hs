@@ -4,6 +4,7 @@
 -- A length-invalid cylinder is still useful evidence and never an equilibrium.
 module PrescribedBendGallery (writePrescribedBends) where
 
+import BandBoundary
 import ClosedCrease
 import Control.Monad (forM)
 import CoupledCrease
@@ -42,6 +43,7 @@ writePrescribedBends destination = do
   runs <- forM [(p, size) | p <- probes, size <- probeMeshes] $ \((key, title, probe), (n, w)) -> do
     fixture <- checked (prescribedFixture n w probe)
     measured <- checked (measureProbe fixture)
+    boundaries <- checked (measureBandBoundary n fixture)
     gaps <- checked (auditPairContact (closedOwners fixture) (closedMesh fixture))
     original <- checked (unequalCreaseWithWidth n w UpperBand)
     sheet <- checked (closedSurface fixture)
@@ -68,6 +70,8 @@ writePrescribedBends destination = do
               "lowerPassive" .= probeLowerEnergy measured,
               "upperPassive" .= probeUpperEnergy measured,
               "imposed" .= probeControlEnergy measured,
+              "bandBoundary" .= boundarySummary boundaries,
+              "bandIntervals" .= (stem ++ "-band.svg"),
               "crease" .= probeCreaseEnergy measured,
               "lengthSquares" .= probeLengthSquares measured,
               "maxRelativeEdgeError" .= probeRelativeError measured,
@@ -87,11 +91,13 @@ writePrescribedBends destination = do
               "vertices" .= [object ["material" .= [materialU p, materialV p], "position" .= [x, y, z]] | p <- samples mesh, let V3 x y z = position p],
               "triangles" .= [[a, b, c] | (a, b, c) <- triangles mesh],
               "edges" .= [object ["vertices" .= [a, b], "rest" .= edgeRest e, "actual" .= edgeActual e] | e <- probeEdges measured, let (a, b) = edgeIds e],
-              "hinges" .= map hingeJson (probeHinges measured)
+              "hinges" .= map hingeJson (probeHinges measured),
+              "bandBoundary" .= map boundaryJson boundaries
             ]
     BL.writeFile (output </> stem ++ ".json") (encode detail)
     BL.writeFile (output </> stem ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru prescribed bend study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     TIO.writeFile (output </> stem ++ ".svg") (profileSvg title fixture)
+    TIO.writeFile (output </> stem ++ "-band.svg") (bandSvg boundaries)
     pure report
   let document =
         object
@@ -102,6 +108,7 @@ writePrescribedBends destination = do
             "bandBendingWeight" .= bandBendingWeight preference,
             "bandFlatEnergy" .= bandReferenceEnergy preference,
             "lengthCap" .= (1e-5 :: Double),
+            "candidatePolicyAdopted" .= False,
             "equilibriumSolved" .= False,
             "contactCorrected" .= False,
             "continuousMotionChecked" .= False,
@@ -112,6 +119,75 @@ writePrescribedBends destination = do
   template <- TIO.readFile "study/fold-material/prescribed-bend.html"
   TIO.writeFile (destination </> "prescribed-bend.html") (T.replace "/*PRESCRIBED_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote prescribed-bend.html and 32 measured profiles with FOLD and raw diagnostics to " ++ destination)
+
+-- Keep complete and clipped intervals separate: equal totals can hide a
+-- boundary change. Slopes differentiate energy with respect to the full angle.
+boundarySummary :: [BoundaryMeasure] -> Value
+boundarySummary rows =
+  object
+    [ "original" .= sum (map boundaryOldEnergy rows),
+      "candidate" .= sum (map boundaryNewEnergy rows),
+      "originalPartial" .= total boundaryOldEnergy partial,
+      "candidatePartial" .= total boundaryNewEnergy partial,
+      "originalFull" .= total boundaryOldEnergy (not . partial),
+      "candidateFull" .= total boundaryNewEnergy (not . partial),
+      "partialSegments" .= length (filter partial rows),
+      "fullSegments" .= length (filter (not . partial) rows)
+    ]
+  where
+    partial r = boundaryFraction r < 1
+    total measure keep = sum [measure r | r <- rows, keep r]
+
+boundaryJson :: BoundaryMeasure -> Value
+boundaryJson r =
+  object
+    [ "vertices" .= [a, b, c, d],
+      "distance" .= boundaryDistance r,
+      "widthRange" .= boundaryWidthRange r,
+      "interval" .= boundaryInterval r,
+      "fullSpan" .= boundaryFullSpan r,
+      "fraction" .= boundaryFraction r,
+      "actualTurn" .= boundaryAngle r,
+      "allocatedTurn" .= (boundaryFraction r * boundaryAngle r),
+      "originalTarget" .= hingeRest old,
+      "candidateFullTarget" .= hingeRest candidate,
+      "originalStiffness" .= hingeStiffness old,
+      "candidateFullStiffness" .= hingeStiffness candidate,
+      "originalEnergy" .= boundaryOldEnergy r,
+      "candidateEnergy" .= boundaryNewEnergy r,
+      "originalSlope" .= boundaryOldSlope r,
+      "candidateSlope" .= boundaryNewSlope r
+    ]
+  where
+    old = boundaryOriginal r
+    candidate = boundaryCandidate r
+    (a, b, c, d) = hingeVertices old
+
+-- The horizontal coordinate is distance from the crease on UNFOLDED paper,
+-- not the projected side view. Equal-scale intervals show exactly where the
+-- control supports are clipped. All width segments agree in these probes.
+bandSvg :: [BoundaryMeasure] -> Text
+bandSvg rows =
+  renderSvg defaultPage {pageWidth = 720, pageHeight = 120, pageMargin = 20, pageBackground = Nothing, pageTitle = Just "Bend band on unfolded paper"} $
+    diagramWithExtent
+      (Box (V2 0 (-0.02)) (V2 0.5 0.055))
+      ( [ Polyline (solid (Colour "#c4bfb4") 1) [V2 0 0, V2 0.5 0],
+          Label (Colour "#70685b") 11 (V2 0 (-0.012)) "crease",
+          Label (Colour "#70685b") 11 (V2 0.125 0.045) "band begins",
+          Label (Colour "#70685b") 11 (V2 0.4375 0.045) "band ends"
+        ]
+          ++ concat
+            [ let (lo, hi) = boundaryInterval r
+                  u = boundaryDistance r
+                  colour = Colour (if boundaryFraction r < 1 then "#b35836" else "#397f88")
+               in [ Polyline (solid colour 5) [V2 lo 0.015, V2 hi 0.015],
+                    Polyline (solid (Colour "#fffaf1") 1) [V2 lo 0.01, V2 lo 0.02],
+                    Polyline (solid (Colour "#292820") 1) [V2 u 0.025, V2 u 0.03]
+                  ]
+              | r <- rows,
+                fst (boundaryWidthRange r) == -0.5
+            ]
+      )
 
 hingeJson :: HingeMeasure -> Value
 hingeJson h =

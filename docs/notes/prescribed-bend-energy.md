@@ -113,3 +113,7 @@ these prescribed probes, retaining the original as a control. Any proposed
 change then needs a small matched/contact-off solve before the expensive
 `8×2` case. The stronger material-refinement targets, tighter-solve check and
 illustration review remain open under [#195](https://github.com/avalonalex/senbazuru/issues/195).
+
+The [band-boundary comparison](band-boundary-fractions.md) now tests that
+fractional-turn candidate on these unchanged probes, including energy and
+derivative checks. Its small-solve confirmation remains the next step.

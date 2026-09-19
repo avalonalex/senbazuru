@@ -82,7 +82,11 @@ with separate passive/control energies and length penalties. Shared-scale
 side profiles, material FOLDs and per-edge/per-hinge records need no optimizer,
 contact repair or 3D viewer installation. The old grips are not imposed;
 length-invalid sampled cylinders are explicit diagnostics. See
-[the prescribed-bend note](../../docs/notes/prescribed-bend-energy.md).
+[the prescribed-bend note](../../docs/notes/prescribed-bend-energy.md). The
+[boundary comparison](../../docs/notes/band-boundary-fractions.md) adds a
+fractional-turn candidate on the same shapes, with full/partial interval
+plots and per-segment energies and derivatives. Default material controls
+remain unchanged; no solve is run.
 
 `stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
 reads the nine saved endpoints and source report, rechecks their geometry and
