@@ -32,6 +32,7 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.SequenceExamples (blintz, blintzCaptions)
+import Test.SequenceHelpers (built, plainHeader)
 
 spec :: Spec
 spec = do
@@ -39,7 +40,7 @@ spec = do
     it "is the tree its do block reads as, with the loop unrolled" $
       blintz
         `shouldBe` Sequence
-          (plainHeader (Just "Blintz base, then reopen one corner") (SheetFile "examples/blintz-base.fold") (Just Centre))
+          (titledHeader "Blintz base, then reopen one corner" (SheetFile "examples/blintz-base.fold") (Just Centre))
           ( [ foldCornerBehind (Just "c1") SouthEast "south-east",
               foldCornerBehind Nothing NorthEast "north-east",
               foldCornerBehind Nothing NorthWest "north-west",
@@ -86,7 +87,7 @@ spec = do
 
   describe "header" $
     it "leaves every line it was not given as a source that omits it would" $
-      header "A square" sheetSquare Nothing `shouldBe` plainHeader (Just "A square") UnitSquare Nothing
+      header "A square" sheetSquare Nothing `shouldBe` titledHeader "A square" UnitSquare Nothing
 
   describe "every builder" $ do
     it "appends the constructor its text would parse to" $
@@ -164,7 +165,7 @@ everyBuilder = sequenceOf (header "Every builder" sheetSquare (Just (at (3 / 4) 
 everyBuilderExpected :: Sequence
 everyBuilderExpected =
   Sequence
-    (plainHeader (Just "Every builder") UnitSquare (Just (AtSheet (3 / 4) (1 / 4))))
+    (titledHeader "Every builder" UnitSquare (Just (AtSheet (3 / 4) (1 / 4))))
     [ built $
         Step
           (Just "open")
@@ -215,21 +216,12 @@ everyBuilderExpected =
           ]
     ]
 
--- | What every built piece carries: no position, since it was never text.
-built :: a -> Located a
-built = Located NoSpan
-
--- | A header with the defaults a source gets by leaving a line out.
-plainHeader :: Maybe Text -> SheetSource -> Maybe Point -> Header
-plainHeader title sheet anchorPoint =
-  Header
-    { hTitle = title,
-      hSheet = built sheet,
-      hAnchor = built <$> anchorPoint,
-      hSide = ColouredUp,
-      hStart = built StartFlat,
-      hClosing = Nothing
-    }
+-- | The header 'header' ought to make: the shared defaults, a title, and
+-- perhaps an anchor. Written with the constructors and not with 'header',
+-- which is what it is compared with.
+titledHeader :: Text -> SheetSource -> Maybe Point -> Header
+titledHeader title sheet anchorPoint =
+  (plainHeader sheet) {hTitle = Just title, hAnchor = built <$> anchorPoint}
 
 squareHeader :: Header
 squareHeader = header "A square" sheetSquare Nothing
