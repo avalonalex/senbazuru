@@ -70,7 +70,6 @@ module Senbazuru.Sequence.Pretty
 where
 
 import Data.Char (ord)
-import Data.Ratio (denominator, numerator)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showHex)
@@ -271,12 +270,10 @@ segment p q = "[" <> prettyPoint p <> ", " <> prettyPoint q <> "]"
 pair :: Rational -> Rational -> Text
 pair u v = "(" <> number u <> ", " <> number v <> ")"
 
--- | A whole number, or @n\/d@ in lowest terms. 'Rational' keeps itself
--- reduced with a positive denominator, so the sign is the numerator's.
+-- | A whole number, or @n\/d@ in lowest terms. The spelling is the tree's
+-- own, shared with the messages that quote a number back to an author.
 number :: Rational -> Text
-number r
-  | denominator r == 1 = tshow (numerator r)
-  | otherwise = tshow (numerator r) <> "/" <> tshow (denominator r)
+number = exactNumber
 
 -- | An angle in degrees: the number, then @°@ with nothing between.
 angle :: Rational -> Text
