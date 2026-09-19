@@ -5,7 +5,10 @@ module IllustrationComparisonSpec (spec) where
 import Data.Either (isLeft)
 import IllustrationComparison
 import IllustrationDistance
-import Senbazuru.Geometry (Box (..), V2 (..), applyTransform, fitBox)
+import IllustrationHighlights
+import Senbazuru.Diagram (Diagram (..), Shape (..), shapePoints)
+import Senbazuru.Geometry (Box (..), V2 (..), applyTransform, boxContains, fitBox)
+import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
@@ -179,6 +182,48 @@ spec = describe "illustration-scale material comparison" $ do
     areaBeyondBudget 2 0 20 [] [] `shouldSatisfy` isLeft
     areaBeyondBudget 2 0.001 (-1) [] [] `shouldSatisfy` isLeft
     areaBeyondBudget 2 0.001 20 [[V2 (0 / 0) 0]] [] `shouldSatisfy` isLeft
+
+  it "retains the exact cells contributing to the measured interval" $ do
+    r <- right (areaRegionsBeyondBudget 2 0.001 20000 [rectangle 0 0 4 1] [rectangle 0 0 1 1])
+    let b = regionAreaBounds r
+    sum (map cellArea (outsideCells r)) `shouldSatisfy` close (areaOutside b)
+    sum (map cellArea (unresolvedCells r)) `shouldSatisfy` close (areaUnresolved b)
+    sum (map (abs . signedArea) (cellRings (outsideCells r))) `shouldSatisfy` close (areaOutside b)
+    concat (cellRings (outsideCells r)) `shouldSatisfy` all (\(V2 x _) -> x > 3)
+
+  it "keeps work-limited cells uncertain and a missing target wholly outside" $ do
+    r <- right (areaRegionsBeyondBudget 2 0.001 0 [rectangle 0 0 4 1] [rectangle 0 0 1 1])
+    outsideCells r `shouldBe` []
+    sum (map cellArea (unresolvedCells r)) `shouldSatisfy` close 4
+    lost <- right (areaRegionsBeyondBudget 2 0.001 0 [rectangle 0 0 4 1] [])
+    unresolvedCells lost `shouldBe` []
+    sum (map cellArea (outsideCells lost)) `shouldSatisfy` close 4
+    empty <- right (areaRegionsBeyondBudget 2 0.001 0 [] [])
+    highlightTiles empty `shouldBe` []
+
+  it "partitions contributions across tile edges, including negative coordinates" $ do
+    r <- right (areaRegionsBeyondBudget 2 0.001 0 [rectangle 15 (-1) 17 1] [])
+    let tiles = highlightTiles r
+        area = sum . map (abs . signedArea)
+    length tiles `shouldBe` 4
+    sum [area (tileOutside tile) | tile <- tiles] `shouldSatisfy` close 4
+    mapM_ (\tile -> concat (tileOutside tile) `shouldSatisfy` all (boxContains (tileBox tile))) tiles
+    aligned <- right (areaRegionsBeyondBudget 2 0.001 0 [rectangle 0 0 16 16] [])
+    length (highlightTiles aligned) `shouldBe` 1
+    tiny <- right (areaRegionsBeyondBudget 2 0.001 0 [rectangle 15 0 17 1e-6] [])
+    sum [area (tileOutside tile) | tile <- highlightTiles tiny] `shouldSatisfy` close 2e-6
+
+  it "magnifies clipped geometry before SVG formatting with one y flip" $ do
+    r <- right (areaRegionsBeyondBudget 2 0.001 0 [rectangle 0 0 1 1] [])
+    tile <- case highlightTiles r of t : _ -> pure t; [] -> expectationFailure "missing detail tile" >> fail "no tile"
+    let box = tileBox tile
+        page = highlightPage "Detail" detailScale box
+        transform = fitBox box (pageContentBox page)
+        drawing = detailDrawing tile [rectangle (-10) (-10) 100 100] []
+    pageWidth page `shouldSatisfy` close 552
+    (applyTransform transform (V2 1 1) ^-^ applyTransform transform (V2 0 0)) `shouldBe` V2 32 (-32)
+    concatMap shapePoints (diagramShapes drawing) `shouldSatisfy` all (boxContains box)
+    diagramShapes drawing `shouldSatisfy` all (\case Fill _ _ -> True; _ -> False)
 
 bracketsArea :: Double -> AreaBounds -> Expectation
 bracketsArea expected a = do

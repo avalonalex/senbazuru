@@ -746,6 +746,15 @@ leaves its interval visible. This is measurement accuracy, not an acceptance
 waiver: small area never overrides distance, pixel or material/contact checks.
 See [the area study](notes/exposed-area-budget.md).
 
+“Locate the exposed-area difference” shows the contributing regions at 1× beside
+32× details. The two shortcut buttons open the above/low-angle length cases;
+layer, direction and tile selectors cover the other comparisons. Red is
+definitely outside, amber is unclassified. Purple tile frames are optional
+navigation aids, not measured area. Each 16×16-pixel tile becomes a 512-pixel
+detail plus margins, rendered from unrounded coordinates. These scales stay
+fixed when the ordinary inspection zoom changes. Links retain standalone SVGs
+and raw contributing triangles; see [the location study](notes/exposed-area-highlights.md).
+
 Paper validity, illustration suitability and material convergence are separate.
 Crossing controls remain ineligible and unresolved visibility gets no graded
 fallback. Half-pixel mask sampling can miss smaller features, so inspect the

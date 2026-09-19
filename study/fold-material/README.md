@@ -90,6 +90,9 @@ explains why a tiny exposed fragment can dominate the maximum.
 The [area follow-up](../../docs/notes/exposed-area-budget.md) adds directional
 bounds on exposure beyond two pixels, with explicit unclassified area and a
 work cap. Small area does not waive an existing failure.
+[Actual-size highlights and 32× details](../../docs/notes/exposed-area-highlights.md)
+locate those same contributions, with separate unclassified regions, optional
+numbered tiles and downloadable unrounded triangles.
 See [usage](../../docs/usage.md#comparing-paper-at-illustration-scale)
 and [the study](../../docs/notes/illustration-scale-refinement.md).
 

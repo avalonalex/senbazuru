@@ -100,9 +100,9 @@ source hashes and all nine copied FOLD files remain unchanged. The browser
 checks all 24 comparisons and displays the new measurements without changing
 their verdicts. Only the small analytic regressions join CI.
 
-The next illustration decision is to inspect where the remaining outside area
-lies at the intended drawing size, especially the two length comparisons
-above. An area-based exception needs an explicit visual justification and must
+The [location follow-up](exposed-area-highlights.md) now shows the contributing
+regions at 1× and 32×, including the two length comparisons above. The dominant
+area lies in a thin strip along the lower outline. An area-based exception needs an explicit visual justification and must
 retain missing-layer and material/contact checks; this study introduces none.
 The separate material-accuracy next step remains prescribed bends on the
 existing meshes, without optimization, to distinguish representation effects
