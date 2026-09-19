@@ -522,9 +522,15 @@ checked coupled angles.
    same final weight. They converge in 2 / 15 additional iterations, moving
    at most 1.04e-7 / 2.77e-7 sheet lengths. Rest-only now passes; contact-off
    still crosses. Original budgets and reports remain intact.
-   Next: locate the matched-hold passive-energy change by material region
-   across the four saved meshes, without new solves. This isolates the
-   remaining interior-energy question before expanding the refinement grid.
+   [#272](https://github.com/avalonalex/senbazuru/issues/272)
+   [locates the saved matched-energy difference](notes/matched-energy-locations.md)
+   without new solves: interior costs rise by 0.014127 per panel while costs
+   on the held boundary and 7/16 line fall by 0.005207. Their net, with the
+   outer strip, is 0.008933 (8.9857%). Shared, added and removed material edges
+   reconcile every contribution; both rule-labelled archives agree exactly.
+   Next: evaluate prescribed bends on these same nonuniform meshes, separating
+   the energy rule's response to a known shape from differences in solved
+   shapes. Keep the held-boundary transition and sampling/length errors explicit.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
