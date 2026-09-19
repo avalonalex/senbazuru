@@ -500,11 +500,17 @@ checked coupled angles.
    rule only reduces the shape change from 0.003290 to 0.003016 sheet lengths.
    Both miss the 0.001 target; opening and all nonzero energy components miss
    5%. Even matched passive energies change by 9.33%, without a band.
-   Next: locate turns and bending costs on the saved `2×1`/`4×1` endpoints,
-   separating the held-strip boundary, band ends and interior, with matched
-   controls alongside. This needs no new solve; use it to choose the next
-   numerical or modeling experiment before considering `4×2`. No default rule
-   or material/illustration target changes, and tighter-solve confirmation remains open.
+   [#265](https://github.com/avalonalex/senbazuru/issues/265)
+   [maps the saved spring costs](notes/bending-energy-locations.md) without new
+   solves. Matched energy grows mainly in the interior while boundary-line
+   costs fall. At `4×1`, both loaded upper panels turn back at a newly available
+   bend between the band end and held outer edge; it accounts for
+   about 53–55% of the net upper passive-energy increase. Crossing controls
+   show it too. These are discrete contributions, not continuous area densities.
+   Next: isolate refinement of that outer strip from refinement of the rest of
+   the panel, retaining holds, loading, contact controls and acceptance caps.
+   The matched interior change and tighter-solve confirmation remain open.
+   Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.

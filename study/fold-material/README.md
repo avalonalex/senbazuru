@@ -101,6 +101,14 @@ fixed. `boundary-length.html` adds study-target comparisons and paired contact
 maps with changed-location counts. The same matched and contact-off controls
 remain visible. See [the length study](../../docs/notes/fractional-band-length.md).
 
+`stack run senbazuru-material-study -- --bend-locations build/fold-material/boundary-length build/fold-material`
+reads the twelve saved endpoints, validates their material identities and
+rechecks geometry without running the optimizer. `bend-locations.html` maps
+all spring costs at fixed material locations, compares normalized transverse
+turns, and keeps matched baselines beside both band rules. Original crease
+costs remain separate; contact-off shapes stay diagnostic. Saved inputs are
+copied unchanged. See [the location study](../../docs/notes/bending-energy-locations.md).
+
 `stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
 reads the nine saved endpoints and source report, rechecks their geometry and
 writes `illustration-refinement.html` without running the material solver.
