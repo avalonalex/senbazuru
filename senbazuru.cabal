@@ -148,6 +148,7 @@ library
     Senbazuru.Render.Projected
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg
+    Senbazuru.Sequence.Syntax
 
   build-depends:
     , aeson       >=2.1  && <2.3
@@ -325,7 +326,9 @@ test-suite senbazuru-test
     Senbazuru.Render.ProjectedSpec
     Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
+    Senbazuru.Sequence.SyntaxSpec
     Test.Golden
+    Test.SequenceGen
 
   build-tool-depends: hspec-discover:hspec-discover
   build-depends:
