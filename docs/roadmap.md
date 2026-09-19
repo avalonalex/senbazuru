@@ -550,9 +550,15 @@ checked coupled angles.
    the smoother family concentrates bending into a shorter region. Its fine
    common-curve cost is closer to its own analytic value (6.41% low, versus
    9.21% for the circle), so successive-mesh gaps alone do not grade accuracy.
-   Next: a reference-only refinement ladder against the analytic costs, keeping
-   each common curve fixed and sampled-length errors / full-length grip drift
-   explicit, before choosing mesh density or running another material solve.
+   [#295](https://github.com/avalonalex/senbazuru/issues/295)
+   [keeps both curves fixed through five nested meshes](notes/fixed-bend-refinement.md).
+   At 1,024 triangles, circular/smooth analytic-cost errors fall to 1.19% / 0.12%.
+   Full-length grip drifts remain 9.65e-7 / 1.24e-6 sheet lengths; sampled
+   relative edge errors are 5.95e-6 / 1.63e-5. These are diagnostic references,
+   not equilibria or completion of the solved-material refinement criteria.
+   Next: compare local refinement near curvature transitions with uniform
+   refinement at equal triangle counts, keeping curves and diagnostic errors
+   fixed before choosing mesh density or running another material solve.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

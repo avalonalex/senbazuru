@@ -104,7 +104,9 @@ fixed and keep length-valid and sampled controls separate, before choosing
 additional mesh density or running another material solve. This would measure
 absolute approximation error rather than relying on two successive totals
 agreeing. Grips on full-length approximations can drift and must remain explicit.
-It would not calibrate real paper or certify a flexible folding route. See
+It would not calibrate real paper or certify a flexible folding route.
+The [fixed-reference ladder](fixed-bend-refinement.md) now measures that
+absolute error on five nested meshes. See
 [#291](https://github.com/avalonalex/senbazuru/issues/291), continuing
 [#195](https://github.com/avalonalex/senbazuru/issues/195) and track A of
 [#269](https://github.com/avalonalex/senbazuru/issues/269).
