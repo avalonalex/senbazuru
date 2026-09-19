@@ -68,6 +68,7 @@ module Senbazuru.Sequence.Error
     StaticProblem (..),
     NameKind (..),
     Bound (..),
+    RepeatObstacle (..),
 
     -- * The kinds a sequence may expect
     refusalKinds,
@@ -169,6 +170,23 @@ data NameKind = PointName | LineName | StepName
 data Bound = Inclusive Rational | Exclusive Rational
   deriving stock (Eq, Show)
 
+-- | Why a step cannot be repeated mirrored or turned. A repeat carries the
+-- step's moves to another part of the sheet by moving the /names/ in them,
+-- and each of these is something a name on the sheet cannot express.
+data RepeatObstacle
+  = -- | The step has a @model [...]@ line, which is in the model's coordinates
+    -- as seen and not a place on the sheet.
+    UsesModelCoordinates
+  | -- | The step says @top N layers@, and a count from the reader's side means
+    -- different paper elsewhere.
+    CountsLayers
+  | -- | The mirror line or the centre of the turn is named by a construction,
+    -- such as where two lines meet. It has to be an exact point of the sheet:
+    -- a corner, the centre, @(u, v)@ or the midpoint of an edge, so that the
+    -- moved names stay exact.
+    IsometryByConstruction
+  deriving stock (Eq, Show, Enum, Bounded)
+
 -- | What can be wrong with a sequence that parsed, or was built, before any
 -- paper is involved.
 data StaticProblem
@@ -189,8 +207,10 @@ data StaticProblem
     NotEighths Int
   | -- | @turned k\/4@ with @k@ outside 1 to 3.
     NotQuarters Int
-  | -- | A macro-move's angle outside what it allows: the angle, then the
-    -- lower and upper ends of the range.
+  | -- | A /macro-move/ is a named move that turns several creases together,
+    -- such as @collapse@, and runs until its driving crease reaches an angle.
+    -- This is that angle, or the angle of an in-between pose, outside what
+    -- the move allows: the angle, then the lower and upper ends of the range.
     ParameterOutOfRange Rational Bound Bound
   | -- | @expect refused KIND@ with a kind that names no refusal.
     UnknownRefusalKind RefusalKind
@@ -202,9 +222,9 @@ data StaticProblem
   | -- | @hinge of NAME@, where the named step made several moves and so has no
     -- one line it turned paper about.
     HingeOfSeveralMoves Name
-  | -- | @repeat NAME@ with a mirror or a turn, where the named step says
-    -- something that cannot be carried to another part of the sheet.
-    RepeatUnmappable Name
+  | -- | @repeat NAME@ with a mirror or a turn, where something cannot be
+    -- carried to another part of the sheet: the step, and what is in the way.
+    RepeatUnmappable Name RepeatObstacle
   | -- | Only a Haskell builder can make the rest; text cannot spell them. A
     -- 'Name' that is not a name token, such as @"two words"@.
     NotANameToken Name
@@ -231,7 +251,7 @@ instance Explain SequenceError where
 
 instance Explain ParseProblem where
   explain problem = case problemHint problem of
-    Just hint -> hintWords hint
+    Just hint -> explain hint
     Nothing -> case problemExpected problem of
       [] -> "found " <> foundWords (problemFound problem) <> ", which cannot come here"
       labels -> "found " <> foundWords (problemFound problem) <> " where " <> oneOf labels <> " was expected"
@@ -261,9 +281,8 @@ instance Explain StaticProblem where
       quote name <> " draws no picture of its own, so there is nothing to unfold or repeat"
     HingeOfSeveralMoves (Name name) ->
       quote name <> " makes several moves, so it has no one hinge; name the line another way"
-    RepeatUnmappable (Name name) ->
-      quote name
-        <> " cannot be repeated mirrored or turned: it uses model coordinates or counts layers, or the mirror or turn is named by a construction"
+    RepeatUnmappable (Name name) obstacle ->
+      quote name <> " cannot be repeated mirrored or turned: " <> obstacleWords obstacle
     NotANameToken (Name name) ->
       quote name <> " is not a name: a name is a letter, then letters, digits, - and _"
     ReservedWordAsName (Name name) -> quote name <> " is a reserved word and cannot be a name"
@@ -272,6 +291,10 @@ instance Explain StaticProblem where
       exactNumber r <> " is negative, and a sign is allowed only in (u, v), in model pairs and in pose angles"
     UnfoldNamesNothing -> "unfold names no step; it needs at least one"
     where
+      obstacleWords = \case
+        UsesModelCoordinates -> "it has a model [...] line, which is not a place on the sheet"
+        CountsLayers -> "it says top N layers, and a count of layers means different paper elsewhere"
+        IsometryByConstruction -> "the mirror line or the centre of the turn is a construction, and has to be a corner, the centre, (u, v) or the midpoint of an edge"
       kindWords = \case
         PointName -> "a point"
         LineName -> "a line"
@@ -282,6 +305,9 @@ instance Explain StaticProblem where
       upperWords = \case
         Inclusive r -> "at most " <> exactNumber r <> "°"
         Exclusive r -> "less than " <> exactNumber r <> "°"
+
+instance Explain Hint where
+  explain = hintWords
 
 hintWords :: Hint -> Text
 hintWords = \case
@@ -382,6 +408,12 @@ sourceLocation err = case errorSpan err of
 -- slip and is what keeps the caret under the right character: a tab's width
 -- is the reader's terminal's business, and a copied tab is as wide as the
 -- one above it, where a space would not be.
+--
+-- That is the only width handled. A column counts characters, and a terminal
+-- draws some characters two cells wide, so a caption in Japanese earlier on
+-- the same line leaves the caret short of its word by one cell for each. The
+-- line and column in 'sourceLocation' are still right, and they are what an
+-- editor jumps to.
 --
 -- A span running past its first line is underlined to the end of that line,
 -- which is how a whole step or an unclosed block points at where it opens.

@@ -11,8 +11,10 @@
 -- makes sense at a command line. Nothing in the types says so, and a new
 -- constructor is exactly where the rule gets broken, so every constructor of
 -- 'StaticProblem' and 'Hint' is sampled. 'sampledStatic' and 'sampledHint'
--- exist for one reason: they match on every constructor with no catch-all, so
--- a constructor added without a sample here is a compiler warning.
+-- match on every constructor with no catch-all, so a constructor added later
+-- makes them incomplete, and the compiler says so. That is a reminder and not
+-- a guarantee: the warning goes away when the new arm is added, whether or
+-- not a sample was added beside it. The sample is the part that matters.
 --
 -- __The excerpt__, which is fiddly in ways that only show on a real line: the
 -- caret must sit under the right character when the line holds a tab, must not
@@ -69,6 +71,10 @@ spec = do
       let err = StaticRefused (InStep 2 (Just "c1")) NoSpan (DuplicateName "c1")
       (sourceLocation err, excerpt "anything" err) `shouldBe` (Nothing, Nothing)
 
+    it "names the one thing that stops a repeat, not every thing that could" $
+      explain (RepeatUnmappable "folds" CountsLayers)
+        `shouldBe` "\"folds\" cannot be repeated mirrored or turned: it says top N layers, and a count of layers means different paper elsewhere"
+
     it "says which way a range is open" $
       explain (ParameterOutOfRange 200 (Exclusive 0) (Inclusive 180))
         `shouldBe` "200° is out of range: it must be more than 0° and at most 180°"
@@ -81,7 +87,16 @@ spec = do
   describe "a parse problem" $ do
     it "is its hint, when it has one" $
       explain (problemAt NoSpan (FoundWord "90") ["an angle"] (Just (NeedsUnit 90)))
-        `shouldBe` "an angle needs its unit: write 90°"
+        `shouldBe` explain (NeedsUnit 90)
+
+    -- These two sentences are the design's own, word for word.
+    it "words a missing unit and an unclosed block as the design does" $
+      map explain [NeedsUnit 90, UnclosedBlock "step half"]
+        `shouldBe` ["an angle needs its unit: write 90°", "the \"{\" opening step half is never closed"]
+
+    it "reaches a person unchanged through the error that wraps it" $ do
+      let problem = problemAt NoSpan (FoundWord "fold") ["step", "closing"] Nothing
+      explain (ParseFailed problem) `shouldBe` explain problem
 
     it "otherwise says what was found and what could have been there" $
       map
@@ -215,7 +230,7 @@ quarterFoldTyped =
 everyMessage :: [(String, Text)]
 everyMessage =
   [("StaticProblem " <> sampledStatic p, explain p) | p <- staticSamples]
-    <> [("Hint " <> sampledHint h, explain (problemAt NoSpan FoundEnd [] (Just h))) | h <- hintSamples]
+    <> [("Hint " <> sampledHint h, explain h) | h <- hintSamples]
 
 staticSamples :: [StaticProblem]
 staticSamples =
@@ -231,7 +246,9 @@ staticSamples =
     NotASingleMacro "base",
     NotAFigure "names",
     HingeOfSeveralMoves "folds",
-    RepeatUnmappable "folds",
+    RepeatUnmappable "folds" UsesModelCoordinates,
+    RepeatUnmappable "folds" CountsLayers,
+    RepeatUnmappable "folds" IsometryByConstruction,
     NotANameToken "two words",
     ReservedWordAsName "north-west",
     LayerCountNotPositive 0,
