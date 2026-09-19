@@ -126,6 +126,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. |
 | `Senbazuru.Sequence.Syntax` | A fold sequence as a plain value with no functions in it: a header and steps of moves, with paper named by where it lay on the flat sheet and never by id. Both ways of writing a sequence produce it and everything that reads one consumes it. Also `stripSpans` and `canonical`, which let two sequences be compared, and `sourceFiles`, which says what file a written path means. |
 | `Senbazuru.Sequence.Build` | Writing a fold sequence in Haskell: a `do` block of steps, each a `do` block of moves, that builds the `Sequence` value. A bind hands back a name and never geometry, so building is pure and cannot fail. Haskell loops run while the value is built, and the value holds what they produced. |
+| `Senbazuru.Sequence.Pretty` | A `Sequence` → the text an author would write, in the one canonical spelling: canonical words, exact numbers, defaults left out, parentheses only round a fold line named inside another. Total: it prints even a value no source could spell, so that the checker's complaint can show it. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
 ## Where the files are
@@ -186,6 +187,8 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   may never import a module that knows paper, such as `Fold.*` or `Origami.*`:
   building a sequence hands out names, never geometry, which is what keeps a
   built sequence printable and lets it be checked without being run.
+  `Sequence.Pretty` likewise knows no paper: it imports `Sequence.Syntax` and,
+  for printing a whole number, `Explain`.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes

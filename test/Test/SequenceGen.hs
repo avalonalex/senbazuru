@@ -199,7 +199,9 @@ genLine depth = frequency (leaves <> if depth <= 0 then [] else nodes)
 genName :: Gen Name
 genName = elements ["a", "b", "c1", "flap-2", "first-petal", "wing_tip", "L", "P"]
 
--- | Captions, including the ones a printer has to escape.
+-- | Captions, including the ones a printer has to escape. The last has two
+-- control characters with no letter of their own, a bell and an escape, which
+-- a printer has to write by their codes.
 genCaption :: Gen Text
 genCaption =
   elements
@@ -209,7 +211,8 @@ genCaption =
       "back\\slash",
       "two\nlines",
       "tab\there",
-      "折り鶴 — 22.5°"
+      "折り鶴 — 22.5°",
+      "bell\a and escape\ESC"
     ]
 
 genPath :: Gen FilePath

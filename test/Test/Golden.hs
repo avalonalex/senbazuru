@@ -10,8 +10,8 @@
 --
 -- The cost is that golden tests fail whenever output changes intentionally, so
 -- the failure message has to make regenerating easy. That is the whole reason
--- this helper writes a @.actual.svg@ next to the golden file instead of only
--- printing a mismatch.
+-- this helper writes an @.actual@ file next to the golden file, @x.actual.svg@
+-- beside @x.svg@, instead of only printing a mismatch.
 --
 -- Hand-rolled rather than pulled from a package because it is fifteen lines and
 -- one fewer dependency to keep current.
@@ -70,7 +70,9 @@ goldenText goldenPath actual = do
               <> " "
               <> goldenPath
   where
-    actualPath = replaceExtension goldenPath ".actual.svg"
+    -- The golden's own extension, so that @x.svg@ fails into @x.actual.svg@
+    -- and a printed sequence, @x.foldseq@, into @x.actual.foldseq@.
+    actualPath = replaceExtension goldenPath (".actual" <> takeExtension goldenPath)
 
 -- | 'goldenText' for a binary file.
 --

@@ -1,0 +1,24 @@
+foldseq 1
+title "Blintz base, then reopen one corner"
+sheet "examples/blintz-base.fold"
+anchor centre
+
+step c1 "Fold the south-east corner behind, to the centre." {
+  fold mountain corner south-east to centre
+}
+
+step "Fold the north-east corner behind, to the centre." {
+  fold mountain corner north-east to centre
+}
+
+step "Fold the north-west corner behind, to the centre." {
+  fold mountain corner north-west to centre
+}
+
+step "Fold the south-west corner behind, to the centre." {
+  fold mountain corner south-west to centre
+}
+
+step "Reopen the first corner." {
+  unfold c1
+}

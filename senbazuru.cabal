@@ -72,6 +72,7 @@ extra-source-files:
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.opx
+  test/golden/*.foldseq
   test/golden/*.glb
   test/golden/*.svg
 
@@ -149,6 +150,7 @@ library
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg
     Senbazuru.Sequence.Build
+    Senbazuru.Sequence.Pretty
     Senbazuru.Sequence.Syntax
 
   -- transformers, not mtl: Sequence.Build keeps a list in a State and needs
@@ -336,6 +338,7 @@ test-suite senbazuru-test
     Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
     Senbazuru.Sequence.BuildSpec
+    Senbazuru.Sequence.PrettySpec
     Senbazuru.Sequence.SyntaxSpec
     Test.Golden
     Test.SequenceExamples
