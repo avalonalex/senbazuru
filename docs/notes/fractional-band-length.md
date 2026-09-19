@@ -111,3 +111,6 @@ new solve and can guide whether the next experiment should change numerical
 accuracy or test a different approximation of bending. Keep `4×2`, tighter-solve
 confirmation, physical calibration, the illustration decision and a checked
 flexible route separate; neither rule becomes the default from this result.
+
+The [saved-endpoint location study](bending-energy-locations.md) now makes
+that comparison and identifies the new opposite turn outside the upper band.

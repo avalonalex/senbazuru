@@ -402,6 +402,12 @@ records the endpoint evidence and remaining refinement question.
 fixed-width length doubling. Comparison pairs keep the boundary rule fixed;
 the browser selects saved maps and counts category changes from the same
 projected samples. No new mechanics or acceptance policy is introduced.
+`BendLocations` loads these saved endpoints against the authored material and
+reports every spring at its material edge midpoint, with transverse turns
+normalized by strip spacing. `BendLocationsGallery` rechecks geometry, binds
+source convergence and costs, and draws paired maps and cumulative/rate plots
+through `Diagram`. It calls no optimizer or repair. Fixed regions are discrete
+spring accounting, not area densities; see [the location study](notes/bending-energy-locations.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

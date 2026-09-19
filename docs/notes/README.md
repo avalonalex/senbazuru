@@ -86,6 +86,7 @@ read the Haddock module headers; for the domain, start with
 | [band-boundary-fractions.md](band-boundary-fractions.md) | Attribute the same fraction of actual and preferred turn to partial band intervals, checking both energy and derivatives |
 | [fractional-band-solves.md](fractional-band-solves.md) | Compare original and fractional band turns in small coupled solves, keeping holds and numerical policy fixed |
 | [fractional-band-length.md](fractional-band-length.md) | Double length subdivisions under each band rule, keeping width and solver policy fixed |
+| [bending-energy-locations.md](bending-energy-locations.md) | Locate saved spring costs and the new opposite turn outside the upper bending band |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |
 | [exposed-layer-distance.md](exposed-layer-distance.md) | Bound filled-region distances before sampling; a tiny distant fragment can dominate the maximum |

@@ -763,6 +763,26 @@ profiles always show solved endpoints, independently of **Show**. Failed and
 contact-off endpoints remain diagnostic. This does not perform a tighter
 solve or certify a flexible route. See [the length study](notes/fractional-band-length.md).
 
+### Locating costs on saved endpoints
+
+```bash
+stack run senbazuru-material-study -- --bend-locations \
+  build/fold-material/boundary-length build/fold-material
+```
+
+This reads the preceding study's `checks.json` and twelve `-after.fold` files;
+run `--boundary-length` first only if those saved inputs are unavailable.
+Open `bend-locations.html` on the same server. **Control**, **Rule**, **Panel**
+and **Energy** select paired material maps, cumulative costs and fixed-region
+tables. Turn profiles always show passive edges parallel to the original
+crease, dividing each signed turn by its material spacing and retaining the
+range across the width. All other edge costs remain in the totals and raw data.
+The command rechecks material, holds, crease angles and contact, retains source
+convergence, and refuses mismatched saved measurements. Contact-off or failed
+endpoints remain diagnostic. It copies the inputs without changing coordinates
+or running an optimizer. The maps do not prove a continuous route or satisfy
+the refinement criteria; see [the measured locations](notes/bending-energy-locations.md).
+
 ### Comparing paper at illustration scale
 
 ```bash
