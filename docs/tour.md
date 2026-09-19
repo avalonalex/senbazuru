@@ -1117,6 +1117,15 @@ removes curvature jumps at both joins. Its fitted gap grows to 17.50%, as the
 same grips require a shorter, more concentrated bend. Yet the fine common-curve
 approximation is closer to its own analytic cost. A gap between two meshes
 alone therefore cannot establish accuracy or select a sufficient mesh.
+
+The [fixed-reference ladder](notes/fixed-bend-refinement.md) keeps both common
+curves unchanged while halving material spacing through five meshes. At 1,024
+triangles, circular/smooth cost errors against their analytic integrals fall
+to 1.19% / 0.12%. This clarifies why a larger initial mesh gap need not mean
+slower eventual convergence. Sampled edge shortening and full-length grip drift
+remain explicit; this numerical comparison does not establish a usable mesh
+for arbitrary crane shapes. Run `--bend-refinement` for the gallery.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

@@ -92,6 +92,7 @@ read the Haddock module headers; for the domain, start with
 | [prescribed-uneven-bends.md](prescribed-uneven-bends.md) | Known bends on four uneven meshes isolate missing boundary costs and averaging at the held-strip transition |
 | [prescribed-held-bend.md](prescribed-held-bend.md) | A geometric fit preserves both original grip regions and full material lengths, with mesh-dependent curve parameters and costs |
 | [smooth-held-bend.md](smooth-held-bend.md) | Zero curvature at both joins still gives a larger refinement gap; compare each approximation with its own continuous cost |
+| [fixed-bend-refinement.md](fixed-bend-refinement.md) | Fixed curves approach their analytic costs at different rates; length error and grip drift remain separate |
 | [outer-strip-continuation.md](outer-strip-continuation.md) | Two exhausted endpoints settle with unchanged material and length weight; one still crosses |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |

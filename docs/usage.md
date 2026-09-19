@@ -896,6 +896,21 @@ archives are not rewritten. This geometric fit does not find equilibrium or
 establish that smoothness makes a coarse mesh sufficient. See
 [the comparison](notes/smooth-held-bend.md).
 
+To measure approximation error against the same fixed curves:
+
+```bash
+stack run senbazuru-material-study -- --bend-refinement build/fold-material
+```
+
+Open `bend-refinement.html`. Five nested meshes run from 64 to 1,024 triangles;
+the earlier uneven 120-triangle mesh stays a separate reference point. Select
+the curve, sampled/full-length construction, panel and mesh. All plots share
+scales; percentages against analytic costs are separate from successive-mesh
+changes. The command writes 24 FOLDs, 25 JSON files and 28 SVGs under
+`bend-refinement/`, preserving prior galleries. Samples retain chord shortening;
+full-length segments retain outer-grip drift. No per-mesh fit or material solve
+runs. See [the refinement note](notes/fixed-bend-refinement.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

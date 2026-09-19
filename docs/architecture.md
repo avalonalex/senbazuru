@@ -461,6 +461,11 @@ The same modules also compare a fixed cubic tangent transition, with analytic
 parameter derivatives and mesh-independent numerical integration. The original
 circular exports remain reproducible; both families share measurement and
 plotting code. See [the smooth-transition control](notes/smooth-held-bend.md).
+`BendRefinement` samples those same common curves on a bounded, nested mesh
+ladder without fitting them again. `BendRefinementGallery` measures each
+approximation through the existing edge, spring and contact checks and compares
+its cost with the analytic integral. Full-length segments keep their grip drift;
+samples keep their length error. No solver policy or library API changes.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads
