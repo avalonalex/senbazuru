@@ -148,16 +148,21 @@ library
     Senbazuru.Render.Projected
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg
+    Senbazuru.Sequence.Build
     Senbazuru.Sequence.Syntax
 
+  -- transformers, not mtl: Sequence.Build keeps a list in a State and needs
+  -- nothing a MonadState class would add. It ships with GHC, so it costs no
+  -- new package to build.
   build-depends:
-    , aeson       >=2.1  && <2.3
-    , base        >=4.17 && <4.20
-    , bytestring  >=0.11 && <0.13
-    , containers  >=0.6  && <0.8
-    , filepath    >=1.4  && <1.5
-    , tagsoup     >=0.14 && <0.15
-    , text        >=2.0  && <2.2
+    , aeson         >=2.1  && <2.3
+    , base          >=4.17 && <4.20
+    , bytestring    >=0.11 && <0.13
+    , containers    >=0.6  && <0.8
+    , filepath      >=1.4  && <1.5
+    , tagsoup       >=0.14 && <0.15
+    , text          >=2.0  && <2.2
+    , transformers  >=0.5  && <0.7
 
 executable senbazuru
   import:         warnings
@@ -328,8 +333,10 @@ test-suite senbazuru-test
     Senbazuru.Render.ProjectedSpec
     Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
+    Senbazuru.Sequence.BuildSpec
     Senbazuru.Sequence.SyntaxSpec
     Test.Golden
+    Test.SequenceExamples
     Test.SequenceGen
 
   build-tool-depends: hspec-discover:hspec-discover

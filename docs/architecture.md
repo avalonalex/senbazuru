@@ -125,6 +125,7 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Render.PaperMesh` | Shared surface → complete panels or exposed pieces on both sides of each plane. Clipped corners retain weighted material vertex references. |
 | `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. |
 | `Senbazuru.Sequence.Syntax` | A fold sequence as a plain value with no functions in it: a header and steps of moves, with paper named by where it lay on the flat sheet and never by id. Both ways of writing a sequence produce it and everything that reads one consumes it. Also `stripSpans` and `canonical`, which let two sequences be compared, and `sourceFiles`, which says what file a written path means. |
+| `Senbazuru.Sequence.Build` | Writing a fold sequence in Haskell: a `do` block of steps, each a `do` block of moves, that builds the `Sequence` value. A bind hands back a name and never geometry, so building is pure and cannot fail. Haskell loops run while the value is built, and the value holds what they produced. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
 ## Where the files are
@@ -180,7 +181,11 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   value, so the type they share can live in none of them. The levels planned
   above it are in
   [PRDs/01-architecture.md](../PRDs/01-architecture.md#13-levels-inside-sequence);
-  each is recorded here when it is built.
+  each is recorded here when it is built. `Sequence.Build`, the Haskell way of
+  writing one, imports `Sequence.Syntax` and nothing else from the project. It
+  may never import a module that knows paper, such as `Fold.*` or `Origami.*`:
+  building a sequence hands out names, never geometry, which is what keeps a
+  built sequence printable and lets it be checked without being run.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes
