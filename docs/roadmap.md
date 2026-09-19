@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-18**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-19**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -48,7 +48,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,487 examples pass, including prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,494 examples pass, including fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -481,11 +481,17 @@ checked coupled angles.
    cap at `8×2`, while a full-length polygon has the same angular energy and
    negligible length cost. Width leaves angular energies unchanged but adds
    length-residual terms. These diagnose representation effects, not the cause
-   of every optimized shape change. Next: compare the clipped band-boundary
-   rule with consistent fractions of actual/preferred turn on these probes,
-   then test any candidate on small matched/contact-off solves. Keep the old
-   rule as a control and all acceptance caps unchanged. Profile the expensive
-   accepted case under #208 before another large solve.**
+   of every optimized shape change.
+   [#259](https://github.com/avalonalex/senbazuru/issues/259)
+   [compares fractional band turns](notes/band-boundary-fractions.md): the
+   cylinder's imposed energy is now 0.8343544 on every existing mesh, with
+   matching analytic/spatial derivatives. Flat normalization and full intervals
+   are unchanged; fixed-corner costs still grow. The original measurements
+   and SVG/FOLD geometry remain intact, and the candidate is not a default.
+   Next: compare both rules on `2×1` and `2×2` with matched and contact-off
+   controls, the same holds and numerical policy, and all original acceptance
+   caps. Profile the expensive accepted case under #208 before another large
+   solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

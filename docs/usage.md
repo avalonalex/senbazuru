@@ -724,6 +724,13 @@ the cylinder. Neither is an equilibrium or a checked motion. No extra model
 viewer dependencies or archived solves are needed. See [the measured formulas
 and next experiment](notes/prescribed-bend-energy.md).
 
+The same page also compares the existing band rule with an experimental rule
+that attributes only the represented fraction of actual turn to a clipped
+interval. **Inspect band at length** shows full and partial material intervals;
+the JSON download retains both spring encodings and energy derivatives.
+The candidate is not enabled in the solver. Original shape, length, passive
+energy and contact measurements remain unchanged. See [the boundary comparison](notes/band-boundary-fractions.md).
+
 ### Comparing paper at illustration scale
 
 ```bash
