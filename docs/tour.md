@@ -1105,6 +1105,14 @@ Full-length segments and exact curve samples have the same angular costs,
 but only the former preserve the material edge lengths. These diagnostic
 references do not keep the old outer grips or explain all the solved-shape
 energy difference.
+The [held-reference follow-up](notes/prescribed-held-bend.md) reaches the
+original inner and outer grips. Full-length polygons need a small geometric
+fit, changing curvature and arc length per mesh. They pass the length and
+known-contact checks, but remain prescribed shapes rather than equilibria.
+The common smooth reference still gains 10.74% passive cost under interior
+refinement; fitting the grips gives an 11.98% change with different shapes.
+Keeping both comparisons avoids attributing every energy change to material
+behavior.
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

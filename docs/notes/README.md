@@ -90,6 +90,7 @@ read the Haddock module headers; for the domain, start with
 | [outer-strip-refinement.md](outer-strip-refinement.md) | Refine only the outer strip, or only the rest, to locate the source of the loaded opening |
 | [matched-energy-locations.md](matched-energy-locations.md) | Interior refinement adds bending costs that outweigh reductions at shared locations; saved edge accounting separates this from the outer bend |
 | [prescribed-uneven-bends.md](prescribed-uneven-bends.md) | Known bends on four uneven meshes isolate missing boundary costs and averaging at the held-strip transition |
+| [prescribed-held-bend.md](prescribed-held-bend.md) | A geometric fit preserves both original grip regions and full material lengths, with mesh-dependent curve parameters and costs |
 | [outer-strip-continuation.md](outer-strip-continuation.md) | Two exhausted endpoints settle with unchanged material and length weight; one still crosses |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |

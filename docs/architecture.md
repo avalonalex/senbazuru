@@ -447,6 +447,13 @@ separate uncovered boundaries from averaging across the flat-to-curved start.
 `UnevenBendGallery` measures those references, old-grip displacement and exact
 known-order contact, exporting FOLD and shared-scale SVG plots without an
 optimizer or repair. See [the prescribed comparison](notes/prescribed-uneven-bends.md).
+`HeldBend` constructs a smooth arc-and-straight reference reaching the original
+grips. It also fits two curve parameters per mesh to make full-length polygon
+approximations reach those grips, using geometric endpoint derivatives rather
+than the material solver. `HeldBendGallery` retains raw fit residuals, grip
+copy sizes, diagnostic controls and separate energy components; all final
+edges and exact touching order are checked. See
+[the held-reference note](notes/prescribed-held-bend.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

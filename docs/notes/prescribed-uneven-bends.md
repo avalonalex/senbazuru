@@ -93,10 +93,10 @@ cylinder moves both. None is an equilibrium of the original held-paper problem
 or a checked flexible route, and the sampled length failures remain visible.
 
 This accounts for the prescribed references, **not the entire 8.9857% change
-in solved shapes**. A useful next control is a prescribed bend that also
-retains the original outer grips, on these same meshes, with sampling and
-length errors still separated. That would remove the changed boundary
-positions before revisiting the solved response. It does not justify a new
+in solved shapes**. The [held-reference follow-up](prescribed-held-bend.md)
+also retains the original outer grips on these meshes, with sampling and
+length errors still separated. That removes the changed boundary positions
+before revisiting the solved response. This comparison does not justify a new
 default material law, another large grid or weaker acceptance criteria.
 See [#284](https://github.com/avalonalex/senbazuru/issues/284), continuing
 [#195](https://github.com/avalonalex/senbazuru/issues/195) and track A of
