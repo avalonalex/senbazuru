@@ -8,7 +8,7 @@
 -- A finer mesh shares a turn among more edges. For transverse edges (parallel
 -- to the shared crease), divide the signed turn by the mean distance to the
 -- neighboring material columns. This angular rate is comparable across the
--- uniform grids; it is not a recovered smooth curvature field. Other edge
+-- strip grids; it is not a recovered smooth curvature field. Other edge
 -- directions retain their full energy and raw angles without this rate.
 module BendLocations
   ( BendRegion (..),

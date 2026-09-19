@@ -4,7 +4,7 @@
 -- All maps and plots are made through Diagram in Haskell; the page only
 -- selects assets and presents measured tables. See BendLocations for the
 -- distinction between a spring location and a physical energy density.
-module BendLocationsGallery (writeBendLocations) where
+module BendLocationsGallery (writeBendLocations, rowJson, regionJson, plotSvg, plotPoint) where
 
 import BandBoundary
 import BendLocations

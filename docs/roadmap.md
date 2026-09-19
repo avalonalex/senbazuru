@@ -507,9 +507,20 @@ checked coupled angles.
    bend between the band end and held outer edge; it accounts for
    about 53–55% of the net upper passive-energy increase. Crossing controls
    show it too. These are discrete contributions, not continuous area densities.
-   Next: isolate refinement of that outer strip from refinement of the rest of
-   the panel, retaining holds, loading, contact controls and acceptance caps.
-   The matched interior change and tighter-solve confirmation remain open.
+   [#267](https://github.com/avalonalex/senbazuru/issues/267)
+   [refines that outer strip separately](notes/outer-strip-refinement.md),
+   comparing 64/72/120/128-triangle meshes under the same policy. Outer-only
+   opens by 0.002808 / 0.002710 sheet lengths under the original/fractional
+   rules, while its matched passive-energy change is only 0.32%; refining the
+   rest changes matched energy by 8.99%. The extra outer bend matters, but
+   does not explain every refinement effect. Nonuniform spring supports are
+   explicit. Of 24 solves, 22 converge and 15 constrained endpoints pass;
+   fractional rest-only and original contact-off outer-only exhaust the final
+   iteration budget. All contact-off endpoints cross.
+   Next: restart those two stored endpoints at the same final length weight
+   with extra work, unchanged thresholds and the original results retained.
+   Check whether their movement settles before interpreting the unsettled
+   rest-only comparison. The matched interior energy change remains open.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
