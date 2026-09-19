@@ -535,9 +535,17 @@ checked coupled angles.
    averaging account for their full differences. Full-length segments retain
    those angular costs while removing chord shortening. The old outer grips
    are not imposed, so this does not explain all the solved 8.99% change.
-   Next: compare a prescribed bend retaining the original inner and outer
-   grips on the same meshes, keeping sampling/length errors explicit, before
-   revisiting the solved response.
+   [#288](https://github.com/avalonalex/senbazuru/issues/288)
+   [retains both original grip regions](notes/prescribed-held-bend.md).
+   Four geometrically fitted full-length polygons pass the unchanged material,
+   grip, original-crease and known-order checks. Their passive costs change by
+   11.98% under interior refinement, with matching vertices moving 0.0009846
+   sheet lengths. The common smooth reference already changes discrete cost
+   by 10.74%; fitted curve parameters also change. Sampled length failures and
+   unfitted grip drift remain diagnostic. No material-equilibrium solve runs.
+   Next: smooth the reference's two curvature changes while keeping the same
+   grips and material length, to test transition sensitivity on these four
+   meshes before changing the material rule or revisiting a larger solve.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

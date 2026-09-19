@@ -862,6 +862,24 @@ equilibrium; grip displacements, length costs and known-order contact checks
 are explicit. No saved endpoint is read or changed. See
 [the prescribed comparison](notes/prescribed-uneven-bends.md).
 
+To compare references reaching both original grip regions:
+
+```bash
+stack run senbazuru-material-study -- --held-bend build/fold-material
+```
+
+Open `held-bend.html`. **Construction** selects samples of a common smooth
+arc-and-straight reference, full-length chords with explicit outer-grip drift,
+or full-length polygons geometrically fitted to the original grips.
+**Panel** and **Mesh** select each layer's costs and all twelve references.
+Profiles and plots share scales; FOLD/JSON retain material identities, every
+edge and spring, curve parameters and the geometric-fit history. Grip copies
+are allowed only within `1e-14` of the target, with final material lengths
+checked afterward. Passing geometry does not establish material equilibrium;
+the fitted curves change per mesh. Samples failing the length cap and full-length
+controls missing their grips stay diagnostic. No material optimizer or contact
+repair runs. See [the findings](notes/prescribed-held-bend.md).
+
 ### Comparing paper at illustration scale
 
 ```bash
