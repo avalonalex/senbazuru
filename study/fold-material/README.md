@@ -84,6 +84,9 @@ and exposed layers against a provisional two-pixel budget. Invalid controls
 and unresolved views cannot pass. Isolated layer masks, polygon exposure
 measurements and an optional twelve-grid audit distinguish real slivers from
 sampling sensitivity; see [the follow-up](../../docs/notes/thin-layer-visibility.md).
+Continuous filled-region distance bounds and witness SVGs retain both directions
+of geometric/pixel disagreement; [the distance study](../../docs/notes/exposed-layer-distance.md)
+explains why a tiny exposed fragment can dominate the maximum.
 See [usage](../../docs/usage.md#comparing-paper-at-illustration-scale)
 and [the study](../../docs/notes/illustration-scale-refinement.md).
 

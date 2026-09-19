@@ -4,6 +4,7 @@ module IllustrationComparisonSpec (spec) where
 
 import Data.Either (isLeft)
 import IllustrationComparison
+import IllustrationDistance
 import Senbazuru.Geometry (Box (..), V2 (..), applyTransform, fitBox)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -68,6 +69,63 @@ spec = describe "illustration-scale material comparison" $ do
     let triangle = [V2 0 0, V2 2 0, V2 1 3]
     exposureMeasures [reverse triangle] `shouldBe` (3, 3)
     exposureMeasures [] `shouldBe` (0, 0)
+
+  it "bounds a thin strip translation without thresholding its area" $ do
+    BoundedDistance d <- right (regionDistance 0.001 Nothing 100 [rectangle 0 0 10 0.000001] [rectangle 0 3 10 3.000001])
+    distanceLower d `shouldSatisfy` close 3
+    distanceUpper d `shouldSatisfy` close 3
+    norm (witnessFrom d ^-^ witnessTo d) `shouldSatisfy` close 3
+
+  it "covers the filled interior instead of comparing only source corners" $ do
+    let surround = [rectangle 0 0 4 1, rectangle 0 3 4 4, rectangle 0 1 1 3, rectangle 3 1 4 3]
+    BoundedDistance d <- right (regionDistance 0.01 Nothing 3000 [rectangle 0 0 4 4] surround)
+    distanceLower d `shouldSatisfy` (>= 0.99)
+    distanceUpper d `shouldSatisfy` (<= 1.01)
+    distanceLower d `shouldSatisfy` (<= 1)
+    distanceUpper d `shouldSatisfy` (>= 1)
+
+  it "preserves an honest upper bound when subdivision is exhausted" $ do
+    let ends = [rectangle 0 0 1 1, rectangle 3 0 4 1]
+    BoundedDistance d <- right (regionDistance 0.001 Nothing 0 [rectangle 0 0 4 1] ends)
+    distanceLower d `shouldSatisfy` (<= 1)
+    distanceUpper d `shouldSatisfy` (>= 1)
+    (distanceUpper d - distanceLower d) `shouldSatisfy` (> 0.001)
+    distanceSplits d `shouldBe` 0
+
+  it "compares a split region as a union and handles repeated corners and winding" $ do
+    let square = rectangle 0 0 2 2
+        halves = [rectangle 0 0 1 2, reverse (rectangle 1 0 2 2)]
+    BoundedDistance d <- right (regionDistance 0.01 Nothing 3000 [square] halves)
+    distanceLower d `shouldSatisfy` close 0
+    distanceUpper d `shouldSatisfy` (<= 0.01)
+    BoundedDistance same <- right (regionDistance 0.01 Nothing 100 [V2 0 0 : square] [reverse square])
+    distanceUpper same `shouldSatisfy` close 0
+
+  it "distinguishes no exposure from a lost layer and refuses invalid controls" $ do
+    regionDistance 0.01 Nothing 10 [] [] `shouldBe` Right EmptySource
+    regionDistance 0.01 Nothing 10 [] [rectangle 0 0 1 1] `shouldBe` Right EmptySource
+    regionDistance 0.01 Nothing 10 [rectangle 0 0 1 1] [] `shouldBe` Right MissingTarget
+    regionDistance 0 Nothing 10 [] [] `shouldSatisfy` isLeft
+    regionDistance 0.01 Nothing (-1) [] [] `shouldSatisfy` isLeft
+    regionDistance 0.01 Nothing 10 [[V2 (0 / 0) 0]] [] `shouldSatisfy` isLeft
+    regionDistance 0.01 Nothing 10 [[V2 0 0, V2 2 0, V2 1 0.5, V2 2 2, V2 0 2]] [] `shouldSatisfy` isLeft
+
+  it "stops on a bounded budget decision without claiming a precise maximum" $ do
+    let ends = [rectangle 0 0 1 1, rectangle 3 0 4 1]
+    BoundedDistance outside <- right (regionDistance 0.001 (Just 0.2) 100 [rectangle 0 0 4 1] ends)
+    distanceLower outside `shouldSatisfy` (> 0.2)
+    distanceSplits outside `shouldBe` 0
+    BoundedDistance inside <- right (regionDistance 0.001 (Just 2) 100 [rectangle 0 0 4 1] ends)
+    distanceUpper inside `shouldSatisfy` (<= 2)
+    distanceLower inside `shouldSatisfy` (<= 1)
+    distanceUpper inside `shouldSatisfy` (>= 1)
+    regionDistance 0.01 (Just (-1)) 10 [] [] `shouldSatisfy` isLeft
+
+  it "detects a distant tiny component even when the main region agrees" $ do
+    let base = rectangle 0 0 1 1
+    BoundedDistance d <- right (regionDistance 0.001 Nothing 100 [base, rectangle 10 0 11 0.000001] [base])
+    distanceLower d `shouldSatisfy` close 10
+    distanceUpper d `shouldSatisfy` close 10
 
 rectangle :: Double -> Double -> Double -> Double -> [V2]
 rectangle x0 y0 x1 y1 = [V2 x0 y0, V2 x1 y0, V2 x1 y1, V2 x0 y1]

@@ -452,9 +452,16 @@ checked coupled angles.
    All six oblique comparisons still flag the minority layer on all twelve
    density/offset grids. Counts are sampling-sensitive; the underlying exposure
    is real. No small-area waiver or all-camera acceptance is established.
-   **Illustration next: compare the exposed-layer polygons directly to separate
-   geometric displacement from gaps in thresholded sampling. Material accuracy
-   next: evaluate prescribed bends
+   [#251](https://github.com/avalonalex/senbazuru/issues/251)
+   [bounds distances over the filled exposed regions](notes/exposed-layer-distance.md).
+   The 45°-below length pair passes geometry despite its pixel failure; both
+   top-view pairs fail geometry despite passing pixels. Several large maxima
+   come from exposed fragments smaller than 0.001 px², so maximum distance alone
+   does not express their visual importance. All eight band pairs remain in
+   review; matched controls pass and contact-off remains diagnostic.
+   **Illustration next: bound the exposed area farther than two pixels from
+   its counterpart, retaining maximum distance and explicit unresolved area.
+   Material accuracy next: evaluate prescribed bends
    on the existing meshes, without a solve,
    comparing passive/control energies and the length penalty. Separate mesh
    representation from the solver's chosen shape before increasing resolution

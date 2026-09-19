@@ -5,7 +5,7 @@
 [hidden]{display:none!important}
 :root{font-family:system-ui,sans-serif;color:#292820;background:#f6f2e9;line-height:1.5}body{max-width:1440px;margin:36px auto;padding:0 24px}h1{font-size:2.15rem;line-height:1.15;margin:.3em 0}h2{font-size:1.2rem;margin-top:2rem}small,.muted{color:#716958}a{color:#37685f}button,select{font:inherit;background:#fffaf1;border:1px solid #cfc5b4;border-radius:4px;padding:7px 10px}label{display:inline-flex;align-items:center;gap:8px}.controls{display:flex;gap:14px;flex-wrap:wrap;margin:22px 0}.notice{border-left:4px solid #537668;background:#e7eee4;padding:12px 16px}.notice.failed{border-color:#ae5830;background:#f7e8d9}.comparison{display:flex;align-items:start;gap:18px;overflow:auto;background:#eae4d8;padding:18px}.figure{flex:none;margin:0;background:white;text-align:center}.figure figcaption{padding:8px;background:#e2dacb;font-size:.9rem}.figure img{display:block;max-width:none}.plot{overflow:auto}.plot img{display:block;background:white;max-width:none}.legend{display:flex;gap:18px;flex-wrap:wrap}.coarse{color:#007d9b}.fine{color:#b83769}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;border-bottom:1px solid #d7d0c2;padding:8px}th{font-weight:600;background:#eae4d8}.tables{overflow:auto}code{background:#e9e4d8;padding:1px 4px}button:disabled{opacity:.5}#error{color:#9b311f;white-space:pre-wrap}details{margin:1.5em 0}summary{cursor:pointer}nav{font-size:.9rem}#zoom-note{font-weight:600}#audit-status{min-height:1.5em}
 </style>
-<header><small>SENBAZURU · ILLUSTRATION STUDY / #247 · #249</small><h1>How much of the change reaches the drawing?</h1>
+<header><small>SENBAZURU · ILLUSTRATION STUDY / #247 · #249 · #251</small><h1>How much of the change reaches the drawing?</h1>
 <p>Compare saved paper at <strong>600 pixels per sheet unit</strong>. A provisional two-pixel budget allows small bulging differences while retaining the existing checks for connected paper, material lengths, creases and contact. This is a drawing-size decision; the stronger material-study criteria remain open.</p>
 <nav><a href="band-refinement-8x2.html">Material comparison</a> · <a href="index.html">All fold examples</a> · <a href="illustration-refinement/comparison.json">Projection and fresh geometry checks</a> · <a href="illustration-refinement/source-checks.json">Original solver report</a></nav></header>
 <p id="error" role="alert"></p>
@@ -30,6 +30,12 @@
 <p>Area and vertical span come from the visible polygons, before SVG rounding or rasterization. Span adds the exposed intervals in one vertical column, then takes the largest total over all columns. It is camera-dependent, not perpendicular strip thickness or a difference between the meshes.</p>
 <div class="tables"><table><thead><tr><th>Layer</th><th>Coarser area (px²)</th><th>Finer area (px²)</th><th>Coarser max span (px)</th><th>Finer max span (px)</th></tr></thead><tbody id="exposure"></tbody></table></div>
 <p id="legacy"></p>
+<h2>Distance between the exposed regions</h2>
+<p>For every point in one filled layer region, find the nearest point of that layer in the other mesh. The largest distance is bounded below and above, in both directions. This includes polygon interiors and tiny strips before SVG rounding or pixel thresholds. A bound spanning two pixels stays unresolved; a missing layer cannot pass. A large distance can come from a tiny distant fragment: it does not mean the sheet moved by that amount. These are floating-point geometric bounds, not exact-arithmetic certificates.</p>
+<div class="tables"><table><thead><tr><th>Layer</th><th>Coarser → finer (px)</th><th>Finer → coarser (px)</th><th>Result</th></tr></thead><tbody id="distances"></tbody></table></div>
+<p><label>Witness layer <select id="distance-layer"><option value="0">Lower layer</option><option value="1">Upper layer</option></select></label> <a id="distance-download">Witness SVG</a></p>
+<div class="plot"><img id="distance-image" alt="Overlaid exposed layer regions with geometric distance witnesses"></div>
+<p class="muted">Cyan is coarser exposure; magenta is finer exposure, painted afterward. Black segments and endpoint ticks mark the two lower-bound witnesses: a source point joined to its nearest target point. They need not locate the exact maximum. The calculations use the separate unrounded regions, not this composited preview. Both geometry and sampled-layer checks retain their own results; a geometric pass does not waive a pixel failure.</p>
 <h2>Does the layer comparison depend on the sampling grid?</h2>
 <p>The regular check now uses separate black masks for each layer. This audit repeats it at 2, 4 and 8 samples per pixel, with four common grid offsets at each density. Offset values below are raster samples: 0.5 shifts both images by half a sample. The camera, geometry, drawing scale and two-pixel budget stay fixed. Coverage integrates opacity before applying the half-opacity threshold.</p>
 <button id="sampling">Audit this comparison on 12 grids</button><p id="sampling-status" role="status"></p>
@@ -41,7 +47,7 @@
 <details><summary>Raw pixel measurements</summary><pre id="raw" style="max-height:350px;overflow:auto;font-size:.8rem"></pre></details>
 <details><summary>What this does and does not establish</summary><p>Both endpoints must retain their original accepted status, reported numerical convergence and fresh material/contact checks. Contact-off remains diagnostic regardless of image similarity. Views with unresolved projected visibility receive no graded image. Energy changes stay in the material report; they do not gate this illustration experiment.</p><p>The two-pixel budget is an engineering choice for this scale and these four cameras. It is not a tolerance on paper penetration, permission to stretch the sheet, evidence of calibrated paper mechanics or a certificate covering a folding movement. Changing the output size or camera calls for another comparison.</p></details>
 <script type="module">
-import {classifyMask,compareMasks,illustrationStatus,coverageArea,layerSamplings,samplingVerdict} from './illustration-refinement/metrics.js';
+import {classifyMask,compareMasks,illustrationStatus,coverageArea,layerSamplings,samplingVerdict,regionDistanceStatus} from './illustration-refinement/metrics.js';
 const root='illustration-refinement/', el=id=>document.getElementById(id), rows=new Map(), cache=new Map(), samplingRows=new Map();
 let data,revision=0;
 const row=(body,values)=>{const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);};
@@ -64,13 +70,13 @@ async function check(view,pair){
    (kind==='layers'?legacy:metrics).push(metric);
   }
  }
- const result={view:view.key,control:pair.control,from:pair.from,to:pair.to,maxProjectedPixels:pair.maxProjectedPixels,metrics,legacy,status:illustrationStatus(pair,metrics,data.pixelBudget)};rows.set(key,result);return result;
+ const result={view:view.key,control:pair.control,from:pair.from,to:pair.to,maxProjectedPixels:pair.maxProjectedPixels,regionDistances:pair.regionDistances,metrics,legacy,status:illustrationStatus(pair,metrics,data.pixelBudget)};rows.set(key,result);return result;
 }
-function sizes(view){const zoom=Number(el('zoom').value);for(const id of ['a','b','overlay']){el(id).style.width=view.width*zoom+'px';el(id).style.height=view.height*zoom+'px';}el('zoom-note').textContent=zoom===1?'Actual size: one SVG page unit is one CSS pixel.':'Magnified 2× for inspection. Measurements still use the declared 600-pixel scale.';}
+function sizes(view){const zoom=Number(el('zoom').value);for(const id of ['a','b','overlay','distance-image']){el(id).style.width=view.width*zoom+'px';el(id).style.height=view.height*zoom+'px';}el('zoom-note').textContent=zoom===1?'Actual size: one SVG page unit is one CSS pixel.':'Magnified 2× for inspection. Measurements still use the declared 600-pixel scale.';}
 function markOutliers(view,result){const canvas=el('outliers'),zoom=Number(el('zoom').value);canvas.width=Math.ceil(view.width*data.sampleScale);canvas.height=Math.ceil(view.height*data.sampleScale);canvas.style.width=view.width*zoom+'px';canvas.style.height=view.height*zoom+'px';canvas.hidden=!el('highlights').checked||!result;const ctx=canvas.getContext('2d');ctx.scale(data.sampleScale,data.sampleScale);ctx.strokeStyle='#d26416';ctx.lineWidth=.8;for(const m of result?.metrics??[])for(const [x,y] of m.outliers){ctx.beginPath();ctx.arc((x+.5)/data.sampleScale,(y+.5)/data.sampleScale,3,0,2*Math.PI);ctx.stroke();}}
 async function update(){
  const ticket=++revision,{view,pair}=current(),kind=el('display').value;
- el('error').textContent='';el('legacy').textContent='';el('layer-legend').hidden=kind==='paper';sizes(view);showExposure(view,pair);showSampling(view,pair);
+ el('error').textContent='';el('legacy').textContent='';el('layer-legend').hidden=kind==='paper';sizes(view);showExposure(view,pair);showDistances(view,pair);showSampling(view,pair);
  for(const [side,id] of [['a',pair.a],['b',pair.b]]){const r=view.renders.find(r=>r.id===id),src=root+r.stem+(kind==='paper'?'':'-'+kind)+'.svg';el(side).hidden=!r.resolved;if(r.resolved){el(side).src=src;el('download-'+side).href=src;}else el('download-'+side).removeAttribute('href');el('label-'+side).textContent=(side==='a'?pair.from:pair.to)+' · '+view.label+(r.resolved?'':' · visibility unresolved');el('fold-'+side).href=root+data.endpoints.find(e=>e.id===id).fold;}
  el('overlay').hidden=!pair.resolved;if(pair.resolved)el('overlay').src=root+pair.overlay;
  markOutliers(view,null);
@@ -86,6 +92,16 @@ function showExposure(view,pair){
  const a=view.renders.find(r=>r.id===pair.a),b=view.renders.find(r=>r.id===pair.b);
  if(!a.resolved||!b.resolved){row(el('exposure'),['Unresolved visibility — no exposure measurement']);return;}
  for(const owner of [0,1]){const x=a.exposure.find(e=>e.owner===owner),y=b.exposure.find(e=>e.owner===owner);row(el('exposure'),[owner?'Upper':'Lower',x.areaPixelsSquared.toFixed(4),y.areaPixelsSquared.toFixed(4),x.maxColumnSpanPixels.toFixed(4),y.maxColumnSpanPixels.toFixed(4)]);}
+}
+function showDistances(view,pair){
+ el('distances').replaceChildren();
+ const valid=pair.eligible&&pair.resolved&&pair.regionDistances?.length===2;
+ el('distance-image').hidden=!valid;el('distance-download').hidden=!valid;
+ if(!valid){row(el('distances'),[!pair.eligible?'Diagnostic paper':!pair.resolved?'Visibility unresolved':'Geometric comparison unavailable']);return;}
+ const interval=d=>d.state==='bounded'?`${d.lowerPixels.toFixed(3)}–${d.upperPixels.toFixed(3)}${d.termination==='work-limit'?' · work limit':''}`:d.state==='empty-source'?'No source exposure':'Target exposure missing';
+ for(const d of pair.regionDistances)row(el('distances'),[d.owner?'Upper':'Lower',interval(d.forward),interval(d.backward),regionDistanceStatus(d,data.pixelBudget)]);
+ const selected=pair.regionDistances.find(d=>d.owner===Number(el('distance-layer').value));
+ el('distance-image').src=root+selected.image;el('distance-download').href=root+selected.image;
 }
 function showSampling(view,pair){
  const saved=samplingRows.get(resultKey(view,pair));el('sampling-rows').replaceChildren();
@@ -109,6 +125,7 @@ el('sampling').addEventListener('click',async()=>{
 });
 el('audit').addEventListener('click',async()=>{busy(true);try{let n=0;for(const view of data.views){cache.clear();for(const pair of view.pairs){el('audit-status').textContent=`Checking ${++n}/24: ${pair.control}, ${pair.from} → ${pair.to}, ${view.label}`;await check(view,pair);refreshSummary();}}el('audit-status').textContent='All 24 comparisons checked. Review the drawings before judging illustration readiness.';}catch(error){el('audit-status').textContent='Audit incomplete: '+error.message;}finally{cache.clear();busy(false);}});
 el('download').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(measurements(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='illustration-pixels.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+el('distance-layer').addEventListener('change',()=>{const {view,pair}=current();showDistances(view,pair);});
 el('highlights').addEventListener('change',()=>{const {view,pair}=current();markOutliers(view,rows.get(resultKey(view,pair)));});
 for(const id of ['control','direction','camera','display','zoom'])el(id).addEventListener('change',update);
 try{const response=await fetch(root+'comparison.json');if(!response.ok)throw new Error('Missing comparison.json; run the postprocessing command first.');data=await response.json();for(const v of data.views){const o=document.createElement('option');o.value=v.key;o.textContent=v.label;el('camera').append(o);}el('camera').value='above';await update();}catch(error){el('error').textContent=error.message;el('verdict').textContent='Comparison unavailable';}
