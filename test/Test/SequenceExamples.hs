@@ -3,10 +3,16 @@
 -- Description : The fold sequences that more than one spec needs, written once.
 --
 -- The same example has to mean the same thing in every test that uses it. The
--- blintz below is compared with its own constructors in the builder's spec; it
--- will be compared with the parse of its text, and later run and compared with
--- the study's hand-written recipe. Three copies would be three chances for
--- those tests to be about three slightly different sequences.
+-- blintz below is compared with its own constructors in the builder's spec and
+-- printed in the printer's; it will be compared with the parse of its text,
+-- and later run and compared with the study's hand-written recipe. Three
+-- copies would be three chances for those tests to be about three slightly
+-- different sequences.
+--
+-- Two sequences live here, both taken from the language's design so that a
+-- test's output can be laid beside it: the 'blintz', from
+-- @PRDs\/03-prd-embedded-dsl.md@, and the 'quarterFold', from
+-- @PRDs\/04-prd-sequence-source-and-cli.md@.
 module Test.SequenceExamples
   ( blintz,
     blintzCaptions,

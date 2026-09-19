@@ -18,10 +18,14 @@
 -- @mountain@ in its move, and both are right.
 --
 -- It also leaves out exactly what the parser fills in when a source says
--- nothing: no anchor, the coloured side up, a flat start, the default layers,
--- no angle for a fold that goes all the way flat. Printing a default would
--- not be wrong, but then a sequence would not print as the text it was parsed
--- from.
+-- nothing. A header may name an /anchor/, the point whose paper stays still,
+-- and need not. The paper starts coloured side up with every crease flat
+-- unless told otherwise. A fold moves the flap its line's first argument lies
+-- in unless it names which layers, and goes all the way flat unless it gives
+-- an angle. None of those defaults is printed. Printing one would not be
+-- wrong, but then a sequence would not print as the text it was parsed from.
+-- "Senbazuru.Sequence.Syntax" says what each of them means, on 'Header',
+-- 'Layers' and 'Amount'.
 --
 -- Together those make the printer the definition of the language's /canonical/
 -- spelling: one text for each tree. Two trees can still share a text, where a
@@ -278,10 +282,16 @@ number r
 angle :: Rational -> Text
 angle a = number a <> "°"
 
--- | A string literal. It stays on one line whatever it holds: a quote and a
--- backslash are escaped, a newline and a tab have their usual letters, and any
--- other control character below U+0020 is written @\\u{…}@ with its code in
--- hex, so that every caption a 'Text' can hold has a spelling.
+-- | A string literal. A quote and a backslash are escaped, a newline and a tab
+-- have their usual letters, and any other control character below U+0020 is
+-- written @\\u{…}@ with its code in hex. So no newline reaches the output
+-- raw, a string takes one line of a source, and every caption a 'Text' can
+-- hold has a spelling.
+--
+-- That is the whole list, as the language's design fixes it. A character
+-- above U+0020 is written as it is, including the few, such as U+2028, that
+-- some editors show as a line break. The parser ends a line only at a
+-- newline, so they are safe where it matters.
 quoted :: Text -> Text
 quoted text = "\"" <> T.concatMap escape text <> "\""
   where

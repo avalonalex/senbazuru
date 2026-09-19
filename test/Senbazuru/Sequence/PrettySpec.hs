@@ -71,7 +71,7 @@ spec = do
 
   describe "numbers" $ do
     it "prints whole numbers bare and the rest in lowest terms, never as decimals" $
-      map prettyPoint [AtSheet 1 0, AtSheet (58 / 100) (2 / 5), AtSheet (-1 / 2) (-3)]
+      map prettyPoint [AtSheet 1 0, AtSheet (58 / 100) (2 / 5), AtSheet (-(1 / 2)) (-3)]
         `shouldBe` ["(1, 0)", "(29/50, 2/5)", "(-1/2, -3)"]
 
     -- The tree stores a count of eighths or quarters, as typed, and the
@@ -112,15 +112,31 @@ spec = do
     it "writes any other control character by its code, and leaves the rest alone" $
       oneMove (NotModelled "bell\a, escape\ESC, 折り鶴 22.5°") `shouldBe` ["not modelled \"bell\\u{7}, escape\\u{1b}, 折り鶴 22.5°\""]
 
+  -- The tree's types allow values no source can spell. The printer prints
+  -- them as they are, and does not tidy them, because the checker's complaint
+  -- has to be able to show the very sequence it is complaining about.
+  describe "values no source can spell" $ do
+    it "prints a negative angle on a fold with its sign" $
+      oneMove (Fold ValleyFold (Degrees (-90)) (EdgeOf West) FlapOfFirstArgument Nothing)
+        `shouldBe` ["fold valley -90° edge west"]
+
+    it "prints a name that is not a name as it stands" $
+      oneMove (Unfold ["two words", "north-west"]) `shouldBe` ["unfold two words north-west"]
+
+    it "prints a layer count of nought, and an unfold of nothing" $
+      (foldLayers (TopLayers 0), oneMove (Unfold [])) `shouldBe` ("fold valley edge west top 0 layers", ["unfold"])
+
   describe "any output" $ do
-    -- A caption holding a tab or a newline is in the generator's pool, so a
-    -- raw one reaching the output means a string went out unescaped.
-    prop "is clean text: no tab, no carriage return, no trailing space, one final newline" $
+    -- The generator's captions hold a tab, a newline, a bell and an escape
+    -- character, so any of them reaching the output raw means a string went
+    -- out unescaped. A newline is the one control character the output may
+    -- hold, and only as the end of a line.
+    prop "is clean text: no raw control character, no trailing space, one final newline" $
       forAll genSequence $ \s ->
         let out = prettySequence s
             textLines = T.lines out
          in conjoin
-              [ counterexample "holds a tab or a carriage return" (not (T.any (`elem` ['\t', '\r']) out)),
+              [ counterexample "holds a control character other than a newline" (not (T.any (\c -> c < ' ' && c /= '\n') out)),
                 counterexample "a line ends in a space" (not (any (T.isSuffixOf " ") textLines)),
                 counterexample "does not end in exactly one newline" (T.isSuffixOf "\n" out && not (T.isSuffixOf "\n\n" out)),
                 counterexample "starts with something other than the version line" (take 1 textLines == ["foldseq 1"])
@@ -182,7 +198,7 @@ everyConstruct =
           Fold ValleyFold ToFlat (TwoToTwo (PointNamed "tip") (EdgeOf South) (PointNamed "third") (LineNamed "diagonal") Nothing) TopFlap Nothing,
           Fold MountainFold ToFlat (PointToLinePerpendicular Centre (EdgeOf East) (EdgeOf North)) FlapOfFirstArgument Nothing,
           Fold ValleyFold ToFlat (PointToLine (CornerOf NorthEast) (ExistingCrease (CornerOf SouthWest) Centre)) FlapOfFirstArgument Nothing,
-          Fold ValleyFold ToFlat (ModelSegment (-1 / 2, 0) (3, 1 / 4)) FlapOfFirstArgument (Just (Meet (HingeOf "names") (CreaseOf "names"))),
+          Fold ValleyFold ToFlat (ModelSegment (-(1 / 2), 0) (3, 1 / 4)) FlapOfFirstArgument (Just (Meet (HingeOf "names") (CreaseOf "names"))),
           Fold ValleyFold ToFlat (Segment (PointNamed "under") Centre) FlapOfFirstArgument (Just (EndOfCreaseOf "names" Centre)),
           FoldAndUnfold ValleyFold (LineNamed "diagonal") FlapOfFirstArgument (Just (CornerOf NorthWest))
         ],
