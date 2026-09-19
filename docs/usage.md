@@ -880,6 +880,22 @@ the fitted curves change per mesh. Samples failing the length cap and full-lengt
 controls missing their grips stay diagnostic. No material optimizer or contact
 repair runs. See [the findings](notes/prescribed-held-bend.md).
 
+To compare the circular reference with continuously varying curvature:
+
+```bash
+stack run senbazuru-material-study -- --smooth-bend build/fold-material
+```
+
+Open `smooth-bend.html`. **Reference** switches between the original circle
+and a fixed cubic tangent transition. Both use the same grips and material;
+**Construction**, **Panel** and **Mesh** retain the preceding controls. The
+overview compares refinement gaps and errors against each common curve's
+analytic cost. A curvature plot exposes the shorter, more concentrated smooth
+bend. Both families export fresh results under `smooth-bend/`; existing
+archives are not rewritten. This geometric fit does not find equilibrium or
+establish that smoothness makes a coarse mesh sufficient. See
+[the comparison](notes/smooth-held-bend.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

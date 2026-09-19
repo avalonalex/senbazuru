@@ -100,12 +100,11 @@ energy target. Vertex distances do not bound the whole surface between them.
 This family does not establish convergence of the solved shapes or explain
 all their earlier 8.9857% difference.
 
-A useful next control is to smooth the two curvature changes while retaining
-these grips and material length. The current tangent is continuous, but its
-turning rate jumps at the arc's ends. Comparing that control on the same four
-meshes would test how much of the remaining energy sensitivity comes from
-those transitions before changing a material rule or running another large
-solve. Width-varying bends, separation, physical calibration and checked
+The [smooth-transition comparison](smooth-held-bend.md) now tests zero
+curvature at both joins with the same grips. Its fitted gap grows to 17.50%,
+while the finer common-curve approximation is closer to its own continuous
+cost. Smoothing alone is insufficient: fitting also concentrates the bend.
+Width-varying bends, separation, physical calibration and checked
 flexible motion remain separate work. See
 [#288](https://github.com/avalonalex/senbazuru/issues/288), continuing
 [#195](https://github.com/avalonalex/senbazuru/issues/195) and track A of

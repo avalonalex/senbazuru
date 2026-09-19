@@ -3,7 +3,7 @@
 -- final material edge is checked after roundoff-sized grip copies, and raw
 -- fit residuals remain visible alongside the two diagnostic controls. All
 -- projection and plotting stays in Haskell; the browser selects saved data.
-module HeldBendGallery (writeHeldBends) where
+module HeldBendGallery (writeHeldBends, writeSmoothBends) where
 
 import BendLocations
 import BendLocationsGallery (plotSvg, rowJson)
@@ -44,12 +44,42 @@ colours = [(Coarse, "#a67832"), (OuterOnly, "#b65845"), (RestOnly, "#3c8979"), (
 
 writeHeldBends :: FilePath -> IO ()
 writeHeldBends destination = do
-  reference <- checked commonCurve
+  document <- writeReference (destination </> "held-bend") CircularArc 0.18 4
+  writePage destination "held-bend" "/*HELD_BEND*/null" document
+  putStrLn "Wrote held-bend.html: twelve prescribed references, with geometric fits separate from material equilibrium."
+
+-- | Repeat the old family under a new output directory; never rewrite its
+-- archived comparison. Both families use the same plot ranges and measurements.
+writeSmoothBends :: FilePath -> IO ()
+writeSmoothBends destination = do
+  groups <- forM [(CircularArc, "circular"), (SmoothTransition, "smooth")] $ \(transition, name) -> do
+    document <- writeReference (destination </> "smooth-bend" </> name) transition 0.24 6
+    pure (object ["id" .= name, "data" .= document])
+  old <- checked commonCurve
+  smooth <- checked (commonCurveWith SmoothTransition)
+  let start = heldStart
+      end = start + curveArcLength old
+      k = curveCurvature old
+      original = [V2 0 0, V2 start 0, V2 start k, V2 end k, V2 end 0, V2 0.5 0]
+      softened = [V2 d (curveCurvatureAt smooth d) | i <- [0 :: Int .. 400], let d = fromIntegral i / 800]
+  TIO.writeFile (destination </> "smooth-bend" </> "curvature.svg") (plotSvg "Curvature of the common references" 6 False [("#a67832", original), ("#397f88", softened)] [])
+  let document = object ["groups" .= groups]
+  BL.writeFile (destination </> "smooth-bend" </> "checks.json") (encode document)
+  writePage destination "smooth-bend" "/*SMOOTH_BEND*/null" document
+  putStrLn "Wrote smooth-bend.html: circular and smooth-transition controls, with unchanged material and grips."
+
+writePage :: FilePath -> FilePath -> Text -> Value -> IO ()
+writePage destination name marker document = do
+  template <- TIO.readFile ("study/fold-material" </> name <> ".html")
+  TIO.writeFile (destination </> name <> ".html") (T.replace marker (TE.decodeUtf8 (BL.toStrict (encode document))) template)
+
+writeReference :: FilePath -> CurveTransition -> Double -> Double -> IO Value
+writeReference output transition energyTop rateTop = do
+  (reference, referenceFit) <- checked (commonCurveFit transition)
   target <- checked gripTarget
-  let output = destination </> "held-bend"
   createDirectoryIfMissing True output
   runs <- forM [(c, m) | c <- constructions, m <- outerMeshes] $ \((construction, ck, label), (choice, mk, meshLabel)) -> do
-    probe <- checked (heldProbe choice construction)
+    probe <- checked (heldProbeWith transition choice construction)
     let paper = heldPaper probe
         mesh = closedMesh paper
         c = heldCurve probe
@@ -116,19 +146,23 @@ writeHeldBends destination = do
     let selected = [(m, passive upper rows) | (mode, m, _, _, _, rows, _) <- runs, mode == c]
         traces f = [(colour, f rows) | (m, rows) <- selected, Just colour <- [lookup m colours]]
         end = heldStart + curveArcLength reference
-        ideal = [V2 0 0, V2 heldStart 0, V2 end (curveEnergy reference), V2 0.5 (curveEnergy reference)]
+        ideal = case transition of
+          CircularArc -> [V2 0 0, V2 heldStart 0, V2 end (curveEnergy reference), V2 0.5 (curveEnergy reference)]
+          SmoothTransition -> [V2 d (curveEnergyBetween reference 0 d) | i <- [0 :: Int .. 200], let d = fromIntegral i / 400]
         stem = ck <> "-" <> panel
-    TIO.writeFile (output </> stem <> "-energy.svg") (plotSvg "Cumulative passive energy" 0.18 False (("#aaa294", ideal) : traces cumulativeEnergy) [])
-    TIO.writeFile (output </> stem <> "-rates.svg") (plotSvg "Signed turn / material spacing" 4 True (traces (map (\(d, a, _, _) -> V2 d a) . transverseRates)) [])
+    TIO.writeFile (output </> stem <> "-energy.svg") (plotSvg "Cumulative passive energy" energyTop False (("#aaa294", ideal) : traces cumulativeEnergy) [])
+    TIO.writeFile (output </> stem <> "-rates.svg") (plotSvg "Signed turn / material spacing" rateTop True (traces (map (\(d, a, _, _) -> V2 d a) . transverseRates)) [])
   comparisons <- forM [(a, b) | a@(c, m, _, _, _, _, _) <- runs, b@(c', m', _, _, _, _, _) <- runs, c == c', (m, m') `elem` outerPairs] $ \((_, _, ka, fa, pa, _, _), (_, _, kb, fb, pb, _, _)) -> do
     movement <- checked (matching (closedMesh (heldPaper fa)) (closedMesh (heldPaper fb)))
     let change upper = let a = if upper then probeUpperEnergy pa else probeLowerEnergy pa; b = if upper then probeUpperEnergy pb else probeLowerEnergy pb in object ["delta" .= (b - a), "percent" .= (100 * (b - a) / a)]
     pure (object ["before" .= ka, "after" .= kb, "maxMatchingVertexDistance" .= movement, "lower" .= change False, "upper" .= change True])
-  let document = object ["gallery" .= ("held-bend" :: Text), "commonCurve" .= curveJson reference, "gripTarget" .= coords target, "lengthCap" .= (1e-5 :: Double), "geometricFitTolerance" .= (1e-14 :: Double), "materialOptimizerRun" .= False, "contactCorrected" .= False, "continuousMotionChecked" .= False, "runs" .= [r | (_, _, _, _, _, _, r) <- runs], "comparisons" .= comparisons]
+  let document =
+        object $
+          ["gallery" .= ("held-bend" :: Text), "commonCurve" .= curveJson reference, "gripTarget" .= coords target, "lengthCap" .= (1e-5 :: Double), "geometricFitTolerance" .= (1e-14 :: Double), "materialOptimizerRun" .= False, "contactCorrected" .= False, "continuousMotionChecked" .= False, "runs" .= [r | (_, _, _, _, _, _, r) <- runs], "comparisons" .= comparisons] <> case transition of
+            CircularArc -> []
+            SmoothTransition -> ["commonFitSteps" .= [object ["iteration" .= fitIteration step, "curve" .= curveJson (fitCurve step), "residual" .= fitResidual step] | step <- referenceFit], "curvatureMeaning" .= ("Mean through the bend; local curvature is 6*k*u*(1-u)." :: Text)]
   BL.writeFile (output </> "checks.json") (encode document)
-  template <- TIO.readFile "study/fold-material/held-bend.html"
-  TIO.writeFile (destination </> "held-bend.html") (T.replace "/*HELD_BEND*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
-  putStrLn "Wrote held-bend.html: twelve prescribed references, with geometric fits separate from material equilibrium."
+  pure document
 
 passive :: Bool -> [LocatedBend] -> [LocatedBend]
 passive upper = filter (\h -> measuredUpper (locatedMeasure h) == upper && hingeRole (measuredHinge (locatedMeasure h)) == PanelBend)
@@ -146,7 +180,7 @@ supportJson mesh c rows =
         turn x y = let V3 dx _ dz = curvePoint c y 0 ^-^ curvePoint c x 0 in atan2 dz dx
         expected = turn b d - turn a b
         cost = 0.1 * expected * expected / (right - left)
-        integral = 0.1 * curveCurvature c ^ (2 :: Int) * max 0 (min right (heldStart + curveArcLength c) - max left heldStart)
+        integral = curveEnergyBetween c left right
         measured upper = let hs = [h | h <- passive upper rows, locatedDistance h == b, Just _ <- [locatedRate h]] in sum [measuredEnergy (locatedMeasure h) | h <- hs]
      in object ["distance" .= b, "interval" .= [left, right], "turnMagnitude" .= abs expected, "predictedCost" .= cost, "referenceIntegral" .= integral, "lower" .= measured False, "upper" .= measured True]
     | (a, b, d) <- zip3 columns (drop 1 columns) (drop 2 columns)

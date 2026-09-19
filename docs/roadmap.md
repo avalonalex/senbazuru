@@ -543,9 +543,16 @@ checked coupled angles.
    sheet lengths. The common smooth reference already changes discrete cost
    by 10.74%; fitted curve parameters also change. Sampled length failures and
    unfitted grip drift remain diagnostic. No material-equilibrium solve runs.
-   Next: smooth the reference's two curvature changes while keeping the same
-   grips and material length, to test transition sensitivity on these four
-   meshes before changing the material rule or revisiting a larger solve.
+   [#291](https://github.com/avalonalex/senbazuru/issues/291)
+   [smooths those curvature transitions](notes/smooth-held-bend.md) with the
+   same grips. The common-reference gap grows to 17.16%, and the fitted gap
+   to 17.50% with 0.0010468 matching-vertex movement. Geometry still passes;
+   the smoother family concentrates bending into a shorter region. Its fine
+   common-curve cost is closer to its own analytic value (6.41% low, versus
+   9.21% for the circle), so successive-mesh gaps alone do not grade accuracy.
+   Next: a reference-only refinement ladder against the analytic costs, keeping
+   each common curve fixed and sampled-length errors / full-length grip drift
+   explicit, before choosing mesh density or running another material solve.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
