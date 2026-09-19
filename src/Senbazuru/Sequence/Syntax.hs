@@ -130,16 +130,24 @@ module Senbazuru.Sequence.Syntax
     -- * The files a sequence names
     SourceFile (..),
     sourceFiles,
+
+    -- * How a number is spelled
+    exactNumber,
   )
 where
 
+import Data.Ratio (denominator, numerator)
 import Data.String (IsString)
 import Data.Text (Text)
+import Data.Text qualified as T
 import System.FilePath (replaceFileName)
 
 -- | Where in a sequence source a piece of the tree was written: the file, then
 -- the line and column it starts at, then the line and column it ends at. Lines
 -- and columns count from 1, and a column counts characters, not bytes.
+--
+-- The end is the column just /after/ the last character, so the word @left@
+-- starting at column 20 runs from 20 to 24, and its length is the difference.
 --
 -- 'NoSpan' is what every value built in Haskell carries, since it was never
 -- text. It is a constructor rather than a @Maybe Span@ at each use so that the
@@ -703,3 +711,17 @@ sourceFiles source (Sequence header steps) =
     -- joins with @<\/>@, and @<\/>@ hands back its right-hand side whole when
     -- that side is absolute.
     named sp written = SourceFile written (replaceFileName source written) sp
+
+-- | A number of the language as text: a whole number, or @n\/d@ in lowest
+-- terms, never a decimal. 'Rational' keeps itself reduced with a positive
+-- denominator, so @58\/100@ arrives here as @29\/50@ and the sign is always
+-- the numerator's.
+--
+-- It lives beside the tree, and not in the printer, because two modules need
+-- it and one of them sits below the printer: a refusal that quotes a number
+-- has to spell it the way printed text does, or an author is told about a
+-- @0.58@ they can find nowhere in the printed sequence.
+exactNumber :: Rational -> Text
+exactNumber r
+  | denominator r == 1 = T.pack (show (numerator r))
+  | otherwise = T.pack (show (numerator r)) <> "/" <> T.pack (show (denominator r))

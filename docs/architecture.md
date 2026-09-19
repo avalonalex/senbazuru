@@ -124,7 +124,8 @@ a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
 | `Senbazuru.Render.PaperMesh` | Shared surface → complete panels or exposed pieces on both sides of each plane. Clipped corners retain weighted material vertex references. |
 | `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. |
-| `Senbazuru.Sequence.Syntax` | A fold sequence as a plain value with no functions in it: a header and steps of moves, with paper named by where it lay on the flat sheet and never by id. Both ways of writing a sequence produce it and everything that reads one consumes it. Also `stripSpans` and `canonical`, which let two sequences be compared, and `sourceFiles`, which says what file a written path means. |
+| `Senbazuru.Sequence.Syntax` | A fold sequence as a plain value with no functions in it: a header and steps of moves, with paper named by where it lay on the flat sheet and never by id. Both ways of writing a sequence produce it and everything that reads one consumes it. Also `stripSpans` and `canonical`, which let two sequences be compared; `sourceFiles`, which says what file a written path means; and `exactNumber`, how a number of the language is spelled, kept here because the printer and the error messages both need it and the errors sit below the printer. |
+| `Senbazuru.Sequence.Error` | `SequenceError`, the one type the parser, the checker and later the runner all refuse with, and every problem type inside it with its words. Also how an error reaches a person, as three pieces kept apart: the message, `sourceLocation`, and `excerpt` with its caret. And `refusalKinds`, the names `expect refused` may use. |
 | `Senbazuru.Sequence.Build` | Writing a fold sequence in Haskell: a `do` block of steps, each a `do` block of moves, that builds the `Sequence` value. A bind hands back a name and never geometry, so building is pure and cannot fail. Haskell loops run while the value is built, and the value holds what they produced. |
 | `Senbazuru.Sequence.Pretty` | A `Sequence` → the text an author would write, in the one canonical spelling: canonical words, exact numbers, defaults left out, parentheses only round a fold line named inside another. Total: it prints even a value no source could spell, so that the checker's complaint can show it. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
@@ -189,6 +190,10 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   built sequence printable and lets it be checked without being run.
   `Sequence.Pretty` likewise knows no paper: it imports `Sequence.Syntax` and,
   for printing a whole number, `Explain`.
+  `Sequence.Error` is level 2, directly above the tree and below both front
+  ends, because the parser, the checker and the runner all return its type. For
+  the same reason it may not import the printer: a refusal that quotes a fold
+  line carries that text as data, put there by whoever raised it.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes

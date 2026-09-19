@@ -8,10 +8,12 @@
 -- stop. Nothing in the type says that, and it is the sort of rule a new
 -- instance breaks without anybody noticing until a message reads
 -- @cannot render foo.fold: The frame ...@. 'everyType' samples one constructor
--- per type, which is eleven of the seventy-nine there are — enough to catch a
--- whole instance written the wrong way, not enough to catch one new arm added
--- to an existing one, and hand-maintained either way. Treat it as a worked
--- statement of the rule rather than as a guard.
+-- per type, which is fourteen of about a hundred — enough to catch a whole
+-- instance written the wrong way, not enough to catch one new arm added to an
+-- existing one, and hand-maintained either way. Treat it as a worked statement
+-- of the rule rather than as a guard. The sequence language's three types are
+-- the exception: "Senbazuru.Sequence.ErrorSpec" samples every constructor of
+-- theirs.
 --
 -- The two instances nothing prints yet, 'FlatError' and
 -- 'Senbazuru.Render.Steps.StepError'. They have no golden file and no CLI path
@@ -43,6 +45,8 @@ import Senbazuru.Origami.Stacking qualified as Stack
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
+import Senbazuru.Sequence.Error (Found (..), ParseProblem (..), Place (..), SequenceError (..), StaticProblem (..))
+import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
 
 -- | One error of each type in the library, already turned into words.
@@ -62,7 +66,10 @@ everyType =
     ("StackingError", explain (Stack.NonConvexFace (FaceId 2))),
     ("ThroughError", explain LineWithoutLength),
     ("GltfError", explain (GltfConcaveFace (FaceId 2))),
-    ("StepError", explain (StepError 2 NoVertices))
+    ("StepError", explain (StepError 2 NoVertices)),
+    ("SequenceError", explain (StaticRefused (InStep 2 Nothing) NoSpan EmptyStep)),
+    ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
+    ("StaticProblem", explain EmptyStep)
   ]
 
 spec :: Spec
