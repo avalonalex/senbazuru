@@ -105,3 +105,6 @@ Compare shapes and separate energies as well as whether each solve converges;
 do not enlarge the mesh or infer success for the crane from the cylinder test.
 The broader material-refinement, tighter-solve and illustration decisions
 remain open under [#195](https://github.com/avalonalex/senbazuru/issues/195).
+
+The [small solve comparison](fractional-band-solves.md) exercises that next
+step without changing the original default fixtures.

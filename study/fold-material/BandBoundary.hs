@@ -10,19 +10,37 @@
 -- k*(f*theta-t)^2/2 equals k*f^2*(theta-t/f)^2/2 on the same angle branch.
 -- The f^2 is essential: changing only the target would change the load's
 -- flat-reference energy. Wrap the FULL angle error before scaling it, using
--- the existing hinge convention. No solver or fixture default adopts this
--- candidate; keeping both springs allows energy and derivative checks first.
-module BandBoundary (BoundaryMeasure (..), measureBandBoundary) where
+-- the existing hinge convention. Default fixtures retain the original rule;
+-- 'bandBoundaryFixture' explicitly selects a rule for the small solve study.
+-- Constructing from the original fixture prevents applying the fraction twice.
+module BandBoundary (BoundaryRule (..), bandBoundaryFixture, BoundaryMeasure (..), measureBandBoundary) where
 
 import ClosedCrease
 import Control.Monad (forM, unless, when)
+import CoupledCrease (CoupledFixture (..))
 import CreaseInequality (InequalityError (..))
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import FoldBending
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Origami.Surface
-import UnequalCrease (bandInterval)
+import UnequalCrease (UnequalControl (..), bandInterval, unequalCreaseWithWidth)
+
+data BoundaryRule = OriginalTurns | FractionalTurns deriving stock (Eq, Show)
+
+-- | Change only the imposed band springs. The matched control has no band,
+-- so both selections produce exactly the same reference, seed and holds.
+-- Contact-on/off remains the caller's independent solver choice.
+bandBoundaryFixture :: BoundaryRule -> Int -> Int -> UnequalControl -> Either InequalityError CoupledFixture
+bandBoundaryFixture rule count width control = do
+  unless (count `elem` [1, 2, 4, 8] && control `elem` [MatchedHolds, UpperBand, BandWithoutContact]) (Left (InequalityError "boundary-rule fixtures require a supported band mesh and matched or band controls"))
+  fixture <- unequalCreaseWithWidth count width control
+  if rule == OriginalTurns || control == MatchedHolds
+    then pure fixture
+    else do
+      let reference = coupledReference fixture
+      rows <- measureBandBoundary count reference
+      pure fixture {coupledReference = reference {closedHinges = filter ((/= BendControl) . hingeRole) (closedHinges reference) ++ map boundaryCandidate rows}}
 
 data BoundaryMeasure = BoundaryMeasure
   { boundaryOriginal :: !Hinge,

@@ -5,6 +5,7 @@ module BandBoundarySpec (spec) where
 import BandBoundary
 import ClosedCrease
 import Control.Monad (forM_)
+import CoupledCrease
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import FoldBending
@@ -17,6 +18,48 @@ import UnequalCrease
 
 spec :: Spec
 spec = describe "band-boundary turn fractions" $ do
+  it "selects the candidate without changing material, holds or passive springs" $
+    forM_ [(w, c) | w <- [1, 2], c <- [MatchedHolds, UpperBand, BandWithoutContact]] $ \(w, c) -> do
+      baseline <- right (unequalCreaseWithWidth 2 w c)
+      old <- right (bandBoundaryFixture OriginalTurns 2 w c)
+      candidate <- right (bandBoundaryFixture FractionalTurns 2 w c)
+      show old `shouldBe` show baseline
+      let a = coupledReference old
+          b = coupledReference candidate
+          passive = filter ((/= BendControl) . hingeRole) . closedHinges
+      coupledSeed candidate `shouldBe` coupledSeed old
+      coupledPins candidate `shouldBe` coupledPins old
+      closedMesh b `shouldBe` closedMesh a
+      closedOwners b `shouldBe` closedOwners a
+      closedRoot b `shouldBe` closedRoot a
+      passive b `shouldBe` passive a
+      checkCoupledMaterial candidate (coupledSeed candidate) `shouldBe` Right ()
+      if c == MatchedHolds
+        then show candidate `shouldBe` show old
+        else do
+          rows <- right (measureBandBoundary 2 a)
+          filter ((== BendControl) . hingeRole) (closedHinges b) `shouldBe` map boundaryCandidate rows
+          measured <- right (bendBreakdown candidate (coupledSeed candidate))
+          near (imposedBendEnergy measured) (sum (map boundaryNewEnergy rows))
+
+  it "keeps contact-off controls identical and flat normalization intact" $
+    forM_ [(rule, w) | rule <- [OriginalTurns, FractionalTurns], w <- [1, 2]] $ \(rule, w) -> do
+      on <- right (bandBoundaryFixture rule 2 w UpperBand)
+      off <- right (bandBoundaryFixture rule 2 w BandWithoutContact)
+      show on `shouldBe` show off
+      preference <- right bandPreference
+      let mesh = coupledSeed on
+          flat = mesh {samples = [p {position = V3 (abs (materialU p)) (materialV p) 0} | p <- samples mesh]}
+          controls = filter ((== BendControl) . hingeRole) (closedHinges (coupledReference on))
+      (_, energy) <- right (bendingEnergy controls flat)
+      near energy (bandReferenceEnergy preference)
+
+  it "refuses unrelated loads and unsupported boundary-rule meshes" $ do
+    forM_ [OriginalTurns, FractionalTurns] $ \rule -> do
+      bandBoundaryFixture rule 2 1 UpperCurl `shouldSatisfy` isLeft
+      bandBoundaryFixture rule 3 1 UpperBand `shouldSatisfy` isLeft
+      bandBoundaryFixture rule 2 0 UpperBand `shouldSatisfy` isLeft
+
   it "preserves full-interval springs and changes only partial control springs" $
     forM_ probeMeshes $ \(n, w) -> do
       fixture <- right (prescribedFixture n w FixedEdges)

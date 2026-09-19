@@ -88,6 +88,13 @@ fractional-turn candidate on the same shapes, with full/partial interval
 plots and per-segment energies and derivatives. Default material controls
 remain unchanged; no solve is run.
 
+`stack run senbazuru-material-study -- --boundary-solves build/fold-material`
+compares both band-boundary rules in twelve small solves, with matched and
+contact-off controls on `2×1` and `2×2`. It keeps the six-stage length and
+progressive-contact policy, shows paired endpoint profiles and cross-measures
+band energy on identical coordinates. Old commands retain their behavior.
+See [the solve comparison](../../docs/notes/fractional-band-solves.md).
+
 `stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
 reads the nine saved endpoints and source report, rechecks their geometry and
 writes `illustration-refinement.html` without running the material solver.
