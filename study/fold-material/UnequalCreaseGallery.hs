@@ -3,8 +3,9 @@
 -- a diagnostic even if its material solve converges. Projected material rows
 -- show the shape, while magnified gap marks cover every overlap corner across
 -- the width. They are not a folding path or a contact-area measurement.
-module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBandContact, writeBandLength) where
+module UnequalCreaseGallery (writeUnequalCrease, writeUnequalRefinement, writeFineCrease, writeCombinedRefinement, writeBandRefinement, writeCombinedBandRefinement, writeBandRefinement8, writeBandRefinement8x2, writeBandContact, writeBandLength, writeBoundarySolves) where
 
+import BandBoundary
 import ClosedCrease
 import ContactQuadratic
 import Control.Exception (evaluate)
@@ -57,12 +58,13 @@ data GalleryCase = GalleryCase
     caseLabel :: Text,
     caseSuffix :: String,
     caseWeights :: [Double],
-    caseMethod :: ContactMethod
+    caseMethod :: ContactMethod,
+    caseBoundary :: BoundaryRule
   }
   deriving stock (Eq)
 
 meshCase :: (Int, Int) -> GalleryCase
-meshCase (n, w) = GalleryCase n w (meshKey n w) (T.pack (show (32 * n * w)) <> " triangles · length " <> T.pack (show n) <> " × width " <> T.pack (show w)) (show n ++ if w == 1 then "" else "-w" ++ show w) [1e2, 1e4, 1e6, 1e8] OriginalWorkingSet
+meshCase (n, w) = GalleryCase n w (meshKey n w) (T.pack (show (32 * n * w)) <> " triangles · length " <> T.pack (show n) <> " × width " <> T.pack (show w)) (show n ++ if w == 1 then "" else "-w" ++ show w) [1e2, 1e4, 1e6, 1e8] OriginalWorkingSet OriginalTurns
 
 writeUnequalCrease :: FilePath -> IO ()
 writeUnequalCrease = writeGallery "unequal-crease" (map meshCase [(1, 1), (2, 1)]) controls
@@ -113,6 +115,19 @@ writeBandRefinement8x2 =
     "band-refinement-8x2"
     (map bandRefinementCase [(4, 2), (8, 1), (8, 2)])
     [c | c@(key, _, _) <- bandControls, key `elem` ["matched", "band", "band-off"]]
+
+-- | Compare the loading rule at fixed numerical policy before another large
+-- refinement. Re-solve matched controls under both selections: their identical
+-- fixtures provide a reproducibility check, not a second physical experiment.
+writeBoundarySolves :: FilePath -> IO ()
+writeBoundarySolves = writeGallery "boundary-solves" choices [c | c@(key, _, _) <- bandControls, key `elem` ["matched", "band", "band-off"]]
+  where
+    choices =
+      [ base {caseKey = caseKey base ++ "-" ++ key, caseSuffix = caseSuffix base ++ "-" ++ key, caseLabel = "2 × " <> tshow w <> " · " <> label, caseBoundary = rule}
+        | w <- [1, 2],
+          let base = bandRefinementCase (2, w),
+          (key, label, rule) <- [("original", "Original turns", OriginalTurns), ("fractional", "Fractional turns", FractionalTurns)]
+      ]
 
 bandRefinementCase :: (Int, Int) -> GalleryCase
 bandRefinementCase size = (meshCase size) {caseWeights = [1e2, 1e4, 1e6, 1e8, 1e9, 1e10], caseMethod = ProgressiveContactExchange}
@@ -176,7 +191,8 @@ writeGallery gallery resolutions selected destination = do
   createDirectoryIfMissing True output
   runs <- forM [(choice, c) | choice <- resolutions, c <- selected] $ \(choice, (key, title, control)) -> do
     let n = caseLength choice; w = caseWidth choice
-    fixture <- checked (unequalCreaseWithWidth n w control)
+    fixture <- checked (if gallery == "boundary-solves" then bandBoundaryFixture (caseBoundary choice) n w control else unequalCreaseWithWidth n w control)
+    original <- if gallery == "boundary-solves" && control /= MatchedHolds then Just . coupledReference <$> checked (unequalCreaseWithWidth n w control) else pure Nothing
     band <- if control `elem` [UpperBand, BandWithoutContact] then Just <$> checked bandPreference else pure Nothing
     let stem = key ++ "-" ++ caseSuffix choice
         reference = coupledReference fixture
@@ -196,6 +212,7 @@ writeGallery gallery resolutions selected destination = do
     stages <- forM (zip candidates audits) $ \((stage, label, mesh), audit) -> do
       (measurement, valid) <- measure fixture mesh
       bending <- checked (bendBreakdown fixture mesh)
+      boundaries <- traverse (\ref -> checked (measureBandBoundary n ref {closedMesh = mesh})) original
       sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
       sheet <- checked (coupledSurface fixture mesh)
       let name = stem ++ "-" ++ stage
@@ -203,14 +220,14 @@ writeGallery gallery resolutions selected destination = do
             "fine-crease" -> " · " <> caseLabel choice
             _ | gallery `elem` ["combined-refinement", "band-refinement", "combined-band-refinement", "band-refinement-8", "band-refinement-8x2"] -> " · length " <> T.pack (show n) <> " × width " <> T.pack (show w) <> " · combined solver"
             _ -> ""
-          description = if gallery `elem` ["band-contact", "band-length"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
+          description = if gallery `elem` ["band-contact", "band-length", "boundary-solves"] then caseLabel choice else T.pack (show (32 * n * w)) <> " triangles" <> detail
           caption = title <> " · " <> label <> " · " <> description
       TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
       TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
       TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
       BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru unequal crease") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
       checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
-      pure (stage, label, measurement, valid, sampleReport sampled, bendReport (n <$ band) bending, object ["title" .= caption, "path" .= (name ++ ".glb")])
+      pure (stage, label, measurement, valid, sampleReport sampled, bendReport (n <$ band) bending boundaries, object ["title" .= caption, "path" .= (name ++ ".glb")])
     when (gallery == "fine-crease" && caseKey choice == "baseline" && control == UpperCurl) $ case result of
       Nothing -> pure ()
       Just r -> do
@@ -248,6 +265,7 @@ writeGallery gallery resolutions selected destination = do
               "widthSubdivision" .= w,
               "meshKey" .= caseKey choice,
               "choiceLabel" .= caseLabel choice,
+              "boundaryRule" .= show (caseBoundary choice),
               "lengthWeights" .= caseWeights choice,
               "contactMethod" .= show (caseMethod choice),
               "iterationLimitPerStage" .= iterationLimit settings,
@@ -281,7 +299,10 @@ writeGallery gallery resolutions selected destination = do
     pure (object ["control" .= key, "fromMesh" .= caseKey na, "toMesh" .= caseKey nb, "maxMatchingPositionChange" .= difference])
   responses <- forM [(key, n, a, b) | ("matched", n, _, _, Just a) <- runs, (key, k, _, _, Just b) <- runs, n == k] $ \(key, n, a, b) -> response key n a b
   contactEffect <- forM [(on, n, a, b) | (off, on) <- [("off", "curl"), ("band-off", "band")], (ca, n, _, _, Just a) <- runs, ca == off, (cb, k, _, _, Just b) <- runs, cb == on, n == k] $ \(on, n, a, b) -> response on n a b
-  let document = object ["gallery" .= gallery, "runs" .= [r | (_, _, r, _, _) <- runs], "refinement" .= refinement, "responses" .= responses, "contactEffect" .= contactEffect]
+  boundaryEffect <- forM [(key, na, nb, a, b) | (key, na, _, _, Just a) <- runs, (other, nb, _, _, Just b) <- runs, key == other, caseBoundary na == OriginalTurns, caseBoundary nb == FractionalTurns, caseLength na == caseLength nb, caseWidth na == caseWidth nb] $ \(key, na, nb, a, b) -> do
+    (lower, upper) <- checked (panelChanges a b)
+    pure (object ["control" .= key, "fromMesh" .= caseKey na, "toMesh" .= caseKey nb, "lowerChange" .= lower, "upperChange" .= upper])
+  let document = object ["boundaryEffect" .= boundaryEffect, "gallery" .= gallery, "runs" .= [r | (_, _, r, _, _) <- runs], "refinement" .= refinement, "responses" .= responses, "contactEffect" .= contactEffect]
   BL.writeFile (output </> "checks.json") (encode document)
   BL.writeFile (output </> "models.json") (encode (concat [ms | (_, _, _, ms, _) <- runs]))
   viewer <- TIO.readFile "study/gltf/viewer.html"
@@ -292,15 +313,17 @@ writeGallery gallery resolutions selected destination = do
   putStrLn ("Wrote " ++ gallery ++ ".html and measurements to " ++ destination)
   where
     comparable a b
+      | gallery == "boundary-solves" = caseBoundary a == caseBoundary b && caseWidth b == 2 * caseWidth a
       | gallery == "band-length" = caseWidth a == caseWidth b && caseWeights b == caseWeights a ++ [1e10]
       | gallery == "band-contact" = caseWidth a == caseWidth b && caseMethod a == ExchangeNearDependent && caseMethod b == ProgressiveContactExchange
       | gallery == "fine-crease" = caseKey a == "baseline" && caseKey b /= "baseline"
       | otherwise = (caseLength b == 2 * caseLength a && caseWidth b == caseWidth a) || (caseLength b == caseLength a && caseWidth b == 2 * caseWidth a)
 
-bendReport :: Maybe Int -> BendBreakdown -> Value
-bendReport subdivision b =
+bendReport :: Maybe Int -> BendBreakdown -> Maybe [BoundaryMeasure] -> Value
+bendReport subdivision b boundaries =
   object
-    [ "lowerPassiveEnergy" .= lowerPassiveEnergy b,
+    [ "boundaryCosts" .= fmap (\rows -> object ["original" .= sum (map boundaryOldEnergy rows), "fractional" .= sum (map boundaryNewEnergy rows)]) boundaries,
+      "lowerPassiveEnergy" .= lowerPassiveEnergy b,
       "upperPassiveEnergy" .= upperPassiveEnergy b,
       "imposedEnergy" .= imposedBendEnergy b,
       "controlTurns"

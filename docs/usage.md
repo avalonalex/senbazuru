@@ -728,8 +728,24 @@ The same page also compares the existing band rule with an experimental rule
 that attributes only the represented fraction of actual turn to a clipped
 interval. **Inspect band at length** shows full and partial material intervals;
 the JSON download retains both spring encodings and energy derivatives.
-The candidate is not enabled in the solver. Original shape, length, passive
+The candidate does not change solver defaults. Original shape, length, passive
 energy and contact measurements remain unchanged. See [the boundary comparison](notes/band-boundary-fractions.md).
+
+### Solving with both band-boundary rules
+
+```bash
+stack run senbazuru-material-study -- --boundary-solves build/fold-material
+```
+
+Open `boundary-solves.html` on the same local server. Twelve opt-in solves
+compare original and fractional band turns at `2×1` and `2×2`, each with
+matched holds, an upper bend band and contact disabled for comparison.
+**Mesh + boundary rule** selects a run; the paired profiles always show its
+solved endpoints, while **Show** selects a numerical stage in the main viewer.
+Both energy rules are evaluated on each band endpoint. Contact-off and failed
+endpoints stay diagnostic, with unchanged acceptance limits and no claim of a
+continuous folding route. Original commands retain their previous rules.
+See [the measured comparison](notes/fractional-band-solves.md).
 
 ### Comparing paper at illustration scale
 

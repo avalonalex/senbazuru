@@ -48,7 +48,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,494 examples pass, including fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,497 examples pass, including isolated fractional-band solve fixtures, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -488,10 +488,15 @@ checked coupled angles.
    matching analytic/spatial derivatives. Flat normalization and full intervals
    are unchanged; fixed-corner costs still grow. The original measurements
    and SVG/FOLD geometry remain intact, and the candidate is not a default.
-   Next: compare both rules on `2×1` and `2×2` with matched and contact-off
-   controls, the same holds and numerical policy, and all original acceptance
-   caps. Profile the expensive accepted case under #208 before another large
-   solve.**
+   [#261](https://github.com/avalonalex/senbazuru/issues/261)
+   [tests both rules in small solves](notes/fractional-band-solves.md): all
+   twelve converge, eight constrained endpoints pass and four contact-off
+   endpoints cross. Original references and matched controls reproduce exactly.
+   The candidate moves both panels by about 0.00065 sheet lengths; width
+   sensitivity does not improve; tiny openings remain dependent on numerical policy.
+   Next: compare both rules at `4×1` against `2×1`, retaining matched/contact-off
+   controls, the same holds and numerical policy, and all acceptance caps.
+   Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

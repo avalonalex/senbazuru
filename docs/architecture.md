@@ -392,6 +392,12 @@ for checking both energies and derivatives, without changing default fixtures
 or calling a solver. `PrescribedBendGallery` retains both policies' per-interval
 records and draws their material support. The [boundary note](notes/band-boundary-fractions.md)
 records the constant-cylinder check and the still-changing fixed-corner control.
+`bandBoundaryFixture` now selects either encoding explicitly for the small
+`--boundary-solves` experiment. The existing gallery and solver run both rules
+with identical holds and material and retain both band costs on each endpoint, paired
+endpoint displacements and width comparisons within each rule. Original
+commands retain their policies; [the solve comparison](notes/fractional-band-solves.md)
+records the endpoint evidence and remaining refinement question.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

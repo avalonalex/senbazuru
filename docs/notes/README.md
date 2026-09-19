@@ -84,6 +84,7 @@ read the Haddock module headers; for the domain, start with
 | [band-refinement-8x2.md](band-refinement-8x2.md) | Explicit shape, opening and energy targets judge the next length/width comparison separately from valid endpoints |
 | [prescribed-bend-energy.md](prescribed-bend-energy.md) | Known shapes separate concentrated bends, clipped band angles and chord-length penalties without running the optimizer |
 | [band-boundary-fractions.md](band-boundary-fractions.md) | Attribute the same fraction of actual and preferred turn to partial band intervals, checking both energy and derivatives |
+| [fractional-band-solves.md](fractional-band-solves.md) | Compare original and fractional band turns in small coupled solves, keeping holds and numerical policy fixed |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |
 | [exposed-layer-distance.md](exposed-layer-distance.md) | Bound filled-region distances before sampling; a tiny distant fragment can dominate the maximum |
