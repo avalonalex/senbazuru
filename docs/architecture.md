@@ -415,6 +415,13 @@ fixtures exactly. `OuterStripGallery` reuses the coupled solver, independent
 checks, spring bookkeeping and SVG plots for the four-mesh comparison. It
 keeps failed states and original solver policies; [the outer-strip study](notes/outer-strip-refinement.md)
 separates local resolution effects from material convergence.
+`OuterContinuation` validates the two exhausted archives and replaces only
+starting positions, retaining the authored rest material, holds and springs.
+`OuterContinuationGallery` reuses `OuterStripGallery.writeOuterState` for
+identical measurements and exports, preserves the original files, and runs
+at most 40 more iterations at the same final weight. See the
+[continuation study](notes/outer-strip-continuation.md) for the outcomes and
+why a converged contact-off endpoint still cannot pass.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

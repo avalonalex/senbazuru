@@ -88,6 +88,7 @@ read the Haddock module headers; for the domain, start with
 | [fractional-band-length.md](fractional-band-length.md) | Double length subdivisions under each band rule, keeping width and solver policy fixed |
 | [bending-energy-locations.md](bending-energy-locations.md) | Locate saved spring costs and the new opposite turn outside the upper bending band |
 | [outer-strip-refinement.md](outer-strip-refinement.md) | Refine only the outer strip, or only the rest, to locate the source of the loaded opening |
+| [outer-strip-continuation.md](outer-strip-continuation.md) | Two exhausted endpoints settle with unchanged material and length weight; one still crosses |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |
 | [exposed-layer-distance.md](exposed-layer-distance.md) | Bound filled-region distances before sampling; a tiny distant fragment can dominate the maximum |

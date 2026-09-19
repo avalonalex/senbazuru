@@ -517,10 +517,14 @@ checked coupled angles.
    explicit. Of 24 solves, 22 converge and 15 constrained endpoints pass;
    fractional rest-only and original contact-off outer-only exhaust the final
    iteration budget. All contact-off endpoints cross.
-   Next: restart those two stored endpoints at the same final length weight
-   with extra work, unchanged thresholds and the original results retained.
-   Check whether their movement settles before interpreting the unsettled
-   rest-only comparison. The matched interior energy change remains open.
+   [#270](https://github.com/avalonalex/senbazuru/issues/270)
+   [continues those saved endpoints](notes/outer-strip-continuation.md) at the
+   same final weight. They converge in 2 / 15 additional iterations, moving
+   at most 1.04e-7 / 2.77e-7 sheet lengths. Rest-only now passes; contact-off
+   still crosses. Original budgets and reports remain intact.
+   Next: locate the matched-hold passive-energy change by material region
+   across the four saved meshes, without new solves. This isolates the
+   remaining interior-energy question before expanding the refinement grid.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
