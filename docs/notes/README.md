@@ -82,6 +82,7 @@ read the Haddock module headers; for the domain, start with
 | [fine-band-length-enforcement.md](fine-band-length-enforcement.md) | Restarting two stalled band endpoints separates more work from stronger length enforcement; converged crossing remains invalid paper |
 | [combined-band-refinement.md](combined-band-refinement.md) | Repeating the full band grid with one stronger length/contact policy separates numerical acceptance from mesh convergence |
 | [band-refinement-8x2.md](band-refinement-8x2.md) | Explicit shape, opening and energy targets judge the next length/width comparison separately from valid endpoints |
+| [prescribed-bend-energy.md](prescribed-bend-energy.md) | Known shapes separate concentrated bends, clipped band angles and chord-length penalties without running the optimizer |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |
 | [exposed-layer-distance.md](exposed-layer-distance.md) | Bound filled-region distances before sampling; a tiny distant fragment can dominate the maximum |

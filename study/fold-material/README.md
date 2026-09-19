@@ -76,6 +76,14 @@ retained for every control; only accepted endpoints get SVG/GLB views. See
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
 
+`stack run senbazuru-material-study -- --prescribed-bend build/fold-material`
+writes `prescribed-bend.html`: four prescribed shapes on eight existing meshes,
+with separate passive/control energies and length penalties. Shared-scale
+side profiles, material FOLDs and per-edge/per-hinge records need no optimizer,
+contact repair or 3D viewer installation. The old grips are not imposed;
+length-invalid sampled cylinders are explicit diagnostics. See
+[the prescribed-bend note](../../docs/notes/prescribed-bend-energy.md).
+
 `stack run senbazuru-material-study -- --illustration-refinement build/fold-material/band-refinement-8x2 build/fold-material`
 reads the nine saved endpoints and source report, rechecks their geometry and
 writes `illustration-refinement.html` without running the material solver.

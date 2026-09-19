@@ -379,6 +379,13 @@ length doublings without adding a new solver path. The
 adding display comparisons of the measured position, opening and energy
 changes against explicit study targets. These do not change endpoint
 acceptance or claim numerical robustness.
+`PrescribedBend` places flat, fixed-corner and cylindrical probes on those
+existing meshes and measures per-edge lengths and per-hinge angular costs.
+`PrescribedBendGallery` exports shared-scale side profiles, FOLDs and raw
+measurements, including the original-grip displacement and exact known-order
+contact audit. It calls no optimizer or repair and does not change the material
+objective. The [prescribed-bend note](notes/prescribed-bend-energy.md) separates
+sampling a smooth surface from preserving every straight material edge.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads
