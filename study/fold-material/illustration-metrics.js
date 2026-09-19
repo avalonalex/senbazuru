@@ -59,6 +59,12 @@ export function illustrationStatus(pair, metrics, budget = 2, reports = null) {
   const failed = metrics.filter(m => m.beyondBudget || m.missing);
   if (pair.maxProjectedPixels > budget || failed.some(m => !['Lower layer','Upper layer'].includes(m.name))) return 'Outside illustration budget';
   if (failed.length) return 'Layer visibility needs review';
+  if (pair.regionDistances) {
+    if (pair.regionDistances.length !== 2 || [0,1].some(owner => pair.regionDistances.filter(d => d.owner === owner).length !== 1)) return 'Geometric check incomplete';
+    const geometry = pair.regionDistances.map(d => regionDistanceStatus(d, budget));
+    if (geometry.some(s => ['Outside geometric budget','Layer appears or disappears'].includes(s))) return 'Layer visibility needs review';
+    if (geometry.some(s => !['Within geometric budget','No exposure in either'].includes(s))) return 'Geometric check unresolved';
+  }
   if (reports !== null) {
     const verdict = samplingVerdict(pair, reports);
     if (verdict === 'Sampling audit incomplete') return verdict;
@@ -88,4 +94,17 @@ export function samplingVerdict(pair, reports) {
   const failures = reports.filter(r => r.metrics.some(m => m.beyondBudget || m.missing)).length;
   if (!failures) return 'Layers within budget on all sampled grids';
   return failures === reports.length ? 'Layer difference on every sampled grid' : 'Layer comparison depends on sampling';
+}
+
+// The two directions cover filled regions, not just their outlines. A finite
+// interval straddling the budget is unresolved, even if its midpoint passes.
+export function regionDistanceStatus(layer, budget = 2) {
+  const directions = [layer.forward,layer.backward];
+  if (directions.some(d => !d)) return 'Geometric check incomplete';
+  if (directions.some(d => d.state === 'missing-target')) return 'Layer appears or disappears';
+  if (directions.every(d => d.state === 'empty-source')) return 'No exposure in either';
+  if (!directions.every(d => d.state === 'bounded' && Number.isFinite(d.lowerPixels) && Number.isFinite(d.upperPixels) && d.lowerPixels >= 0 && d.lowerPixels <= d.upperPixels)) return 'Geometric check incomplete';
+  if (directions.some(d => d.lowerPixels > budget)) return 'Outside geometric budget';
+  if (directions.every(d => d.upperPixels <= budget)) return 'Within geometric budget';
+  return 'Geometric budget unresolved';
 }

@@ -727,7 +727,15 @@ span measure exposure before rasterization; span is not normal strip thickness.
 “Audit this comparison on 12 grids” tests three sampling densities and four
 offsets, with coverage and outlier counts included in the JSON. Any layer
 failure retains review status; incomplete audits cannot confer a pass. See
-[the thin-layer investigation](notes/thin-layer-visibility.md). Missing source files require
+[the thin-layer investigation](notes/thin-layer-visibility.md).
+
+The geometric table also bounds distance between the filled exposed regions
+in both directions, before rounding or sampling. A budget-straddling interval
+stays unresolved; a geometric pass never waives a pixel failure. Witness SVGs
+join a source point to its nearest target point. A large distance can come
+from a tiny remote fragment, rather than a large material displacement. The
+JSON includes unrounded polygons, witnesses and termination reasons; see
+[the distance study](notes/exposed-layer-distance.md). Missing source files require
 generating the earlier study first; this command never starts it implicitly.
 
 Paper validity, illustration suitability and material convergence are separate.

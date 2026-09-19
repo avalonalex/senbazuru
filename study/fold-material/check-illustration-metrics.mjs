@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('./illustration-metrics.js',import.meta.url),'utf8');
-const {classifyMask,compareMasks,illustrationStatus,coverageArea,layerSamplings,samplingVerdict}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {classifyMask,compareMasks,illustrationStatus,coverageArea,layerSamplings,samplingVerdict,regionDistanceStatus}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const width=16,height=16,mask=(x,y,label=1)=>{const a=new Uint8Array(width*height);a[y*width+x]=label;return a;};
 const compare=(a,b,options={})=>compareMasks(a,b,width,height,options);
 const a=mask(3,3);
@@ -50,4 +50,16 @@ assert.equal(samplingVerdict(good,audits.map(s=>({...s,metrics:[]}))),'Sampling 
 assert.equal(illustrationStatus(good,metrics,2,[failed,...audits.slice(1)]),'Layer visibility needs review');
 assert.equal(illustrationStatus(good,metrics,2,audits.slice(1)),'Sampling audit incomplete');
 assert.equal(illustrationStatus(good,metrics,2,audits),'Within sampled budget · inspect drawings');
+const bound=(lo,hi)=>({state:'bounded',lowerPixels:lo,upperPixels:hi});
+const geometric={owner:0,forward:bound(0.1,0.2),backward:bound(0.3,0.4)};
+assert.equal(regionDistanceStatus(geometric),'Within geometric budget');
+assert.equal(regionDistanceStatus({...geometric,forward:bound(1.99,2.01)}),'Geometric budget unresolved');
+assert.equal(regionDistanceStatus({...geometric,forward:bound(2.01,2.02)}),'Outside geometric budget');
+assert.equal(regionDistanceStatus({...geometric,forward:bound(3,2)}),'Geometric check incomplete');
+assert.equal(regionDistanceStatus({forward:{state:'empty-source'},backward:{state:'missing-target'}}),'Layer appears or disappears');
+assert.equal(regionDistanceStatus({forward:{state:'empty-source'},backward:{state:'empty-source'}}),'No exposure in either');
+const geometricPair={...good,regionDistances:[geometric,{...geometric,owner:1,forward:bound(2.01,2.02)}]};
+assert.equal(illustrationStatus(geometricPair,metrics),'Layer visibility needs review');
+assert.equal(illustrationStatus({...good,regionDistances:[geometric]},metrics),'Geometric check incomplete');
+assert.equal(illustrationStatus({...geometricPair,eligible:false},metrics),'Diagnostic paper');
 console.log('All illustration-mask counterexamples pass.');

@@ -391,6 +391,12 @@ polygon area and maximum vertical column span; isolated layer masks let the
 browser test sampling density and phase without colour compositing. See
 [the illustration study](notes/illustration-scale-refinement.md) and
 [thin-layer follow-up](notes/thin-layer-visibility.md).
+`IllustrationDistance` bounds point-to-region distance over unions of filled
+convex polygons. It is study-only geometry: it imports no paper or rendering
+modules, and returns explicit empty/missing states and finite work-limited
+intervals. `IllustrationGallery` supplies projected layer regions and draws
+lower-bound witnesses through `Diagram`; the browser only displays the bounds.
+See [the distance study](notes/exposed-layer-distance.md).
 `Render.Gltf` passes its coordinate quantum to `Render.PaperMesh`: visibility
 resolves near-coplanar groups at packing precision, then reattaches clipped
 points to their original material panels. Contact checks keep their own

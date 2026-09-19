@@ -24,12 +24,14 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import IllustrationComparison
-import Senbazuru.Diagram (Colour (..), Diagram (..))
+import IllustrationDistance
+import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), diagramWithExtent, solid)
 import Senbazuru.Diagram.Style (Notation (..), defaultTheme)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry.VectorSpace (norm, (*^))
+import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.VectorSpace (norm, (*^), (^+^), (^-^))
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.CreasePattern (creasePatternFrom)
@@ -95,7 +97,7 @@ writeIllustrationComparison source destination = do
           let exposure owner =
                 let pieces = concat [rs | (n, rs) <- regions, n == owner]
                     (area, spanPixels) = exposureMeasures (map (map (600 *^)) pieces)
-                 in object ["owner" .= unFaceId owner, "areaPixelsSquared" .= area, "maxColumnSpanPixels" .= spanPixels]
+                 in object ["owner" .= unFaceId owner, "areaPixelsSquared" .= area, "maxColumnSpanPixels" .= spanPixels, "polygonsPixels" .= [[let V2 x y = 600 *^ p in [x, y] | p <- ring] | ring <- pieces]]
           pure (endpointId endpoint, Just seen, object ["id" .= endpointId endpoint, "stem" .= stem, "resolved" .= True, "exposure" .= map exposure [FaceId 0, FaceId 1]])
         _ -> pure (endpointId endpoint, Nothing, object ["id" .= endpointId endpoint, "resolved" .= False, "reason" .= either explain (const "View has unresolved projected visibility; no fallback is graded.") attempt])
     pairs <- forM comparisons $ \(a, b, differences) -> do
@@ -104,9 +106,25 @@ writeIllustrationComparison source destination = do
       resolved <- case (seen (endpointId a), seen (endpointId b)) of
         (Just sa, Just sb) -> TIO.writeFile (output </> T.unpack name) (renderSvg page (inkOverlay basis extent sa sb)) >> pure True
         _ -> pure False
-      pure (object ["control" .= endpointControl a, "from" .= endpointMeshKey a, "to" .= endpointMeshKey b, "a" .= endpointId a, "b" .= endpointId b, "eligible" .= (endpointValid a && endpointValid b), "resolved" .= resolved, "overlay" .= name, "maxProjectedPixels" .= (600 * projectedChange basis differences), "maxSpatialChange" .= maximum (0 : map norm differences), "overlapCorners" .= length differences])
+      distances <- case (seen (endpointId a), seen (endpointId b)) of
+        (Just sa, Just sb) | endpointValid a && endpointValid b -> do
+          as <- checked (layerRegions basis (endpointOwners a) sa)
+          bs <- checked (layerRegions basis (endpointOwners b) sb)
+          forM [FaceId 0, FaceId 1] $ \owner -> do
+            let pieces rs = concat [ps | (n, ps) <- rs, n == owner]
+                x = pieces as
+                y = pieces bs
+                scaled = map (map (600 *^))
+                asset = endpointControl a <> "-" <> endpointMeshKey a <> "-" <> key <> "-distance-" <> T.pack (show (unFaceId owner)) <> ".svg"
+            forward <- checked (regionDistance 0.01 (Just 2) 20000 (scaled x) (scaled y))
+            backward <- checked (regionDistance 0.01 (Just 2) 20000 (scaled y) (scaled x))
+            let drawing = diagramWithExtent extent ([Fill (Colour "#007d9b") x, Fill (Colour "#b83769") y] ++ witnessInk forward ++ witnessInk backward)
+            TIO.writeFile (output </> T.unpack asset) (renderSvg page drawing)
+            pure (object ["owner" .= unFaceId owner, "forward" .= distanceJson forward, "backward" .= distanceJson backward, "image" .= asset])
+        _ -> pure []
+      pure (object ["regionDistances" .= distances, "control" .= endpointControl a, "from" .= endpointMeshKey a, "to" .= endpointMeshKey b, "a" .= endpointId a, "b" .= endpointId b, "eligible" .= (endpointValid a && endpointValid b), "resolved" .= resolved, "overlay" .= name, "maxProjectedPixels" .= (600 * projectedChange basis differences), "maxSpatialChange" .= maximum (0 : map norm differences), "overlapCorners" .= length differences])
     pure (object ["key" .= key, "label" .= label, "width" .= pageWidth page, "height" .= pageHeight page, "renders" .= [r | (_, _, r) <- rendered], "pairs" .= pairs])
-  BL.writeFile (output </> "comparison.json") (encode (object ["pixelsPerUnit" .= (600 :: Int), "pixelBudget" .= (2 :: Int), "sampleScale" .= (2 :: Int), "endpoints" .= map endpointReport endpoints, "views" .= views]))
+  BL.writeFile (output </> "comparison.json") (encode (object ["distanceAccuracyPixels" .= (0.01 :: Double), "distanceSplitLimit" .= (20000 :: Int), "pixelsPerUnit" .= (600 :: Int), "pixelBudget" .= (2 :: Int), "sampleScale" .= (2 :: Int), "endpoints" .= map endpointReport endpoints, "views" .= views]))
   copyFile "study/fold-material/illustration-metrics.js" (output </> "metrics.js")
   copyFile "study/fold-material/illustration-refinement.html" (destination </> "illustration-refinement.html")
   putStrLn ("Wrote illustration-refinement.html; source geometry was not changed or re-solved: " <> output)
@@ -167,3 +185,20 @@ checked = either (die . T.unpack . explain) pure
 
 parsed :: (Value -> Parser a) -> Value -> IO a
 parsed parser = either die pure . parseEither parser
+
+-- The diagnostic line joins a sampled source point to its nearest target
+-- point. It witnesses the lower bound, not necessarily the global maximum.
+witnessInk :: RegionDistance -> [Shape]
+witnessInk (BoundedDistance d) =
+  let p = (1 / 600) *^ witnessFrom d
+      q = (1 / 600) *^ witnessTo d
+      arm = V2 (2 / 600) 0
+   in [Polyline (solid (Colour "#151515") 1.2) [p, q], Polyline (solid (Colour "#151515") 1) [p ^-^ arm, p ^+^ arm], Polyline (solid (Colour "#151515") 1) [q ^-^ arm, q ^+^ arm]]
+witnessInk _ = []
+
+distanceJson :: RegionDistance -> Value
+distanceJson EmptySource = object ["state" .= ("empty-source" :: Text)]
+distanceJson MissingTarget = object ["state" .= ("missing-target" :: Text)]
+distanceJson (BoundedDistance d) = object ["state" .= ("bounded" :: Text), "lowerPixels" .= distanceLower d, "upperPixels" .= distanceUpper d, "sourcePoint" .= coords (witnessFrom d), "targetPoint" .= coords (witnessTo d), "splits" .= distanceSplits d, "accuracyMet" .= (distanceUpper d - distanceLower d <= 0.01), "termination" .= (if distanceUpper d - distanceLower d <= 0.01 then "accuracy" else if distanceLower d > 2 || distanceUpper d <= 2 then "budget" else "work-limit" :: Text)]
+  where
+    coords (V2 x y) = [x, y]

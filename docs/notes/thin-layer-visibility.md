@@ -101,3 +101,7 @@ samples, without changing the meshes or guessing an area waiver. For material
 accuracy, the separate next experiment remains prescribed bends on existing
 meshes, comparing energies without optimization. Neither requires immediately
 increasing mesh resolution.
+
+The [direct-distance follow-up](exposed-layer-distance.md) now supplies those
+bounds. One oblique pixel failure has a geometric pass, while the top view
+conceals geometric failures; tiny distant fragments dominate several maxima.
