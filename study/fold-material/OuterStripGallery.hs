@@ -3,7 +3,7 @@
 -- saved histories can be compared with the earlier length study. A refusal
 -- retains its starting guess; a converged crossing remains diagnostic.
 -- Numerical stages are inspectable, but are not a continuous folding route.
-module OuterStripGallery (writeOuterStrip) where
+module OuterStripGallery (writeOuterStrip, writeOuterState) where
 
 import BandBoundary
 import BendLocations
@@ -117,32 +117,10 @@ solveRun output choice meshKey meshLabel rule ruleKey control key title = do
   audits <- mapM (\(_, _, mesh) -> checked (auditPairContact (closedOwners reference) mesh)) candidates
   let gapScale = maximum (1e-8 : [fromRational (max (abs (pairMinimum a)) (abs (pairMaximum a))) | a <- audits])
   stages <- forM (zip candidates audits) $ \((stage, label, mesh), audit) -> do
-    (measurement, valid) <- measure fixture mesh
-    bending <- checked (bendBreakdown fixture mesh)
-    boundaries <- if control == MatchedHolds then pure Nothing else Just <$> checked (outerBoundaryMeasures choice reference {closedMesh = mesh})
-    sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
-    located <- checked (locateBends reference {closedMesh = mesh})
-    sheet <- checked (coupledSurface fixture mesh)
     let name = stem ++ "-" ++ stage
         caption = title <> " · " <> meshLabel <> " · " <> T.pack ruleKey <> " · " <> label
-        interval u = snd <$> outerInterval choice (abs u)
-        report =
-          object
-            [ "measurement" .= measurement,
-              "geometryPassed" .= valid,
-              "bending" .= bendReportWith interval bending boundaries,
-              "bandSupports" .= fmap (map supportJson) boundaries,
-              "gapSamples" .= sampleReport sampled,
-              "springs" .= map rowJson located,
-              "regions" .= regionJson located,
-              "transverseRates" .= [object ["panel" .= panel, "values" .= transverseRates [h | h <- located, hingeRole (measuredHinge (locatedMeasure h)) == PanelBend, measuredUpper (locatedMeasure h) == upper]] | (upper, panel) <- [(False, "lower" :: Text), (True, "upper")]]
-            ]
-    TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
-    TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
-    TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
-    BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru outer-strip study") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
-    checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
-    pure (stage, label, valid, located, report, object ["title" .= caption, "path" .= (name ++ ".glb")])
+    (valid, located, report, model) <- writeOuterState output choice control fixture gapScale name caption mesh audit
+    pure (stage, label, valid, located, report, model)
   TIO.writeFile (output </> meshKey ++ "-material.svg") (materialSvg choice)
   let passed = mode == EnforcePairOrder && maybe False inequalityConverged result && any (\(stage, _, valid, _, _, _) -> stage == "after" && valid) stages
       endpointRows = concat [rows | (stage, _, _, rows, _, _) <- stages, stage == "after"]
@@ -177,6 +155,36 @@ solveRun output choice meshKey meshLabel rule ruleKey control key title = do
   putStrLn (stem ++ ": endpoint passed " ++ show passed ++ maybe "" (\reason -> "; " ++ T.unpack reason) refusal)
   hFlush stdout
   pure (Run stem key choice rule passed (inequalityMesh <$> result) endpointRows report [v | (_, _, _, _, _, v) <- stages])
+
+-- | Reuse exactly the same measurements and exports when revisiting a saved
+-- endpoint. The audit is supplied so every state can share one gap scale.
+writeOuterState :: FilePath -> OuterMesh -> UnequalControl -> CoupledFixture -> Double -> String -> Text -> MaterialMesh -> PairAudit -> IO (Bool, [LocatedBend], Value, Value)
+writeOuterState output choice control fixture gapScale name caption mesh audit = do
+  let reference = coupledReference fixture
+  (measurement, valid) <- measure fixture mesh
+  bending <- checked (bendBreakdown fixture mesh)
+  boundaries <- if control == MatchedHolds then pure Nothing else Just <$> checked (outerBoundaryMeasures choice reference {closedMesh = mesh})
+  sampled <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
+  located <- checked (locateBends reference {closedMesh = mesh})
+  sheet <- checked (coupledSurface fixture mesh)
+  let interval u = snd <$> outerInterval choice (abs u)
+      report =
+        object
+          [ "measurement" .= measurement,
+            "geometryPassed" .= valid,
+            "bending" .= bendReportWith interval bending boundaries,
+            "bandSupports" .= fmap (map supportJson) boundaries,
+            "gapSamples" .= sampleReport sampled,
+            "springs" .= map rowJson located,
+            "regions" .= regionJson located,
+            "transverseRates" .= [object ["panel" .= panel, "values" .= transverseRates [h | h <- located, hingeRole (measuredHinge (locatedMeasure h)) == PanelBend, measuredUpper (locatedMeasure h) == upper]] | (upper, panel) <- [(False, "lower" :: Text), (True, "upper")]]
+          ]
+  TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
+  TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg gapScale audit)
+  TIO.writeFile (output </> name ++ "-map.svg") (mapSvg sampled)
+  BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru outer-strip study") Nothing (Just caption) Nothing [] (materialFrame sheet) []))
+  checked (renderSurfaceGlb defaultBudget CompletePaper (Just caption) sheet) >>= BS.writeFile (output </> name ++ ".glb")
+  pure (valid, located, report, object ["title" .= caption, "path" .= (name ++ ".glb")])
 
 supportJson :: BoundaryMeasure -> Value
 supportJson r =

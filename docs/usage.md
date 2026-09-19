@@ -805,6 +805,24 @@ failed or contact-off endpoints cannot pass. Differences at matching vertices
 do not bound all material points or certify a flexible motion. No new long
 solve is added to the regular test suite. See [the outer-strip study](notes/outer-strip-refinement.md).
 
+To continue only the two exhausted outer-strip endpoints at the same final
+weight, keeping their original reports and positions:
+
+```bash
+stack run senbazuru-material-study -- --outer-continuation \
+  build/fold-material/outer-strip build/fold-material
+```
+
+Open `outer-continuation.html`. **Case** compares the saved endpoint with its
+continuation, and **State** selects the source, restart feasibility check or
+new endpoint. Profiles share a camera and scale; gap plots share one magnified
+scale within a case. Separate energies, full proposed movement and both
+histories remain available. Only the starting coordinates change on restart;
+material, holds, bending preferences, contact policy and all thresholds stay
+fixed. Source mismatches are refused before solving; crossing or unfinished
+results remain diagnostic. No continuous route or material convergence is
+claimed. See [the continuation study](notes/outer-strip-continuation.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

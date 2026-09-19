@@ -122,12 +122,10 @@ and 96 panel/energy selections, a missing-endpoint control and the connected
 bring the cold warning-free suite to 1,508 passing examples; formatting,
 HLint 3.10 and JavaScript checks pass.
 
-Next, give the two exhausted cases a separate extra-work control: restart
-their stored endpoints at the same final length weight, with unchanged
-material, holds, contact policy and stopping thresholds. Keep the original
-40-iteration results and compare the resumed movement, openings and energies.
-That tests whether more work settles these endpoints before drawing stronger
-refinement conclusions. It does not establish a global energy minimum.
+The [continuation study](outer-strip-continuation.md) gives those two stored
+endpoints additional work at the same final weight. They converge in 2 and
+15 more iterations, with negligible position changes; only the contact-enabled
+case passes. The original results above retain their 40-iteration limit.
 The matched interior energy change, `4×2`, real-paper calibration and
 material/illustration acceptance remain separate questions; neither band
 rule becomes the default from this experiment.
