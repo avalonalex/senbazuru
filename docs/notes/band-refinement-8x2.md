@@ -138,3 +138,7 @@ causes the remaining drift. Profile the costly accepted band solve under
 [#208](https://github.com/avalonalex/senbazuru/issues/208) before another large
 solve. A tighter-solve confirmation, real-paper calibration, general contact
 discovery and a continuously checked flexible route remain open.
+
+The [prescribed-bend follow-up](prescribed-bend-energy.md) now evaluates these
+terms without optimization and separates fixed corners, smooth sampling and
+full-length polygon approximations. The refinement gate above remains open.

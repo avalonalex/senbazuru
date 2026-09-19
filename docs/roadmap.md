@@ -48,7 +48,7 @@ closes.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,451 examples pass, including several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,487 examples pass, including prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -473,12 +473,19 @@ checked coupled angles.
    area; no region is dropped and no review verdict changes.
    **Illustration next: review these concrete strips at the intended drawing
    size before deciding a feature-specific illustration rule.
-   Material accuracy next: evaluate prescribed bends
-   on the existing meshes, without a solve,
-   comparing passive/control energies and the length penalty. Separate mesh
-   representation from the solver's chosen shape before increasing resolution
-   or the crane body patch. Profile the expensive accepted case under #208
-   before another large solve.**
+   Material accuracy: [#257](https://github.com/avalonalex/senbazuru/issues/257)
+   [measures prescribed bends](notes/prescribed-bend-energy.md) on all eight
+   existing meshes without optimization or contact repair. Fixed-corner energy
+   doubles with length refinement; the smooth cylinder's passive/control
+   costs approach explicit limits. Its sampled chords still miss the length
+   cap at `8×2`, while a full-length polygon has the same angular energy and
+   negligible length cost. Width leaves angular energies unchanged but adds
+   length-residual terms. These diagnose representation effects, not the cause
+   of every optimized shape change. Next: compare the clipped band-boundary
+   rule with consistent fractions of actual/preferred turn on these probes,
+   then test any candidate on small matched/contact-off solves. Keep the old
+   rule as a control and all acceptance caps unchanged. Profile the expensive
+   accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    Paired grips

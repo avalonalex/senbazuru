@@ -703,6 +703,27 @@ static-endpoint and uncalibrated-material limitations apply. This more
 expensive comparison is opt-in, separate from generating the entire gallery.
 See [the refinement study](notes/unequal-crease-refinement.md).
 
+### Measuring prescribed bends without optimization
+
+```bash
+stack run senbazuru-material-study -- --prescribed-bend build/fold-material
+```
+
+Open [the prescribed-bend comparison](http://127.0.0.1:8000/prescribed-bend.html)
+with the existing gallery server. Four known shapes on eight existing meshes
+separate passive material bending, the imposed upper-band preference and
+length penalties. The weight selector re-evaluates the reported penalty; it
+runs no solver. Both layers coincide, the central crease stays closed, and the
+old grips are not imposed. Their displacement is explicitly reported.
+
+`prescribed-bend/` retains 32 shared-scale profile SVGs, 32 material FOLDs and
+32 detailed JSON files, plus `checks.json`. A sampled smooth cylinder has short
+straight chords and fails the unchanged length cap even at `8×2`; it remains
+a diagnostic. A companion polygon preserves edge lengths but only approximates
+the cylinder. Neither is an equilibrium or a checked motion. No extra model
+viewer dependencies or archived solves are needed. See [the measured formulas
+and next experiment](notes/prescribed-bend-energy.md).
+
 ### Comparing paper at illustration scale
 
 ```bash
