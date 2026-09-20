@@ -13,6 +13,13 @@ module BendRefinement
   ( ReferenceMesh (..),
     referenceMeshes,
     referenceColumns,
+    ReferenceGrid,
+    makeReferenceGrid,
+    gridColumns,
+    referenceGrid,
+    gridProfile,
+    gridReference,
+    gridAngularCost,
     ReferenceConstruction (..),
     referenceProfile,
     fixedReference,
@@ -21,6 +28,7 @@ module BendRefinement
 where
 
 import ClosedCrease
+import Control.Monad (unless)
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import FoldBending
@@ -52,6 +60,23 @@ referenceColumns Uniform1024 = uniformColumns 128
 uniformColumns :: Int -> [Rational]
 uniformColumns count = [fromIntegral i / fromIntegral (2 * count) | i <- [0 .. count]]
 
+-- | A validated material grid lets the same construction measure a new
+-- placement policy without copying the paper or spring implementation. Keep
+-- the original sheet ends and inner-grip boundary, and reject columns whose
+-- conversion to floating-point positions would collapse or overflow.
+newtype ReferenceGrid = ReferenceGrid {gridColumns :: [Rational]}
+  deriving stock (Eq, Show)
+
+makeReferenceGrid :: [Rational] -> Either ClosedCreaseError ReferenceGrid
+makeReferenceGrid columns = do
+  let coordinates = map (fromRational :: Rational -> Double) columns
+  unless (take 1 columns == [0] && take 1 (reverse columns) == [1 / 2] && 1 / 8 `elem` columns && and (zipWith (<) coordinates (drop 1 coordinates)) && all (\x -> not (isNaN x || isInfinite x)) coordinates) $
+    Left (ClosedCreaseError "reference grid needs increasing finite material columns from 0 to 1/2, including the inner-grip boundary 1/8")
+  pure (ReferenceGrid columns)
+
+referenceGrid :: ReferenceMesh -> ReferenceGrid
+referenceGrid = ReferenceGrid . referenceColumns
+
 data ReferenceConstruction = SampledReference | LengthReference
   deriving stock (Eq, Show, Enum, Bounded)
 
@@ -59,18 +84,24 @@ data ReferenceConstruction = SampledReference | LengthReference
 -- coordinates. The flat inner strip stays exactly fixed. No normalization
 -- changes the energy weights, which come from the original material mesh.
 referenceProfile :: ReferenceMesh -> ReferenceConstruction -> HeldCurve -> [V3]
-referenceProfile choice construction curve = case construction of
+referenceProfile = gridProfile . referenceGrid
+
+gridProfile :: ReferenceGrid -> ReferenceConstruction -> HeldCurve -> [V3]
+gridProfile grid construction curve = case construction of
   SampledReference -> points
   LengthReference -> scanl (^+^) (V3 0 0 0) [((b - a) / norm chord) *^ chord | (a, b, chord) <- chords]
   where
-    columns = map fromRational (referenceColumns choice)
+    columns = map fromRational (gridColumns grid)
     points = [curvePoint curve s 0 | s <- columns]
     chords = [(a, b, q ^-^ p) | ((a, p), (b, q)) <- zip (zip columns points) (drop 1 (zip columns points))]
 
 fixedReference :: ReferenceMesh -> ReferenceConstruction -> HeldCurve -> Either ClosedCreaseError ClosedCrease
-fixedReference choice construction curve = do
-  let columns = map fromRational (referenceColumns choice)
-      profile = referenceProfile choice construction curve
+fixedReference = gridReference . referenceGrid
+
+gridReference :: ReferenceGrid -> ReferenceConstruction -> HeldCurve -> Either ClosedCreaseError ClosedCrease
+gridReference grid construction curve = do
+  let columns = map fromRational (gridColumns grid)
+      profile = gridProfile grid construction curve
       half sign = [materialSample (sign * u) y (V3 x y z) | (u, V3 x _ z) <- zip columns profile, y <- [-0.5, 0, 0.5]]
       lower = half 1
       upperId i = if i < 3 then i else length lower + i - 3
@@ -88,7 +119,10 @@ fixedReference choice construction curve = do
 -- have the same directions and therefore the same angular cost, despite
 -- their different length error and grip displacement.
 referenceAngularCost :: ReferenceMesh -> HeldCurve -> Double
-referenceAngularCost choice curve = sum [0.1 * (q - p) ^ (2 :: Int) / ((a + b) / 2) | ((a, p), (b, q)) <- zip rows (drop 1 rows)]
+referenceAngularCost = gridAngularCost . referenceGrid
+
+gridAngularCost :: ReferenceGrid -> HeldCurve -> Double
+gridAngularCost grid curve = sum [0.1 * (q - p) ^ (2 :: Int) / ((a + b) / 2) | ((a, p), (b, q)) <- zip rows (drop 1 rows)]
   where
-    columns = map fromRational (referenceColumns choice)
+    columns = map fromRational (gridColumns grid)
     rows = [(b - a, atan2 z x) | (a, b) <- zip columns (drop 1 columns), let V3 x _ z = curvePoint curve b 0 ^-^ curvePoint curve a 0]

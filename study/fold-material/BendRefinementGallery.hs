@@ -3,7 +3,7 @@
 -- the existing length, angle and exact touching-order checks. The analytic
 -- cost is a numerical reference, not a calibrated stiffness of real paper.
 -- The page selects exported data only; all geometry and plots are Haskell.
-module BendRefinementGallery (writeBendRefinement) where
+module BendRefinementGallery (writeBendRefinement, ReferenceExport (..), writeReferenceState) where
 
 import BendLocations (locateBends)
 import BendLocationsGallery (rowJson)
@@ -13,6 +13,7 @@ import Control.Monad (forM, forM_)
 import CoupledCreaseGallery (matching)
 import CreasePairContact
 import Data.Aeson (Value, encode, object, (.=))
+import Data.Aeson.Types (Pair)
 import Data.ByteString.Lazy qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -46,56 +47,9 @@ writeBendRefinement destination = do
     curve <- checked (commonCurveWith family)
     target <- checked gripTarget
     runs <- forM [(c, m) | c <- constructions, m <- referenceMeshes] $ \((construction, ck), (choice, mk, label)) -> do
-      paper <- checked (fixedReference choice construction curve)
-      measured <- checked (measureProbe paper)
-      rows <- checked (locateBends paper)
-      gaps <- checked (auditPairContact (closedOwners paper) (closedMesh paper))
-      surface <- checked (closedSurface paper)
-      let mesh = closedMesh paper
-          stem = name <> "-" <> ck <> "-" <> mk
-          outer = maximum (0 : [norm (position p ^-^ V3 x (materialV p) z) | p <- samples mesh, abs (materialU p) == 0.5, let V3 x _ z = target])
-          inner = maximum (0 : [norm (position p ^-^ V3 (abs (materialU p)) (materialV p) 0) | p <- samples mesh, abs (materialU p) <= heldStart])
-          distance = maximum (0 : [norm (position p ^-^ curvePoint curve (abs (materialU p)) (materialV p)) | p <- samples mesh])
-          energy = curveEnergy curve
-          errors cost = object ["signedDifference" .= (cost - energy), "absoluteError" .= abs (cost - energy), "relativeErrorPercent" .= (100 * abs (cost - energy) / energy)]
-          columns = map (fromRational :: Rational -> Double) (referenceColumns choice)
-          report =
-            object
-              [ "id" .= stem,
-                "construction" .= ck,
-                "mesh" .= mk,
-                "label" .= label,
-                "anchor" .= (choice == Uneven120),
-                "columns" .= columns,
-                "maxColumnSpacing" .= maximum (0 : zipWith (-) (drop 1 columns) columns),
-                "vertices" .= length (samples mesh),
-                "triangles" .= length (triangles mesh),
-                "components" .= componentCount mesh,
-                "sharedCreaseVertices" .= closedRoot paper,
-                "innerGripMovement" .= inner,
-                "outerGripMovement" .= outer,
-                "maxVertexDistanceToCurve" .= distance,
-                "maxRelativeEdgeError" .= probeRelativeError measured,
-                "lengthPasses" .= (probeRelativeError measured <= 1e-5),
-                "maxCreaseError" .= probeCreaseError measured,
-                "minimumExactGap" .= show (pairMinimum gaps),
-                "maximumExactGap" .= show (pairMaximum gaps),
-                "lowerPassive" .= probeLowerEnergy measured,
-                "upperPassive" .= probeUpperEnergy measured,
-                "lowerError" .= errors (probeLowerEnergy measured),
-                "upperError" .= errors (probeUpperEnergy measured),
-                "predictedPassive" .= referenceAngularCost choice curve,
-                "continuousEnergy" .= energy,
-                "creaseEnergy" .= probeCreaseEnergy measured,
-                "controlEnergy" .= probeControlEnergy measured,
-                "lengthSquares" .= probeLengthSquares measured,
-                "lengthEnergy" .= (1e10 * probeLengthSquares measured / 2),
-                "diagnostic" .= True
-              ]
-          detail = object ["summary" .= report, "springs" .= map rowJson rows, "edges" .= [object ["vertices" .= [a, b], "rest" .= edgeRest e, "actual" .= edgeActual e] | e <- probeEdges measured, let (a, b) = edgeIds e]]
-      BL.writeFile (output </> stem <> ".json") (encode detail)
-      BL.writeFile (output </> stem <> ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru fixed bend refinement") Nothing (Just (T.pack name <> " · " <> T.pack ck <> " · " <> label)) Nothing [] (materialFrame surface) []))
-      TIO.writeFile (output </> stem <> ".svg") (profileSvg curve target paper)
+      let stem = name <> "-" <> ck <> "-" <> mk
+          description = ReferenceExport stem (T.pack name <> " · " <> T.pack ck <> " · " <> label) ["construction" .= ck, "mesh" .= mk, "label" .= label, "anchor" .= (choice == Uneven120)]
+      (paper, measured, report) <- writeReferenceState output curve (referenceGrid choice) construction description
       pure (construction, choice, stem, paper, measured, report)
     comparisons <- forM [(a, b) | a@(c, m, _, _, _, _) <- runs, b@(d, n, _, _, _, _) <- runs, c == d, (m, n) `elem` pairs] $ \((_, _, a, pa, ma, _), (_, _, b, pb, mb, _)) -> do
       movement <- checked (matching (closedMesh pa) (closedMesh pb))
@@ -110,6 +64,66 @@ writeBendRefinement destination = do
   putStrLn "Wrote bend-refinement.html: 24 fixed-curve references; no per-mesh fits or material solves."
   where
     pairs = [(Uniform64, Uniform128), (Uniform128, Uniform256), (Uniform256, Uniform512), (Uniform512, Uniform1024), (Uniform64, Uneven120)]
+
+-- | Metadata belongs to the experiment; all measurements and exports share
+-- one implementation so a new placement policy cannot quietly change them.
+data ReferenceExport = ReferenceExport
+  { exportStem :: String,
+    exportTitle :: Text,
+    exportFields :: [Pair]
+  }
+
+writeReferenceState :: FilePath -> HeldCurve -> ReferenceGrid -> ReferenceConstruction -> ReferenceExport -> IO (ClosedCrease, ProbeMeasure, Value)
+writeReferenceState output curve grid construction description = do
+  target <- checked gripTarget
+  paper <- checked (gridReference grid construction curve)
+  measured <- checked (measureProbe paper)
+  rows <- checked (locateBends paper)
+  gaps <- checked (auditPairContact (closedOwners paper) (closedMesh paper))
+  surface <- checked (closedSurface paper)
+  let mesh = closedMesh paper
+      stem = exportStem description
+      outer = maximum (0 : [norm (position p ^-^ V3 x (materialV p) z) | p <- samples mesh, abs (materialU p) == 0.5, let V3 x _ z = target])
+      inner = maximum (0 : [norm (position p ^-^ V3 (abs (materialU p)) (materialV p) 0) | p <- samples mesh, abs (materialU p) <= heldStart])
+      distance = maximum (0 : [norm (position p ^-^ curvePoint curve (abs (materialU p)) (materialV p)) | p <- samples mesh])
+      energy = curveEnergy curve
+      errors cost = object ["signedDifference" .= (cost - energy), "absoluteError" .= abs (cost - energy), "relativeErrorPercent" .= (100 * abs (cost - energy) / energy)]
+      columns = map (fromRational :: Rational -> Double) (gridColumns grid)
+      report =
+        object $
+          [ "id" .= stem,
+            "columns" .= columns,
+            "maxColumnSpacing" .= maximum (0 : zipWith (-) (drop 1 columns) columns),
+            "vertices" .= length (samples mesh),
+            "triangles" .= length (triangles mesh),
+            "components" .= componentCount mesh,
+            "sharedCreaseVertices" .= closedRoot paper,
+            "innerGripMovement" .= inner,
+            "outerGripMovement" .= outer,
+            "maxVertexDistanceToCurve" .= distance,
+            "maxRelativeEdgeError" .= probeRelativeError measured,
+            "lengthPasses" .= (probeRelativeError measured <= 1e-5),
+            "maxCreaseError" .= probeCreaseError measured,
+            "minimumExactGap" .= show (pairMinimum gaps),
+            "maximumExactGap" .= show (pairMaximum gaps),
+            "lowerPassive" .= probeLowerEnergy measured,
+            "upperPassive" .= probeUpperEnergy measured,
+            "lowerError" .= errors (probeLowerEnergy measured),
+            "upperError" .= errors (probeUpperEnergy measured),
+            "predictedPassive" .= gridAngularCost grid curve,
+            "continuousEnergy" .= energy,
+            "creaseEnergy" .= probeCreaseEnergy measured,
+            "controlEnergy" .= probeControlEnergy measured,
+            "lengthSquares" .= probeLengthSquares measured,
+            "lengthEnergy" .= (1e10 * probeLengthSquares measured / 2),
+            "diagnostic" .= True
+          ]
+            ++ exportFields description
+      detail = object ["summary" .= report, "springs" .= map rowJson rows, "edges" .= [object ["vertices" .= [a, b], "rest" .= edgeRest e, "actual" .= edgeActual e] | e <- probeEdges measured, let (a, b) = edgeIds e]]
+  BL.writeFile (output </> stem <> ".json") (encode detail)
+  BL.writeFile (output </> stem <> ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru fixed bend refinement") Nothing (Just (exportTitle description)) Nothing [] (materialFrame surface) []))
+  TIO.writeFile (output </> stem <> ".svg") (profileSvg curve target paper)
+  pure (paper, measured, report)
 
 coords :: V3 -> [Double]
 coords (V3 x y z) = [x, y, z]

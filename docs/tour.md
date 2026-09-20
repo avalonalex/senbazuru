@@ -1126,6 +1126,16 @@ slower eventual convergence. Sampled edge shortening and full-length grip drift
 remain explicit; this numerical comparison does not establish a usable mesh
 for arbitrary crane shapes. Run `--bend-refinement` for the gallery.
 
+The [equal-budget placement study](notes/transition-refinement.md) gives
+intervals near the two curvature joins four times the refinement priority.
+This fixed rule improves analytic-cost accuracy on both curves: at 1,024
+triangles, circular error falls from 1.19% to 0.59%, and smooth error from
+0.12% to 0.096%. Full-length grip drift generally increases because the middle
+of the bend receives fewer triangles. Whole-material shape comparisons include
+locations present in only one mesh, so matching vertices cannot hide the
+difference. Run `--transition-refinement`; the result does not select an optimal
+mesh, solve equilibrium or relax the material criteria.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
