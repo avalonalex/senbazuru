@@ -4,7 +4,7 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-19**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-20**, through
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -42,13 +42,21 @@ closes.
 
 ## Where the project stands
 
+**Material priority, 2026-09-20:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
+[sets an illustration milestone](notes/illustration-material-priority.md).
+Energy/opening refinement percentages remain research diagnostics; valid paper,
+accepted solves and explicit visual review still gate illustrations. Pause
+further cost refinement and study controlled opening of a small body patch
+connected to both wing roots. Earlier failures and unmet research targets below
+remain evidence, not current prerequisites for starting that study.
+
 | | |
 | --- | --- |
 | Stage | Alpha; obsolete internal paths can be replaced as regression cases pass |
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,497 examples pass, including isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,774 examples pass on merged #314, including isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -312,8 +320,9 @@ checked coupled angles.
    body patch. [Its measurements](notes/wing-root-holds.md) distinguish accepted
    static shapes from failed body attempts, and preserve inherited contact
    orders through held layers.
-   **Next: compare the authored root spring with ordinary uncreased panel
-   bending, and diagnose body-release failures before extending the free region.**
+   The earlier plan was to compare the authored root spring with ordinary
+   uncreased panel bending and diagnose body-release failures. The current
+   priority is the bounded illustration study recorded at the end of this item.
    [Photographed crane-opening references](notes/opening-a-crane.md) show why
    the larger experiment should use both wings and an opening body pocket.
    [#210](https://github.com/avalonalex/senbazuru/issues/210) now maps five
@@ -601,17 +610,24 @@ checked coupled angles.
    98.32% of the passive gap lies in free paper; lower transverse costs are
    partly offset by higher diagonal costs. The largest length penalty lies
    farther out than the worst relative error, which sits just outside the grip.
-   Next: subdivide the saved surfaces across width without changing their shape,
-   and remeasure both costs before another equilibrium solve. This isolates
-   cost accounting from shape response; it does not establish width convergence.
-   Keep width refinement and default-policy decisions separate.
-   Keep `4×2`, default-rule changes and material/illustration decisions separate.
+   **Next: [#315](https://github.com/avalonalex/senbazuru/issues/315)
+   [prioritizes plausible crane illustrations](notes/illustration-material-priority.md).
+   Defer shape-preserving width subdivision and further cost-refinement studies
+   until a visible artifact, meaningful layer change or unreliable authored
+   control makes them relevant. Return to a small body patch connected to both
+   wing roots, with declared spread/opening controls and free neck/tail
+   attachment response. Preserve endpoint material/contact and solver checks;
+   earlier body-release failures still need a compatible geometry.
+   Review a few static poses at declared drawing sizes and cameras, with
+   refinement evidence and separate diagnostics. Energy and relative-opening
+   convergence are deferred research, not illustration gates. Keep calibrated
+   physics, pressure loads and default-policy changes separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
-   Paired grips
-   with the central body and neck/tail attachments free follow as a separate
-   experiment; measure their response rather than prescribing it.
+   The full coupled crane follows the small patch only after its geometry
+   and visible result are accepted; measure attachment response rather than
+   prescribing a photographed head/tail trajectory.
    Keep these endpoint experiments distinct from a checked flexible route.
    Returning the rigid wing onto its resting surface and a joined sequence
    lowering both wings remain useful motion extensions.

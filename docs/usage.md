@@ -1060,6 +1060,15 @@ absolute-error costs and worst relative errors. No threshold or convergence
 claim changes. See [the measured locations](notes/held-layout-costs.md).
 
 
+The [current study milestone](notes/illustration-material-priority.md) prioritizes
+plausible crane illustrations and controlled wing/body opening. The commands
+above retain their original numerical verdicts; a failed energy-refinement
+target stays visible as research evidence. It no longer blocks the illustration
+milestone, whose endpoint paper/solver checks and explicit visual review remain
+required. No existing failed geometry or unresolved exposed-layer comparison
+is automatically accepted.
+
+
 ### Comparing paper at illustration scale
 
 ```bash
