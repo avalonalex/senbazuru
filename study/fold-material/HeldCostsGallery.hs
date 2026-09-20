@@ -3,7 +3,7 @@
 -- and checks the original solver policy. A shared plotting scale keeps small
 -- contributions small when switching meshes or panels. SVG geometry belongs
 -- here in Diagram, while the HTML only selects plots and formats measurements.
-module HeldCostsGallery (writeHeldCosts, differenceMap, heldChangeJson) where
+module HeldCostsGallery (writeHeldCosts, differenceMap, heldChangeJson, costMap, plot) where
 
 import BendLocations
 import BendLocationsGallery (plotPoint)
@@ -145,12 +145,16 @@ plot title top signed traces extra = renderSvg defaultPage {pageWidth = 720, pag
         ++ [Label (Colour "#55534d") 11 (V2 x (if signed then -0.18 else -0.027)) label | (x, label) <- [(0, "crease · 0"), (0.125, "1/8"), (0.25, "1/4"), (0.5, "1/2")]]
 
 differenceMap :: Double -> [EdgeChange] -> Text
-differenceMap top cs = renderSvg defaultPage {pageWidth = 720, pageHeight = 260, pageMargin = 25, pageBackground = Nothing, pageTitle = Just "Signed cost changes on unfolded material"} $ diagramWithExtent (Box (V2 (-0.025) (-0.03)) (V2 0.53 0.18)) shapes
+differenceMap top cs = costMap top [(locatedFrom (changeLocation c), locatedTo (changeLocation c), edgeDelta c) | c <- cs]
+
+-- | A shared map for passive-spring and numerical length-edge costs.
+costMap :: Double -> [(V2, V2, Double)] -> Text
+costMap top edges = renderSvg defaultPage {pageWidth = 720, pageHeight = 260, pageMargin = 25, pageBackground = Nothing, pageTitle = Just "Signed cost changes on unfolded material"} $ diagramWithExtent (Box (V2 (-0.025) (-0.03)) (V2 0.53 0.18)) shapes
   where
     place (V2 u v) = V2 (abs u) (0.12 * (v + 0.5))
     shapes =
       [Fill (Colour "#f3ede1") [[V2 0 0, V2 0.5 0, V2 0.5 0.12, V2 0 0.12]], Fill (Colour "#e8e1d3") [[V2 0 0, V2 0.125 0, V2 0.125 0.12, V2 0 0.12]]]
-        ++ [Polyline (solid (Colour (if abs d < top / 100 then "#cbc4b7" else signedColour d)) (0.7 + 4 * abs d / top)) [place (locatedFrom h), place (locatedTo h)] | c <- cs, let h = changeLocation c, let d = edgeDelta c]
+        ++ [Polyline (solid (Colour (if abs d < top / 100 then "#cbc4b7" else signedColour d)) (0.7 + 4 * abs d / top)) [place a, place b] | (a, b, d) <- edges]
         ++ [Polyline (solid (Colour "#777163") 0.6) [V2 x (-0.006), V2 x 0.132] | x <- [1 / 8, 5 / 32]]
         ++ [Label (Colour "#55534d") 11 (V2 x (-0.023)) label | (x, label) <- [(0, "crease"), (0.125, "held edge"), (0.5, "1/2")]]
         ++ [Label (Colour "#55534d") 11 (V2 0 0.16) ("Width: |cost change|; maximum " <> num top)]

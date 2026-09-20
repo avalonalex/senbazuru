@@ -594,9 +594,17 @@ checked coupled angles.
    are 0.000587 / 0.000501 and passive changes shrink to 3.75% / 3.78%, meeting
    those targets. Equal-budget layouts still differ by 10.36%; length-penalty
    costs rise 348% / 489% despite passing edge errors. No overall material
-   convergence is claimed. Next: locate equal-budget passive and length-cost
-   differences on these saved meshes by material distance and edge direction,
-   without new solves. Keep width refinement and default-policy decisions separate.
+   convergence is claimed.
+   [#313](https://github.com/avalonalex/senbazuru/issues/313)
+   [locates that layout gap beside length penalties](notes/held-layout-costs.md)
+   on four unchanged endpoints, without solves or repairs. At 512 triangles,
+   98.32% of the passive gap lies in free paper; lower transverse costs are
+   partly offset by higher diagonal costs. The largest length penalty lies
+   farther out than the worst relative error, which sits just outside the grip.
+   Next: subdivide the saved surfaces across width without changing their shape,
+   and remeasure both costs before another equilibrium solve. This isolates
+   cost accounting from shape response; it does not establish width convergence.
+   Keep width refinement and default-policy decisions separate.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

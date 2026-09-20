@@ -1177,6 +1177,14 @@ costs rise. Run `--held-refinement` with the saved `held-confirmation/` director
 to inspect both kinds of difference. Neither a passing passive-cost target nor
 a small total-cost change establishes independence from triangle placement.
 
+The [equal-budget cost maps](notes/held-layout-costs.md) then locate the
+10.36% layout gap without another solve. At 512 triangles, 98.32% lies in the
+free paper: lower transverse costs are partly offset by higher diagonal costs.
+Most extra length penalty also lies there, but the worst relative length error
+is on a short edge immediately outside the grip. Run `--held-layout-costs`
+with the saved `held-refinement/` directory to inspect both cost maps and
+rankings. Their co-location does not establish causation or select a better mesh.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

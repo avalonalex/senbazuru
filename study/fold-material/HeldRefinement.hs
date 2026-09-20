@@ -12,6 +12,7 @@ module HeldRefinement
     refinementStop,
     refinementWeight,
     confirmedRecord,
+    confirmationHistory,
   )
 where
 
@@ -19,7 +20,7 @@ import Control.Monad (forM_, unless)
 import CoupledCrease (coupledSeed)
 import CreaseInequality (InequalityError (..))
 import Data.Aeson (Value (..), object, withObject, (.:), (.=))
-import Data.Aeson.Types (parseEither)
+import Data.Aeson.Types (Parser, parseEither)
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -70,30 +71,36 @@ confirmedRecord key layout c document = do
       expect "refusal" Null
       expect "continuousMotionChecked" False
       expect "stages" (["source", "repair", "after"] :: [Text])
-      solve <- o .: "solve"
-      converged <- solve .: "converged"
-      count <- solve .: "iterations"
-      steps <- solve .: "steps"
-      unless (converged && count == length steps && count > 0 && count <= 40) (fail "confirmation must converge within its original budget")
-      forM_ (zip [1 :: Int ..] steps) $ \(i, step) ->
-        withObject
-          "confirmation step"
-          ( \s -> do
-              number <- s .: "iteration"
-              weight <- s .: "lengthWeight"
-              movement <- s .: "fullRepairedMovement"
-              settled <- s .: "stageSettled"
-              accepted <- s .: "accepted"
-              quadratic <- s .: "quadratic"
-              solved <- quadratic .: "converged"
-              before <- s .: "energyBefore"
-              after <- s .: "energyAfter"
-              len <- s .: "lengthError"
-              unless (number == i && weight == refinementWeight && finite movement && movement >= 0 && solved && finite before && finite after && finite len && len >= 0) (fail "invalid confirmation step")
-              if i == count
-                then unless (settled && not accepted && movement <= refinementStop && len <= 1e-5 && before == after) (fail "confirmation did not meet the tighter stopping test")
-                else unless (accepted && not settled && after < before) (fail "confirmation stopped before its final step")
-          )
-          step
+      o .: "solve" >>= confirmationHistory
+
+-- | Final-weight confirmation uses a full-proposal stopping test, not the
+-- size of a shortened accepted step. A budget-limited history is refused.
+confirmationHistory :: Value -> Parser ()
+confirmationHistory = withObject "confirmation solve" $ \solve -> do
+  converged <- solve .: "converged"
+  count <- solve .: "iterations"
+  steps <- solve .: "steps"
+  unless (converged && count == length steps && count > 0 && count <= 40) (fail "confirmation must converge within its original budget")
+  forM_ (zip [1 :: Int ..] steps) $ \(i, step) ->
+    withObject
+      "confirmation step"
+      ( \s -> do
+          number <- s .: "iteration"
+          weight <- s .: "lengthWeight"
+          movement <- s .: "fullRepairedMovement"
+          settled <- s .: "stageSettled"
+          accepted <- s .: "accepted"
+          quadratic <- s .: "quadratic"
+          solved <- quadratic .: "converged"
+          before <- s .: "energyBefore"
+          after <- s .: "energyAfter"
+          len <- s .: "lengthError"
+          unless (number == i && weight == refinementWeight && finite movement && movement >= 0 && solved && finite before && finite after && finite len && len >= 0) (fail "invalid confirmation step")
+          if i == count
+            then unless (settled && not accepted && movement <= refinementStop && len <= 1e-5 && before == after) (fail "confirmation did not meet the tighter stopping test")
+            else unless (accepted && not settled && after < before) (fail "confirmation stopped before its final step")
+      )
+      step
+  where
     finite :: Double -> Bool
     finite x = not (isNaN x || isInfinite x)

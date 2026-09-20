@@ -37,6 +37,7 @@ import HeldBendGallery (writeHeldBends, writeSmoothBends)
 import HeldConfirmationGallery (writeHeldConfirmation)
 import HeldCostsGallery (writeHeldCosts)
 import HeldEquilibriumGallery (writeHeldEquilibrium)
+import HeldLayoutCostsGallery (writeHeldLayoutCosts)
 import HeldRefinementGallery (writeHeldRefinement)
 import HelmetGallery (writeHelmetGallery)
 import IllustrationGallery (writeIllustrationComparison)
@@ -77,6 +78,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["--held-layout-costs", source, destination] -> writeHeldLayoutCosts source destination
     ["--held-refinement", source, destination] -> writeHeldRefinement source destination
     ["--held-confirmation", source, destination] -> writeHeldConfirmation source destination
     ["--held-costs", source, destination] -> writeHeldCosts source destination
@@ -127,7 +129,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do
