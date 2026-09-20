@@ -1185,6 +1185,14 @@ is on a short edge immediately outside the grip. Run `--held-layout-costs`
 with the saved `held-refinement/` directory to inspect both cost maps and
 rankings. Their co-location does not establish causation or select a better mesh.
 
+The [current material priority](notes/illustration-material-priority.md) is a
+plausible, controllable illustration. Energy convergence remains diagnostic;
+connected material, lengths, declared crease controls, accepted solves and
+contact/order checks remain required. Visual review uses the intended drawing
+size and cameras, including meaningful exposed layers. The next study couples
+a small body patch to both wing roots. Further cost refinement is deferred
+until it affects the picture or the reliability of those controls.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

@@ -110,12 +110,18 @@ formatting, HLint 3.10 and JavaScript checks pass.
 The evidence narrows the next question to distributed, direction-dependent
 costs in the free paper. It does **not** establish that the length penalty
 causes the passive gap, or that either layout is more physically accurate.
-A useful next control is width subdivision of the saved surfaces made of flat triangles: put new vertices on the existing triangles, preserve their shape,
+A possible control is width subdivision of the saved surfaces made of flat
+triangles: put new vertices on the existing triangles, preserve their shape,
 and remeasure both costs before solving again. That would isolate a change
 in cost accounting from a change in the chosen equilibrium; it would not
 establish width convergence. More length triangles or a different penalty
 weight are not justified by these maps alone. Production defaults, physical
 stiffness calibration and continuously checked flexible motion remain separate.
+
+The [owner's subsequent illustration decision](illustration-material-priority.md)
+defers that width control and further energy convergence unless they affect
+visible output or reliable controls. Coupled wing/body opening is now the next
+study; the measurements and research limitations above remain unchanged.
 
 Continues [#195](https://github.com/avalonalex/senbazuru/issues/195) and track A
 of [#269](https://github.com/avalonalex/senbazuru/issues/269).
