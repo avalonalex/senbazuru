@@ -266,6 +266,7 @@ hintSamples =
     NotDegreeSign '˚',
     StraySign,
     ZeroDenominator,
+    CountTooLarge 18446744073709551617,
     UnclosedBlock "step half",
     UnsupportedVersion 2,
     LooksLikeFold,
@@ -312,6 +313,7 @@ sampledHint = \case
   NotDegreeSign {} -> "NotDegreeSign"
   StraySign -> "StraySign"
   ZeroDenominator -> "ZeroDenominator"
+  CountTooLarge {} -> "CountTooLarge"
   UnclosedBlock {} -> "UnclosedBlock"
   UnsupportedVersion {} -> "UnsupportedVersion"
   LooksLikeFold -> "LooksLikeFold"

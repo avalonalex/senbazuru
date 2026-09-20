@@ -143,6 +143,10 @@ data Hint
   | -- | @n\/0@. A parse problem and not a static one, because no 'Rational'
     -- can hold it, so no tree could carry it as far as the checker.
     ZeroDenominator
+  | -- | A count of layers or of turns too large for the tree to hold. A parse
+    -- problem for the same reason: the tree keeps a count in an 'Int', and
+    -- narrowing a larger number would wrap it round to a small one in silence.
+    CountTooLarge Integer
   | -- | A @{@ that is never closed, with the words that opened it:
     -- @step half@. Its span is the brace, not the end of the file, because
     -- the brace is what the author has to find.
@@ -338,6 +342,7 @@ hintWords = \case
     quote (T.singleton c) <> " (" <> codePoint c <> ") is not the degree sign; write ° (" <> codePoint '°' <> ") or deg"
   StraySign -> "a minus sign is allowed only in (u, v), in model pairs and in pose angles"
   ZeroDenominator -> "a fraction cannot have a denominator of 0"
+  CountTooLarge n -> tshow n <> " is too large to be a count of layers or of turns"
   UnclosedBlock opening -> "the " <> quote "{" <> " opening " <> opening <> " is never closed"
   UnsupportedVersion n -> "this is foldseq version " <> tshow n <> ", and only version 1 is understood"
   LooksLikeFold -> "this looks like a FOLD file, not a sequence source"

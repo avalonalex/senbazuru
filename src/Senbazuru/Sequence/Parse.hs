@@ -133,9 +133,11 @@ where
 import Control.Applicative (empty, (<|>))
 import Control.Monad (void, when)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Reader (ReaderT, asks, local, runReaderT)
+import Control.Monad.Trans.Reader (ReaderT, ask, asks, local, runReaderT)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
 import Data.Char (chr, digitToInt, isAlpha, isAlphaNum, isDigit, isHexDigit, isUpper)
+import Data.IntMap.Strict (IntMap)
+import Data.IntMap.Strict qualified as IntMap
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
@@ -157,7 +159,6 @@ import Text.Megaparsec
     label,
     lookAhead,
     many,
-    notFollowedBy,
     option,
     optional,
     parseError,
@@ -194,7 +195,7 @@ type Parser = ReaderT Env (StateT Int (Parsec Refusal Text))
 
 data Env = Env
   { envPath :: FilePath,
-    envLineStarts :: [Int],
+    envLineStarts :: IntMap Int,
     envWrapped :: Bool
   }
 
@@ -266,8 +267,8 @@ otherSpellings =
 -- @"#"@ among the things that could have come next, which is true and no help.
 space :: Parser ()
 space = hidden $ do
-  wrapped <- asks envWrapped
-  let blank c = c == ' ' || c == '\t' || c == '\r' || (wrapped && c == '\n')
+  newlineIsSpace <- asks envWrapped
+  let blank c = c == ' ' || c == '\t' || c == '\r' || (newlineIsSpace && c == '\n')
   skipMany (void (takeWhile1P Nothing blank) <|> (char '#' *> void (takeWhileP Nothing (/= '\n'))))
 
 -- | A token: the thing itself, a note of where it ended, then the space after.
@@ -314,9 +315,13 @@ quoted text = "\"" <> text <> "\""
 -- wherever the brackets stand.
 bracketed :: Text -> Text -> Parser a -> Parser a
 bracketed open close inside = do
-  value <- local (\env -> env {envWrapped = True}) (symbol open *> inside)
+  value <- wrapped (symbol open *> inside)
   symbol close
   pure value
+
+-- | Run a parser with a newline counting as a space.
+wrapped :: Parser a -> Parser a
+wrapped = local (\env -> env {envWrapped = True})
 
 -- | A name. A reserved word here is refused by name, whichever word it is.
 name :: Parser Name
@@ -332,27 +337,42 @@ refusalKind = label "a kind of refusal" . lexeme $ do
   word <- lookAhead rawWord
   if maybe False (isUpper . fst) (T.uncons word) then RefusalKind word <$ rawWord else empty
 
+-- | A string. What could have come next is said in words, not as the tokens
+-- themselves: a string left open is a common mistake, and a message that
+-- quotes a quote, @expected \"\"\"@, is hard to read.
 stringLiteral :: Parser Text
 stringLiteral = label "a string" . lexeme $ do
   void (char '"')
   pieces <- many (plain <|> escaped)
-  void (char '"')
+  void (label "the closing quote of the string" (char '"'))
   pure (T.pack pieces)
   where
     plain = satisfy (\c -> c /= '"' && c /= '\\' && c /= '\n')
     escaped =
-      char '\\'
-        *> choice
-          [ '"' <$ char '"',
-            '\\' <$ char '\\',
-            '\n' <$ char 'n',
-            '\t' <$ char 't',
-            char 'u' *> char '{' *> codePoint <* char '}'
-          ]
-    codePoint = label "a character's code in hex" . try $ do
-      digits <- takeWhile1P Nothing isHexDigit
+      hidden (char '\\')
+        *> label
+          "one of the escapes \\\", \\\\, \\n, \\t and \\u{…}"
+          ( choice
+              [ '"' <$ char '"',
+                '\\' <$ char '\\',
+                '\n' <$ char 'n',
+                '\t' <$ char 't',
+                char 'u' *> char '{' *> codePoint <* char '}'
+              ]
+          )
+    -- The surrogates, U+D800 to U+DFFF, are codes and not characters. 'chr'
+    -- takes one all the same, and 'T.pack' would then swap it for U+FFFD, so
+    -- the author's text would change without a word.
+    --
+    -- The digits are looked at before they are consumed, as a keyword is, so
+    -- that a code refused is pointed at where it starts.
+    codePoint = label "a character's code in hex" $ do
+      digits <- lookAhead (takeWhile1P Nothing isHexDigit)
       let code = T.foldl' (\total d -> total * 16 + digitToInt d) 0 digits
-      if T.length digits <= 6 && code <= 0x10FFFF then pure (chr code) else empty
+          surrogate = code >= 0xD800 && code <= 0xDFFF
+      if T.length digits <= 6 && code <= 0x10FFFF && not surrogate
+        then chr code <$ takeWhileP Nothing isHexDigit
+        else empty
 
 -- ---------------------------------------------------------------------------
 -- Numbers
@@ -363,8 +383,21 @@ digits1 = takeWhile1P (Just "a digit") isDigit
 valueOf :: Text -> Integer
 valueOf = T.foldl' (\total d -> total * 10 + toInteger (digitToInt d)) 0
 
+-- | A whole number the tree keeps in an 'Int', with nothing consumed after it.
+--
+-- One too large for an 'Int' is refused, because 'fromInteger' narrows
+-- without a word: @top 18446744073709551617 layers@, which is 2^64 + 1, would
+-- come out as @top layer@.
+rawCount :: Parser Int
+rawCount = do
+  start <- getOffset
+  digits <- digits1
+  let value = valueOf digits
+  when (value > toInteger (maxBound :: Int)) (refuse start (T.length digits) (CountTooLarge value))
+  pure (fromInteger value)
+
 integer :: Parser Int
-integer = label "a whole number" (lexeme (fromInteger . valueOf <$> digits1))
+integer = label "a whole number" (lexeme rawCount)
 
 -- | A number as written, exactly: @175@, @0.58@ or @29\/50@. Nothing is
 -- consumed after it, because an angle's unit has to follow at once.
@@ -406,15 +439,26 @@ signedNumber = label "a number" . lexeme $ do
 -- | The unit that has to follow an angle's number at once. A bare number gets
 -- the hint that shows the fix, and so do the two characters that only look
 -- like the degree sign.
+--
+-- @deg@ is matched as a whole word, peeked at first as a keyword is, so that
+-- @90degrees@ is a number with no unit and not a failure at the @r@.
+--
+-- The look-alikes are tested before the letters, and the order matters: @º@,
+-- the masculine ordinal, /is/ a letter.
 degrees :: Int -> Rational -> Parser ()
 degrees start value = do
   here <- getOffset
   next <- optional (lookAhead (satisfy (const True)))
   case next of
     Just '°' -> void (char '°')
-    Just 'd' -> void (string "deg" *> notFollowedBy (satisfy wordChar))
-    Just c | c == 'º' || c == '˚' -> refuse here 1 (NotDegreeSign c)
-    _ -> refuse start (here - start) (NeedsUnit value)
+    Just c
+      | c == 'º' || c == '˚' -> refuse here 1 (NotDegreeSign c)
+      | isAlpha c -> do
+          unit <- lookAhead rawWord
+          if unit == "deg" then void rawWord else needsUnit here
+    _ -> needsUnit here
+  where
+    needsUnit here = refuse start (here - start) (NeedsUnit value)
 
 angle :: Parser Rational
 angle = label "an angle" $ do
@@ -435,7 +479,7 @@ signedAngle = label "an angle" . lexeme $ do
 turnCount :: Text -> Parser Int
 turnCount denominator =
   label "a turn" . lexeme $
-    (fromInteger . valueOf <$> digits1) <* label (T.unpack (quoted denominator)) (string denominator)
+    rawCount <* label (T.unpack (quoted denominator)) (string denominator)
 
 -- ---------------------------------------------------------------------------
 -- The file
@@ -446,9 +490,10 @@ sourceFile = do
   when looksLikeFold (refuse 0 1 LooksLikeFold)
   keyword "foldseq"
   versionAt <- getOffset
-  version <- integer
+  -- Read at full width, so that an absurd version is refused as itself.
+  version <- label "a whole number" (lexeme (valueOf <$> digits1))
   versionEnd <- lift get
-  when (version /= 1) (refuse versionAt (versionEnd - versionAt) (UnsupportedVersion (toInteger version)))
+  when (version /= 1) (refuse versionAt (versionEnd - versionAt) (UnsupportedVersion version))
   headerLines versionEnd emptyDraft
 
 -- | The header's lines as they are collected, each at most once.
@@ -748,9 +793,11 @@ point = label "a point" (choice [pointForm, coordinate, viewWord, respelled, Poi
 simpleLine :: Parser Line
 simpleLine = label "a line" (choice [lineForm, parenthesised, viewWord, LineNamed <$> name])
 
+-- The label keeps a message short. Without it, a statement cut short after
+-- @to@ would list every word a point or a line can start with.
 operand :: Parser Operand
 operand =
-  choice
+  label "a point or a line" . choice $
     [ OPoint <$> pointForm,
       OLine <$> lineForm,
       parenthesisedOrCoordinate,
@@ -760,11 +807,12 @@ operand =
     ]
   where
     -- No line starts with a number, so a digit or a sign after the bracket
-    -- means a coordinate.
+    -- means a coordinate. The bracket is read as 'bracketed' reads it, so that
+    -- whatever may stand between it and the number there, a new line or a
+    -- comment, may stand there here.
     parenthesisedOrCoordinate = do
-      isCoordinate <- option False (True <$ lookAhead (try (char '(' *> skipBlank *> satisfy (\c -> isDigit c || c == '-'))))
+      isCoordinate <- option False (True <$ lookAhead (try (wrapped (symbol "(") *> satisfy (\c -> isDigit c || c == '-'))))
       if isCoordinate then OPoint <$> coordinate else OLine <$> parenthesised
-    skipBlank = void (takeWhileP Nothing (\c -> c == ' ' || c == '\t' || c == '\r' || c == '\n'))
 
 -- | A point that starts with a keyword of its own.
 pointForm :: Parser Point
@@ -773,12 +821,11 @@ pointForm =
     [ keyword "corner" *> (CornerOf <$> corner),
       Centre <$ keyword "centre",
       keyword "midpoint" *> keyword "of" *> ((MidpointOfEdge <$> (keyword "edge" *> compass)) <|> (uncurry MidpointOf <$> segmentEnds)),
-      keyword "fraction" *> (flip uncurry' <$> number <*> (keyword "along" *> (alongEdge <|> segmentEnds))),
+      keyword "fraction" *> ((\r (p, q) -> FractionAlong r p q) <$> number <*> (keyword "along" *> (alongEdge <|> segmentEnds))),
       keyword "meet" *> (Meet <$> simpleLine <*> simpleLine),
       keyword "end" *> keyword "of" *> keyword "crease" *> keyword "of" *> (EndOfCreaseOf <$> name <*> (keyword "nearest" *> point))
     ]
   where
-    uncurry' (p, q) r = FractionAlong r p q
     alongEdge = do
       start <- getOffset
       keyword "edge"
@@ -799,7 +846,7 @@ numberPair :: Parser (Rational, Rational)
 numberPair = bracketed "(" ")" ((,) <$> signedNumber <*> (symbol "," *> signedNumber))
 
 segmentEnds :: Parser (Point, Point)
-segmentEnds = label "a segment, [P, Q]" (bracketed "[" "]" ((,) <$> point <*> (symbol "," *> point)))
+segmentEnds = label "a segment [P, Q]" (bracketed "[" "]" ((,) <$> point <*> (symbol "," *> point)))
 
 compass :: Parser Compass
 compass =
@@ -923,11 +970,16 @@ located piece = do
 spanFrom :: Int -> Parser Span
 spanFrom start = do
   end <- lift get
-  path <- asks envPath
-  starts <- asks envLineStarts
-  let (startLine, startColumn) = positionOf starts start
-      (endLine, endColumn) = positionOf starts end
-  pure (Span path startLine startColumn endLine endColumn)
+  env <- ask
+  pure (spanBetween env start end)
+
+-- | The span between two offsets, the second exclusive. The two may be on
+-- different lines: text inside brackets can wrap.
+spanBetween :: Env -> Int -> Int -> Span
+spanBetween env start end = Span (envPath env) startLine startColumn endLine endColumn
+  where
+    (startLine, startColumn) = positionOf (envLineStarts env) start
+    (endLine, endColumn) = positionOf (envLineStarts env) end
 
 lineOf :: Int -> Parser Int
 lineOf offset = asks (fst . (`positionOf` offset) . envLineStarts)
@@ -942,18 +994,20 @@ expectedAt at what = case NE.nonEmpty what of
   Just text -> parseError (TrivialError at Nothing (Set.singleton (Label text)))
   Nothing -> empty
 
--- | The offset at which each line starts, first line first.
-lineStartsOf :: Text -> [Int]
-lineStartsOf source = 0 : [index + 1 | (index, c) <- zip [0 ..] (T.unpack source), c == '\n']
+-- | Where each line starts: the offset of its first character, and the line's
+-- number. Line 1 starts at 0, so every offset has a line at or before it.
+lineStartsOf :: Text -> IntMap Int
+lineStartsOf source =
+  IntMap.fromDistinctAscList (zip (0 : [index + 1 | (index, c) <- zip [0 ..] (T.unpack source), c == '\n']) [1 ..])
 
 -- | Line and column of an offset, both counted from 1, one column to a
--- character.
-positionOf :: [Int] -> Int -> (Int, Int)
-positionOf starts offset = go 1 0 starts
-  where
-    go lineNumber lineStart = \case
-      next : rest | next <= offset -> go (if next == 0 then 1 else lineNumber + 1) next rest
-      _ -> (lineNumber, offset - lineStart + 1)
+-- character: the last line that starts at or before the offset, and how far
+-- into it the offset is. The second case is never reached, because line 1
+-- starts at 0 and no offset is negative.
+positionOf :: IntMap Int -> Int -> (Int, Int)
+positionOf starts offset = case IntMap.lookupLE offset starts of
+  Just (lineStart, lineNumber) -> (lineNumber, offset - lineStart + 1)
+  Nothing -> (1, offset + 1)
 
 -- | megaparsec's error as the language's own. Only the first error is used.
 problemFrom :: Env -> Text -> ParseError Text Refusal -> ParseProblem
@@ -962,12 +1016,12 @@ problemFrom env source = \case
     | Refusal hint width : _ <- [refusal | ErrorCustom refusal <- Set.toList problems] ->
         ParseProblem (spanOf at width) (foundAt at) [] (Just hint)
     | otherwise -> ParseProblem (spanOf at (widthOf (foundAt at))) (foundAt at) [] Nothing
+  -- The items are turned into words before they are listed, not after. A
+  -- token and a label can spell the same thing, and would be listed twice.
   TrivialError at _ expectedItems ->
-    ParseProblem (spanOf at (widthOf (foundAt at))) (foundAt at) (map itemWords (Set.toList expectedItems)) Nothing
+    ParseProblem (spanOf at (widthOf (foundAt at))) (foundAt at) (Set.toList (Set.map itemWords expectedItems)) Nothing
   where
-    spanOf at width =
-      let (lineNumber, column) = positionOf (envLineStarts env) at
-       in Span (envPath env) lineNumber column lineNumber (column + width)
+    spanOf at width = spanBetween env at (at + width)
 
     -- What is at the offset, read whole: a word, a number, or one character.
     foundAt at = case T.uncons (T.drop at source) of

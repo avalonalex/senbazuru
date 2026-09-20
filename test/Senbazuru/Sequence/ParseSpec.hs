@@ -115,6 +115,14 @@ spec = do
     it "reads every escape a string can hold" $
       oneStep "not modelled \"say \\\"a\\\\b\\\"\\n\\tbell\\u{7}\"" `shouldBe` Right [NotModelled "say \"a\\b\"\n\tbell\a"]
 
+    -- U+D800 is a surrogate: a code, and no character. Text would swap it for
+    -- U+FFFD without a word, so it is refused, at the digits.
+    it "refuses the code of no character" $ do
+      locationOf (inStep "not modelled \"x\\u{D800}y\"") `shouldBe` Just "t:4:21"
+      fmap problemFound (problemOf (inStep "not modelled \"x\\u{D800}y\"")) `shouldBe` Just (FoundWord "D800")
+      locationOf (inStep "not modelled \"x\\u{110000}y\"") `shouldBe` Just "t:4:21"
+      oneStep "not modelled \"\\u{D7FF}\\u{E000}\\u{10FFFF}\"" `shouldBe` Right [NotModelled "\xD7FF\xE000\x10FFFF"]
+
   describe "layout" $ do
     it "ignores comments, blank lines and indentation, and takes ; for a new line" $
       fmap stripSpans (parseSequence "t" "foldseq 1   # the version\nsheet square\n\n\n   # a comment alone\nstep a {\n\t\tturn over left-right ; turn over top-bottom # two on a line\n\n}\n")
@@ -126,6 +134,12 @@ spec = do
       oneStep "fold valley [corner south-west,\n      corner north-east\n  ] moving (1/4,\n 3/4)"
         `shouldBe` Right [Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (AtSheet (1 / 4) (3 / 4)))]
       oneStep "fold valley\n edge west" `shouldSatisfy` isLeft'
+
+    -- 'anchor' reads a point and 'fold' reads a point or a line, by different
+    -- routes. Both have to let the same things stand after the bracket.
+    it "lets a comment stand inside brackets wherever a new line can" $
+      oneStep "anchor ( # half\n 1/2, 1/2); fold valley ( # half\n 1/2, 1/2) to centre"
+        `shouldBe` Right [Anchor (AtSheet (1 / 2) (1 / 2)), Fold ValleyFold ToFlat (Onto (AtSheet (1 / 2) (1 / 2)) Centre) FlapOfFirstArgument Nothing]
 
     it "reads a file with Windows line ends the same" $
       fmap stripSpans (parseSequence "t" "foldseq 1\r\nsheet square\r\nstep { turn over left-right }\r\n")
@@ -176,8 +190,11 @@ spec = do
       oneStep "mark top-left = centre; mark left-ear = centre; anchor first-petal"
         `shouldBe` Right [Mark "top-left" Centre Nothing, Mark "left-ear" Centre Nothing, Anchor (PointNamed "first-petal")]
 
+    -- @90degrees@ is a number with no unit, pointed at as one: the unit is the
+    -- whole word @deg@ or nothing, and a failure at the @r@ would help nobody.
     it "is an angle with no unit, or with a look-alike of the degree sign" $ do
       mistake (inStep "fold behind 90 corner north-west to centre") `shouldBe` Just (NeedsUnit 90, "t:4:15")
+      mistake (inStep "fold behind 90degrees corner north-west to centre") `shouldBe` Just (NeedsUnit 90, "t:4:15")
       mistake (inStep "fold behind 90º corner north-west to centre") `shouldBe` Just (NotDegreeSign 'º', "t:4:17")
 
     it "is a block that is never closed, pointed at where it opens" $ do
@@ -188,9 +205,28 @@ spec = do
       mistake (inStep "anchor (1/0, 0)") `shouldBe` Just (ZeroDenominator, "t:4:11")
       mistake (inStep "fold valley -90° edge west") `shouldBe` Just (StraySign, "t:4:15")
 
+    -- 2^64 + 1, which narrowed to a machine integer is 1. Every whole number
+    -- the tree keeps has to refuse it, and the version has to name it whole.
+    it "is a count too large to hold, which would otherwise wrap round to a small one" $ do
+      mistake (inStep "fold valley edge west top 18446744073709551617 layers") `shouldBe` Just (CountTooLarge 18446744073709551617, "t:4:29")
+      mistake (inStep "rotate 18446744073709551617/8 turn clockwise") `shouldBe` Just (CountTooLarge 18446744073709551617, "t:4:10")
+      mistake (inStep "repeat a turned 18446744073709551617/4 about centre") `shouldBe` Just (CountTooLarge 18446744073709551617, "t:4:19")
+      mistake "foldseq 18446744073709551617\nsheet square\n" `shouldBe` Just (UnsupportedVersion 18446744073709551617, "t:1:9")
+
     it "is a reserved word used as a name" $ do
       mistake "foldseq 1\nsheet square\nstep front { turn over left-right }\n" `shouldBe` Just (ReservedName "front", "t:3:6")
       mistake (inStep "mark North-West = centre") `shouldBe` Just (ReservedName "North-West", "t:4:8")
+
+    it "is any reserved word at all used as a name, in either case" $
+      mapM_
+        (\word -> mistake (inStep ("mark " <> word <> " = centre")) `shouldBe` Just (ReservedName word, "t:4:8"))
+        (concatMap (\word -> [word, T.toUpper word]) (Set.toList reservedWords))
+
+    -- The property above, that the printer writes only reserved words, would
+    -- notice a printed keyword dropped from the list. These are the keywords
+    -- it cannot see, because the printer never writes them.
+    it "reserves the spellings only an author writes" $
+      filter (`Set.notMember` reservedWords) ["precrease", "front", "behind"] `shouldBe` []
 
     it "is a move the language cannot express yet, or a block it does not run yet" $ do
       mistake (inStep "squash corner south-east") `shouldBe` Just (FutureMove "squash", "t:4:3")
@@ -225,6 +261,12 @@ spec = do
     it "refuses a line laid onto a point, pointing at the point" $
       mistake (inStep "fold valley edge west to corner north-east") `shouldBe` Just (LineOntoPoint, "t:4:28")
 
+    -- Text inside brackets can wrap, so what a refusal is about can end on a
+    -- later line than it starts on, and the span has to say so.
+    it "gives a refusal about wrapped text a span that ends on the line it ends on" $
+      fmap (errorSpan . ParseFailed) (problemOf (inStep "fold valley edge west to midpoint of [corner south-west,\n corner north-east]"))
+        `shouldBe` Just (Span "t" 4 28 5 20)
+
     it "refuses nearest where there is only one way to make the fold" $ do
       mistake (inStep "fold valley corner south-west to centre nearest centre") `shouldBe` Just (NearestWithoutTwoLines, "t:4:43")
       -- A bare name may yet be a line, so this one is allowed.
@@ -246,6 +288,12 @@ spec = do
 
     it "says a statement stopped short at the end of its line" $
       fmap problemFound (problemOf (inStep "fold valley")) `shouldBe` Just FoundLineEnd
+
+    -- A point or a line can start with fifteen different words. Listing them
+    -- all is no help, and one of them used to be listed twice.
+    it "says what could have come next in few words, each once" $ do
+      fmap problemExpected (problemOf (inStep "fold valley a to")) `shouldBe` Just ["a point or a line"]
+      fmap problemExpected (problemOf (inStep "not modelled \"left open")) `shouldBe` Just ["the closing quote of the string"]
 
 -- | A source holding one step with these moves in it, the moves on line 4.
 inStep :: Text -> Text
