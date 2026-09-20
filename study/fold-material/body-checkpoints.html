@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside the saved body-patch runs</title>
+<style>
+body{font:16px/1.55 system-ui,sans-serif;margin:0;background:#f5f1e8;color:#303630}main{max-width:1240px;margin:40px auto;padding:0 12px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.1}h2{margin-bottom:.3em}.intro{max-width:930px}.tag{letter-spacing:.14em;font-size:.8rem;color:#777063}.controls{display:flex;gap:18px;flex-wrap:wrap;margin:24px 0;align-items:end}select,button{font:inherit;padding:7px;background:#fffaf2;border:1px solid #b8b5a9;border-radius:4px}button{cursor:pointer}button:disabled{opacity:.45;cursor:default}.status{padding:14px 18px;background:#ede4d4;border-left:4px solid #aa7d37}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,576px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{display:block;margin:auto;max-width:none;width:560px;height:auto}.figure.zoom img{width:1120px}.figure h3{margin:4px 0}.metrics{display:flex;flex-wrap:wrap;gap:24px;margin:22px 0}.metrics b{display:block;font-size:1.25rem}.scroll{overflow:auto}table{border-collapse:collapse;margin:16px 0;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:right;padding:7px;border-bottom:1px solid #d4d1c7;white-space:nowrap}th:first-child,td:first-child{text-align:left}tr.selected{background:#dedfce}.legend{display:flex;gap:18px;flex-wrap:wrap}.legend span:before{content:'━ ';font-weight:bold}.red{color:#c0392b}.purple{color:#7555a3}.orange{color:#b06d1a}.note{max-width:930px}pre{overflow:auto;max-height:500px;font-size:.8rem}small{color:#62665e}
+</style>
+<main>
+<a href="index.html">← Material studies</a> · <a href="body-patch.html">Original body-patch experiment</a>
+<p class="tag">SENBAZURU · SAVED CHECKPOINTS · #319</p>
+<h1>Where did the body patch struggle?</h1>
+<p class="intro">The same two 5° openings, remeasured at the positions saved during their original runs. No new solves, changed holds or relaxed geometry checks. The patch contains the body core and both wing roots; the rest of the crane is absent.</p>
+<p class="intro">Iteration zero is an imperfect starting guess. The solver first uses a weak length penalty, then increases it every 40 corrections. Early strain can be temporary. Only the final endpoint is considered for acceptance, and neither opened run was recorded as converged.</p>
+<p class="intro"><strong>The finding:</strong> the starting guesses already reverse some layers. Both runs develop crossings in their first correction. The coarse run recovers geometry by its last saved point, after a misleading near-stall. The refined run keeps descending in cost, but none of its saved snapshots passes geometry. Refinement also changes the sampling of the contact penalty; that is a possible contributor, not a proven cause.</p>
+<div class="controls"><label>Mesh <select id="run"></select></label><label>Saved checkpoint <select id="checkpoint"></select></label><button id="previous">← Previous</button><button id="next">Next →</button><label>Scale <select id="scale"><option value="1">Original drawing size</option><option value="2">2× inspection</option></select></label></div>
+<p class="status" id="status" aria-live="polite"></p>
+<div class="metrics" id="metrics"></div>
+<p class="legend"><span class="red">Worst length edge, if over tolerance</span><span class="purple">Lower triangle in worst reversed order</span><span class="orange">Upper triangle in that order</span></p>
+<p class="note" id="locations"></p>
+<div class="views" id="views"></div>
+<p class="note">Wire drawings include hidden material. “Material” shows the same marked edges and triangles on the unfolded sheet. Folded views share the original experiment’s cameras and scale (600 px per sheet unit); the full material map uses 504 px per sheet unit. Checkpoints are numerical corrections, not a certified folding route. Nothing is interpolated between them.</p>
+<h2>The saved history</h2>
+<p class="note">Select an iteration to inspect it above. Length error must be at most 0.001%. Contact counts come from independent triangle checks. Unordered touches are touching triangle pairs without a declared layer relationship. Counts are useful within each run; subdivision itself changes the number of triangle pairs.</p>
+<div class="scroll"><table><thead><tr><th>Iteration</th><th>Length error</th><th>Crossing pairs</th><th>Reversed pairs</th><th>Unordered touches</th><th>Net movement</th><th>Crease cost</th><th>Panel cost</th></tr></thead><tbody id="history"></tbody></table></div>
+<h2>What the costs tell us</h2>
+<p class="note">Crease cost measures departure from preferred fold angles; panel cost measures bending between triangles inside a panel. Length and contact costs are numerical penalties that grow as the solve tightens its constraints. They are separate from paper stiffness. The displayed total is half the original line-search objective.</p>
+<div class="scroll"><table><thead><tr><th>Length weight</th><th>Length cost</th><th>Contact cost</th><th>Crease cost</th><th>Panel cost</th><th>Total</th></tr></thead><tbody id="costs"></tbody></table></div>
+<p class="note" id="interval"></p>
+<p class="note">Movement means the largest vertex displacement since the preceding saved checkpoint. A gap may contain several corrections. Even a tiny one-step displacement does not show the full proposed movement before the line search shortened it. That full proposal, the individual rejected trials and intermediate equilibrium checks were not exported. The final equilibrium field is empty because the iteration budget was exhausted.</p>
+<p id="links"></p><details><summary>Measurements for this checkpoint</summary><pre id="raw"></pre></details>
+</main>
+<script>
+const data=/*CHECKPOINT_DATA*/null;
+const $=id=>document.getElementById(id);
+const num=x=>x===null?'—':x===0?'0':Number(x).toPrecision(5);
+const names={'opening-5':'Coarse · 30 triangles','opening-5-fine':'Refined · 120 triangles'};
+function cell(row,value,tag='td'){const el=document.createElement(tag);el.textContent=value;row.append(el);return el;}
+if(data){
+ for(const r of data.runs){const o=document.createElement('option');o.value=r.id;o.textContent=names[r.id];$('run').append(o);}
+ function run(){return data.runs.find(r=>r.id===$('run').value);}
+ function selectRun(){const previous=$('checkpoint').value;$('checkpoint').replaceChildren();for(const p of run().checkpoints){const o=document.createElement('option');o.value=p.iteration;o.textContent='Iteration '+p.iteration;$('checkpoint').append(o);}$('checkpoint').value=run().checkpoints.some(p=>String(p.iteration)===previous)?previous:'160';draw();}
+ function draw(){
+  const r=run(),index=r.checkpoints.findIndex(p=>String(p.iteration)===$('checkpoint').value),p=r.checkpoints[index];
+  $('previous').disabled=index===0;$('next').disabled=index===r.checkpoints.length-1;
+  $('status').textContent=(p.iteration===0?'Supplied opening guess. ':'Saved numerical iterate. ')+(p.geometryPassed?'Length and contact checks pass at this snapshot.':'Geometry fails: '+[p.maxRelativeEdgeError>data.lengthTolerance?'length error':null,!p.contact.passed?'contact/order':null].filter(Boolean).join(' and ')+'.')+' This is a diagnostic, not an accepted opened pose.';
+  $('metrics').replaceChildren();for(const [label,value] of [['Largest length error',num(100*p.maxRelativeEdgeError)+'%'],['Crossing pairs',p.contact.crossingPanels.length],['Reversed pairs',p.contact.reversedOrders.length],['Unordered touches',p.contact.unorderedContacts.length],['Body depth',num(p.bodyDepth)],['Net movement',num(p.netMovementSincePrevious)]]){const el=document.createElement('div'),b=document.createElement('b');b.textContent=value;el.append(b,document.createTextNode(label));$('metrics').append(el);}
+  const edge=p.lengthEdges[0],order=p.worstOrder[0],source=id=>r.triangles.find(t=>t.id===id)?.sourceFace;
+  $('locations').textContent='Worst length edge: vertices '+edge.vertices.join('–')+', original crane face(s) '+[...new Set(edge.sourceFaces)].join(', ')+'. '+(order?'Worst reversed order: '+order.lower+' (original face '+source(order.lower)+') below '+order.upper+' (original face '+source(order.upper)+'), penetration '+num(order.penetration)+' sheet units.':'No reversed order above the contact tolerance at this checkpoint.');
+  $('views').replaceChildren();for(const v of p.views){const section=document.createElement('section');section.className='figure'+($('scale').value==='2'?' zoom':'');const h=document.createElement('h3');h.textContent=v.label+' · iteration '+p.iteration;const img=document.createElement('img');img.src='body-checkpoints/'+v.path;img.alt=h.textContent+' wire diagnostic with worst defects marked';section.append(h,img);$('views').append(section);}
+  $('history').replaceChildren();for(const q of r.checkpoints){const tr=document.createElement('tr');if(q.iteration===p.iteration)tr.className='selected';const td=document.createElement('td'),button=document.createElement('button');button.textContent=q.iteration;button.setAttribute('aria-label','Inspect iteration '+q.iteration);button.onclick=()=>{$('checkpoint').value=q.iteration;draw();};td.append(button);tr.append(td);for(const v of [num(100*q.maxRelativeEdgeError)+'%',q.contact.crossingPanels.length,q.contact.reversedOrders.length,q.contact.unorderedContacts.length,num(q.netMovementSincePrevious),num(q.creaseEnergy),num(q.panelEnergy)])cell(tr,v);$('history').append(tr);}
+  $('costs').replaceChildren();const tr=document.createElement('tr');for(const v of [p.arrivalLengthWeight,p.lengthCost,p.contactCost,p.creaseEnergy,p.panelEnergy,p.costAtArrivalWeight])cell(tr,num(v));$('costs').append(tr);
+  $('interval').textContent=p.previousIteration===null?'No earlier saved checkpoint.':'From saved iteration '+p.previousIteration+' to '+p.iteration+', total cost changes from '+num(p.previousCostAtArrivalWeight)+' to '+num(p.costAtArrivalWeight)+'. Both are evaluated at length weight '+num(p.arrivalLengthWeight)+' (contact weight is 100× larger). This avoids treating a stronger penalty at a stage boundary as an uphill correction.';
+  $('links').replaceChildren();for(const [label,path] of [['Audit JSON','body-checkpoints/checks.json'],['Original history','body-checkpoints/source/'+r.id+'-history.json'],['Original endpoint FOLD','body-checkpoints/source/'+r.id+'.fold'],['Original endpoint report','body-checkpoints/source/'+r.id+'-check.json']]){const a=document.createElement('a');a.textContent=label;a.href=path;$('links').append(a,document.createTextNode(' · '));}
+  $('raw').textContent=JSON.stringify(p,null,2);
+ }
+ $('run').addEventListener('change',selectRun);$('checkpoint').addEventListener('change',draw);$('scale').addEventListener('change',draw);
+ for(const [id,offset] of [['previous',-1],['next',1]])$(id).onclick=()=>{const points=run().checkpoints,i=points.findIndex(p=>String(p.iteration)===$('checkpoint').value);$('checkpoint').value=points[i+offset].iteration;draw();};selectRun();
+}
+</script>
+</html>

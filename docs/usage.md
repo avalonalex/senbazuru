@@ -1669,3 +1669,23 @@ covered paper and creases. Coplanar contact still needs `faceOrders`.
 Intersecting depths, unsupported faces and free edge-on outlines retain the
 older fallback. `--no-fill` remains available for a wireframe, including a file
 whose faces are malformed. See [the visibility note](notes/projected-panel-visibility.md).
+
+## Saved body-patch checkpoints
+
+Inspect the two archived 5° body-patch runs from #318 without solving again:
+
+```bash
+stack run senbazuru-material-study -- --body-checkpoints build/fold-material/body-patch build/fold-material
+```
+
+Open `build/fold-material/body-checkpoints.html`. The source directory must
+contain the original combined/individual reports, initial and endpoint FOLDs,
+and both saved histories. Missing or inconsistent archives are refused; this
+command never regenerates them. It copies the inputs unchanged into
+`body-checkpoints/source`, which can also be used as a later input directory.
+Output must not overlap the source. The 50 snapshots retain their original
+positions; fixed wire views mark the worst strained edge and reversed layer
+order on both the folded patch and the original sheet. Separate costs and
+net movement between saved points explain the history without treating it as
+a folding route or evidence of equilibrium. No full correction proposals were
+archived. See [the audit](notes/body-patch-checkpoints.md).

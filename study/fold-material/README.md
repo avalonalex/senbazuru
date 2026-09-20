@@ -802,3 +802,12 @@ The derivations and measurements are recorded in
 On this Mac, building required the Command Line Tools linker to match its SDK:
 `DEVELOPER_DIR=/Library/Developer/CommandLineTools stack test`. This is a command
 setting, not a required project configuration or a global toolchain change.
+
+## Saved body-patch checkpoints
+
+`--body-checkpoints SOURCE_DIRECTORY OUTPUT_DIRECTORY` remeasures the two
+archived 5° body-patch histories without calling a solver. It copies the source
+bytes, checks the original material/holds/policy, and writes fifty diagnostic
+snapshots with edge/order highlights. It does not regenerate missing inputs.
+See [the command](../../docs/usage.md#saved-body-patch-checkpoints) and
+[findings and limits](../../docs/notes/body-patch-checkpoints.md).
