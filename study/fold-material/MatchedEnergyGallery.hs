@@ -4,7 +4,7 @@
 -- writeOuterState only measures and exports them, never solves or repairs.
 -- MatchedEnergy explains why edge contributions are discrete accounting,
 -- rather than continuous energy densities or independent material effects.
-module MatchedEnergyGallery (writeMatchedEnergy) where
+module MatchedEnergyGallery (writeMatchedEnergy, groupReport, changeJson) where
 
 import BandBoundary (BoundaryRule (..))
 import BendLocations

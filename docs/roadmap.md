@@ -576,9 +576,17 @@ checked coupled angles.
    changes shape by 0.000704 and passive costs by 6.49%; whole-bend refinement
    changes them by 0.001170 and 8.31%. Both miss the 5% cost target; whole-bend
    also misses the 0.001 shape target. Lower cost does not select the better mesh.
-   Next: locate passive costs and bend angles across these four saved endpoints,
-   especially near the fixed/free boundary, without new solves. Keep width
-   refinement and tighter-solve confirmation separate; no default policy changes.
+   [#306](https://github.com/avalonalex/senbazuru/issues/306)
+   [locates those costs on the saved meshes](notes/held-bending-costs.md), without
+   solving again. Held-boundary costs fall by 0.006870 / 0.003739, while the first
+   free interval rises by 0.007203 / 0.006998 and remaining free paper rises by
+   0.006724 / 0.004702 (uniform / whole bend, per panel). Raw boundary angles
+   shrink, but angle divided by material spacing increases. Differences are
+   distributed, not confined to the boundary spring. Next: confirm the two
+   256-triangle endpoints with tighter solver stopping tolerances, retaining
+   originals, final length weight, material, grips and paper acceptance caps;
+   compare movement and costs against the present mesh differences. Keep width
+   refinement separate; no default policy changes.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
