@@ -988,6 +988,30 @@ four complete-paper GLBs and detailed JSON under `held-costs/`; prior assets
 remain unchanged. There is no new convergence claim or changed acceptance
 criterion. See [the findings](notes/held-bending-costs.md).
 
+Confirm only the two saved 256-triangle endpoints at a tighter movement stop:
+
+```bash
+stack run senbazuru-material-study -- --held-confirmation \
+  build/fold-material/held-equilibrium build/fold-material
+```
+
+Open `held-confirmation.html`. Both continuations allow at most 40 additional
+iterations at length weight `1e10`, changing only the full repaired proposal
+stop from `1e-7` to `1e-8`. All four source archives must validate before any
+output or solve; overlapping source/output directories are refused. Original
+FOLD/report bytes are retained under `held-confirmation/`. A refusal or
+unsettled endpoint remains diagnostic. The 128-triangle cases are remeasured,
+not solved. Paper checks, contact policy and stiffness remain unchanged.
+
+The gallery compares original, restart-repair and continued states, separate
+costs, material displacement and fixed-bin contributions. Both endpoints settle
+with negligible extra motion; the original refinement differences remain.
+The eight complete-sheet GLBs use the existing `checked-flap/node_modules`
+viewer dependency. Neither the numerical iterates nor the fine-to-coarse
+comparison certify a folding route or a global minimum. See
+[the stopping confirmation](notes/held-endpoint-confirmation.md).
+
+
 ### Comparing paper at illustration scale
 
 ```bash

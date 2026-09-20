@@ -21,6 +21,7 @@ module CoupledCrease
     solveCoupledWith,
     solveCoupledSchedule,
     solveCoupledMethod,
+    solveCoupledUntil,
     coupledRows,
     coupledSurface,
   )
@@ -117,7 +118,15 @@ solveCoupledSchedule :: [Double] -> PairContactMode -> Settings -> CoupledFixtur
 solveCoupledSchedule = solveCoupledMethod OriginalWorkingSet
 
 solveCoupledMethod :: ContactMethod -> [Double] -> PairContactMode -> Settings -> CoupledFixture -> Either InequalityError InequalityResult
-solveCoupledMethod method weights mode settings fixture = do
+solveCoupledMethod = solveCoupledUntil 1e-7
+
+-- | Choose the full repaired proposal size that counts as numerical rest.
+-- This is a solver stopping threshold in sheet units, not a material strain
+-- or contact tolerance. A tiny accepted line-search fraction never qualifies
+-- on its own. Existing callers retain 1e-7; tighter confirmation is opt-in.
+solveCoupledUntil :: Double -> ContactMethod -> [Double] -> PairContactMode -> Settings -> CoupledFixture -> Either InequalityError InequalityResult
+solveCoupledUntil movementTolerance method weights mode settings fixture = do
+  unless (finite movementTolerance && movementTolerance > 0) (Left (InequalityError "movement tolerance must be positive and finite"))
   unless (not (null weights) && all (\w -> finite w && w > 0) weights && and (zipWith (<) weights (drop 1 weights))) (Left (InequalityError "length weights must be positive, finite and strictly increasing"))
   unless (iterationLimit settings > 0 && finite (lengthTolerance settings) && lengthTolerance settings > 0) (Left (InequalityError "coupled correction needs positive finite settings"))
   initial <- feasible (coupledSeed fixture)
@@ -151,7 +160,7 @@ solveCoupledMethod method weights mode settings fixture = do
               repair scale = feasible (candidate scale)
           full <- repair 1
           let movement = maximum (0 : [norm (position a ^-^ position b) | (a, b) <- zip (samples mesh) (samples (repairedMesh full))])
-              settled = quadraticConverged quadratic && movement <= 1e-7 && (weight < maximum (0 : weights) || maxLengthError mesh <= lengthTolerance settings)
+              settled = quadraticConverged quadratic && movement <= movementTolerance && (weight < maximum (0 : weights) || maxLengthError mesh <= lengthTolerance settings)
               search scale remaining = case repair scale of
                 Left _ -> if remaining == 0 then pure Nothing else search (scale / 2) (remaining - 1)
                 Right fixed -> do

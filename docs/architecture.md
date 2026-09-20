@@ -544,6 +544,13 @@ reuses `MatchedEnergy` for material-edge pairing and the shared
 held-state measurement/export path for fresh checks, without invoking a
 solve. Its [signed accounting](notes/held-bending-costs.md) includes replaced
 edges and all edge directions; bins describe spring locations, not densities.
+`HeldConfirmationGallery` validates the four original held-panel archives before
+writing or solving, then restarts only the two finer endpoints with an opt-in
+`CoupledCrease.solveCoupledUntil` movement stop. It keeps the authored rest
+material and all paper checks, reusing the held-state exporter, fixed cost bins
+and material-overlap comparisons. The [confirmation](notes/held-endpoint-confirmation.md)
+separates numerical stopping sensitivity from mesh differences; it changes no
+default solver policy.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

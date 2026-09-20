@@ -3,7 +3,7 @@
 -- Every saved state gets the existing whole-sheet contact check and exact
 -- two-panel order audit. Comparisons intersect material triangles, so a bend
 -- at a vertex present in only one grid cannot disappear from the measurement.
-module HeldEquilibriumGallery (writeHeldEquilibrium, HeldState (..), measureHeldState, writeMeasuredHeldState) where
+module HeldEquilibriumGallery (writeHeldEquilibrium, HeldState (..), measureHeldState, writeMeasuredHeldState, change) where
 
 import BendLocations (locateBends)
 import BendLocationsGallery (rowJson)

@@ -3,7 +3,7 @@
 -- and checks the original solver policy. A shared plotting scale keeps small
 -- contributions small when switching meshes or panels. SVG geometry belongs
 -- here in Diagram, while the HTML only selects plots and formats measurements.
-module HeldCostsGallery (writeHeldCosts) where
+module HeldCostsGallery (writeHeldCosts, differenceMap, heldChangeJson) where
 
 import BendLocations
 import BendLocationsGallery (plotPoint)
