@@ -569,10 +569,16 @@ checked coupled angles.
    sampled references meet the unchanged length cap. Whole-bend geometry is
    better on these controls, but the join windows still estimate circular
    cost more accurately. No fit or equilibrium solve runs.
-   Next: one small held-panel equilibrium comparison on two modest whole-bend
-   budgets with uniform controls; retain holds, contact policy, material weights
-   and acceptance caps, and compare convergence, geometry and separate energies
-   before adopting a mesh policy.
+   [#303](https://github.com/avalonalex/senbazuru/issues/303)
+   [tests held-panel equilibrium at 128 and 256 triangles](notes/held-panel-equilibrium.md).
+   All four uniform/whole-bend solves converge and pass the unchanged paper
+   checks. Maximum opening stays below 7.44e-14 sheet lengths. Uniform refinement
+   changes shape by 0.000704 and passive costs by 6.49%; whole-bend refinement
+   changes them by 0.001170 and 8.31%. Both miss the 5% cost target; whole-bend
+   also misses the 0.001 shape target. Lower cost does not select the better mesh.
+   Next: locate passive costs and bend angles across these four saved endpoints,
+   especially near the fixed/free boundary, without new solves. Keep width
+   refinement and tighter-solve confirmation separate; no default policy changes.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

@@ -1144,6 +1144,15 @@ cost error is 0.89%, however, versus 0.59% with the join windows: the best
 geometric approximation need not have the best angular cost. Run `--whole-bend`
 for the three-way gallery. All shapes remain prescribed diagnostics.
 
+The [held-panel comparison](notes/held-panel-equilibrium.md) lets both panels
+settle from the common smooth curve on 128- and 256-triangle uniform and
+whole-bend grids. Original grips and flat passive rest angles stay fixed;
+the reference curve is a starting guess, not a preferred final shape. Run
+`--held-equilibrium` to inspect convergence, material/contact acceptance and
+separate costs. Whole-material differences include all triangle-overlap corners,
+since the solved panels may vary across width. This is an opt-in four-case
+experiment, not a new mesh policy or a checked flexible motion.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
