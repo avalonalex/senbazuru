@@ -562,9 +562,17 @@ checked coupled angles.
    versus uniform 1.19% / 0.12%. Local full-length grip drifts increase to
    2.36e-6 / 4.22e-6 sheet lengths; whole-material uniform/local differences
    are 2.33e-5 / 3.85e-5. No fit or material solve runs; acceptance criteria stay fixed.
-   Next: compare fixed refinement across the whole curved region with the
-   transition windows at equal budgets, retaining energy and geometry errors
-   before choosing mesh density or running another material solve.
+   [#301](https://github.com/avalonalex/senbazuru/issues/301)
+   [resolves the whole curved interval at equal budgets](notes/whole-bend-refinement.md).
+   At 1,024 triangles, circular/smooth cost errors are 0.89% / 0.031%.
+   Full-length grip drift falls to 2.41e-7 / 3.10e-7 sheet lengths, and both
+   sampled references meet the unchanged length cap. Whole-bend geometry is
+   better on these controls, but the join windows still estimate circular
+   cost more accurately. No fit or equilibrium solve runs.
+   Next: one small held-panel equilibrium comparison on two modest whole-bend
+   budgets with uniform controls; retain holds, contact policy, material weights
+   and acceptance caps, and compare convergence, geometry and separate energies
+   before adopting a mesh policy.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

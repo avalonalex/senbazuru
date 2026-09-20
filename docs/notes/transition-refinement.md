@@ -89,8 +89,9 @@ separation, sliding, equilibrium response or a continuous folding route.
 
 The next useful comparison would also resolve the middle of the curved region:
 compare a fixed density across the whole bend with these transition windows
-at equal budgets. Retain both energy and geometry errors before choosing a
-mesh policy for a material solve. This study does not settle the old solved
+at equal budgets. The [whole-bend follow-up](whole-bend-refinement.md) improves
+geometry while retaining an angular-cost tradeoff for the circle. Retain both
+errors before choosing a mesh policy for a material solve. This study does not settle the old solved
 8.99% gap or change the #195 acceptance criteria.
 
 Independent reconstruction checks all 40 FOLDs, 27,856 edges, 19,760 springs
