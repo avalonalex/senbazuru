@@ -31,12 +31,12 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldRelaxation
 import HeldCosts
-import HeldCostsGallery (differenceMap)
+import HeldCostsGallery (differenceMap, heldChangeJson)
 import HeldEquilibrium
 import HeldEquilibriumGallery (HeldState (..), change, measureHeldState, writeMeasuredHeldState)
 import IllustrationComparison (materialDifferences)
 import MatchedEnergy
-import MatchedEnergyGallery (changeJson, groupReport)
+import MatchedEnergyGallery (groupReport)
 import OuterContinuation (agreeMeasurements)
 import PrescribedBend
 import Senbazuru.Explain (Explain (..))
@@ -133,7 +133,7 @@ writeHeldConfirmation source destination = do
             "panel" .= panel,
             "totals" .= groupReport "all" cs,
             "regions" .= [groupReport (T.pack (show r)) [c | c <- cs, heldRegion (locatedDistance (changeLocation c)) == r] | r <- [minBound .. maxBound]],
-            "edges" .= map changeJson cs
+            "edges" .= map heldChangeJson cs
           ]
       )
   let report =
