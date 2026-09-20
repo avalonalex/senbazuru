@@ -100,6 +100,7 @@ read the Haddock module headers; for the domain, start with
 | [held-endpoint-confirmation.md](held-endpoint-confirmation.md) | Tightening the movement stop barely changes two held-panel endpoints; their refinement cost gaps remain |
 | [held-panel-refinement.md](held-panel-refinement.md) | Comparing 256 and 512 triangles at fixed width, with the same material, grips and tighter stopping test |
 | [held-layout-costs.md](held-layout-costs.md) | The equal-budget gap lies mostly in free paper; the largest length cost and worst relative error occupy different edges |
+| [coupled-body-patch.md](coupled-body-patch.md) | A free-boundary crane body opens with both roots, but coarse solves remain unsettled and the refined control fails geometry |
 | [illustration-material-priority.md](illustration-material-priority.md) | Plausible crane illustrations take priority; defer cost convergence while retaining valid-paper checks and explicit visual review |
 | [outer-strip-continuation.md](outer-strip-continuation.md) | Two exhausted endpoints settle with unchanged material and length weight; one still crosses |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |

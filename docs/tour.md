@@ -1189,9 +1189,16 @@ The [current material priority](notes/illustration-material-priority.md) is a
 plausible, controllable illustration. Energy convergence remains diagnostic;
 connected material, lengths, declared crease controls, accepted solves and
 contact/order checks remain required. Visual review uses the intended drawing
-size and cameras, including meaningful exposed layers. The next study couples
+size and cameras, including meaningful exposed layers. This direction couples
 a small body patch to both wing roots. Further cost refinement is deferred
 until it affects the picture or the reliability of those controls.
+
+The [first coupled body specimen](notes/coupled-body-patch.md) keeps sixteen
+panels around both wing roots and leaves the extracted boundary free. Its coarse
+5° and 10° endpoints pass lengths/contact but remain unsettled; subdividing the
+5° case also fails geometry. `--body-patch` preserves these failures, including
+checkpoints and labelled wire views. Neither an attached neck/tail response nor
+an opened whole crane is established.
 
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints

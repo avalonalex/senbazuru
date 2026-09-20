@@ -1069,6 +1069,15 @@ required. No existing failed geometry or unresolved exposed-layer comparison
 is automatically accepted.
 
 
+`stack run senbazuru-material-study -- --body-patch build/fold-material`
+writes `body-patch.html`: the central body and both wing collars with a free
+outer boundary. The closed reference passes; coarse 5°/10° controls pass geometry
+but remain unsettled, and the refined 5° control fails lengths/contact. Failed
+endpoints retain FOLD, measurements and solver checkpoints, with explicitly
+labelled wire views instead of accepted paper. This is an extracted specimen,
+not a whole-crane opening or a flexible motion certificate. See [the bounded
+comparison](notes/coupled-body-patch.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

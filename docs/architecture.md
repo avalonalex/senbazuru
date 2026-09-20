@@ -350,6 +350,13 @@ incidence as well as physical crease features, because those edges also connect
 the regions. `CranePocketGallery` draws original-sheet and folded x-ray maps
 through `Diagram` and exports the unmodified FOLD/GLB. It adds no cavity,
 pressure or new motion solver; see [the pocket map](notes/crane-pocket-map.md).
+`BodyPatch` extracts the mapped body core and both adjoining wing collars as a
+free-boundary specimen, preserving inherited order before removing outside
+panels. Three exact holds control opening; neck/tail interface landmarks remain
+free. It reuses the existing material/contact solver and triangle exporter.
+`BodyPatchGallery` separates accepted paper from failed wire diagnostics and
+archives checkpoints; no production solver or whole-crane behavior changes.
+See [the coupled patch](notes/coupled-body-patch.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
