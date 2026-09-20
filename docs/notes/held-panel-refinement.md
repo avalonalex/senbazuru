@@ -124,5 +124,7 @@ a different length weight, or a width experiment. Nothing here establishes a
 global minimum, calibrated stiffness, width convergence or a checked flexible
 folding route. No production mesh or solver policy changes.
 
+The saved-data follow-up now [locates those differences](held-layout-costs.md).
+
 Continues [#195](https://github.com/avalonalex/senbazuru/issues/195) and track A
 of [#269](https://github.com/avalonalex/senbazuru/issues/269).

@@ -1038,6 +1038,28 @@ solves remain opt-in; CI exercises fixture and archive contracts. The existing
 production solver policy and certifies no continuous flexible route.
 
 
+Locate the remaining layout gap using the saved 256/512 endpoints:
+
+```bash
+stack run senbazuru-material-study -- --held-layout-costs \
+  build/fold-material/held-refinement build/fold-material
+```
+
+Open `held-layout-costs.html`. This runs no optimizer or contact repair. Both
+source formats must retain their original policies and confirmed histories,
+and all four meshes are remeasured before any output. Changed measurements
+and overlapping source/output paths are refused. The gallery keeps exact FOLD
+copies, source reports, four complete-sheet GLBs and 28 SVGs under
+`held-layout-costs/`; it needs no additional browser dependency.
+
+Both panel selectors compare uniform → whole bend at the same triangle count.
+Signed maps, cumulative costs and distance/direction tables use separate common
+scales for passive bending and length penalties. Added/removed edges remain
+visible; shared crease length edges count once. Separate rankings show largest
+absolute-error costs and worst relative errors. No threshold or convergence
+claim changes. See [the measured locations](notes/held-layout-costs.md).
+
+
 ### Comparing paper at illustration scale
 
 ```bash

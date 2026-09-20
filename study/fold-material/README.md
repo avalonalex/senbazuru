@@ -60,6 +60,13 @@ the two 512 solves use the original six-stage schedule followed by the same
 `1e-8` confirmation. See [the refinement study](../../docs/notes/held-panel-refinement.md).
 
 
+To locate the equal-budget gap alongside length penalties without new solves,
+run `stack run senbazuru-material-study -- --held-layout-costs build/fold-material/held-refinement build/fold-material`
+and open `held-layout-costs.html`. Both panels have signed maps, cumulative
+plots and distance/direction tables; length costs and relative errors have
+separate rankings. See [the location analysis](../../docs/notes/held-layout-costs.md).
+
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

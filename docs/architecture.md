@@ -566,6 +566,12 @@ comparisons, plus the same passive-cost pairing and fixed bins. A failed
 primary solve cannot receive a confirmation, and a failed confirmation cannot
 enter an eligible refinement comparison. See
 [the fixed-width refinement](notes/held-panel-refinement.md).
+`HeldLayoutCosts` validates both saved resolutions and accounts for each unique
+length edge, keeping the shared crease separate. `HeldLayoutCostsGallery`
+reuses those archive-history checks, measured endpoint exports and cost plots
+to compare equal-budget layouts without moving paper. Its
+[location analysis](notes/held-layout-costs.md) keeps passive and length costs
+separate, including replacement edges and region/direction cross-tabulations.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads
