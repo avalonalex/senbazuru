@@ -109,6 +109,20 @@ Every key with its type and our support status: [fold-reference.md](fold-referen
 | **Connected component** | A piece of a graph with no edge leaving it. The layer solver's constraint graph usually falls into several, and they can be solved and counted separately. See [notes/several-stackings.md](notes/several-stackings.md). |
 | **Half-edge / DCEL** | A structure giving constant-time "next edge around this face". See [notes/half-edge.md](notes/half-edge.md). |
 
+## Fold sequences
+
+The words of the language for writing down how a model is folded. Only the ones
+the docs already use are here; the rest of the language's vocabulary is in
+[PRDs/glossary-additions.md](../PRDs/glossary-additions.md) until the code that
+needs each word exists.
+
+| Term | Meaning |
+| --- | --- |
+| **Fold sequence** | The list of instructions that takes a sheet of paper to a model, as a `Sequence` value. It can be written two ways, as Haskell or as a *sequence source*, and both make the same value. Not the same thing as a **step** sequence in a FOLD file, which is the *output*: consecutive frames, one per picture. See `Senbazuru.Sequence.Syntax`. |
+| **Move** | One thing done to the paper, or to how it is shown: a fold, an unfold, turning the model over. A **step**, the instruction for one picture, holds one or more moves, because "fold and unfold both diagonals" is one picture of two moves. |
+| **Sequence source** | The text file, `.foldseq`, in which an author writes a fold sequence. A program, not an input format: it becomes FOLD only when it is run. See [architecture.md](architecture.md#layering-rules). |
+| **Sheet** | The paper a fold sequence starts from: a plain unit square, or the first frame of a FOLD file the source names. It is a second file, which is one of the two reasons a sequence source cannot be read the way a crease pattern is. |
+
 ## This project
 
 | Term | Meaning |

@@ -80,10 +80,27 @@ that reaches for it is a caller holding a `Frame` it built or folded.
 
 `Senbazuru.Fold.Creasing` is the first such caller, and the first module that
 goes *in* at the top and comes *out* at the top: a frame in, a frame out, no
-picture anywhere. Everything an authoring vocabulary
-([#60](https://github.com/avalonalex/senbazuru/issues/60)) adds will have that
-shape, and will reach the rest of the pipeline the way a file does — by being
-a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand.
+picture anywhere.
+
+The fold-sequence language
+([#60](https://github.com/avalonalex/senbazuru/issues/60)) was once expected
+to be more of the same, each move a frame in and a frame out. It is not going
+to be, and the reason is worth having here before the code is. A
+[fold sequence](glossary.md#fold-sequences) is the list of instructions that
+takes a sheet to a model, and more than a file's reader will want a run of one:
+a page of step figures, the [material study](#material-study), and later an
+animated 3D export. All of them need what no frame holds: which paper a move
+turned, about which line, which way as the reader sees it, and what was
+checked along the way. Subtracting one frame from the next cannot recover
+that. A fold followed by its unfold leaves every vertex where it was, so two
+identical frames come out of it, and a book still draws an arrow there.
+
+So a run will hand back one record for each move, and the drawings will be
+made from the records. What reaches this pipeline as a *file* is still plain
+FOLD, written from those records, and `Fold.Query` cannot tell it from one
+somebody wrote by hand. Where that boundary sits is a layering rule,
+[below](#layering-rules); the design is in
+[PRDs/01-architecture.md](../PRDs/01-architecture.md#32-a-move-is-not-a-frame-in-a-frame-out).
 
 | Module | Holds |
 | --- | --- |
@@ -177,6 +194,30 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   a format cannot say something FOLD can — neither `.cp` nor `.opx` has faces —
   the frame simply does not say it either, and the layer above deals with the
   gap the way it deals with a `.fold` file that left the same key out.
+- **A sequence source is the stated exception to that: it is a program, not an
+  input format.** A [sequence source](glossary.md#fold-sequences) is the text
+  file, `.foldseq`, in which an author writes a fold sequence. It cannot become
+  a `Frame` at the door, for two reasons. Running it needs the code that folds
+  paper, `Fold.Creasing`, `Origami.Folding` and `Origami.Flap`, and reading it
+  in `Fold.Load` would drag all of that to the top of the pipeline. And it
+  needs a second file, its [sheet](glossary.md#fold-sequences), the paper it
+  starts from, which a reader handed one file's bytes has no way to open.
+
+  So the boundary is drawn somewhere else. `Fold.Load` will read a source as
+  text and nothing more, and will import no `Sequence` module to do it.
+  `Senbazuru.Sequence.*` turns the text into a `Sequence`, runs it into one
+  record for each move, and writes the result as an ordinary multi-frame FOLD
+  file. **The rule then holds again on the way out:** nothing that reads the
+  written file may know it came from a sequence. Whatever needs more than a
+  frame can hold reads the records instead, and the design names each such
+  reader: the step page, the material study, and the animated export.
+
+  The 3D backend, two rules down, is a stated exception to a different rule,
+  and this one is meant the same way: stated, and not a precedent. A format
+  that *describes paper*, however unusual, still becomes a `Frame` and stops
+  there. Which parts of `Senbazuru.Sequence.*` are built so far is kept in one
+  place, the next rule; the whole plan is in
+  [PRDs/01-architecture.md](../PRDs/01-architecture.md#31-a-sequence-source-is-a-program-not-an-input-format).
 - `Senbazuru.Sequence.*` is layered inside itself, and `Sequence.Syntax` is the
   bottom of it: it imports no project module. A sequence can be written as
   Haskell or as text, and its checker, runner and printer all read the one
