@@ -1231,3 +1231,13 @@ from underneath. Each frame keeps the original rigid panels and checked
 coplanar order; no WebGL depth offset or triangle subdivision is needed by SVG.
 The [projected visibility note](notes/projected-panel-visibility.md) explains
 how open panels reuse the flat renderer's clipping.
+
+## Saved body-patch checkpoints
+
+The [body-patch audit](notes/body-patch-checkpoints.md) remeasures fifty saved
+positions without solving again. Its gallery locates length and contact defects
+on the folded patch and original sheet, and separates numerical penalties from
+crease/panel costs. The initial guess already has reversed layers; the coarse
+run eventually repairs geometry while the refined run remains invalid. Sparse
+checkpoints cannot establish equilibrium or certify the route. See
+[the command and required archive](usage.md#saved-body-patch-checkpoints).

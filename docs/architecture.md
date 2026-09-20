@@ -357,6 +357,12 @@ free. It reuses the existing material/contact solver and triangle exporter.
 `BodyPatchGallery` separates accepted paper from failed wire diagnostics and
 archives checkpoints; no production solver or whole-crane behavior changes.
 See [the coupled patch](notes/coupled-body-patch.md).
+`BodyPatchCheckpoints` binds the two saved 5° histories to their exact exhausted
+schedule and original material, remeasures contact and separate costs, and
+compares intervals at one penalty weight. `BodyPatchCheckpointGallery` copies
+source bytes and marks defects in fixed wire views; neither invokes a solver.
+Sparse positions cannot recover missing proposals or certify equilibrium.
+See [the checkpoint audit](notes/body-patch-checkpoints.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

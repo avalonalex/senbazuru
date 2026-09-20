@@ -95,3 +95,7 @@ or correction experiment can follow that diagnosis. Full wings, neck/tail
 loads, pressure and a certified flexible path remain separate work under
 [#195](https://github.com/avalonalex/senbazuru/issues/195) and track A of
 [#269](https://github.com/avalonalex/senbazuru/issues/269).
+
+[The checkpoint audit](body-patch-checkpoints.md) now locates the initial
+order defects and first-correction crossings without new solves, and records
+one proposed continuation from the recovered coarse shape.

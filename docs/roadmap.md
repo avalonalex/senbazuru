@@ -48,7 +48,10 @@ Energy/opening refinement percentages remain research diagnostics; valid paper,
 accepted solves and explicit visual review still gate illustrations. Pause
 further cost refinement and study controlled opening of a small body patch
 connected to both wing roots. [Its first bounded comparison](notes/coupled-body-patch.md)
-retains unsettled coarse poses and a failed refined control for diagnosis.
+retains unsettled coarse poses and a failed refined control.
+[The saved-checkpoint audit](notes/body-patch-checkpoints.md) finds pre-existing
+order defects and first-correction crossings. Next test one refined continuation
+from the recovered coarse shape, after checking its subdivision.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
@@ -630,8 +633,17 @@ checked coupled angles.
    three exact holds and free neck/tail attachment landmarks. The closed
    reference passes. Coarse 5°/10° endpoints pass lengths and contact but exhaust
    the solve budget; the refined 5° case fails lengths/contact as well.
-   **Next: inspect the saved checkpoints to separate slow coarse settling from
-   the refined failure before choosing one continuation or correction experiment.**
+   [#319](https://github.com/avalonalex/senbazuru/issues/319)
+   [remeasures fifty saved checkpoints](notes/body-patch-checkpoints.md), with
+   no new solves. Both guesses already reverse layers; crossings appear in
+   correction 0→1. The coarse case pauses near 121–130 before recovering by
+   160; the refined case retains large length/contact penalties. Its initial
+   contact cost is 6.538× larger on the same subdivided shape, a candidate
+   contributor rather than an isolated cause.
+   **Next: verify subdivision of the recovered coarse 5° endpoint, then try
+   one refined continuation at the unchanged final weight, recording full
+   proposals/refusals. Preserve the failed original control and all geometry
+   and solver checks; do not restart weak penalties or launch a wider sweep.**
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse
