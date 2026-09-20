@@ -250,6 +250,7 @@ staticSamples =
     RepeatUnmappable "folds" UsesModelCoordinates,
     RepeatUnmappable "folds" CountsLayers,
     RepeatUnmappable "folds" IsometryByConstruction,
+    RangeRunsBackwards "folds" "names",
     NotANameToken "two words",
     ReservedWordAsName "north-west",
     LayerCountNotPositive 0,
@@ -298,6 +299,7 @@ sampledStatic = \case
   NotAFigure {} -> "NotAFigure"
   HingeOfSeveralMoves {} -> "HingeOfSeveralMoves"
   RepeatUnmappable {} -> "RepeatUnmappable"
+  RangeRunsBackwards {} -> "RangeRunsBackwards"
   NotANameToken {} -> "NotANameToken"
   ReservedWordAsName {} -> "ReservedWordAsName"
   LayerCountNotPositive {} -> "LayerCountNotPositive"

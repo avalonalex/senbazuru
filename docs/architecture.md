@@ -143,6 +143,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. |
 | `Senbazuru.Sequence.Syntax` | A fold sequence as a plain value with no functions in it: a header and steps of moves, with paper named by where it lay on the flat sheet and never by id. Both ways of writing a sequence produce it and everything that reads one consumes it. Also `stripSpans` and `canonical`, which let two sequences be compared; `sourceFiles`, which says what file a written path means; and `exactNumber`, how a number of the language is spelled, kept here because the printer and the error messages both need it and the errors sit below the printer. |
 | `Senbazuru.Sequence.Error` | `SequenceError`, the one type the parser, the checker and later the runner all refuse with, and every problem type inside it with its words. Also how an error reaches a person, as three pieces kept apart: the message, `sourceLocation`, and `excerpt` with its caret. And `refusalKinds`, the names `expect refused` may use. |
+| `Senbazuru.Sequence.Check` | A `Sequence` → a `Checked` one, or the first thing wrong with it that needs no paper to see: a name nothing defines or two things define, a point's name where a line belongs, a step that does nothing, a number out of its range, and the values only Haskell can build and no source can spell. `Checked` is opaque, so whatever takes one cannot be handed an unchecked sequence. It also gives each bare name beside `to` its kind, which the parser could not know. |
 | `Senbazuru.Sequence.Build` | Writing a fold sequence in Haskell: a `do` block of steps, each a `do` block of moves, that builds the `Sequence` value. A bind hands back a name and never geometry, so building is pure and cannot fail. Haskell loops run while the value is built, and the value holds what they produced. |
 | `Senbazuru.Sequence.Parse` | A sequence source, the text an author writes → a `Sequence`, with a span on every piece a run could later refuse. A failure is a `ParseProblem`: what was found, read as a whole word, what could have been there, and often a hint naming a well-known mistake. Its header is the record of the grammar and of the reserved words. |
 | `Senbazuru.Sequence.Pretty` | A `Sequence` → the text an author would write, in the one canonical spelling: canonical words, exact numbers, defaults left out, parentheses only round a fold line named inside another. Total: it prints even a value no source could spell, so that the checker's complaint can show it. |
@@ -239,8 +240,14 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   `Sequence.Parse`, the text way of writing one, is the builder's counterpart
   and is held to the same rule: it imports `Sequence.Syntax` and
   `Sequence.Error` and no module that knows paper, so reading a source can
-  never fold anything. It is the only module that knows megaparsec. Not yet
-  built: the checker, the runner, the writer, and the reader in `Fold.Load`.
+  never fold anything. It is the only module that knows megaparsec.
+  `Sequence.Check` is on the same level and knows no paper either, which is
+  what lets a whole sequence be checked without its sheet. It imports one of
+  its own level, `Sequence.Parse`, for the two facts about text it has to
+  agree with: what a name token is and which words are reserved. The arrow
+  points that way because those are the grammar's facts, and a checker that
+  kept its own copy would drift from them. Not yet built: the pass that
+  expands shorthand, the runner, the writer, and the reader in `Fold.Load`.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes

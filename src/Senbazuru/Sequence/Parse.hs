@@ -139,6 +139,7 @@
 module Senbazuru.Sequence.Parse
   ( parseSequence,
     reservedWords,
+    isNameToken,
   )
 where
 
@@ -302,6 +303,19 @@ wordChar c = isAlphaNum c || c == '-' || c == '_'
 -- | A word, with nothing consumed after it.
 rawWord :: Parser Text
 rawWord = T.cons <$> satisfy isAlpha <*> takeWhileP Nothing wordChar
+
+-- | Whether this text is one word as 'rawWord' reads one: a letter, then
+-- letters, digits, @-@ and @_@, and nothing else.
+--
+-- For the checker. A 'Name' built in Haskell can hold any text, and one that
+-- is not a word, such as @"two words"@, would print as text this parser reads
+-- differently. The rule is exported from here, and written with the same two
+-- tests 'rawWord' uses, so that the two cannot come to disagree. It says
+-- nothing about reserved words; 'reservedWords' does.
+isNameToken :: Text -> Bool
+isNameToken text = case T.uncons text of
+  Just (first, rest) -> isAlpha first && T.all wordChar rest
+  Nothing -> False
 
 -- | A keyword: the next word, if it is exactly this one.
 --
