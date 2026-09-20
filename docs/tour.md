@@ -1153,6 +1153,14 @@ separate costs. Whole-material differences include all triangle-overlap corners,
 since the solved panels may vary across width. This is an opt-in four-case
 experiment, not a new mesh policy or a checked flexible motion.
 
+The [saved-cost map](notes/held-bending-costs.md) explains where the remaining
+6.49% and 8.31% refinement differences sit. Costs at the held boundary fall;
+increases in the free paper dominate. Run `--held-costs` with the saved
+`held-equilibrium/` directory to inspect both panels without another solve.
+Added and removed edges stay visible, and raw angles are shown alongside
+angles divided by material spacing: smaller triangles can turn less at each
+edge while representing more total bending.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

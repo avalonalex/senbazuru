@@ -42,6 +42,9 @@ and open `held-equilibrium.html`. It compares uniform and whole-bend triangle
 placement with identical grips, using the existing solver and separate static
 paper checks. See [the study note](../../docs/notes/held-panel-equilibrium.md).
 The costly solves are opt-in; CI checks their fixture invariants.
+To locate their bending-cost differences without solving again, run
+`stack run senbazuru-material-study -- --held-costs build/fold-material/held-equilibrium build/fold-material`
+and open `held-costs.html`. See [the saved-cost analysis](../../docs/notes/held-bending-costs.md).
 
 ## Crease preferences and panel bending
 

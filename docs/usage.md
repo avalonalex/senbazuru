@@ -965,6 +965,29 @@ The optional 3D panel reuses the local Three.js installation described for
 npm dependency. There is no width refinement, tighter-solve confirmation or
 new material/contact policy. See [the findings](notes/held-panel-equilibrium.md).
 
+### Locating held-panel bending costs
+
+```bash
+stack run senbazuru-material-study -- --held-costs \
+  build/fold-material/held-equilibrium build/fold-material
+```
+
+Open `held-costs.html`. This reads the four saved endpoints; it runs no solver
+or contact repair. It refuses changed fixture/policy metadata, incomplete
+convergence histories and mismatched measurements before writing any output.
+Fresh material, hold,
+crease-angle and contact checks accompany the copied source report and
+byte-identical FOLDs. Source and output directories must not overlap.
+
+Select either refinement or either equal-budget layout comparison, then a
+panel. Signed maps, midpoint sums, cumulative costs, raw transverse angles and
+angle/spacing plots share scales across all eight selections. Tables retain
+added and removed springs and every edge direction. Fixed/free bins classify
+spring midpoints, not physical energy density. The output includes 52 SVGs,
+four complete-paper GLBs and detailed JSON under `held-costs/`; prior assets
+remain unchanged. There is no new convergence claim or changed acceptance
+criterion. See [the findings](notes/held-bending-costs.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

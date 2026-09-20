@@ -538,6 +538,12 @@ passive springs keep their flat rest angles. `HeldEquilibriumGallery` reuses
 from valid paper. Its whole-sheet comparisons use material-triangle overlaps,
 because solved panels need not repeat their profile across width. See
 [the equilibrium comparison](notes/held-panel-equilibrium.md).
+`HeldCosts` binds saved equilibria to their original policy and defines fixed
+material-distance bins plus transverse-angle profiles. `HeldCostsGallery`
+reuses `MatchedEnergy` for material-edge pairing and the shared
+held-state measurement/export path for fresh checks, without invoking a
+solve. Its [signed accounting](notes/held-bending-costs.md) includes replaced
+edges and all edge directions; bins describe spring locations, not densities.
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

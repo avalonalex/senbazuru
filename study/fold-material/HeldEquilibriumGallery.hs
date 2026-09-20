@@ -3,7 +3,7 @@
 -- Every saved state gets the existing whole-sheet contact check and exact
 -- two-panel order audit. Comparisons intersect material triangles, so a bend
 -- at a vertex present in only one grid cannot disappear from the measurement.
-module HeldEquilibriumGallery (writeHeldEquilibrium) where
+module HeldEquilibriumGallery (writeHeldEquilibrium, HeldState (..), measureHeldState, writeMeasuredHeldState) where
 
 import BendLocations (locateBends)
 import BendLocationsGallery (rowJson)
@@ -101,7 +101,7 @@ solveRun output (key, layout, budget) = do
       reference = coupledReference fixture
       attempt = solveCoupledMethod ProgressiveContactExchange equilibriumWeights EnforcePairOrder equilibriumSettings fixture
   -- Save the starting mesh before beginning expensive work, including refusals.
-  (seedReport, seedModel, _, _, _) <- writeState output fixture (key ++ "-before") "Original sampled guess" (coupledSeed fixture)
+  (seedReport, seedModel, _, _, _) <- writeHeldState output fixture (key ++ "-before") "Original sampled guess" (coupledSeed fixture)
   putStrLn ("Solving " ++ key)
   hFlush stdout
   start <- getCPUTime
@@ -112,7 +112,7 @@ solveRun output (key, layout, budget) = do
   states <- case result of
     Nothing -> pure []
     Just r -> forM [("repair", "Numerical starting repair", repairedMesh (inequalityInitial r)), ("after", "Solver endpoint", inequalityMesh r)] $ \(stage, label, mesh) -> do
-      (report, model, valid, cost, gap) <- writeState output fixture (key ++ "-" ++ stage) label mesh
+      (report, model, valid, cost, gap) <- writeHeldState output fixture (key ++ "-" ++ stage) label mesh
       pure (stage, report, model, valid, mesh, cost, gap)
   let accepted = maybe False inequalityConverged result && or [valid | (stage, _, _, valid, _, _, _) <- states, stage == "after"]
       endpoint = case [(mesh, cost, gap) | (stage, _, _, _, mesh, cost, gap) <- states, stage == "after"] of [x] -> Just x; _ -> Nothing
@@ -148,17 +148,30 @@ solveRun output (key, layout, budget) = do
   hFlush stdout
   pure (Run key layout budget accepted endpoint report models)
 
-writeState :: FilePath -> CoupledFixture -> String -> Text -> MaterialMesh -> IO (Value, Value, Bool, ProbeMeasure, Double)
-writeState output fixture name caption mesh = do
+-- | Measurements can be checked against an archive before publishing any
+-- files. Holding this value also avoids repeating the exact contact audit.
+data HeldState = HeldState
+  { heldStateReport :: Value,
+    heldStateValid :: Bool,
+    heldStateCost :: ProbeMeasure,
+    heldStateAudit :: PairAudit,
+    heldStateGaps :: [Maybe Rational]
+  }
+
+writeHeldState :: FilePath -> CoupledFixture -> String -> Text -> MaterialMesh -> IO (Value, Value, Bool, ProbeMeasure, Double)
+writeHeldState output fixture name caption mesh = do
+  measured <- measureHeldState fixture mesh
+  writeMeasuredHeldState output fixture name caption mesh measured
+
+measureHeldState :: CoupledFixture -> MaterialMesh -> IO HeldState
+measureHeldState fixture mesh = do
   (measurement, valid) <- measure fixture mesh
   let reference = (coupledReference fixture) {closedMesh = mesh}
   cost <- checked (measureProbe reference)
   audit <- checked (auditPairContact (closedOwners reference) mesh)
   gaps <- checked (samplePairGaps (closedOwners reference) mesh sampleLocations)
   springs <- checked (locateBends reference)
-  sheet <- checked (coupledSurface fixture mesh)
-  let opening = fromRational (pairMaximum audit)
-      report =
+  let report =
         object
           [ "measurement" .= measurement,
             "geometryPassed" .= valid,
@@ -172,6 +185,17 @@ writeState output fixture name caption mesh = do
             "springs" .= map rowJson springs,
             "edges" .= [object ["vertices" .= [a, b], "rest" .= edgeRest e, "actual" .= edgeActual e] | e <- probeEdges cost, let (a, b) = edgeIds e]
           ]
+  pure (HeldState report valid cost audit gaps)
+
+writeMeasuredHeldState :: FilePath -> CoupledFixture -> String -> Text -> MaterialMesh -> HeldState -> IO (Value, Value, Bool, ProbeMeasure, Double)
+writeMeasuredHeldState output fixture name caption mesh measured = do
+  sheet <- checked (coupledSurface fixture mesh)
+  let report = heldStateReport measured
+      valid = heldStateValid measured
+      cost = heldStateCost measured
+      audit = heldStateAudit measured
+      gaps = heldStateGaps measured
+      opening = fromRational (pairMaximum audit)
   TIO.writeFile (output </> name ++ "-profile.svg") (profileSvg mesh)
   TIO.writeFile (output </> name ++ "-gaps.svg") (gapSvg (max 1e-5 opening) audit)
   TIO.writeFile (output </> name ++ "-map.svg") (mapSvg gaps)
