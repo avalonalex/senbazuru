@@ -525,6 +525,13 @@ Both galleries share the measurement and plotting implementation; the three-way
 comparison adds every pairwise profile displacement while preserving the
 earlier gallery's data and drawings. See
 [the whole-bend comparison](notes/whole-bend-refinement.md).
+`HeldEquilibrium` turns the fixed smooth reference into four bounded held-panel
+fixtures. The original grips are constraints, while the curve is only a seed;
+passive springs keep their flat rest angles. `HeldEquilibriumGallery` reuses
+`CoupledCrease` without changing solver policy and checks convergence separately
+from valid paper. Its whole-sheet comparisons use material-triangle overlaps,
+because solved panels need not repeat their profile across width. See
+[the equilibrium comparison](notes/held-panel-equilibrium.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

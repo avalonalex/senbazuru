@@ -36,6 +36,13 @@ future general curved-surface visibility renderer.
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
 
+For the current four-case held-panel comparison, run
+`stack run senbazuru-material-study -- --held-equilibrium build/fold-material`
+and open `held-equilibrium.html`. It compares uniform and whole-bend triangle
+placement with identical grips, using the existing solver and separate static
+paper checks. See [the study note](../../docs/notes/held-panel-equilibrium.md).
+The costly solves are opt-in; CI checks their fixture invariants.
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

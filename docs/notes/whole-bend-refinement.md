@@ -93,9 +93,9 @@ vertices 0/1/2. Inner holds do not move; original crease error stays below
 leaves 945 archived assets byte-for-byte unchanged.
 
 This completes the prescribed comparison, not #195's solved-response criteria
-or the old solved 8.99% difference. A useful next step is one small held-panel
-equilibrium comparison using whole-bend placement at two modest budgets, with
-the uniform controls, holds, contact policy and material weights fixed. Check
+or the old solved 8.99% difference. The [held-panel follow-up](held-panel-equilibrium.md) compares equilibrium
+using whole-bend placement at two modest budgets, with uniform controls, holds,
+contact policy and material weights fixed. Check
 solver convergence, geometry and separate energies before adopting a default
 mesh policy. The reference curves can inform that experiment; their present
 cost agreement cannot establish how the paper will settle.

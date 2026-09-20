@@ -944,6 +944,27 @@ files and 74 SVGs under `whole-bend/`; previous archives remain unchanged.
 Whole-bend placement improves geometry, but the join windows still estimate
 the circular cost more accurately. See [the note](notes/whole-bend-refinement.md).
 
+### Comparing held-panel equilibria
+
+```bash
+stack run senbazuru-material-study -- --held-equilibrium build/fold-material
+```
+
+Open `held-equilibrium.html`. This opt-in experiment runs four solves: uniform
+and whole-bend placement at 128 and 256 triangles, starting from the same smooth
+curve and retaining the original grips. It uses the existing six length-weight
+stages with 40 iterations per stage. It preserves shortened sampled edges as
+an initial diagnostic, then lets both panels move between their grips.
+
+The page separates solver convergence from static paper acceptance, compares
+opening and individual costs, and measures differences across every material
+triangle overlap. Numerical states are not folding steps. FOLD files, complete
+sheet GLBs, JSON histories and side/gap SVGs live under `held-equilibrium/`.
+The optional 3D panel reuses the local Three.js installation described for
+[checked flap motion](#checked-flap-motion); the measurements and SVGs need no
+npm dependency. There is no width refinement, tighter-solve confirmation or
+new material/contact policy. See [the findings](notes/held-panel-equilibrium.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

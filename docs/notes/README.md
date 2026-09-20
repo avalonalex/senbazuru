@@ -95,6 +95,7 @@ read the Haddock module headers; for the domain, start with
 | [fixed-bend-refinement.md](fixed-bend-refinement.md) | Fixed curves approach their analytic costs at different rates; length error and grip drift remain separate |
 | [transition-refinement.md](transition-refinement.md) | Equal triangle budgets near curvature joins improve cost accuracy but can increase grip drift |
 | [whole-bend-refinement.md](whole-bend-refinement.md) | Resolving the bend interior improves geometry, while the circle retains an angular-cost tradeoff |
+| [held-panel-equilibrium.md](held-panel-equilibrium.md) | Letting the same held paper settle on uniform and whole-bend grids at two modest budgets |
 | [outer-strip-continuation.md](outer-strip-continuation.md) | Two exhausted endpoints settle with unchanged material and length weight; one still crosses |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |
