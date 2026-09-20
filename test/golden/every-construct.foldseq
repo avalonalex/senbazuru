@@ -9,7 +9,7 @@ start folded {
 }
 
 step names "Name two points and two lines." {
-  mark tip = corner north-east
+  mark peak = corner north-east
   mark under = midpoint of [corner south-west, centre] in face containing (1/8, 1/8)
   let diagonal = [corner south-west, corner north-east]
   let third = fraction 1/3 along [corner south-west, corner south-east]
@@ -17,10 +17,10 @@ step names "Name two points and two lines." {
 
 step folds "Every way of naming a fold line." {
   fold valley corner south-east to centre
-  fold mountain 90° edge west to edge east nearest centre all layers moving tip
+  fold mountain 90° edge west to edge east nearest centre all layers moving peak
   fold valley 45/2° perpendicular to (corner south-west to centre) through centre top layer
   fold valley corner north-west to edge south through midpoint of edge north nearest corner north-east top 3 layers
-  fold valley tip to edge south and third to diagonal top flap
+  fold valley peak to edge south and third to diagonal top flap
   fold mountain centre to edge east perpendicular to edge north
   fold valley corner north-east to crease [corner south-west, centre]
   fold valley model [(-1/2, 0), (3, 1/4)] moving meet hinge of names crease of names
@@ -64,7 +64,7 @@ step "Everything else." {
     stacking first
   }
   checkpoint "half.fold" {
-    layers tip above centre
+    layers peak above centre
   }
   not modelled "inside reverse fold"
   expect refused FlapCovered {

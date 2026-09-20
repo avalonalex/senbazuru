@@ -41,6 +41,8 @@ module Test.SequenceGen
     genLine,
     genPoint,
     genMove,
+    namePool,
+    kindPool,
   )
 where
 
@@ -115,7 +117,7 @@ genMove spans depth =
       | depth <= 0 = []
       | otherwise =
           [ Together <$> short (located spans (genMove spans (depth - 1))),
-            ExpectRefused . RefusalKind <$> elements ["ExistingHingeFlat", "UnknownName"] <*> genMove spans (depth - 1)
+            ExpectRefused . RefusalKind <$> elements kindPool <*> genMove spans (depth - 1)
           ]
 
 genMacro :: Gen MacroCall
@@ -197,7 +199,16 @@ genLine depth = frequency (leaves <> if depth <= 0 then [] else nodes)
 -- @-@ and @_@, and none of them reserved. @first-petal@ is here because it
 -- starts with a reserved word and is still a name.
 genName :: Gen Name
-genName = elements ["a", "b", "c1", "flap-2", "first-petal", "wing_tip", "L", "P"]
+genName = Name <$> elements namePool
+
+-- | The names the generator draws from, for a spec that has to tell a
+-- sequence's own words from the language's.
+namePool :: [Text]
+namePool = ["a", "b", "c1", "flap-2", "first-petal", "wing_tip", "L", "P"]
+
+-- | The kinds of refusal the generator draws from.
+kindPool :: [Text]
+kindPool = ["ExistingHingeFlat", "UnknownName"]
 
 -- | Captions, including the ones a printer has to escape. The last has two
 -- control characters with no letter of their own, a bell and an escape, which

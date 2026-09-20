@@ -63,6 +63,7 @@ module Senbazuru.Sequence.Error
     ParseProblem (..),
     Found (..),
     Hint (..),
+    quote,
 
     -- * Text that parses and cannot mean anything
     StaticProblem (..),
@@ -116,8 +117,10 @@ data ParseProblem = ParseProblem
   deriving stock (Eq, Show)
 
 -- | What the parser met. A failed keyword reports the whole word, so a message
--- says @found "left"@ and not @found \'l\'@.
-data Found = FoundWord Text | FoundChar Char | FoundEnd
+-- says @found "left"@ and not @found \'l\'@. The end of a line has a
+-- constructor of its own because a statement that stops short is a common
+-- mistake, and a quoted newline is no way to say so.
+data Found = FoundWord Text | FoundChar Char | FoundLineEnd | FoundEnd
   deriving stock (Eq, Show)
 
 -- | A mistake common enough to have its own sentence.
@@ -141,6 +144,10 @@ data Hint
   | -- | @n\/0@. A parse problem and not a static one, because no 'Rational'
     -- can hold it, so no tree could carry it as far as the checker.
     ZeroDenominator
+  | -- | A count of layers or of turns too large for the tree to hold. A parse
+    -- problem for the same reason: the tree keeps a count in an 'Int', and
+    -- narrowing a larger number would wrap it round to a small one in silence.
+    CountTooLarge Integer
   | -- | A @{@ that is never closed, with the words that opened it:
     -- @step half@. Its span is the brace, not the end of the file, because
     -- the brace is what the author has to find.
@@ -159,7 +166,20 @@ data Hint
   | -- | A construct the grammar has and this version does not run yet, such as
     -- a @settle@ block.
     NotYetSupported Text
-  deriving stock (Eq, Show)
+  | -- | A word the language spells another way: what was written, then the
+    -- language's spelling. @center@ is @centre@, @counterclockwise@ is
+    -- @anticlockwise@. Those words are reserved for the sake of this hint.
+    SpelledOtherwise Text Text
+  | -- | The header has no @sheet@ line, the one line a source must have: a
+    -- sequence has to say what paper it starts from.
+    SheetMissing
+  | -- | @L to P@: a line laid onto a point. A point can be laid onto a line
+    -- and a line onto a line, and the other way round names no fold.
+    LineOntoPoint
+  | -- | @nearest@ after @P to Q@ or @P to L@. It chooses between the two ways
+    -- one line can be laid onto another, and those forms have only one way.
+    NearestWithoutTwoLines
+  deriving stock (Eq, Ord, Show)
 
 -- | What a name names. A point's name where a line belongs is the mistake the
 -- Haskell builder's types catch and text cannot.
@@ -259,6 +279,7 @@ instance Explain ParseProblem where
       foundWords = \case
         FoundWord word -> quote word
         FoundChar c -> quote (T.singleton c)
+        FoundLineEnd -> "the end of the line"
         FoundEnd -> "the end of the source"
 
 instance Explain StaticProblem where
@@ -322,6 +343,7 @@ hintWords = \case
     quote (T.singleton c) <> " (" <> codePoint c <> ") is not the degree sign; write ° (" <> codePoint '°' <> ") or deg"
   StraySign -> "a minus sign is allowed only in (u, v), in model pairs and in pose angles"
   ZeroDenominator -> "a fraction cannot have a denominator of 0"
+  CountTooLarge n -> tshow n <> " is too large to be a count of layers or of turns"
   UnclosedBlock opening -> "the " <> quote "{" <> " opening " <> opening <> " is never closed"
   UnsupportedVersion n -> "this is foldseq version " <> tshow n <> ", and only version 1 is understood"
   LooksLikeFold -> "this looks like a FOLD file, not a sequence source"
@@ -330,9 +352,18 @@ hintWords = \case
   DuplicateHeader line firstLine -> line <> " is given twice; the first is on line " <> tshow firstLine
   HeaderAfterStep line -> line <> " is a header line, and header lines come before the first step"
   NotYetSupported what -> what <> " is not supported yet"
+  SpelledOtherwise written ours -> quote written <> " is spelled " <> quote ours <> " here"
+  SheetMissing -> "there is no sheet line; a sequence has to say what paper it starts from: sheet square, or sheet and a file"
+  LineOntoPoint -> "a line cannot be laid onto a point; lay the point onto the line, or name a second line"
+  NearestWithoutTwoLines ->
+    "nearest chooses between the two ways of laying one line onto another, and there is only one way to make this fold"
   where
     codePoint c = "U+" <> T.justifyRight 4 '0' (T.toUpper (T.pack (showHex (ord c) "")))
 
+-- | A word of the source as a message shows it, between double quotes.
+-- Exported for the parser, which quotes the keywords it expected: what was
+-- found and what was expected stand in one sentence, and have to be quoted
+-- alike.
 quote :: Text -> Text
 quote text = "\"" <> text <> "\""
 

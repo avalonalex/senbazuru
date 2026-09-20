@@ -38,10 +38,9 @@ import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Header (..), Line (
 -- fold: \"behind\" is how a book says it, and the tree stores only the sense.
 --
 -- The sheet's path is relative to the repository root, not to @examples\/@.
--- The text of this sequence will be saved at the root, as @blintz.foldseq@,
--- when the parser arrives; a sheet's path is read relative to the file that
--- names it, and the two have to name their sheet with the same words to be
--- equal.
+-- The text of this sequence is saved at the root, as @blintz.foldseq@; a
+-- sheet's path is read relative to the file that names it, and the two have to
+-- name their sheet with the same words to be equal.
 blintz :: Sequence
 blintz = sequenceOf (header "Blintz base, then reopen one corner" (sheetFile "examples/blintz-base.fold") (Just centre)) $ do
   c1 <- step "c1" "Fold the south-east corner behind, to the centre." $ fold mountain (cornerOf SouthEast `onto` centre)

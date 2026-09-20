@@ -2,9 +2,10 @@
 -- Tests for the sequence language's error type, and for how an error reaches a
 -- person.
 --
--- There is no parser or checker yet, so nothing here produces an error: each
--- test builds one by hand and looks at what comes out. That is enough to pin
--- the three things the rest of the language will lean on.
+-- Nothing here produces an error: each test builds one by hand and looks at
+-- what comes out. Whether the parser raises the right one in the right place
+-- is the parser's spec's to say. This one pins the three things every
+-- producer of an error leans on.
 --
 -- __The shape of a message.__ A message is one line that can follow a colon:
 -- no capital to open, no full stop to close, no path, and no word that only
@@ -265,13 +266,18 @@ hintSamples =
     NotDegreeSign '˚',
     StraySign,
     ZeroDenominator,
+    CountTooLarge 18446744073709551617,
     UnclosedBlock "step half",
     UnsupportedVersion 2,
     LooksLikeFold,
     FractionAlongEdge,
     DuplicateHeader "title" 2,
     HeaderAfterStep "sheet",
-    NotYetSupported "a settle block"
+    NotYetSupported "a settle block",
+    SpelledOtherwise "center" "centre",
+    SheetMissing,
+    LineOntoPoint,
+    NearestWithoutTwoLines
   ]
 
 -- | The constructor's name. Written as a match on every constructor, with no
@@ -307,6 +313,7 @@ sampledHint = \case
   NotDegreeSign {} -> "NotDegreeSign"
   StraySign -> "StraySign"
   ZeroDenominator -> "ZeroDenominator"
+  CountTooLarge {} -> "CountTooLarge"
   UnclosedBlock {} -> "UnclosedBlock"
   UnsupportedVersion {} -> "UnsupportedVersion"
   LooksLikeFold -> "LooksLikeFold"
@@ -314,3 +321,7 @@ sampledHint = \case
   DuplicateHeader {} -> "DuplicateHeader"
   HeaderAfterStep {} -> "HeaderAfterStep"
   NotYetSupported {} -> "NotYetSupported"
+  SpelledOtherwise {} -> "SpelledOtherwise"
+  SheetMissing -> "SheetMissing"
+  LineOntoPoint -> "LineOntoPoint"
+  NearestWithoutTwoLines -> "NearestWithoutTwoLines"
