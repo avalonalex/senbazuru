@@ -245,6 +245,11 @@ data StaticProblem
   | -- | @repeat NAME@ with a mirror or a turn, where something cannot be
     -- carried to another part of the sheet: the step, and what is in the way.
     RepeatUnmappable Name RepeatObstacle
+  | -- | @repeat N..M@ where M's step comes before N's: the two names, as
+    -- written. A range runs forwards through the steps, so this one holds
+    -- nothing. The design's catalogue has no entry for it; it is here because
+    -- it needs no paper to see.
+    RangeRunsBackwards Name Name
   | -- | Only a Haskell builder can make the rest; text cannot spell them. A
     -- 'Name' that is not a name token, such as @"two words"@.
     NotANameToken Name
@@ -304,6 +309,8 @@ instance Explain StaticProblem where
       quote name <> " makes several moves, so it has no one hinge; name the line another way"
     RepeatUnmappable (Name name) obstacle ->
       quote name <> " cannot be repeated mirrored or turned: " <> obstacleWords obstacle
+    RangeRunsBackwards (Name from) (Name to) ->
+      quote (from <> ".." <> to) <> " runs backwards: " <> quote to <> " comes before " <> quote from <> "; write " <> quote (to <> ".." <> from)
     NotANameToken (Name name) ->
       quote name <> " is not a name: a name is a letter, then letters, digits, - and _"
     ReservedWordAsName (Name name) -> quote name <> " is a reserved word and cannot be a name"
