@@ -30,7 +30,7 @@ spec = describe "held-panel equilibrium fixtures" $ do
       c <- right (heldCase layout budget)
       let fixture = heldFixture c
           seed = coupledSeed fixture
-          size = case budget of Triangles128 -> 128; Triangles256 -> 256
+          size = case budget of Triangles128 -> 128; Triangles256 -> 256; Triangles512 -> 512
       length (triangles seed) `shouldBe` size
       componentCount seed `shouldBe` 1
       closedRoot (coupledReference fixture) `shouldBe` [0, 1, 2]

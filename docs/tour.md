@@ -1169,6 +1169,14 @@ change by less than 0.00001%. The 6.49% / 8.31% mesh differences remain.
 numerical stopping from mesh refinement. A local stopping test still does not
 prove that the solver found the globally lowest cost.
 
+The [256 → 512 refinement](notes/held-panel-refinement.md) keeps width fixed
+and confirms both finer endpoints at the same tighter stop. Both pass the
+paper checks and shape target; passive changes shrink to 3.75% / 3.78%.
+However, the equal-budget layouts still differ by 10.36%, and length-penalty
+costs rise. Run `--held-refinement` with the saved `held-confirmation/` directory
+to inspect both kinds of difference. Neither a passing passive-cost target nor
+a small total-cost change establishes independence from triangle placement.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change

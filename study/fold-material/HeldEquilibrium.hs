@@ -37,7 +37,7 @@ import TransitionRefinement
 
 data HeldLayout = UniformLayout | WholeBendLayout deriving stock (Eq, Show)
 
-data HeldBudget = Triangles128 | Triangles256 deriving stock (Eq, Show)
+data HeldBudget = Triangles128 | Triangles256 | Triangles512 deriving stock (Eq, Show)
 
 data HeldCase = HeldCase
   { heldGrid :: !ReferenceGrid,
@@ -73,4 +73,4 @@ heldCase layout budget = do
   checkCoupledMaterial fixture seed
   pure (HeldCase grid curve fixture roundoff)
   where
-    meshSize = case budget of Triangles128 -> Uniform128; Triangles256 -> Uniform256
+    meshSize = case budget of Triangles128 -> Uniform128; Triangles256 -> Uniform256; Triangles512 -> Uniform512
