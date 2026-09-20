@@ -98,6 +98,7 @@ read the Haddock module headers; for the domain, start with
 | [held-panel-equilibrium.md](held-panel-equilibrium.md) | Letting the same held paper settle on uniform and whole-bend grids at two modest budgets |
 | [held-bending-costs.md](held-bending-costs.md) | Refinement lowers the held-boundary cost while free-paper increases dominate the saved endpoint differences |
 | [held-endpoint-confirmation.md](held-endpoint-confirmation.md) | Tightening the movement stop barely changes two held-panel endpoints; their refinement cost gaps remain |
+| [held-panel-refinement.md](held-panel-refinement.md) | Comparing 256 and 512 triangles at fixed width, with the same material, grips and tighter stopping test |
 | [outer-strip-continuation.md](outer-strip-continuation.md) | Two exhausted endpoints settle with unchanged material and length weight; one still crosses |
 | [illustration-scale-refinement.md](illustration-scale-refinement.md) | Compare saved paper at its drawing size; stable outlines can still conceal changes in tiny exposed layers |
 | [thin-layer-visibility.md](thin-layer-visibility.md) | Real exposed paper and twelve sampling grids keep thin-layer changes distinct from raster artifacts |

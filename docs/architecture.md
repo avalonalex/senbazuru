@@ -558,6 +558,14 @@ material and all paper checks, reusing the held-state exporter, fixed cost bins
 and material-overlap comparisons. The [confirmation](notes/held-endpoint-confirmation.md)
 separates numerical stopping sensitivity from mesh differences; it changes no
 default solver policy.
+`HeldRefinement` checks that saved 256 endpoints carry both their original
+six-stage history and the tighter confirmation. `HeldRefinementGallery`
+remeasures both before starting two opt-in 512-triangle solves. It reuses
+`HeldConfirmationGallery`'s measured endpoint exporter and whole-material
+comparisons, plus the same passive-cost pairing and fixed bins. A failed
+primary solve cannot receive a confirmation, and a failed confirmation cannot
+enter an eligible refinement comparison. See
+[the fixed-width refinement](notes/held-panel-refinement.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

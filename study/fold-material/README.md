@@ -53,6 +53,13 @@ material, holds, contact policy and paper caps; neither coarse endpoint is solve
 See [the stopping confirmation](../../docs/notes/held-endpoint-confirmation.md).
 
 
+For 256 → 512 triangles at fixed width on both layouts, run
+`stack run senbazuru-material-study -- --held-refinement build/fold-material/held-confirmation build/fold-material`
+and open `held-refinement.html`. The saved confirmed 256 endpoints are preserved;
+the two 512 solves use the original six-stage schedule followed by the same
+`1e-8` confirmation. See [the refinement study](../../docs/notes/held-panel-refinement.md).
+
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

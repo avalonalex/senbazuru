@@ -1012,6 +1012,32 @@ comparison certify a folding route or a global minimum. See
 [the stopping confirmation](notes/held-endpoint-confirmation.md).
 
 
+Compare those confirmed endpoints with two new 512-triangle solves:
+
+```bash
+stack run senbazuru-material-study -- --held-refinement \
+  build/fold-material/held-confirmation build/fold-material
+```
+
+Open `held-refinement.html`. Both layouts retain two width strips, the original
+material and exact grips. Each uses the original six-stage length schedule,
+then, only if converged and paper-valid, a bounded final-weight confirmation
+at `1e-8`. Each stage allows at most 40 iterations. The 256-triangle inputs
+are validated and remeasured before any writes or solves; overlapping input
+and output directories are refused. Their FOLD bytes and source report are
+copied unchanged into `held-refinement/`.
+
+The gallery retains starting, repaired, six-stage and confirmation states as
+available, including diagnostic failures. Shared-scale profiles, complete-sheet
+GLBs, exact gaps, separate costs and fixed-bin maps compare 256 → 512 and
+both layouts at each size. Solver convergence and paper checks determine
+eligibility, separately from the shape/cost refinement targets. The costly
+solves remain opt-in; CI exercises fixture and archive contracts. The existing
+`checked-flap/node_modules` installation supplies the viewer. See
+[the refinement results](notes/held-panel-refinement.md). This changes no
+production solver policy and certifies no continuous flexible route.
+
+
 ### Comparing paper at illustration scale
 
 ```bash

@@ -8,7 +8,7 @@
 -- 1e-7). Paper acceptance, contact and inner quadratic settings do not change.
 -- A smaller last proposal is evidence about this local solver, not a bound
 -- on all remaining motion, a global minimum or a continuously checked route.
-module HeldConfirmationGallery (writeHeldConfirmation) where
+module HeldConfirmationGallery (writeHeldConfirmation, Endpoint (..), compareEndpoints, writeEndpoint) where
 
 import BendLocations
 import ClosedCrease
@@ -50,7 +50,7 @@ import System.FilePath (splitDirectories, (</>))
 import System.IO (hFlush, stdout)
 
 -- A measured endpoint keeps its geometry and convergence evidence together.
--- Historical sources pass their original 1e-7 stop, not the new 1e-8 stop.
+-- The caller records which stopping policy an archived endpoint satisfied.
 data Endpoint = Endpoint
   { endpointKey :: String,
     endpointMesh :: MaterialMesh,
