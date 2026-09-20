@@ -69,8 +69,10 @@ extra-source-files:
   examples/boat-base.fold
   examples/pig-base.fold
   examples/diamond-base.fold
+  blintz.foldseq
   test/fixtures/*.cp
   test/fixtures/*.fold
+  test/fixtures/*.foldseq
   test/fixtures/*.opx
   test/golden/*.foldseq
   test/golden/*.glb
@@ -151,18 +153,25 @@ library
     Senbazuru.Render.Svg
     Senbazuru.Sequence.Build
     Senbazuru.Sequence.Error
+    Senbazuru.Sequence.Parse
     Senbazuru.Sequence.Pretty
     Senbazuru.Sequence.Syntax
 
   -- transformers, not mtl: Sequence.Build keeps a list in a State and needs
   -- nothing a MonadState class would add. It ships with GHC, so it costs no
   -- new package to build.
+  --
+  -- megaparsec is Sequence.Parse's. The bound follows the pinned snapshot,
+  -- lts-22.44, which has 9.5.0. parser-combinators is not listed although
+  -- megaparsec uses it: every combinator the parser needs is re-exported by
+  -- Text.Megaparsec, and GHC only asks for a package a stanza imports from.
   build-depends:
     , aeson         >=2.1  && <2.3
     , base          >=4.17 && <4.20
     , bytestring    >=0.11 && <0.13
     , containers    >=0.6  && <0.8
     , filepath      >=1.4  && <1.5
+    , megaparsec    >=9.5  && <9.6
     , tagsoup       >=0.14 && <0.15
     , text          >=2.0  && <2.2
     , transformers  >=0.5  && <0.7
@@ -344,6 +353,7 @@ test-suite senbazuru-test
     Senbazuru.Render.SvgSpec
     Senbazuru.Sequence.BuildSpec
     Senbazuru.Sequence.ErrorSpec
+    Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
     Senbazuru.Sequence.SyntaxSpec
     Test.Golden

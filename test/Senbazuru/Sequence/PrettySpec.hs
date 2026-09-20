@@ -17,10 +17,10 @@
 -- parentheses go, what is left out because the parser would supply it.
 --
 -- __Properties__, over random trees, for what must hold of any output at all.
--- There is no parser yet, so \"the text parses back\" cannot be tested here.
--- These are the parts of that promise which can: the output is clean text with
--- no raw control character in it, its brackets balance outside strings, and
--- the trees that are supposed to print alike do.
+-- That the text parses back is the parser's spec's to show, with the parser.
+-- These are the parts of that promise which need no parser: the output is
+-- clean text with no raw control character in it, its brackets balance outside
+-- strings, and the trees that are supposed to print alike do.
 module Senbazuru.Sequence.PrettySpec (spec) where
 
 import Data.Text (Text)
@@ -184,7 +184,7 @@ everyConstruct =
     [ step'
         (Just "names")
         (Just "Name two points and two lines.")
-        [ Mark "tip" (CornerOf NorthEast) Nothing,
+        [ Mark "peak" (CornerOf NorthEast) Nothing,
           Mark "under" (MidpointOf (CornerOf SouthWest) Centre) (Just (AtSheet (1 / 8) (1 / 8))),
           Let "diagonal" (BindLine (Segment (CornerOf SouthWest) (CornerOf NorthEast))),
           Let "third" (BindPoint (FractionAlong (1 / 3) (CornerOf SouthWest) (CornerOf SouthEast)))
@@ -193,10 +193,10 @@ everyConstruct =
         (Just "folds")
         (Just "Every way of naming a fold line.")
         [ Fold ValleyFold ToFlat (Onto (CornerOf SouthEast) Centre) FlapOfFirstArgument Nothing,
-          Fold MountainFold (Degrees 90) (LineOnto (EdgeOf West) (EdgeOf East) (Just Centre)) AllLayers (Just (PointNamed "tip")),
+          Fold MountainFold (Degrees 90) (LineOnto (EdgeOf West) (EdgeOf East) (Just Centre)) AllLayers (Just (PointNamed "peak")),
           Fold ValleyFold (Degrees (45 / 2)) (PerpendicularThrough (Onto (CornerOf SouthWest) Centre) Centre) (TopLayers 1) Nothing,
           Fold ValleyFold ToFlat (PointToLineThrough (CornerOf NorthWest) (EdgeOf South) (MidpointOfEdge North) (Just (CornerOf NorthEast))) (TopLayers 3) Nothing,
-          Fold ValleyFold ToFlat (TwoToTwo (PointNamed "tip") (EdgeOf South) (PointNamed "third") (LineNamed "diagonal") Nothing) TopFlap Nothing,
+          Fold ValleyFold ToFlat (TwoToTwo (PointNamed "peak") (EdgeOf South) (PointNamed "third") (LineNamed "diagonal") Nothing) TopFlap Nothing,
           Fold MountainFold ToFlat (PointToLinePerpendicular Centre (EdgeOf East) (EdgeOf North)) FlapOfFirstArgument Nothing,
           Fold ValleyFold ToFlat (PointToLine (CornerOf NorthEast) (ExistingCrease (CornerOf SouthWest) Centre)) FlapOfFirstArgument Nothing,
           Fold ValleyFold ToFlat (ModelSegment (-(1 / 2), 0) (3, 1 / 4)) FlapOfFirstArgument (Just (Meet (HingeOf "names") (CreaseOf "names"))),
@@ -235,7 +235,7 @@ everyConstruct =
           Repeat "names" (Just "folds") (Just (MirroredAcross (CornerOf SouthWest) (CornerOf NorthEast))),
           Repeat "base" Nothing (Just (TurnedQuarters 2 Centre)),
           Checkpoint "crane.fold" StackingFirst,
-          Checkpoint "half.fold" (Relations [LayerAbove (PointNamed "tip") Centre]),
+          Checkpoint "half.fold" (Relations [LayerAbove (PointNamed "peak") Centre]),
           NotModelled "inside reverse fold",
           ExpectRefused (RefusalKind "FlapCovered") (Fold ValleyFold (Degrees 90) (Onto (CornerOf NorthWest) (MidpointOfEdge North)) FlapOfFirstArgument Nothing)
         ]

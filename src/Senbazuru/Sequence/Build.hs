@@ -256,7 +256,7 @@ step_ caption = appendStep Nothing (Just caption)
 -- | A named step that also hands back what its body returned, which is how a
 -- point marked in one step reaches the steps after it:
 --
--- > (_, tip) <- stepReturning "open" "Mark the tip." $ mark "tip" (cornerOf NorthEast) Nothing
+-- > (_, peak) <- stepReturning "open" "Mark the peak." $ mark "peak" (cornerOf NorthEast) Nothing
 stepReturning :: Name -> Text -> Moves a -> Build (Ref StepK, a)
 stepReturning name caption body = do
   result <- appendStep (Just name) (Just caption) body
