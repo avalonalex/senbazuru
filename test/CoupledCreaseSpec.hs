@@ -82,6 +82,28 @@ spec = describe "both crease panels bending" $ do
           stepMovement final `shouldSatisfy` (<= 1e-7)
           quadraticConverged (stepQuadratic final) `shouldBe` True
 
+  it "uses the full proposal for an opt-in stopping threshold" $ do
+    f <- right (coupledCrease 1 BothTouching)
+    -- A loose test-only length cap isolates the movement stopping condition.
+    let run tolerance = solveCoupledUntil tolerance ProgressiveContactExchange [1e2] EnforcePairOrder (Settings 1 1) f
+    baseline <- right (run 1e-7)
+    defaultRun <- right (solveCoupledMethod ProgressiveContactExchange [1e2] EnforcePairOrder (Settings 1 1) f)
+    show baseline `shouldBe` show defaultRun
+    case inequalitySteps baseline of
+      [step] -> do
+        stepMovement step `shouldSatisfy` (> 1e-7)
+        loose <- right (run (2 * stepMovement step))
+        tight <- right (run (stepMovement step / 2))
+        inequalityConverged loose `shouldBe` True
+        inequalityConverged tight `shouldBe` False
+        repairedMesh (inequalityInitial loose) `shouldBe` inequalityMesh loose
+        forM_ (inequalitySteps tight) $ \s -> do
+          stepSettled s `shouldBe` False
+          stepAccepted s `shouldBe` True
+          stepEnergyAfter s `shouldSatisfy` (< stepEnergyBefore s)
+      _ -> expectationFailure "expected exactly one full proposal"
+    forM_ [0, -1, 0 / 0, 1 / 0] $ \bad -> run bad `shouldSatisfy` isLeft
+
   it "refuses incompatible holds, lost shared holds and changed material" $ do
     forM_ [1, 2] $ \n -> do
       impossible <- right (coupledCrease n IncompatibleHolds)

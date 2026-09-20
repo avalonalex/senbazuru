@@ -582,11 +582,15 @@ checked coupled angles.
    free interval rises by 0.007203 / 0.006998 and remaining free paper rises by
    0.006724 / 0.004702 (uniform / whole bend, per panel). Raw boundary angles
    shrink, but angle divided by material spacing increases. Differences are
-   distributed, not confined to the boundary spring. Next: confirm the two
-   256-triangle endpoints with tighter solver stopping tolerances, retaining
-   originals, final length weight, material, grips and paper acceptance caps;
-   compare movement and costs against the present mesh differences. Keep width
-   refinement separate; no default policy changes.
+   distributed, not confined to the boundary spring.
+   [#308](https://github.com/avalonalex/senbazuru/issues/308)
+   [confirms both 256-triangle endpoints at a tighter stop](notes/held-endpoint-confirmation.md).
+   They settle at `1e-8` in four / three extra iterations, with movement below
+   `8.1e-8` and passive-cost changes below `0.00001%`. All paper checks pass;
+   the original 6.49% / 8.31% refinement gaps remain. Next: compare 256 → 512
+   triangles on both layouts, keeping width fixed and using the original
+   six-stage policy followed by the same final `1e-8` confirmation. Retain
+   diagnostics; keep width refinement separate and change no default policy.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse

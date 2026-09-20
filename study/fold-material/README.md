@@ -46,6 +46,13 @@ To locate their bending-cost differences without solving again, run
 `stack run senbazuru-material-study -- --held-costs build/fold-material/held-equilibrium build/fold-material`
 and open `held-costs.html`. See [the saved-cost analysis](../../docs/notes/held-bending-costs.md).
 
+To confirm the two 256-triangle endpoints with a ten-times tighter movement
+stop, run `stack run senbazuru-material-study -- --held-confirmation build/fold-material/held-equilibrium build/fold-material`
+and open `held-confirmation.html`. The two bounded restarts preserve the original
+material, holds, contact policy and paper caps; neither coarse endpoint is solved.
+See [the stopping confirmation](../../docs/notes/held-endpoint-confirmation.md).
+
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

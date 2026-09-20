@@ -1161,6 +1161,14 @@ Added and removed edges stay visible, and raw angles are shown alongside
 angles divided by material spacing: smaller triangles can turn less at each
 edge while representing more total bending.
 
+The [stopping confirmation](notes/held-endpoint-confirmation.md) then restarts
+only the two finer endpoints, asking for a ten-times smaller full proposed
+movement. They settle in four and three additional iterations; passive costs
+change by less than 0.00001%. The 6.49% / 8.31% mesh differences remain.
+`--held-confirmation` keeps the original archives and paper checks, separating
+numerical stopping from mesh refinement. A local stopping test still does not
+prove that the solver found the globally lowest cost.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
