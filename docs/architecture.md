@@ -512,6 +512,14 @@ ladder without fitting them again. `BendRefinementGallery` measures each
 approximation through the existing edge, spring and contact checks and compares
 its cost with the analytic integral. Full-length segments keep their grip drift;
 samples keep their length error. No solver policy or library API changes.
+Its validated `ReferenceGrid` also accepts nonuniform material columns, keeping
+construction and measurement shared. `TransitionRefinement` allocates equal
+triangle budgets using fixed windows around the curvature joins, with no energy
+feedback. It compares whole profiles on the union of their material columns;
+this relies on profiles repeating unchanged across width.
+`TransitionRefinementGallery` reuses `BendRefinementGallery.writeReferenceState`
+and adds common-scale cost and column-placement plots. See
+[the placement comparison](notes/transition-refinement.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

@@ -76,9 +76,11 @@ crease and imposed costs stay separate; no acceptance threshold changes.
 This supports the bending rule on these two fixed, width-independent profiles.
 It does not settle the old solved 8.99% difference, equilibrium force response,
 separation, real-paper stiffness or a flexible folding path. A useful next
-control would compare local refinement near curvature transitions with uniform
+control compares local refinement near curvature transitions with uniform
 refinement at equal triangle counts, keeping these curves and diagnostic
-errors fixed. That tests where extra triangles help before a larger solve.
+errors fixed. The [placement follow-up](transition-refinement.md) finds better
+cost accuracy but generally greater grip drift, retaining both measurements
+before a larger solve.
 
 Independent reconstruction from the exports checks 24 FOLDs, 14,776 edges,
 10,472 springs and 20 comparisons. Simpson integration separately checks the

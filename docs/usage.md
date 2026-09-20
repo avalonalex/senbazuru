@@ -911,6 +911,23 @@ changes. The command writes 24 FOLDs, 25 JSON files and 28 SVGs under
 full-length segments retain outer-grip drift. No per-mesh fit or material solve
 runs. See [the refinement note](notes/fixed-bend-refinement.md).
 
+To compare uniform spacing with more triangles near the two curvature joins:
+
+```bash
+stack run senbazuru-material-study -- --transition-refinement build/fold-material
+```
+
+Open `transition-refinement.html`. Both layouts start from the same coarse
+mesh and match five triangle budgets through 1,024 triangles. Select the fixed
+curve, sampled/full-length construction, panel and budget. Common-scale error
+plots and column locations accompany side-by-side profiles, grip drift, edge
+errors and a whole-material shape comparison. The fixed placement rule reads
+only transition locations, never measured energy. The command writes 40 FOLDs,
+41 JSON files and 54 SVGs under `transition-refinement/`, preserving prior
+galleries. No per-mesh fit, grip copying, contact repair or equilibrium solve
+runs. Improved cost accuracy can accompany greater grip drift; the controls
+remain diagnostic. See [the findings](notes/transition-refinement.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

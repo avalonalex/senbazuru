@@ -556,9 +556,15 @@ checked coupled angles.
    Full-length grip drifts remain 9.65e-7 / 1.24e-6 sheet lengths; sampled
    relative edge errors are 5.95e-6 / 1.63e-5. These are diagnostic references,
    not equilibria or completion of the solved-material refinement criteria.
-   Next: compare local refinement near curvature transitions with uniform
-   refinement at equal triangle counts, keeping curves and diagnostic errors
-   fixed before choosing mesh density or running another material solve.
+   [#298](https://github.com/avalonalex/senbazuru/issues/298)
+   [compares fixed local and uniform placement at equal budgets](notes/transition-refinement.md).
+   At 1,024 triangles, local circular/smooth cost errors are 0.59% / 0.096%,
+   versus uniform 1.19% / 0.12%. Local full-length grip drifts increase to
+   2.36e-6 / 4.22e-6 sheet lengths; whole-material uniform/local differences
+   are 2.33e-5 / 3.85e-5. No fit or material solve runs; acceptance criteria stay fixed.
+   Next: compare fixed refinement across the whole curved region with the
+   transition windows at equal budgets, retaining energy and geometry errors
+   before choosing mesh density or running another material solve.
    Keep `4×2`, default-rule changes and material/illustration decisions separate.
    Profile the expensive accepted case under #208 before another large solve.**
    The short compiled profile points to contact derivatives and sparse
