@@ -22,7 +22,7 @@ function update(reset=false){
   const s=el('stage').value,m=r.states[s],prefix=`held-equilibrium/${r.id}-${s}`;
   el('seed-profile').src=`held-equilibrium/${r.id}-before-profile.svg`;el('profile').src=prefix+'-profile.svg';
   el('gaps').src=prefix+'-gaps.svg';el('map').src=prefix+'-map.svg';
-  el('viewer').src=`held-equilibrium/index.html?model=${r.id}-${s}.glb&angle=profile`;
+  el('viewer').src=`held-equilibrium/index.html?model=${r.id}-${s}.glb&angle=corner`;
   el('fold').href=prefix+'.fold';el('details').href=prefix+'.json';el('history').href=`held-equilibrium/${r.id}-checks.json`;
   el('status').textContent=`${label(r)} · ${names[s]}: paper checks ${m.geometryPassed?'pass':'fail'}. ${r.refusal?`Solver refused: ${r.refusal}`:r.solve.converged?'Final solver settled.':'Final solver did not settle; retain its endpoint as diagnostic.'}`;
   el('energy').replaceChildren();
