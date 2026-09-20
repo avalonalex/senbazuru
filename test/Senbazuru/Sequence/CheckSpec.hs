@@ -81,10 +81,13 @@ spec = do
           ]
 
     -- Nothing but those names may change, and 'canonical' is what undoes the
-    -- change. So the two canonical forms are equal.
+    -- change. So the two canonical forms are equal. Both sides come from one
+    -- parse, so a source that did not parse would make them equal too; that is
+    -- ruled out first.
     it "changes nothing else" $
       for_ kindSources $ \steps -> do
         let parsed = parseSequence "t" (sourceOf steps)
+        void parsed `shouldBe` Right ()
         fmap (canonical . checkedSequence) (parsed >>= checkSequence) `shouldBe` fmap canonical parsed
 
     it "refuses a line laid onto a point, blaming the name that is wrong" $ do
@@ -257,6 +260,14 @@ refusals =
     ("a mirrored repeat of a count of layers", ["step c { fold valley edge west to edge east top 2 layers }", "step { repeat c mirrored across [corner south-west, corner north-east] }"], InStep 2 Nothing, RepeatUnmappable "c" CountsLayers),
     ("a repeat mirrored across a construction", ["step a { " <> aFold <> " }", "step { repeat a mirrored across [centre, meet edge north edge east] }"], InStep 2 Nothing, RepeatUnmappable "a" IsometryByConstruction),
     ("a turned range with a model line in the middle, named by the step that has it", ["step a { " <> aFold <> " }", "step b { fold valley model [(0, 0), (1, 1)] moving centre }", "step c { " <> aFold <> " }", "step { repeat a..c turned 2/4 about centre }"], InStep 4 Nothing, RepeatUnmappable "b" UsesModelCoordinates),
+    -- A model line, or a count of layers, must not cross the sheet in two hops:
+    -- a plain repeat of the step that has it, then a turned repeat of that.
+    ("a turned repeat of a plain repeat of a model line", ["step m { fold valley model [(0, 0), (1, 1)] moving centre }", "step r { repeat m }", "step { repeat r turned 1/4 about centre }"], InStep 3 Nothing, RepeatUnmappable "r" UsesModelCoordinates),
+    ("a mirrored repeat of a plain repeat of a count of layers", ["step c { fold valley edge west to edge east top 2 layers }", "step r { repeat c }", "step { repeat r mirrored across [corner south-west, corner north-east] }"], InStep 3 Nothing, RepeatUnmappable "r" CountsLayers),
+    ("the crease of something that is not a step", ["step { mark p = centre; fold valley crease of p moving centre }"], InStep 1 Nothing, WrongKind "p" StepName PointName),
+    ("the end of the crease of something that is not a step", ["step { let l = edge north; anchor end of crease of l nearest centre }"], InStep 1 Nothing, WrongKind "l" StepName LineName),
+    ("a name in the header's layer order", ["start folded { layers a above centre }", "step { turn over left-right }"], InHeader, UnknownName "a"),
+    ("a name in a checkpoint's layer order", ["step { checkpoint \"half.fold\" { layers q above centre } }"], InStep 1 Nothing, UnknownName "q"),
     ("a range that runs backwards", ["step a { " <> aFold <> " }", "step b { " <> aFold <> " }", "step { repeat b..a }"], InStep 3 Nothing, RangeRunsBackwards "b" "a")
   ]
 

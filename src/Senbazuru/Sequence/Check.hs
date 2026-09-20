@@ -238,60 +238,57 @@ checkStep number (Located sp step) =
   local (const (Here (InStep number (stepName step)) sp)) $ do
     traverse_ (define StepOpen) (stepName step)
     moves <- traverse (located checkMove) (stepMoves step)
-    when (all (isLet . locValue) moves) (refuse EmptyStep)
-    names <- lift (gets scopeNames)
+    let roles = map (roleOf . locValue) moves
+    when (all (== Shorthand) roles) (refuse EmptyStep)
+    scope <- lift get
     let facts =
           StepFacts
             { factName = stepName step,
-              factFigure = any (drawsSomething . locValue) moves,
+              -- A step whose moves are all @let@ or @expect refused@ leaves the
+              -- paper as it found it and draws nothing.
+              factFigure = any (`notElem` [Shorthand, Expectation]) roles,
               factMacros = sum (map (macrosIn . locValue) moves),
-              factTurns = length (filter (turnsPaper . locValue) moves),
-              factInModel = any (moveInModel names . locValue) moves,
-              factCountsLayers = any (countsLayers . locValue) moves
+              factTurns = length (filter (== TurnsPaper) roles),
+              factInModel = any (moveInModel scope . locValue) moves,
+              factCountsLayers = any (countsLayers scope . locValue) moves
             }
-    lift (modify' (\scope -> scope {scopeSteps = Map.insert number facts (scopeSteps scope)}))
+    lift (put scope {scopeSteps = Map.insert number facts (scopeSteps scope)})
     for_ (stepName step) (\name -> bind name (Finished (DefinedStep number)))
     pure (Located sp step {stepMoves = moves})
 
-isLet :: Move -> Bool
-isLet = \case
-  Let {} -> True
-  Fold {} -> False
-  FoldAndUnfold {} -> False
-  Unfold {} -> False
-  TurnOver {} -> False
-  Rotate {} -> False
-  Anchor {} -> False
-  Mark {} -> False
-  Macro {} -> False
-  Continue {} -> False
-  Together {} -> False
-  Pose {} -> False
-  Repeat {} -> False
-  Checkpoint {} -> False
-  NotModelled {} -> False
-  ExpectRefused {} -> False
+-- | What a move is to the step that holds it. The three facts a step is asked
+-- for, whether it is empty, whether it draws a picture and how many times it
+-- turns paper, are all answers about this, so each move is sorted once.
+data Role
+  = -- | A @let@. It names something and does nothing.
+    Shorthand
+  | -- | An @expect refused@. What it holds never happens.
+    Expectation
+  | -- | Turns paper about a line. A @together@ is one such move here, as it is
+    -- everywhere else.
+    TurnsPaper
+  | -- | Anything else: it changes the picture or the state without a hinge.
+    OtherMove
+  deriving stock (Eq)
 
--- | A step whose moves are all @let@ or @expect refused@ leaves the paper as
--- it found it and draws nothing.
-drawsSomething :: Move -> Bool
-drawsSomething = \case
-  Let {} -> False
-  ExpectRefused {} -> False
-  Fold {} -> True
-  FoldAndUnfold {} -> True
-  Unfold {} -> True
-  TurnOver {} -> True
-  Rotate {} -> True
-  Anchor {} -> True
-  Mark {} -> True
-  Macro {} -> True
-  Continue {} -> True
-  Together {} -> True
-  Pose {} -> True
-  Repeat {} -> True
-  Checkpoint {} -> True
-  NotModelled {} -> True
+roleOf :: Move -> Role
+roleOf = \case
+  Let {} -> Shorthand
+  ExpectRefused {} -> Expectation
+  Fold {} -> TurnsPaper
+  FoldAndUnfold {} -> TurnsPaper
+  Unfold {} -> TurnsPaper
+  Macro {} -> TurnsPaper
+  Continue {} -> TurnsPaper
+  Together {} -> TurnsPaper
+  Pose {} -> TurnsPaper
+  Repeat {} -> TurnsPaper
+  TurnOver {} -> OtherMove
+  Rotate {} -> OtherMove
+  Anchor {} -> OtherMove
+  Mark {} -> OtherMove
+  Checkpoint {} -> OtherMove
+  NotModelled {} -> OtherMove
 
 -- | A @together@ counts for what it holds. An @expect refused@ counts for
 -- nothing: its macro-move never runs, so there is nothing to continue.
@@ -313,28 +310,6 @@ macrosIn = \case
   Repeat {} -> 0
   Checkpoint {} -> 0
   NotModelled {} -> 0
-
--- | Whether a move turns paper about a line. @hinge of NAME@ means the line
--- NAME's one such move turned about, so it counts these. A @together@ is one
--- move here, as it is everywhere else.
-turnsPaper :: Move -> Bool
-turnsPaper = \case
-  Fold {} -> True
-  FoldAndUnfold {} -> True
-  Unfold {} -> True
-  Macro {} -> True
-  Continue {} -> True
-  Together {} -> True
-  Pose {} -> True
-  Repeat {} -> True
-  TurnOver {} -> False
-  Rotate {} -> False
-  Anchor {} -> False
-  Mark {} -> False
-  Let {} -> False
-  Checkpoint {} -> False
-  NotModelled {} -> False
-  ExpectRefused {} -> False
 
 -- ---------------------------------------------------------------------------
 -- Moves
@@ -390,7 +365,7 @@ checkMove = \case
     firstStep <- figureNamed from
     lastStep <- maybe (pure firstStep) figureNamed to
     when (lastStep < firstStep) (refuse (RangeRunsBackwards from (fromMaybe from to)))
-    Repeat from to <$> traverse (checkIsometry from [firstStep .. lastStep]) isometry
+    Repeat from to <$> traverse (checkIsometry from to) isometry
   Checkpoint path spec -> Checkpoint path <$> checkSpec spec
   NotModelled what -> pure (NotModelled what)
   ExpectRefused kind inner -> do
@@ -450,8 +425,8 @@ checkSpec = \case
 -- the names in it, so everything in reach has to /be/ a name on the sheet.
 -- The refusal names the step in the way where it has a name, and otherwise
 -- the step the @repeat@ named.
-checkIsometry :: Name -> [Int] -> Isometry -> Check Isometry
-checkIsometry from numbers isometry = do
+checkIsometry :: Name -> Maybe Name -> Isometry -> Check Isometry
+checkIsometry from to isometry = do
   checkedIsometry <- case isometry of
     MirroredAcross p q -> MirroredAcross <$> checkPoint p <*> checkPoint q
     TurnedQuarters quarters p -> do
@@ -462,7 +437,7 @@ checkIsometry from numbers isometry = do
         MirroredAcross p q -> [p, q]
         TurnedQuarters _ p -> [p]
   unless (all (exactPoint names) fixedPoints) (refuse (RepeatUnmappable from IsometryByConstruction))
-  steps <- lift (gets (\scope -> mapMaybe (`Map.lookup` scopeSteps scope) numbers))
+  steps <- lift (gets (\scope -> repeated scope from to))
   for_ steps $ \facts -> do
     when (factInModel facts) (refuse (RepeatUnmappable (fromMaybe from (factName facts)) UsesModelCoordinates))
     when (factCountsLayers facts) (refuse (RepeatUnmappable (fromMaybe from (factName facts)) CountsLayers))
@@ -617,8 +592,24 @@ lineInModel names = \case
   where
     point = pointInModelNow names
 
-moveInModel :: Map Name Known -> Move -> Bool
-moveInModel names = \case
+-- | The finished steps a @repeat@ takes in: the one it names, or every step
+-- from the first name to the second, the unnamed ones between them too.
+repeated :: Scope -> Name -> Maybe Name -> [StepFacts]
+repeated scope from to = case (numberOf from, maybe (numberOf from) numberOf to) of
+  (Just first, Just final) -> mapMaybe (`Map.lookup` scopeSteps scope) [first .. final]
+  _ -> []
+  where
+    numberOf name = case Map.lookup name (scopeNames scope) of
+      Just (Finished (DefinedStep number)) -> Just number
+      _ -> Nothing
+
+-- | Whether a move is measured, anywhere inside it, on the model as seen.
+--
+-- A @repeat@ is, if any step it repeats is. Without that a model line could be
+-- carried across the sheet in two hops: a plain @repeat@ of the step that has
+-- it, which is allowed, and then a turned @repeat@ of /that/.
+moveInModel :: Scope -> Move -> Bool
+moveInModel scope = \case
   Fold _ _ line _ seed -> lineInModel names line || any point seed
   FoldAndUnfold _ line _ seed -> lineInModel names line || any point seed
   Anchor p -> point p
@@ -629,17 +620,18 @@ moveInModel names = \case
   Macro (RabbitEar p _) _ -> point p
   Macro (Petal (TipAt p) _) _ -> point p
   Macro (Petal TopFlapTip _) _ -> False
-  Together members -> any (moveInModel names . locValue) members
+  Together members -> any (moveInModel scope . locValue) members
   Pose creases -> any (\(p, q, _) -> point p || point q) creases
-  Repeat _ _ isometry -> any isometryInModel isometry
+  Repeat from to isometry -> any isometryInModel isometry || any factInModel (repeated scope from to)
   Checkpoint _ spec -> specInModel spec
-  ExpectRefused _ inner -> moveInModel names inner
+  ExpectRefused _ inner -> moveInModel scope inner
   Unfold _ -> False
   TurnOver _ -> False
   Rotate _ _ -> False
   Continue _ _ -> False
   NotModelled _ -> False
   where
+    names = scopeNames scope
     point = pointInModelNow names
     isometryInModel = \case
       MirroredAcross p q -> point p || point q
@@ -648,14 +640,15 @@ moveInModel names = \case
       StackingFirst -> False
       Relations relations -> any (\(LayerAbove a b) -> point a || point b) relations
 
--- | Whether a move says @top N layers@. A count from the reader's side means
--- different paper once the step is carried elsewhere.
-countsLayers :: Move -> Bool
-countsLayers = \case
+-- | Whether a move says @top N layers@, itself or through a @repeat@, as
+-- 'moveInModel' does. A count from the reader's side means different paper
+-- once the step is carried elsewhere.
+countsLayers :: Scope -> Move -> Bool
+countsLayers scope = \case
   Fold _ _ _ layers _ -> isCount layers
   FoldAndUnfold _ _ layers _ -> isCount layers
-  Together members -> any (countsLayers . locValue) members
-  ExpectRefused _ inner -> countsLayers inner
+  Together members -> any (countsLayers scope . locValue) members
+  ExpectRefused _ inner -> countsLayers scope inner
   Unfold _ -> False
   TurnOver _ -> False
   Rotate _ _ -> False
@@ -665,7 +658,7 @@ countsLayers = \case
   Macro _ _ -> False
   Continue _ _ -> False
   Pose _ -> False
-  Repeat {} -> False
+  Repeat from to _ -> any factCountsLayers (repeated scope from to)
   Checkpoint _ _ -> False
   NotModelled _ -> False
   where
