@@ -928,6 +928,22 @@ galleries. No per-mesh fit, grip copying, contact repair or equilibrium solve
 runs. Improved cost accuracy can accompany greater grip drift; the controls
 remain diagnostic. See [the findings](notes/transition-refinement.md).
 
+To compare refinement across the complete curved region with both earlier
+placements at equal triangle counts:
+
+```bash
+stack run senbazuru-material-study -- --whole-bend build/fold-material
+```
+
+Open `whole-bend.html`. Three profiles share one scale; select the fixed curve,
+construction, panel and budget. The page shows cost errors, actual column
+locations, edge errors, grip drift and all three whole-material pairwise
+differences. The new rule uses density four across the bend and one outside,
+without a fit, grip copy, repair or material solve. It writes 60 FOLDs, 61 JSON
+files and 74 SVGs under `whole-bend/`; previous archives remain unchanged.
+Whole-bend placement improves geometry, but the join windows still estimate
+the circular cost more accurately. See [the note](notes/whole-bend-refinement.md).
+
 ### Comparing paper at illustration scale
 
 ```bash

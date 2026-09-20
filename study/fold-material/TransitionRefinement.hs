@@ -7,12 +7,17 @@
 -- greatest weighted length: density four inside either fixed transition window,
 -- one outside. Equal scores choose the earlier interval. This greedy rule is
 -- a bounded experiment, not an optimal mesh or an adaptive material solver.
+-- A second policy applies the same density to the entire curved interval,
+-- testing whether resolving its middle avoids the windows' geometric tradeoff.
 -- Both panels receive the same columns and keep only the original crease shared.
 module TransitionRefinement
   ( transitionWindowRadius,
     transitionWindows,
     intervalPriority,
     transitionGrid,
+    wholeBendRegion,
+    wholeBendPriority,
+    wholeBendGrid,
     profileDifference,
   )
 where
@@ -44,7 +49,25 @@ intervalPriority curve left right = max 0 (right - left) + 3 * covered
       _ -> 0
 
 transitionGrid :: ReferenceMesh -> HeldCurve -> Either ClosedCreaseError ReferenceGrid
-transitionGrid budget curve = do
+transitionGrid budget curve = priorityGrid budget (intervalPriority curve)
+
+-- | The region is fixed by the common curve, not by sampled positions or
+-- measured energy. Its width differs from the combined transition windows;
+-- equal triangle counts, rather than equal integrated density, set the budget.
+wholeBendRegion :: HeldCurve -> (Rational, Rational)
+wholeBendRegion curve = (toRational heldStart, toRational (heldStart + curveArcLength curve))
+
+wholeBendPriority :: HeldCurve -> Rational -> Rational -> Rational
+wholeBendPriority curve left right = max 0 (right - left) + 3 * max 0 (min right end - max left start)
+  where
+    (start, end) = wholeBendRegion curve
+
+wholeBendGrid :: ReferenceMesh -> HeldCurve -> Either ClosedCreaseError ReferenceGrid
+wholeBendGrid budget curve = priorityGrid budget (wholeBendPriority curve)
+
+-- | Share the splitting and tie policy; only the prescribed density changes.
+priorityGrid :: ReferenceMesh -> (Rational -> Rational -> Rational) -> Either ClosedCreaseError ReferenceGrid
+priorityGrid budget priority = do
   unless (budget /= Uneven120) (Left (ClosedCreaseError "local refinement uses the five uniform ladder budgets, not the uneven anchor"))
   makeReferenceGrid (refine (referenceColumns Uniform64))
   where
@@ -54,7 +77,7 @@ transitionGrid budget curve = do
       | otherwise = case zip columns (drop 1 columns) of
           [] -> columns
           first : rest ->
-            let score (left, right) = intervalPriority curve left right
+            let score (left, right) = priority left right
                 better best candidate = if score candidate > score best then candidate else best
                 (a, b) = foldl' better first rest
              in refine (sort ((a + b) / 2 : columns))

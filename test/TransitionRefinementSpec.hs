@@ -30,6 +30,31 @@ spec = describe "equal-budget transition refinement" $ do
     short <- right (makeCurve 3 (1 / 64))
     intervalPriority short 0 (1 / 2) `shouldBe` 47 / 64
 
+  it "integrates whole-bend priority only inside the fixed curved interval" $ do
+    c <- right (makeCurve 3 (1 / 8))
+    wholeBendRegion c `shouldBe` (1 / 8, 1 / 4)
+    wholeBendPriority c (1 / 8) (1 / 4) `shouldBe` 1 / 2
+    wholeBendPriority c 0 (1 / 8) `shouldBe` 1 / 8
+    wholeBendPriority c (1 / 4) (1 / 2) `shouldBe` 1 / 4
+    wholeBendPriority c (1 / 16) (3 / 16) `shouldBe` 5 / 16
+    wholeBendPriority c 0 (1 / 2) `shouldBe` 7 / 8
+    wholeBendPriority c (1 / 4) (1 / 8) `shouldBe` 0
+
+  it "keeps whole-bend grids nested at equal budgets without reading curvature or cost" $ do
+    a <- right (makeCurve 3 (1 / 8))
+    b <- right (makeCurve 4 (1 / 8))
+    curveEnergy a `shouldNotBe` curveEnergy b
+    forM_ [CircularArc, SmoothTransition] $ \family -> do
+      c <- right (commonCurveWith family)
+      grids <- mapM (\m -> right (wholeBendGrid m c)) [Uniform64, Uniform128, Uniform256, Uniform512, Uniform1024]
+      forM_ (zip grids [9, 17, 33, 65, 129]) $ \(g, n) -> do
+        length (gridColumns g) `shouldBe` n
+        all (`elem` gridColumns g) (referenceColumns Uniform64) `shouldBe` True
+      forM_ (zip grids (drop 1 grids)) $ \(g, h) -> all (`elem` gridColumns h) (gridColumns g) `shouldBe` True
+      wholeBendGrid Uniform64 c `shouldBe` Right (referenceGrid Uniform64)
+      wholeBendGrid Uneven120 c `shouldSatisfy` isLeft
+    forM_ [Uniform64, Uniform128, Uniform256, Uniform512, Uniform1024] $ \m -> wholeBendGrid m a `shouldBe` wholeBendGrid m b
+
   it "keeps both ladders nested at equal budgets and retains every original coarse column" $
     forM_ [CircularArc, SmoothTransition] $ \family -> do
       c <- right (commonCurveWith family)
@@ -45,8 +70,8 @@ spec = describe "equal-budget transition refinement" $ do
     forM_ [CircularArc, SmoothTransition] $ \family -> do
       c <- right (commonCurveWith family)
       target <- right gripTarget
-      forM_ [Uniform64, Uniform128, Uniform256, Uniform512, Uniform1024] $ \budget -> do
-        grid <- right (transitionGrid budget c)
+      forM_ [(policy, budget) | policy <- [transitionGrid, wholeBendGrid], budget <- [Uniform64, Uniform128, Uniform256, Uniform512, Uniform1024]] $ \(policy, budget) -> do
+        grid <- right (policy budget c)
         sample <- right (gridReference grid SampledReference c)
         full <- right (gridReference grid LengthReference c)
         closedHinges sample `shouldBe` closedHinges full
@@ -71,9 +96,9 @@ spec = describe "equal-budget transition refinement" $ do
               LengthReference -> norm (p ^-^ target) `shouldSatisfy` (> 1e-8)
 
   it "checks exact triangle touching order on the new unequal strips" $
-    forM_ [CircularArc, SmoothTransition] $ \family -> do
+    forM_ [(family, policy) | family <- [CircularArc, SmoothTransition], policy <- [transitionGrid, wholeBendGrid]] $ \(family, policy) -> do
       c <- right (commonCurveWith family)
-      grid <- right (transitionGrid Uniform256 c)
+      grid <- right (policy Uniform256 c)
       forM_ [SampledReference, LengthReference] $ \mode -> do
         paper <- right (gridReference grid mode c)
         gaps <- right (auditPairContact (closedOwners paper) (closedMesh paper))

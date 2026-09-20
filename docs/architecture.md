@@ -520,6 +520,11 @@ this relies on profiles repeating unchanged across width.
 `TransitionRefinementGallery` reuses `BendRefinementGallery.writeReferenceState`
 and adds common-scale cost and column-placement plots. See
 [the placement comparison](notes/transition-refinement.md).
+The same modules add whole-bend density without reading measured energy.
+Both galleries share the measurement and plotting implementation; the three-way
+comparison adds every pairwise profile displacement while preserving the
+earlier gallery's data and drawings. See
+[the whole-bend comparison](notes/whole-bend-refinement.md).
 `IllustrationComparison` intersects material triangles from two saved meshes
 to bound their positional difference over the entire sheet, then provides
 shared drawing extents and diagnostic masks. `IllustrationGallery` reads

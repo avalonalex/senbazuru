@@ -1136,6 +1136,14 @@ locations present in only one mesh, so matching vertices cannot hide the
 difference. Run `--transition-refinement`; the result does not select an optimal
 mesh, solve equilibrium or relax the material criteria.
 
+The [whole-bend comparison](notes/whole-bend-refinement.md) gives the curved
+middle the same priority as the joins. At 1,024 triangles, smooth cost error
+falls to 0.031%, and both sampled curves meet the unchanged length cap.
+Full-length outer-grip drifts fall to 2.41e-7 / 3.10e-7 sheet lengths. Circular
+cost error is 0.89%, however, versus 0.59% with the join windows: the best
+geometric approximation need not have the best angular cost. Run `--whole-bend`
+for the three-way gallery. All shapes remain prescribed diagnostics.
+
 Arbitrary folded-surface mechanics, finite thickness and general collision
 handling remain open. Solver checkpoints
 have no SVG preview because the study painter would hide intermediate crossings. This experiment does not change
