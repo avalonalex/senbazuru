@@ -133,7 +133,9 @@ spec = do
     it "lets a line wrap inside brackets, and nowhere else" $ do
       oneStep "fold valley [corner south-west,\n      corner north-east\n  ] moving (1/4,\n 3/4)"
         `shouldBe` Right [Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (AtSheet (1 / 4) (3 / 4)))]
-      oneStep "fold valley\n edge west" `shouldSatisfy` isLeft'
+      -- Refused where the first line ends, for having ended there.
+      fmap (\p -> (problemFound p, sourceLocation (ParseFailed p))) (problemOf (inStep "fold valley\n edge west"))
+        `shouldBe` Just (FoundLineEnd, Just "t:4:14")
 
     -- 'anchor' reads a point and 'fold' reads a point or a line, by different
     -- routes. Both have to let the same things stand after the bracket.
@@ -240,6 +242,9 @@ spec = do
     it "is a header line twice, after a step, or the one that must be there and is not" $ do
       mistake "foldseq 1\nsheet square\ntitle \"A\"\ntitle \"B\"\n" `shouldBe` Just (DuplicateHeader "title" 3, "t:4:1")
       mistake "foldseq 1\nwhite side up\ncoloured side up\nsheet square\n" `shouldBe` Just (DuplicateHeader "side" 2, "t:3:1")
+      -- The line is remembered as @side@ and underlined as written, all eight
+      -- letters of @coloured@.
+      fmap problemSpan (problemOf "foldseq 1\nwhite side up\ncoloured side up\nsheet square\n") `shouldBe` Just (Span "t" 3 1 3 9)
       mistake "foldseq 1\nsheet square\nstep { turn over left-right }\nanchor centre\n" `shouldBe` Just (HeaderAfterStep "anchor", "t:4:1")
       mistake "foldseq 1\ntitle \"No paper\"\n" `shouldBe` Just (SheetMissing, "t:1:1")
 
@@ -294,6 +299,14 @@ spec = do
     it "says what could have come next in few words, each once" $ do
       fmap problemExpected (problemOf (inStep "fold valley a to")) `shouldBe` Just ["a point or a line"]
       fmap problemExpected (problemOf (inStep "not modelled \"left open")) `shouldBe` Just ["the closing quote of the string"]
+      -- Another blank line could have come too, and it says so.
+      fmap problemExpected (problemOf "foldseq 1\nsheet square\nstep { turn over left-right }\n}\n")
+        `shouldBe` Just ["a new line or \";\"", "a step or the closing caption"]
+
+    -- A @{@ first is looked for, to say the text looks like a FOLD file. That
+    -- look must not turn into an offer.
+    it "does not offer { as a way to start a source" $
+      fmap problemExpected (problemOf "Foldseq 1\nsheet square\n") `shouldBe` Just ["\"foldseq\""]
 
 -- | A source holding one step with these moves in it, the moves on line 4.
 inStep :: Text -> Text
@@ -329,9 +342,6 @@ mistakeIn path text = do
 
 locationOf :: Text -> Maybe Text
 locationOf text = problemOf text >>= sourceLocation . ParseFailed
-
-isLeft' :: Either a b -> Bool
-isLeft' = either (const True) (const False)
 
 -- | Every word of a printed sequence that is outside a string literal.
 wordsOutsideStrings :: Text -> [Text]

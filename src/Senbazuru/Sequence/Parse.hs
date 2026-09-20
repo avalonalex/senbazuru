@@ -80,8 +80,13 @@
 --   @first-petal@ is a name although @first@ is reserved.
 -- * @KIND@ is a word starting with a capital letter.
 -- * @STRING@ is @"…"@ on one line, with @\\"@, @\\\\@, @\\n@, @\\t@ and
---   @\\u{…}@ for a character by its code in hex.
--- * @INTEGER@ is digits only. @NUMBER@ is @175@, @0.58@ or @29\/50@, and every
+--   @\\u{…}@ for a character by its code in hex. A code that is no
+--   character's is refused: one above U+10FFFF, or a surrogate, U+D800 to
+--   U+DFFF, which 'Text' would swap for U+FFFD without a word.
+-- * @INTEGER@ is digits only. The version is read at any size, so that an
+--   absurd one is refused as itself. A count of layers or of turns too large
+--   for the tree's 'Int' is refused, because narrowing it would wrap it round
+--   to a small one. @NUMBER@ is @175@, @0.58@ or @29\/50@, and every
 --   one of them is exact: @0.58@ /is/ @29\/50@. @SIGNED@ is a @NUMBER@ with an
 --   optional @-@ directly before it, allowed only in @(u, v)@, in @model@
 --   pairs and in a @pose@'s angles.
@@ -105,6 +110,12 @@
 --
 -- == Where the design's two hard cases go
 --
+-- Both arise inside an /alignment/: a fold line named by what the fold brings
+-- together, as in @corner south-west to centre@, the fold that lays that
+-- corner onto the centre. The grammar has six forms of it, and every one has a
+-- @to@ in it. What stands on either side of the @to@, a point or a line, is
+-- called an /operand/ below.
+--
 -- __A bare name beside @to@.__ In @fold valley a to b@ the parser cannot know
 -- whether @b@ names a point or a line: that depends on a @let@ it has not been
 -- asked to understand. It reads such a name as a point and leaves the kind to
@@ -112,8 +123,9 @@
 -- 'Senbazuru.Sequence.Syntax.canonical' at the end, so what comes out is
 -- always the one tree a text has.
 --
--- __@(@ starts two things__, a coordinate and a parenthesised line. No line
--- starts with a number, so a digit or a @-@ after the @(@ means a coordinate.
+-- __@(@ starts two things__ where an operand is expected, a coordinate and a
+-- parenthesised line. No line starts with a number, so a digit or a @-@ after
+-- the @(@ means a coordinate.
 --
 -- == Errors are data before they are words
 --
@@ -300,15 +312,12 @@ rawWord = T.cons <$> satisfy isAlpha <*> takeWhileP Nothing wordChar
 -- the text, so that stray failure would win, and a message would point into
 -- the middle of a word. Peeking keeps every failure at the word's start.
 keyword :: Text -> Parser ()
-keyword word = label (T.unpack (quoted word)) . lexeme $ do
+keyword word = label (T.unpack (quote word)) . lexeme $ do
   next <- lookAhead rawWord
   if next == word then void rawWord else empty
 
 symbol :: Text -> Parser ()
-symbol text = label (T.unpack (quoted text)) (lexeme (void (string text)))
-
-quoted :: Text -> Text
-quoted text = "\"" <> text <> "\""
+symbol text = label (T.unpack (quote text)) (lexeme (void (string text)))
 
 -- | Something between brackets, where a newline is only a space. The closing
 -- bracket is read outside that, so the space after it follows the rule of
@@ -479,14 +488,16 @@ signedAngle = label "an angle" . lexeme $ do
 turnCount :: Text -> Parser Int
 turnCount denominator =
   label "a turn" . lexeme $
-    rawCount <* label (T.unpack (quoted denominator)) (string denominator)
+    rawCount <* label (T.unpack (quote denominator)) (string denominator)
 
 -- ---------------------------------------------------------------------------
 -- The file
 
 sourceFile :: Parser Sequence
 sourceFile = do
-  looksLikeFold <- option False (True <$ lookAhead (char '{'))
+  -- 'hidden', or every wrong first line would be told that a @{@ could have
+  -- stood there, when a @{@ is only ever refused.
+  looksLikeFold <- option False (True <$ lookAhead (hidden (char '{')))
   when looksLikeFold (refuse 0 1 LooksLikeFold)
   keyword "foldseq"
   versionAt <- getOffset
@@ -512,16 +523,9 @@ emptyDraft = Draft Nothing Nothing Nothing Nothing Nothing []
 
 -- | Header lines, in any order, until a step, the closing caption or the end.
 headerLines :: Int -> Draft -> Parser Sequence
-headerLines versionEnd draft = do
-  finished <- atEnd
-  if finished
-    then finish versionEnd draft [] Nothing
-    else do
-      void (some separator)
-      finishedNow <- atEnd
-      if finishedNow
-        then finish versionEnd draft [] Nothing
-        else choice [headerLine >>= headerLines versionEnd, stepsAndClosing versionEnd draft []]
+headerLines versionEnd draft =
+  endOrMore (finish versionEnd draft [] Nothing) $
+    choice [headerLine >>= headerLines versionEnd, stepsAndClosing versionEnd draft []]
   where
     headerLine =
       label "a header line" . choice $
@@ -536,27 +540,24 @@ headerLines versionEnd draft = do
         ]
 
     -- A header line opened by this keyword, refused if it was seen before.
-    once word update value = do
+    once word = onceAs word word
+
+    -- Both spellings of the side count as the one line, @side@.
+    side word which = onceAs "side" word (\_ () -> draft {draftSide = Just which}) (keyword "side" *> keyword "up")
+
+    -- A line is remembered under its key and underlined as it was written.
+    -- For the side the two differ: the key is @side@, the word @coloured@ or
+    -- @white@.
+    onceAs key word update value = do
       start <- getOffset
       keyword word
-      seenBefore start word
+      case lookup key (draftSeen draft) of
+        Just firstLine -> refuse start (T.length word) (DuplicateHeader key firstLine)
+        Nothing -> pure ()
       parsed <- value
       sp <- spanFrom start
       lineNumber <- lineOf start
-      pure (update sp parsed) {draftSeen = (word, lineNumber) : draftSeen draft}
-
-    -- Both spellings of the side count as the one line, @side@.
-    side word which = do
-      start <- getOffset
-      keyword word
-      seenBefore start "side"
-      keyword "side" *> keyword "up"
-      lineNumber <- lineOf start
-      pure draft {draftSide = Just which, draftSeen = ("side", lineNumber) : draftSeen draft}
-
-    seenBefore start word = case lookup word (draftSeen draft) of
-      Just firstLine -> refuse start (T.length word) (DuplicateHeader word firstLine)
-      Nothing -> pure ()
+      pure (update sp parsed) {draftSeen = (key, lineNumber) : draftSeen draft}
 
     sheetSource = (UnitSquare <$ keyword "square") <|> (SheetFile . T.unpack <$> stringLiteral)
 
@@ -564,21 +565,13 @@ headerLines versionEnd draft = do
 -- is refused as misplaced, not as unknown.
 stepsAndClosing :: Int -> Draft -> [Located Step] -> Parser Sequence
 stepsAndClosing versionEnd draft stepsSoFar =
-  choice
+  label "a step or the closing caption" . choice $
     [ step >>= \next -> continueWith (next : stepsSoFar),
       keyword "closing" *> stringLiteral >>= \caption -> many separator *> atEndOrFail *> finish versionEnd draft stepsSoFar (Just caption),
-      headerAfterStep,
-      label "a step or the closing caption" empty
+      headerAfterStep
     ]
   where
-    continueWith steps = do
-      finished <- atEnd
-      if finished
-        then finish versionEnd draft steps Nothing
-        else do
-          void (some separator)
-          finishedNow <- atEnd
-          if finishedNow then finish versionEnd draft steps Nothing else stepsAndClosing versionEnd draft steps
+    continueWith steps = endOrMore (finish versionEnd draft steps Nothing) (stepsAndClosing versionEnd draft steps)
 
     atEndOrFail = do
       finished <- atEnd
@@ -589,6 +582,18 @@ stepsAndClosing versionEnd draft stepsSoFar =
       | otherwise = do
           (start, word) <- wordWhere (`elem` ["title", "sheet", "anchor", "coloured", "white", "start", "material"])
           refuse start (T.length word) (HeaderAfterStep word)
+
+-- | What follows a statement at the top level: the end of the source, at once
+-- or after separators, or else separators and then more.
+endOrMore :: Parser a -> Parser a -> Parser a
+endOrMore atTheEnd more = do
+  finished <- atEnd
+  if finished
+    then atTheEnd
+    else do
+      void (some separator)
+      finishedNow <- atEnd
+      if finishedNow then atTheEnd else more
 
 finish :: Int -> Draft -> [Located Step] -> Maybe Text -> Parser Sequence
 finish versionEnd draft newestFirst closing = case draftSheet draft of
@@ -1039,6 +1044,6 @@ problemFrom env source = \case
       FoundEnd -> 0
 
     itemWords = \case
-      Tokens characters -> quoted (T.pack (NE.toList characters))
+      Tokens characters -> quote (T.pack (NE.toList characters))
       Label text -> T.pack (NE.toList text)
       EndOfInput -> "the end of the source"

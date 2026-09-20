@@ -63,6 +63,7 @@ module Senbazuru.Sequence.Error
     ParseProblem (..),
     Found (..),
     Hint (..),
+    quote,
 
     -- * Text that parses and cannot mean anything
     StaticProblem (..),
@@ -359,6 +360,10 @@ hintWords = \case
   where
     codePoint c = "U+" <> T.justifyRight 4 '0' (T.toUpper (T.pack (showHex (ord c) "")))
 
+-- | A word of the source as a message shows it, between double quotes.
+-- Exported for the parser, which quotes the keywords it expected: what was
+-- found and what was expected stand in one sentence, and have to be quoted
+-- alike.
 quote :: Text -> Text
 quote text = "\"" <> text <> "\""
 
