@@ -47,7 +47,9 @@ closes.
 Energy/opening refinement percentages remain research diagnostics; valid paper,
 accepted solves and explicit visual review still gate illustrations. Pause
 further cost refinement and study controlled opening of a small body patch
-connected to both wing roots. Earlier failures and unmet research targets below
+connected to both wing roots. [Its first bounded comparison](notes/coupled-body-patch.md)
+retains unsettled coarse poses and a failed refined control for diagnosis.
+Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
 | | |
@@ -610,7 +612,7 @@ checked coupled angles.
    98.32% of the passive gap lies in free paper; lower transverse costs are
    partly offset by higher diagonal costs. The largest length penalty lies
    farther out than the worst relative error, which sits just outside the grip.
-   **Next: [#315](https://github.com/avalonalex/senbazuru/issues/315)
+   **Owner priority: [#315](https://github.com/avalonalex/senbazuru/issues/315)
    [prioritizes plausible crane illustrations](notes/illustration-material-priority.md).
    Defer shape-preserving width subdivision and further cost-refinement studies
    until a visible artifact, meaningful layer change or unreliable authored
@@ -623,6 +625,15 @@ checked coupled angles.
    convergence are deferred research, not illustration gates. Keep calibrated
    physics, pressure loads and default-policy changes separate.
    Profile the expensive accepted case under #208 before another large solve.**
+   [#317](https://github.com/avalonalex/senbazuru/issues/317) now implements
+   [that first isolated specimen](notes/coupled-body-patch.md): sixteen panels,
+   three exact holds and free neck/tail attachment landmarks. The closed
+   reference passes. Coarse 5°/10° endpoints pass lengths and contact but exhaust
+   the solve budget; the refined 5° case fails lengths/contact as well.
+   **Next: inspect the saved checkpoints to separate slow coarse settling from
+   the refined failure before choosing one continuation or correction experiment.**
+   No opened endpoint is accepted yet, and removing the surrounding crane's
+   loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse
    factorization; measure a value-only line-search evaluation under #208.
    The full coupled crane follows the small patch only after its geometry

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening a small crane-body patch</title>
+<style>
+body{font:16px/1.55 system-ui,sans-serif;margin:0;background:#f5f1e8;color:#303630}main{max-width:1240px;margin:40px auto;padding:0 12px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.1}h2{margin-bottom:.3em}small,.muted{color:#62665e}.intro{max-width:880px}.controls{display:flex;gap:20px;flex-wrap:wrap;margin:24px 0}select{font:inherit;padding:7px;background:#fffaf2;border:1px solid #b8b5a9;border-radius:4px}.status{padding:14px 18px;background:#e5ebe2;border-left:4px solid #52735d}.status.bad{background:#f2e1d6;border-color:#a25335}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,576px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{display:block;margin:auto;max-width:none;width:560px;height:440px}.figure.zoom img{width:1120px;height:880px}.figure h3{margin:4px 0}.metrics{display:flex;flex-wrap:wrap;gap:28px;margin:22px 0}.metrics b{display:block;font-size:1.3rem}table{border-collapse:collapse;margin:20px 0;width:100%}th,td{text-align:left;padding:9px;border-bottom:1px solid #d4d1c7}.note{max-width:900px}button{font:inherit;padding:7px 12px}.tag{letter-spacing:.14em;font-size:.8rem;color:#777063}
+</style>
+<main>
+<a href="index.html">← Material studies</a>
+<p class="tag">SENBAZURU · BODY AND WING ROOTS · #317</p>
+<h1>Give both roots room to open</h1>
+<p class="intro">A connected specimen from the crane: eight central body panels and four adjoining panels from each wing. Its outer boundary is free. The rest of the wings, neck and tail are absent, so this measures their attachment points—not an opened whole crane.</p>
+<p class="intro">Hold the centre and turn the two wing attachments apart by a small angle. The existing body folds keep their original angle preferences but may open; the panels can bend. These are separate static solves. The numerical corrections between them are not a folding animation.</p>
+<div class="controls"><label>Control <select id="run"></select></label><label>Drawing <select id="mode"><option value="paper">Accepted paper, when available</option><option value="wire">Wire diagnostic · includes hidden layers</option></select></label><label>Scale <select id="scale"><option value="1">Actual size · 600 px / sheet unit</option><option value="2">2× inspection</option></select></label></div>
+<p class="status" id="status"></p>
+<div class="metrics" id="metrics"></div>
+<div class="views" id="views"></div>
+<h2>Where the free attachments went</h2>
+<p>Positions are in original-sheet units. “Tail” and “neck” name free interface landmarks. They carry no load from the omitted parts.</p>
+<table><thead><tr><th>Landmark</th><th>Movement</th><th>Final position (x, y, z)</th></tr></thead><tbody id="marks"></tbody></table>
+<h2>The refinement check</h2>
+<p id="comparison" class="note"></p>
+<h2>What this comparison can establish</h2>
+<p class="note">An accepted endpoint must preserve material lengths within 0.001%, exact holds, shared material and contact order, and meet the existing solver convergence checks. The 5° refined specimen uses the same controls with more triangles. Energy differences remain diagnostics. An invalid result remains visible here as a labelled wire diagram, never as an accepted paper pose.</p>
+<p class="note">Every view has the same drawing scale and fixed camera across runs. Side looks along the folded sheet, top looks down on it, and underside looks from below. Wire diagrams show hidden material and can look more tangled than the visible paper.</p>
+<p id="links"></p><details><summary>Raw measurements and solver diagnostics</summary><pre id="raw" style="overflow:auto;max-height:500px"></pre></details>
+</main>
+<script>
+const data=/*PATCH_DATA*/null;
+const names={closed:'Closed reference', 'opening-5':'Open attachments · 5°', 'opening-10':'Open attachments · 10°', 'opening-5-fine':'Open attachments · 5° · refined'};
+const $=id=>document.getElementById(id);
+if(data){
+for(const run of data.runs){const o=document.createElement('option');o.value=run.id;o.textContent=names[run.id];$('run').append(o);}
+$('run').value='opening-5';
+const num=x=>Math.abs(x)<1e-12?'0':Number(x).toPrecision(5);
+if(data.refinementComparison){const c=data.refinementComparison;$('comparison').textContent='The 30- and 120-triangle 5° endpoints differ by up to '+num(c.maxSharedVertexMovement)+' sheet units at their '+c.sharedVertices+' shared vertices. '+(c.bothAccepted?'Both pass endpoint acceptance.':'At least one is invalid or unsettled, so this is a failure diagnostic, not evidence of material convergence.')+' This measures shared vertices, not the maximum distance over the whole surface.';}
+function draw(){
+ const r=data.runs.find(r=>r.id===$('run').value),ex=data.exports.find(e=>e.id===r.id);
+ const failures=[];if(!r.converged)failures.push('solver not converged');if(r.maxRelativeEdgeError>data.lengthTolerance)failures.push('length error');if(!r.contact.passed)failures.push('contact/order check');if(r.holdError!==0)failures.push('hold moved');
+ $('status').className='status'+(r.accepted?'':' bad');$('status').textContent=r.accepted?'Accepted static specimen. Whole-crane response and the flexible route remain untested.':'Diagnostic endpoint — '+failures.join('; ')+'. Wire views below include all hidden layers.';
+ $('metrics').replaceChildren();for(const [label,value] of [['Triangles',r.triangles],['Largest length error',num(100*r.maxRelativeEdgeError)+'%'],['Body depth',num(r.bodyExtent.z)],['Panel bending cost',num(r.panelEnergy)],['Crease cost',num(r.creaseEnergy)]]){const el=document.createElement('div');const b=document.createElement('b');b.textContent=value;el.append(b,document.createTextNode(label));$('metrics').append(el);}
+ $('views').replaceChildren();for(const v of ex.views){const paper=$('mode').value==='paper'&&r.accepted&&v.paper;const figure=document.createElement('section');figure.className='figure'+($('scale').value==='2'?' zoom':'');const h=document.createElement('h3');h.textContent=v.view+' · '+(paper?'accepted paper':'wire diagnostic');const img=document.createElement('img');img.src='body-patch/'+r.id+'-'+v.view+(paper?'':'-wire')+'.svg';img.alt=h.textContent+' of '+names[r.id];figure.append(h,img);if(v.error){const p=document.createElement('p');p.textContent='Paper renderer: '+v.error;figure.append(p);}$('views').append(figure);}
+ $('marks').replaceChildren();for(const m of r.landmarks){const tr=document.createElement('tr');for(const value of [m.name,num(m.movement),m.final.map(num).join(', ')]){const td=document.createElement('td');td.textContent=value;tr.append(td);}$('marks').append(tr);}
+ $('links').replaceChildren();for(const [title,url] of [['Endpoint FOLD','body-patch/'+r.id+'.fold'],['Measurements','body-patch/'+r.id+'-check.json'],['Solver checkpoints','body-patch/'+r.id+'-history.json'],...(!ex.glbError?[['Accepted 3D models','body-patch/index.html']]:[])]){const a=document.createElement('a');a.textContent=title;a.href=url;$('links').append(a,document.createTextNode(' · '));}
+ $('raw').textContent=JSON.stringify(r,null,2);
+}
+for(const id of ['run','mode','scale'])$(id).addEventListener('change',draw);draw();
+}
+</script>
+</html>

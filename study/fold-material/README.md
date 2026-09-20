@@ -298,6 +298,15 @@ separates reaching the iteration limit from exhausting the line search.
 These slow controls stay outside CI; see [usage](../../docs/usage.md#internal-body-crease-diagnosis)
 and [findings](../../docs/notes/internal-crease-diagnostic.md).
 
+`stack run senbazuru-material-study -- --body-patch build/fold-material`
+writes `body-patch.html`: the central body and both wing collars with a free
+outer boundary. The closed reference passes; coarse 5°/10° controls pass geometry
+but remain unsettled, and the refined 5° control fails lengths/contact. Failed
+endpoints retain FOLD, measurements and solver checkpoints, with explicitly
+labelled wire views instead of accepted paper. This is an extracted specimen,
+not a whole-crane opening or a flexible motion certificate. See [the bounded
+comparison](../../docs/notes/coupled-body-patch.md).
+
 `stack run senbazuru-material-study -- --crane-body build/fold-material`
 compares original, weaker and opened preferences at two body creases while
 retaining the same small free patch and tip grip. `crane-body.html` reports
