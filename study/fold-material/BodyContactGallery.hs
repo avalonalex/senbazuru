@@ -2,21 +2,17 @@
 -- body-patch archive. Verify saved FOLD identities, trace linkage and reported
 -- measurements before writing anything. Both cameras use unchanged positions;
 -- the height chart is explicitly a measurement plot, not a deformed shape.
-module BodyContactGallery (writeBodyContact) where
+module BodyContactGallery (writeBodyContact, drawPair, boxAround) where
 
 import BodyContactDiagnosis
+import BodyCorrectionArchive
 import BodyPatch
 import BodyPatchCheckpoints
-import BodyPatchSubdivision (seedPassed)
-import Control.Monad (forM, forM_, unless, when)
-import CranePocket (buildCranePocket)
+import Control.Monad (forM, forM_, unless)
 import CraneSpread
-import Data.Aeson (FromJSON, Value, eitherDecode, encode, object, toJSON, withObject, (.:), (.=))
-import Data.Aeson.Key (Key)
-import Data.Aeson.Types (parseEither)
+import Data.Aeson (Value, encode, object, toJSON, (.=))
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
-import Data.List (isPrefixOf)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -24,67 +20,29 @@ import Data.Text.IO qualified as TIO
 import FoldContact (ContactRow (..))
 import FoldRelaxation (maxLengthError)
 import Senbazuru.Diagram
-import Senbazuru.Explain (Explain (..))
-import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
-import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (crossingPanels, panelTolerance)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Svg
 import SurfaceContact qualified as C
-import System.Directory (canonicalizePath, createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
-import System.FilePath (splitDirectories, (</>))
+import System.FilePath ((</>))
 
 writeBodyContact :: FilePath -> FilePath -> IO ()
 writeBodyContact source destination = do
   let output = destination </> "body-contact"
-  src <- splitDirectories <$> canonicalizePath source
-  dst <- splitDirectories <$> canonicalizePath output
-  when (src `isPrefixOf` dst || dst `isPrefixOf` src) (die "contact source and output directories must not overlap")
-  (rawReport, report) <- readJson (source </> "checks.json")
-  (rawTrace, trace) <- readJson (source </> "trace.json")
-  expect "gallery" ("body-subdivision" :: Text) report
-  expect "lengthWeight" (1e8 :: Double) report
-  expect "contactMultiplier" (100 :: Int) report
-  expect "lengthTolerance" (1e-5 :: Double) report
-  expect "contactTolerance" panelTolerance report
-  expect "seedPassed" True report
-  continuation <- field "continuation" report
-  expect "trace" (trace :: [Value]) continuation
-  crane <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= checked)
-  atlas <- checked (buildCranePocket crane)
-  study <- checked (bodyPatch atlas 1 5)
-  let fixture = patchSpread study; base = spreadMesh fixture
-  states <- field "states" report :: IO [Value]
-  inputs <- forM ["seed", "step-1", "step-2"] $ \name -> do
-    (raw, file) <- readJson (source </> name ++ ".fold")
-    let frame = keyFrame file
-    ps <- traverse vector (verticesCoords frame)
-    unless (length ps == length (samples base)) (die "saved vertex count changed")
-    let mesh = base {samples = zipWith (\p q -> p {position = q}) (samples base) ps}
-    expected <- materialFrame <$> checked (spreadSurface fixture mesh)
-    unless (frame == expected && spreadHeldError fixture mesh == 0) (die "saved material, topology, metadata or exact holds changed")
-    entry <- case [s | s <- states, parseEither (withObject "state" (.: "id")) s == Right (T.pack name)] of
-      [s] -> pure s
-      _ -> die "missing or duplicated saved state"
-    measured <- checked (measurePatch study (SavedPoint 0 mesh))
-    expect "contact" (toJSON (measuredContact measured)) entry
-    forM_ [("maxRelativeEdgeError", maxLengthError mesh), ("creaseEnergy", measuredCrease measured), ("panelEnergy", measuredPanel measured), ("totalCost", patchCost 1e8 measured)] $ \(key, value) -> do
-      original <- field key entry
-      unless (abs (original - value) <= 1e-12 * max 1 (abs value)) (die "saved measurements disagree with geometry")
-    pure (name, raw, mesh, measured)
-  (before, after, firstStep, secondStep) <- case (inputs, trace) of
-    ([(_, _, seed, _), (_, _, a, _), (_, _, b, _)], s1 : s2 : _) -> do
-      valid <- checked (seedPassed study seed)
-      unless valid (die "saved seed no longer passes")
-      verifyStep study 1 seed a s1
-      verifyStep study 2 a b s2
-      expect "scale" (0.25 :: Double) s2
-      pure (a, b, s1, s2)
-    _ -> die "expected seed, two checkpoints and two trace entries"
+  separateOutput source output
+  archive <- readCorrectionArchive source
+  let study = archiveStudy archive
+      inputs = archiveStates archive
+      fixture = patchSpread study
+      base = spreadMesh fixture
+  (before, after, firstStep, secondStep) <- case (inputs, archiveTrace archive) of
+    ([_, (_, _, a, _), (_, _, b, _)], s1 : s2 : _) -> pure (a, b, s1, s2)
+    _ -> die "expected two saved corrections"
   contact <- checked (C.prepareContact 0 (V3 0 0 1) (spreadContactOrders fixture) (refinedPanels (spreadRefined fixture)) base)
   witnesses <- traverse (checked . C.contactWitnesses contact) [before, after]
   let selected = [(14, 55), (22, 63), (46, 70)]
@@ -107,7 +65,7 @@ writeBodyContact source destination = do
     pure (pair, ids, inspected)
   -- Archive checks and all measurements precede writes. No solver entry point is called.
   createDirectoryIfMissing True (output </> "source")
-  forM_ (("checks.json", rawReport) : ("trace.json", rawTrace) : [(name ++ ".fold", raw) | (name, raw, _, _) <- inputs]) $ \(name, raw) -> BL.writeFile (output </> "source" </> name) raw
+  forM_ (archiveFiles archive) $ \(name, raw) -> BL.writeFile (output </> "source" </> name) raw
   entries <- forM pairs $ \(pair@(i, j), ids, inspected) -> do
     let stem = show i ++ "-" ++ show j
         focusPoints = concat [intersectionEnds cut ++ concat [[C.witnessLower w, C.witnessUpper w] | w <- ws, abs (contactGap (C.witnessRow w)) <= panelTolerance] | (_, _, cut, ws) <- inspected]
@@ -124,21 +82,6 @@ writeBodyContact source destination = do
   template <- TIO.readFile "study/fold-material/body-contact.html"
   TIO.writeFile (destination </> "body-contact.html") (T.replace "/*BODY_CONTACT_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode result))) template)
   putStrLn ("Inspected saved correction 1 to 2 without solving. Wrote " ++ destination </> "body-contact.html")
-
-verifyStep :: BodyPatch -> Int -> MaterialMesh -> MaterialMesh -> Value -> IO ()
-verifyStep study number before after record = do
-  forM_ [("beforeEnergy", before), ("candidateEnergy", after)] $ \(key, mesh) -> do
-    measured <- checked (measurePatch study (SavedPoint 0 mesh))
-    recorded <- field key record
-    unless (abs (recorded - 2 * patchCost 1e8 measured) < 1e-12) (die "saved trace energy disagrees with positions")
-  expect "iteration" number record
-  expect "start" (map (xyz . position) (samples before)) record
-  expect "candidate" (map (xyz . position) (samples after)) record
-  proposal <- field "fullProposal" record >>= traverse vector
-  scale <- field "scale" record
-  unless (length proposal == length (samples before) && scale > 0 && scale <= (1 :: Double)) (die "invalid saved proposal")
-  let expected = zipWith (\p q -> position p ^+^ scale *^ (q ^-^ position p)) (samples before) proposal
-  unless (and (zipWith (\p q -> norm (p ^-^ position q) < 1e-12) expected (samples after))) (die "saved candidate differs from scaled full proposal")
 
 witnessValue :: C.ContactWitness -> Value
 witnessValue w = object ["triangles" .= C.witnessTriangles w, "lower" .= xyz (C.witnessLower w), "upper" .= xyz (C.witnessUpper w), "clearance" .= C.witnessClearance w, "gap" .= contactGap (C.witnessRow w), "gradient" .= [[toJSON i, toJSON (xyz g)] | (i, g) <- contactGradient (C.witnessRow w)]]
@@ -180,22 +123,3 @@ boxValue (Box (V2 x y) (V2 u v)) = [[x, y], [u, v]]
 
 xy :: V3 -> V2
 xy (V3 x y _) = V2 x y
-
-xyz :: V3 -> [Double]
-xyz (V3 x y z) = [x, y, z]
-
-vector :: [Double] -> IO V3
-vector [x, y, z] | all (\q -> not (isNaN q || isInfinite q)) [x, y, z] = pure (V3 x y z)
-vector _ = die "saved positions need three finite coordinates"
-
-readJson :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
-readJson path = do bytes <- BL.readFile path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
-
-field :: (FromJSON a) => Key -> Value -> IO a
-field key = either die pure . parseEither (withObject "saved archive" (.: key))
-
-expect :: (Eq a, FromJSON a) => Key -> a -> Value -> IO ()
-expect key expected record = do actual <- field key record; unless (actual == expected) (die ("changed archive field: " ++ show key))
-
-checked :: (Explain e) => Either e a -> IO a
-checked = either (die . T.unpack . explain) pure

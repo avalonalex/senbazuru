@@ -100,6 +100,7 @@ read the Haddock module headers; for the domain, start with
 | [held-endpoint-confirmation.md](held-endpoint-confirmation.md) | Tightening the movement stop barely changes two held-panel endpoints; their refinement cost gaps remain |
 | [held-panel-refinement.md](held-panel-refinement.md) | Comparing 256 and 512 triangles at fixed width, with the same material, grips and tighter stopping test |
 | [held-layout-costs.md](held-layout-costs.md) | The equal-budget gap lies mostly in free paper; the largest length cost and worst relative error occupy different edges |
+| [body-correction-replay.md](body-correction-replay.md) | Replay saved body corrections: 1/64 lowers cost and passes unchanged geometry checks without a new solve |
 | [body-contact-diagnosis.md](body-contact-diagnosis.md) | Locate shallow crossings in saved body-patch triangles and distinguish intersection extent from height gaps |
 | [recovered-body-subdivision.md](recovered-body-subdivision.md) | Subdivide the recovered current triangles before one final-weight continuation, with full proposal and refusal evidence |
 | [body-patch-checkpoints.md](body-patch-checkpoints.md) | Saved corrections expose a misordered starting guess, a coarse near-stall and a refined length/contact failure, without new solves |

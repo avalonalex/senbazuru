@@ -828,3 +828,11 @@ subdivision correction 1→2 and its three crossing pairs without new solves.
 It exports exact intersection sections, the solver's contact witnesses, unchanged
 source bytes and matched close-ups. See [usage](../../docs/usage.md#saved-body-contact-diagnosis)
 and [the result](../../docs/notes/body-contact-diagnosis.md).
+
+`--body-replay SOURCE_DIRECTORY OUTPUT_DIRECTORY` reuses correction 2's full
+saved proposal at the existing 31 line-search fractions, without a new solve.
+It retains both cost and geometry verdicts, selects the largest fraction
+passing both, and compares it with the original quarter-step. Source bytes,
+every candidate FOLD, costs and fixed/magnified views are exported. See
+[usage](../../docs/usage.md#saved-body-correction-replay) and
+[the study note](../../docs/notes/body-correction-replay.md).

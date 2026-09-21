@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Replay the body correction</title>
+<style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}.intro{max-width:950px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:24px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}.selected{background:#dce6d9}small{color:#62665e}pre{overflow:auto;max-height:400px}
+</style>
+<main><a href="index.html">← Material studies</a> · <a href="body-contact.html">Why the original step crosses</a>
+<p class="tag">SENBAZURU · SAVED CORRECTION REPLAY · #325</p>
+<h1>A smaller step can keep the geometry checks</h1>
+<p class="intro">Reuse the full direction of correction 2, then test the same 31 fractions the line search allows. These are numerical candidates, not folding states: straight movement between vertex positions can stretch paper. No new solve or change to the original archive runs here.</p>
+<p class="status" id="result"></p>
+<div class="controls"><label>Replay candidate <select id="candidate"></select></label><label>View <select id="view"><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option><option value="pair-14-55">Pair 14–55 · magnified top</option><option value="pair-22-63" selected>Pair 22–63 · magnified top</option><option value="pair-46-70">Pair 46–70 · magnified top</option></select></label></div>
+<div class="views"><section class="figure"><h2>Original quarter-step</h2><img id="original" alt="Original quarter-step"><p>Lower cost, but three reported crossings.</p></section><section class="figure"><h2 id="candidate-title"></h2><img id="replay" alt="Replay candidate"><p id="candidate-status"></p></section></div>
+<p class="intro" id="legend"></p><p><a id="fold" href="body-replay/start.fold">Candidate FOLD</a> · <a href="body-replay/source/step-2.fold">Unchanged original FOLD</a></p>
+<h2>Which fractions pass?</h2>
+<p class="intro">Both gates must pass: total cost must strictly fall, and geometry must keep one connected sheet, exact holds, material identities, relative edge error ≤ 1e-5, and contact/order checks at 1e-7 sheet units. Those tolerances can permit smaller mathematical intersections; “passes” does not mean exact separation. All triangle pairs are checked, including pairs outside the three magnified views.</p>
+<div class="scroll"><table><thead><tr><th>Fraction of full proposal</th><th>Movement</th><th>Length error</th><th>Crossings</th><th>Reversed orders</th><th>Cost falls?</th><th>Geometry passes?</th><th>Total cost</th></tr></thead><tbody id="fractions"></tbody></table></div>
+<h2>Where the cost changes</h2><p class="intro">All rows use the same length weight 1e8 and contact weight 1e10. Costs use half the solver’s squared-residual objective; the ordering is identical. A lower total need not lower each term.</p>
+<div class="scroll"><table><thead><tr><th>Candidate</th><th>Creases</th><th>Panel bending</th><th>Lengths</th><th>Contact</th><th>Total</th></tr></thead><tbody id="costs"></tbody></table></div>
+<p class="intro" id="equilibrium"></p>
+<p class="intro">This one saved direction supports trying a bounded continuation with both gates. It cannot tell us whether later directions keep making progress or stall at the contact boundary. Whole-crane behavior, pressure, and continuously checked flexible motion remain untested.</p>
+<p><a href="body-replay/checks.json">All replay measurements</a> · <a href="body-replay/source/trace.json">Original solver trace</a></p>
+<details><summary>Current candidate measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_REPLAY_DATA*/null;
+const $=id=>document.getElementById(id), num=x=>x===0?'0':Number(x).toPrecision(6);
+function fraction(s){return s.scale===0?'Unchanged start':'1 / '+Math.round(1/s.scale);}
+function row(body,values,selected=false){const tr=document.createElement('tr');if(selected)tr.className='selected';for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ const selected=data.states.find(s=>s.scale===data.selectedScale), original=data.states.find(s=>s.scale===0.25), start=data.states[0];
+ $('result').textContent=selected?'The first fraction passing both gates is '+fraction(selected)+'. Cost falls '+num(100*selected.costDecrease/start.totalCost)+'%; movement is '+num(selected.movement)+' sheet units. This is a usable descending candidate in this replay, not an accepted settled pose.':'No tested fraction passes both gates. The unchanged start remains the only retained state; this direction stalls under the proposed gate.';
+ for(const s of data.states){const o=document.createElement('option');o.value=s.id;o.textContent=fraction(s)+(s===selected?' · first passing':s===original?' · original':'');$('candidate').append(o);row($('fractions'),[fraction(s),num(s.movement),num(s.maxRelativeEdgeError),s.contact.crossingPanels.length,s.contact.reversedOrders.length,s.costDecreased?'Yes':'No',s.geometryPassed?'Yes':'No',num(s.totalCost)],s===selected);}
+ $('candidate').value=selected?selected.id:start.id;
+ const check=data.sourceStep.equilibrium;
+ $('equilibrium').textContent='The saved linear solve passed, but its full proposed movement is '+num(check.fullMovement)+' (equilibrium threshold '+num(check.movementThreshold)+'). Shrinking the applied movement cannot satisfy that full-proposal test. Nothing in this replay is a converged endpoint or a certified motion.';
+ function draw(){const s=data.states.find(s=>s.id===$('candidate').value),view=$('view').value;
+  $('original').src='body-replay/'+original.id+'-'+view+'.svg';$('replay').src='body-replay/'+s.id+'-'+view+'.svg';$('candidate-title').textContent=fraction(s);$('candidate-status').textContent=(s.costDecreased?'Cost falls. ':'Cost does not fall. ')+(s.geometryPassed?'Geometry checks pass.':'Geometry checks fail.');$('fold').href='body-replay/'+s.id+'.fold';
+  $('legend').textContent=view.startsWith('pair-')?'Same magnified crop on both sides. Purple and orange are the selected triangles, red is their mathematical intersection. Passing the tolerance can leave a smaller red segment. Hidden paper remains visible as grey wire lines; no positions are offset.':'One camera and scale for both candidates. Grey lines show the complete sheet, including hidden triangles. A failing pair is purple/orange; any over-limit length edge is red. The small displacements are barely visible at actual drawing size.';
+  $('costs').replaceChildren();for(const state of [start,original,...(s!==original&&s!==start?[s]:[])])row($('costs'),[fraction(state),...['creaseCost','panelCost','lengthCost','contactCost','totalCost'].map(k=>num(state[k]))]);$('raw').textContent=JSON.stringify(s,null,2);
+ }
+ $('candidate').addEventListener('change',draw);$('view').addEventListener('change',draw);draw();
+}
+</script></html>

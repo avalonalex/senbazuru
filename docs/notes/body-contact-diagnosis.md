@@ -78,9 +78,9 @@ solve; all 14,702 contact rows across the seed and both checkpoints also match
 the previous implementation exactly, including every gradient. Altered material,
 a mismatched trace and overlapping paths are refused before writing.
 
-Next, **replay the second saved proposal at decreasing fractions with the
-unchanged cost and geometry checks, without a new solve**. Determine whether
-a geometry gate leaves a useful descending correction or stalls this case;
-preserve refusal evidence either way. That decision precedes a new contact
-policy. General barriers, clearance at joined creases, full-crane loads,
-pressure and a continuously checked flexible route remain separate work.
+The [follow-up replay](body-correction-replay.md) tests the second saved
+proposal at decreasing fractions with unchanged cost and geometry checks,
+without a new solve. At 1/64 both gates pass; at 1/32 one crossing remains.
+A bounded continuation can now test whether that progress persists before
+adopting a new contact policy. General barriers, clearance at joined creases,
+full-crane loads, pressure and a continuously checked flexible route remain separate work.

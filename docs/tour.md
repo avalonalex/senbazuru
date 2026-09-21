@@ -1265,3 +1265,11 @@ measures whole-triangle straddling and intersection length; the order check
 measures height inside their common outline. The gallery magnifies both saved
 states without moving paper and keeps every gap in a table. Its
 [command](usage.md#saved-body-contact-diagnosis) performs no new solve.
+
+The [saved correction replay](notes/body-correction-replay.md) now tests whether
+shortening that direction preserves geometry as well as reducing cost. At
+1/32 one crossing remains; 1/64 passes every unchanged check and lowers total
+cost by 0.177505%. Its tiny motion cannot establish equilibrium. The
+[read-only command](usage.md#saved-body-correction-replay) exports all fractions,
+original controls and matched magnified views. The next experiment can test
+whether repeating those two gates permits sustained progress.

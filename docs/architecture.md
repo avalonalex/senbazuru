@@ -377,6 +377,12 @@ archive. `SurfaceContact.contactWitnesses` exposes the same overlap corners,
 gaps and derivatives used by correction, without changing the objective.
 The [diagnosis](notes/body-contact-diagnosis.md) separates whole-triangle
 straddling from small height violations within the projected overlap.
+`BodyCorrectionArchive` shares the material/trace reader between that diagnosis
+and `BodyCorrectionReplayGallery`. `BodyCorrectionReplay` reconstructs numerical
+fractions, preserves material identities and checks every candidate; it never
+calls a linear or relaxation solve. Selection requires cost descent and the
+existing geometry gates, not a reduced-movement claim of equilibrium.
+See [the replay](notes/body-correction-replay.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
