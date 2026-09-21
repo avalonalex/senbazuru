@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refine the recovered body shape</title>
+<style>
+body{font:16px/1.55 system-ui,sans-serif;margin:0;background:#f5f1e8;color:#303630}main{max-width:1240px;margin:40px auto;padding:0 12px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.1}h2{margin-bottom:.3em}.intro{max-width:930px}.tag{letter-spacing:.14em;font-size:.8rem;color:#777063}.controls{display:flex;gap:18px;flex-wrap:wrap;margin:24px 0;align-items:end}select,button{font:inherit;padding:7px;background:#fffaf2;border:1px solid #b8b5a9;border-radius:4px}.status{padding:14px 18px;background:#ede4d4;border-left:4px solid #aa7d37}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,576px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{display:block;margin:auto;max-width:none;width:560px;height:auto}.figure.zoom{max-height:600px}.figure.zoom img{width:1120px}.figure h3{margin:4px 0}.metrics{display:flex;flex-wrap:wrap;gap:24px;margin:22px 0}.metrics b{display:block;font-size:1.25rem}.scroll{overflow:auto}table{border-collapse:collapse;margin:16px 0;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:right;padding:7px;border-bottom:1px solid #d4d1c7;white-space:nowrap}th:first-child,td:first-child{text-align:left}.note{max-width:930px}pre{overflow:auto;max-height:400px;font-size:.8rem}small{color:#62665e}
+</style>
+<main>
+<a href="index.html">← Material studies</a> · <a href="body-checkpoints.html">Saved checkpoint audit</a>
+<p class="tag">SENBAZURU · RECOVERED BODY SUBDIVISION · #321</p>
+<h1>Start from the recovered shape</h1>
+<p class="intro">The coarse 5° body patch recovered valid geometry but had not settled. Here, each of its current triangles becomes four smaller triangles. Shared edges share their midpoint; touching layers remain distinct paper. Original material lengths, crease preferences, holds and layer order stay in place.</p>
+<p class="intro">The inherited 120-triangle shape must pass length and contact checks before one continuation of at most 40 corrections, using the previous final penalty weight. The original failed refined run is kept for comparison. These are static numerical experiments on a free-boundary specimen: the rest of the crane, pressure and a checked folding route are absent.</p>
+<p class="status" id="outcome" aria-live="polite"></p>
+<div class="controls"><label>Right-hand shape <select id="state"></select></label><label>View <select id="view"><option value="side">Side</option><option value="top">Top</option><option value="underside">Underside</option><option value="material">Material map</option></select></label><label>Scale <select id="scale"><option value="1">Actual drawing size</option><option value="2">2× inspection</option></select></label></div>
+<div class="views"><section class="figure" id="left"><h3>Recovered coarse · 30 triangles</h3><img id="coarse" alt="Coarse recovered body-patch wire diagram"></section><section class="figure" id="right"><h3 id="title"></h3><img id="selected" alt="Selected body-patch wire diagram"></section></div>
+<p class="note">Hidden triangles remain visible. Red marks the worst edge if its length error exceeds 0.001%; purple and orange mark the worst reversed layer pair, or the first crossing pair when no order is reversed. Folded views use the same camera and 600 pixels per sheet unit; material maps use 504. Magnification changes the display only; scroll within either panel to inspect its edges.</p>
+<p id="selected-status"></p><div class="metrics" id="metrics"></div>
+<h2>Shape and costs</h2>
+<p class="note">Only the continued endpoint can be accepted, and only if both geometry and convergence pass. Crease cost measures departure from preferred fold angles; panel cost measures bending inside a panel. Length and contact penalties are numerical enforcement, separate from stiffness. All totals below use the same final weights. Subdivision preserves shape, but need not preserve a discrete bending cost.</p>
+<div class="scroll"><table><thead><tr><th>State</th><th>Length error</th><th>Crossings</th><th>Reversed pairs</th><th>Body depth</th><th>Crease cost</th><th>Panel cost</th><th>Length penalty</th><th>Contact penalty</th></tr></thead><tbody id="states"></tbody></table></div>
+<h2>Full proposals and shortened corrections</h2>
+<p class="note">The solver proposes a movement, then may halve it repeatedly until cost decreases. Convergence requires a successful linear solve and a full proposal no larger than 0.0000001 sheet units, together with geometric tolerances. A tiny shortened movement alone is insufficient. A candidate is a line-search choice; at equilibrium the solver may return the preceding position instead. Returned checkpoints above are authoritative.</p>
+<div class="scroll"><table><thead><tr><th>Correction</th><th>Full proposal</th><th>Chosen fraction</th><th>Refusals</th><th>Linear residual</th><th>Linear limit</th><th>Cost before</th><th>Candidate cost</th></tr></thead><tbody id="steps"></tbody></table></div>
+<p class="note">The complete trace retains every full proposal, candidate, refusal reason and position. Trace energies are sums of squared residuals, twice the costs in the table above. Numerical descent does not establish a collision-free route or a settled physical sheet.</p>
+<p><a href="body-subdivision/checks.json">Measurements</a> · <a id="trace" href="body-subdivision/trace.json">Full correction trace</a> · <a id="fold" href="body-subdivision/seed.fold">Selected FOLD</a> · <a href="body-subdivision/source/checks.json">Original reports</a></p>
+<details><summary>Selected measurements</summary><pre id="raw"></pre></details>
+</main>
+<script>
+const data=/*SUBDIVISION_DATA*/null;
+const $=id=>document.getElementById(id);
+const num=x=>x===null||x===undefined?'—':x===0?'0':Number(x).toPrecision(5);
+function cell(row,value){const td=document.createElement('td');td.textContent=value;row.append(td);}
+if(data){
+ const c=data.continuation;
+ $('outcome').textContent=!c.ran?'Inherited geometry failed; no continuation was run.':c.failure?'Continuation refused: '+c.failure:c.accepted?'The continued endpoint passes geometry and numerical convergence.':'The inherited shape passes geometry. The bounded continuation remains diagnostic: '+(c.converged?'its endpoint fails an independent geometry check.':c.blockedIterations.length?'the line search stopped without convergence.':'its correction budget ended without convergence.')+' Inspect the endpoint’s geometry separately below.';
+ const endpoint=data.states.filter(p=>p.id.startsWith('step-')).at(-1);
+ if(endpoint&&!c.accepted)$('outcome').append(' Endpoint: '+endpoint.contact.crossingPanels.length+' crossing pairs, '+(100*endpoint.maxRelativeEdgeError).toPrecision(5)+'% length error.');
+ $('trace').hidden=!c.trace;
+ for(const p of data.states.filter(p=>p.id!=='coarse')){const o=document.createElement('option');o.value=p.id;o.textContent=p.title;$('state').append(o);}
+ function centerFigures(){for(const id of ['left','right']){const el=$(id);el.scrollLeft=$('scale').value==='2'?(el.scrollWidth-el.clientWidth)/2:0;el.scrollTop=$('scale').value==='2'?(el.scrollHeight-el.clientHeight)/2:0;}}
+ $('coarse').onload=centerFigures;$('selected').onload=centerFigures;
+ function draw(){
+  const p=data.states.find(p=>p.id===$('state').value),view=$('view').value;
+  $('title').textContent=p.title;$('coarse').src='body-subdivision/coarse-'+view+'.svg';$('selected').src='body-subdivision/'+p.id+'-'+view+'.svg';$('selected').alt=p.title+' · '+view+' wire diagram';
+  for(const id of ['left','right'])$(id).className='figure'+($('scale').value==='2'?' zoom':'');
+  $('selected-status').textContent=(p.geometryPassed?'Geometry passes at this snapshot.':'Geometry fails at this snapshot.')+' Numerical convergence is reported separately for the continued endpoint.';
+  $('metrics').replaceChildren();for(const [label,value] of [['Triangles',p.triangles],['Largest length error',num(100*p.maxRelativeEdgeError)+'%'],['Body depth',num(p.bodyDepth)],['Hold error',num(p.holdError)],['Connected components',p.components]]){const el=document.createElement('div'),b=document.createElement('b');b.textContent=value;el.append(b,document.createTextNode(label));$('metrics').append(el);}
+  centerFigures();
+  $('fold').href='body-subdivision/'+p.id+'.fold';$('raw').textContent=JSON.stringify(p,null,2);
+ }
+ for(const p of data.states){const tr=document.createElement('tr');for(const v of [p.title,num(100*p.maxRelativeEdgeError)+'%',p.contact.crossingPanels.length,p.contact.reversedOrders.length,num(p.bodyDepth),num(p.creaseEnergy),num(p.panelEnergy),num(p.lengthCost),num(p.contactCost)])cell(tr,v);$('states').append(tr);}
+ for(const s of c.trace||[]){const tr=document.createElement('tr');for(const v of [s.iteration,num(s.equilibrium.fullMovement),num(s.scale),s.refusals.length,num(s.equilibrium.linearResidual),num(s.equilibrium.linearThreshold),num(s.beforeEnergy/2),s.candidateEnergy===null?'—':num(s.candidateEnergy/2)])cell(tr,v);$('steps').append(tr);}
+ for(const id of ['state','view','scale'])$(id).addEventListener('change',draw);
+ const last=data.states.filter(p=>p.id.startsWith('step-')).at(-1);$('state').value=last?last.id:'seed';draw();
+}
+</script>
+</html>

@@ -70,6 +70,9 @@ module FoldRelaxation
     relaxPinnedContact,
     diagnosePinnedContact,
     continuePinnedContact,
+    tracePinnedContact,
+    SolverStep (..),
+    solverSteps,
     relaxSurfaceContact,
     relaxDiscoveredContact,
     relaxLocalContact,
@@ -277,6 +280,15 @@ continuePinnedContact settings pins hinges contact mesh = do
   (result, _, audit) <- relaxWithPins pins fixedPolicy {stopOnFailedSearch = True, retainTrials = True} 0 (SurfaceOrder contact) (Just (hinges, 1e8)) settings mesh
   pure (result, audit)
 
+-- | The same final-weight continuation, retaining every full proposal and
+-- refusal for at most forty steps. This is opt-in: ordinary solves keep the
+-- bounded first/last audit. Recording never changes the search or acceptance.
+tracePinnedContact :: Settings -> IM.IntMap V3 -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError (Relaxation, TrialDiagnostics)
+tracePinnedContact settings pins hinges contact mesh = do
+  if iterationLimit settings > 40 then Left InvalidSettings else Right ()
+  (result, _, audit) <- relaxWithPins pins fixedPolicy {stopOnFailedSearch = True, retainTrials = True, retainSteps = True} 0 (SurfaceOrder contact) (Just (hinges, 1e8)) settings mesh
+  pure (result, audit)
+
 -- | Add directional separation for declared panel or local triangle orders.
 -- The same staged length/bending solve now penalises reversed gaps. Independent
 -- triangle diagnostics still judge the endpoint; no motion certificate follows.
@@ -372,25 +384,45 @@ data BlockedStage = BlockedStage
   }
   deriving stock (Eq, Show)
 
-data TrialDiagnostics = TrialDiagnostics !(M.Map RejectionKind RejectionSummary) ![BlockedStage]
+-- | A proposal is not necessarily installed: even at equilibrium the solver
+-- returns the current mesh, while a failed search also leaves it unchanged.
+-- Energies use the solver's sum of squared residuals, twice bendingEnergy's
+-- convention. The actual returned checkpoints remain authoritative.
+data SolverStep = SolverStep
+  { solverIteration :: !Int,
+    solverStart :: !MaterialMesh,
+    solverFullProposal :: !MaterialMesh,
+    solverCandidate :: !MaterialMesh,
+    solverScale :: !(Maybe Double),
+    solverEquilibrium :: !EquilibriumCheck,
+    solverBeforeEnergy :: !Double,
+    solverCandidateEnergy :: !(Maybe Double),
+    solverRefusals :: ![RejectedTrial]
+  }
+  deriving stock (Eq, Show)
+
+data TrialDiagnostics = TrialDiagnostics !(M.Map RejectionKind RejectionSummary) ![BlockedStage] ![SolverStep]
   deriving stock (Eq, Show)
 
 rejectionSummaries :: TrialDiagnostics -> [RejectionSummary]
-rejectionSummaries (TrialDiagnostics rows _) = M.elems rows
+rejectionSummaries (TrialDiagnostics rows _ _) = M.elems rows
 
 blockedStages :: TrialDiagnostics -> [BlockedStage]
-blockedStages (TrialDiagnostics _ stages) = stages
+blockedStages (TrialDiagnostics _ stages _) = stages
 
 emptyDiagnostics :: TrialDiagnostics
-emptyDiagnostics = TrialDiagnostics M.empty []
+emptyDiagnostics = TrialDiagnostics M.empty [] []
+
+solverSteps :: TrialDiagnostics -> [SolverStep]
+solverSteps (TrialDiagnostics _ _ steps) = steps
 
 mergeDiagnostics :: TrialDiagnostics -> TrialDiagnostics -> TrialDiagnostics
-mergeDiagnostics (TrialDiagnostics earlier aStages) (TrialDiagnostics later bStages) = TrialDiagnostics (M.unionWith combine earlier later) (aStages ++ bStages)
+mergeDiagnostics (TrialDiagnostics earlier aStages aSteps) (TrialDiagnostics later bStages bSteps) = TrialDiagnostics (M.unionWith combine earlier later) (aStages ++ bStages) (aSteps ++ bSteps)
   where
     combine a b = a {rejectionCount = rejectionCount a + rejectionCount b, lastRejection = lastRejection b}
 
 recordRejection :: RejectedTrial -> TrialDiagnostics -> TrialDiagnostics
-recordRejection trial diagnostics = mergeDiagnostics diagnostics (TrialDiagnostics (M.singleton kind (RejectionSummary kind 1 trial trial)) [])
+recordRejection trial diagnostics = mergeDiagnostics diagnostics (TrialDiagnostics (M.singleton kind (RejectionSummary kind 1 trial trial)) [] [])
   where
     kind = case trialReason trial of
       EnergyDidNotDecrease -> NoDescent
@@ -432,7 +464,7 @@ relaxSweptWith barrier settings motionSettings hinges reference mesh = do
       case Motion.correctionOutcome report of
         Motion.CorrectionClear -> Right report
         _ -> Left (UnsafeCorrection report)
-    policy = ContactPolicy measure energy propose True True
+    policy = ContactPolicy measure energy propose True True False
     energy state@(learned, _) current = case barrier of
       Nothing -> measure state current
       Just activation -> either (Left . LocalDiscoveryFailure) Right (Local.localBarrierContacts activation learned current)
@@ -450,17 +482,18 @@ data ContactPolicy state = ContactPolicy
     energyContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
     proposeContacts :: Int -> state -> MaterialMesh -> MaterialMesh -> Either RelaxError state,
     retainTrials :: !Bool,
-    stopOnFailedSearch :: !Bool
+    stopOnFailedSearch :: !Bool,
+    retainSteps :: !Bool
   }
 
 localHistoryPolicy :: ContactPolicy Local.LocalReference
-localHistoryPolicy = ContactPolicy measure measure propose False False
+localHistoryPolicy = ContactPolicy measure measure propose False False False
   where
     measure reference mesh = either (Left . LocalDiscoveryFailure) Right (Local.localDiscoveredContacts reference mesh)
     propose iteration reference _ mesh = either (Left . LocalDiscoveryFailure) Right (Local.extendLocalReference iteration reference mesh)
 
 fixedPolicy :: ContactPolicy ContactMode
-fixedPolicy = ContactPolicy measure measure (\_ state _ _ -> Right state) False False
+fixedPolicy = ContactPolicy measure measure (\_ state _ _ -> Right state) False False False
   where
     measure packet mesh = case packet of
       NoContact -> Right []
@@ -566,7 +599,7 @@ relaxWithPins pins policy offset initial bending settings original = do
           snapshot = Checkpoint count mesh residual
           keep = count `elem` [0, 1, 2, 5, 10, 20, 50] || done || exhausted || blocked
           history' = if keep then snapshot : history else history
-          block = TrialDiagnostics M.empty [BlockedStage (offset + count + 1) (maybe 1 snd bending) | blocked]
+          block = TrialDiagnostics M.empty [BlockedStage (offset + count + 1) (maybe 1 snd bending) | blocked] []
           diagnostics' = mergeDiagnostics diagnostics (mergeDiagnostics trials block)
       if done || exhausted || blocked
         then Right (Relaxation (reverse (if blocked then Checkpoint (count + 1) mesh residual : history' else history')) done check, state, diagnostics')
@@ -624,13 +657,15 @@ relaxWithPins pins policy offset initial bending settings original = do
                     + sum [r * r | (_, r) <- bends]
             if finite energy then Right energy else Left NonFiniteObjective
       before <- objective state current
-      let attempt scale remaining earlier =
-            let candidate = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
+      let displaced scale = IM.mapWithKey (\i sample -> sample {position = position sample ^+^ (scale *^ at i correction)}) current
+          attempt scale remaining earlier refused =
+            let candidate = displaced scale
                 proposed = proposeContacts policy (offset + count + 1) state (meshFrom current) (meshFrom candidate)
                 reject includesProposed reason after =
                   let trial = RejectedTrial (offset + count + 1) lengthWeight scale before after includesProposed reason (meshFrom current) (meshFrom candidate)
                       recorded = if retainTrials policy then recordRejection trial earlier else earlier
-                   in if remaining <= (0 :: Int) then (current, state, False, recorded) else attempt (scale / 2) (remaining - 1) recorded
+                      refused' = if retainSteps policy then trial : refused else refused
+                   in if remaining <= (0 :: Int) then (current, state, False, recorded, Nothing, Nothing, reverse refused') else attempt (scale / 2) (remaining - 1) recorded refused'
              in case objective state candidate of
                   Left err -> reject False (TrialEvaluationFailed err) Nothing
                   Right after | after >= before -> reject False EnergyDidNotDecrease (Just after)
@@ -638,11 +673,14 @@ relaxWithPins pins policy offset initial bending settings original = do
                     Left err -> reject False (TrialProposalFailed err) (Just beforeProposal)
                     Right candidateState -> case objective candidateState candidate of
                       Left err -> reject True (TrialEvaluationFailed err) Nothing
-                      Right after | after < before -> (candidate, candidateState, True, earlier)
+                      Right after | after < before -> (candidate, candidateState, True, earlier, Just scale, Just after, reverse refused)
                       Right after -> reject True EnergyDidNotDecrease (Just after)
-          (next, nextState, accepted, diagnostics) = attempt 1 30 emptyDiagnostics
+          (next, nextState, accepted, diagnostics, acceptedScale, afterEnergy, refusals) = attempt 1 30 emptyDiagnostics []
       let movement = maximum (0 : map norm (IM.elems correction))
-      Right (next, nextState, linearConverged linearReport && movement <= 1e-7, accepted, diagnostics, Just (EquilibriumCheck linearReport movement factored))
+          equilibrium = EquilibriumCheck linearReport movement factored
+          step = SolverStep (offset + count + 1) (meshFrom current) (meshFrom (displaced 1)) (meshFrom next) acceptedScale equilibrium before afterEnergy refusals
+          audit = mergeDiagnostics diagnostics (TrialDiagnostics M.empty [] [step | retainSteps policy])
+      Right (next, nextState, linearConverged linearReport && movement <= 1e-7, accepted, audit, Just equilibrium)
     edgeRow current (i, j, rest) = do
       a <- maybe (Left (MissingVertex 0 i)) Right (IM.lookup i current)
       b <- maybe (Left (MissingVertex 0 j)) Right (IM.lookup j current)

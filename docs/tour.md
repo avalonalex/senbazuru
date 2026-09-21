@@ -1241,3 +1241,19 @@ crease/panel costs. The initial guess already has reversed layers; the coarse
 run eventually repairs geometry while the refined run remains invalid. Sparse
 checkpoints cannot establish equilibrium or certify the route. See
 [the command and required archive](usage.md#saved-body-patch-checkpoints).
+
+
+## Refining a recovered body shape
+
+The [recovered subdivision](notes/recovered-body-subdivision.md) starts from
+valid coarse geometry. It inserts midpoints into the current triangles rather
+than restarting the old strained opening guess. New vertices share the old
+triangles' planes, so refinement initially preserves the shape exactly.
+Material and physical creases stay tied to the original sheet.
+
+The [opt-in command](usage.md#recovered-body-subdivision) permits one bounded
+continuation only if the seed passes geometry. It retains full proposals as
+well as shortened line-search steps: a tiny accepted correction alone cannot
+establish equilibrium. The fixed-camera gallery keeps the failed original fine
+control and all geometry limits. This remains a free-boundary specimen, with
+neither surrounding crane loads nor a certified deformation route.

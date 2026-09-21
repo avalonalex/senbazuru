@@ -2,7 +2,7 @@
 -- measurements so this gallery can be reproduced without rerunning a solve.
 -- Numerical iterates remain wire diagrams, including hidden triangles; the
 -- worst length edge and worst reversed order are marked, not visually repaired.
-module BodyPatchCheckpointGallery (writeBodyPatchCheckpoints) where
+module BodyPatchCheckpointGallery (writeBodyPatchCheckpoints, views, drawCheckpoint) where
 
 import BodyPatch
 import BodyPatchCheckpoints

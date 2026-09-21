@@ -1689,3 +1689,24 @@ order on both the folded patch and the original sheet. Separate costs and
 net movement between saved points explain the history without treating it as
 a folding route or evidence of equilibrium. No full correction proposals were
 archived. See [the audit](notes/body-patch-checkpoints.md).
+
+
+## Recovered body subdivision
+
+```bash
+stack run senbazuru-material-study -- --body-subdivision build/fold-material/body-patch build/fold-material
+```
+
+Open `build/fold-material/body-subdivision.html`. This needs the same original
+archive as `--body-checkpoints`, validates both 5° controls, and copies their
+source bytes into `body-subdivision/source`. It must write outside that source
+directory. It subdivides the recovered coarse endpoint's current triangles,
+retaining the original material reference and the fine fixture's constraints.
+
+Only a passing inherited seed permits the **one new solve**: at most forty
+corrections at length weight `1e8`, with unchanged contact and stopping rules.
+Every invocation repeats that bounded experiment. To inspect an existing run,
+open its HTML or JSON instead. `trace.json` retains every full proposal,
+line-search candidate and refused trial; returned checkpoint FOLDs and wire
+SVGs distinguish these from the actual endpoint. No physical motion or
+whole-crane inflation is certified. See [the result](notes/recovered-body-subdivision.md).

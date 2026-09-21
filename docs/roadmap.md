@@ -50,8 +50,11 @@ further cost refinement and study controlled opening of a small body patch
 connected to both wing roots. [Its first bounded comparison](notes/coupled-body-patch.md)
 retains unsettled coarse poses and a failed refined control.
 [The saved-checkpoint audit](notes/body-patch-checkpoints.md) finds pre-existing
-order defects and first-correction crossings. Next test one refined continuation
-from the recovered coarse shape, after checking its subdivision.
+order defects and first-correction crossings. [Subdivision of its recovered
+coarse endpoint](notes/recovered-body-subdivision.md) now supplies a valid
+120-triangle start, but a forty-step continuation remains unsettled and develops
+three crossings. Next inspect correction 1→2 from its saved full-proposal trace,
+without new solves; compare those intersections with contact samples/tolerances.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
@@ -640,10 +643,15 @@ checked coupled angles.
    160; the refined case retains large length/contact penalties. Its initial
    contact cost is 6.538× larger on the same subdivided shape, a candidate
    contributor rather than an isolated cause.
-   **Next: verify subdivision of the recovered coarse 5° endpoint, then try
-   one refined continuation at the unchanged final weight, recording full
-   proposals/refusals. Preserve the failed original control and all geometry
-   and solver checks; do not restart weak penalties or launch a wider sweep.**
+   [#321](https://github.com/avalonalex/senbazuru/issues/321) verifies
+   [subdivision of that recovered shape](notes/recovered-body-subdivision.md):
+   the inherited 120-triangle seed passes geometry. Forty corrections at the
+   same final penalty reduce cost but leave three crossings and a full proposal
+   357 times above the movement limit. All 456 refusals and full proposals are
+   saved. The original failed refined control remains unchanged.
+   **Next: inspect correction 1→2 and its three crossing pairs without new
+   solves; compare actual intersections with the directional contact samples
+   and tolerances. Keep every geometry and solver acceptance check.**
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse

@@ -363,6 +363,14 @@ compares intervals at one penalty weight. `BodyPatchCheckpointGallery` copies
 source bytes and marks defects in fixed wire views; neither invokes a solver.
 Sparse positions cannot recover missing proposals or certify equilibrium.
 See [the checkpoint audit](notes/body-patch-checkpoints.md).
+`BodyPatchSubdivision` passes the recovered triangular surface back through
+`Surface` refinement, requiring exact fine material/topology and source-panel
+identity before borrowing the existing fine fixture's constraints. Its gallery
+permits one final-weight continuation only after independent seed checks.
+`FoldRelaxation.tracePinnedContact` records full proposals and all refusals for
+at most forty steps; ordinary solvers retain their bounded first/last audit.
+The trace does not change the objective, line search or convergence rule.
+See [the recovered subdivision](notes/recovered-body-subdivision.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
