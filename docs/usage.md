@@ -1745,3 +1745,26 @@ costs, contact reports and every candidate FOLD. Source bytes stay unchanged
 and are copied under `body-replay/source`; mismatched archives and overlapping
 source/output directories are refused before writing. See
 [the result and limits](notes/body-correction-replay.md).
+
+### Geometry-gated body continuation
+
+```bash
+stack run senbazuru-material-study -- --body-geometry build/fold-material/body-subdivision build/fold-material
+```
+
+Open `build/fold-material/body-geometry.html`. This explicitly runs one
+continuation of at most forty corrections from saved subdivision step 1.
+Reuse that archive; do not rerun `--body-subdivision`. The new opt-in gate
+requires both total cost descent and the existing independent geometry checks
+on each accepted candidate. Material, exact holds, penalty weights, contact
+orders, tolerances and full-proposal convergence are unchanged. A failed search
+stops with the retained mesh and is not success.
+
+Source bytes and the original forty-step trace are copied unchanged under
+`body-geometry/source`. New returned meshes, complete proposal/refusal trace,
+separate costs, body depth, crease angles and attachment positions accompany
+matched full-sheet and magnified views. The counter restarts at zero for the
+saved shape; it counts numerical corrections, not folding instructions. No
+continuous motion or full-crane inflation is certified. This expensive run is
+outside CI; small fixtures test the acceptance behavior. See
+[the study note](notes/body-geometry-continuation.md).

@@ -58,9 +58,12 @@ finds complete contact coverage but shallow negative gaps: a finite penalty and
 whole-triangle crossing test enforce different conditions.
 [Replaying the saved proposal](notes/body-correction-replay.md) finds that 1/64
 lowers cost by 0.177505% while passing unchanged geometry checks; 1/32 still
-crosses. No new solve or accepted endpoint. Next test a bounded continuation
-that gates every accepted candidate on both cost and geometry, retaining full
-proposals and refusals to distinguish continued progress from a stall.
+crosses. The [bounded continuation](notes/body-geometry-continuation.md) now
+retains passing geometry for seven tiny moves, then stalls on correction 8.
+Cost falls 0.226368%, but full movement remains 11,392 times above convergence;
+total displacement is below 0.014 drawing pixels. Next compare a contact-aware
+direction at the blocked shape, beginning with pair 22–63, against this saved
+proposal. No accepted body-opening endpoint yet.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
@@ -70,7 +73,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,793 examples pass in the cold build for #325, including saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,797 examples pass in the cold build for #327, including geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -665,9 +668,14 @@ checked coupled angles.
    [replays all 31 fractions](notes/body-correction-replay.md) without new solves.
    The first passing choice, 1/64, lowers cost 0.177505%; 1/32 still reports
    pair 22–63 crossing. Smaller tolerated intersections remain diagnostic.
-   **Next: one bounded continuation from the saved passing start, requiring
-   cost descent and unchanged geometry checks for each accepted candidate.
-   Record full proposals and refusals; test continued progress versus stalling.**
+   [#327](https://github.com/avalonalex/senbazuru/issues/327)
+   [continues with both gates](notes/body-geometry-continuation.md). Seven tiny
+   accepted corrections lower cost 0.226368%; search 8 blocks on pair 22–63.
+   All returned geometry passes, but the full proposal remains far above
+   convergence. All 134 refusals are saved: 16 cost and 118 geometry failures.
+   **Next: compare one contact-aware correction direction at the blocked
+   shape with the saved proposal, starting with pair 22–63. Preserve the
+   geometry gates; longer unchanged searches do not resolve this stall.**
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse

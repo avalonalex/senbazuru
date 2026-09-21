@@ -10,6 +10,8 @@ import CraneSpread
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
+import Data.Text (Text)
+import FoldBending (Hinge)
 import FoldRelaxation
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
@@ -124,6 +126,75 @@ spec = do
         triangles candidate `shouldBe` triangles mesh
         map sampleMaterial (samples candidate) `shouldBe` map sampleMaterial (samples mesh)
         forM_ (IM.toList pins) $ \(i, target) -> IM.lookup i (IM.fromList (zip [0 ..] (map position (samples candidate)))) `shouldBe` Just target
+
+  describe "geometry-gated continuation" $ do
+    it "keeps an always-passing gate identical to the original continuation" $ do
+      (mesh, pins, hinges, contact) <- gateFixture
+      let settings = Settings 2 1e-5
+      traceCheckedPinnedContact (const (Right ())) settings pins hinges contact mesh
+        `shouldBe` tracePinnedContact settings pins hinges contact mesh
+
+    it "refuses the installed starting shape even with no iteration budget" $ do
+      (mesh, pins, hinges, contact) <- gateFixture
+      traceCheckedPinnedContact (const (Left "bad seed")) (Settings 0 1e-5) pins hinges contact mesh
+        `shouldBe` Left (GeometryCheckFailed "bad seed")
+      -- Holds are installed before the gate, so the check cannot accidentally
+      -- certify the original input and then silently move a held vertex.
+      let movedPins = IM.map (^+^ V3 0 0 0.01) pins
+          unchanged candidate = if candidate == mesh then Right () else Left "moved"
+      traceCheckedPinnedContact unchanged (Settings 0 1e-5) movedPins hinges contact mesh
+        `shouldBe` Left (GeometryCheckFailed "moved")
+
+    it "backtracks a descending proposal without reducing its convergence movement" $ do
+      (mesh, pins, hinges, contact) <- gateFixture
+      let settings = Settings 1 1e-5
+          movement candidate = maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples candidate))
+      (_, original) <- right (tracePinnedContact settings pins hinges contact mesh)
+      case solverSteps original of
+        [firstStep] -> do
+          let limit = movement (solverCandidate firstStep) / 8
+              gate :: MaterialMesh -> Either Text ()
+              gate candidate = if movement candidate <= limit then Right () else Left "outside allowed region"
+          limit `shouldSatisfy` (> 0)
+          (result, audit) <- right (traceCheckedPinnedContact gate settings pins hinges contact mesh)
+          converged result `shouldBe` False
+          case solverSteps audit of
+            [step] -> do
+              solverFullProposal step `shouldBe` solverFullProposal firstStep
+              solverEquilibrium step `shouldBe` solverEquilibrium firstStep
+              movement (solverCandidate step) `shouldSatisfy` (> 0)
+              movement (solverCandidate step) `shouldSatisfy` (<= limit)
+              solverCandidateEnergy step `shouldSatisfy` maybe False (< solverBeforeEnergy step)
+              rejectionSummaries audit `shouldSatisfy` any ((== GeometryRefusal) . rejectionKind)
+              forM_ (checkpoints result) $ \p -> gate (checkpointMesh p) `shouldBe` Right ()
+            _ -> expectationFailure "expected one shortened correction"
+        _ -> expectationFailure "expected one original correction"
+
+    it "stops an exhausted geometry search without installing refused paper" $ do
+      (mesh, pins, hinges, contact) <- gateFixture
+      let gate candidate = if candidate == mesh then Right () else Left "all movement refused"
+      (result, audit) <- right (traceCheckedPinnedContact gate (Settings 40 1e-5) pins hinges contact mesh)
+      converged result `shouldBe` False
+      map blockedIteration (blockedStages audit) `shouldBe` [1]
+      map checkpointMesh (checkpoints result) `shouldSatisfy` all (== mesh)
+      case solverSteps audit of
+        [step] -> do
+          solverScale step `shouldBe` Nothing
+          solverCandidate step `shouldBe` mesh
+          equilibriumMovement (solverEquilibrium step) `shouldSatisfy` (> 1e-7)
+          length (solverRefusals step) `shouldBe` 31
+          rejectionSummaries audit `shouldSatisfy` any ((== GeometryRefusal) . rejectionKind)
+        _ -> expectationFailure "expected one blocked search"
+
+-- A small nearly closed crease suffices to exercise acceptance;
+-- the 120-triangle body experiment remains opt-in.
+gateFixture :: IO (MaterialMesh, IM.IntMap V3, [Hinge], Contact.OrderedContact)
+gateFixture = do
+  fixture <- right (closedCrease 1 Open)
+  let mesh = closedMesh fixture
+      pins = IM.fromList [(i, position p) | (i, p) <- zip [0 ..] (samples mesh), i `elem` closedRoot fixture]
+  contact <- right (Contact.prepareContact 0 (V3 0 0 1) [(FaceId 0, FaceId 1)] (closedOwners fixture) mesh)
+  pure (mesh, pins, closedHinges fixture, contact)
 
 load :: IO Frame
 load = keyFrame <$> (loadFoldFile "examples/crane.fold" >>= right)

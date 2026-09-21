@@ -1271,5 +1271,10 @@ shortening that direction preserves geometry as well as reducing cost. At
 1/32 one crossing remains; 1/64 passes every unchanged check and lowers total
 cost by 0.177505%. Its tiny motion cannot establish equilibrium. The
 [read-only command](usage.md#saved-body-correction-replay) exports all fractions,
-original controls and matched magnified views. The next experiment can test
-whether repeating those two gates permits sustained progress.
+original controls and matched magnified views.
+The [bounded continuation](notes/body-geometry-continuation.md) now applies
+both gates to subsequent corrections. Seven tiny moves lower cost 0.226368%
+before pair 22–63 blocks the eighth search; all retained geometry passes, but
+full-proposal convergence fails. The [opt-in command](usage.md#geometry-gated-body-continuation)
+keeps every proposal and refusal. The result calls for a direction that respects
+the limiting contact, rather than further shortening the same search.

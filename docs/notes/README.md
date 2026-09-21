@@ -101,6 +101,7 @@ read the Haddock module headers; for the domain, start with
 | [held-panel-refinement.md](held-panel-refinement.md) | Comparing 256 and 512 triangles at fixed width, with the same material, grips and tighter stopping test |
 | [held-layout-costs.md](held-layout-costs.md) | The equal-budget gap lies mostly in free paper; the largest length cost and worst relative error occupy different edges |
 | [body-correction-replay.md](body-correction-replay.md) | Replay saved body corrections: 1/64 lowers cost and passes unchanged geometry checks without a new solve |
+| [body-geometry-continuation.md](body-geometry-continuation.md) | Continue the saved body patch with both cost and geometry gates, keeping the full-proposal convergence test |
 | [body-contact-diagnosis.md](body-contact-diagnosis.md) | Locate shallow crossings in saved body-patch triangles and distinguish intersection extent from height gaps |
 | [recovered-body-subdivision.md](recovered-body-subdivision.md) | Subdivide the recovered current triangles before one final-weight continuation, with full proposal and refusal evidence |
 | [body-patch-checkpoints.md](body-patch-checkpoints.md) | Saved corrections expose a misordered starting guess, a coarse near-stall and a refined length/contact failure, without new solves |

@@ -3,7 +3,7 @@
 -- solving. Wire drawings include hidden triangles; no numerical correction is
 -- advertised as a physical folding route. Full proposals and refusals are
 -- archived separately from the solver's returned checkpoints.
-module BodyPatchSubdivisionGallery (writeBodyPatchSubdivision, writeState) where
+module BodyPatchSubdivisionGallery (writeBodyPatchSubdivision, writeState, stepValue, equilibriumValue) where
 
 import BodyPatch
 import BodyPatchCheckpointGallery (drawCheckpoint, views)

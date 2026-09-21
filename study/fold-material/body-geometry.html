@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Keep the body geometry checks</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}.intro{max-width:950px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:24px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}.selected{background:#dce6d9}small{color:#62665e}pre{overflow:auto;max-height:400px}
+</style>
+<main><a href="index.html">← Material studies</a> · <a href="body-replay.html">Previous single-direction replay</a>
+<p class="tag">SENBAZURU · BODY CONTINUATION · #327</p>
+<h1>Can checked corrections keep making progress?</h1>
+<p class="intro">Continue from the saved passing shape for at most 40 corrections. Every accepted candidate must lower the same total cost and pass the unchanged geometry checks. The original quarter-step remains a control; its lower cost came with three reported crossings.</p>
+<p class="status" id="result"></p>
+<div class="controls"><label>Returned shape <select id="candidate"></select></label><label>View <select id="view"><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option><option value="pair-14-55">Pair 14–55 · magnified top</option><option value="pair-22-63" selected>Pair 22–63 · magnified top</option><option value="pair-46-70">Pair 46–70 · magnified top</option></select></label></div>
+<div class="views"><section class="figure"><h2>Original quarter-step</h2><img id="original" alt="Original quarter-step with crossings"></section><section class="figure"><h2 id="candidate-title"></h2><img id="checked" alt="Returned checked body-patch shape"><p id="candidate-status"></p></section></div>
+<p id="legend"></p><p><a id="fold" href="body-geometry/step-0.fold">Selected FOLD</a> · <a href="body-geometry/source/step-2.fold">Unchanged original FOLD</a></p>
+<h2>Progress and refusals</h2>
+<p class="intro">Correction numbers start at zero for the saved step-1 mesh. These are numerical iterations, not physical time or folding instructions. The search tries fractions 1, 1/2, …, 2⁻³⁰. A failed search retains its starting shape. The full proposal must move at most 1e-7 sheet units, with a verified linear solve, to establish equilibrium; a small installed movement does not suffice.</p>
+<div class="scroll"><table><thead><tr><th>Correction</th><th>Accepted fraction</th><th>Installed movement</th><th>Full movement</th><th>Cost decrease</th><th>Refusals</th></tr></thead><tbody id="steps"></tbody></table></div>
+<h2>Geometry and separate costs</h2>
+<p class="intro">One connected sheet, unchanged material, exact holds, relative edge error ≤ 1e-5 and contact/order checks at 1e-7 sheet units. Passing can permit smaller mathematical intersections. Crease angles remain flexible preferences. Cost uses half the solver’s squared-residual objective, with length weight 1e8 and contact weight 1e10.</p>
+<div class="scroll"><table><thead><tr><th>Shape</th><th>Geometry</th><th>Length error</th><th>Crossings</th><th>Reversed orders</th><th>Body depth</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>Shape</th><th>Creases</th><th>Panels</th><th>Lengths</th><th>Contact</th><th>Total</th></tr></thead><tbody id="costs"></tbody></table></div>
+<p class="intro">This free-boundary patch includes the body core and wing collars. It leaves out the rest of the crane’s loads. Geometry checks cover returned endpoints; the motion between them is not certified. Pressure and whole-crane inflation remain later work.</p>
+<p><a href="body-geometry/checks.json">Measurements, angles and attachment positions</a> · <a href="body-geometry/trace.json">Every proposal and refusal</a> · <a href="body-geometry/source/trace.json">Unchanged original 40-correction trace</a></p>
+<details><summary>Selected shape measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_GEOMETRY_DATA*/null;
+const $=id=>document.getElementById(id), num=x=>x===0?'0':Number(x).toPrecision(6);
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ const states=data.states.filter(s=>s.id!=='original'), start=states[0], final=states[states.length-1], original=data.states.find(s=>s.id==='original');
+ $('result').textContent=(data.acceptedEndpoint?'Endpoint accepted. ':data.blockedIterations.length?'Search stalled at correction '+data.blockedIterations.join(', ')+'. ':'Correction budget exhausted. ')+data.steps.filter(s=>s.installedMovement>0).length+' corrections moved the sheet. Total cost fell '+num(100*(start.totalCost-final.totalCost)/start.totalCost)+'%; maximum movement from start is '+num(data.movementFromStart)+' sheet units. '+(data.converged?'Full-proposal convergence passed.':'Full-proposal convergence did not pass; this remains a diagnostic shape.');
+ for(const s of states){const o=document.createElement('option');o.value=s.id;o.textContent=s.title;$('candidate').append(o);} $('candidate').value=final.id;
+ for(const step of data.steps)row($('steps'),[step.iteration,step.scale===null?'None':'1 / '+Math.round(1/step.scale),num(step.installedMovement),num(step.equilibrium.fullMovement),num(step.costDecrease),step.refusals]);
+ function draw(){const s=states.find(s=>s.id===$('candidate').value),view=$('view').value;
+  $('original').src='body-geometry/original-'+view+'.svg';$('checked').src='body-geometry/'+s.id+'-'+view+'.svg';$('candidate-title').textContent=s.title;$('candidate-status').textContent=s.geometryPassed?'All unchanged geometry checks pass.':'Geometry checks fail.';$('fold').href='body-geometry/'+s.id+'.fold';
+  $('legend').textContent=view.startsWith('pair-')?'Same magnified crop on both sides. Purple and orange mark the selected triangles; red is their mathematical intersection. Passing the tolerance can leave a small red segment. Grey wire lines include hidden paper.':'Both drawings use the same camera and scale, at 600 pixels per sheet unit. Grey wire lines include hidden paper. Reported crossings are purple/orange and over-limit length edges are red; positions are unchanged.';
+  $('costs').replaceChildren();$('geometry').replaceChildren();for(const state of [start,original,...(s!==start?[s]:[])]){row($('costs'),[state.title,...['creaseEnergy','panelEnergy','lengthCost','contactCost','totalCost'].map(k=>num(state[k]))]);row($('geometry'),[state.title,state.geometryPassed?'Pass':'Fail',num(state.maxRelativeEdgeError),state.contact.crossingPanels.length,state.contact.reversedOrders.length,num(state.bodyDepth)]);}$('raw').textContent=JSON.stringify(s,null,2);
+ }
+ $('candidate').addEventListener('change',draw);$('view').addEventListener('change',draw);draw();
+}
+</script></html>

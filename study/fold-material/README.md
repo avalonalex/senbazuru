@@ -836,3 +836,11 @@ passing both, and compares it with the original quarter-step. Source bytes,
 every candidate FOLD, costs and fixed/magnified views are exported. See
 [usage](../../docs/usage.md#saved-body-correction-replay) and
 [the study note](../../docs/notes/body-correction-replay.md).
+
+`--body-geometry SOURCE_DIRECTORY OUTPUT_DIRECTORY` resumes the saved
+subdivision step-1 shape with cost and independent geometry gates on each
+accepted correction. At most forty corrections run at the unchanged final
+weights; full proposals and every refusal remain separate from returned
+meshes. The original run is retained without rerunning it. This experiment is
+opt-in, outside CI. See [usage](../../docs/usage.md#geometry-gated-body-continuation)
+and [the study note](../../docs/notes/body-geometry-continuation.md).

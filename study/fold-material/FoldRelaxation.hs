@@ -71,6 +71,7 @@ module FoldRelaxation
     diagnosePinnedContact,
     continuePinnedContact,
     tracePinnedContact,
+    traceCheckedPinnedContact,
     SolverStep (..),
     solverSteps,
     relaxSurfaceContact,
@@ -102,6 +103,7 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust, isNothing)
+import Data.Text (Text)
 import FoldBending
 import FoldContact
 import FoldMaterial
@@ -138,11 +140,13 @@ data RelaxError
   | CorrectionFailure !Motion.CorrectionError
   | UnsafeCorrection !Motion.CorrectionCheck
   | InvalidPositionConstraint !Int
+  | GeometryCheckFailed !Text
   | NonFiniteObjective
   deriving stock (Eq, Show)
 
 instance Explain RelaxError where
   explain (InvalidPositionConstraint i) = "position constraint " <> tshow i <> " needs an existing material vertex and a finite target"
+  explain (GeometryCheckFailed reason) = "geometry check failed: " <> reason
   explain NonFiniteObjective = "numerical correction produced a non-finite energy"
   explain (CorrectionFailure err) = explain err
   explain (UnsafeCorrection result) = case Motion.correctionOutcome result of
@@ -284,9 +288,23 @@ continuePinnedContact settings pins hinges contact mesh = do
 -- refusal for at most forty steps. This is opt-in: ordinary solves keep the
 -- bounded first/last audit. Recording never changes the search or acceptance.
 tracePinnedContact :: Settings -> IM.IntMap V3 -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError (Relaxation, TrialDiagnostics)
-tracePinnedContact settings pins hinges contact mesh = do
+tracePinnedContact = traceCheckedPinnedContact (const (Right ()))
+
+-- | Opt-in endpoint gate for a bounded final-weight continuation. Check the
+-- installed holds before solving, then each descending trial before accepting
+-- it. Failure cannot change the retained mesh or contact state. A caller owns
+-- the geometry checks and their tolerances; the solver still owns cost descent
+-- and convergence from the FULL proposal. This certifies neither the path
+-- between endpoints nor exact separation below the caller's tolerance.
+traceCheckedPinnedContact :: (MaterialMesh -> Either Text ()) -> Settings -> IM.IntMap V3 -> [Hinge] -> Contact.OrderedContact -> MaterialMesh -> Either RelaxError (Relaxation, TrialDiagnostics)
+traceCheckedPinnedContact check settings pins hinges contact mesh = do
   if iterationLimit settings > 40 then Left InvalidSettings else Right ()
-  (result, _, audit) <- relaxWithPins pins fixedPolicy {stopOnFailedSearch = True, retainTrials = True, retainSteps = True} 0 (SurfaceOrder contact) (Just (hinges, 1e8)) settings mesh
+  let installed = mesh {samples = [sample {position = IM.findWithDefault (position sample) i pins} | (i, sample) <- zip [0 ..] (samples mesh)]}
+      gate = either (Left . GeometryCheckFailed) Right . check
+      propose _ state _ candidate = gate candidate >> Right state
+      policy = fixedPolicy {proposeContacts = propose, stopOnFailedSearch = True, retainTrials = True, retainSteps = True}
+  gate installed
+  (result, _, audit) <- relaxWithPins pins policy 0 (SurfaceOrder contact) (Just (hinges, 1e8)) settings mesh
   pure (result, audit)
 
 -- | Add directional separation for declared panel or local triangle orders.
@@ -339,7 +357,7 @@ data SweptRelaxation = SweptRelaxation
 -- counts and the first/last witness per category, so even an exhausted solve
 -- retains only a bounded number of meshes. Energy failures are distinct from
 -- motion failures: many trials never reach the more expensive path check.
-data RejectionKind = NoDescent | ContactRefusal | InvalidTrial | PathCollision | PathCollapse | PathUnresolved
+data RejectionKind = NoDescent | ContactRefusal | InvalidTrial | PathCollision | PathCollapse | PathUnresolved | GeometryRefusal
   deriving stock (Eq, Ord, Show, Enum, Bounded)
 
 data TrialReason
@@ -433,6 +451,7 @@ recordRejection trial diagnostics = mergeDiagnostics diagnostics (TrialDiagnosti
       Motion.CorrectionDegenerate {} -> PathCollapse
       Motion.CorrectionUnresolved {} -> PathUnresolved
       Motion.CorrectionClear -> InvalidTrial
+    errorKind GeometryCheckFailed {} = GeometryRefusal
     errorKind LocalDiscoveryFailure {} = ContactRefusal
     errorKind ContactDiscoveryFailure {} = ContactRefusal
     errorKind _ = InvalidTrial
