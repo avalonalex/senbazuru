@@ -1726,3 +1726,22 @@ a shared magnified crop or sampled height gaps. The chart caps large gaps at its
 edge; the table and JSON preserve their full values. Source bytes are copied
 under `body-contact/source`. No acceptance criteria or solver policies change,
 and no route between checkpoints is certified. See [the diagnosis](notes/body-contact-diagnosis.md).
+
+### Saved body-correction replay
+
+```bash
+stack run senbazuru-material-study -- --body-replay build/fold-material/body-subdivision build/fold-material
+```
+
+Open `build/fold-material/body-replay.html`. Reuse the existing subdivision
+archive; do not rerun its solver to produce this page. The command replays
+correction 2 at 31 fractions, remeasures unchanged cost and geometry checks,
+and selects the largest fraction passing both. The original quarter-step and
+unchanged start remain controls. All candidates are numerical trials, not a
+physical folding animation or converged endpoint.
+
+The gallery offers fixed full-sheet views, magnified crossing pairs, separate
+costs, contact reports and every candidate FOLD. Source bytes stay unchanged
+and are copied under `body-replay/source`; mismatched archives and overlapping
+source/output directories are refused before writing. See
+[the result and limits](notes/body-correction-replay.md).
