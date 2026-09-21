@@ -383,6 +383,13 @@ fractions, preserves material identities and checks every candidate; it never
 calls a linear or relaxation solve. Selection requires cost descent and the
 existing geometry gates, not a reduced-movement claim of equilibrium.
 See [the replay](notes/body-correction-replay.md).
+`FoldRelaxation.traceCheckedPinnedContact` accepts an opt-in endpoint check,
+using the same bounded final-weight loop and full-proposal convergence test.
+It checks installed holds before solving and refuses descending candidates
+without changing retained state. `BodyGeometryGallery` supplies unchanged
+body-patch checks, reuses the validated archive and exports authoritative
+returned meshes separately from proposals. See
+[the continuation](notes/body-geometry-continuation.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
