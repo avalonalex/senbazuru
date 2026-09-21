@@ -102,6 +102,6 @@ one refined continuation at the existing final weight. That starts from the
 recovered geometry without reintroducing the strained, misordered guess or
 restarting weak penalties. Record the full proposals and refusals this time.
 Retain the failed original control and all acceptance limits; if the inherited
-start fails its own checks, stop there. This experiment has not been run.
+start fails its own checks, stop there. The [recovered-subdivision experiment](recovered-body-subdivision.md) now records that bounded run and its unresolved crossings.
 Full-crane loads, pressure, flexible-path certification and cost convergence
 remain separate work.

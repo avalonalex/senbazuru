@@ -811,3 +811,14 @@ bytes, checks the original material/holds/policy, and writes fifty diagnostic
 snapshots with edge/order highlights. It does not regenerate missing inputs.
 See [the command](../../docs/usage.md#saved-body-patch-checkpoints) and
 [findings and limits](../../docs/notes/body-patch-checkpoints.md).
+
+
+## Recovered body subdivision
+
+`--body-subdivision SOURCE_DIRECTORY OUTPUT_DIRECTORY` subdivides the archived
+coarse 5° endpoint's current triangles. After independent seed checks, it tries
+one continuation of at most forty corrections at the unchanged final weight.
+It copies original controls and exports full proposals/refusals separately
+from returned checkpoints. This solve is opt-in, outside the CI suite.
+See [usage](../../docs/usage.md#recovered-body-subdivision) and
+[the study note](../../docs/notes/recovered-body-subdivision.md).
