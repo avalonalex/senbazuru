@@ -86,8 +86,8 @@ Source hashes and copied bytes remain unchanged. These independent order
 calculations do not reimplement the library's general 3D crossing checker.
 The expensive opening solve stays opt-in, outside CI.
 
-The bounded next step is to inspect **correction 1→2 and its three crossing
-pairs from the saved trace**, without new solves. Locate the intersections and
+The [contact diagnosis](body-contact-diagnosis.md) inspects **correction 1→2
+and its three crossing pairs from the saved trace**, without new solves. Locate the intersections and
 compare them with the directional contact samples and tolerances; determine
 why a descending candidate with small order gaps fails the independent
 crossing check. Do not relax that check or call the current endpoint settled.

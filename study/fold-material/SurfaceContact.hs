@@ -46,6 +46,8 @@ module SurfaceContact
     prepareContact,
     prepareTriangleContact,
     orderedContacts,
+    ContactWitness (..),
+    contactWitnesses,
     orderedBarrierContacts,
   )
 where
@@ -176,29 +178,66 @@ closure pairs =
   let more = S.union pairs (S.fromList [(a, c) | (a, b) <- S.toList pairs, (b', c) <- S.toList pairs, b == b'])
    in if more == pairs then pairs else closure more
 
+-- | A corner of a projected overlap, with its two actual surface positions.
+-- The signed gap is upper minus lower along the model direction; the row
+-- subtracts numerical clearance. This observational API uses the SAME clipped
+-- corners and derivatives as correction, without moving any material vertex.
+data ContactWitness = ContactWitness
+  { witnessTriangles :: !(Int, Int),
+    witnessLower :: !V3,
+    witnessUpper :: !V3,
+    witnessClearance :: !Double,
+    witnessRow :: !ContactRow
+  }
+  deriving stock (Eq, Show)
+
 -- | Return separation MINUS numerical clearance, with positional gradients.
 -- A negative residual asks the solver to separate the panels further.
 orderedContacts :: OrderedContact -> MaterialMesh -> Either ContactError [ContactRow]
-orderedContacts (OrderedContact basis topology material pairs) mesh = do
+orderedContacts model mesh = do
+  polygons <- contactPolygons model mesh
+  pure [contactRow clearance gap | (_, _, clearance, _, _, gaps) <- polygons, gap <- gaps]
+
+contactWitnesses :: OrderedContact -> MaterialMesh -> Either ContactError [ContactWitness]
+contactWitnesses model@(OrderedContact (u, v, axis) _ _ _) mesh = do
+  polygons <- contactPolygons model mesh
+  pure
+    [ let point = value x *^ u ^+^ value y *^ v ^+^ value z *^ axis
+          (lower, upper) = if lowerBase then (point ^-^ value gap *^ axis, point) else (point, point ^+^ value gap *^ axis)
+       in ContactWitness (i, j) lower upper clearance (contactRow clearance gap)
+      | (i, j, clearance, lowerBase, points, gaps) <- polygons,
+        ((x, y, z), gap) <- zip points gaps
+    ]
+
+contactRow :: Double -> D -> ContactRow
+contactRow clearance gap = ContactRow (value gap - clearance) (IM.toList (derivative gap))
+
+-- The boolean records which triangle supplied heights. Keep the projected
+-- polygon lazy for the ordinary solver, which consumes only gaps/derivatives.
+contactPolygons :: OrderedContact -> MaterialMesh -> Either ContactError [(Int, Int, Double, Bool, [Point], [D])]
+contactPolygons (OrderedContact basis topology material pairs) mesh = do
   unless (triangles mesh == topology && map sampleMaterial (samples mesh) == material) (Left ChangedContactMaterial)
   projected <- projectMesh basis mesh
   let triangle i = maybe (Left (InvalidContactTriangle i)) Right (IM.lookup i projected)
       pair (i, j, clearance) = do
         (lower, lowerAlignment) <- triangle i
         (upper, upperAlignment) <- triangle j
-        gaps <-
+        let lowerBase = lowerAlignment >= upperAlignment
+        (points, gaps) <-
           if max lowerAlignment upperAlignment <= 1e-8
             then Left (UncheckableContactPair i j)
             else
               if not (boxesMeet lower upper)
-                then Right []
+                then Right ([], [])
                 else
-                  if lowerAlignment >= upperAlignment
-                    then separation i lower upper
-                    else map negate <$> separation j upper lower
+                  if lowerBase
+                    then clippedSeparation i lower upper
+                    else do
+                      (ps, ds) <- clippedSeparation j upper lower
+                      pure (ps, map negate ds)
         unless (all validD gaps) (Left (NonFiniteContact i j))
-        pure [ContactRow (value gap - clearance) (IM.toList (derivative gap)) | gap <- gaps]
-  concat <$> mapM pair pairs
+        pure (i, j, clearance, lowerBase, points, gaps)
+  mapM pair pairs
 
 -- | Smoothly activate a distance barrier before a directional order fails.
 -- Activation is an extra numerical range beyond clearance, not paper thickness.
@@ -334,9 +373,6 @@ boxesMeet as bs = all overlap [\(x, _, _) -> value x, \(_, y, _) -> value y]
 
 -- A triangle's height varies linearly, so the smallest/largest gaps occur at
 -- the clipped 3D polygon's corners. Both corners of an upright edge are retained.
-separation :: Int -> [Point] -> [Point] -> Either ContactError [D]
-separation i base moving = snd <$> clippedSeparation i base moving
-
 clippedSeparation :: Int -> [Point] -> [Point] -> Either ContactError ([Point], [D])
 clippedSeparation i base moving = case base of
   [a, b, c] ->

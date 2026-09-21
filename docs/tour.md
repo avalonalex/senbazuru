@@ -1257,3 +1257,11 @@ well as shortened line-search steps: a tiny accepted correction alone cannot
 establish equilibrium. The fixed-camera gallery keeps the failed original fine
 control and all geometry limits. This remains a free-boundary specimen, with
 neither surrounding crane loads nor a certified deformation route.
+
+The [saved contact diagnosis](notes/body-contact-diagnosis.md) explains why that
+continuation can reduce cost while developing shallow crossings. All three
+affected pairs have contact samples at their negative gaps. The crossing check
+measures whole-triangle straddling and intersection length; the order check
+measures height inside their common outline. The gallery magnifies both saved
+states without moving paper and keeps every gap in a table. Its
+[command](usage.md#saved-body-contact-diagnosis) performs no new solve.

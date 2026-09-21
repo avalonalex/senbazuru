@@ -7,6 +7,7 @@ import BendLocationsGallery (writeBendLocations)
 import BendRefinementGallery (writeBendRefinement)
 import BendingGallery (writeBendingStudy)
 import BlintzGallery (writeBlintzGallery)
+import BodyContactGallery (writeBodyContact)
 import BodyPatchCheckpointGallery (writeBodyPatchCheckpoints)
 import BodyPatchGallery (writeBodyPatch)
 import BodyPatchSubdivisionGallery (writeBodyPatchSubdivision)
@@ -81,6 +82,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["--body-contact", source, destination] -> writeBodyContact source destination
     ["--body-subdivision", source, destination] -> writeBodyPatchSubdivision source destination
     ["--body-checkpoints", source, destination] -> writeBodyPatchCheckpoints source destination
     ["--body-patch", destination] -> writeBodyPatch destination
@@ -135,7 +137,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--body-contact SOURCE_DIRECTORY | --body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do

@@ -371,6 +371,12 @@ permits one final-weight continuation only after independent seed checks.
 at most forty steps; ordinary solvers retain their bounded first/last audit.
 The trace does not change the objective, line search or convergence rule.
 See [the recovered subdivision](notes/recovered-body-subdivision.md).
+`BodyContactDiagnosis` locates exact plane-section intersections on saved
+triangles; `BodyContactGallery` binds those observations to the subdivision
+archive. `SurfaceContact.contactWitnesses` exposes the same overlap corners,
+gaps and derivatives used by correction, without changing the objective.
+The [diagnosis](notes/body-contact-diagnosis.md) separates whole-triangle
+straddling from small height violations within the projected overlap.
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

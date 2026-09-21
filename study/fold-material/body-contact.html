@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Where the body-patch triangles cross</title>
+<style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}.intro{max-width:940px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#ede4d4;border-left:4px solid #aa7d37}.controls{display:flex;flex-wrap:wrap;gap:24px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}pre{overflow:auto;max-height:450px}.legend{max-width:1000px}small{color:#62665e}
+</style>
+<main><a href="index.html">← Material studies</a> · <a href="body-subdivision.html">Recovered subdivision</a>
+<p class="tag">SENBAZURU · SAVED CONTACT DIAGNOSIS · #323</p>
+<h1>A shallow crossing still crosses</h1>
+<p class="intro">The refined body patch first reports three crossing triangle pairs at correction 2. These views inspect the saved positions before and after that correction. No new solve, contact repair or change of tolerances runs here.</p>
+<p class="status">All three pairs have an inherited layer order and contact samples at the negative gaps. The solver penalizes those gaps, but a lower total cost can still contain penetration. The crossing check measures how the whole triangles straddle each other’s planes; the order check measures vertical gaps within their overlapping outlines. Their common 1e-7 tolerance therefore tests different distances.</p>
+<div class="controls"><label>Triangle pair <select id="pair"></select></label><label>View <select id="view"><option value="context">Actual drawing size · top</option><option value="zoom" selected>Intersection close-up · top</option><option value="gaps">Sampled height gaps</option></select></label></div>
+<p id="identity"></p>
+<div class="views"><section class="figure"><h2>Saved step 1</h2><img id="before" alt="Step 1 contact inspection"><p id="before-status"></p></section><section class="figure"><h2>Saved step 2</h2><img id="after" alt="Step 2 contact inspection"><p id="after-status"></p></section></div>
+<p class="legend" id="legend"></p>
+<p class="intro">Purple and orange identify the triangles in the selector, in that order. Their colour does not specify which one is higher. Red is the mathematical intersection segment; green dots are corners where the solver samples the gap. A red segment can exist below the checker’s tolerance: pair 46–70 already has one at step 1, while its whole-triangle plane distances still pass.</p>
+<div class="scroll"><table><thead><tr><th>Saved state</th><th>Crossing check</th><th>Intersection length</th><th>Length × 600 px/unit</th><th>Minimum height gap</th><th>Contact penalty for pair</th></tr></thead><tbody id="summary"></tbody></table></div>
+<h2>Contact samples</h2><p class="intro">A negative height gap puts the required upper layer below the lower one at that projected point. The length conversion above uses the 3D segment length; its top-view projection is slightly shorter. All samples, including the larger positive gaps outside the close-up, are listed here. Indices belong to each state separately: clipping can change their order.</p>
+<div class="scroll"><table><thead><tr><th>Step / sample</th><th>Required lower → upper</th><th>Height gap</th><th>Gap / 1e-7</th><th>Penalized?</th></tr></thead><tbody id="samples"></tbody></table></div>
+<h2>Why the candidate was kept</h2><p class="intro">The line search chose one quarter of the full proposal. It asks whether total cost falls; it does not require every penalty to fall or every candidate to pass the separate crossing check. Both contact and length penalties rise here, but crease and panel bending costs fall by more. This is a numerical correction, not a certified folding motion or an accepted endpoint.</p>
+<div class="scroll"><table><thead><tr><th>State</th><th>Creases</th><th>Panel bending</th><th>Lengths</th><th>Contact</th><th>Total</th></tr></thead><tbody id="costs"></tbody></table></div>
+<p class="intro">Next: replay the saved proposal fractions with the unchanged geometry checks, without solving. That can tell us whether a geometry gate would retain a useful correction here or refuse all saved choices. It does not yet justify a general barrier or a new clearance at joined creases.</p>
+<p><a href="body-contact/checks.json">All measurements and contact gradients</a> · <a href="body-contact/source/trace.json">Unchanged original trace</a> · <a href="body-contact/source/step-1.fold">Step 1 FOLD</a> · <a href="body-contact/source/step-2.fold">Step 2 FOLD</a></p>
+<details><summary>Selected pair measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_CONTACT_DATA*/null;
+const $=id=>document.getElementById(id);
+const num=x=>x===0?'0':Number(x).toPrecision(6);
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ for(const p of data.pairs){const o=document.createElement('option');o.value=p.id;o.textContent=p.id.replace('-','–');$('pair').append(o);}
+ function draw(){
+  const p=data.pairs.find(p=>p.id===$('pair').value), view=$('view').value;
+  $('identity').textContent=p.identities.map(x=>'Triangle '+x.triangle+' · patch panel '+x.panel+' · original crane face '+x.sourceFace).join(' / ');
+  for(const [index,id] of ['before','after'].entries()){const s=p.states[index];$(id).src='body-contact/'+s.prefix+'-'+view+'.svg';$(id).alt='Saved step '+s.step+', triangle pair '+p.id+', '+view;$(id+'-status').textContent=(s.crosses?'Crossing check fails.':'Crossing check passes at its tolerance.')+' Minimum height gap: '+num(s.minimumGap)+'.';}
+  const width=p.zoomBounds[1][0]-p.zoomBounds[0][0];
+  $('legend').textContent=view==='gaps'?'Measurement plot: stations are sample indices, not horizontal distances. The middle guide is zero; upper/lower guides are +1e-7 and −1e-7. Values beyond these guides are capped at the plot edge; the table gives every full value.':view==='zoom'?'Unchanged positions, same crop for both states. Crop width '+num(width)+' sheet units; approximately '+num(384/width/600)+'× the drawing scale. The crop follows the near-contact samples and intersection ends; distant positive-gap corners are outside it.':'Unchanged positions at 600 pixels per sheet unit. Hidden paper is shown as wire lines. These intersections are far smaller than one drawing pixel.';
+  $('summary').replaceChildren();$('samples').replaceChildren();
+  for(const s of p.states){row($('summary'),['Step '+s.step,s.crosses?'Fails':'Passes',num(s.intersectionLength),num(s.intersectionPixels)+' px',num(s.minimumGap),num(s.pairContactCost)]);for(const [k,w] of s.witnesses.entries())row($('samples'),[s.step+' / '+k,w.triangles.join(' → '),num(w.gap),num(w.gap/data.contactTolerance),w.gap<0?'Yes':'No']);}
+  $('raw').textContent=JSON.stringify(p,null,2);
+ }
+ for(const s of data.states.filter(s=>s.id!=='seed'))row($('costs'),[s.id,...['creaseCost','panelCost','lengthCost','contactCost','totalCost'].map(k=>num(s[k]))]);
+ $('pair').addEventListener('change',draw);$('view').addEventListener('change',draw);draw();
+}
+</script></html>
