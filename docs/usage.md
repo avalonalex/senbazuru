@@ -1710,3 +1710,19 @@ open its HTML or JSON instead. `trace.json` retains every full proposal,
 line-search candidate and refused trial; returned checkpoint FOLDs and wire
 SVGs distinguish these from the actual endpoint. No physical motion or
 whole-crane inflation is certified. See [the result](notes/recovered-body-subdivision.md).
+
+### Saved body contact diagnosis
+
+```bash
+stack run senbazuru-material-study -- --body-contact build/fold-material/body-subdivision build/fold-material
+```
+
+Open `build/fold-material/body-contact.html`. This reads the saved subdivision
+report, full trace and seed/step-1/step-2 FOLDs; it does not rerun the continuation.
+Material identities, exact holds, measurements and trace positions must agree
+before output is written. Source and output directories must not overlap.
+Select one of the three first reported crossing pairs, then actual-size context,
+a shared magnified crop or sampled height gaps. The chart caps large gaps at its
+edge; the table and JSON preserve their full values. Source bytes are copied
+under `body-contact/source`. No acceptance criteria or solver policies change,
+and no route between checkpoints is certified. See [the diagnosis](notes/body-contact-diagnosis.md).

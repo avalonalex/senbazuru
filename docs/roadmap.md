@@ -53,8 +53,11 @@ retains unsettled coarse poses and a failed refined control.
 order defects and first-correction crossings. [Subdivision of its recovered
 coarse endpoint](notes/recovered-body-subdivision.md) now supplies a valid
 120-triangle start, but a forty-step continuation remains unsettled and develops
-three crossings. Next inspect correction 1→2 from its saved full-proposal trace,
-without new solves; compare those intersections with contact samples/tolerances.
+three crossings. [Inspection of correction 1→2](notes/body-contact-diagnosis.md)
+finds complete contact coverage but shallow negative gaps: a finite penalty and
+whole-triangle crossing test enforce different conditions. Next replay that
+saved proposal at decreasing fractions with both cost and geometry checks,
+without new solves, to test whether a geometry gate can make useful progress.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
@@ -649,9 +652,15 @@ checked coupled angles.
    same final penalty reduce cost but leave three crossings and a full proposal
    357 times above the movement limit. All 456 refusals and full proposals are
    saved. The original failed refined control remains unchanged.
-   **Next: inspect correction 1→2 and its three crossing pairs without new
-   solves; compare actual intersections with the directional contact samples
-   and tolerances. Keep every geometry and solver acceptance check.**
+   [#323](https://github.com/avalonalex/senbazuru/issues/323) locates those
+   [shallow intersections](notes/body-contact-diagnosis.md) with four contact
+   samples per pair. Negative height gaps (2.70e-9–1.72e-8) are penalized but
+   below the order-reporting tolerance; whole-triangle straddling and section
+   overlap still fail the crossing check. Bending savings outweigh increased
+   length/contact penalties. No sampling partner is missing in these pairs.
+   **Next: replay the second saved proposal at decreasing fractions, without
+   solving, to see whether unchanged cost and geometry checks leave a useful
+   correction or stall it. Keep every acceptance check.**
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse
