@@ -434,6 +434,12 @@ linearized plane-distance target, excluding held coordinates. Its gallery
 checks original/refreshed overlap guards and actual all-pair geometry and cost,
 keeping the refused trial as control. It changes no material solver and runs
 no continuation; see [the restoration](notes/body-contact-restoration.md).
+`BodyRestorationArchive` binds that repair to its saved coordinates, controls,
+material and measurements before a new calculation can use it.
+`BodyFreshGallery` rebuilds the same pair/plane guards and material rows there,
+solves one quadratic and replays the original 31 fractions. It reuses the
+existing solver and actual geometry/cost checks; no further repair or
+continuation runs. See [the fresh direction](notes/body-fresh-direction.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

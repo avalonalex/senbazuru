@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One fresh direction after contact repair</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}pre{overflow:auto;max-height:400px}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-restoration.html">The saved contact repair</a> · <a href="body-plane.html">The preceding direction</a>
+<p class="tag">SENBAZURU · ONE FRESH MATERIAL DIRECTION · #351</p>
+<h1>Does the repaired shape let us move again?</h1>
+<p>The previous experiment repaired contact in one refused 1/128 trial. Starting with those saved vertices, we now rebuild the material equations and the same contact guards, then calculate one new direction. Each fraction below is a separate trial from the repaired start; there is no second repair or chain of corrections.</p>
+<p class="status" id="result"></p>
+<div class="controls"><label>Trial fraction <select id="fraction"><option value="selected">Selected trial</option><option value="start">Saved repaired start</option></select></label><label>View <select id="view"><option value="tip" selected>Contact tip · magnified top</option><option value="pair">Pair overview · magnified top</option><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2>Saved repaired 1/128 state</h2><img id="start-image" alt="Saved repaired starting paper"><p>One connected sheet; this side stays fixed.</p><a href="body-fresh/start.fold">FOLD</a></section><section class="figure"><h2>One fresh direction</h2><img id="trial-image" alt="Trial from the fresh material direction"><p id="trial-status"></p><a id="trial-fold">FOLD</a></section></div>
+<p id="legend"></p>
+<h2>One direction, thirty-one fractions</h2>
+<p>The calculation uses a quadratic: a local approximation built from squared predictions of material errors. It retains the original 100-iteration budget, damping and numerical limits. A usable fraction must lower actual total cost and pass every geometry check. A settled endpoint also needs the full proposed movement to be at most 1e-7 sheet units, even if a much smaller fraction passes.</p>
+<div class="scroll"><table><thead><tr><th>Quadratic verified</th><th>Active guards</th><th>Plane guard active</th><th>Selected fraction</th><th>Full movement</th><th>Settled endpoint</th></tr></thead><tbody id="summary"></tbody></table></div>
+<p id="remaining"></p>
+<h2>Actual geometry and separate costs</h2>
+<div class="scroll"><table><thead><tr><th>State</th><th>Geometry passes</th><th>Cost decreases</th><th>Relative length error</th><th>Held-point error</th><th>Crossing pairs</th><th>Reversed orders</th><th>Body depth</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>State</th><th>Creases</th><th>Panels</th><th>Lengths</th><th>Contact</th><th>Total</th></tr></thead><tbody id="costs"></tbody></table></div>
+<h2>The moving plane at the contact tip</h2>
+<p>Triangle 70's plane is the flat surface through its three vertices, extended beyond its edges. Vertex 27 lies outside the projected triangle. This extra guard preserves its starting signed distance in the local prediction; it is a conservative rule for this case. The derivative includes movement of the vertex and all three corners of the plane.</p>
+<p id="floor"></p>
+<div class="scroll"><table><thead><tr><th>State</th><th>Actual distance</th><th>Predicted distance</th><th>Margin above −1e-7 (×1e-12)</th><th>Minimum overlap gap</th><th>Intersection length</th><th>46–70 crosses</th></tr></thead><tbody id="distances"></tbody></table></div>
+<p>The contact tolerance remains 1e-7 sheet units, relative length error must stay within 1e-5 and held points remain exact. An intersection segment inside the existing tolerance can remain visible in the close-up even when geometry passes. This is not exact separation or a certified path through time.</p>
+<h2>The refreshed contact guards</h2>
+<p>Twelve guards act at overlap corners of pairs 22–63, 14–55 and 46–70. The last acts at vertex 27 and plane 70. Each floor is the smaller of zero and its starting value. The last column shows the full proposed direction's linear margin above that floor. Actual finite-trial geometry is checked separately.</p>
+<div class="scroll"><table><thead><tr><th>Guard</th><th>Starting value</th><th>Floor</th><th>Full predicted margin</th></tr></thead><tbody id="guards"></tbody></table></div>
+<p>This study computes one new direction on a body patch. It does not yet provide settled crane inflation, the omitted crane's loads, or a checked folding motion.</p>
+<p><a href="body-fresh/checks.json">All rows, trials, costs and quadratic details</a> · <a href="body-fresh/source/checks.json">Unchanged repair report</a> · <a href="body-fresh/source/restored.fold">Unchanged repaired source</a></p>
+<details><summary>Displayed trial measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_FRESH_DATA*/null;
+const $=id=>document.getElementById(id),num=x=>x===null||x===undefined?'—':x===0?'0':Number(x).toPrecision(9),precise=x=>Number(x).toPrecision(13),yes=x=>x?'Yes':'No',fraction=x=>x===null?'None':'1 / '+Math.round(1/x);
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ const d=data.directions[0],selected=d.trials.find(t=>d.selectedState.includes(t.state.id));
+ $('result').textContent=d.failure?'The fresh quadratic failed: '+d.failure+'. The repaired source remains unchanged.':(d.directionVerified?'The fresh quadratic passes its numerical checks. ':'The quadratic is unverified; all trials remain diagnostic. ')+(selected?'Selected fraction '+fraction(selected.scale)+', moving '+num(selected.movement*data.drawingScale)+' drawing pixels. ':'No usable fraction. ')+(d.acceptedEndpoint?'The full-proposal equilibrium check also passes.':'No settled body-opening endpoint.');
+ row($('summary'),[yes(d.directionVerified),d.quadratic?.active??'—',yes(d.contacts.some(c=>c.selected&&c.sources.includes(12))),fraction(d.selectedScale),num(d.fullMovement),yes(d.acceptedEndpoint)]);
+ const next=selected&&d.trials.find(t=>t.scale===2*selected.scale);
+ if(next)$('remaining').textContent='The next larger fraction ('+fraction(next.scale)+') '+(next.geometryPassed?'passes geometry':'fails geometry')+' and '+(next.costDecreased?'decreases':'does not decrease')+' actual cost. Its crossing pairs: '+JSON.stringify(next.state.contact.crossingPanels)+'.';
+ $('floor').textContent='Starting distance and local floor: '+precise(data.planeGuard.distance)+' sheet units. The floor is rebuilt at the saved repaired state; the geometry threshold is unchanged.';
+ for(let i=0;i<d.trials.length;i++){const o=document.createElement('option');o.value=String(i);o.textContent=fraction(2**-i);$('fraction').append(o);}
+ data.constraints.forEach((c,i)=>row($('guards'),['Overlap '+i+' · '+c.triangles.join('–'),num(c.rawGap),num(c.floor),d.failure?'—':num(d.guardLinearGaps[i])]));row($('guards'),['Vertex 27 → plane 70',precise(data.planeGuard.distance),precise(data.planeGuard.floor),d.failure?'—':num(d.guardLinearGaps[12])]);
+ function draw(){const view=$('view').value,t=$('fraction').value==='selected'?selected:$('fraction').value==='start'?undefined:d.trials[Number($('fraction').value)],s=t?.state??data.start;
+  $('start-image').src='body-fresh/start-'+view+'.svg';$('trial-image').src='body-fresh/'+s.id+'-'+view+'.svg';$('trial-fold').href='body-fresh/'+s.id+'.fold';
+  $('trial-status').textContent=t?fraction(t.scale)+'. '+(t.geometryPassed?'Geometry passes. ':'Geometry fails. ')+(t.costDecreased?'Cost decreases. ':'Cost does not decrease. ')+(t===selected?'Selected for one correction.':'Diagnostic trial; not selected.'):'Showing the unchanged repaired start.';
+  for(const id of ['geometry','costs','distances'])$(id).replaceChildren();
+  for(const [label,state,pair,trial] of [['Repaired start',data.start,data.startPair,null],['Displayed trial',s,t?.pair??data.startPair,t]]){
+   row($('geometry'),[label,yes(trial?trial.geometryPassed:state.geometryPassed),trial?yes(trial.costDecreased):'—',num(state.maxRelativeEdgeError),num(state.holdError),JSON.stringify(state.contact.crossingPanels),JSON.stringify(state.contact.reversedOrders),num(state.bodyDepth)]);
+   row($('costs'),[label,...['creaseEnergy','panelEnergy','lengthCost','contactCost','totalCost'].map(k=>num(state[k]))]);
+   row($('distances'),[label,precise(pair.distance),precise(trial?trial.predictedDistance:data.planeGuard.distance),num(pair.margin/1e-12),num(pair.minimumGap),num(pair.intersectionLength),yes(pair.crosses)]);
+  }
+  $('legend').textContent=['pair','tip'].includes(view)?'Purple: triangle 46. Orange: triangle 70. Blue: vertex 27. Green: projected overlap corners. Red: geometric intersection segment. Both sides share one magnified crop.':'Both sides share one camera and scale. Side, top and underside use 600 drawing pixels per sheet unit. Material coordinates show the original sheet.';
+  $('raw').textContent=JSON.stringify(t??data.start,null,2);
+ }
+ $('fraction').addEventListener('change',draw);$('view').addEventListener('change',draw);draw();
+}
+</script></html>
