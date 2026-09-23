@@ -2,7 +2,7 @@
 
 This file schedules the work that [decisions.md](decisions.md) decides. It says
 what lands in each milestone, what must come first, and what each milestone does
-to the issue tracker. It also lists the risks, the twelve owner decisions, and
+to the issue tracker. It also lists the risks, the thirteen owner decisions, and
 the corrections the design found, written as issues to file. It decides nothing:
 it writes out decisions.md's [§8 Milestones](decisions.md#8-milestones),
 [§9 Owner decisions](decisions.md#9-owner-decisions) and
@@ -324,6 +324,7 @@ recommended default and must be decided before the milestone named.
 | 10 | Eighth turns by trigonometry, or a `sheet square as diamond` start | Trigonometry, platform bits in written coordinates stated | Diamond: `rotate` takes even k only, because quarter turns use only 0 and ±1 ([02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)), so frames stay exact; the crane-opening example's first step becomes a header option | M2 |
 | 11 | The external-tools rule in AGENTS.md | Yes, row 8 at M0 | Only in `docs/related-projects.md`: agents reading AGENTS.md miss it | M0 |
 | 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | Crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs after #208 | An optional slow job lets slow regressions merge. Crane tests in default CI pay [D16](decisions.md#d16-testing-and-acceptance)'s costs on every PR before #208 lands (R4). A higher cap admits unmeasured settles. | M4 |
+| 13 | The sense of a hinge turn on paper already folded ([E3](research/E3-formal-fold-semantics.md) G) | **Decided 2026-09-23**: where the moving paper goes, with the rule's details proposed in [D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment | Reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
 
 decisions.md also decides, rather than leaves open, questions the PRD files
 raised: a step body's own builder type and the lowercase senses, from 03
@@ -338,8 +339,9 @@ None of them is an owner decision.
 
 ## 7. Corrections as proposed follow-up issues
 
-[decisions §10](decisions.md#10-corrections) lists 32 findings about the
-repository's own text and code, none filed; the items below keep its numbers.
+[decisions §10](decisions.md#10-corrections) lists 38 findings about the
+repository's own text and code, none filed as an issue; the items below keep its
+numbers.
 Evidence tags:
 
 - [code] lines read
@@ -386,7 +388,6 @@ Titles follow the templates (Task, Bug, Study note). All are filed at M0.
 
 | Item | Proposed issue | Evidence | What to change | Lands |
 | --- | --- | --- | --- | --- |
-| 9 | Task: Correct three rows of related-projects | [web] [E1](research/E1-prior-art-sequence-languages.md), "A. Languages and programs for diagrams"; [E2](research/E2-references-and-persistent-naming.md), "Open questions" | `docs/related-projects.md:38` Doodle → GPLv2. `:36` ReferenceFinder → GPL-2.0. `:24` origami-diagrams → `amkraft/`, MIT only in `package.json`. `:26` Oriedita already MIT. | M0 |
 | 10 | Task: Check huzita-hatori's dates | [web] [E2](research/E2-references-and-persistent-naming.md), "B. Huzita–Justin–Hatori: the vocabulary of fold lines", finding 11 | [huzita-hatori.md:29](../docs/notes/huzita-hatori.md) says Huzita 1991, Hatori 2001; Alperin and Lang: Justin and Huzita 1989, Hatori 2001 (Lang's page: 2002) | M0 |
 | 12 | Bug: `check` skips Maekawa silently beside an unassigned edge | [code] [FlatFold.hs:503-506](../src/Senbazuru/Origami/FlatFold.hs#L503-L506) reports nothing when `unassigned > 0`; the skip note names only border and bare vertices ([FlatFold.hs:574-583](../src/Senbazuru/Origami/FlatFold.hs#L574-L583)); [bin] [gap-assignment-at-rest-convention](research/gap-assignment-at-rest-convention.md), "D. Measurements" | Count and name vertices where [Maekawa](../docs/glossary.md#origami) went untested | any time |
 | 13 | Bug: `existingAt` takes the first existing vertex within tolerance, not the nearest | [code] [Creasing.hs:323-327](../src/Senbazuru/Fold/Creasing.hs#L323-L327); ends added within one batch take the nearest ([Creasing.hs:224-245](../src/Senbazuru/Fold/Creasing.hs#L224-L245)) | Take the nearest, or refuse two vertices within tolerance as the runner's [vertex slot](glossary-additions.md#references) does | before M2's resolver |
@@ -405,9 +406,16 @@ Titles follow the templates (Task, Bug, Study note). All are filed at M0.
 | Item | What is wrong | Evidence | Settled by | When |
 | --- | --- | --- | --- | --- |
 | 8 | #96 says three papers and lists four | [issue]; [E1](research/E1-prior-art-sequence-languages.md), "D. The 2026 papers" [web] | Amend #96: four papers; COrigami stops at a crease pattern | M0, with row 9 |
+| 9 | `docs/related-projects.md`: Doodle is GPL-2.0, ReferenceFinder GPL-2.0, and origami-diagrams moved to `amkraft/`, MIT only in `package.json` | [web] [E1](research/E1-prior-art-sequence-languages.md), [E2](research/E2-references-and-persistent-naming.md), rechecked 2026-09-23 | Fixed there by #361 | 2026-09-23 |
 | 15 | The blintz manifest and recipe fold corners opposite ways | [jq, code] [§6](#6-owner-decisions), decision 8 | Owner decision 8 | M2 |
 | 18 | `quarter-fold-steps.fold` writes mountain and valley creases at angle 0, where the state rule would write `F` | [jq] `jq -c '[.edges_assignment, .edges_foldAngle] \| transpose \| map(select((.[0]=="M" or .[0]=="V") and .[1]==0)) \| length'` counts such creases: 4 on the [key frame](glossary-additions.md#the-fold-format) of `examples/quarter-fold-steps.fold`; the same filter over `.file_frames[]` prints 2, then 0. Migrating the file rewrites those creases and moves its goldens. | Owner decision 9 | M2 |
 | 32 | The research note's count line says 7 of the crane's 12 some-layer steps hinge on existing creases; its own table marks 6 | [research] [gap-layer-selective-folds](research/gap-layer-selective-folds.md), "(e) The traditional crane, step by step" | Recorded in [D8](decisions.md#d8-folding-some-layers); the note is a snapshot and is not edited | — |
+| 33 | E1 says Eos only picks a half-plane, and that no prior art folds only the top flap or the near layers | [web] [E3](research/E3-formal-fold-semantics.md) A | Recorded in [decisions §10](decisions.md#10-corrections); the note is a snapshot and is not edited | — |
+| 34 | E1 names Eos's functions `BeginOrigami` and `ProveByGroebner`; they are `NewOrigami` and `Prove` | [web] [E3](research/E3-formal-fold-semantics.md) A | Recorded in [decisions §10](decisions.md#10-corrections); the note is a snapshot and is not edited | — |
+| 35 | `docs/related-projects.md` said Eos never folds a crane and left its licence unchecked | [web] [E3](research/E3-formal-fold-semantics.md) A | Fixed there by #353 and #361 | 2026-09-23 |
+| 36 | 02 §4.3, D2 and the glossary additions called `crease [P, Q]` "Lucero's eighth" | [web] [E3](research/E3-formal-fold-semantics.md) C | Fixed in all three by #353 | 2026-09-23 |
+| 37 | E2 calls `along <line>` "Lucero's eighth" | [web] [E3](research/E3-formal-fold-semantics.md) C | Recorded in [decisions §10](decisions.md#10-corrections); the note is a snapshot and is not edited | — |
+| 38 | E2 writes `nearest @p` as "Beloch's `toward`", which holds for O5 and O6 but not O3 | [web] [E3](research/E3-formal-fold-semantics.md) finding 10 | Recorded in [decisions §10](decisions.md#10-corrections); the note is a snapshot and is not edited | — |
 
 ## Research links
 

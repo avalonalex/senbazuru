@@ -8,7 +8,7 @@ record wins and the file is to be corrected.
 **Amended** 2026-09-23, after M1 and #344 were implemented: the sense of a
 hinge turn is where the moving paper goes ([D5](#d5-presentation-and-the-readers-side),
 owner decision 13), from [E3](research/E3-formal-fold-semantics.md), which
-also adds [§10](#10-corrections) rows 33–36.
+also adds [§10](#10-corrections) rows 33–38.
 
 **How it relates to the drafts.**
 
@@ -537,6 +537,11 @@ table in the next version of this record.
   on a flat sheet, and it is the assignment handed to creasing through layers,
   which flips it per layer itself.
 - **The hinge turn takes a side, not a signed travel** ([C5](#changes-since-draft-v2)).
+  *Superseded in part by the amendment below, which reads the moving face, not
+  the stationary one. On an open hinge the two faces beside a crease lie the
+  same way up, so this bullet's examples and table keep their numbers. #344
+  shipped the entry with `data Toward = TowardPlusZ | TowardMinusZ`, and
+  judges a face flat by `hasRelief` on its corners, not by its normal.*
   **The line that looks like a typo:** on quarter-fold step 2, one valley fold
   writes edge 9 at +180 and edge 11 at −180. `Flap`'s *travel* is the change in the
   *first* listed segment's angle, and every other segment's sign follows from
@@ -565,24 +570,57 @@ table in the next version of this record.
   paper goes.** `valley`/`in front` means the paper that moves sets off
   towards the reader's side, and `mountain`/`behind` away from it, as
   [02 §5.3](02-language-semantics.md#53-one-conversion-for-the-whole-model)'s
-  own sentence says; reopening a hinge that is already folded is a move with
-  no sense. This replaces the bullet above's reading of the sign from the
-  first segment's *stationary* face. That reading agrees on every open hinge,
-  which is every example above, but on a flap lying folded over its held face
-  it calls lifting the flap towards the reader `behind`, and on a page turn,
-  whose held faces lie on both sides of the line, its answer depends on which
-  crease is listed first ([E3](research/E3-formal-fold-semantics.md) G, run in
-  `ghci` on `square-base.fold`). No source E3 read gives a sense to reopening,
-  and those that name a sense name the moving paper's motion.
-  `prepareFlapToward` (#344) is to read the moving paper instead: a positive
-  change in a crease's angle moves the face beside it towards that face's own
-  top, so the sign follows from the moving face's way up, and a turn whose
-  moving paper lies on both sides of the line, or stands on edge, is refused.
-  `TowardPlusZ` then means the turn that sets the moving paper off towards +z.
-  02 §5.3's table and its paragraph on handing `Flap` a side, 05 L14 (R-05-45's
-  table and the acceptance rows) and 01 §5.5 describe the replaced rule and
-  are corrected with that change. #282's negative control becomes
-  `fold in front 180° hinge of c1 moving corner south-east`.
+  own sentence says. This replaces the bullet above's reading of the sign
+  from the first segment's *stationary* face. That reading agrees on every
+  open hinge, which is every example above, but on a flap lying folded over
+  its held face it calls lifting the flap towards the reader `behind`, and on
+  a page turn, whose held faces lie on both sides of the line, its answer
+  depends on which crease is listed first
+  ([E3](research/E3-formal-fold-semantics.md) G, whose run is the script
+  [`E3-square-base-listing.ghci`](research/scripts/E3-square-base-listing.ghci)).
+  Under the new reading a `fold` turns a flap back off the face it lies on
+  with the sense of where the flap goes: lifting a top flap towards the
+  reader is `in front`.
+  - *Evidence.* No source E3 read attaches a sense read from the viewer to
+    reopening a folded hinge, and where a source does attach a viewer's sense
+    word to a fold, the word names where the moving paper goes. Rigid-origami
+    definitions do sign a closed hinge, but relative to the paper, which is
+    the reading this replaces (E3 finding 5).
+  - *The rule* (**SKETCH**: proposed defaults for the change to
+    `prepareFlapToward`, not yet decided). A positive change in a crease's
+    angle moves the face beside it towards that face's own top, so the sign
+    follows from the moving face's way up, and `TowardPlusZ` means the turn
+    that sets the moving paper off towards +z. The moving face beside *every*
+    hinge segment is read. If those faces lie on both sides of the line, part
+    of the paper would rise and part fall, and the turn is refused as
+    `FlapMovesBothWays`. Each must lie flat, judged by `hasRelief` as the held
+    face is today, or the turn is refused as `FlapMovingNotFlat`, which
+    replaces `FlapStationaryNotFlat`; so a turn begun past vertical is refused
+    rather than read as `behind` (E3 open question 5). `FlapStationaryNotFlat`
+    is in `refusalKinds`, so a source naming it after `expect refused` stops
+    checking when it goes.
+  - *Reopening without a sense.* A move that only opens a folded hinge, drawn
+    in books with an unfold arrow, is proposed beside `fold` (E3 G) and not
+    decided. `unfold NAME` already reverses a named step exactly.
+  - *#282's negative control, E10,* becomes `fold in front 180° hinge of c1
+    moving corner south-east`: after c1 the corner lies under the square, so
+    carrying it on through the centre sets it off towards the reader. `Flap`
+    refuses it as `FlapEndpointOrder`, which 09's E10, its `expect refused`
+    form and 04's A19 golden expect. Once 05 L11's covering check (02 §6.3
+    step 4, M4) exists, the square is found nearer on the side the corner
+    turns towards and the move is refused before `Flap` runs, as
+    `FlapCovered`, whichever sense word it is written with; those three change
+    with it, as the crane example did ([C9](#changes-since-draft-v2)).
+  - *Where the replaced rule is written.* The bullet above; §5's sketch of
+    `Toward`; §7's crane note; D20's refusal list; C5 and its row in
+    [Proposals not adopted](#proposals-not-adopted); 01 §5.4's call and §5.5;
+    02 §1's step `half`, §5.3's table and its paragraph on handing `Flap` a
+    side, §9's crane note and §12's `FlapStationaryNotFlat` row; 05 L14 (its
+    sketch, R-05-45 to R-05-47 and its acceptance rows) and its errors table;
+    and the glossary additions' *Travel*. Each points here and is rewritten
+    with the change to `prepareFlapToward`, which also corrects the shipped
+    docs that describe the held-face rule: `docs/usage.md`, `docs/tour.md` and
+    `docs/notes/aligned-crease-hinges.md`. 09's E10 already reads as above.
 - **Render options never change a step's meaning.** For every view V,
   `run -o x.svg --view V` draws the states `run -o x.fold` writes. On a page, a
   stated kind is inverted when the camera looks from the opposite side; edge-on
@@ -1516,7 +1554,8 @@ accepted and rejected controls stay unchanged at each
   `StaticProblem`s of [03](03-prd-embedded-dsl.md#refusals-from-a-built-sequence)
   (`NotANameToken`, `ReservedWordAsName`, `LayerCountNotPositive`,
   `SignNotAllowed`) and `EmptyStep`, `UnfoldChangedSince`, `FlapStationaryNotFlat`
-  are added.
+  are added. D5's amendment proposes `FlapMovingNotFlat` and `FlapMovesBothWays`
+  in place of `FlapStationaryNotFlat` (**SKETCH**).
 - **Rejected.** Locations inside `explain`; megaparsec's multi-line bundle as the
   message; wrappers rewording nested errors.
 
@@ -1857,7 +1896,7 @@ creaseAllAlongWith :: NewCreaseAngle -> [(V2, V2, Assignment)] -> Frame -> Eithe
 isProperRotation :: Mat3 -> Bool; fitRigid :: [(V3, V3)] -> Maybe Rigid
 flapStationaryFace :: CheckedFlap -> FaceId
 flapPoseAt :: CheckedFlap -> Double -> Either FlapError RoutePose
-data Toward = TowardRawPlusZ | TowardRawMinusZ                   -- L14, with Eq on FlapMotion and CheckedFlap
+data Toward = TowardPlusZ | TowardMinusZ                         -- L14, with Eq on FlapMotion and CheckedFlap; names as #344 shipped them, sign per D5's amendment
 prepareFlapToward :: [EdgeId] -> FaceId -> Double -> Toward -> Folded -> Either FlapError FlapMotion
 motionsAcross :: Frame -> Frame -> Either FoldError [Motion]
 creasesToCome :: Frame -> Frame -> Either FoldError [(EdgeId, V3, V3)]
@@ -2010,6 +2049,9 @@ faces 2, 3, 6 and 7, `CraneWing`'s hand-picked set. That flap and the sense rest
 Python, not senbazuru. **The valley at 90° being refused while the mountain is
 accepted is not a sign slip:** wing A's first hinge segment's stationary face shows
 its back, so its accepted `behind` is +90 in FOLD terms ([D5](#d5-presentation-and-the-readers-side)).
+The moving face beside that segment is the other half of a face the new crease
+cuts, so it shows its back too, and D5's amendment gives the same +90
+[reasoned].
 
 **Crane opening from a square** (M5; **UNVERIFIED** throughout, [C14](#changes-since-draft-v2)):
 
@@ -2104,12 +2146,14 @@ the bird arrows golden ([C70](#changes-since-draft-v2)); `decodeFile`'s words
 
 ## 10. Corrections
 
-Findings about the repository's own text and code, proposed as follow-ups; none is
-filed yet. Items 1–26 keep v2's numbers; 27–32 are new; 33–36 were added on
-2026-09-23 from [E3](research/E3-formal-fold-semantics.md). *Row* means a
+Findings about the repository's own text and code. Items 1–26 keep v2's numbers;
+27–32 are new; 33–38 were added on 2026-09-23 from
+[E3](research/E3-formal-fold-semantics.md) and its review. *Row* means a
 [§3](#3-recorded-text-this-design-changes) row carries it; *issue* means M0 files a
-new issue ([10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
-writes each out).
+new issue, and none is filed yet
+([10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
+writes each out); *fixed* names where the text was corrected; *recorded here*
+means the text is a research note, a snapshot that is not edited.
 
 | # | Finding | Evidence | Disposition |
 | --- | --- | --- | --- |
@@ -2121,7 +2165,7 @@ writes each out).
 | 6 | #104 cites `docs/notes/inflate-outside-draw-inside.md`, which does not exist, and its done-when lets two goldens change | [ls], issue text | row 7 |
 | 7 | #60's done-when tests folding, not authoring; coordinates need a tolerance; "macro-moves are compositions" is false | [code] issue text read with `gh issue view 60` | row 3 |
 | 8 | #96 says three papers and lists four | [web] [E1](research/E1-prior-art-sequence-languages.md) "D. The 2026 papers" | amend #96 with row 9 |
-| 9 | `docs/related-projects.md`: Doodle is GPLv2, ReferenceFinder GPL-2.0, origami-diagrams moved to `amkraft/` and MIT only in `package.json` | [web] [E1](research/E1-prior-art-sequence-languages.md), [E2](research/E2-references-and-persistent-naming.md) | issue |
+| 9 | `docs/related-projects.md`: Doodle is GPLv2, ReferenceFinder GPL-2.0, origami-diagrams moved to `amkraft/` and MIT only in `package.json` | [web] [E1](research/E1-prior-art-sequence-languages.md), [E2](research/E2-references-and-persistent-naming.md) | fixed in `docs/related-projects.md` by #361 |
 | 10 | `docs/notes/huzita-hatori.md`'s dates disagree with Alperin and Lang | [web] [E2](research/E2-references-and-persistent-naming.md) finding 11 | issue |
 | 11 | `docs/glossary.md` defines rest angle twice, differently (`:19`, `:83`) | [code] | row 10 |
 | 12 | `check` silently skips Maekawa at a vertex touching a `U` edge | [code] `FlatFold.hs:503-506`; [bin] | issue |
@@ -2147,8 +2191,10 @@ writes each out).
 | 32 | The research note's count line says 7 of the crane's 12 some-layer steps hinge on existing creases; its own table marks 6 | [research] [gap-layer-selective-folds](research/gap-layer-selective-folds.md) "(e) The traditional crane, step by step" | recorded here; the note is a snapshot and is not edited |
 | 33 | E1 says Eos only picks a half-plane, and that no prior art folds only the top flap or the near layers; Eos takes a face set (2007) and face lists with `InsertFace` (2021) | [web] [E3](research/E3-formal-fold-semantics.md) A | recorded here; the note is a snapshot and is not edited |
 | 34 | E1's Unverified list names Eos's functions `BeginOrigami` and `ProveByGroebner`; they are `NewOrigami` and `Prove`, and Eos is closed source | [web] [E3](research/E3-formal-fold-semantics.md) A | recorded here; the note is a snapshot and is not edited |
-| 35 | `docs/related-projects.md` said Eos never answers how to fold a crane and that its licence was not checked; Eos has folded a crane, and it is closed source | [web] [E3](research/E3-formal-fold-semantics.md) A | fixed in `docs/related-projects.md` |
+| 35 | `docs/related-projects.md` said Eos never answers how to fold a crane and that its licence was not checked; Eos has folded a crane, and it is closed source | [web] [E3](research/E3-formal-fold-semantics.md) A | fixed in `docs/related-projects.md` by #353, except its "Two halves that never met" paragraph, fixed by #361 |
 | 36 | 02 §4.3, D2 and the glossary additions called `crease [P, Q]` "Lucero's eighth"; Lucero numbers it O3, the operation he adds, and his O8 is Huzita–Hatori O7 | [web] [E3](research/E3-formal-fold-semantics.md) C | fixed in all three |
+| 37 | E2's construction rule 4 calls `along <line>`, a fold along a line already on the paper, "Lucero's eighth"; Lucero numbers it O3, as row 36 says | [web] [E3](research/E3-formal-fold-semantics.md) C | recorded here; the note is a snapshot and is not edited |
+| 38 | E2 writes `nearest @p` as "Beloch's `toward`"; Beloch's O3 reads `toward X` as a direction, and only its O5 and O6 pick the landing nearest X | [web] [E3](research/E3-formal-fold-semantics.md) finding 10 | recorded here; the note is a snapshot and is not edited |
 
 ## 11. File plan and writing rules
 
@@ -2255,7 +2301,7 @@ lists edits for.
 | C2 | Sequences today come in four recipe forms, not "every sequence is a recipe naming ids"; two multi-frame FOLD examples exist | 00 "The two halves today" | A2 "Summary" [research]; `file_frames` counts [jq] | adopted | 00 |
 | C3 | `Run` defined in `Sequence.Record` without `FoldState`; `Sequence.*` levels; `writtenStates` shared by writer and page; row 7 may import `Sequence.Error` | 01 §1.2 rule 4 note; 06 R-06-20 | v2 DAG row 7 and §5 sketch; no `Internal` module in `src` [ran] | adopted-modified | 01, 02, 03, 04, 06 |
 | C4 | `FlapMotion` and `CheckedFlap` derive `Eq` (05 L14) | 01 §2.2 note | `Flap.hs:93`, `:96`; field types' derivings at `Folding.hs:324`, `HingeSweep.hs:89`, `:101`, `Surface.hs:123`, `Rigid.hs:80` [code] | adopted | 01, 05 |
-| C5 | The hinge turn takes a raw side; `Flap` sets the first segment's sign from its stationary face (`prepareFlapToward`, `FlapStationaryNotFlat`) | 02 §5.3 note; 01 §5.5 note | `Flap.hs:10-16`, `:201-216` [code]; edge 9 +180, edge 11 −180 [prd] | adopted-modified | 01, 02, 05 |
+| C5 | The hinge turn takes a raw side; `Flap` sets the first segment's sign from its stationary face (`prepareFlapToward`, `FlapStationaryNotFlat`); superseded in part by [D5](#d5-presentation-and-the-readers-side)'s amendment, which reads the moving face | 02 §5.3 note; 01 §5.5 note | `Flap.hs:10-16`, `:201-216` [code]; edge 9 +180, edge 11 −180 [prd] | adopted-modified | 01, 02, 05 |
 | C6 | Two settle error types: `SettleStepError` wraps `Material.Settle`'s `SettleError` | 07 "SettleSpec and SettleInput" note | layer rule: `Material.*` knows no moves (§2) | adopted | 01, 02, 07 |
 | C7 | `closing` is written after the last step, stored as `hClosing` | 04 ambiguity table | 04 grammar `source` production | adopted | 02, 03, 04 |
 | C8 | `expect refused` is a move inside a step, produces no record and no state, and is kept in the `Run` | 02 §6.1, §9; 04 ambiguity table; 06 §2; 09 E10; 02 G12 | v2 D10 has no refusal constructor; `BlintzSequenceSpec.hs:110-115` [code] | adopted-modified | 02, 04, 06, 09 |
@@ -2340,7 +2386,7 @@ lists edits for.
 | The crane's `diagonals` and `midlines` steps (v2's steps 1 and 3) sharing one crease batch | v2 D22 | Contradicts the same decision's rule, and a batch across steps shows a later step's creases on an earlier figure ([D22](#d22-figures-holding-several-moves)) |
 | The figure-per-corner layout reuses `checked-blintz.svg` | v2 §7 | That golden has eleven figures, halfway poses included ([D16](#d16-testing-and-acceptance)) |
 | A presentation change needs every vertex to move (R-05-12) | v2 D5 | The turn-over's own axis vertices stay still: 3 of 9 on the quarter fold [py] ([D5](#d5-presentation-and-the-readers-side)) |
-| One raw sense sets the sign of `Flap`'s travel | v2 D5 | The sign also depends on which way up the first segment's stationary face lies ([D5](#d5-presentation-and-the-readers-side)) |
+| One raw sense sets the sign of `Flap`'s travel | v2 D5 | The sign also depends on which way up the first segment's stationary face lies ([D5](#d5-presentation-and-the-readers-side)); since D5's amendment, the moving face beside each segment |
 | The runner reads the first stationary face's way up and signs the travel itself | 02 §5.3 note, first option | Way-up decisions stay in the library, where `Flap` already holds the face's ring; an entry taking a side does the same work there |
 | A checkpoint folded from its assignments | v2 D21 | It would ignore a checkpoint file's recorded angles while `start folded` keeps a sheet's ([D21](#d21-repeat-checkpoint-not-modelled-expect-refused)) |
 | Test 2's clauses "every written edge inside exactly one fixture edge" and "every unmatched fixture vertex lies on a written edge" | v2 D16 | Both are false on correct frames [py]; T1–T5 replace them ([D16](#d16-testing-and-acceptance)) |

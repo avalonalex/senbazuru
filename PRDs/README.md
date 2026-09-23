@@ -122,8 +122,9 @@ before milestone M8; until then it comes from the study
    Valley, mountain and "top layers" are read from the *reader's side*, which is
    part of the fold state. So no render flag changes what a step means. **One
    valley can write +180 on one crease and −180 on another, and that is not a
-   typo:** the sign of a turn also depends on which way up the still paper beside
-   each crease lies, so the library takes a side, not a signed angle.
+   typo:** the sign of a turn also depends on which way up the paper beside
+   each crease lies, so the library takes a side, not a signed angle. Since owner
+   decision 13 that side is where the moving paper goes.
    [02 §5](02-language-semantics.md#5-the-readers-side-and-presentation),
    [05 L14](05-prd-library-additions.md#l14-eq-on-flap-values-and-prepareflaptoward).
 6. **Folding some layers** ([D8](decisions.md#d8-folding-some-layers)). `P to Q`,
@@ -257,6 +258,7 @@ Each has a recommended default, decided with its consequences in
 | 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | Trigonometry, with platform bits in written coordinates stated | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | Yes, at M0 | M0 |
 | 12 | Crane-sized sequences in default CI or a separate slow job, and whether that job is required; the largest mesh a settle may use | A separate slow job that is a required check; default CI settles at most 392 triangles; `run --settle` refuses above 1,192 | M4 |
+| 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **Decided 2026-09-23**: where the moving paper goes ([D5](decisions.md#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | M2's runner |
 
 [03](03-prd-embedded-dsl.md#open-questions-for-the-owner),
 [05](05-prd-library-additions.md#open-questions-for-the-owner) and
@@ -269,6 +271,7 @@ questions.
   section ([research/README.md](research/README.md#how-to-read-them)). The kinds
   are code read at cited lines, `jq` or Python on fixtures, a Python
   re-implementation, a prebuilt binary from 2026-09-07, and fetched web pages.
+  E3, written later, adds sources read in full and a run of the library in GHCi.
 - **Tags** mark each claim's evidence. Each file defines the tags it uses, for
   example [02](02-language-semantics.md),
   [10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
@@ -301,9 +304,9 @@ questions.
   written out in [01 §4](01-architecture.md#4-recorded-text-this-design-changes)
   and scheduled in
   [10 §3](10-roadmap-risks-questions.md#3-recorded-text-changes-by-milestone). The
-  32 corrections the research found in the repository's own text and code are
-  listed in [decisions §10](decisions.md#10-corrections) and written out as
-  proposed issues in
+  38 corrections the research found in the repository's own text and code are
+  listed in [decisions §10](decisions.md#10-corrections) and written out, most
+  as proposed issues, in
   [10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues).
 - **Glossary.** M0's first PR moves [glossary-additions](glossary-additions.md)
   into `docs/glossary.md`.
