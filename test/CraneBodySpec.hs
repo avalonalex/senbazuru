@@ -20,7 +20,8 @@ import Test.Hspec
 import WingBending (finalMesh)
 
 spec :: Spec
-spec = beforeAll load $ describe "selected crane body angle preferences" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ beforeAll load $ describe "selected crane body angle preferences" $ do
   it "changes only the two selected springs on the existing released patch" $ \studies -> do
     let baseline = rootSpread (bodyRoot (originalBody studies))
     forM_ [originalBody studies, weakBody studies, openBody studies] $ \study -> do

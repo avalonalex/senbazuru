@@ -31,7 +31,9 @@ jobs:
           restore-keys: ${{ runner.os }}-stack-
 
       - run: stack build --test --no-run-tests
-      - run: stack test
+      # Only explicitly parallel specs use workers. Keep all examples and the cold
+      # project build; cap workers rather than using every CPU on larger hosts.
+      - run: stack test --test-arguments="--jobs=4 --print-slow-items=20 +RTS -N4 -RTS"
       - run: node study/fold-material/check-illustration-metrics.mjs
 
   format:

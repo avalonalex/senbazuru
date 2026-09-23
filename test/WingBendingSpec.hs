@@ -51,7 +51,8 @@ spec = describe "controlled wing bending" $ do
     forM_ [-1, 0, 7, 12, 40] $ \n -> wingPiece n 20 `shouldSatisfy` isLeft
     forM_ [-1, 61, 0 / 0, 1 / 0] $ \a -> wingPiece 8 a `shouldSatisfy` isLeft
 
-  forM_ [8, 16, 24] $ \n -> beforeAll (settled (stripBenchmark n)) $ do
+  -- Only the independent solves run concurrently; the golden below stays serial.
+  forM_ [8, 16, 24] $ \n -> parallel $ beforeAll (settled (stripBenchmark n)) $ do
     it ("recovers the known equal-turn strip at " ++ show n ++ " spans") $ \(piece, result, mesh) -> do
       converged result `shouldBe` True
       reference <- maybe (fail "missing strip reference") pure (pieceReference piece)
@@ -62,7 +63,7 @@ spec = describe "controlled wing bending" $ do
       abs (actualEnergy - expectedEnergy) `shouldSatisfy` (< 1e-7)
       heldExactly piece result
 
-  forM_ [(n, a) | n <- [8, 16, 24], a <- [0, 20, 40]] $ \(n, a) -> beforeAll (settled (wingPiece n a)) $ do
+  forM_ [(n, a) | n <- [8, 16, 24], a <- [0, 20, 40]] $ \(n, a) -> parallel $ beforeAll (settled (wingPiece n a)) $ do
     it ("preserves material and endpoint contact with " ++ show n ++ " divisions at " ++ show a ++ " degrees") $ \(piece, result, mesh) -> do
       converged result `shouldBe` True
       triangles mesh `shouldBe` triangles (pieceMesh piece)

@@ -21,7 +21,8 @@ import Test.Hspec
 import WingBending (finalMesh)
 
 spec :: Spec
-spec = beforeAll load $ describe "spreading the connected crane wing" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ beforeAll load $ describe "spreading the connected crane wing" $ do
   it "bends the four wing panels while keeping the body, tail and crease angles fixed" $ \source -> do
     fixture <- right (craneSpread source 3 20)
     result <- right (solveSpread (Settings 20 1e-5) fixture)

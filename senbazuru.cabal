@@ -215,6 +215,8 @@ executable senbazuru-material-study
 
 test-suite senbazuru-test
   import:             warnings
+  -- Hspec workers can use separate CPUs; local runs still default to one.
+  ghc-options:        -threaded -rtsopts
   type:               exitcode-stdio-1.0
   hs-source-dirs:     test, study/fold-material
   main-is:            Spec.hs

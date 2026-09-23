@@ -24,7 +24,8 @@ import Test.Hspec
 import WingLayers
 
 spec :: Spec
-spec = do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ do
   beforeAll load $ describe "internal crane crease controls" $ do
     it "finds two joined lines while retaining all original material and grip identities" $ \source -> do
       original <- right (internalStudy source OriginalPatch)

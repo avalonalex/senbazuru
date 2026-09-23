@@ -19,6 +19,20 @@ make check      # formatting, lint and tests: everything CI should run
 your `PATH` rather than downloading its own. If you would rather Stack managed
 the compiler, delete that line.
 
+CI runs the full suite with four workers for explicitly independent material
+specs. To use the same settings locally:
+
+```bash
+stack test --test-arguments="--jobs=4 --print-slow-items=20 +RTS -N4 -RTS"
+```
+
+`--jobs` limits simultaneous parallelizable examples; `-N4` lets the Haskell
+runtime use four CPUs. Both are needed for CPU-heavy tests. Ordinary `stack test` keeps
+one worker. File-writing and golden tests remain serial; long opt-in study
+galleries still require their own commands. For a serial timing comparison,
+use `--jobs=1` and `-N1` together. See
+[the CI timing note](notes/parallel-material-tests.md) for measurements.
+
 ## Running it
 
 ```
