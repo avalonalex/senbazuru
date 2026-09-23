@@ -24,7 +24,7 @@
 -- character for character, location included.
 --
 -- __The list of refusal kinds__ is hand-written text that has to agree with
--- constructors elsewhere in the library. Eleven of its names exist as
+-- constructors elsewhere in the library. Twelve of its names exist as
 -- constructors today, and a test reads each one's spelling off a real value.
 module Senbazuru.Sequence.ErrorSpec (spec) where
 
@@ -35,7 +35,6 @@ import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..))
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
-import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
@@ -192,7 +191,7 @@ constructorsOfToday =
       show (FlapEndpointOrder 0 NoVertices),
       show (FlapStackOrder NoVertices),
       show FlapStartMismatch,
-      show (FlapStationaryNotFlat (FaceId 0) (V3 0 0 1)),
+      show (FlapStationaryNotFlat (FaceId 0) 0),
       show (TornAt (VertexId 0) 0),
       show (AngleNotAchieved (EdgeId 0) 0),
       show (LineStopsOnTheModel FromEnd (FaceId 0)),

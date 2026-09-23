@@ -26,15 +26,6 @@ stationary face's directed edge to derive the sign, then checks both a
 midpoint and the endpoint against the one rigid hinge motion. Every requested
 pose is re-folded and compared in the same way.
 
-So a caller that knows only which way the paper should go cannot choose the
-sign either: "towards +z" is +180 against a stationary face lying top up and
-−180 against one lying upside down. `prepareFlapToward` takes the side and
-reads the sign from the first segment's stationary face, whose way up is its
-placement applied to +z, not the winding of its ring. On the quarter fold
-after its first step, one valley is travel +180 with edge 9 listed first and
-−180 with edge 11 first, because face 0 beside edge 9 lies top up and face 3
-beside edge 11 upside down.
-
 The three-move recipe runs with:
 
 ```bash
@@ -54,3 +45,14 @@ geometry and floating-point interval bounds with numerical guards. Reversed
 departure orders, unknown touching stacks and exhausted checks still refuse
 the motion. The recipe's sampled length, shared-vertex, achieved-angle and
 contact diagnostics supplement that whole-turn check; they do not replace it.
+
+The sign rule also limits what a caller can ask for. Knowing only the
+direction of a turn, towards +z or −z, does not give its travel, the change in
+the first segment's FOLD angle: towards +z is +180 against a stationary face
+lying top up and −180 against one lying upside down. `prepareFlapToward` takes
+the direction and reads the sign from the first segment's stationary face.
+Which way up that face lies is where its placement, the rigid motion folding
+gives the face, sends +z, not the winding of its ring. On the quarter fold
+after its first step, one turn towards +z is travel +180 with edge 9 listed
+first and −180 with edge 11 first, because face 0 beside edge 9 lies top up
+and face 3 beside edge 11 upside down.

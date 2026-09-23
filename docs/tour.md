@@ -545,6 +545,9 @@ distinct material creases that now occupy the same line. Selecting all the
 segments lets the existing checker follow the whole rigid turn. A crease on
 an upside-down layer needs the opposite angle sign even though both layers
 turn together; [the hinge note](notes/aligned-crease-hinges.md) explains why.
+So a caller cannot turn paper towards +z without knowing that sign, and
+`prepareFlapToward` reads it from the first held face. It refuses a held face
+standing on edge, which shows neither side towards +z, rather than guess.
 
 The [checked crane wing](usage.md#checked-crane-wing-movement) adds a crease
 across one wing of the real crane fixture and lowers its two layers through
