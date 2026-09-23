@@ -64,9 +64,11 @@ Cost falls 0.226368%, but full movement remains 11,392 times above convergence;
 total displacement is below 0.014 drawing pixels. The
 [contact-aware direction](notes/body-contact-direction.md) now passes at 1/128,
 lowering cost 0.085385%; both ordinary controls remain blocked. At 1/64,
-neighboring pair 14–55 crosses. Next compare guarding both pairs at the same
-saved shape. Full movement remains 11,376 times above equilibrium; no accepted
-body-opening endpoint yet.
+neighboring pair 14–55 crosses. [Guarding both pairs](notes/body-contact-pairs.md)
+now permits 1/8 with cost down 1.256878%; 1/4 crosses pair 46–70. The selected
+move is below 0.086 drawing pixels and full movement remains 11,438 times above
+equilibrium. Next compare adding 46–70 at the same shape before a refreshed-guard
+continuation. No accepted body-opening endpoint yet.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
@@ -76,7 +78,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,800 examples pass in the cold build for #329, including incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,801 examples pass in the cold build for #333, including incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -681,8 +683,13 @@ checked coupled angles.
    verified quadratic selects 1/128, lowering cost 0.085385% with all geometry
    gates passing; both ordinary controls remain blocked. At 1/64, pair 14–55
    crosses. The selected move is only 0.00533 drawing pixels and remains
-   unsettled. **Next: compare guarding both 22–63 and 14–55 from this same
-   saved shape, retaining the controls, quadratic budget and endpoint gates.**
+   unsettled. [#333](https://github.com/avalonalex/senbazuru/issues/333)
+   [guards both pairs](notes/body-contact-pairs.md): 1/8 lowers cost 1.256878%
+   with all unchanged gates passing; 1/4 instead crosses 46–70. Full movement
+   stays 11,438× above equilibrium, and the selected movement is below 0.086
+   drawing pixels. Both old controls and the one-pair result are unchanged.
+   **Next: compare adding 46–70 at this same saved shape before a continuation
+   that refreshes its guards.**
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse

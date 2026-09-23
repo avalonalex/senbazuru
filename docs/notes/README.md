@@ -102,6 +102,7 @@ read the Haddock module headers; for the domain, start with
 | [held-layout-costs.md](held-layout-costs.md) | The equal-budget gap lies mostly in free paper; the largest length cost and worst relative error occupy different edges |
 | [body-correction-replay.md](body-correction-replay.md) | Replay saved body corrections: 1/64 lowers cost and passes unchanged geometry checks without a new solve |
 | [body-contact-direction.md](body-contact-direction.md) | Guard one body contact in the correction calculation; the next larger trial exposes a neighboring pair |
+| [body-contact-pairs.md](body-contact-pairs.md) | Guard two contacts from the same saved shape: 1/8 becomes usable, but 1/4 exposes a third pair |
 | [body-geometry-continuation.md](body-geometry-continuation.md) | Continue the saved body patch with both cost and geometry gates, keeping the full-proposal convergence test |
 | [body-contact-diagnosis.md](body-contact-diagnosis.md) | Locate shallow crossings in saved body-patch triangles and distinguish intersection extent from height gaps |
 | [recovered-body-subdivision.md](recovered-body-subdivision.md) | Subdivide the recovered current triangles before one final-weight continuation, with full proposal and refusal evidence |

@@ -1,5 +1,5 @@
 -- | The guard preserves a tolerated starting gap without attracting layers or
--- moving holds. Analytic one-coordinate examples need no body-patch solves.
+-- moving holds. Analytic coordinate examples need no body-patch solves.
 module BodyContactDirectionSpec (spec) where
 
 import BodyContactDirection
@@ -7,6 +7,7 @@ import ContactQuadratic
 import Data.IntMap.Strict qualified as IM
 import FoldContact qualified as C
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.VectorSpace
 import Test.Hspec
 
 spec :: Spec
@@ -25,6 +26,21 @@ spec = describe "incremental body contact guard" $ do
     IM.lookup 0 closing `shouldBe` Just (V3 (-0.25) 0 0)
     IM.lookup 0 opening `shouldBe` Just (V3 1 0 0)
     quadraticActive report `shouldBe` 0
+
+  it "uses a second guard without losing the first contact requirement" $ do
+    let x = IM.singleton 0 (V3 1 0 0)
+        y = IM.singleton 0 (V3 0 1 0)
+        first = contactGuard IM.empty (C.ContactRow 0 [(0, V3 1 0 0)])
+        second = contactGuard IM.empty (C.ContactRow 0 [(0, V3 (-1) 1 0)])
+        rows = [(x, 1), (y, 2)]
+    (single, _) <- right (constrainedStep 20 1 [0] rows [first])
+    (both, report) <- right (constrainedStep 20 1 [0] rows [first, second])
+    -- Guarding x alone leaves y - x negative. Together the inequalities
+    -- require x >= 0 and y >= x, whose minimum here is the origin.
+    IM.lookup 0 single `shouldSatisfy` maybe False (\v -> norm (v ^-^ V3 0 (-1) 0) < 1e-12)
+    IM.lookup 0 both `shouldSatisfy` maybe False (\v -> norm v < 1e-12)
+    quadraticConverged report `shouldBe` True
+    quadraticActive report `shouldBe` 2
 
   it "combines shared-vertex derivatives and removes exact holds" $ do
     let pins = IM.singleton 0 (V3 9 8 7)
