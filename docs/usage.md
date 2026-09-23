@@ -1829,3 +1829,23 @@ Every trial FOLD, separate cost, raw correction and original archive is kept
 under `body-pairs`. This remains an opt-in direction comparison, not a settled
 body opening or a continuously checked motion. See
 [the comparison](notes/body-contact-pairs.md).
+
+### A third contact pair at the saved body shape
+
+```bash
+stack run senbazuru-material-study -- --body-third build/fold-material/body-geometry build/fold-material
+```
+
+Open `build/fold-material/body-third.html`. This adds pair 46–70 to the same
+saved blocked shape used by the one-pair and two-pair comparisons. It does
+not start from their accepted trial, or rerun the earlier continuation. All
+four previous directions remain controls. The new direction adds only this
+pair's overlap-corner inequalities; the material, objective, exact holds,
+damping, work budget, 31 fractions and acceptance gates remain unchanged.
+
+Select any of the three pairs for fixed overlap and tip views. The page names
+crossing pairs from the full geometry check, even when the displayed pair
+passes. Every trial mesh, separate cost, raw correction, contact row and
+original archive is retained under `body-third`. This is an opt-in direction
+comparison, not a converged body opening, general contact-discovery policy or
+certified flexible motion. See [the result](notes/body-third-contact.md).
