@@ -75,12 +75,9 @@ a trial's coordinates is refused before a gallery is written. All 1,830 tests
 pass after a warning-free cold build, with clean formatting, HLint 3.10 and
 the JavaScript checks.
 
-The next bounded experiment is **one direction comparison at the saved start
-of attempt ten**, adding a local guard for vertex 27's signed distance to
-plane 70. Keep the original three-pair proposal as a control and retain the
-all-pair acceptance checks. Because this vertex is outside the finite
-triangle, such a guard may be conservative: it would be a local fixture
-policy, not a general contact-discovery algorithm. Do not add more continuation
-steps or change tolerances as part of that comparison. The almost-motionless
-second correction remains a separate sensitivity diagnostic; no settled body
-opening, flexible folding route or whole-crane inflation is established here.
+[The following direction comparison](body-plane-guard.md) adds that local
+vertex-to-plane guard at the saved start of attempt ten, with the original
+three-pair proposal as its control. The usable fraction increases to 1/256,
+but finite plane motion still causes the next larger trial to fail. The
+all-pair gates remain unchanged; no settled body opening or whole-crane
+inflation is established.

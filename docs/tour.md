@@ -1361,3 +1361,14 @@ measured at a corner inside the overlap, improves. The
 [gallery command](usage.md#inspect-the-final-saved-body-contact-refusal) marks
 both locations and magnifies the tiny threshold margin in a separate chart.
 It reuses saved positions and changes no tolerance or correction policy.
+
+
+[Adding one moving-plane guard](notes/body-plane-guard.md) removes the predicted
+worsening at vertex 27 while retaining the original material equations and
+twelve overlap guards. The usable fraction grows from 1/32768 to 1/256, but
+actual movement is only 0.00216 drawing pixels. The plane's finite movement
+still makes 1/128 fail at 46–70, despite a nearly unchanged linear prediction.
+The [comparison gallery](usage.md#compare-one-additional-body-plane-guard) keeps
+both controls, every trial and all unchanged geometry and cost checks visible.
+This explicit guard outside the triangle is a local experiment, not a general
+contact policy or an accepted body opening.

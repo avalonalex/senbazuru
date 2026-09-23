@@ -416,7 +416,11 @@ explicit; no production solver or automatic contact policy changes. See
 trials without solving again. `BodyFinalContactGallery` compares the final
 pair's plane distances and actual overlap gaps, preserving original winding
 and unmodified positions. It extends no contact policy; see
-[the final refusal](notes/body-final-contact.md).
+[the final refusal](notes/body-final-contact.md). `BodyPlaneGuard` differentiates
+one vertex's distance to a moving triangle plane, including its normal's
+normalization. `BodyPlaneGuardGallery` adds that explicit local inequality to
+one matched quadratic and replays it beside the saved proposal. This changes
+no production contact policy; see [the comparison](notes/body-plane-guard.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
