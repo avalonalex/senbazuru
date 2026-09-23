@@ -78,6 +78,7 @@
 module Senbazuru.Origami.Folding
   ( foldFrame,
     Folded (..),
+    facesUp,
     foldFrameWith,
     FoldingError (..),
     renderFoldingError,
@@ -115,7 +116,7 @@ import Senbazuru.Fold.Types
     VertexId (..),
     otherSide,
   )
-import Senbazuru.Geometry.Rigid (Rigid, after, applyRigid, identity, rotationAbout)
+import Senbazuru.Geometry.Rigid (Rigid, after, applyRigid, identity, matApply, rigidLinear, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 
@@ -322,6 +323,19 @@ data Folded = Folded
     foldedPlacements :: !(IM.IntMap Rigid)
   }
   deriving stock (Eq, Show)
+
+-- | Whether a face placed by this motion shows the top side of the paper
+-- towards @+z@: where the motion sends the up direction. Which way up a face
+-- lies is this, never the order its corners are listed in, which a file may
+-- write either way round.
+--
+-- Only the sign is read, so it answers only for a face lying flat, and callers
+-- establish that first: "Senbazuru.Origami.ThroughLayers" for the whole model,
+-- "Senbazuru.Origami.Flap" for the one face it holds still. The up direction
+-- of a face lying flat goes to @+z@ or @-z@ to within rounding, so there is no
+-- near-tie to get wrong.
+facesUp :: Rigid -> Bool
+facesUp placed = v3z (matApply (rigidLinear placed) (V3 0 0 1)) > 0
 
 -- | 'foldFrame', keeping the working.
 --

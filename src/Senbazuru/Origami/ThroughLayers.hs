@@ -97,13 +97,14 @@ import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), creaseEndFlag)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), Frame (..))
 import Senbazuru.Geometry (V2 (..), norm, (^+^), (^-^))
 import Senbazuru.Geometry.Polygon (clipSegment, strictlyInside)
-import Senbazuru.Geometry.Rigid (Rigid, applyRigid, inverse, matApply, rigidLinear)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, inverse)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace ((*^))
 import Senbazuru.Origami.Flat (FlatError (..), Panel (..), Sheet (..), flatSheet)
 import Senbazuru.Origami.Folding
   ( Folded (..),
     FoldingError,
+    facesUp,
     foldFrameWith,
   )
 
@@ -317,15 +318,6 @@ hasPlacement placements panel = IM.member (unFaceId (panelId panel)) placements
 -- judged by.
 stopsOn :: Sheet -> Panel -> V2 -> Bool
 stopsOn sheet panel = strictlyInside (sheetHair sheet) (panelRing panel)
-
--- | Whether this face still has the top side of the paper towards @+z@.
---
--- Where the motion sends the up direction. For a model folded flat that is
--- exactly @+z@ or exactly @-z@ — every turn is by a half circle about a line in
--- the plane, and those map the up direction to plus or minus itself — so the
--- sign is the whole answer and there is no near-tie to get wrong.
-facesUp :: Rigid -> Bool
-facesUp placed = v3z (matApply (rigidLinear placed) (V3 0 0 1)) > 0
 
 -- | The same fold seen from the other side of the paper.
 --

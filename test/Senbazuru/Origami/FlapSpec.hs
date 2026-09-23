@@ -1,6 +1,7 @@
 -- | Check the exported angle poses independently of the motion's certificate.
 -- The same examples appear in the gallery, but their material lengths, fixed
--- faces, requested angles and failure witnesses are measured here.
+-- faces, requested angles and failure witnesses are measured here. So is the
+-- sign of a turn towards a side, judged by where its paper goes.
 module Senbazuru.Origami.FlapSpec (spec) where
 
 import Control.Monad (forM_)
@@ -12,7 +13,7 @@ import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
-import Senbazuru.Fold.Query (Face (..), frameFaces)
+import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
@@ -346,7 +347,10 @@ spec = describe "checked flap rotation" $ do
     prepareFlap (EdgeId 999) (FaceId 1) 10 start `shouldSatisfy` isLeft
     prepareFlap (EdgeId 0) (FaceId 0) 10 start `shouldSatisfy` isLeft
     prepareFlap (EdgeId 6) (FaceId 999) 10 start `shouldSatisfy` isLeft
-    forM_ [0 / 0, 1 / 0, 361] $ \angle -> prepareFlap (EdgeId 6) (FaceId 1) angle start `shouldSatisfy` isLeft
+    forM_ [0 / 0, 1 / 0, 361, -361] $ \angle -> case prepareFlap (EdgeId 6) (FaceId 1) angle start of
+      Left (FlapInvalidTravel _) -> pure ()
+      other -> expectationFailure ("a travel of " ++ show angle ++ ": " ++ either show (const "accepted") other)
+    explain (FlapInvalidTravel (-400)) `shouldBe` "flap travel must be finite and between -360 and 360 degrees; got -400.0"
     let wrong = (foldedFrame start) {verticesCoords = map (map (* 2)) (verticesCoords (foldedFrame start))}
     prepareFlap (EdgeId 6) (FaceId 1) 10 start {foldedFrame = wrong} `shouldSatisfy` isLeft
     motion <- right (prepareFlap (EdgeId 6) (FaceId 1) 10 start >>= checkFlap defaultSweepSettings)
@@ -411,6 +415,80 @@ spec = describe "checked flap rotation" $ do
     motion <- right (prepareFlap (EdgeId 6) (FaceId 1) 150 start >>= checkFlap defaultSweepSettings)
     state <- right (flapAt motion 1)
     materialError state `shouldSatisfy` (< 1e-12)
+
+  -- On the quarter fold after its first step, the hinge along y = 1/2 is
+  -- edges 9 and 11. Face 0 beside edge 9 lies top up and face 3 beside edge 11
+  -- lies upside down, so one turn has a different sign read against each.
+  describe "turning towards a side" $ do
+    beforeAll halfFolded $ do
+      it "signs the travel by which way up the first stationary face lies" $ \folded ->
+        -- The hinge as listed, the moving face, the direction, and the travel
+        -- prepareFlapAlong needs for the same turn: -180 for +z with edge 11
+        -- first is not a typo, since face 3 beside it lies upside down.
+        forM_
+          [ ([EdgeId 9, EdgeId 11], FaceId 1, TowardPlusZ, 180),
+            ([EdgeId 9, EdgeId 11], FaceId 1, TowardMinusZ, -180),
+            ([EdgeId 11, EdgeId 9], FaceId 2, TowardPlusZ, -180),
+            ([EdgeId 11, EdgeId 9], FaceId 2, TowardMinusZ, 180)
+          ]
+          $ \(hinge, side, toward, travel) -> do
+            expected <- right (prepareFlapAlong hinge side travel folded)
+            prepareFlapToward hinge side 180 toward folded `shouldBe` Right expected
+
+      it "lifts the moving paper towards the side it names, holding the first stationary face" $ \folded ->
+        forM_ [([EdgeId 9, EdgeId 11], FaceId 1, FaceId 0), ([EdgeId 11, EdgeId 9], FaceId 2, FaceId 3)] $ \(hinge, side, held) ->
+          forM_ [(TowardPlusZ, 1), (TowardMinusZ, -1)] $ \(toward, sign) -> do
+            turn <- right (prepareFlapToward hinge side 180 toward folded >>= checkFlap defaultSweepSettings)
+            flapStationaryFace turn `shouldBe` held
+            halfway <- right (flapAt turn 0.5)
+            points <- right (frameVertices (surfaceFrame halfway))
+            -- Vertices 2, 3 and 6 are the moving paper's vertices off the
+            -- hinge, each half a unit from it, so a quarter turn puts each
+            -- half a unit up or half a unit down.
+            let lifted = [z | (i, V3 _ _ z) <- zip [0 :: Int ..] points, i `elem` [2, 3, 6]]
+            length lifted `shouldBe` 3
+            forM_ lifted $ \z -> abs (z - sign * 0.5) `shouldSatisfy` (< 1e-12)
+
+      -- Folded's constructor is public, so a caller can hand in placements
+      -- that disagree with its own frames; none at all, here.
+      it "reads which way up the held face lies from its own refold, not from the placements given" $ \folded -> do
+        expected <- right (prepareFlapToward [EdgeId 9, EdgeId 11] (FaceId 1) 180 TowardPlusZ folded)
+        prepareFlapToward [EdgeId 9, EdgeId 11] (FaceId 1) 180 TowardPlusZ folded {foldedPlacements = mempty} `shouldBe` Right expected
+
+    it "refuses a held face standing on edge, once the flap is sound, and a size that is not a turn" $ do
+      source <- keyFrame <$> (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
+      -- Halfway through the first step, faces 2 and 3 hang straight down.
+      hanging <- right (foldFrameWith source {edgesFoldAngle = replicate 8 0 ++ [-90, 0, -90, 0]})
+      let towardsPlusZ hinge side size = prepareFlapToward (map EdgeId hinge) (FaceId side) size TowardPlusZ hanging
+      case towardsPlusZ [8, 10] 0 90 of
+        Left err@(FlapStationaryNotFlat held spread) -> do
+          held `shouldBe` FaceId 3
+          abs (spread - 0.5) `shouldSatisfy` (< 1e-12)
+          explain err `shouldBe` "(internal face 3), held still beside the first hinge crease, does not lie flat, so which way to turn towards +z or -z cannot be read from it: its corners span 0.500000 in z"
+        other -> expectationFailure ("expected FlapStationaryNotFlat, got " ++ either show (const "a motion") other)
+      -- A wrong selection is refused as one first: edge 11 lies between
+      -- faces 2 and 3, and neither of them moves.
+      case towardsPlusZ [8, 10, 11] 0 90 of
+        Left (FlapNotBoundary crease) -> crease `shouldBe` EdgeId 11
+        other -> expectationFailure ("expected FlapNotBoundary, got " ++ either show (const "a motion") other)
+      -- Moving the hanging half instead holds face 0, which lies flat, and
+      -- turning it towards +z brings the half back up.
+      back <- right (prepareFlapAlong [EdgeId 8, EdgeId 10] (FaceId 3) 90 hanging)
+      towardsPlusZ [8, 10] 3 90 `shouldBe` Right back
+      forM_ [-90, 360.5, 0 / 0, 1 / 0] $ \size -> case towardsPlusZ [8, 10] 3 size of
+        Left (FlapInvalidTurn _) -> pure ()
+        other -> expectationFailure ("a turn of " ++ show size ++ ": " ++ either show (const "accepted") other)
+      explain (FlapInvalidTurn (-90)) `shouldBe` "a turn towards +z or -z must be finite and from 0 to 360 degrees; got -90.0"
+
+-- | The quarter fold after its first step, folded here rather than read from
+-- the file's second frame, so that it carries the layer order the step left.
+halfFolded :: IO Folded
+halfFolded = do
+  source <- keyFrame <$> (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
+  start <- right (foldFrameWith source)
+  turn <- right (prepareFlapAlong [EdgeId 8, EdgeId 10] (FaceId 3) (-180) start >>= checkFlap defaultSweepSettings)
+  end <- surfaceFrame <$> right (flapAt turn 1)
+  right (foldFrameWith (foldedPattern start) {edgesFoldAngle = edgesFoldAngle end, faceOrders = faceOrders end})
 
 materialError :: Surface V2 -> Double
 materialError sheet = maximum (0 : errors)
