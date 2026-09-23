@@ -104,6 +104,7 @@ read the Haddock module headers; for the domain, start with
 | [body-contact-direction.md](body-contact-direction.md) | Guard one body contact in the correction calculation; the next larger trial exposes a neighboring pair |
 | [body-contact-pairs.md](body-contact-pairs.md) | Guard two contacts from the same saved shape: 1/8 becomes usable, but 1/4 exposes a third pair |
 | [body-short-corrections.md](body-short-corrections.md) | Fresh guards retain ten shapes, but later fractions shrink against the same crossing boundary |
+| [body-final-contact.md](body-final-contact.md) | Vertex 27 crosses a plane threshold outside the overlap while the guarded height gap improves |
 | [body-third-contact.md](body-third-contact.md) | A third pair adds no force: the linear gap prediction passes while the finite trial crosses |
 | [body-geometry-continuation.md](body-geometry-continuation.md) | Continue the saved body patch with both cost and geometry gates, keeping the full-proposal convergence test |
 | [body-contact-diagnosis.md](body-contact-diagnosis.md) | Locate shallow crossings in saved body-patch triangles and distinguish intersection extent from height gaps |
