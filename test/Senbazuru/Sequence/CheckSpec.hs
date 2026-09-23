@@ -10,8 +10,21 @@
 --
 -- __The values only Haskell can make__ are built, since no text spells them.
 -- They are the reason a checked sequence can always be printed and read back,
--- so each has an example here, and a property over random trees holds the
--- whole promise in the parser's spec.
+-- so each has an example here.
+--
+-- __The promise, as two properties__ over the sequences
+-- "Test.CheckedSequenceGen" makes, which define every name before using it.
+-- One says that such a sequence is accepted, prints as text that reads back
+-- to it, and checks the same once read back. The other plants one value only
+-- Haskell can make and says the sequence is then refused, for that value.
+--
+-- The design states the second as @isRight (checkSequence s) ==> …@, and it
+-- is written differently here for two reasons. A case a precondition throws
+-- away counts for nothing in 'checkCoverage', and every planted value is
+-- thrown away if the checker works, so coverage could not ask for them. And
+-- the round trip alone cannot see every such value accepted: @top 0 layers@
+-- prints, and reads back as itself. Saying which problem each must be refused
+-- for can.
 --
 -- __Where a refusal says it is.__ A built sequence has no positions, so the
 -- message has to open with the step, and there is nothing to point a caret
@@ -23,7 +36,11 @@
 module Senbazuru.Sequence.CheckSpec (spec) where
 
 import Control.Monad (void)
+import Data.Char (isAlphaNum, isUpper)
 import Data.Foldable (for_)
+import Data.Maybe (isNothing)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
@@ -32,12 +49,37 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check
 import Senbazuru.Sequence.Error
 import Senbazuru.Sequence.Parse (parseSequence)
+import Senbazuru.Sequence.Pretty (prettySequence)
 import Senbazuru.Sequence.Syntax
+import Test.CheckedSequenceGen (Fault, Placement, Planted (..), genChecked, genPossiblyFaulty)
 import Test.Hspec
+import Test.Hspec.QuickCheck (prop)
+import Test.QuickCheck (Property, Testable, checkCoverage, counterexample, cover, forAll, property, (.&&.), (===))
 import Test.SequenceExamples (blintz, quarterFold)
 
 spec :: Spec
 spec = do
+  describe "a sequence generated to mean something" $ do
+    prop "is accepted, prints as text that reads back to it, and checks the same once read back" $
+      checkCoverage . forAll genChecked $ \s ->
+        coverFeatures s . cover 5 (canonical s /= s) "held a shape canonical rewrites" $
+          case checkSequence s of
+            Right checked ->
+              cover 5 (checkedSequence checked /= s) "held a bare name the checker gave its kind" (readsBack s checked)
+            Left err -> counterexample ("refused: " <> T.unpack (explain err) <> "\n" <> T.unpack (prettySequence s)) False
+
+    prop "is refused once it holds a value only Haskell can make, and for that value" $
+      checkCoverage . forAll genPossiblyFaulty $ \(s, planted) ->
+        coverPlanted planted . cover 50 (isNothing planted) "held no such value" $
+          case (planted, checkSequence s) of
+            (Nothing, Right checked) -> readsBack s checked
+            (Just expected, Left (StaticRefused place _ problem)) ->
+              counterexample (T.unpack (prettySequence s)) $
+                (place, problem) === (plantedPlace expected, plantedProblem expected)
+            (Just expected, Right _) ->
+              counterexample ("accepted, though it holds " <> show expected <> "\n" <> T.unpack (prettySequence s)) False
+            (_, Left err) -> counterexample ("refused: " <> T.unpack (explain err) <> "\n" <> T.unpack (prettySequence s)) False
+
   describe "a sequence that means something" $ do
     it "accepts the blintz and the quarter fold, and hands them back unchanged" $
       for_ [blintz, quarterFold] $ \s ->
@@ -156,6 +198,100 @@ spec = do
         `shouldBe` Just (Span "t" 3 1 3 9)
       fmap errorSpan (leftOf (checkText ["step {", "  together {", "    turn over left-right", "    rotate 9/8 turn clockwise", "  }", "}"]))
         `shouldBe` Just (Span "t" 6 5 6 30)
+
+-- | Printed, read back and checked again, a checked sequence is the same
+-- sequence and the same checked one. The first half is the design's round
+-- trip; the second is what a runner relies on, that a sequence built in
+-- Haskell and its text check to one value.
+readsBack :: Sequence -> Checked -> Property
+readsBack s checked =
+  counterexample (T.unpack text) $
+    (fmap stripSpans reread === Right (canonical (stripSpans s)))
+      .&&. (fmap (stripSpans . checkedSequence) (reread >>= checkSequence) === Right (stripSpans (checkedSequence checked)))
+  where
+    text = prettySequence s
+    reread = parseSequence "gen" text
+
+-- | Every constructor of the tree has to turn up in some of the generated
+-- sequences, or the property says nothing about it; so do a range of steps
+-- repeated and a block inside a block. A misspelled name in these lists is
+-- never present, so it fails loudly rather than passing.
+coverFeatures :: (Testable prop) => Sequence -> prop -> Property
+coverFeatures s inner =
+  foldr
+    (\(name, present) -> cover 1 present name)
+    (property inner)
+    ( [(name, name `Set.member` constructors) | name <- constructorNames]
+        <> [ ("a range of steps repeated", any isRange moves),
+             ("a block inside a block", any holdsBlock moves)
+           ]
+    )
+  where
+    constructors = constructorsIn s
+    moves = allMoves s
+    isRange = \case
+      Repeat _ (Just _) _ -> True
+      _ -> False
+    isBlock = \case
+      Together _ -> True
+      ExpectRefused _ _ -> True
+      _ -> False
+    holdsBlock = \case
+      Together members -> any (isBlock . locValue) members
+      ExpectRefused _ inner' -> isBlock inner'
+      _ -> False
+
+constructorNames :: [String]
+constructorNames =
+  -- moves
+  ["Fold", "FoldAndUnfold", "Unfold", "TurnOver", "Rotate", "Anchor", "Mark", "Let", "Macro", "Continue", "Together", "Pose", "Repeat", "Checkpoint", "NotModelled", "ExpectRefused"]
+    -- lines
+    <> ["EdgeOf", "Segment", "Onto", "LineOnto", "PerpendicularThrough", "PointToLineThrough", "TwoToTwo", "PointToLinePerpendicular", "PointToLine", "ExistingCrease", "HingeOf", "CreaseOf", "ModelSegment", "LineNamed"]
+    -- points
+    <> ["CornerOf", "Centre", "AtSheet", "MidpointOf", "MidpointOfEdge", "FractionAlong", "Meet", "EndOfCreaseOf", "PointNamed"]
+    -- the rest
+    <> ["ValleyFold", "MountainFold", "ToFlat", "Degrees", "FlapOfFirstArgument", "AllLayers", "TopLayers", "TopFlap", "LeftRight", "TopBottom", "Clockwise", "Anticlockwise", "BindPoint", "BindLine", "Collapse", "RabbitEar", "Petal", "TipAt", "TopFlapTip", "MirroredAcross", "TurnedQuarters", "Relations", "StackingFirst", "StartFlat", "StartFolded", "UnitSquare", "SheetFile", "ColouredUp", "WhiteUp"]
+
+-- | The constructors a sequence holds, read from its 'show': there each
+-- constructor is a word starting with a capital, and nothing else is but the
+-- insides of strings, which are skipped. A caption saying \"Fold …\" does
+-- not count as a 'Fold'.
+constructorsIn :: Sequence -> Set String
+constructorsIn = Set.fromList . go . show
+  where
+    go = \case
+      [] -> []
+      '"' : rest -> go (afterString rest)
+      c : rest
+        | isAlphaNum c ->
+            let (word, more) = span isAlphaNum (c : rest)
+             in if isUpper c then word : go more else go more
+        | otherwise -> go rest
+    afterString = \case
+      '\\' : _ : rest -> afterString rest
+      '"' : rest -> rest
+      _ : rest -> afterString rest
+      [] -> []
+
+-- | Every move, those inside blocks included.
+allMoves :: Sequence -> [Move]
+allMoves s = concatMap within [locValue m | located <- seqSteps s, m <- stepMoves (locValue located)]
+  where
+    within m =
+      m : case m of
+        Together members -> concatMap (within . locValue) members
+        ExpectRefused _ inner -> within inner
+        _ -> []
+
+-- | Every kind of value has to be planted, and in every place.
+coverPlanted :: (Testable prop) => Maybe Planted -> prop -> Property
+coverPlanted planted inner =
+  foldr
+    (\(label, present) -> cover 1 present label)
+    (property inner)
+    ( [("planted " <> show fault, fmap plantedFault planted == Just fault) | fault <- [minBound .. maxBound :: Fault]]
+        <> [("planted " <> show placement, fmap plantedWhere planted == Just placement) | placement <- [minBound .. maxBound :: Placement]]
+    )
 
 -- | What a test sees of a check.
 data Outcome = Accepted | Refused Place StaticProblem | DidNotParse Text
