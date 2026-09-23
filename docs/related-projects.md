@@ -21,7 +21,7 @@ says *not checked*, check it before reading the code.
 | [Flat-Folder](https://github.com/origamimagiro/flat-folder) — Jason Ku | Browser crease-pattern solver: reads FOLD, SVG, `.opx`, `.cp`; traces faces; solves the layer order by the taco-taco rules, splits it into components, counts the states; x-ray and flip views; exports the pattern and the folded state as FOLD | MIT | The layer solver `Senbazuru.Origami.Stacking` is validated against its published table, and five of our examples are its files. It solves *unassigned* creases, which is [#38](https://github.com/avalonalex/senbazuru/issues/38); its 755 patterns are the corpus [#93](https://github.com/avalonalex/senbazuru/issues/93) will run. |
 | [Origami Simulator](https://github.com/amandaghassaei/OrigamiSimulator) — Amanda Ghassaei | Browser physics simulation: every crease folds at once, a slider from 0 to 100%, strain shown in colour; reads SVG and FOLD, writes FOLD, OBJ, STL and GIF | MIT | The *compliant* model senbazuru deliberately is not ([#64](https://github.com/avalonalex/senbazuru/issues/64)). Its folded states are what [#53](https://github.com/avalonalex/senbazuru/issues/53) will read to see what real angles look like. |
 | [Rabbit Ear](https://github.com/robbykraft/Origami) — Robby Kraft | JavaScript library: planar-graph repair, the Huzita–Hatori axioms, single-vertex checks, flat folding, a layer solver on Ku's rules, SVG and WebGL rendering | GPL-3.0 | The closest thing to senbazuru as a *library*. Read it for the shape of the problems; reimplement, never copy. |
-| [origami-diagrams](https://github.com/mayakraft/origami-diagrams) — Robby Kraft | Diagrams from a FOLD file's frames, with arrows, multilingual captions and step numbers stored under vendor keys | MIT | The one other project aiming at printed diagrams from FOLD. It *stores* arrows; senbazuru *infers* them from consecutive frames, and would read captions off the standard `frame_title` ([#94](https://github.com/avalonalex/senbazuru/issues/94)). |
+| [origami-diagrams](https://github.com/amkraft/origami-diagrams) — Robby Kraft | Diagrams from a FOLD file's frames, with arrows, multilingual captions and step numbers stored under vendor keys | MIT, stated only in `package.json`; no licence file | The one other project aiming at printed diagrams from FOLD. It *stores* arrows; senbazuru *infers* them from consecutive frames, and would read captions off the standard `frame_title` ([#94](https://github.com/avalonalex/senbazuru/issues/94)). |
 | [ORIPA](https://github.com/oripa/oripa) — Jun Mitani and contributors | The original crease-pattern editor, in Java: draws, estimates the folded form, enumerates layer orders, writes `.opx`, FOLD, SVG and images | GPL-3.0 | `.opx` is its format, read by `Senbazuru.Import.Opx` from the format alone. Its folded-form export is what the `fold` verb gives senbazuru. Its own `turkey2015.opx` has 71 creases stopping on another, which is why `Fold.Crossings` exists. |
 | [Oriedita](https://github.com/oriedita/oriedita) | A crease-pattern editor forked from Orihime: draws, checks flat-foldability by the extended Fushimi theorem, folds very complex patterns, writes `.cp`, `.ori`, FOLD, SVG, PNG | MIT | `.cp` is its format and Orihime's; `examples/bird-base.cp` is its test fixture. Its source is readable for the format, and the rule is still to reimplement. Its y-down export mirrors our y-up reading, deliberately. |
 | [Orihime](https://oriedita.github.io/) — Toshiyuki Meguro | The editor Oriedita was forked from, and the origin of the `.cp` format and its type codes | see Oriedita | Historical. Everything worth knowing about it is in [notes/cp-and-opx.md](notes/cp-and-opx.md). |
@@ -33,9 +33,9 @@ says *not checked*, check it before reading the code.
 | --- | --- | --- | --- |
 | [Freeform Origami, Rigid Origami Simulator, Origamizer](https://tsg.ne.jp/TT/software/) — Tomohiro Tachi | Rigid-origami kinematics, interactive design under rigid constraints, and crease patterns for any polyhedron | Binaries only, non-commercial | Tachi's *papers* are the method [#55](https://github.com/avalonalex/senbazuru/issues/55) follows; the binaries are what to compare against once it exists. |
 | [TreeMaker](https://langorigami.com/article/treemaker/) — Robert J. Lang | Turns a stick figure into a crease pattern for a base | GPL | The design end of the pipeline, which senbazuru does not do. Read for the vocabulary of bases and flaps. |
-| [ReferenceFinder](https://langorigami.com/article/referencefinder/) — Robert J. Lang | Finds a short folding sequence that lands a reference point or line, by searching the Huzita–Hatori axioms | GPL (not checked) | Exactly the *reference* vocabulary a written folding scheme needs ([#97](https://github.com/avalonalex/senbazuru/issues/97)); see [notes/huzita-hatori.md](notes/huzita-hatori.md). |
+| [ReferenceFinder](https://langorigami.com/article/referencefinder/) — Robert J. Lang | Finds a short folding sequence that lands a reference point or line, by searching the Huzita–Hatori axioms | GPL-2.0 | Exactly the *reference* vocabulary a written folding scheme needs ([#97](https://github.com/avalonalex/senbazuru/issues/97)); see [notes/huzita-hatori.md](notes/huzita-hatori.md). |
 | [Eos](https://www.semanticscholar.org/paper/Computational-Origami-System-Eos-Ida-Takahashi/b7ae46f4f3b074d336af2802ac0a8337a39c1ba0) — Tetsuo Ida and others | The E-origami system: Mathematica programs that fold as a person would, implement Huzita's axioms with a logical specification in first-order predicate logic, solve the constraints symbolically, and prove geometric properties of the result | Closed source: Mathematica packages sent on request to project members; the tutorial is CC BY-NC-ND 4.0 | The rigorous answer to the half of [#97](https://github.com/avalonalex/senbazuru/issues/97) that is hard — how a fold names the line it folds on. Read it for the reference vocabulary, and for its formal model of folded paper: faces with adjacency and a superposition relation, a fold as a graph rewrite. It is not a diagram tool, but it does fold whole models: it can fold a chosen set of faces, say where in the stack they go, and has folded a crane. See [E3](../PRDs/research/E3-formal-fold-semantics.md). |
-| [Doodle](https://doodle.sourceforge.net/) — Jérôme Gout and others | A text language for origami diagrams, compiled to PostScript. 2000–2001 | not checked | A whole diagramming language with no geometry in it: the arrows and captions were typed, not computed. One of the three shapes [#97](https://github.com/avalonalex/senbazuru/issues/97) weighs. |
+| [Doodle](https://doodle.sourceforge.net/) — Jérôme Gout and others | A text language for origami diagrams, compiled to PostScript. 2000–2001 | GPL-2.0 | A whole diagramming language with no geometry in it: the arrows and captions were typed, not computed. One of the three shapes [#97](https://github.com/avalonalex/senbazuru/issues/97) weighs. |
 | [Foldinator](https://zingman.com/origami/foldinator3OSMEpaper.php) — John Szinger, 2001 | A modeller that folds a sheet step by step in 3D and generates annotated diagrams. Valley, mountain and reverse folds; never released | paper only | The closest ancestor of [#60](https://github.com/avalonalex/senbazuru/issues/60), and a record of how far a fold vocabulary got twenty-five years ago. |
 | [rigid-origami](https://github.com/belalugaX/rigid-origami) | Python: rigid-origami crease-pattern generation and folding simulation, framed as a game environment | not checked | Another rigid-origami simulator to compare angle solutions against. |
 | [OrigamiSimulator (MATLAB)](https://github.com/zzhuyii/OrigamiSimulator) — Yuyuan Zhu | Bar-and-hinge simulation of active origami: compliant creases, panel contact, thermal actuation | not checked | What keeping paper out of paper ([#61](https://github.com/avalonalex/senbazuru/issues/61)) looks like in a compliant model. |
@@ -69,8 +69,9 @@ Three of the entries above are attempts at the thing
 either side of one line.
 
 **Eos has the geometry and no diagrams.** It is rigorous to the point of proving
-theorems about a folded point, and what it produces is a construction rather
-than a model anyone would recognise.
+theorems about a folded point, and it has folded whole models, a crane among
+them, but it is a system for constructing and proving, not for drawing
+instructions.
 
 **Doodle has the diagrams and no geometry.** It printed book-quality pages from
 typed input in 2000, and it could not tell you whether what you typed was
@@ -123,19 +124,21 @@ reconciles them.
 - **FoldingAgent** — [arXiv 2609.00377](https://arxiv.org/abs/2609.00377).
   Parametric folding procedures inferred from demonstration videos.
 
-Two more from September 2026 formalise constructions, compared in
+Two more formalise constructions, compared in
 [E3](../PRDs/research/E3-formal-fold-semantics.md):
 
 - **Beloch** — [github.com/tophcodes/beloch](https://github.com/tophcodes/beloch),
-  MIT, OCaml. A declarative fold language on the Huzita–Justin axioms whose
-  construction rules are close to ours: candidates computed on the current
-  flat state, lines that miss the paper dropped, the moving side named in the
-  text, and exactly one answer required. Its decision records are worth
-  reading before settling what `nearest P` measures.
-- **A Lean Paper About Paper** — [arXiv 2609.14912](https://arxiv.org/abs/2609.14912).
-  Proves in Lean that each Huzita fold exists, and for some that it is unique,
-  but enumerates none, so it cannot confirm that a solver found every answer.
-  Its repository has no licence.
+  MIT, OCaml, with history from April 2026. A declarative fold language on the
+  Huzita–Justin axioms whose construction rules are close to ours: candidates
+  computed on the current flat state, lines that miss the paper dropped, the
+  moving side named in the text, and exactly one answer required. Its decision
+  records are worth reading before settling what `nearest P` measures.
+- **A Lean Paper About Paper** — [arXiv 2609.14912](https://arxiv.org/abs/2609.14912),
+  September 2026. Proves in Lean that each Huzita fold exists, and for some
+  that it is unique, but enumerates none, so it cannot confirm that a solver
+  found every answer. Its authors' code,
+  [celioboulay/origami-formalization](https://github.com/celioboulay/origami-formalization),
+  which the paper does not link, has no licence.
 
 ## Reading
 
