@@ -1382,3 +1382,11 @@ estimate closely matches the saved distance. The
 [gallery](usage.md#explain-the-saved-plane-distance-loss) preserves both directions,
 all original decisions and paper drawings; only numerical charts are new.
 This inspection runs no solve and changes no acceptance threshold.
+
+
+[One small restoration](notes/body-contact-restoration.md) now recovers that
+finite loss at the saved 1/128 trial. It moves vertices at most `3.07e-12`
+sheet lengths and passes the original geometry, overlap-guard and cost checks.
+The [gallery](usage.md#restore-one-saved-body-trial) retains the saved 1/256 and
+refused 1/128 controls. The repair improves numerical feasibility without a
+visible shape change; it does not make the body settled or its motion checked.

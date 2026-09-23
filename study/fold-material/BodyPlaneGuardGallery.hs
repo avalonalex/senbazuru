@@ -7,7 +7,7 @@
 -- conservative local policy, not a new physical contact or a tolerance change.
 -- Predicted guards select a direction; actual all-pair checks select a trial.
 -- See docs/notes/body-plane-guard.md for the measured result and limits.
-module BodyPlaneGuardGallery (writeBodyPlaneGuard) where
+module BodyPlaneGuardGallery (writeBodyPlaneGuard, drawContact, trianglePoints, vertexAt, xy) where
 
 import BodyContactDiagnosis
 import BodyContactDirection

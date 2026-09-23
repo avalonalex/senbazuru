@@ -421,11 +421,19 @@ one vertex's distance to a moving triangle plane, including its normal's
 normalization. `BodyPlaneGuardGallery` adds that explicit local inequality to
 one matched quadratic and replays it beside the saved proposal. This changes
 no production contact policy; see [the comparison](notes/body-plane-guard.md).
+`BodyPlaneArchive` owns validation of both saved directions and all 62 trials,
+shared by the distance-accounting and restoration galleries. It also delegates
+the preceding 310-trial chain to `BodyShortArchive`; neither reader solves.
 `BodyPlaneLoss` accounts for the finite signed-distance change using the triangle
 centroid, including interaction, nonlinear rotation and rounding. Its gallery
-reuses the archive's state validator, rechecks both saved directions and copies
+uses that shared archive reader and copies
 paper assets unchanged. Only numerical accounting charts are new; see
 [the finite loss](notes/body-plane-loss.md).
+`BodyContactRestoration` computes one minimum-movement projection onto a
+linearized plane-distance target, excluding held coordinates. Its gallery
+checks original/refreshed overlap guards and actual all-pair geometry and cost,
+keeping the refused trial as control. It changes no material solver and runs
+no continuation; see [the restoration](notes/body-contact-restoration.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

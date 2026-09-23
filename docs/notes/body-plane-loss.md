@@ -91,12 +91,8 @@ An altered saved fraction is refused before any output is written. All 31
 fractions and six paper views work in the browser; the charts keep both
 directions on one scale and remain readable at the smallest fractions.
 
-A useful next bounded experiment is **one small contact-restoration correction
-at the refused 1/128 trial**: adjust its positions to recover the finite distance
-loss, with exact holds and the existing overlap guards, then apply the same
-all-pair geometry and actual-cost checks. Keep the original trial as a control.
-That would test whether the missed second-order term can be repaired without
-shrinking the main step again; it must not assume success or start a continuation.
-The current endpoint remains unsettled. No whole-crane opening or flexible
-folding route is established, and this outside-triangle plane guard remains
-a local fixture policy.
+[One small contact restoration](body-contact-restoration.md) now tests that
+repair at the refused 1/128 trial. A correction of at most `3.07e-12` sheet
+lengths restores its plane-distance margin and passes the unchanged geometry,
+overlap-guard and actual-cost checks. The body remains unsettled; no further
+main correction or physical motion is established by that single repair.
