@@ -1278,3 +1278,12 @@ before pair 22–63 blocks the eighth search; all retained geometry passes, but
 full-proposal convergence fails. The [opt-in command](usage.md#geometry-gated-body-continuation)
 keeps every proposal and refusal. The result calls for a direction that respects
 the limiting contact, rather than further shortening the same search.
+
+The [contact-aware direction](notes/body-contact-direction.md) now guards
+pair 22–63 before the search. Its 1/128 trial lowers cost 0.085385% and passes
+all unchanged geometry checks. Both ordinary controls remain blocked. At
+1/64, the guarded pair passes but neighboring pair 14–55 crosses. The
+[comparison command](usage.md#one-contact-aware-body-correction) keeps every
+trial and both controls. This is a useful local correction, still far from
+equilibrium and too small to make a visible opening. The next comparison
+should guard both pairs from the same saved shape.

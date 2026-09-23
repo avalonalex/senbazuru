@@ -390,6 +390,13 @@ without changing retained state. `BodyGeometryGallery` supplies unchanged
 body-patch checks, reuses the validated archive and exports authoritative
 returned meshes separately from proposals. See
 [the continuation](notes/body-geometry-continuation.md).
+`BodyContactDirection` builds the same final-weight material rows plus
+incremental gap guards for one pair. `BodyDirectionGallery` compares the
+archived direction, a matched unconstrained quadratic and a constrained
+quadratic through the existing replay and endpoint checks. The shared archive
+reader verifies the blocked continuation chain. This opt-in experiment changes
+no production or ordinary study solver; see
+[the contact direction](notes/body-contact-direction.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

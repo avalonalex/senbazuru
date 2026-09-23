@@ -1768,3 +1768,26 @@ saved shape; it counts numerical corrections, not folding instructions. No
 continuous motion or full-crane inflation is certified. This expensive run is
 outside CI; small fixtures test the acceptance behavior. See
 [the study note](notes/body-geometry-continuation.md).
+
+### One contact-aware body correction
+
+```bash
+stack run senbazuru-material-study -- --body-direction build/fold-material/body-geometry build/fold-material
+```
+
+Open `build/fold-material/body-direction.html`. Reuse the saved blocked
+continuation archive; do not rerun its earlier solves. This opt-in comparison
+computes one constrained direction at pair 22–63 and one matched unconstrained
+control, alongside the archived ordinary proposal. It evaluates all 31 search
+fractions under the same cost, material, exact holds and geometry limits. Only
+a verified quadratic may supply a selected trial; full proposed movement still
+determines equilibrium. The new guard preserves a tiny negative starting gap's
+first-order floor without changing its measured value or the tolerance.
+
+The export keeps every trial FOLD, separate costs, angles, attachment positions,
+raw corrections, quadratic equations and residuals. Actual-size and magnified
+overlap/contact-tip views share cameras and scales; large diagnostic trials
+can leave the fixed tip crop. Original source bytes are copied unchanged into
+`body-direction/source`. This is not a continuation, a whole-crane solve or a
+continuous motion certificate. It is outside CI. See
+[the result and next blocker](notes/body-contact-direction.md).

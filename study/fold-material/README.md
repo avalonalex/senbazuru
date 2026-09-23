@@ -844,3 +844,15 @@ weights; full proposals and every refusal remain separate from returned
 meshes. The original run is retained without rerunning it. This experiment is
 opt-in, outside CI. See [usage](../../docs/usage.md#geometry-gated-body-continuation)
 and [the study note](../../docs/notes/body-geometry-continuation.md).
+
+`--body-direction SOURCE_DIRECTORY OUTPUT_DIRECTORY` compares one contact-aware
+quadratic direction at the saved `body-geometry` blocked shape against its
+archived proposal and a matched unconstrained control. It guards pair 22–63's
+four overlap corners without changing the objective or final geometry gates.
+All 31 fractions are retained per direction; no nonlinear continuation runs.
+Use the original archive without regenerating earlier solves. The gallery keeps
+raw corrections, equations, every FOLD trial, angles, attachment positions and
+matched actual-size/overlap/tip views. The first usable fraction is 1/128;
+1/64 instead crosses pair 14–55. See the
+[command](../../docs/usage.md#one-contact-aware-body-correction) and
+[note](../../docs/notes/body-contact-direction.md).
