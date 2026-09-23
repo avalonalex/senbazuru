@@ -221,6 +221,10 @@ runCli = execParser opts >>= run
     -- which would stop this module loading under a bare ghci.
     version = makeVersion [0, 1, 0, 0]
 
+-- | Every verb. The ones that read FOLD are also named in
+-- 'Senbazuru.Sequence.RunPlan.refusalLines', for a FOLD file handed to @run@;
+-- the test suite cannot see this module, so a verb added here belongs there
+-- by hand.
 commandParser :: Parser Command
 commandParser =
   hsubparser
@@ -418,6 +422,20 @@ positiveBudget n
   | n > 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
   | otherwise = readerError "the layer budget must be a positive number of guesses"
 
+-- | @run@'s frame number, read through 'Integer' for the reason
+-- 'positiveBudget' is. Zero is let through here: it is refused when there is
+-- a count of states to name alongside it.
+frameNumber :: Integer -> ReadM Int
+frameNumber n
+  | n >= 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
+  | otherwise = readerError "the frame must be a whole number of frames"
+
+-- | @run@'s column count, through 'Integer' likewise.
+columnCount :: Integer -> ReadM Int
+columnCount n
+  | n >= 1 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
+  | otherwise = readerError "columns must be a whole number, at least 1"
+
 -- | Degrees in, radians out.
 --
 -- Every angle this module reads is in degrees, because that is the unit the
@@ -591,7 +609,7 @@ runOptions =
       )
     <*> optional
       ( option
-          auto
+          (frameNumber =<< auto)
           ( long "frame"
               <> metavar "N"
               <> help "With .glb, which frame to write, counted as every verb counts them (default: the last)"
@@ -600,7 +618,7 @@ runOptions =
     <*> switch (long "all-layers" <> help "With .glb, export only the complete paper scene")
     <*> optional
       ( option
-          (atLeastOne =<< auto)
+          (columnCount =<< auto)
           (long "columns" <> metavar "N" <> help "With .svg, figures across the page (default: 3)")
       )
     <*> optional (option (maybeReader (\name -> T.pack name <$ namedView (T.pack name))) viewFlag)

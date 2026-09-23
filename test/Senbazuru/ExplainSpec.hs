@@ -7,10 +7,10 @@
 -- can drop after a colon, so it starts lower case and does not end in a full
 -- stop. Nothing in the type says that, and it is the sort of rule a new
 -- instance breaks without anybody noticing until a message reads
--- @cannot render foo.fold: The frame ...@. 'everyType' samples one constructor
--- per type, which is fourteen of about a hundred — enough to catch a whole
--- instance written the wrong way, not enough to catch one new arm added to an
--- existing one, and hand-maintained either way. Treat it as a worked statement
+-- @cannot render foo.fold: The frame ...@. 'everyType' samples each type,
+-- fifteen of them, with one constructor each and a few with two or three:
+-- enough to catch a whole instance written the wrong way, not enough to catch
+-- one new arm added to an existing one, and hand-maintained either way. Treat it as a worked statement
 -- of the rule rather than as a guard. The sequence language's three types are
 -- the exception: "Senbazuru.Sequence.ErrorSpec" samples every constructor of
 -- theirs.

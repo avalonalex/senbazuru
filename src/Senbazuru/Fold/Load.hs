@@ -29,7 +29,7 @@
 -- == A fourth kind of file, which this module only reads as text
 --
 -- A /sequence source/, @.foldseq@, says how a model is folded, step by step
--- ([glossary](docs/glossary.md#fold-sequences)). It is not a crease pattern,
+-- (see \"Fold sequences\" in docs/glossary.md). It is not a crease pattern,
 -- and it does not become a 'FoldFile' here: running it needs the code that
 -- folds paper and a second file, its sheet. So 'readSequenceText' hands back
 -- its text and nothing more, and this module imports nothing of the sequence

@@ -160,7 +160,9 @@ checkSummary path checked =
 --
 -- A source that begins with @{@ is a FOLD file handed to the wrong verb. The
 -- message says it looks like FOLD, and only here, where a verb is no leak,
--- does a line say which verbs read one.
+-- does a line say which verbs read one. They are @app/@'s verbs, listed by
+-- hand: the tests cannot see that module, and its command parser points back
+-- here.
 refusalLines :: Text -> SequenceError -> [Text]
 refusalLines source err =
   (maybe "" (<> ": ") (sourceLocation err) <> explain err)
