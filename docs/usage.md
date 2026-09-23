@@ -2002,3 +2002,26 @@ candidate, with six shared-camera SVG views and FOLD exports.
 predicted/actual distances, original/refreshed guard margins and separate costs.
 Geometry and actual-cost criteria remain unchanged; a passing candidate is not
 an equilibrium or a checked motion. See [the result](notes/body-contact-restoration.md).
+
+### Compute one fresh direction after the saved repair
+
+```bash
+stack run senbazuru-material-study -- --body-fresh build/fold-material/body-restoration build/fold-material
+```
+
+Open `build/fold-material/body-fresh.html`. The reader validates the saved
+repair and its unchanged control chain before computing one material direction.
+It refreshes the same twelve overlap guards and vertex 27–plane 70 guard,
+keeping the original material, exact holds, weights and quadratic budget.
+
+The gallery compares the repaired start with all 31 trial fractions. Six shared
+views include the contact tip and actual drawing size. `body-fresh/checks.json`
+contains the refreshed rows, full proposal, quadratic report and contact
+multipliers, separate costs, all-pair geometry and actual/predicted plane
+distances. `body-fresh/source/` retains the validated source bytes.
+
+Only a verified quadratic can select a trial; the trial must pass geometry and
+lower actual cost from the repaired start. Full proposed movement still decides
+equilibrium. This opt-in study performs no additional restoration or continuation
+and adds no material solve to the default test suite. Numerical trial positions
+are not a certified motion. See [the result](notes/body-fresh-direction.md).

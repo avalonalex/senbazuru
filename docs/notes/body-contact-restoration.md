@@ -79,10 +79,10 @@ The previous gallery's 813 assets and HTML regenerate byte-for-byte unchanged;
 5,143 earlier source assets remain unchanged. All six new views load correctly.
 An altered saved fraction is refused before any output is written.
 
-A useful next bounded test is **one fresh material direction from this corrected
-1/128 candidate**, refreshing the same three-pair and plane guards. Reuse the
-original trial fractions and geometry/cost checks, and compare with this saved
-state. That tests whether restoration buys progress on the next correction;
-one passing repaired trial cannot answer it. Keep any refusal as evidence.
-The body remains unsettled, the movement between these numerical states is
-not certified, and no whole-crane opening has been established.
+[The follow-up](body-fresh-direction.md) now evaluates **one fresh material
+direction from this corrected 1/128 candidate**, refreshing the same three-pair
+and plane guards. It retains the original trial fractions and geometry/cost
+checks. It selects 1/256 but again refuses 1/128 at 46–70: repair permits another
+tiny correction without removing the finite-motion limit. The body remains
+unsettled, the movement between these numerical states is not certified, and
+no whole-crane opening has been established.

@@ -1393,3 +1393,11 @@ sheet lengths and passes the original geometry, overlap-guard and cost checks.
 The [gallery](usage.md#restore-one-saved-body-trial) retains the saved 1/256 and
 refused 1/128 controls. The repair improves numerical feasibility without a
 visible shape change; it does not make the body settled or its motion checked.
+
+[One fresh direction after repair](notes/body-fresh-direction.md) starts with
+those saved corrected vertices. It rebuilds the material equations and the same
+contact guards, then tests the full direction and thirty halvings against that
+one start. This asks whether repaired contact permits another material
+correction; it keeps that question separate from a settled body opening or a
+checked path. The [gallery command](usage.md#compute-one-fresh-direction-after-the-saved-repair)
+is opt-in and retains every diagnostic fraction.
