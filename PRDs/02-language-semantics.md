@@ -462,9 +462,9 @@ text, never by the anchor
 | `P to L through Q` | O5 | puts P on L, through Q | 0–2 | the side containing P |
 | `P to L1 and Q to L2` | O6 | puts P on L1 and Q on L2 | 0–3 | the side containing P; refused if Q lies on the other side |
 | `P to L1 perpendicular to L2` | O7 | puts P on L1, perpendicular to L2 | 0 or 1 | the side containing P |
-| `P to L` | — | puts P on L with the fold line parallel to L: "fold the corner to the crease" | 1; P on L refused | the side containing P |
+| `P to L` | O7, with L2 ⊥ L | puts P on L with the fold line parallel to L: "fold the corner to the crease" | 1; P on L refused | the side containing P |
 | `edge S` | — | the line through its current segments, only if they are collinear within `Fold.Faces.tolerance` (§4.6) | 1 | needs a `moving` seed |
-| `crease [P, Q]` | Lucero's eighth | runs along existing creases from vertex P to vertex Q | 1 | needs a `moving` seed |
+| `crease [P, Q]` | Lucero's O3, the one he adds | runs along existing creases from vertex P to vertex Q | 1 | needs a `moving` seed |
 | `hinge of NAME` | — | runs along the segments NAME's single move turned about | 1 | needs a `moving` seed |
 | `crease of NAME` | — | runs along the segments NAME created, which may be none. Usable as a line only when they are collinear now | 1 | needs a `moving` seed |
 | `model [(x1, y1), (x2, y2)]` | escape | runs between two points in the current model's coordinates as seen. Flat states only, recorded as "not a landmark", and it depends on the anchor | 1 | needs a `moving` seed |
