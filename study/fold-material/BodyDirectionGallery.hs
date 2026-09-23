@@ -3,7 +3,7 @@
 -- effect of contact guards at one, two or three pairs. All 31 fractions remain
 -- diagnostics; only a verified quadratic plus nonlinear cost and geometry
 -- gates selects a trial. This command never starts a continuation or declares a folding path.
-module BodyDirectionGallery (writeBodyDirection, writeBodyPairs, writeBodyThird) where
+module BodyDirectionGallery (writeBodyDirection, writeBodyPairs, writeBodyThird, rowValue, reportValue, contactValue, pairWitnesses) where
 
 import BodyContactDiagnosis
 import BodyContactDirection

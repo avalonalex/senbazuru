@@ -401,6 +401,12 @@ quadratic through the existing replay and endpoint checks. The shared archive
 reader verifies the blocked continuation chain. This opt-in experiment changes
 no production or ordinary study solver; see
 [the contact direction](notes/body-contact-direction.md).
+`BodyContinuationGallery` repeats that three-pair calculation at each retained
+shape, with at most ten corrections. It refreshes the material rows and
+overlap derivatives, reuses the same replay and geometry gates, and records
+returned shapes separately from every diagnostic trial. The pair list stays
+explicit; no production solver or automatic contact policy changes. See
+[the short continuation](notes/body-short-corrections.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
