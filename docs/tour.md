@@ -1304,3 +1304,12 @@ triangles cross. The [gallery command](usage.md#a-third-contact-pair-at-the-save
 compares those gaps alongside all earlier controls. The usable step remains
 1/8; this motivates updating the local prediction after each valid short
 correction, while retaining the independent geometry gate.
+
+The [short continuation](notes/body-short-corrections.md) refreshes those
+predictions after each retained shape. Ten corrections pass the same checks,
+but total displacement is only 0.112 drawing pixels and late fractions shrink
+to 1/32,768 against pair 46–70. The full proposed movement remains far above
+equilibrium. The [gallery command](usage.md#short-body-corrections-with-refreshed-guards)
+keeps all 310 trials separate from the retained chain, including an almost
+motionless second correction and temporary crossings at other pairs. The next
+inspection uses these saved shapes before changing contact constraints again.

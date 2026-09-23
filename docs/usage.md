@@ -1849,3 +1849,22 @@ passes. Every trial mesh, separate cost, raw correction, contact row and
 original archive is retained under `body-third`. This is an opt-in direction
 comparison, not a converged body opening, general contact-discovery policy or
 certified flexible motion. See [the result](notes/body-third-contact.md).
+
+### Short body corrections with refreshed guards
+
+```bash
+stack run senbazuru-material-study -- --body-short build/fold-material/body-geometry build/fold-material
+```
+
+Open `build/fold-material/body-short.html`. This validates the same saved blocked
+body archive, then attempts at most ten corrections. Each retained shape gets
+fresh material equations and guards for 22–63, 14–55 and 46–70, using the
+unchanged weights, holds, 31 fractions and acceptance limits. An unverified
+quadratic or exhausted search preserves the last valid shape and stops.
+
+The gallery distinguishes retained shapes from trials, displays separate costs
+and contact gaps, and offers all three pairs at fixed magnifications alongside
+actual-size drawings. `body-short/checks.json` and `trace.json` keep raw
+corrections, equations and all refusals; the source archive is copied unchanged.
+This opt-in continuation does not discover contacts, certify intervening motion
+or model the omitted crane's loads. See [the result](notes/body-short-corrections.md).

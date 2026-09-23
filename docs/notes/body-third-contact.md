@@ -112,3 +112,7 @@ then be followed by a fresh local prediction; it need not make the current
 the contact formulation. The pair list remains an explicit specimen policy;
 automatic discovery, continuous flexible motion and whole-crane inflation are
 still separate work.
+
+[The ten-correction continuation](body-short-corrections.md) now retains all
+ten shapes, but moves only 0.112 drawing pixels and remains unsettled. Late
+fractions shrink against 46–70; the next inspection uses those saved trials.
