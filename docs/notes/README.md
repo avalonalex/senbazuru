@@ -145,6 +145,7 @@ read the Haddock module headers; for the domain, start with
 | [shrinking.md](shrinking.md) | A property test is only as useful as its counterexample is small |
 | [folds.md](folds.md) | `foldl` builds a tower, `foldl'` flattens it, `foldr` produces lazily |
 | [strict-fields.md](strict-fields.md) | `foldl'` forces only to WHNF, so lazy fields leak anyway — measured |
+| [parallel-material-tests.md](parallel-material-tests.md) | Independent solver tests can share CI CPUs while retaining every acceptance check |
 
 ## Material mesh
 

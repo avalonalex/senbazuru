@@ -23,7 +23,8 @@ import WingBending (finalMesh)
 import WingLayers
 
 spec :: Spec
-spec = describe "two held touching layers" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ describe "two held touching layers" $ do
   forM_ [8, 16] $ \n -> it ("shares only the real root crease at " ++ show n ++ " divisions") $ do
     fixture <- right (wingLayers n 0)
     let mesh = layersMesh fixture

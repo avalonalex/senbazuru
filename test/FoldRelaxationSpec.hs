@@ -9,7 +9,8 @@ import Senbazuru.Geometry.VectorSpace
 import Test.Hspec
 
 spec :: Spec
-spec = describe "fold-length relaxation" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ describe "fold-length relaxation" $ do
   it "leaves an isometric single fold unchanged without doing an iteration" $ do
     let mesh = sharpMesh 4 Single
     relaxLengths defaultSettings mesh `shouldBe` Right (Relaxation [Checkpoint 0 mesh (maxLengthError mesh)] True Nothing)

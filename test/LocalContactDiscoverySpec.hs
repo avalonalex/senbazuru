@@ -20,7 +20,8 @@ import SurfaceContact qualified as Contact
 import Test.Hspec
 
 spec :: Spec
-spec = describe "local contact discovery in bending paper" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ describe "local contact discovery in bending paper" $ do
   forM_ [8] $ \count ->
     it ("discovers and corrects the curled strip with " ++ show count ++ " spans") $ do
       fixture <- right (curledPanelAt count (356 / fromIntegral count))

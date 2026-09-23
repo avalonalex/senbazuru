@@ -23,7 +23,8 @@ import Test.Hspec
 import UnequalCrease
 
 spec :: Spec
-spec = describe "unequal controls beside one closed crease" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ describe "unequal controls beside one closed crease" $ do
   it "holds the crease-adjacent strip and outer edge on both resolutions" $
     forM_ [(n, c) | n <- [1, 2], c <- [MatchedHolds, OpenUpperGrip, UpperCurl, CurlWithoutContact]] $ \(n, c) -> do
       f <- right (unequalCrease n c)

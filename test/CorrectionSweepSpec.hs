@@ -23,7 +23,8 @@ import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (choose, forAll)
 
 spec :: Spec
-spec = describe "numerical correction sweep" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ describe "numerical correction sweep" $ do
   it "catches the shortcut through a connected square with length-preserving endpoints" $ do
     let (initial, finish) = crossingCorrection
     forM_ [initial, finish] $ \mesh -> do

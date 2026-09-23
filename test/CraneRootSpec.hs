@@ -20,7 +20,8 @@ import Test.Hspec
 import WingBending (finalMesh)
 
 spec :: Spec
-spec = beforeAll load $ describe "the crane wing-to-body transition" $ do
+-- Each example owns its solver state; any shared fixture is immutable.
+spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" $ do
   it "changes holds and root preferences without changing the sheet or tip grip" $ \source -> do
     held <- right (craneRoot source 3 HeldRoot)
     let baseline = rootSpread held
