@@ -1932,3 +1932,25 @@ Original source reports and FOLD files are preserved under `body-final/source/`.
 No solver, geometry tolerance, layer order or equilibrium criterion changes.
 This is an inspection of numerical trials, not a certified folding motion.
 See [why the two contact measurements differ](notes/body-final-contact.md).
+
+
+### Compare one additional body plane guard
+
+```bash
+stack run senbazuru-material-study -- --body-plane build/fold-material/body-short build/fold-material
+```
+
+Open `build/fold-material/body-plane.html`. This validates the same saved
+archive and rebuilds the final attempt's material equations and twelve overlap
+guards exactly. It solves one new quadratic with an additional local
+vertex 27 → plane 70 guard, and compares all 31 fractions against the archived
+three-pair control. No continuation runs. The gallery offers a shared fraction
+or each direction's selected trial, fixed contact crops, actual-size paper,
+guard activity and actual-versus-predicted plane distance. `body-plane/checks.json`
+retains all rows, corrections and measurements; source files are copied unchanged.
+
+The vertex lies outside the finite triangle, so this is a conservative local
+policy, not automatic contact discovery. The signed-distance floor constrains
+the linear prediction; actual positions must still pass every unchanged
+geometry and cost check. A tiny passing fraction is not a settled endpoint or
+a certified motion. See [the result and remaining limit](notes/body-plane-guard.md).
