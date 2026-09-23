@@ -2064,3 +2064,23 @@ source bytes, FOLD/SVG files, separate costs and `checks.json`/`trace.json`.
 Failed repairs and fractions remain diagnostic; no automatic pair discovery,
 production solver change, whole-crane inflation or continuously checked flexible
 motion is provided. See [the result](notes/body-restoration-loop.md).
+
+### Inspect the saved 55–93 refusal
+
+```bash
+stack run senbazuru-material-study -- --body-contact-55-93 build/fold-material/body-restoration-loop build/fold-material
+```
+
+Open `build/fold-material/body-contact-55-93.html`. This opt-in diagnostic
+validates the saved ten-correction loop and its source chain, then copies
+correction ten's start, refused 1/64 and passing 1/128. It does not run another
+solve or repair. The source and output archive directories must be separate.
+
+The gallery locates triangles 55 and 93 in material coordinates and compares
+six signed plane distances, overlap corners and their derivatives. Pair order
+is 93 below 55. Hypothetical overlap guards are evaluated along the saved
+direction; none is installed, and all original acceptance decisions remain
+unchanged. Enlarged views label vertex 30 and corners 4 and 5; paper views
+retain the original camera, scale and bytes. The result does not certify
+continuous motion, equilibrium or whole-crane contact. See
+[the diagnosis and proposed comparison](notes/body-contact-55-93.md).

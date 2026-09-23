@@ -1417,3 +1417,11 @@ geometry and cost checks. The total cost falls 1.72%, but net movement is only
 last larger trial crosses another pair, 55–93, while its 1/128 fraction passes.
 The gallery separates each original trial, one repair and the retained shape;
 it does not turn numerical backtracking into a folding animation.
+
+[Inspecting that 55–93 refusal](notes/body-contact-55-93.md) identifies vertex
+30 crossing plane 93's tolerance outside the finite triangle. The actual
+overlap gaps worsen too, and their derivatives accurately predict that loss.
+Hypothetical guards would reject both saved fractions because “do not worsen
+a negative gap” is stricter than accepting a gap within tolerance. The
+[inspection](usage.md#inspect-the-saved-5593-refusal) copies saved paper and
+annotates the pair without another solve or any changed acceptance decision.
