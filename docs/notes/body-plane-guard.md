@@ -87,8 +87,9 @@ added to the default test suite. All 1,862 tests pass after a warning-free cold
 build (171.7 seconds of test time); formatting, HLint 3.10 and JavaScript checks
 pass. All gallery fractions and views work in the browser.
 
-Next inspect the finite plane-distance loss along these saved fractions,
-separating plane rotation from relative vertex movement before changing the
-direction policy again. That needs no new solves. The almost-motionless second
-correction remains a separate sensitivity diagnostic. No settled body opening,
-checked flexible route or whole-crane inflation is established here.
+[The following saved-data inspection](body-plane-loss.md) separates the finite
+loss using the triangle centroid. About 98% of the missed distance change at
+1/128 comes from relative movement interacting with the rotated normal; a
+second-order estimate closely matches the saved result. It runs no new solve.
+The almost-motionless second correction remains a separate sensitivity
+diagnostic, and no settled body opening or whole-crane inflation is established.

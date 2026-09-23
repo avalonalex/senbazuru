@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Why the plane-distance prediction misses</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:960px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}.chart{width:900px;max-width:100%;display:block}pre{overflow:auto;max-height:400px}code{font-size:.93em}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-plane.html">One extra plane guard</a> · <a href="body-final.html">The original refusal</a>
+<p class="tag">SENBAZURU · SAVED PLANE-DISTANCE ACCOUNTING · #347</p>
+<h1>Two movements cancel—until they act together</h1>
+<p>The guard predicts distance using the initial plane orientation and its initial rate of turning. Relative vertex movement and plane rotation cancel in that prediction. During the finite trial, the plane is already turning while the vertex moves relative to it. Their interaction can still reduce the distance.</p>
+<p class="status">Saved positions only: no new solves, repairs or acceptance changes. The added guard's 1/256 trial still passes, and 1/128 still crosses 46–70. The charts below magnify measured numbers; the paper images retain their original positions.</p>
+<div class="controls"><label>Common trial fraction <select id="fraction"></select></label><label>Paper view <select id="view"><option value="tip">Contact tip · magnified top</option><option value="pair">Pair overview · magnified top</option><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2>Archived three-pair control</h2><img id="control-image" alt="Unmodified saved control trial"><p id="control-status"></p><a id="control-fold">FOLD</a></section><section class="figure"><h2>Additional plane guard</h2><img id="plane-image" alt="Unmodified saved plane-guard trial"><p id="plane-status"></p><a id="plane-fold">FOLD</a></section></div>
+<p id="legend"></p>
+<h2>The first-order cancellation</h2>
+<p>We measure the vertex relative to triangle 70's centroid—the average of its three corners. A normal is a unit-length arrow perpendicular to the plane. The distance is the component of the relative position along that normal. The two linear terms below nearly cancel for the additional guard. Values are in sheet units; they are accounting terms, not independently possible paper movements or forces.</p>
+<div class="scroll"><table><thead><tr><th>Direction</th><th>Relative movement</th><th>Initial plane rotation</th><th>Sum: predicted change</th><th>Actual change</th><th>Normal turns, degrees</th></tr></thead><tbody id="linear"></tbody></table></div>
+<h2>What the linear prediction misses</h2>
+<p><strong>Interaction</strong> measures the changed normal acting on the changed relative position. <strong>Plane rotation remainder</strong> measures the normal's departure from its initial turning rate, acting on the original relative position. The reference point is fixed by our centroid convention; individual shares are not unique physical causes.</p>
+<img class="chart" id="chart" alt="Missed distance: plane rotation remainder, interaction, relative rounding and total; grey control and blue extra guard">
+<p>Numerical chart, in units of <code>1e-12</code> sheet lengths. Grey: control. Blue: extra guard. Each fraction uses one shared vertical scale for both directions; that scale changes when choosing a different fraction.</p>
+<div class="scroll"><table><thead><tr><th>Direction</th><th>Rotation remainder ×1e-12</th><th>Interaction ×1e-12</th><th>Relative rounding ×1e-12</th><th>Total missed ×1e-12</th><th>Reconciliation residual</th></tr></thead><tbody id="missing"></tbody></table></div>
+<p id="interpretation"></p>
+<h2>Does the second-order estimate explain the refusal?</h2>
+<p>A second-order estimate adds terms proportional to the square of the trial fraction. It includes the leading rotation remainder and interaction. This is a diagnostic estimate, not a new guard or acceptance rule; original all-pair checks still decide whether a saved trial passes.</p>
+<div class="scroll"><table><thead><tr><th>Direction</th><th>Linear distance</th><th>Second-order distance</th><th>Actual distance</th><th>Actual − second-order</th><th>Margin above −1e-7</th><th>46–70 crosses</th></tr></thead><tbody id="distances"></tbody></table></div>
+<p>Relative rounding includes the saved coordinates and centroid arithmetic. At very small fractions, rounding can dominate the remaining difference. The residual is reported, not silently assigned to a physical effect. A negative plane distance by itself is not a crossing; the original check also tests the other vertices and the finite intersection segment.</p>
+<h2>Original paper checks remain in force</h2>
+<div class="scroll"><table><thead><tr><th>Direction</th><th>Geometry passes</th><th>Cost decreases</th><th>Relative length error</th><th>Hold error</th><th>Crossing pairs</th><th>Reversed orders</th><th>Total cost</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<p>The vertex is outside triangle 70's finite outline. Its extended-plane guard is a conservative local policy, not a newly discovered physical contact. The useful extra-guard trial moves only about 0.00216 drawing pixels. There is still no settled body opening or continuously checked flexible folding route.</p>
+<details><summary>The exact accounting identity</summary><p>Let <code>r0</code> be the initial vertex-minus-centroid vector and <code>n0</code> the initial normal. For the saved trial, <code>dr = r − r0</code> and <code>dn = n − n0</code>. Then <code>d − d0 = n0·dr + dn·r0 + dn·dr</code>. Subtracting the initial linear prediction leaves the rotation remainder, interaction and relative rounding shown above. The second-order normal includes its normalization, so its length stays consistent with a unit normal to this order.</p></details>
+<p><a href="body-plane-loss/checks.json">All accounting terms and original reports</a> · <a href="body-plane-loss/source/checks.json">Unchanged source comparison</a></p>
+<details><summary>Displayed trial data</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_PLANE_LOSS_DATA*/null;
+const $=id=>document.getElementById(id),num=x=>x===0?'0':Number(x).toPrecision(7),precise=x=>Number(x).toPrecision(13),yes=x=>x?'Yes':'No';
+function row(id,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}$(id).append(tr);}
+if(data){
+ for(let k=0;k<=30;k++){const o=document.createElement('option');o.value=k;o.textContent='1 / '+2**k+(k===8?' · extra guard selected':k===7?' · next larger refusal':k===15?' · control selected':'');o.selected=k===8;$('fraction').append(o);}
+ function draw(){const k=Number($('fraction').value),view=$('view').value;for(const id of ['linear','missing','distances','geometry'])$(id).replaceChildren();const shown=[];
+ for(const direction of data.directions){const t=direction.trials[k],a=t.accounting,old=t.archived,s=old.state,d=direction.archived;
+  $(direction.id+'-image').src='body-plane-loss/source/'+t.id+'-'+view+'.svg';$(direction.id+'-fold').href='body-plane-loss/source/'+t.id+'.fold';$(direction.id+'-status').textContent=(old.geometryPassed?'Geometry passes. ':'Geometry fails. ')+(old.costDecreased?'Cost decreases. ':'Cost does not decrease. ')+(d.selectedState.includes(t.id)?'Original selected trial.':'Original diagnostic trial; not selected.');
+  row('linear',[d.title,num(a.relativeLinear),num(a.rotationLinear),num(a.relativeLinear+a.rotationLinear),num(a.actualDistance-a.initialDistance),num(a.normalTurn*180/Math.PI)]);
+  row('missing',[d.title,...['rotationRemainder','motionInteraction','relativeRounding'].map(key=>num(a[key]*1e12)),num((a.actualDistance-a.linearDistance)*1e12),num(a.reconciliationError)]);
+  row('distances',[d.title,precise(a.linearDistance),precise(a.quadraticDistance),precise(a.actualDistance),num(a.actualDistance-a.quadraticDistance),num(a.actualDistance+data.source.contactTolerance),yes(old.pair.crosses)]);
+  row('geometry',[d.title,yes(old.geometryPassed),yes(old.costDecreased),num(s.maxRelativeEdgeError),num(s.holdError),s.contact.crossingPanels.map(p=>p.map(x=>x.replace('triangle-','')).join('–')).join(', ')||'None',s.contact.reversedOrders.length,num(s.totalCost)]);shown.push(t);
+ }
+ $('chart').src='body-plane-loss/loss-'+k+'.svg';const a=shown[1].accounting,miss=a.actualDistance-a.linearDistance;
+ $('interpretation').textContent=Math.abs(miss)>1e-14?'For the additional guard at this fraction, the interaction contributes '+num(100*a.motionInteraction/miss)+'% of the missed signed distance change under the centroid convention. The remaining terms and residual reconcile the actual result.':'At this tiny fraction, do not infer a reliable percentage from subtracting nearly equal floating-point distances. Read the absolute terms and residual instead.';
+ $('legend').textContent=['tip','pair'].includes(view)?'Unchanged shared source crops. Purple: triangle 46. Orange: triangle 70. Blue: vertex 27. Green: overlap corners. Red: mathematical intersection. The tip crop may omit larger trials; use the pair overview for context.':'Unchanged source images. Spatial views use the same camera and 600 pixels per sheet unit. Grey wire lines include hidden paper; colored highlights mark failures. Material coordinates show the original sheet.';
+ $('raw').textContent=JSON.stringify(shown,null,2);
+ }
+ $('fraction').addEventListener('change',draw);$('view').addEventListener('change',draw);draw();
+}
+</script></html>
