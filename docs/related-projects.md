@@ -34,7 +34,7 @@ says *not checked*, check it before reading the code.
 | [Freeform Origami, Rigid Origami Simulator, Origamizer](https://tsg.ne.jp/TT/software/) — Tomohiro Tachi | Rigid-origami kinematics, interactive design under rigid constraints, and crease patterns for any polyhedron | Binaries only, non-commercial | Tachi's *papers* are the method [#55](https://github.com/avalonalex/senbazuru/issues/55) follows; the binaries are what to compare against once it exists. |
 | [TreeMaker](https://langorigami.com/article/treemaker/) — Robert J. Lang | Turns a stick figure into a crease pattern for a base | GPL | The design end of the pipeline, which senbazuru does not do. Read for the vocabulary of bases and flaps. |
 | [ReferenceFinder](https://langorigami.com/article/referencefinder/) — Robert J. Lang | Finds a short folding sequence that lands a reference point or line, by searching the Huzita–Hatori axioms | GPL (not checked) | Exactly the *reference* vocabulary a written folding scheme needs ([#97](https://github.com/avalonalex/senbazuru/issues/97)); see [notes/huzita-hatori.md](notes/huzita-hatori.md). |
-| [Eos](https://www.semanticscholar.org/paper/Computational-Origami-System-Eos-Ida-Takahashi/b7ae46f4f3b074d336af2802ac0a8337a39c1ba0) — Tetsuo Ida and others | The E-origami system: Mathematica programs that fold as a person would, implement Huzita's axioms with a logical specification in first-order predicate logic, solve the constraints symbolically, and prove geometric properties of the result | Needs Mathematica; not checked | The rigorous answer to the half of [#97](https://github.com/avalonalex/senbazuru/issues/97) that is hard — how a fold names the line it folds on. Read it for the reference vocabulary. It is not a diagram tool: it constructs reference geometry and proves things about it, one computed line at a time, so it answers *where does this line go* and never *how do I fold a crane*. |
+| [Eos](https://www.semanticscholar.org/paper/Computational-Origami-System-Eos-Ida-Takahashi/b7ae46f4f3b074d336af2802ac0a8337a39c1ba0) — Tetsuo Ida and others | The E-origami system: Mathematica programs that fold as a person would, implement Huzita's axioms with a logical specification in first-order predicate logic, solve the constraints symbolically, and prove geometric properties of the result | Closed source: Mathematica packages sent on request to project members; the tutorial is CC BY-NC-ND 4.0 | The rigorous answer to the half of [#97](https://github.com/avalonalex/senbazuru/issues/97) that is hard — how a fold names the line it folds on. Read it for the reference vocabulary, and for its formal model of folded paper: faces with adjacency and a superposition relation, a fold as a graph rewrite. It is not a diagram tool, but it does fold whole models: it can fold a chosen set of faces, say where in the stack they go, and has folded a crane. See [E3](../PRDs/research/E3-formal-fold-semantics.md). |
 | [Doodle](https://doodle.sourceforge.net/) — Jérôme Gout and others | A text language for origami diagrams, compiled to PostScript. 2000–2001 | not checked | A whole diagramming language with no geometry in it: the arrows and captions were typed, not computed. One of the three shapes [#97](https://github.com/avalonalex/senbazuru/issues/97) weighs. |
 | [Foldinator](https://zingman.com/origami/foldinator3OSMEpaper.php) — John Szinger, 2001 | A modeller that folds a sheet step by step in 3D and generates annotated diagrams. Valley, mountain and reverse folds; never released | paper only | The closest ancestor of [#60](https://github.com/avalonalex/senbazuru/issues/60), and a record of how far a fold vocabulary got twenty-five years ago. |
 | [rigid-origami](https://github.com/belalugaX/rigid-origami) | Python: rigid-origami crease-pattern generation and folding simulation, framed as a game environment | not checked | Another rigid-origami simulator to compare angle solutions against. |
@@ -122,6 +122,20 @@ reconciles them.
   crease pattern, by way of a stick figure and a base packing.
 - **FoldingAgent** — [arXiv 2609.00377](https://arxiv.org/abs/2609.00377).
   Parametric folding procedures inferred from demonstration videos.
+
+Two more from September 2026 formalise constructions, compared in
+[E3](../PRDs/research/E3-formal-fold-semantics.md):
+
+- **Beloch** — [github.com/tophcodes/beloch](https://github.com/tophcodes/beloch),
+  MIT, OCaml. A declarative fold language on the Huzita–Justin axioms whose
+  construction rules are close to ours: candidates computed on the current
+  flat state, lines that miss the paper dropped, the moving side named in the
+  text, and exactly one answer required. Its decision records are worth
+  reading before settling what `nearest P` measures.
+- **A Lean Paper About Paper** — [arXiv 2609.14912](https://arxiv.org/abs/2609.14912).
+  Proves in Lean that each Huzita fold exists, and for some that it is unique,
+  but enumerates none, so it cannot confirm that a solver found every answer.
+  Its repository has no licence.
 
 ## Reading
 

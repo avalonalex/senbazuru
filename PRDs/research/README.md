@@ -3,7 +3,9 @@
 These notes were written on 2026-09-14 against `568dcb6`. They are **snapshots**:
 line numbers, issue states and measurements are as they were that day. They
 are the evidence the PRDs one directory up cite; the PRDs, not these notes,
-record the decisions.
+record the decisions. E3 is the exception in date only: it was written on
+2026-09-23 against `19de099`, after the first sequence code merged, and the
+decision it led to is recorded in `decisions.md` like the rest.
 
 The file names are research keys (A1, A2, B, …) because the notes cite each
 other by them, for example "A2 F8" means finding 8 of the A2 note.
@@ -52,6 +54,7 @@ Nothing in the repository was modified to produce these notes. No note ran
 | --- | --- |
 | [E1 — sequence languages and programs](E1-prior-art-sequence-languages.md) | Doodle, Eos, Foldinator, origami-diagrams, Rabbit Ear, Akitaya et al., and the four 2026 papers (all four arXiv ids resolve), with each one's move and reference vocabulary and licence. A table of book moves, each classed as a hinge, a coupled motion, or needing bending. |
 | [E2 — references and persistent naming](E2-references-and-persistent-naming.md) | The Huzita–Justin–Hatori operations and how many answers each can have. How books name paper. CAD's topological naming problem and what maps onto senbazuru: the sheet is a fixed parameter domain. Machine knitting as the analogous craft language. A proposed reference vocabulary. |
+| [E3 — sequences with formal semantics](E3-formal-fold-semantics.md) | Five families that define what a fold is: abstract origami and Eos, folded states and simple folds, formalised construction axioms and Beloch, simulators and robot folds, and the notation's own semantics. No source gives a sense to reopening a folded hinge, and where a sense word is used it names the moving paper's motion; senbazuru's first rule, reading the held face, made a page turn depend on which crease is listed first. Corrections to E1. |
 | [F — Haskell embedding techniques](F-haskell-edsl-techniques.md) | Deep and shallow embeddings, free monads and tagless final, each judged against a language that must round-trip through a file. Builder ergonomics. megaparsec versus JSON. Round-trip properties. What is checked statically and what only running decides. |
 | [G — realistic rendering and simulation](G-realistic-rendering-and-simulation.md) | Geometry models from rigid panels to IPC-style contact. glTF material and animation options with viewer support. Classifying SVG lines by provenance rather than dihedral angle. A fidelity ladder, G0–G4, with an appearance axis and a line-drawing axis. |
 

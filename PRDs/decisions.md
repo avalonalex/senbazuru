@@ -5,6 +5,11 @@ commit `568dcb6`. Nothing is implemented. Every PRD file in this directory is
 written against this record, and where a file and this record disagree, this
 record wins and the file is to be corrected.
 
+**Amended** 2026-09-23, after M1 and #344 were implemented: the sense of a
+hinge turn is where the moving paper goes ([D5](#d5-presentation-and-the-readers-side),
+owner decision 13), from [E3](research/E3-formal-fold-semantics.md), which
+also adds [§10](#10-corrections) rows 33–36.
+
 **How it relates to the drafts.**
 
 - [decisions-draft-v1.md](research/spine-reviews/decisions-draft-v1.md) was the
@@ -290,8 +295,9 @@ table in the next version of this record.
   `perpendicular to L through P`, O5 `P to L through Q`, O6
   `P to L1 and Q to L2`, O7 `P to L1 perpendicular to L2`, and `P to L` (the fold
   putting P on L with the fold line parallel to L); `edge S` when its current
-  segments are collinear within `Fold.Faces.tolerance`; `crease [P, Q]` (Lucero's
-  eighth, along existing creases); `hinge of NAME`, `crease of NAME`; and the
+  segments are collinear within `Fold.Faces.tolerance`; `crease [P, Q]` (the
+  operation Lucero adds to the seven, his O3: along existing creases);
+  `hinge of NAME`, `crease of NAME`; and the
   escape `model [(x1, y1), (x2, y2)]`, flat states only, recorded "not a
   landmark".
 - **Resolution is decided by the slot a point fills, never by its spelling.**
@@ -555,6 +561,28 @@ table in the next version of this record.
   | --- | --- | --- |
   | valley | +A (edge 9 in step 2) | −A (edge 11 in step 2) |
   | mountain | −A (edges 8, 10 in step 1) | +A (the crane wing's accepted `behind`) [reasoned] |
+- **Amended 2026-09-23 (owner decision 13): the sense is where the moving
+  paper goes.** `valley`/`in front` means the paper that moves sets off
+  towards the reader's side, and `mountain`/`behind` away from it, as
+  [02 §5.3](02-language-semantics.md#53-one-conversion-for-the-whole-model)'s
+  own sentence says; reopening a hinge that is already folded is a move with
+  no sense. This replaces the bullet above's reading of the sign from the
+  first segment's *stationary* face. That reading agrees on every open hinge,
+  which is every example above, but on a flap lying folded over its held face
+  it calls lifting the flap towards the reader `behind`, and on a page turn,
+  whose held faces lie on both sides of the line, its answer depends on which
+  crease is listed first ([E3](research/E3-formal-fold-semantics.md) G, run in
+  `ghci` on `square-base.fold`). No source E3 read gives a sense to reopening,
+  and those that name a sense name the moving paper's motion.
+  `prepareFlapToward` (#344) is to read the moving paper instead: a positive
+  change in a crease's angle moves the face beside it towards that face's own
+  top, so the sign follows from the moving face's way up, and a turn whose
+  moving paper lies on both sides of the line, or stands on edge, is refused.
+  `TowardPlusZ` then means the turn that sets the moving paper off towards +z.
+  02 §5.3's table and its paragraph on handing `Flap` a side, 05 L14 (R-05-45's
+  table and the acceptance rows) and 01 §5.5 describe the replaced rule and
+  are corrected with that change. #282's negative control becomes
+  `fold in front 180° hinge of c1 moving corner south-east`.
 - **Render options never change a step's meaning.** For every view V,
   `run -o x.svg --view V` draws the states `run -o x.fold` writes. On a page, a
   stated kind is inverted when the camera looks from the opposite side; edge-on
@@ -2060,6 +2088,7 @@ and each has to be decided before the milestone named.
 | 10 | Eighth turns by trigonometry, or a `sheet square as diamond` start | trigonometry, platform bits in written coordinates stated | `rotate` takes even k only, so frames stay exact; the crane-opening example's first step becomes a header option | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | yes, [§3](#3-recorded-text-this-design-changes) row 8 at M0 | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
 | 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs after #208 | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR before #208 lands; a higher cap admits unmeasured settles | M4 |
+| 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that
@@ -2076,7 +2105,8 @@ the bird arrows golden ([C70](#changes-since-draft-v2)); `decodeFile`'s words
 ## 10. Corrections
 
 Findings about the repository's own text and code, proposed as follow-ups; none is
-filed yet. Items 1–26 keep v2's numbers; 27–32 are new. *Row* means a
+filed yet. Items 1–26 keep v2's numbers; 27–32 are new; 33–36 were added on
+2026-09-23 from [E3](research/E3-formal-fold-semantics.md). *Row* means a
 [§3](#3-recorded-text-this-design-changes) row carries it; *issue* means M0 files a
 new issue ([10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
 writes each out).
@@ -2115,6 +2145,10 @@ writes each out).
 | 30 | `README.md:213` and `docs/roadmap.md` item 2 call the vocabulary missing | [ran] `grep -n` | row 18 |
 | 31 | A library message names CLI flags: `LineStopsOnTheModel` starts with `creaseEndFlag`'s `--from`/`--to` | [code] [`ThroughLayers.hs:195`](../src/Senbazuru/Origami/ThroughLayers.hs#L195), [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71) | issue, before M4; row 17 |
 | 32 | The research note's count line says 7 of the crane's 12 some-layer steps hinge on existing creases; its own table marks 6 | [research] [gap-layer-selective-folds](research/gap-layer-selective-folds.md) "(e) The traditional crane, step by step" | recorded here; the note is a snapshot and is not edited |
+| 33 | E1 says Eos only picks a half-plane, and that no prior art folds only the top flap or the near layers; Eos takes a face set (2007) and face lists with `InsertFace` (2021) | [web] [E3](research/E3-formal-fold-semantics.md) A | recorded here; the note is a snapshot and is not edited |
+| 34 | E1's Unverified list names Eos's functions `BeginOrigami` and `ProveByGroebner`; they are `NewOrigami` and `Prove`, and Eos is closed source | [web] [E3](research/E3-formal-fold-semantics.md) A | recorded here; the note is a snapshot and is not edited |
+| 35 | `docs/related-projects.md` said Eos never answers how to fold a crane and that its licence was not checked; Eos has folded a crane, and it is closed source | [web] [E3](research/E3-formal-fold-semantics.md) A | fixed in `docs/related-projects.md` |
+| 36 | 02 §4.3, D2 and the glossary additions called `crease [P, Q]` "Lucero's eighth"; Lucero numbers it O3, the operation he adds, and his O8 is Huzita–Hatori O7 | [web] [E3](research/E3-formal-fold-semantics.md) C | fixed in all three |
 
 ## 11. File plan and writing rules
 
