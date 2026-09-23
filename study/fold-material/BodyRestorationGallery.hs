@@ -7,7 +7,7 @@
 -- derivatives at the refused trial. Their existing 1e-12 numerical residual
 -- cap is unchanged. Actual all-pair contact and final-weight material cost
 -- still decide the candidate, not the plane distance or tiny repair alone.
-module BodyRestorationGallery (writeBodyRestoration) where
+module BodyRestorationGallery (writeBodyRestoration, writeFreshRestoration) where
 
 import BodyContactDiagnosis
 import BodyContactDirection (contactGuard)
@@ -15,6 +15,7 @@ import BodyContactGallery (boxAround)
 import BodyContactRestoration
 import BodyCorrectionArchive
 import BodyDirectionGallery (pairWitnesses, rowValue)
+import BodyFreshArchive
 import BodyPatch
 import BodyPatchCheckpoints
 import BodyPatchSubdivision (seedPassed)
@@ -24,7 +25,7 @@ import BodyPlaneGuard
 import BodyPlaneGuardGallery (drawContact, trianglePoints, vertexAt, xy)
 import Control.Monad (forM, forM_, unless)
 import CraneSpread
-import Data.Aeson (encode, object, (.=))
+import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
 import Data.List (zip7)
@@ -42,23 +43,53 @@ import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath (takeDirectory, (</>))
 
+-- | Shared measurement/repair path for both saved directions. Keeping the
+-- archive adapters separate makes the repeated experiment change only its
+-- inputs; the original repair's exported measurements remain reproducible.
+data RestorationInput = RestorationInput
+  { inputStudy :: BodyPatch,
+    inputStart :: MaterialMesh,
+    inputHalf :: MaterialMesh,
+    inputRefused :: MaterialMesh,
+    inputReport :: Value,
+    inputFiles :: [(FilePath, BL.ByteString)]
+  }
+
 writeBodyRestoration :: FilePath -> FilePath -> IO ()
 writeBodyRestoration source destination = do
-  let output = destination </> "body-restoration"
-  separateOutput source output
+  separateOutput source (destination </> "body-restoration")
   archive <- readPlaneArchive source
-  (half, refused) <- case [(ts, record) | ("plane", record, ts) <- planeDirections archive] of
-    [(ts, record)] -> do
-      scale <- field "selectedScale" record
-      unless (scale == (1 / 256 :: Double)) (die "restoration requires the saved passing 1/256 control")
-      let named name = case [(m, r) | (n, m, r) <- ts, n == name] of [entry] -> pure entry; _ -> die "missing saved plane trial"
-      a <- named "plane-8"
-      b <- named "plane-7"
-      pure (fst a, fst b)
-    _ -> die "expected the saved additional-plane direction"
-  let study = planeStudy archive
+  (half, refused) <- restorationControls "plane" (planeDirections archive)
+  let input = RestorationInput (planeStudy archive) (planeStart archive) half refused (planeReport archive) (planeFiles archive)
+  renderRestoration "body-restoration" 349 "Saved start of attempt ten" destination input
+
+writeFreshRestoration :: FilePath -> FilePath -> IO ()
+writeFreshRestoration source destination = do
+  separateOutput source (destination </> "body-fresh-restoration")
+  archive <- readFreshArchive source
+  (half, refused) <- restorationControls "fresh" (freshDirections archive)
+  let input = RestorationInput (freshStudy archive) (freshStart archive) half refused (freshReport archive) (freshFiles archive)
+  renderRestoration "body-fresh-restoration" 354 "Saved repaired start of fresh direction" destination input
+
+restorationControls :: String -> [(String, Value, [(String, MaterialMesh, Value)])] -> IO (MaterialMesh, MaterialMesh)
+restorationControls direction directions = case [(ts, record) | (name, record, ts) <- directions, name == direction] of
+  [(ts, record)] -> do
+    scale <- field "selectedScale" record
+    unless (scale == (1 / 256 :: Double)) (die "restoration requires the saved passing 1/256 control")
+    let named name = case [m | (n, m, _) <- ts, n == name] of [mesh] -> pure mesh; _ -> die "missing saved restoration trial"
+    half <- named (direction ++ "-8")
+    refused <- named (direction ++ "-7")
+    pure (half, refused)
+  _ -> die "expected one matching saved direction"
+
+renderRestoration :: FilePath -> Int -> Text -> FilePath -> RestorationInput -> IO ()
+renderRestoration galleryName issue startTitle destination input = do
+  let output = destination </> galleryName
+      study = inputStudy input
       fixture = patchSpread study
-      start = planeStart archive
+      start = inputStart input
+      half = inputHalf input
+      refused = inputRefused input
       pins = spreadPins fixture
       pairs = [(22, 63), (14, 55), (46, 70)]
       displacement a b = IM.fromList (zip [0 ..] (zipWith (\p q -> position q ^-^ position p) (samples a) (samples b)))
@@ -91,7 +122,7 @@ writeBodyRestoration source destination = do
   after <- checked (measurePlane repaired 27 70)
   movement <- checked (savedMovement (SavedPoint 0 refused) (SavedPoint 0 repaired))
   mainMovement <- checked (savedMovement (SavedPoint 0 start) (SavedPoint 0 refused))
-  let states = [("start", "Saved start of attempt ten", start), ("half", "Saved passing 1/256", half), ("refused", "Saved refused 1/128", refused), ("restored", "One restoration at 1/128", repaired)]
+  let states = [("start", startTitle, start), ("half", "Saved passing 1/256", half), ("refused", "Saved refused 1/128", refused), ("restored", "One restoration at 1/128", repaired)]
   pairPoints <- concat <$> traverse (trianglePoints start) [46, 70]
   tipPoints <- fmap concat $ forM states $ \(_, _, mesh) -> do
     vertex <- vertexAt mesh 27
@@ -100,7 +131,7 @@ writeBodyRestoration source destination = do
     pure (vertex : intersectionEnds cut ++ [C.witnessLower w | w <- corners, F.contactGap (C.witnessRow w) < 0])
   let pairBox = boxAround (map xy pairPoints); tipBox = boxAround (map xy tipPoints)
   createDirectoryIfMissing True output
-  forM_ (planeFiles archive) $ \(name, bytes) -> do
+  forM_ (inputFiles input) $ \(name, bytes) -> do
     let path = output </> "source" </> name
     createDirectoryIfMissing True (takeDirectory path)
     BL.writeFile path bytes
@@ -116,8 +147,8 @@ writeBodyRestoration source destination = do
   let constraints = [object ["triangles" .= (let (a, b) = C.witnessTriangles a0 in [a, b]), "originalRow" .= rowValue row0, "refreshedRow" .= rowValue row1, "originalLinearMargin" .= m0, "refreshedLinearMargin" .= m1, "originalGap" .= gap a0, "refusedGap" .= gap a1, "restoredGap" .= gap a2] | (a0, a1, a2, row0, row1, m0, m1) <- zip7 ws0 ws1 ws2 oldGuards refreshed oldMargins newMargins]
       gap = F.contactGap . C.witnessRow
       raw = [xyz (IM.findWithDefault (V3 0 0 0) i correction) | i <- [0 .. length (samples start) - 1]]
-      result = object ["gallery" .= ("body-restoration" :: Text), "issue" .= (349 :: Int), "restorationCount" .= (1 :: Int), "newMaterialSolves" .= (0 :: Int), "continuationSteps" .= (0 :: Int), "source" .= planeReport archive, "states" .= records, "targetDistance" .= target, "refusedDistance" .= planeDistance before, "restoredDistance" .= planeDistance after, "predictedDistance" .= (planeDistance before + dotRow (planeGradient before, 0 :: Double) installed), "gradient" .= rowValue (planeGradient before, planeDistance before), "rawCorrection" .= raw, "correctionMovement" .= movement, "mainMovement" .= mainMovement, "constraints" .= constraints, "originalPlaneMargin" .= originalPlaneMargin, "restorationPlaneMargin" .= restorationPlaneMargin, "guardsPassed" .= guardsPassed, "geometryPassed" .= geometry, "costDecreased" .= (newCost < baseCost), "costChangeFromTrial" .= (newCost - oldCost), "candidatePassed" .= (guardsPassed && geometry && newCost < baseCost), "acceptedEndpoint" .= False, "continuousMotionChecked" .= False, "wholeCraneChecked" .= False, "contactTolerance" .= panelTolerance, "lengthTolerance" .= (1e-5 :: Double), "guardResidualTolerance" .= (1e-12 :: Double), "lengthWeight" .= (1e8 :: Double), "contactWeight" .= (1e10 :: Double)]
+      result = object ["gallery" .= galleryName, "issue" .= issue, "restorationCount" .= (1 :: Int), "newMaterialSolves" .= (0 :: Int), "continuationSteps" .= (0 :: Int), "source" .= inputReport input, "states" .= records, "targetDistance" .= target, "refusedDistance" .= planeDistance before, "restoredDistance" .= planeDistance after, "predictedDistance" .= (planeDistance before + dotRow (planeGradient before, 0 :: Double) installed), "gradient" .= rowValue (planeGradient before, planeDistance before), "rawCorrection" .= raw, "correctionMovement" .= movement, "mainMovement" .= mainMovement, "constraints" .= constraints, "originalPlaneMargin" .= originalPlaneMargin, "restorationPlaneMargin" .= restorationPlaneMargin, "guardsPassed" .= guardsPassed, "geometryPassed" .= geometry, "costDecreased" .= (newCost < baseCost), "costChangeFromTrial" .= (newCost - oldCost), "candidatePassed" .= (guardsPassed && geometry && newCost < baseCost), "acceptedEndpoint" .= False, "continuousMotionChecked" .= False, "wholeCraneChecked" .= False, "contactTolerance" .= panelTolerance, "lengthTolerance" .= (1e-5 :: Double), "guardResidualTolerance" .= (1e-12 :: Double), "lengthWeight" .= (1e8 :: Double), "contactWeight" .= (1e10 :: Double)]
   BL.writeFile (output </> "checks.json") (encode result)
-  template <- TIO.readFile "study/fold-material/body-restoration.html"
-  TIO.writeFile (destination </> "body-restoration.html") (T.replace "/*BODY_RESTORATION_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode result))) template)
-  putStrLn ("Wrote " ++ destination </> "body-restoration.html")
+  template <- TIO.readFile ("study/fold-material" </> galleryName ++ ".html")
+  TIO.writeFile (destination </> galleryName ++ ".html") (T.replace "/*BODY_RESTORATION_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode result))) template)
+  putStrLn ("Wrote " ++ destination </> galleryName ++ ".html")

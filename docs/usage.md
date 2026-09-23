@@ -2025,3 +2025,22 @@ lower actual cost from the repaired start. Full proposed movement still decides
 equilibrium. This opt-in study performs no additional restoration or continuation
 and adds no material solve to the default test suite. Numerical trial positions
 are not a certified motion. See [the result](notes/body-fresh-direction.md).
+
+### Repair the fresh direction's saved refused trial
+
+```bash
+stack run senbazuru-material-study -- --body-fresh-restoration build/fold-material/body-fresh build/fold-material
+```
+
+Open `build/fold-material/body-fresh-restoration.html`. This reads the saved fresh
+direction and validates its 31 fractions and earlier source chain without
+solving it again. It applies one minimum-movement repair at fresh 1/128,
+restoring vertex 27's predicted distance to plane 70 toward this direction's
+repaired starting distance. The original start and passing 1/256 stay as controls.
+
+`body-fresh-restoration/checks.json` records raw and installed movement, original
+and refreshed guard margins, separate costs and all-pair geometry. The four
+states have FOLD exports and six shared-camera views. Source bytes are copied
+unchanged. One algebraic repair runs, with no new material direction, repeated
+repair, continuation or altered threshold. A passing candidate remains distinct
+from equilibrium or a certified motion. See [the result](notes/body-fresh-restoration.md).

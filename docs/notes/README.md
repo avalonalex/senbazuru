@@ -104,6 +104,7 @@ read the Haddock module headers; for the domain, start with
 | [body-contact-direction.md](body-contact-direction.md) | Guard one body contact in the correction calculation; the next larger trial exposes a neighboring pair |
 | [body-contact-pairs.md](body-contact-pairs.md) | Guard two contacts from the same saved shape: 1/8 becomes usable, but 1/4 exposes a third pair |
 | [body-short-corrections.md](body-short-corrections.md) | Fresh guards retain ten shapes, but later fractions shrink against the same crossing boundary |
+| [body-fresh-restoration.md](body-fresh-restoration.md) | Repeat one contact repair after refreshing the material direction, retaining all geometry and cost checks |
 | [body-fresh-direction.md](body-fresh-direction.md) | One fresh material direction from the repaired trial, with unchanged guards and checks |
 | [body-contact-restoration.md](body-contact-restoration.md) | One minimum-movement repair makes the saved 1/128 body trial pass unchanged geometry and cost checks |
 | [body-plane-loss.md](body-plane-loss.md) | Relative vertex movement and plane rotation interact: about 98% of the missed distance loss at 1/128 |
