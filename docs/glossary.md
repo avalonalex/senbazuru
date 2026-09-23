@@ -118,7 +118,10 @@ needs each word exists.
 
 | Term | Meaning |
 | --- | --- |
+| **Core move** | A move as a run performs it, with no shorthand left: no `let`, no line known only by a name, and no `fold and unfold`, which is a fold followed by the unfold of that fold. *Elaboration* makes them; each remembers the move the author wrote. See `Senbazuru.Sequence.Elaborate`. |
+| **Elaboration** | The pass between checking a fold sequence and running it, which rewrites its shorthand as *core moves*. It needs no paper and cannot fail. |
 | **Fold sequence** | The list of instructions that takes a sheet of paper to a model, as a `Sequence` value. It can be written two ways, as Haskell or as a *sequence source*, and both make the same value. Not the same thing as a **step** sequence in a FOLD file, which is the *output*: consecutive frames, one per picture. See `Senbazuru.Sequence.Syntax`. |
+| **Let** | `let NAME = …` in a fold sequence: a name for a point or a line, standing for it wherever it is used and worked out afresh each time. It pins nothing to the paper; a `mark` does that, naming the paper that is at a point when the mark is made. |
 | **Move** | One thing done to the paper, or to how it is shown: a fold, an unfold, turning the model over. A **step**, the instruction for one picture, holds one or more moves, because "fold and unfold both diagonals" is one picture of two moves. |
 | **Sequence source** | The text file, `.foldseq`, in which an author writes a fold sequence. A program, not an input format: it becomes FOLD only when it is run. See [architecture.md](architecture.md#layering-rules). |
 | **Sheet** | The paper a fold sequence starts from: a plain unit square, or the first frame of a FOLD file the source names. It is a second file, which is one of the two reasons a sequence source cannot be read the way a crease pattern is. |
