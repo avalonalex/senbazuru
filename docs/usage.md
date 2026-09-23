@@ -1805,3 +1805,27 @@ can leave the fixed tip crop. Original source bytes are copied unchanged into
 `body-direction/source`. This is not a continuation, a whole-crane solve or a
 continuous motion certificate. It is outside CI. See
 [the result and next blocker](notes/body-contact-direction.md).
+
+### Two contact pairs in one body correction
+
+```bash
+stack run senbazuru-material-study -- --body-pairs build/fold-material/body-geometry build/fold-material
+```
+
+Open `build/fold-material/body-pairs.html`. This uses the same saved blocked
+shape as `--body-direction`; it does not rerun the earlier continuation.
+The archived proposal, matched unconstrained quadratic and guard for 22–63
+remain controls. One additional quadratic guards both 22–63 and 14–55, with
+the same equations, damping and budget. Each direction receives the same 31
+trial fractions and unchanged cost, geometry and equilibrium gates.
+
+Select either contact pair for fixed overlap and tip close-ups, or use the
+actual-size side/top/underside views. The constraint table identifies each
+corner's pair, starting gap and role in the selected direction. Source ids
+in the quadratic contact report index that direction's `constraintIds` list,
+which points into the shared `constraints` array in `checks.json`. This
+mapping keeps the single-pair control distinct from the two-pair calculation.
+Every trial FOLD, separate cost, raw correction and original archive is kept
+under `body-pairs`. This remains an opt-in direction comparison, not a settled
+body opening or a continuously checked motion. See
+[the comparison](notes/body-contact-pairs.md).

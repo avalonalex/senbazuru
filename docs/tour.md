@@ -1285,5 +1285,13 @@ all unchanged geometry checks. Both ordinary controls remain blocked. At
 1/64, the guarded pair passes but neighboring pair 14–55 crosses. The
 [comparison command](usage.md#one-contact-aware-body-correction) keeps every
 trial and both controls. This is a useful local correction, still far from
-equilibrium and too small to make a visible opening. The next comparison
-should guard both pairs from the same saved shape.
+equilibrium and too small to make a visible opening.
+
+The [two-pair comparison](notes/body-contact-pairs.md) now guards both contacts
+from that saved shape. A 1/8 trial lowers total cost 1.256878%, with all the
+same geometry gates passing. A third pair, 46–70, blocks 1/4. The selected
+movement is below 0.086 drawing pixels and full-proposal convergence still
+fails. The [command](usage.md#two-contact-pairs-in-one-body-correction) keeps
+both previous controls and the one-pair result, with separate views of each
+contact. This is still one correction of a body patch, not a settled crane
+opening or a certified flexible folding route.

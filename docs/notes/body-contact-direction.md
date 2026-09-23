@@ -88,3 +88,6 @@ Next, compare a direction guarding **both 22–63 and 14–55** from this same s
 shape. Keep the two controls, quadratic budget and final gates. That isolates
 whether addressing the newly exposed obstruction permits a larger useful
 correction before committing to another continuation.
+
+The [two-pair follow-up](body-contact-pairs.md) now performs this comparison,
+retaining these controls and measurements.
