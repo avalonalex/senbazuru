@@ -161,6 +161,7 @@ library
     Senbazuru.Render.Svg
     Senbazuru.Sequence.Build
     Senbazuru.Sequence.Check
+    Senbazuru.Sequence.Elaborate
     Senbazuru.Sequence.Error
     Senbazuru.Sequence.Parse
     Senbazuru.Sequence.Pretty
@@ -384,6 +385,7 @@ test-suite senbazuru-test
     Senbazuru.Render.SvgSpec
     Senbazuru.Sequence.BuildSpec
     Senbazuru.Sequence.CheckSpec
+    Senbazuru.Sequence.ElaborateSpec
     Senbazuru.Sequence.ErrorSpec
     Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
