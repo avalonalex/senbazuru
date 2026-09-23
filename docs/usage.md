@@ -1954,3 +1954,25 @@ policy, not automatic contact discovery. The signed-distance floor constrains
 the linear prediction; actual positions must still pass every unchanged
 geometry and cost check. A tiny passing fraction is not a settled endpoint or
 a certified motion. See [the result and remaining limit](notes/body-plane-guard.md).
+
+
+### Explain the saved plane-distance loss
+
+```bash
+stack run senbazuru-material-study -- --body-plane-loss build/fold-material/body-plane build/fold-material
+```
+
+Open `build/fold-material/body-plane-loss.html`. This reads the successful
+archived comparison from #345, validates both proposals and all 62 trial
+meshes against their stated fractions and unchanged paper checks, and computes
+centroid-based distance accounting. It calls no quadratic or continuation
+solver. Incomplete trials or inconsistent geometry and measurements are refused before
+output is written.
+
+Both directions share a fraction and paper view. Original FOLDs and six SVG
+views per state are copied unchanged; new numerical charts show rotation,
+interaction and rounding beyond the linear prediction. `body-plane-loss/checks.json`
+retains all terms, normal vectors, second-order estimates and original reports.
+The decomposition uses a stated reference point, not unique physical forces.
+Second-order predictions are diagnostics; the original acceptance and equilibrium
+criteria remain in force. See [the result](notes/body-plane-loss.md).

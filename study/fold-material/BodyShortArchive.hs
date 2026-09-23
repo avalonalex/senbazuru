@@ -7,7 +7,7 @@
 -- Keeping this at the archive boundary lets later inspections share one rule
 -- for what the final attempt means. File names are derived from fixed indices,
 -- never accepted as arbitrary paths from JSON. No correction solver is called.
-module BodyShortArchive (ShortArchive (..), ShortState (..), readShortArchive) where
+module BodyShortArchive (ShortArchive (..), ShortState (..), readShortArchive, checkState) where
 
 import BodyCorrectionArchive
 import BodyCorrectionReplay

@@ -1372,3 +1372,13 @@ The [comparison gallery](usage.md#compare-one-additional-body-plane-guard) keeps
 both controls, every trial and all unchanged geometry and cost checks visible.
 This explicit guard outside the triangle is a local experiment, not a general
 contact policy or an accepted body opening.
+
+
+[Accounting for the finite distance loss](notes/body-plane-loss.md) shows why
+that linear prediction misses: the plane turns while the vertex moves relative
+to its centroid. Their interaction contributes about 98% of the missed loss
+at 1/128. Doubling the fraction nearly quadruples that loss, and a second-order
+estimate closely matches the saved distance. The
+[gallery](usage.md#explain-the-saved-plane-distance-loss) preserves both directions,
+all original decisions and paper drawings; only numerical charts are new.
+This inspection runs no solve and changes no acceptance threshold.

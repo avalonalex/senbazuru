@@ -104,6 +104,7 @@ read the Haddock module headers; for the domain, start with
 | [body-contact-direction.md](body-contact-direction.md) | Guard one body contact in the correction calculation; the next larger trial exposes a neighboring pair |
 | [body-contact-pairs.md](body-contact-pairs.md) | Guard two contacts from the same saved shape: 1/8 becomes usable, but 1/4 exposes a third pair |
 | [body-short-corrections.md](body-short-corrections.md) | Fresh guards retain ten shapes, but later fractions shrink against the same crossing boundary |
+| [body-plane-loss.md](body-plane-loss.md) | Relative vertex movement and plane rotation interact: about 98% of the missed distance loss at 1/128 |
 | [body-plane-guard.md](body-plane-guard.md) | One moving-plane guard permits 1/256 instead of 1/32768, but finite plane motion still limits the trial |
 | [body-final-contact.md](body-final-contact.md) | Vertex 27 crosses a plane threshold outside the overlap while the guarded height gap improves |
 | [body-third-contact.md](body-third-contact.md) | A third pair adds no force: the linear gap prediction passes while the finite trial crosses |

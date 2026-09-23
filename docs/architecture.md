@@ -421,6 +421,11 @@ one vertex's distance to a moving triangle plane, including its normal's
 normalization. `BodyPlaneGuardGallery` adds that explicit local inequality to
 one matched quadratic and replays it beside the saved proposal. This changes
 no production contact policy; see [the comparison](notes/body-plane-guard.md).
+`BodyPlaneLoss` accounts for the finite signed-distance change using the triangle
+centroid, including interaction, nonlinear rotation and rounding. Its gallery
+reuses the archive's state validator, rechecks both saved directions and copies
+paper assets unchanged. Only numerical accounting charts are new; see
+[the finite loss](notes/body-plane-loss.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
