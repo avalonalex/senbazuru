@@ -8,8 +8,8 @@
 -- It is the test that finds what nobody thought to write down, a spelling the
 -- printer emits and the parser reads differently. It runs over every tree a
 -- source can spell, meaningful or not, which is more than the design asks
--- for; the promise as the design states it, for sequences the checker
--- accepts, is in the checker's spec.
+-- for. The design's own form, for sequences the checker accepts, is in the
+-- checker's spec, stated more strongly there and with the reason.
 --
 -- __Built equals parsed__, on the two examples the design works through. The
 -- blintz is read from @blintz.foldseq@ at the repository root, typed as an

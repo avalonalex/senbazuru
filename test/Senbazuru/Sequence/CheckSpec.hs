@@ -73,7 +73,9 @@ spec = do
         coverPlanted planted . cover 50 (isNothing planted) "held no such value" $
           case (planted, checkSequence s) of
             (Nothing, Right checked) -> readsBack s checked
-            (Just expected, Left (StaticRefused _ _ problem)) -> problem === plantedProblem expected
+            (Just expected, Left (StaticRefused place _ problem)) ->
+              counterexample (T.unpack (prettySequence s)) $
+                (place, problem) === (plantedPlace expected, plantedProblem expected)
             (Just expected, Right _) ->
               counterexample ("accepted, though it holds " <> show expected <> "\n" <> T.unpack (prettySequence s)) False
             (_, Left err) -> counterexample ("refused: " <> T.unpack (explain err) <> "\n" <> T.unpack (prettySequence s)) False

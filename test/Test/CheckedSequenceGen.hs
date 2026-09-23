@@ -68,11 +68,11 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
-import Senbazuru.Sequence.Error (Bound (..), StaticProblem (..), refusalKinds)
+import Senbazuru.Sequence.Error (Bound (..), Place (..), StaticProblem (..), refusalKinds)
 import Senbazuru.Sequence.Parse (reservedWords)
 import Senbazuru.Sequence.Syntax
 import Test.QuickCheck
-import Test.SequenceGen (genAngle, genCaption, genFraction, genPath, genSigned)
+import Test.SequenceGen (genAngle, genCaption, genFraction, genPath, genSigned, namePool)
 import Test.SequenceHelpers (built)
 
 -- | A sequence the checker should accept.
@@ -136,7 +136,7 @@ pick = lift . elements
 freshName :: G Name
 freshName = do
   used <- gets scopeUsed
-  base <- pick ["a", "b", "c1", "flap-2", "first-petal", "wing_tip", "L", "P"]
+  base <- pick namePool
   let taken = (`Set.member` used)
       name = case filter (not . taken) (base : [base <> "-" <> T.pack (show n) | n <- [2 :: Int ..]]) of
         new : _ -> new
@@ -499,10 +499,13 @@ data Fault
 data Placement = AsAStepName | AsAMove | InsideATogether | InsideAnExpectation
   deriving stock (Eq, Show, Enum, Bounded)
 
--- | What 'genPossiblyFaulty' planted, where, and what the checker must say.
+-- | What 'genPossiblyFaulty' planted, where, and what the checker must say:
+-- the step it must name, counted from 1 with the name it has, and the
+-- problem.
 data Planted = Planted
   { plantedFault :: Fault,
     plantedWhere :: Placement,
+    plantedPlace :: Place,
     plantedProblem :: StaticProblem
   }
   deriving stock (Show)
@@ -522,8 +525,8 @@ genPossiblyFaulty = do
         do
           fault <- arbitraryBoundedEnum
           (carrier, problem) <- faulty fault
-          (planted, placement) <- plant carrier s
-          pure (planted, Just (Planted fault placement problem))
+          (planted, placement, place) <- plant carrier s
+          pure (planted, Just (Planted fault placement place problem))
       )
     ]
 
@@ -548,7 +551,7 @@ faulty = \case
   SampleBackwards -> do
     angle <- negate <$> positive
     pure (InMove [] (Macro (Petal TopFlapTip 90) [angle]), ParameterOutOfRange angle (Exclusive 0) (Exclusive 90))
-  -- The name is outside the generator's pool, so it cannot be taken already.
+  -- The name is outside 'namePool', so it cannot be taken already.
   ContinueBackwards -> do
     angle <- negate <$> positive
     let macroStep = Step (Just "planted-macro") Nothing [built (Macro (RabbitEar Centre 90) [])]
@@ -561,7 +564,11 @@ faulty = \case
 -- | Put the value in a step that exists or in a new one, anywhere. A move may
 -- be wrapped in a @together@ or an @expect refused@, where the checker reads
 -- it just the same. Steps the value needs go just before the step it is in.
-plant :: Carrier -> Sequence -> Gen (Sequence, Placement)
+--
+-- The step it lands in is the one the refusal must name: the @at@ steps kept
+-- before it and any it needs come first, so its number is one more than
+-- those.
+plant :: Carrier -> Sequence -> Gen (Sequence, Placement, Place)
 plant carrier (Sequence header steps) = do
   at <- choose (0, length steps)
   existing <- if null steps then pure False else arbitrary
@@ -569,9 +576,9 @@ plant carrier (Sequence header steps) = do
       rebuilt middle = Sequence header (before <> middle)
   case (carrier, existing, after) of
     (StepNamed name, True, Located sp step : rest) ->
-      pure (rebuilt (Located sp step {stepName = Just name} : rest), AsAStepName)
+      pure (rebuilt (Located sp step {stepName = Just name} : rest), AsAStepName, InStep (at + 1) (Just name))
     (StepNamed name, _, _) ->
-      pure (rebuilt (built (Step (Just name) Nothing [built (TurnOver LeftRight)]) : after), AsAStepName)
+      pure (rebuilt (built (Step (Just name) Nothing [built (TurnOver LeftRight)]) : after), AsAStepName, InStep (at + 1) (Just name))
     (InMove needed m, _, _) -> do
       (wrapped, placement) <-
         elements
@@ -580,9 +587,10 @@ plant carrier (Sequence header steps) = do
             (ExpectRefused (RefusalKind "FlapCovered") m, InsideAnExpectation)
           ]
       let first = map built needed
+          number = at + length needed + 1
       case (existing, after) of
         (True, Located sp step : rest) -> do
           j <- choose (0, length (stepMoves step))
           let (early, late) = splitAt j (stepMoves step)
-          pure (rebuilt (first <> (Located sp step {stepMoves = early <> (built wrapped : late)} : rest)), placement)
-        _ -> pure (rebuilt (first <> (built (Step Nothing Nothing [built wrapped]) : after)), placement)
+          pure (rebuilt (first <> (Located sp step {stepMoves = early <> (built wrapped : late)} : rest)), placement, InStep number (stepName step))
+        _ -> pure (rebuilt (first <> (built (Step Nothing Nothing [built wrapped]) : after)), placement, InStep number Nothing)
