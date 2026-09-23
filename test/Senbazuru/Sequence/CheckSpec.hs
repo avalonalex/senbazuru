@@ -51,7 +51,7 @@ import Senbazuru.Sequence.Error
 import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.Pretty (prettySequence)
 import Senbazuru.Sequence.Syntax
-import Test.CheckedSequenceGen (Fault, genChecked, genPossiblyFaulty)
+import Test.CheckedSequenceGen (Fault, Placement, Planted (..), genChecked, genPossiblyFaulty)
 import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Property, Testable, checkCoverage, counterexample, cover, forAll, property, (.&&.), (===))
@@ -70,12 +70,12 @@ spec = do
 
     prop "is refused once it holds a value only Haskell can make, and for that value" $
       checkCoverage . forAll genPossiblyFaulty $ \(s, planted) ->
-        coverFaults (fmap fst planted) . cover 50 (isNothing planted) "held no such value" $
+        coverPlanted planted . cover 50 (isNothing planted) "held no such value" $
           case (planted, checkSequence s) of
             (Nothing, Right checked) -> readsBack s checked
-            (Just (_, expected), Left (StaticRefused _ _ problem)) -> problem === expected
-            (Just (fault, _), Right _) ->
-              counterexample ("accepted, though it holds " <> show fault <> "\n" <> T.unpack (prettySequence s)) False
+            (Just expected, Left (StaticRefused _ _ problem)) -> problem === plantedProblem expected
+            (Just expected, Right _) ->
+              counterexample ("accepted, though it holds " <> show expected <> "\n" <> T.unpack (prettySequence s)) False
             (_, Left err) -> counterexample ("refused: " <> T.unpack (explain err) <> "\n" <> T.unpack (prettySequence s)) False
 
   describe "a sequence that means something" $ do
@@ -242,60 +242,13 @@ coverFeatures s inner =
 constructorNames :: [String]
 constructorNames =
   -- moves
-  [ "Fold",
-    "FoldAndUnfold",
-    "Unfold",
-    "TurnOver",
-    "Rotate",
-    "Anchor",
-    "Mark",
-    "Let",
-    "Macro",
-    "Continue",
-    "Together",
-    "Pose",
-    "Repeat",
-    "Checkpoint",
-    "NotModelled",
-    "ExpectRefused"
-  ]
+  ["Fold", "FoldAndUnfold", "Unfold", "TurnOver", "Rotate", "Anchor", "Mark", "Let", "Macro", "Continue", "Together", "Pose", "Repeat", "Checkpoint", "NotModelled", "ExpectRefused"]
     -- lines
-    <> [ "EdgeOf",
-         "Segment",
-         "Onto",
-         "LineOnto",
-         "PerpendicularThrough",
-         "PointToLineThrough",
-         "TwoToTwo",
-         "PointToLinePerpendicular",
-         "PointToLine",
-         "ExistingCrease",
-         "HingeOf",
-         "CreaseOf",
-         "ModelSegment",
-         "LineNamed"
-       ]
+    <> ["EdgeOf", "Segment", "Onto", "LineOnto", "PerpendicularThrough", "PointToLineThrough", "TwoToTwo", "PointToLinePerpendicular", "PointToLine", "ExistingCrease", "HingeOf", "CreaseOf", "ModelSegment", "LineNamed"]
     -- points
     <> ["CornerOf", "Centre", "AtSheet", "MidpointOf", "MidpointOfEdge", "FractionAlong", "Meet", "EndOfCreaseOf", "PointNamed"]
     -- the rest
-    <> [ "Degrees",
-         "AllLayers",
-         "TopLayers",
-         "TopFlap",
-         "BindPoint",
-         "BindLine",
-         "Collapse",
-         "RabbitEar",
-         "Petal",
-         "TipAt",
-         "TopFlapTip",
-         "MirroredAcross",
-         "TurnedQuarters",
-         "Relations",
-         "StackingFirst",
-         "StartFolded",
-         "SheetFile"
-       ]
+    <> ["ValleyFold", "MountainFold", "ToFlat", "Degrees", "FlapOfFirstArgument", "AllLayers", "TopLayers", "TopFlap", "LeftRight", "TopBottom", "Clockwise", "Anticlockwise", "BindPoint", "BindLine", "Collapse", "RabbitEar", "Petal", "TipAt", "TopFlapTip", "MirroredAcross", "TurnedQuarters", "Relations", "StackingFirst", "StartFlat", "StartFolded", "UnitSquare", "SheetFile", "ColouredUp", "WhiteUp"]
 
 -- | The constructors a sequence holds, read from its 'show': there each
 -- constructor is a word starting with a capital, and nothing else is but the
@@ -328,9 +281,15 @@ allMoves s = concatMap within [locValue m | located <- seqSteps s, m <- stepMove
         ExpectRefused _ inner -> within inner
         _ -> []
 
-coverFaults :: (Testable prop) => Maybe Fault -> prop -> Property
-coverFaults planted inner =
-  foldr (\fault -> cover 2 (planted == Just fault) ("planted " <> show fault)) (property inner) [minBound .. maxBound]
+-- | Every kind of value has to be planted, and in every place.
+coverPlanted :: (Testable prop) => Maybe Planted -> prop -> Property
+coverPlanted planted inner =
+  foldr
+    (\(label, present) -> cover 1 present label)
+    (property inner)
+    ( [("planted " <> show fault, fmap plantedFault planted == Just fault) | fault <- [minBound .. maxBound :: Fault]]
+        <> [("planted " <> show placement, fmap plantedWhere planted == Just placement) | placement <- [minBound .. maxBound :: Placement]]
+    )
 
 -- | What a test sees of a check.
 data Outcome = Accepted | Refused Place StaticProblem | DidNotParse Text

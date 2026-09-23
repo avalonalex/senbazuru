@@ -44,15 +44,19 @@
 -- 'genPossiblyFaulty' plants one of them, sometimes, in a sequence made as
 -- above: a name that is not a word, a reserved word as a name, a count of no
 -- layers, a fold's angle with a sign, a macro-move taken backwards, an
--- in-between pose with a sign, an @unfold@ of no steps. Everything before the
--- planted value is sound, so the checker must refuse the sequence and must
--- refuse it for that value, which is handed back beside it.
+-- in-between pose with a sign, a @continue@ taken backwards, an @unfold@ of no
+-- steps. It goes on a step's name, or in a move standing alone or inside a
+-- @together@ or an @expect refused@. Everything before the planted value is
+-- sound, so the checker must refuse the sequence and must refuse it for that
+-- value, which is handed back beside it with where it was put.
 --
 -- Every span is 'NoSpan', as in a sequence built in Haskell.
 module Test.CheckedSequenceGen
   ( genChecked,
     genPossiblyFaulty,
+    Planted (..),
     Fault (..),
+    Placement (..),
   )
 where
 
@@ -69,6 +73,7 @@ import Senbazuru.Sequence.Parse (reservedWords)
 import Senbazuru.Sequence.Syntax
 import Test.QuickCheck
 import Test.SequenceGen (genAngle, genCaption, genFraction, genPath, genSigned)
+import Test.SequenceHelpers (built)
 
 -- | A sequence the checker should accept.
 genChecked :: Gen Sequence
@@ -213,9 +218,6 @@ stepG number = do
     movesG = do
       moves <- someOf (moveG 2)
       if all isLet moves then (moves <>) . pure <$> foldG else pure moves
-
-built :: a -> Located a
-built = Located NoSpan
 
 -- The rules the checker reads a step by, restated; see the module header.
 
@@ -488,15 +490,30 @@ data Fault
   | SignedFold
   | MacroBackwards
   | SampleBackwards
+  | ContinueBackwards
   | UnfoldNothing
   deriving stock (Eq, Show, Enum, Bounded)
 
--- | Where a planted value goes: the name of a step, or a move.
-data Carrier = StepNamed Name | InMove Move
+-- | Where it was planted. A value inside a block has to be found inside the
+-- block, so each place is one the checker could miss on its own.
+data Placement = AsAStepName | AsAMove | InsideATogether | InsideAnExpectation
+  deriving stock (Eq, Show, Enum, Bounded)
+
+-- | What 'genPossiblyFaulty' planted, where, and what the checker must say.
+data Planted = Planted
+  { plantedFault :: Fault,
+    plantedWhere :: Placement,
+    plantedProblem :: StaticProblem
+  }
+  deriving stock (Show)
+
+-- | A planted value: the name of a step or a move, and any steps it needs
+-- before it. @continue@ needs a finished step of one macro-move to continue.
+data Carrier = StepNamed Name | InMove [Step] Move
 
 -- | A sequence made by 'genChecked', and a third of the time one value only
--- Haskell can make planted in it, with the problem the checker must name.
-genPossiblyFaulty :: Gen (Sequence, Maybe (Fault, StaticProblem))
+-- Haskell can make planted in it.
+genPossiblyFaulty :: Gen (Sequence, Maybe Planted)
 genPossiblyFaulty = do
   s <- genChecked
   frequency
@@ -505,8 +522,8 @@ genPossiblyFaulty = do
         do
           fault <- arbitraryBoundedEnum
           (carrier, problem) <- faulty fault
-          planted <- plant carrier s
-          pure (planted, Just (fault, problem))
+          (planted, placement) <- plant carrier s
+          pure (planted, Just (Planted fault placement problem))
       )
     ]
 
@@ -521,39 +538,51 @@ faulty = \case
     (,ReservedWordAsName name) <$> nameCarrier name
   NoLayers -> do
     count <- choose (-3, 0)
-    pure (InMove (Fold ValleyFold ToFlat (EdgeOf West) (TopLayers count) (Just Centre)), LayerCountNotPositive count)
+    pure (InMove [] (Fold ValleyFold ToFlat (EdgeOf West) (TopLayers count) (Just Centre)), LayerCountNotPositive count)
   SignedFold -> do
     angle <- negate <$> positive
-    pure (InMove (Fold MountainFold (Degrees angle) (EdgeOf North) AllLayers (Just Centre)), SignNotAllowed angle)
+    pure (InMove [] (Fold MountainFold (Degrees angle) (EdgeOf North) AllLayers (Just Centre)), SignNotAllowed angle)
   MacroBackwards -> do
     angle <- negate <$> positive
-    pure (InMove (Macro (Collapse Centre Nothing angle) []), ParameterOutOfRange angle (Exclusive 0) (Inclusive 180))
+    pure (InMove [] (Macro (Collapse Centre Nothing angle) []), ParameterOutOfRange angle (Exclusive 0) (Inclusive 180))
   SampleBackwards -> do
     angle <- negate <$> positive
-    pure (InMove (Macro (Petal TopFlapTip 90) [angle]), ParameterOutOfRange angle (Exclusive 0) (Exclusive 90))
-  UnfoldNothing -> pure (InMove (Unfold []), UnfoldNamesNothing)
+    pure (InMove [] (Macro (Petal TopFlapTip 90) [angle]), ParameterOutOfRange angle (Exclusive 0) (Exclusive 90))
+  -- The name is outside the generator's pool, so it cannot be taken already.
+  ContinueBackwards -> do
+    angle <- negate <$> positive
+    let macroStep = Step (Just "planted-macro") Nothing [built (Macro (RabbitEar Centre 90) [])]
+    pure (InMove [macroStep] (Continue "planted-macro" angle), ParameterOutOfRange angle (Exclusive 0) (Inclusive 180))
+  UnfoldNothing -> pure (InMove [] (Unfold []), UnfoldNamesNothing)
   where
     positive = (% 2) <$> choose (1, 720)
-    nameCarrier name = elements [StepNamed name, InMove (Mark name Centre Nothing), InMove (Let name (BindPoint Centre))]
+    nameCarrier name = elements [StepNamed name, InMove [] (Mark name Centre Nothing), InMove [] (Let name (BindPoint Centre))]
 
 -- | Put the value in a step that exists or in a new one, anywhere. A move may
 -- be wrapped in a @together@ or an @expect refused@, where the checker reads
--- it just the same.
-plant :: Carrier -> Sequence -> Gen Sequence
+-- it just the same. Steps the value needs go just before the step it is in.
+plant :: Carrier -> Sequence -> Gen (Sequence, Placement)
 plant carrier (Sequence header steps) = do
   at <- choose (0, length steps)
   existing <- if null steps then pure False else arbitrary
   let (before, after) = splitAt at steps
+      rebuilt middle = Sequence header (before <> middle)
   case (carrier, existing, after) of
     (StepNamed name, True, Located sp step : rest) ->
-      pure (Sequence header (before <> (Located sp step {stepName = Just name} : rest)))
+      pure (rebuilt (Located sp step {stepName = Just name} : rest), AsAStepName)
     (StepNamed name, _, _) ->
-      pure (Sequence header (before <> (built (Step (Just name) Nothing [built (TurnOver LeftRight)]) : after)))
-    (InMove m, _, _) -> do
-      wrapped <- elements [m, Together [built m], ExpectRefused (RefusalKind "FlapCovered") m]
+      pure (rebuilt (built (Step (Just name) Nothing [built (TurnOver LeftRight)]) : after), AsAStepName)
+    (InMove needed m, _, _) -> do
+      (wrapped, placement) <-
+        elements
+          [ (m, AsAMove),
+            (Together [built m], InsideATogether),
+            (ExpectRefused (RefusalKind "FlapCovered") m, InsideAnExpectation)
+          ]
+      let first = map built needed
       case (existing, after) of
         (True, Located sp step : rest) -> do
           j <- choose (0, length (stepMoves step))
-          let (first, second) = splitAt j (stepMoves step)
-          pure (Sequence header (before <> (Located sp step {stepMoves = first <> (built wrapped : second)} : rest)))
-        _ -> pure (Sequence header (before <> (built (Step Nothing Nothing [built wrapped]) : after)))
+          let (early, late) = splitAt j (stepMoves step)
+          pure (rebuilt (first <> (Located sp step {stepMoves = early <> (built wrapped : late)} : rest)), placement)
+        _ -> pure (rebuilt (first <> (built (Step Nothing Nothing [built wrapped]) : after)), placement)
