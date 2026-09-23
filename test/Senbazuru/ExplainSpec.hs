@@ -46,6 +46,7 @@ import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
 import Senbazuru.Sequence.Error (Found (..), ParseProblem (..), Place (..), SequenceError (..), StaticProblem (..))
+import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
 
@@ -58,6 +59,8 @@ everyType :: [(String, Text)]
 everyType =
   [ ("FoldError", explain (VertexCoordTooShort (VertexId 3) 1)),
     ("LoadError", explain (ReadFailed "a.fold" "no such file")),
+    ("LoadError, a sequence source", explain (IsSequenceSource "Blintz.foldseq")),
+    ("LoadError, not UTF-8", explain (NotUtf8 "Blintz.foldseq")),
     ("SaveError", explain (WriteFailed "a.fold" "read-only")),
     ("ImportError", explain (UnknownLineType 7 12)),
     ("CheckError", explain (Check.NotFlat 0.25)),
@@ -69,7 +72,9 @@ everyType =
     ("StepError", explain (StepError 2 NoVertices)),
     ("SequenceError", explain (StaticRefused (InStep 2 Nothing) NoSpan EmptyStep)),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
-    ("StaticProblem", explain EmptyStep)
+    ("StaticProblem", explain EmptyStep),
+    ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),
+    ("RunOptionError, no runner", explain NoRunnerYet)
   ]
 
 spec :: Spec

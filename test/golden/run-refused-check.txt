@@ -1,0 +1,4 @@
+blintz.foldseq:10:35: step 5: "c9" is not defined here; a name can be used only after the step or move that gives it
+   |
+10 | step "Reopen the first corner." { unfold c9 }
+   |                                   ^^^^^^^^^

@@ -88,6 +88,7 @@ extra-source-files:
   test/golden/*.foldseq
   test/golden/*.glb
   test/golden/*.svg
+  test/golden/*.txt
 
 source-repository head
   type:     git
@@ -168,6 +169,7 @@ library
     Senbazuru.Sequence.Error
     Senbazuru.Sequence.Parse
     Senbazuru.Sequence.Pretty
+    Senbazuru.Sequence.RunPlan
     Senbazuru.Sequence.Syntax
 
   -- transformers, not mtl: Sequence.Build keeps a list in a State and needs
@@ -392,6 +394,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.ErrorSpec
     Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
+    Senbazuru.Sequence.RunPlanSpec
     Senbazuru.Sequence.SyntaxSpec
     Senbazuru.Sequence.TraditionalCraneSpec
     Test.CheckedSequenceGen

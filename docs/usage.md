@@ -43,6 +43,7 @@ senbazuru info   FILE [--fold] [--layer-budget N]
 senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
                       [--folded] [--frame N] [-o OUT.fold]
 senbazuru fold   FILE [--frame N] [--stacking N[,N...]] [--layer-budget N] [-o OUT.fold]
+senbazuru run    SOURCE --check
 ```
 
 Working from source, reach the executable in any of three ways:
@@ -58,13 +59,19 @@ of its own and complains about them.
 
 ## The files it reads
 
-Every command takes any of three formats, chosen by the file's extension:
+Every command but `run` takes any of three formats, chosen by the file's
+extension:
 
 | Extension | What it is |
 | --- | --- |
 | `.fold` | [FOLD](https://github.com/edemaine/FOLD), and anything with an extension senbazuru does not recognise |
 | `.cp` | The crease patterns Orihime and [Oriedita](https://github.com/oriedita/oriedita) write: one crease to a line of text |
 | `.opx` | The crease patterns [ORIPA](https://github.com/oripa/oripa) writes: the same, in XML |
+
+A fourth kind, `.foldseq`, is a [fold sequence](glossary.md#fold-sequences)
+source: the steps that fold a model, not a crease pattern. Only
+[`run`](#run) reads one, and every other command refuses it by its extension
+and says to use `run`, where it used to fail as bad JSON.
 
 ```bash
 stack run -- render examples/bird-base.cp -o bird-base.svg
@@ -1639,6 +1646,44 @@ The two counts differ by one on purpose. The first counts components the way
 that were settled outright among them, so that its published figures can be
 compared with these. The second counts what you can actually choose. See
 [notes/several-stackings.md](notes/several-stackings.md).
+
+## `run`
+
+```bash
+stack run -- run blintz.foldseq --check
+```
+```text
+blintz.foldseq: 5 steps, 5 moves, checked without geometry
+```
+
+`run` reads a fold sequence source. With `--check`, which is all it does yet,
+it reads the source, parses it and checks it: that every name is defined
+before it is used and used as the kind of thing it names, that no step is
+empty, and that every number is in range. It prints one line and folds no
+paper. It opens no sheet either, so a source whose `sheet` or `checkpoint`
+file is missing still checks; the files are read when a run needs them.
+
+A source it refuses is shown with where the mistake is, what it is, and the
+line it is on, and `run` exits nonzero:
+
+```text
+senbazuru: blintz.foldseq:10:35: step 5: "c9" is not defined here; a name can be used only after the step or move that gives it
+   |
+10 | step "Reopen the first corner." { unfold c9 }
+   |                                   ^^^^^^^^^
+```
+
+A sequence built in Haskell has no lines to point at, so its refusals name
+the step instead, as `step 5` does here.
+
+Running a sequence, with `-o` for a FOLD file, an `.svg` page of steps or a
+`.glb` model, needs the runner, which is not built yet. `run` without
+`--check` says so and exits nonzero. The flags that running will take are
+already in `run --help`, so that `--check` can refuse each by name: none has
+anything to shape when nothing is written.
+
+The flag rules and every line `run` prints are functions of
+`Senbazuru.Sequence.RunPlan`, tested there, since the command line is not.
 
 ## Fold-material experiment
 

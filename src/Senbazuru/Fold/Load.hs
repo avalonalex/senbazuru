@@ -25,12 +25,27 @@
 -- Only reading is offered. Senbazuru writes FOLD and nothing else, because a
 -- @.cp@ or an @.opx@ cannot hold what a FOLD file holds — no faces, no fold
 -- angles, no frames — and writing one would be quietly throwing those away.
+--
+-- == A fourth kind of file, which this module only reads as text
+--
+-- A /sequence source/, @.foldseq@, says how a model is folded, step by step
+-- ([glossary](docs/glossary.md#fold-sequences)). It is not a crease pattern,
+-- and it does not become a 'FoldFile' here: running it needs the code that
+-- folds paper and a second file, its sheet. So 'readSequenceText' hands back
+-- its text and nothing more, and this module imports nothing of the sequence
+-- language. 'decodeFile' refuses one by its extension, which is the only
+-- thing that tells a mistaken @render blintz.foldseq@ from a FOLD file with
+-- bad JSON in it.
 module Senbazuru.Fold.Load
   ( -- * Reading, in whatever format
     LoadError (..),
     renderLoadError,
     loadFile,
     decodeFile,
+
+    -- * Reading a sequence source, as text
+    readSequenceText,
+    decodeSequenceText,
 
     -- * Reading FOLD in particular
     loadFoldFile,
@@ -53,7 +68,7 @@ import Data.Char (toLower)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Encoding (decodeUtf8Lenient)
+import Data.Text.Encoding (decodeUtf8', decodeUtf8Lenient)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (FoldFile)
 import Senbazuru.Import.Cp (parseCp)
@@ -73,10 +88,20 @@ import System.FilePath (takeExtension)
 -- hands back a message about JSON, while the crease-pattern readers can name
 -- a line. A caller that only prints them will not notice the difference; one
 -- that wants the line will.
+--
+-- The last two are about sequence sources. 'IsSequenceSource' is a file handed
+-- to a reader of crease patterns that is not one. Its words name no command:
+-- this message is also read in GHCi and by the material study, where a
+-- command's name is no help, and the command line adds its own advice.
 data LoadError
   = ReadFailed FilePath Text
   | DecodeFailed FilePath Text
   | ImportFailed FilePath ImportError
+  | -- | A @.foldseq@ file, which describes how a model is folded rather than
+    -- a crease pattern.
+    IsSequenceSource FilePath
+  | -- | A sequence source that is not UTF-8 text.
+    NotUtf8 FilePath
   deriving stock (Eq, Show)
 
 instance Explain LoadError where
@@ -84,6 +109,9 @@ instance Explain LoadError where
     ReadFailed path msg -> "cannot read " <> T.pack path <> ": " <> msg
     DecodeFailed path msg -> "cannot decode " <> T.pack path <> ": " <> msg
     ImportFailed path err -> "cannot decode " <> T.pack path <> ": " <> explain err
+    IsSequenceSource path ->
+      "cannot read " <> T.pack path <> " as a crease pattern: it is a fold sequence source, the steps that fold a model"
+    NotUtf8 path -> "cannot decode " <> T.pack path <> ": a sequence source is UTF-8 text, and this is not"
 
 -- | 'explain' for a 'LoadError', under the name the test suite already uses.
 renderLoadError :: LoadError -> Text
@@ -91,11 +119,12 @@ renderLoadError = explain
 
 -- | Decode bytes as whatever format the path names.
 --
--- @.cp@ and @.opx@ go to their own readers; everything else is decoded as
--- FOLD, which is what happened to every path before there was a choice, and
--- which keeps a file called @pattern.json@, or @pattern@ with no extension at
--- all, working. The extension is lowercased first, so a @.CP@ off a
--- case-insensitive filesystem is still a @.cp@.
+-- @.cp@ and @.opx@ go to their own readers, and a @.foldseq@ is refused as
+-- a sequence source, which is no crease pattern at all. Everything else is
+-- decoded as FOLD, which is what happened to every path before there was a
+-- choice, and which keeps a file called @pattern.json@, or @pattern@ with no
+-- extension at all, working. The extension is lowercased first, so a @.CP@
+-- off a case-insensitive filesystem is still a @.cp@.
 --
 -- Pure, and separate from 'loadFile', so that a test can put bytes in without
 -- putting a file on a disk.
@@ -103,6 +132,7 @@ decodeFile :: FilePath -> ByteString -> Either LoadError FoldFile
 decodeFile path bytes = case map toLower (takeExtension path) of
   ".cp" -> imported parseCp
   ".opx" -> imported parseOpx
+  ".foldseq" -> Left (IsSequenceSource path)
   _ -> decodedAsFold path bytes
   where
     -- Lenient decoding rather than strict: neither format says what encoding
@@ -118,7 +148,9 @@ decodeFile path bytes = case map toLower (takeExtension path) of
       Left err -> Left (ImportFailed path err)
       Right f -> Right f
 
-    withoutBom text = fromMaybe text (T.stripPrefix "\65279" text)
+-- | A leading byte-order mark removed, if there is one.
+withoutBom :: Text -> Text
+withoutBom text = fromMaybe text (T.stripPrefix "\65279" text)
 
 -- | Read a crease pattern in whatever format senbazuru understands it.
 --
@@ -126,6 +158,26 @@ decodeFile path bytes = case map toLower (takeExtension path) of
 -- come back in 'Either' for the reason 'loadFoldFile' gives.
 loadFile :: FilePath -> IO (Either LoadError FoldFile)
 loadFile path = withBytes path (decodeFile path)
+
+-- | Read a sequence source as text, and nothing more: it is parsed and run by
+-- the sequence language, which this module knows nothing of.
+readSequenceText :: FilePath -> IO (Either LoadError Text)
+readSequenceText path = withBytes path (decodeSequenceText path)
+
+-- | The text of a sequence source's bytes.
+--
+-- Strict UTF-8, where the crease-pattern readers are lenient. Their files are
+-- numbers in practice, and one stray byte should not stop a pattern loading.
+-- A source holds captions an author wrote, and a byte that is not UTF-8 would
+-- otherwise become a replacement character in a caption, with no word said.
+--
+-- A leading byte-order mark goes, for the reason 'decodeFile' gives, and
+-- nothing else changes: line ends, tabs and trailing space all reach the
+-- parser as written, which counts its columns on exactly this text.
+decodeSequenceText :: FilePath -> ByteString -> Either LoadError Text
+decodeSequenceText path bytes = case decodeUtf8' bytes of
+  Left _ -> Left (NotUtf8 path)
+  Right text -> Right (withoutBom text)
 
 -- | Decode FOLD from bytes.
 --
