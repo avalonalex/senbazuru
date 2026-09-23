@@ -453,6 +453,14 @@ repaired candidates must pass actual geometry, cost and guards; equilibrium stil
 proposal. `BodyRestorationArchive` accepts authenticated source controls from
 either preceding direction without depending on its reader. See
 [the bounded loop](notes/body-restoration-loop.md).
+`BodyLoopArchive` authenticates that ten-correction chain without solving,
+including recorded contact forces, raw fractions, one-repair coordinates and
+actual material/contact decisions. `BodyPairInspectionGallery` reads it to
+inspect 55–93 in the final refused trial, using `BodyContactDiagnosis`,
+`BodyPlaneGuard` and existing contact derivatives. It evaluates hypothetical
+inequalities along the saved direction and copies source paper assets;
+it installs no guard and changes no acceptance policy. See
+[the saved-pair inspection](notes/body-contact-55-93.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

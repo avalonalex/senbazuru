@@ -107,10 +107,8 @@ All **1,883 tests pass in 179.4 seconds** after a warning-free cold build;
 Ormolu 0.7.2.0, HLint 3.10 (including the CI JSON command), study JavaScript
 and inline-script syntax checks pass.
 
-The next bounded study should **inspect 55–93 in the last saved 1/64 refusal,
-without new solves**. Compare the signed plane distances, projected overlap,
-material ownership and contact derivatives with the passing 1/128 and its
-starting state. This identifies whether the next limitation needs another
-local guard or a different contact policy before committing to either. The
-surrounding crane's loads and a checked flexible route remain outside this
-body-patch experiment.
+[The saved 55–93 inspection](body-contact-55-93.md) now locates that refusal at
+vertex 30 against plane 93. Its overlap gaps also worsen, with accurate local
+derivatives; hypothetical guards would constrain both saved fractions. The
+next matched comparison is recorded there. The surrounding crane's loads and
+a checked flexible route remain outside this body-patch experiment.

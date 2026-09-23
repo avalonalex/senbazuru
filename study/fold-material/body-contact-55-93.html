@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The saved 55–93 contact refusal</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}pre{overflow:auto;max-height:400px}.blue{color:#235e87}.green{color:#177970}.material{max-width:560px;width:100%}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-restoration-loop.html">Ten material corrections with repair</a>
+<p class="tag">SENBAZURU · SAVED CONTACT INSPECTION · #358</p>
+<h1>A new pair limits the final correction</h1>
+<p class="status">In the final refused 1/64 trial, vertex 30 passes through triangle 93's plane tolerance. The smaller 1/128 trial passes. The existing direction has no explicit guard for pair 55–93.</p>
+<p>We inspect the start of correction ten and its two saved trials. No new correction is computed or installed. The shapes, material, holds, costs and acceptance decisions remain those of the ten-correction experiment.</p>
+<div class="controls"><label>Left <select id="left"></select></label><label>Right <select id="right"></select></label><label>View <select id="view"><option value="tip" selected>Contact tip · magnified top</option><option value="pair">Whole overlap · magnified top</option><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2 id="left-title"></h2><img id="left-image" alt="Left saved state"><p id="left-status"></p><a id="left-fold">Saved FOLD</a></section><section class="figure"><h2 id="right-title"></h2><img id="right-image" alt="Right saved state"><p id="right-status"></p><a id="right-fold">Saved FOLD</a></section></div>
+<p id="legend"></p>
+<h2>Where are 55 and 93?</h2>
+<p id="identity"></p>
+<img class="material" src="body-contact-55-93/material-pair.svg" alt="Triangles 55 and 93 outlined at their original positions in the sheet">
+<p>The saved layer order puts <strong>93 below 55</strong>. This comes from the original paper panels, not the triangle numbers or this camera. A gap measures triangle 55's height minus triangle 93's height at a corner of their top-view overlap. A negative gap means that local order is reversed.</p>
+<h2>The blue vertex and the green overlap corners</h2>
+<p><span class="blue">Vertex 30</span> belongs to triangle 55. Its top-view position is outside triangle 93's outline. The crossing test measures its perpendicular distance to triangle 93's <em>extended plane</em>: imagine that triangle's flat surface continuing beyond its edges. The sign follows its written vertex order.</p>
+<p>The <span class="green">six overlap corners</span> lie in the actual top-view overlap. Their height gaps and vertex 30's extended-plane distance measure different places. The gaps stay within the existing 1e-7 sheet-unit tolerance, but the refused trial's vertex distance reaches about −1.542e-7. Both triangles then have vertices beyond ±1e-7 of the other's plane, and their intersection is long enough to flag a crossing.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Vertex 30 plane distance</th><th>Margin above −1e-7</th><th>Predicted plane distance</th><th>Minimum overlap gap</th><th>Intersection length</th><th>Vertex outside outline</th></tr></thead><tbody id="distances"></tbody></table></div>
+<h2>All six signed distances</h2>
+<p>Distances preserve the original triangle winding. “Both sides” requires at least one vertex below −1e-7 and another above +1e-7. Triangle 93 already spans both sides of plane 55; vertex 30 supplies the missing condition for triangle 55 against plane 93.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>30 → plane 93</th><th>29 → plane 93</th><th>38 → plane 93</th><th>55 on both sides</th><th>33 → plane 55</th><th>5 → plane 55</th><th>37 → plane 55</th><th>93 on both sides</th><th>Crossing flagged</th></tr></thead><tbody id="planes"></tbody></table></div>
+<h2>Would an overlap guard see the loss?</h2>
+<p>A guard is a local prediction used when choosing a correction direction. Here we only evaluate hypothetical guards along the <em>saved</em> direction. Each guard asks a nonnegative starting gap to stay nonnegative, or an already negative gap to get no worse. This is stricter than the final geometry check's 1e-7 tolerance. The derivative includes the movement of both triangles and of their overlap corner.</p>
+<p id="prediction" class="status"></p>
+<p>At corner <strong>4</strong>, the gap changes from +8.466e-8 to −2.092e-8 at 1/64, almost exactly as predicted. At corner <strong>5</strong>, an already negative gap worsens slightly in both fractions: this also fails a “get no worse” guard, even though the existing geometry test accepts 1/128. The labels 4 and 5 in the enlarged drawings refer to these table rows.</p>
+<p>A failed prediction means the old direction would not satisfy that extra guard. It does not prove that solving again with the guard would produce a useful direction, or that a resulting trial would pass the actual geometry checks.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Corner</th><th>Actual gap</th><th>Predicted gap</th><th>Predicted guard margin</th><th>Guard passes</th><th>Contact cost</th></tr></thead><tbody id="corners"></tbody></table></div>
+<h2>Unchanged material checks</h2>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Geometry passes</th><th>Relative length error</th><th>Held-point error</th><th>Crossing pairs</th><th>Reversed orders</th><th>Total cost</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<p>A small mathematical intersection already exists in the passing states. The refusal is the existing tolerance rule changing its answer, not a suddenly visible hole in the paper. This inspection keeps that rule intact.</p>
+<p>All 137 saved states are remeasured: eleven retained states, 96 raw trials and 30 attempted repairs. Their material identities and recorded decisions are checked before output. The source files and the three states' paper drawings are copied unchanged. This is a numerical correction diagnostic, not a continuously checked folding motion, an equilibrium result, or a whole-crane model.</p>
+<p><a href="body-contact-55-93/checks.json">Inspection measurements</a> · <a href="body-contact-55-93/source/trace.json">Unchanged ten-attempt trace</a> · <a href="body-contact-55-93/source/checks.json">Unchanged source report</a></p>
+<details><summary>Selected saved measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_PAIR_DATA*/null;
+const $=id=>document.getElementById(id), num=x=>x===0?'0':Number(x).toPrecision(9), precise=x=>Number(x).toPrecision(13), yes=x=>x?'Yes':'No';
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ $('identity').textContent=data.identities.map(t=>'Triangle '+t.triangle+' has vertices '+t.vertices.join(', ')+', comes from patch panel '+t.panel+' (original crane face '+t.craneFace+'), and '+(t.materialVertices.some(v=>v.held)?'includes a held vertex.':'has no held vertices.')).join(' ')+' These triangles have no shared vertices; their original positions are shown below.';
+ for(const s of data.states){
+  for(const side of ['left','right']){const o=document.createElement('option');o.value=s.id;o.textContent=s.title;$(side).append(o);}
+  row($('distances'),[s.title,precise(s.vertex30PlaneDistance),num(s.planeThresholdMargin),num(s.predictedPlaneDistance),num(s.minimumGap),num(s.intersectionLength),num(s.vertex30OutsideDistance)]);
+  row($('planes'),[s.title,...s.firstDistances.map(precise),yes(s.firstStraddles),...s.secondDistances.map(precise),yes(s.secondStraddles),yes(s.crosses)]);
+  for(const w of s.witnesses)row($('corners'),[s.title,w.index,num(w.gap),num(w.predictedGap),num(w.hypotheticalMargin),yes(w.hypotheticalMargin>=-data.guardResidualTolerance),num(w.pairCost)]);
+  const m=s.record.state;row($('geometry'),[s.title,yes(m.geometryPassed),num(m.maxRelativeEdgeError),num(m.holdError),m.contact.crossingPanels.map(p=>p.map(x=>x.replace('triangle-','')).join('–')).join(', ')||'None',m.contact.reversedOrders.length,num(m.totalCost)]);
+ }
+ const refused=data.states.find(s=>s.id==='refused'),retained=data.states.find(s=>s.id==='retained');
+ $('prediction').textContent='All six hypothetical overlap guards: '+(refused.hypotheticalGuardsPass?'pass':'fail')+' for the saved 1/64 trial; '+(retained.hypotheticalGuardsPass?'pass':'fail')+' for the saved 1/128 trial. Inspect the per-corner margins below: a negative margin beyond 1e-12 means the predicted change violates that guard.';
+ $('left').value='retained';$('right').value='refused';
+ function draw(){const view=$('view').value;for(const side of ['left','right']){const s=data.states.find(s=>s.id===$(side).value);$(side+'-title').textContent=s.title;$(side+'-image').src='body-contact-55-93/'+s.id+'-'+view+'.svg';$(side+'-fold').href='body-contact-55-93/'+s.id+'.fold';$(side+'-status').textContent='Pair 55–93 crossing '+(s.crosses?'flagged.':'not flagged.')+' Vertex 30 margin above −1e-7: '+num(s.planeThresholdMargin)+' sheet units.';}
+  $('legend').textContent=['tip','pair'].includes(view)?'Same fixed crop for all three states; unchanged coordinates. Purple: triangle 55. Orange: triangle 93. Red: mathematical intersection. Green: overlap corners. Blue: vertex 30. The paper coordinates are not separated or exaggerated.':'Same camera and 600 pixels per sheet unit for spatial views. These paper drawings are copied from the source archive. Grey wire lines include hidden paper. Material view shows the original sheet coordinates.';
+  $('raw').textContent=JSON.stringify(data.states.filter(s=>[$('left').value,$('right').value].includes(s.id)),null,2);
+ }
+ for(const id of ['left','right','view'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>
