@@ -1401,3 +1401,10 @@ one start. This asks whether repaired contact permits another material
 correction; it keeps that question separate from a settled body opening or a
 checked path. The [gallery command](usage.md#compute-one-fresh-direction-after-the-saved-repair)
 is opt-in and retains every diagnostic fraction.
+
+[Repairing the fresh refused trial](notes/body-fresh-restoration.md) repeats the
+same minimum-movement calculation after that direction has been refreshed.
+Its target is the repaired start of the fresh direction, rather than the older
+attempt-ten start. The [gallery command](usage.md#repair-the-fresh-directions-saved-refused-trial)
+keeps both controls and checks all retained/refreshed guards and actual geometry
+and cost. No further material solve or correction loop runs.

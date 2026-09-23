@@ -86,8 +86,11 @@ now makes 1/128 pass: at most `3.07e-12` sheet lengths of repair, positive overl
 guard margins and a further `3.54e-10` cost decrease.
 [One fresh direction](notes/body-fresh-direction.md) then selects 1/256 and
 lowers cost another 0.029073%, but moves only 0.00213 drawing pixels. The new
-1/128 trial again crosses at 46–70. Next test one restoration at that refused
-trial, retaining the refreshed guards and actual geometry/cost checks.
+1/128 trial again crosses at 46–70.
+[Repeating one repair](notes/body-fresh-restoration.md) makes that fresh 1/128
+pass: maximum movement `2.97e-12` sheet lengths, with all guards and actual
+geometry/cost checks unchanged. Next test up to ten material corrections with
+at most one restoration per trial, keeping failures and the equilibrium test.
 No accepted body-opening endpoint yet.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
@@ -98,7 +101,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,878 examples pass in the cold build for #351, including one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,878 examples pass in the cold build for #354, including one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -740,8 +743,12 @@ checked coupled angles.
    [rebuilds one direction at that repair](notes/body-fresh-direction.md): the
    quadratic verifies and selects 1/256, lowering cost 0.029073%; movement is
    only 0.00213 drawing pixels and 1/128 again crosses at 46–70.
-   **Next: test one restoration at the fresh refused 1/128 trial, using this
-   direction's repaired start as target and retaining all guards and checks.**
+   [#354](https://github.com/avalonalex/senbazuru/issues/354)
+   [repairs that fresh 1/128](notes/body-fresh-restoration.md): `2.97e-12` sheet
+   lengths of movement restore passing geometry and guards, with cost falling
+   a further `3.41e-10`. No additional main direction or loop runs.
+   **Next: up to ten material corrections, with at most one plane restoration
+   per trial before halving, preserving all guards, actual checks and refusals.**
    This guard outside the finite triangle remains a conservative fixture policy;
    it is not automatic contact discovery.
    No opened endpoint is accepted yet, and removing the surrounding crane's

@@ -440,6 +440,11 @@ material and measurements before a new calculation can use it.
 solves one quadratic and replays the original 31 fractions. It reuses the
 existing solver and actual geometry/cost checks; no further repair or
 continuation runs. See [the fresh direction](notes/body-fresh-direction.md).
+`BodyFreshArchive` validates that saved direction and its 31 fractions, including
+its material rows, contact forces and exact source repair. The same
+`BodyRestorationGallery` calculation accepts either validated archive, so the
+next repair changes its inputs without changing the method. It keeps all guards,
+geometry and cost checks; see [the repeated repair](notes/body-fresh-restoration.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

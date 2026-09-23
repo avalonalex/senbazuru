@@ -89,11 +89,10 @@ CI JSON command), study JavaScript checks and the new inline script are clean.
 All 31 fraction controls and six views work in the browser without errors.
 An altered saved raw correction is refused before any output is written.
 
-The next bounded experiment should test **one restoration at the fresh refused
-1/128 trial**, using this direction's repaired start as the plane-distance
-target. Check the retained and refreshed overlap guards and actual geometry
-and cost again. This would establish whether the successful repair repeats
-after rebuilding the material direction, before putting restoration into a
-bounded correction loop. Keep any refusal; do not loosen the checks to force
-progress. This patch still supplies neither settled inflation nor a certified
-flexible route or whole-crane deformation.
+[The follow-up](body-fresh-restoration.md) now applies **one restoration at the
+fresh refused 1/128 trial**, using this direction's repaired start as the
+plane-distance target. It passes retained/refreshed guards and actual geometry
+and cost again. This establishes a second successful repair after rebuilding
+the material direction; a bounded correction loop is the next experiment.
+This patch still supplies neither settled inflation nor a certified flexible
+route or whole-crane deformation.
