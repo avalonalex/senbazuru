@@ -259,3 +259,26 @@ SVGs and `basic-bases.html`. The HTML offers both sides and a layer-spread
 view. Spreading is a page displacement for inspection; exported FOLD vertices
 still coincide at real creases. These endpoints do not specify a folding
 motion or model finite paper thickness.
+
+## The traditional crane as a fold sequence
+
+`traditional-crane.foldseq` is the crane written in senbazuru's sequence
+language: the book's 28 steps, from a plain square to the finished bird. It
+was written here. The steps are the traditional sequence, which has no
+author. Their order is that of the design's research note,
+[`PRDs/research/gap-layer-selective-folds.md`](../PRDs/research/gap-layer-selective-folds.md)
+section (e), which paraphrases a public step list, <https://origami.me/crane/>;
+that list itself was not consulted. The captions are our own words, not the
+list's or any book's.
+
+It is not yet a file anything runs. The test suite parses it, checks it,
+expands it and prints it back, which shows the language can say every step
+before most of them can be folded. Its senses, seeds, `keeping` pair, `model`
+coordinates and the turns its repeats use are reasoned from the square base
+and marked unverified in the file; the runner will settle them as it learns
+to fold each kind of move. Its last step names `crane.fold`, the finished
+crease pattern above, by a path read from this folder.
+
+```bash
+stack test --ta='--match "the traditional crane"'
+```
