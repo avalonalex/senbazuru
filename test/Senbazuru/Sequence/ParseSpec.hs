@@ -6,7 +6,10 @@
 -- __The round trip__ is a property over random trees: print one, parse the
 -- text, strip the positions, and the tree comes back, in its canonical form.
 -- It is the test that finds what nobody thought to write down, a spelling the
--- printer emits and the parser reads differently.
+-- printer emits and the parser reads differently. It runs over every tree a
+-- source can spell, meaningful or not, which is more than the design asks
+-- for; the promise as the design states it, for sequences the checker
+-- accepts, is in the checker's spec.
 --
 -- __Built equals parsed__, on the two examples the design works through. The
 -- blintz is read from @blintz.foldseq@ at the repository root, typed as an

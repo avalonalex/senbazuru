@@ -20,11 +20,12 @@
 --
 -- Spellable is not the same as /meaningful/. A name is drawn from a small
 -- pool with no regard to what defines it, so most generated sequences unfold
--- a step that does not exist or define one name twice, and a checker would
--- refuse them. Nothing tested so far looks a name up, so nothing so far
--- minds. A property that holds only for sequences a checker accepts will
--- need a generator that defines each name before using it; this one would
--- have nearly every case thrown away.
+-- a step that does not exist or define one name twice, and the checker
+-- refuses them. That is on purpose: the printer and the parser look no name
+-- up, and a generator free of scope reaches shapes a careful one would not.
+-- A property that holds only for sequences the checker accepts uses
+-- "Test.CheckedSequenceGen" instead, which defines each name before using
+-- it; this one would have nearly every case thrown away.
 --
 -- It makes bare names common on purpose. The only interesting thing
 -- 'Senbazuru.Sequence.Syntax.canonical' does happens at a line that is just a
@@ -43,6 +44,13 @@ module Test.SequenceGen
     genMove,
     namePool,
     kindPool,
+
+    -- * Leaves, for "Test.CheckedSequenceGen"
+    genCaption,
+    genPath,
+    genSigned,
+    genAngle,
+    genFraction,
   )
 where
 

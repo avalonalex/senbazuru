@@ -387,6 +387,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
     Senbazuru.Sequence.SyntaxSpec
+    Test.CheckedSequenceGen
     Test.Golden
     Test.SequenceExamples
     Test.SequenceGen
@@ -404,3 +405,4 @@ test-suite senbazuru-test
     , containers
     , senbazuru
     , text
+    , transformers
