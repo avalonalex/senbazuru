@@ -445,6 +445,14 @@ its material rows, contact forces and exact source repair. The same
 `BodyRestorationGallery` calculation accepts either validated archive, so the
 next repair changes its inputs without changing the method. It keeps all guards,
 geometry and cost checks; see [the repeated repair](notes/body-fresh-restoration.md).
+`BodyRestorationLoop` starts at that fresh repair and refreshes the same
+material rows and thirteen guards for at most ten corrections. Its shared
+`RestorationSearch` policy permits only one repair per refused fraction,
+retaining errors and continuing from the next original fraction. Original and
+repaired candidates must pass actual geometry, cost and guards; equilibrium still uses the full
+proposal. `BodyRestorationArchive` accepts authenticated source controls from
+either preceding direction without depending on its reader. See
+[the bounded loop](notes/body-restoration-loop.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

@@ -2044,3 +2044,23 @@ states have FOLD exports and six shared-camera views. Source bytes are copied
 unchanged. One algebraic repair runs, with no new material direction, repeated
 repair, continuation or altered threshold. A passing candidate remains distinct
 from equilibrium or a certified motion. See [the result](notes/body-fresh-restoration.md).
+
+### Body corrections with one repair per trial
+
+```bash
+stack run senbazuru-material-study -- --body-restoration-loop build/fold-material/body-fresh-restoration build/fold-material
+```
+
+Open `build/fold-material/body-restoration-loop.html`. This authenticates the
+fresh repaired archive, then runs at most ten material corrections. Each
+verified direction gets the original 31-fraction search budget and at most one
+plane-distance repair per refused trial. Only a candidate passing unchanged
+original/refreshed guards, actual geometry and cost descent is retained.
+A tiny selected fraction or repair cannot establish equilibrium.
+
+Select a correction, its visited original/repaired trials and one of six views.
+All cameras, scales and contact crops stay fixed. The output directory retains
+source bytes, FOLD/SVG files, separate costs and `checks.json`/`trace.json`.
+Failed repairs and fractions remain diagnostic; no automatic pair discovery,
+production solver change, whole-crane inflation or continuously checked flexible
+motion is provided. See [the result](notes/body-restoration-loop.md).

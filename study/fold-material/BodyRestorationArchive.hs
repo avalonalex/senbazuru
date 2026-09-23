@@ -3,7 +3,7 @@
 -- and refused control. Recompute its algebraic projection as a checksum of the
 -- archive, then remeasure the saved vertices; never substitute a new repair.
 -- The preceding proposals and all their trials are checked by BodyPlaneArchive.
-module BodyRestorationArchive (RestorationArchive (..), readRestorationArchive) where
+module BodyRestorationArchive (RestorationArchive (..), RestorationSource (..), readRestorationArchive, checkRestorationArchive) where
 
 import BodyContactDiagnosis
 import BodyContactDirection (contactGuard)
@@ -40,28 +40,45 @@ data RestorationArchive = RestorationArchive
     restorationFiles :: [(FilePath, BL.ByteString)]
   }
 
+-- | Inputs already authenticated by the preceding direction's reader. This
+-- keeps the repair checker independent of which generation supplied them;
+-- importing BodyFreshArchive here would create a cycle through its parent.
+data RestorationSource = RestorationSource
+  { repairStudy :: BodyPatch,
+    repairStart :: MaterialMesh,
+    repairHalf :: MaterialMesh,
+    repairRefused :: MaterialMesh,
+    repairReport :: Value,
+    repairFiles :: [(FilePath, BL.ByteString)]
+  }
+
 readRestorationArchive :: FilePath -> IO RestorationArchive
 readRestorationArchive source = do
   parent <- readPlaneArchive (source </> "source")
+  controls <- case [trials | ("plane", _, trials) <- planeDirections parent] of [ts] -> pure ts; _ -> die "missing saved plane direction"
+  let control name = case [m | (n, m, _) <- controls, n == name] of [m] -> pure m; _ -> die "missing restoration control"
+  half <- control "plane-8"
+  refused <- control "plane-7"
+  checkRestorationArchive source "body-restoration" (RestorationSource (planeStudy parent) (planeStart parent) half refused (planeReport parent) (planeFiles parent))
+
+checkRestorationArchive :: FilePath -> Text -> RestorationSource -> IO RestorationArchive
+checkRestorationArchive source gallery parent = do
   (bytes, report) <- jsonFile (source </> "checks.json")
-  expect "gallery" ("body-restoration" :: Text) report
-  expect "source" (planeReport parent) report
+  expect "gallery" gallery report
+  expect "source" (repairReport parent) report
   expect "restorationCount" (1 :: Int) report
   forM_ ["newMaterialSolves", "continuationSteps"] $ \key -> expect key (0 :: Int) report
   forM_ ["acceptedEndpoint", "continuousMotionChecked", "wholeCraneChecked"] $ \key -> expect key False report
   forM_ ["guardsPassed", "geometryPassed", "costDecreased", "candidatePassed"] $ \key -> expect key True report
   forM_ [("contactTolerance", 1e-7), ("lengthTolerance", 1e-5), ("guardResidualTolerance", 1e-12), ("lengthWeight", 1e8), ("contactWeight", 1e10)] $ \(key, value) -> expect key (value :: Double) report
-  let study = planeStudy parent
+  let study = repairStudy parent
       fixture = patchSpread study
-      start = planeStart parent
+      start = repairStart parent
       pins = spreadPins fixture
       displacement a b = IM.fromList (zip [0 ..] (zipWith (\p q -> position q ^-^ position p) (samples a) (samples b)))
       dotRow row delta = sum [dot g (IM.findWithDefault (V3 0 0 0) i delta) | (i, g) <- IM.toList (fst row)]
       margin row delta = snd row + dotRow row delta
-  controls <- case [trials | ("plane", _, trials) <- planeDirections parent] of [ts] -> pure ts; _ -> die "missing saved plane direction"
-  let control name = case [m | (n, m, _) <- controls, n == name] of [m] -> pure m; _ -> die "missing restoration control"
-  half <- control "plane-8"
-  refused <- control "plane-7"
+  let half = repairHalf parent; refused = repairRefused parent
   initial <- checked (measurePlane start 27 70)
   before <- checked (measurePlane refused 27 70)
   let target = min 0 (planeDistance initial)
@@ -120,7 +137,7 @@ readRestorationArchive source = do
     _ -> die "missing restoration costs"
   forM_ [("targetDistance", target), ("refusedDistance", planeDistance before), ("restoredDistance", planeDistance after), ("predictedDistance", planeDistance before + dotRow (planeGradient before, 0 :: Double) installed), ("correctionMovement", movement), ("mainMovement", mainMovement), ("originalPlaneMargin", originalPlaneMargin), ("restorationPlaneMargin", restorationPlaneMargin)] $ \(key, value) -> near key value report
   images <- forM [name ++ "-" ++ view ++ ".svg" | (name, _) <- named, view <- ["tip", "pair", "side", "top", "underside", "material"]] $ \name -> do imageBytes <- BL.readFile (source </> name); pure (name, imageBytes)
-  pure (RestorationArchive study repaired report (("checks.json", bytes) : states ++ images ++ [("source" </> name, b) | (name, b) <- planeFiles parent]))
+  pure (RestorationArchive study repaired report (("checks.json", bytes) : states ++ images ++ [("source" </> name, b) | (name, b) <- repairFiles parent]))
 
 jsonFile :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
 jsonFile path = do bytes <- BL.readFile path; value <- either die pure (eitherDecode bytes); pure (bytes, value)

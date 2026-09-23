@@ -99,4 +99,5 @@ Only install a verified passing candidate; stop or retain diagnostics when a
 direction, repair or all-pair check fails. Record every restoration separately
 and retain the full-proposal equilibrium test. This would test sustained
 progress without interpreting numerical trials as a checked flexible motion.
-It has not been run here, and no whole-crane opening is claimed.
+[The subsequent bounded loop](body-restoration-loop.md) now runs this experiment;
+no whole-crane opening is claimed.
