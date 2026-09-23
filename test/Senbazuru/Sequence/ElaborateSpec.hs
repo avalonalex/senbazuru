@@ -61,6 +61,37 @@ spec = do
           )
       fmap (all ((== NoSpan) . originSpan . coreOrigin)) moves `shouldBe` Right True
 
+  describe "every field of a move" $
+    -- Every field here is something other than its default, so a field the
+    -- expansion dropped or replaced would show. The properties below look
+    -- only at names and origins.
+    it "comes through unchanged where there is nothing to expand" $
+      fmap
+        (map (map coreMove . elaboratedMoves) . elaboratedSteps)
+        ( elaborated
+            ( parseSequence
+                "t"
+                ( sourceOf
+                    [ "step a { fold mountain 45° edge west top 2 layers moving centre }",
+                      "step m { rabbit-ear at centre until 120° sample 30° 60° }",
+                      "step { fold and unfold valley edge north all layers flap containing corner north-east; rotate 3/8 turn anticlockwise; turn over top-bottom; continue m until 150°; unfold a m; not modelled \"swivel fold\" }"
+                    ]
+                )
+            )
+        )
+        `shouldBe` Right
+          [ [CoreFold MountainFold (Degrees 45) (EdgeOf West) (TopLayers 2) (Just Centre)],
+            [CoreMacro (RabbitEar Centre 120) [30, 60]],
+            [ CoreFold ValleyFold ToFlat (EdgeOf North) AllLayers (Just (CornerOf NorthEast)),
+              CoreUnfoldPrevious,
+              CoreRotate 3 Anticlockwise,
+              CoreTurnOver TopBottom,
+              CoreContinue "m" 150,
+              CoreUnfold ["a", "m"],
+              CoreNotModelled "swivel fold"
+            ]
+          ]
+
   describe "a let and a fold and unfold" $ do
     let source =
           sourceOf

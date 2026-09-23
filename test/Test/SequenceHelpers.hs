@@ -15,10 +15,10 @@
 -- it would agree with it whatever it did. The header here is written out
 -- field by field.
 --
--- The same goes for two things specs of the checker and of the passes after
--- it share: a short source to write moves into, and a walk over every move
--- of a sequence. Two copies of \"every move\" are two chances to disagree
--- about what is inside a block.
+-- Two more things are here for the first reason, that copies drift. Specs of
+-- the checker and of the passes after it share a short source to write
+-- moves into, and a walk over every move of a sequence; two copies of
+-- \"every move\" are two chances to disagree about what is inside a block.
 module Test.SequenceHelpers
   ( built,
     plainHeader,
