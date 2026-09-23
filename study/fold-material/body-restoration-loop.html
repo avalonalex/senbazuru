@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Body corrections with one contact repair</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}pre{overflow:auto;max-height:400px}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-fresh-restoration.html">The saved starting repair</a>
+<p class="tag">SENBAZURU · BOUNDED BODY CORRECTIONS · #356</p>
+<h1>Can one repair keep each correction moving?</h1>
+<p>Starting from the last saved repair, try up to ten material corrections. At each retained shape, rebuild the material equations and contact guards. Test the full proposal, then smaller fractions. A refused fraction may receive one plane-distance repair before we try the next fraction.</p>
+<p class="status" id="result"></p>
+<div class="controls"><label>Correction <select id="attempt"></select></label><label>Trial <select id="trial"></select></label><label>View <select id="view"><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="tip">Contact tip · magnified top</option><option value="pair">Pair overview · magnified top</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2>Before this correction</h2><img id="before-image" alt="Retained paper before this correction"><a id="before-fold">FOLD</a></section><section class="figure"><h2 id="after-title">Selected candidate</h2><img id="after-image" alt="Displayed candidate paper"><p id="trial-status"></p><a id="after-fold">FOLD</a></section></div>
+<p id="legend"></p>
+<h2>The retained chain</h2>
+<p>Only a candidate passing the guards, actual geometry and strict cost descent becomes the next starting shape. The full material proposal must also move at most 1e-7 sheet lengths to establish equilibrium. A tiny selected fraction or contact repair cannot satisfy that test on its behalf.</p>
+<div class="scroll"><table><thead><tr><th>Correction</th><th>Quadratic verified</th><th>Selected fraction</th><th>Repaired</th><th>Full movement</th><th>Repair movement</th><th>Cost after</th><th>Body depth after</th></tr></thead><tbody id="chain"></tbody></table></div>
+<h2>Displayed geometry and separate costs</h2>
+<div class="scroll"><table><thead><tr><th>State</th><th>Geometry passes</th><th>Relative length error</th><th>Held-point error</th><th>Crossing pairs</th><th>Reversed orders</th><th>Body depth</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>State</th><th>Creases</th><th>Panels</th><th>Lengths</th><th>Contact</th><th>Total</th></tr></thead><tbody id="costs"></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>State</th><th>Plane distance</th><th>Margin above −1e-7 (×1e-12)</th><th>Intersection length</th><th>46–70 crosses</th></tr></thead><tbody id="plane"></tbody></table></div>
+<h2>What one repair is allowed to do</h2>
+<p>Vertex 27 is near the plane through triangle 70. A repair takes the smallest sum of squared vertex movements predicted to recover this correction's starting distance to that moving plane. It moves only free coordinates. The target can be slightly negative: this preserves the existing floor, rather than demanding exact separation.</p>
+<p>Each material direction has twelve overlap guards for triangles 22–63, 14–55 and 46–70, plus the plane guard. A repair must preserve those guards and the overlap derivatives refreshed at the refused trial. Every candidate is rechecked against all triangle pairs and unchanged material lengths, holds and costs. A changed overlap configuration remains a refusal.</p>
+<p>Contact tolerance remains 1e-7 sheet lengths, relative length error 1e-5 and linear guard residual 1e-12. The search has the same 31 fractions and stops at its first usable candidate; every visited raw trial and attempted repair is saved. Fractions after selection receive no repairs. Intersections inside the existing tolerance may remain visible in magnified views.</p>
+<p>This is a body-patch experiment. It does not provide a continuously checked flexible motion, the omitted crane's loads or whole-crane inflation.</p>
+<p><a href="body-restoration-loop/checks.json">All attempts, rows, repairs and measurements</a> · <a href="body-restoration-loop/source/checks.json">Unchanged starting archive</a></p>
+<details><summary>Displayed trial and guard measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_LOOP_DATA*/null;
+const $=id=>document.getElementById(id),num=x=>x===null||x===undefined?'—':x===0?'0':Number(x).toPrecision(8),precise=x=>Number(x).toPrecision(14),yes=x=>x?'Yes':'No',fraction=x=>x===null||x===undefined?'None':'1 / '+Math.round(1/x);
+function row(body,values){const tr=document.createElement('tr');for(const v of values){const td=document.createElement('td');td.textContent=v;tr.append(td);}body.append(tr);}
+function option(select,value,text){const o=document.createElement('option');o.value=value;o.textContent=text;select.append(o);}
+if(data){
+ const first=data.states[0].state,last=data.states[data.states.length-1].state;
+ $('result').textContent=data.completedCorrections+' corrections retained. Stop: '+data.stopReason+'. Cost decreased '+num(100*(first.totalCost-last.totalCost)/first.totalCost)+'%; net movement '+num(data.maxMovementFromStart*data.drawingScale)+' drawing pixels. '+(data.acceptedEndpoint?'The full-proposal equilibrium check passes.':'No settled body-opening endpoint.');
+ function chosen(a){for(const t of a.trials){if(t.record.state.id===a.selectedState)return [t.record,t.checks,false];if(t.restoration?.record?.state.id===a.selectedState)return [t.restoration.record,t.restoration.checks,true];}return null;}
+ for(const a of data.attempts){option($('attempt'),String(a.number),String(a.number));const c=chosen(a);row($('chain'),[a.number,yes(a.directionVerified),fraction(a.selectedScale),c?yes(c[2]):'—',num(a.fullMovement),num(c?.[1].extra?.repairMovement),num(c?.[0].state.totalCost),num(c?.[0].state.bodyDepth)]);}
+ function draw(){const a=data.attempts.find(x=>String(x.number)===$('attempt').value),c=chosen(a);let record=a.before,checks=null,title='Before this correction',detail=a;
+  const selection=$('trial').value;
+  if(selection==='selected'&&c){[record,checks]=c;title=c[2]?'Selected repaired candidate':'Selected original candidate';}
+  else if(selection!=='selected'&&selection!=='before'){const [index,kind]=selection.split(':'),t=a.trials[Number(index)];if(kind==='repair'&&t.restoration?.record){record=t.restoration.record;checks=t.restoration.checks;title='One repair · '+fraction(t.scale);}else{record=t.record;checks=t.checks;title='Original trial · '+fraction(t.scale);}detail=t;}
+  const view=$('view').value;
+  for(const [name,r] of [['before',a.before],['after',record]]){$(name+'-image').src='body-restoration-loop/'+r.state.id+'-'+view+'.svg';$(name+'-fold').href='body-restoration-loop/'+r.state.id+'.fold';}
+  $('after-title').textContent=title;
+  $('trial-status').textContent=checks?'Guards: '+yes(checks.guardsPassed)+'. Geometry: '+yes(checks.geometryPassed)+'. Cost decreases: '+yes(checks.costDecreased)+'. '+(record.state.id===a.selectedState?'Retained.':'Diagnostic; not retained.'):(a.failure??'Retained starting shape.');
+  for(const id of ['geometry','costs','plane'])$(id).replaceChildren();
+  for(const [label,r] of [['Before',a.before],['Displayed',record]]){const s=r.state;row($('geometry'),[label,yes(s.geometryPassed),num(s.maxRelativeEdgeError),num(s.holdError),JSON.stringify(s.contact.crossingPanels),JSON.stringify(s.contact.reversedOrders),num(s.bodyDepth)]);row($('costs'),[label,...['creaseEnergy','panelEnergy','lengthCost','contactCost','totalCost'].map(k=>num(s[k]))]);row($('plane'),[label,precise(r.planeDistance),num(r.planeMargin/1e-12),num(r.intersectionLength),yes(r.crosses46_70)]);}
+  $('legend').textContent=['pair','tip'].includes(view)?'Purple: triangle 46. Orange: triangle 70. Blue: vertex 27. Green: overlap corners. Red: intersection segment. Both states use the same crop, fixed across all corrections.':'One shared camera and scale. Side, top and underside use 600 drawing pixels per sheet unit. Material coordinates show the original sheet.';
+  $('raw').textContent=JSON.stringify(detail,null,2);
+ }
+ function resetTrials(){const a=data.attempts.find(x=>String(x.number)===$('attempt').value);$('trial').replaceChildren();option($('trial'),'selected','Selected candidate');option($('trial'),'before','Before correction');a.trials.forEach((t,i)=>{option($('trial'),i+':raw',fraction(t.scale)+' · original');if(t.restoration?.record)option($('trial'),i+':repair',fraction(t.scale)+' · one repair');});draw();}
+ $('attempt').value=String(data.attempts[data.attempts.length-1].number);$('attempt').addEventListener('change',resetTrials);$('trial').addEventListener('change',draw);$('view').addEventListener('change',draw);resetTrials();
+}
+</script></html>

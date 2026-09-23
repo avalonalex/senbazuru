@@ -1408,3 +1408,12 @@ Its target is the repaired start of the fresh direction, rather than the older
 attempt-ten start. The [gallery command](usage.md#repair-the-fresh-directions-saved-refused-trial)
 keeps both controls and checks all retained/refreshed guards and actual geometry
 and cost. No further material solve or correction loop runs.
+
+[Ten corrections with contact repair](notes/body-restoration-loop.md) test
+whether the two individual repairs can support a chain of material corrections.
+Three selected trials need repair; every retained shape passes the unchanged
+geometry and cost checks. The total cost falls 1.72%, but net movement is only
+0.165 drawing pixels and the full proposal remains above equilibrium. The
+last larger trial crosses another pair, 55–93, while its 1/128 fraction passes.
+The gallery separates each original trial, one repair and the retained shape;
+it does not turn numerical backtracking into a folding animation.
