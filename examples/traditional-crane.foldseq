@@ -1,0 +1,91 @@
+foldseq 1
+title "Traditional crane"
+sheet square
+coloured side up
+
+# The traditional crane in the book's 28 steps, from a plain square. The test
+# suite parses, checks, expands and reprints it, and nothing yet runs it. So
+# every sense, seed, `keeping` pair, `model` coordinate and repeat's turn below
+# is UNVERIFIED: each is reasoned from the square base, and the runner will
+# derive the real ones at milestones M4 and M5 (PRDs/09-testing-and-acceptance.md
+# section 5). The captions are our own words.
+
+step diagonals "Crease both diagonals: fold corner to corner, open, then the other way." {
+  fold and unfold in front [corner south-west, corner north-east] moving corner south-east
+  fold and unfold in front [corner south-east, corner north-west] moving corner south-west
+}
+step "Turn the paper over." { turn over left-right }
+step midlines "Crease both midlines: fold edge to edge, open, then the other way." {
+  fold and unfold in front edge south to edge north
+  fold and unfold in front edge west to edge east
+}
+step square-base "Bring all four corners together at the bottom and flatten a square base." {
+  collapse at centre keeping [corner south-east, corner north-west] flat until 180°
+}
+
+# The front of the square base is the south-east quarter, its centre line the
+# half-diagonal from the centre to that corner.
+step kite "Lay each lower edge of the front flaps along the centre line." {
+  fold in front edge south to [centre, corner south-east] nearest centre top flap
+  fold in front edge east to [centre, corner south-east] nearest centre top flap
+}
+step lid "Fold the top triangle down over them." {
+  fold in front [end of crease of kite nearest midpoint of edge south, end of crease of kite nearest midpoint of edge east] all layers moving centre
+}
+step "Open out the last three folds." { unfold kite lid }
+step front-petal "Lift the front flap up along the new crease, letting its sides fold in." {
+  petal top flap until 180°
+}
+step "Turn the model over." { turn over left-right }
+step "Crease this side's lower edges along the centre line too, and open them." {
+  fold and unfold in front edge north to [centre, corner north-west] nearest centre top flap
+  fold and unfold in front edge west to [centre, corner north-west] nearest centre top flap
+}
+# A half turn about the centre carries the front petal onto the back one.
+step "Lift this flap the same way, which makes the bird base." {
+  repeat front-petal turned 2/4 about centre
+}
+
+# "Nearly to the centre line" names no landmark, so these two steps say where
+# the folds lie in the model as seen. The coordinates are placeholders for the
+# runner to measure.
+step "Narrow the front: fold each lower edge almost to the centre line." {
+  fold in front model [(1/2, 0), (7/16, 9/16)] top flap moving fraction 1/2 along [corner south-west, midpoint of edge south]
+  fold in front model [(1/2, 0), (9/16, 9/16)] top flap moving fraction 1/2 along [corner north-east, midpoint of edge east]
+}
+step "Turn the model over." { turn over left-right }
+step "Narrow this side the same way." {
+  fold in front model [(1/2, 0), (7/16, 9/16)] top flap moving fraction 1/2 along [corner north-east, midpoint of edge north]
+  fold in front model [(1/2, 0), (9/16, 9/16)] top flap moving fraction 1/2 along [corner south-west, midpoint of edge west]
+}
+
+# The book says "repeat on the other side" for each of the next three, and a
+# half turn about the centre is that other side in the sheet's terms.
+step page-turn "Turn the upper flap on the right across to the left, like a page." {
+  fold in front crease [centre, corner south-east] top flap moving midpoint of edge east
+}
+step "Turn the model over." { turn over left-right }
+step "Turn a page on this side too." { repeat page-turn turned 2/4 about centre }
+step leg-up "Fold the lower point of the front flap up along the crease already there." {
+  fold in front crease of lid top flap moving corner south-west
+}
+step "Turn the model over." { turn over left-right }
+step "Fold this lower point up too." { repeat leg-up turned 2/4 about centre }
+step second-page-turn "Turn the upper flap on the right across to the left again." {
+  fold in front crease [centre, corner south-east] top flap moving midpoint of edge south
+}
+step "Turn the model over." { turn over left-right }
+step "Turn a page on this side too." { repeat second-page-turn turned 2/4 about centre }
+
+# The rest has no move in the language yet.
+step "Swivel the tail up." { not modelled "swivel fold" }
+step "Swivel the neck up the same way." { not modelled "swivel fold" }
+step "Crease the tip of the neck where the head will bend." { not modelled "fold the head" }
+step "Reverse the head down inside the neck." { not modelled "inside reverse fold" }
+# The checkpoint's path is read from this file's folder, so "crane.fold" is
+# examples/crane.fold, the finished crane's crease pattern.
+step "Spread the wings and open out the body." {
+  checkpoint "crane.fold" { stacking first }
+  not modelled "open the wings and shape the body"
+}
+closing "A traditional crane."

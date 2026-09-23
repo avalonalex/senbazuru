@@ -77,6 +77,7 @@ extra-source-files:
   examples/boat-base.fold
   examples/pig-base.fold
   examples/diamond-base.fold
+  examples/traditional-crane.foldseq
   blintz.foldseq
   test/fixtures/*.cp
   test/fixtures/*.fold
@@ -390,6 +391,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
     Senbazuru.Sequence.SyntaxSpec
+    Senbazuru.Sequence.TraditionalCraneSpec
     Test.CheckedSequenceGen
     Test.Golden
     Test.SequenceExamples
