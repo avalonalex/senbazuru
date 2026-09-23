@@ -265,9 +265,11 @@ motion or model finite paper thickness.
 `traditional-crane.foldseq` is the crane written in senbazuru's sequence
 language: the book's 28 steps, from a plain square to the finished bird. It
 was written here. The steps are the traditional sequence, which has no
-author; their order follows a public step list, <https://origami.me/crane/>,
-as the design's research note on it did, and the captions are our own words
-rather than any book's.
+author. Their order is that of the design's research note,
+[`PRDs/research/gap-layer-selective-folds.md`](../PRDs/research/gap-layer-selective-folds.md)
+section (e), which paraphrases a public step list, <https://origami.me/crane/>;
+that list itself was not consulted. The captions are our own words, not the
+list's or any book's.
 
 It is not yet a file anything runs. The test suite parses it, checks it,
 expands it and prints it back, which shows the language can say every step

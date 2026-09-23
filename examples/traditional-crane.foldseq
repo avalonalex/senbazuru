@@ -23,7 +23,8 @@ step square-base "Bring all four corners together at the bottom and flatten a sq
   collapse at centre keeping [corner south-east, corner north-west] flat until 180°
 }
 
-# The front of the square base is the south-east quarter, its centre line the
+# Which quarter of the sheet faces the front depends on the collapse. These
+# steps take it to be the south-east one, whose centre line is the
 # half-diagonal from the centre to that corner.
 step kite "Lay each lower edge of the front flaps along the centre line." {
   fold in front edge south to [centre, corner south-east] nearest centre top flap
