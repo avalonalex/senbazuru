@@ -1295,3 +1295,12 @@ fails. The [command](usage.md#two-contact-pairs-in-one-body-correction) keeps
 both previous controls and the one-pair result, with separate views of each
 contact. This is still one correction of a body patch, not a settled crane
 opening or a certified flexible folding route.
+
+The [third-pair experiment](notes/body-third-contact.md) adds 46–70 at that
+same shape. Its four inequalities are already satisfied by the local
+prediction, so they exert no force: the direction stays exactly the same.
+At 1/4 the prediction improves the smallest gap, but the actual displaced
+triangles cross. The [gallery command](usage.md#a-third-contact-pair-at-the-saved-body-shape)
+compares those gaps alongside all earlier controls. The usable step remains
+1/8; this motivates updating the local prediction after each valid short
+correction, while retaining the independent geometry gate.

@@ -100,3 +100,7 @@ Next, compare adding **46–70** at this same saved shape, retaining the two-pai
 result as a control. This isolates the remaining 1/4 obstruction before
 choosing a bounded continuation that refreshes its guards as the paper moves.
 A fixed list of these pairs is not a general contact-discovery policy.
+
+The [third-pair experiment](body-third-contact.md) now makes this comparison.
+The added inequalities are inactive, so the direction and usable fraction do
+not change; recomputed gaps expose the limitation of the local prediction.

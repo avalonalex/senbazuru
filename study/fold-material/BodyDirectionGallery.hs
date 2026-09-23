@@ -1,9 +1,9 @@
 -- | One direction comparison at the archived blocked body shape. The matched
 -- unconstrained quadratic separates changes in numerical solution from the
--- effect of contact guards at one or two pairs. All 31 fractions remain diagnostics;
--- only a verified quadratic plus nonlinear cost and geometry gates selects a
--- trial. This command never starts a continuation or declares a folding path.
-module BodyDirectionGallery (writeBodyDirection, writeBodyPairs) where
+-- effect of contact guards at one, two or three pairs. All 31 fractions remain
+-- diagnostics; only a verified quadratic plus nonlinear cost and geometry
+-- gates selects a trial. This command never starts a continuation or declares a folding path.
+module BodyDirectionGallery (writeBodyDirection, writeBodyPairs, writeBodyThird) where
 
 import BodyContactDiagnosis
 import BodyContactDirection
@@ -36,18 +36,27 @@ import System.FilePath ((</>))
 import System.IO (hFlush, stdout)
 
 writeBodyDirection :: FilePath -> FilePath -> IO ()
-writeBodyDirection = writeComparison False
+writeBodyDirection = writeComparison OnePair
 
 -- | Keep the original one-pair gallery and add the newly exposed pair without
 -- changing its baseline. Constraint ids in each direction index the shared
 -- export; working-set source ids index that direction's constraint list.
 writeBodyPairs :: FilePath -> FilePath -> IO ()
-writeBodyPairs = writeComparison True
+writeBodyPairs = writeComparison TwoPairs
 
-writeComparison :: Bool -> FilePath -> FilePath -> IO ()
-writeComparison both source destination = do
-  let gallery = if both then "body-pairs" else "body-direction"
-      pairs = if both then [(22, 63), (14, 55)] else [(22, 63)]
+-- | Add 46–70 at the same archived shape; neither the first two guards nor
+-- their accepted trial is used as a new starting point.
+writeBodyThird :: FilePath -> FilePath -> IO ()
+writeBodyThird = writeComparison ThreePairs
+
+data DirectionStudy = OnePair | TwoPairs | ThreePairs
+
+writeComparison :: DirectionStudy -> FilePath -> FilePath -> IO ()
+writeComparison experiment source destination = do
+  let (gallery, pairs, additions) = case experiment of
+        OnePair -> ("body-direction", [(22, 63)], [])
+        TwoPairs -> ("body-pairs", [(22, 63), (14, 55)], [("both", "Both contact pairs", 2)])
+        ThreePairs -> ("body-third", [(22, 63), (14, 55), (46, 70)], [("both", "Both contact pairs", 2), ("third", "Three contact pairs", 3)])
       output = destination </> gallery
   separateOutput source output
   archive <- readBlockedArchive source
@@ -78,17 +87,29 @@ writeComparison both source destination = do
   rows <- checked (directionRows (spreadHinges fixture) pins model start)
   let guards = map (contactGuard pins . C.witnessRow) witnesses
       firstIds = [0 .. length firstWitnesses - 1]
-      allIds = [0 .. length guards - 1]
   putStrLn "Matched quadratic directions from one saved shape; no continuation."
   hFlush stdout
   (ordinary, ordinaryReport, ordinaryDetails) <- checked (constrainedStepDetailed OriginalWorkingSet 100 1e-3 free rows [])
   (guarded, guardedReport, guardedDetails) <- checked (constrainedStepDetailed OriginalWorkingSet 100 1e-3 free rows (take (length firstWitnesses) guards))
-  extra <-
-    if both
-      then do
-        (delta, report, details) <- checked (constrainedStepDetailed OriginalWorkingSet 100 1e-3 free rows guards)
-        pure [("both", "Both contact pairs", propose delta, Just (report, details), Just delta, allIds)]
-      else pure []
+  extra <- forM additions $ \(key, title, count) -> do
+    -- Each baseline receives only its own prefix of the witness list. Passing
+    -- all guards here would silently change the two-pair control.
+    let guardCount = sum [length ws | (_, ws, _, _) <- take count views]
+        selectedGuards = take guardCount guards
+        guardIds = [0 .. guardCount - 1]
+    (delta, report, details) <- checked (constrainedStepDetailed OriginalWorkingSet 100 1e-3 free rows selectedGuards)
+    pure (key, title, propose delta, Just (report, details), Just delta, guardIds)
+  -- This pair's tip moves outside a crop of the starting intersection alone.
+  -- Include the two-pair control's refused quarter-step in one fixed crop,
+  -- so comparing directions cannot quietly change the camera or hide the tip.
+  thirdTip <- case experiment of
+    ThreePairs -> case [proposal | (key, _, proposal, _, _, _) <- extra, key == "both"] of
+      [proposal] -> do
+        quarter <- checked (scaledProposal 0.25 start proposal)
+        cuts <- traverse (\mesh -> checked (pairSection mesh (46, 70))) [start, quarter]
+        pure (Just (boxAround [V2 x y | cut <- cuts, V3 x y _ <- intersectionEnds cut]))
+      _ -> die "third-pair gallery needs exactly one two-pair control"
+    _ -> pure Nothing
   let variants = [("archived", "Archived ordinary proposal", blockedProposal archive, Nothing, Nothing, []), ("control", "Matched unconstrained quadratic", propose ordinary, Just (ordinaryReport, ordinaryDetails), Just ordinary, []), ("guarded", "Contact-aware quadratic", propose guarded, Just (guardedReport, guardedDetails), Just guarded, firstIds)] ++ extra
       draw name mesh = do
         current <- checked (C.contactWitnesses model mesh)
@@ -96,8 +117,11 @@ writeComparison both source destination = do
           cut <- checked (pairSection mesh pair)
           let ws = pairWitnesses pair current
               suffix = pairSuffix pair
+              crop = case (pair, thirdTip) of
+                ((46, 70), Just box) -> box
+                _ -> tipBounds
           TIO.writeFile (output </> name ++ "-pair" ++ suffix ++ ".svg") (drawPair bounds mesh pair cut ws)
-          TIO.writeFile (output </> name ++ "-tip" ++ suffix ++ ".svg") (drawPair tipBounds mesh pair cut ws)
+          TIO.writeFile (output </> name ++ "-tip" ++ suffix ++ ".svg") (drawPair crop mesh pair cut ws)
       export name title point = do
         state <- writeState output name title study point
         draw name (savedMesh point)
@@ -127,7 +151,14 @@ writeComparison both source destination = do
       pairChecks <- forM pairs $ \pair@(a, b) -> do
         section <- checked (pairSection (savedMesh point) pair)
         pure (object ["triangles" .= [a, b], "intersectionLength" .= intersectionLength section, "crosses" .= sectionCrosses section])
-      pure (object ["pairs" .= pairChecks, "state" .= entry, "scale" .= replayScale trial, "movement" .= replayMovement trial, "costDecreased" .= replayCostDecreased trial, "geometryPassed" .= replayGeometryPassed trial, "pairIntersectionLength" .= intersectionLength cut, "pairCrosses" .= sectionCrosses cut])
+      -- Reclip the actual displaced pair: the starting linear gap prediction
+      -- can improve while the finite trial's overlap corners penetrate farther.
+      gapChecks <- case experiment of
+        ThreePairs -> do
+          ws <- pairWitnesses (46, 70) <$> checked (C.contactWitnesses model (savedMesh point))
+          pure ["thirdPairWitnesses" .= [object ["lower" .= xyz (C.witnessLower w), "upper" .= xyz (C.witnessUpper w), "gap" .= F.contactGap (C.witnessRow w)] | w <- ws]]
+        _ -> pure []
+      pure (object (["pairs" .= pairChecks, "state" .= entry, "scale" .= replayScale trial, "movement" .= replayMovement trial, "costDecreased" .= replayCostDecreased trial, "geometryPassed" .= replayGeometryPassed trial, "pairIntersectionLength" .= intersectionLength cut, "pairCrosses" .= sectionCrosses cut] ++ gapChecks))
     let chosen = [label k | (k, trial) <- zip [0 :: Int ..] trials, Just (replayScale trial) == fmap replayScale selected]
     pure (object ["id" .= key, "title" .= title, "proposal" .= map xyz proposal, "correction" .= [xyz (IM.findWithDefault (V3 0 0 0) i rawDelta) | i <- [0 .. length (samples start) - 1]], "quadratic" .= fmap (reportValue . fst) quadratic, "contacts" .= maybe [] (map contactValue . quadraticContacts . snd) quadratic, "fullMovement" .= movement, "directionVerified" .= verified, "selectedState" .= chosen, "selectedScale" .= fmap replayScale selected, "acceptedEndpoint" .= (isJust selected && movement <= 1e-7), "constraintIds" .= constraintIds, "guardLinearGaps" .= map linearGap guards, "trials" .= values])
   let constraints = [object ["triangles" .= (let (a, b) = C.witnessTriangles w in [a, b]), "rawGap" .= F.contactGap (C.witnessRow w), "floor" .= min 0 (F.contactGap (C.witnessRow w)), "lower" .= xyz (C.witnessLower w), "upper" .= xyz (C.witnessUpper w), "row" .= rowValue row] | (w, row) <- zip witnesses guards]
