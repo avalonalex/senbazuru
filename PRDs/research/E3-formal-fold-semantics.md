@@ -323,10 +323,11 @@ segment then depends only on which side of the line its held face lies, since
 the face's way up cancels. On a page turn the held faces lie on both sides.
 On `examples/square-base.fold`, with spine edge 14 relabelled unassigned
 (Flap refuses its `F`), take the bottom page on one side: faces 6 and 7,
-joined by edge 15 at +180. Face 0, the root, lies directly over it: edge 8
-is a mountain fold of face 0, which lies top up, so it turns face 7 behind
-face 0, and edge 15 then turns face 6 behind face 7 [reasoned from the
-fixture's assignments and the ways up the run prints]. The page is held by
+joined by edge 15 at +180. Face 0, the root, lies directly over it: from +z
+that side stacks faces 1, 0, 7 and 6, in the only layer order the solver
+finds [ghci]. That follows from the assignments: edge 8 is a mountain fold of
+face 0, which lies top up, so it turns face 7 behind face 0, and edge 15 then
+turns face 6 behind face 7 [reasoned]. The page is held by
 face 5 across the spine (edge 14) and by face 0 above it (edge 8), and both
 lie top up [ghci]. Lying under face 0, the page can only set off away from the
 reader. Under L14, turning it towards −z gives travels of −180 on edge 14 and

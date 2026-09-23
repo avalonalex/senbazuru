@@ -7,11 +7,15 @@
 -- of the face held still beside the first hinge crease (PRD 05 L14, #344).
 -- Spine edge 14 is F in the fixture and Flap turns only M, V or U creases, so
 -- it is relabelled U here; only its label changes, not its angle of 0.
+--
+-- It also asks the layer solver how the page's side of the base stacks, to
+-- show that the page is its bottom two layers, with face 0 directly above.
 :set -XOverloadedStrings
 import Senbazuru.Fold.Load
 import Senbazuru.Fold.Types
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.Flap
+import Senbazuru.Origami.Stacking
 import qualified Data.List as L
 import qualified Data.IntMap.Strict as IM
 Right file <- loadFoldFile "examples/square-base.fold"
@@ -33,3 +37,11 @@ putStrLn ("towards +z, listed [14, 8]: " ++ travels (prepareFlapToward [EdgeId 1
 putStrLn ("towards +z, listed [8, 14]: " ++ travels (prepareFlapToward [EdgeId 8, EdgeId 14] (FaceId lower) 180 TowardPlusZ folded))
 putStrLn ("towards -z, listed [14, 8]: " ++ travels (prepareFlapToward [EdgeId 14, EdgeId 8] (FaceId upper) 180 TowardMinusZ folded))
 putStrLn ("towards -z, listed [8, 14]: " ++ travels (prepareFlapToward [EdgeId 8, EdgeId 14] (FaceId lower) 180 TowardMinusZ folded))
+let Right (Just orders) = layerOrderFor defaultBudget (foldedFrame folded)
+let [fourth] = faceWith [8,4,1]
+let side = [upper, lower, 0, fourth]
+let isUp i = maybe False facesUp (IM.lookup i (foldedPlacements folded))
+let higher f g = or [(orderStacking o == Above) == isUp g | o <- orders, orderFace o == FaceId f, orderRelativeTo o == FaceId g] || or [(orderStacking o == Below) == isUp f | o <- orders, orderFace o == FaceId g, orderRelativeTo o == FaceId f]
+let fromTop = L.sortOn (\f -> negate (length [g | g <- side, higher f g])) side
+let counted (n, capped) = show n ++ (if capped then " or more" else "")
+putStrLn ("the page's side from +z: faces " ++ show fromTop ++ "; valid layer orders of the model: " ++ either show (counted . stateCount) (stackingSpace defaultBudget (foldedFrame folded)))

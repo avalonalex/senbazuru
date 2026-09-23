@@ -114,5 +114,5 @@ is built by `stack` or checked by `make`.
   crane fixtures. They fold flat patterns independently of senbazuru.
 - `E3-square-base-listing.ghci`: the run behind E3 section G, which asks
   `prepareFlapToward` for one page turn on `square-base.fold` with its hinge
-  creases listed both ways. Unlike the rest it needs the library; its header
-  gives the command.
+  creases listed both ways, and asks the layer solver how the page's side
+  stacks. Unlike the rest it needs the library; its header gives the command.
