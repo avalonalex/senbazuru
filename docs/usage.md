@@ -321,7 +321,11 @@ layers together. `prepareFlapAlong` explicitly selects all crease segments
 on the physical hinge; they must separate the moving faces from the fixed
 ones and lie on one line in the current folded shape. The first segment
 defines the signed travel. Other segments receive the angle signs required
-by their stationary faces' orientation.
+by their stationary faces' orientation. A caller that knows which side the
+paper should turn towards, but not that sign, uses `prepareFlapToward`,
+which takes a size of turn and `TowardPlusZ` or `TowardMinusZ`, reads the
+sign from which way up the first segment's stationary face lies, and
+refuses a face that does not lie flat.
 
 ```bash
 stack run senbazuru-material-study -- --helmet build/fold-material

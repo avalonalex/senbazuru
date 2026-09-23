@@ -34,6 +34,7 @@ spec = describe "checked blintz sequence" $ do
     length moves `shouldBe` 5
     length states `shouldBe` 11
     map (sweepOutcome . flapCheck . blintzMotion) moves `shouldBe` replicate 5 SweepClear
+    map (flapStationaryFace . blintzMotion) moves `shouldBe` replicate 5 (FaceId 0)
     map (edgesFoldAngle . surfaceFrame . blintzEnd) moves
       `shouldBe` map (replicate 8 0 ++) [[-180, 0, 0, 0], [-180, -180, 0, 0], [-180, -180, -180, 0], replicate 4 (-180), [0, -180, -180, -180]]
     map (length . faceOrders . surfaceFrame . blintzEnd) moves `shouldBe` [1, 2, 3, 4, 3]

@@ -35,6 +35,7 @@ import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..))
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
+import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
@@ -171,7 +172,7 @@ spec = do
     it "holds the kinds the design's own examples expect" $
       filter (`notElem` refusalKinds) (map RefusalKind ["FlapCovered", "FlapEndpointOrder", "ExistingHingeFlat"]) `shouldBe` []
 
-    -- Eleven of the names are constructors that exist today. Reading the
+    -- Twelve of the names are constructors that exist today. Reading the
     -- spelling off a real value means a renamed constructor fails here, not
     -- months later when a sequence expects a refusal that can no longer be
     -- named.
@@ -191,6 +192,7 @@ constructorsOfToday =
       show (FlapEndpointOrder 0 NoVertices),
       show (FlapStackOrder NoVertices),
       show FlapStartMismatch,
+      show (FlapStationaryNotFlat (FaceId 0) (V3 0 0 1)),
       show (TornAt (VertexId 0) 0),
       show (AngleNotAchieved (EdgeId 0) 0),
       show (LineStopsOnTheModel FromEnd (FaceId 0)),
