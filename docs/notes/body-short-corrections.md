@@ -97,10 +97,11 @@ corner gradients with maximum error `2.63e-10`. Source archives and the
 previous direction comparisons remain unchanged. The opt-in experiment adds
 no expensive fixture to the default tests.
 
-The next bounded step is to **inspect the saved final attempt at 46–70,
-without new solves**: compare the retained and next-larger refused trial's
-plane distances and intersection with the height-gap guards. That can identify
-what a different contact constraint would need to control before another
-continuation. Preserve the almost-motionless second step as a separate
-sensitivity diagnostic. More iterations, automatic contact discovery and
-whole-crane inflation are not established by this result.
+The [saved final inspection](body-final-contact.md) now locates that
+obstruction: vertex 27 crosses triangle 70's negative plane threshold while
+the overlap gap improves. It lies outside triangle 70's projected outline,
+so the corner guards measure another location. That motivates one local
+plane-distance guard comparison before any further continuation. Preserve the
+almost-motionless second step as a separate sensitivity diagnostic. More
+iterations, automatic contact discovery and whole-crane inflation are not
+established by this result.

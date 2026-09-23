@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The final 46–70 contact refusal</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}.chart{max-width:720px;width:100%}pre{overflow:auto;max-height:400px}.blue{color:#235e87}.green{color:#177970}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-short.html">Ten short corrections</a>
+<p class="tag">SENBAZURU · SAVED CONTACT INSPECTION · #342</p>
+<h1>Two distances, one tiny threshold crossing</h1>
+<p class="status">Vertex 27 crosses the triangle-plane threshold in the next larger refused trial. The overlap gap improves slightly, and the mathematical intersection gets shorter. Both checks are behaving as defined: they measure different locations.</p>
+<p>Attempt ten starts from the ninth retained shape. Its 1/32768 trial passes; the next larger trial, 1/16384, fails at triangles 46–70. We inspect those saved positions without solving again. The original thresholds and all-pair checks are unchanged.</p>
+<div class="controls"><label>Left <select id="left"></select></label><label>Right <select id="right"></select></label><label>View <select id="view"><option value="tip" selected>Contact tip · magnified top</option><option value="pair">Whole overlap · magnified top</option><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2 id="left-title"></h2><img id="left-image" alt="Left saved state"><p id="left-status"></p><a id="left-fold">Saved FOLD</a></section><section class="figure"><h2 id="right-title"></h2><img id="right-image" alt="Right saved state"><p id="right-status"></p><a id="right-fold">Saved FOLD</a></section></div>
+<p id="legend"></p>
+<h2>The blue vertex and the green corner</h2>
+<p><span class="blue">Vertex 27</span> belongs to triangle 46. Its top-view position is just outside triangle 70. The crossing test measures its signed perpendicular distance to triangle 70's <em>extended plane</em>: imagine that triangle's flat surface continuing beyond its edges. The sign follows the triangle's written vertex order; it does not directly mean above or below the paper.</p>
+<p>The <span class="green">gap corner</span> lies inside the actual top-view overlap. The contact guard measures the upper layer's height minus the lower layer's height there. Triangle 70 is the declared upper layer. A negative gap is a small local reversal of that order. Extending the plane to vertex 27 does not make that vertex another physical overlap corner.</p>
+<h2>What changes at the threshold?</h2>
+<p>The plane test needs vertices farther than 1e-7 sheet units on both sides of each triangle's plane, plus a long enough intersection. Triangle 70 already spans both sides of plane 46; the intersection already exceeds 1e-7. Vertex 27 supplies the last missing condition for triangle 46 against plane 70.</p>
+<img class="chart" src="body-final/threshold.svg" alt="Distance above the negative plane threshold in units of 1e-12 sheet lengths, positive for the start and retained trial, negative for the refused trial">
+<p>This is a measurement plot, not a deformation of the paper. It shows <strong>vertex distance + 1e-7</strong>, in units of <strong>1e-12 sheet lengths</strong>. Positive means that vertex remains within the plane tolerance; negative means it has crossed the threshold. The tiny refused margin is about −0.07754 in these units. A separate 60-digit calculation confirms its sign for the saved coordinates.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Vertex 27 plane distance</th><th>Margin (×1e-12)</th><th>Minimum overlap gap</th><th>Predicted gap</th><th>Intersection length</th><th>Vertex outside outline</th></tr></thead><tbody id="distances"></tbody></table></div>
+<h2>All six signed distances</h2>
+<p>Triangle 46 has vertices 50, 86 and 27; triangle 70 has vertices 81, 71 and 20. Distances below preserve the original face winding. “Both sides” means at least one distance below −1e-7 and another above +1e-7.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>50 → plane 70</th><th>86 → plane 70</th><th>27 → plane 70</th><th>46 on both sides</th><th>81 → plane 46</th><th>71 → plane 46</th><th>20 → plane 46</th><th>70 on both sides</th><th>Crossing flagged</th></tr></thead><tbody id="planes"></tbody></table></div>
+<h2>What this tells us</h2>
+<p>A smaller mathematical intersection already exists in the retained shape. The refusal is a numerical threshold transition, not a sudden new visible collision. The gap guard alone cannot prevent it: its four overlap corners do not include vertex 27. This does not show that the whole-triangle check is wrong, or justify weakening its tolerance.</p>
+<p>The next bounded experiment can compare one direction that also controls vertex 27's plane distance, at this same saved starting shape. That would be a conservative local guard: the vertex is outside the finite triangle. Every displaced trial would still need the existing all-pair checks.</p>
+<h2>Unchanged material checks</h2>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Geometry passes</th><th>Relative length error</th><th>Held-point error</th><th>Crossing pairs</th><th>Reversed orders</th><th>Total cost</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<p>One connected sheet; original holds, material and stopping criteria. All 310 archived trials are remeasured before these three states are exported. This is a numerical correction diagnostic, not a checked folding motion or a whole-crane result.</p>
+<p><a href="body-final/checks.json">Inspection measurements</a> · <a href="body-final/source/trace.json">Unchanged ten-attempt trace</a> · <a href="body-final/source/checks.json">Unchanged source report</a></p>
+<details><summary>Selected saved measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_FINAL_DATA*/null;
+const $=id=>document.getElementById(id), num=x=>x===0?'0':Number(x).toPrecision(9), precise=x=>Number(x).toPrecision(13), yes=x=>x?'Yes':'No';
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ for(const s of data.states){
+  for(const side of ['left','right']){const o=document.createElement('option');o.value=s.id;o.textContent=s.title;$(side).append(o);}
+  row($('distances'),[s.title,precise(s.vertex27PlaneDistance),num(s.thresholdMargin*1e12),num(s.minimumGap),num(s.predictedMinimumGap),num(s.intersectionLength),num(s.vertex27OutsideDistance)]);
+  row($('planes'),[s.title,...s.firstDistances.map(precise),yes(s.firstStraddles),...s.secondDistances.map(precise),yes(s.secondStraddles),yes(s.crosses)]);
+  const m=s.state;row($('geometry'),[s.title,yes(m.geometryPassed),num(m.maxRelativeEdgeError),num(m.holdError),m.contact.crossingPanels.map(p=>p.map(x=>x.replace('triangle-','')).join('–')).join(', ')||'None',m.contact.reversedOrders.length,num(m.totalCost)]);
+ }
+ $('left').value='retained';$('right').value='refused';
+ function draw(){const view=$('view').value;for(const side of ['left','right']){const s=data.states.find(s=>s.id===$(side).value);$(side+'-title').textContent=s.title;$(side+'-image').src='body-final/'+s.id+'-'+view+'.svg';$(side+'-fold').href='body-final/source/'+s.sourceFile;$(side+'-status').textContent='Pair 46–70 crossing '+(s.crosses?'flagged.':'not flagged.')+' Threshold margin: '+num(s.thresholdMargin*1e12)+' × 1e-12 sheet units.';}
+  $('legend').textContent=['tip','pair'].includes(view)?'Same fixed crop for all three states, with unchanged positions. Purple: triangle 46. Orange: triangle 70. Red: mathematical intersection. Green: overlap corners, with the negative-gap corner labeled. Blue: vertex 27.':'Same camera and 600 pixels per sheet unit for spatial views. Grey wire lines include hidden paper; colored highlights are diagnostics. Material view shows the original sheet coordinates.';
+  $('raw').textContent=JSON.stringify(data.states.filter(s=>[$('left').value,$('right').value].includes(s.id)),null,2);
+ }
+ for(const id of ['left','right','view'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>

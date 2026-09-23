@@ -11,6 +11,7 @@ import BodyContactGallery (writeBodyContact)
 import BodyContinuationGallery (writeBodyContinuation)
 import BodyCorrectionReplayGallery (writeBodyReplay)
 import BodyDirectionGallery (writeBodyDirection, writeBodyPairs, writeBodyThird)
+import BodyFinalContactGallery (writeBodyFinalContact)
 import BodyGeometryGallery (writeBodyGeometry)
 import BodyPatchCheckpointGallery (writeBodyPatchCheckpoints)
 import BodyPatchGallery (writeBodyPatch)
@@ -86,6 +87,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["--body-final", source, destination] -> writeBodyFinalContact source destination
     ["--body-short", source, destination] -> writeBodyContinuation source destination
     ["--body-third", source, destination] -> writeBodyThird source destination
     ["--body-pairs", source, destination] -> writeBodyPairs source destination
@@ -147,7 +149,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--body-short SOURCE_DIRECTORY | --body-third SOURCE_DIRECTORY | --body-pairs SOURCE_DIRECTORY | --body-direction SOURCE_DIRECTORY | --body-geometry SOURCE_DIRECTORY | --body-replay SOURCE_DIRECTORY | --body-contact SOURCE_DIRECTORY | --body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--body-final SOURCE_DIRECTORY | --body-short SOURCE_DIRECTORY | --body-third SOURCE_DIRECTORY | --body-pairs SOURCE_DIRECTORY | --body-direction SOURCE_DIRECTORY | --body-geometry SOURCE_DIRECTORY | --body-replay SOURCE_DIRECTORY | --body-contact SOURCE_DIRECTORY | --body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do

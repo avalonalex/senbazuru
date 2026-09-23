@@ -412,6 +412,11 @@ overlap derivatives, reuses the same replay and geometry gates, and records
 returned shapes separately from every diagnostic trial. The pair list stays
 explicit; no production solver or automatic contact policy changes. See
 [the short continuation](notes/body-short-corrections.md).
+`BodyShortArchive` validates that returned chain and remeasures its 310 saved
+trials without solving again. `BodyFinalContactGallery` compares the final
+pair's plane distances and actual overlap gaps, preserving original winding
+and unmodified positions. It extends no contact policy; see
+[the final refusal](notes/body-final-contact.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

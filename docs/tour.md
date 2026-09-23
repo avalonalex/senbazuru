@@ -1352,3 +1352,12 @@ equilibrium. The [gallery command](usage.md#short-body-corrections-with-refreshe
 keeps all 310 trials separate from the retained chain, including an almost
 motionless second correction and temporary crossings at other pairs. The next
 inspection uses these saved shapes before changing contact constraints again.
+
+
+The [final saved inspection](notes/body-final-contact.md) locates the last
+refusal at vertex 27. It lies outside triangle 70's projected outline and
+crosses the extended plane's distance threshold. Meanwhile the guarded gap,
+measured at a corner inside the overlap, improves. The
+[gallery command](usage.md#inspect-the-final-saved-body-contact-refusal) marks
+both locations and magnifies the tiny threshold margin in a separate chart.
+It reuses saved positions and changes no tolerance or correction policy.

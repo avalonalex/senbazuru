@@ -1913,3 +1913,22 @@ actual-size drawings. `body-short/checks.json` and `trace.json` keep raw
 corrections, equations and all refusals; the source archive is copied unchanged.
 This opt-in continuation does not discover contacts, certify intervening motion
 or model the omitted crane's loads. See [the result](notes/body-short-corrections.md).
+
+
+### Inspect the final saved body-contact refusal
+
+```bash
+stack run senbazuru-material-study -- --body-final build/fold-material/body-short build/fold-material
+```
+
+Open `build/fold-material/body-final.html`. This reads the ten-correction
+archive, rechecks all 310 trials without solving, and compares the start of
+attempt ten with its retained fraction and next larger refused fraction.
+Fixed crops mark vertex 27 and the separate overlap-gap corner at pair 46–70.
+A numerical chart magnifies distance to the plane threshold; paper drawings
+retain their original coordinates. JSON contains all six signed plane
+distances, intersection endpoints, overlap witnesses and remeasured checks.
+Original source reports and FOLD files are preserved under `body-final/source/`.
+No solver, geometry tolerance, layer order or equilibrium criterion changes.
+This is an inspection of numerical trials, not a certified folding motion.
+See [why the two contact measurements differ](notes/body-final-contact.md).
