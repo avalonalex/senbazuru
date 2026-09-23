@@ -1983,3 +1983,22 @@ retains all terms, normal vectors, second-order estimates and original reports.
 The decomposition uses a stated reference point, not unique physical forces.
 Second-order predictions are diagnostics; the original acceptance and equilibrium
 criteria remain in force. See [the result](notes/body-plane-loss.md).
+
+### Restore one saved body trial
+
+```bash
+stack run senbazuru-material-study -- --body-restoration build/fold-material/body-plane build/fold-material
+```
+
+Open `build/fold-material/body-restoration.html`. The shared archive reader
+checks the original comparison before one minimum-movement projection repairs
+the refused additional-guard 1/128 trial. It targets the original vertex
+27–plane 70 distance, with exact holds excluded. No main material direction,
+continuation or repeated restoration is solved.
+
+The gallery compares the saved start, passing 1/256, refused 1/128 and repaired
+candidate, with six shared-camera SVG views and FOLD exports.
+`body-restoration/checks.json` includes raw correction vectors, plane derivatives,
+predicted/actual distances, original/refreshed guard margins and separate costs.
+Geometry and actual-cost criteria remain unchanged; a passing candidate is not
+an equilibrium or a checked motion. See [the result](notes/body-contact-restoration.md).
