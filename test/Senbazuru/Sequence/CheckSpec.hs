@@ -56,6 +56,7 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Property, Testable, checkCoverage, counterexample, cover, forAll, property, (.&&.), (===))
 import Test.SequenceExamples (blintz, quarterFold)
+import Test.SequenceHelpers (allMoves, sourceOf)
 
 spec :: Spec
 spec = do
@@ -273,16 +274,6 @@ constructorsIn = Set.fromList . go . show
       _ : rest -> afterString rest
       [] -> []
 
--- | Every move, those inside blocks included.
-allMoves :: Sequence -> [Move]
-allMoves s = concatMap within [locValue m | located <- seqSteps s, m <- stepMoves (locValue located)]
-  where
-    within m =
-      m : case m of
-        Together members -> concatMap (within . locValue) members
-        ExpectRefused _ inner -> within inner
-        _ -> []
-
 -- | Every kind of value has to be planted, and in every place.
 coverPlanted :: (Testable prop) => Maybe Planted -> prop -> Property
 coverPlanted planted inner =
@@ -300,11 +291,6 @@ data Outcome = Accepted | Refused Place StaticProblem | DidNotParse Text
 -- | A fold that is fine anywhere, for the steps that need one.
 aFold :: Text
 aFold = "fold valley corner south-east to centre"
-
--- | A source with a plain square sheet and these lines after its header. The
--- steps start on line 3.
-sourceOf :: [Text] -> Text
-sourceOf steps = T.unlines ("foldseq 1" : "sheet square" : steps)
 
 checkText :: [Text] -> Either SequenceError Checked
 checkText steps = parseSequence "t" (sourceOf steps) >>= checkSequence

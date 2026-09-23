@@ -28,6 +28,7 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Property, checkCoverage, counterexample, cover, forAll, property, (===))
 import Test.SequenceExamples (blintz)
+import Test.SequenceHelpers (allMoves, sourceOf)
 
 spec :: Spec
 spec = do
@@ -177,25 +178,20 @@ spec = do
 
     prop "leaves no line named, and names no point but a mark" $
       checkCoverage . forAll genChecked $ \s ->
-        cover 30 (any isLet (allWritten s)) "had a let to expand" $
+        cover 30 (any isLet (allMoves s)) "had a let to expand" $
           withChecked s $ \checked ->
             let cores = concatMap elaboratedMoves (elaboratedSteps (elaborate checked))
-                marks = Set.fromList [name | Mark (Name name) _ _ <- allWritten s]
+                marks = Set.fromList [name | Mark (Name name) _ _ <- allMoves s]
              in counterexample (show (map coreMove cores)) $
                   (namesAfter "LineNamed" cores, filter (`Set.notMember` marks) (namesAfter "PointNamed" cores)) === ([], [])
 
     prop "remembers every move the author wrote, in order, a fold and unfold as its two halves" $
       checkCoverage . forAll genChecked $ \s ->
-        cover 15 (any isFoldAndUnfold (allWritten s)) "had a fold and unfold" $
+        cover 15 (any isFoldAndUnfold (allMoves s)) "had a fold and unfold" $
           withChecked s $ \checked ->
             let written = map (map locValue . stepMoves . locValue) (seqSteps (checkedSequence checked))
                 cores = map elaboratedMoves (elaboratedSteps (elaborate checked))
              in property (length written == length cores && and (zipWith originsFollow written cores))
-
--- | A source with a plain square sheet and these lines after its header. The
--- steps start on line 3.
-sourceOf :: [Text] -> Text
-sourceOf steps = T.unlines ("foldseq 1" : "sheet square" : steps)
 
 elaborated :: Either SequenceError Sequence -> Either SequenceError Elaborated
 elaborated parsed = elaborate <$> (parsed >>= checkSequence)
@@ -268,16 +264,6 @@ withoutOrigin (CoreMove _ core) = bare $ case core of
 -- | A core move with a blank origin.
 bare :: Core -> CoreMove
 bare = CoreMove (Origin NoSpan (TurnOver LeftRight) WholeMove)
-
--- | Every move written, those inside blocks included.
-allWritten :: Sequence -> [Move]
-allWritten s = concatMap within [locValue m | located <- seqSteps s, m <- stepMoves (locValue located)]
-  where
-    within m =
-      m : case m of
-        Together members -> concatMap (within . locValue) members
-        ExpectRefused _ inner -> within inner
-        _ -> []
 
 isLet :: Move -> Bool
 isLet = \case
