@@ -1,0 +1,4 @@
+blintz.foldseq:6:82: "bottom-right" names a direction on the page; paper is named by compass: edge north, east, south or west, and corner south-west, south-east, north-east or north-west
+  |
+6 | step c1 "Fold the south-east corner behind, to the centre." { fold behind corner bottom-right to centre }
+  |                                                                                  ^^^^^^^^^^^^

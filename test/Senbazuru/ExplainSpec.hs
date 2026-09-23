@@ -7,10 +7,10 @@
 -- can drop after a colon, so it starts lower case and does not end in a full
 -- stop. Nothing in the type says that, and it is the sort of rule a new
 -- instance breaks without anybody noticing until a message reads
--- @cannot render foo.fold: The frame ...@. 'everyType' samples one constructor
--- per type, which is fourteen of about a hundred — enough to catch a whole
--- instance written the wrong way, not enough to catch one new arm added to an
--- existing one, and hand-maintained either way. Treat it as a worked statement
+-- @cannot render foo.fold: The frame ...@. 'everyType' samples each type,
+-- fifteen of them, with one constructor each and a few with two or three:
+-- enough to catch a whole instance written the wrong way, not enough to catch
+-- one new arm added to an existing one, and hand-maintained either way. Treat it as a worked statement
 -- of the rule rather than as a guard. The sequence language's three types are
 -- the exception: "Senbazuru.Sequence.ErrorSpec" samples every constructor of
 -- theirs.
@@ -46,6 +46,7 @@ import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
 import Senbazuru.Sequence.Error (Found (..), ParseProblem (..), Place (..), SequenceError (..), StaticProblem (..))
+import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
 
@@ -58,6 +59,8 @@ everyType :: [(String, Text)]
 everyType =
   [ ("FoldError", explain (VertexCoordTooShort (VertexId 3) 1)),
     ("LoadError", explain (ReadFailed "a.fold" "no such file")),
+    ("LoadError, a sequence source", explain (IsSequenceSource "Blintz.foldseq")),
+    ("LoadError, not UTF-8", explain (NotUtf8 "Blintz.foldseq")),
     ("SaveError", explain (WriteFailed "a.fold" "read-only")),
     ("ImportError", explain (UnknownLineType 7 12)),
     ("CheckError", explain (Check.NotFlat 0.25)),
@@ -69,7 +72,9 @@ everyType =
     ("StepError", explain (StepError 2 NoVertices)),
     ("SequenceError", explain (StaticRefused (InStep 2 Nothing) NoSpan EmptyStep)),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
-    ("StaticProblem", explain EmptyStep)
+    ("StaticProblem", explain EmptyStep),
+    ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),
+    ("RunOptionError, no runner", explain NoRunnerYet)
   ]
 
 spec :: Spec

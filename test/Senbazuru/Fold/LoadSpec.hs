@@ -193,6 +193,43 @@ spec = do
           renderLoadError err `shouldBe` "cannot decode pattern.cp: line 1: unknown line type 0"
         Right _ -> expectationFailure "expected the type code 0 to be refused"
 
+    -- A sequence source is not a crease pattern, and handing one to a reader
+    -- of crease patterns used to fail as bad JSON. Only the extension can
+    -- tell the two mistakes apart.
+    it "refuses a .foldseq, whatever its case, as a sequence source" $ do
+      decodeFile "blintz.foldseq" "foldseq 1\n" `shouldBe` Left (IsSequenceSource "blintz.foldseq")
+      decodeFile "BLINTZ.FOLDSEQ" "foldseq 1\n" `shouldBe` Left (IsSequenceSource "BLINTZ.FOLDSEQ")
+
+    -- The library's words are also read in GHCi and by the study, so they
+    -- name no command; the command line adds its own.
+    it "says so without naming a command" $
+      renderLoadError (IsSequenceSource "blintz.foldseq")
+        `shouldSatisfy` (\msg -> not (any (`T.isInfixOf` msg) ["senbazuru", "run", "render"]))
+
+  describe "decodeSequenceText" $ do
+    it "takes a leading byte-order mark off and changes nothing else" $
+      decodeSequenceText "a.foldseq" "\239\187\191foldseq 1\r\n\tstep  \n"
+        `shouldBe` Right "foldseq 1\r\n\tstep  \n"
+
+    -- Strict where the crease-pattern readers are lenient: a byte that is not
+    -- UTF-8 would otherwise become a replacement character in a caption.
+    it "refuses bytes that are not UTF-8" $
+      decodeSequenceText "a.foldseq" "foldseq 1\ntitle \"caf\233\"\n" `shouldBe` Left (NotUtf8 "a.foldseq")
+
+  describe "readSequenceText" $ do
+    it "reads a source saved with a byte-order mark as its text" $
+      withScratch $ \dir -> do
+        let path = dir </> "bom.foldseq"
+        BS.writeFile path "\239\187\191foldseq 1\nsheet square\n"
+        readSequenceText path `shouldReturn` Right "foldseq 1\nsheet square\n"
+
+    it "reports a source that is not there rather than throwing" $
+      withScratch $ \dir -> do
+        result <- readSequenceText (dir </> "absent.foldseq")
+        case result of
+          Left (ReadFailed _ _) -> pure ()
+          other -> expectationFailure ("expected the read to fail, got " <> show other)
+
   describe "the quarter fold in all three formats" $ do
     it "is the same crease pattern read from .cp as from .fold" $ do
       fromCp <- fixture "test/fixtures/quarter-fold.cp"

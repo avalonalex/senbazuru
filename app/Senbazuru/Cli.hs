@@ -32,7 +32,7 @@ import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Creasing (creaseAlong)
-import Senbazuru.Fold.Load (encodeFoldFile, loadFile, saveFoldFile)
+import Senbazuru.Fold.Load (LoadError (..), encodeFoldFile, loadFile, readSequenceText, saveFoldFile)
 import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
@@ -71,6 +71,9 @@ import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Gltf (ExportMode (..), renderGlb)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
+import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Parse (parseSequence)
+import Senbazuru.Sequence.RunPlan (Plan (..), RunOptions (..), checkSummary, planRun, refusalLines)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 
@@ -82,6 +85,9 @@ data Command
   | Export ExportOptions
   | Crease CreaseOptions
   | Fold FoldOptions
+  | -- | Not @Run@: the runner's result type will be called that, and the two
+    -- would clash wherever both are imported.
+    RunSource RunOptions
   deriving stock (Eq, Show)
 
 -- | Options for the @crease@ subcommand.
@@ -215,6 +221,10 @@ runCli = execParser opts >>= run
     -- which would stop this module loading under a bare ghci.
     version = makeVersion [0, 1, 0, 0]
 
+-- | Every verb. The ones that read FOLD are also named in
+-- 'Senbazuru.Sequence.RunPlan.refusalLines', for a FOLD file handed to @run@;
+-- the test suite cannot see this module, so a verb added here belongs there
+-- by hand.
 commandParser :: Parser Command
 commandParser =
   hsubparser
@@ -243,6 +253,12 @@ commandParser =
           ( info
               (Fold <$> foldOptions)
               (progDesc "Fold a crease pattern and write the folded shape out as FOLD")
+          )
+        <> command
+          "run"
+          ( info
+              (RunSource <$> runOptions)
+              (progDesc "Check a fold sequence source (running one arrives with the runner)")
           )
     )
 
@@ -389,7 +405,7 @@ budgetOption =
       -- Through Integer for the reason --stacking is: `auto` at type Int wraps
       -- rather than refusing, so a budget too large to be one silently became a
       -- small one.
-      (positive =<< auto)
+      (positiveBudget =<< auto)
       ( long "layer-budget"
           <> metavar "N"
           <> value (budgetGuesses defaultBudget)
@@ -399,11 +415,26 @@ budgetOption =
                 <> " before giving up. Raise it for a model it cannot settle"
             )
       )
-  where
-    positive :: Integer -> ReadM Int
-    positive n
-      | n > 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
-      | otherwise = readerError "the layer budget must be a positive number of guesses"
+
+-- | A layer budget, which has to be a positive number of guesses.
+positiveBudget :: Integer -> ReadM Int
+positiveBudget n
+  | n > 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
+  | otherwise = readerError "the layer budget must be a positive number of guesses"
+
+-- | @run@'s frame number, read through 'Integer' for the reason
+-- 'positiveBudget' is. Zero is let through here: it is refused when there is
+-- a count of states to name alongside it.
+frameNumber :: Integer -> ReadM Int
+frameNumber n
+  | n >= 0 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
+  | otherwise = readerError "the frame must be a whole number of frames"
+
+-- | @run@'s column count, through 'Integer' likewise.
+columnCount :: Integer -> ReadM Int
+columnCount n
+  | n >= 1 && n <= toInteger (maxBound :: Int) = pure (fromInteger n)
+  | otherwise = readerError "columns must be a whole number, at least 1"
 
 -- | Degrees in, radians out.
 --
@@ -536,6 +567,74 @@ stackingOption =
                   <> show (T.unpack raw)
               )
 
+-- | @--view@'s name, metavar and help, which @render@ and @run@ share so that
+-- both take the same names under one help string. Each reads the name its own
+-- way: @render@ into a basis, @run@ into a name its plan holds.
+viewFlag :: Mod OptionFields a
+viewFlag =
+  long "view"
+    <> metavar "NAME"
+    <> help
+      ( "Viewing angle: "
+          <> T.unpack (T.intercalate ", " viewNames)
+          <> " (default: chosen from the geometry -- flat models are"
+          <> " viewed from above, solid ones isometrically)"
+      )
+
+-- | The options of @run@. Every flag is optional, with no default filled in,
+-- so that the plan can tell @--columns 3@ typed from the default 3 and refuse
+-- the first with @--check@. The defaults apply when a run writes something.
+runOptions :: Parser RunOptions
+runOptions =
+  RunOptions
+    <$> argument str (metavar "SOURCE" <> help "A fold sequence source, .foldseq")
+    <*> switch
+      ( long "check"
+          <> help "Parse and check the source and print one line; fold no paper and open no sheet"
+      )
+    <*> outputOption "OUT.fold|OUT.svg|OUT.glb"
+    <*> switch (long "report" <> help "Describe each move on stderr as it runs")
+    <*> optional
+      ( option
+          (positiveBudget =<< auto)
+          ( long "layer-budget"
+              <> metavar "N"
+              <> help
+                ( "How many guesses the layer solver may make in one part of a model"
+                    <> " before giving up (default: "
+                    <> show (budgetGuesses defaultBudget)
+                    <> ")"
+                )
+          )
+      )
+    <*> optional
+      ( option
+          (frameNumber =<< auto)
+          ( long "frame"
+              <> metavar "N"
+              <> help "With .glb, which frame to write, counted as every verb counts them (default: the last)"
+          )
+      )
+    <*> switch (long "all-layers" <> help "With .glb, export only the complete paper scene")
+    <*> optional
+      ( option
+          (columnCount =<< auto)
+          (long "columns" <> metavar "N" <> help "With .svg, figures across the page (default: 3)")
+      )
+    <*> optional (option (maybeReader (\name -> T.pack name <$ namedView (T.pack name))) viewFlag)
+    <*> optional
+      ( option
+          (nonNegative "the page width" "points" =<< auto)
+          (long "width" <> metavar "PT" <> help "With .svg, the page width (default: 400)")
+      )
+    <*> optional
+      ( option
+          (nonNegative "the page height" "points" =<< auto)
+          (long "height" <> metavar "PT" <> help "With .svg, the page height (default: 400)")
+      )
+    <*> optional (strOption (long "author" <> metavar "TEXT" <> help "With .fold, the file's author"))
+    <*> optional (strOption (long "description" <> metavar "TEXT" <> help "With .fold, the file's description"))
+
 renderOptions :: Parser RenderOptions
 renderOptions =
   RenderOptions
@@ -597,15 +696,7 @@ renderOptions =
                   -- optparse's own usage text before any file is opened, and
                   -- roView carries a Basis rather than an unvalidated string.
                   (maybeReader (namedView . T.pack))
-                  ( long "view"
-                      <> metavar "NAME"
-                      <> help
-                        ( "Viewing angle: "
-                            <> T.unpack (T.intercalate ", " viewNames)
-                            <> " (default: chosen from the geometry -- flat models are"
-                            <> " viewed from above, solid ones isometrically)"
-                        )
-                  )
+                  viewFlag
               )
             -- Degrees at the boundary and radians inside, as --tolerance is:
             -- degrees are what anyone turning a drawing thinks in.
@@ -696,6 +787,24 @@ run = \case
   Export o -> withFoldFile (eoInput o) (exportFile o)
   Crease o -> withFoldFile (creaseInput o) (creaseFile o)
   Fold o -> withFoldFile (foInput o) (foldFile o)
+  -- Never through 'withFoldFile': a source is not a crease pattern.
+  RunSource o -> runSequenceSource o
+
+-- | Read, parse and check a sequence source, as far as the plan asks.
+--
+-- The plan comes first, before any file is read, so that a refused flag is
+-- refused whatever the source holds.
+runSequenceSource :: RunOptions -> IO ()
+runSequenceSource options = case planRun options of
+  Left err -> die (explain err)
+  Right PlanCheck ->
+    readSequenceText path >>= \case
+      Left err -> die (explain err)
+      Right source -> case parseSequence path source >>= checkSequence of
+        Left err -> dieLines (refusalLines source err)
+        Right checked -> TIO.putStrLn (checkSummary path checked)
+  where
+    path = runSource options
 
 -- | Fold one frame and write the folded shape out as a FOLD file.
 --
@@ -798,8 +907,13 @@ writeDocument output document = case output of
 -- 'loadFile' rather than 'Senbazuru.Fold.Load.loadFoldFile', so every verb
 -- takes a @.cp@ or an @.opx@ wherever it takes a @.fold@.
 withFoldFile :: FilePath -> (FoldFile -> IO ()) -> IO ()
+--
+-- A sequence source handed to a verb that reads crease patterns gets the one
+-- piece of advice the library cannot give, since its messages name no
+-- command. The path is not repeated: the message has named it already.
 withFoldFile path k =
   loadFile path >>= \case
+    Left err@(IsSequenceSource _) -> die (explain err <> "; to check or run it, use senbazuru run")
     Left err -> die (explain err)
     Right f -> k f
 
@@ -1084,3 +1198,13 @@ summarise o f =
 
 die :: Text -> IO a
 die msg = hPutStrLn stderr ("senbazuru: " <> T.unpack msg) >> exitFailure
+
+-- | Several lines, the first marked as 'die' marks one and the rest, an
+-- excerpt of a source with its caret, printed as they are.
+dieLines :: [Text] -> IO a
+dieLines = \case
+  [] -> exitFailure
+  message : excerptLines -> do
+    hPutStrLn stderr ("senbazuru: " <> T.unpack message)
+    mapM_ (hPutStrLn stderr . T.unpack) excerptLines
+    exitFailure

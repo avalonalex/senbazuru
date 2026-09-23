@@ -111,7 +111,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform, and the inverses that undo them. |
 | `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
-| `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. Also picks a reader from a file's extension. |
+| `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. Also picks a reader from a file's extension, and refuses a `.foldseq` as a sequence source. Reads a sequence source as text and nothing more, knowing nothing of the language. |
 | `Senbazuru.Import.Segments` | A list of line segments → a `Frame`, merging the endpoints that coincide. What the two other-format readers share. |
 | `Senbazuru.Import.Cp` | Orihime and Oriedita `.cp` text → segments. |
 | `Senbazuru.Import.Opx` | ORIPA `.opx` XML → segments. |
@@ -148,6 +148,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Sequence.Build` | Writing a fold sequence in Haskell: a `do` block of steps, each a `do` block of moves, that builds the `Sequence` value. A bind hands back a name and never geometry, so building is pure and cannot fail. Haskell loops run while the value is built, and the value holds what they produced. |
 | `Senbazuru.Sequence.Parse` | A sequence source, the text an author writes → a `Sequence`, with a span on every piece a run could later refuse. A failure is a `ParseProblem`: what was found, read as a whole word, what could have been there, and often a hint naming a well-known mistake. Its header is the record of the grammar and of the reserved words. |
 | `Senbazuru.Sequence.Pretty` | A `Sequence` → the text an author would write, in the one canonical spelling: canonical words, exact numbers, defaults left out, parentheses only round a fold line named inside another. Total: it prints even a value no source could spell, so that the checker's complaint can show it. |
+| `Senbazuru.Sequence.RunPlan` | What the `run` verb accepts and prints, as pure functions the command line only calls: which flags go together, the line `--check` prints, and the lines a refusal prints, with its location and excerpt. Its messages name flags, as no other library message does, because it exists for the one verb. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
 ## Where the files are
@@ -250,8 +251,12 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   kept its own copy would drift from them. `Sequence.Elaborate`, which
   expands the shorthand, is on that level too and imports `Sequence.Check` for
   `Checked`: it can be handed nothing that has not been checked, which is what
-  lets it be total. Not yet built: the runner, the writer, and the reader in
-  `Fold.Load`.
+  lets it be total. `Sequence.RunPlan` sits at the top of the family, level 6
+  in the design's layering, though it needs only the checker, the error type
+  and the tree so far; it imports no `Render.*` module, which is why its plan
+  will hold a view's name rather than a view. `Fold.Load` reads a source as
+  text for the command line and imports nothing of `Sequence.*`. Not yet built:
+  the runner and the writer.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes

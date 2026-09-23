@@ -1007,6 +1007,45 @@ The `layers` line is where to look when a folded form comes out as a wireframe:
 it reports the `faceOrders` the file carries, or, for a folded form without any,
 whether one could be worked out and if not why.
 
+## What it will follow
+
+Everything above starts from a crease pattern: a drawing of where the creases
+are. A book starts somewhere else, with a sheet and a list of instructions,
+and senbazuru now reads those too. A
+[fold sequence](glossary.md#fold-sequences) is written in a `.foldseq` file,
+one `step` to a picture:
+
+```text
+step c1 "Fold the south-east corner behind, to the centre." { fold behind corner south-east to centre }
+step "Reopen the first corner." { unfold c1 }
+```
+
+Paper is named by where it lies on the flat sheet, by compass, never by what
+the reader sees: `corner south-east` is the same paper however the model is
+turned, where "the bottom corner" would change from one picture to the next.
+
+`run --check` reads a source and says whether it means anything, before any
+paper is involved:
+
+```console
+$ senbazuru run blintz.foldseq --check
+blintz.foldseq: 5 steps, 5 moves, checked without geometry
+$ senbazuru run examples/traditional-crane.foldseq --check
+examples/traditional-crane.foldseq: 28 steps, 35 moves, checked without geometry
+```
+
+It catches what needs no paper to see: a name used before anything defines
+it, a point's name where a line belongs, a step that does nothing, a turn of
+nine eighths. The refusal points at the line, as a compiler would.
+
+What it does not do yet is fold. Running a sequence, to a FOLD file, a page
+of steps or a 3D model, needs the runner, and `run` without `--check` says so
+rather than pretending. The crane above is there to show the language can
+write down a whole model first: of its 28 steps, the first runner will fold
+nine, and the rest wait on folding some layers of folded paper, on the moves
+that turn several creases at once, and on five moves the language has no word
+for yet. [usage.md](usage.md#run) has the flags.
+
 ## Fold-material experiment
 
 `stack run senbazuru-material-study -- build/fold-material` generates a single fold
