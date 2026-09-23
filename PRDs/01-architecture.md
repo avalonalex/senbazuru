@@ -867,7 +867,8 @@ lies in z = 0. So [constructions](glossary-additions.md#references) are allowed.
   180 TowardRawPlusZ folded`, where `folded` is `foldFrameWith` of the working
   pattern with step 1's orders on it, `FaceId 1` is the moving face on the first
   crease, 180 is the size of the turn, and `TowardRawPlusZ` is the raw valley's
-  side, from which `Flap` works out the signed travel as §5.5 shows.
+  side, from which `Flap` works out the signed travel as §5.5 shows. #344 named
+  it `TowardPlusZ`; §5.5 says what owner decision 13 changes.
   `prepareFlapToward` is new
   ([05](05-prd-library-additions.md) L14); it signs the travel and then does what
   `prepareFlapAlong` does today
@@ -924,6 +925,12 @@ normal that is not ±ẑ within 1e-12 is refused as `FlapStationaryNotFlat`. The
 runner passes `TowardRawPlusZ` for a raw valley. Here the first stationary face is
 F0, normal +z, so travel is +180; listing edge 11 first would make it F3, normal
 −z, and travel −180, the same physical turn.
+
+*Superseded in part* by [D5](decisions.md#d5-presentation-and-the-readers-side)'s
+amendment (owner decision 13): the sign is read from the *moving* face beside the
+first crease, F1 here, which lies top up and gives the same +180; with edge 11
+first it is F2, face down, and −180 as before. This section is rewritten with that
+change to `prepareFlapToward`.
 
 ### 5.6 Travel per segment
 

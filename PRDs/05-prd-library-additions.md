@@ -1089,6 +1089,16 @@ Grips and animation keys need poses anywhere on the route
 
 **Module.** `Origami.Flap`.
 
+*Superseded in part* by [D5](decisions.md#d5-presentation-and-the-readers-side)'s
+amendment (owner decision 13, 2026-09-23): `prepareFlapToward` is to read the
+*moving* face beside each hinge segment, not the first stationary face, with
+`FlapMovingNotFlat` and `FlapMovesBothWays` in place of `FlapStationaryNotFlat`
+(**SKETCH**). #344 shipped this section as
+`data Toward = TowardPlusZ | TowardMinusZ`,
+`FlapStationaryNotFlat !FaceId !Double` (the face's spread in z, judged by
+`hasRelief`) and `FlapInvalidTurn` for a bad size. The sketch, R-05-45 to
+R-05-47 and the acceptance rows below are rewritten with that change.
+
 ```haskell
 -- SKETCH
 data FlapMotion = FlapMotion { … }          -- fields unchanged (Flap.hs:81-92)
@@ -1307,7 +1317,7 @@ would move sentences pinned by specs and quoted in docs, and is a follow-up issu
 | `RelationOnOneFace`, `RelationNotOverlapping`, `RelationsContradict` | `Origami.Stacking` | "(internal faces 10 and 27) do not overlap, so no layer order relates them" |
 | `MaterialCoordinatesMissing`, `VerticesNotAPrefix`, `AddedVertexOffPaper` | `Fold.Query` (`FoldError`) | "(internal vertex 7) of the later frame lies on no edge and in no face of the earlier one" |
 | `MacroError` | `Origami.Macro` | "parameter 181 is outside the checked range 0 to 180" |
-| `FlapStationaryNotFlat f n` | `Origami.Flap` | "(internal face 3), held still beside the first hinge segment, is not lying flat, so which way is towards the reader cannot be read from it" |
+| `FlapStationaryNotFlat f n` | `Origami.Flap` | "(internal face 3), held still beside the first hinge segment, is not lying flat, so which way is towards the reader cannot be read from it"; to be replaced by `FlapMovingNotFlat` ([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment) |
 
 `StillAmbiguous` and `SeveralStackings` are not library errors; they are the
 runner's `StackingChoiceError` in `Sequence.Error` (L12,

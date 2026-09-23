@@ -10,19 +10,27 @@ follow the other notes: **[read]** in the source, **[ghci]** run against
 senbazuru, **[reasoned]** derived here, **[unverified]** with where it came
 from.
 
+Revised the same day, after #353's post-merge review: section G's
+square-base run had named the bottom page the top one, and is now a script
+under [`scripts/`](scripts), rerun at `6c5048b`; the Summary's claims about
+reopening are narrowed to a sense read from the viewer; and the corrections
+to E2 are added.
+
 ## Summary
 
 Five families were read:
 
 - **Abstract origami and Eos** (Ida and colleagues, 2004–2025): a folded state
   is faces, adjacency and a superposition relation; a fold is graph rewriting;
-  constructions are proved by Gröbner bases.
+  constructions are proved by Gröbner bases, a computer-algebra method that
+  solves polynomial equations exactly.
 - **Folded states, motions and simple folds** (Demaine and colleagues): a
   folded state is an isometry plus a layer order; a simple fold turns some
   layers by ±180° from flat to flat.
 - **Construction axioms and their formalisations**: Justin, Huzita–Hatori,
-  Alperin–Lang, Lucero; CAS analyses; two Lean developments from 2026; and
-  Beloch, an MIT-licensed OCaml fold language updated this week.
+  Alperin–Lang, Lucero; analyses in computer algebra systems; two Lean
+  developments from 2026; and Beloch, an MIT-licensed OCaml fold language that
+  E2 already listed, read again here at its latest commit.
 - **Executable models**: Miyazaki's 1996 simulator, Balkcom and Mason's robot
   folds, An and Rus's fold schedules, Tachi and Xi–Lien's rigid motions.
 - **The notation's own semantics**: diagram recognition (Kato, Shimanuki,
@@ -36,26 +44,30 @@ path with "unresolved" as an honest answer, and a record per move.
 On the question #344's review left open, what `fold in front` means for paper
 that is already folded:
 
-- **No source gives a sense to turning a hinge that is already closed.**
-  Every formal fold starts from an open hinge, and reopening is its own
-  operation everywhere: Eos's `Unfold`, Uchida and Itoh's "open",
+- **No source gives reopening a folded hinge a sense word read from the
+  viewer.** Every simple-fold model starts from an open hinge, and
+  Akitaya–Demaine–Ku exclude reopening outright. Where reopening is written
+  down it is its own operation: Eos's `Unfold`, Uchida and Itoh's "open",
   FoldingAgent's `unfold(e)`, Cardinal et al.'s directionless unfold, and the
-  unfold arrow of the notation itself.
-- **Where a sense word is attached, it names the moving paper's motion
-  relative to the viewer**: Lang's valley arrow is paper moving towards the
-  reader, Eos's valley puts the moved faces above those they overlap,
-  FoldingAgent's moving side goes towards the viewer and lands on top, and
-  Balkcom's page-like "book folds" are directed by where the flap lands.
+  unfold arrow of the notation itself. Rigid-origami definitions do sign any
+  hinge, a closed one included, but relative to the paper, not the viewer
+  (finding 5).
+- **Where a sense word read from the viewer is attached, it names where the
+  moving paper goes**: Lang's valley arrow is paper moving towards the reader,
+  Eos's valley puts the moved faces above those they overlap, FoldingAgent's
+  moving side goes towards the viewer and lands on top, and Balkcom's
+  reflection folds, which turn a page, are directed by where the flap lands.
 - **senbazuru's rule, the sign read from the held face
   ([PRD 05 L14](../05-prd-library-additions.md#l14-eq-on-flap-values-and-prepareflaptoward)), agrees
   on open hinges and disagrees on hinges already folded.** On a page turn it
-  depends on which hinge crease is listed first, shown below in Haskell on the
-  square base.
+  depends on which hinge crease is listed first, as a GHCi run on the square
+  base shows (section G; the script is
+  [`scripts/E3-square-base-listing.ghci`](scripts/E3-square-base-listing.ghci)).
 
 Recommendation: define the sense by the moving paper's motion, which is what
 [PRD 02 §5.3](../02-language-semantics.md#53-one-conversion-for-the-whole-model)'s
-own sentence says, and add a reopening move with no sense. Only #282's
-negative control changes its wording. **The owner adopted this on
+own sentence says, and add a reopening move with no sense beside `fold`.
+Only #282's negative control changes its wording. **The owner adopted this on
 2026-09-23**; [decisions.md](../decisions.md) records it in D5 and as owner
 decision 13.
 
@@ -120,7 +132,8 @@ read].
   transitivity, consistency, and local noncrossing.
 - A motion is a continuous family of folded states, continuous in order as
   well as position: separating layers leave on the side λ says.
-- Every piecewise-C² folded state is reachable, but not rigidly: the paper
+- Every piecewise-C² folded state (one that is smooth except along finitely
+  many curves) is reachable, but not rigidly: the paper
   rolls. A "step" is left undefined.
 
 **4. Simple folds.** Arkin, Bender, E. Demaine, M. Demaine, Mitchell, Sethia,
@@ -180,7 +193,8 @@ final algebraic goal, in HOL Light and Isabelle. Boulay, Chai, Chang, Moulin,
 (sometimes uniqueness) for each Huzita operation, one witness, nothing
 enumerated. LeanOrigami (2026) [read]: its Axiom 7 appears to make every real
 number constructible. Ramseyer, "Verifiable Origami Folding", 7OSME 2018
-[read]: SMT, every fold immediately unfolded, solutions chosen by an
+[read]: an SMT solver (a satisfiability checker for arithmetic constraints),
+every fold immediately unfolded, solutions chosen by an
 orientation-based index. **Nothing proves a solver returns all solutions.**
 
 **10. Beloch** (github.com/tophcodes/beloch, MIT, OCaml, commit `61930e4`,
@@ -191,7 +205,9 @@ length, a program-side selection, and defined only if exactly one remains.
 O3 chooses by a `toward X` *direction* reading, after its notes found both a
 "nearest bisector" and a "sector" reading pick the wrong crease on the kite
 base; O5 and O6 pick the landing nearest X; a straddling operand is an error
-unless `moving` picks a half. Exact real-algebraic arithmetic.
+unless `moving` picks a half. Exact real-algebraic arithmetic. E2 already
+listed Beloch, whose history starts in April 2026; this reading corrects E2 on
+one point, that `toward` is not `nearest` for O3 (recorded in decisions §10).
 
 **11. ReferenceFinder** (Lang; GPL, research only) [read]: keeps every root,
 filters landings off the paper, chooses who moves by a visibility rule, and
@@ -211,8 +227,9 @@ cyclic overlaps (Mitani, EG 2008 [read]).
 Balkcom's thesis, CMU-RI-TR-04-43 [read]. Facets with a rooted spanning tree
 and signed crease angles; for flat states, the stacking plus the folded
 creases. A *simple fold* moves everything on one side of a line up (valley) or
-down (mountain); a *book fold* (reflection fold) lets flap and base lie on the
-same side, like turning a page, and **its direction is which side of the base
+down (mountain); a *reflection fold*, which the thesis calls a book fold
+(not the glossary's book fold, which halves a sheet edge to edge), lets flap
+and base lie on the same side, like turning a page, and **its direction is which side of the base
 the flap ends up on** — both are tried and the colliding one dropped.
 Rewriting rules: mountain = flip · valley · flip; flip · flip = identity.
 Candidate crease sets are contiguous runs from the top or bottom of the
@@ -272,12 +289,12 @@ and his **layer** a separable thickness.
 | Arkin simple fold | positions + partial order | 180° turn, flat to flat | top ℓ layers, per portion | rotation relative to chosen top | never (starts flat) | whole turn, no crossing |
 | Akitaya–Demaine–Ku | flat fold + global order | reflect U across directed axis | U | direction of the axis | excluded (cond. 3) | endpoints (exact) |
 | Rigid origami | fold angles | continuous path | — | angle sign, relative to paper | defined, relative to paper | loop closure; crossing |
-| Balkcom & Mason | stacking + folded creases | simple fold, book fold | one side / top or bottom run | up = valley; book fold by landing side | book fold, both tried | start and end |
+| Balkcom & Mason | stacking + folded creases | simple fold, reflection fold | one side / top or bottom run | up = valley; reflection fold by landing side | reflection fold, both tried | start and end |
 | Miyazaki | positions + order per plane | drag a corner | picked face + connected + in the way | where the corner goes | by dragging | none |
 | Kato, Shimanuki | split tree + order stacks | folding back, compound | face named + carried | rotation from symbols | not covered | next figure matches |
 | Uchida & Itoh | tower of splits | fold, tuck, open | any face, alternating | crease attribute | `open`, no sense | backwards consistency |
 | Tsuruta et al. | layered model | valley, fold-and-unfold | top *n* | valley only | fold-and-unfold | coupling, penetration |
-| FoldingAgent | graph + plane DAG | fold(edge, d), unfold | closure over planes | moving side towards viewer, lands on top | `unfold(e)` | none in simulator |
+| FoldingAgent | graph + plane DAG | fold(edge, d), unfold | closure over planes | moving side towards viewer, lands on top | `unfold(e)` | none in simulator; results scored with Flat-Folder |
 | Beloch | flat state | constructions | `moving` half | — | — | exactly one candidate |
 | Lang's notation | — | arrows + lines | hooked flaps | motion towards / away from reader | unfold arrow | — |
 | **senbazuru** | crease pattern + angles + `faceOrders` + anchor | hinge turn by A°, macros | flap containing a seed, `top N`, `top flap` | **rotation read from the held face (L14)** | `unfold NAME` (exact reversal) | whole path, "unresolved"; macros at samples |
@@ -291,8 +308,9 @@ and his **layer** a separable thickness.
    paper. So does senbazuru. The blintz, the quarter fold and the crane wing
    are all this kind.
 2. *Reopening a closed hinge* — a flap lying folded over its held face is
-   lifted back. No source gives this a sense (A2, B4, E18, E20, D16). Under
-   L14, lifting a top flap towards the reader is `behind`.
+   lifted back. No source gives this a sense read from the viewer (findings
+   2, 4, 16, 18 and 20); rigid origami signs it relative to the paper
+   (finding 5). Under L14, lifting a top flap towards the reader is `behind`.
 3. *Turning a page* — the flap is hinged to paper on both sides of the line,
    so the turn opens one crease and closes another. Balkcom directs it by the
    landing side, Eos's valley puts it on top, FoldingAgent lands it on top.
@@ -304,10 +322,20 @@ L14 reads the *held* face beside the first crease; the reader-side sense of a
 segment then depends only on which side of the line its held face lies, since
 the face's way up cancels. On a page turn the held faces lie on both sides.
 On `examples/square-base.fold`, with spine edge 14 relabelled unassigned
-(Flap refuses its `F`), the top page (faces 6 and 7) is held by face 5 across
-the spine and face 0 beneath it, both top up; `prepareFlapToward` towards +z
-gives edge 14 at +180 and edge 8 at −180 listed `[14, 8]`, and the opposite
-listed `[8, 14]` [ghci].
+(Flap refuses its `F`), take the bottom page on one side: faces 6 and 7,
+joined by edge 15 at +180. Face 0, the root, lies directly over it: edge 8
+is a mountain fold of face 0, which lies top up, so it turns face 7 behind
+face 0, and edge 15 then turns face 6 behind face 7 [reasoned from the
+fixture's assignments and the ways up the run prints]. The page is held by
+face 5 across the spine (edge 14) and by face 0 above it (edge 8), and both
+lie top up [ghci]. Lying under face 0, the page can only set off away from the
+reader. Under L14, turning it towards −z gives travels of −180 on edge 14 and
++180 on edge 8 when listed `[14, 8]`, which is the page turn, and the opposite
+when listed `[8, 14]`, which drives the page into face 0. Towards +z the two
+listings swap: `[8, 14]` gives the page turn and `[14, 8]` the collision
+[ghci]. The script is
+[`scripts/E3-square-base-listing.ghci`](scripts/E3-square-base-listing.ghci),
+run at `6c5048b`.
 
 **Two readings, each consistent:**
 
@@ -317,10 +345,13 @@ listed `[8, 14]` [ghci].
   sign follows from the moving face's way up [reasoned]. The sense this
   gives a segment depends only on which side of the line that segment's
   moving face lies, so every segment agrees unless the moving paper itself
-  straddles the line. A page turn gets one answer: the square base's page
-  reads the same both ways [reasoned from the ghci run: faces 6 and 7 lie on
-  one side]. Refuse when the moving paper beside the hinge straddles the line
-  or stands on edge. Agrees with L14 on open hinges.
+  straddles the line. A page turn gets one answer: on the square base,
+  `behind` gives the page turn under either listing, reading face 6 for
+  `[14, 8]` and face 7 for `[8, 14]` [reasoned from the ghci run: face 6 lies
+  the same way up as face 5, which L14 reads for `[14, 8]`, and face 7 the
+  other way up from face 0, which L14 reads for `[8, 14]`]. Refuse when the
+  moving paper beside the hinge straddles the line or stands on edge. Agrees
+  with L14 on open hinges.
 - **(B) Crease, as built.** `in front` means the hinge closes on the reader's
   side of the held face. Consistent with the rigid-origami sign convention.
   To be honest about kinds 2 and 3 it needs a refusal for any fold that opens
@@ -331,19 +362,29 @@ listed `[8, 14]` [ghci].
 | --- | --- | --- |
 | Open hinges | same | same |
 | Lifting a flap off the face it lies on | `in front` | `behind`, or refused → `unfold` |
-| Page turn | `in front`, one answer | listing order, or refused |
-| Completing a valley already past 90° | reads as `behind` | `in front` |
+| Page turn | where the page goes, one answer | listing order, or refused |
+| Completing a valley already past 90° | reads as `behind`; refused while the moving face must lie flat (decisions D5) | `in front` |
 | Blintz, quarter fold, crane wing | unchanged | unchanged |
 | #282's negative control E10 | `fold in front …` | `fold behind …` (as written) |
 | Crane source's four page turns | as written | depend on listing |
-| Sources behind it | PRD 02 §5.3's sentence, Lang, Eos, FoldingAgent, Balkcom's book folds, Miyazaki | PRD 02 §5.3's table, PRD 05 L14, rigid-origami angle signs |
+| Sources behind it | PRD 02 §5.3's sentence, Lang, Eos, FoldingAgent, Balkcom's reflection folds, Miyazaki | PRD 02 §5.3's table, PRD 05 L14, rigid-origami angle signs |
 
 **Recommendation: (A)**, with `prepareFlapToward` reading the moving paper
-instead of the held face — a small follow-up to #344 — and a sense-free
-reopening move, since books draw reopening with an unfold arrow and only one
-direction is ever possible. The case (A) handles worse, a partial fold past
-vertical, is rare in instruction books and ambiguous there too. Adopted by the
-owner on 2026-09-23.
+instead of the held face — a small follow-up to #344. Under (A) a `fold` can
+turn a folded-over flap back, with the sense of where it goes; a sense-free
+reopening move is proposed beside it, since books draw reopening with an
+unfold arrow and only one direction is ever possible. The case (A) handles
+worse, a partial fold past vertical, is rare in instruction books and
+ambiguous there too. Adopted by the owner on 2026-09-23.
+
+#282's negative control under (A) is `fold in front 180° hinge of c1 moving
+corner south-east`: the corner lies under the square after c1, so turning it
+towards the reader drives it into the square. `Flap` refuses that as
+`FlapEndpointOrder`. Once 02 §6.3's covering check (step 4) exists, the
+square is found nearer on the side the corner turns towards, and the move is
+refused before `Flap` runs, as `FlapCovered`, whichever sense word it is
+written with: the same change the crane wing's example went through
+(decisions C9) [reasoned].
 
 ## Implications for the design
 
@@ -395,9 +436,9 @@ owner on 2026-09-23.
 
 ## Corrections to this repository's records
 
-E1 is a snapshot and is not edited; its corrections are recorded in
-[decisions.md §10](../decisions.md#10-corrections), rows 33 and 34, as row 32
-did before them. The others are fixed where they stand.
+E1 and E2 are snapshots and are not edited; their corrections are recorded
+in [decisions.md §10](../decisions.md#10-corrections), rows 33, 34, 37 and 38,
+as row 32 did before them. The others are fixed where they stand.
 
 - **E1** finding 2 ("What it lacks"), its §F table, implication 4 and open
   question 2 say Eos only picks a half-plane and that no prior art folds "only
@@ -409,7 +450,11 @@ did before them. The others are fixed where they stand.
   cell should read closed source.
 - **`docs/related-projects.md`** said Eos answers "never *how do I fold a
   crane*" and that its licence was not checked: Eos has folded a crane, and it
-  is closed source, distributed on request to members. Fixed there.
+  is closed source, distributed on request to members. Fixed there, in #353
+  and, for the "Two halves that never met" paragraph it missed, #361.
+- **E2** calls `along <line>`, its fold along a line already on the paper,
+  "Lucero's eighth" (its construction rule 4), and writes `nearest @p` as
+  "Beloch's `toward`", which holds for O5 and O6 but not for O3 (finding 10).
 - **PRD 02 §4.3, decisions D2 and the glossary additions** called
   `crease [P, Q]` "Lucero's eighth"; Lucero numbers it O3, the operation he
   adds, and his O8 is Huzita–Hatori O7. `P to L` is Justin's ④,
@@ -419,10 +464,12 @@ did before them. The others are fixed where they stand.
 
 1. How books draw a page turn — a valley arrow, or an unfold arrow when the
    turn opens a crease — was not checked against a real diagram.
-2. The square base's spine crease 14 is `F`, and `Flap` refuses to turn an `F`
-   crease (PRD 02 §6.2's `ExistingHingeFlat`, D8). If the crane's page turns
-   hinge on flat spine creases too, they are refused whichever sense rule is
-   chosen, until the library can give an `F` hinge an intent.
+2. *Answered after review.* The square base's spine crease 14 is `F`, and
+   `Flap` refuses to turn an `F` crease (PRD 02 §6.2's `ExistingHingeFlat`,
+   D8), which is why the run above relabels it. The crane source does not meet
+   this: its page turns hinge on the diagonal it creases with `fold and
+   unfold`, and the working pattern keeps a precrease's intent at angle 0
+   (D3), so that crease is a valley `Flap` can turn.
 3. What `repeat` should mean for a step repeated "behind": by Balkcom's rules
    it is the step wrapped in a turn-over, which may or may not be what
    `mirrored across` already says for symmetric flaps.

@@ -117,7 +117,9 @@ A *fold angle* is 0 when flat, negative for a mountain, and ±180 folded flat
      Here it is mountain, and the reader sees the sheet's top: coloured side up is
      the default, and nothing has turned the model over.
      The stationary faces 0 and 1 both show their tops, so both hinge segments
-     change by −180.
+     change by −180. (Since owner decision 13 the moving faces decide it, and
+     faces 2 and 3 show their tops too:
+     [D5](decisions.md#d5-presentation-and-the-readers-side).)
    - *Against the fixture.* State 1 has −180 on edges 8 and 10, vertices
      0, 3 and 7 moved, and faces 2 and 3 have *signed area* −0.25 (the shoelace
      area, positive when a ring runs anticlockwise). Their rings now run clockwise,
@@ -637,6 +639,13 @@ places:
 | --- | --- | --- |
 | valley | +A: edge 9 in §1's step `quarter` | −A: edge 11 in step `quarter` |
 | mountain | −A: edges 8 and 10 in step `half` | +A: the crane wing's accepted `behind` (§9) [reasoned] |
+
+*Superseded in part* by [D5](decisions.md#d5-presentation-and-the-readers-side)'s
+amendment (owner decision 13, 2026-09-23): the sign is read from the *moving* face
+beside each hinge segment, not the stationary one. On an open hinge, which is every
+example here, the two faces beside a crease lie the same way up, so the table keeps
+its numbers. The table and the paragraph below are rewritten with that change to
+`prepareFlapToward`.
 
 **The runner hands `Flap` a side, not a signed travel**
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
@@ -1204,7 +1213,10 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
     selection step, so it gets `Flap`'s `FlapEndpointOrder 0` instead.
   - *A valley at −90 is not a typo.* By §5.3's table, the accepted `behind` is +90
     only because the first hinge segment's stationary face shows its back, and on
-    that face `in front` is −90 [reasoned].
+    that face `in front` is −90 [reasoned]. The moving face beside it is the other
+    half of a face the crease cuts, so it shows its back too, and
+    [D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment gives the
+    same sign.
 - **Its refusals.** If the inner move is accepted: `RefusalNotRaised`. If it is
   refused by another name: `RefusedDifferently`, naming both.
 
@@ -1413,7 +1425,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `StillAmbiguous`, `SeveralStackings` | `StackingChoiceError` | §7: relations leave two or more; no relations and several stackings, including a macro landing flat (§8.1) | count; open pairs as `layers … above …` |
 | `GaveUpStacking` | `FoldError` ([`Query.hs:139`](../src/Senbazuru/Fold/Query.hs#L139)), wrapped as `StackingRefused` in `StackingError` ([`Stacking.hs:448`](../src/Senbazuru/Origami/Stacking.hs#L448)) | budget exhausted | the budget |
 | `FlapCoupled`, `FlapNotHinge`, `FlapNotBoundary`, `FlapUnalignedCrease`, `FlapEndpointOrder`, `FlapStackOrder`, `FlapStartMismatch` | `FlapError` ([`Flap.hs:104-121`](../src/Senbazuru/Origami/Flap.hs#L104-L121)) in `MoveFailure` | the hinge turn is refused | the library's words; ids as internal |
-| `FlapStationaryNotFlat` | `FlapError`, new with `prepareFlapToward` ([05](05-prd-library-additions.md)), in `MoveFailure` | the first hinge segment's stationary face normal is not ±ẑ within 1e-12 (§5.3) | the face, internal |
+| `FlapStationaryNotFlat` | `FlapError`, new with `prepareFlapToward` ([05](05-prd-library-additions.md)), in `MoveFailure` | the first hinge segment's stationary face normal is not ±ẑ within 1e-12 (§5.3); to be replaced by `FlapMovingNotFlat`, with `FlapMovesBothWays` beside it ([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment) | the face, internal |
 | `TornAt`, `AngleNotAchieved` | `FoldingError` ([`Folding.hs:154`](../src/Senbazuru/Origami/Folding.hs#L154), [`:170`](../src/Senbazuru/Origami/Folding.hs#L170)) in `MoveFailure` | a pose, checkpoint or macro pose fails to close | the vertex or crease, internal |
 | `LineStopsOnTheModel` | `ThroughError` ([`ThroughLayers.hs:154`](../src/Senbazuru/Origami/ThroughLayers.hs#L154)) in `MoveFailure` | a line end inside a face while creasing through layers | the point given, after the flag-leak fix ([05](05-prd-library-additions.md)) |
 | `ReanchorNotFlat` | `MoveFailure` | §2.3 | the face, as a material point |
