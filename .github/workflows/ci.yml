@@ -8,8 +8,43 @@ on:
   pull_request:
 
 jobs:
+  # Whether a pull request touches anything outside PRDs/. Nothing the build,
+  # the tests, ormolu or hlint read lives there, and a pull request that
+  # touches PRDs/ normally touches nothing else (PRDs/README.md), so such a
+  # pull request skips the three jobs below. A push to main always runs them.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.paths.outputs.code }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # "false" only when every changed path is under PRDs/. --no-renames lists
+      # both sides of a move, so a file moved into PRDs/ still counts as a
+      # change where it came from. Anything unexpected leaves it "true".
+      - id: paths
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] \
+            && files=$(git diff --name-only --no-renames "$BASE" HEAD) \
+            && [ -n "$files" ] \
+            && ! printf '%s\n' "$files" | grep -qv '^PRDs/'; then
+            code=false
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "code=$code"
+
   test:
     name: build and test
+    needs: changes
+    # A job skipped here counts as passing its required check, so it is
+    # skipped only when the changes job says "false"; if that job fails or
+    # says nothing, this one runs.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,6 +73,11 @@ jobs:
 
   format:
     name: ormolu
+    needs: changes
+    # A job skipped here counts as passing its required check, so it is
+    # skipped only when the changes job says "false"; if that job fails or
+    # says nothing, this one runs.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     env:
       # Must match the ormolu that `make fmt` runs locally -- check with
@@ -73,6 +113,11 @@ jobs:
 
   lint:
     name: hlint
+    needs: changes
+    # A job skipped here counts as passing its required check, so it is
+    # skipped only when the changes job says "false"; if that job fails or
+    # says nothing, this one runs.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
