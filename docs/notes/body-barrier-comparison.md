@@ -80,3 +80,12 @@ Pressure, whole-crane inflation and continuously checked flexible folding stay
 later work. The [material-consumer contract](../../PRDs/07-prd-material-consumption.md)
 also remains unchanged: a flexible illustration does not silently replace the
 state used by the next rigid folding instruction.
+
+**Initialization result, 2026-09-24:**
+[#379](https://github.com/avalonalex/senbazuru/issues/379)
+[runs the separately bounded construction](body-separated-initialization.md).
+It stops after four retained corrections with negative gaps, excess length
+error and failed contact checks. No candidate can enter the barrier, so step 3
+has not run. This meets step 2's prescribed stop at an initialization blocker;
+another method needs a new scoped decision before further construction or
+material solves.

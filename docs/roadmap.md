@@ -52,18 +52,24 @@ The body-contact work through [#375](https://github.com/avalonalex/senbazuru/pul
 meets the first deliverable's **reproducible geometry/solver blocker** option.
 There is still no accepted opened body; #195 and track A of #269 remain open.
 
-**Next: one [bounded barrier/penalty comparison](notes/body-barrier-comparison.md).**
-Pause further pair-by-pair and joint repairs of the saved 1/4 trial. Declare a
-finite initialization budget and attempt a slightly separated start that keeps
-shared paper, inherited order and exact holds. Only if that succeeds, compare
-both contact methods from the same start with matching material settings,
-work budgets and accepted-path checks. Review useful body opening and attachment
-movement at drawing size, alongside unchanged material/contact and convergence
-checks. Stop at an accepted static pose or a reproducible initialization,
-path-check or solver blocker; finding another limiting pair does not start
-another repair series. Physical thickness, pressure and full-crane deformation
-remain separate later studies. [#377](https://github.com/avalonalex/senbazuru/issues/377)
-records this roadmap update; no new material solve is included.
+**Bounded initialization stopped at a blocker.**
+[#379](https://github.com/avalonalex/senbazuru/issues/379)
+[attempts one separated start](notes/body-separated-initialization.md) under the
+[barrier/penalty comparison decision](notes/body-barrier-comparison.md).
+Four joint corrections reduce construction cost, then no declared trial
+fraction improves it. Exact holds and shared material survive, but the final
+relative edge error is `3.18e-5` (limit `1e-5`), disjoint gaps remain negative,
+and contact checks fail. Maximum movement is 0.283 drawing pixels, without
+useful new opening. No candidate is barrier-ready; no body barrier solve or
+matched penalty control has run.
+
+**Next is a scope decision, not another correction.** Preserve this reproducible
+initialization failure and the earlier penalty archive. A different construction
+or material/contact model needs its own bounded proposal before implementation;
+the matched comparison remains blocked on a valid separated start. Further
+pair-by-pair repairs stay paused. Physical thickness, pressure and full-crane
+deformation remain separate later studies; the illustration/rigid-sequence
+boundary and existing acceptance checks are unchanged.
 
 The following evidence explains that decision. [The first bounded body-patch
 comparison](notes/coupled-body-patch.md)
@@ -134,7 +140,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,890 examples pass in the cold build for #373, including overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,895 examples pass for #379, including bounded separated initialization with shared vertices, exact holds and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -813,7 +819,13 @@ checked coupled angles.
    [bounded body barrier comparison](notes/body-barrier-comparison.md), with a
    separately bounded initialization and matching penalty control. Retain the
    original refusals, existing acceptance checks and a firm stop at a useful
-   accepted pose or a documented blocker. No body barrier solve has run yet.**
+   accepted pose or a documented blocker.**
+   [#379](https://github.com/avalonalex/senbazuru/issues/379)
+   [reaches that initialization stop](notes/body-separated-initialization.md):
+   four joint corrections lower construction cost but fail separation and
+   length/contact checks. The fifth direction exhausts its thirteen fractions.
+   No body barrier solve has run; a different initialization needs a new scoped
+   decision, not another limiting-pair repair.
    The existing vertex 27–plane 70 guard remains a conservative fixture policy;
    it is not automatic contact discovery.
    No opened endpoint is accepted yet, and removing the surrounding crane's

@@ -482,6 +482,15 @@ uses `SurfaceContact`'s moving-corner derivative. The gallery checks original
 and refreshed guards through `BodyRestorationLoop.assess`, measures the actual
 target separately, and retains failed repairs. See
 [the coupled-contact result](notes/body-overlap-restoration.md).
+`BodyInitialization` instead attempts a bounded separated start: shared free
+vertices jointly reduce length errors and all inherited overlap-clearance
+deficits, with a displacement tether and exact holds. It reuses `SparseSolve`
+and verifies the original linear residual. Construction cost selects numerical
+iterates, not accepted paper. `BodyInitializationGallery` authenticates the
+saved start through `BodyFourthArchive`, checks each retained pose against
+material/contact, discovery, barrier-domain and strict static-contact gates,
+and exports every proposal/refusal. It does not run a barrier material solve.
+See [the bounded initialization result](notes/body-separated-initialization.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
