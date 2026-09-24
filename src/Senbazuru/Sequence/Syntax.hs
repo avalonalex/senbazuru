@@ -378,9 +378,10 @@ data Move
     -- optional /seed/: a point on the paper that moves, for a line that does
     -- not itself say which side that is.
     Fold Sense Amount Line Layers (Maybe Point)
-  | -- | @fold and unfold SENSE LINE [LAYERS] [moving P]@: make a crease and
-    -- lay the paper flat again. It has no 'Amount' because it has nowhere to
-    -- stop part-way.
+  | -- | @pre-crease SENSE LINE [LAYERS] [moving P]@, also written
+    -- @precrease@ or @fold and unfold@: fold along the line and lay the paper
+    -- flat again, one move whose lasting change is the crease it leaves (owner
+    -- decision 14). It has no 'Amount' because it has nowhere to stop part-way.
     FoldAndUnfold Sense Line Layers (Maybe Point)
   | -- | @unfold c1 c2@: undo the named steps
     Unfold [Name]

@@ -28,6 +28,7 @@ For the ideas rather than the definitions, start with
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Flap** | A part of the sheet that can be lifted or folded over. It may contain several faces and several layers; it is not necessarily one polygon. |
 | **Book fold** | Folding a sheet in half so two opposite edges meet. |
+| **Pre-crease** | Folding along a line and unfolding again, so that the paper keeps a crease there, flat, until a later move uses it. Instruction books' word for the step. A sequence source writes it `pre-crease` (also `precrease` or `fold and unfold`), and it is one move, whose only lasting change is the crease. See [why a pre-crease can stay flat](notes/precreases-and-target-states.md). |
 | **Page turn** | Turning a flap from one side of a line to the other, like the page of a book. The flap is joined to paper on both sides of the line, so the turn opens one crease and closes another. Not a page of drawings, and not turning the whole model over. |
 | **Cupboard fold** | Folding two opposite edges to meet at the centre line, like a pair of cupboard doors. Also called a gate fold. |
 | **Squash fold** | Opening a doubled flap into a pocket, then pressing it flat along a different pair of creases. Four squash folds followed by four petal folds turn a square base into a frog base. |
@@ -119,7 +120,7 @@ needs each word exists.
 
 | Term | Meaning |
 | --- | --- |
-| **Core move** | A move as a run performs it, with no shorthand left: no `let`, no line known only by a name, and no `fold and unfold`, which is a fold followed by the unfold of that fold. *Elaboration* makes them; each remembers the move the author wrote. See `Senbazuru.Sequence.Elaborate`. |
+| **Core move** | A move as a run performs it, with no shorthand left: no `let` and no line known only by a name. A *pre-crease* is one core move. *Elaboration* makes them; each remembers the move the author wrote. See `Senbazuru.Sequence.Elaborate`. |
 | **Elaboration** | The pass between checking a fold sequence and running it, which rewrites its shorthand as *core moves*. It needs no paper and cannot fail. |
 | **Fold sequence** | The list of instructions that takes a sheet of paper to a model, as a `Sequence` value. It can be written two ways, as Haskell or as a *sequence source*, and both make the same value. Not the same thing as a **step** sequence in a FOLD file, which is the *output*: consecutive frames, one per picture. See `Senbazuru.Sequence.Syntax`. |
 | **Let** | `let NAME = …` in a fold sequence: a name for a point or a line, standing for it wherever it is used and worked out afresh each time. It pins nothing to the paper; a `mark` does that, naming the paper that is at a point when the mark is made. |

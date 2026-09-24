@@ -2,29 +2,29 @@
 -- Module      : Senbazuru.Sequence.Elaborate
 -- Description : A checked fold sequence with its shorthand expanded, in the moves a run performs.
 --
--- Two things an author writes are shorthand, convenient to write and nothing
--- the paper does on its own:
+-- One thing an author writes is shorthand, convenient to write and nothing
+-- the paper does on its own. @let mid = edge west to edge east@ gives a line a
+-- name. Nothing happens to the paper when it is written. Each later use of
+-- @mid@ means that line, worked out afresh wherever it is used, so a @let@
+-- pins nothing to the paper; a @mark@ is what does that.
 --
--- * @let mid = edge west to edge east@ gives a line a name. Nothing happens to
---   the paper when it is written. Each later use of @mid@ means that line,
---   worked out afresh wherever it is used, so a @let@ pins nothing to the
---   paper; a @mark@ is what does that.
--- * @fold and unfold valley mid@ makes a crease and lays the paper flat
---   again. It is a fold, and then the unfold of that fold.
+-- This pass writes it out, so the code that folds paper meets only /core
+-- moves/: no @let@ anywhere and no name of a line. It needs no paper and
+-- cannot fail, because 'elaborate' takes only a 'Checked' sequence, whose
+-- names all resolve.
 --
--- This pass writes both out, so the code that folds paper meets only /core
--- moves/: no @let@ anywhere, no name of a line, and no @fold and unfold@. It
--- needs no paper and cannot fail, because 'elaborate' takes only a 'Checked'
--- sequence, whose names all resolve.
+-- A pre-crease, @pre-crease valley mid@ (also @precrease@ or @fold and
+-- unfold@), looks like shorthand for a fold and its unfold, and is not. What
+-- it leaves behind is a crease, lying flat, with its direction, so it is one
+-- move with one record (owner decision 14, D12 in @PRDs\/decisions.md@):
+-- 'CorePrecrease'. The run checks the fold's path and never performs the
+-- unfold, which only retraces it.
 --
 -- == Core moves are a type of their own
 --
--- 'Core' could have been the tree's own 'Move', with a promise that
--- 'Let' and 'FoldAndUnfold' never occur. A separate type makes the promise
--- one the compiler keeps, and it has a move the tree has no way to say:
--- 'CoreUnfoldPrevious', the second half of a @fold and unfold@. The tree's
--- 'Unfold' names /steps/, and the fold it undoes here is a single move, in the
--- middle of a step.
+-- 'Core' could have been the tree's own 'Move', with a promise that 'Let'
+-- never occurs and no line is a bare name. A separate type makes the promise
+-- one the compiler keeps.
 --
 -- == Every core move remembers what the author wrote
 --
@@ -32,9 +32,7 @@
 -- wrote, not the expansion. If @fold valley mid moving centre@ cannot be
 -- folded, the message quotes @mid@, and its caret goes under the author's
 -- line. So each 'CoreMove' carries an 'Origin': the span and the checked move
--- it came from, and which half of a @fold and unfold@ it is. The two halves
--- share one origin, and that is how a run can count them as one move, as the
--- design asks when it decides whether a step's moves still match its picture.
+-- it came from.
 --
 -- == Where the names go
 --
@@ -58,7 +56,6 @@ module Senbazuru.Sequence.Elaborate
     CoreMove (..),
     Core (..),
     Origin (..),
-    Part (..),
   )
 where
 
@@ -70,7 +67,8 @@ import Data.Text (Text)
 import Senbazuru.Sequence.Check (Checked, checkedSequence)
 import Senbazuru.Sequence.Syntax
 
--- | A checked sequence with every @let@ and @fold and unfold@ written out.
+-- | A checked sequence with every @let@ written out and every move a core
+-- move.
 data Elaborated = Elaborated
   { elaboratedHeader :: Header,
     elaboratedSteps :: [ElaboratedStep]
@@ -96,37 +94,26 @@ data CoreMove = CoreMove
 
 -- | What the author wrote that a core move came from.
 data Origin = Origin
-  { -- | The span of the move written: of the whole @fold and unfold@ for
-    -- both its halves, and of the whole @expect refused@ for the move inside
-    -- it, which has no span of its own.
+  { -- | The span of the move written, or of the whole @expect refused@ for
+    -- the move inside it, which has no span of its own.
     originSpan :: Span,
     -- | The move as written and checked, @let@ names and all, for a message
     -- to quote.
-    originWritten :: Move,
-    originPart :: Part
+    originWritten :: Move
   }
   deriving stock (Eq, Show)
 
--- | Which of the core moves a written move became this one is.
-data Part
-  = -- | The only one: anything but a @fold and unfold@.
-    WholeMove
-  | -- | The fold of a @fold and unfold@.
-    FoldHalf
-  | -- | The unfold of a @fold and unfold@.
-    UnfoldHalf
-  deriving stock (Eq, Show, Enum, Bounded)
-
 -- | A move of the paper or of how it is shown, with nothing left to expand.
 --
--- Each is the tree's move of the same name but for three things. There is no
--- @let@ and no @fold and unfold@. A 'Line' in it is never a bare name, and a
--- point's name is always a mark's. And there is 'CoreUnfoldPrevious'.
+-- Each is the tree's move of the same name but for two things. There is no
+-- @let@, and a 'Line' in it is never a bare name, nor a point's name anything
+-- but a mark's. The tree's 'FoldAndUnfold' is 'CorePrecrease', named as
+-- instruction books name the step.
 data Core
   = CoreFold Sense Amount Line Layers (Maybe Point)
-  | -- | Turn back the fold just before this move in the same list of moves.
-    -- Only a @fold and unfold@ makes one, as its second half.
-    CoreUnfoldPrevious
+  | -- | A pre-crease: fold along the line and lay the paper flat again, one
+    -- move whose only lasting change is the crease it leaves.
+    CorePrecrease Sense Line Layers (Maybe Point)
   | -- | @unfold c1 c2@: undo the named steps.
     CoreUnfold [Name]
   | CoreTurnOver PageAxis
@@ -140,9 +127,8 @@ data Core
   | CoreRepeat Name (Maybe Name) (Maybe Isometry)
   | CoreCheckpoint FilePath StackingSpec
   | CoreNotModelled Text
-  | -- | The moves the expected move became: none for a @let@, which can
-    -- never be refused, and two for a @fold and unfold@, either of which may
-    -- be the one refused.
+  | -- | The move the expected move became, or none for a @let@, which can
+    -- never be refused.
     CoreExpectRefused RefusalKind [CoreMove]
   deriving stock (Eq, Show)
 
@@ -161,23 +147,19 @@ elaborateStep :: Located Step -> Expand ElaboratedStep
 elaborateStep (Located sp (Step name caption moves)) =
   ElaboratedStep name caption sp . concat <$> mapM (\(Located at written) -> expand at written) moves
 
--- | The core moves one written move becomes: none for a @let@, two for a
--- @fold and unfold@, and one for anything else.
+-- | The core moves one written move becomes: none for a @let@, and one for
+-- anything else.
 expand :: Span -> Move -> Expand [CoreMove]
 expand sp written = do
   lets <- get
   let point = pointWith lets
       line = lineWith lets
-      whole core = [CoreMove (Origin sp written WholeMove) core]
+      whole core = [CoreMove (Origin sp written) core]
   case written of
     Let name binding -> do
       modify' (Map.insert name (bindingWith lets binding))
       pure []
-    FoldAndUnfold sense l layers seed ->
-      pure
-        [ CoreMove (Origin sp written FoldHalf) (CoreFold sense ToFlat (line l) layers (point <$> seed)),
-          CoreMove (Origin sp written UnfoldHalf) CoreUnfoldPrevious
-        ]
+    FoldAndUnfold sense l layers seed -> pure (whole (CorePrecrease sense (line l) layers (point <$> seed)))
     Fold sense amount l layers seed -> pure (whole (CoreFold sense amount (line l) layers (point <$> seed)))
     Unfold names -> pure (whole (CoreUnfold names))
     TurnOver axis -> pure (whole (CoreTurnOver axis))

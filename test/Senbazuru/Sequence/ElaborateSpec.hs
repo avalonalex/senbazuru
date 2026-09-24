@@ -1,17 +1,17 @@
 -- |
--- Tests for the pass that expands @let@ and @fold and unfold@.
+-- Tests for the pass that expands @let@ and writes every move as a core move.
 --
 -- __Examples__ pin the expansion and its provenance exactly: the quarter
 -- fold, which has nothing to expand, as the design works through it; a
--- source with a @let@ and a @fold and unfold@, with the span each core move
+-- source with a @let@ and a pre-crease, with the span each core move
 -- remembers; and each place a @let@ can be used or hidden.
 --
 -- __Properties__ over the sequences "Test.CheckedSequenceGen" makes, which
 -- use their @let@s in every position a point or a line can stand. They say
 -- what must hold of any expansion: the steps are kept as written; no line is
 -- left named, and the only point names left are marks'; and the origins,
--- read in order, give back every move the author wrote but the @let@s, with
--- a @fold and unfold@ as its two halves.
+-- read in order, give back every move the author wrote but the @let@s, one
+-- core move each, a pre-crease included.
 module Senbazuru.Sequence.ElaborateSpec (spec) where
 
 import Data.Set qualified as Set
@@ -43,7 +43,7 @@ spec = do
             [CoreFold ValleyFold ToFlat (LineOnto (EdgeOf North) (EdgeOf South) Nothing) FlapOfFirstArgument Nothing]
           ]
       fmap (map (map coreOrigin . elaboratedMoves) . elaboratedSteps) (elaborated written)
-        `shouldBe` fmap (map (map (\(Located sp m) -> Origin sp m WholeMove) . stepMoves . locValue) . seqSteps) written
+        `shouldBe` fmap (map (map (\(Located sp m) -> Origin sp m) . stepMoves . locValue) . seqSteps) written
 
     it "keeps the steps' names, captions and spans, and the header" $ do
       text <- TIO.readFile "test/fixtures/quarter-fold.foldseq"
@@ -82,8 +82,7 @@ spec = do
         `shouldBe` Right
           [ [CoreFold MountainFold (Degrees 45) (EdgeOf West) (TopLayers 2) (Just Centre)],
             [CoreMacro (RabbitEar Centre 120) [30, 60]],
-            [ CoreFold ValleyFold ToFlat (EdgeOf North) AllLayers (Just (CornerOf NorthEast)),
-              CoreUnfoldPrevious,
+            [ CorePrecrease ValleyFold (EdgeOf North) AllLayers (Just (CornerOf NorthEast)),
               CoreRotate 3 Anticlockwise,
               CoreTurnOver TopBottom,
               CoreContinue "m" 150,
@@ -92,12 +91,12 @@ spec = do
             ]
           ]
 
-  describe "a let and a fold and unfold" $ do
+  describe "a let and a pre-crease" $ do
     let source =
           sourceOf
             [ "step half \"Crease the middle.\" {",
               "  let mid = edge west to edge east",
-              "  fold and unfold valley mid",
+              "  pre-crease valley mid",
               "}",
               "step {",
               "  let p = corner south-west",
@@ -112,21 +111,19 @@ spec = do
     it "become the moves they stand for" $
       fmap (map (map coreMove)) steps
         `shouldBe` Right
-          [ [CoreFold ValleyFold ToFlat middle FlapOfFirstArgument Nothing, CoreUnfoldPrevious],
+          [ [CorePrecrease ValleyFold middle FlapOfFirstArgument Nothing],
             [ CoreMark "m" Centre Nothing,
               CoreFold ValleyFold ToFlat (Onto (CornerOf SouthWest) Centre) FlapOfFirstArgument Nothing,
               CoreFold ValleyFold ToFlat (PointToLine (PointNamed "m") middle) FlapOfFirstArgument (Just (CornerOf SouthWest))
             ]
           ]
 
-    -- Both halves are the one line the author wrote, line 5, and a refusal of
-    -- either quotes it and points there. The let left no move behind.
-    it "remember the author's line, both halves of the fold and unfold the same one" $
+    -- The pre-crease is one move, the one line the author wrote, line 5, and a
+    -- refusal of it quotes that line and points there. The let left no move
+    -- behind.
+    it "remember the author's line, the pre-crease as one move" $
       fmap (map coreOrigin . concat . take 1) steps
-        `shouldBe` Right
-          [ Origin (Span "t" 5 3 5 29) (FoldAndUnfold ValleyFold (LineNamed "mid") FlapOfFirstArgument Nothing) FoldHalf,
-            Origin (Span "t" 5 3 5 29) (FoldAndUnfold ValleyFold (LineNamed "mid") FlapOfFirstArgument Nothing) UnfoldHalf
-          ]
+        `shouldBe` Right [Origin (Span "t" 5 3 5 24) (FoldAndUnfold ValleyFold (LineNamed "mid") FlapOfFirstArgument Nothing)]
 
     it "remember the move as written, let names and all, where a let was used" $
       fmap (map (originWritten . coreOrigin) . concat . drop 1) steps
@@ -192,13 +189,17 @@ spec = do
     -- It has no span of its own, so it takes the expectation's.
     it "is remembered as written, at the expectation's span" $ do
       let moves = oneStep "step { expect refused FlapCovered { fold valley edge west moving centre } }"
-          atTheExpectation m = [(originSpan (coreOrigin m), Fold ValleyFold ToFlat (EdgeOf West) FlapOfFirstArgument (Just Centre), WholeMove)]
+          atTheExpectation m = [(originSpan (coreOrigin m), Fold ValleyFold ToFlat (EdgeOf West) FlapOfFirstArgument (Just Centre))]
       fmap length moves `shouldBe` Right 1
       fmap (map insideOrigins) moves `shouldBe` fmap (map atTheExpectation) moves
 
-    it "is both halves of a fold and unfold, either of which may be the one refused" $
-      fmap (map insideParts) (oneStep "step { expect refused ExistingHingeFlat { fold and unfold valley edge west moving centre } }")
-        `shouldBe` Right [[(CoreFold ValleyFold ToFlat (EdgeOf West) FlapOfFirstArgument (Just Centre), FoldHalf), (CoreUnfoldPrevious, UnfoldHalf)]]
+    it "is one core move for a pre-crease, spelled either way" $
+      mapM_
+        ( \spelling ->
+            fmap (map insideCores) (oneStep ("step { expect refused ExistingHingeFlat { " <> spelling <> " valley edge west moving centre } }"))
+              `shouldBe` Right [[CorePrecrease ValleyFold (EdgeOf West) FlapOfFirstArgument (Just Centre)]]
+        )
+        ["fold and unfold", "pre-crease"]
 
   describe "any sequence that means something" $ do
     prop "keeps its steps as written, and its header" $
@@ -216,9 +217,9 @@ spec = do
              in counterexample (show (map coreMove cores)) $
                   (namesAfter "LineNamed" cores, filter (`Set.notMember` marks) (namesAfter "PointNamed" cores)) === ([], [])
 
-    prop "remembers every move the author wrote, in order, a fold and unfold as its two halves" $
+    prop "remembers every move the author wrote, in order, one core move each, a pre-crease included" $
       checkCoverage . forAll genChecked $ \s ->
-        cover 15 (any isFoldAndUnfold (allMoves s)) "had a fold and unfold" $
+        cover 15 (any isPrecrease (allMoves s)) "had a pre-crease" $
           withChecked s $ \checked ->
             let written = map (map locValue . stepMoves . locValue) (seqSteps (checkedSequence checked))
                 cores = map elaboratedMoves (elaboratedSteps (elaborate checked))
@@ -243,37 +244,34 @@ withChecked s k = case checkSequence s of
   Left err -> counterexample ("the generator made a sequence the checker refuses: " <> show err) False
 
 -- | For an expectation, what its origin says of each move inside it.
-insideOrigins :: CoreMove -> [(Span, Move, Part)]
+insideOrigins :: CoreMove -> [(Span, Move)]
 insideOrigins m = case coreMove m of
-  CoreExpectRefused _ inside -> [(originSpan o, originWritten o, originPart o) | o <- map coreOrigin inside]
+  CoreExpectRefused _ inside -> [(originSpan o, originWritten o) | o <- map coreOrigin inside]
   _ -> []
 
-insideParts :: CoreMove -> [(Core, Part)]
-insideParts m = case coreMove m of
-  CoreExpectRefused _ inside -> [(coreMove c, originPart (coreOrigin c)) | c <- inside]
+insideCores :: CoreMove -> [Core]
+insideCores m = case coreMove m of
+  CoreExpectRefused _ inside -> map coreMove inside
   _ -> []
 
 -- | Whether the core moves' origins give back these written moves in order:
--- a @let@ gives none, a @fold and unfold@ its two halves, anything else one,
--- and the moves inside a block give back the block's.
+-- a @let@ gives none, anything else one, a pre-crease becoming a
+-- 'CorePrecrease', and the moves inside a block give back the block's.
 originsFollow :: [Move] -> [CoreMove] -> Bool
 originsFollow written cores = case written of
   [] -> null cores
   Let {} : rest -> originsFollow rest cores
-  m@FoldAndUnfold {} : rest -> case cores of
-    first : second : more ->
-      origin first == (m, FoldHalf) && origin second == (m, UnfoldHalf) && originsFollow rest more
-    _ -> False
   m : rest -> case cores of
-    c : more -> origin c == (m, WholeMove) && inside m (coreMove c) && originsFollow rest more
+    c : more -> originWritten (coreOrigin c) == m && inside m (coreMove c) && originsFollow rest more
     [] -> False
   where
-    origin c = (originWritten (coreOrigin c), originPart (coreOrigin c))
     inside m c = case (m, c) of
       (Together members, CoreTogether cores') -> originsFollow (map locValue members) cores'
       (ExpectRefused _ inner, CoreExpectRefused _ cores') -> originsFollow [inner] cores'
+      (FoldAndUnfold {}, CorePrecrease {}) -> True
       (Together _, _) -> False
       (ExpectRefused {}, _) -> False
+      (FoldAndUnfold {}, _) -> False
       _ -> True
 
 -- | The names after a constructor in the core moves' 'show', origins left out:
@@ -294,14 +292,14 @@ withoutOrigin (CoreMove _ core) = bare $ case core of
 
 -- | A core move with a blank origin.
 bare :: Core -> CoreMove
-bare = CoreMove (Origin NoSpan (TurnOver LeftRight) WholeMove)
+bare = CoreMove (Origin NoSpan (TurnOver LeftRight))
 
 isLet :: Move -> Bool
 isLet = \case
   Let {} -> True
   _ -> False
 
-isFoldAndUnfold :: Move -> Bool
-isFoldAndUnfold = \case
+isPrecrease :: Move -> Bool
+isPrecrease = \case
   FoldAndUnfold {} -> True
   _ -> False

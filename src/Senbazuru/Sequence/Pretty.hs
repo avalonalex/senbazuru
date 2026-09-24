@@ -10,10 +10,11 @@
 -- == One spelling
 --
 -- The text an author writes has synonyms. A fold away from the reader is
--- @mountain@ or @behind@; an angle is @90°@ or @90deg@; @precrease@ means
--- @fold and unfold@. The tree keeps only what was meant, so the printer has to
--- choose a word, and it always chooses the same one: @valley@ and @mountain@,
--- @fold and unfold@, @°@, @moving@, and @top layer@ for a count of one. A
+-- @mountain@ or @behind@; an angle is @90°@ or @90deg@; @precrease@ and
+-- @fold and unfold@ mean @pre-crease@. The tree keeps only what was meant, so
+-- the printer has to choose a word, and it always chooses the same one:
+-- @valley@ and @mountain@, @pre-crease@, the word instruction books use (owner
+-- decision 14), @°@, @moving@, and @top layer@ for a count of one. A
 -- caption is never touched, so a step can say \"behind\" in its caption and
 -- @mountain@ in its move, and both are right.
 --
@@ -133,7 +134,7 @@ moveLines = \case
   Fold sense amount line layers seed ->
     [T.unwords (["fold", senseWord sense] <> amountWords amount <> [prettyLine line] <> layerWords layers <> seedWords seed)]
   FoldAndUnfold sense line layers seed ->
-    [T.unwords (["fold and unfold", senseWord sense, prettyLine line] <> layerWords layers <> seedWords seed)]
+    [T.unwords (["pre-crease", senseWord sense, prettyLine line] <> layerWords layers <> seedWords seed)]
   Unfold names -> [T.unwords ("unfold" : [text | Name text <- names])]
   TurnOver LeftRight -> ["turn over left-right"]
   TurnOver TopBottom -> ["turn over top-bottom"]

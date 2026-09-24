@@ -82,7 +82,7 @@ spec = do
         (\(text, body) -> (text, oneStep text) `shouldBe` (text, Right (movesOf body)))
         [ ("fold valley corner south-east to centre", fold valley (cornerOf SouthEast `onto` centre)),
           ("fold behind 90° corner south-east to centre top flap moving corner south-east", move (Fold mountain (Degrees 90) (cornerOf SouthEast `onto` centre) topFlap (Just (cornerOf SouthEast)))),
-          ("fold and unfold valley corner south-east to centre", foldAndUnfold valley (cornerOf SouthEast `onto` centre)),
+          ("pre-crease valley corner south-east to centre", preCrease valley (cornerOf SouthEast `onto` centre)),
           ("turn over left-right", turnOver LeftRight),
           ("rotate 1/8 turn anticlockwise", rotate 1 Anticlockwise),
           ("mark A = centre", void (mark "A" centre Nothing)),
@@ -104,9 +104,9 @@ spec = do
       map oneStep ["fold in front edge west", "fold behind edge west"]
         `shouldBe` map oneStep ["fold valley edge west", "fold mountain edge west"]
 
-    it "reads precrease, deg, flap containing and top 1 layers as their canonical forms" $
-      oneStep "precrease valley edge west top 1 layers flap containing centre; fold valley 90deg edge west"
-        `shouldBe` oneStep "fold and unfold valley edge west top layer moving centre; fold valley 90° edge west"
+    it "reads precrease, fold and unfold, deg, flap containing and top 1 layers as their canonical forms" $
+      oneStep "precrease valley edge west top 1 layers flap containing centre; fold and unfold valley edge west; fold valley 90deg edge west"
+        `shouldBe` oneStep "pre-crease valley edge west top layer moving centre; pre-crease valley edge west; fold valley 90° edge west"
 
     it "keeps a decimal exact" $
       oneStep "anchor (0.58, 0.4)" `shouldBe` Right [Anchor (AtSheet (29 / 50) (2 / 5))]
@@ -231,7 +231,7 @@ spec = do
     -- notice a printed keyword dropped from the list. These are the keywords
     -- it cannot see, because the printer never writes them.
     it "reserves the spellings only an author writes" $
-      filter (`Set.notMember` reservedWords) ["precrease", "front", "behind"] `shouldBe` []
+      filter (`Set.notMember` reservedWords) ["precrease", "and", "front", "behind"] `shouldBe` []
 
     it "is a move the language cannot express yet, or a block it does not run yet" $ do
       mistake (inStep "squash corner south-east") `shouldBe` Just (FutureMove "squash", "t:4:3")

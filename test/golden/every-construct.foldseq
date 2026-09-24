@@ -25,7 +25,7 @@ step folds "Every way of naming a fold line." {
   fold valley corner north-east to crease [corner south-west, centre]
   fold valley model [(-1/2, 0), (3, 1/4)] moving meet hinge of names crease of names
   fold valley [under, centre] moving end of crease of names nearest centre
-  fold and unfold valley diagonal moving corner north-west
+  pre-crease valley diagonal moving corner north-west
 }
 
 step {

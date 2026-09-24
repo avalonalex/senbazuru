@@ -129,7 +129,7 @@ module Senbazuru.Sequence.Build
     -- * Moves
     move,
     fold,
-    foldAndUnfold,
+    preCrease,
     unfold,
     turnOver,
     rotate,
@@ -308,9 +308,10 @@ move m = Moves (modify' (unlocated m :))
 fold :: Sense -> Line -> Moves ()
 fold sense line = move (Fold sense ToFlat line FlapOfFirstArgument Nothing)
 
--- | @fold and unfold SENSE LINE@: make the crease and lay the paper flat again.
-foldAndUnfold :: Sense -> Line -> Moves ()
-foldAndUnfold sense line = move (FoldAndUnfold sense line FlapOfFirstArgument Nothing)
+-- | @pre-crease SENSE LINE@: fold along the line and lay the paper flat
+-- again, one move that leaves the crease.
+preCrease :: Sense -> Line -> Moves ()
+preCrease sense line = move (FoldAndUnfold sense line FlapOfFirstArgument Nothing)
 
 -- | @unfold c1 c2@. A list, because the text may name several steps.
 --
