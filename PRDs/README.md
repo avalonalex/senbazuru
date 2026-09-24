@@ -315,3 +315,4 @@ questions.
   [AGENTS.md](../AGENTS.md#docs) (lines 99–113) could gain a `PRDs/` row: "The
   design for fold sequences and material rendering, with its decision record and
   research." This series does not edit `AGENTS.md`.
+
