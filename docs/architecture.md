@@ -491,6 +491,13 @@ saved start through `BodyFourthArchive`, checks each retained pose against
 material/contact, discovery, barrier-domain and strict static-contact gates,
 and exports every proposal/refusal. It does not run a barrier material solve.
 See [the bounded initialization result](notes/body-separated-initialization.md).
+`FeasibleInitialization` instead constrains material lengths while reducing one
+shared worst-clearance deficit. Its auxiliary scalar is never a paper vertex;
+`ContactQuadratic` supplies bounded directions without solver changes. Actual
+lengths, holds, displacement and deficit descent gate every retained trial.
+`BodyFeasibilityGallery` exports the linear rows and original-row solver checks;
+`BodyInitializationCheck` shares unchanged readiness gates with the weighted
+construction. See [the constrained attempt](notes/body-feasible-initialization.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

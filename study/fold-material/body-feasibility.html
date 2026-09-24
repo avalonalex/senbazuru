@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Separate the body without stretching it</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;min-width:0}.image-scroll{height:480px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto;max-width:none}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}.fail{color:#a23723;font-weight:600}pre{overflow:auto;max-height:400px}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-initialization.html">Previous weighted initialization</a>
+<p class="tag">SENBAZURU · CONSTRAINT-FIRST INITIALIZATION · #381</p>
+<h1>Separate the body without stretching it</h1>
+<p class="status" id="outcome">Run the bounded initialization to populate this page.</p>
+<p>A contact barrier needs a positive gap before it can act. This construction keeps material length errors below 0.001% and holds the same three vertices exactly. It tries to reduce the largest remaining gap deficit: how far the worst contact falls short of its target. All inherited overlaps participate together. This page tests a starting shape, not a settled body or a physical folding route.</p>
+<div class="controls"><label>Candidate <select id="state"></select></label><label>View <select id="view"><option value="side">Side</option><option value="top">Top</option><option value="underside">Underside</option><option value="material">Original sheet</option></select></label><label>Size <select id="zoom"><option value="1">Actual drawing size · 600 px / sheet unit</option><option value="4">4× magnified · scroll to inspect</option></select></label></div>
+<div class="views"><section class="figure"><h2>Saved start</h2><div class="image-scroll"><img id="before" alt="Saved body patch"></div></section><section class="figure"><h2 id="candidate-title">Candidate</h2><div class="image-scroll"><img id="after" alt="Initialization candidate"></div></section></div>
+<p id="caption"></p><div class="scroll"><table><thead><tr><th>Measurement</th><th>Saved start</th><th>Candidate</th></tr></thead><tbody id="metrics"></tbody></table></div>
+<h2>Can this shape enter the barrier solver?</h2><div id="gates"></div>
+<p>The construction targets a 1e-6 sheet-unit gap between triangles with no shared material vertex; connected neighbors target zero. Readiness uses 5e-7 numerical clearance, a 0.03 discovery range and a 0.001 barrier activation range. These distances are not paper thickness. Twenty corrections, thirteen trial fractions each and a 0.001 total movement cap bound this attempt.</p>
+<p>Crease and panel costs retain the archived material definition. They do not drive this construction. Its direction comes from linear contact and length constraints, followed by fresh measurements of the actual shape. A direction that fails the constrained solver’s own checks is never tried or retained. Orange/purple highlights mark reported contacts, and red marks excessive length error. Their absence does not establish barrier readiness.</p>
+<h2>Constrained directions</h2><p id="attempts"></p><p><a href="body-feasibility/checks.json">Measurements and trial evidence</a> · <a href="body-feasibility/trace.json">Full linear constraint audit</a> · <a id="fold">Candidate FOLD</a></p>
+<details><summary>Selected state and readiness diagnostics</summary><pre id="raw"></pre></details>
+</main><script>
+const data=/*BODY_FEASIBILITY_DATA*/null;
+if(data){
+ const $=id=>document.getElementById(id),num=x=>x===null?'—':Number(x).toPrecision(7),pass=x=>x?'Pass':'Blocked';
+ $('outcome').textContent=data.initializationReady?`A separated start passed all initialization checks after ${data.completedCorrections} corrections. No barrier material solve has run.`:`Initialization remains diagnostic after ${data.completedCorrections} corrections (${data.stopReason}). No barrier material solve has run.`;
+ const candidates=[...data.states,...data.diagnostics];
+ for(const s of candidates)$('state').add(new Option(s.state.title,s.id));
+ $('attempts').textContent=data.attempts.map((a,i)=>`Attempt ${i+1}: ${a.constraints} constraints; ${a.quadratic?`${a.quadratic.iterations} solver iterations, original-row checks ${a.quadratic.converged?'passed':'failed'}`:'no direction'}; ${a.trials.length} geometry trials.${a.failure?' '+a.failure+'.':''}`).join(' ');
+ $('state').value=data.states.at(-1).id;
+ function draw(){
+  const a=data.states[0],b=candidates.find(s=>s.id===$('state').value),view=$('view').value,zoom=Number($('zoom').value);
+  for(const [id,s] of [['before',a],['after',b]]){const img=$(id),viewport=img.parentElement,center=()=>{viewport.scrollLeft=(viewport.scrollWidth-viewport.clientWidth)/2;viewport.scrollTop=(viewport.scrollHeight-viewport.clientHeight)/2;};img.onload=center;img.src=`body-feasibility/${s.id}-${view}.svg`;img.style.width=`${560*zoom}px`;requestAnimationFrame(center);}
+  $('candidate-title').textContent=b.state.title;$('fold').href=`body-feasibility/${b.id}.fold`;
+  $('caption').textContent=`${b.retained?'Retained construction state.':'Diagnostic proposal only · never retained.'} ${view==='material'?'Original-sheet map uses its own fixed scale.':'Same camera and scale.'} Maximum movement from the saved shape: ${num(b.movement)} sheet units (${num(b.movement*600)} drawing pixels). Enlarging the view does not change geometry.`;
+  const landmarkMotion=(s,name)=>{const p=s.state.landmarks.find(m=>m.name===name).position,q=a.state.landmarks.find(m=>m.name===name).position;return num(Math.hypot(...p.map((x,i)=>x-q[i]))*600);};
+  const metrics=[['Neck attachment movement · px',s=>landmarkMotion(s,'neck')],['Tail attachment movement · px',s=>landmarkMotion(s,'tail')],['Body depth',s=>num(s.state.bodyDepth)],['Maximum relative edge error',s=>num(s.state.maxRelativeEdgeError)],['Exact-hold error',s=>num(s.state.holdError)],['Smallest disjoint overlap height gap',s=>num(s.readiness.minimumDisjointHeightGap)],['Crossing pairs',s=>s.state.contact.crossingPanels.length],['Reversed orders',s=>s.state.contact.reversedOrders.length],['Crease energy',s=>num(s.state.creaseEnergy)],['Panel energy',s=>num(s.state.panelEnergy)],['Length cost',s=>num(s.state.lengthCost)],['Archived zero-clearance contact cost',s=>num(s.state.contactCost)],['Largest clearance deficit',s=>num(s.worstDeficit)]];
+  $('metrics').replaceChildren();for(const [label,f] of metrics){const row=document.createElement('tr');for(const value of [label,f(a),f(b)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}$('metrics').append(row);}
+  $('gates').replaceChildren();for(const [label,key] of [['Material and inherited contact checks','geometryPassed'],['Declared height clearance','clearancePassed'],['Separated local contact reference','referencePassed'],['Learned / inherited order agreement','inheritedOrderCompatible'],['Finite positive barrier domain','barrierDomainPassed'],['Strict static contact check','strictStaticPassed']]){const p=document.createElement('p');const untested=!b.readiness.referencePassed&&['inheritedOrderCompatible','barrierDomainPassed'].includes(key);p.textContent=`${label}: ${untested?'Not evaluated · no separated reference':pass(b.readiness[key])}`;if(!b.readiness[key])p.className='fail';$('gates').append(p);}
+  $('raw').textContent=JSON.stringify(b,null,2);
+ }
+ for(const id of ['state','view','zoom'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>
