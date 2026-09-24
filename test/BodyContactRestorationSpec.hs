@@ -7,14 +7,17 @@ import BodyContactRestoration
 import BodyPlaneGuard
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
+import FoldContact (ContactRow (..))
+import Senbazuru.Fold.Types (FaceId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
+import SurfaceContact qualified as C
 import Test.Hspec
 
 spec :: Spec
-spec = describe "one plane-distance restoration" $ do
+spec = describe "one contact-distance restoration" $ do
   it "recovers a known linear loss with the least squared movement" $ do
     let g = IM.fromList [(0, V3 1 0 0), (1, V3 0 2 0)]
         m = PlaneMeasure (-0.01) g
@@ -48,6 +51,29 @@ spec = describe "one plane-distance restoration" $ do
     restorePlane IM.empty (0 / 0) (PlaneMeasure 0 IM.empty) `shouldSatisfy` isLeft
     restorePlane IM.empty 0 (PlaneMeasure (-1) (IM.singleton 1 (V3 (1 / 0) 0 0))) `shouldSatisfy` isLeft
     restorePlane IM.empty 1e308 (PlaneMeasure 0 (IM.singleton 1 (V3 1e-100 0 0))) `shouldSatisfy` isLeft
+
+  it "restores a real overlap corner to a negative floor while its lower triangle is held" $ do
+    let points = [V3 0 0 0, V3 2 0 0, V3 0 2 0, V3 0.2 0.2 (-6e-11), V3 0.8 0.2 0.01, V3 0.2 0.8 0.01]
+        mesh = Mesh (zipWith Sample [V2 (fromIntegral i) 0 | i <- [0 :: Int ..]] points) [(0, 1, 2), (3, 4, 5)]
+        pins = IM.fromList (zip [0 .. 2] points)
+        target = -1e-11
+    model <- right (C.prepareContact 0 (V3 0 0 1) [(FaceId 0, FaceId 1)] [FaceId 0, FaceId 1] mesh)
+    ws <- right (C.contactWitnesses model mesh)
+    w <- case [w | w <- ws, contactGap (C.witnessRow w) < 0] of [w] -> pure w; _ -> fail "expected one lost corner"
+    d <- right (restoreOverlap pins target (C.witnessRow w))
+    let result = mesh {samples = [p {position = position p ^+^ IM.findWithDefault (V3 0 0 0) i d} | (i, p) <- zip [0 ..] (samples mesh)]}
+    take 3 (samples result) `shouldBe` take 3 (samples mesh)
+    measured <- right (C.orderedContacts model result)
+    abs (minimum (map contactGap measured) - target) `shouldSatisfy` (< 1e-13)
+    minimum (map contactGap measured) `shouldSatisfy` (< 0)
+
+  it "combines repeated material-vertex contributions before deciding free response" $ do
+    let row = ContactRow (-0.01) [(2, V3 1 0 0), (2, V3 (-1) 0 0), (3, V3 0 0 1)]
+    restoreOverlap (IM.singleton 3 (V3 0 0 0)) 0 row `shouldBe` Left NoFreeOverlapResponse
+    restoreOverlap IM.empty (-0.02) row `shouldBe` Right IM.empty
+
+  it "rejects an invalid overlap derivative even on a held vertex" $ do
+    restoreOverlap (IM.singleton 2 (V3 0 0 0)) 0 (ContactRow (-0.01) [(2, V3 (0 / 0) 0 0), (3, V3 0 0 1)]) `shouldBe` Left InvalidOverlapRestoration
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure

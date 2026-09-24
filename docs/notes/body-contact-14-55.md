@@ -93,10 +93,7 @@ JSON command, study JavaScript and inline-script syntax checks pass. This adds
 no material solve to default CI. The cold build is warning-free; all **1,883
 tests pass in 178.8 seconds**.
 
-The next bounded comparison is one refreshed **corner-0 overlap-gap repair**
-at the saved refused 1/4. Target its starting gap, preserve all nineteen
-original guards and the other refreshed overlap guards, then recheck actual
-contact, lengths, holds and total cost. Retain the unmodified refusal as the
-control and keep any unsuccessful repair diagnostic. That would test whether
-repairing this measured local approximation error permits the larger correction;
-it would not justify relaxing tolerances or starting another continuation yet.
+[The follow-up comparison](body-overlap-restoration.md) applies exactly that
+corner-0 repair at the refused 1/4. It clears the crossing and passes actual
+geometry, but fails neighboring 55–93 guards. The original refusal and failed
+repair remain controls; no tolerance or acceptance condition changes.

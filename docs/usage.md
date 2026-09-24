@@ -2122,3 +2122,24 @@ the four actual/predicted overlap gaps and the intersection-length threshold.
 The inherited order is 55 below 14. Source assets are copied under
 `body-contact-14-55/source/`. This inspection does not certify equilibrium,
 continuous motion or whole-crane contact. See [the result](notes/body-contact-14-55.md).
+
+### Restore one guarded overlap gap
+
+```bash
+stack run senbazuru-material-study -- --body-overlap-restoration build/fold-material/body-fourth-pair build/fold-material
+```
+
+Open `build/fold-material/body-overlap-restoration.html`. This opt-in experiment
+authenticates the saved nineteen-guard comparison, retains its start, passing
+1/8 and refused 1/4, and applies one minimum-movement overlap repair at the
+refused trial. No new material direction, continuation or retry runs.
+
+The repair targets 14–55 corner 0's original gap, then checks all nineteen
+original guards, eighteen refreshed overlaps, actual target, material and
+all-pair contact. The exported candidate clears the crossing but fails three
+neighboring guard checks, so remains diagnostic. JSON records separate costs,
+guard margins, raw and installed corrections. Paper views share camera and
+scale; annotations use a fixed crop. Controls and source assets keep their
+bytes under `body-overlap-restoration/` and its `source/` directory. Source and
+output must be separate. No equilibrium, continuously checked motion or
+whole-crane opening is certified. See [the result](notes/body-overlap-restoration.md).

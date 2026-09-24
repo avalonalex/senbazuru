@@ -91,6 +91,17 @@ original paper assets. Enlarged annotations locate corner 0; tables separate
 actual/predicted gaps, plane distances and the intersection-length threshold.
 See [the inspection](../../docs/notes/body-contact-14-55.md).
 
+To test one local repair of that gap:
+
+```bash
+stack run senbazuru-material-study -- --body-overlap-restoration build/fold-material/body-fourth-pair build/fold-material
+```
+
+Open `body-overlap-restoration.html`. The three saved controls retain their
+paper assets. One new minimum-movement repair clears 14–55 but fails neighboring
+55–93 guards, so remains diagnostic. No material solve, retry or tolerance
+change. See [the result](../../docs/notes/body-overlap-restoration.md).
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see
