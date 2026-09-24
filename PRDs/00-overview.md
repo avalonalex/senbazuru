@@ -398,7 +398,7 @@ has the module layers and which module may import which.
           Sequence.Syntax : Sequence  (first-order, spans)   <-> Sequence.Pretty
                          |
           Sequence.Check (names, kinds, arity, units; no geometry)
-          Sequence.Elaborate (let, fold-and-unfold; keeps provenance)
+          Sequence.Elaborate (let; keeps provenance)
                          |
           Sequence.Run  (Budget, RunSettings, sheets) over Fold.* / Origami.*
                          |

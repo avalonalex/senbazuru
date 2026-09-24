@@ -184,8 +184,12 @@ placement `after` raw positions, where ``a `after` b`` does `b` first
 
 **Intent at angle 0 is kept on purpose**
 ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)). A
-precrease that lies flat stays M or V on the working pattern. That departs from `Fold.Creasing`'s "A valley with an angle of
-nought is not a valley" ([`Creasing.hs:281-286`](../src/Senbazuru/Fold/Creasing.hs#L281-L286)).
+crease that lies flat keeps on the working pattern the M or V it was made as: a
+sheet file's crease, which plain `sheet` lays at 0 (§2.2), or a fold's new crease,
+at 0 before the paper turns and again after an `unfold`. That departs from
+`Fold.Creasing`'s "A valley with an angle of nought is not a valley"
+([`Creasing.hs:281-286`](../src/Senbazuru/Fold/Creasing.hs#L281-L286)). A
+pre-crease's crease is the exception: it has no direction, so it is U (§6.4).
 
 - *Why it is needed.* `Flap` turns only M, V or U
   ([`Flap.hs:187`](../src/Senbazuru/Origami/Flap.hs#L187)), and a collapse binds on
@@ -857,10 +861,15 @@ takes edge 8 from −180 to 0, the recipe's last tuple.
 unfolds again, and it is one move ([D12](decisions.md#d12-the-text-syntax), owner
 decision 14). The fold is checked like any hinge turn. The unfold is never
 performed, since it only retraces that route, so the state after is the state
-before with the new crease. The crease remains, flat, with its intent, and the
-move leaves one record, of kind `Precrease`. It takes no angle, because the tree's
-`FoldAndUnfold` has no field for one. Written frames show the crease as F at 0
-(§11).
+before with the new crease. The crease remains, flat, with no direction of its
+own. A pre-crease marks the paper, and a later move may fold its crease either
+way, one stretch mountain and another valley (owner decision 14, refined
+2026-09-24). So the working pattern holds it as U, FOLD's letter for a crease
+whose direction is undecided, which `Flap` still turns (§2.1). The sense written
+says only which way the paper goes while the crease is made, which is what the
+fold arrow shows. The move leaves one record, of kind `Precrease`, which carries
+no sense. It takes no angle, because the tree's `FoldAndUnfold` has no field for
+one. Written frames show the crease as F at 0 (§11).
 
 ### 6.5 Figures holding several moves
 
@@ -872,9 +881,11 @@ starts from ([D24](decisions.md#d24-states-figures-and-their-numbers),
   order, and each is checked. The step's figure draws the state
   before its first move, so move *k* is accepted only if the paper it moves is still
   where that drawing shows it, compared by material identity. In practice none of
-  that paper may have been moved by moves 1 to *k* − 1. Otherwise the move is
-  refused as `MoveLeavesFigure`, with a hint to start a new `step`.
-  - A pre-crease is one move here, like any other.
+  that paper may have been left somewhere else by moves 1 to *k* − 1. Otherwise
+  the move is refused as `MoveLeavesFigure`, with a hint to start a new `step`.
+  - A pre-crease is one move here, like any other, and it puts its paper back:
+    the crane's two diagonal pre-creases share a figure although their moving
+    triangles overlap.
   - All four blintz corners in one step pass.
   - "Fold the corner to the centre, then fold that flap in half" fails.
 - **Batching stays inside one step**
@@ -1000,7 +1011,7 @@ Sectors are compared with `FlatFold`'s tolerance, 1e-5 rad
 | --- | --- | --- |
 | `square-base.fold` | 0° e11 V · 45° e12 M · 90° e13 V · **135° e14 F** · 180° e15 V · 225° e8 M · 270° e9 V · **315° e10 F** | 1. F is not a candidate, so six rays remain. The pair is e12 + e8 (M), so σ = −1 |
 | `bird-base.fold` | 0° e14 M · 45° e9 V · 90° e18 M · 180° e22 M · 225° e8 V · 270° e10 M | 1. The pair is e9 + e8 (V), so σ = +1. Each of the four continues through an F segment (11, 15, 19, 23) to the edge, and those segments turn too ([`CheckedBird.hs:114`](../study/fold-material/CheckedBird.hs#L114)) |
-| `sheet square` after both diagonals and both midlines are precreased | the same eight bearings, all with intent | 4, so refused. **UNVERIFIED**: reasoned from gap-exact-landmarks finding 10 and the bearings above |
+| `sheet square` after both diagonals and both midlines are pre-creased | the same eight bearings, all U, since a pre-crease's crease has no direction (§6.4) | none: no ray has intent M or V. Open before M5 (below) |
 
 Square-base's two F rays end at (0, 1) and (1, 0). So
 `keeping [corner south-east, corner north-west] flat` names exactly the pair that
@@ -1008,14 +1019,15 @@ fixture marks F. Keeping a midline pair instead gives the waterbomb base's secto
 ([gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md)
 finding 10).
 
-**Refusal sketch (SKETCH).** For the precreased square in the last row of the table:
-
-```text
-step 4 (base): collapse at centre until 180°: 4 collapses match at centre; add one of
-keeping [corner south-east, corner north-west] flat, keeping [corner south-west,
-corner north-east] flat, keeping [(1/2, 0), (1/2, 1)] flat, keeping [(0, 1/2),
-(1, 1/2)] flat
-```
+**Open before M5.** A pre-crease leaves its crease U (§6.4), so on paper creased
+only by pre-creases no ray is a candidate and a collapse has nothing to match.
+The crane's step 4 collapses exactly such paper, and its step 11 repeats a petal
+onto sides that step 10 pre-creases, where §8.3 asks for intent M. So before M5
+each macro needs its directions from somewhere other than the creases: from the
+author, with a sense written on the move, or from the match itself, as `keeping`
+already picks a pair. Until owner decision 14 was refined on 2026-09-24, this
+section expected each pre-crease to keep its direction, four collapses to match
+on the pre-creased square, and a refusal listing four `keeping` clauses.
 
 ### 8.3 Rabbit ear and petal
 
@@ -1240,7 +1252,9 @@ which value.
 - **Poses** (**SKETCH**, [05](05-prd-library-additions.md)). With
   `data PoseRef = PoseBefore | PoseAfter | PoseOnRoute Rational`,
   `recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose` refuses
-  `PoseOnRoute` as `NoRoute` for `StateOnly`, `NoMotion` and `Presented`.
+  `PoseOnRoute` as `NoRoute` for `StateOnly`, `NoMotion` and `Presented`. A route
+  ends at its record's after state, except a pre-crease's: its `PoseOnRoute 1` is
+  the folded pose and its `PoseAfter` is flat (§6.4).
   `RoutePose` lives in `Origami.Route`, and `Sequence.Record` re-exports it.
 - **Records derive `Eq`.** No record field holds a function. `Flap`'s `FlapMotion`
   and `CheckedFlap` derive only `Show` today
