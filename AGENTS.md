@@ -388,7 +388,9 @@ issue or PR, changes made, checks run and their results, and remaining work.
 Record lasting decisions in the repository so the next tool can find them.
 
 `main` is protected. Changes reach it through pull requests, and all three CI
-checks must be green before merge. Do not push to `main` directly.
+checks must be green before merge. Do not push to `main` directly. A pull
+request that changes only `PRDs/` skips all three, which counts as green:
+nothing they check reads that directory.
 
 ```bash
 git switch -c feat/fold-arrows     # feat/ fix/ docs/ chore/ test/

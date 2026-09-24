@@ -1087,32 +1087,25 @@ Grips and animation keys need poses anywhere on the route
 
 ### L14. `Eq` on flap values, and `prepareFlapToward`
 
-**Module.** `Origami.Flap`.
-
-*Superseded in part* by [D5](decisions.md#d5-presentation-and-the-readers-side)'s
-amendment (owner decision 13, 2026-09-23): `prepareFlapToward` is to read the
-*moving* face beside each hinge segment, not the first stationary face, with
-`FlapMovingNotFlat` and `FlapMovesBothWays` in place of `FlapStationaryNotFlat`
-(**SKETCH**). #344 shipped this section as
-`data Toward = TowardPlusZ | TowardMinusZ`,
-`FlapStationaryNotFlat !FaceId !Double` (the face's spread in z, judged by
-`hasRelief`) and `FlapInvalidTurn` for a bad size. The sketch, R-05-45 to
-R-05-47 and the acceptance rows below are rewritten with that change.
+**Module.** `Origami.Flap`. Shipped: `Eq` and the first `prepareFlapToward` in
+#344, and the reading of the moving faces in #368, after owner decision 13
+([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment).
 
 ```haskell
--- SKETCH
-data FlapMotion = FlapMotion { … }          -- fields unchanged (Flap.hs:81-92)
-  deriving stock (Eq, Show)                 -- was Show only (Flap.hs:93)
+data FlapMotion = FlapMotion { … }          -- opaque (Flap.hs:108-120)
+  deriving stock (Eq, Show)
 data CheckedFlap = CheckedFlap !FlapMotion !SweepCheck
-  deriving stock (Eq, Show)                 -- was Show only (Flap.hs:96)
+  deriving stock (Eq, Show)                 -- (Flap.hs:122-123)
 
-data Toward = TowardRawPlusZ | TowardRawMinusZ
+data Toward = TowardPlusZ | TowardMinusZ    -- (Flap.hs:130)
   deriving stock (Eq, Show)
 
 prepareFlapToward :: [EdgeId] -> FaceId -> Double -> Toward -> Folded -> Either FlapError FlapMotion
 
--- new FlapError constructor
-  | FlapStationaryNotFlat !FaceId !V3       -- the face, and its displayed normal
+-- new FlapError constructors (Flap.hs:142-143, :153)
+  | FlapMovingNotFlat !FaceId !Double       -- a moving face beside the hinge, and its spread in z
+  | FlapMovesBothWays !FaceId !FaceId       -- two moving faces beside the hinge, either side of its line
+  | FlapInvalidTurn !Double                 -- a size of turn that is negative, above 360 or not finite
 ```
 
 **Why the sign needs the library, concretely.** Quarter-fold step 2 is one valley
@@ -1125,20 +1118,20 @@ signed change in the *first* listed segment's fold angle; every other segment
 takes `travel` or `−travel` by comparing its own stationary face's ring direction
 along the hinge with the first's
 ([`Flap.hs:14-16`](../src/Senbazuru/Origami/Flap.hs#L14-L16),
-[`:201-216`](../src/Senbazuru/Origami/Flap.hs#L201-L216)). The face held still
-beside edge 9 is face 0, lying top up; the one beside edge 11 is face 3, which
-step 1 turned over: in `file_frames[0]`, face 3's ring `[8,7,0,4]` has signed
+[`:280-297`](../src/Senbazuru/Origami/Flap.hs#L280-L297)). The face that moves
+beside edge 9 is face 1, lying top up; the one beside edge 11 is face 2, which
+step 1 turned over: in `file_frames[0]`, face 2's ring `[8,6,3,7]` has signed
 area −0.25 in written x, y
 (`python3 -c 'import json;d=json.load(open("examples/quarter-fold-steps.fold"));V=d["file_frames"][0]["vertices_coords"];print([sum(V[r[i]][0]*V[r[i-1]][1]-V[r[i-1]][0]*V[r[i]][1] for i in range(len(r)))/-2 for r in d["faces_vertices"]])'`
 prints `[0.25, 0.25, -0.25, -0.25]`). So with edge 9 listed first the valley is
 travel +180, and with edge 11 first the same valley is −180
 ([01 §5.5](01-architecture.md#55-raw-sense-and-travel),
 [§5.6](01-architecture.md#56-travel-per-segment)). A caller holding "valley"
-cannot pick the sign without knowing which way up that first stationary face
-lies, and `Flap` chooses that face
-([`Flap.hs:195`](../src/Senbazuru/Origami/Flap.hs#L195)) without exporting it
-([`:49-59`](../src/Senbazuru/Origami/Flap.hs#L49-L59)). Way-up decisions stay in
-the library, where `Flap` already holds the face's ring
+cannot pick the sign without knowing which way up the moving face beside the
+first crease lies, and `Flap` reads that from the placements of its own refold
+([`Flap.hs:320-352`](../src/Senbazuru/Origami/Flap.hs#L320-L352)), never from the `Folded` a caller
+hands it. Way-up decisions stay in the library, which already reads the faces'
+placements
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
 [C5](decisions.md#changes-since-draft-v2)).
 
@@ -1158,62 +1151,78 @@ the library, where `Flap` already holds the face's ring
 
 - **R-05-44.** `FlapMotion` and `CheckedFlap` gain `deriving stock (Eq)`. Both stay
   opaque: the export list names the types without constructors
-  ([`Flap.hs:50-51`](../src/Senbazuru/Origami/Flap.hs#L50-L51)).
+  ([`Flap.hs:74-75`](../src/Senbazuru/Origami/Flap.hs#L74-L75)).
 - **R-05-45.** `prepareFlapToward eids side magnitude toward q` is
   `prepareFlapAlong eids side travel q`
-  ([`Flap.hs:162-239`](../src/Senbazuru/Origami/Flap.hs#L162-L239)) with `travel`
-  chosen once the first segment's stationary face is known (`fixed`,
-  [`:195`](../src/Senbazuru/Origami/Flap.hs#L195)). Read that face's placement in
-  the refolded start (`start`, [`:175`](../src/Senbazuru/Origami/Flap.hs#L175)),
-  not in the supplied `Folded`, whose constructor is public; its displayed normal
-  is n = M · ẑ, with M the placement's `rigidLinear`
-  ([`Rigid.hs:76-77`](../src/Senbazuru/Geometry/Rigid.hs#L76-L77)). Then:
+  ([`Flap.hs:225-232`](../src/Senbazuru/Origami/Flap.hs#L225-L232)) with `travel`
+  chosen once the moving face beside each segment is known
+  ([`:280-297`](../src/Senbazuru/Origami/Flap.hs#L280-L297)). Read each face's placement in
+  the refolded start (`start`, [`:247`](../src/Senbazuru/Origami/Flap.hs#L247)),
+  not in the supplied `Folded`, whose constructor is public. A positive change
+  in a crease's angle moves the face beside it towards that face's own top, so
+  which way up the face lies, `facesUp` of its placement
+  ([`Folding.hs:337-338`](../src/Senbazuru/Origami/Folding.hs#L337-L338)),
+  signs the turn. For the first segment:
 
-  | `toward` | n = +ẑ, the face shows its top | n = −ẑ, the face shows its back |
+  | `toward` | the moving face shows its top | the moving face shows its back |
   | --- | --- | --- |
-  | `TowardRawPlusZ` (a raw valley) | travel = +magnitude (edge 9 in step 2) | travel = −magnitude (edge 11 in step 2) |
-  | `TowardRawMinusZ` (a raw mountain) | travel = −magnitude (edges 8, 10 in step 1) | travel = +magnitude (the crane wing's accepted `behind`, [D5](decisions.md#d5-presentation-and-the-readers-side), reasoned) |
+  | `TowardPlusZ` (a raw valley) | travel = +magnitude (edge 9 in step 2) | travel = −magnitude (edge 11 in step 2) |
+  | `TowardMinusZ` (a raw mountain) | travel = −magnitude (edges 8, 10 in step 1) | travel = +magnitude (the crane wing's accepted `behind`, reasoned; the blintz's folded-under corner, reopened) |
+
+  Every other segment's reading, turned into the first segment's by its
+  direction along the hinge, must agree (R-05-46).
 
   Both entries share one internal worker, so `prepareFlapToward` adds no
   `foldFrameWith` call to the roughly seven a checked step makes
   ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)
   "From reading the code (counts, not timings)").
-- **R-05-46.** A first stationary face whose n is not within 1e-12 of +ẑ or −ẑ in
-  every component, the tolerance `isProperRotation` uses (L3), is refused as
-  `FlapStationaryNotFlat`: with that face standing in the air there is no way up
-  to read, and the refusal says so rather than guessing. Only the first segment's
-  face is read; the other segments keep today's relative rule. A magnitude that is
-  negative, non-finite or above 360 is `FlapInvalidTravel`, as a travel is today
-  ([`:165`](../src/Senbazuru/Origami/Flap.hs#L165)).
+- **R-05-46.** A moving face beside any segment that does not lie flat by
+  `hasRelief`, the test the rest of the library uses, is refused as
+  `FlapMovingNotFlat`, naming the face and its spread in z: one standing on edge
+  shows neither side to +z, and one tilted past vertical would read the turn
+  that finishes its own fold as the opposite way. Readings that disagree are
+  `FlapMovesBothWays`, naming the first moving face and the first that
+  disagrees, at any size of turn, 0 included: the moving faces lie on both
+  sides of the hinge line, so no one direction fits. A magnitude that is
+  negative, non-finite or above 360 is `FlapInvalidTurn`
+  ([`:237`](../src/Senbazuru/Origami/Flap.hs#L237)).
 - **R-05-47.** `prepareFlap` and `prepareFlapAlong` are unchanged, and existing
-  callers keep passing signed travels. The runner passes `TowardRawPlusZ` for a
-  raw valley and `TowardRawMinusZ` for a raw mountain; what the raw sense is
+  callers keep passing signed travels. The runner passes `TowardPlusZ` for a
+  raw valley and `TowardMinusZ` for a raw mountain; what the raw sense is
   belongs to [02 §5.3](02-language-semantics.md#53-one-conversion-for-the-whole-model).
 
-**Refusals.** `FlapStationaryNotFlat` (new); otherwise `prepareFlapAlong`'s, in its
-order.
+**Refusals.** `prepareFlapAlong`'s, with `FlapInvalidTurn` in place of
+`FlapInvalidTravel`, and `FlapMovingNotFlat` and `FlapMovesBothWays` asked once
+the paper that moves is known to be a flap on one hinge: after every check of
+the selection, before its surface, sweep and layer orders are checked.
 
-**Rejected.** One raw sense setting the sign of travel, whatever the first
-stationary face's way up (it gives edge 11 first the wrong sign, above). The runner
-reading that face's way up and signing travel itself: way-up decisions stay in the
-library, where `Flap` already holds the face's ring, and an entry taking a side
-does the same work there
+**Rejected.** One raw sense setting the sign of travel, whatever the way up of
+the paper beside the first segment (it gives edge 11 first the wrong sign,
+above). Reading the face held still beside the first crease, #344's first rule:
+it agrees on an open hinge, gives the opposite sign on a hinge folded shut, and
+on a page turn depends on which crease is listed first
+([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment,
+[E3](research/E3-formal-fold-semantics.md) G). The runner reading a face's way
+up and signing travel itself: way-up decisions stay in the library, and an entry
+taking a side does the same work there
 ([Proposals not adopted](decisions.md#proposals-not-adopted)).
 
 **Acceptance.** On `quarter-fold-steps.fold`, q1 is `foldFrameWith` of the key
-frame with `file_frames[0]`'s angles. Ids and signs are from the fixture and from
-[01 §5.6](01-architecture.md#56-travel-per-segment)'s Python re-implementation of
-`Flap`'s sign; **UNVERIFIED in Haskell** until the first test runs.
+frame with `file_frames[0]`'s angles. Each row is a test in
+`test/Senbazuru/Origami/FlapSpec.hs` or `test/BlintzSequenceSpec.hs`, since #344
+and #368.
 
 | Test | Turns red if |
 | --- | --- |
-| `prepareFlapToward [9, 11] (FaceId 1) 180 TowardRawPlusZ q1 == prepareFlapAlong [9, 11] (FaceId 1) 180 q1` (face 0, top up, beside edge 9) | the table is inverted, so a top-up face gives −magnitude for a raw valley |
-| `prepareFlapToward [11, 9] (FaceId 2) 180 TowardRawPlusZ q1 == prepareFlapAlong [11, 9] (FaceId 2) (-180) q1` (face 3, back up, beside edge 11). By [01 §5.6](01-architecture.md#56-travel-per-segment), that motion ends with edge 11 at −180 and edge 9 at +180, as `file_frames[1]` has them | travel is signed from the raw side alone |
-| Key frame with edges 8 and 10 at −90 and 9, 11 at 0, halfway through step 1: `prepareFlapToward [8, 10] (FaceId 0) 90 TowardRawPlusZ` is `FlapStationaryNotFlat` naming face 3, which stands upright; `prepareFlapToward [8, 10] (FaceId 3) 90 TowardRawPlusZ` on the same fold, whose first stationary face is face 0, lying flat, is accepted | the normal test is skipped, or reads a face other than the first stationary one |
-| `FlapSpec`, `BlintzSequenceSpec`, `HelmetSequenceSpec`, `CraneWingSpec` unchanged | an existing entry's travel moves |
+| `prepareFlapToward [9, 11] (FaceId 1) 180 TowardPlusZ q1 == prepareFlapAlong [9, 11] (FaceId 1) 180 q1` (face 1, top up, moves beside edge 9); FlapSpec "turning towards a side" | the table is inverted, so a top-up face gives −magnitude for a raw valley |
+| `prepareFlapToward [11, 9] (FaceId 2) 180 TowardPlusZ q1 == prepareFlapAlong [11, 9] (FaceId 2) (-180) q1` (face 2, back up, moves beside edge 11). By [01 §5.6](01-architecture.md#56-travel-per-segment), that motion ends with edge 11 at −180 and edge 9 at +180, as `file_frames[1]` has them | travel is signed from the raw side alone. These hinges are open, so this row and the one above hold under the held-face rule too |
+| Key frame with edges 8 and 10 at −90 and 9, 11 at 0, halfway through step 1: `prepareFlapToward [8, 10] (FaceId 3) 90 TowardPlusZ` is `FlapMovingNotFlat` naming face 3, which hangs upright, with spread 0.5; `[8, 10, 9]` from face 3 is `FlapNotBoundary 9`; from face 0, whose moving faces lie flat, `[8, 10]` equals `prepareFlapAlong [8, 10] (FaceId 0) 90` | the flatness test is skipped or reads the held face, or it is asked before the selection is checked |
+| On `square-base.fold`, with spine edge 14 relabelled `U` and the solver's only layer order: towards −z, `[14, 8]` from face 6 and `[8, 14]` from face 7 both check and end with edge 8 at 0 and edge 14 at −180; towards +z both are `FlapEndpointOrder`; `[14, 8]` from face 5, at 180 and at 0, is `FlapMovesBothWays` naming faces 5 and 0; FlapSpec "turning a page" | the held face is read, so the turn depends on the listing; readings are not compared; or signed sizes are compared, so a turn of 0 slips through |
+| From the blintz's state before `unfold c1`: `prepareFlapToward [8] (FaceId 2) 180 TowardMinusZ` equals the recipe's reopening, `prepareFlap 8 2 180`, and `TowardPlusZ` equals `prepareFlap 8 2 (-180)`, which checking refuses as `FlapEndpointOrder` (E10); `BlintzSequenceSpec` | the held face is read, so a folded-over flap's direction is inverted |
+| `FlapSpec`, `BlintzSequenceSpec`, `HelmetSequenceSpec`, `CraneWingSpec` otherwise unchanged | an existing entry's travel moves |
 
-**Outputs unchanged.** `Eq` adds instances; `prepareFlapToward` is a new entry
-over the same preparation, and no existing caller reaches it.
+**Outputs unchanged.** `Eq` adds instances; `prepareFlapToward` is an entry
+over the same preparation, and no existing output reaches it.
 
 **Milestone.** M2 ([decisions §8](decisions.md#8-milestones)): records derive `Eq`
 from their first PR, and M2's runner turns hinges.
@@ -1317,7 +1326,8 @@ would move sentences pinned by specs and quoted in docs, and is a follow-up issu
 | `RelationOnOneFace`, `RelationNotOverlapping`, `RelationsContradict` | `Origami.Stacking` | "(internal faces 10 and 27) do not overlap, so no layer order relates them" |
 | `MaterialCoordinatesMissing`, `VerticesNotAPrefix`, `AddedVertexOffPaper` | `Fold.Query` (`FoldError`) | "(internal vertex 7) of the later frame lies on no edge and in no face of the earlier one" |
 | `MacroError` | `Origami.Macro` | "parameter 181 is outside the checked range 0 to 180" |
-| `FlapStationaryNotFlat f n` | `Origami.Flap` | "(internal face 3), held still beside the first hinge segment, is not lying flat, so which way is towards the reader cannot be read from it"; to be replaced by `FlapMovingNotFlat` ([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment) |
+| `FlapMovingNotFlat f s` | `Origami.Flap` | "(internal face 3), which moves beside the hinge, does not lie flat, and a turn towards +z or -z is read only from moving faces that do: its corners span 0.500000 in z" |
+| `FlapMovesBothWays a b` | `Origami.Flap` | "(internal faces 5 and 0) both move beside the hinge but lie on opposite sides of its line, so one turn would set one off towards +z and the other towards -z, and which way to turn cannot be read" |
 
 `StillAmbiguous` and `SeveralStackings` are not library errors; they are the
 runner's `StackingChoiceError` in `Sequence.Error` (L12,
@@ -1366,7 +1376,7 @@ The per-item tables are the criteria. Across all items:
 | L2 `AtRest` writes an angle array a file lacked | it is the claim folding already made; the runner never hits it |
 | L7 and L8 add a refold per checked crease | counted by `--report`; measured before caching ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)) |
 | L13 formula angles differ by an ulp across platforms | named tolerance; exact only for driving parameters ([D16](decisions.md#d16-testing-and-acceptance)) |
-| L14 refuses a hinge turn whose first stationary face is not flat, which `prepareFlapAlong` with a hand-signed travel could perform | a refusal, never a guess; `pose` sets such angles as `StateOnly` ([D9](decisions.md#d9-macro-moves-as-named-angle-relations)) |
+| L14 refuses a hinge turn whose moving faces beside the hinge do not lie flat, or lie on both sides of its line, which `prepareFlapAlong` with a hand-signed travel could perform | a refusal, never a guess; `pose` sets such angles as `StateOnly` ([D9](decisions.md#d9-macro-moves-as-named-angle-relations)) |
 
 ## Open questions for the owner
 

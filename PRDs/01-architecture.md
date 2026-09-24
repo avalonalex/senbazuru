@@ -863,17 +863,15 @@ lies in z = 0. So [constructions](glossary-additions.md#references) are allowed.
   **UNVERIFIED**: that rule has only a Python reproduction
   ([gap-layer-selective-folds](research/gap-layer-selective-folds.md) "Re-deriving
   CraneWing by rule (script)").
-- **The call** (**SKETCH**): `prepareFlapToward [EdgeId 9, EdgeId 11] (FaceId 1)
-  180 TowardRawPlusZ folded`, where `folded` is `foldFrameWith` of the working
+- **The call**: `prepareFlapToward [EdgeId 9, EdgeId 11] (FaceId 1)
+  180 TowardPlusZ folded`, where `folded` is `foldFrameWith` of the working
   pattern with step 1's orders on it, `FaceId 1` is the moving face on the first
-  crease, 180 is the size of the turn, and `TowardRawPlusZ` is the raw valley's
-  side, from which `Flap` works out the signed travel as §5.5 shows. #344 named
-  it `TowardPlusZ`; §5.5 says what owner decision 13 changes.
-  `prepareFlapToward` is new
-  ([05](05-prd-library-additions.md) L14); it signs the travel and then does what
-  `prepareFlapAlong` does today
-  ([`Flap.hs:157-164`](../src/Senbazuru/Origami/Flap.hs#L157-L164),
-  [`:195`](../src/Senbazuru/Origami/Flap.hs#L195)).
+  crease, 180 is the size of the turn, and `TowardPlusZ` is the raw valley's
+  side, from which `Flap` works out the signed travel as §5.5 shows.
+  `prepareFlapToward` ([05](05-prd-library-additions.md) L14; #344, #368) signs
+  the travel and then does what `prepareFlapAlong` does
+  ([`Flap.hs:225-226`](../src/Senbazuru/Origami/Flap.hs#L225-L226),
+  [`:232`](../src/Senbazuru/Origami/Flap.hs#L232)).
 
 ### 5.5 Raw sense and travel
 
@@ -889,8 +887,8 @@ towards raw +z.
 −travel, right-handed, about an axis along that crease, pointing the way the
 stationary face's counter-clockwise ring runs, in folded coordinates
 ([`Flap.hs:10-13`](../src/Senbazuru/Origami/Flap.hs#L10-L13),
-[`:201-206`](../src/Senbazuru/Origami/Flap.hs#L201-L206),
-[`:222`](../src/Senbazuru/Origami/Flap.hs#L222)). For edge 9 the stationary face is
+[`:272-278`](../src/Senbazuru/Origami/Flap.hs#L272-L278),
+[`:302`](../src/Senbazuru/Origami/Flap.hs#L302)). For edge 9 the stationary face is
 F0, so the axis is v5 → v8 = (−1, 0, 0), from v5 = (1, ½, 0). A small right-handed
 turn by θ moves a point at offset r by about θ (axis × r); for v2, r = (0, ½, 0) and
 axis × r = (0, 0, −½). For a small fraction δ of the turn θ = −travel·δ, so v2 rises exactly when
@@ -900,37 +898,35 @@ At progress ½ (edge 9 at +90, edge 11 at −90), F1 and F2 have centroid z = +0
 while F0 and F3 stay at 0, placements agree within 6.1e-17, and rotating the moving
 vertices −90° about the axis lands exactly on the refold, v2 at (1, ½, ½) [py]. That
 agreement is what `Flap`'s `comparePoint` requires of `HingeSweep`'s path
-([`Flap.hs:349-360`](../src/Senbazuru/Origami/Flap.hs#L349-L360)).
+([`Flap.hs:474-477`](../src/Senbazuru/Origami/Flap.hs#L474-L477)).
 
 **Why the runner passes a side, not +180**
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
 [C5](decisions.md#changes-since-draft-v2)). The sign just worked out depends on the
 direction of `Flap`'s axis, which `Flap` derives from the first segment's
 stationary face's ring and does not export
-([`Flap.hs:195-206`](../src/Senbazuru/Origami/Flap.hs#L195-L206)). With edge 11
-listed first, the same valley would be travel −180, because its stationary face F3
-lies face down. So the raw sense alone cannot sign the travel, and the library,
-which holds the ring, signs it. `Origami.Flap` gains (**SKETCH**,
-[05](05-prd-library-additions.md) L14):
+([`Flap.hs:272-278`](../src/Senbazuru/Origami/Flap.hs#L272-L278)). With edge 11
+listed first, the same valley would be travel −180, because both faces beside
+edge 11 lie face down. So the raw sense alone cannot sign the travel, and the
+library, which reads the faces' placements, signs it. `Origami.Flap` has
+([05](05-prd-library-additions.md) L14; #344, #368):
 
 ```haskell
-data Toward = TowardRawPlusZ | TowardRawMinusZ
+data Toward = TowardPlusZ | TowardMinusZ
 prepareFlapToward :: [EdgeId] -> FaceId -> Double -> Toward -> Folded -> Either FlapError FlapMotion
 ```
 
-It takes the size of the turn, A (180 here), and a raw side. It reads the first
-segment's stationary face normal from that face's placement and sets travel to +A
-when the side agrees with the normal's z sign, −A otherwise; a
-normal that is not ±ẑ within 1e-12 is refused as `FlapStationaryNotFlat`. The
-runner passes `TowardRawPlusZ` for a raw valley. Here the first stationary face is
-F0, normal +z, so travel is +180; listing edge 11 first would make it F3, normal
-−z, and travel −180, the same physical turn.
-
-*Superseded in part* by [D5](decisions.md#d5-presentation-and-the-readers-side)'s
-amendment (owner decision 13): the sign is read from the *moving* face beside the
-first crease, F1 here, which lies top up and gives the same +180; with edge 11
-first it is F2, face down, and −180 as before. This section is rewritten with that
-change to `prepareFlapToward`.
+It takes the size of the turn, A (180 here), and a raw side: the way the moving
+paper beside the hinge sets off. A positive change in a crease's angle moves the
+face beside it towards that face's own top, so it reads the moving face beside
+each segment from its placement, and sets travel to +A when the side agrees with
+the first such face's way up and −A otherwise; every segment's reading must agree
+([owner decision 13](decisions.md#d5-presentation-and-the-readers-side),
+[`Flap.hs:320-352`](../src/Senbazuru/Origami/Flap.hs#L320-L352)). A moving face that does not lie flat is
+refused as `FlapMovingNotFlat`, and moving faces on both sides of the hinge line as
+`FlapMovesBothWays`. The runner passes `TowardPlusZ` for a raw valley. Here the
+moving face beside edge 9 is F1, top up, so travel is +180; listing edge 11 first
+reads F2, face down, and gives travel −180, the same physical turn.
 
 ### 5.6 Travel per segment
 
