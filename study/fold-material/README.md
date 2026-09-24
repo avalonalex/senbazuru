@@ -116,6 +116,19 @@ does not continue into a barrier material solve or certify a physical path.
 The [recorded attempt](../../docs/notes/body-separated-initialization.md) stops
 after four retained corrections without a barrier-ready candidate.
 
+To keep length limits as constraints during initialization:
+
+```bash
+stack run senbazuru-material-study -- --body-feasibility build/fold-material/body-fourth-pair build/fold-material
+```
+
+Open `body-feasibility.html`. This separately bounded experiment starts from the
+same original archive, preserves actual length limits and exact holds at every
+retained step, and reduces the largest clearance deficit. The gallery separates
+retained states from unverified proposals; `trace.json` retains all linear
+constraints and solver checks. It runs no barrier material solve and provides
+no physical path certificate. See [the constrained attempt](../../docs/notes/body-feasible-initialization.md).
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see
