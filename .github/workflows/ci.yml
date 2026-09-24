@@ -18,19 +18,21 @@ jobs:
     outputs:
       code: ${{ steps.paths.outputs.code }}
     steps:
+      # A pull request's checkout is its merge commit, whose first parent is
+      # the base it merges onto, so HEAD^1..HEAD is exactly what the pull
+      # request changes, however far the base branch has moved since it
+      # opened. The event's base.sha can lag behind and list other changes.
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       # "false" only when every changed path is under PRDs/. --no-renames lists
       # both sides of a move, so a file moved into PRDs/ still counts as a
       # change where it came from. Anything unexpected leaves it "true".
       - id: paths
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           code=true
           if [ "$GITHUB_EVENT_NAME" = pull_request ] \
-            && files=$(git diff --name-only --no-renames "$BASE" HEAD) \
+            && files=$(git diff --name-only --no-renames HEAD^1 HEAD) \
             && [ -n "$files" ] \
             && ! printf '%s\n' "$files" | grep -qv '^PRDs/'; then
             code=false
