@@ -1435,3 +1435,13 @@ The larger 1/4 trial is now refused at 14–55, which already has overlap guards
 The [comparison gallery](usage.md#compare-six-additional-body-overlap-guards)
 keeps both directions' visited raw trials and repairs, separate energy costs,
 and shared paper/contact views.
+
+
+[Inspecting the guarded 14–55 refusal](notes/body-contact-14-55.md) finds a
+different trigger: both triangles already straddle each other's planes, but
+the finite intersection grows past the crossing-length threshold. Corner 0's
+guard predicts almost no gap loss; its actual error grows roughly fourfold
+when the correction doubles. The derivative checks agree, pointing to the
+remaining error of the local linear approximation. The gallery locates the
+corner and preserves all saved paper views and acceptance decisions. No new
+solve or repair runs; the refused intersection is below 0.0001 drawing pixels.

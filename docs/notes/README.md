@@ -107,6 +107,7 @@ read the Haddock module headers; for the domain, start with
 | [body-restoration-loop.md](body-restoration-loop.md) | Ten material corrections with one repair per trial, preserved refusals and unchanged geometry checks |
 | [body-contact-55-93.md](body-contact-55-93.md) | Saved vertex 30 plane crossing, six overlap gaps and hypothetical guards without a new solve |
 | [body-fourth-pair.md](body-fourth-pair.md) | One matched correction with six added 55–93 overlap guards and the unchanged repair policy |
+| [body-contact-14-55.md](body-contact-14-55.md) | A saved guarded gap loses its starting floor and lengthens a tiny intersection past tolerance |
 | [body-fresh-restoration.md](body-fresh-restoration.md) | Repeat one contact repair after refreshing the material direction, retaining all geometry and cost checks |
 | [body-fresh-direction.md](body-fresh-direction.md) | One fresh material direction from the repaired trial, with unchanged guards and checks |
 | [body-contact-restoration.md](body-contact-restoration.md) | One minimum-movement repair makes the saved 1/128 body trial pass unchanged geometry and cost checks |

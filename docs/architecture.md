@@ -469,6 +469,12 @@ routine against the thirty saved repairs as well as its independent projection
 checksum. The archive chain uses `readArchiveBytes` to finish each read before
 opening the next file, so thousands of SVGs do not exhaust file handles. See
 [the matched comparison](notes/body-fourth-pair.md).
+`BodyFourthArchive` authenticates both saved directions and their raw/repair
+decisions, reusing the loop reader and its quadratic force check.
+`BodyGuardedInspection` locates 14–55 in three saved shapes: six plane
+distances, four actual/predicted overlap gaps and finite intersection lengths.
+It copies paper assets and draws annotations without solving or installing a
+repair; see [the guarded-gap inspection](notes/body-contact-14-55.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

@@ -9,7 +9,7 @@
 -- archive is checked before any bytes are returned for a gallery to publish.
 -- The reader intentionally accepts this ten-step, non-equilibrium experiment;
 -- other stopping policies need their own interpretation, not a silent guess.
-module BodyLoopArchive (LoopArchive (..), LoopState (..), readLoopArchive) where
+module BodyLoopArchive (LoopArchive (..), LoopState (..), readLoopArchive, verifyQuadratic) where
 
 import BodyContactDiagnosis
 import BodyContactDirection

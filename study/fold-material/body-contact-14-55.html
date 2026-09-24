@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A guarded overlap still crosses</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}pre{overflow:auto;max-height:400px}.material{max-width:560px;width:100%}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-fourth-pair.html">Six additional overlap guards</a>
+<p class="tag">SENBAZURU · SAVED CONTACT INSPECTION · #366</p>
+<h1>A guarded overlap still crosses</h1>
+<p class="status">The 1/4 correction fails at triangles 14–55 even though their four overlap guards pass. Both triangles already straddle each other's planes in the saved start. The refusal appears when their tiny intersection segment becomes longer than 1e-7 sheet units.</p>
+<p>Compare the saved start, passing 1/8 and refused 1/4 along the same nineteen-guard direction. This inspection computes no new direction, applies no repair and changes no tolerance. Fractions describe a numerical correction, not a physical folding step.</p>
+<div class="controls"><label>Left <select id="left"></select></label><label>Right <select id="right"></select></label><label>View <select id="view"><option value="tip" selected>Corner 0 · enlarged top view</option><option value="pair">Whole overlap · enlarged top view</option><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2 id="left-title"></h2><img id="left-image" alt="Left saved shape"><p id="left-status"></p><a id="left-fold">Saved FOLD</a></section><section class="figure"><h2 id="right-title"></h2><img id="right-image" alt="Right saved shape"><p id="right-status"></p><a id="right-fold">Saved FOLD</a></section></div>
+<p id="legend"></p>
+<h2>Where is this contact?</h2>
+<p id="identities"></p>
+<img class="material" src="body-contact-14-55/material-pair.svg" alt="Original material positions of triangles 14 and 55">
+<p>The inherited order puts <strong>55 below 14</strong>. A gap measures 14's height minus 55's at a corner of their top-view overlap. Corner 0 is green in the enlarged drawings; its guard is row 4 of the saved quadratic. Purple is triangle 14, orange is triangle 55, and red is their mathematical intersection. The enlarged views share one fixed crop and leave all paper coordinates unchanged.</p>
+<h2>Which part of the crossing test changes?</h2>
+<p>Imagine a triangle's flat plane extending beyond its outline. The other triangle <em>straddles</em> that plane when it has vertices beyond 1e-7 on both sides. A crossing is flagged only if both triangles straddle and their finite intersection segment is longer than 1e-7. Here the first two conditions are already true; the segment length is the condition that changes.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>14 straddles plane 55</th><th>55 straddles plane 14</th><th>Intersection length</th><th>Length minus 1e-7</th><th>Crossing flagged</th></tr></thead><tbody id="crossings"></tbody></table></div>
+<p>A very short mathematical intersection already exists in the accepted start and 1/8. The refusal is the existing tolerance check changing its answer. At 600 pixels per sheet unit, even the refused segment is less than 0.0001 pixel long. These numbers diagnose the solver's contact rule; they do not indicate a newly visible hole.</p>
+<h2>The overlap guard and its actual gap</h2>
+<p>A guard predicts the gap after a small movement. It asks a positive gap to remain nonnegative, or a negative starting gap to get no worse. Corner 0 starts slightly negative. Its active guard predicts essentially no change along this direction, but the actual moving triangles lose a little more gap. This is small compared with the final contact tolerance, yet enough to lengthen their intersection past the crossing threshold.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Corner</th><th>Actual gap</th><th>Predicted gap</th><th>Predicted guard margin</th><th>Actual margin above starting floor</th><th>Actual minus predicted</th></tr></thead><tbody id="corners"></tbody></table></div>
+<p id="scaling" class="status"></p>
+<p>The first-order calculation includes the moving overlap corner and both moving triangles. “Second-order” here means the remaining error grows approximately with the square of the correction size: half the correction leaves roughly one quarter of the error. The saved original guard checks the prediction. The independent geometry check catches the actual crossing; no guard or check is waived here.</p>
+<h2>All six vertex-to-plane distances</h2>
+<p>Signs follow each triangle's original winding. These distances change, but their straddling classification stays the same in all three states. Their individual predictions are shown to distinguish plane motion from the overlap-gap discrepancy.</p>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Vertex → plane</th><th>Actual distance</th><th>Predicted distance</th><th>Actual minus predicted</th></tr></thead><tbody id="planes"></tbody></table></div>
+<h2>Unchanged material and acceptance checks</h2>
+<div class="scroll"><table><thead><tr><th>Saved shape</th><th>Geometry passes</th><th>Relative length error</th><th>Held-point error</th><th>Reversed orders</th><th>Total cost</th></tr></thead><tbody id="geometry"></tbody></table></div>
+<p>The new archive reader authenticates both saved directions, all fifteen exported shapes and the preceding loop. It verifies the recorded correction forces and saved repair formula without solving another direction. Paper drawings and FOLD files are copied unchanged. This is a local specimen, with no claim of equilibrium, a continuously checked flexible motion or whole-crane contact.</p>
+<p><a href="body-contact-14-55/checks.json">Inspection measurements</a> · <a href="body-contact-14-55/source/checks.json">Unchanged direction comparison</a></p>
+<details><summary>Selected measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_GUARDED_DATA*/null;
+const $=id=>document.getElementById(id),num=x=>x==null?'—':x===0?'0':Number(x).toPrecision(10),yes=x=>x?'Yes':'No';
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ $('identities').textContent=data.identities.map(t=>'Triangle '+t.triangle+' has vertices '+t.vertices.join(', ')+', from patch panel '+t.panel+' (original crane face '+t.craneFace+').').join(' ')+' The drawings below locate them on the original sheet.';
+ for(const s of data.states){
+  for(const side of ['left','right']){const o=document.createElement('option');o.value=s.id;o.textContent=s.title;$(side).append(o);}
+  row($('crossings'),[s.title,yes(s.firstStraddles),yes(s.secondStraddles),num(s.intersectionLength),num(s.intersectionMargin),yes(s.crosses)]);
+  for(const c of s.corners)row($('corners'),[s.title,c.index,num(c.gap),num(c.predictedGap),num(c.predictedMargin),num(c.actualMargin),num(c.remainder)]);
+  for(const p of s.planes)row($('planes'),[s.title,p.vertex+' → '+p.triangle,num(p.distance),num(p.predicted),num(p.remainder)]);
+  const m=s.record.state;row($('geometry'),[s.title,yes(m.geometryPassed),num(m.maxRelativeEdgeError),num(m.holdError),m.contact.reversedOrders.length,num(m.totalCost)]);
+ }
+ const half=data.states.find(s=>s.id==='retained').corners[0],full=data.states.find(s=>s.id==='refused').corners[0];
+ $('scaling').textContent='Corner 0: the 1/4 gap prediction error is '+num(full.remainder)+'; at 1/8 it is '+num(half.remainder)+'. The larger error is '+Number(full.remainder/half.remainder).toFixed(5)+' times the smaller one. Both actual gaps remain within the 1e-7 geometry tolerance, but both worsen the starting floor by more than the 1e-12 guard residual tolerance.';
+ $('left').value='retained';$('right').value='refused';
+ function draw(){const view=$('view').value;for(const side of ['left','right']){const s=data.states.find(s=>s.id===$(side).value);$(side+'-title').textContent=s.title;$(side+'-image').src='body-contact-14-55/'+s.id+'-'+view+'.svg';$(side+'-fold').href='body-contact-14-55/'+s.id+'.fold';$(side+'-status').textContent='Intersection length '+num(s.intersectionLength)+' sheet units. Crossing '+(s.crosses?'flagged.':'not flagged.');}
+  $('legend').textContent=['tip','pair'].includes(view)?'Shared fixed crop. Purple: 14. Orange: 55. Green: overlap corners. Red: finite intersection. Small separations may lie below a screen pixel even in this enlarged view.':'Paper drawings copied from the saved comparison. Same camera and 600 pixels per sheet unit for spatial views; grey wires include hidden paper. Material view shows the original sheet.';
+  $('raw').textContent=JSON.stringify(data.states.filter(s=>[$('left').value,$('right').value].includes(s.id)),null,2);
+ }
+ for(const id of ['left','right','view'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>
