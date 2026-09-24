@@ -546,8 +546,11 @@ segments lets the existing checker follow the whole rigid turn. A crease on
 an upside-down layer needs the opposite angle sign even though both layers
 turn together; [the hinge note](notes/aligned-crease-hinges.md) explains why.
 So a caller cannot turn paper towards +z without knowing that sign, and
-`prepareFlapToward` reads it from the first held face. It refuses a held face
-standing on edge, which shows neither side towards +z, rather than guess.
+`prepareFlapToward` reads it from each moving face beside the hinge, which must
+lie flat and all on one side of the hinge line. It first read the face held
+still, which turned a flap already folded over the wrong way and made a
+[page turn](glossary.md#origami) depend on which crease was listed first;
+[the direction note](notes/turning-towards-a-side.md) says why.
 
 The [checked crane wing](usage.md#checked-crane-wing-movement) adds a crease
 across one wing of the real crane fixture and lowers its two layers through

@@ -322,13 +322,12 @@ on the physical hinge; they must separate the moving faces from the fixed
 ones and lie on one line in the current folded shape. The first segment
 defines the signed travel. Other segments receive the angle signs required
 by their stationary faces' orientation. `prepareFlapToward` takes a size of
-turn and `TowardPlusZ` or `TowardMinusZ` in place of that sign, and reads the
-sign from which way up the first segment's stationary face lies. A `Toward`
-is a sense of turning, the one that would lift paper lying flat beyond the
-hinge towards +z or −z, not where the paper ends up: a flap already folded
-over goes the other way first. The held face must lie flat. One standing on
-edge shows neither side towards +z, so such a turn is refused rather than
-guessed.
+turn and `TowardPlusZ` or `TowardMinusZ` in place of that sign: the way the
+moving paper beside the hinge sets off, whether it lies flat beyond the hinge
+or is already folded over. It reads the sign from which way up the moving face
+beside each segment lies. Those faces must lie flat and all on one side of the
+hinge line, or the turn is refused rather than guessed;
+[the direction note](notes/turning-towards-a-side.md) gives the reasons.
 
 ```bash
 stack run senbazuru-material-study -- --helmet build/fold-material

@@ -115,6 +115,17 @@ spec = describe "checked blintz sequence" $ do
       Left FlapEndpointOrder {} -> pure ()
       other -> expectationFailure (show other)
 
+  -- The corner lies folded under the centre, upside down. Turned towards -z,
+  -- away from the reader, it comes back out; towards +z it would swing up
+  -- through the centre, the turn refused above.
+  it "turns the folded corner by where it goes, so behind reopens it" $ do
+    opening <- require "reopening" (case drop 4 moves of m : _ -> Just m; [] -> Nothing)
+    let start = blintzStart opening
+    reopen <- right (prepareFlap (EdgeId 8) (FaceId 2) 180 start)
+    wrong <- right (prepareFlap (EdgeId 8) (FaceId 2) (-180) start)
+    prepareFlapToward [EdgeId 8] (FaceId 2) 180 TowardMinusZ start `shouldBe` Right reopen
+    prepareFlapToward [EdgeId 8] (FaceId 2) 180 TowardPlusZ start `shouldBe` Right wrong
+
   it "round-trips the illustrated states with their material coordinates and orders" $ do
     let file = blintzFile states
     eitherDecode (encode file) `shouldBe` Right file

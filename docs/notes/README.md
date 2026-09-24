@@ -55,6 +55,7 @@ read the Haddock module headers; for the domain, start with
 | [checked-square-collapse.md](checked-square-collapse.md) | Exact checks carry the prepared open sheet into the square base and verify its landing order before either petal opens |
 | [chaining-checked-folds.md](chaining-checked-folds.md) | Carry angles, orders and a consistent anchor between the five checked turns of a blintz sequence |
 | [aligned-crease-hinges.md](aligned-crease-hinges.md) | One physical hinge can join several graph segments or distinct material creases on touching layers; their angle signs follow their stationary faces |
+| [turning-towards-a-side.md](turning-towards-a-side.md) | A turn towards +z or −z is read from the moving face beside each hinge crease; the face held still answers the other way on a hinge folded shut, and made a page turn depend on which crease came first |
 | [A wing resting on paper](a-wing-resting-on-paper.md) | A crease can keep touching another layer while the wing leaves its plane; departure must still match the starting order. |
 | [free-edges-on-a-hinge.md](free-edges-on-a-hinge.md) | A declared stack can support its free edge on a shared hinge without welding the material vertices |
 | [endpoints-and-routes.md](endpoints-and-routes.md) | A valid state, a checked route and the existence of some route are different questions |

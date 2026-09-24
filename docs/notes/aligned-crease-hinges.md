@@ -48,11 +48,8 @@ contact diagnostics supplement that whole-turn check; they do not replace it.
 
 The sign rule also limits what a caller can ask for. Knowing only the
 direction of a turn, towards +z or −z, does not give its travel, the change in
-the first segment's FOLD angle: towards +z is +180 against a stationary face
-lying top up and −180 against one lying upside down. `prepareFlapToward` takes
-the direction and reads the sign from the first segment's stationary face.
-Which way up that face lies is where its placement, the rigid motion folding
-gives the face, sends +z, not the winding of its ring. On the quarter fold
-after its first step, one turn towards +z is travel +180 with edge 9 listed
-first and −180 with edge 11 first, because face 0 beside edge 9 lies top up
-and face 3 beside edge 11 upside down.
+the first segment's FOLD angle. On the quarter fold after its first step, one
+turn towards +z is travel +180 with edge 9 listed first and −180 with edge 11
+first, because face 1 beside edge 9 lies top up and face 2 beside edge 11
+upside down. `prepareFlapToward` takes the direction and works out the sign;
+[which way a turn goes](turning-towards-a-side.md) is its own note.
