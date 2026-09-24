@@ -102,6 +102,20 @@ paper assets. One new minimum-movement repair clears 14–55 but fails neighbori
 55–93 guards, so remains diagnostic. No material solve, retry or tolerance
 change. See [the result](../../docs/notes/body-overlap-restoration.md).
 
+To attempt a bounded separated start before using the body contact barrier:
+
+```bash
+stack run senbazuru-material-study -- --body-initialization build/fold-material/body-fourth-pair build/fold-material
+```
+
+Open `body-initialization.html`. At most twenty joint corrections try to open
+small numerical gaps with shared material and exact holds. The page keeps
+construction progress separate from material, barrier-domain and strict static
+contact checks. Exhaustion remains an initialization diagnostic; this command
+does not continue into a barrier material solve or certify a physical path.
+The [recorded attempt](../../docs/notes/body-separated-initialization.md) stops
+after four retained corrections without a barrier-ready candidate.
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

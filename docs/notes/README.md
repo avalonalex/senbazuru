@@ -110,6 +110,7 @@ read the Haddock module headers; for the domain, start with
 | [body-fourth-pair.md](body-fourth-pair.md) | One matched correction with six added 55–93 overlap guards and the unchanged repair policy |
 | [body-overlap-restoration.md](body-overlap-restoration.md) | One overlap repair clears 14–55 but fails neighboring 55–93 guards |
 | [body-barrier-comparison.md](body-barrier-comparison.md) | Pause pair-by-pair repairs; bound initialization and a matched body barrier/penalty comparison |
+| [body-separated-initialization.md](body-separated-initialization.md) | A bounded joint construction tests whether the saved body can enter the contact barrier |
 | [body-contact-14-55.md](body-contact-14-55.md) | A saved guarded gap loses its starting floor and lengthens a tiny intersection past tolerance |
 | [body-fresh-restoration.md](body-fresh-restoration.md) | Repeat one contact repair after refreshing the material direction, retaining all geometry and cost checks |
 | [body-fresh-direction.md](body-fresh-direction.md) | One fresh material direction from the repaired trial, with unchanged guards and checks |
