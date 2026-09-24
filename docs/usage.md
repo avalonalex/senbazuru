@@ -2101,3 +2101,24 @@ state has FOLD, measurements and six SVG views. The output keeps source assets
 unchanged under `body-fourth-pair/source/`; source and output must be separate.
 No subsequent direction, new plane guard, changed tolerance or continuous
 motion is included. See [the result](notes/body-fourth-pair.md).
+
+
+### Inspect the saved guarded 14–55 refusal
+
+```bash
+stack run senbazuru-material-study -- --body-contact-14-55 build/fold-material/body-fourth-pair build/fold-material
+```
+
+Open `build/fold-material/body-contact-14-55.html`. This diagnostic authenticates
+both saved directions and their source chain, then compares the start, passing
+1/8 and refused 1/4 from the nineteen-guard direction. It runs no material solve,
+installs no repair and changes no acceptance decision. The source and output
+archive directories must be separate.
+
+Material coordinates locate triangles 14 and 55. Fixed enlarged views mark
+corner 0 and their finite intersection; paper views retain their original
+bytes, camera and scale. Tables distinguish all six signed plane distances,
+the four actual/predicted overlap gaps and the intersection-length threshold.
+The inherited order is 55 below 14. Source assets are copied under
+`body-contact-14-55/source/`. This inspection does not certify equilibrium,
+continuous motion or whole-crane contact. See [the result](notes/body-contact-14-55.md).

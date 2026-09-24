@@ -80,6 +80,17 @@ guards. It keeps the existing single-repair policy and all geometry checks.
 This is opt-in and adds no material solve to CI. See
 [the comparison](../../docs/notes/body-fourth-pair.md).
 
+To inspect the resulting saved 14–55 refusal without a new solve, run:
+
+```bash
+stack run senbazuru-material-study -- --body-contact-14-55 build/fold-material/body-fourth-pair build/fold-material
+```
+
+Open `body-contact-14-55.html`. The start, passing 1/8 and refused 1/4 keep their
+original paper assets. Enlarged annotations locate corner 0; tables separate
+actual/predicted gaps, plane distances and the intersection-length threshold.
+See [the inspection](../../docs/notes/body-contact-14-55.md).
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

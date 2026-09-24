@@ -108,9 +108,9 @@ is warning-free; all **1,883 tests pass in 168.0 seconds**. Ormolu 0.7.2.0,
 HLint 3.10 using the exact CI JSON command, study JavaScript and inline-script
 syntax checks pass. This adds no material solve to default CI.
 
-The next bounded step is to inspect **14–55 in the saved new 1/4 trial** beside
-its starting and passing 1/8 shapes, without new solves. This pair already has
-four guards, so first compare their predictions with its actual overlap gaps
-and six plane distances before adding another constraint. Keep this local
-specimen distinct from body inflation, whole-crane response and a continuously
-checked flexible route.
+The [saved 14–55 inspection](body-contact-14-55.md) follows this comparison
+without new solves. Both triangles already straddle each other's planes; the
+finite intersection grows past tolerance as an active overlap guard's local
+prediction misses a small actual gap loss. That motivates testing one refreshed
+overlap-gap repair, while keeping this specimen distinct from body inflation,
+whole-crane response and a continuously checked flexible route.
