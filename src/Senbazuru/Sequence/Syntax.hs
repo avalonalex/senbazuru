@@ -381,7 +381,14 @@ data Move
   | -- | @pre-crease SENSE LINE [LAYERS] [moving P]@, also written
     -- @precrease@ or @fold and unfold@: fold along the line and lay the paper
     -- flat again, one move whose lasting change is the crease it leaves (owner
-    -- decision 14). It has no 'Amount' because it has nowhere to stop part-way.
+    -- decision 14, under D12 in @PRDs\/decisions.md@). It has no 'Amount'
+    -- because it has nowhere to stop part-way.
+    --
+    -- The constructor keeps the name it had before decision 14. The name
+    -- that would match @CorePrecrease@, @Precrease@, is planned for the kind
+    -- of move a run records (§5 of @PRDs\/decisions.md@), and as with
+    -- 'ValleyFold', a module importing both would have to qualify one of them
+    -- at every use.
     FoldAndUnfold Sense Line Layers (Maybe Point)
   | -- | @unfold c1 c2@: undo the named steps
     Unfold [Name]

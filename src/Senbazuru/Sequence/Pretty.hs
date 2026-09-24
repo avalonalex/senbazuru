@@ -14,9 +14,10 @@
 -- @fold and unfold@ mean @pre-crease@. The tree keeps only what was meant, so
 -- the printer has to choose a word, and it always chooses the same one:
 -- @valley@ and @mountain@, @pre-crease@, the word instruction books use (owner
--- decision 14), @°@, @moving@, and @top layer@ for a count of one. A
--- caption is never touched, so a step can say \"behind\" in its caption and
--- @mountain@ in its move, and both are right.
+-- decision 14, under D12 in @PRDs\/decisions.md@), @°@, @moving@, and
+-- @top layer@ for a count of one. A caption is never touched, so a step can
+-- say \"behind\" in its caption and @mountain@ in its move, and both are
+-- right.
 --
 -- It also leaves out exactly what the parser fills in when a source says
 -- nothing. A header may name an /anchor/, the point whose paper stays still,

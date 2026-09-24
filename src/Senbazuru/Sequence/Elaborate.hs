@@ -8,23 +8,29 @@
 -- @mid@ means that line, worked out afresh wherever it is used, so a @let@
 -- pins nothing to the paper; a @mark@ is what does that.
 --
--- This pass writes it out, so the code that folds paper meets only /core
--- moves/: no @let@ anywhere and no name of a line. It needs no paper and
--- cannot fail, because 'elaborate' takes only a 'Checked' sequence, whose
+-- This pass writes it out, so the code that folds paper meets only
+-- /core moves/: no @let@ anywhere and no name of a line. It needs no paper
+-- and cannot fail, because 'elaborate' takes only a 'Checked' sequence, whose
 -- names all resolve.
 --
--- A pre-crease, @pre-crease valley mid@ (also @precrease@ or @fold and
--- unfold@), looks like shorthand for a fold and its unfold, and is not. What
--- it leaves behind is a crease, lying flat, with its direction, so it is one
--- move with one record (owner decision 14, D12 in @PRDs\/decisions.md@):
--- 'CorePrecrease'. The run checks the fold's path and never performs the
--- unfold, which only retraces it.
+-- A pre-crease, @pre-crease valley mid@, which may also be written
+-- @fold and unfold valley mid@, looks like shorthand for a fold and its
+-- unfold, and is not. What it leaves behind is a crease, lying flat, with its
+-- direction, so it is one move (owner decision 14, under D12 in
+-- @PRDs\/decisions.md@): 'CorePrecrease'. The run checks the fold's path and
+-- never performs the unfold, which only retraces it.
 --
 -- == Core moves are a type of their own
 --
 -- 'Core' could have been the tree's own 'Move', with a promise that 'Let'
--- never occurs and no line is a bare name. A separate type makes the promise
--- one the compiler keeps.
+-- never occurs. A separate type makes that promise one the compiler keeps.
+--
+-- The compiler does not keep the other promise, that no line in a core move
+-- is a bare name. 'Core' holds the tree's own 'Line', and a 'LineNamed' still
+-- fits there. Ruling it out would take a second line type, and a second point
+-- type, since each can hold the other, copying every construction to leave
+-- out one constructor. 'lineWith' says why the promise holds, and a property
+-- test checks it.
 --
 -- == Every core move remembers what the author wrote
 --
@@ -63,6 +69,7 @@ import Control.Monad.Trans.State.Strict (State, evalState, get, modify', put)
 import Data.Bifunctor (bimap)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Senbazuru.Sequence.Check (Checked, checkedSequence)
 import Senbazuru.Sequence.Syntax
@@ -105,10 +112,10 @@ data Origin = Origin
 
 -- | A move of the paper or of how it is shown, with nothing left to expand.
 --
--- Each is the tree's move of the same name but for two things. There is no
--- @let@, and a 'Line' in it is never a bare name, nor a point's name anything
--- but a mark's. The tree's 'FoldAndUnfold' is 'CorePrecrease', named as
--- instruction books name the step.
+-- Each is the tree's move of the same name but for three things. There is no
+-- @let@; a 'Line' in it is never a bare name, nor a point's name anything but
+-- a mark's; and the tree's 'FoldAndUnfold' is 'CorePrecrease', named as
+-- instruction books name it.
 data Core
   = CoreFold Sense Amount Line Layers (Maybe Point)
   | -- | A pre-crease: fold along the line and lay the paper flat again, one
@@ -129,7 +136,7 @@ data Core
   | CoreNotModelled Text
   | -- | The move the expected move became, or none for a @let@, which can
     -- never be refused.
-    CoreExpectRefused RefusalKind [CoreMove]
+    CoreExpectRefused RefusalKind (Maybe CoreMove)
   deriving stock (Eq, Show)
 
 -- | Expand a checked sequence. Total: every name a checked sequence uses is
@@ -145,41 +152,40 @@ type Expand = State (Map Name Binding)
 
 elaborateStep :: Located Step -> Expand ElaboratedStep
 elaborateStep (Located sp (Step name caption moves)) =
-  ElaboratedStep name caption sp . concat <$> mapM (\(Located at written) -> expand at written) moves
+  ElaboratedStep name caption sp . catMaybes <$> mapM (\(Located at written) -> expand at written) moves
 
--- | The core moves one written move becomes: none for a @let@, and one for
--- anything else.
-expand :: Span -> Move -> Expand [CoreMove]
+-- | The core move one written move becomes, or none for a @let@.
+expand :: Span -> Move -> Expand (Maybe CoreMove)
 expand sp written = do
   lets <- get
   let point = pointWith lets
       line = lineWith lets
-      whole core = [CoreMove (Origin sp written) core]
+      one core = Just (CoreMove (Origin sp written) core)
   case written of
     Let name binding -> do
       modify' (Map.insert name (bindingWith lets binding))
-      pure []
-    FoldAndUnfold sense l layers seed -> pure (whole (CorePrecrease sense (line l) layers (point <$> seed)))
-    Fold sense amount l layers seed -> pure (whole (CoreFold sense amount (line l) layers (point <$> seed)))
-    Unfold names -> pure (whole (CoreUnfold names))
-    TurnOver axis -> pure (whole (CoreTurnOver axis))
-    Rotate eighths turning -> pure (whole (CoreRotate eighths turning))
-    Anchor p -> pure (whole (CoreAnchor (point p)))
-    Mark name p face -> pure (whole (CoreMark name (point p) (point <$> face)))
-    Macro call samples -> pure (whole (CoreMacro (macroWith lets call) samples))
-    Continue name angle -> pure (whole (CoreContinue name angle))
+      pure Nothing
+    FoldAndUnfold sense l layers seed -> pure (one (CorePrecrease sense (line l) layers (point <$> seed)))
+    Fold sense amount l layers seed -> pure (one (CoreFold sense amount (line l) layers (point <$> seed)))
+    Unfold names -> pure (one (CoreUnfold names))
+    TurnOver axis -> pure (one (CoreTurnOver axis))
+    Rotate eighths turning -> pure (one (CoreRotate eighths turning))
+    Anchor p -> pure (one (CoreAnchor (point p)))
+    Mark name p face -> pure (one (CoreMark name (point p) (point <$> face)))
+    Macro call samples -> pure (one (CoreMacro (macroWith lets call) samples))
+    Continue name angle -> pure (one (CoreContinue name angle))
     -- Each member is expanded in turn, so a @let@ among them is in scope for
     -- the members after it, and stays in scope after the block.
-    Together members -> whole . CoreTogether . concat <$> mapM (\(Located at member) -> expand at member) members
-    Pose creases -> pure (whole (CorePose [(point p, point q, angle) | (p, q, angle) <- creases]))
-    Repeat from to isometry -> pure (whole (CoreRepeat from to (isometryWith lets <$> isometry)))
-    Checkpoint path spec -> pure (whole (CoreCheckpoint path (specWith lets spec)))
-    NotModelled what -> pure (whole (CoreNotModelled what))
+    Together members -> one . CoreTogether . catMaybes <$> mapM (\(Located at member) -> expand at member) members
+    Pose creases -> pure (one (CorePose [(point p, point q, angle) | (p, q, angle) <- creases]))
+    Repeat from to isometry -> pure (one (CoreRepeat from to (isometryWith lets <$> isometry)))
+    Checkpoint path spec -> pure (one (CoreCheckpoint path (specWith lets spec)))
+    NotModelled what -> pure (one (CoreNotModelled what))
     -- What is inside never happens, so any @let@ there is forgotten after it.
     ExpectRefused kind inner -> do
       inside <- expand sp inner
       put lets
-      pure (whole (CoreExpectRefused kind inside))
+      pure (one (CoreExpectRefused kind inside))
 
 -- ---------------------------------------------------------------------------
 -- Replacing names

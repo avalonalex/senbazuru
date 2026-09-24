@@ -77,8 +77,8 @@ spec = beforeAll readCrane . describe "the traditional crane" $ do
     fmap stripSpans (crane >>= parseSequence "reprinted" . prettySequence) `shouldBe` fmap stripSpans crane
 
   -- 35 moves as written, and one core move each: the six pre-creases are
-  -- one move each too (owner decision 14). Red when elaboration drops a move
-  -- or splits one.
+  -- one move each too (owner decision 14, under D12 in PRDs/decisions.md).
+  -- Red when elaboration drops a move or splits one.
   it "expands into 35 core moves, one per move written" $ \crane -> do
     fmap (sum . map (length . elaboratedMoves) . elaboratedSteps . elaborate) (crane >>= checkSequence) `shouldBe` Right 35
     fmap (length . allMoves . checkedSequence) (crane >>= checkSequence) `shouldBe` Right 35

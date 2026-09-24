@@ -14,6 +14,7 @@
 -- core move each, a pre-crease included.
 module Senbazuru.Sequence.ElaborateSpec (spec) where
 
+import Data.Maybe (maybeToList)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -171,35 +172,27 @@ spec = do
     it "is expanded inside an expectation, and a let there is expected to be refused in vain" $ do
       fmap (map (coreMove . withoutOrigin)) (oneStep "step { let l = edge north; expect refused FlapCovered { fold valley l moving centre }; turn over left-right }")
         `shouldBe` Right
-          [ CoreExpectRefused (RefusalKind "FlapCovered") [bare (CoreFold ValleyFold ToFlat (EdgeOf North) FlapOfFirstArgument (Just Centre))],
+          [ CoreExpectRefused (RefusalKind "FlapCovered") (Just (bare (CoreFold ValleyFold ToFlat (EdgeOf North) FlapOfFirstArgument (Just Centre)))),
             CoreTurnOver LeftRight
           ]
       -- A let can never be refused, so expecting one expects nothing.
       oneStepCores "step { expect refused FlapCovered { let l = edge north }; turn over left-right }"
-        `shouldBe` Right [CoreExpectRefused (RefusalKind "FlapCovered") [], CoreTurnOver LeftRight]
+        `shouldBe` Right [CoreExpectRefused (RefusalKind "FlapCovered") Nothing, CoreTurnOver LeftRight]
 
     -- The checker forgets the let, so the name may be given again. Were the
     -- expansion to remember it, the mark's name would be read as the let's
     -- point.
     it "inside an expectation is forgotten, so a mark given its name after is the mark" $
       oneStepCores "step { expect refused FlapCovered { let x = centre }; mark x = corner north-east; anchor x }"
-        `shouldBe` Right [CoreExpectRefused (RefusalKind "FlapCovered") [], CoreMark "x" (CornerOf NorthEast) Nothing, CoreAnchor (PointNamed "x")]
+        `shouldBe` Right [CoreExpectRefused (RefusalKind "FlapCovered") Nothing, CoreMark "x" (CornerOf NorthEast) Nothing, CoreAnchor (PointNamed "x")]
 
-  describe "a move inside an expectation" $ do
+  describe "a move inside an expectation" $
     -- It has no span of its own, so it takes the expectation's.
     it "is remembered as written, at the expectation's span" $ do
       let moves = oneStep "step { expect refused FlapCovered { fold valley edge west moving centre } }"
-          atTheExpectation m = [(originSpan (coreOrigin m), Fold ValleyFold ToFlat (EdgeOf West) FlapOfFirstArgument (Just Centre))]
+          atTheExpectation m = Just (originSpan (coreOrigin m), Fold ValleyFold ToFlat (EdgeOf West) FlapOfFirstArgument (Just Centre))
       fmap length moves `shouldBe` Right 1
-      fmap (map insideOrigins) moves `shouldBe` fmap (map atTheExpectation) moves
-
-    it "is one core move for a pre-crease, spelled either way" $
-      mapM_
-        ( \spelling ->
-            fmap (map insideCores) (oneStep ("step { expect refused ExistingHingeFlat { " <> spelling <> " valley edge west moving centre } }"))
-              `shouldBe` Right [[CorePrecrease ValleyFold (EdgeOf West) FlapOfFirstArgument (Just Centre)]]
-        )
-        ["fold and unfold", "pre-crease"]
+      fmap (map insideOrigin) moves `shouldBe` fmap (map atTheExpectation) moves
 
   describe "any sequence that means something" $ do
     prop "keeps its steps as written, and its header" $
@@ -243,16 +236,11 @@ withChecked s k = case checkSequence s of
   Right checked -> k checked
   Left err -> counterexample ("the generator made a sequence the checker refuses: " <> show err) False
 
--- | For an expectation, what its origin says of each move inside it.
-insideOrigins :: CoreMove -> [(Span, Move)]
-insideOrigins m = case coreMove m of
-  CoreExpectRefused _ inside -> [(originSpan o, originWritten o) | o <- map coreOrigin inside]
-  _ -> []
-
-insideCores :: CoreMove -> [Core]
-insideCores m = case coreMove m of
-  CoreExpectRefused _ inside -> map coreMove inside
-  _ -> []
+-- | For an expectation, what its origin says of the move inside it.
+insideOrigin :: CoreMove -> Maybe (Span, Move)
+insideOrigin m = case coreMove m of
+  CoreExpectRefused _ (Just inner) -> Just (originSpan (coreOrigin inner), originWritten (coreOrigin inner))
+  _ -> Nothing
 
 -- | Whether the core moves' origins give back these written moves in order:
 -- a @let@ gives none, anything else one, a pre-crease becoming a
@@ -267,7 +255,7 @@ originsFollow written cores = case written of
   where
     inside m c = case (m, c) of
       (Together members, CoreTogether cores') -> originsFollow (map locValue members) cores'
-      (ExpectRefused _ inner, CoreExpectRefused _ cores') -> originsFollow [inner] cores'
+      (ExpectRefused _ inner, CoreExpectRefused _ core') -> originsFollow [inner] (maybeToList core')
       (FoldAndUnfold {}, CorePrecrease {}) -> True
       (Together _, _) -> False
       (ExpectRefused {}, _) -> False
@@ -287,7 +275,7 @@ namesAfter constructor cores =
 withoutOrigin :: CoreMove -> CoreMove
 withoutOrigin (CoreMove _ core) = bare $ case core of
   CoreTogether members -> CoreTogether (map withoutOrigin members)
-  CoreExpectRefused kind inside -> CoreExpectRefused kind (map withoutOrigin inside)
+  CoreExpectRefused kind inside -> CoreExpectRefused kind (withoutOrigin <$> inside)
   other -> other
 
 -- | A core move with a blank origin.

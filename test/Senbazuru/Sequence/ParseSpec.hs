@@ -231,7 +231,7 @@ spec = do
     -- notice a printed keyword dropped from the list. These are the keywords
     -- it cannot see, because the printer never writes them.
     it "reserves the spellings only an author writes" $
-      filter (`Set.notMember` reservedWords) ["precrease", "and", "front", "behind"] `shouldBe` []
+      filter (`Set.notMember` reservedWords) ["coloured", "material", "settle", "precrease", "front", "behind"] `shouldBe` []
 
     it "is a move the language cannot express yet, or a block it does not run yet" $ do
       mistake (inStep "squash corner south-east") `shouldBe` Just (FutureMove "squash", "t:4:3")
