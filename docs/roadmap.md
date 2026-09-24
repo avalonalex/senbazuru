@@ -4,7 +4,9 @@ The README's [roadmap](../README.md#roadmap) is the map: one completed
 foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
-snapshot and will drift, so it carries a date: **as of 2026-09-20**, through
+snapshot and will drift, so it carries a date: **as of 2026-09-20**, with
+**Track A's material priority refreshed on 2026-09-24** below. The historical
+milestones include
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
 with flat endpoints in [#177](https://github.com/avalonalex/senbazuru/issues/177)
@@ -42,12 +44,29 @@ closes.
 
 ## Where the project stands
 
-**Material priority, 2026-09-23:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
+**Material priority, 2026-09-24:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
 [sets an illustration milestone](notes/illustration-material-priority.md).
 Energy/opening refinement percentages remain research diagnostics; valid paper,
-accepted solves and explicit visual review still gate illustrations. Pause
-further cost refinement and study controlled opening of a small body patch
-connected to both wing roots. [Its first bounded comparison](notes/coupled-body-patch.md)
+accepted solves and explicit visual review still gate illustrations.
+The body-contact work through [#375](https://github.com/avalonalex/senbazuru/pull/375)
+meets the first deliverable's **reproducible geometry/solver blocker** option.
+There is still no accepted opened body; #195 and track A of #269 remain open.
+
+**Next: one [bounded barrier/penalty comparison](notes/body-barrier-comparison.md).**
+Pause further pair-by-pair and joint repairs of the saved 1/4 trial. Declare a
+finite initialization budget and attempt a slightly separated start that keeps
+shared paper, inherited order and exact holds. Only if that succeeds, compare
+both contact methods from the same start with matching material settings,
+work budgets and accepted-path checks. Review useful body opening and attachment
+movement at drawing size, alongside unchanged material/contact and convergence
+checks. Stop at an accepted static pose or a reproducible initialization,
+path-check or solver blocker; finding another limiting pair does not start
+another repair series. Physical thickness, pressure and full-crane deformation
+remain separate later studies. [#377](https://github.com/avalonalex/senbazuru/issues/377)
+records this roadmap update; no new material solve is included.
+
+The following evidence explains that decision. [The first bounded body-patch
+comparison](notes/coupled-body-patch.md)
 retains unsettled coarse poses and a failed refined control.
 [The saved-checkpoint audit](notes/body-patch-checkpoints.md) finds pre-existing
 order defects and first-correction crossings. [Subdivision of its recovered
@@ -103,9 +122,9 @@ already straddle: the intersection length crosses tolerance as corner 0's actual
 gap loss exceeds its linear prediction. Doubling the correction quadruples
 that discrepancy. [One overlap repair](notes/body-overlap-restoration.md)
 clears the crossing and passes actual geometry/cost, but fails two original
-55–93 guards and one refreshed guard. Next compare one joint repair protecting
-all nineteen original and eighteen refreshed guards, with the same target and
-actual checks. No accepted body-opening endpoint yet.
+55–93 guards and one refreshed guard. The proposed joint repair protecting
+all nineteen original and eighteen refreshed guards is now deferred by the
+bounded barrier comparison above. No accepted body-opening endpoint yet.
 Earlier failures and unmet research targets below
 remain evidence, not current prerequisites for starting that study.
 
@@ -788,10 +807,13 @@ checked coupled angles.
    falls to `2.67e-8`; actual geometry, lengths, holds and starting-cost descent
    pass. Two original 55–93 guards and one refreshed guard fail, so the repair
    stays diagnostic. Maximum movement is `1.59e-8` drawing pixels.
-   **Next: one joint minimum-movement repair at the same saved 1/4, targeting
-   the same starting gap while protecting all nineteen original and eighteen
-   refreshed guards. Retain both the original refusal and this failed repair;
-   recheck actual geometry/cost without continuation or changed tolerances.**
+   **Owner direction, 2026-09-24: this is the reproducible blocker permitted
+   by the first illustration deliverable. Pause the proposed joint repair and
+   further pair-by-pair corrections. Next attempt the
+   [bounded body barrier comparison](notes/body-barrier-comparison.md), with a
+   separately bounded initialization and matching penalty control. Retain the
+   original refusals, existing acceptance checks and a firm stop at a useful
+   accepted pose or a documented blocker. No body barrier solve has run yet.**
    The existing vertex 27–plane 70 guard remains a conservative fixture policy;
    it is not automatic contact discovery.
    No opened endpoint is accepted yet, and removing the surrounding crane's

@@ -103,11 +103,18 @@ combinations load without browser warnings or errors. Ormolu 0.7.2.0, HLint
 pass. The cold build is warning-free; all **1,890 tests pass in 162.5 seconds**.
 No material solve is added to default CI.
 
-The next bounded comparison should compute **one joint minimum-movement repair**
-at this same refused 1/4, protecting the original nineteen and refreshed eighteen
-guards while targeting the same 14–55 starting gap. Recheck actual geometry,
-cost and target afterward; keep this failed independent repair as a control.
-Do not start a continuation or relax tolerances yet. The saved full material
+The next comparison proposed when this experiment finished was **one joint
+minimum-movement repair** at this same refused 1/4, protecting the original
+nineteen and refreshed eighteen guards while targeting the same 14–55 starting
+gap. It would recheck actual geometry, cost and target, retaining this failed
+independent repair as a control, without continuation or relaxed tolerances.
+The saved full material
 proposal remains **5,456 times** above its movement stopping tolerance: a tiny
 repair does not establish equilibrium, a continuously checked flexible route,
 or whole-crane inflation.
+
+**Superseded on 2026-09-24:** the owner chose to pause this repair sequence.
+The [body barrier comparison plan](body-barrier-comparison.md) records the
+current blocker and a bounded alternative, including a separate initialization
+budget. The joint repair above is deferred; all measurements and refusal
+decisions in this note remain unchanged.

@@ -8,6 +8,15 @@ This sets the next milestone for [#195](https://github.com/avalonalex/senbazuru/
 and track A of [#269](https://github.com/avalonalex/senbazuru/issues/269).
 [#315](https://github.com/avalonalex/senbazuru/issues/315) records the scope change.
 
+**Follow-up decision, 2026-09-24:** the body-contact studies through
+[#375](https://github.com/avalonalex/senbazuru/pull/375) supply the reproducible
+geometry/solver blocker permitted by this first milestone. An accepted opened
+body remains unfinished. [The next comparison](body-barrier-comparison.md)
+pauses further pair-by-pair repairs: attempt a bounded separated initialization,
+then compare the distance barrier and penalty from the same start if it passes.
+Keep the existing checks and stop at a useful accepted pose or a documented
+blocker; this is not an automatic series of further contact repairs.
+
 The [saved 512-triangle layouts](held-layout-costs.md) differ by 10.36% in
 passive bending cost, which penalizes bending within panels between creases.
 Yet corresponding material positions differ by at most `0.000849586` of the
