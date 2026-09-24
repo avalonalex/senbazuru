@@ -67,6 +67,19 @@ plots and distance/direction tables; length costs and relative errors have
 separate rankings. See [the location analysis](../../docs/notes/held-layout-costs.md).
 
 
+To compare one body correction with six extra guards for the overlap between
+triangles 55 and 93, use the saved `body-restoration-loop/` archive:
+
+```bash
+stack run senbazuru-material-study -- --body-fourth-pair build/fold-material/body-restoration-loop build/fold-material
+```
+
+Open `body-fourth-pair.html`. This authenticates the saved loop, replays its
+last direction as control and computes one matched direction with the extra
+guards. It keeps the existing single-repair policy and all geometry checks.
+This is opt-in and adds no material solve to CI. See
+[the comparison](../../docs/notes/body-fourth-pair.md).
+
 ## Crease preferences and panel bending
 
 For the library's separate fixed-crease operation, see

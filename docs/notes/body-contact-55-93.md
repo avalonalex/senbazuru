@@ -101,11 +101,8 @@ final annotation build have no warnings; all **1,883 tests pass in 170.6 seconds
 Ormolu 0.7.2.0, HLint 3.10 with the CI JSON command, study JavaScript and the
 inline-script syntax check pass. This adds no material solve to default CI.
 
-The next bounded experiment should compare **one matched direction adding the
-six 55–93 overlap guards at this same saved start**, keeping the thirteen old
-guards, material, holds, weights, damping, budgets and actual acceptance checks.
-Compare it with the saved direction and retain every refusal. This will test
-whether the extra inequalities permit useful progress; the derivative audit
-alone cannot establish that. Do not add a vertex 30 plane guard or weaken the
-crossing tolerance in the same comparison. No accepted body-opening endpoint,
-continuous flexible route or surrounding-crane response is established here.
+[The matched comparison](body-fourth-pair.md) now adds those six guards while
+keeping the thirteen old guards and actual acceptance checks. It tests whether
+the accurate local predictions can support useful progress; this inspection
+alone does not establish that. No accepted body-opening endpoint, continuous
+flexible route or surrounding-crane response is established here.

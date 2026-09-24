@@ -126,11 +126,11 @@ readPlaneArchive source = do
   -- publish only after this boundary has checked all states.
   let files = ("checks.json", reportBytes) : startFile : concatMap snd directions ++ [("source" </> name, bytes) | (name, bytes) <- shortFiles archive]
       stateNames = "start" : [name | ((_, _, trials), _) <- directions, (name, _, _) <- trials]
-  images <- forM [name ++ "-" ++ view ++ ".svg" | name <- stateNames, view <- ["tip", "pair", "side", "top", "underside", "material"]] $ \name -> do bytes <- BL.readFile (source </> name); pure (name, bytes)
+  images <- forM [name ++ "-" ++ view ++ ".svg" | name <- stateNames, view <- ["tip", "pair", "side", "top", "underside", "material"]] $ \name -> do bytes <- readArchiveBytes (source </> name); pure (name, bytes)
   pure (PlaneArchive study start report (map fst directions) (files ++ images))
 
 jsonFile :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
-jsonFile path = do bytes <- BL.readFile path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
+jsonFile path = do bytes <- readArchiveBytes path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
 
 expect :: (Eq a, FromJSON a) => Key -> a -> Value -> IO ()
 expect key expected record = do value <- field key record; unless (value == expected) (die ("changed plane archive field: " ++ show key))

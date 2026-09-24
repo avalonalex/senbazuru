@@ -2084,3 +2084,21 @@ unchanged. Enlarged views label vertex 30 and corners 4 and 5; paper views
 retain the original camera, scale and bytes. The result does not certify
 continuous motion, equilibrium or whole-crane contact. See
 [the diagnosis and proposed comparison](notes/body-contact-55-93.md).
+
+### Compare six additional body-overlap guards
+
+```bash
+stack run senbazuru-material-study -- --body-fourth-pair build/fold-material/body-restoration-loop build/fold-material
+```
+
+Open `build/fold-material/body-fourth-pair.html`. This opt-in experiment checks
+the complete saved loop before computing one new direction from correction
+ten's start. It appends the six 93-below-55 overlap guards after the original
+thirteen. The control reuses the saved direction; it is not solved again.
+Both use the same largest-first fractions, one permitted plane repair per
+refusal, material settings and actual geometry/cost checks. Repair refreshes
+all named overlaps, including the added pair. Every visited raw or repaired
+state has FOLD, measurements and six SVG views. The output keeps source assets
+unchanged under `body-fourth-pair/source/`; source and output must be separate.
+No subsequent direction, new plane guard, changed tolerance or continuous
+motion is included. See [the result](notes/body-fourth-pair.md).

@@ -141,7 +141,7 @@ checkState study mesh record = do
   forM_ [("maxRelativeEdgeError", maximum (0 : map edgeRelativeError (measuredEdges measured))), ("creaseEnergy", measuredCrease measured), ("panelEnergy", measuredPanel measured), ("lengthCost", 5e7 * measuredLengthSquares measured), ("contactCost", 5e9 * measuredContactSquares measured), ("totalCost", patchCost 1e8 measured), ("bodyDepth", measuredBodyDepth measured)] $ \(key, x) -> nearField key x record
 
 jsonFile :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
-jsonFile path = do bytes <- BL.readFile path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
+jsonFile path = do bytes <- readArchiveBytes path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
 
 expect :: (Eq a, FromJSON a) => Key -> a -> Value -> IO ()
 expect key expected record = do actual <- field key record; unless (actual == expected) (die ("changed short archive field: " ++ show key))

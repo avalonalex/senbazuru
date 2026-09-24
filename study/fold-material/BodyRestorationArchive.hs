@@ -136,11 +136,11 @@ checkRestorationArchive source gallery parent = do
       near "costChangeFromTrial" (newCost - oldCost) report
     _ -> die "missing restoration costs"
   forM_ [("targetDistance", target), ("refusedDistance", planeDistance before), ("restoredDistance", planeDistance after), ("predictedDistance", planeDistance before + dotRow (planeGradient before, 0 :: Double) installed), ("correctionMovement", movement), ("mainMovement", mainMovement), ("originalPlaneMargin", originalPlaneMargin), ("restorationPlaneMargin", restorationPlaneMargin)] $ \(key, value) -> near key value report
-  images <- forM [name ++ "-" ++ view ++ ".svg" | (name, _) <- named, view <- ["tip", "pair", "side", "top", "underside", "material"]] $ \name -> do imageBytes <- BL.readFile (source </> name); pure (name, imageBytes)
+  images <- forM [name ++ "-" ++ view ++ ".svg" | (name, _) <- named, view <- ["tip", "pair", "side", "top", "underside", "material"]] $ \name -> do imageBytes <- readArchiveBytes (source </> name); pure (name, imageBytes)
   pure (RestorationArchive study repaired report (("checks.json", bytes) : states ++ images ++ [("source" </> name, b) | (name, b) <- repairFiles parent]))
 
 jsonFile :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
-jsonFile path = do bytes <- BL.readFile path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
+jsonFile path = do bytes <- readArchiveBytes path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
 
 expect :: (Eq a, FromJSON a) => Key -> a -> Value -> IO ()
 expect key expected record = do value <- field key record; unless (value == expected) (die ("changed restoration archive field: " ++ show key))
