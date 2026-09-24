@@ -130,7 +130,7 @@ everyBuilder = sequenceOf (header "Every builder" sheetSquare (Just (at (3 / 4) 
     tip <- mark "tip" (cornerOf NorthEast) (Just centre)
     diagonal <- letLine "diagonal" (cornerOf SouthWest `onto` cornerOf NorthEast)
     _ <- letLine "same" (namedLine diagonal)
-    foldAndUnfold valley (namedLine diagonal)
+    preCrease valley (namedLine diagonal)
     pure (tip, diagonal)
   base <- stepUncaptioned "base" $ do
     apex <- letPoint "apex" (point tip)

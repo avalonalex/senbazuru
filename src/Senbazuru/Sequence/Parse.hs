@@ -29,7 +29,7 @@
 -- >
 -- > step       = "step" NAME? STRING? block(move)
 -- > move       = "fold" sense ANGLE? line layers? seed?
--- >            | ("fold" "and" "unfold" | "precrease") sense line layers? seed?
+-- >            | ("pre-crease" | "precrease" | "fold" "and" "unfold") sense line layers? seed?
 -- >            | "unfold" NAME+ | "turn" "over" ("left-right" | "top-bottom")
 -- >            | "rotate" INTEGER"/8" "turn" ("clockwise" | "anticlockwise")
 -- >            | "anchor" point | "mark" NAME "=" point ("in" "face" "containing" point)?
@@ -232,7 +232,7 @@ reservedWords =
       ["step", "together", "pose", "settle", "checkpoint", "not", "modelled", "expect", "refused", "repeat"],
       ["mirrored", "across", "turned", "about", "mark", "let"],
       -- folds
-      ["fold", "and", "unfold", "precrease", "valley", "mountain", "in", "front", "behind", "all", "top"],
+      ["fold", "and", "unfold", "pre-crease", "precrease", "valley", "mountain", "in", "front", "behind", "all", "top"],
       ["layer", "flap", "containing", "moving", "face"],
       -- how the model is shown
       ["turn", "over", "left-right", "top-bottom", "rotate", "clockwise", "anticlockwise"],
@@ -674,6 +674,7 @@ move :: Parser Move
 move =
   label "a move" . choice $
     [ keyword "fold" *> (foldAndUnfold <|> fold),
+      keyword "pre-crease" *> precrease,
       keyword "precrease" *> precrease,
       Unfold <$> (keyword "unfold" *> some name),
       keyword "turn" *> keyword "over" *> (TurnOver <$> pageAxis),

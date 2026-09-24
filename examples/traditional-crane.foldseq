@@ -11,13 +11,13 @@ coloured side up
 # section 5). The captions are our own words.
 
 step diagonals "Crease both diagonals: fold corner to corner, open, then the other way." {
-  fold and unfold in front [corner south-west, corner north-east] moving corner south-east
-  fold and unfold in front [corner south-east, corner north-west] moving corner south-west
+  pre-crease in front [corner south-west, corner north-east] moving corner south-east
+  pre-crease in front [corner south-east, corner north-west] moving corner south-west
 }
 step "Turn the paper over." { turn over left-right }
 step midlines "Crease both midlines: fold edge to edge, open, then the other way." {
-  fold and unfold in front edge south to edge north
-  fold and unfold in front edge west to edge east
+  pre-crease in front edge south to edge north
+  pre-crease in front edge west to edge east
 }
 step square-base "Bring all four corners together at the bottom and flatten a square base." {
   collapse at centre keeping [corner south-east, corner north-west] flat until 180°
@@ -39,8 +39,8 @@ step front-petal "Lift the front flap up along the new crease, letting its sides
 }
 step "Turn the model over." { turn over left-right }
 step "Crease this side's lower edges along the centre line too, and open them." {
-  fold and unfold in front edge north to [centre, corner north-west] nearest centre top flap
-  fold and unfold in front edge west to [centre, corner north-west] nearest centre top flap
+  pre-crease in front edge north to [centre, corner north-west] nearest centre top flap
+  pre-crease in front edge west to [centre, corner north-west] nearest centre top flap
 }
 # A half turn about the centre carries the front petal onto the back one.
 step "Lift this flap the same way, which makes the bird base." {
