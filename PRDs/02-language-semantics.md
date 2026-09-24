@@ -712,7 +712,7 @@ the page.
 | --- | --- | --- |
 | `fold SENSE [A°] LINE [LAYERS] [moving P]` | one checked hinge turn by A, 180 by default (§6.2) | `SweptHinge` |
 | `unfold NAME…` | reverses the named steps' net angle changes, last move first (§6.4) | `SweptHinge` |
-| `fold and unfold …` (alias `precrease`) | a fold, then an unfold of it: two moves, and no angle (§6.4) | `SweptHinge` each |
+| `pre-crease …` (also `precrease`, `fold and unfold`) | a crease made by folding and unfolding: one move, and no angle (§6.4) | `SweptHinge`, of the fold |
 | `turn over …`, `rotate …` | presentation (§5.2) | `Presented` |
 | `anchor P` | re-anchors on demand (§2.3) | `NoMotion` |
 | `mark A = …` | pins a landmark (§4.5) | `NoMotion` |
@@ -841,7 +841,7 @@ The same research found that one layer of that wing is coupled, that "top flap" 
 a square base is two sheets, and that a quarter-fold seed near (1, 0) is covered.
 **All of this is Python evidence (§13).**
 
-### 6.4 `unfold`, and `fold and unfold`
+### 6.4 `unfold`, and `pre-crease`
 
 **`unfold NAME…`** takes the named steps' moves, last first
 ([D22](decisions.md#d22-figures-holding-several-moves)).
@@ -853,14 +853,18 @@ a square base is two sheets, and that a quarter-fold seed near (1, 0) is covered
    hinge turn.
 
 A move whose hinge creases are all at 0 now is skipped, and that covers every
-`fold and unfold`. If a later move changed one of those creases, the unfold is
+pre-crease. If a later move changed one of those creases, the unfold is
 refused as `UnfoldChangedSince`, naming the crease. *Blintz example:* `unfold c1`
 takes edge 8 from −180 to 0, the recipe's last tuple.
 
-**`fold and unfold`** elaborates to a fold and an unfold of that fold, keeping
-provenance. It takes no angle, because the tree's `FoldAndUnfold` has no field for
-one ([D12](decisions.md#d12-the-text-syntax)). The crease remains, flat, with its intent. Written frames show it as F
-at 0 (§11).
+**`pre-crease`** (also `precrease` and `fold and unfold`) folds along a line and
+unfolds again, and it is one move ([D12](decisions.md#d12-the-text-syntax), owner
+decision 14). The fold is checked like any hinge turn. The unfold is never
+performed, since it only retraces that route, so the state after is the state
+before with the new crease. The crease remains, flat, with its intent, and the
+move leaves one record, of kind `Precrease`. It takes no angle, because the tree's
+`FoldAndUnfold` has no field for one. Written frames show the crease as F at 0
+(§11).
 
 ### 6.5 Figures holding several moves
 
@@ -874,7 +878,7 @@ starts from ([D24](decisions.md#d24-states-figures-and-their-numbers),
   where that drawing shows it, compared by material identity. In practice none of
   that paper may have been moved by moves 1 to *k* − 1. Otherwise the move is
   refused as `MoveLeavesFigure`, with a hint to start a new `step`.
-  - A `fold and unfold` pair counts as one move here.
+  - A pre-crease is one move here, like any other.
   - All four blintz corners in one step pass.
   - "Fold the corner to the centre, then fold that flap in half" fails.
 - **Batching stays inside one step**
