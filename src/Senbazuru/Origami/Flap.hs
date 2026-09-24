@@ -14,30 +14,31 @@
 -- With several segments, the first crease defines the sign. A stationary face
 -- on an upside-down layer can orient its segment the other way, so its FOLD
 -- angle must change with the OPPOSITE sign for the same physical rotation.
--- See docs/notes/aligned-crease-hinges.md for the helmet-base example.
+-- See @docs\/notes\/aligned-crease-hinges.md@ for the helmet-base example.
 --
 -- 'prepareFlapToward' takes a direction, +z or -z, in place of a sign and
--- signs the travel itself. A 'Toward' names where the moving paper goes:
--- 'TowardPlusZ' is the turn that sets it off towards +z, whether it lies flat
--- beyond the hinge or is already folded over. A positive change in a crease's
--- angle moves the face beside it towards that face's own top, so the sign
--- depends on which way up the moving face beside each crease lies, which is
--- its placement applied to +z and not its winding. In the blintz, which folds
--- the four corners of a square to its centre, a corner folded flat under the
--- centre comes back out by a 'TowardMinusZ' turn, since it sets off
--- downwards; turned 'TowardPlusZ' it would swing up through the centre, and
--- checking refuses that turn.
+-- signs the travel itself. A 'Toward' names where the moving paper beside the
+-- hinge goes: 'TowardPlusZ' is the turn that sets it off towards +z, whether
+-- it lies flat beyond the hinge or is already folded over. A positive change
+-- in a crease's angle moves the face beside it towards that face's own top,
+-- so the sign depends on which way up the moving face beside each crease
+-- lies, which is its placement applied to +z and not its winding. In the
+-- blintz, which folds the four corners of a square to its centre, a corner
+-- folded flat under the centre comes back out by a 'TowardMinusZ' turn, since
+-- it sets off downwards; turned 'TowardPlusZ' it would swing up through the
+-- centre, and checking refuses that turn.
 --
 -- Every moving face beside the hinge is read, and two things refuse a turn
--- rather than guess it. Such a face must lie flat, by the same 'hasRelief' the
--- rest of the library judges flatness with, since one standing on edge shows
--- neither its top nor its back towards +z. And they must all lie on one side
--- of the hinge line, since a turn lifts the paper on one side of its line and
--- lowers the paper on the other. This module first read the face held still
--- beside the first crease instead. The two agree wherever the hinge is open,
--- but on a page turn, whose held faces lie on both sides of the line, that
--- reading depended on which crease was listed first: see section G of
--- PRDs/research/E3-formal-fold-semantics.md.
+-- rather than guess it. Those faces must all lie on one side of the hinge
+-- line, since a turn lifts the paper on one side of its line and lowers it on
+-- the other. And each must lie flat, by the same 'hasRelief' the rest of the
+-- library judges flatness with: one standing on edge shows neither its top nor
+-- its back towards +z, and one tilted past vertical would read the turn that
+-- finishes its own fold as the opposite way. This module first read the face
+-- held still beside the first crease. That agrees on an open hinge, whose two
+-- faces are one flat sheet, but gives the opposite answer on a hinge folded
+-- shut, and it made a page turn depend on which crease was listed first. See
+-- @docs\/notes\/turning-towards-a-side.md@, and the glossary for a page turn.
 --
 -- Preparation identifies the flap. Checking produces an opaque 'CheckedFlap';
 -- only that value supplies public poses. Each pose is independently re-folded
@@ -57,7 +58,7 @@
 -- this operation does not infer a stack from coincident positions.
 -- An unjoined stack edge may rest on the lifting hinge when its declared
 -- partner supplies the shared boundary and the plane separation check passes;
--- see docs/notes/free-edges-on-a-hinge.md. Material vertices stay distinct.
+-- see @docs\/notes\/free-edges-on-a-hinge.md@. Material vertices stay distinct.
 -- Endpoint layers follow that approach. At the start they must agree with any
 -- supplied orders; without orders, departure selects the previously unknown
 -- touching side. Other poses retain only the validated stack orders. A refusal
@@ -68,7 +69,7 @@
 -- paper lifts strictly to one side. Coplanar pairs, including pairs meeting
 -- only at an edge, are offered to HingeSweep's resting-plane check; this names
 -- candidates, not accepted contact. Any resulting departure orders must agree
--- with the supplied order. See docs/notes/a-wing-resting-on-paper.md.
+-- with the supplied order. See @docs\/notes\/a-wing-resting-on-paper.md@.
 module Senbazuru.Origami.Flap
   ( FlapMotion,
     CheckedFlap,
@@ -121,11 +122,11 @@ data FlapMotion = FlapMotion
 data CheckedFlap = CheckedFlap !FlapMotion !SweepCheck
   deriving stock (Eq, Show)
 
--- | Which way the moving paper sets off, for 'prepareFlapToward': towards +z
--- or towards -z. The +z is the given 'Folded'\'s own, the only coordinates
--- this module measures in, which is why the names carry no other frame: a
--- caller that shows the model turned over converts its direction before
--- asking.
+-- | Which way the moving paper beside the hinge sets off, for
+-- 'prepareFlapToward': towards +z or towards -z. The +z is the given
+-- 'Folded'\'s own, the only coordinates this module measures in, which is why
+-- the names carry no other frame: a caller that shows the model turned over
+-- converts its direction before asking.
 data Toward = TowardPlusZ | TowardMinusZ
   deriving stock (Eq, Show)
 
@@ -168,7 +169,7 @@ instance Explain FlapError where
     FlapNotHinge eid -> "edge " <> tshow (unEdgeId eid) <> " must be a crease joining exactly two faces"
     FlapWrongSide eid fid -> "moving face " <> tshow (unFaceId fid) <> " must touch crease " <> tshow (unEdgeId eid)
     FlapCoupled eid vertices -> "crease " <> tshow (unEdgeId eid) <> " does not separate a flap: other creases must move around vertices " <> tshow (map unVertexId vertices)
-    FlapMovingNotFlat fid spread -> "(internal face " <> tshow (unFaceId fid) <> "), which moves beside the hinge, does not lie flat, so which way the turn sets it off, towards +z or -z, cannot be read from it: its corners span " <> num spread <> " in z"
+    FlapMovingNotFlat fid spread -> "(internal face " <> tshow (unFaceId fid) <> "), which moves beside the hinge, does not lie flat, and a turn towards +z or -z is read only from moving faces that do: its corners span " <> num spread <> " in z"
     FlapMovesBothWays a b -> "(internal faces " <> tshow (unFaceId a) <> " and " <> tshow (unFaceId b) <> ") both move beside the hinge but lie on opposite sides of its line, so one turn would set one off towards +z and the other towards -z, and which way to turn cannot be read"
     FlapEmptyHinge -> "a flap hinge needs at least one crease"
     FlapDuplicateCrease eid -> "flap hinge repeats crease " <> tshow (unEdgeId eid)
@@ -212,14 +213,15 @@ prepareFlapAlong eids side travel = prepareHinge eids side (Signed travel)
 -- beside edge 11 upside down, so that turn is travel 180 with edge 9 listed
 -- first and -180 with edge 11 first.
 --
--- Its refusals are 'prepareFlapAlong'\'s, in the same order, with one in place
--- and two more. A size has no sign, so one that is negative, above 360 or not
--- finite is 'FlapInvalidTurn', where a travel's bound is 'FlapInvalidTravel'.
--- A moving face beside the hinge that does not lie flat is
--- 'FlapMovingNotFlat', and moving faces on both sides of the hinge line are
--- 'FlapMovesBothWays'. Both are asked last, once the paper that moves is known
--- to be a flap on one hinge, so that a wrong selection is refused as one and
--- not as a question of which way to turn it.
+-- Its refusals are 'prepareFlapAlong'\'s, with one in place and two more. A
+-- size has no sign, so one that is negative, above 360 or not finite is
+-- 'FlapInvalidTurn', where a travel's bound is 'FlapInvalidTravel'. A moving
+-- face beside the hinge that does not lie flat is 'FlapMovingNotFlat', and
+-- moving faces beside it on both sides of its line are 'FlapMovesBothWays',
+-- whatever the size of the turn. Both are asked once the paper that moves is
+-- known to be a flap on one hinge, after every check of the selection and
+-- before its surface, sweep and layer orders are checked, so that a wrong
+-- selection is refused as one and not as a question of which way to turn it.
 prepareFlapToward :: [EdgeId] -> FaceId -> Double -> Toward -> Folded -> Either FlapError FlapMotion
 prepareFlapToward eids side magnitude toward = prepareHinge eids side (Towards magnitude toward)
 
@@ -267,7 +269,7 @@ prepareHinge eids@(eid : _) side request supplied = do
       links = [(x, y) | (edge, [x, y]) <- M.toList neighbours, S.notMember edge removed]
       selected = connected links S.empty [side]
   when (S.member fixed selected) (Left (FlapCoupled eid [a, b]))
-  fixedPanel <- maybe (Left (FlapMissingFace fixed)) Right (find ((== fixed) . faceId) faces)
+  fixedPanel <- faceNamed faces fixed
   (from, to) <- maybe (Left (FlapNotHinge eid)) Right (find (\(x, y) -> edgeKey x y == key) (ringEdges (faceVertexIds fixedPanel)))
   let vertices = IM.fromList (zip [0 ..] expected)
       point vid = maybe (Left (FlapMissingVertex vid)) Right (IM.lookup (unVertexId vid) vertices)
@@ -281,16 +283,17 @@ prepareHinge eids@(eid : _) side request supplied = do
       segmentAlong (e, x, y, left, right) = do
         unless (S.member left selected /= S.member right selected) (Left (FlapNotBoundary e))
         let (movingFace, stationary) = if S.member left selected then (left, right) else (right, left)
-        panel <- maybe (Left (FlapMissingFace stationary)) Right (find ((== stationary) . faceId) faces)
+        panel <- faceNamed faces stationary
+        mover <- faceNamed faces movingFace
         (u, v) <- maybe (Left (FlapNotHinge e)) Right (find (\(p, q) -> edgeKey p q == edgeKey x y) (ringEdges (faceVertexIds panel)))
         p <- point u
         q <- point v
         unless (onLine p && onLine q) (Left (FlapUnalignedCrease e))
-        pure (e, dot axis (q ^-^ p) > 0, movingFace)
+        pure (e, dot axis (q ^-^ p) > 0, mover)
   directions <- traverse segmentAlong segments
   travel <- case request of
     Signed travel -> Right travel
-    Towards magnitude toward -> travelTowards faces start magnitude toward [(along, m) | (_, along, m) <- directions]
+    Towards magnitude toward -> travelTowards start magnitude toward [(along, m) | (_, along, m) <- directions]
   let travels = [(e, if along then travel else negate travel) | (e, along, _) <- directions]
   sheet <- first FlapSurface (surfaceFromFolded start)
   (mesh, owners) <- first FlapSurface (refineSurface 0 sheet)
@@ -316,30 +319,31 @@ prepareHinge eids@(eid : _) side request supplied = do
   pure motion
 
 -- | The travel of a turn towards +z or -z, read from the moving face beside
--- each hinge crease, in the refolded start. Each face asks its own crease to
--- change by the size of the turn, positive when the turn sets it off towards
--- its top; turned into the first crease's change, which is the travel, those
--- readings agree unless moving faces lie on both sides of the hinge line.
--- Placements come from that refold, as every pose's do, never from the
--- 'Folded' a caller supplied, whose constructor is public.
-travelTowards :: [Face] -> Folded -> Double -> Toward -> [(Bool, FaceId)] -> Either FlapError Double
-travelTowards faces start magnitude toward beside = do
+-- each hinge crease, in the refolded start. Each face says which way its own
+-- crease must change, positive when the turn sets it off towards its top;
+-- turned into the way the first crease changes, which is the travel's sign,
+-- those readings agree unless the faces lie on both sides of the hinge line.
+-- The directions are compared, not signed sizes, so that a turn of 0 is
+-- refused as any other is. Placements come from that refold, as every pose's
+-- do, never from the 'Folded' a caller supplied, whose constructor is public.
+travelTowards :: Folded -> Double -> Toward -> [(Bool, Face)] -> Either FlapError Double
+travelTowards start magnitude toward beside = do
   readings <- traverse reading beside
   case readings of
-    (lead, travel) : rest -> case find ((/= travel) . snd) rest of
+    (lead, direction) : rest -> case find ((/= direction) . snd) rest of
       Just (other, _) -> Left (FlapMovesBothWays lead other)
-      Nothing -> Right travel
+      Nothing -> Right (direction * magnitude)
     -- Unreachable: an empty hinge is refused before any face is read.
     [] -> Left FlapEmptyHinge
   where
-    reading (along, moving) = do
-      face <- maybe (Left (FlapMissingFace moving)) Right (find ((== moving) . faceId) faces)
-      let corners = faceCorners face
+    reading (along, face) = do
+      let moving = faceId face
+          corners = faceCorners face
       when (hasRelief corners) (Left (FlapMovingNotFlat moving (zSpan corners)))
       placed <- placement moving start
       let topSide = if facesUp placed then TowardPlusZ else TowardMinusZ
-          change = if toward == topSide then magnitude else negate magnitude
-      pure (moving, if along then change else negate change)
+          direction = if toward == topSide then 1 else negate 1
+      pure (moving, if along then direction else negate direction)
 
 connected :: [(FaceId, FaceId)] -> S.Set FaceId -> [FaceId] -> S.Set FaceId
 connected _ visited [] = visited
@@ -463,6 +467,9 @@ surfaceAt motion progress = do
 
 placement :: FaceId -> Folded -> Either FlapError Rigid
 placement fid folded = maybe (Left (FlapMissingFace fid)) Right (IM.lookup (unFaceId fid) (foldedPlacements folded))
+
+faceNamed :: [Face] -> FaceId -> Either FlapError Face
+faceNamed faces fid = maybe (Left (FlapMissingFace fid)) Right (find ((== fid) . faceId) faces)
 
 comparePoint :: FlapMotion -> (Int, MaterialSample, MaterialSample) -> Either FlapError ()
 comparePoint motion (i, actual, expected) =

@@ -28,6 +28,7 @@ For the ideas rather than the definitions, start with
 | **Base** | A standard intermediate shape many models start from — preliminary, waterbomb, bird, frog. |
 | **Flap** | A part of the sheet that can be lifted or folded over. It may contain several faces and several layers; it is not necessarily one polygon. |
 | **Book fold** | Folding a sheet in half so two opposite edges meet. |
+| **Page turn** | Turning a flap from one side of a line to the other, like the page of a book. The flap is joined to paper on both sides of the line, so the turn opens one crease and closes another. Not a page of drawings, and not turning the whole model over. |
 | **Cupboard fold** | Folding two opposite edges to meet at the centre line, like a pair of cupboard doors. Also called a gate fold. |
 | **Squash fold** | Opening a doubled flap into a pocket, then pressing it flat along a different pair of creases. Four squash folds followed by four petal folds turn a square base into a frog base. |
 | **Rabbit-ear fold** | Gathering a triangular region along its angle bisectors into a pointed flap, then laying that flap to one side. Two make the traditional fish base. See [notes/fish-and-bird-endpoints.md](notes/fish-and-bird-endpoints.md). |

@@ -388,10 +388,10 @@ oneOf = \case
 -- expected move refuses the whole sequence before anything runs, so expecting
 -- one would never come true.
 --
--- The groups follow the type each refusal will belong to. Three of the groups
+-- The groups follow the type each refusal will belong to. Four of the groups
 -- name constructors that exist today, in "Senbazuru.Origami.Flap",
--- "Senbazuru.Origami.Folding" and "Senbazuru.Origami.ThroughLayers", and a
--- test holds this list to their spelling.
+-- "Senbazuru.Origami.Folding", "Senbazuru.Origami.ThroughLayers" and
+-- "Senbazuru.Fold.Query", and a test holds this list to their spelling.
 refusalKinds :: [RefusalKind]
 refusalKinds =
   map RefusalKind . concat $

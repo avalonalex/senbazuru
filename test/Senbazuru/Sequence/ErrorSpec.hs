@@ -24,7 +24,7 @@
 -- character for character, location included.
 --
 -- __The list of refusal kinds__ is hand-written text that has to agree with
--- constructors elsewhere in the library. Twelve of its names exist as
+-- constructors elsewhere in the library. Thirteen of its names exist as
 -- constructors today, and a test reads each one's spelling off a real value.
 module Senbazuru.Sequence.ErrorSpec (spec) where
 
@@ -171,7 +171,7 @@ spec = do
     it "holds the kinds the design's own examples expect" $
       filter (`notElem` refusalKinds) (map RefusalKind ["FlapCovered", "FlapEndpointOrder", "ExistingHingeFlat"]) `shouldBe` []
 
-    -- Twelve of the names are constructors that exist today. Reading the
+    -- Thirteen of the names are constructors that exist today. Reading the
     -- spelling off a real value means a renamed constructor fails here, not
     -- months later when a sequence expects a refusal that can no longer be
     -- named.

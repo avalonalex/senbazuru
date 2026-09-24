@@ -331,9 +331,9 @@ data Folded = Folded
 --
 -- Only the sign is read, so it answers only for a face lying flat, and callers
 -- establish that first: "Senbazuru.Origami.ThroughLayers" for the whole model,
--- "Senbazuru.Origami.Flap" for the one face it holds still. The up direction
--- of a face lying flat goes to @+z@ or @-z@ to within rounding, so there is no
--- near-tie to get wrong.
+-- "Senbazuru.Origami.Flap" for each face that moves beside a hinge crease.
+-- The up direction of a face lying flat goes to @+z@ or @-z@ to within
+-- rounding, so there is no near-tie to get wrong.
 facesUp :: Rigid -> Bool
 facesUp placed = v3z (matApply (rigidLinear placed) (V3 0 0 1)) > 0
 
