@@ -412,7 +412,7 @@ refusalKinds =
       ["GaveUpStacking"],
       -- the library's own refusals of a turn, a fold or a crease
       ["FlapCoupled", "FlapNotHinge", "FlapNotBoundary", "FlapUnalignedCrease", "FlapEndpointOrder"],
-      ["FlapStackOrder", "FlapStartMismatch", "FlapStationaryNotFlat"],
+      ["FlapStackOrder", "FlapStartMismatch", "FlapMovingNotFlat", "FlapMovesBothWays"],
       ["TornAt", "AngleNotAchieved", "LineStopsOnTheModel"],
       -- the run itself
       ["ReanchorNotFlat", "JoinBroken", "MoveLeavesFigure", "RepeatNotSymmetric", "CheckpointOutlineDiffers"],

@@ -14,7 +14,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
-import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
@@ -22,7 +22,7 @@ import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Flap
 import Senbazuru.Origami.Folding
 import Senbazuru.Origami.HingeSweep
-import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Stacking (defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Camera (View (..), basisFrom)
 import Senbazuru.Render.Steps (stepPage)
@@ -417,14 +417,15 @@ spec = describe "checked flap rotation" $ do
     materialError state `shouldSatisfy` (< 1e-12)
 
   -- On the quarter fold after its first step, the hinge along y = 1/2 is
-  -- edges 9 and 11. Face 0 beside edge 9 lies top up and face 3 beside edge 11
-  -- lies upside down, so one turn has a different sign read against each.
+  -- edges 9 and 11. Face 1, which moves beside edge 9, lies top up and face 2,
+  -- which moves beside edge 11, lies upside down, so one turn has a different
+  -- sign read against each.
   describe "turning towards a side" $ do
     beforeAll halfFolded $ do
-      it "signs the travel by which way up the first stationary face lies" $ \folded ->
+      it "signs the travel by which way up the moving face beside each crease lies" $ \folded ->
         -- The hinge as listed, the moving face, the direction, and the travel
         -- prepareFlapAlong needs for the same turn: -180 for +z with edge 11
-        -- first is not a typo, since face 3 beside it lies upside down.
+        -- first is not a typo, since face 2 beside it lies upside down.
         forM_
           [ ([EdgeId 9, EdgeId 11], FaceId 1, TowardPlusZ, 180),
             ([EdgeId 9, EdgeId 11], FaceId 1, TowardMinusZ, -180),
@@ -451,34 +452,74 @@ spec = describe "checked flap rotation" $ do
 
       -- Folded's constructor is public, so a caller can hand in placements
       -- that disagree with its own frames; none at all, here.
-      it "reads which way up the held face lies from its own refold, not from the placements given" $ \folded -> do
+      it "reads which way up the moving faces lie from its own refold, not from the placements given" $ \folded -> do
         expected <- right (prepareFlapToward [EdgeId 9, EdgeId 11] (FaceId 1) 180 TowardPlusZ folded)
         prepareFlapToward [EdgeId 9, EdgeId 11] (FaceId 1) 180 TowardPlusZ folded {foldedPlacements = mempty} `shouldBe` Right expected
 
-    it "refuses a held face standing on edge, once the flap is sound, and a size that is not a turn" $ do
+    it "refuses a moving face standing on edge, once the flap is sound, and a size that is not a turn" $ do
       source <- keyFrame <$> (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
       -- Halfway through the first step, faces 2 and 3 hang straight down.
       hanging <- right (foldFrameWith source {edgesFoldAngle = replicate 8 0 ++ [-90, 0, -90, 0]})
       let towardsPlusZ hinge side size = prepareFlapToward (map EdgeId hinge) (FaceId side) size TowardPlusZ hanging
-      case towardsPlusZ [8, 10] 0 90 of
-        Left err@(FlapStationaryNotFlat held spread) -> do
-          held `shouldBe` FaceId 3
+      case towardsPlusZ [8, 10] 3 90 of
+        Left err@(FlapMovingNotFlat moving spread) -> do
+          moving `shouldBe` FaceId 3
           abs (spread - 0.5) `shouldSatisfy` (< 1e-12)
-          explain err `shouldBe` "(internal face 3), held still beside the first hinge crease, does not lie flat, so which way to turn towards +z or -z cannot be read from it: its corners span 0.500000 in z"
-        other -> expectationFailure ("expected FlapStationaryNotFlat, got " ++ either show (const "a motion") other)
+          explain err `shouldBe` "(internal face 3), which moves beside the hinge, does not lie flat, so which way the turn sets it off, towards +z or -z, cannot be read from it: its corners span 0.500000 in z"
+        other -> expectationFailure ("expected FlapMovingNotFlat, got " ++ either show (const "a motion") other)
       -- A wrong selection is refused as one first: edge 11 lies between
       -- faces 2 and 3, and neither of them moves.
       case towardsPlusZ [8, 10, 11] 0 90 of
         Left (FlapNotBoundary crease) -> crease `shouldBe` EdgeId 11
         other -> expectationFailure ("expected FlapNotBoundary, got " ++ either show (const "a motion") other)
-      -- Moving the hanging half instead holds face 0, which lies flat, and
-      -- turning it towards +z brings the half back up.
-      back <- right (prepareFlapAlong [EdgeId 8, EdgeId 10] (FaceId 3) 90 hanging)
-      towardsPlusZ [8, 10] 3 90 `shouldBe` Right back
-      forM_ [-90, 360.5, 0 / 0, 1 / 0] $ \size -> case towardsPlusZ [8, 10] 3 size of
+      -- Moving the flat half instead, faces 0 and 1, which lie top up, is
+      -- fine although the half it turns against hangs: towards +z lifts it.
+      lifted <- right (prepareFlapAlong [EdgeId 8, EdgeId 10] (FaceId 0) 90 hanging)
+      towardsPlusZ [8, 10] 0 90 `shouldBe` Right lifted
+      forM_ [-90, 360.5, 0 / 0, 1 / 0] $ \size -> case towardsPlusZ [8, 10] 0 size of
         Left (FlapInvalidTurn _) -> pure ()
         other -> expectationFailure ("a turn of " ++ show size ++ ": " ++ either show (const "accepted") other)
       explain (FlapInvalidTurn (-90)) `shouldBe` "a turn towards +z or -z must be finite and from 0 to 360 degrees; got -90.0"
+
+  -- The square base's bottom page on one side, faces 6 and 7, lies under face
+  -- 0 and turns about the spine: edge 14 joins it to face 5 across the spine,
+  -- and edge 8 to face 0 above it. Those two held faces lie on both sides of
+  -- the spine, which is why reading them made the answer depend on which
+  -- crease was listed first (PRDs/research/E3-formal-fold-semantics.md).
+  describe "turning a page" $ do
+    beforeAll squareBase $ do
+      it "turns a page the same way whichever hinge crease is listed first" $ \base -> do
+        -- The page can only set off away from the reader, towards -z, and
+        -- either way it lands under face 5: edge 8 opens and edge 14 closes.
+        -- Face 6 beside edge 14 lies top up and face 7 beside edge 8 upside
+        -- down, so the travels differ in sign and describe one turn.
+        edge14First <- right (prepareFlapToward [EdgeId 14, EdgeId 8] (FaceId 6) 180 TowardMinusZ base)
+        edge8First <- right (prepareFlapToward [EdgeId 8, EdgeId 14] (FaceId 7) 180 TowardMinusZ base)
+        prepareFlapAlong [EdgeId 14, EdgeId 8] (FaceId 6) (-180) base `shouldBe` Right edge14First
+        prepareFlapAlong [EdgeId 8, EdgeId 14] (FaceId 7) 180 base `shouldBe` Right edge8First
+        let start = edgesFoldAngle (foldedFrame base)
+            turned = [if i == 8 then 0 else if i == 14 then -180 else a | (i, a) <- zip [0 :: Int ..] start]
+        forM_ [edge14First, edge8First] $ \motion -> do
+          checked <- right (checkFlap defaultSweepSettings motion)
+          end <- right (flapAt checked 1)
+          edgesFoldAngle (surfaceFrame end) `shouldBe` turned
+
+      it "refuses the turn that carries the page up through the paper above it" $ \base ->
+        forM_ [([EdgeId 14, EdgeId 8], FaceId 6), ([EdgeId 8, EdgeId 14], FaceId 7)] $ \(hinge, side) -> do
+          upwards <- right (prepareFlapToward hinge side 180 TowardPlusZ base)
+          case checkFlap defaultSweepSettings upwards of
+            Left FlapEndpointOrder {} -> pure ()
+            other -> expectationFailure ("expected FlapEndpointOrder, got " ++ either show (const "a checked turn") other)
+
+      -- Seeded with face 5, everything but the page moves: face 5 beside edge
+      -- 14 and face 0 beside edge 8, on either side of the spine. One turn
+      -- lifts one and lowers the other, so no single way to turn is right.
+      it "refuses to guess when the moving paper lies on both sides of the hinge" $ \base ->
+        case prepareFlapToward [EdgeId 14, EdgeId 8] (FaceId 5) 180 TowardMinusZ base of
+          Left err@(FlapMovesBothWays a b) -> do
+            (a, b) `shouldBe` (FaceId 5, FaceId 0)
+            explain err `shouldBe` "(internal faces 5 and 0) both move beside the hinge but lie on opposite sides of its line, so one turn would set one off towards +z and the other towards -z, and which way to turn cannot be read"
+          other -> expectationFailure ("expected FlapMovesBothWays, got " ++ either show (const "a motion") other)
 
 -- | The quarter fold after its first step, folded here rather than read from
 -- the file's second frame, so that it carries the layer order the step left.
@@ -512,3 +553,15 @@ name = T.pack . show . unFaceId
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
+
+-- | The square base, with the spine's flat crease, edge 14, relabelled
+-- unassigned because 'Flap' turns only mountain, valley or unassigned
+-- creases, and folded with the layer order the solver finds, so that a turn
+-- can be checked. It is the only order the solver finds.
+squareBase :: IO Folded
+squareBase = do
+  source <- keyFrame <$> (loadFoldFile "examples/square-base.fold" >>= right)
+  let relabelled = source {edgesAssignment = [if i == 14 then Unassigned else a | (i, a) <- zip [0 :: Int ..] (edgesAssignment source)]}
+  bare <- right (foldFrameWith relabelled)
+  orders <- right (layerOrderFor defaultBudget (foldedFrame bare)) >>= maybe (fail "the square base has no layer order") pure
+  right (foldFrameWith (foldedPattern bare) {edgesFoldAngle = edgesFoldAngle (foldedFrame bare), faceOrders = orders})
