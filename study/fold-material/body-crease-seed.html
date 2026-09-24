@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A body starting pose from crease angles</title>
+<style>
+body{margin:0;background:#f6f1e8;color:#303831;font:16px/1.6 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:32px}h1{font-size:2.4rem;line-height:1.2}a{color:#315e50}.tag{font-size:.8rem;letter-spacing:.13em}.status{padding:18px;background:#e6eadf;border-left:4px solid #577361}.controls{display:flex;gap:20px;flex-wrap:wrap;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf3;border:1px solid #c6bfae}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,550px),1fr));gap:20px}.figure{background:#ece6d9;padding:8px;min-width:0}.viewport{height:480px;overflow:auto}.figure img{width:560px;max-width:none;display:block;margin:auto}h2{font-size:1.3rem}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}td,th{padding:8px;text-align:right;border-bottom:1px solid #d4ccbb;white-space:nowrap}td:first-child,th:first-child{text-align:left}.fail{color:#933b27}pre{overflow:auto;max-height:450px}#missing{padding:30px}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-feasibility.html">Previous initialization</a>
+<p class="tag">SENBAZURU · CREASE-BASED INITIALIZATION · #383</p>
+<h1>Open the creases together</h1>
+<p>A crease joins two paper panels. Each panel can turn without stretching, but all the turns around an intersection must fit together. This study searches for compatible angles first, then checks whether the resulting layers have enough separation to enter the contact barrier.</p>
+<p class="status" id="outcome">Generate this study to see the result.</p>
+<p>The first physical crease stays at −175° (a mountain). The others begin at signed 175° and may change within magnitudes 150°–179.99°. Mountains retain their negative sign and valleys their positive sign. Forty angle corrections bound this one attempt. New positions of the same three grip vertices come from the constructed pose.</p>
+<div class="controls"><label>Candidate <select id="state"></select></label><label>View <select id="view"><option value="side">Side</option><option value="top">Top</option><option value="underside">Underside</option><option value="material">Original sheet</option></select></label><label>Size <select id="zoom"><option value="1">Drawing size · 600 px per sheet unit</option><option value="4">4× magnified</option></select></label></div>
+<div class="views"><section class="figure"><h2>Original closed patch</h2><div class="viewport"><img id="before" alt="Original closed body specimen"></div></section><section class="figure"><h2 id="candidate-title">Constructed pose</h2><p id="missing" hidden>No connected candidate was produced. Unjoined panel placements are not drawn as continuous paper.</p><div class="viewport" id="candidate-view"><img id="after" alt="Constructed body specimen"></div></section></div>
+<p id="caption"></p><div class="scroll"><table><thead><tr><th>Measurement</th><th>Closed reference</th><th>Constructed pose</th></tr></thead><tbody id="metrics"></tbody></table></div>
+<h2>Starting-pose checks</h2><div id="gates"></div>
+<p>Lengths must stay within 0.001% relative error. The inherited layer orders, independent checks of all triangle pairs and strict static contact remain required. Barrier readiness additionally needs positive clearance of 5e-7 sheet units between disjoint layers, a local reference within 0.03 and finite barrier rows at activation range 0.001. These distances are numerical settings, not paper thickness.</p>
+<p>A connected pose is not necessarily separated paper. A separated starting pose is not a settled material result. No material solve, physical folding route, pressure or whole-crane response is claimed here. The old saved starts are unchanged.</p>
+<h2>Angle construction</h2><p id="run"></p><p id="closure-error" class="fail"></p><div class="scroll"><table><thead><tr><th>Correction</th><th>Largest closure residual</th><th>Squared-disagreement cost</th><th>Accepted fraction</th></tr></thead><tbody id="trace"></tbody></table></div>
+<p><a href="body-crease-seed/checks.json">Measurements</a> · <a href="body-crease-seed/trace.json">Angle trace</a> · <a href="body-crease-seed/angles.fold">Candidate angle pattern</a> · <a id="fold" hidden>Constructed FOLD</a></p>
+<details><summary>Complete report</summary><pre id="raw"></pre></details>
+</main><script>
+const data=/*CREASE_SEED_DATA*/null;
+if(data){
+ const $=id=>document.getElementById(id), num=x=>x===null||x===undefined?'—':Number(x).toPrecision(7), candidates=data.states.slice(1), baseline=data.states[0];
+ const ready=candidates.find(s=>s.id==='fine')?.ready;
+ $('outcome').textContent=ready?'The constructed and subdivided pose passes the starting-pose checks. No material solve has run.':data.closurePassed&&!data.productionFailure?'The crease angles join correctly, but the starting-pose contact checks fail. This pose cannot enter the barrier solver.':'This bounded angle family did not produce a validated connected pose. The stop is preserved as a diagnostic.';
+ for(const s of candidates)$('state').add(new Option(s.state.title,s.id));
+ if(!candidates.length){$('state').add(new Option('No joined candidate','none'));$('state').disabled=true;$('missing').hidden=false;$('candidate-view').hidden=true;}
+ else $('state').value=candidates.at(-1).id;
+ $('run').textContent=`${data.corrections} angle corrections; stop: ${data.stopReason}. Construction took ${data.constructionCpuSeconds.toFixed(3)} CPU seconds. Patch edge ${data.anchorPatchEdge} is the prescribed angle. Residuals compare rigid transforms, not contact gaps or material forces.`;
+ $('closure-error').textContent=data.productionFailure?`Independent folding check: ${data.productionFailure}`:'';
+ for(const [i,s] of data.trace.entries()){const row=document.createElement('tr');for(const v of [i,num(s.maxResidual),num(s.cost),num(s.fraction)]){const cell=document.createElement('td');cell.textContent=v;row.append(cell);}$('trace').append(row);}
+ function draw(){
+  const candidate=candidates.find(s=>s.id===$('state').value),view=$('view').value,zoom=Number($('zoom').value);
+  for(const [id,s] of [['before',baseline],['after',candidate]]){if(!s)continue;const img=$(id),viewport=img.parentElement,center=()=>{viewport.scrollLeft=(viewport.scrollWidth-viewport.clientWidth)/2;viewport.scrollTop=(viewport.scrollHeight-viewport.clientHeight)/2;};img.onload=center;img.src=`body-crease-seed/${s.id}-${view}.svg`;img.style.width=`${560*zoom}px`;requestAnimationFrame(center);}
+  $('candidate-title').textContent=candidate?candidate.state.title:'No connected candidate';
+  $('caption').textContent=`${view==='material'?'Material map has its own fixed scale.':'Shared camera and scale; the original reference panel stays fixed.'} Wire drawings show hidden layers. Magnification changes the display only. Grip positions come from this new construction. Contact highlights mark a reported overlap; they do not repair it.`;
+  $('fold').hidden=!candidate;if(candidate)$('fold').href=`body-crease-seed/${candidate.id}.fold`;
+  const metrics=[['Triangles',s=>s.state.triangles],['Body depth',s=>num(s.state.bodyDepth)],['Maximum relative edge error',s=>num(s.state.maxRelativeEdgeError)],['Exact-hold error',s=>num(s.state.holdError)],['Largest grip displacement · px',s=>num(Math.max(...s.grips.map(g=>g.movement))*600)],['Minimum disjoint height gap',s=>num(s.readiness.minimumDisjointHeightGap)],['Crossing pairs',s=>s.state.contact.crossingPanels.length],['Reversed orders',s=>s.state.contact.reversedOrders.length],['Crease cost',s=>num(s.state.creaseEnergy)],['Panel cost',s=>num(s.state.panelEnergy)]];
+  $('metrics').replaceChildren();for(const [label,f] of metrics){const row=document.createElement('tr');for(const v of [label,f(baseline),candidate?f(candidate):'Not constructed']){const cell=document.createElement('td');cell.textContent=v;row.append(cell);}$('metrics').append(row);}
+  $('gates').replaceChildren();if(!candidate)$('gates').textContent='Not evaluated for a new pose: production folding must first validate connected paper.';
+  else for(const [label,key] of [['Material and inherited contact','geometryPassed'],['Positive height clearance','clearancePassed'],['Separated local reference','referencePassed'],['Learned / inherited order agreement','inheritedOrderCompatible'],['Barrier domain','barrierDomainPassed'],['Strict static contact','strictStaticPassed']]){const p=document.createElement('p'),r=candidate.readiness,skip=!r.referencePassed&&['inheritedOrderCompatible','barrierDomainPassed'].includes(key);p.textContent=`${label}: ${skip?'Not evaluated · no reference':r[key]?'Pass':'Blocked'}`;if(!r[key])p.className='fail';$('gates').append(p);}
+ }
+ $('raw').textContent=JSON.stringify(data,null,2);for(const id of ['state','view','zoom'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>

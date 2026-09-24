@@ -498,6 +498,13 @@ lengths, holds, displacement and deficit descent gate every retained trial.
 `BodyFeasibilityGallery` exports the linear rows and original-row solver checks;
 `BodyInitializationCheck` shares unchanged readiness gates with the weighted
 construction. See [the constrained attempt](notes/body-feasible-initialization.md).
+`CreaseSeed` searches a bounded family of crease angles using provisional
+rigid transforms. The production `Folding` shared-vertex and achieved-angle
+checks independently gate any returned body mesh. `BodyCreaseSeed` aligns the
+reference panel and derives new grip positions without changing material
+preferences or inherited orders. `BodyCreaseSeedGallery` uses the same
+initialization readiness checks after subdivision; closure alone cannot
+establish contact. See [the angle construction](notes/body-crease-seed.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
