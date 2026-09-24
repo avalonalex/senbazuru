@@ -259,6 +259,7 @@ Each has a recommended default, decided with its consequences in
 | 11 | The external-tools rule in `AGENTS.md` | Yes, at M0 | M0 |
 | 12 | Crane-sized sequences in default CI or a separate slow job, and whether that job is required; the largest mesh a settle may use | A separate slow job that is a required check; default CI settles at most 392 triangles; `run --settle` refuses above 1,192 | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **Decided 2026-09-23**: where the moving paper goes ([D5](decisions.md#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | M2's runner |
+| 14 | A `fold and unfold`: one record or two, and its name | **Decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, with one record ([D12](decisions.md#d12-the-text-syntax)) | M2's runner |
 
 [03](03-prd-embedded-dsl.md#open-questions-for-the-owner),
 [05](05-prd-library-additions.md#open-questions-for-the-owner) and

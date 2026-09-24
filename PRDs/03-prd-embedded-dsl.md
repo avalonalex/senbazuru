@@ -362,7 +362,7 @@ the fold line ([02 §6.3](02-language-semantics.md#63-which-layers)). **SKETCH:*
 | --- | --- |
 | `fold valley LINE` | `fold valley l` |
 | `fold behind 90° LINE top flap moving P` | `move (Fold mountain (Degrees 90) l TopFlap (Just p))` |
-| `fold and unfold valley LINE` | `foldAndUnfold valley l` |
+| `pre-crease valley LINE` | `preCrease valley l` (**SKETCH**; `foldAndUnfold` until then) |
 | `unfold c1 c2` | `unfold [c1, c2]` |
 | `turn over left-right` | `turnOver LeftRight` |
 | `rotate 1/8 turn anticlockwise` | `rotate 1 Anticlockwise` |
@@ -385,7 +385,7 @@ Rules:
 - **Defaults are the parser's.** No angle gives `ToFlat`; no layers clause gives
   `FlapOfFirstArgument`. `ToFlat` is kept apart from `Degrees 180` because a bare
   `fold` parses to it and prints with no angle. A builder writing `Degrees 180`
-  would print `180°` and no longer equal the text. `foldAndUnfold` takes no angle,
+  would print `180°` and no longer equal the text. `preCrease` takes no angle,
   because `FoldAndUnfold` has no field for one
   ([D12](decisions.md#d12-the-text-syntax)).
 - **A trailing `Maybe` is an optional clause of the text**, and `Nothing` leaves it

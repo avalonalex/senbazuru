@@ -8,7 +8,8 @@ record wins and the file is to be corrected.
 **Amended** 2026-09-23, after M1 and #344 were implemented: the sense of a
 hinge turn is where the moving paper goes ([D5](#d5-presentation-and-the-readers-side),
 owner decision 13), from [E3](research/E3-formal-fold-semantics.md), which
-also adds [§10](#10-corrections) rows 33–38.
+also adds [§10](#10-corrections) rows 33–38. Also that day: a pre-crease is one
+move, with one record ([D12](#d12-the-text-syntax), owner decision 14).
 
 **How it relates to the drafts.**
 
@@ -987,12 +988,33 @@ The decisions:
   v2's examples wrote them, are not grammar ([C14](#changes-since-draft-v2)). A
   step whose only moves are `let` (or none) is refused statically as `EmptyStep`.
 - **Moves** (canonical spelling first): `fold SENSE [A°] LINE [LAYERS] [moving P]`;
-  `unfold NAME…`; `fold and unfold SENSE LINE [LAYERS] [moving P]` (alias
-  `precrease`), which takes **no angle** because `FoldAndUnfold` has no field for
-  one; `turn over`; `rotate`; `anchor P`; `mark`; `let`; the macros; `continue`;
-  `together { … }`; `pose { … }`; `repeat NAME[..NAME] [mirrored across [P, Q] | turned k/4 about P]`;
+  `unfold NAME…`; `pre-crease SENSE LINE [LAYERS] [moving P]` (also `precrease`
+  and `fold and unfold`), which takes **no angle** because `FoldAndUnfold` has no
+  field for one; `turn over`; `rotate`; `anchor P`; `mark`; `let`; the macros;
+  `continue`; `together { … }`; `pose { … }`; `repeat NAME[..NAME] [mirrored across [P, Q] | turned k/4 about P]`;
   `checkpoint "path" { … }`; `not modelled "…"`; `expect refused KIND { move }`;
   and `settle { … }` last in a step.
+- **Amended 2026-09-23 (owner decision 14): a pre-crease is one move.** A
+  `fold and unfold` leaves the paper where it began, and what it leaves behind is
+  a crease with its direction, as in a real sheet. Instruction books call that
+  step a pre-crease, so the move is one move with that name.
+  - *Spelling.* `pre-crease` is printed; `precrease` and `fold and unfold` read
+    the same. `-` is a word character, as in `rabbit-ear`, so `pre-crease` is one
+    reserved word. **SKETCH** until the parser has it.
+  - *One core move.* It elaborates to `CorePrecrease` (**SKETCH**), in place of a
+    fold and `CoreUnfoldPrevious` (#335). The fold is checked like any hinge
+    turn, and the run performs no unfold: the state after is the state before
+    with the new crease at 0, keeping its intent ([D3](#d3-the-runner-owns-the-state-its-start-and-the-handoffs)).
+  - *One record,* of kind `Precrease`, the first constructor
+    [§5](#5-type-sketch) gives `MoveKind`. Its before and after are both flat, in
+    one numbering; `recordNewCreases` holds the crease and its assignment; its
+    evidence is the fold's `SweptHinge`. So a pre-crease through layers is still
+    checked, the page draws the fold arrow and the unfold arrow from the one
+    record, and an animation can play the route out and back.
+  - *Rejected:* two records, the fold and its unfold, as the glossary additions,
+    02 §6 and 06 §2 said before. The folded state between them is never drawn,
+    settled or named, and [D14](#d14-material-consumption) already rejected two
+    records for a move that creases and then turns.
 - **Reserved words are never names**, compared ignoring case, even where only a name
   could appear; so the bird example's steps are `square-base`, `first-petal`,
   `second-petal`. View words and future move words (`squash`, `sink`, `swivel`,
@@ -1009,7 +1031,7 @@ The decisions:
   `LineOnto (LineNamed a) (LineNamed b) Nothing`, `LineOnto (LineNamed a) l Nothing`
   with `l` not a bare name, `Let n (BindLine (LineNamed b))`) to the parser's.
   Parser output and builder output are canonical, and `canonical` is idempotent.
-- **Printer.** Canonical words (`valley`, `mountain`, `fold and unfold`, `°`,
+- **Printer.** Canonical words (`valley`, `mountain`, `pre-crease`, `°`,
   `moving P`, `top layer`); numbers as integers or `n/d` in lowest terms, except
   `rotate` and `turned` denominators, printed as stored; defaults left out.
 - **Round trip.** QuickCheck:
@@ -1628,9 +1650,10 @@ starts from; that is the figure the heading means.
   state before the step's first move, so move k is accepted only if every material
   point of its moving paper is where that drawing shows it, compared by material
   identity; in practice no earlier move of the step moved that paper. Otherwise
-  `MoveLeavesFigure`, with a hint to start a new `step`. A `fold and unfold` pair
-  counts as one move here. All four blintz corners in one step pass; "fold the
-  corner to the centre, then fold that flap in half" fails.
+  `MoveLeavesFigure`, with a hint to start a new `step`. A pre-crease is one move
+  here, like any other ([D12](#d12-the-text-syntax)). All four blintz corners in
+  one step pass; "fold the corner to the centre, then fold that flap in half"
+  fails.
 - **Batching stays inside one step** ([C16](#changes-since-draft-v2)). Consecutive
   moves of one step whose lines resolve on the step's start state share one
   `creaseAllAlongWith` call, because re-cutting is the cost (AGENTS.md "A move that
@@ -1652,7 +1675,7 @@ starts from; that is the figure the heading means.
   each record's `recordNewCreases` still lists only its own.
 - **`unfold NAME…`** reverses the named steps' net angle changes, last move first,
   reusing each move's recorded material hinge and seed; a move whose hinge creases
-  are all at 0 now is skipped, which covers every `fold and unfold`. If a later move
+  are all at 0 now is skipped, which covers every pre-crease. If a later move
   changed one of those creases, the unfold is refused as `UnfoldChangedSince`, naming
   the crease (G5). `unfold c1` on the blintz takes edge 8 from −180 to 0.
 - **Names and evidence.** `unfold` and `repeat` name steps (`unfold c1`, §7's
@@ -1857,6 +1880,7 @@ data MoveRecord = MoveRecord
   , recordAnchor :: !(MaterialPoint, MaterialPoint)               -- before, after
   , recordResolved :: ![ResolvedReference], recordMacros :: ![MacroBinding], recordCost :: !StepCost }
   deriving stock (Eq, Show)
+data MoveKind = Precrease | …                                     -- owner decision 14; the rest with the MoveRecord agreement
 displayBefore, displayAfter :: MoveRecord -> Rigid                -- presentation `after` placement
 data MacroBinding = MacroBinding { bindLine :: Name, bindMacro :: MacroName, bindRoles :: [(Role, MaterialSegment)]
                                  , bindBranch :: Branch, bindDisambiguator :: Maybe ResolvedReference, bindReached :: Rational }
@@ -1912,7 +1936,7 @@ foldedWalk :: Folded -> IntMap (FaceId, EdgeId)                  -- L15: each fa
 the reserved words, the ambiguity table and the printer rules; nothing here repeats
 them. That grammar already carries this record's syntax decisions
 ([D12](#d12-the-text-syntax)): `closing` after the last step, optional captions,
-`fold and unfold` with no angle, `midpoint of edge S`, `stacking first` alone in its
+a pre-crease with no angle, `midpoint of edge S`, `stacking first` alone in its
 block, `expect refused` as a move inside a step, string escapes, `n/0` as a parse
 error, reserved words never names. Three corrections are 04's to make:
 
@@ -2088,7 +2112,7 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 | --- | --- | --- | --- |
 | M0 | Decisions on record | [§3](#3-recorded-text-this-design-changes) rows 1–10 and 16; `docs/notes/sequences.md`; glossary rows moved in; the issues of [§10](#10-corrections) filed | amends #60, #95, #97, #111, #36, #94, #104, #114, #56, #64, #96 |
 | M1 | Language without geometry | `Sequence.Syntax`, `Error`, `Build`, `Parse`, `Pretty`, `Check`, `Elaborate`; `Fold.Load.readSequenceText`; the `decodeFile` refusal; `Sequence.RunPlan` for `--check`; `run --check`; round-trip property; whole-crane parse-and-check test; row 2 | advances #60 |
-| M2 | Rigid runner on flat states and existing creases | `sheetState`; references on flat states; `fold`, `unfold`, `fold and unfold` along constructions on the flat sheet and along existing creases of flat-folded states; 05 L1 (`atRest`), L2 (`creaseAllAlongWith`), L3 (`fitRigid`, some-vertex classification), L4's `flapStationaryFace` and `Origami.Route`, L14 (`prepareFlapToward`, `Eq`); presentation; anchors; `Sequence.Record` with `writtenStates`; the writer; `run -o .fold`, `.glb`; `--report`; `expect refused`; `not modelled`; the bird arrows golden pinned before L3; blintz and helmet equivalence; quarter-fold test 1; E1–E6, E8–E10; rows 11, 12 (`runSequence`), 13 | closes #95, #97; advances #60; #58 item 3 |
+| M2 | Rigid runner on flat states and existing creases | `sheetState`; references on flat states; `fold`, `unfold`, `pre-crease` along constructions on the flat sheet and along existing creases of flat-folded states; 05 L1 (`atRest`), L2 (`creaseAllAlongWith`), L3 (`fitRigid`, some-vertex classification), L4's `flapStationaryFace` and `Origami.Route`, L14 (`prepareFlapToward`, `Eq`); presentation; anchors; `Sequence.Record` with `writtenStates`; the writer; `run -o .fold`, `.glb`; `--report`; `expect refused`; `not modelled`; the bird arrows golden pinned before L3; blintz and helmet equivalence; quarter-fold test 1; E1–E6, E8–E10; rows 11, 12 (`runSequence`), 13 | closes #95, #97; advances #60; #58 item 3 |
 | M3 | Step pages that read like a book | `StepNote`, `stepPageWith`, arrow heads, `Symbol`, captions, 05 L5 (`motionsAcross`, `creasesToCome`), steps of several moves, marks; `run -o .svg`; E7; row 12 (`stepPageWith`) | closes #36, #94; advances #48 |
 | M4 | Folding some layers | 05 L6 (before the runner wraps `ThroughError`), L7–L12; selectors; `stackingWhere`; `start folded`, `checkpoint`, `repeat`; crane-wing prefix in the slow job; quarter-fold test 2 and its page; rows 15, 17, 18 | closes #60; advances #54; revisits #70; related #110 |
 | M5 | Coupled macros | collapse with `keeping`, rabbit ear, petal, `continue`, `together`, `sample`, `pose`; 05 L13 (`CheckedMacro`, `macroPoseAt`); the study's certificate registry; bird route; crane opening | advances #54, #61; #55 unblocked, not required |
@@ -2131,6 +2155,7 @@ and each has to be decided before the milestone named.
 | 11 | The external-tools rule in `AGENTS.md` | yes, [§3](#3-recorded-text-this-design-changes) row 8 at M0 | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
 | 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs after #208 | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR before #208 lands; a higher cap admits unmeasured settles | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
+| 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that

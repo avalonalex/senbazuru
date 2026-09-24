@@ -436,7 +436,7 @@ The picture has four stages:
    zero denominator such as `1/0` never reaches it: numbers in a source are
    exact fractions, none can hold one, and the parser refuses it
    ([D12](decisions.md#d12-the-text-syntax)).
-   `Sequence.Elaborate` expands shorthand such as `let` and `fold and unfold`.
+   `Sequence.Elaborate` expands shorthand such as `let`.
 3. **Run.** The *runner* folds move by move with the existing `Fold.*` and
    `Origami.*` code, threading a *fold state*
    ([glossary-additions](glossary-additions.md#running-a-sequence)). It returns a

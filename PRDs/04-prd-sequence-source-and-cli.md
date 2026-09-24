@@ -248,10 +248,10 @@ stackingblock = "{" SEP* "stacking" "first" SEP* "}"                        # al
             | block("layers" point "above" point) ;
 
 step        = "step" NAME? STRING? "{" SEP* (move (SEPS move)* (SEPS settle)? | settle)? SEP* "}" ;
-move        = fold | foldunfold | unfold | turnover | rotate | anchormove | mark | let
+move        = fold | precrease | unfold | turnover | rotate | anchormove | mark | let
             | macro | continue | together | pose | repeat | checkpoint | notmodelled | expect ;
 fold        = "fold" sense ANGLE? line layers? seed? ;
-foldunfold  = ("fold" "and" "unfold" | "precrease") sense line layers? seed? ;
+precrease   = ("pre-crease" | "precrease" | "fold" "and" "unfold") sense line layers? seed? ;
 sense       = "valley" | "mountain" | "in" "front" | "behind" ;
 layers      = "all" "layers" | "top" "layer" | "top" INTEGER "layers" | "top" "flap" ;
 seed        = "moving" point | "flap" "containing" point ;
@@ -388,8 +388,8 @@ The printer:
 - **Layout.** A blank line before each step and before `closing`. One statement per
   line, two spaces of indent per block. `settle` comes last in its step.
 - **Aliases** print canonically: `in front` as `valley`, `behind` as `mountain`,
-  `precrease` as `fold and unfold`, `deg` as `°`, `flap containing P` as
-  `moving P`, `top 1 layers` as `top layer`.
+  `precrease` and `fold and unfold` as `pre-crease`, `deg` as `°`,
+  `flap containing P` as `moving P`, `top 1 layers` as `top layer`.
 - **Numbers** print as an integer or as `n/d` in lowest terms, never as a decimal.
   A typed `0.58` prints as `29/50`.
 - **`rotate 2/8 turn` looks unreduced and is intended.** `Rotate` stores k eighths
@@ -424,7 +424,7 @@ closing "Folded into quarters."
 | --- | --- |
 | Header | `foldseq` `title` `sheet` `square` `anchor` `coloured` `white` `side` `up` `start` `folded` `layers` `above` `stacking` `first` `material` `closing` |
 | Structure | `step` `together` `pose` `settle` `checkpoint` `not` `modelled` `expect` `refused` `repeat` `mirrored` `across` `turned` `about` `mark` `let` |
-| Folds | `fold` `and` `unfold` `precrease` `valley` `mountain` `in` `front` `behind` `all` `top` `layer` `flap` `containing` `moving` `face` |
+| Folds | `fold` `and` `unfold` `pre-crease` `precrease` `valley` `mountain` `in` `front` `behind` `all` `top` `layer` `flap` `containing` `moving` `face` |
 | Presentation | `turn` `over` `left-right` `top-bottom` `rotate` `clockwise` `anticlockwise` |
 | References | `corner` `south-west` `south-east` `north-east` `north-west` `edge` `north` `east` `south` `west` `centre` `midpoint` `of` `fraction` `along` `meet` `end` `crease` `nearest` `to` `perpendicular` `through` `hinge` `model` |
 | Macro-moves | `collapse` `at` `keeping` `flat` `until` `rabbit-ear` `petal` `tip` `sample` `continue` |
@@ -462,7 +462,7 @@ qualified names inside the library itself
 | `fold S LINE` · `fold S 90° LINE` | `Fold S ToFlat LINE …` · `Fold S (Degrees 90) LINE …` |
 | no layers · `all layers` · `top layer` · `top N layers` · `top flap` | `FlapOfFirstArgument` · `AllLayers` · `TopLayers 1` · `TopLayers N` · `TopFlap` |
 | `moving P` · `flap containing P` | `Just P`, the fold's last field |
-| `fold and unfold S LINE …` · `precrease S LINE …` | `FoldAndUnfold S LINE layers seed` |
+| `pre-crease S LINE …` · `precrease S LINE …` · `fold and unfold S LINE …` | `FoldAndUnfold S LINE layers seed` |
 | `unfold A B` | `Unfold [A, B]` |
 | `turn over left-right` · `top-bottom` | `TurnOver LeftRight` · `TopBottom` |
 | `rotate 1/8 turn clockwise` · `rotate 2/8 turn anticlockwise` | `Rotate 1 Clockwise` · `Rotate 2 Anticlockwise` |

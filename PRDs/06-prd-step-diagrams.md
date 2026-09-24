@@ -358,7 +358,7 @@ holds by construction, and `stepNotes` returns `Either WriteProblem` because
 | --- | --- |
 | Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each record's new creases at `recordBefore` positions (the record's surface before the move) under `displayBefore`, with that record's kind |
 | A move that creases and turns nothing (`NoMotion`) | Its fold-here line only |
-| `fold and unfold` | Two records: a valley or mountain arrow out, an unfold arrow back |
+| `pre-crease` | One record: a valley or mountain arrow out and an unfold arrow back, both along the fold's route (owner decision 14) |
 | `turn over` / `rotate` | `notePresentation`, derived because no record stores an axis. The direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); the axis point is the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). Which turn it was is read from the record; see [Dependencies](#dependencies) |
 | A fold then a turn | The fold's arrows and the turn's mark |
 | `repeat A..B` | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
@@ -514,8 +514,8 @@ lands on (1/3, 2/3) (`python3` arithmetic, **UNVERIFIED** through `foldFrameWith
 until M2's runner exists).
 
 The figure's before and after frames are identical, so inference draws nothing.
-The two records draw a valley arrow (2/3, 1/3) → (1/3, 2/3) and an unfold arrow
-back. `arrowFor` bows "always to the same side" of its own direction
+The move's one record draws a valley arrow (2/3, 1/3) → (1/3, 2/3) and an unfold
+arrow back. `arrowFor` bows "always to the same side" of its own direction
 ([`Style.hs:356-358`](../src/Senbazuru/Diagram/Style.hs#L356-L358), `sideways` at
 [`:384`](../src/Senbazuru/Diagram/Style.hs#L384)), so the reversed arrow bows the
 other way and the pair reads as out and back. One valley-dashed fold-here line lies
