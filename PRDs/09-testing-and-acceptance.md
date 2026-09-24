@@ -369,7 +369,7 @@ order; "row N" is row N of
 | M4 (c) | A `repeat` whose creases are not the original's image under its mirror or quarter turns is refused as `RepeatNotSymmetric` ([02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) | *senses*, whether each fold is mountain or valley, compared as seen instead of in material terms |
 | M4 (d) | §2.3's test 2 and its page, in M4's last PR, after M3 has merged | as in §2.3 |
 | M4 (e) | Crane-wing prefix equivalence (§9), slow job | as in §9 |
-| M5 (a) | `collapse at centre` on a crane's [precreased](glossary-additions.md#origami) centre refuses, listing four `keeping` clauses (four is **UNVERIFIED**, [02 §8.2](02-language-semantics.md#82-collapse)) | the first match taken silently |
+| M5 (a) | `collapse at centre` on a crane's [precreased](glossary-additions.md#origami) centre: what it must do is open before M5, since a pre-crease's crease is U and has no intent to match ([02 §8.2](02-language-semantics.md#82-collapse)) | the first match taken silently |
 | M5 (b) | One match, needing no `keeping`, on `square-base.fold` and `bird-base.fold` ([02 §8.2](02-language-semantics.md#82-collapse)) | a single match still demands `keeping` |
 | M5 (c) | Bird route records match `CheckedBird`'s stages within §7's formula tolerance, slow job | a role's formula or its sign changes |
 | M6 (a) | Each default-CI [settle](glossary-additions.md#material) asserts its refined triangle count ≤ 392 (R-07-41's default-CI part) | a default spec refines further |
@@ -398,7 +398,7 @@ the source holds and asserts.
 
 | Crane steps | Written with | Runs from |
 | --- | --- | --- |
-| 1, 3 | two `fold and unfold` moves in one step | M2 |
+| 1, 3 | two `pre-crease` moves in one step | M2 |
 | 2, 9, 13, 16, 19, 22 | `turn over left-right` | M2 |
 | 7 | `unfold` | M2 |
 | 5, 6, 10, 15, 18, 21 | folds by alignment with `top flap`, along `end of crease of …`, or along existing creases | M4 |

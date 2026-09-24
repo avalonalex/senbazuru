@@ -356,13 +356,14 @@ Moves are defined in [02](02-language-semantics.md). A *flap* is the paper that
 turns ([glossary-additions][ga-narrow]). `FlapOfFirstArgument` turns the flap
 containing the fold's first argument. For `` cornerOf SouthEast `onto` centre ``,
 that is the paper still joined to the south-east corner once the sheet is cut along
-the fold line ([02 §6.3](02-language-semantics.md#63-which-layers)). **SKETCH:**
+the fold line ([02 §6.3](02-language-semantics.md#63-which-layers)). The builders,
+as `Sequence.Build` exports them:
 
 | Text | Builder |
 | --- | --- |
 | `fold valley LINE` | `fold valley l` |
 | `fold behind 90° LINE top flap moving P` | `move (Fold mountain (Degrees 90) l TopFlap (Just p))` |
-| `pre-crease valley LINE` | `preCrease valley l` (**SKETCH**; `foldAndUnfold` until then) |
+| `pre-crease valley LINE` | `preCrease valley l` |
 | `unfold c1 c2` | `unfold [c1, c2]` |
 | `turn over left-right` | `turnOver LeftRight` |
 | `rotate 1/8 turn anticlockwise` | `rotate 1 Anticlockwise` |

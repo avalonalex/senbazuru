@@ -247,10 +247,16 @@ imports, signature, definition and comments, leaves 23 call lines in 15 files:
   paper is two groups joined only through still paper gets one arrow per group, as
   `motionsBetween` already splits them
   ([`Step.hs:175-192`](../src/Senbazuru/Origami/Step.hs#L175-L192);
-  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
-- **R-06-17.** A fold-and-unfold draws its fold arrow, its unfold arrow and one
-  fold-here line, although its figure's frames are identical in position
-  ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
+  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). A pre-crease's before
+  and after surfaces are one flat state, so its arrows come from its route: the
+  arrow out from its before surface to `recordPoseAt r (PoseOnRoute 1)`, the folded
+  pose at the route's end, both under `displayBefore`, and the unfold arrow the
+  same pair reversed.
+- **R-06-17.** A pre-crease draws its fold arrow, with the sense the author wrote,
+  its unfold arrow and one fold-here line, although its figure's frames are
+  identical in position ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
+  Nothing is read from its crease, which has no direction
+  ([D12](decisions.md#d12-the-text-syntax)).
 
 **Captions**
 
@@ -358,7 +364,7 @@ holds by construction, and `stepNotes` returns `Either WriteProblem` because
 | --- | --- |
 | Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each record's new creases at `recordBefore` positions (the record's surface before the move) under `displayBefore`, with that record's kind |
 | A move that creases and turns nothing (`NoMotion`) | Its fold-here line only |
-| `pre-crease` | One record: a valley or mountain arrow out and an unfold arrow back, both along the fold's route (owner decision 14) |
+| `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, and an unfold arrow back, both along the fold's route (R-06-16, owner decision 14) |
 | `turn over` / `rotate` | `notePresentation`, derived because no record stores an axis. The direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); the axis point is the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). Which turn it was is read from the record; see [Dependencies](#dependencies) |
 | A fold then a turn | The fold's arrows and the turn's mark |
 | `repeat A..B` | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
@@ -520,11 +526,12 @@ arrow back. `arrowFor` bows "always to the same side" of its own direction
 [`:384`](../src/Senbazuru/Diagram/Style.hs#L384)), so the reversed arrow bows the
 other way and the pair reads as out and back. One valley-dashed fold-here line lies
 on the diagonal. [D22](decisions.md#d22-figures-holding-several-moves) admits a
-move to a figure only if its moving paper is where the figure draws it, and counts
-a fold-and-unfold pair as one move
+move to a figure only if its moving paper is where the figure draws it, and a
+pre-crease is one move there like any other
 ([02 §6.5](02-language-semantics.md#65-figures-holding-several-moves)). That makes
-the fold arrow true on the drawn state. The unfold arrow is drawn from the fold
-record's after positions back to where the paper started.
+the fold arrow true on the drawn state. The unfold arrow is drawn from the route's
+end, the folded pose at `PoseOnRoute 1`, back to where the paper started
+(R-06-16).
 
 ### 8. Captions and the gutter
 
@@ -620,7 +627,7 @@ with `gh issue view 94`) is amended at M0
 | Checking a stated kind against an inferred one | Inference trusts winding as written, which a backwards-wound file breaks (AGENTS.md gotchas); records are already checked |
 | Backfilling future creases | Figure 1 would show the second fold |
 | A page-unit band below figures (#94) | `Layout` has no page units; the recorded bug |
-| One arrow with heads at both ends for fold-and-unfold | `ArrowPath` has one head; [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) draws arrows from move records, one kind each |
+| One arrow with heads at both ends for a pre-crease | `ArrowPath` has one head, and a pre-crease's two arrows have two kinds: its sense out, unfold back ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)) |
 | One display field per record, applied to both surfaces | It cannot give a `Presented` record's before display, nor keep presentation apart from anchor placement, which animation needs as separate nodes ([D14](decisions.md#d14-material-consumption)) |
 | A total `stepNotes` | It calls `writtenStates`, which refuses a frame with missing or non-finite angles ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)) |
 | Sample poses written to the file but left off the page | The page would no longer draw exactly the states the file holds ([D24](decisions.md#d24-states-figures-and-their-numbers)) |
@@ -708,8 +715,9 @@ come from a `python3` check on the rotation matrices, run 2026-09-15.
 
 > **Open for the next version of decisions.** `recordKind :: MoveKind` must carry a
 > rotate's written k and direction.
-> [decisions §5](decisions.md#5-type-sketch) names the field and lists no
-> constructors. The one sketch that does list them has a bare `Present`
+> [decisions §5](decisions.md#5-type-sketch) names the field and lists one
+> constructor, `Precrease`, which carries nothing. The one sketch that lists the
+> others has a bare `Present`
 > ([gap-study-consumption-contract](research/gap-study-consumption-contract.md),
 > "(a) The per-step record, and who imports what"), which carries neither. The
 > alternative is to decide that a rotate mark draws the same motion as a turn of at

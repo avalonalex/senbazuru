@@ -176,8 +176,8 @@ angle on, and starts every free wing vertex on that arc (`:105`). One run on
 - **Rest angles come from assignments**: −π if `Mountain`, else +π
   ([`CraneSpread.hs:90-94`](../study/fold-material/CraneSpread.hs#L90-L94)). Every
   active crease needs one ([`FoldBending.hs:177-182`](../study/fold-material/FoldBending.hs#L177-L182)),
-  and M/V at angle 0 is active ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)),
-  so a precrease would get a spring pulling flat paper shut.
+  and M, V or U at angle 0 is active ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)),
+  so a precrease, whose crease is U, would get a spring pulling flat paper shut.
 - **The stationary side is not exported**: `stationaryFace` is a field
   ([`Flap.hs:85`](../src/Senbazuru/Origami/Flap.hs#L85)), not an export
   ([`:49-59`](../src/Senbazuru/Origami/Flap.hs#L49-L59)).
@@ -609,8 +609,11 @@ stiffness 0.2 ([`FoldBending.hs:59-62`](../study/fold-material/FoldBending.hs#L5
 [`WingBending.hs:65`](../study/fold-material/WingBending.hs#L65)).
 
 **Precrease stiffness (owner decision 4).** A *precrease*
-([glossary-additions](glossary-additions.md#origami)) keeps M/V intent at 0, so
-it settles as an active crease resting at 0 with *crease* stiffness; an `F` edge
+([glossary-additions](glossary-additions.md#origami)) leaves its crease U at 0
+([D12](decisions.md#d12-the-text-syntax)). `surfaceFeatures` keeps U as an active
+crease, and the rest check lets it rest at either sign
+([`FoldBending.hs:181`](../study/fold-material/FoldBending.hs#L181)), so it
+settles as an active crease resting at 0 with *crease* stiffness; an `F` edge
 from the sheet file stays a panel bend with *panel* stiffness
 ([`FoldBending.hs:169-171`](../study/fold-material/FoldBending.hs#L169-L171)).
 The two resist differently. A crease spring is weighted by its material length
@@ -925,7 +928,7 @@ Owner decisions, numbered as in [decisions §9](decisions.md#9-owner-decisions)
 and [10](10-roadmap-risks-questions.md#6-owner-decisions), each with the default
 §9 recommends:
 
-1. **(4)** Should a precreased M/V crease at 0 settle as a crease spring at rest 0
+1. **(4)** Should a precrease's crease, U at 0, settle as a crease spring at rest 0
    or as uncreased panel, and should the sheet file's `F` edges stay panel bends
    ([wing-root-holds.md:87-92](../docs/notes/wing-root-holds.md))? Default: a
    crease spring at rest 0, and `F` edges stay panel bends.

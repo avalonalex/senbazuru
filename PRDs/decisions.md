@@ -9,7 +9,9 @@ record wins and the file is to be corrected.
 hinge turn is where the moving paper goes ([D5](#d5-presentation-and-the-readers-side),
 owner decision 13), from [E3](research/E3-formal-fold-semantics.md), which
 also adds [§10](#10-corrections) rows 33–38. Also that day: a pre-crease is one
-move, with one record ([D12](#d12-the-text-syntax), owner decision 14).
+move, with one record ([D12](#d12-the-text-syntax), owner decision 14). Refined
+2026-09-24: a pre-crease marks the paper, and its crease has no direction until
+a later move folds it.
 
 **How it relates to the drafts.**
 
@@ -134,7 +136,7 @@ was right.
           Sequence.Syntax : Sequence  (first-order, spans)   <-> Sequence.Pretty
                          |
           Sequence.Check (names, kinds, arity, units; no geometry)
-          Sequence.Elaborate (let, fold-and-unfold; keeps provenance)
+          Sequence.Elaborate (let; keeps provenance)
                          |
           Sequence.Run  (Budget, RunSettings, sheets) over Fold.* / Origami.*
                          |
@@ -375,14 +377,23 @@ table in the next version of this record.
   the landmark table; crease provenance; macro bindings. Displayed positions are
   presentation ``after`` anchor placement ``after`` raw `foldFrameWith` positions,
   where ``a `after` b`` does b first.
-- **Intent at angle 0 is kept on purpose.** A precrease lying flat stays M or V on
-  the working pattern, departing from `Fold.Creasing`'s "a valley with an angle of
+- **Intent at angle 0 is kept on purpose.** A crease lying flat keeps on the
+  working pattern the M or V it was made as: a sheet file's crease, which plain
+  `sheet` lays at 0, or a fold's new crease, at 0 before the paper turns and again
+  after an `unfold`. That departs from `Fold.Creasing`'s "a valley with an angle of
   nought is not a valley" ([`Creasing.hs:281-286`](../src/Senbazuru/Fold/Creasing.hs#L281-L286)).
   It is needed because `Flap` turns only M, V or U
   ([`Flap.hs:187`](../src/Senbazuru/Origami/Flap.hs#L187)) [code] and a collapse
   binds on direction; it is safe because folding reads explicit angles first and
   stacking reads an assignment only at angle 0, where a crease orders nothing.
   Written frames restore the FOLD rule ([D4](#d4-written-frames-follow-the-state-rule)).
+- **A pre-crease's crease is U** (owner decision 14, refined 2026-09-24,
+  [D12](#d12-the-text-syntax)). A pre-crease marks the paper: a later move may fold
+  its crease either way, and may fold one stretch mountain and another valley, so
+  it has no direction to keep. U is FOLD's letter for a crease whose direction is
+  undecided. `Flap` turns it, `surfaceFeatures` keeps it as a crease
+  ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)) [code], and
+  written frames show it as F at 0.
 - **Starting.** `Sequence.Run.sheetState :: SheetStart -> Frame -> Either SheetProblem FoldState`
   is pure; the CLI only loads bytes.
   1. The sheet is the file's *key frame*, never a `file_frames` entry. A key frame
@@ -713,8 +724,14 @@ table in the next version of this record.
   moving paper is two groups joined only through still paper gets one arrow per
   group, as `motionsBetween` already splits them
   ([`Step.hs:175-192`](../src/Senbazuru/Origami/Step.hs#L175-L192))
-  ([C36](#changes-since-draft-v2)). A fold-and-unfold draws its fold arrow, its
-  unfold arrow and one fold-here line although its frames are identical.
+  ([C36](#changes-since-draft-v2)). A pre-crease's before and after surfaces are
+  one flat state, so its arrows come from its route: the fold arrow from its
+  before surface to `recordPoseAt r (PoseOnRoute 1)`, the folded pose at the
+  route's end, both under its before display, and the unfold arrow the same pair
+  reversed. The fold arrow takes the sense the author wrote, as every fold arrow
+  does ([01 §3.3](01-architecture.md#33-diagramstyle-imports-foldtypes)); the
+  crease has none to give ([D12](#d12-the-text-syntax)). With one fold-here line,
+  that is what the figure draws, although its frames are identical.
 - **Kinds on the page.** `seenFrom :: Basis -> SeenFrom` is `FromReadersSide`,
   `FromOppositeSide` or `EdgeOn` as `basisForward`'s z is negative, positive or
   zero. From the opposite side, valley and mountain swap in heads and dashes alike;
@@ -834,8 +851,9 @@ table in the next version of this record.
   every candidate is listed as the `keeping` clause that would pick it. Sectors
   are compared with `FlatFold`'s 1e-5 rad so `check` and the macro agree. On
   `square-base.fold` and `bird-base.fold` exactly one match needs no `keeping`
-  ([02 §8.2](02-language-semantics.md#82-collapse)) [prd]; on a square with both
-  diagonals and both midlines precreased there are four, **UNVERIFIED**.
+  ([02 §8.2](02-language-semantics.md#82-collapse)) [prd]. On a square creased
+  only by pre-creases there are none, since a pre-crease's crease is U
+  ([D3](#d3-the-runner-owns-the-state-its-start-and-the-handoffs)); see Residue.
 - **`continue NAME until A`** takes the latest macro binding in NAME's line of
   continuations, maps each role's material segment onto the current pattern
   (refused if split or missing), checks each role crease is at its formula's angle
@@ -875,7 +893,13 @@ table in the next version of this record.
   `sample` as the only checked poses.
 - **Residue.** Petal geometry other than 22.5° is refused until derived; the
   rabbit-ear rule may be too strict; manifest angle literals sit one or three ulps
-  from their documented formulas ([§10](#10-corrections) item 16).
+  from their documented formulas ([§10](#10-corrections) item 16). **Open before
+  M5:** each macro matches on intent M or V, and a pre-crease's crease is U, so on
+  pre-creased paper there is nothing to match. The crane meets this twice: its
+  step 4 collapses creases that only pre-creases made, and its step 11 repeats a
+  petal onto sides that step 10 pre-creases. The directions have to come from
+  somewhere else, from the author or from the match
+  ([02 §8.2](02-language-semantics.md#82-collapse)).
 
 ### D10. Assurance as evidence values
 
@@ -900,7 +924,10 @@ table in the next version of this record.
   and `Sequence.Record` re-exports it ([C28](#changes-since-draft-v2)).
   `data PoseRef = PoseBefore | PoseAfter | PoseOnRoute Rational`;
   `recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose`, refusing
-  `PoseOnRoute` as `NoRoute` for `StateOnly`, `NoMotion` and `Presented`.
+  `PoseOnRoute` as `NoRoute` for `StateOnly`, `NoMotion` and `Presented`. A route
+  ends at its record's after state, except a pre-crease's: its `PoseOnRoute 1` is
+  the folded pose and its `PoseAfter` is flat, because the run never performs the
+  unfold that retraces the route ([D12](#d12-the-text-syntax)).
 - **Records derive `Eq`, which needs a library change** ([C4](#changes-since-draft-v2)).
   `FlapMotion` and `CheckedFlap` derive only `Show`
   ([`Flap.hs:93`](../src/Senbazuru/Origami/Flap.hs#L93),
@@ -993,21 +1020,34 @@ The decisions:
   and `settle { … }` last in a step.
 - **Amended 2026-09-23 (owner decision 14): a pre-crease is one move.** A
   `fold and unfold` leaves the paper where it began, and what it leaves behind is
-  a crease with its direction, as in a real sheet. Instruction books call that
-  step a pre-crease, so the move is one move with that name.
+  a crease, as in a real sheet. Instruction books call that fold a pre-crease, so
+  the move is one move with that name.
   - *Spelling.* `pre-crease` is printed; `precrease` and `fold and unfold` read
     the same. `-` is a word character, as in `rabbit-ear`, so `pre-crease` is one
-    reserved word. **SKETCH** until the parser has it.
-  - *One core move.* It elaborates to `CorePrecrease` (**SKETCH**), in place of a
-    fold and `CoreUnfoldPrevious` (#335). The fold is checked like any hinge
-    turn, and the run performs no unfold: the state after is the state before
-    with the new crease at 0, keeping its intent ([D3](#d3-the-runner-owns-the-state-its-start-and-the-handoffs)).
+    reserved word. Shipped in #374.
+  - *One core move.* It elaborates to `CorePrecrease` (shipped in #374), in
+    place of a fold and `CoreUnfoldPrevious` (#335). The fold is checked like any
+    hinge turn, and the run performs no unfold: the state after is the state
+    before with the new crease, U at 0 ([D3](#d3-the-runner-owns-the-state-its-start-and-the-handoffs)).
   - *One record,* of kind `Precrease`, the first constructor
     [§5](#5-type-sketch) gives `MoveKind`. Its before and after are both flat, in
-    one numbering; `recordNewCreases` holds the crease and its assignment; its
+    one numbering; `recordNewCreases` holds the crease, with assignment U; its
     evidence is the fold's `SweptHinge`. So a pre-crease through layers is still
     checked, the page draws the fold arrow and the unfold arrow from the one
-    record, and an animation can play the route out and back.
+    record's route ([D7](#d7-a-typed-step-note-reaches-the-page)), and an
+    animation plays the route out and back ([D19](#d19-realistic-rendering)).
+  - *Refined 2026-09-24 (owner): the crease has no direction.* A pre-crease marks
+    the paper. A later move may fold its crease mountain or valley, and may fold
+    one stretch of it one way and another stretch the other, so the crease keeps
+    no direction: it is U on the working pattern, and `Precrease` carries no
+    sense. The sense the author writes says only which way the paper goes while
+    the crease is made, which the fold arrow shows. The project's note on
+    pre-creases makes the same point: the square and waterbomb bases start from
+    the same eight pre-creased segments and each folds a different six
+    ([precreases-and-target-states](../docs/notes/precreases-and-target-states.md)).
+    Until then this amendment said the crease kept its direction and its intent.
+    The cost falls at M5, where the macros match on intent
+    ([D9](#d9-macro-moves-as-named-angle-relations)).
   - *Rejected:* two records, the fold and its unfold, as the glossary additions,
     02 §6 and 06 §2 said before. The folded state between them is never drawn,
     settled or named, and [D14](#d14-material-consumption) already rejected two
@@ -1499,7 +1539,10 @@ accepted and rejected controls stay unchanged at each
   - **Keys** come from `recordPoseAt … (PoseOnRoute p)` at `RunSettings.keyDensity`
     n, p = 0, 1/n, …, 1, independent of `sample`. An interval turning any tree
     crease by 180° or more gets its middle p, repeatedly, since slerp between
-    opposite quaternions has no defined direction.
+    opposite quaternions has no defined direction. A pre-crease's route runs out
+    and back: its keys go p = 0, 1/n, …, 1 and back to 0, 2n + 1 of them, since
+    its `PoseOnRoute 1` is the folded pose and its `PoseAfter`, where the next
+    record's keys start, is flat ([D12](#d12-the-text-syntax)).
   - **Midpoint refolds** fold at the per-crease mean of two keys' angles, the pose
     the viewer shows halfway; a failure subdivides, and after
     `RunSettings.keySubdivisionBudget` subdivisions the run refuses. For `SweptHinge`
@@ -1646,11 +1689,12 @@ starts from; that is the figure the heading means.
 - **Honesty.** A step's moves run in order, each checked. Their figure draws the
   state before the step's first move, so move k is accepted only if every material
   point of its moving paper is where that drawing shows it, compared by material
-  identity; in practice no earlier move of the step moved that paper. Otherwise
-  `MoveLeavesFigure`, with a hint to start a new `step`. A pre-crease is one move
-  here, like any other ([D12](#d12-the-text-syntax)). All four blintz corners in
-  one step pass; "fold the corner to the centre, then fold that flap in half"
-  fails.
+  identity; in practice no earlier move of the step left that paper somewhere
+  else. Otherwise `MoveLeavesFigure`, with a hint to start a new `step`. A
+  pre-crease is one move here, like any other ([D12](#d12-the-text-syntax)), and
+  it puts its paper back, so the crane's two diagonal pre-creases share a figure
+  although their moving triangles overlap. All four blintz corners in one step
+  pass; "fold the corner to the centre, then fold that flap in half" fails.
 - **Batching stays inside one step** ([C16](#changes-since-draft-v2)). Consecutive
   moves of one step whose lines resolve on the step's start state share one
   `creaseAllAlongWith` call, because re-cutting is the cost (AGENTS.md "A move that
@@ -1872,12 +1916,12 @@ data MoveRecord = MoveRecord
   , recordEvidence :: !RouteEvidence
   , recordHinge :: ![(MaterialSegment, [EdgeId])], recordMoving :: ![(MaterialPoint, [FaceId])]
   , recordStationary :: !(Maybe (MaterialPoint, FaceId))
-  , recordNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)]
+  , recordNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)] -- U for a pre-crease's
   , recordAngles :: !([Double], [Double]), recordStacking :: !(Maybe StackingChoice)
   , recordAnchor :: !(MaterialPoint, MaterialPoint)               -- before, after
   , recordResolved :: ![ResolvedReference], recordMacros :: ![MacroBinding], recordCost :: !StepCost }
   deriving stock (Eq, Show)
-data MoveKind = Precrease | …                                     -- owner decision 14; the rest with the MoveRecord agreement
+data MoveKind = Precrease | …                                     -- owner decision 14; no sense, since its crease has none; the rest with the MoveRecord agreement
 displayBefore, displayAfter :: MoveRecord -> Rigid                -- presentation `after` placement
 data MacroBinding = MacroBinding { bindLine :: Name, bindMacro :: MacroName, bindRoles :: [(Role, MaterialSegment)]
                                  , bindBranch :: Branch, bindDisambiguator :: Maybe ResolvedReference, bindReached :: Rational }
@@ -2141,7 +2185,7 @@ and each has to be decided before the milestone named.
 | 1 | File extension; the name "sequence source" | `.foldseq`, first line `foldseq 1` (`.fseq` is the xLights and Falcon Player format) | the extension, the first-line keyword, `decodeFile`'s refusal, error goldens and glossary rows change | M1's parser PR |
 | 2 | `nearMissBand` | 1e-3 sheet lengths | smaller: a decimal near a vertex becomes a separate point and a crease sliver; larger: legitimate points refused. A `RunSettings` field, so no syntax change | M2 |
 | 3 | A move carrying the anchor's face: re-anchor or refuse | re-anchor, printed by `--report` | refuse: authors write `anchor P` first, and animation needs no sub-hierarchy per re-anchor | M2 |
-| 4 | A precrease's stiffness in a settle | an M or V crease at 0 settles as a crease spring resting at 0, weighted by length; a sheet file's `F` edges stay panel bends, weighted also by the two triangles' areas | as panel bends: turning concentrates differently, and M6's numbers change | M6 |
+| 4 | A precrease's stiffness in a settle | its crease, U at 0 ([D12](#d12-the-text-syntax)), settles as a crease spring resting at 0, as an M or V crease at 0 does, weighted by length; a sheet file's `F` edges stay panel bends, weighted also by the two triangles' areas | as panel bends: turning concentrates differently, and M6's numbers change | M6 |
 | 5 | SVG "wireframe": feature lines, or triangulation too | `--lines features` default; `--lines mesh` adds visible triangle edges | mesh default: every settled page draws its triangulation, and visibility runs on more segments | M7b |
 | 6 | Textures (A2b): content and source | none; M7a ships normals and texture coordinates only | procedural: a PNG writer on `bytestring`, or `zlib`/`JuicyPixels` from lts-22.44; vendored: licence and provenance in `examples/README.md` | after M7a |
 | 7 | Caption overlap and overflow | captioned pages get a gutter of at least 42/340 ≈ 0.124 of a figure, the bound at which 14-unit type clears on the default three-column page; uncaptioned pages unchanged; overflow across cells accepted and stated, since the backend has no font metrics | accept overlap: unreadable pages; squash or truncate: width estimates without metrics; refuse: some sequences cannot be drawn | M3 |
@@ -2151,7 +2195,7 @@ and each has to be decided before the milestone named.
 | 11 | The external-tools rule in `AGENTS.md` | yes, [§3](#3-recorded-text-this-design-changes) row 8 at M0 | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
 | 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs after #208 | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR before #208 lands; a higher cap admits unmeasured settles | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
-| 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
+| 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease; **refined 2026-09-24**: that crease has no direction, U, since a later move may fold it either way, a stretch at a time ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that

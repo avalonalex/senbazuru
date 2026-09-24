@@ -376,7 +376,9 @@ inputs such as `puffed-square.fold`. **No bent paper is reachable from the
   ([02 §10](02-language-semantics.md#10-assurance)). `RunSettings.keyDensity` n
   places n + 1 keys per route, at p = 0, 1/n, …, 1, independent of `sample`; an
   interval turning any tree crease by 180° or more gets a key at its middle `p`,
-  repeatedly.
+  repeatedly. A pre-crease's route runs out and back: its keys go p = 0, 1/n, …, 1
+  and back to 0, 2n + 1 of them, since its `PoseOnRoute 1` is the folded pose and
+  its `PoseAfter` is flat ([D12](decisions.md#d12-the-text-syntax)).
 - **R-08-29.** Each key interval is refolded once at the per-crease mean of its two
   keys' angles, the pose the viewer shows halfway (a *midpoint refold*). A failure
   inserts the route pose at the interval's middle `p` (a *subdivision*) and
