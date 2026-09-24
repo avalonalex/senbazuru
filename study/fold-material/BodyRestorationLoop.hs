@@ -10,7 +10,16 @@
 -- A tiny repair or selected fraction does not settle the material: equilibrium
 -- still requires the verified FULL material proposal to be small. Source data
 -- is authenticated before output, and no production solver policy is changed.
-module BodyRestorationLoop (writeBodyRestorationLoop) where
+module BodyRestorationLoop
+  ( writeBodyRestorationLoop,
+    Candidate (..),
+    TrialContext (..),
+    assess,
+    repairCandidate,
+    displacement,
+    margin,
+  )
+where
 
 import BodyContactDiagnosis
 import BodyContactDirection
@@ -57,6 +66,18 @@ data Candidate = Candidate
     candidateDetails :: Value
   }
 
+-- | Inputs shared by every fraction of one material direction. The comparison
+-- may append another pair, but raw/repair acceptance must keep the same policy.
+data TrialContext = TrialContext
+  { trialStudy :: BodyPatch,
+    trialStart :: MaterialMesh,
+    trialBaseCost :: Double,
+    trialGuards :: [QuadraticRow],
+    trialPlaneTarget :: Double,
+    trialWitnesses :: MaterialMesh -> Either C.ContactError [C.ContactWitness],
+    trialInitialWitnesses :: [C.ContactWitness]
+  }
+
 pairs :: [(Int, Int)]
 pairs = [(22, 63), (14, 55), (46, 70)]
 
@@ -80,6 +101,41 @@ assess study start beforeCost gaps extra mesh = do
       cheaper = patchCost 1e8 measured < beforeCost
   pure (Candidate mesh (guards && geometry && cheaper) (object ["guardsPassed" .= guards, "guardMargins" .= gaps, "geometryPassed" .= geometry, "costDecreased" .= cheaper, "movement" .= movement, "extra" .= extra]))
 
+-- | Exactly one existing vertex 27–plane 70 repair. Refreshed overlap guards
+-- include every named pair, including a newly added pair in a comparison.
+-- A topology change is diagnostic; it never authorizes dropping a guard.
+repairCandidate :: TrialContext -> Candidate -> Either SpreadError Candidate
+repairCandidate context candidate = do
+  let study = trialStudy context
+      start = trialStart context
+      fixture = patchSpread study
+      pins = spreadPins fixture
+      baseCost = trialBaseCost context
+      guards = trialGuards context
+      target = trialPlaneTarget context
+      witnesses = trialWitnesses context
+      ws = trialInitialWitnesses context
+      identity w = (C.witnessTriangles w, map fst (F.contactGradient (C.witnessRow w)))
+  let trial = candidateMesh candidate
+  plane <- first (SpreadError . explain) (measurePlane trial 27 70)
+  unless (planeDistance plane < target) (Left (SpreadError "No plane-distance loss to restore"))
+  ws1 <- first (SpreadError . explain) (witnesses trial)
+  unless (map identity ws == map identity ws1) (Left (SpreadError "Refused trial changed overlap witness topology"))
+  correction <- first (SpreadError . explain) (restorePlane pins target plane)
+  let repaired = trial {samples = [p {position = position p ^+^ IM.findWithDefault (V3 0 0 0) i correction} | (i, p) <- zip [0 ..] (samples trial)]}
+      installed = displacement trial repaired
+      refreshed = map (contactGuard pins . C.witnessRow) ws1
+      repairPlane = (planeGradient plane, planeDistance plane - target)
+      gaps = map (`margin` displacement start repaired) guards ++ map (`margin` installed) refreshed ++ [margin repairPlane installed]
+  ws2 <- first (SpreadError . explain) (witnesses repaired)
+  unless (map identity ws1 == map identity ws2) (Left (SpreadError "Repair changed overlap witness topology"))
+  repairMovement <- savedMovement (SavedPoint 0 trial) (SavedPoint 0 repaired)
+  planeAfter <- first (SpreadError . explain) (measurePlane repaired 27 70)
+  old <- measurePatch study (SavedPoint 0 trial)
+  new <- measurePatch study (SavedPoint 0 repaired)
+  let extra = object ["targetDistance" .= target, "refusedDistance" .= planeDistance plane, "restoredDistance" .= planeDistance planeAfter, "gradient" .= rowValue (planeGradient plane, planeDistance plane), "refreshedGuards" .= map rowValue refreshed, "rawCorrection" .= [xyz (IM.findWithDefault (V3 0 0 0) i correction) | i <- [0 .. length (samples trial) - 1]], "repairMovement" .= repairMovement, "costChangeFromTrial" .= (patchCost 1e8 new - patchCost 1e8 old)]
+  assess study start baseCost gaps extra repaired
+
 writeBodyRestorationLoop :: FilePath -> FilePath -> IO ()
 writeBodyRestorationLoop source destination = do
   let output = destination </> "body-restoration-loop"
@@ -100,7 +156,6 @@ writeBodyRestorationLoop source destination = do
       free = [i | i <- [0 .. length (samples start) - 1], IM.notMember i pins]
   model <- checked (C.prepareContact 0 (V3 0 0 1) (spreadContactOrders fixture) (refinedPanels (spreadRefined fixture)) start)
   let witnesses mesh = do ws <- C.contactWitnesses model mesh; pure (concatMap (`pairWitnesses` ws) pairs)
-      identity w = (C.witnessTriangles w, map fst (F.contactGradient (C.witnessRow w)))
   pairPoints <- concat <$> traverse (trianglePoints start) [46, 70]
   vertex <- vertexAt start 27
   cut <- checked (pairSection start (46, 70))
@@ -156,26 +211,8 @@ writeBodyRestorationLoop source destination = do
                     candidates <- forM rawTrials $ \trial -> do
                       let mesh = savedMesh (measuredPoint (replayMeasure trial))
                       checked (assess study current baseCost (map (`margin` displacement current mesh) guards) (object []) mesh)
-                    let repair candidate = first explain $ do
-                          let trial = candidateMesh candidate
-                          plane <- first (SpreadError . explain) (measurePlane trial 27 70)
-                          unless (planeDistance plane < target) (Left (SpreadError "No plane-distance loss to restore"))
-                          ws1 <- first (SpreadError . explain) (witnesses trial)
-                          unless (map identity ws == map identity ws1) (Left (SpreadError "Refused trial changed overlap witness topology"))
-                          correction <- first (SpreadError . explain) (restorePlane pins target plane)
-                          let repaired = trial {samples = [p {position = position p ^+^ IM.findWithDefault (V3 0 0 0) i correction} | (i, p) <- zip [0 ..] (samples trial)]}
-                              installed = displacement trial repaired
-                              refreshed = map (contactGuard pins . C.witnessRow) ws1
-                              repairPlane = (planeGradient plane, planeDistance plane - target)
-                              gaps = map (`margin` displacement current repaired) guards ++ map (`margin` installed) refreshed ++ [margin repairPlane installed]
-                          ws2 <- first (SpreadError . explain) (witnesses repaired)
-                          unless (map identity ws1 == map identity ws2) (Left (SpreadError "Repair changed overlap witness topology"))
-                          repairMovement <- savedMovement (SavedPoint 0 trial) (SavedPoint 0 repaired)
-                          planeAfter <- first (SpreadError . explain) (measurePlane repaired 27 70)
-                          old <- measurePatch study (SavedPoint 0 trial)
-                          new <- measurePatch study (SavedPoint 0 repaired)
-                          let extra = object ["targetDistance" .= target, "refusedDistance" .= planeDistance plane, "restoredDistance" .= planeDistance planeAfter, "gradient" .= rowValue (planeGradient plane, planeDistance plane), "refreshedGuards" .= map rowValue refreshed, "rawCorrection" .= [xyz (IM.findWithDefault (V3 0 0 0) i correction) | i <- [0 .. length (samples trial) - 1]], "repairMovement" .= repairMovement, "costChangeFromTrial" .= (patchCost 1e8 new - patchCost 1e8 old)]
-                          assess study current baseCost gaps extra repaired
+                    let context = TrialContext study current baseCost guards target witnesses ws
+                        repair = first explain . repairCandidate context
                         (visited, chosen) = searchWithRestoration candidatePasses repair candidates
                         label k = "attempt-" ++ show number ++ "-trial-" ++ show k
                     trials <- forM (zip3 [0 :: Int ..] replayFractions visited) $ \(k, scale, trial) -> do

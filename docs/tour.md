@@ -1425,3 +1425,13 @@ Hypothetical guards would reject both saved fractions because “do not worsen
 a negative gap” is stricter than accepting a gap within tolerance. The
 [inspection](usage.md#inspect-the-saved-5593-refusal) copies saved paper and
 annotates the pair without another solve or any changed acceptance decision.
+
+[Adding those six overlap guards](notes/body-fourth-pair.md) computes one
+matched direction from the same saved start. It accepts 1/8 without repair,
+compared with the control's 1/128, and lowers cost by 0.390833% while preserving
+all actual geometry checks. Movement is still only 0.040922 drawing pixels;
+this is progress in contact handling rather than a settled body opening.
+The larger 1/4 trial is now refused at 14–55, which already has overlap guards.
+The [comparison gallery](usage.md#compare-six-additional-body-overlap-guards)
+keeps both directions' visited raw trials and repairs, separate energy costs,
+and shared paper/contact views.

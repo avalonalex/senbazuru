@@ -2,7 +2,7 @@
 -- Diagnosis and numerical replay must read the same checked archive: otherwise
 -- a changed material identity or a trace from another run could look plausible.
 -- Read and validate everything before the caller writes any gallery assets.
-module BodyCorrectionArchive (CorrectionArchive (..), BlockedArchive (..), readCorrectionArchive, readBlockedArchive, separateOutput, field, checked, xyz) where
+module BodyCorrectionArchive (CorrectionArchive (..), BlockedArchive (..), readCorrectionArchive, readBlockedArchive, separateOutput, readArchiveBytes, field, checked, xyz) where
 
 import BodyPatch
 import BodyPatchCheckpoints
@@ -13,6 +13,7 @@ import CraneSpread
 import Data.Aeson (FromJSON, Value, eitherDecode, toJSON, withObject, (.:))
 import Data.Aeson.Key (Key)
 import Data.Aeson.Types (parseEither)
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.List (isPrefixOf)
 import Data.Text (Text)
@@ -181,7 +182,7 @@ vector [x, y, z] | all (\q -> not (isNaN q || isInfinite q)) [x, y, z] = pure (V
 vector _ = die "saved positions need three finite coordinates"
 
 readJson :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
-readJson path = do bytes <- BL.readFile path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
+readJson path = do bytes <- readArchiveBytes path; value <- either die pure (eitherDecode bytes); pure (bytes, value)
 
 field :: (FromJSON a) => Key -> Value -> IO a
 field key = either die pure . parseEither (withObject "saved archive" (.: key))
@@ -191,3 +192,10 @@ expect key expected record = do actual <- field key record; unless (actual == ex
 
 checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure
+
+-- | Finish each read before returning bytes to an archive's asset list.
+-- Lazy file reads keep descriptors alive until a later gallery copies them;
+-- the saved source chain already exceeds macOS's normal 256-file limit.
+-- Retain the lazy ByteString interface for encoders, but close the input now.
+readArchiveBytes :: FilePath -> IO BL.ByteString
+readArchiveBytes path = BL.fromStrict <$> BS.readFile path

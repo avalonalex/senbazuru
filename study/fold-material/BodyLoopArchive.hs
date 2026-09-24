@@ -21,6 +21,7 @@ import BodyPatch
 import BodyPatchCheckpoints
 import BodyPlaneGuard
 import BodyRestorationArchive
+import BodyRestorationLoop qualified as Loop
 import BodyShortArchive (checkState)
 import ContactQuadratic (QuadraticRow)
 import Control.Monad (forM, forM_, unless)
@@ -113,7 +114,7 @@ readLoopArchive source = do
         near "intersectionLength" (intersectionLength cut) record
         expect "crosses46_70" (sectionCrosses cut) record
         images <- forM [name ++ "-" ++ view ++ ".svg" | view <- ["side", "top", "underside", "material", "pair", "tip"]] $ \path -> do
-          b <- BL.readFile (source </> path)
+          b <- readArchiveBytes (source </> path)
           pure (path, b)
         pure (mesh, (name ++ ".fold", bytes) : images)
       checkCandidate start cost guardMargins record checks = do
@@ -223,6 +224,15 @@ readLoopArchive source = do
               (repaired, repairedFiles, usable) <- checkCandidate start cost gaps fixed details
               unless (repaired == projected) (die "saved repair coordinates changed")
               expect "passed" usable restored
+              -- A second check exercises the shared routine used by the next
+              -- comparison. Reconstructing these saved algebraic repairs is
+              -- a regression checksum, not another material direction.
+              let sharedWitnesses current = do
+                    found <- C.contactWitnesses model current
+                    pure (concatMap (`pairWitnesses` found) [(22, 63), (14, 55), (46, 70)])
+                  context = Loop.TrialContext study start cost guards target sharedWitnesses ws
+              shared <- checked (Loop.repairCandidate context (Loop.Candidate mesh passed checks))
+              unless (Loop.candidateMesh shared == repaired && Loop.candidatePasses shared == usable && Loop.candidateDetails shared == details) (die "shared repair changed a saved repair")
               afterPlane <- checked (measurePlane repaired 27 70)
               repairMovement <- checked (savedMovement (SavedPoint 0 mesh) (SavedPoint 0 repaired))
               originalCost <- field "totalCost" state
@@ -295,7 +305,7 @@ margin (g, r) d = r + sum [dot v (IM.findWithDefault (V3 0 0 0) i d) | (i, v) <-
 
 jsonFile :: (FromJSON a) => FilePath -> IO (BL.ByteString, a)
 jsonFile path = do
-  bytes <- BL.readFile path
+  bytes <- readArchiveBytes path
   value <- either die pure (eitherDecode bytes)
   pure (bytes, value)
 

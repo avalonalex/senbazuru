@@ -461,6 +461,14 @@ inspect 55–93 in the final refused trial, using `BodyContactDiagnosis`,
 inequalities along the saved direction and copies source paper assets;
 it installs no guard and changes no acceptance policy. See
 [the saved-pair inspection](notes/body-contact-55-93.md).
+`BodyFourthPairGallery` compares one new direction with six appended overlap
+rows against that saved direction. `BodyRestorationLoop.TrialContext` supplies
+the shared actual acceptance and single-repair policy; a repair refreshes all
+named overlaps, including the added pair. `BodyLoopArchive` checks this shared
+routine against the thirty saved repairs as well as its independent projection
+checksum. The archive chain uses `readArchiveBytes` to finish each read before
+opening the next file, so thousands of SVGs do not exhaust file handles. See
+[the matched comparison](notes/body-fourth-pair.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

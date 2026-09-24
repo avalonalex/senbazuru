@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Six more guards at the body overlap</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}pre{overflow:auto;max-height:400px}.pass{color:#215c42}.fail{color:#93442e}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-contact-55-93.html">Why inspect 55–93?</a> · <a href="body-restoration-loop.html">Saved correction loop</a>
+<p class="tag">SENBAZURU · ONE MATCHED DIRECTION · #363</p>
+<h1>Six more guards at the body overlap</h1>
+<p>Can protecting the overlap between triangles 55 and 93 allow a more useful correction? We start both comparisons at the same saved shape, just before correction ten. The control reuses its saved direction. We compute one new direction with the six overlap corners added to the original thirteen guards.</p>
+<p id="summary" class="status">Load the generated gallery to see the measured comparison.</p>
+<div class="controls"><label>Left <select id="left"></select></label><label>Right <select id="right"></select></label><label>View <select id="view"><option value="tip">Contact tip · magnified top</option><option value="pair">Whole overlap · magnified top</option><option value="side" selected>Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2 id="left-title"></h2><img id="left-image" alt="Left comparison shape"><p id="left-status"></p><a id="left-fold">Saved FOLD</a></section><section class="figure"><h2 id="right-title"></h2><img id="right-image" alt="Right comparison shape"><p id="right-status"></p><a id="right-fold">Saved FOLD</a></section></div>
+<p id="legend"></p>
+<h2>What changes?</h2>
+<p>The inherited layer order puts <strong>93 below 55</strong>. Each added guard predicts their height gap at a corner of their actual top-view overlap. A positive gap must stay nonnegative; an already negative gap must get no worse. This is stricter than the final geometry tolerance. Both moving triangles and the movement of their overlap corners contribute to the prediction.</p>
+<p>The twelve old overlap guards and the vertex 27–plane 70 guard keep their original order. Six new overlap guards follow them. No vertex 30 plane guard is added. Material preferences, held vertices, cost weights and solver budgets stay unchanged.</p>
+<p>A direction is a proposed numerical correction of all free vertices. We try fractions 1, 1/2, 1/4, and so on, up to 31 choices. A refused fraction may receive the same single vertex 27–plane 70 repair as before. The repair must also preserve the new overlap guards, including fresh predictions at the refused shape. The first passing raw or repaired shape is selected. These fractions are not physical folding steps.</p>
+<h2>Selected corrections</h2>
+<div class="scroll"><table><thead><tr><th>Direction</th><th>Quadratic verified</th><th>Selected fraction</th><th>Full movement</th><th>Selected movement</th><th>Cost reduction</th><th>Settled endpoint</th></tr></thead><tbody id="directions"></tbody></table></div>
+<p>A quadratic is the local squared-error approximation used to propose a direction. Verification checks its constraints and force balance. Geometry and cost are then measured again on actual coordinates. A passing small fraction does not establish equilibrium: the full verified proposal must also move less than 1e-7 sheet units.</p>
+<h2>Separate costs and opening</h2>
+<p>Panel cost penalizes bending within an uncreased piece of paper; crease cost penalizes departure from preferred fold angles. Length cost penalizes stretch, and contact cost penalizes reversed overlap gaps. Body depth measures the separation of the body surfaces. All positions and distances use the original sheet's coordinate units.</p>
+<div class="scroll"><table><thead><tr><th>Shape</th><th>Panel cost</th><th>Crease cost</th><th>Length cost</th><th>Contact cost</th><th>Total cost</th><th>Body depth</th></tr></thead><tbody id="costs"></tbody></table></div>
+<h2>The two corners that constrain the direction</h2>
+<p id="active-corners"></p><p>The table shows all six corners in the same order as the saved inspection. An active constraint means the full proposal reaches that guard's predicted permitted gap.</p>
+<div class="scroll"><table><thead><tr><th>Corner</th><th>Starting gap</th><th>Control selected gap</th><th>New selected gap</th><th>Active in new quadratic</th></tr></thead><tbody id="corners"></tbody></table></div>
+<h2>Every visited fraction, including refusals</h2>
+<p>Raw and repaired trials have separate rows. “Guard” tests the local inequalities, “geometry” checks the actual paper, and “cheaper” compares total cost with the same start. Length error must be below 1e-5, holds remain exact, and inherited orders and all 7,140 triangle pairs use the unchanged 1e-7 contact tolerance. A refused repair remains a diagnostic, never a selected shape.</p>
+<div class="scroll"><table><thead><tr><th>Trial</th><th>Guard</th><th>Geometry</th><th>Cheaper</th><th>Result</th><th>Length error</th><th>Crossing pairs</th><th>Reversed orders</th><th>30 → plane 93</th><th>Minimum 55–93 gap</th></tr></thead><tbody id="trials"></tbody></table></div>
+<p id="repairs"></p>
+<p id="next-inspection"></p>
+<h2>Scope of this comparison</h2>
+<p>One connected sheet retains 87 shared vertices and 120 triangles. The preceding archive is checked before this experiment, including all 137 loop states and 30 saved repairs. The old direction is replayed and its decisions must match. Source bytes are preserved in the gallery's source directory. There is one new material direction, with no continuation from its selected state.</p>
+<p>This tests a local contact choice. It does not establish a settled body opening, a continuously checked flexible movement, or the response of the rest of the crane. Larger fractions with bad geometry remain visible for diagnosis.</p>
+<p><a href="body-fourth-pair/checks.json">Full comparison measurements</a> · <a href="body-fourth-pair/source/trace.json">Unchanged saved trace</a> · <a href="body-fourth-pair/source/checks.json">Unchanged source report</a></p>
+<details><summary>Selected measurements and quadratic reports</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_FOURTH_DATA*/null;
+const $=id=>document.getElementById(id), num=x=>x==null?'—':x===0?'0':Number(x).toPrecision(8), yes=x=>x?'Yes':'No', fraction=x=>x==null?'None':'1/'+Math.round(1/x);
+function row(body,values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ const states=[{record:data.start,label:'Saved start of correction ten',checks:null,passed:true}], failures=[];
+ for(const d of data.directions){
+  for(const t of d.trials){
+   states.push({record:t.record,label:d.title+' · '+fraction(t.scale),checks:t.checks,passed:t.passed});
+   if(t.restoration?.record)states.push({record:t.restoration.record,label:d.title+' · '+fraction(t.scale)+' · repaired',checks:t.restoration.checks,passed:t.restoration.passed});
+   else if(t.restoration?.failure)failures.push(d.title+' '+fraction(t.scale)+': '+t.restoration.failure+'.');
+  }
+  const selected=states.find(s=>s.record.state.id===d.selectedState);
+  row($('directions'),[d.title,yes(d.directionVerified),fraction(d.selectedScale)+(d.selectedState?.endsWith('-repair')?' + repair':''),num(d.fullMovement),num(selected?.checks?.movement),num(selected?data.start.state.totalCost-selected.record.state.totalCost:null),yes(d.acceptedEndpoint)]);
+ }
+ const added=data.directions.find(d=>d.id==='added'),control=data.directions.find(d=>d.id==='control');
+ $('summary').textContent=added.directionVerified?'The saved direction selects '+fraction(control.selectedScale)+'. With six added guards, '+(added.selectedState?'the new direction selects '+fraction(added.selectedScale)+(added.selectedState.endsWith('-repair')?' after one repair.':'.'):'no trial passes.')+' '+(added.acceptedEndpoint?'The full-movement stopping check passes.':'The full proposal remains above the stopping threshold; this is still a correction study.'):'The new quadratic was not verified: '+added.failure+'. Its proposal is diagnostic and no trial is selected. The saved control still selects '+fraction(control.selectedScale)+'.';
+ const chosen=[data.start,...data.directions.flatMap(d=>states.filter(s=>s.record.state.id===d.selectedState).map(s=>s.record))];
+ for(const r of chosen){const m=r.state;row($('costs'),[m.title,num(m.panelEnergy),num(m.creaseEnergy),num(m.lengthCost),num(m.contactCost),num(m.totalCost),num(m.bodyDepth)]);}
+ for(const s of states){
+  for(const side of ['left','right']){const o=document.createElement('option');o.value=s.record.state.id;o.textContent=s.label;$(side).append(o);}
+  if(s.checks){const m=s.record.state;row($('trials'),[s.label,yes(s.checks.guardsPassed),yes(s.checks.geometryPassed),yes(s.checks.costDecreased),s.passed?'Pass':'Refused',num(m.maxRelativeEdgeError),m.contact.crossingPanels.map(p=>p.map(x=>x.replace('triangle-','')).join('–')).join(', ')||'None',m.contact.reversedOrders.length,num(s.record.plane30),num(s.record.minimumPairGap)]);}
+ }
+ const activeCorners=added.contacts.filter(c=>c.selected).flatMap(c=>c.sources).filter(k=>k>=13).map(k=>k-13);
+ $('active-corners').textContent=added.directionVerified?'The new quadratic is verified. Active added overlap corners: '+(activeCorners.join(', ')||'none')+'.':'The new quadratic is unverified; its active set is diagnostic.';
+ const quarter=added.trials.find(t=>t.scale===0.25);
+ $('next-inspection').textContent=quarter?'The new 1/4 trial '+(quarter.passed?'passes.':'is refused. Crossing pairs: '+(quarter.record.state.contact.crossingPanels.map(p=>p.map(x=>x.replace('triangle-','')).join('–')).join(', ')||'none')+'.')+' Compare its actual geometry and cost checks in the table. The saved start, refusal and selected shape are available for inspection without another solve.':'';
+ const oldChosen=states.find(s=>s.record.state.id===control.selectedState),newChosen=states.find(s=>s.record.state.id===added.selectedState);
+ data.start.pairWitnesses.forEach((w,k)=>{const contact=added.contacts.find(c=>c.sources.includes(13+k));row($('corners'),[k,num(w.gap),num(oldChosen?.record.pairWitnesses[k]?.gap),num(newChosen?.record.pairWitnesses[k]?.gap),contact?yes(contact.selected):'—']);});
+ $('repairs').textContent=failures.length?'Repairs not attempted: '+failures.join(' '):'Every refused trial received a recorded repair attempt.';
+ $('left').value=control.selectedState||'start';$('right').value=added.selectedState||'start';
+ function draw(){const view=$('view').value;for(const side of ['left','right']){const s=states.find(s=>s.record.state.id===$(side).value),id=s.record.state.id;$(side+'-title').textContent=s.label;$(side+'-image').src='body-fourth-pair/'+id+'-'+view+'.svg';$(side+'-fold').href='body-fourth-pair/'+id+'.fold';$(side+'-status').textContent=(s.checks?(s.passed?'Passes this trial’s checks. ':'Refused trial. '):'Saved passing geometry. ')+'Pair 55–93 crossing '+(s.record.crosses55_93?'flagged.':'not flagged.');$(side+'-status').className=s.passed?'pass':'fail';}
+  $('legend').textContent=['tip','pair'].includes(view)?'Shared fixed crop. Purple: triangle 55. Orange: triangle 93. Red: mathematical intersection. Green: overlap corners. Coordinates are neither separated nor exaggerated.':'Same camera and 600 pixels per sheet unit for spatial views; material view shows the original sheet. Grey wire lines include hidden paper.';
+  $('raw').textContent=JSON.stringify({directions:data.directions.map(d=>({title:d.title,quadratic:d.quadratic,failure:d.failure})),states:states.filter(s=>[$('left').value,$('right').value].includes(s.record.state.id))},null,2);
+ }
+ for(const id of ['left','right','view'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>
