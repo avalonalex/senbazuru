@@ -119,6 +119,17 @@ after four retained corrections without a barrier-ready candidate.
 To keep length limits as constraints during initialization:
 
 ```bash
+stack run senbazuru-material-study -- --body-crease-seed build/fold-material
+```
+
+Open `body-crease-seed.html`. This owner-approved alternative constructs new
+crease angles and derives the three grip positions from them. Two angle
+corrections join the panels without stretching, but the pose crosses inherited
+layers at both resolutions. The gallery preserves that failure, the exact
+angle trace and unchanged readiness checks. No material solve runs; see
+[the crease-based attempt](../../docs/notes/body-crease-seed.md).
+
+```bash
 stack run senbazuru-material-study -- --body-feasibility build/fold-material/body-fourth-pair build/fold-material
 ```
 

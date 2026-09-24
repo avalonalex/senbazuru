@@ -64,13 +64,21 @@ is retained. The unverified proposal still has negative gaps, edge error just
 above `1e-5`, and no change in body depth; maximum movement is 0.00350 drawing
 pixels. No candidate is barrier-ready and no body barrier solve has run.
 
-**Next is a scope decision.** Preserve both initialization failures and the
-earlier penalty archive. A different construction or material/contact model
-needs its own bounded proposal; the matched barrier/penalty comparison remains
-blocked on a valid separated start. Further pair-by-pair repairs and automatic
-numerical retuning stay paused. Physical thickness, pressure and full-crane
-deformation remain separate later studies; the illustration/rigid-sequence
-boundary and existing acceptance checks are unchanged.
+**A new angle-derived pose closes but intersects.** The owner approved
+[#383](https://github.com/avalonalex/senbazuru/issues/383)'s
+[crease-based construction](notes/body-crease-seed.md) and new grip positions.
+Two angle corrections satisfy shared vertices and achieved angles; lengths
+stay within `2.2e-11`. The same shape has four coarse or eighteen refined
+crossing pairs, with a reversed-order height near 4.71 drawing pixels. It is
+not barrier-ready. Subdivision changes counts, not the intersecting shape.
+
+**Next is selecting a valid layer arrangement during construction**, through
+contact-aware angle choices or a known valid folding route. Preserve all three
+initialization results and the earlier penalty archive; do not resume
+pair-by-pair repairs or automatically retune this angle family. The matched
+barrier/penalty comparison is still blocked. Physical thickness, pressure and
+full-crane deformation remain separate later studies; the illustration/rigid
+sequence boundary and acceptance checks are unchanged.
 
 The following evidence explains that decision. [The first bounded body-patch
 comparison](notes/coupled-body-patch.md)
@@ -141,7 +149,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,903 examples pass for #381, including constraint-first initialization with simultaneous layers, hard length/movement limits and exact holds; bounded separated initialization with shared vertices and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,909 examples pass for #383, including bounded crease-angle construction, independent loop closure and unchanged material identities; constraint-first initialization with simultaneous layers, hard length/movement limits and exact holds; bounded separated initialization with shared vertices and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -829,8 +837,12 @@ checked coupled angles.
    [constraint-first construction](notes/body-feasible-initialization.md) stops
    at its first unverified direction after 115 iterations, retaining no new
    state. Its diagnostic proposal still lacks positive clearance and exceeds
-   the length limit. No body barrier solve has run; another method needs a
-   scoped decision, not another limiting-pair repair or automatic retuning.
+   the length limit. [#383](https://github.com/avalonalex/senbazuru/issues/383)
+   [constructs a new pose from crease angles](notes/body-crease-seed.md), with
+   owner-approved new grip positions. Two angle corrections close its loops
+   and preserve lengths, but contact fails at both resolutions. No body
+   barrier solve has run; a new bounded proposal must select a valid layer
+   arrangement, not repair another limiting pair.
    The existing vertex 27–plane 70 guard remains a conservative fixture policy;
    it is not automatic contact discovery.
    No opened endpoint is accepted yet, and removing the surrounding crane's

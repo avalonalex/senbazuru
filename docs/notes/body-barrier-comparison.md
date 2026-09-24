@@ -98,3 +98,11 @@ deficit. The first direction fails numerical verification after 115 iterations;
 no trial or correction is retained. Its diagnostic proposal also fails actual
 length/clearance checks. The matched comparison remains blocked, with both
 initialization results preserved. Stop before another method or model decision.
+
+**Crease-based initialization, 2026-09-24:** the owner approved a new pose
+and grip positions for [#383](https://github.com/avalonalex/senbazuru/issues/383).
+[Coordinating crease angles](body-crease-seed.md) closes the panel loops in two
+corrections, with length errors below `2.2e-11`. Contact fails: the same shape
+has four coarse or eighteen refined crossing pairs. The matched comparison
+still cannot start. Keep this distinct from the two previous fixed-grip
+attempts; selecting a valid layer arrangement needs a new bounded proposal.
