@@ -89,3 +89,12 @@ error and failed contact checks. No candidate can enter the barrier, so step 3
 has not run. This meets step 2's prescribed stop at an initialization blocker;
 another method needs a new scoped decision before further construction or
 material solves.
+
+**Alternative initialization, 2026-09-24:** the owner selected
+[#381](https://github.com/avalonalex/senbazuru/issues/381), a
+[constraint-first construction](body-feasible-initialization.md) from the same
+original start. It enforces length bounds while reducing the largest gap
+deficit. The first direction fails numerical verification after 115 iterations;
+no trial or correction is retained. Its diagnostic proposal also fails actual
+length/clearance checks. The matched comparison remains blocked, with both
+initialization results preserved. Stop before another method or model decision.

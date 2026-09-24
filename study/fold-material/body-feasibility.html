@@ -7,7 +7,7 @@ body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-ser
 <p class="tag">SENBAZURU · CONSTRAINT-FIRST INITIALIZATION · #381</p>
 <h1>Separate the body without stretching it</h1>
 <p class="status" id="outcome">Run the bounded initialization to populate this page.</p>
-<p>A contact barrier needs a positive gap before it can act. This construction keeps material length errors below 0.001% and holds the same three vertices exactly. It tries to reduce the largest remaining gap deficit: how far the worst contact falls short of its target. All inherited overlaps participate together. This page tests a starting shape, not a settled body or a physical folding route.</p>
+<p>A contact barrier needs a positive gap before it can act. Retained construction steps must keep material length errors at most 0.001% and hold the same three vertices exactly. The construction tries to reduce the largest remaining gap deficit: how far the worst contact falls short of its target. All inherited overlaps participate together. This page tests a starting shape, not a settled body or a physical folding route.</p>
 <div class="controls"><label>Candidate <select id="state"></select></label><label>View <select id="view"><option value="side">Side</option><option value="top">Top</option><option value="underside">Underside</option><option value="material">Original sheet</option></select></label><label>Size <select id="zoom"><option value="1">Actual drawing size · 600 px / sheet unit</option><option value="4">4× magnified · scroll to inspect</option></select></label></div>
 <div class="views"><section class="figure"><h2>Saved start</h2><div class="image-scroll"><img id="before" alt="Saved body patch"></div></section><section class="figure"><h2 id="candidate-title">Candidate</h2><div class="image-scroll"><img id="after" alt="Initialization candidate"></div></section></div>
 <p id="caption"></p><div class="scroll"><table><thead><tr><th>Measurement</th><th>Saved start</th><th>Candidate</th></tr></thead><tbody id="metrics"></tbody></table></div>
@@ -23,7 +23,7 @@ if(data){
  $('outcome').textContent=data.initializationReady?`A separated start passed all initialization checks after ${data.completedCorrections} corrections. No barrier material solve has run.`:`Initialization remains diagnostic after ${data.completedCorrections} corrections (${data.stopReason}). No barrier material solve has run.`;
  const candidates=[...data.states,...data.diagnostics];
  for(const s of candidates)$('state').add(new Option(s.state.title,s.id));
- $('attempts').textContent=data.attempts.map((a,i)=>`Attempt ${i+1}: ${a.constraints} constraints; ${a.quadratic?`${a.quadratic.iterations} solver iterations, original-row checks ${a.quadratic.converged?'passed':'failed'}`:'no direction'}; ${a.trials.length} geometry trials.${a.failure?' '+a.failure+'.':''}`).join(' ');
+ $('attempts').textContent=data.attempts.map((a,i)=>`Attempt ${i+1}: ${a.constraints} constraints; ${a.quadratic?`${a.quadratic.iterations} solver iterations, original-row checks ${a.quadratic.converged?'passed':'failed'}`:'no direction'}; ${a.trials.length} geometry trials.${a.failure?' '+a.failure+'.':''}`).join(' ')+` Construction took ${data.constructionCpuSeconds.toFixed(2)} CPU seconds, excluding archive authentication and export.`;
  $('state').value=data.states.at(-1).id;
  function draw(){
   const a=data.states[0],b=candidates.find(s=>s.id===$('state').value),view=$('view').value,zoom=Number($('zoom').value);
