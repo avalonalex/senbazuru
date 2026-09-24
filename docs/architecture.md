@@ -475,6 +475,13 @@ decisions, reusing the loop reader and its quadratic force check.
 distances, four actual/predicted overlap gaps and finite intersection lengths.
 It copies paper assets and draws annotations without solving or installing a
 repair; see [the guarded-gap inspection](notes/body-contact-14-55.md).
+`BodyOverlapRestorationGallery` uses the same archive and annotation renderer
+for one corner-gap projection. `BodyContactRestoration` shares the
+minimum-movement calculation between plane and overlap distances; the latter
+uses `SurfaceContact`'s moving-corner derivative. The gallery checks original
+and refreshed guards through `BodyRestorationLoop.assess`, measures the actual
+target separately, and retains failed repairs. See
+[the coupled-contact result](notes/body-overlap-restoration.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

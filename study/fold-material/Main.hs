@@ -16,6 +16,7 @@ import BodyFourthPairGallery (writeBodyFourthPair)
 import BodyFreshGallery (writeBodyFresh)
 import BodyGeometryGallery (writeBodyGeometry)
 import BodyGuardedInspection (writeBodyGuardedInspection)
+import BodyOverlapRestorationGallery (writeBodyOverlapRestoration)
 import BodyPairInspectionGallery (writeBodyPairInspection)
 import BodyPatchCheckpointGallery (writeBodyPatchCheckpoints)
 import BodyPatchGallery (writeBodyPatch)
@@ -95,6 +96,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["--body-overlap-restoration", source, destination] -> writeBodyOverlapRestoration source destination
     ["--body-contact-14-55", source, destination] -> writeBodyGuardedInspection source destination
     ["--body-fourth-pair", source, destination] -> writeBodyFourthPair source destination
     ["--body-contact-55-93", source, destination] -> writeBodyPairInspection source destination
@@ -166,7 +168,7 @@ main = do
     ["--helmet", destination] -> writeHelmetGallery destination
     ["--blintz", destination] -> writeBlintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
-    _ -> die "usage: stack run senbazuru-material-study -- [--body-contact-14-55 SOURCE_DIRECTORY | --body-fourth-pair SOURCE_DIRECTORY | --body-contact-55-93 SOURCE_DIRECTORY | --body-restoration-loop SOURCE_DIRECTORY | --body-fresh-restoration SOURCE_DIRECTORY | --body-fresh SOURCE_DIRECTORY | --body-restoration SOURCE_DIRECTORY | --body-plane-loss SOURCE_DIRECTORY | --body-plane SOURCE_DIRECTORY | --body-final SOURCE_DIRECTORY | --body-short SOURCE_DIRECTORY | --body-third SOURCE_DIRECTORY | --body-pairs SOURCE_DIRECTORY | --body-direction SOURCE_DIRECTORY | --body-geometry SOURCE_DIRECTORY | --body-replay SOURCE_DIRECTORY | --body-contact SOURCE_DIRECTORY | --body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
+    _ -> die "usage: stack run senbazuru-material-study -- [--body-overlap-restoration SOURCE_DIRECTORY | --body-contact-14-55 SOURCE_DIRECTORY | --body-fourth-pair SOURCE_DIRECTORY | --body-contact-55-93 SOURCE_DIRECTORY | --body-restoration-loop SOURCE_DIRECTORY | --body-fresh-restoration SOURCE_DIRECTORY | --body-fresh SOURCE_DIRECTORY | --body-restoration SOURCE_DIRECTORY | --body-plane-loss SOURCE_DIRECTORY | --body-plane SOURCE_DIRECTORY | --body-final SOURCE_DIRECTORY | --body-short SOURCE_DIRECTORY | --body-third SOURCE_DIRECTORY | --body-pairs SOURCE_DIRECTORY | --body-direction SOURCE_DIRECTORY | --body-geometry SOURCE_DIRECTORY | --body-replay SOURCE_DIRECTORY | --body-contact SOURCE_DIRECTORY | --body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
 generate :: FilePath -> IO ()
 generate destination = do

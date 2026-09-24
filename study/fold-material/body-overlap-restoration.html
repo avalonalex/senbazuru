@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repairing one contact pushes on another</title><style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:40px auto;padding:0 16px}a{color:#315e6a}h1{font-size:2.5rem;line-height:1.15}p{max-width:980px}.tag{font-size:.8rem;letter-spacing:.14em;color:#777063}.status{padding:16px;background:#e5ebe2;border-left:4px solid #4b7361}.controls{display:flex;flex-wrap:wrap;gap:20px;margin:24px 0}select{font:inherit;padding:8px;background:#fffaf2;border:1px solid #b8b5a9;max-width:100%}.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:16px}.figure{background:#eee8db;padding:8px;overflow:auto}.figure img{width:560px;height:auto;display:block;margin:auto}.figure h2{font-size:1.2rem;margin:4px}.scroll{overflow:auto}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;margin:18px 0}td,th{text-align:right;padding:8px;border-bottom:1px solid #d4d1c7;white-space:nowrap}td:first-child,th:first-child{text-align:left}.fail{color:#a23723;font-weight:600}pre{overflow:auto;max-height:400px}
+</style><main>
+<a href="index.html">← Material studies</a> · <a href="body-contact-14-55.html">Inspect the saved refusal</a>
+<p class="tag">SENBAZURU · ONE OVERLAP REPAIR · #373</p>
+<h1>Repairing one contact pushes on another</h1>
+<p class="status" id="outcome">Measuring one repair of the saved refused 1/4 trial.</p>
+<p>Triangle 55 sits below triangle 14. At corner 0 of their top-view overlap, the saved 1/4 correction loses a little gap and flags a crossing. This experiment moves the free vertices as little as possible to recover that corner's starting gap. There is one repair, no new material solve and no retry.</p>
+<div class="controls"><label>Left <select id="left"></select></label><label>Right <select id="right"></select></label><label>View <select id="view"><option value="tip" selected>Corner 0 · enlarged top view</option><option value="pair">Whole overlap · enlarged top view</option><option value="side">Side · actual drawing size</option><option value="top">Top · actual drawing size</option><option value="underside">Underside · actual drawing size</option><option value="material">Original material coordinates</option></select></label></div>
+<div class="views"><section class="figure"><h2 id="left-title"></h2><img id="left-image" alt="Left comparison shape"><p id="left-status"></p><a id="left-fold">FOLD coordinates</a></section><section class="figure"><h2 id="right-title"></h2><img id="right-image" alt="Right comparison shape"><p id="right-status"></p><a id="right-fold">FOLD coordinates</a></section></div>
+<p id="legend"></p>
+<h2>What did the repair change?</h2>
+<p>The target keeps the original slightly negative gap; it does not separate the triangles to zero. A gap is the upper triangle's height minus the lower one's at an overlap corner. The derivative includes both moving triangles and the moving corner. It predicts the gap change for a small movement; the actual gap is measured again afterward.</p>
+<div class="scroll"><table><tbody id="repair"></tbody></table></div>
+<p>The repair minimizes the sum of squared movements of free vertices for this one local equation. Held vertices do not move. It does not minimize material energy or preserve every other contact automatically. The tiny repair's size is not the stopping test for the still-unsettled material direction.</p>
+<h2>Both triangle pairs after the repair</h2>
+<div class="scroll"><table><thead><tr><th>Shape</th><th>14–55 intersection length</th><th>14–55 crossing</th><th>55–93 intersection length</th><th>55–93 crossing</th><th>14–55 corner 0 gap</th><th>55–93 minimum gap</th></tr></thead><tbody id="pairs"></tbody></table></div>
+<p>Crossing detection asks whether both triangles straddle each other's planes by more than 1e-7 sheet units and their finite intersection is longer than 1e-7. A short mathematical intersection can remain below that threshold. These enlarged annotations share a fixed crop; at drawing size the repair is far smaller than a pixel.</p>
+<h2>Every guard is still checked</h2>
+<p>A guard predicts that a positive gap stays nonnegative, or that a negative gap gets no worse. A margin below −1e-12 fails. The nineteen original guards apply to the total displacement from the saved start; the eighteen refreshed overlap guards apply to this repair from the refused trial. The stronger corner-0 target and its actual result are checked separately above. Neither family is waived when the other passes.</p>
+<div class="scroll"><table><thead><tr><th>Original row</th><th>Contact</th><th>Linear margin</th><th>Pass</th></tr></thead><tbody id="original"></tbody></table></div>
+<details open><summary>Eighteen refreshed overlap guards</summary><div class="scroll"><table><thead><tr><th>Refreshed row</th><th>Contact</th><th>Linear margin</th><th>Pass</th></tr></thead><tbody id="refreshed"></tbody></table></div></details>
+<h2>Material and all-pair checks</h2>
+<div class="scroll"><table><thead><tr><th>Shape</th><th>Geometry passes</th><th>Relative length error</th><th>Held-point error</th><th>Reversed orders</th><th>Crease energy</th><th>Panel energy</th><th>Length cost</th><th>Contact cost</th><th>Total cost</th></tr></thead><tbody id="material"></tbody></table></div>
+<p>The saved start, passing 1/8 and refused 1/4 FOLD files and paper SVGs are copied unchanged. The archive reader verifies their material, measurements and saved correction before the experiment. All-pair contact, original lengths, exact holds, source connectivity and cost descent from the original direction's start still gate acceptance. Cost change from the refused trial is also reported separately.</p>
+<p>This remains a local body specimen, not an equilibrium shape, a continuously checked flexible motion or whole-crane contact. No tolerance, weight or stopping condition changes here.</p>
+<p><a href="body-overlap-restoration/checks.json">All measurements and correction coordinates</a> · <a href="body-overlap-restoration/source/checks.json">Unchanged source comparison</a></p>
+<details><summary>Selected measurements</summary><pre id="raw"></pre></details></main>
+<script>
+const data=/*BODY_OVERLAP_DATA*/null;
+const $=id=>document.getElementById(id),num=x=>x==null?'—':x===0?'0':Number(x).toPrecision(10),yes=x=>x?'Yes':'No';
+function row(body,values,failed=false){const tr=document.createElement('tr');if(failed)tr.className='fail';for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}
+if(data){
+ const title=s=>s.id==='restored'?'Repaired 1/4 · '+(data.candidatePassed?'checks pass':'refused'):s.title;
+ const tol=data.guardResidualTolerance,pass=m=>m>=-tol,restored=data.states.find(s=>s.id==='restored');
+ $('outcome').textContent=(data.candidatePassed?'The repair passes all local candidate checks.':'Diagnostic: the repair is refused.')+' Corner 0 '+(data.actualTargetPassed?'recovers':'does not recover')+' its starting gap. Original and refreshed guards '+(data.checks.guardsPassed?'pass.':'do not all pass.')+' All-pair geometry '+(data.checks.geometryPassed?'passes.':'fails.');
+ const entries=[['Target: original corner-0 gap',data.targetGap],['Refused corner-0 gap',data.refusedGap],['Repaired corner-0 gap',data.restoredGap],['Predicted margin above target',data.targetMargin],['Actual margin above target',data.restoredGap-data.targetGap],['Maximum repair movement (sheet units)',data.correctionMovement],['Repair movement at drawing size (pixels)',data.correctionMovement*data.drawingScale],['Unscaled material-direction movement',data.unscaledMaterialMovement],['Material movement stopping tolerance',data.movementTolerance],['Cost change from refused 1/4',data.costChangeFromTrial]];
+ for(const [label,value] of entries)row($('repair'),[label,num(value)]);
+ for(const [label,value] of [['Actual target recovered',data.actualTargetPassed],['Same overlap identities',data.sameOverlapIdentities],['Cost below original start',data.checks.costDecreased],['Candidate accepted',data.candidatePassed]])row($('repair'),[label,yes(value)],!value);
+ for(const s of data.states){
+  for(const side of ['left','right']){const o=document.createElement('option');o.value=s.id;o.textContent=title(s);$(side).append(o);}
+  const c=s.corners.filter(w=>w.triangles.join(',')==='55,14'),other=s.corners.filter(w=>w.triangles.join(',')==='93,55');
+  row($('pairs'),[title(s),num(s.intersection14_55),yes(s.crosses14_55),num(s.intersection55_93),yes(s.crosses55_93),num(c[0]?.gap),num(other.length?Math.min(...other.map(w=>w.gap)):null)]);
+  const m=s.state;row($('material'),[title(s),yes(m.geometryPassed),num(m.maxRelativeEdgeError),num(m.holdError),m.contact.reversedOrders.length,num(m.creaseEnergy),num(m.panelEnergy),num(m.lengthCost),num(m.contactCost),num(m.totalCost)]);
+ }
+ function contact(i){const w=restored.corners[i];return w?'Upper '+w.triangles[1]+' over '+w.triangles[0]:'Unavailable';}
+ for(const g of data.originalGuards)row($('original'),[g.index,g.index===12?'Vertex 27 → plane 70':contact(g.index<12?g.index:g.index-1),num(g.margin),yes(pass(g.margin))],!pass(g.margin));
+ for(const g of data.refreshedGuards)row($('refreshed'),[g.index,contact(g.index),num(g.margin),yes(pass(g.margin))],!pass(g.margin));
+ $('left').value='refused';$('right').value='restored';
+ function draw(){const view=$('view').value;for(const side of ['left','right']){const s=data.states.find(s=>s.id===$(side).value);$(side+'-title').textContent=title(s);$(side+'-image').src='body-overlap-restoration/'+s.id+'-'+view+'.svg';$(side+'-fold').href='body-overlap-restoration/'+s.id+'.fold';$(side+'-status').textContent='14–55 intersection '+num(s.intersection14_55)+' sheet units. Crossing '+(s.crosses14_55?'flagged.':'not flagged.');}
+  $('legend').textContent=['tip','pair'].includes(view)?'Fixed shared crop. Purple: triangle 14. Orange: triangle 55. Green: overlap corners. Red: finite intersection. Paper coordinates are unchanged by these annotations.':'Same camera and 600 pixels per sheet unit for spatial views; grey wires include hidden paper. Orange/purple highlights mark a flagged contact pair; they disappear when no pair is flagged, not because paper was removed. Red marks the largest length-error edge only when it exceeds the length tolerance. Material view shows the original sheet. Saved controls retain their original SVG bytes.';
+  $('raw').textContent=JSON.stringify(data.states.filter(s=>[$('left').value,$('right').value].includes(s.id)),null,2);
+ }
+ for(const id of ['left','right','view'])$(id).addEventListener('change',draw);draw();
+}
+</script></html>

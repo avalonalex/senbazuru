@@ -1448,3 +1448,11 @@ when the correction doubles. The derivative checks agree, pointing to the
 remaining error of the local linear approximation. The gallery locates the
 corner and preserves all saved paper views and acceptance decisions. No new
 solve or repair runs; the refused intersection is below 0.0001 drawing pixels.
+
+[One overlap repair](notes/body-overlap-restoration.md) recovers that corner's
+starting gap and clears the crossing with less than 0.00000002 pixel movement.
+Lengths, holds, actual contact and descent from the original starting cost pass.
+The candidate is still refused: two original guards and one refreshed guard
+at neighboring 55–93 fail. The gallery shows all four shapes, every guard and
+separate costs. This motivates one joint repair that protects neighboring
+contacts, not another continuation or a change to tolerances.

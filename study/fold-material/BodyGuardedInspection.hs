@@ -8,7 +8,7 @@
 -- The source order puts 55 below 14. Triangle ids, physical source panels and
 -- contact-corner order all come from the authenticated saved mesh. Paper SVGs
 -- and FOLD files retain their bytes; the new drawings are annotations only.
-module BodyGuardedInspection (writeBodyGuardedInspection) where
+module BodyGuardedInspection (writeBodyGuardedInspection, drawInspection) where
 
 import BodyContactDiagnosis
 import BodyContactDirection (contactGuard)
