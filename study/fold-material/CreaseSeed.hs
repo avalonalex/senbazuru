@@ -15,6 +15,7 @@ module CreaseSeed
     AngleSeed (..),
     coordinateCreases,
     creaseResiduals,
+    creasePlacements,
   )
 where
 
@@ -98,17 +99,26 @@ creaseResiduals source degrees = do
   unless (length degrees == length (edgesVertices sheet) && all finite degrees) (bad "one finite angle is required per edge")
   residuals problem (IM.fromList (zip [0 ..] (map radians degrees)))
 
-residuals :: Problem -> IM.IntMap Double -> Either CreaseSeedError [Double]
-residuals (Problem sheet points links _) angles = do
+-- | Provisional panel placements for construction constraints only. Loops may
+-- disagree; callers must never weld them into an apparently connected sheet.
+creasePlacements :: Frame -> [Double] -> Either CreaseSeedError (IM.IntMap Rigid)
+creasePlacements source degrees = do
+  problem@(Problem sheet _ _ _) <- prepare source
+  unless (length degrees == length (edgesVertices sheet) && all finite degrees) (bad "one finite angle is required per edge")
+  placePanels problem (IM.fromList (zip [0 ..] (map radians degrees)))
+
+linkRotation :: IM.IntMap V3 -> IM.IntMap Double -> Int -> VertexId -> VertexId -> Either CreaseSeedError Rigid
+linkRotation points angles eid u v = do
+  p <- lookupPoint points (unVertexId u)
+  q <- lookupPoint points (unVertexId v)
+  pure (rotationAbout p (q ^-^ p) (negate (IM.findWithDefault 0 eid angles)))
+
+placePanels :: Problem -> IM.IntMap Double -> Either CreaseSeedError (IM.IntMap Rigid)
+placePanels (Problem sheet points links _) angles = do
   placements <- walk (IM.singleton 0 identity) [0]
   unless (IM.size placements == length (facesVertices sheet)) (bad "crease initialization has disconnected panels")
-  concat <$> traverse (difference placements) links
+  pure placements
   where
-    angle i = IM.findWithDefault 0 i angles
-    rotation eid u v = do
-      p <- lookupPoint points (unVertexId u)
-      q <- lookupPoint points (unVertexId v)
-      pure (rotationAbout p (q ^-^ p) (negate (angle eid)))
     neighbours i = [(b, e, u, v) | Link a b e u v <- links, a == i] ++ [(a, e, v, u) | Link a b e u v <- links, b == i]
     walk placed [] = pure placed
     walk placed (i : queue) = do
@@ -120,12 +130,18 @@ residuals (Problem sheet points links _) angles = do
       if IM.member j placed
         then pure (placed, queue)
         else do
-          turn <- rotation e u v
+          turn <- linkRotation points angles e u v
           pure (IM.insert j (parent `after` turn) placed, queue ++ [j])
+
+residuals :: Problem -> IM.IntMap Double -> Either CreaseSeedError [Double]
+residuals problem@(Problem _ points links _) angles = do
+  placements <- placePanels problem angles
+  concat <$> traverse (difference placements) links
+  where
     difference placed (Link a b e u v) = do
       pa <- maybe (bad "missing provisional face") Right (IM.lookup a placed)
       pb <- maybe (bad "missing provisional face") Right (IM.lookup b placed)
-      turn <- rotation e u v
+      turn <- linkRotation points angles e u v
       let predicted = pa `after` turn
           orient axis = matApply (rigidLinear pb) axis ^-^ matApply (rigidLinear predicted) axis
       pure (concatMap coords (rigidOffset pb ^-^ rigidOffset predicted : map orient [V3 1 0 0, V3 0 1 0, V3 0 0 1]))

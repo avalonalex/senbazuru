@@ -1,7 +1,7 @@
 -- | One bounded crease-based initialization, with failed angles preserved.
 -- Only production-validated angles become a shared mesh. Readiness reuses the
 -- previous initialization checks; a rigid pose is not a material equilibrium.
-module BodyCreaseSeedGallery (writeBodyCreaseSeed) where
+module BodyCreaseSeedGallery (writeBodyCreaseSeed, writeCreaseSeedState) where
 
 import BodyCreaseSeed
 import BodyInitializationCheck (probeInitialization)
@@ -53,12 +53,12 @@ writeBodyCreaseSeed destination = do
       trace = [object ["degrees" .= angleStepDegrees s, "maxResidual" .= angleStepResidual s, "cost" .= angleStepCost s, "fraction" .= angleStepFraction s, "linearResidual" .= angleLinearResidual s] | s <- angleHistory result]
   BL.writeFile (output </> "angles.fold") (encode (document "Candidate crease angles: closure is reported separately" (angleFrame result)))
   BL.writeFile (output </> "trace.json") (encode trace)
-  closed <- state output "closed" "Original closed patch" baseline
+  closed <- writeCreaseSeedState output "closed" "Original closed patch" baseline
   candidates <- case (angleClosed result, folded) of
     (True, Right model) -> forM [0, 1] $ \level -> do
       old <- checked (bodyPatch atlas level 0)
       new <- checked (installCreaseSeed old model)
-      state output (if level == 0 then "coarse" else "fine") (if level == 0 then "Angle-derived body · 30 triangles" else "Subdivided same pose · 120 triangles") new
+      writeCreaseSeedState output (if level == 0 then "coarse" else "fine") (if level == 0 then "Angle-derived body · 30 triangles" else "Subdivided same pose · 120 triangles") new
     _ -> pure []
   let report = object ["gallery" .= ("body-crease-seed" :: Text), "issue" .= (383 :: Int), "stopReason" .= angleStop result, "closurePassed" .= angleClosed result, "productionFailure" .= productionFailure, "anchorPatchEdge" .= unEdgeId (angleAnchor result), "sourceEdges" .= map unEdgeId (patchEdges baseline), "constructionCpuSeconds" .= (fromIntegral (finished - started) / 1e12 :: Double), "corrections" .= (length (angleHistory result) - 1), "budget" .= (40 :: Int), "trace" .= trace, "states" .= (closed : candidates), "acceptedMaterialEndpoint" .= False, "newBarrierSolves" .= (0 :: Int), "continuousMotionChecked" .= False, "wholeCraneChecked" .= False, "physicalThickness" .= (Nothing :: Maybe Double)]
       bytes = encode report
@@ -67,8 +67,8 @@ writeBodyCreaseSeed destination = do
   TIO.writeFile (destination </> "body-crease-seed.html") (T.replace "/*CREASE_SEED_DATA*/null" (TE.decodeUtf8 (BL.toStrict bytes)) template)
   putStrLn ("Wrote " ++ destination </> "body-crease-seed.html")
 
-state :: FilePath -> String -> Text -> BodyPatch -> IO Value
-state output name title study = do
+writeCreaseSeedState :: FilePath -> String -> Text -> BodyPatch -> IO Value
+writeCreaseSeedState output name title study = do
   let fixture = patchSpread study
       mesh = spreadMesh fixture
       original = refinedMesh (spreadRefined fixture)

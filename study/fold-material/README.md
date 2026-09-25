@@ -119,6 +119,17 @@ after four retained corrections without a barrier-ready candidate.
 To keep length limits as constraints during initialization:
 
 ```bash
+stack run senbazuru-material-study -- --body-angle-contact build/fold-material/body-crease-seed build/fold-material
+```
+
+Open `body-angle-contact.html`. This bounded follow-up includes all inherited
+layer overlaps in the angle construction. A common bound measures both contact
+deficits and loop disagreement. Trial placements can be unjoined, so only a
+production-validated candidate is drawn as shared paper. The saved angle-only
+start stays visible if the construction fails; no barrier or material solve runs.
+See [the contact-aware angle study](../../docs/notes/body-angle-contact.md).
+
+```bash
 stack run senbazuru-material-study -- --body-crease-seed build/fold-material
 ```
 

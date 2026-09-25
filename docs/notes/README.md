@@ -111,6 +111,7 @@ read the Haddock module headers; for the domain, start with
 | [body-overlap-restoration.md](body-overlap-restoration.md) | One overlap repair clears 14–55 but fails neighboring 55–93 guards |
 | [body-barrier-comparison.md](body-barrier-comparison.md) | Pause pair-by-pair repairs; bound initialization and a matched body barrier/penalty comparison |
 | [body-separated-initialization.md](body-separated-initialization.md) | A bounded joint construction tests whether the saved body can enter the contact barrier |
+| [body-angle-contact.md](body-angle-contact.md) | Considering inherited layer overlaps and loop closure together during crease-angle construction |
 | [body-crease-seed.md](body-crease-seed.md) | Compatible crease angles preserve lengths but can still cross inherited layers |
 | [body-feasible-initialization.md](body-feasible-initialization.md) | Keep lengths within bounds while reducing the worst remaining clearance deficit |
 | [body-contact-14-55.md](body-contact-14-55.md) | A saved guarded gap loses its starting floor and lengthens a tiny intersection past tolerance |
