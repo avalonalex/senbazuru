@@ -505,6 +505,11 @@ reference panel and derives new grip positions without changing material
 preferences or inherited orders. `BodyCreaseSeedGallery` uses the same
 initialization readiness checks after subdivision; closure alone cannot
 establish contact. See [the angle construction](notes/body-crease-seed.md).
+`AngleContact` reuses the provisional panel walk with independent temporary
+triangle corners. Inherited overlap gaps and loop mismatches share a bounded
+construction objective; none of those corners can become paper until production
+folding validates closure. `BodyAngleContactGallery` archives the constrained
+directions and actual trial refusals. See [contact-aware angles](notes/body-angle-contact.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict

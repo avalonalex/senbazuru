@@ -106,3 +106,11 @@ corrections, with length errors below `2.2e-11`. Contact fails: the same shape
 has four coarse or eighteen refined crossing pairs. The matched comparison
 still cannot start. Keep this distinct from the two previous fixed-grip
 attempts; selecting a valid layer arrangement needs a new bounded proposal.
+
+**Contact-aware angles, 2026-09-24:**
+[#385](https://github.com/avalonalex/senbazuru/issues/385)
+[includes inherited overlap corners and loop bounds together](body-angle-contact.md).
+The first direction fails original-row checks after 34 inner iterations; no
+angle correction or geometry trial is retained. This is a numerical solver
+blocker, not a proof that a valid layer arrangement cannot exist. The same
+intersecting start remains, so the body barrier comparison still cannot run.
