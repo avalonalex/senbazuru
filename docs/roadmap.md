@@ -122,8 +122,10 @@ cameras and a broad cushion with outward wings. It is only a shape sketch:
 despite fewer strict crossing pairs (257). The owner found that target too wide;
 a less spread variant narrows the body 25% and raises the same wing arches 35°,
 reducing span 20.13%. It remains invalid (60.96% edge error, 164.60% local stretch,
-314 crossings). Both are available at the same camera and scale. No further
-material relaxation runs.
+314 crossings). A further body-only revision reduces width another third
+(186.40 → 124.26 px), keeping the raised wing curves; it remains invalid
+(58.04% edge error, 152.17% local stretch, 266 crossings). All targets are
+available at the same camera and scale. No further material relaxation runs.
 **Review these silhouettes and proportions next**, then decide how the attached
 paper can accommodate a useful target; its exact dimensions are not proven
 feasible. Do not treat

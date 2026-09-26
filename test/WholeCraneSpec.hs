@@ -67,7 +67,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     wholeCrane atlas patch saved {samples = [p {sampleMaterial = sampleMaterial p ^+^ V2 0.01 0} | p <- samples saved]} `shouldSatisfy` isLeft
     wholeCrane atlas patch saved {triangles = drop 1 (triangles saved)} `shouldSatisfy` isLeft
 
-  forM_ [("a wide pillow", pillowCrane), ("a less spread pillow", compactPillowCrane)] $ \(description, makePillow) ->
+  forM_ [("a wide pillow", pillowCrane), ("a less spread pillow", compactPillowCrane), ("a narrower pillow", narrowPillowCrane)] $ \(description, makePillow) ->
     it ("opens " ++ description ++ " on the same sheet with separate wings and intact tips") $ \(_, _, study) -> do
       mesh <- right (makePillow study)
       let base = refinedMesh (spreadRefined (wholeSpread study))

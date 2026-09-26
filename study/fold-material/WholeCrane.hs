@@ -17,7 +17,7 @@
 -- and prescribing a broad, shallow cushion with outward wings. It keeps the
 -- same connected material but greatly distorts it. Neither construction is an
 -- accepted paper pose; the gallery reports their defects beside the drawings.
-module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, wholeMeasurements) where
+module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -142,9 +142,15 @@ pillowCrane = pillowCraneWith 1 (-(pi / 12))
 compactPillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
 compactPillowCrane = pillowCraneWith 0.75 (-(5 * pi / 18))
 
+-- | Narrow only the previous target's body by another third. Its height and
+-- head-to-tail extent stay fixed; the same raised wing arches move inward
+-- with their roots. This isolates body width from a change of wing angle.
+narrowPillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
+narrowPillowCrane = pillowCraneWith 0.5 (-(5 * pi / 18))
+
 -- The first parameter changes only the body's width across the wings. The
 -- second is the wing tangent angle at the body rim; negative angles point up
--- because this fixture's negative Y is up. Both targets use a 30-degree arch.
+-- because this fixture's negative Y is up. All pillow targets use a 30-degree arch.
 pillowCraneWith :: Double -> Double -> WholeCrane -> Either SpreadError MaterialMesh
 pillowCraneWith bodyWidthScale start study = do
   let fixture = wholeSpread study
