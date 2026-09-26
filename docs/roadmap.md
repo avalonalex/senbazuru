@@ -101,9 +101,12 @@ and crease ink. [#393](https://github.com/avalonalex/senbazuru/issues/393)
 from 5° to 10° and taking forty corrections adds **21.77 drawing pixels** of
 central depth. Length, strain, holds and order-height screens pass; a 0.232 px
 intersection exceeds the declared 0.1 px screen. All visible layer pairs resolve,
-with a tiny low-view coverage residual. Keep this unsettled endpoint diagnostic
-and review its drawing before choosing a follow-up; do not extend the budget or
-resume individual-pair repairs automatically. The matched barrier/penalty
+with a tiny low-view coverage residual. [#395's drawing-context inspection](notes/body-intersection-context.md)
+finds the entire 2–39 crossing covered in all four drawings. Three views have
+positive geometric cover depth; the underside uses the existing depth tie over
+0.000742 px of the segment, at only 3.76e-9 px wrong-side depth. No solve or rule
+changes. Review this opened static illustration for explicit acceptance before
+widening the screen or returning to precision repairs. The matched barrier/penalty
 comparison remains blocked;
 physical thickness, pressure and full-crane response remain later studies.
 
@@ -881,6 +884,10 @@ checked coupled angles.
    body depth at the 10° grip setting, with exact holds and small length/strain
    errors. Its 0.232 px intersection misses the declared 0.1 px screen; retain
    the unsettled endpoint for visual review before more solver work.
+   [#395's context inspection](notes/body-intersection-context.md) now shows the
+   entire crossing covered in four drawings, with the underside's tiny depth
+   tie explicitly measured. Decide static illustration acceptance from these
+   views before another solve; no contact threshold changes here.
    [#391's visible-layer comparison](notes/body-visible-layers.md) resolves all
    pairwise overlaps under the declared allowance; three views retain tiny
    coverage uncertainty. It supplies the visibility policy for the new opening;
