@@ -2,7 +2,7 @@
 
 The owner found [the first whole-crane drawing](whole-crane-candidate.md)
 broken and identified both the viewing angle and unfinished body opening.
-[#399](https://github.com/avalonalex/senbazuru/issues/399) compares a further
+[#399](https://github.com/avalonalex/senbazuru/issues/399) compares further
 **shape sketches**, retaining the first candidate. They do not produce valid
 paper geometry: the new silhouette comes with much worse local distortion.
 
@@ -23,7 +23,7 @@ stand up along **negative Y**, whereas its earlier cameras treated Z as up.
 X runs between head and tail; Z separates the two wings. The new three-quarter
 and side views use negative Y up. The above/underside cameras have an 8.53°
 tilt so the closed, flat crane is not exactly edge-on. Old camera choices remain
-available. Both figures share one camera, scale and box, taken over all five
+available. Both figures share one camera, scale and box, taken over all nine
 shapes, so changing the comparison cannot silently enlarge one crane.
 The 3D viewer's explicit `up=z` option accounts for the export's axis conversion
 with a rigid display rotation; exported coordinates are unchanged.
@@ -43,13 +43,31 @@ The latest body-only revision changes its width factor from 0.75 to 0.5,
 another one-third reduction, while retaining those raised wing arches. The
 wings move inward with their roots; their angle, curve and outer-strip
 shape stay fixed. The body’s height and head-to-tail extent remain unchanged.
-These controls are authored, not recovered from a pressure model.
+A five-stop wing-spread slider now keeps that slimmer cushion fixed while
+turning the wing arches from a −70° root tangent (more tucked) to −30°
+(more spread), in 10° steps. The middle setting is exactly the saved narrower
+body target. Each position is constructed separately in Haskell from its
+anchors, including the attached neck and tail; the browser selects its SVG,
+measurements and complete-sheet downloads. It does not interpolate vertex
+positions. “More tucked” does not mean the fully closed crane, and the slider
+is not a percentage of physical inflation. It only compares wing orientations.
+Opposite-side and lower three-quarter views, plus slightly tilted views from
+the head and tail, supplement the previous cameras. The legacy Z-up views
+remain labeled as such. These controls are authored, not recovered from a
+pressure model.
 Remaining vertex displacements come from a linear graph calculation: neighbouring
 material vertices prefer similar displacement, weighted by the inverse square
 of their original separation. This avoids assigning most movement to a tiny
 edge, but **does not preserve its length**. Neck/head and tail follow through
 those shared vertices. No weld joins touching layers; no additional material
 relaxation or folding motion is run.
+
+The new cameras exposed a preview defect: two almost identical corners of a
+clipped polygon could each qualify for removal while the other existed.
+Deleting both at once could erase a real corner and let a farther triangle
+show through. Cleanup now removes one redundant corner and rechecks its
+neighbours. A regression uses the actual opposite-side overlap; the mesh and
+contact criteria are unchanged.
 
 | Measurement, 600 drawing pixels per sheet side | Wider pillow | Raised wings | Narrower body |
 | --- | ---: | ---: | ---: |
@@ -58,6 +76,12 @@ relaxation or folding motion is run.
 | Largest edge error | 110.06 px / 104.48% | 64.22 px / 60.96% | 57.42 px / 58.04% |
 | Largest local stretch / compression | +261.46% / −96.17% | +164.60% / −81.93% | +152.17% / −82.10% |
 | Strict crossing pairs | 257 | 314 | 266 |
+
+The spread control varies wing-tip separation from 464.49 to 697.22 px, with
+the cushion fixed at 124.26 px across all five settings. Maximum edge errors
+range from 57.29% to 76.13%, so none is accepted paper geometry. Turning the
+wings also carries their attached paper; it is not a rigid rotation of the
+whole crane.
 
 The body-only revision moves the two held outer wing strips inward by
 31.07 px each, with no rotation or change of their shape. Its area is 3.46%
@@ -85,9 +109,10 @@ The raised-wing revision keeps all pairwise distances between the held samples i
 outer wing strip (maximum difference below 3e-16 sheet units); its shorter
 horizontal span comes from raising those strips. The body-only revision is
 a pure translation of those held samples (residual below 2e-16 sheet units).
-Fresh generation reproduces 90 archives/exports byte for byte, and all
-70 single SVG extents match the
-shared camera bounds.
+Fresh generation reproduces 226 archives/exports byte for byte. All 198
+single SVGs share their camera bounds, and independent nearest-surface
+samples pass for all 99 shape/view combinations after the clipping fix.
+Moving the slider cannot silently refit the drawing.
 The GLB coordinates agree with FOLD within 0.00068 pixels, bounded by the
 existing span-dependent export rounding. The first candidate and wider target
 retain their positions. Original holds and the raw failed correction remain
@@ -97,7 +122,9 @@ connected material, finite positions and distinct wings without a material solve
 Regenerate the comparison with `--whole-crane-view build/fold-material`, or
 create a fresh archive using the committed body fixture and `--whole-crane-start`
 command in the [study README](../../study/fold-material/README.md). The gallery
-now defaults to previous versus narrower body.
+now defaults to previous versus the middle wing-spread setting, which is the
+same narrower body. Wing spread is available when the candidate selector says
+“Adjust wing spread”; earlier shapes remain selectable.
 `whole-crane/body-width-comparison.svg` and `body-width-top-comparison.svg`
 export that pair; `narrow-comparison.svg` compares the closed crane with the
 latest target. The earlier pillow and compact files remain.

@@ -321,7 +321,9 @@ acceptance. [The whole-crane note](notes/whole-crane-candidate.md) records the
 failed control and the visual proposal's material defects. `pillowCrane` adds
 an authored cushion and wing target; `compactPillowCrane` narrows its body and
 raises the same wing arches; `narrowPillowCrane` further narrows only that
-body. All use material-distance-weighted graph
+body. `pillowCraneAtSpread` varies its wing angle with the cushion fixed; the
+gallery exports five separately constructed settings, with no browser-side
+mesh interpolation. All use material-distance-weighted graph
 continuation into the attached paper. It is not a new physical solver. The
 [pillow note](notes/crane-pillow-target.md) records its large distortion and
 the fixture's negative-Y-up camera convention.

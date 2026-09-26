@@ -45,10 +45,14 @@ stack run senbazuru-material-study -- --whole-crane-start study/fold-material/fi
 This constructs the first static candidate and a pillow-shaped visual target
 without a new material solve. `whole-crane.html` compares either against the
 closed crane or first candidate, and defaults to previous versus narrower
-body. The first revision narrows the body by 25% and raises the wing arches
+body at the middle wing-spread setting. The slider selects five independently
+constructed static shapes with the slim body fixed; it is not an inflation
+percentage or checked motion. The first revision narrows the body by 25% and raises the wing arches
 by 35°. The latest revision narrows the body another third, keeping those
 wing angles and curves. Earlier targets stay available. Upright, above-body
-and side cameras sit alongside the earlier views. Plain/two-sided SVGs and
+and side cameras sit alongside opposite-side, low-angle, head and tail views
+and the earlier cameras. The selected shape has matching measurements and
+FOLD/GLB download links. Plain/two-sided SVGs and
 complete FOLD/GLB exports share the same geometry. All remain unaccepted
 shape sketches with substantial material distortion. The
 [study note](../../docs/notes/crane-pillow-target.md) records the references,

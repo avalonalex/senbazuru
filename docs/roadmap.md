@@ -125,7 +125,10 @@ reducing span 20.13%. It remains invalid (60.96% edge error, 164.60% local stret
 314 crossings). A further body-only revision reduces width another third
 (186.40 → 124.26 px), keeping the raised wing curves; it remains invalid
 (58.04% edge error, 152.17% local stretch, 266 crossings). All targets are
-available at the same camera and scale. No further material relaxation runs.
+available at the same camera and scale. A five-stop wing-spread slider keeps
+the slimmer body fixed; four additional cameras expose the opposite side,
+lower view, head and tail. These remain independent shape sketches. No further
+material relaxation runs.
 **Review these silhouettes and proportions next**, then decide how the attached
 paper can accommodate a useful target; its exact dimensions are not proven
 feasible. Do not treat

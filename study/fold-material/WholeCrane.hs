@@ -17,7 +17,7 @@
 -- and prescribing a broad, shallow cushion with outward wings. It keeps the
 -- same connected material but greatly distorts it. Neither construction is an
 -- accepted paper pose; the gallery reports their defects beside the drawings.
-module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, wholeMeasurements) where
+module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -147,6 +147,17 @@ compactPillowCrane = pillowCraneWith 0.75 (-(5 * pi / 18))
 -- with their roots. This isolates body width from a change of wing angle.
 narrowPillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
 narrowPillowCrane = pillowCraneWith 0.5 (-(5 * pi / 18))
+
+-- | An authored wing-spread control on the same narrow cushion. Zero holds
+-- the wings higher (a -70-degree root tangent); one lowers them outward
+-- (-30 degrees). Neither endpoint is the closed crane or a physical limit.
+-- The midpoint reproduces 'narrowPillowCrane'. Each setting constructs new
+-- anchors and continues their displacement, rather than interpolating meshes.
+-- This changes the silhouette, not the status of these invalid paper shapes.
+pillowCraneAtSpread :: Double -> WholeCrane -> Either SpreadError MaterialMesh
+pillowCraneAtSpread amount study = do
+  unless (amount >= 0 && amount <= 1) (bad "pillow wing spread must be finite and between zero and one")
+  pillowCraneWith 0.5 (-(5 * pi / 18) + (amount - 0.5) * (2 * pi / 9)) study
 
 -- The first parameter changes only the body's width across the wings. The
 -- second is the wing tangent angle at the body rim; negative angles point up
