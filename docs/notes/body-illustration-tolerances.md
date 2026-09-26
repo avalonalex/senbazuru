@@ -79,17 +79,14 @@ picture. A 150 mm sheet would make one drawing pixel 0.25 mm and `1e-7` sheet
 units 15 nm. That conversion is a scale example, not an assumed physical
 thickness or a claim about real measurement precision.
 
-**Next:** make a bounded visible-layer comparison of the recovered seed and
-second correction. Use their declared layer orders to resolve small depth ties
-under the proposed illustration allowance, keep the original geometry, and
-compare silhouette/crease/exposed-colour masks in the four cameras. Report any
-unsupported region. Do not start another contact repair or more accurate
-constrained solve just to satisfy the old numerical verdict. The original
-fine endpoint and angle-derived seed remain useful rejection controls. If the
-small-case rendering is credible, review it as an approximate static illustration
-and spend further material work on a useful opening rather than on these tiny
-crossings. The [body blocker](body-overlap-restoration.md) remains documented;
-a useful opened body and its interaction with the full crane are still unfinished.
+**Follow-up:** [#391 compares visible layers](body-visible-layers.md) under
+this allowance, with original geometry and strict verdicts unchanged. It
+reports actual-size silhouette, crease and exposed-colour differences, retaining
+uncovered regions as uncertainty. Review those approximate illustrations before
+assessing a useful opening. The original fine endpoint and angle-derived seed
+remain rejection controls. Do not resume contact repairs merely to satisfy the
+old numerical verdict. The [body blocker](body-overlap-restoration.md) remains
+documented; useful body opening and full-crane interaction are unfinished.
 
 Reproduce from the existing `body-subdivision/`, `body-patch/` and
 `body-crease-seed/` archives, without rerunning their generators:

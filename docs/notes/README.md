@@ -111,6 +111,7 @@ read the Haddock module headers; for the domain, start with
 | [body-overlap-restoration.md](body-overlap-restoration.md) | One overlap repair clears 14–55 but fails neighboring 55–93 guards |
 | [body-barrier-comparison.md](body-barrier-comparison.md) | Pause pair-by-pair repairs; bound initialization and a matched body barrier/penalty comparison |
 | [body-separated-initialization.md](body-separated-initialization.md) | A bounded joint construction tests whether the saved body can enter the contact barrier |
+| [body-visible-layers.md](body-visible-layers.md) | Inherited order resolves shallow wrong-side depth without moving saved paper; compare exposed regions and retain tiny coverage uncertainty |
 | [body-illustration-tolerances.md](body-illustration-tolerances.md) | Saved body errors at drawing size, provisional review screens and the remaining visibility limitation |
 | [body-angle-audit.md](body-angle-audit.md) | Exact arithmetic audits the saved selected equations without new body solves |
 | [body-angle-contact.md](body-angle-contact.md) | Considering inherited layer overlaps and loop closure together during crease-angle construction |

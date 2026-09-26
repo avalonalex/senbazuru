@@ -36,6 +36,19 @@ future general curved-surface visibility renderer.
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
 
+To compare the recovered seed and second correction with a declared visual
+layer-order allowance, without new solves:
+
+```bash
+stack run senbazuru-material-study -- --body-visible-layers build/fold-material/body-subdivision build/fold-material
+```
+
+Open `body-visible-layers.html` for two-colour paper, source-panel masks and
+changes in silhouette, exposed colour and crease ink at actual size and 4×.
+Strict results remain separate; uncovered paper is shown and included in
+comparison uncertainty. The allowance changes visibility only, not geometry.
+See [the visible-layer comparison](../../docs/notes/body-visible-layers.md).
+
 To assess the saved body poses at illustration scale, without new solves:
 
 ```bash
