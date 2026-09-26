@@ -129,6 +129,18 @@ production-validated candidate is drawn as shared paper. The saved angle-only
 start stays visible if the construction fails; no barrier or material solve runs.
 See [the contact-aware angle study](../../docs/notes/body-angle-contact.md).
 
+Audit the saved direction without regenerating the body:
+
+```bash
+stack run senbazuru-material-study -- --body-angle-audit study/fold-material/fixtures/body-angle-linear.json build/fold-material
+```
+
+Open `body-angle-audit.html`. The frozen equations include every original row,
+selected constraint and scale from #386. Exact arithmetic and one rounding to
+Double pass all saved linear gates; no new body pose is evaluated or accepted.
+The snapshot records the source report's SHA256 and omits only unused zero y/z
+coordinates. See [the audit](../../docs/notes/body-angle-audit.md).
+
 ```bash
 stack run senbazuru-material-study -- --body-crease-seed build/fold-material
 ```

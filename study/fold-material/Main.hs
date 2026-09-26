@@ -7,6 +7,7 @@ import BendLocationsGallery (writeBendLocations)
 import BendRefinementGallery (writeBendRefinement)
 import BendingGallery (writeBendingStudy)
 import BlintzGallery (writeBlintzGallery)
+import BodyAngleAuditGallery (writeBodyAngleAudit)
 import BodyAngleContactGallery (writeBodyAngleContact)
 import BodyContactGallery (writeBodyContact)
 import BodyContinuationGallery (writeBodyContinuation)
@@ -100,6 +101,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
+    ["--body-angle-audit", source, destination] -> writeBodyAngleAudit source destination
     ["--body-angle-contact", source, destination] -> writeBodyAngleContact source destination
     ["--body-crease-seed", destination] -> writeBodyCreaseSeed destination
     ["--body-feasibility", source, destination] -> writeBodyFeasibility source destination

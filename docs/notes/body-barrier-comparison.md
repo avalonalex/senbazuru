@@ -114,3 +114,12 @@ The first direction fails original-row checks after 34 inner iterations; no
 angle correction or geometry trial is retained. This is a numerical solver
 blocker, not a proof that a valid layer arrangement cannot exist. The same
 intersecting start remains, so the body barrier comparison still cannot run.
+
+**Saved-equation audit, 2026-09-24:**
+[#387](https://github.com/avalonalex/senbazuru/issues/387)
+[recalculates the same selected equalities exactly](body-angle-audit.md).
+All 1,204 inequalities pass, including after rounding the result once to Double.
+This isolates a numerical accuracy failure in the saved direction, without a
+new body solve or changed pose. Compare a more stable selected-system
+calculation against this reference before another construction; the matched
+barrier comparison still needs an accepted separated start.

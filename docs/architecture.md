@@ -510,6 +510,11 @@ triangle corners. Inherited overlap gaps and loop mismatches share a bounded
 construction objective; none of those corners can become paper until production
 folding validates closure. `BodyAngleContactGallery` archives the constrained
 directions and actual trial refusals. See [contact-aware angles](notes/body-angle-contact.md).
+`QuadraticAudit` audits a fixed selected equality system with exact rational
+arithmetic, retaining every inequality for verification. `QuadraticAuditArchive`
+reads its frozen scalar equations; `BodyAngleAuditGallery` reports their residuals
+without importing body geometry or an optimization search. See
+[the saved-equation audit](notes/body-angle-audit.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
