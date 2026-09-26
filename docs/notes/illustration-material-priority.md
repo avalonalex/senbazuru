@@ -21,9 +21,13 @@ supply the reproducible geometry/solver blocker permitted by this milestone.
 An accepted opened body remains unfinished. The [barrier comparison](body-barrier-comparison.md)
 could not start from the subsequent initialization attempts. The
 [saved-equation audit](body-angle-audit.md) is a numerical reference, not a new
-accuracy prerequisite. Pause individual-pair repairs and precision work; first
-compare visible layers on the recovered seed and second correction, whose
-contact defects are below the proposed drawing screens.
+accuracy prerequisite. Pause individual-pair repairs and precision work; review the
+[visible-layer comparison](body-visible-layers.md). The unchanged recovered
+seed and second correction now have two-colour illustrations under a declared
+0.1 px depth allowance. All pairwise overlaps resolve; three views retain tiny
+coverage uncertainty. Review their masks at actual size, then assess one
+bounded useful opening if credible. Repairing invisible strict residuals is
+not a prerequisite.
 
 The [saved 512-triangle layouts](held-layout-costs.md) differ by 10.36% in
 passive bending cost, which penalizes bending within panels between creases.
