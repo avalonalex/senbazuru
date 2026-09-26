@@ -31,6 +31,13 @@ declared 0.1 px screen. Retain that unsettled specimen for explicit visual
 review before more solver work. No tolerance is widened after seeing the
 result, and individual-pair repairs remain paused.
 
+**Whole-crane milestone, 2026-09-26:** the owner accepts the tiny buried
+body-patch crossing as intermediate evidence and asks for one complete static
+candidate with a clear before/after drawing. [#397's proposal](whole-crane-candidate.md)
+now provides that target, retaining substantial whole-sheet strain and crossing
+failures. Its silhouette must be reviewed before more material work; neither
+plain colouring nor the accepted body-only exception approves the full candidate.
+
 The [saved 512-triangle layouts](held-layout-costs.md) differ by 10.36% in
 passive bending cost, which penalizes bending within panels between creases.
 Yet corresponding material positions differ by at most `0.000849586` of the
