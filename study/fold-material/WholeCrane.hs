@@ -17,7 +17,7 @@
 -- and prescribing a broad, shallow cushion with outward wings. It keeps the
 -- same connected material but greatly distorts it. Neither construction is an
 -- accepted paper pose; the gallery reports their defects beside the drawings.
-module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, wholeMeasurements) where
+module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -133,7 +133,20 @@ type Fit = (V3, V3, V3, V3)
 -- This is authored geometry, not a pressure or material solve. In particular
 -- the graph continuation may strain the collars; retain their diagnostics.
 pillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
-pillowCrane study = do
+pillowCrane = pillowCraneWith 1 (-(pi / 12))
+
+-- | A less spread visual target: narrow the cushion across the wings by 25%
+-- and raise each wing arch by 35 degrees. The arch keeps its length and turn;
+-- reducing its horizontal reach does not shorten the wing or scale a drawing.
+-- This is another static construction, not a motion from the wider target.
+compactPillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
+compactPillowCrane = pillowCraneWith 0.75 (-(5 * pi / 18))
+
+-- The first parameter changes only the body's width across the wings. The
+-- second is the wing tangent angle at the body rim; negative angles point up
+-- because this fixture's negative Y is up. Both targets use a 30-degree arch.
+pillowCraneWith :: Double -> Double -> WholeCrane -> Either SpreadError MaterialMesh
+pillowCraneWith bodyWidthScale start study = do
   let fixture = wholeSpread study
       base = refinedMesh (spreadRefined fixture)
       original = IM.fromList (zip [0 ..] (samples base))
@@ -144,7 +157,7 @@ pillowCrane study = do
             x = (1 - u - v) / sqrt 2
             z = (u - v) / sqrt 2
             dome = max 0 (1 - (x / radius) ^ (2 :: Int)) * max 0 (1 - (z / radius) ^ (2 :: Int))
-         in V3 (1 + x) (0.44 - 0.045 * dome) z
+         in V3 (1 + x) (0.44 - 0.045 * dome) (bodyWidthScale * z)
       anchors = IM.map cushion (IM.filterWithKey (\i _ -> S.member i (wholeCore study)) original)
   -- Spread the outer wing strips as shallow circular arches. Holding entire
   -- strips, rather than only two tips, names the intended wing orientation.
@@ -154,11 +167,10 @@ pillowCrane study = do
             v3y (position p) <= 0.25 + 1e-9 ->
               let V3 x y _ = position p
                   len = 0.5 - y
-                  start = -(pi / 12)
                   turn = (pi / 6) / 0.5
                   angle = start + turn * len
                   side = if r == WingA then -1 else 1
-               in Just (V3 x (0.44 + (cos start - cos angle) / turn) (side * (radius + (sin angle - sin start) / turn)))
+               in Just (V3 x (0.44 + (cos start - cos angle) / turn) (side * (bodyWidthScale * radius + (sin angle - sin start) / turn)))
         _ -> Nothing
       wingAnchors = IM.mapMaybeWithKey wingTarget original
       targets = IM.union anchors wingAnchors

@@ -119,7 +119,11 @@ geometry; neither certifies contact. The owner found the drawing broken.
 [#399's pillow target](notes/crane-pillow-target.md) adds correctly upright
 cameras and a broad cushion with outward wings. It is only a shape sketch:
 104.48% edge error and 261.46% local stretch make its material distortion worse,
-despite fewer strict crossing pairs (257). No further material relaxation runs.
+despite fewer strict crossing pairs (257). The owner found that target too wide;
+a less spread variant narrows the body 25% and raises the same wing arches 35°,
+reducing span 20.13%. It remains invalid (60.96% edge error, 164.60% local stretch,
+314 crossings). Both are available at the same camera and scale. No further
+material relaxation runs.
 **Review these silhouettes and proportions next**, then decide how the attached
 paper can accommodate a useful target; its exact dimensions are not proven
 feasible. Do not treat

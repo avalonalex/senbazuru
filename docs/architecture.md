@@ -319,7 +319,8 @@ clips projected triangles by actual camera depth even at intersections, solely
 for diagnostic shape review. It does not replace `Render.Projected` or contact
 acceptance. [The whole-crane note](notes/whole-crane-candidate.md) records the
 failed control and the visual proposal's material defects. `pillowCrane` adds
-an authored cushion and wing target, with material-distance-weighted graph
+an authored cushion and wing target; `compactPillowCrane` narrows its body and
+raises the same wing arches. Both use material-distance-weighted graph
 continuation into the attached paper. It is not a new physical solver. The
 [pillow note](notes/crane-pillow-target.md) records its large distortion and
 the fixture's negative-Y-up camera convention.

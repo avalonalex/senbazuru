@@ -2,7 +2,7 @@
 module WholeCraneSpec (spec) where
 
 import BodyPatch
-import Control.Monad (when)
+import Control.Monad (forM_, when)
 import CranePocket
 import CraneSpread
 import Data.Either (isLeft)
@@ -67,30 +67,31 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     wholeCrane atlas patch saved {samples = [p {sampleMaterial = sampleMaterial p ^+^ V2 0.01 0} | p <- samples saved]} `shouldSatisfy` isLeft
     wholeCrane atlas patch saved {triangles = drop 1 (triangles saved)} `shouldSatisfy` isLeft
 
-  it "opens a pillow on the same sheet with separate wings and intact tips" $ \(_, _, study) -> do
-    mesh <- right (pillowCrane study)
-    let base = refinedMesh (spreadRefined (wholeSpread study))
-        points = IM.fromList (zip [0 ..] (map position (samples mesh)))
-        tip name = lookup name (wholeMarks study) >>= (`IM.lookup` points)
-    triangles mesh `shouldBe` triangles base
-    map sampleMaterial (samples mesh) `shouldBe` map sampleMaterial (samples base)
-    componentCount mesh `shouldBe` 1
-    length (samples mesh) - length (meshEdges mesh) + length (triangles mesh) `shouldBe` 1
-    all (\p -> all (\v -> not (isNaN v || isInfinite v)) [v3x p, v3y p, v3z p]) (IM.elems points) `shouldBe` True
-    case (tip "wing-a", tip "wing-b", tip "neck-head", tip "tail") of
-      (Just a, Just b, Just neck, Just tailTip) -> do
-        v3z a * v3z b `shouldSatisfy` (< 0)
-        norm (a ^-^ b) `shouldSatisfy` (> 0.5)
-        v3x neck `shouldSatisfy` (< 1)
-        v3x tailTip `shouldSatisfy` (> 1)
-      _ -> expectationFailure "missing pillow landmarks"
-    -- Negative Y is up: a cushion's centre stands above its rim, while its
-    -- width spans both sides of the old flat packet's Z=0 plane.
-    case tip "centre" of
-      Just centre -> v3y centre `shouldSatisfy` (< 0.44)
-      _ -> expectationFailure "missing pillow centre"
-    values <- right (wholeMeasurements study mesh)
-    lookup "bodyDepth" values `shouldSatisfy` maybe False (> 0.2)
+  forM_ [("a wide pillow", pillowCrane), ("a less spread pillow", compactPillowCrane)] $ \(description, makePillow) ->
+    it ("opens " ++ description ++ " on the same sheet with separate wings and intact tips") $ \(_, _, study) -> do
+      mesh <- right (makePillow study)
+      let base = refinedMesh (spreadRefined (wholeSpread study))
+          points = IM.fromList (zip [0 ..] (map position (samples mesh)))
+          tip name = lookup name (wholeMarks study) >>= (`IM.lookup` points)
+      triangles mesh `shouldBe` triangles base
+      map sampleMaterial (samples mesh) `shouldBe` map sampleMaterial (samples base)
+      componentCount mesh `shouldBe` 1
+      length (samples mesh) - length (meshEdges mesh) + length (triangles mesh) `shouldBe` 1
+      all (\p -> all (\v -> not (isNaN v || isInfinite v)) [v3x p, v3y p, v3z p]) (IM.elems points) `shouldBe` True
+      case (tip "wing-a", tip "wing-b", tip "neck-head", tip "tail") of
+        (Just a, Just b, Just neck, Just tailTip) -> do
+          v3z a * v3z b `shouldSatisfy` (< 0)
+          norm (a ^-^ b) `shouldSatisfy` (> 0.5)
+          v3x neck `shouldSatisfy` (< 1)
+          v3x tailTip `shouldSatisfy` (> 1)
+        _ -> expectationFailure "missing pillow landmarks"
+      -- Negative Y is up: a cushion's centre stands above its rim, while its
+      -- width spans both sides of the old flat packet's Z=0 plane.
+      case tip "centre" of
+        Just centre -> v3y centre `shouldSatisfy` (< 0.44)
+        _ -> expectationFailure "missing pillow centre"
+      values <- right (wholeMeasurements study mesh)
+      lookup "bodyDepth" values `shouldSatisfy` maybe False (> 0.2)
 
 load :: IO (PocketMap, BodyPatch, WholeCrane)
 load = do
