@@ -1,4 +1,4 @@
--- | One connected, prescribed whole-crane starting shape for visual review.
+-- | Connected, prescribed whole-crane shapes for visual review.
 -- The saved body is a cut-out specimen. Here its material coordinates locate
 -- the same paper on the full sheet; original shared vertex ids do the joining,
 -- never proximity in the folded stack. The central body is held at its saved
@@ -12,7 +12,12 @@
 -- sampled by triangles, not a rendered curve concealing different geometry.
 -- No interpolation here describes a physical folding motion. See the material
 -- coordinates and panels in docs/glossary.md.
-module WholeCrane (WholeCrane (..), wholeCrane, wholeMeasurements) where
+--
+-- 'pillowCrane' provides a separate visual target by releasing that saved body
+-- and prescribing a broad, shallow cushion with outward wings. It keeps the
+-- same connected material but greatly distorts it. Neither construction is an
+-- accepted paper pose; the gallery reports their defects beside the drawings.
+module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -121,6 +126,54 @@ interpolateMaterial _ _ = Nothing
 
 type Fit = (V3, V3, V3, V3)
 
+-- | A second static shape proposal, with the body released from the saved
+-- ten-degree specimen. In this fixture negative Y is UP: X runs from head to
+-- tail and Z separates the wings. The original central material is spread
+-- over a shallow cushion, and the four attached sectors follow its rim.
+-- This is authored geometry, not a pressure or material solve. In particular
+-- the graph continuation may strain the collars; retain their diagnostics.
+pillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
+pillowCrane study = do
+  let fixture = wholeSpread study
+      base = refinedMesh (spreadRefined fixture)
+      original = IM.fromList (zip [0 ..] (samples base))
+      memberships = IM.fromListWith S.union [(i, S.singleton r) | (tri, owner) <- zip (triangles base) (refinedPanels (spreadRefined fixture)), Just r <- [M.lookup owner (pocketRegions (wholeMap study))], i <- vertices tri]
+      radius = (sqrt 2 - 1) / 2
+      cushion p =
+        let V2 u v = sampleMaterial p
+            x = (1 - u - v) / sqrt 2
+            z = (u - v) / sqrt 2
+            dome = max 0 (1 - (x / radius) ^ (2 :: Int)) * max 0 (1 - (z / radius) ^ (2 :: Int))
+         in V3 (1 + x) (0.44 - 0.045 * dome) z
+      anchors = IM.map cushion (IM.filterWithKey (\i _ -> S.member i (wholeCore study)) original)
+  -- Spread the outer wing strips as shallow circular arches. Holding entire
+  -- strips, rather than only two tips, names the intended wing orientation.
+  let wingTarget i p = case S.toList (IM.findWithDefault S.empty i memberships) of
+        [r]
+          | r `elem` [WingA, WingB],
+            v3y (position p) <= 0.25 + 1e-9 ->
+              let V3 x y _ = position p
+                  len = 0.5 - y
+                  start = -(pi / 12)
+                  turn = (pi / 6) / 0.5
+                  angle = start + turn * len
+                  side = if r == WingA then -1 else 1
+               in Just (V3 x (0.44 + (cos start - cos angle) / turn) (side * (radius + (sin angle - sin start) / turn)))
+        _ -> Nothing
+      wingAnchors = IM.mapMaybeWithKey wingTarget original
+      targets = IM.union anchors wingAnchors
+      restDistance a b = case (IM.lookup a original, IM.lookup b original) of
+        (Just p, Just q) -> norm (sampleMaterial p ^-^ sampleMaterial q)
+        _ -> 0
+  unless (all (\(a, b) -> restDistance a b > 0) (meshEdges base)) (bad "pillow continuation needs positive material edge lengths")
+  -- A uniform graph weight can put most displacement across a tiny material
+  -- edge. Penalise relative displacement instead. This smooths an authored
+  -- guess; it still cannot enforce paper lengths or contact.
+  continued <- continueDisplacementsWith (\a b -> 1 / restDistance a b) base (IM.map position original) targets
+  let moved = base {samples = [p {position = IM.findWithDefault (position p) i continued} | (i, p) <- IM.toList original]}
+  _ <- spreadSurface fixture moved
+  pure moved
+
 -- Least-squares plane tangents, made perpendicular and unit length so the
 -- continuation itself is rigid. It cannot satisfy every deformed attachment;
 -- the graph correction below carries those residuals into the remaining sheet.
@@ -148,13 +201,16 @@ applyFit :: Fit -> V3 -> V3
 applyFit (from, to, ex, ey) p = let V3 x y z = p ^-^ from in to ^+^ x *^ ex ^+^ y *^ ey ^+^ z *^ cross ex ey
 
 continueDisplacements :: MaterialMesh -> IM.IntMap V3 -> IM.IntMap V3 -> Either SpreadError (IM.IntMap V3)
-continueDisplacements mesh baseline anchors = do
+continueDisplacements = continueDisplacementsWith (\_ _ -> 1)
+
+continueDisplacementsWith :: (Int -> Int -> Double) -> MaterialMesh -> IM.IntMap V3 -> IM.IntMap V3 -> Either SpreadError (IM.IntMap V3)
+continueDisplacementsWith weight mesh baseline anchors = do
   let free = IM.keys (IM.difference baseline anchors)
       freeSet = S.fromList free
       edges = meshEdges mesh
-      rows = [IM.fromList [(i, s) | (i, s) <- [(a, 1), (b, -1)], S.member i freeSet] | (a, b) <- edges]
+      rows = [IM.fromList [(i, weight a b * s) | (i, s) <- [(a, 1), (b, -1)], S.member i freeSet] | (a, b) <- edges]
       residual i = IM.findWithDefault (V3 0 0 0) i anchors ^-^ IM.findWithDefault (V3 0 0 0) i baseline
-      rhs = IM.fromListWith (^+^) [(a, residual b) | (i, j) <- edges, (a, b) <- [(i, j), (j, i)], S.member a freeSet, IM.member b anchors]
+      rhs = IM.fromListWith (^+^) [(a, (weight a b * weight a b) *^ residual b) | (i, j) <- edges, (a, b) <- [(i, j), (j, i)], S.member a freeSet, IM.member b anchors]
   factor <- maybe (bad "cannot continue the body displacement through the full sheet") Right (factorNormal 1e-12 free rows)
   let solve coordinate = applyFactor factor (IM.map coordinate rhs)
       xs = solve v3x

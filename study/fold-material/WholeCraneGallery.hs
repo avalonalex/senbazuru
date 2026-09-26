@@ -136,7 +136,8 @@ viewWholeCrane destination = do
         unless (take 1 savedIndices == [0] && take 1 (reverse savedIndices) == [length trace] && and (zipWith (<) savedIndices (drop 1 savedIndices))) (die "whole-crane checkpoint sequence is incomplete or unordered")
         case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
       else pure guess
-  let states = [("before", "Closed crane", before), ("after", "Opened crane · prescribed static candidate", guess)] ++ [("correction", "Refused material adjustment · diagnostic", endpoint) | exists]
+  pillow <- checked (pillowCrane study)
+  let states = [("before", "Closed crane", before), ("after", "Opened crane · prescribed static candidate", guess), ("pillow", "Pillow body · visual target", pillow)] ++ [("correction", "Refused material adjustment · diagnostic", endpoint) | exists]
   measurements <- forM states $ \(name, title, mesh) -> do
     sheet <- checked (spreadSurface fixture mesh)
     contact <- checked (spreadCheck fixture mesh)
@@ -154,12 +155,12 @@ viewWholeCrane destination = do
     putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
     hFlush stdout
     pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles])
-  views <- forM [("oblique", "Side · 45° above", V3 (-1) 1 (sqrt 2)), ("reverse", "Reverse · 45° above", V3 1 1 (sqrt 2)), ("front", "Front", V3 0 1 0.2), ("below", "From below", V3 (-1) 1 (-sqrt 2))] $ \(viewId, title, direction) -> do
-    basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction (V3 0 0 1))
-    bounds <- checked (sharedExtent basis [before, guess])
+  views <- forM [("upright", "Crane upright · three-quarter", V3 1 (sqrt 2) (-1), V3 0 (-1) 0), ("top", "Above the body · slight tilt", V3 0 1 0.15, V3 (-1) 0 0), ("side", "Crane upright · side", V3 0 0 (-1), V3 0 (-1) 0), ("oblique", "Earlier camera · Z up", V3 (-1) 1 (sqrt 2), V3 0 0 1), ("reverse", "Earlier reverse · Z up", V3 1 1 (sqrt 2), V3 0 0 1), ("front", "Earlier front · Z up", V3 0 1 0.2, V3 0 0 1), ("below", "Under the body · slight tilt", V3 0 (-1) 0.15, V3 1 0 0)] $ \(viewId, title, direction, up) -> do
+    basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction up)
+    bounds <- checked (sharedExtent basis [before, guess, pillow])
     let page = illustrationPage title bounds
         owners = refinedPanels (spreadRefined fixture)
-    shown <- forM [("before", before), ("after", guess)] $ \(name, mesh) -> do
+    shown <- forM [("before", before), ("after", guess), ("pillow", pillow)] $ \(name, mesh) -> do
       sheet <- checked (spreadSurface fixture mesh)
       let frame = surfaceFrame sheet
       inherited <- checked (inheritedOrders fixture frame)
@@ -174,14 +175,16 @@ viewWholeCrane destination = do
       writeSvg output page bounds stem shapes
       writeSvg output page bounds (stem ++ "-colours") (colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)])
       pure (shapes, object ["id" .= name, "stem" .= stem, "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]])
-    when (viewId == "oblique") $ do
+    when (viewId `elem` ["oblique", "upright", "top"]) $ do
       let Box (V2 x0 y0) (V2 x1 y1) = bounds
           labelledBounds = Box (V2 x0 y0) (V2 x1 (y1 + 0.08))
-          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) label : shapes) | (label, (shapes, _)) <- zip ["Before · closed crane", "After · prescribed candidate"] shown]
+          selected = if viewId == "oblique" then take 2 shown else take 1 shown ++ drop 2 shown
+          labels = if viewId == "oblique" then ["Before · closed crane", "First opened candidate"] else ["Before · closed crane", "Pillow-shaped proposal"]
+          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) label : shapes) | (label, (shapes, _)) <- zip labels selected]
       drawing <- maybe (die "no comparison figures") pure (gridOf (Grid 2 0.12 Nothing) figures)
-      TIO.writeFile (output </> "comparison.svg") (renderSvg (illustrationPage "Whole crane: before and after" (diagramExtent drawing)) drawing)
-    pure (object ["id" .= viewId, "title" .= title, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= map snd shown])
-  let report = object ["issue" .= (397 :: Int), "newSolves" .= (if exists then 1 else 0 :: Int), "illustrationAccepted" .= False, "motionChecked" .= False, "inflationSimulated" .= False, "states" .= measurements, "views" .= views, "run" .= run, "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)]]
+      TIO.writeFile (output </> (case viewId of "upright" -> "pillow-comparison.svg"; "top" -> "pillow-top-comparison.svg"; _ -> "comparison.svg")) (renderSvg (illustrationPage "Whole crane: before and after" (diagramExtent drawing)) drawing)
+    pure (object ["id" .= viewId, "title" .= title, "direction" .= xyz direction, "up" .= xyz up, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= map snd shown])
+  let report = object ["issue" .= (399 :: Int), "newSolves" .= (if exists then 1 else 0 :: Int), "illustrationAccepted" .= False, "motionChecked" .= False, "inflationSimulated" .= False, "states" .= measurements, "views" .= views, "run" .= run, "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)], "pillowConstruction" .= object ["newMaterialSolves" .= (0 :: Int), "savedBodyFixed" .= False, "rimY" .= (0.44 :: Double), "rise" .= (0.045 :: Double), "bodyHalfWidth" .= ((sqrt 2 - 1) / 2 :: Double), "wingArchStartDegrees" .= (-15 :: Double), "wingArchEndDegrees" .= (15 :: Double)]]
   BL.writeFile (output </> "checks.json") (encode report)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
   viewer <- TIO.readFile "study/gltf/viewer.html"
