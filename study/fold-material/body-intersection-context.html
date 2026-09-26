@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A small intersection under the paper</title>
+<style>
+body{margin:0;background:#f5f1e8;color:#303630;font:16px/1.55 system-ui,sans-serif}main{max-width:1120px;margin:36px auto;padding:0 20px}a{color:#315e6a}h1{font-size:2.1rem;line-height:1.2}h2{font-size:1.15rem;margin-bottom:8px}.notice{padding:15px;background:#e9e1d2;border-left:4px solid #ad793c}.controls{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin:22px 0}select{font:inherit;padding:6px;background:#fffaf2}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.scroll{overflow:auto;background:#efeadd;min-height:260px}.canvas{position:relative;margin:auto}.canvas img{display:block;max-width:none}.overlay{position:absolute;inset:0}[hidden]{display:none!important}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:8px;border-bottom:1px solid #d9d2c3;text-align:left}.metrics{overflow:auto}small{display:block}pre{max-height:350px;overflow:auto;white-space:pre-wrap}@media(max-width:750px){.grid{grid-template-columns:1fr}}
+</style><main>
+<a href="index.html">Material study</a> · <a href="body-larger-opening.html">Larger body opening</a>
+<h1>A small intersection under the paper</h1>
+<p>Triangles 2 and 39 cross along <strong id="length">0.232 px</strong> of the saved body. Is that line visible in the drawing, or covered by another layer? This inspection uses the unchanged forty-correction endpoint. It runs no new solve.</p>
+<p class="notice" id="outcome"></p>
+<div class="controls"><label>Camera <select id="camera"></select></label><label><input type="checkbox" id="markers" checked> Show diagnostic markers</label></div>
+<div class="grid">
+<section><h2>Ordinary paper · actual drawing size</h2><div class="scroll"><div class="canvas" id="ordinary"><img id="ordinary-image" alt="Unannotated body at actual drawing size"></div></div><small>600 CSS pixels per sheet side; browser zoom 100%. Never scaled to fit the card.</small></section>
+<section><h2>Where to look · same size</h2><div class="scroll"><div class="canvas" id="located"><img id="located-image" alt="Body with intersection locator"><img class="overlay" id="located-marker" alt="Diagnostic location box"></div></div><small>The pink box is 24 px wide. It locates the crossing; it does not show its size or an exposed defect.</small></section>
+<section><h2>4× local crop</h2><div class="scroll"><div class="canvas" style="width:400px;height:400px"><img id="crop4" width="400" height="400" alt="Four times magnified ordinary paper"><img class="overlay" id="marker4" width="400" height="400" alt="Hidden intersection diagnostic overlay"></div></div></section>
+<section><h2>64× local crop</h2><div class="scroll"><div class="canvas" style="width:400px;height:400px"><img id="crop64" width="400" height="400" alt="Sixty-four times magnified ordinary paper"><img class="overlay" id="marker64" width="400" height="400" alt="Hidden intersection diagnostic overlay"></div></div></section>
+</div>
+<p>Both crops centre on the intersection. Pink is an <strong>x-ray annotation drawn over the covering paper</strong>; turning markers off shows the normal illustration. Its endpoints follow the measured segment, but its 1.5 px line width is diagnostic ink, not a paper gap. At 4× the segment is still shorter than one pixel. At 64× it spans about 12–15 pixels.</p>
+<h2>Coverage of the whole segment</h2>
+<p>Each segment is clipped against every visible triangle piece. Coverage intervals are combined without double-counting. The original triangle planes separately test whether the covering paper really is nearer the camera. The underside view uses the existing depth-tie rule at one tiny end: drawing coverage and geometric depth are not identical. “Depth margin” is distance towards the camera expressed at the drawing scale, not a sideways pixel distance.</p>
+<div class="metrics"><table><thead><tr><th>Camera</th><th>Projected line, px</th><th>Covered, px</th><th>Not geometrically behind, px</th><th>Covering triangle / crane face</th><th>Least depth margin, px</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="status"></p>
+<details><summary>Show the hidden triangles without covering paper</summary><p>Cyan: triangle 2. Purple: triangle 39. Pink: their intersection. Grey: the remaining triangle edges, including hidden ones. This is a diagnostic view, not a normal paper illustration.</p><div class="scroll"><div class="canvas" id="xray"><img id="xray-image" alt="Hidden triangle outlines and crossing"></div></div></details>
+<p class="notice">The saved endpoint still fails strict contact and the provisional 0.1 px intersection-length screen. Hidden in these four views does not mean collision-free, in equilibrium, or safe throughout a motion. This result supports reviewing a static illustration; it changes no geometry, acceptance rule or solver tolerance. The surrounding crane is absent.</p>
+<p><a href="body-intersection-context/checks.json">Coverage measurements</a> · <a href="body-intersection-context/source/endpoint.fold">Unchanged endpoint FOLD</a> · <a href="body-intersection-context/source/run.json">Saved solver run</a></p>
+<details><summary>Selected view diagnostics</summary><pre id="raw"></pre></details>
+</main><script>
+const data=/*INTERSECTION_CONTEXT_DATA*/null;
+const $=id=>document.getElementById(id),num=x=>Number(x).toPrecision(5);
+if(data){
+ $('length').textContent=num(data.intersectionLengthPixels)+' px';
+ const hidden=data.views.every(v=>v.notCoveredInDrawingPixels<1e-8&&v.coverageUncertaintyPixels===0);
+ $('outcome').textContent=hidden?'Other paper covers the entire crossing in all four drawings. Three views also have positive geometric depth throughout; the underside uses the existing layer-order tie at one tiny end. The geometric failure remains recorded.':'Some of the segment is not covered in the drawing. Inspect the per-view coverage and uncertainty below.';
+ for(const v of data.views){
+  const option=document.createElement('option');option.value=v.id;option.textContent=v.title;$('camera').append(option);
+  const row=document.createElement('tr');
+  const covers=[...new Set(v.hits.filter(h=>h.otherPaperDrawnOnTop).map(h=>h.triangle+' / '+h.craneFace))].join(', ');
+  for(const val of [v.title,num(v.projectedLengthPixels),num(v.coveredByOtherPaperPixels),num(v.notGeometricallyHiddenPixels),covers,v.minimumCoverDepthPixels==null?'Unknown':num(v.minimumCoverDepthPixels)]){const cell=document.createElement('td');cell.textContent=val;row.append(cell);}$('rows').append(row);
+ }
+ $('camera').value='above';
+ function draw(){
+  const v=data.views.find(x=>x.id===$('camera').value),prefix='body-intersection-context/'+v.id,markers=$('markers').checked;
+  for(const [id,suffix] of [['ordinary','paper'],['located','paper'],['xray','xray']]){const box=$(id),img=$(id+'-image');box.style.width=v.width+'px';box.style.height=v.height+'px';img.style.width=v.width+'px';img.style.height=v.height+'px';img.src=prefix+'-'+suffix+'.svg';}
+  const locator=$('located-marker');locator.style.width=v.width+'px';locator.style.height=v.height+'px';locator.src=prefix+'-locator.svg';locator.hidden=!markers;
+  for(const zoom of [4,64]){$('crop'+zoom).src=prefix+'-crop-'+zoom+'.svg';$('marker'+zoom).src=prefix+'-crop-'+zoom+'-marker.svg';$('marker'+zoom).hidden=!markers;}
+  $('status').textContent=v.title+': '+v.visibilityStatus+'. Segment coverage uncertainty: '+num(v.coverageUncertaintyPixels)+' px. '+(v.visibilityStatus.includes('partial')?'A tiny uncovered patch elsewhere in this view is retained in red; it does not touch the measured segment.':'');
+  $('raw').textContent=JSON.stringify({...v,visiblePieces:undefined},null,2);
+ }
+ $('camera').addEventListener('change',draw);$('markers').addEventListener('change',draw);draw();
+}
+</script></html>

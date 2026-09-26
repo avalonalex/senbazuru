@@ -57,6 +57,18 @@ energies remain available. The 0.1 px distance and 0.1% strain screens do not
 certify a path, mechanical equilibrium or an attached whole crane. See
 [the bounded opening study](../../docs/notes/body-larger-opening.md).
 
+To inspect the saved endpoint's 0.232 px intersection in drawing context:
+
+```bash
+stack run senbazuru-material-study -- --body-intersection-context build/fold-material/body-larger-opening build/fold-material
+```
+
+This reads the unchanged raw archive and checks the exported endpoint against
+it. Open `body-intersection-context.html`: ordinary paper, a 24 px locator,
+4×/64× local crops and optional hidden triangle outlines. Full-segment coverage
+and actual plane depth are reported separately. No solve or tolerance change
+runs; see [the intersection inspection](../../docs/notes/body-intersection-context.md).
+
 To compare the recovered seed and second correction with a declared visual
 layer-order allowance, without new solves:
 

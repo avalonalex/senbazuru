@@ -71,8 +71,10 @@ seed's earlier top/below coverage residuals remain in comparison uncertainty.
 At actual size, the side views show a wider lower opening and more cream inner
 paper; magnification keeps the small numerical residuals inspectable.
 
-**Next:** review this visibly opened static specimen and the small failed
-intersection in drawing context before choosing any follow-up. Do not resume
+**Follow-up:** [the drawing-context inspection](body-intersection-context.md)
+locates the small failed intersection under other paper in all four drawings,
+with one tiny underside depth tie. Review this static specimen before choosing
+any follow-up. Do not resume
 individual-pair precision repairs or extend the solve automatically. This
 experiment supplies an inspectable larger opening, not an accepted whole-crane
 inflation or proof that a broader parameter range works.

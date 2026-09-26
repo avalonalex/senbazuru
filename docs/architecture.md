@@ -515,6 +515,12 @@ arithmetic, retaining every inequality for verification. `QuadraticAuditArchive`
 reads its frozen scalar equations; `BodyAngleAuditGallery` reports their residuals
 without importing body geometry or an optimization search. See
 [the saved-equation audit](notes/body-angle-audit.md).
+`BodyOpeningArchive` shares the validated raw-checkpoint reader between the
+larger-opening gallery and `BodyIntersectionContextGallery`. The latter uses
+`BodyIntersectionContext` to clip an intersection segment against visible
+pieces and bound original-plane depth. It separates drawing coverage from
+actual geometric separation, and calls no solver; see
+[the intersection inspection](notes/body-intersection-context.md).
 `CraneBody` selects the mapped candidate creases incident to the small
 `CraneRoot` free patch and changes only their angular preferences. It keeps
 original crease targets separately from edited spring targets, so the strict
