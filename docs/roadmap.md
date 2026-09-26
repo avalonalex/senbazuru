@@ -5,7 +5,7 @@ foundation and three open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
 snapshot and will drift, so it carries a date: **as of 2026-09-20**, with
-**Track A's material priority refreshed on 2026-09-24** below. The historical
+**Track A's material priority refreshed on 2026-09-26** below. The historical
 milestones include
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
@@ -44,10 +44,12 @@ closes.
 
 ## Where the project stands
 
-**Material priority, 2026-09-24:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
+**Material priority, 2026-09-26:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
 [sets an illustration milestone](notes/illustration-material-priority.md).
-Energy/opening refinement percentages remain research diagnostics; valid paper,
-accepted solves and explicit visual review still gate illustrations.
+Energy/opening refinement percentages and strict numerical residuals remain
+research diagnostics. Connected paper and explicit drawing-scale review gate
+approximate illustrations; convergence is required only for a claim of a solved
+material equilibrium. The owner permits looser accuracy when the drawing supports it.
 The body-contact work through [#375](https://github.com/avalonalex/senbazuru/pull/375)
 meets the first deliverable's **reproducible geometry/solver blocker** option.
 There is still no accepted opened body; #195 and track A of #269 remain open.
@@ -82,9 +84,17 @@ exists. [#387](https://github.com/avalonalex/senbazuru/issues/387)
 [audits that saved problem](notes/body-angle-audit.md): exact arithmetic on
 the same twelve selected equalities satisfies all 1,204 inequalities, as does
 rounding the result once to Double. The maximum angle-direction change is
-`1.35e-7°`; no body pose changes. Next compare a more stable calculation of
-that same selected system against this reference before another body run.
-Do not resume individual-pair repairs or automatically change tolerances. The matched barrier/penalty comparison remains blocked;
+`1.35e-7°`; no body pose changes. The owner’s 2026-09-26 guidance prioritizes plausible illustrations.
+[#389](https://github.com/avalonalex/senbazuru/issues/389)
+[assesses saved poses at drawing scale](notes/body-illustration-tolerances.md):
+the second correction's longest refused crossing is 0.0059 px, versus 62 px
+in the strained control and a 4.71 px reversed-order depth in the angle seed.
+Provisional 0.1 px distance and 0.1% local-strain screens separate these cases;
+they are review aids, not solver defaults. All four views currently fall back
+from projected visibility, so next compare visible layers on the recovered seed
+and second correction under a declared depth-tie allowance. Keep their geometry
+and strict verdicts. More solver precision is deferred until it benefits the
+picture or a useful opening; do not resume individual-pair repairs. The matched barrier/penalty comparison remains blocked;
 physical thickness, pressure and full-crane response remain later studies.
 
 The following evidence explains that decision. [The first bounded body-patch
@@ -156,7 +166,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,922 examples pass for #387, including exact audits of saved constrained equations and refusal of invalid working sets; contact-aware angle derivatives, material adjacency, valid layer order and refused-direction preservation; bounded crease-angle construction, independent loop closure and unchanged material identities; constraint-first initialization with simultaneous layers, hard length/movement limits and exact holds; bounded separated initialization with shared vertices and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,926 examples pass for #389, including drawing-scale contact-region clipping and broad/shallow overlap counterexamples; exact audits of saved constrained equations and refusal of invalid working sets; contact-aware angle derivatives, material adjacency, valid layer order and refused-direction preservation; bounded crease-angle construction, independent loop closure and unchanged material identities; constraint-first initialization with simultaneous layers, hard length/movement limits and exact holds; bounded separated initialization with shared vertices and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -854,9 +864,12 @@ checked coupled angles.
    [#387](https://github.com/avalonalex/senbazuru/issues/387)
    [audits its saved linear equations](notes/body-angle-audit.md): the same
    selected set passes every inequality in exact arithmetic and after one
-   rounding to Double. No body trial runs. Next compare a stable evaluation
-   of that selected system with the exact reference, keeping all settings;
-   do not repair another limiting pair.
+   rounding to Double. No body trial runs. The owner subsequently prioritized illustration accuracy.
+   [#389's saved-pose assessment](notes/body-illustration-tolerances.md) proposes
+   drawing-scale review screens while preserving strict diagnostics. Next
+   compare visible layers on the recovered seed and second correction, resolving
+   small depth ties under a declared allowance without moving vertices. Defer
+   greater solver precision and do not repair another limiting pair.
    The existing vertex 27–plane 70 guard remains a conservative fixture policy;
    it is not automatic contact discovery.
    No opened endpoint is accepted yet, and removing the surrounding crane's
