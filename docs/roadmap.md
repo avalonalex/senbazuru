@@ -52,7 +52,7 @@ approximate illustrations; convergence is required only for a claim of a solved
 material equilibrium. The owner permits looser accuracy when the drawing supports it.
 The body-contact work through [#375](https://github.com/avalonalex/senbazuru/pull/375)
 meets the first deliverable's **reproducible geometry/solver blocker** option.
-There is still no accepted opened body; #195 and track A of #269 remain open.
+There is still no accepted opened whole crane; #195 and track A of #269 remain open.
 
 **Both bounded initializations stopped at blockers.**
 [#379](https://github.com/avalonalex/senbazuru/issues/379)
@@ -105,10 +105,21 @@ with a tiny low-view coverage residual. [#395's drawing-context inspection](note
 finds the entire 2–39 crossing covered in all four drawings. Three views have
 positive geometric cover depth; the underside uses the existing depth tie over
 0.000742 px of the segment, at only 3.76e-9 px wrong-side depth. No solve or rule
-changes. Review this opened static illustration for explicit acceptance before
-widening the screen or returning to precision repairs. The matched barrier/penalty
-comparison remains blocked;
-physical thickness, pressure and full-crane response remain later studies.
+changes. The owner accepts this as intermediate evidence and directs the next
+work toward the whole crane rather than another body-only precision step.
+
+**Whole-crane visual target, #397:** [one connected static candidate](notes/whole-crane-candidate.md)
+now combines the saved body with both prescribed curved wings, neck/head and
+inside-folded tail. Matched before/after drawings and four views expose 43.49 px
+body depth and 204.09 px wing-tip separation. It is a rough proposal: 5.26%
+maximum edge error, 22.30% local stretch and 683 strict crossing pairs remain.
+The sole bounded adjustment distorts the paper and is archived separately,
+excluded from the drawing. Plain-paper and two-sided previews use identical
+geometry; neither certifies contact. **Review this complete visual target next**,
+then improve its visible attachments and strain if it is useful. Do not treat
+the body-only exception as accepting the complete shape. The matched barrier
+comparison remains blocked; physical thickness, pressure and a checked flexible
+route remain later studies.
 
 The following evidence explains that decision. [The first bounded body-patch
 comparison](notes/coupled-body-patch.md)

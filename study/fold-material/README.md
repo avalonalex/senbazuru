@@ -36,6 +36,22 @@ future general curved-surface visibility renderer.
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
 
+To review one complete crane with both wings spread and the saved opened body:
+
+```bash
+stack run senbazuru-material-study -- --whole-crane-start study/fold-material/fixtures/whole-crane-body.fold build/fold-material
+```
+
+This constructs one static candidate without a new solve. `whole-crane.html`
+shows matched before/after drawings in four cameras, with plain or two-sided
+paper and complete FOLD/GLB exports. The candidate is intentionally labelled
+unaccepted: significant local strain and many crossings remain. Its optional
+`--whole-crane-correct build/fold-material` control takes at most 40 material
+corrections and refuses to overwrite the archive. The recorded control failed;
+the drawing retains the prescribed candidate instead. Use
+`--whole-crane-view build/fold-material` to regenerate without another solve.
+See [the whole-crane study](../../docs/notes/whole-crane-candidate.md).
+
 To try one larger opening from the recovered 5° body seed:
 
 ```bash

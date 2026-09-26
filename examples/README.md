@@ -282,3 +282,13 @@ crease pattern above, by a path read from this folder.
 ```bash
 stack test --ta='--match "the traditional crane"'
 ```
+
+## Saved whole-crane study input
+
+`study/fold-material/fixtures/whole-crane-body.fold` is our generated 120-triangle
+body checkpoint from PR #394, derived from the traditional `crane.fold` above.
+It is preserved byte-for-byte for reproducible attachment tests and a visual
+whole-crane candidate; no solver runs to recreate it in CI. It remains a
+strained/contact-failing study state, not a newly accepted example. Provenance,
+checksum and reconstruction are in
+[the study note](../docs/notes/whole-crane-candidate.md).

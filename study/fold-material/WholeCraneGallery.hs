@@ -1,0 +1,209 @@
+-- | Preserve a whole-crane guess and at most one bounded material adjustment.
+-- Rendering reads the archived positions. It never launches another solve,
+-- and every unaccepted state remains labelled as a static visual candidate.
+module WholeCraneGallery (startWholeCrane, correctWholeCrane, viewWholeCrane) where
+
+import BodyCorrectionArchive (checked, field, readArchiveBytes, separateOutput, xyz)
+import BodyPatch (bodyPatch, patchSpread)
+import BodyPatchSubdivisionGallery (equilibriumValue, stepValue)
+import BodyVisibleLayersGallery (inheritedOrders, paperShapes, regions, writeSvg)
+import Control.Monad (forM, forM_, unless, when)
+import CranePocket (buildCranePocket)
+import CraneSpread
+import Data.Aeson (Value, eitherDecode, encode, object, (.=))
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
+import Data.IntMap.Strict qualified as IM
+import Data.Maybe (isJust, isNothing)
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
+import Data.Text.IO qualified as TIO
+import FoldBending (Hinge (..), bendingEnergy, hingeAngle)
+import FoldMaterial (areaRatio, componentCount, meshEdges, resolvedTriangles)
+import FoldRelaxation
+import IllustrationComparison (illustrationPage, sharedExtent)
+import IllustrationVisibility
+import Senbazuru.Diagram
+import Senbazuru.Diagram.Layout (Grid (..), gridOf)
+import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Types
+import Senbazuru.Geometry (Box (..), V2 (..))
+import Senbazuru.Geometry.Polygon (signedArea)
+import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Surface
+import Senbazuru.Origami.Visible (Region (..), VisibleForm (..))
+import Senbazuru.Render.Camera (basisFrom, project)
+import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
+import Senbazuru.Render.Svg (Page (..), renderSvg)
+import SurfaceContact qualified as Contact
+import System.Directory (createDirectoryIfMissing, doesFileExist)
+import System.Exit (die)
+import System.FilePath ((</>))
+import System.IO (hFlush, stdout)
+import WholeCrane
+import WholeCraneDrawing
+
+startWholeCrane :: FilePath -> FilePath -> IO ()
+startWholeCrane source destination = do
+  let output = destination </> "whole-crane"
+  separateOutput source output
+  exists <- doesFileExist (output </> "initial.json")
+  when exists (die "whole-crane initial.json exists; use the view or bounded correction command")
+  study <- inputs source
+  createDirectoryIfMissing True (output </> "source")
+  readArchiveBytes source >>= BL.writeFile (output </> "source" </> "endpoint.fold")
+  let fixture = wholeSpread study
+  BL.writeFile (output </> "initial.json") (encode (object ["positions" .= positions (spreadMesh fixture), "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)]]))
+  viewWholeCrane destination
+
+inputs :: FilePath -> IO WholeCrane
+inputs path = do
+  source <- loadFoldFile "examples/crane.fold" >>= checked
+  atlas <- checked (buildCranePocket (keyFrame source))
+  patch <- checked (bodyPatch atlas 1 10)
+  file <- loadFoldFile path >>= checked
+  reference <- loadFoldFile "study/fold-material/fixtures/whole-crane-body.fold" >>= checked
+  unless (keyFrame file == keyFrame reference) (die "this bounded study requires the saved #394 body endpoint")
+  body <- checked (surfaceFromFrame (keyFrame file) >>= requireMaterialCoordinates)
+  let mesh = (spreadMesh (patchSpread patch)) {samples = surfaceSamples body}
+  verified <- checked (spreadSurface (patchSpread patch) mesh)
+  unless (keyFrame file == materialFrame verified) (die "saved body changed its material, triangles, edges or source identities")
+  checked (wholeCrane atlas patch mesh)
+
+readStudy :: FilePath -> IO WholeCrane
+readStudy output = do
+  study <- inputs (output </> "source" </> "endpoint.fold")
+  initial <- readValue (output </> "initial.json")
+  ps <- field "positions" initial
+  pins <- field "pins" initial
+  let fixture = wholeSpread study
+  unless (ps == positions (spreadMesh fixture) && pins == [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)]) (die "whole-crane initial construction or controls changed")
+  pure study
+
+correctWholeCrane :: FilePath -> IO ()
+correctWholeCrane destination = do
+  let output = destination </> "whole-crane"
+  exists <- doesFileExist (output </> "run.json")
+  when exists (die "bounded run already exists; use --whole-crane-view")
+  study <- readStudy output
+  let fixture = wholeSpread study
+      guess = spreadMesh fixture
+  contact <- checked (Contact.prepareContact 0 (V3 0 0 1) (spreadContactOrders fixture) (refinedPanels (spreadRefined fixture)) guess)
+  putStrLn "One whole-crane adjustment: at most 40 corrections at length weight 1e8."
+  hFlush stdout
+  (run, audit) <- checked (tracePinnedContact (Settings 40 1e-5) (spreadPins fixture) (spreadHinges fixture) contact guess)
+  let record = object ["iterationLimit" .= (40 :: Int), "lengthWeight" .= (1e8 :: Double), "contactWeight" .= (1e10 :: Double), "points" .= [object ["iteration" .= completedIterations p, "positions" .= positions (checkpointMesh p)] | p <- checkpoints run], "trace" .= map stepValue (solverSteps audit), "converged" .= converged run, "equilibrium" .= fmap equilibriumValue (equilibriumCheck run)]
+  BL.writeFile (output </> "run.json") (encode record)
+  putStrLn "Saved the bounded adjustment."
+  hFlush stdout
+  viewWholeCrane destination
+
+viewWholeCrane :: FilePath -> IO ()
+viewWholeCrane destination = do
+  let output = destination </> "whole-crane"
+  study <- readStudy output
+  let fixture = wholeSpread study
+      before = refinedMesh (spreadRefined fixture)
+      guess = spreadMesh fixture
+  exists <- doesFileExist (output </> "run.json")
+  run <- if exists then readValue (output </> "run.json") else pure (object [])
+  endpoint <-
+    if exists
+      then do
+        forM_ [("iterationLimit", 40), ("lengthWeight", 1e8), ("contactWeight", 1e10)] $ \(key, expected) -> do
+          actual <- field key run
+          unless (actual == (expected :: Double)) (die "whole-crane solver policy changed")
+        records <- field "points" run :: IO [Value]
+        trace <- field "trace" run :: IO [Value]
+        indices <- traverse (field "iteration") trace :: IO [Int]
+        unless (not (null indices) && indices == [1 .. length trace] && length trace <= 40) (die "invalid whole-crane correction history")
+        starts <- traverse (field "start") trace
+        ends <- traverse (field "candidate") trace
+        unless (starts == take (length starts) (positions guess : ends)) (die "whole-crane trace does not continue the declared initial shape")
+        let savedStates = IM.fromList ((0, positions guess) : zip indices ends)
+        points <- forM records $ \r -> do
+          iteration <- field "iteration" r
+          ps <- field "positions" r >>= traverse vector
+          unless (length ps == length (samples guess)) (die "whole-crane checkpoint count changed")
+          unless (IM.lookup iteration savedStates == Just (map xyz ps)) (die "whole-crane checkpoint disagrees with the correction trace")
+          let mesh = guess {samples = zipWith (\p q -> p {position = q}) (samples guess) ps}
+          _ <- checked (spreadSurface fixture mesh)
+          unless (spreadHeldError fixture mesh == 0) (die "whole-crane checkpoint moved a hold")
+          pure mesh
+        savedIndices <- traverse (field "iteration") records :: IO [Int]
+        unless (take 1 savedIndices == [0] && take 1 (reverse savedIndices) == [length trace] && and (zipWith (<) savedIndices (drop 1 savedIndices))) (die "whole-crane checkpoint sequence is incomplete or unordered")
+        case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
+      else pure guess
+  let states = [("before", "Closed crane", before), ("after", "Opened crane · prescribed static candidate", guess)] ++ [("correction", "Refused material adjustment · diagnostic", endpoint) | exists]
+  measurements <- forM states $ \(name, title, mesh) -> do
+    sheet <- checked (spreadSurface fixture mesh)
+    contact <- checked (spreadCheck fixture mesh)
+    shape <- checked (wholeMeasurements study mesh)
+    (crease, panel) <- checked (bendingEnergy (spreadHinges fixture) mesh)
+    let points = IM.fromList (zip [0 ..] (samples mesh))
+        edgeError = maximum (0 : [abs (norm (position a ^-^ position b) - norm (sampleMaterial a ^-^ sampleMaterial b)) | (i, j) <- meshEdges mesh, Just a <- [IM.lookup i points], Just b <- [IM.lookup j points]])
+    angles <- forM (spreadHinges fixture) $ \h -> do
+      (angle, _) <- checked (hingeAngle h points)
+      pure (object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h])
+    let strains = [s | t <- resolvedTriangles mesh, Just s <- [principalStrains t]]
+    BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
+    bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
+    BS.writeFile (output </> name ++ ".glb") bytes
+    putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
+    hFlush stdout
+    pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles])
+  views <- forM [("oblique", "Side · 45° above", V3 (-1) 1 (sqrt 2)), ("reverse", "Reverse · 45° above", V3 1 1 (sqrt 2)), ("front", "Front", V3 0 1 0.2), ("below", "From below", V3 (-1) 1 (-sqrt 2))] $ \(viewId, title, direction) -> do
+    basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction (V3 0 0 1))
+    bounds <- checked (sharedExtent basis [before, guess])
+    let page = illustrationPage title bounds
+        owners = refinedPanels (spreadRefined fixture)
+    shown <- forM [("before", before), ("after", guess)] $ \(name, mesh) -> do
+      sheet <- checked (spreadSurface fixture mesh)
+      let frame = surfaceFrame sheet
+      inherited <- checked (inheritedOrders fixture frame)
+      audit <- checked (illustrationVisibility (0.1 / 600) basis frame inherited)
+      drawn <- case auditForm audit of
+        Just visible | null (auditUncovered audit) -> pure (DepthDrawing visible [] 0)
+        _ -> either (die . T.unpack) pure (depthDrawing basis frame inherited)
+      let seen = depthForm drawn
+          stem = name ++ "-" ++ viewId
+      let colourShapes = paperShapes basis (regions basis owners seen) seen
+          shapes = map whitePaper colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)]
+      writeSvg output page bounds stem shapes
+      writeSvg output page bounds (stem ++ "-colours") (colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)])
+      pure (shapes, object ["id" .= name, "stem" .= stem, "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]])
+    when (viewId == "oblique") $ do
+      let Box (V2 x0 y0) (V2 x1 y1) = bounds
+          labelledBounds = Box (V2 x0 y0) (V2 x1 (y1 + 0.08))
+          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) label : shapes) | (label, (shapes, _)) <- zip ["Before · closed crane", "After · prescribed candidate"] shown]
+      drawing <- maybe (die "no comparison figures") pure (gridOf (Grid 2 0.12 Nothing) figures)
+      TIO.writeFile (output </> "comparison.svg") (renderSvg (illustrationPage "Whole crane: before and after" (diagramExtent drawing)) drawing)
+    pure (object ["id" .= viewId, "title" .= title, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= map snd shown])
+  let report = object ["issue" .= (397 :: Int), "newSolves" .= (if exists then 1 else 0 :: Int), "illustrationAccepted" .= False, "motionChecked" .= False, "inflationSimulated" .= False, "states" .= measurements, "views" .= views, "run" .= run, "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)]]
+  BL.writeFile (output </> "checks.json") (encode report)
+  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
+  viewer <- TIO.readFile "study/gltf/viewer.html"
+  TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  template <- TIO.readFile "study/fold-material/whole-crane.html"
+  TIO.writeFile (destination </> "whole-crane.html") (T.replace "/*WHOLE_CRANE_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode report))) template)
+
+positions :: MaterialMesh -> [[Double]]
+positions = map (xyz . position) . samples
+
+readValue :: FilePath -> IO Value
+readValue path = readArchiveBytes path >>= either die pure . eitherDecode
+
+vector :: [Double] -> IO V3
+vector [x, y, z] | all (\q -> not (isNaN q || isInfinite q)) [x, y, z] = pure (V3 x y z)
+vector _ = die "expected three finite coordinates"
+
+-- Plain paper has the same colour on both sides. The colour diagnostic uses
+-- exactly the same visible pieces, so reverse-side patches stay inspectable.
+whitePaper :: Shape -> Shape
+whitePaper (Fill (Colour colour) rings) | colour `elem` ["#eee6cf", "#c58440"] = Fill (Colour "#eee6cf") rings
+whitePaper shape = shape
+
+xy :: V2 -> [Double]
+xy (V2 x y) = [x, y]
