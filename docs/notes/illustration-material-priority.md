@@ -8,14 +8,22 @@ This sets the next milestone for [#195](https://github.com/avalonalex/senbazuru/
 and track A of [#269](https://github.com/avalonalex/senbazuru/issues/269).
 [#315](https://github.com/avalonalex/senbazuru/issues/315) records the scope change.
 
-**Follow-up decision, 2026-09-24:** the body-contact studies through
-[#375](https://github.com/avalonalex/senbazuru/pull/375) supply the reproducible
-geometry/solver blocker permitted by this first milestone. An accepted opened
-body remains unfinished. [The next comparison](body-barrier-comparison.md)
-pauses further pair-by-pair repairs: attempt a bounded separated initialization,
-then compare the distance barrier and penalty from the same start if it passes.
-Keep the existing checks and stop at a useful accepted pose or a documented
-blocker; this is not an automatic series of further contact repairs.
+**Updated owner direction, 2026-09-26:** numerical accuracy may be loosened
+for plausible illustrations. Preserve the strict diagnostics and connected
+paper, but do not make higher solver precision a prerequisite when its benefit
+is invisible. The [saved-pose assessment](body-illustration-tolerances.md)
+proposes 0.1 px distance screens at 600 px per sheet unit and a separate 0.1%
+local-strain screen, followed by visible-layer review. These are provisional
+review criteria, not changed solver defaults or motion certification.
+
+The studies through [#375](https://github.com/avalonalex/senbazuru/pull/375)
+supply the reproducible geometry/solver blocker permitted by this milestone.
+An accepted opened body remains unfinished. The [barrier comparison](body-barrier-comparison.md)
+could not start from the subsequent initialization attempts. The
+[saved-equation audit](body-angle-audit.md) is a numerical reference, not a new
+accuracy prerequisite. Pause individual-pair repairs and precision work; first
+compare visible layers on the recovered seed and second correction, whose
+contact defects are below the proposed drawing screens.
 
 The [saved 512-triangle layouts](held-layout-costs.md) differ by 10.36% in
 passive bending cost, which penalizes bending within panels between creases.
@@ -30,8 +38,8 @@ For the illustration milestone, the criteria have these roles:
 | Check | Role |
 | --- | --- |
 | Connected material, shared vertices and real crease identities | Required. Touching layers remain distinct pieces of the same sheet; they must not be welded together. |
-| Material lengths, declared angle controls, exact holds, contact and layer order | Required under the existing endpoint checks. Retain the `1e-5` relative length-error limit; the current small examples already pass it. |
-| Numerical solve acceptance | Retain existing convergence/refusal checks for outputs presented as solved. An exhausted or invalid trial stays diagnostic. |
+| Material lengths, declared angle controls, holds, contact and layer order | Preserve strict diagnostics. Approximate illustrations may use declared drawing-scale tolerances with visual review; visible wrong layers, obvious distortion and broken connections remain defects. Describe any deliberately changed controls. |
+| Numerical solve acceptance | Retain existing convergence/refusal checks for outputs presented as solved. A reviewed approximate illustration may use an unsettled pose, but must not claim convergence or hide its strict failures. |
 | Silhouette, visible creases, exposed layers and plausible bulging | Review at a declared drawing size and intended cameras, alongside a modest refinement comparison. Keep SVG and GLB on the same geometry. |
 | Less than 5% change in each energy component or opening under refinement | Retain as material-research diagnostics; no longer prerequisites for starting or completing the illustration milestone. |
 | Physical stiffness calibration and independence from mesh layout | Deferred research. Label the chosen material response illustrative. |
@@ -46,7 +54,7 @@ review of that feature and view; there is no blanket small-area waiver. Previous
 exposed-layer cases remain in review until that review happens. Energy and
 opening differences remain in reports, including failed historical targets.
 
-The next bounded study returns to a small crane-body patch connected to both
+The body study uses a small crane-body patch connected to both
 wing roots, using the existing [material map](crane-pocket-map.md). Name a few
 increasing spread/opening controls and the body creases allowed to change angle.
 Check the declared angle policy, rather than requiring an opening crease to
@@ -56,8 +64,9 @@ from a photograph. Authored grips or opening preferences may guide a plausible
 pose; the checked geometry still has to accommodate them.
 
 Earlier body-release trials failed lengths and contact as well as convergence.
-Those are still blockers for an accepted pose. Isolate that compatibility
-problem before enlarging the free region. The first deliverable is a small set
+Their strict verdicts remain, while illustration acceptance now needs the
+separate drawing-scale assessment above. Review a small useful pose before
+enlarging the free region. The first deliverable is a small set
 of accepted static poses, or a specific reproducible geometry/solver blocker,
 with side, top and underside views, body dimensions, wing shape and attachment
 movement. Declare the fixture, holds, angle policy, work budget and comparison

@@ -36,6 +36,18 @@ future general curved-surface visibility renderer.
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
 
+To assess the saved body poses at illustration scale, without new solves:
+
+```bash
+stack run senbazuru-material-study -- --body-visual-tolerances build/fold-material build/fold-material
+```
+
+This needs the existing `body-subdivision/`, `body-patch/` and `body-crease-seed/`
+archives. Open `body-visual-tolerances.html` for actual-size and 4× views,
+0.1/0.5/1 px diagnostic screens, and unchanged strict results. Production
+visibility fallbacks are labelled; passing a pixel screen does not approve
+exposed layers. See [the assessment](../../docs/notes/body-illustration-tolerances.md).
+
 For the current four-case held-panel comparison, run
 `stack run senbazuru-material-study -- --held-equilibrium build/fold-material`
 and open `held-equilibrium.html`. It compares uniform and whole-bend triangle
