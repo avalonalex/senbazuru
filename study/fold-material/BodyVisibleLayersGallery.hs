@@ -5,7 +5,7 @@
 -- lose some partners seen by an oblique camera. The temporary visibility
 -- frame is never exported as paper. JSON retains projected regions so the
 -- reported masks can be checked independently of SVG antialiasing.
-module BodyVisibleLayersGallery (writeBodyVisibleLayers) where
+module BodyVisibleLayersGallery (writeBodyVisibleLayers, inheritedOrders, regions, paperShapes, unionRings, compareForms, writeSvg, regionJson, pairJson, creaseMasks) where
 
 import BodyCorrectionArchive (CorrectionArchive (..), checked, readCorrectionArchive, separateOutput)
 import BodyPatch (patchSpread)

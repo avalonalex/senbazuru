@@ -36,6 +36,27 @@ future general curved-surface visibility renderer.
 this experiment. All geometry is generated in Haskell; the browser only displays
 those positions and measurements.
 
+To try one larger opening from the recovered 5° body seed:
+
+```bash
+stack run senbazuru-material-study -- --body-larger-opening build/fold-material/body-subdivision build/fold-material
+```
+
+This runs one 10° grip target with at most 40 corrections at the original final
+length/contact weights. It retains the recovered deformation in its initial
+guess and writes `body-larger-opening/run.json` before drawing. The solve command
+refuses to overwrite that archive. To rebuild the gallery without another solve:
+
+```bash
+stack run senbazuru-material-study -- --body-larger-opening-view build/fold-material
+```
+
+Open `body-larger-opening.html` to compare seed, guess and endpoint at actual
+size and 4×. Raw FOLD, all proposals/refusals, strict diagnostics and separate
+energies remain available. The 0.1 px distance and 0.1% strain screens do not
+certify a path, mechanical equilibrium or an attached whole crane. See
+[the bounded opening study](../../docs/notes/body-larger-opening.md).
+
 To compare the recovered seed and second correction with a declared visual
 layer-order allowance, without new solves:
 

@@ -96,9 +96,14 @@ geometry: the 0.1 px allowance resolves every pairwise overlap in eight views,
 with at most 0.000054 px of depth overridden. Five views cover the sheet;
 three have under 0.0005 px² uncovered, explicitly retained as uncertainty.
 Actual-size and magnified masks distinguish silhouette, colour, panel identity
-and crease ink. Review these as approximate illustration candidates, then target
-one bounded, visibly useful opening. Defer solver precision without a drawing
-benefit and do not resume individual-pair repairs. The matched barrier/penalty
+and crease ink. [#393](https://github.com/avalonalex/senbazuru/issues/393)
+[tests one larger opening](notes/body-larger-opening.md): moving the same grips
+from 5° to 10° and taking forty corrections adds **21.77 drawing pixels** of
+central depth. Length, strain, holds and order-height screens pass; a 0.232 px
+intersection exceeds the declared 0.1 px screen. All visible layer pairs resolve,
+with a tiny low-view coverage residual. Keep this unsettled endpoint diagnostic
+and review its drawing before choosing a follow-up; do not extend the budget or
+resume individual-pair repairs automatically. The matched barrier/penalty
 comparison remains blocked;
 physical thickness, pressure and full-crane response remain later studies.
 
@@ -171,7 +176,7 @@ remain evidence, not current prerequisites for starting that study.
 | Material study | Connected meshes, length/contact checks, square/waterbomb collapse, fish ears, bird petals and six more base endpoints |
 | Production handoff | Shared surfaces reach SVG and two glTF scenes; complete blintz and helmet routes plus a crane-wing departure use checked flap operations, and the open-sheet-to-bird route has exact ideal-path certificates; frog stages still have sampled checks |
 | Contact study | Checks one fixed-hinge rotation or straight numerical correction throughout its interval; learned contact orders and a distance barrier settle the recorded opening/closing strip controls |
-| Tests | 1,934 examples pass for #391, including illustration depth ties, reversed views, unresolved orders and coverage gaps; drawing-scale contact-region clipping and broad/shallow overlap counterexamples; exact audits of saved constrained equations and refusal of invalid working sets; contact-aware angle derivatives, material adjacency, valid layer order and refused-direction preservation; bounded crease-angle construction, independent loop closure and unchanged material identities; constraint-first initialization with simultaneous layers, hard length/movement limits and exact holds; bounded separated initialization with shared vertices and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
+| Tests | 1,936 examples pass for #393, including recovered-deformation retention and refused changes of material/holds/target; illustration depth ties, reversed views, unresolved orders and coverage gaps; drawing-scale contact-region clipping and broad/shallow overlap counterexamples; exact audits of saved constrained equations and refusal of invalid working sets; contact-aware angle derivatives, material adjacency, valid layer order and refused-direction preservation; bounded crease-angle construction, independent loop closure and unchanged material identities; constraint-first initialization with simultaneous layers, hard length/movement limits and exact holds; bounded separated initialization with shared vertices and fixed work limits; overlap-gap restoration above held paper and invalid/repeated-gradient handling, the bounded one-repair search policy, one minimum-movement plane restoration, finite plane-distance accounting and the moving-plane derivative and saved six-vertex plane-threshold transition, incremental contact guards, geometry-gated continuation, saved body-correction replay and archive diagnostics, isolated fractional-band solve fixtures through `4×1`, fractional band-boundary energies and derivatives, prescribed-bend angular/length formulas, exposed-region distance and area bounds, several bounded contact replacements and refusal of a partial repair, fixed-band turn/energy normalization and exact boundary clipping, passive/control energy accounting and 4×2 material identities, a stricter near-parallel contact exchange and stronger fine-mesh length enforcement, independent width refinement and fixed-location gap sampling, unequal panel controls and contact-off comparisons, both moving crease panels, nonnegative-gap constraints, small-crease correction/contact references, internal-crease diagnostic controls, body-angle policies and the crane material map, wing-root/body controls, inherited contact orders, exact bending grips and a known strip, a checked crane wing with its tail tucked inside, complete helmet, quarter-fold, blintz and bird routes, aligned stacks, flat landing/reopening and material/contact checks |
 | Traditional crane fixture | 72 faces; 76 after adding one wing crease |
 | Releases | none |
 
@@ -872,12 +877,16 @@ checked coupled angles.
    rounding to Double. No body trial runs. The owner subsequently prioritized illustration accuracy.
    [#389's saved-pose assessment](notes/body-illustration-tolerances.md) proposes
    drawing-scale review screens while preserving strict diagnostics.
+   [#393's bounded opening](notes/body-larger-opening.md) adds 21.77 px of
+   body depth at the 10° grip setting, with exact holds and small length/strain
+   errors. Its 0.232 px intersection misses the declared 0.1 px screen; retain
+   the unsettled endpoint for visual review before more solver work.
    [#391's visible-layer comparison](notes/body-visible-layers.md) resolves all
    pairwise overlaps under the declared allowance; three views retain tiny
-   coverage uncertainty. Review the actual-size pictures and difference masks,
-   then assess a bounded useful opening if these illustrative candidates are
-   credible. Geometry and strict verdicts are unchanged. Defer
-   greater solver precision and do not repair another limiting pair.
+   coverage uncertainty. It supplies the visibility policy for the new opening;
+   its saved geometry and strict verdicts remain unchanged. Review the opened
+   specimen at actual size before greater precision or another limiting-pair
+   repair.
    The existing vertex 27–plane 70 guard remains a conservative fixture policy;
    it is not automatic contact discovery.
    No opened endpoint is accepted yet, and removing the surrounding crane's

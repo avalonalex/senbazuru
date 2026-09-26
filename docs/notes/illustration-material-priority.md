@@ -25,9 +25,11 @@ accuracy prerequisite. Pause individual-pair repairs and precision work; review 
 [visible-layer comparison](body-visible-layers.md). The unchanged recovered
 seed and second correction now have two-colour illustrations under a declared
 0.1 px depth allowance. All pairwise overlaps resolve; three views retain tiny
-coverage uncertainty. Review their masks at actual size, then assess one
-bounded useful opening if credible. Repairing invisible strict residuals is
-not a prerequisite.
+coverage uncertainty. The [bounded 10° opening](body-larger-opening.md) now adds
+21.77 drawing pixels of body depth, while its 0.232 px intersection misses the
+declared 0.1 px screen. Retain that unsettled specimen for explicit visual
+review before more solver work. No tolerance is widened after seeing the
+result, and individual-pair repairs remain paused.
 
 The [saved 512-triangle layouts](held-layout-costs.md) differ by 10.36% in
 passive bending cost, which penalizes bending within panels between creases.
