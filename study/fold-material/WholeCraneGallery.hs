@@ -8,6 +8,7 @@ import BodyPatch (bodyPatch, patchSpread)
 import BodyPatchSubdivisionGallery (equilibriumValue, stepValue)
 import BodyVisibleLayersGallery (inheritedOrders, paperShapes, regions, writeSvg)
 import Control.Monad (forM, forM_, unless, when)
+import CraneBookDrawing
 import CranePocket (buildCranePocket)
 import CraneSpread
 import Data.Aeson (Value, eitherDecode, encode, object, (.=))
@@ -187,7 +188,22 @@ viewWholeCrane destination = do
           shapes = map whitePaper colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)]
       writeSvg output page bounds stem shapes
       writeSvg output page bounds (stem ++ "-colours") (colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)])
-      pure (shapes, object ["id" .= name, "stem" .= stem, "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]])
+      book <-
+        if name == "spread-0" && viewId `elem` ["upright", "opposite", "low", "top"]
+          then do
+            drawing <- either (die . T.unpack) pure (bookDrawing basis owners mesh seen)
+            let omitted = snd (selectedCreases 2 (bookCreases drawing))
+                uncertainty = [Fill (Colour "#bd4354") (depthMissing drawn)]
+                marks = [Polyline (solid (Colour "#c02f69") 2) [a, b] | (a, b) <- omitted]
+                sourceArea = sum [abs (signedArea (map (project basis) ring)) | r <- formRegions seen, ring <- regionPieces r]
+                toneArea = sum [abs (signedArea ring) | (_, rings) <- bookTones drawing, ring <- rings]
+            unless (abs (sourceArea - toneArea) < 1e-10) (die "book tones changed visible paper coverage")
+            writeSvg output page bounds (stem ++ "-book-full") (bookShapes 0 drawing ++ uncertainty)
+            writeSvg output page bounds (stem ++ "-book") (bookShapes 2 drawing ++ uncertainty)
+            writeSvg output page bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks)
+            pure [object ["id" .= viewId, "title" .= title, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (360000 * sourceArea), "toneAreaPixelsSquared" .= (360000 * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
+          else pure []
+      pure (shapes, object ["id" .= name, "stem" .= stem, "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
     let comparisons = case viewId of
           "oblique" -> [("comparison.svg", 0, 1, "Before · closed crane", "First opened candidate")]
           "upright" -> [("pillow-comparison.svg", 0, 2, "Before · closed crane", "Wider pillow target"), ("compact-comparison.svg", 0, 3, "Before · closed crane", "Less spread target"), ("spread-comparison.svg", 2, 3, "Earlier · wider target", "Revised · less spread"), ("body-width-comparison.svg", 3, 4, "Previous body width", "Narrower body · same wing angle"), ("narrow-comparison.svg", 0, 4, "Before · closed crane", "Narrower body target")]
@@ -196,11 +212,15 @@ viewWholeCrane destination = do
     forM_ comparisons $ \(filename, left, right, leftLabel, rightLabel) -> do
       let Box (V2 x0 y0) (V2 x1 y1) = bounds
           labelledBounds = Box (V2 x0 y0) (V2 x1 (y1 + 0.08))
-          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) label : shapes) | (i, (shapes, _)) <- zip [0 :: Int ..] shown, (selected, label) <- [(left, leftLabel), (right, rightLabel)], i == selected]
+          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) label : shapes) | (i, (shapes, _, _)) <- zip [0 :: Int ..] shown, (selected, label) <- [(left, leftLabel), (right, rightLabel)], i == selected]
       drawing <- maybe (die "no comparison figures") pure (gridOf (Grid 2 0.12 Nothing) figures)
       TIO.writeFile (output </> filename) (renderSvg (illustrationPage "Whole crane: before and after" (diagramExtent drawing)) drawing)
-    pure (object ["id" .= viewId, "title" .= title, "direction" .= xyz direction, "up" .= xyz up, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= map snd shown])
-  let report = object ["issue" .= (399 :: Int), "newSolves" .= (if exists then 1 else 0 :: Int), "illustrationAccepted" .= False, "motionChecked" .= False, "inflationSimulated" .= False, "states" .= measurements, "openings" .= [object ["percent" .= percent, "id" .= name, "title" .= title, "wingArchStartDegrees" .= (-70 + fromIntegral percent * 0.4 :: Double)] | (percent, name, title) <- openings], "views" .= views, "run" .= run, "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)], "pillowConstruction" .= object ["newMaterialSolves" .= (0 :: Int), "savedBodyFixed" .= False, "rimY" .= (0.44 :: Double), "rise" .= (0.045 :: Double), "bodyHalfWidth" .= ((sqrt 2 - 1) / 2 :: Double), "wingArchStartDegrees" .= (-15 :: Double), "wingArchEndDegrees" .= (15 :: Double), "compactVariant" .= object ["bodyWidthScale" .= (0.75 :: Double), "wingArchStartDegrees" .= (-50 :: Double), "wingArchEndDegrees" .= (-20 :: Double)], "narrowVariant" .= object ["bodyWidthScale" .= (0.5 :: Double), "wingArchStartDegrees" .= (-50 :: Double), "wingArchEndDegrees" .= (-20 :: Double)]]]
+    pure (object ["id" .= viewId, "title" .= title, "direction" .= xyz direction, "up" .= xyz up, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= [s | (_, s, _) <- shown]], concat [b | (_, _, b) <- shown])
+  let bookReport = object ["pixelsPerSheetUnit" .= (600 :: Int), "minimumCreasePixels" .= (2 :: Int), "geometryChanged" .= False, "views" .= concatMap snd views]
+  BL.writeFile (output </> "book-checks.json") (encode bookReport)
+  bookTemplate <- TIO.readFile "study/fold-material/crane-book.html"
+  TIO.writeFile (destination </> "crane-book.html") (T.replace "/*CRANE_BOOK_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode bookReport))) bookTemplate)
+  let report = object ["issue" .= (399 :: Int), "newSolves" .= (if exists then 1 else 0 :: Int), "illustrationAccepted" .= False, "motionChecked" .= False, "inflationSimulated" .= False, "states" .= measurements, "openings" .= [object ["percent" .= percent, "id" .= name, "title" .= title, "wingArchStartDegrees" .= (-70 + fromIntegral percent * 0.4 :: Double)] | (percent, name, title) <- openings], "views" .= map fst views, "run" .= run, "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)], "pillowConstruction" .= object ["newMaterialSolves" .= (0 :: Int), "savedBodyFixed" .= False, "rimY" .= (0.44 :: Double), "rise" .= (0.045 :: Double), "bodyHalfWidth" .= ((sqrt 2 - 1) / 2 :: Double), "wingArchStartDegrees" .= (-15 :: Double), "wingArchEndDegrees" .= (15 :: Double), "compactVariant" .= object ["bodyWidthScale" .= (0.75 :: Double), "wingArchStartDegrees" .= (-50 :: Double), "wingArchEndDegrees" .= (-20 :: Double)], "narrowVariant" .= object ["bodyWidthScale" .= (0.5 :: Double), "wingArchStartDegrees" .= (-50 :: Double), "wingArchEndDegrees" .= (-20 :: Double)]]]
   BL.writeFile (output </> "checks.json") (encode report)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
   viewer <- TIO.readFile "study/gltf/viewer.html"

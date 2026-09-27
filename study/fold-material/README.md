@@ -80,6 +80,15 @@ the GLB graphics corners. Both files are produced by the existing view command.
 Lighting changes only the preview, not the downloaded GLBs. See the
 [lighting note](../../docs/notes/crane-panel-lighting.md).
 
+The same view command also writes `crane-book.html`: the tucked pose with three
+panel tones and clearer contours, beside its existing drawing at the same
+camera and scale. Full crease detail is the default. The selective option omits
+only crease fragments shorter than 2 drawing pixels and can highlight every
+omission. Choose one of four cameras, fit the drawings to their cards or inspect
+them at 1×/2× size, and download the selected SVG. The original SVGs, complete
+meshes and contact measurements remain unchanged. See
+[the drawing note](../../docs/notes/crane-book-drawing.md).
+
 To try one larger opening from the recovered 5° body seed:
 
 ```bash

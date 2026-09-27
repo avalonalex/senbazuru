@@ -112,6 +112,7 @@ read the Haddock module headers; for the domain, start with
 | [body-barrier-comparison.md](body-barrier-comparison.md) | Pause pair-by-pair repairs; bound initialization and a matched body barrier/penalty comparison |
 | [body-separated-initialization.md](body-separated-initialization.md) | A bounded joint construction tests whether the saved body can enter the contact barrier |
 | [crane-panel-lighting.md](crane-panel-lighting.md) | The preferred tucked crane gains smoother lighting within each original panel, keeping creases and coincident layers separate without changing geometry |
+| [crane-book-drawing.md](crane-book-drawing.md) | Compare broad panel tones and optional short-crease omissions while preserving the tucked crane's shape and visible layer boundaries |
 | [crane-pillow-target.md](crane-pillow-target.md) | Upright cameras and a pillow-shaped whole-crane target separate visual intent from its substantial material distortion |
 | [whole-crane-candidate.md](whole-crane-candidate.md) | A connected whole-crane visual target retains an opened body and two spread wings; substantial strain and crossings remain explicit |
 | [body-intersection-context.md](body-intersection-context.md) | The 0.232 px body intersection is covered in four drawings; underside coverage uses the existing depth tie |

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The tucked crane, on the page · Senbazuru</title>
+<style>
+  :root{font:16px/1.6 system-ui,sans-serif;color:#303b34;background:#f4f0e7;color-scheme:light}
+  *{box-sizing:border-box}body{max-width:1440px;margin:auto;padding:40px 30px}a{color:#315e55}h1{font-size:clamp(30px,4vw,46px);line-height:1.15;letter-spacing:-.04em;margin:12px 0 18px}p{max-width:830px}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:#6c766b}.intro{font-size:18px}.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:26px 0 18px}select{font:inherit;padding:7px 10px;background:#fffdf8;border:1px solid #c8ccbe;border-radius:5px}input{accent-color:#315e55}.drawings{display:grid;grid-template-columns:1fr 1fr;gap:18px}figure{margin:0;background:#fffdf8;border:1px solid #d9dace;border-radius:8px;overflow:hidden}figcaption{padding:13px 18px;border-bottom:1px solid #e6e5db;font-weight:600}.viewport{overflow:auto;min-height:250px}img{display:block;width:100%;height:auto;max-width:none}.fit img{min-height:280px;object-fit:contain}.foot{padding:12px 18px;border-top:1px solid #e6e5db;font-size:13px;color:#657062}.note{border-left:3px solid #8c9e85;background:#e9ecdf;padding:12px 18px}.read{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin:28px 0}.read p{margin:8px 0}h2{font-size:20px}details{margin:24px 0}summary{cursor:pointer;font-weight:600}footer{font-size:14px;border-top:1px solid #d9dace;padding-top:20px;margin-top:30px}label[hidden]{display:none}@media(max-width:760px){body{padding:24px 16px}.drawings,.read{grid-template-columns:1fr}.controls{align-items:flex-start;flex-direction:column}}
+</style>
+<div class="eyebrow">Senbazuru · drawing study · <a href="https://github.com/avalonalex/senbazuru/issues/403">#403</a></div>
+<h1>The tucked crane, on the page</h1>
+<p class="intro">The same paper shape, with a quieter drawing. Compare three tones and clearer outlines with the current view, then decide how much crease detail helps it read as folded paper.</p>
+<nav><a href="whole-crane/spread.html?model=spread-0.glb">Rotate this crane in 3D</a> · <a href="whole-crane.html">Compare wing positions</a></nav>
+<div class="controls">
+  <label>Camera <select id="camera"></select></label>
+  <label>Drawing <select id="treatment"><option value="full">Three tones · all crease marks</option><option value="selected">Three tones · fewer tiny marks</option></select></label>
+  <label>Size <select id="size"><option value="fit">Fit to cards</option><option value="1">Drawing size · 1×</option><option value="2">Magnified · 2×</option></select></label>
+  <label id="omission-control" hidden><input id="omissions" type="checkbox"> Highlight omitted marks</label>
+</div>
+<div class="drawings fit" id="drawings">
+  <figure><figcaption>Current drawing · More tucked</figcaption><div class="viewport"><img id="before" alt="Current plain-paper tucked crane"></div><div class="foot">The saved shape and visible paper regions.</div></figure>
+  <figure><figcaption id="after-title">Three tones · all crease marks</figcaption><div class="viewport"><img id="after" alt="The same tucked crane with three tones and clearer outlines"></div><div class="foot" id="detail"></div></figure>
+</div>
+<p id="scale-note">Both cards use the same camera and scale. Fit to cards reduces the exported drawing to your screen width.</p>
+<p class="note"><strong>What stays faithful:</strong> the paper’s shape, which layer is visible, outer boundaries and overlap edges. Each original paper panel gets one tone from its average surface direction. This leaves out subtle lighting within curved panels; it does not represent different paper colours. The lighter option omits only crease fragments shorter than 2 drawing pixels; highlight them to judge the tradeoff.</p>
+<div class="read"><section><h2>Read the whole crane</h2><p>Do the body, wings, neck and tail read as one folded sheet? Compare the opposite side before choosing a treatment.</p></section><section><h2>Look at the wing roots</h2><p>The sharp notches and awkward joins remain in the model. A calmer drawing helps locate them; it does not reshape them. These are the next candidates for a shape revision.</p></section></div>
+<details><summary>References and limits</summary><p>The <a href="https://www.cutoutandkeep.net/projects/origami-crane-3">Tuttle book example</a> uses broad fills and selected crease lines. <a href="https://commons.wikimedia.org/wiki/File:Origami_-_Crane.svg">Binnette’s vector crane</a> and its <a href="https://commons.wikimedia.org/wiki/File:Origami-crane.jpg">photographic counterpart by Andreas Bauer</a> show how clean contours can preserve a recognizable fold. <a href="https://tinygami.wordpress.com/2016/02/10/how-to-open-an-origami-crane/">Tinygami’s photographs</a> show a fuller pillow body. These are visual references; the drawing here is generated from our own mesh.</p><p>This remains a static shape sketch with material distortion and intersections, not a simulated inflation. All three presentations use the same visible surface, including its defects. Pink coverage warnings, if present, are kept in every view. Omitted crease marks are an optional drawing choice, not a change to the crease pattern.</p></details>
+<footer><a id="download" href="whole-crane/spread-0-upright-book-full.svg">Download selected SVG</a> · <a id="original" href="whole-crane/spread-0-upright.svg">Original SVG</a> · <a id="colours" href="whole-crane/spread-0-upright-colours.svg">Paper-side colour diagnostic</a> · <a href="whole-crane/spread-0.glb">Unchanged complete-sheet GLB</a> · <a href="whole-crane/book-checks.json">Drawing measurements</a></footer>
+<script>
+const data = /*CRANE_BOOK_DATA*/null;
+const camera=document.getElementById('camera');
+for(const view of data.views)camera.add(new Option(view.title,view.id));
+function draw(){
+  const view=data.views.find(v=>v.id===camera.value);
+  const selective=document.getElementById('treatment').value==='selected';
+  const highlight=selective&&document.getElementById('omissions').checked;
+  const suffix=highlight?'-book-omissions':selective?'-book':'-book-full';
+  document.getElementById('omission-control').hidden=!selective;
+  document.getElementById('before').src=`whole-crane/${view.stem}.svg`;
+  document.getElementById('after').src=`whole-crane/${view.stem}${suffix}.svg`;
+  document.getElementById('after-title').textContent=highlight?'Omitted marks highlighted':selective?'Three tones · fewer tiny marks':'Three tones · all crease marks';
+  document.getElementById('detail').textContent=selective?`${view.omittedCreases.length} of ${view.creaseFragments} crease fragments omitted; all contours retained.`:`All ${view.creaseFragments} visible crease fragments retained; shading and line weights change.`;
+  for(const [id,end] of [['download',suffix],['original',''],['colours','-colours']])document.getElementById(id).href=`whole-crane/${view.stem}${end}.svg`;
+  const size=document.getElementById('size').value;
+  document.getElementById('drawings').classList.toggle('fit',size==='fit');
+  for(const id of ['before','after'])document.getElementById(id).style.width=size==='fit'?'100%':`${Number(size)*view.width}px`;
+  document.getElementById('scale-note').textContent=size==='fit'?'Both cards use the same camera and scale. Fit to cards reduces the exported drawing to your screen width.':`${size}× the exported drawing size (${Number(size)*data.pixelsPerSheetUnit} screen pixels per sheet unit). Scroll each card to inspect the same area.`;
+}
+for(const id of ['camera','treatment','size','omissions'])document.getElementById(id).onchange=draw;
+draw();
+</script>
+</html>
