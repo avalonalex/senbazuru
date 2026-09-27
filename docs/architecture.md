@@ -332,6 +332,18 @@ from a small manifest written by `WholeCraneGallery`. All poses share a centre
 and camera extent; selecting a pose leaves orbit, zoom and pan unchanged.
 It transforms only the display orientation and position of each complete model,
 never the paper's mesh. The generic glTF inspector remains separate.
+`PaperLighting` computes area-weighted corner normals keyed by source panel and
+material vertex. The dedicated viewer can compare them against flat triangle
+lighting, using GLB material references to assign the directions to graphics
+corners. It changes only preview shading; exported geometry and contact remain
+untouched. [The lighting note](notes/crane-panel-lighting.md) explains why
+coincident layers and genuine creases must not share a lighting average.
+`CraneBookDrawing` consumes those same meshes and the SVG preview's visible
+regions to produce `Diagram` shapes. It groups three tones by original panel,
+extracts contours by cancelling only same-depth shared boundary stretches, and
+optionally omits short crease ink at the declared drawing scale. Its matched
+gallery changes neither paper nor the existing visibility/contact policy. See
+[the drawing comparison](notes/crane-book-drawing.md).
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the

@@ -72,6 +72,7 @@ jobs:
       # project build; cap workers rather than using every CPU on larger hosts.
       - run: stack test --test-arguments="--jobs=4 --print-slow-items=20 +RTS -N4 -RTS"
       - run: node study/fold-material/check-illustration-metrics.mjs
+      - run: node study/fold-material/check-paper-lighting.mjs
 
   format:
     name: ormolu
