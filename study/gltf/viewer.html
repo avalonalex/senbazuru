@@ -48,6 +48,10 @@ const cornerView = ['corner', 'other-corner'].includes(requested.get('angle'));
 // The bending strip runs along model x. Look across it, with closer framing,
 // so its curve reads left to right instead of pointing toward the camera.
 const profileView = requested.get('angle') === 'profile';
+// A standing crane in the study has -Y up in FOLD, hence +Z up in glTF.
+// Rotate its presentation before fitting the camera; the exported mesh stays
+// unchanged. Other studies continue to use glTF's ordinary +Y convention.
+const zUp = requested.get('up') === 'z';
 const cornerDirection = requested.get('angle') === 'other-corner' ? 1 : -1;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -113,6 +117,7 @@ async function load() {
     if (current) { scene.remove(current); current = null; }
     dispose(loaded);
     loaded = next;
+    if (zUp) for (const s of loaded.scenes) s.rotateX(-Math.PI / 2);
     // Both scenes use one centre and scale, derived from the complete sheet.
     const box = new THREE.Box3().setFromObject(loaded.scenes.at(-1));
     const center = box.getCenter(new THREE.Vector3());

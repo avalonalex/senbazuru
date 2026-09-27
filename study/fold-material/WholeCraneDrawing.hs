@@ -106,8 +106,9 @@ nearerPart gap ring = cleanRing (concatMap clip (ringEdges ring))
 cleanRing :: [V2] -> [V2]
 cleanRing ring
   | length unique < 3 = []
-  | length kept == length unique = unique
-  | otherwise = cleanRing kept
+  | otherwise = case redundantIndices of
+      [] -> unique
+      i : _ -> cleanRing (take i unique ++ drop (i + 1) unique)
   where
     unique = nubBy (\a b -> norm (a ^-^ b) < 1e-12) ring
     previous = drop (length unique - 1) unique ++ take (length unique - 1) unique
@@ -117,7 +118,10 @@ cleanRing ring
           len = norm edge
           within = dot (b ^-^ a) edge >= 0 && dot (b ^-^ c) edge <= 0
        in len > 0 && within && abs (cross2 edge (b ^-^ a)) / len < 1e-12
-    kept = [b | (a, b, c) <- zip3 previous unique next, not (redundant a b c)]
+    -- Two almost coincident corners can each look redundant while the other
+    -- exists. Removing both at once erases their real corner, sometimes the
+    -- entire triangle. Remove one, then reconsider its neighbours.
+    redundantIndices = [i | (i, (a, b, c)) <- zip [0 ..] (zip3 previous unique next), redundant a b c]
 
 unionIntervals :: [(Double, Double)] -> [(Double, Double)]
 unionIntervals = reverse . foldl' add [] . sort

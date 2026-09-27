@@ -115,8 +115,23 @@ body depth and 204.09 px wing-tip separation. It is a rough proposal: 5.26%
 maximum edge error, 22.30% local stretch and 683 strict crossing pairs remain.
 The sole bounded adjustment distorts the paper and is archived separately,
 excluded from the drawing. Plain-paper and two-sided previews use identical
-geometry; neither certifies contact. **Review this complete visual target next**,
-then improve its visible attachments and strain if it is useful. Do not treat
+geometry; neither certifies contact. The owner found the drawing broken.
+[#399's pillow target](notes/crane-pillow-target.md) adds correctly upright
+cameras and a broad cushion with outward wings. It is only a shape sketch:
+104.48% edge error and 261.46% local stretch make its material distortion worse,
+despite fewer strict crossing pairs (257). The owner found that target too wide;
+a less spread variant narrows the body 25% and raises the same wing arches 35°,
+reducing span 20.13%. It remains invalid (60.96% edge error, 164.60% local stretch,
+314 crossings). A further body-only revision reduces width another third
+(186.40 → 124.26 px), keeping the raised wing curves; it remains invalid
+(58.04% edge error, 152.17% local stretch, 266 crossings). All targets are
+available at the same camera and scale. A five-stop wing-spread slider keeps
+the slimmer body fixed; four additional cameras expose the opposite side,
+lower view, head and tail. These remain independent shape sketches. No further
+material relaxation runs.
+**Review these silhouettes and proportions next**, then decide how the attached
+paper can accommodate a useful target; its exact dimensions are not proven
+feasible. Do not treat
 the body-only exception as accepting the complete shape. The matched barrier
 comparison remains blocked; physical thickness, pressure and a checked flexible
 route remain later studies.

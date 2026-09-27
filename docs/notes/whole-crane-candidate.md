@@ -81,8 +81,12 @@ Shapely independently checks silhouette coverage. A small fixture regenerates
 the same candidate without any material solve; a regression covers the clipping
 corner failure.
 
-The next decision is **visual review of this whole-crane target**, including its
-two-sided view. If the silhouette is useful, improve how its attached layers
+The owner found this first drawing broken. The
+[pillow-target follow-up](crane-pillow-target.md) adds upright cameras and a
+second shape sketch while preserving this construction and its archive.
+
+The next decision is **visual review of the whole-crane targets**, including their
+two-sided views. If a silhouette is useful, improve how its attached layers
 accommodate the opening, concentrating on visible defects and local strain.
 Do not resume individual microscopic contact repairs or call this an accepted
 inflated crane. Pressure, a checked flexible route and production integration

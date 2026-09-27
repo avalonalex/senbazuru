@@ -42,10 +42,21 @@ To review one complete crane with both wings spread and the saved opened body:
 stack run senbazuru-material-study -- --whole-crane-start study/fold-material/fixtures/whole-crane-body.fold build/fold-material
 ```
 
-This constructs one static candidate without a new solve. `whole-crane.html`
-shows matched before/after drawings in four cameras, with plain or two-sided
-paper and complete FOLD/GLB exports. The candidate is intentionally labelled
-unaccepted: significant local strain and many crossings remain. Its optional
+This constructs the first static candidate and a pillow-shaped visual target
+without a new material solve. `whole-crane.html` compares either against the
+closed crane or first candidate, and defaults to previous versus narrower
+body at the middle wing-spread setting. The slider selects five independently
+constructed static shapes with the slim body fixed; it is not an inflation
+percentage or checked motion. The first revision narrows the body by 25% and raises the wing arches
+by 35°. The latest revision narrows the body another third, keeping those
+wing angles and curves. Earlier targets stay available. Upright, above-body
+and side cameras sit alongside opposite-side, low-angle, head and tail views
+and the earlier cameras. The selected shape has matching measurements and
+FOLD/GLB download links. Plain/two-sided SVGs and
+complete FOLD/GLB exports share the same geometry. All remain unaccepted
+shape sketches with substantial material distortion. The
+[study note](../../docs/notes/crane-pillow-target.md) records the references,
+controls and diagnostics. The first candidate's optional
 `--whole-crane-correct build/fold-material` control takes at most 40 material
 corrections and refuses to overwrite the archive. The recorded control failed;
 the drawing retains the prescribed candidate instead. Use

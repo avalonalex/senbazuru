@@ -22,6 +22,13 @@ spec = describe "static nearest-surface preview" $ do
         kept = nearerPart (const 1) ring
     length kept `shouldBe` 4
     abs (signedArea kept - 1) `shouldSatisfy` (< 1e-12)
+  it "keeps a real corner when either of two nearby vertices could replace it" $ do
+    -- An overlap from the opposite-side pillow view. The final pair is just
+    -- over the duplicate-point tolerance; dropping both erases the triangle.
+    let ring = [V2 0.6466621200638313 0.3942309275086487, V2 0.3714182952392151 0.5135876926504115, V2 0.42105898581031337 0.4638755948904255, V2 0.4210589858114216 0.46387559489007907]
+        kept = nearerPart (const 1) ring
+    abs (signedArea kept - signedArea ring) `shouldSatisfy` (< 1e-12)
+    signedArea kept `shouldSatisfy` (> 0.003)
   it "draws both sides of intersecting triangles without a silhouette hole" $ do
     result <- either (fail . show) pure (depthDrawing topDown crossing [])
     map regionFace (formRegions (depthForm result)) `shouldBe` [FaceId 0, FaceId 1]
