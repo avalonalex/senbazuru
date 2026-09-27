@@ -201,6 +201,12 @@ viewWholeCrane destination = do
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  -- The 3D control selects these same complete-sheet files. It never derives
+  -- another pose in JavaScript. Include the earlier targets in the common
+  -- framing so changing shapes cannot silently move the camera or rescale.
+  let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("narrow.glb" :: T.Text)]
+  spreadViewer <- TIO.readFile "study/fold-material/whole-crane-3d.html"
+  TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))
   template <- TIO.readFile "study/fold-material/whole-crane.html"
   TIO.writeFile (destination </> "whole-crane.html") (T.replace "/*WHOLE_CRANE_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode report))) template)
 

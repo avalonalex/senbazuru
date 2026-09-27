@@ -130,6 +130,20 @@ export that pair; `narrow-comparison.svg` compares the closed crane with the
 latest target. The earlier pillow and compact files remain.
 FOLD/GLB exports retain the full sheet.
 
+The linked 3D page, `whole-crane/spread.html`, loads these same nine GLBs. Its
+five-stop wing slider selects the exported shapes without interpolating their
+vertices. All poses determine one centre and the fit for each view button;
+changing the pose preserves camera rotation, zoom and pan. Otherwise a shrinking
+wing could be mistaken for a camera moving farther away. Four view buttons reset
+the camera, earlier shapes remain selectable, and the download always names the
+selected file. Plain-paper colour affects the preview only. This complete-sheet
+view retains buried layers and may show touching-surface flicker; it does not
+replace the depth-clipped drawing or certify the paper's material state.
+The viewer's verification checks all nine files with Khronos's glTF validator
+(zero errors or warnings), unchanged archive hashes, and a downloaded pose
+against its source file. A browser round trip through the five spread settings
+returns a pixel-identical canvas after rotation and zoom.
+
 Review the silhouette and body-to-wing proportions first. If this target is
 useful, the next task is accommodating it with the attached folded paper;
 this experiment has not shown that these exact dimensions are achievable.

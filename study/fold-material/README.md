@@ -63,6 +63,16 @@ the drawing retains the prescribed candidate instead. Use
 `--whole-crane-view build/fold-material` to regenerate without another solve.
 See [the whole-crane study](../../docs/notes/whole-crane-candidate.md).
 
+For interactive 3D, open `whole-crane/spread.html` on the local gallery server.
+It loads the nine complete-sheet GLBs once; the wing-spread slider selects five
+static poses while preserving rotation, zoom and pan. Four camera buttons reset
+the view, and the shape selector retains the earlier targets. Each download is
+the selected original GLB, including both paper-side materials even when the
+preview uses plain paper. As with the other 3D galleries, install Three.js with
+`npm install --prefix build/fold-material/checked-flap three@0.186.0` if needed.
+The browser applies one common framing to all files; it does not calculate new
+paper shapes. These remain the same unaccepted sketches described above.
+
 To try one larger opening from the recovered 5° body seed:
 
 ```bash

@@ -128,7 +128,10 @@ reducing span 20.13%. It remains invalid (60.96% edge error, 164.60% local stret
 available at the same camera and scale. A five-stop wing-spread slider keeps
 the slimmer body fixed; four additional cameras expose the opposite side,
 lower view, head and tail. These remain independent shape sketches. No further
-material relaxation runs.
+material relaxation runs. #401 adds an interactive GLB viewer for these same
+poses: orbit, zoom, camera presets and wing-spread selection share one framing,
+with the selected complete-sheet GLB available to download. It adds no new
+shape or material acceptance.
 **Review these silhouettes and proportions next**, then decide how the attached
 paper can accommodate a useful target; its exact dimensions are not proven
 feasible. Do not treat
