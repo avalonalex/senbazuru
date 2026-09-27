@@ -44,8 +44,8 @@ stack run senbazuru-material-study -- --whole-crane-start study/fold-material/fi
 
 This constructs the first static candidate and a pillow-shaped visual target
 without a new material solve. `whole-crane.html` compares either against the
-closed crane or first candidate, and defaults to previous versus narrower
-body at the middle wing-spread setting. The slider selects five independently
+closed crane or first candidate, and defaults to the saved middle-spread pose
+versus the owner's preferred **More tucked** setting. The slider selects five independently
 constructed static shapes with the slim body fixed; it is not an inflation
 percentage or checked motion. The first revision narrows the body by 25% and raises the wing arches
 by 35°. The latest revision narrows the body another third, keeping those
@@ -72,6 +72,13 @@ preview uses plain paper. As with the other 3D galleries, install Three.js with
 `npm install --prefix build/fold-material/checked-flap three@0.186.0` if needed.
 The browser applies one common framing to all files; it does not calculate new
 paper shapes. These remain the same unaccepted sketches described above.
+Its default is More tucked too. The Lighting selector compares smooth
+brightness within original panels with the original triangle shading, retaining
+sharp crease boundaries. Haskell generates the corner normals in per-pose
+`*-lighting.json` files; `paper-lighting.mjs` maps their material identities to
+the GLB graphics corners. Both files are produced by the existing view command.
+Lighting changes only the preview, not the downloaded GLBs. See the
+[lighting note](../../docs/notes/crane-panel-lighting.md).
 
 To try one larger opening from the recovered 5° body seed:
 

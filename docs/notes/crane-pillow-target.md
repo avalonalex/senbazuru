@@ -122,8 +122,8 @@ connected material, finite positions and distinct wings without a material solve
 Regenerate the comparison with `--whole-crane-view build/fold-material`, or
 create a fresh archive using the committed body fixture and `--whole-crane-start`
 command in the [study README](../../study/fold-material/README.md). The gallery
-now defaults to previous versus the middle wing-spread setting, which is the
-same narrower body. Wing spread is available when the candidate selector says
+now defaults to the saved middle-spread pose versus **More tucked**, the owner's
+preferred target. Both keep the same narrower body. Wing spread is available when the candidate selector says
 “Adjust wing spread”; earlier shapes remain selectable.
 `whole-crane/body-width-comparison.svg` and `body-width-top-comparison.svg`
 export that pair; `narrow-comparison.svg` compares the closed crane with the
@@ -144,8 +144,10 @@ The viewer's verification checks all nine files with Khronos's glTF validator
 against its source file. A browser round trip through the five spread settings
 returns a pixel-identical canvas after rotation and zoom.
 
-Review the silhouette and body-to-wing proportions first. If this target is
-useful, the next task is accommodating it with the attached folded paper;
+The owner selected More tucked after #402. The next
+[lighting comparison](crane-panel-lighting.md) separates subdivision seams
+from actual crease and attachment defects, preserving the selected silhouette.
+The shape still needs accommodating with the attached folded paper;
 this experiment has not shown that these exact dimensions are achievable.
 Do not resume microscopic pair repairs or mistake this drawing for a successful
 inflation. Pressure, physical calibration and a checked route remain open.

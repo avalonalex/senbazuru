@@ -23,6 +23,7 @@ import FoldMaterial (areaRatio, componentCount, meshEdges, resolvedTriangles)
 import FoldRelaxation
 import IllustrationComparison (illustrationPage, sharedExtent)
 import IllustrationVisibility
+import PaperLighting (panelCornerNormals)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (Grid (..), gridOf)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -35,7 +36,7 @@ import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Origami.Visible (Region (..), VisibleForm (..))
 import Senbazuru.Render.Camera (basisFrom, project)
-import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
+import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb, toGltfAxes)
 import Senbazuru.Render.Svg (Page (..), renderSvg)
 import SurfaceContact qualified as Contact
 import System.Directory (createDirectoryIfMissing, doesFileExist)
@@ -161,6 +162,9 @@ viewWholeCrane destination = do
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
     BS.writeFile (output </> name ++ ".glb") bytes
+    when (name /= "correction") $ do
+      normals <- checked (panelCornerNormals (refinedPanels (spreadRefined fixture)) mesh)
+      BL.writeFile (output </> name ++ "-lighting.json") (encode (object ["vertices" .= [[a, b, c] | (a, b, c) <- triangles mesh], "normals" .= map (map (xyz . toGltfAxes)) normals]))
     putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
     hFlush stdout
     pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles])
@@ -204,9 +208,11 @@ viewWholeCrane destination = do
   -- The 3D control selects these same complete-sheet files. It never derives
   -- another pose in JavaScript. Include the earlier targets in the common
   -- framing so changing shapes cannot silently move the camera or rescale.
-  let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("narrow.glb" :: T.Text)]
+  let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb"), "lighting" .= (name ++ "-lighting.json")] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("spread-0.glb" :: T.Text)]
   spreadViewer <- TIO.readFile "study/fold-material/whole-crane-3d.html"
   TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))
+  lightingModule <- TIO.readFile "study/fold-material/paper-lighting.mjs"
+  TIO.writeFile (output </> "paper-lighting.mjs") lightingModule
   template <- TIO.readFile "study/fold-material/whole-crane.html"
   TIO.writeFile (destination </> "whole-crane.html") (T.replace "/*WHOLE_CRANE_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode report))) template)
 

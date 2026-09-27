@@ -132,9 +132,11 @@ material relaxation runs. #401 adds an interactive GLB viewer for these same
 poses: orbit, zoom, camera presets and wing-spread selection share one framing,
 with the selected complete-sheet GLB available to download. It adds no new
 shape or material acceptance.
-**Review these silhouettes and proportions next**, then decide how the attached
-paper can accommodate a useful target; its exact dimensions are not proven
-feasible. Do not treat
+The owner selected **More tucked** after #402. #403 makes it the default and
+compares [lighting within each paper panel](notes/crane-panel-lighting.md)
+against the original triangle shading, preserving its geometry and silhouette.
+**Refine the visible wing/body attachments around that target next**; its exact
+dimensions are not proven feasible. Do not treat
 the body-only exception as accepting the complete shape. The matched barrier
 comparison remains blocked; physical thickness, pressure and a checked flexible
 route remain later studies.

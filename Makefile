@@ -32,9 +32,10 @@ fmt-check:
 lint:
 	hlint src app test study
 
-# Fast semantic-mask regressions for the illustration comparison (Node.js).
+# Fast browser-data checks for illustration masks and paper lighting (Node.js).
 study-js-check:
 	node study/fold-material/check-illustration-metrics.mjs
+	node study/fold-material/check-paper-lighting.mjs
 
 # What CI should run.
 check: fmt-check lint study-js-check test

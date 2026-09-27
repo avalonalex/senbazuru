@@ -8,27 +8,28 @@
   *{box-sizing:border-box}body{margin:0}header,footer{max-width:1280px;margin:auto;padding:22px 28px}h1{font-size:clamp(26px,4vw,38px);letter-spacing:-.04em;line-height:1.15;margin:8px 0 12px}a{color:#315e55}p{max-width:920px;margin:10px 0}.eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#727969}.note{font-size:14px;color:#715f46}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px}label{display:flex;align-items:center;gap:8px}select,button,.download{font:inherit;background:#fffdf8;border:1px solid #c8cabc;border-radius:5px;padding:6px 10px}.spread{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px}.spread label{font-weight:600}.spread input{accent-color:#315e55;width:min(320px,60vw)}.spread small{color:#68705f}output{min-width:130px}.download{text-decoration:none}#view{height:62vh;min-height:360px;border-block:1px solid #dcd8cf;background:#e8e0d2}canvas{display:block;width:100%;height:100%;touch-action:none}#status{font-size:14px}#error{color:#a33f27}footer{font-size:14px}button:disabled,select:disabled,input:disabled{opacity:.5}[hidden]{display:none!important}@media(max-width:600px){header,footer{padding:18px 16px}#view{height:56vh;min-height:300px}.controls{gap:8px}.spread{gap:8px}}
 </style>
 <header>
-  <div class="eyebrow">Senbazuru · whole-crane study · <a href="https://github.com/avalonalex/senbazuru/issues/401">#401</a></div>
+  <div class="eyebrow">Senbazuru · whole-crane study · <a href="https://github.com/avalonalex/senbazuru/issues/403">#403</a></div>
   <h1>Spread the crane in 3D</h1>
   <p>Rotate the complete sheet, then adjust the wings without losing your view.</p>
   <p class="note"><strong>Static shape sketches.</strong> The five spread settings keep the slim body fixed. They still contain stretch and intersections; this is not a checked folding motion or an inflation simulation.</p>
   <div class="controls">
     <label>Shape <select id="shape" disabled><option value="spread">Adjust wing spread</option></select></label>
     <label>Paper <select id="paper" disabled><option value="plain">Plain</option><option value="sides">Two-sided colours</option></select></label>
+    <label>Lighting <select id="lighting" disabled><option value="panels">Paper panels</option><option value="triangles">Individual triangles</option></select></label>
     <button id="above" disabled>45° above</button><button id="low" disabled>Low angle</button><button id="top" disabled>Above body</button><button id="below" disabled>Below body</button>
   </div>
   <div class="spread" id="spread-control">
-    <label for="spread">Wing spread</label><small>More tucked</small><input id="spread" type="range" min="0" max="4" step="1" value="2" disabled aria-describedby="spread-help"><small>More spread</small><output id="spread-value" for="spread">Middle spread</output>
+    <label for="spread">Wing spread</label><small>More tucked</small><input id="spread" type="range" min="0" max="4" step="1" value="0" disabled aria-describedby="spread-help"><small>More spread</small><output id="spread-value" for="spread">More tucked</output>
   </div>
-  <p id="spread-help" class="note">Five separate poses, with one shared camera scale. The range does not run from fully closed to fully inflated.</p>
+  <p id="spread-help" class="note">More tucked is the preferred visual target. Five separate poses, with one shared camera scale; this is not a closed-to-inflated motion.</p>
 </header>
 <div id="view" role="img" aria-label="Interactive complete-sheet crane model"></div>
 <footer>
   <div id="status" role="status">Loading the GLB poses…</div>
   <p id="error" role="alert"></p><button id="retry" hidden>Retry loading</button>
   <p>Drag to rotate · scroll to zoom · right-drag to pan. View buttons reset the camera.</p>
-  <p><a id="download" class="download" hidden download>Download selected GLB</a> · <a href="../whole-crane.html">Compare the drawings</a> · <a id="inspector" href="index.html?angle=corner&amp;up=z&amp;model=narrow.glb">Generic GLB inspector</a></p>
-  <p class="note">All buried layers remain in the GLB. Touching surfaces may flicker in this complete-sheet view. Paper colour changes the preview only; the download keeps both original paper-side materials.</p>
+  <p><a id="download" class="download" hidden download>Download selected GLB</a> · <a href="../whole-crane.html">Compare the drawings</a> · <a id="inspector" href="index.html?angle=corner&amp;up=z&amp;model=spread-0.glb">Generic GLB inspector</a></p>
+  <p class="note">Paper-panel lighting softens triangle seams within each original panel; crease edges stay sharp. Colour and lighting affect this preview only. Downloads keep the original two-sided, flat-lit GLBs. All buried layers remain, so touching surfaces may flicker. Lighting does not repair stretched or intersecting paper.</p>
 </footer>
 <script type="importmap">
 {"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}
@@ -42,6 +43,7 @@ const host = document.querySelector('#view');
 const shape = document.querySelector('#shape');
 const spread = document.querySelector('#spread');
 const paper = document.querySelector('#paper');
+const lighting = document.querySelector('#lighting');
 const status = document.querySelector('#status');
 const error = document.querySelector('#error');
 const download = document.querySelector('#download');
@@ -50,9 +52,9 @@ document.querySelector('#retry').onclick = () => location.reload();
 async function start() {
   // Dynamic imports put missing dependencies in the same visible error path
   // as a missing GLB, rather than leaving the page at "Loading" forever.
-  const [THREE, { GLTFLoader }, { OrbitControls }] = await Promise.all([
+  const [THREE, { GLTFLoader }, { OrbitControls }, { primitiveNormals }] = await Promise.all([
     import('three'), import('three/addons/loaders/GLTFLoader.js'),
-    import('three/addons/controls/OrbitControls.js')
+    import('three/addons/controls/OrbitControls.js'), import('./paper-lighting.mjs')
   ]);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -79,7 +81,13 @@ async function start() {
   const bounds = new THREE.Box3();
   let count = 0;
   const loaded = await Promise.allSettled(data.models.map(async model => {
-    const gltf = await loader.loadAsync(model.path);
+    const [gltf, directions] = await Promise.all([
+      loader.loadAsync(model.path),
+      fetch(model.lighting).then(response => {
+        if (!response.ok) throw new Error(`${model.lighting}: ${response.status}`);
+        return response.json();
+      })
+    ]);
     // WholeCraneGallery exports one complete-sheet scene for each file.
     if (gltf.scenes.length !== 1) throw new Error(`${model.path}: expected one complete-sheet scene`);
     const root = gltf.scenes[0];
@@ -87,6 +95,19 @@ async function start() {
     root.rotateX(-Math.PI / 2);
     bounds.union(new THREE.Box3().setFromObject(root));
     root.traverse(object => {
+      if (object.isMesh) {
+        const underside = object.material.name === 'paper underside';
+        if (!underside && object.material.name !== 'paper') throw new Error('Unexpected paper-side material.');
+        if (!object.geometry.index) throw new Error('Paper lighting needs the original GLB corner indices.');
+        const normals = primitiveNormals(object.userData.materialWeights,
+          object.geometry.userData.materialFaces, object.geometry.index.array, directions, underside);
+        if (normals.length !== 3 * object.geometry.getAttribute('position').count)
+          throw new Error('Paper lighting count differs from the GLB positions.');
+        // Each side needs its own attribute, even when the loader shares the
+        // position buffer. The helper maps ids, not distances between points.
+        object.geometry = object.geometry.clone();
+        object.geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+      }
       for (const material of [object.material].flat().filter(Boolean)) {
         if (material.color) material.userData.paperColour = material.color.clone();
       }
@@ -138,11 +159,13 @@ async function start() {
     orbit.target.set(0, 0, 0);
     orbit.update();
   }
-  const applyColour = root => root.traverse(object => {
+  const applyAppearance = root => root.traverse(object => {
     for (const material of [object.material].flat().filter(Boolean)) {
       if (!material.color) continue;
       if (paper.value === 'plain') material.color.set('#eee6cf');
       else material.color.copy(material.userData.paperColour);
+      const flat = lighting.value === 'triangles';
+      if (material.flatShading !== flat) { material.flatShading = flat; material.needsUpdate = true; }
     }
   });
   const openingPaths = new Set(data.openings.map(pose => pose.path));
@@ -163,7 +186,7 @@ async function start() {
     const model = models.get(path);
     if (current) scene.remove(current);
     current = model.root;
-    applyColour(current);
+    applyAppearance(current);
     scene.add(current);
     const label = adjusting ? `${pose.title} · slim body sketch` : model.title;
     document.querySelector('#spread-control').hidden = !adjusting;
@@ -185,7 +208,8 @@ async function start() {
   }
   spread.oninput = show;
   shape.onchange = show;
-  paper.onchange = () => applyColour(current);
+  paper.onchange = () => applyAppearance(current);
+  lighting.onchange = () => applyAppearance(current);
   document.querySelector('#above').onclick = () => view(1, Math.SQRT2, -1);
   document.querySelector('#low').onclick = () => view(1, 0.4, -1);
   document.querySelector('#top').onclick = () => view(0, 1, 0.15);
