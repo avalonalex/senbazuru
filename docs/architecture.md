@@ -327,6 +327,11 @@ mesh interpolation. All use material-distance-weighted graph
 continuation into the attached paper. It is not a new physical solver. The
 [pillow note](notes/crane-pillow-target.md) records its large distortion and
 the fixture's negative-Y-up camera convention.
+The dedicated `whole-crane-3d.html` viewer selects the same complete-sheet GLBs
+from a small manifest written by `WholeCraneGallery`. All poses share a centre
+and camera extent; selecting a pose leaves orbit, zoom and pan unchanged.
+It transforms only the display orientation and position of each complete model,
+never the paper's mesh. The generic glTF inspector remains separate.
 
 `study/fold-material/` is a separate executable experiment, compiled and tested
 with the project. Its mesh types now live in `Origami.Surface`, while the

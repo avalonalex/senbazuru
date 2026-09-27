@@ -41,6 +41,7 @@ extra-source-files:
   study/fold-material/crane-internal.html
   study/fold-material/fixtures/whole-crane-body.fold
   study/fold-material/whole-crane.html
+  study/fold-material/whole-crane-3d.html
   study/fold-material/body-intersection-context.html
   study/fold-material/body-larger-opening.html
   study/fold-material/body-visible-layers.html
