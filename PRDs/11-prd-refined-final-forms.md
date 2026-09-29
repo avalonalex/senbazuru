@@ -265,8 +265,11 @@ Three findings from those renders shape the design:
   ([V](research/V-verification.md), X1 correction).
 - **Separating layers for a still can itself cross paper.** The renders above
   lifted stacked layers by a height from the layer order. On the valid wing
-  spreads that lift creates 64–314 crossing pairs, up to 375 thicknesses deep,
-  because the stacks are hinged, not flat ([Y1](research/Y1-valid-curved-looks.md)).
+  spreads that lift creates 64–314 crossing pairs, because the stacks are
+  hinged, not flat ([Y1](research/Y1-valid-curved-looks.md)). Y1 gave them as up
+  to 375 thicknesses deep. The script behind that figure was not kept; if it
+  used Y1's shared depth in `geom.py`, the figure measures the piercing edge,
+  not the paper (correction 3). The meshes were not kept to re-measure.
 - **Display smoothing is unsafe before paper has thickness.** Subdividing a
   stacked, zero-thickness mesh for display creates new crossings: 29–52 pairs
   from Catmull–Clark at an untagged 30° hinge, and 598–1,466 on layers separated
@@ -1000,24 +1003,32 @@ commands that regenerate them.
 
 Found while researching this file, outside `PRDs/`, so not edited here:
 
-1. **Melancon et al. 2021 is misattributed.** `docs/related-projects.md:56` says
+1. **Melancon et al. 2021 is misattributed.** Fixed by #406.
+   `docs/related-projects.md:56` said
    Bertoldi's group modelled inflatable origami in Abaqus as shells with pressure
    and self-contact, and `docs/notes/the-puff-is-a-drawing.md:162` repeats it. The
    paper's Supplementary Information contains no finite-element analysis: design
    is geometric and validation experimental. The main text was paywalled, so mark
    the claim unverified or remove it ([Y6](research/Y6-fea-oracle.md)).
-2. **`docs/related-projects.md` rows.** CalculiX is GPL-2.0-or-later
+2. **`docs/related-projects.md` rows.** Fixed by #406. CalculiX is GPL-2.0-or-later
    (conda-forge metadata), listed as "not checked". Blender's licence page gives
    its source as GPL-2.0-or-later and its binaries as GPL-3.0-or-later, listed as
    GPL-2.0. No row exists for `ipctk` (MIT source; the PyPI wheel statically
    links LGPL-2.1 filib) or Mitsuba 3 (BSD-style), both run for this research, as
    D17 requires ([V](research/V-verification.md)).
-3. **The accepted body specimen crosses itself.**
-   `study/fold-material/fixtures/whole-crane-body.fold` has 13 crossing triangle
-   pairs by `ipctk`, 5 deeper than a thickness, the deepest 31 thicknesses. The
-   study's check reports one small intersection
-   ([Y1](research/Y1-valid-curved-looks.md)). Why they differ is **UNVERIFIED**;
-   investigate before any new pose is accepted by the study's check alone.
+3. **The body specimen's crossings are rounding.** Resolved 2026-09-29 by #407,
+   [crossing-counts-on-touching-paper.md](../docs/notes/crossing-counts-on-touching-paper.md).
+   This item first said that `study/fold-material/fixtures/whole-crane-body.fold`, an "accepted"
+   specimen, had 13 crossing pairs by `ipctk`, 5 deeper than a thickness and the
+   deepest 31 thicknesses. Each part was wrong:
+   - The specimen was never accepted. The study rejects it on its own screens.
+   - The 13 came from Y1's own counter, not ipctk. That counter flags 48 pairs,
+     13 of them "deeper than `1e-7`"; ipctk flags 58; the study's check flags 2.
+     Each counts zero-thickness paper touching itself at its own tolerance.
+   - Y1's depth is the smaller distance of the piercing edge's two ends from
+     the other triangle's plane, which measures the edge, not the paper. No pair passes
+     more than `2.42e-7` of the sheet through another: 0.00036 t, 0.000145 px.
+     The study's check misses no crossing deeper than its `1e-7`.
 4. **`senbazuru-material-study --help` writes a gallery into `./--help/`.**
    `Main.hs:160` takes any single argument as the output directory.
 5. **`senbazuru export examples/squaretwist.fold` refuses** the visible scene:

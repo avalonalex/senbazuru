@@ -21,7 +21,7 @@ to its scratch folder.
    - The display mesh for stacked layers has its own defects on valid hinged or curved shapes:
      - X1's offsets create crossings;
      - Line Art draws the triangulation as a grid.
-   - The committed #394 body specimen itself crosses (13 pairs, ipctk-confirmed).
+   - The committed #394 body specimen itself crosses (13 pairs, ipctk-confirmed). **Corrected 2026-09-29:** it touches itself, and no pair passes more than `2.42e-7` of the sheet (0.00036 t) through another. The 13 came from this counter, not ipctk, and counted rounding ([note](../../docs/notes/crossing-counts-on-touching-paper.md)).
 2. Display smoothing is **not safe** before thickness exists.
    - Catmull-Clark on layer-separated stacks creates hundreds to more than a thousand new crossings and visible black slots.
    - On zero-thickness layers, both methods cross wherever a folded panel boundary is left untagged.
@@ -39,9 +39,19 @@ All work is in `experiments/Y1-valid-looks/`; the repo is untouched (see caveats
 | curved spread (50° grip) | same | 392 | 0 / 0; 2.9e-7 |
 | fine spread | same | 1,192 | 0 / 0; 3.5e-7 |
 | X3 IPC tip grips, s=0.5 | X3 `open-tip-step05.npy` + `torn.npz` | 448 torn (490 vertices) | 0 between triangles sharing no material vertex; 219 between stitched copies; 7,618 pairs closer than t; stretch 0.9985–1.0018 |
-| #394 body specimen | `study/fold-material/fixtures/whole-crane-body.fold` | 120 | **13 / 5, deepest 31 t (ipctk has_intersections = True)**; 1.8e-5 |
+| #394 body specimen | `study/fold-material/fixtures/whole-crane-body.fold` | 120 | 13 / 5, deepest 31 t (ipctk has_intersections = True); 1.8e-5. **Corrected 2026-09-29:** the largest reach-through is 0.00036 t |
 | before (closed crane, control) | gallery | 448 | 0 / 0 |
 | spread-0 (sketch, control) | gallery | 448 | 290 / 275, deepest 94 t; 57% |
+
+**Corrected 2026-09-29.** This counter's depth is the smaller distance of a
+piercing edge's two ends from the other triangle's plane. It measures that
+edge, not how far paper passes through paper. On the body specimen it gave
+31 t, where the smaller reach of either triangle past the other's plane, which
+bounds how far paper passes through, is at most 0.00036 t
+([crossing-counts-on-touching-paper.md](../../docs/notes/crossing-counts-on-touching-paper.md)).
+`smooth_test.py` uses the same depth; the script behind the offsets table's
+"Deepest" column was not kept. No other depth in this file has been
+re-measured.
 
 The crane-spreading run printed rigid/curved/fine accepted and crossed-grip unaccepted. Single-run CPU solve times were 0.77, 10.98 and 166.0 s (the notes said about 6 s and about 64 s). The machine was loaded, and another agent was running the same command. Wall time was 488 s.
 
@@ -82,7 +92,7 @@ For X3, two-sidedness was recovered because the torn triangles T equal before.fo
 | curved spread | clean paper; the curved wing reads as a smooth bend | 355 / 170 | Line Art draws a triangulation grid on the curved wing |
 | fine spread | clean, same as curved | 292 / 187 | curved against fine: MAE 0.18–0.27%, 14–585 px differ by more than 3% |
 | X3 s=0.5 | paper crane with spread wings, narrow closed body, fanned layer slivers | 1,093 / 1,554 | intersection lines are the stitched seams |
-| body specimen | clean paper fragment, mostly ochre; small opening | 110 / 150 | the geometry crosses (13 pairs) |
+| body specimen | clean paper fragment, mostly ochre; small opening | 110 / 150 | the geometry crosses (13 pairs); **corrected 2026-09-29:** it touches itself, crossing by at most 0.00036 t |
 | spread-0 (invalid) | blotches remain | 1,746 / 2,966 | control, matches X1 |
 
 The display offsets themselves create crossings on valid shapes. With layers 1.1 t apart along each coplanar cluster's direction:
@@ -141,7 +151,7 @@ Repeat timings (Cycles, 3 runs each, loaded machine; seconds):
 ## What it shows
 
 - **Presentation works on valid geometry, and cannot fix invalid geometry.** Every valid shape looks refined; the sketch's blotches survive.
-- **The valid shapes we have are not the pose the owner wants.** The spreads hold the body closed and X3 opens it only partly. The only doubly-curved valid sample, the #394 body, is a 10° fragment, and it crosses itself.
+- **The valid shapes we have are not the pose the owner wants.** The spreads hold the body closed and X3 opens it only partly. The only doubly-curved valid sample, the #394 body, is a 10° fragment, and it crosses itself. **Corrected 2026-09-29:** it touches itself, crossing by at most 0.00036 t.
 - **"Good presentation" includes a correct display mesh for stacks.**
   - X1's flat-stack offsets create deep crossings at hinges and on curved stacks.
   - Line Art needs separated layers and unsplit panels.
@@ -161,7 +171,7 @@ Repeat timings (Cycles, 3 runs each, loaded machine; seconds):
 
 ## Recommendation for the PRD
 
-1. The gate is validity of the **displayed** mesh, checked with one checker (ipctk has_intersections, crossing counts thresholded by depth, strain). Re-audit the #394 body specimen against it.
+1. The gate is validity of the **displayed** mesh, checked with one checker (ipctk has_intersections, crossing counts thresholded by depth, strain). Re-audit the #394 body specimen against it. **Done 2026-09-29** ([note](../../docs/notes/crossing-counts-on-touching-paper.md)): a depth threshold needs a depth through paper, which this counter's depth is not.
 2. Add a requirement for the stacked-layer display: offsets along local normals per layer, continuous across panels, validated like the geometry. X1's per-cluster offsets are for flat stacks only.
 3. Keep the study's line drawing for book-style figures. Treat Line Art as optional, and use its intersection lines as a picture, not as an acceptance test.
 4. No display smoothing until thickness exists. If any is added later, use Phong with sharp tags from dihedral angle or panel boundary, and run the validity check on the result. Do not use Catmull-Clark or Loop.
