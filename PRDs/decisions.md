@@ -1465,6 +1465,9 @@ accepted and rejected controls stay unchanged at each
     produce ([C47](#changes-since-draft-v2)). `export --smooth` of an arbitrary file
     cannot know whether its panels are rigid (`puffed-square.fold` is a hand-made
     dome), so it must not claim either.
+    **As prescribed** (owner decision 17, 2026-09-29): a pose built by placing
+    vertices rather than by folding or settling paper, a *shape sketch*
+    ([11](11-prd-refined-final-forms.md#1-the-paper-screen), R-11-2).
   - *Motion:* static · animated rigid (checked routes) · animated flexible
     (research).
   - *Appearance:* A0 two flat colours (today) · A1 normals split at feature edges ·
@@ -2178,7 +2181,8 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 ## 9. Owner decisions
 
 Numbered as every PRD's open questions cite them. Each has a recommended default,
-and each has to be decided before the milestone named.
+and each has to be decided before the milestone named. Decisions 15–25 come from
+[PRD 11](11-prd-refined-final-forms.md#open-questions-for-the-owner), whose milestones are F0–F7.
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
@@ -2196,6 +2200,17 @@ and each has to be decided before the milestone named.
 | 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs after #208 | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR before #208 lands; a higher cap admits unmeasured settles | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
 | 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease; **refined 2026-09-24**: that crease has no direction, U, since a later move may fold it either way, a stretch at a time ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
+| 15 | What "refined" requires, and the crane target ([11](11-prd-refined-final-forms.md#4-the-crane)) | **decided 2026-09-29**: both. More tucked stays in the gallery, labelled a schematic; the physical target is the pod; the pillow stays a target only if F2's core-lengthening test passes | picture only: F2–F5 are not needed, and the look track works on labelled sketches; paper only: More tucked leaves the gallery | F0 |
+| 16 | The paper screen's strain threshold ([11](11-prd-refined-final-forms.md#what-refined-means)) | **decided 2026-09-29**: 1% principal strain outside declared tension-field regions, with 0.1% reported beside it. Crossings are reported, as a count and the deepest [reach-through](../docs/notes/crossing-counts-on-touching-paper.md), with no pass/fail depth until F2's contact states give separations to compare | 0.1%: few poses pass, and the tension-field regions carry the look | F0 |
+| 17 | [D19](#d19-realistic-rendering)'s geometry axis gains `as prescribed` | **decided 2026-09-29**: yes; D19 amended | sketches stay unlabelled in their files | F0 |
+| 18 | Reopen four [D18](#d18-non-goals) non-goals (pressure or inflation, thickness as geometry, sliding contact, calibrated paper) for illustrations only | yes | F2–F6 stay research notes | F2 |
+| 19 | Sim-FAST is CC BY 4.0, not unlicensed | ideas only, as for GPL sources, to keep one rule | adapted code carries CC BY attribution, not MIT | F2 |
+| 20 | Where offline stills live ([11](11-prd-refined-final-forms.md#22-3d-viewer-and-offline-stills)) | a Mitsuba script under MIT, with Blender kept to one-off renders outside the tree | a GPL directory with its own licence file and a line in the research README | F1 |
+| 21 | A Python prototype under `study/`, outside CI | yes | the prototype lives outside the repository; only its FOLD outputs arrive, as fixtures with provenance | F2 |
+| 22 | May an external tool's shape be shown for review | yes, labelled a prototype, never a golden or the published illustration | review waits for F4 | F2 |
+| 23 | An inflate or spread step's settled figure as a page cell with its own three-quarter camera | no: a separate figure after the page (R-11-32) | amends [D14](#d14-material-consumption) (R-07-32) and the AGENTS.md one-camera rule | F7 |
+| 24 | The membrane for inflated paper: tension field with crimps drawn on top, or a plain shell whose folds depend on a seed | tension field | the look depends on a seed, stated with each pose; F2's benchmarks change | F2 |
+| 25 | The finished 3D book figure the ink-volume target is measured against | the owner names one | the flat crane's 4.8, as a floor only | F1 |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that

@@ -994,6 +994,10 @@ Numbered to continue [decisions §9](decisions.md#9-owner-decisions).
 | 24 | The membrane for inflated paper: tension field with crimps drawn on top, or a plain shell whose folds depend on a seed | Tension field | The look depends on a seed, stated with each pose; F2's benchmarks change | F2 |
 | 25 | The finished 3D book figure the ink-volume target is measured against | The owner names one | The flat crane's 4.8, as a floor only | F1 |
 
+Decisions 15, 16 and 17 were decided on 2026-09-29 as recommended; for 16 the
+crossings are reported with no pass/fail depth yet. The decision record holds
+the answers ([decisions §9](decisions.md#9-owner-decisions)).
+
 This pull request also adds nine JPEG contact sheets (2.4 MB) under
 `PRDs/research/img/`, the first raster images in the repository, because the
 evidence is visual. If the owner prefers, they go and the notes keep only the
