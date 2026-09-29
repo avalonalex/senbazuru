@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>X1 three.js paper still</title>
+<style>body{margin:0;background:#fff}canvas{display:block}</style>
+<script type="importmap">
+{"imports":{"three":"/experiments/X1-render/threecheck/package/build/three.module.js",
+"three/addons/":"/experiments/X1-render/threecheck/package/examples/jsm/"}}
+</script></head><body>
+<script type="module">
+// Written for experiment X1: a three.js (r186) approximation of the Cycles
+// "paper" still, loading the study's GLB unchanged. The corner normals come
+// from the gallery's own paper-lighting.mjs (repo output, imported, not copied).
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { primitiveNormals } from '/gallery/whole-crane/paper-lighting.mjs';
+
+const q = new URLSearchParams(location.search);
+const model = q.get('model') || 'spread-0';
+const normalsMode = q.get('normals') || 'panels';
+const useAO = q.get('ao') !== '0';
+const useShadow = q.get('shadow') !== '0';
+const useLines = q.get('lines') === '1';
+const W = 1200, H = 1000;
+const t0 = performance.now();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = Number(q.get('exposure') || 0.8);
+renderer.shadowMap.enabled = useShadow;
+renderer.shadowMap.type = THREE.VSMShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#d9d7d3');
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.35;
+
+const base = '/gallery/whole-crane/';
+const loader = new GLTFLoader();
+async function load(name, withNormals) {
+  const gltf = await loader.loadAsync(base + name + '.glb');
+  const root = gltf.scenes[0];
+  root.rotateX(-Math.PI / 2);           // FOLD -Y (glTF +Z) up, as spread.html does
+  root.updateMatrixWorld(true);
+  if (withNormals) {
+    const lighting = await (await fetch(base + name + '-lighting.json')).json();
+    root.traverse(o => {
+      if (!o.isMesh) return;
+      const underside = o.material.name === 'paper underside';
+      if (normalsMode === 'panels') {
+        const n = primitiveNormals(o.userData.materialWeights, o.geometry.userData.materialFaces,
+          o.geometry.index.array, lighting, underside);
+        o.geometry = o.geometry.clone();
+        o.geometry.setAttribute('normal', new THREE.BufferAttribute(n, 3));
+      } else {
+        o.geometry = o.geometry.toNonIndexed(); o.geometry.computeVertexNormals();
+      }
+      o.material = new THREE.MeshPhysicalMaterial({
+        color: underside ? '#c58440' : '#eee6cf', roughness: 0.7, metalness: 0,
+        sheen: 0.15, sheenRoughness: 0.5, sheenColor: '#ffffff', specularIntensity: 0.25,
+        side: THREE.FrontSide });
+      o.castShadow = true; o.receiveShadow = true;
+    });
+  }
+  return root;
+}
+// Shared framing: the union of the closed crane and the tucked sketch, as in Blender.
+const [shown, other] = await Promise.all([load(model, true), load(model === 'before' ? 'spread-0' : 'before', false)]);
+scene.add(shown);
+const fwd = new THREE.Vector3(1, -Math.SQRT2, 1).normalize();   // FOLD (1, sqrt2, -1) in three axes
+const up = new THREE.Vector3(0, 1, 0);
+const right = new THREE.Vector3().crossVectors(fwd, up).normalize();
+const tup = new THREE.Vector3().crossVectors(right, fwd);
+let pr = [Infinity, -Infinity], pu = [Infinity, -Infinity], sum = new THREE.Vector3(), count = 0, minY = Infinity;
+for (const root of [shown, other]) root.traverse(o => {
+  if (!o.isMesh) return;
+  const p = o.geometry.getAttribute('position'), v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+    const a = v.dot(right), b = v.dot(tup);
+    pr = [Math.min(pr[0], a), Math.max(pr[1], a)]; pu = [Math.min(pu[0], b), Math.max(pu[1], b)];
+    sum.add(v); count++;
+    if (root === shown) minY = Math.min(minY, v.y);
+  }
+});
+const centre = sum.divideScalar(count);
+const cx = (pr[0] + pr[1]) / 2, cy = (pu[0] + pu[1]) / 2;
+const ortho = Math.max(pr[1] - pr[0], (pu[1] - pu[0]) * W / H) * 1.12;
+const focus = centre.clone().addScaledVector(right, cx - centre.dot(right)).addScaledVector(tup, cy - centre.dot(tup));
+const camera = new THREE.OrthographicCamera(-ortho / 2, ortho / 2, ortho / 2 * H / W, -ortho / 2 * H / W, 0.01, 100);
+camera.position.copy(focus).addScaledVector(fwd, -10); camera.up.copy(up); camera.lookAt(focus);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: new THREE.Color().setRGB(0.80, 0.785, 0.76, THREE.LinearSRGBColorSpace), roughness: 0.95 }));
+ground.rotateX(-Math.PI / 2); ground.position.set(focus.x, minY - 1e-4, focus.z); ground.receiveShadow = true;
+scene.add(ground);
+const dirTo = (a, b, c) => new THREE.Vector3().addScaledVector(fwd, a).addScaledVector(right, b).addScaledVector(up, c).normalize();
+const key = new THREE.DirectionalLight('#ffffff', 2.4);
+key.position.copy(focus).addScaledVector(dirTo(-0.9, -0.8, 1.4), 4); key.target.position.copy(focus);
+key.castShadow = true; key.shadow.mapSize.set(4096, 4096);
+Object.assign(key.shadow.camera, { left: -1.2, right: 1.2, top: 1.2, bottom: -1.2, near: 0.5, far: 10 });
+key.shadow.radius = 12; key.shadow.blurSamples = 25; key.shadow.bias = -0.0005; key.shadow.normalBias = 0.002;
+scene.add(key, key.target);
+const fill = new THREE.DirectionalLight('#ffffff', 0.6);
+fill.position.copy(focus).addScaledVector(dirTo(-1.0, 1.0, 0.2), 4); fill.target.position.copy(focus);
+scene.add(fill, fill.target);
+if (useLines) {
+  shown.traverse(o => {
+    if (!o.isMesh || o.material.color.getHexString() !== new THREE.Color('#eee6cf').getHexString()) return;
+    const edges = new THREE.EdgesGeometry(o.geometry, 20);
+    const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: '#343d36' }));
+    o.add(lines);
+  });
+}
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+if (useAO) { const ao = new GTAOPass(scene, camera, W, H); ao.blendIntensity = 1.0; composer.addPass(ao); }
+composer.addPass(new OutputPass());
+composer.setSize(W, H);
+const t1 = performance.now();
+composer.render();
+const t2 = performance.now();
+window.__stats = { load_ms: t1 - t0, frame_ms: t2 - t1, ortho, minY };
+const save = q.get('save');
+if (save) {
+  const blob = await new Promise(r => renderer.domElement.toBlob(r, 'image/png'));
+  await fetch('/save?name=' + encodeURIComponent(save), { method: 'POST', body: blob });
+  window.__saved = save;
+}
+document.title = 'done';
+</script></body></html>

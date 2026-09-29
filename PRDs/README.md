@@ -5,6 +5,15 @@
 [decisions.md](decisions.md), and several files were written or re-checked on
 2026-09-15 at the same commit. Nothing under `PRDs/` edits any other file.
 
+[11](11-prd-refined-final-forms.md), added 2026-09-28 against `83fc960`, is a
+second strand: why the material study's finished crane does not look refined,
+and how models that open, spread or inflate should be made and drawn. It builds
+on [07](07-prd-material-consumption.md) and [08](08-prd-realistic-rendering.md),
+proposes amendments to D14, D15, D17, D18, D19 and PRD 08 (R-08-6, W1) rather
+than making them, raises owner decisions 15–25 (which continue decisions §9 but
+are listed only in 11), and has its own evidence under
+[research/](research/README.md#refined-final-forms-2026-09-28).
+
 ## The answer
 
 The request had three parts:
@@ -75,6 +84,7 @@ before milestone M8; until then it comes from the study
 | [08 Realistic rendering](08-prd-realistic-rendering.md) | Feature 3b: fidelity axes, a smooth-shaded GLB mode, animation, an exact line drawing |
 | [09 Testing and acceptance](09-testing-and-acceptance.md) | Acceptance per milestone, the quarter-fold tests, end-to-end tests, budgets |
 | [10 Roadmap, risks, questions](10-roadmap-risks-questions.md) | Milestones and order, issue mapping, risks, owner decisions, corrections to file |
+| [11 Refined final forms](11-prd-refined-final-forms.md) | Why the finished crane looks unrefined, measured; the paper screen; the look track; the shape track (valid starts, contact, paths, inflation); milestones F0–F7 with a go/no-go; proposed amendments |
 | [glossary-additions](glossary-additions.md) | The one copy of every new term; keep it open beside the rest |
 | [research/](research/README.md) | The evidence the PRDs cite |
 
