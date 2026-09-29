@@ -160,8 +160,11 @@ a valid shape from the schematic bump above.
 ## References
 
 - Melancon, Gorissen, García-Mora, Hoberman, Bertoldi, *Multistable inflatable
-  origami structures at the metre scale*, Nature 592 (2021) — inflatable
-  origami as shells, pressure and self-contact. https://dash.harvard.edu/bitstream/handle/1/37376741/s41586-021-03407-4.pdf?sequence=1
+  origami structures at the metre scale*, Nature 592 (2021) — rigid-walled,
+  bistable origami that a single pressure input deploys, designed by geometric
+  analysis and tested by experiment. Its Supplementary Information has no
+  finite-element model; the main text is paywalled and unread here.
+  https://doi.org/10.1038/s41586-021-03407-4
 - Liu and Paulino, *Nonlinear mechanics of non-rigid origami: an efficient
   computational approach*, Proc. R. Soc. A 473 (2017) — the MERLIN
   bar-and-hinge model, whose nodes are a FOLD file's vertices. http://www2.coe.pku.edu.cn/faculty/liuke/papers/latest/16Liu_merlin.pdf
