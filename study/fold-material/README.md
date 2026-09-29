@@ -64,11 +64,15 @@ the drawing retains the prescribed candidate instead. Use
 See [the whole-crane study](../../docs/notes/whole-crane-candidate.md).
 
 For interactive 3D, open `whole-crane/spread.html` on the local gallery server.
-It loads the nine complete-sheet GLBs once; the wing-spread slider selects five
+It loads the nine GLBs once; the wing-spread slider selects five
 static poses while preserving rotation, zoom and pan. Four camera buttons reset
 the view, and the shape selector retains the earlier targets. Each download is
 the selected original GLB, including both paper-side materials even when the
-preview uses plain paper. As with the other 3D galleries, install Three.js with
+preview uses plain paper. Each GLB leads with its visible-paper scene, so the
+viewer draws the paper a pose exposes rather than letting depth rounding choose
+between touching layers, and keeps every layer as its second scene. Where the
+visible scene refuses a pose, that pose keeps the complete scene alone and the
+gallery prints why. As with the other 3D galleries, install Three.js with
 `npm install --prefix build/fold-material/checked-flap three@0.186.0` if needed.
 The browser applies one common framing to all files; it does not calculate new
 paper shapes. These remain the same unaccepted sketches described above.
@@ -76,7 +80,8 @@ Its default is More tucked too. The Lighting selector compares smooth
 brightness within original panels with the original triangle shading, retaining
 sharp crease boundaries. Haskell generates the corner normals in per-pose
 `*-lighting.json` files; `paper-lighting.mjs` maps their material identities to
-the GLB graphics corners. Both files are produced by the existing view command.
+the GLB graphics corners, blending the directions of a triangle's corners where
+the visible scene clipped it. Both files are produced by the existing view command.
 Lighting changes only the preview, not the downloaded GLBs. See the
 [lighting note](../../docs/notes/crane-panel-lighting.md).
 

@@ -10,7 +10,7 @@
 <header>
   <div class="eyebrow">Senbazuru · whole-crane study · <a href="https://github.com/avalonalex/senbazuru/issues/403">#403</a></div>
   <h1>Spread the crane in 3D</h1>
-  <p>Rotate the complete sheet, then adjust the wings without losing your view.</p>
+  <p>Rotate the crane, then adjust the wings without losing your view.</p>
   <p class="note"><strong>Static shape sketches.</strong> The five spread settings keep the slim body fixed. They still contain stretch and intersections; this is not a checked folding motion or an inflation simulation.</p>
   <div class="controls">
     <label>Shape <select id="shape" disabled><option value="spread">Adjust wing spread</option></select></label>
@@ -23,13 +23,13 @@
   </div>
   <p id="spread-help" class="note">More tucked is the preferred visual target. Five separate poses, with one shared camera scale; this is not a closed-to-inflated motion.</p>
 </header>
-<div id="view" role="img" aria-label="Interactive complete-sheet crane model"></div>
+<div id="view" role="img" aria-label="Interactive crane model"></div>
 <footer>
   <div id="status" role="status">Loading the GLB poses…</div>
   <p id="error" role="alert"></p><button id="retry" hidden>Retry loading</button>
   <p>Drag to rotate · scroll to zoom · right-drag to pan. View buttons reset the camera.</p>
   <p><a id="download" class="download" hidden download>Download selected GLB</a> · <a href="../whole-crane.html">Compare the drawings</a> · <a href="../crane-book.html">Instruction-book treatment</a> · <a id="inspector" href="index.html?angle=corner&amp;up=z&amp;model=spread-0.glb">Generic GLB inspector</a></p>
-  <p class="note">Paper-panel lighting softens triangle seams within each original panel; crease edges stay sharp. Colour and lighting affect this preview only. Downloads keep the original two-sided, flat-lit GLBs. All buried layers remain, so touching surfaces may flicker. Lighting does not repair stretched or intersecting paper.</p>
+  <p class="note">Paper-panel lighting softens triangle seams within each original panel; crease edges stay sharp. Colour and lighting affect this preview only. Downloads keep the original two-sided, flat-lit GLBs. Each pose shows only the paper it exposes; its GLB keeps every layer as a second scene. Lighting does not repair stretched or intersecting paper.</p>
 </footer>
 <script type="importmap">
 {"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}
@@ -88,8 +88,12 @@ async function start() {
         return response.json();
       })
     ]);
-    // WholeCraneGallery exports one complete-sheet scene for each file.
-    if (gltf.scenes.length !== 1) throw new Error(`${model.path}: expected one complete-sheet scene`);
+    // WholeCraneGallery leads with the visible-paper scene where it exports and
+    // keeps every layer second; where it refused, the complete scene stands
+    // alone. Read the file's own names: the loader rewrites them.
+    const names = gltf.parser.json.scenes.map(scene => scene.name).join(', ');
+    const expected = model.scene === 'visible' ? 'Visible paper, Complete paper' : 'Complete paper';
+    if (names !== expected) throw new Error(`${model.path}: expected scenes ${expected}, found ${names}`);
     const root = gltf.scenes[0];
     // FOLD -Y becomes glTF +Z; this display-only rotation makes it stand up.
     root.rotateX(-Math.PI / 2);
@@ -112,7 +116,7 @@ async function start() {
         if (material.color) material.userData.paperColour = material.color.clone();
       }
     });
-    models.set(model.path, { root, title: model.title });
+    models.set(model.path, { root, title: model.title, scene: model.scene });
     status.textContent = `Loaded ${++count} of ${data.models.length} GLB poses…`;
   }));
   // Finish the small batch before reporting failure, so a late successful
@@ -193,8 +197,9 @@ async function start() {
     document.querySelector('#spread-help').hidden = !adjusting;
     document.querySelector('#spread-value').textContent = pose.title;
     spread.setAttribute('aria-valuetext', pose.title);
-    host.setAttribute('aria-label', `Interactive complete-sheet crane model: ${label}`);
-    status.textContent = `${label} · complete sheet · same camera and scale`;
+    const shown = model.scene === 'visible' ? 'exposed paper' : 'every layer, so touching surfaces may flicker';
+    host.setAttribute('aria-label', `Interactive crane model: ${label}`);
+    status.textContent = `${label} · ${shown} · same camera and scale`;
     download.href = path;
     download.download = path;
     download.hidden = false;
