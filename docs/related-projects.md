@@ -37,30 +37,41 @@ says *not checked*, check it before reading the code.
 | [Eos](https://www.semanticscholar.org/paper/Computational-Origami-System-Eos-Ida-Takahashi/b7ae46f4f3b074d336af2802ac0a8337a39c1ba0) — Tetsuo Ida and others | The E-origami system: Mathematica programs that fold as a person would, implement Huzita's axioms with a logical specification in first-order predicate logic, solve the constraints symbolically, and prove geometric properties of the result | Closed source: Mathematica packages sent on request to project members; the tutorial is CC BY-NC-ND 4.0 | The rigorous answer to the half of [#97](https://github.com/avalonalex/senbazuru/issues/97) that is hard — how a fold names the line it folds on. Read it for the reference vocabulary, and for its formal model of folded paper: faces with adjacency and a superposition relation, a fold as a graph rewrite. It is not a diagram tool, but it does fold whole models: it can fold a chosen set of faces, say where in the stack they go, and has folded a crane. See [E3](../PRDs/research/E3-formal-fold-semantics.md). |
 | [Doodle](https://doodle.sourceforge.net/) — Jérôme Gout and others | A text language for origami diagrams, compiled to PostScript. 2000–2001 | GPL-2.0 | A whole diagramming language with no geometry in it: the arrows and captions were typed, not computed. One of the three shapes [#97](https://github.com/avalonalex/senbazuru/issues/97) weighs. |
 | [Foldinator](https://zingman.com/origami/foldinator3OSMEpaper.php) — John Szinger, 2001 | A modeller that folds a sheet step by step in 3D and generates annotated diagrams. Valley, mountain and reverse folds; never released | paper only | The closest ancestor of [#60](https://github.com/avalonalex/senbazuru/issues/60), and a record of how far a fold vocabulary got twenty-five years ago. |
-| [rigid-origami](https://github.com/belalugaX/rigid-origami) | Python: rigid-origami crease-pattern generation and folding simulation, framed as a game environment | not checked | Another rigid-origami simulator to compare angle solutions against. |
-| [OrigamiSimulator (MATLAB)](https://github.com/zzhuyii/OrigamiSimulator) — Yuyuan Zhu | Bar-and-hinge simulation of active origami: compliant creases, panel contact, thermal actuation | not checked | What keeping paper out of paper ([#61](https://github.com/avalonalex/senbazuru/issues/61)) looks like in a compliant model. |
+| [rigid-origami](https://github.com/belalugaX/rigid-origami) — Geiger, Martinkus, Richter, Wattenhofer | Python: rigid-origami crease-pattern generation and folding simulation, framed as a game environment | Its own: non-commercial research and education only, with a required citation | Another rigid-origami simulator to compare angle solutions against. Not compatible with MIT, so ideas only. |
+| [OrigamiSimulator (MATLAB)](https://github.com/zzhuyii/OrigamiSimulator) — Yi Zhu | Bar-and-hinge simulation of active origami: compliant creases, panel contact, thermal actuation. Its README points to a successor, [Sim-FAST](https://github.com/zzhuyii/Sim-FAST) | None: no licence file. Sim-FAST's README declares CC BY 4.0, with no licence file | What keeping paper out of paper ([#61](https://github.com/avalonalex/senbazuru/issues/61)) looks like in a compliant model. Unlicensed code is ideas only; CC BY is not a software licence, so reusing Sim-FAST is an owner decision. |
 
 ## Simulators that could inflate a crane
 
 The crane's last step — blow into the body so it rounds out — is the airbag
-problem, and every tool below could compute it properly. None is needed:
+problem, and the simulators below could compute it. None is needed:
 [notes/the-puff-is-a-drawing.md](notes/the-puff-is-a-drawing.md) argues that a
 diagram wants a convincing bulge rather than a correct one, and
 [#106](https://github.com/avalonalex/senbazuru/issues/106) generates that from
 a bump function. This is the list of what accuracy would have cost, kept so the
 question is not reopened from scratch.
+[PRD 11](../PRDs/11-prd-refined-final-forms.md) ran several of them for its
+research, and the rows say what it found. The IPC Toolkit is listed with them
+although it is a contact library, not a simulator, because PRD 11's prototype
+used it.
 
 | Project | What it is | Licence | Why it matters here |
 | --- | --- | --- | --- |
 | [LS-DYNA](https://lsdyna.ansys.com/) | Explicit finite element analysis. Simulates folded airbags inflating as a matter of routine, and lets the flat sheet be the stress-free state with the folded one as the start | Commercial | The reference answer, and out of reach. A week to set up the first model. |
-| [Abaqus](https://www.3ds.com/products/simulia/) | Implicit and explicit finite element analysis. What Bertoldi's group used for metre-scale inflatable origami: faces as shell plates, creases as thinned hinges, pressure on the cavity, self-contact throughout | Commercial | Same, with a published method worth reading even though the licence is not ours. |
-| [CalculiX](http://www.calculix.de/), [Code_Aster](https://code-aster.org/), [Kratos](https://github.com/KratosMultiphysics/Kratos) | Open-source nonlinear shells with pressure loads and contact | not checked | Free, and none of them knows what a crease is: every hinge is a thin strip or a connector you build by hand. |
-| [MERLIN](https://paulino.princeton.edu/software.html) — Liu and Paulino | The bar-and-hinge reduced-order model for origami: bars along edges, torsional springs at creases and across faces | not checked | Orders of magnitude cheaper than shells, and its nodes are a FOLD file's vertices. The closest thing to a drop-in. |
-| [Blender](https://www.blender.org/) | A cloth simulator with a pressure setting that inflates a closed mesh | GPL-2.0 | For a picture only, which is all a diagram needs. An afternoon rather than a week. |
-| [ArcSim](http://graphics.berkeley.edu/resources/ARCSim/) | Adaptive cloth simulation written for folding and crumpling paper, with plastic creases | not checked | Same again: no number anyone would publish, and a puffed crane by the end of the day. |
+| [Abaqus](https://www.3ds.com/products/simulia/) | Implicit and explicit finite element analysis, with shells, pressure loads and contact | Commercial | Same as LS-DYNA. |
+| [CalculiX](http://www.calculix.de/), [Code_Aster](https://code-aster.org/), [Kratos](https://github.com/KratosMultiphysics/Kratos) | Open-source nonlinear shells with pressure loads and contact | CalculiX GPL-2.0-or-later; Code_Aster GPL-3.0; Kratos a four-clause BSD licence, with an advertising clause | Free, and none of them knows what a crease is: every hinge is a thin strip or a connector you build by hand. CalculiX installs on this Mac from conda-forge and agreed with our own solver on an inflated pillow; a fold built from shared nodes came out rigid ([Y6](../PRDs/research/Y6-fea-oracle.md)). Code_Aster's conda-forge package and Kratos's PyPI wheels have no macOS arm64 build. |
+| [MERLIN, MERLIN2](http://www.liukepku.com/downloads.html) — Liu and Paulino | The bar-and-hinge reduced-order model for origami: bars along edges, torsional springs at creases and across faces | None stated on the download page, which carries only a site copyright; the archives were not opened | Orders of magnitude cheaper than shells, and its nodes are a FOLD file's vertices. The closest thing to a drop-in. |
+| [Blender](https://www.blender.org/) | A cloth simulator with a pressure setting that inflates a closed mesh, and the Cycles path tracer | Source GPL-2.0-or-later; binaries GPL-3.0-or-later. Its FAQ adds that published Python scripts using its API must be licensed GPL as well | For a picture only, which is all a diagram needs. An afternoon rather than a week. Running it is not vendoring, but a published script that drives it is GPL, so none lives in this MIT tree. |
+| [ArcSim](http://graphics.berkeley.edu/resources/ARCSim/) | Adaptive cloth simulation written for folding and crumpling paper, with plastic creases | Non-profit use only, citing two papers | Same again: no number anyone would publish, and a puffed crane by the end of the day. |
+| [IPC Toolkit](https://github.com/ipc-sim/ipc-toolkit), Python binding [`ipctk`](https://ipctk.xyz/) | Contact for simulation, not a simulator: barrier potentials, continuous collision detection and a thickness offset, which keep surfaces from ever passing through each other | Source MIT. The PyPI wheel statically links filib, which is LGPL-2.1, as the toolkit's own documentation warns; checked in the 1.6.0 macOS wheel | PRD 11's prototype opened the crane with it ([X3](../PRDs/research/X3-crane-opening.md), [Y4](../PRDs/research/Y4-crane-v2.md)). Install and run it; never vendor the wheel. |
 
 SWOMPS, the bar-and-hinge simulator with panel contact and compliant crease
 regions, is the OrigamiSimulator (MATLAB) row in the table above.
+
+## Renderers
+
+| Project | What it is | Licence | Why it matters here |
+| --- | --- | --- | --- |
+| [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) — Wenzel Jakob and others | A research path tracer, scriptable from Python, with two-sided materials | Three-clause BSD text plus a clause granting the author a licence to any improvements you share; GitHub cannot classify it | The permissive alternative to Blender for offline stills of paper ([H7](../PRDs/research/H7-tooling.md) finding 15). It reads OBJ and PLY, not glTF. |
 
 ## Two halves that never met
 
