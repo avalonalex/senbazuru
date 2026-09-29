@@ -575,7 +575,9 @@ square, and the study draws at 600 px per unit.
 20. **What an IPC-style solver would have done on the same inputs [reasoned
     from findings 1-6 and 16].**
     - **It would have refused to start.** The closed crane has 27,286
-      zero-distance pairs; the body fixture has 76 and crosses itself. That
+      zero-distance pairs; the body fixture has 76 and crosses itself, by at
+      most `2.42e-7` of the sheet (corrected 2026-09-29,
+      [note](../../docs/notes/crossing-counts-on-touching-paper.md)). That
       puts the start question first, before any pair repair.
     - **No partner lists and no history.** Every pair within `d̂` is active
       automatically, so the whole of discovery, reference encounters and
