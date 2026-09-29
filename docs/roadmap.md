@@ -1,11 +1,12 @@
 # Roadmap, and where we stand
 
 The README's [roadmap](../README.md#roadmap) is the map: one completed
-foundation and three open goals, each an issue tagged `roadmap` that holds the
+foundation and four open goals, each an issue tagged `roadmap` that holds the
 approach and the acceptance criteria. This is the state of play behind it — what is done, what
 is open, how hard each open piece is, and an order to take them in. It is a
 snapshot and will drift, so it carries a date: **as of 2026-09-20**, with
-**Track A's material priority refreshed on 2026-09-26** below. The historical
+**Track A's material priority refreshed on 2026-09-26** and **PRD 11's
+roadmap added on 2026-09-29** below. The historical
 milestones include
 the contact study in [#173](https://github.com/avalonalex/senbazuru/pull/173)
 and the checked flap operation in [#175](https://github.com/avalonalex/senbazuru/issues/175)
@@ -43,6 +44,19 @@ README and the issues stay the source; update this when a roadmap issue
 closes.
 
 ## Where the project stands
+
+**Refined final forms, 2026-09-29:** [PRD 11](../PRDs/11-prd-refined-final-forms.md)
+explains why the study's crane does not look refined and plans the fix, tracked
+in [#409](https://github.com/avalonalex/senbazuru/issues/409) with one issue per piece ([#410](https://github.com/avalonalex/senbazuru/issues/410)–[#431](https://github.com/avalonalex/senbazuru/issues/431)).
+- **The diagnosis.** The owner's preferred More tucked crane is a shape sketch:
+  some point must move at least 17 px before it could be paper. In the research,
+  a paper look made valid shapes read as paper, though the owner has yet to
+  judge them, and it cannot fix a sketch.
+- **The route to an opened or inflated form.** Contact that never lets paper
+  cross paper, stepped along a path from a start where no paper touches paper.
+  The repairs one pair at a time that the body study made are not that route.
+- **The order.** Item 8 of [An order](#an-order). Owner decisions 15–25 gate
+  the milestones.
 
 **Material priority, 2026-09-26:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
 [sets an illustration milestone](notes/illustration-material-priority.md).
@@ -238,7 +252,7 @@ bent-panel rendering remains a study-to-production gap. Authoring a folding
 sequence, handling larger models and installing without Stack remain separate
 pieces of work.
 
-## The four roadmap items
+## The five roadmap items
 
 1. **Complete: one connected material surface** ([#146](https://github.com/avalonalex/senbazuru/issues/146)).
    `Origami.Surface` now holds material identity, current geometry, crease
@@ -291,6 +305,22 @@ pieces of work.
 4. **A schematic side view** ([#50](https://github.com/avalonalex/senbazuru/issues/50)).
    Not started. It should use shared material/layer relationships, keeping any
    display separation distinct from physical paper thickness.
+5. **Refined final forms** ([#409](https://github.com/avalonalex/senbazuru/issues/409)). Planned, not started.
+   [PRD 11](../PRDs/11-prd-refined-final-forms.md) sets out the milestones:
+   - F0: a *paper screen* beside every pose (its strain, how far it is from
+     paper, its crossings) and sketch labels;
+   - F1: the look on valid shapes;
+   - F2: a prototype contact solver outside CI, with a go/no-go that decides
+     whether F4 is built;
+   - F3: Haskell numerics;
+   - F4: contact and path-following in the library;
+   - F5: the crane's body;
+   - F6: inflation;
+   - F7: a book renderer for curved paper.
+
+   An opened body as a library result needs F2 through F5, two to four months at
+   best, and F5 may end in a stated blocker. Its [#425](https://github.com/avalonalex/senbazuru/issues/425), the crane's
+   body, advances #106 and #195.
 
 ## The open issues, by how hard they are
 
@@ -365,6 +395,18 @@ pieces of work.
   control, compatible crease motion, possible panel bending and contact checks.
   Start with controlled opening; a pressure/volume model additionally needs a
   defined cavity and treatment of its openings.
+- **Refined final forms, the shape track** ([#409](https://github.com/avalonalex/senbazuru/issues/409)). F2, the
+  prototype, whose go/no-go decides whether F4 is built:
+  - [#418](https://github.com/avalonalex/senbazuru/issues/418): whether any load lengthens the crane's body core;
+  - [#419](https://github.com/avalonalex/senbazuru/issues/419): the solver and its benchmarks;
+  - [#420](https://github.com/avalonalex/senbazuru/issues/420): whether an *admissible start* exists, one where no paper
+    touches paper. It is not one of the go/no-go items, but F4 and F5 need its
+    answer.
+
+  Then contact and a path settle in the library ([#424](https://github.com/avalonalex/senbazuru/issues/424)), the crane's body
+  ([#425](https://github.com/avalonalex/senbazuru/issues/425)), inflation ([#427](https://github.com/avalonalex/senbazuru/issues/427), [#428](https://github.com/avalonalex/senbazuru/issues/428)) and a library book
+  renderer for curved paper ([#429](https://github.com/avalonalex/senbazuru/issues/429)). Most have a research question
+  inside, and #418 comes first because it is the cheapest decisive one.
 
 ### Medium: days, with a picture or a format to design
 
@@ -407,6 +449,18 @@ pieces of work.
 - **[#62](https://github.com/avalonalex/senbazuru/issues/62) polymorphic scalar**, **[#63](https://github.com/avalonalex/senbazuru/issues/63) phantom units**,
   **[#73](https://github.com/avalonalex/senbazuru/issues/73) vendor keys**, **[#102](https://github.com/avalonalex/senbazuru/issues/102) frame inheritance.** Refactors
   of the data model, each with one design choice in it.
+- **Refined final forms, the labels, the look and the numerics** ([#409](https://github.com/avalonalex/senbazuru/issues/409)).
+  - The labels: the paper screen ([#410](https://github.com/avalonalex/senbazuru/issues/410)), sketch labels ([#411](https://github.com/avalonalex/senbazuru/issues/411)) and
+    the visible-paper scene in the gallery viewers ([#412](https://github.com/avalonalex/senbazuru/issues/412)).
+  - The look: lines drawn once, by role ([#414](https://github.com/avalonalex/senbazuru/issues/414)), gradient paint
+    ([#415](https://github.com/avalonalex/senbazuru/issues/415)), a paper-look viewer ([#416](https://github.com/avalonalex/senbazuru/issues/416)) and offline stills
+    ([#417](https://github.com/avalonalex/senbazuru/issues/417)).
+  - The numerics: D15 stage 1, the first of seven stages that graduate the
+    study into the library ([#421](https://github.com/avalonalex/senbazuru/issues/421)), a sparse LDLᵀ factor ([#422](https://github.com/avalonalex/senbazuru/issues/422))
+    and hyper-dual Hessians ([#423](https://github.com/avalonalex/senbazuru/issues/423)).
+
+  The measures are set in PRD 11. The work is making them hold without changing
+  a default output.
 
 ### Small: an afternoon of composing what exists
 
@@ -418,6 +472,9 @@ pieces of work.
 - [#92](https://github.com/avalonalex/senbazuru/issues/92) `convert`, [#100](https://github.com/avalonalex/senbazuru/issues/100) big-little-big, [#101](https://github.com/avalonalex/senbazuru/issues/101) the
   whole-sheet verdict, [#95](https://github.com/avalonalex/senbazuru/issues/95) turn over, [#96](https://github.com/avalonalex/senbazuru/issues/96) the papers note,
   [#98](https://github.com/avalonalex/senbazuru/issues/98) the release, [#58](https://github.com/avalonalex/senbazuru/issues/58), [#11](https://github.com/avalonalex/senbazuru/issues/11), [#64](https://github.com/avalonalex/senbazuru/issues/64).
+- [#413](https://github.com/avalonalex/senbazuru/issues/413) recording owner decisions 15–25, [#426](https://github.com/avalonalex/senbazuru/issues/426) the flat water bomb
+  fixture, and two bugs found while researching PRD 11: [#430](https://github.com/avalonalex/senbazuru/issues/430)
+  `--help` and [#431](https://github.com/avalonalex/senbazuru/issues/431) the square twist's export.
 
 One is easier than its own text says. [#38](https://github.com/avalonalex/senbazuru/issues/38) claims an unassigned
 pattern cannot be folded, so its input must already be a folded form. But at
@@ -960,3 +1017,13 @@ checked coupled angles.
    and controlled pocket opening. The existing schematic puff tests drawing;
    a new expanded body must additionally pass material/contact checks. These
    are future work, not requirements for finishing the representation change.
+8. [#409](https://github.com/avalonalex/senbazuru/issues/409), refined final forms, in PRD 11's own order.
+   - The paper screen and sketch labels come first (F0).
+   - Then the look on valid shapes (F1) and the two-week prototype (F2), side
+     by side.
+   - The prototype's go/no-go decides whether contact is built into the library.
+     The crane's body and inflation come after that.
+
+   Its #425 advances item 1's body-opening study ([#195](https://github.com/avalonalex/senbazuru/issues/195)) and item 7's
+   #106. A new limiting contact pair is a result there, not the start of a
+   series of repairs.

@@ -161,8 +161,8 @@ the reasoning.
   where panels curve, bending behaviour. Start with a controlled opening
   amount; a pressure-driven model would additionally need a defined cavity
   and treatment of its openings. See [wing motion](https://github.com/avalonalex/senbazuru/issues/54),
-  [body opening](https://github.com/avalonalex/senbazuru/issues/106) and
-  [the connected-surface plan](docs/notes/connected-paper-surface.md).
+  [body opening](https://github.com/avalonalex/senbazuru/issues/106),
+  [the connected-surface plan](docs/notes/connected-paper-surface.md) and [roadmap item 5](#roadmap).
 - **Model every paper treatment.** Wet-folding, damage and detailed crease
   ageing are not current goals. The shared surface can store physical thickness;
   mechanics that use it for packing and clearance are future work.
@@ -194,7 +194,7 @@ way.
 
 ## Roadmap
 
-One completed foundation and three open goals. Each item is an issue tagged
+One completed foundation and four open goals. Each item is an issue tagged
 [`roadmap`](https://github.com/avalonalex/senbazuru/labels/roadmap), where the
 approach and the acceptance criteria are written out; this list is the map, the
 issues are the detail, and the smaller pieces in between are the rest of the
@@ -239,6 +239,20 @@ with every open issue tiered by how hard it is.
    surface's layer relationships, with any display separation labelled as a
    drawing aid rather than a physical thickness.
    → [paper-thickness](docs/notes/paper-thickness.md)
+5. **[Refined final forms: paper that opens, spreads and inflates, drawn well.](https://github.com/avalonalex/senbazuru/issues/409)**
+   The material study's opened crane is a *shape sketch*: its vertices were
+   placed, not bent, and at the gallery's scale some point must move at least
+   17 px before it could be paper. In the research, a paper look made valid
+   shapes read as photographed paper, though the owner has yet to judge them,
+   and it cannot fix a sketch. So the plan labels every pose with a screen of
+   how far it is from paper, gives valid shapes that look, and builds a
+   two-week prototype of contact that never lets paper pass through paper.
+   Only if the prototype passes its go/no-go is that contact built here. The
+   prototype also tests whether anything can lengthen the crane's body enough
+   for a pillow shape. Inflating the water bomb takes the same route, with a
+   membrane that can shorten for free.
+   → [PRD 11](PRDs/11-prd-refined-final-forms.md),
+   [crossing-counts-on-touching-paper](docs/notes/crossing-counts-on-touching-paper.md)
 
 ## Documentation
 
