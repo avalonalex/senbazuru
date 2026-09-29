@@ -25,6 +25,7 @@ import FoldRelaxation
 import IllustrationComparison (illustrationPage, sharedExtent)
 import IllustrationVisibility
 import PaperLighting (panelCornerNormals)
+import PaperScreen (FloorPair (..), noStretchFloor)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (Grid (..), gridOf)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -47,6 +48,7 @@ import System.IO (hFlush, stdout)
 import WholeCrane
 import WholeCraneDrawing
 import WholeCraneExport (viewerGlb)
+import WholeCraneScreen (screenJson, screenPose, strainScreen)
 
 startWholeCrane :: FilePath -> FilePath -> IO ()
 startWholeCrane source destination = do
@@ -161,6 +163,7 @@ viewWholeCrane destination = do
       (angle, _) <- checked (hingeAngle h points)
       pure (object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h])
     let strains = [s | t <- resolvedTriangles mesh, Just s <- [principalStrains t]]
+    screen <- checked (screenPose study mesh)
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     -- The viewers get visible paper first (WholeCraneExport). The refused
     -- adjustment is a diagnostic no viewer loads, kept complete like the
@@ -172,7 +175,7 @@ viewWholeCrane destination = do
       BL.writeFile (output </> name ++ "-lighting.json") (encode (object ["vertices" .= [[a, b, c] | (a, b, c) <- triangles mesh], "normals" .= map (map (xyz . toGltfAxes)) normals]))
     putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
     hFlush stdout
-    pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles])
+    pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles, "screen" .= screenJson screen])
   views <- forM [("upright", "Crane upright · three-quarter", V3 1 (sqrt 2) (-1), V3 0 (-1) 0), ("opposite", "Opposite side · three-quarter", V3 1 (sqrt 2) 1, V3 0 (-1) 0), ("low", "Low angle · three-quarter", V3 1 0.4 (-1), V3 0 (-1) 0), ("head", "From the head · slight tilt", V3 1 0.25 0.15, V3 0 (-1) 0), ("tail", "From the tail · slight tilt", V3 (-1) 0.25 0.15, V3 0 (-1) 0), ("top", "Above the body · slight tilt", V3 0 1 0.15, V3 (-1) 0 0), ("side", "Crane upright · side", V3 0 0 (-1), V3 0 (-1) 0), ("oblique", "Earlier camera · Z up", V3 (-1) 1 (sqrt 2), V3 0 0 1), ("reverse", "Earlier reverse · Z up", V3 1 1 (sqrt 2), V3 0 0 1), ("front", "Earlier front · Z up", V3 0 1 0.2, V3 0 0 1), ("below", "Under the body · slight tilt", V3 0 (-1) 0.15, V3 1 0 0)] $ \(viewId, title, direction, up) -> do
     basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction up)
     bounds <- checked (sharedExtent basis [mesh | (_, _, mesh) <- drawnStates])
@@ -207,7 +210,9 @@ viewWholeCrane destination = do
             writeSvg output page bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks)
             pure [object ["id" .= viewId, "title" .= title, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (360000 * sourceArea), "toneAreaPixelsSquared" .= (360000 * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
           else pure []
-      pure (shapes, object ["id" .= name, "stem" .= stem, "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
+      -- A picture's no-stretch floor: distances measured after projection.
+      let pictureFloor epsilon = maybe 0 (\f -> 600 * max 0 (floorDistance f)) (noStretchFloor epsilon (\p q -> norm (p ^-^ q)) [(sampleMaterial point, project basis (position point)) | point <- samples mesh])
+      pure (shapes, object ["id" .= name, "stem" .= stem, "floorPixels" .= pictureFloor 0, "floorPixelsAtScreen" .= pictureFloor strainScreen, "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
     let comparisons = case viewId of
           "oblique" -> [("comparison.svg", 0, 1, "Before · closed crane", "First opened candidate")]
           "upright" -> [("pillow-comparison.svg", 0, 2, "Before · closed crane", "Wider pillow target"), ("compact-comparison.svg", 0, 3, "Before · closed crane", "Less spread target"), ("spread-comparison.svg", 2, 3, "Earlier · wider target", "Revised · less spread"), ("body-width-comparison.svg", 3, 4, "Previous body width", "Narrower body · same wing angle"), ("narrow-comparison.svg", 0, 4, "Before · closed crane", "Narrower body target")]

@@ -53,7 +53,13 @@ wing angles and curves. Earlier targets stay available. Upright, above-body
 and side cameras sit alongside opposite-side, low-angle, head and tail views
 and the earlier cameras. The selected shape has matching measurements and
 FOLD/GLB download links. Plain/two-sided SVGs and
-complete FOLD/GLB exports share the same geometry. All remain unaccepted
+complete FOLD/GLB exports share the same geometry. Beside the drawings, a
+*paper screen* says whether paper could take each pose: its strain, the
+[no-stretch floor](../../docs/notes/no-stretch-floor.md) in 3D and in the
+chosen picture, crossings with their deepest reach-through, false creases, and
+the body core's length and centre folds. The same figures are in
+`checks.json` under each state's `screen`, and each view's per-state
+`floorPixels`. All remain unaccepted
 shape sketches with substantial material distortion. The
 [study note](../../docs/notes/crane-pillow-target.md) records the references,
 controls and diagnostics. The first candidate's optional

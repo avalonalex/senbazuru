@@ -10,16 +10,19 @@ import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
 import FoldMaterial (componentCount, meshEdges)
+import PaperScreen (FloorPair (..), Turning (..), noStretchFloor)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
+import Senbazuru.Render.Camera (basisFrom, project)
 import Test.Glb (Glb (..), at, items, parseGlb)
 import Test.Hspec
 import WholeCrane
 import WholeCraneExport
+import WholeCraneScreen
 
 spec :: Spec
 spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
@@ -132,6 +135,49 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     glb <- right (viewerGlb "Closed crane" sheet) >>= parseGlb
     map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
     at "scene" (glbJson glb) `shouldBe` Number 0
+
+  -- PRD 11's A-11-1, with the false-crease and core figures of its research
+  -- (H1, Y3, Y4) on the same construction. Computed along edges only, the 3D
+  -- floor would be 17.71 px, set by the edge 46-213.
+  it "screens More tucked as a shape paper cannot take" $ \(_, _, study) -> do
+    mesh <- right (pillowCraneAtSpread 0 study)
+    screen <- right (screenPose study mesh)
+    floorVertices (screenFloor screen) `shouldBe` (37, 46)
+    pixels (floorDistance (screenFloor screen)) `shouldSatisfy` near 20.04 0.01
+    fmap floorVertices (uprightFloor mesh) `shouldBe` Just (46, 182)
+    fmap (pixels . floorDistance) (uprightFloor mesh) `shouldSatisfy` maybe False (near 17.14 0.01)
+    screenCrossings screen `shouldBe` 345
+    screenStretch screen `shouldSatisfy` near 1.068 0.001
+    screenSquash screen `shouldSatisfy` near 0.836 0.001
+    turningJoins (screenTurning screen) `shouldBe` 15
+    turningTotal (screenTurning screen) `shouldSatisfy` near 144.8 0.1
+    screenCoreLength screen `shouldSatisfy` maybe False (near 0.414 0.001)
+    fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14 1)
+    snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4 1)
+
+  it "screens the closed crane as paper and the first candidate as nearly so" $ \(_, _, study) -> do
+    let fixture = wholeSpread study
+    closed <- right (screenPose study (refinedMesh (spreadRefined fixture)))
+    pixels (floorDistance (screenFloorAtScreen closed)) `shouldBe` 0
+    screenCrossings closed `shouldBe` 0
+    turningJoins (screenTurning closed) `shouldBe` 0
+    screenCoreLength closed `shouldSatisfy` maybe False (near 0.235 0.001)
+    fst (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
+    snd (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
+    -- The first candidate's picture floor is 1.0 px (A-11-1).
+    fmap (pixels . floorDistance) (uprightFloor (spreadMesh fixture)) `shouldSatisfy` maybe False (near 1.02 0.01)
+
+-- | The no-stretch floor in the gallery's upright picture.
+uprightFloor :: MaterialMesh -> Maybe FloorPair
+uprightFloor mesh = do
+  basis <- basisFrom (V3 1 (sqrt 2) (-1)) (V3 0 (-1) 0)
+  noStretchFloor 0 (\p q -> norm (p ^-^ q)) [(sampleMaterial s, project basis (position s)) | s <- samples mesh]
+
+pixels :: Double -> Double
+pixels d = 600 * max 0 d
+
+near :: Double -> Double -> Double -> Bool
+near expected tolerance actual = abs (actual - expected) <= tolerance
 
 load :: IO (PocketMap, BodyPatch, WholeCrane)
 load = do
