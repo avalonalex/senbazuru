@@ -117,6 +117,7 @@ read the Haddock module headers; for the domain, start with
 | [whole-crane-candidate.md](whole-crane-candidate.md) | A connected whole-crane visual target retains an opened body and two spread wings; substantial strain and crossings remain explicit |
 | [body-intersection-context.md](body-intersection-context.md) | The 0.232 px body intersection is covered in four drawings; underside coverage uses the existing depth tie |
 | [body-larger-opening.md](body-larger-opening.md) | One bounded 10° grip target from the recovered 5° body seed, assessed at drawing scale |
+| [crossing-counts-on-touching-paper.md](crossing-counts-on-touching-paper.md) | On paper that touches itself, a crossing count measures rounding; how far paper passes through paper is the smaller reach-through |
 | [body-visible-layers.md](body-visible-layers.md) | Inherited order resolves shallow wrong-side depth without moving saved paper; compare exposed regions and retain tiny coverage uncertainty |
 | [body-illustration-tolerances.md](body-illustration-tolerances.md) | Saved body errors at drawing size, provisional review screens and the remaining visibility limitation |
 | [body-angle-audit.md](body-angle-audit.md) | Exact arithmetic audits the saved selected equations without new body solves |

@@ -79,6 +79,11 @@ individual-pair precision repairs or extend the solve automatically. This
 experiment supplies an inspectable larger opening, not an accepted whole-crane
 inflation or proof that a broader parameter range works.
 
+**Follow-up:** [crossing counts on touching paper](crossing-counts-on-touching-paper.md)
+measures how far the two failing pairs pass through each other: 2–39 by
+0.000115 px and 46–70 by 0.000145 px. Their count and the intersection length
+both change with the strict tolerance; that depth does not.
+
 The gallery uses one extent and scale across seed, guess and endpoint for each
 of the established top, 45° above, 45° below and 15° above cameras. It retains
 the 0.1 px visibility allowance and reports unresolved overlaps and coverage
