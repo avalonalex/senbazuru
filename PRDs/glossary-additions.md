@@ -31,7 +31,8 @@ not gain new meanings.
 [The sequence language](#the-sequence-language) · [References](#references) ·
 [Running a sequence](#running-a-sequence) · [Macro-moves](#macro-moves) ·
 [Assurance](#assurance) · [Step pages](#step-pages) · [Material](#material) ·
-[Realistic rendering](#realistic-rendering) · [Code and tests](#code-and-tests)
+[Realistic rendering](#realistic-rendering) · [Refined final forms](#refined-final-forms) ·
+[Code and tests](#code-and-tests)
 
 ## Words the PRDs narrow
 
@@ -227,6 +228,39 @@ not gain new meanings.
 | **Fillet** | A rounded strip replacing a crease; a second layer rounded over it stretches its band 200% ([two-bends-need-more-than-radii.md](../docs/notes/two-bends-need-more-than-radii.md)). Research. |
 | **Sheen** / **diffuse translucency** / **`extensionsRequired`** | Optional glTF extensions for fibre highlights (ratified, untested on paper) and light through thin paper (release candidate); neither goes in `extensionsRequired`, the list a viewer must support to open the file. |
 
+## Refined final forms
+
+Terms [11](11-prd-refined-final-forms.md) introduces. Its evidence notes are in
+[research/](research/README.md#refined-final-forms-2026-09-28).
+
+| Term | Meaning |
+| --- | --- |
+| **Edge error** | How far a triangle edge's length differs from its length on the flat sheet, in percent. The study's `checks.json` reports its largest value. |
+| **Angle sum** | The sum of the triangle corners around a vertex. Bending and folding without stretching keep it at its flat-sheet value, so a change means stretch ([H1](research/H1-diagnosis.md) finding 6). |
+| **Kami** | Standard thin origami paper, coloured on one side and white on the other. [11](11-prd-refined-final-forms.md) takes it as 72 µm thick, one brand's measurement; its stiffness is unmeasured, taken as 3–4 GPa. |
+| **Membrane** | The part of a sheet model that resists changes of length within the sheet, as opposed to bending. |
+| **Energy** | One number computed from all vertex positions that grows when the paper stretches, bends away from its rest angles, comes nearer other paper than its thickness, or misses a grip. A sheet under loads comes to rest where it is smallest; a solver finds that minimum. |
+| **L\*** | The length of flat paper that bends as easily as a crease turns; crease stiffness is the bending stiffness B divided by L\*. About 150–215 thicknesses in measured paper and Mylar ([H2](research/H2-sheet-mechanics.md) finding 7). |
+| **Double fold** | Fold a square in half, then fold the two-layer packet in half again, so the outer layer must wrap round the inner. The go/no-go test for contact with thickness ([H7](research/H7-tooling.md) finding 13). |
+| **Paper screen** | The measurements that say whether a shape could be paper: principal strain, the *no-stretch floor*, crossing pairs on the displayed mesh, *false-crease* turning, and core length and centre-crease angles, which tell a pod from a pillow. Written beside every reviewed pose ([11 §1](11-prd-refined-final-forms.md#1-the-paper-screen)). |
+| **Principal strain** | A triangle's largest stretch and largest squash in any direction, measured against its flat material triangle. A triangle can stretch although none of its edges lengthens: under the map `[[0.75, 0.65], [0.65, 0.75]]` a right triangle's legs shorten to 0.99 of their length and its hypotenuse to 0.1, yet the direction (1, 1) stretches 40% ([H4](research/H4-inflation.md) finding 5). So a check that only stops edges lengthening misses stretch. |
+| **No-stretch floor** | Half the largest amount by which two material points are farther apart in a pose than on the flat sheet, at page scale. Paper cannot stretch and the sheet is convex, so any real paper must move some point at least this far; the half is because the two points can share the correction. Projecting never lengthens a distance, so the bound holds in a picture too. More tucked's floor is 20.0 px in 3D and 17.1 px in the gallery's upright picture ([Y2](research/Y2-reachability.md)). |
+| **False crease** | A join inside a panel (`J`) bent sharply where the pattern has no crease. Measured as the sum of length × angle over joins bent past a threshold, at two mesh levels. It stays constant for a fold, and drops to zero for a sampled curve, whose joins fall below the threshold as the mesh refines ([Y3](research/Y3-locking.md)). |
+| **Shape sketch** | A pose built by placing vertices, not by bending paper, such as the pillow targets. Labelled `as prescribed` on the geometry *fidelity axis*. |
+| **Nearest paper** | The pose found by a length-keeping projection of a sketch: the closest shape in which no triangle stretches or squashes beyond a stated strain, ignoring contact. A measuring tool, never a pose to ship ([Y2](research/Y2-reachability.md)). |
+| **Admissible start** | A state whose non-neighbouring pieces of surface are all farther apart than the paper's thickness. Barrier contact can start nowhere else ([H3](research/H3-contact.md) finding 4). |
+| **Barrier contact** / **CCD** / **IPC** | An energy that grows without bound as two pieces of surface approach a floor distance; *continuous collision detection* checks a whole straight step and shortens it before paper would cross paper. Together they are IPC (incremental potential contact, Li et al. 2020), which keeps every accepted state free of crossings if the start is admissible. Unlike the study's *directional* barrier, it needs no layer order and no fixed direction. |
+| **Thickness floor** | The distance below which barrier contact forbids two surfaces to come; the paper's thickness (C-IPC's offset). Distinct from the study's numerical clearance and from any display exaggeration. |
+| **Creep** | The sideways shift of a fold round the layers it wraps, as in bookbinding. A crease *wraps* a layer when that layer lies between the crease's two faces right up to the crease. Such a crease cannot be thickened by heights alone: the layer would have to sit a thickness above one face and below the other where they meet ([H3](research/H3-contact.md) finding 18). In the study's folded crane 60 creases wrap another layer along a length; counted as pairs of coincident creases, 87 are nested ([V](research/V-verification.md)). |
+| **Cut-and-stitch start** | An admissible start built by cutting the sheet at its folds, lifting the flat pieces by the layer order, and pulling the copies back together with springs under barrier contact ([X3](research/X3-crane-opening.md)). |
+| **Tension-field membrane** | A sheet model that resists stretching but lets paper shorten for free; the shortening is where crimps and wrinkles go. Needed for inflation and for the crane's body ([X2](research/X2-inflating-paper.md), [Y4](research/Y4-crane-v2.md)). |
+| **Crimp** (inflation) | A small ridge where inflated paper gathers slack it cannot stretch into. Not the origami move a *crimp*, two reverse folds made together. |
+| **Puff amount** | How inflated a cavity is, given as a fraction of the tension-field maximum volume for its outline, or as p̂ = pL³/B, where p is the pressure, L the panel's side and B the paper's bending stiffness: how hard the air pushes against how hard the paper resists bending. Not a pressure in pascals ([H4](research/H4-inflation.md) finding 9). |
+| **Virtual cap** | Triangles closing a cavity's mouth so its volume is defined. Never paper: never drawn, never in contact or length checks, never written to FOLD. |
+| **Path driver** | The outer loop that moves controls (rest angles, grips, puff amount) over a parameter from 0 to 1 and solves each step from the last accepted state, recording each as a checked point. It never interpolates positions. |
+| **Material track** | Bent states carried from move to move for illustrations only, beside the authoritative rigid run. Needs an amendment to [D14](decisions.md#d14-material-consumption). |
+| **Pod** / **pillow** | Two opened crane bodies. A pod swings open about the spine, its centre-line creases still folded (every valid simulation so far). A pillow flattens the sheet's centre square, lengthening the body (the More tucked sketch; real cranes shaped by hand) ([Y4](research/Y4-crane-v2.md)). |
+
 ## Code and tests
 
 | Term | Meaning |
@@ -246,5 +280,5 @@ not gain new meanings.
 | **Equivalence PR** / **deletion PR** | The two pull requests retiring a *recipe*. The equivalence PR adds the sequence beside the recipe, both built once in `beforeAll`, and requires the same records (exact end angles, order and frame counts; material error within 1e-12) with goldens byte-identical. The deletion PR then removes the recipe from the cabal file and points gallery and spec at the sequence ([D16](decisions.md#d16-testing-and-acceptance)). See [09 §9](09-testing-and-acceptance.md#9-migrating-the-study-recipes). |
 | **Milestone** | A group of pull requests that leaves `main` working, not a release: M0–M8, with M7 split into M7a and M7b, and R for research ([decisions §8](decisions.md#8-milestones)). See [10 §1](10-roadmap-risks-questions.md#1-milestones). |
 | **Default CI** / **slow job** | *Default CI* is today's three checks every PR must pass, the jobs `test`, `format` and `lint` ([`ci.yml:11`](../.github/workflows/ci.yml#L11), [`:36`](../.github/workflows/ci.yml#L36), [`:71`](../.github/workflows/ci.yml#L71)). The *slow job* is a proposed fourth job running crane-sized specs under `describe "slow"` with `--match /slow/`, which the default job skips; whether it is required is owner decision 12 ([D16](decisions.md#d16-testing-and-acceptance)). See [09 §6.3](09-testing-and-acceptance.md#63-beforeall-not-runio-and-a-slow-job). |
-| **Owner decision** | A choice left to the repository owner, numbered 1–14 in [decisions §9](decisions.md#9-owner-decisions), each with a recommended default the PRDs follow until it is decided; [10 §6](10-roadmap-risks-questions.md#6-owner-decisions) uses the same numbers. |
+| **Owner decision** | A choice left to the repository owner, numbered 1–14 in [decisions §9](decisions.md#9-owner-decisions), and 15–25 proposed in [11](11-prd-refined-final-forms.md#open-questions-for-the-owner) until the record takes them, each with a recommended default the PRDs follow until it is decided; [10 §6](10-roadmap-risks-questions.md#6-owner-decisions) uses the same numbers. |
 | **SKETCH** / **UNVERIFIED** | Markers in the PRDs: **SKETCH** is a planned name, type or message no code has yet; **UNVERIFIED** is a claim no command has checked, stated with what would check it. |

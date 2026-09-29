@@ -1,0 +1,40 @@
+cabal-version: 2.4
+name: hsbench
+version: 0
+build-type: Simple
+
+common base
+  default-language: GHC2021
+  default-extensions: DerivingStrategies LambdaCase OverloadedStrings RecordWildCards
+  ghc-options: -O2 -Wall -rtsopts
+
+executable sparse-bench
+  import: base
+  main-is: SparseBench.hs
+  hs-source-dirs: src, app
+  other-modules: SparseSolve Senbazuru.Geometry.V3 Senbazuru.Geometry.VectorSpace
+  build-depends: base, containers
+
+executable ad-bench
+  import: base
+  main-is: AdBench.hs
+  hs-source-dirs: app
+  build-depends: base, ad
+
+executable dense-bench
+  import: base
+  main-is: DenseBench.hs
+  hs-source-dirs: app
+  build-depends: base, hmatrix
+
+executable hyper-bench
+  import: base
+  main-is: HyperBench.hs
+  hs-source-dirs: app
+  build-depends: base
+
+executable ldl-bench
+  import: base
+  main-is: LdlBench.hs
+  hs-source-dirs: app
+  build-depends: base, vector
