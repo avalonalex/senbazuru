@@ -10,14 +10,14 @@ import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
 import FoldMaterial (componentCount, meshEdges)
-import PaperScreen (FloorPair (..), Turning (..), noStretchFloor)
+import PaperScreen (FloorPair (..), Turning (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
-import Senbazuru.Render.Camera (basisFrom, project)
+import Senbazuru.Render.Camera (basisFrom)
 import Test.Glb (Glb (..), at, items, parseGlb)
 import Test.Hspec
 import WholeCrane
@@ -142,39 +142,40 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   it "screens More tucked as a shape paper cannot take" $ \(_, _, study) -> do
     mesh <- right (pillowCraneAtSpread 0 study)
     screen <- right (screenPose study mesh)
-    floorVertices (screenFloor screen) `shouldBe` (37, 46)
-    pixels (floorDistance (screenFloor screen)) `shouldSatisfy` near 20.04 0.01
-    fmap floorVertices (uprightFloor mesh) `shouldBe` Just (46, 182)
-    fmap (pixels . floorDistance) (uprightFloor mesh) `shouldSatisfy` maybe False (near 17.14 0.01)
+    fmap floorVertices (screenFloor screen) `shouldBe` Just (37, 46)
+    fmap floorPixels (screenFloor screen) `shouldSatisfy` maybe False (near 20.04 0.01)
+    -- In the picture, pairs 46-182 and 46-230 tie to within rounding; either
+    -- sets the same floor.
+    fmap floorVertices (uprightFloor mesh) `shouldSatisfy` (`elem` [Just (46, 182), Just (46, 230)])
+    fmap floorPixels (uprightFloor mesh) `shouldSatisfy` maybe False (near 17.14 0.01)
     screenCrossings screen `shouldBe` 345
+    fmap snd (screenDeepestReach screen) `shouldBe` Just (2, 29)
+    fmap ((pixelsPerSheet *) . fst) (screenDeepestReach screen) `shouldSatisfy` maybe False (near 17.35 0.01)
     screenStretch screen `shouldSatisfy` near 1.068 0.001
     screenSquash screen `shouldSatisfy` near 0.836 0.001
     turningJoins (screenTurning screen) `shouldBe` 15
     turningTotal (screenTurning screen) `shouldSatisfy` near 144.8 0.1
     screenCoreLength screen `shouldSatisfy` maybe False (near 0.414 0.001)
-    fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14 1)
-    snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4 1)
+    fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14.04 0.05)
+    snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4.03 0.05)
+    verdictPasses (screenVerdict screen) `shouldBe` False
 
-  it "screens the closed crane as paper and the first candidate as nearly so" $ \(_, _, study) -> do
+  it "screens the closed crane as paper and measures the first candidate's picture floor (A-11-1)" $ \(_, _, study) -> do
     let fixture = wholeSpread study
     closed <- right (screenPose study (refinedMesh (spreadRefined fixture)))
-    pixels (floorDistance (screenFloorAtScreen closed)) `shouldBe` 0
+    screenVerdict closed `shouldBe` Verdict True True True True
+    fmap floorPixels (screenFloorAtScreen closed) `shouldBe` Just 0
     screenCrossings closed `shouldBe` 0
-    turningJoins (screenTurning closed) `shouldBe` 0
     screenCoreLength closed `shouldSatisfy` maybe False (near 0.235 0.001)
     fst (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
     snd (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
-    -- The first candidate's picture floor is 1.0 px (A-11-1).
-    fmap (pixels . floorDistance) (uprightFloor (spreadMesh fixture)) `shouldSatisfy` maybe False (near 1.02 0.01)
+    fmap floorPixels (uprightFloor (spreadMesh fixture)) `shouldSatisfy` maybe False (near 1.02 0.01)
 
 -- | The no-stretch floor in the gallery's upright picture.
 uprightFloor :: MaterialMesh -> Maybe FloorPair
 uprightFloor mesh = do
   basis <- basisFrom (V3 1 (sqrt 2) (-1)) (V3 0 (-1) 0)
-  noStretchFloor 0 (\p q -> norm (p ^-^ q)) [(sampleMaterial s, project basis (position s)) | s <- samples mesh]
-
-pixels :: Double -> Double
-pixels d = 600 * max 0 d
+  pictureFloor basis 0 mesh
 
 near :: Double -> Double -> Double -> Bool
 near expected tolerance actual = abs (actual - expected) <= tolerance

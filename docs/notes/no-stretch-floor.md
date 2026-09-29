@@ -21,9 +21,12 @@ On More tucked, the owner's preferred crane sketch:
 | Excess | 0.0668 |
 
 Half of 0.0668 is 0.0334 of the sheet, **20.04 px** at the gallery's 600 px per
-side. No other pair is worse, so every paper crane moves some point of this
-sketch at least 20 px. Pair 37–46 is not an edge of the mesh. Taking edges only
-gives 17.71 px, which is still a bound but not the best one.
+side. No other pair is worse. So every shape paper can take, crane or not,
+puts some point at least 20 px from where the sketch puts it, if the paper does
+not stretch at all. The floor is a lower bound on the distance to every paper
+shape, not the distance to the nearest one. Pair 37–46 is not an edge of the
+mesh. Taking edges only gives 17.71 px, which is still a bound but not the best
+one.
 
 **The halving is not a slip.** The two points can share the correction, each
 moving *e*/2 towards the other, so the floor promises only that one of them
@@ -32,20 +35,25 @@ moves *e*/2.
 **A picture has a floor too.** Projecting onto the page never lengthens a
 distance, so the same argument holds for distances measured in the drawing.
 In the gallery's upright picture the worst pair is 46–182, at **17.14 px**.
+Pair 46–230 gives the same floor to within 2 × 10⁻¹³ px, so either may be
+named.
 
-**The sheet must be convex.** The argument uses the straight line between two
-points of the flat sheet. On a sheet with a notch, that line can leave the
-paper, and two points may end up further apart than the straight line without
-any stretch. The screen refuses a non-convex sheet rather than report a number
-that is not a bound.
+**The sheet must be convex, and uncut.** The argument uses the straight line
+between two points of the flat sheet. On a sheet with a notch, that line can
+leave the paper, and two points may end up further apart than the straight line
+without any stretch. A slit does the same without changing the sheet's area,
+and shows instead as two vertices at one point of the sheet. The screen refuses
+either rather than report a number that is not a bound.
 
 **Paper may stretch a little.** At a declared strain ε, a pair may be up to
 (1 + ε) times its flat distance apart, and the floor shrinks accordingly. At
-1% (owner decision 16), More tucked's floor is 19.24 px.
+1% (owner decision 16), More tucked's floor is 19.24 px. PRD 11's target, at
+most 1 px, applies to the floor at the declared strain.
 
 The floor is cheap (every pair of 237 vertices) and needs no solver. It says
-how far a sketch is from *some* paper, not which paper is nearest. Finding
-that takes a solver, and its answer is only as good as the solver.
+that no paper comes nearer the sketch than this, not which paper comes nearest
+or how near. Finding that takes a solver, and its answer is only as good as the
+solver.
 
 `PaperScreen.noStretchFloor` computes it for every pose in the whole-crane
 gallery. The argument is PRD 11's (R-11-3) and its research note

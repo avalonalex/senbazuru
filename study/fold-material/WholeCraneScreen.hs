@@ -2,22 +2,40 @@
 -- the gallery writes beside each pose and the tests check.
 --
 -- The measures are "PaperScreen"'s; this module says which parts of the
--- crane they read. False creases are the joins, the 'Join' edges a panel was
--- cut along for the mesh: a flat crease ('Flat') is a crease line of the
--- pattern, and bending one is not a false crease. The centre creases are the
--- creases of the body core through the sheet's centre, whose fold angles tell
--- a pod, still folded along them, from a pillow, opened out across them.
+-- crane they read, and holds the thresholds, each with where it comes from.
 --
--- The thresholds are owner decisions, not facts: 1% strain (decision 16,
--- 2026-09-29), 45 degrees for a false crease on a pose. Crossings are
--- reported with no pass or fail (the same decision).
+-- False creases are the joins, the 'Join' edges a panel was cut along for the
+-- mesh. A flat crease ('Flat') is a line the crease pattern has and this
+-- crane leaves unfolded, so bending paper there bends it along a line the
+-- pattern allows, and it is not counted; on More tucked it would add 32.7
+-- sheet sides times degrees.
+--
+-- The centre creases are the pattern's folded creases, mountain and valley,
+-- in the body core and through the sheet's centre. Their fold angles tell a
+-- pod, still folded along them, from a pillow, opened out across them. A flat
+-- crease is left out here too: it has no fold for a pose to keep or undo, so
+-- it cannot say which of the two a pose is.
+--
+-- No region of the crane is declared a tension field, where paper is
+-- expected to stretch, so the strain screen applies to the whole mesh.
 module WholeCraneScreen
   ( Screen (..),
+    Verdict (..),
     PoseScreenError (..),
     strainScreen,
+    strictStrainScreen,
+    floorLimitPixels,
     falseCreaseThreshold,
+    pixelsPerSheet,
     screenPose,
+    screenFrom,
+    screenVerdict,
+    verdictPasses,
+    pictureFloor,
+    floorPixels,
+    joinBends,
     screenJson,
+    thresholdsJson,
   )
 where
 
@@ -31,29 +49,50 @@ import FoldBending (BendingError, Hinge (..), HingeRole (..), hingeAngle)
 import PaperScreen
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..))
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (V2 (..), boxCentre, boxFromPoints)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (ContactCheck (..))
-import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), materialFrame)
+import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), Surface, surfaceFrame)
+import Senbazuru.Render.Camera (Basis, project)
 import WholeCrane (WholeCrane (..))
 
--- | The strain a pose may carry and still be called paper: owner decision
--- 16, reported beside the 0.1% the study screened at before it.
+-- | The strain a pose may carry and still pass, squash or stretch: owner
+-- decision 16 (2026-09-29), 1% principal strain outside declared
+-- tension-field regions.
 strainScreen :: Double
 strainScreen = 0.01
 
--- | A join bent further than this, in degrees, is a false crease on a pose.
+-- | The strain reported beside 'strainScreen', and not required: the study's
+-- screen before decision 16, which the decision keeps in view.
+strictStrainScreen :: Double
+strictStrainScreen = 0.001
+
+-- | The largest no-stretch floor, in pixels at 'strainScreen', a pose may
+-- have and still pass: PRD 11's target for the floor (R-11-3).
+floorLimitPixels :: Double
+floorLimitPixels = 1
+
+-- | A join bent further than this, in degrees, is a false crease on a pose:
+-- PRD 11's threshold for poses (A-11-2).
 falseCreaseThreshold :: Double
 falseCreaseThreshold = 45
 
+-- | The gallery's scale: the flat sheet's side is 600 px.
+pixelsPerSheet :: Double
+pixelsPerSheet = 600
+
+-- | One pose's screen. Lengths are in sheet sides, the flat square's side
+-- being 1, until 'screenJson' writes them as pixels.
 data Screen = Screen
-  { -- | Largest squash and stretch, as fractions.
+  { -- | Largest squash and stretch, as non-negative fractions.
     screenSquash :: !Double,
     screenStretch :: !Double,
-    -- | The no-stretch floor in 3D, at no strain and at 'strainScreen'.
-    screenFloor :: !FloorPair,
-    screenFloorAtScreen :: !FloorPair,
-    -- | Pairs the study's strict test flags, and the deepest of them.
+    -- | The no-stretch floor in 3D, at no strain and at 'strainScreen';
+    -- nothing for a pose with no pair of vertices.
+    screenFloor :: !(Maybe FloorPair),
+    screenFloorAtScreen :: !(Maybe FloorPair),
+    -- | Pairs the study's strict test flags, and the largest reach-through
+    -- among them with its triangles: a bound on how deep that pair crosses.
     screenCrossings :: !Int,
     screenDeepestReach :: !(Maybe (Double, (Int, Int))),
     screenTurning :: !Turning,
@@ -63,113 +102,166 @@ data Screen = Screen
   }
   deriving stock (Eq, Show)
 
+-- | Which parts of the screen a pose passes. Crossings have no part: owner
+-- decision 16 reports them without a verdict until F2's contact states give
+-- separations to compare.
+data Verdict = Verdict
+  { -- | Squash and stretch both within 'strainScreen'.
+    verdictStrain :: !Bool,
+    -- | Both within 'strictStrainScreen'; reported, not required.
+    verdictStrictStrain :: !Bool,
+    -- | The 3D floor at 'strainScreen' within 'floorLimitPixels'. A
+    -- picture's floor is never larger, since projecting never lengthens, so
+    -- this settles every camera at once.
+    verdictFloor :: !Bool,
+    -- | No join bent past 'falseCreaseThreshold'.
+    verdictFalseCreases :: !Bool
+  }
+  deriving stock (Eq, Show)
+
 data PoseScreenError
   = PoseSheet !SpreadError
   | PoseBend !BendingError
   | PoseScreen !ScreenError
-  | -- | A pose with fewer than two vertices has no pair to set a floor.
-    PoseTooSmall
   deriving stock (Show)
 
 instance Explain PoseScreenError where
   explain (PoseSheet err) = explain err
   explain (PoseBend err) = explain err
   explain (PoseScreen err) = explain err
-  explain PoseTooSmall = "a pose needs two vertices before a no-stretch floor means anything"
 
--- | Screen one pose of the whole-crane study.
+-- | Screen one pose of the whole-crane study, working out everything the
+-- screen reads from the mesh alone.
 screenPose :: WholeCrane -> MaterialMesh -> Either PoseScreenError Screen
 screenPose study mesh = do
   let fixture = wholeSpread study
-  first PoseScreen (sheetIsConvex mesh)
+      points = IM.fromList (zip [0 ..] (samples mesh))
   sheet <- first PoseSheet (spreadSurface fixture mesh)
   contact <- first PoseSheet (spreadCheck fixture mesh)
-  deepest <- first PoseScreen (deepestReach mesh (crossingPanels contact))
-  let points = IM.fromList (zip [0 ..] (samples mesh))
   bends <- mapM (\h -> (,) h . fst <$> first PoseBend (hingeAngle h points)) (spreadHinges fixture)
+  screenFrom study sheet contact bends mesh
+
+-- | Screen one pose from what the gallery has already worked out for it: its
+-- surface, its crossing check, and each hinge's bend in radians. All three
+-- must be of this mesh.
+screenFrom :: WholeCrane -> Surface material -> ContactCheck -> [(Hinge, Double)] -> MaterialMesh -> Either PoseScreenError Screen
+screenFrom study sheet contact bends mesh = do
+  first PoseScreen (sheetIsConvex mesh)
+  deepest <- first PoseScreen (deepestReach mesh (crossingPanels contact))
   let placed = [(sampleMaterial s, position s) | s <- samples mesh]
-      distance p q = norm (p ^-^ q)
-      frame = materialFrame sheet
-      assignments = M.fromList [(edgeKey a b, assignment) | ((VertexId a, VertexId b), assignment) <- zip (edgesVertices frame) (edgesAssignment frame)]
-      material i = sampleMaterial <$> IM.lookup i points
-      edgeOf h = let (a, b, _, _) = hingeVertices h in (a, b)
-      degrees angle = abs angle * 180 / pi
-      joins =
-        [ (norm (u ^-^ v), degrees angle)
-          | (h, angle) <- bends,
-            hingeRole h == PanelBend,
-            let (a, b) = edgeOf h,
-            M.lookup (edgeKey a b) assignments == Just Join,
-            Just u <- [material a],
-            Just v <- [material b]
-        ]
+      (squash, stretch) = strainExtremes mesh
       core = wholeCore study
       centreCreases =
-        [ (u, v, degrees angle)
-          | (h, angle) <- bends,
-            isCrease (hingeRole h),
-            let (a, b) = edgeOf h,
+        [ (u, v, angle)
+          | (h, (a, b), (u, v), angle) <- bentEdges mesh bends,
             S.member a core && S.member b core,
-            Just u <- [material a],
-            Just v <- [material b]
+            SurfaceCrease _ <- [hingeRole h]
         ]
-  atRest <- maybe (Left PoseTooSmall) Right (noStretchFloor 0 distance placed)
-  atScreen <- maybe (Left PoseTooSmall) Right (noStretchFloor strainScreen distance placed)
-  let (squash, stretch) = strainExtremes mesh
-  pure
+      centre = boxCentre <$> boxFromPoints (map fst placed)
+  pure $!
     Screen
       { screenSquash = squash,
         screenStretch = stretch,
-        screenFloor = atRest,
-        screenFloorAtScreen = atScreen,
+        screenFloor = noStretchFloor 0 placed,
+        screenFloorAtScreen = noStretchFloor strainScreen placed,
         screenCrossings = length (crossingPanels contact),
         screenDeepestReach = deepest,
-        screenTurning = falseCreaseTurning falseCreaseThreshold joins,
+        screenTurning = falseCreaseTurning falseCreaseThreshold (joinBends (surfaceFrame sheet) mesh bends),
         screenCoreLength = coreLength core mesh,
-        screenCentreFolds = centreFolds (sheetCentre (map fst placed)) centreCreases
+        screenCentreFolds = maybe (Nothing, Nothing) (`centreFolds` centreCreases) centre
       }
-  where
-    edgeKey a b = (min a b, max a b)
-    isCrease (SurfaceCrease _) = True
-    isCrease _ = False
 
--- | The middle of the sheet's material extent: the square's centre.
-sheetCentre :: [V2] -> V2
-sheetCentre us = case us of
-  [] -> V2 0 0
-  _ -> V2 ((minimum xs + maximum xs) / 2) ((minimum ys + maximum ys) / 2)
+-- | Each join a pose bends, as its length on the flat sheet and its bend in
+-- degrees: the 'PanelBend' hinges whose edge the frame assigns 'Join'.
+joinBends :: Frame -> MaterialMesh -> [(Hinge, Double)] -> [(Double, Double)]
+joinBends frame mesh bends =
+  [ (norm (u ^-^ v), angle)
+    | (h, (a, b), (u, v), angle) <- bentEdges mesh bends,
+      hingeRole h == PanelBend,
+      M.lookup (min a b, max a b) assignments == Just Join
+  ]
   where
-    xs = [x | V2 x _ <- us]
-    ys = [y | V2 _ y <- us]
+    assignments = M.fromList [((min a b, max a b), assignment) | ((VertexId a, VertexId b), assignment) <- zip (edgesVertices frame) (edgesAssignment frame)]
 
--- | The screen as the gallery writes it, lengths at 600 px per sheet side.
--- A pose passes when its strain and 3D floor are within the screen and no
--- join is a false crease; a picture's floor can only be smaller than the 3D
--- one, since projecting never lengthens. Crossings are reported only.
+-- | Each hinge with its edge, the edge's two ends on the flat sheet, and its
+-- bend in degrees. A hinge's first two vertices are its edge; the other two
+-- are the far corners of the triangles either side.
+bentEdges :: MaterialMesh -> [(Hinge, Double)] -> [(Hinge, (Int, Int), (V2, V2), Double)]
+bentEdges mesh bends =
+  [ (h, (a, b), (u, v), angle * 180 / pi)
+    | (h, angle) <- bends,
+      let (a, b, _, _) = hingeVertices h,
+      Just u <- [IM.lookup a material],
+      Just v <- [IM.lookup b material]
+  ]
+  where
+    material = IM.fromList (zip [0 ..] (map sampleMaterial (samples mesh)))
+
+-- | The no-stretch floor in one picture: distances measured after projecting
+-- onto the page, so never larger than the floor in 3D.
+pictureFloor :: Basis -> Double -> MaterialMesh -> Maybe FloorPair
+pictureFloor basis epsilon mesh = noStretchFloor epsilon [(sampleMaterial s, project basis (position s)) | s <- samples mesh]
+
+-- | A floor in pixels; a negative floor, room to spare, is none.
+floorPixels :: FloorPair -> Double
+floorPixels f = pixelsPerSheet * max 0 (floorDistance f)
+
+screenVerdict :: Screen -> Verdict
+screenVerdict s =
+  Verdict
+    { verdictStrain = within strainScreen,
+      verdictStrictStrain = within strictStrainScreen,
+      verdictFloor = all ((<= floorLimitPixels) . floorPixels) (screenFloorAtScreen s),
+      verdictFalseCreases = turningJoins (screenTurning s) == 0
+    }
+  where
+    within limit = screenSquash s <= limit && screenStretch s <= limit
+
+-- | A pose passes when every required part does; 'verdictStrictStrain' is
+-- reported, not required.
+verdictPasses :: Verdict -> Bool
+verdictPasses v = verdictStrain v && verdictFloor v && verdictFalseCreases v
+
+-- | The screen as the gallery writes it. Floors and reaches are in pixels,
+-- the core's length in sheet sides and the turning in sheet sides times
+-- degrees, as each key says. The thresholds are written once for the whole
+-- gallery, by 'thresholdsJson'.
 screenJson :: Screen -> Value
 screenJson s =
   object
-    [ "strainScreen" .= strainScreen,
-      "squash" .= screenSquash s,
+    [ "squash" .= screenSquash s,
       "stretch" .= screenStretch s,
-      "floorPixels" .= pixels (floorDistance (screenFloor s)),
-      "floorPair" .= floorVertices (screenFloor s),
-      "floorPixelsAtScreen" .= pixels (floorDistance (screenFloorAtScreen s)),
-      "crossingPairs" .= screenCrossings s,
-      "deepestReachPixels" .= fmap ((600 *) . fst) (screenDeepestReach s),
-      "deepestReachPair" .= fmap snd (screenDeepestReach s),
-      "falseCreaseThresholdDegrees" .= falseCreaseThreshold,
+      "floor3dPixels" .= fmap floorPixels (screenFloor s),
+      "floorVertices" .= fmap floorVertices (screenFloor s),
+      "floor3dPixelsAtScreen" .= fmap floorPixels (screenFloorAtScreen s),
+      "floorVerticesAtScreen" .= fmap floorVertices (screenFloorAtScreen s),
+      "crossingPairCount" .= screenCrossings s,
+      "deepestReachPixels" .= fmap ((pixelsPerSheet *) . fst) (screenDeepestReach s),
+      "deepestReachTriangles" .= fmap snd (screenDeepestReach s),
       "falseCreaseJoins" .= turningJoins (screenTurning s),
-      "falseCreaseTurning" .= turningTotal (screenTurning s),
-      "coreLength" .= screenCoreLength s,
+      "falseCreaseTurningSheetDegrees" .= turningTotal (screenTurning s),
+      "coreLengthSheets" .= screenCoreLength s,
       "centreMidlineFoldDegrees" .= fst (screenCentreFolds s),
       "centreDiagonalFoldDegrees" .= snd (screenCentreFolds s),
-      "passes"
+      "verdict"
         .= object
-          [ "strain" .= (screenSquash s <= strainScreen && screenStretch s <= strainScreen),
-            "floor" .= (pixels (floorDistance (screenFloorAtScreen s)) <= 1),
-            "falseCreases" .= (turningJoins (screenTurning s) == 0)
+          [ "strain" .= verdictStrain verdict,
+            "strictStrain" .= verdictStrictStrain verdict,
+            "floor" .= verdictFloor verdict,
+            "falseCreases" .= verdictFalseCreases verdict,
+            "passes" .= verdictPasses verdict
           ]
     ]
   where
-    pixels d = 600 * max 0 d
+    verdict = screenVerdict s
+
+-- | The screen's thresholds, for the page's labels.
+thresholdsJson :: Value
+thresholdsJson =
+  object
+    [ "pixelsPerSheet" .= pixelsPerSheet,
+      "strainScreen" .= strainScreen,
+      "strictStrainScreen" .= strictStrainScreen,
+      "floorLimitPixels" .= floorLimitPixels,
+      "falseCreaseThresholdDegrees" .= falseCreaseThreshold
+    ]
