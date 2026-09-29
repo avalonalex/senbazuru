@@ -15,6 +15,7 @@ import Data.Aeson (Value, eitherDecode, encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
+import Data.List (find)
 import Data.Maybe (isJust, isNothing)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -37,6 +38,7 @@ import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Origami.Visible (Region (..), VisibleForm (..))
 import Senbazuru.Render.Camera (basisFrom, project)
+import Senbazuru.Render.Fidelity (geometryName)
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb, toGltfAxes)
 import Senbazuru.Render.Svg (Page (..), renderSvg)
 import SurfaceContact qualified as Contact
@@ -109,7 +111,6 @@ viewWholeCrane destination = do
   let output = destination </> "whole-crane"
   study <- readStudy output
   let fixture = wholeSpread study
-      before = refinedMesh (spreadRefined fixture)
       guess = spreadMesh fixture
   exists <- doesFileExist (output </> "run.json")
   run <- if exists then readValue (output </> "run.json") else pure (object [])
@@ -140,18 +141,12 @@ viewWholeCrane destination = do
         unless (take 1 savedIndices == [0] && take 1 (reverse savedIndices) == [length trace] && and (zipWith (<) savedIndices (drop 1 savedIndices))) (die "whole-crane checkpoint sequence is incomplete or unordered")
         case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
       else pure guess
-  pillow <- checked (pillowCrane study)
-  compact <- checked (compactPillowCrane study)
-  narrow <- checked (narrowPillowCrane study)
-  -- The middle setting is the existing narrow target, including its export
-  -- title. Keep earlier files byte-identical and avoid two names for one mesh.
-  let openings = [(0, "spread-0", "More tucked"), (25, "spread-25", "Slightly tucked"), (50, "narrow", "Middle spread"), (75, "spread-75", "Slightly wider"), (100, "spread-100", "More spread")] :: [(Int, String, T.Text)]
-  spreadStates <- forM [(percent, name, title) | (percent, name, title) <- openings, percent /= 50] $ \(percent, name, title) -> do
-    mesh <- checked (pillowCraneAtSpread (fromIntegral percent / 100) study)
-    pure (name, title <> " · visual target", mesh)
-  let drawnStates = [("before", "Closed crane", before), ("after", "Opened crane · prescribed static candidate", guess), ("pillow", "Pillow body · visual target", pillow), ("compact", "Less spread · visual target", compact), ("narrow", "Narrower body · visual target", narrow)] ++ spreadStates
-      states = drawnStates ++ [("correction", "Refused material adjustment · diagnostic", endpoint) | exists]
-  measurements <- forM states $ \(name, title, mesh) -> do
+  drawnStates <- checked (wholeCranePoses study)
+  let openings = wholeCraneOpenings
+      -- A refused solve is neither folded nor placed, and no geometry level
+      -- names it.
+      states = drawnStates ++ [Pose "correction" "Refused material adjustment · diagnostic" Nothing endpoint | exists]
+  measurements <- forM states $ \pose@(Pose name title geometry mesh) -> do
     sheet <- checked (spreadSurface fixture mesh)
     contact <- checked (spreadCheck fixture mesh)
     shape <- checked (wholeMeasurements study mesh)
@@ -162,23 +157,24 @@ viewWholeCrane destination = do
     let angles = [object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h] | (h, angle) <- bends]
     screen <- checked (screenFrom study sheet contact bends mesh)
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
-    -- The viewers get visible paper first (WholeCraneExport). The refused
-    -- adjustment is a diagnostic no viewer loads, kept complete like the
-    -- study's other diagnostics.
-    bytes <- checked (if name == "correction" then renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet else viewerGlb title sheet)
+    -- The viewers get visible paper first, and how the pose was made
+    -- (WholeCraneExport). The one pose no geometry level names, the refused
+    -- adjustment, is a diagnostic no viewer loads: it stays complete like the
+    -- study's other diagnostics, and records nothing.
+    bytes <- checked (maybe (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet) (\g -> viewerGlb g title sheet) geometry)
     BS.writeFile (output </> name ++ ".glb") bytes
     when (name /= "correction") $ do
       normals <- checked (panelCornerNormals (refinedPanels (spreadRefined fixture)) mesh)
       BL.writeFile (output </> name ++ "-lighting.json") (encode (object ["vertices" .= [[a, b, c] | (a, b, c) <- triangles mesh], "normals" .= map (map (xyz . toGltfAxes)) normals]))
     putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
     hFlush stdout
-    pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= negate (screenSquash screen), "maxPrincipalStrain" .= screenStretch screen, "angles" .= angles, "screen" .= screenJson screen])
+    pure (object ["id" .= name, "title" .= title, "geometry" .= fmap geometryName geometry, "label" .= poseLabel pose, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= negate (screenSquash screen), "maxPrincipalStrain" .= screenStretch screen, "angles" .= angles, "screen" .= screenJson screen])
   views <- forM [("upright", "Crane upright · three-quarter", V3 1 (sqrt 2) (-1), V3 0 (-1) 0), ("opposite", "Opposite side · three-quarter", V3 1 (sqrt 2) 1, V3 0 (-1) 0), ("low", "Low angle · three-quarter", V3 1 0.4 (-1), V3 0 (-1) 0), ("head", "From the head · slight tilt", V3 1 0.25 0.15, V3 0 (-1) 0), ("tail", "From the tail · slight tilt", V3 (-1) 0.25 0.15, V3 0 (-1) 0), ("top", "Above the body · slight tilt", V3 0 1 0.15, V3 (-1) 0 0), ("side", "Crane upright · side", V3 0 0 (-1), V3 0 (-1) 0), ("oblique", "Earlier camera · Z up", V3 (-1) 1 (sqrt 2), V3 0 0 1), ("reverse", "Earlier reverse · Z up", V3 1 1 (sqrt 2), V3 0 0 1), ("front", "Earlier front · Z up", V3 0 1 0.2, V3 0 0 1), ("below", "Under the body · slight tilt", V3 0 (-1) 0.15, V3 1 0 0)] $ \(viewId, title, direction, up) -> do
     basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction up)
-    bounds <- checked (sharedExtent basis [mesh | (_, _, mesh) <- drawnStates])
+    bounds <- checked (sharedExtent basis (map poseMesh drawnStates))
     let page = illustrationPage title bounds
         owners = refinedPanels (spreadRefined fixture)
-    shown <- forM drawnStates $ \(name, _, mesh) -> do
+    shown <- forM drawnStates $ \pose@(Pose name _ _ mesh) -> do
       sheet <- checked (spreadSurface fixture mesh)
       let frame = surfaceFrame sheet
       inherited <- checked (inheritedOrders fixture frame)
@@ -188,10 +184,13 @@ viewWholeCrane destination = do
         _ -> either (die . T.unpack) pure (depthDrawing basis frame inherited)
       let seen = depthForm drawn
           stem = name ++ "-" ++ viewId
+          -- A placed pose's drawings say so in their title, the name a
+          -- browser and a screen reader give the file.
+          drawingPage = page {pageTitle = labelled pose <$> pageTitle page}
       let colourShapes = paperShapes basis (regions basis owners seen) seen
           shapes = map whitePaper colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)]
-      writeSvg output page bounds stem shapes
-      writeSvg output page bounds (stem ++ "-colours") (colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)])
+      writeSvg output drawingPage bounds stem shapes
+      writeSvg output drawingPage bounds (stem ++ "-colours") (colourShapes ++ [Fill (Colour "#bd4354") (depthMissing drawn)])
       book <-
         if name == "spread-0" && viewId `elem` ["upright", "opposite", "low", "top"]
           then do
@@ -202,9 +201,9 @@ viewWholeCrane destination = do
                 sourceArea = sum [abs (signedArea (map (project basis) ring)) | r <- formRegions seen, ring <- regionPieces r]
                 toneArea = sum [abs (signedArea ring) | (_, rings) <- bookTones drawing, ring <- rings]
             unless (abs (sourceArea - toneArea) < 1e-10) (die "book tones changed visible paper coverage")
-            writeSvg output page bounds (stem ++ "-book-full") (bookShapes 0 drawing ++ uncertainty)
-            writeSvg output page bounds (stem ++ "-book") (bookShapes 2 drawing ++ uncertainty)
-            writeSvg output page bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks)
+            writeSvg output drawingPage bounds (stem ++ "-book-full") (bookShapes 0 drawing ++ uncertainty)
+            writeSvg output drawingPage bounds (stem ++ "-book") (bookShapes 2 drawing ++ uncertainty)
+            writeSvg output drawingPage bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks)
             pure [object ["id" .= viewId, "title" .= title, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (360000 * sourceArea), "toneAreaPixelsSquared" .= (360000 * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
           else pure []
       pure (shapes, object ["id" .= name, "stem" .= stem, "pictureFloorPixels" .= fmap floorPixels (pictureFloor basis 0 mesh), "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor basis strainScreen mesh), "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
@@ -216,7 +215,7 @@ viewWholeCrane destination = do
     forM_ comparisons $ \(filename, left, right, leftLabel, rightLabel) -> do
       let Box (V2 x0 y0) (V2 x1 y1) = bounds
           labelledBounds = Box (V2 x0 y0) (V2 x1 (y1 + 0.08))
-          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) label : shapes) | (i, (shapes, _, _)) <- zip [0 :: Int ..] shown, (selected, label) <- [(left, leftLabel), (right, rightLabel)], i == selected]
+          figures = [diagramWithExtent labelledBounds (Label (Colour "#30352f") 14 (V2 x0 (y1 + 0.04)) (labelled pose label) : shapes) | (i, ((shapes, _, _), pose)) <- zip [0 :: Int ..] (zip shown drawnStates), (selected, label) <- [(left, leftLabel), (right, rightLabel)], i == selected]
       drawing <- maybe (die "no comparison figures") pure (gridOf (Grid 2 0.12 Nothing) figures)
       TIO.writeFile (output </> filename) (renderSvg (illustrationPage "Whole crane: before and after" (diagramExtent drawing)) drawing)
     pure (object ["id" .= viewId, "title" .= title, "direction" .= xyz direction, "up" .= xyz up, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= [s | (_, s, _) <- shown]], concat [b | (_, _, b) <- shown])
@@ -226,14 +225,14 @@ viewWholeCrane destination = do
   TIO.writeFile (destination </> "crane-book.html") (T.replace "/*CRANE_BOOK_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode bookReport))) bookTemplate)
   let report = object ["issue" .= (399 :: Int), "newSolves" .= (if exists then 1 else 0 :: Int), "illustrationAccepted" .= False, "motionChecked" .= False, "inflationSimulated" .= False, "states" .= measurements, "screenThresholds" .= thresholdsJson, "openings" .= [object ["percent" .= percent, "id" .= name, "title" .= title, "wingArchStartDegrees" .= (-70 + fromIntegral percent * 0.4 :: Double)] | (percent, name, title) <- openings], "views" .= map fst views, "run" .= run, "pins" .= [(i, xyz p) | (i, p) <- IM.toList (spreadPins fixture)], "pillowConstruction" .= object ["newMaterialSolves" .= (0 :: Int), "savedBodyFixed" .= False, "rimY" .= (0.44 :: Double), "rise" .= (0.045 :: Double), "bodyHalfWidth" .= ((sqrt 2 - 1) / 2 :: Double), "wingArchStartDegrees" .= (-15 :: Double), "wingArchEndDegrees" .= (15 :: Double), "compactVariant" .= object ["bodyWidthScale" .= (0.75 :: Double), "wingArchStartDegrees" .= (-50 :: Double), "wingArchEndDegrees" .= (-20 :: Double)], "narrowVariant" .= object ["bodyWidthScale" .= (0.5 :: Double), "wingArchStartDegrees" .= (-50 :: Double), "wingArchEndDegrees" .= (-20 :: Double)]]]
   BL.writeFile (output </> "checks.json") (encode report)
-  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
+  BL.writeFile (output </> "models.json") (encode [object ["title" .= labelled pose (poseTitle pose), "path" .= (poseName pose ++ ".glb")] | pose <- drawnStates])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
   -- The 3D control selects these same files, visible paper first. It never
   -- derives another pose in JavaScript. Include the earlier targets in the
   -- common framing so changing shapes cannot silently move the camera or
   -- rescale.
-  let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb"), "lighting" .= (name ++ "-lighting.json")] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("spread-0.glb" :: T.Text)]
+  let viewerData = object ["models" .= [object ["title" .= poseTitle pose, "label" .= poseLabel pose, "path" .= (poseName pose ++ ".glb"), "lighting" .= (poseName pose ++ "-lighting.json")] | pose <- drawnStates], "openings" .= [object ["title" .= title, "label" .= (poseLabel =<< find ((== name) . poseName) drawnStates), "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("spread-0.glb" :: T.Text)]
   spreadViewer <- TIO.readFile "study/fold-material/whole-crane-3d.html"
   TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))
   lightingModule <- TIO.readFile "study/fold-material/paper-lighting.mjs"
@@ -243,6 +242,11 @@ viewWholeCrane destination = do
 
 positions :: MaterialMesh -> [[Double]]
 positions = map (xyz . position) . samples
+
+-- | Text that names a pose, followed by what the pose is if it was placed
+-- rather than folded: "Crane upright · three-quarter · shape sketch".
+labelled :: Pose -> T.Text -> T.Text
+labelled pose text = maybe text (\label -> text <> " · " <> label) (poseLabel pose)
 
 readValue :: FilePath -> IO Value
 readValue path = readArchiveBytes path >>= either die pure . eitherDecode

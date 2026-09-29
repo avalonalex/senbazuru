@@ -116,7 +116,7 @@ async function start() {
         if (material.color) material.userData.paperColour = material.color.clone();
       }
     });
-    models.set(model.path, { root, title: model.title });
+    models.set(model.path, { root, title: model.title, label: model.label });
     status.textContent = `Loaded ${++count} of ${data.models.length} GLB poses…`;
   }));
   // Finish the small batch before reporting failure, so a late successful
@@ -172,9 +172,11 @@ async function start() {
       if (material.flatShading !== flat) { material.flatShading = flat; material.needsUpdate = true; }
     }
   });
+  // A placed pose is named for what it is wherever it is named.
+  const labelled = (title, pose) => pose.label ? `${title} · ${pose.label}` : title;
   const openingPaths = new Set(data.openings.map(pose => pose.path));
   for (const model of data.models) {
-    if (!openingPaths.has(model.path)) shape.add(new Option(model.title, model.path));
+    if (!openingPaths.has(model.path)) shape.add(new Option(labelled(model.title, model), model.path));
   }
   spread.max = data.openings.length - 1;
   const requested = new URLSearchParams(location.search).get('model');
@@ -192,7 +194,7 @@ async function start() {
     current = model.root;
     applyAppearance(current);
     scene.add(current);
-    const label = adjusting ? `${pose.title} · slim body sketch` : model.title;
+    const label = adjusting ? labelled(`${pose.title} · slim body`, pose) : labelled(model.title, model);
     document.querySelector('#spread-control').hidden = !adjusting;
     document.querySelector('#spread-help').hidden = !adjusting;
     document.querySelector('#spread-value').textContent = pose.title;

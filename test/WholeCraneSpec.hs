@@ -8,6 +8,7 @@ import CraneSpread
 import Data.Aeson (Value (..))
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
+import Data.List (find)
 import Data.Set qualified as S
 import FoldMaterial (componentCount, meshEdges)
 import PaperScreen (FloorPair (..), Turning (..))
@@ -18,6 +19,7 @@ import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Camera (basisFrom)
+import Senbazuru.Render.Fidelity (Geometry (..))
 import Test.Glb (Glb (..), at, items, parseGlb)
 import Test.Hspec
 import WholeCrane
@@ -132,9 +134,24 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   it "gives the viewers visible paper first and every layer second" $ \(_, _, study) -> do
     let fixture = wholeSpread study
     sheet <- right (spreadSurface fixture (refinedMesh (spreadRefined fixture)))
-    glb <- right (viewerGlb "Closed crane" sheet) >>= parseGlb
+    glb <- right (viewerGlb RigidPanels "Closed crane" sheet) >>= parseGlb
     map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
     at "scene" (glbJson glb) `shouldBe` Number 0
+
+  -- PRD 11's R-11-2: a pose placed rather than folded says so in its file.
+  -- Calling a placed pose folded, or writing the same level whatever the
+  -- pose, turns this red.
+  it "records More tucked as a shape sketch in its GLB, and the closed crane as folded" $ \(_, _, study) -> do
+    poses <- right (wholeCranePoses study)
+    [(poseName p, poseGeometry p) | p <- poses, poseGeometry p /= Just AsPrescribed] `shouldBe` [("before", Just RigidPanels)]
+    let recorded name = case find ((== name) . poseName) poses of
+          Just pose@(Pose _ title (Just geometry) mesh) -> do
+            sheet <- right (spreadSurface (wholeSpread study) mesh)
+            glb <- right (viewerGlb geometry title sheet) >>= parseGlb
+            pure (at "geometry" (at "fidelity" (at "senbazuru" (at "extras" (glbJson glb)))), poseLabel pose)
+          _ -> fail ("no pose " ++ name ++ " with a geometry level")
+    recorded "spread-0" >>= (`shouldBe` (String "as prescribed", Just "shape sketch"))
+    recorded "before" >>= (`shouldBe` (String "rigid panels", Nothing))
 
   -- PRD 11's A-11-1, with the false-crease and core figures of its research
   -- (H1, Y3, Y4) on the same construction. Computed along edges only, the 3D

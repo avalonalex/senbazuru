@@ -17,7 +17,15 @@
 -- and prescribing a broad, shallow cushion with outward wings. It keeps the
 -- same connected material but greatly distorts it. Neither construction is an
 -- accepted paper pose; the gallery reports their defects beside the drawings.
-module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, wholeMeasurements) where
+--
+-- 'wholeCranePoses' lists what the gallery draws, each pose with how its
+-- positions were made. Only the closed crane was folded. Every other pose was
+-- placed where the crane should be, which makes it a /shape sketch/ (see
+-- docs/glossary.md), and its drawings, its GLB and its gallery cards say so.
+-- Its FOLD file does not: a fidelity claim is not FOLD data (D19). The list
+-- lives here, not in the gallery, so that the test suite can check which pose
+-- is which.
+module WholeCrane (WholeCrane (..), Pose (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, wholeCraneOpenings, wholeCranePoses, poseLabel, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -39,6 +47,7 @@ import Senbazuru.Geometry.Polygon (cross2)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
+import Senbazuru.Render.Fidelity (Geometry (..))
 import SparseSolve
 
 data WholeCrane = WholeCrane
@@ -105,6 +114,52 @@ wholeCrane atlas patch saved = do
   pure (WholeCrane fixture atlas core marks (IM.size anchors))
   where
     analytic p = let V3 x y z = position p; V2 u v = sampleMaterial p; angle = pi / 18 in V3 x ((1 - sqrt 2 / 2) + (y - (1 - sqrt 2 / 2)) * cos angle) (z - (v - u) / sqrt 2 * sin angle)
+
+-- | One pose the gallery draws: the stem of its files, its title, how its
+-- positions were made, and its mesh.
+data Pose = Pose
+  { poseName :: !String,
+    poseTitle :: !Text,
+    -- | 'Nothing' for a pose whose making no geometry level names, such as
+    -- a solve that was refused.
+    poseGeometry :: !(Maybe Geometry),
+    poseMesh :: !MaterialMesh
+  }
+
+-- | The wing spreads the gallery offers: a percentage, the stem of that
+-- pose's files, and its title. At 50% the spread is the narrower body's own,
+-- so that pose is drawn once, as @narrow@ under its earlier title: its files
+-- stay as they were, and one mesh does not get two names.
+wholeCraneOpenings :: [(Int, String, Text)]
+wholeCraneOpenings = [(0, "spread-0", "More tucked"), (25, "spread-25", "Slightly tucked"), (50, "narrow", "Middle spread"), (75, "spread-75", "Slightly wider"), (100, "spread-100", "More spread")]
+
+-- | Every pose the gallery draws, in its order. The closed crane is the
+-- rigidly folded sheet, cut into the mesh's triangles; every other pose was
+-- placed.
+wholeCranePoses :: WholeCrane -> Either SpreadError [Pose]
+wholeCranePoses study = do
+  pillow <- pillowCrane study
+  compact <- compactPillowCrane study
+  narrow <- narrowPillowCrane study
+  spreads <- sequence [placed name (title <> " · visual target") <$> pillowCraneAtSpread (fromIntegral percent / 100) study | (percent, name, title) <- wholeCraneOpenings, percent /= 50]
+  pure $
+    [ Pose "before" "Closed crane" (Just RigidPanels) (refinedMesh (spreadRefined fixture)),
+      placed "after" "Opened crane · prescribed static candidate" (spreadMesh fixture),
+      placed "pillow" "Pillow body · visual target" pillow,
+      placed "compact" "Less spread · visual target" compact,
+      placed "narrow" "Narrower body · visual target" narrow
+    ]
+      ++ spreads
+  where
+    fixture = wholeSpread study
+    placed name title = Pose name title (Just AsPrescribed)
+
+-- | What a pose's drawings and cards call it beyond its title: a shape
+-- sketch, when it was placed rather than folded.
+poseLabel :: Pose -> Maybe Text
+poseLabel pose = case poseGeometry pose of
+  Just AsPrescribed -> Just "shape sketch"
+  _ -> Nothing
 
 -- Material triangles are non-overlapping on the original square, even when
 -- their folded positions coincide. Barycentric weights locate the same piece

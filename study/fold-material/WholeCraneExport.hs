@@ -18,6 +18,11 @@
 -- A refusal therefore stops the gallery with its reason, and the missing
 -- layer order gets supplied rather than the shimmer shipped.
 --
+-- Each file also records how its pose was made, as the geometry level of a
+-- fidelity record ("Senbazuru.Render.Fidelity"): a pose placed rather than
+-- folded says @as prescribed@, a shape sketch, where anyone who opens the
+-- file can read it (PRD 11, R-11-2).
+--
 -- It is a module of its own so that the test suite, which does not compile
 -- the gallery, can check the choice.
 module WholeCraneExport (viewerGlb) where
@@ -26,9 +31,10 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface (Surface)
-import Senbazuru.Render.Gltf (ExportMode (..), GltfError, renderSurfaceGlb)
+import Senbazuru.Render.Fidelity (Geometry)
+import Senbazuru.Render.Gltf (ExportMode (..), GlbOptions (..), GltfError, plainGlb, renderSurfaceGlbWith)
 
 -- | A pose's file for the viewers: the visible-paper scene, then the
--- complete one.
-viewerGlb :: Text -> Surface material -> Either GltfError ByteString
-viewerGlb title = renderSurfaceGlb defaultBudget VisiblePaper (Just title)
+-- complete one, recording how the pose was made.
+viewerGlb :: Geometry -> Text -> Surface material -> Either GltfError ByteString
+viewerGlb geometry title = renderSurfaceGlbWith (plainGlb VisiblePaper) {glbGeometry = Just geometry} defaultBudget (Just title)

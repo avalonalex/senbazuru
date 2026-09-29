@@ -30,6 +30,7 @@ data.views.forEach(v=>camera.add(new Option(v.title,v.id)));
 const spread=document.getElementById('spread');
 spread.max=data.openings.length-1;
 const shape=(s,key)=>new Map(s.shape).get(key),fmt=n=>Math.abs(n)<1e-8?'0':Number(n).toPrecision(3);
+const labelled=(title,s)=>s.label?`${title} · ${s.label}`:title;
 const limits=data.screenThresholds,percent=n=>`${Number((100*n).toPrecision(3))}%`;
 document.getElementById('screen-caption').textContent=`The no-stretch floor is how far some point must move before a pose could be paper. It is a proof, not an estimate: paper cannot stretch, so no two of its points end up further apart than on the flat sheet. A pose passes with no more than ${percent(limits.strainScreen)} strain (owner decision 16), a floor of at most ${limits.floorLimitPixels} px at that strain, and no join bent past ${limits.falseCreaseThresholdDegrees}° (PRD 11's targets). Strain within ${percent(limits.strictStrainScreen)} is reported and not required. Crossings are reported, not judged: where layers touch, a count measures rounding, and the reach-through is an upper bound on how deep a pair crosses. The screen changes no pose.`;
 function draw(){
@@ -43,7 +44,7 @@ function draw(){
   for(const [slot,chosen] of [['before',before],['after',after]]){
     const state=view.states.find(s=>s.id===chosen.id);
     document.getElementById(slot).src=`whole-crane/${state.stem}${document.getElementById('paper').value}.svg`;
-    const title=slot==='after'&&choice==='spread'?`${opening.title} · slim body sketch`:chosen.title;
+    const title=labelled(slot==='after'&&choice==='spread'?`${opening.title} · slim body`:chosen.title,chosen);
     document.getElementById(slot).alt=title;
     document.getElementById(`${slot}-title`).textContent=title;
     document.getElementById(`${slot}-status`).textContent=state.resolved?'Visible regions cover the sheet.':`Depth preview · ${state.unresolvedPairs} unresolved audit pairs; ${state.depthPreviewMissingAreaPixelsSquared.toPrecision(2)} px² coverage uncertainty.`;
