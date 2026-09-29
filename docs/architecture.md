@@ -318,7 +318,10 @@ one explicit bounded control and archive-only rendering. `WholeCraneDrawing`
 clips projected triangles by actual camera depth even at intersections, solely
 for diagnostic shape review. It does not replace `Render.Projected` or contact
 acceptance. [The whole-crane note](notes/whole-crane-candidate.md) records the
-failed control and the visual proposal's material defects. `pillowCrane` adds
+failed control and the visual proposal's material defects. `PaperScreen` holds
+the measures of a *paper screen*, which says whether paper could take a pose,
+and `WholeCraneScreen` says which parts of the crane they read; neither moves a
+vertex. `pillowCrane` adds
 an authored cushion and wing target; `compactPillowCrane` narrows its body and
 raises the same wing arches; `narrowPillowCrane` further narrows only that
 body. `pillowCraneAtSpread` varies its wing angle with the cushion fixed; the
