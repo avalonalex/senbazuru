@@ -5,14 +5,10 @@ import BodyPatch
 import Control.Monad (forM_, when)
 import CranePocket
 import CraneSpread
-import Data.Aeson (Value, decodeStrict, withObject, (.:))
-import Data.Aeson.Types (parseMaybe)
-import Data.ByteString qualified as BS
+import Data.Aeson (Value (..))
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
-import Data.Text (Text)
-import Data.Text qualified as T
 import FoldMaterial (componentCount, meshEdges)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
@@ -20,6 +16,7 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
+import Test.Glb (Glb (..), at, items, parseGlb)
 import Test.Hspec
 import WholeCrane
 import WholeCraneExport
@@ -127,35 +124,14 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
       lookup "bodyDepth" values `shouldSatisfy` maybe False (> 0.2)
 
   -- The complete scene alone leaves a viewer to pick between coincident
-  -- layers by depth rounding (PRD 11, R-11-10).
+  -- layers by its depth buffer (PRD 11, R-11-10). Exporting it alone, or
+  -- leading with it, turns this red.
   it "gives the viewers visible paper first and every layer second" $ \(_, _, study) -> do
     let fixture = wholeSpread study
     sheet <- right (spreadSurface fixture (refinedMesh (spreadRefined fixture)))
-    (scene, bytes) <- right (poseGlb "Closed crane" sheet)
-    scene `shouldBe` VisibleFirst
-    sceneNames bytes `shouldBe` Just ["Visible paper", "Complete paper"]
-
-  it "keeps every layer, and says why, where the visible scene refuses" $ \_ -> do
-    -- Lifting one corner 0.01 out of plane bends the panels around it, which
-    -- the visible scene refuses and the complete scene still writes.
-    fr <- keyFrame <$> (loadFoldFile "examples/squaretwist.fold" >>= right)
-    let lift i point = case point of
-          [x, y, z] | i == (2 :: Int) -> [x, y, z + 0.01]
-          _ -> point
-    sheet <- right (surfaceFromFrame fr {verticesCoords = zipWith lift [0 ..] (verticesCoords fr)})
-    (scene, bytes) <- right (poseGlb "Bent square twist" sheet)
-    case scene of
-      CompleteOnly reason -> T.unpack reason `shouldContain` "planar"
-      VisibleFirst -> expectationFailure "a bent panel must not reach the visible scene"
-    sceneNames bytes `shouldBe` Just ["Complete paper"]
-
--- | The names of a GLB's scenes, read from its JSON chunk: 12 bytes of
--- header, then the chunk's length (little-endian) and type, then the JSON.
-sceneNames :: BS.ByteString -> Maybe [Text]
-sceneNames glb = do
-  size <- sum <$> mapM (\i -> (\byte -> fromIntegral byte * 256 ^ i) <$> BS.indexMaybe glb (12 + i)) [0 .. 3 :: Int]
-  json <- decodeStrict (BS.take size (BS.drop 20 glb)) :: Maybe Value
-  parseMaybe (withObject "glTF" (\o -> o .: "scenes" >>= mapM (withObject "scene" (.: "name")))) json
+    glb <- right (viewerGlb "Closed crane" sheet) >>= parseGlb
+    map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
+    at "scene" (glbJson glb) `shouldBe` Number 0
 
 load :: IO (PocketMap, BodyPatch, WholeCrane)
 load = do

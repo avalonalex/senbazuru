@@ -33,10 +33,11 @@ import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Origami.Visible (Region (..), VisibleForm (..))
 import Senbazuru.Render.Camera (basisFrom, project)
-import Senbazuru.Render.Gltf (toGltfAxes)
+import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb, toGltfAxes)
 import Senbazuru.Render.Svg (Page (..), renderSvg)
 import SurfaceContact qualified as Contact
 import System.Directory (createDirectoryIfMissing, doesFileExist)
@@ -45,7 +46,7 @@ import System.FilePath ((</>))
 import System.IO (hFlush, stdout)
 import WholeCrane
 import WholeCraneDrawing
-import WholeCraneExport (PoseScene (..), poseGlb, sceneName)
+import WholeCraneExport (viewerGlb)
 
 startWholeCrane :: FilePath -> FilePath -> IO ()
 startWholeCrane source destination = do
@@ -149,7 +150,7 @@ viewWholeCrane destination = do
     pure (name, title <> " · visual target", mesh)
   let drawnStates = [("before", "Closed crane", before), ("after", "Opened crane · prescribed static candidate", guess), ("pillow", "Pillow body · visual target", pillow), ("compact", "Less spread · visual target", compact), ("narrow", "Narrower body · visual target", narrow)] ++ spreadStates
       states = drawnStates ++ [("correction", "Refused material adjustment · diagnostic", endpoint) | exists]
-  poses <- forM states $ \(name, title, mesh) -> do
+  measurements <- forM states $ \(name, title, mesh) -> do
     sheet <- checked (spreadSurface fixture mesh)
     contact <- checked (spreadCheck fixture mesh)
     shape <- checked (wholeMeasurements study mesh)
@@ -161,19 +162,17 @@ viewWholeCrane destination = do
       pure (object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h])
     let strains = [s | t <- resolvedTriangles mesh, Just s <- [principalStrains t]]
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
-    (scene, bytes) <- checked (poseGlb title sheet)
+    -- The viewers get visible paper first (WholeCraneExport). The refused
+    -- adjustment is a diagnostic no viewer loads, kept complete like the
+    -- study's other diagnostics.
+    bytes <- checked (if name == "correction" then renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet else viewerGlb title sheet)
     BS.writeFile (output </> name ++ ".glb") bytes
-    case scene of
-      CompleteOnly reason -> putStrLn (name ++ ": the visible scene refused, so every layer is written: " ++ T.unpack reason)
-      VisibleFirst -> pure ()
     when (name /= "correction") $ do
       normals <- checked (panelCornerNormals (refinedPanels (spreadRefined fixture)) mesh)
       BL.writeFile (output </> name ++ "-lighting.json") (encode (object ["vertices" .= [[a, b, c] | (a, b, c) <- triangles mesh], "normals" .= map (map (xyz . toGltfAxes)) normals]))
     putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
     hFlush stdout
-    pure (name, scene, object ["id" .= name, "title" .= title, "scene" .= sceneName scene, "sceneRefusal" .= (case scene of CompleteOnly reason -> Just reason; VisibleFirst -> Nothing), "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles])
-  let measurements = [value | (_, _, value) <- poses]
-      scenes = [(name, sceneName scene) | (name, scene, _) <- poses]
+    pure (object ["id" .= name, "title" .= title, "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= minimum (0 : map fst strains), "maxPrincipalStrain" .= maximum (0 : map snd strains), "angles" .= angles])
   views <- forM [("upright", "Crane upright · three-quarter", V3 1 (sqrt 2) (-1), V3 0 (-1) 0), ("opposite", "Opposite side · three-quarter", V3 1 (sqrt 2) 1, V3 0 (-1) 0), ("low", "Low angle · three-quarter", V3 1 0.4 (-1), V3 0 (-1) 0), ("head", "From the head · slight tilt", V3 1 0.25 0.15, V3 0 (-1) 0), ("tail", "From the tail · slight tilt", V3 (-1) 0.25 0.15, V3 0 (-1) 0), ("top", "Above the body · slight tilt", V3 0 1 0.15, V3 (-1) 0 0), ("side", "Crane upright · side", V3 0 0 (-1), V3 0 (-1) 0), ("oblique", "Earlier camera · Z up", V3 (-1) 1 (sqrt 2), V3 0 0 1), ("reverse", "Earlier reverse · Z up", V3 1 1 (sqrt 2), V3 0 0 1), ("front", "Earlier front · Z up", V3 0 1 0.2, V3 0 0 1), ("below", "Under the body · slight tilt", V3 0 (-1) 0.15, V3 1 0 0)] $ \(viewId, title, direction, up) -> do
     basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction up)
     bounds <- checked (sharedExtent basis [mesh | (_, _, mesh) <- drawnStates])
@@ -230,11 +229,11 @@ viewWholeCrane destination = do
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
-  -- The 3D control selects these same files, visible paper first where it
-  -- exports. It never derives another pose in JavaScript. Include the earlier
-  -- targets in the common framing so changing shapes cannot silently move the
-  -- camera or rescale.
-  let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb"), "lighting" .= (name ++ "-lighting.json"), "scene" .= lookup name scenes] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("spread-0.glb" :: T.Text)]
+  -- The 3D control selects these same files, visible paper first. It never
+  -- derives another pose in JavaScript. Include the earlier targets in the
+  -- common framing so changing shapes cannot silently move the camera or
+  -- rescale.
+  let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb"), "lighting" .= (name ++ "-lighting.json")] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("spread-0.glb" :: T.Text)]
   spreadViewer <- TIO.readFile "study/fold-material/whole-crane-3d.html"
   TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))
   lightingModule <- TIO.readFile "study/fold-material/paper-lighting.mjs"

@@ -6,7 +6,9 @@
 // its corners can lie part-way along a triangle. Its references are then that
 // triangle's own corners, with weights summing to one, and its direction is
 // the same blend of theirs. An unclipped corner is the case of one weight 1
-// and keeps its corner's direction exactly.
+// and keeps its corner's direction exactly. A weight may be a hair below zero,
+// where a corner was cut a hair outside its triangle: the exporter accepts
+// down to -1e-8 (PaperMesh.attach), so this does too.
 export function primitiveNormals(weights, faces, indices, lighting, underside) {
   if (!Array.isArray(weights) || !Array.isArray(faces) || indices.length !== faces.length * 3)
     throw new Error('Paper lighting needs complete triangular material references.');
@@ -22,7 +24,7 @@ export function primitiveNormals(weights, faces, indices, lighting, underside) {
     if (!Number.isInteger(graphics) || graphics < 0 || !Number.isInteger(face) || face < 0 ||
         !Array.isArray(refs) || refs.length < 1 ||
         !refs.every(ref => Array.isArray(ref) && ref.length === 2 && Number.isInteger(ref[0]) &&
-          Number.isFinite(ref[1]) && ref[1] >= 0) ||
+          Number.isFinite(ref[1]) && ref[1] >= -1e-8) ||
         !Array.isArray(vertices) || vertices.length !== 3 || !Array.isArray(normals) || normals.length !== 3)
       throw new Error('Paper lighting does not match the GLB.');
     if (Math.abs(refs.reduce((sum, ref) => sum + ref[1], 0) - 1) > 1e-6)

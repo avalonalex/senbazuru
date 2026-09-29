@@ -29,7 +29,7 @@
   <p id="error" role="alert"></p><button id="retry" hidden>Retry loading</button>
   <p>Drag to rotate · scroll to zoom · right-drag to pan. View buttons reset the camera.</p>
   <p><a id="download" class="download" hidden download>Download selected GLB</a> · <a href="../whole-crane.html">Compare the drawings</a> · <a href="../crane-book.html">Instruction-book treatment</a> · <a id="inspector" href="index.html?angle=corner&amp;up=z&amp;model=spread-0.glb">Generic GLB inspector</a></p>
-  <p class="note">Paper-panel lighting softens triangle seams within each original panel; crease edges stay sharp. Colour and lighting affect this preview only. Downloads keep the original two-sided, flat-lit GLBs. Each pose shows only the paper it exposes; its GLB keeps every layer as a second scene. Lighting does not repair stretched or intersecting paper.</p>
+  <p class="note">Paper-panel lighting softens triangle seams within each original panel; crease edges stay sharp. Colour and lighting affect this preview only. Each pose shows only the paper it exposes. Downloads keep the original two-sided, flat-lit GLBs, whose second scene holds every layer; importers that load every scene, such as Blender's, show it as a second copy. Lighting does not repair stretched or intersecting paper.</p>
 </footer>
 <script type="importmap">
 {"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}
@@ -88,12 +88,12 @@ async function start() {
         return response.json();
       })
     ]);
-    // WholeCraneGallery leads with the visible-paper scene where it exports and
-    // keeps every layer second; where it refused, the complete scene stands
-    // alone. Read the file's own names: the loader rewrites them.
-    const names = gltf.parser.json.scenes.map(scene => scene.name).join(', ');
-    const expected = model.scene === 'visible' ? 'Visible paper, Complete paper' : 'Complete paper';
-    if (names !== expected) throw new Error(`${model.path}: expected scenes ${expected}, found ${names}`);
+    // WholeCraneGallery writes the visible-paper scene first and every layer
+    // second; it refuses rather than write the complete scene alone. Read the
+    // file's own names: the loader rewrites them.
+    const names = gltf.parser.json.scenes.map(entry => entry.name).join(', ');
+    if (names !== 'Visible paper, Complete paper')
+      throw new Error(`${model.path}: expected the visible-paper scene, then the complete one; found ${names}`);
     const root = gltf.scenes[0];
     // FOLD -Y becomes glTF +Z; this display-only rotation makes it stand up.
     root.rotateX(-Math.PI / 2);
@@ -116,7 +116,7 @@ async function start() {
         if (material.color) material.userData.paperColour = material.color.clone();
       }
     });
-    models.set(model.path, { root, title: model.title, scene: model.scene });
+    models.set(model.path, { root, title: model.title });
     status.textContent = `Loaded ${++count} of ${data.models.length} GLB poses…`;
   }));
   // Finish the small batch before reporting failure, so a late successful
@@ -197,9 +197,8 @@ async function start() {
     document.querySelector('#spread-help').hidden = !adjusting;
     document.querySelector('#spread-value').textContent = pose.title;
     spread.setAttribute('aria-valuetext', pose.title);
-    const shown = model.scene === 'visible' ? 'exposed paper' : 'every layer, so touching surfaces may flicker';
     host.setAttribute('aria-label', `Interactive crane model: ${label}`);
-    status.textContent = `${label} · ${shown} · same camera and scale`;
+    status.textContent = `${label} · exposed paper · same camera and scale`;
     download.href = path;
     download.download = path;
     download.hidden = false;

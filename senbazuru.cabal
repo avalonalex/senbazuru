@@ -462,6 +462,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.SyntaxSpec
     Senbazuru.Sequence.TraditionalCraneSpec
     Test.CheckedSequenceGen
+    Test.Glb
     Test.Golden
     Test.SequenceExamples
     Test.SequenceGen

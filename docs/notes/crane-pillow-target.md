@@ -136,9 +136,10 @@ vertices. All poses determine one centre and the fit for each view button;
 changing the pose preserves camera rotation, zoom and pan. Otherwise a shrinking
 wing could be mistaken for a camera moving farther away. Four view buttons reset
 the camera, earlier shapes remain selectable, and the download always names the
-selected file. Plain-paper colour affects the preview only. This complete-sheet
-view retains buried layers and may show touching-surface flicker; it does not
-replace the depth-clipped drawing or certify the paper's material state.
+selected file. Plain-paper colour affects the preview only. The view shows each
+pose's visible paper, and each GLB keeps every layer as its second scene
+([#434](https://github.com/avalonalex/senbazuru/pull/434)); it does not replace
+the depth-clipped drawing or certify the paper's material state.
 The viewer's verification checks all nine files with Khronos's glTF validator
 (zero errors or warnings), unchanged archive hashes, and a downloaded pose
 against its source file. A browser round trip through the five spread settings

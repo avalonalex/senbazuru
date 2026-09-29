@@ -69,10 +69,12 @@ static poses while preserving rotation, zoom and pan. Four camera buttons reset
 the view, and the shape selector retains the earlier targets. Each download is
 the selected original GLB, including both paper-side materials even when the
 preview uses plain paper. Each GLB leads with its visible-paper scene, so the
-viewer draws the paper a pose exposes rather than letting depth rounding choose
-between touching layers, and keeps every layer as its second scene. Where the
-visible scene refuses a pose, that pose keeps the complete scene alone and the
-gallery prints why. As with the other 3D galleries, install Three.js with
+viewer draws the paper a pose exposes instead of letting its depth buffer choose
+between coincident layers, and keeps every layer as its second scene; an
+importer that loads every scene, such as Blender's, shows both. Layers that
+only nearly touch, as at a nearly closed hinge, are still sorted by the depth
+buffer. The gallery refuses a pose whose visible scene refuses, rather than
+show the complete scene alone. As with the other 3D galleries, install Three.js with
 `npm install --prefix build/fold-material/checked-flap three@0.186.0` if needed.
 The browser applies one common framing to all files; it does not calculate new
 paper shapes. These remain the same unaccepted sketches described above.

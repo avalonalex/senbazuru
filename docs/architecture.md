@@ -327,11 +327,12 @@ mesh interpolation. All use material-distance-weighted graph
 continuation into the attached paper. It is not a new physical solver. The
 [pillow note](notes/crane-pillow-target.md) records its large distortion and
 the fixture's negative-Y-up camera convention.
-The dedicated `whole-crane-3d.html` viewer selects the same complete-sheet GLBs
-from a small manifest written by `WholeCraneGallery`. All poses share a centre
-and camera extent; selecting a pose leaves orbit, zoom and pan unchanged.
-It transforms only the display orientation and position of each complete model,
-never the paper's mesh. The generic glTF inspector remains separate.
+The dedicated `whole-crane-3d.html` viewer selects the same GLBs from a small
+manifest written by `WholeCraneGallery`; `WholeCraneExport` writes each with the
+visible-paper scene first and the complete scene second, and the viewer shows
+the first. All poses share a centre and camera extent; selecting a pose leaves
+orbit, zoom and pan unchanged. It transforms only the display orientation and
+position of each model, never the paper's mesh. The generic glTF inspector remains separate.
 `PaperLighting` computes area-weighted corner normals keyed by source panel and
 material vertex. The dedicated viewer can compare them against flat triangle
 lighting, using GLB material references to assign the directions to graphics
