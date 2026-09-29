@@ -49,15 +49,14 @@ closes.
 explains why the study's crane does not look refined and plans the fix, tracked
 in [#409](https://github.com/avalonalex/senbazuru/issues/409) with one issue per piece ([#410](https://github.com/avalonalex/senbazuru/issues/410)–[#431](https://github.com/avalonalex/senbazuru/issues/431)).
 - **The diagnosis.** The owner's preferred More tucked crane is a shape sketch:
-  some point must move at least 17 px before it could be paper. A paper look
-  makes valid shapes read as paper, but cannot fix a sketch.
+  some point must move at least 17 px before it could be paper. In the research,
+  a paper look made valid shapes read as paper, though the owner has yet to
+  judge them, and it cannot fix a sketch.
 - **The route to an opened or inflated form.** Contact that never lets paper
   cross paper, stepped along a path from a start where no paper touches paper.
   The repairs one pair at a time that the body study made are not that route.
-- **The first steps.** Honest labels and a paper screen on every pose (F0).
-  Then the look on valid shapes (F1) and a two-week prototype (F2) run in
-  parallel. The prototype's go/no-go decides whether contact is built into the
-  library (F4). Owner decisions 15–25 gate the milestones.
+- **The order.** Item 8 of [An order](#an-order). Owner decisions 15–25 gate
+  the milestones.
 
 **Material priority, 2026-09-26:** [#315](https://github.com/avalonalex/senbazuru/issues/315)
 [sets an illustration milestone](notes/illustration-material-priority.md).
@@ -308,9 +307,11 @@ pieces of work.
    display separation distinct from physical paper thickness.
 5. **Refined final forms** ([#409](https://github.com/avalonalex/senbazuru/issues/409)). Planned, not started.
    [PRD 11](../PRDs/11-prd-refined-final-forms.md) sets out the milestones:
-   - F0: a paper screen and sketch labels;
+   - F0: a *paper screen* beside every pose (its strain, how far it is from
+     paper, its crossings) and sketch labels;
    - F1: the look on valid shapes;
-   - F2: a prototype contact solver outside CI, with a go/no-go;
+   - F2: a prototype contact solver outside CI, with a go/no-go that decides
+     whether F4 is built;
    - F3: Haskell numerics;
    - F4: contact and path-following in the library;
    - F5: the crane's body;
@@ -318,7 +319,8 @@ pieces of work.
    - F7: a book renderer for curved paper.
 
    An opened body as a library result needs F2 through F5, two to four months at
-   best, and F5 may end in a stated blocker. #106 and #195 continue under it.
+   best, and F5 may end in a stated blocker. Its [#425](https://github.com/avalonalex/senbazuru/issues/425), the crane's
+   body, advances #106 and #195.
 
 ## The open issues, by how hard they are
 
@@ -393,15 +395,17 @@ pieces of work.
   control, compatible crease motion, possible panel bending and contact checks.
   Start with controlled opening; a pressure/volume model additionally needs a
   defined cavity and treatment of its openings.
-- **Refined final forms, the shape track** ([#409](https://github.com/avalonalex/senbazuru/issues/409)). The prototype
-  and its go/no-go:
+- **Refined final forms, the shape track** ([#409](https://github.com/avalonalex/senbazuru/issues/409)). F2, the
+  prototype, whose go/no-go decides whether F4 is built:
   - [#418](https://github.com/avalonalex/senbazuru/issues/418): whether any load lengthens the crane's body core;
   - [#419](https://github.com/avalonalex/senbazuru/issues/419): the solver and its benchmarks;
-  - [#420](https://github.com/avalonalex/senbazuru/issues/420): whether an admissible start exists.
+  - [#420](https://github.com/avalonalex/senbazuru/issues/420): whether an *admissible start* exists, one where no paper
+    touches paper. It is not one of the go/no-go items, but F4 and F5 need its
+    answer.
 
   Then contact and a path settle in the library ([#424](https://github.com/avalonalex/senbazuru/issues/424)), the crane's body
   ([#425](https://github.com/avalonalex/senbazuru/issues/425)), inflation ([#427](https://github.com/avalonalex/senbazuru/issues/427), [#428](https://github.com/avalonalex/senbazuru/issues/428)) and a library book
-  renderer for curved paper ([#429](https://github.com/avalonalex/senbazuru/issues/429)). Each has a research question
+  renderer for curved paper ([#429](https://github.com/avalonalex/senbazuru/issues/429)). Most have a research question
   inside, and #418 comes first because it is the cheapest decisive one.
 
 ### Medium: days, with a picture or a format to design
@@ -451,7 +455,8 @@ pieces of work.
   - The look: lines drawn once, by role ([#414](https://github.com/avalonalex/senbazuru/issues/414)), gradient paint
     ([#415](https://github.com/avalonalex/senbazuru/issues/415)), a paper-look viewer ([#416](https://github.com/avalonalex/senbazuru/issues/416)) and offline stills
     ([#417](https://github.com/avalonalex/senbazuru/issues/417)).
-  - The numerics: D15 stage 1 ([#421](https://github.com/avalonalex/senbazuru/issues/421)), a sparse LDLᵀ factor ([#422](https://github.com/avalonalex/senbazuru/issues/422))
+  - The numerics: D15 stage 1, the first of seven stages that graduate the
+    study into the library ([#421](https://github.com/avalonalex/senbazuru/issues/421)), a sparse LDLᵀ factor ([#422](https://github.com/avalonalex/senbazuru/issues/422))
     and hyper-dual Hessians ([#423](https://github.com/avalonalex/senbazuru/issues/423)).
 
   The measures are set in PRD 11. The work is making them hold without changing
@@ -1019,6 +1024,6 @@ checked coupled angles.
    - The prototype's go/no-go decides whether contact is built into the library.
      The crane's body and inflation come after that.
 
-   Item 1's body-opening study ([#195](https://github.com/avalonalex/senbazuru/issues/195)) and item 7's #106 continue
-   under it. A new limiting contact pair is a result there, not the start of a
+   Its #425 advances item 1's body-opening study ([#195](https://github.com/avalonalex/senbazuru/issues/195)) and item 7's
+   #106. A new limiting contact pair is a result there, not the start of a
    series of repairs.
