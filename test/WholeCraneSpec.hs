@@ -5,6 +5,7 @@ import BodyPatch
 import Control.Monad (forM_, when)
 import CranePocket
 import CraneSpread
+import Data.Aeson (Value (..))
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
@@ -15,8 +16,10 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
+import Test.Glb (Glb (..), at, items, parseGlb)
 import Test.Hspec
 import WholeCrane
+import WholeCraneExport
 
 spec :: Spec
 spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
@@ -119,6 +122,16 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
         _ -> expectationFailure "missing pillow centre"
       values <- right (wholeMeasurements study mesh)
       lookup "bodyDepth" values `shouldSatisfy` maybe False (> 0.2)
+
+  -- The complete scene alone leaves a viewer to pick between coincident
+  -- layers by its depth buffer (PRD 11, R-11-10). Exporting it alone, or
+  -- leading with it, turns this red.
+  it "gives the viewers visible paper first and every layer second" $ \(_, _, study) -> do
+    let fixture = wholeSpread study
+    sheet <- right (spreadSurface fixture (refinedMesh (spreadRefined fixture)))
+    glb <- right (viewerGlb "Closed crane" sheet) >>= parseGlb
+    map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
+    at "scene" (glbJson glb) `shouldBe` Number 0
 
 load :: IO (PocketMap, BodyPatch, WholeCrane)
 load = do

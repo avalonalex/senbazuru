@@ -46,6 +46,7 @@ import System.FilePath ((</>))
 import System.IO (hFlush, stdout)
 import WholeCrane
 import WholeCraneDrawing
+import WholeCraneExport (viewerGlb)
 
 startWholeCrane :: FilePath -> FilePath -> IO ()
 startWholeCrane source destination = do
@@ -161,7 +162,10 @@ viewWholeCrane destination = do
       pure (object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h])
     let strains = [s | t <- resolvedTriangles mesh, Just s <- [principalStrains t]]
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
-    bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
+    -- The viewers get visible paper first (WholeCraneExport). The refused
+    -- adjustment is a diagnostic no viewer loads, kept complete like the
+    -- study's other diagnostics.
+    bytes <- checked (if name == "correction" then renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet else viewerGlb title sheet)
     BS.writeFile (output </> name ++ ".glb") bytes
     when (name /= "correction") $ do
       normals <- checked (panelCornerNormals (refinedPanels (spreadRefined fixture)) mesh)
@@ -225,9 +229,10 @@ viewWholeCrane destination = do
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (name ++ ".glb")] | (name, title, _) <- states, name /= "correction"])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
-  -- The 3D control selects these same complete-sheet files. It never derives
-  -- another pose in JavaScript. Include the earlier targets in the common
-  -- framing so changing shapes cannot silently move the camera or rescale.
+  -- The 3D control selects these same files, visible paper first. It never
+  -- derives another pose in JavaScript. Include the earlier targets in the
+  -- common framing so changing shapes cannot silently move the camera or
+  -- rescale.
   let viewerData = object ["models" .= [object ["title" .= title, "path" .= (name ++ ".glb"), "lighting" .= (name ++ "-lighting.json")] | (name, title, _) <- drawnStates], "openings" .= [object ["title" .= title, "path" .= (name ++ ".glb")] | (_, name, title) <- openings], "defaultModel" .= ("spread-0.glb" :: T.Text)]
   spreadViewer <- TIO.readFile "study/fold-material/whole-crane-3d.html"
   TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))

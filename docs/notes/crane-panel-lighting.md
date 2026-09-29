@@ -30,7 +30,9 @@ a reversed patch as a smoothly curved one.
 `whole-crane/spread.html` offers **Paper panels** and **Individual triangles**
 lighting at the same camera and pose. Haskell writes a small lighting file per
 pose; the viewer joins it to GLB corners through their material references.
-The two paper sides receive opposite normals. All existing SVG, FOLD and GLB
+Where the visible-paper scene cut a triangle, a corner part-way along it takes
+the same weighted blend of its triangle's corner directions as its material
+reference records. The two paper sides receive opposite normals. All existing SVG, FOLD and GLB
 exports remain unchanged, including their material/contact measurements.
 Downloads retain the original flat lighting. This isolates the presentation
 experiment from a change in paper shape or a new export policy.

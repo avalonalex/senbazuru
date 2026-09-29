@@ -18,18 +18,15 @@ module Senbazuru.Render.GltfSpec (spec) where
 import BasicBases (baseFrame, frogMilestones)
 import Control.Applicative ((<|>))
 import Control.Monad (forM_, when)
-import Data.Aeson (Value (..), decodeStrict, toJSON)
-import Data.Aeson.Key qualified as Key
+import Data.Aeson (Value (..), toJSON)
 import Data.Aeson.KeyMap qualified as KM
 import Data.Bits (shiftL, (.|.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Either (isLeft)
-import Data.Foldable (toList)
 import Data.List (nub, sort)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Word (Word32, Word8)
+import Data.Word (Word8)
 import FlapExample (alignedFlap, opposingFlap, singleFlap, touchingFlap)
 import GHC.Float (castFloatToWord32, castWord32ToFloat)
 import Senbazuru.Diagram (Colour (..))
@@ -54,6 +51,7 @@ import Senbazuru.Origami.HingeSweep (defaultSweepSettings)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface qualified as Paper
 import Senbazuru.Render.Gltf
+import Test.Glb (Glb (..), at, items, nth, parseGlb)
 import Test.Golden (goldenBytes)
 import Test.Hspec
 
@@ -79,60 +77,6 @@ export t (name, fr) = either (fail . ("export failed: " <>) . show) pure (render
 -- | Export a frame that has no file to take a name from.
 exportFrame :: ExportMode -> Frame -> Either GltfError ByteString
 exportFrame t = renderGlb defaultBudget t Nothing
-
--- | A binary glTF document taken apart: the header's declared total, the JSON
--- chunk parsed, and the binary chunk as bytes.
-data Glb = Glb
-  { glbTotal :: Int,
-    glbJsonLength :: Int,
-    glbBinLength :: Int,
-    glbJson :: Value,
-    glbBin :: ByteString
-  }
-
-parseGlb :: ByteString -> IO Glb
-parseGlb bytes = do
-  BS.take 4 bytes `shouldBe` "glTF"
-  word32At 4 `shouldBe` 2
-  BS.take 4 (BS.drop 16 bytes) `shouldBe` "JSON"
-  let jsonLen = fromIntegral (word32At 12)
-      binHeader = 20 + jsonLen
-  BS.take 4 (BS.drop (binHeader + 4) bytes) `shouldBe` "BIN\0"
-  let binLen = fromIntegral (word32At binHeader)
-  json <- maybe (fail "the JSON chunk does not parse") pure (decodeStrict (BS.take jsonLen (BS.drop 20 bytes)))
-  pure
-    Glb
-      { glbTotal = fromIntegral (word32At 8),
-        glbJsonLength = jsonLen,
-        glbBinLength = binLen,
-        glbJson = json,
-        glbBin = BS.take binLen (BS.drop (binHeader + 8) bytes)
-      }
-  where
-    word32At :: Int -> Word32
-    word32At i = le (BS.unpack (BS.take 4 (BS.drop i bytes)))
-    le [a, b, c, d] =
-      fromIntegral a
-        .|. (fromIntegral b `shiftL` 8)
-        .|. (fromIntegral c `shiftL` 16)
-        .|. (fromIntegral d `shiftL` 24)
-    le _ = 0
-
--- | Walk into a JSON value by field name.
-at :: Text -> Value -> Value
-at k (Object o) = fromMaybe Null (KM.lookup (Key.fromText k) o)
-at _ _ = Null
-
--- | The elements of a JSON array, or nothing at all for anything else.
-items :: Value -> [Value]
-items (Array v) = toList v
-items _ = []
-
--- | The n-th element of a JSON array.
-nth :: Int -> Value -> Value
-nth i v = case drop i (items v) of
-  (x : _) -> x
-  [] -> Null
 
 asInt :: Value -> Int
 asInt (Number n) = round n
