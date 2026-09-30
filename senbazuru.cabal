@@ -45,6 +45,8 @@ extra-source-files:
   study/fold-material/whole-crane-3d.html
   study/fold-material/paper-lighting.mjs
   study/fold-material/check-paper-lighting.mjs
+  study/fold-material/paper-screen.js
+  study/fold-material/check-paper-screen.mjs
   study/fold-material/body-intersection-context.html
   study/fold-material/body-larger-opening.html
   study/fold-material/body-visible-layers.html

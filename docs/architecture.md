@@ -323,7 +323,8 @@ failed control and the visual proposal's material defects. `PaperScreen` holds
 the measures of a *paper screen*, which says whether paper could take a pose;
 `ScreenReport` holds its thresholds, its verdict, the JSON a gallery
 writes beside each pose and the script a page reads it with;
-`CraneSpreadScreen` says which edges of a crane with a wing moved are joins;
+`CraneSpreadScreen` screens a crane with a wing moved and says which of its
+edges are joins;
 and `WholeCraneScreen` adds the whole crane's body core. None changes a pose,
 though `WholeCraneScreen` makes each pose again on a finer mesh to measure its
 false creases there. `CylinderStrip` is the false-crease

@@ -56,11 +56,8 @@ function draw(){
   document.getElementById('candidate-fold').href=`whole-crane/${after.id}.fold`;
   document.getElementById('model-link').href=`whole-crane/spread.html?model=${after.id}.glb`;
   document.getElementById('metrics').innerHTML=[['Body across wings',`${fmt(600*shape(after,'bodyDepth'))} px`,'Compared: '+fmt(600*shape(before,'bodyDepth'))+' px'],['Wing-tip separation',`${fmt(600*shape(after,'wingTipSeparation'))} px`,'Same connected sheet'],['Material',`${after.triangles} triangles`,`${after.vertices} shared vertices · ${after.components} connected component`]].map(([label,value,note])=>`<div class="metric"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>`).join('');
-  // The rows are the shared screen's; only the body core's two are this page's.
   const poses=[['Comparison',before],['Candidate',after]].map(([title,s])=>({title,screen:s.screen,picture:view.states.find(v=>v.id===s.id)}));
-  const degrees=n=>n==null?'—':fmt(n)+'°';
-  const core=[['Body core length, sheet sides',s=>s.coreLengthSheets==null?'—':fmt(s.coreLengthSheets)],['Centre folds: midlines / diagonals',s=>`${degrees(s.centreMidlineFoldDegrees)} / ${degrees(s.centreDiagonalFoldDegrees)}`]];
-  paperScreen.fill(document.getElementById('screen'),[...paperScreen.rows(poses,limits),...core.map(([name,f])=>[name,...poses.map(p=>f(p.screen))])]);
+  paperScreen.fill(document.getElementById('screen'),paperScreen.rows(poses,limits));
   document.getElementById('checks').innerHTML=`<table><thead><tr><th>Measurement</th><th>Comparison</th><th>Candidate</th></tr></thead><tbody>${[['Largest edge error',s=>fmt(s.maxEdgeErrorPixels)+' px'],['Largest relative edge error',s=>fmt(100*s.maxRelativeEdgeError)+'%'],['Largest local stretch',s=>fmt(100*s.maxPrincipalStrain)+'%'],['Largest local compression',s=>fmt(-100*s.minPrincipalStrain)+'%'],['Folded / original area',s=>fmt(s.areaRatio)],['Strict contact crossings',s=>s.contact.crossingPanels.length],['Bending energy in panels',s=>fmt(s.panelEnergy)]].map(([name,f])=>`<tr><td>${name}</td><td>${f(before)}</td><td>${f(after)}</td></tr>`).join('')}</tbody></table><p>${data.newSolves?`The first candidate’s bounded adjustment failed (${fmt(100*data.states.find(s=>s.id==='correction').maxRelativeEdgeError)}% maximum edge error); it is archived and excluded. `:''}The pillow candidate has no material adjustment. These shapes are prescribed, not equilibrium predictions.</p>`;
 }
 if(!data.newSolves){document.getElementById('correction-link').hidden=true;document.getElementById('run-link').hidden=true;}

@@ -23,9 +23,9 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import FoldBending
-import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
+import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
-import ScreenReport (thresholdsJson, writeScreenScript)
+import ScreenReport (Screen (..), thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (FoldFile (..), unEdgeId, unFaceId)
@@ -71,7 +71,6 @@ writeCraneRoot destination = do
     settled <- getCPUTime
     accepted <- checked (rootAccepted study result mesh)
     contact <- checked (spreadCheck fixture mesh)
-    screen <- either (die . T.unpack) pure (screenKeys fixture contact mesh)
     angles <- checked (rootAngles study mesh)
     creaseError <- checked (originalCreaseError study mesh)
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)
@@ -82,6 +81,7 @@ writeCraneRoot destination = do
         visible = accepted && isRight visibleResult
         visibleError = if accepted then either (Just . explain) (const Nothing) visibleResult else Nothing
         svgError = if accepted then either Just (const Nothing) drawing else Nothing
+    (screen, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (accepted && isRight drawing) mesh)
     when accepted $ do
       case visibleResult of
         Right bytes -> BS.writeFile (output </> stem ++ ".glb") bytes
@@ -93,7 +93,6 @@ writeCraneRoot destination = do
         Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
         Left err -> putStrLn (stem ++ ": SVG unavailable: " ++ T.unpack err)
     let degrees = map ((180 / pi *) . abs . snd) angles
-        strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
         report =
           object $
@@ -121,8 +120,8 @@ writeCraneRoot destination = do
               "maxOriginalCreaseErrorRadians" .= creaseError,
               "maxRelativeEdgeError" .= maxLengthError mesh,
               "areaRatio" .= areaRatio mesh,
-              "minPrincipalStrain" .= minimum (0 : map fst strains),
-              "maxPrincipalStrain" .= maximum (0 : map snd strains),
+              "minPrincipalStrain" .= negate (screenSquash screen),
+              "maxPrincipalStrain" .= screenStretch screen,
               "heldPositionError" .= spreadHeldError fixture mesh,
               "bodyMovement" .= rootBodyMovement study mesh,
               "creaseEnergy" .= creaseEnergy,
@@ -131,7 +130,7 @@ writeCraneRoot destination = do
               "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
               "continuousMotionChecked" .= False
             ]
-              ++ screen
+              ++ screened
         file = FoldFile (Just 1.2) (Just "senbazuru crane root material study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     BL.writeFile (output </> stem ++ "-check.json") (encode report)

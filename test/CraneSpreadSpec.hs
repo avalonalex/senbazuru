@@ -80,26 +80,29 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
   -- The rigid wing's start is its solution to within 1e-8 (above), and a
   -- screen reads a pose, not how it was reached, so screening the start
   -- needs no solve.
-  it "screens a pose on its own mesh, counting joins but not the crane's creases" $ \source -> do
+  it "screens a pose on its own mesh, counting its joins but not the crane's creases" $ \source -> do
     fixture <- right (craneSpread source 3 0)
     let mesh = spreadMesh fixture
     contact <- right (spreadCheck fixture mesh)
     chords <- right (sheetChords (refinedMesh (spreadRefined fixture)))
-    screen <- right (spreadScreen fixture chords contact mesh)
-    -- The crane's own folds are folded flat, far past 45 degrees, and none
-    -- of them is a false crease; no join is bent past 45 degrees.
     bends <- right (hingeBends (spreadHinges fixture) mesh)
+    screen <- right (spreadScreen fixture chords contact bends mesh)
+    -- The crane's own folds are folded flat, far past 45 degrees, and none
+    -- of them is a false crease; no join is bent past 45 degrees. Nor does
+    -- the pose fail on strain or the floor, so its verdict is that of a
+    -- finer level not measured.
     length [() | (h, angle) <- bends, abs angle > pi / 4, SurfaceCrease _ <- [hingeRole h]] `shouldSatisfy` (> 0)
     screenTurning screen `shouldBe` Turning 0 0
-    -- Nor does it fail on strain or the floor, so its verdict is that of a
-    -- finer level not measured.
-    screenTurningFiner screen `shouldBe` Nothing
     verdictOverall (screenVerdict screen) `shouldBe` NotMeasured
-    -- A pose that crosses takes minutes to solve: crane-root's released
-    -- body, in 49 pairs. The incompatible grip reverses layers without
-    -- passing through them. So flag a pair by hand, not a real crossing; the
-    -- screen counts what its check flags.
-    flagged <- right (spreadScreen fixture chords contact {crossingPanels = [("triangle-0", "triangle-1")]} mesh)
+    -- Turn every hinge a quarter turn, as no mesh here does: the joins among
+    -- them are counted, and only the joins.
+    turned <- right (spreadScreen fixture chords contact [(h, pi / 2) | (h, _) <- bends] mesh)
+    turningJoins (screenTurning turned) `shouldSatisfy` (\joins -> joins > 0 && joins < length bends)
+    -- A pose that crosses takes minutes to solve: crane-root's body control,
+    -- with the body beside the root free, in 49 pairs. The incompatible grip
+    -- reverses layers without passing through them. So flag a pair by hand,
+    -- not a real crossing; the screen counts what its check flags.
+    flagged <- right (spreadScreen fixture chords contact {crossingPanels = [("triangle-0", "triangle-1")]} bends mesh)
     (screenCrossings screen, screenCrossings flagged) `shouldBe` (0, 1)
     fmap snd (screenDeepestReach flagged) `shouldBe` Just (0, 1)
 

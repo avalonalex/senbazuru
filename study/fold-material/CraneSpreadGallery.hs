@@ -20,10 +20,10 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import FoldBending
-import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
+import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
-import PaperScreen (pictureFloor, sheetChords)
-import ScreenReport (floorPixels, screenJson, strainScreen, thresholdsJson, writeScreenScript)
+import PaperScreen (sheetChords)
+import ScreenReport (Screen (..), pictureFloorJson, screenJson, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (Explain (..))
@@ -65,13 +65,13 @@ writeCraneSpread destination = do
     accepted <- checked (spreadAccepted fixture result mesh)
     _ <- evaluate accepted
     inspected <- getCPUTime
-    screen <- either (die . T.unpack) pure (screenKeys fixture contact mesh)
+    -- The gallery draws exactly the controls it accepts.
+    (screen, screened) <- either (die . T.unpack) pure (screenKeys fixture contact accepted mesh)
     sheet <- checked (spreadSurface fixture mesh)
     angles <- checked (spreadAngleError fixture mesh)
     (crease, panel) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     let initial = IM.fromList (zip [0 ..] (samples (refinedMesh (spreadRefined fixture))))
         bodyError = maximum (0 : [norm (position p ^-^ position q) | (i, p) <- zip [0 ..] (samples mesh), S.member i (spreadBody fixture), Just q <- [IM.lookup i initial]])
-        strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
         report =
           object $
@@ -93,8 +93,8 @@ writeCraneSpread destination = do
               "heldBodyVertices" .= S.size (spreadBody fixture),
               "maxRelativeEdgeError" .= maxLengthError mesh,
               "areaRatio" .= areaRatio mesh,
-              "minPrincipalStrain" .= minimum (0 : map fst strains),
-              "maxPrincipalStrain" .= maximum (0 : map snd strains),
+              "minPrincipalStrain" .= negate (screenSquash screen),
+              "maxPrincipalStrain" .= screenStretch screen,
               "heldPositionError" .= spreadHeldError fixture mesh,
               "bodyPositionError" .= bodyError,
               "maxCreaseAngleErrorRadians" .= angles,
@@ -105,7 +105,7 @@ writeCraneSpread destination = do
               "checkCpuSeconds" .= seconds (inspected - settled),
               "continuousMotionChecked" .= False
             ]
-              ++ screen
+              ++ screened
         file = FoldFile (Just 1.2) (Just "senbazuru connected crane spreading study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -143,20 +143,18 @@ spreadSvg sheets = do
 spreadCamera :: Either T.Text Basis
 spreadCamera = maybe (Left "invalid crane camera") Right (basisFrom (V3 (-1) 1 (sqrt 2)) (V3 0 0 1))
 
--- | A run's paper screen, as the keys its report carries: the screen, and
--- its floor in the picture, from 'spreadCamera'. @contact@ is the run's
--- 'spreadCheck'. Which chords the floor may use depends only on the flat
--- sheet, the fixture's own.
-screenKeys :: CraneSpread -> ContactCheck -> MaterialMesh -> Either T.Text [Pair]
-screenKeys fixture contact mesh = do
+-- | A run's paper screen ("CraneSpreadScreen"), and the keys its report
+-- carries: the screen and, if the gallery draws the run, its floor in the
+-- picture, taken from 'spreadCamera'. A run drawn in no picture has no
+-- picture floor. @contact@ is the run's 'spreadCheck'. Which chords the
+-- floor may use depends only on the flat sheet, the fixture's own.
+screenKeys :: CraneSpread -> ContactCheck -> Bool -> MaterialMesh -> Either T.Text (Screen, [Pair])
+screenKeys fixture contact drawn mesh = do
   chords <- first explain (sheetChords (refinedMesh (spreadRefined fixture)))
-  screen <- first explain (spreadScreen fixture chords contact mesh)
+  bends <- first explain (hingeBends (spreadHinges fixture) mesh)
+  screen <- first explain (spreadScreen fixture chords contact bends mesh)
   camera <- spreadCamera
-  pure
-    [ "screen" .= screenJson screen,
-      "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords camera 0 mesh),
-      "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords camera strainScreen mesh)
-    ]
+  pure (screen, ("screen" .= screenJson screen) : if drawn then pictureFloorJson chords camera mesh else [])
 
 seconds :: Integer -> Double
 seconds n = fromIntegral n / 1e12

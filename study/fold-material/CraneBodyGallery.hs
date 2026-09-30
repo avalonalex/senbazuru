@@ -14,6 +14,7 @@ import CraneSpreadGallery (screenKeys, spreadSvg)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
 import Data.Maybe (isNothing)
 import Data.Set qualified as S
@@ -61,12 +62,13 @@ writeCraneBody destination = do
     settled <- getCPUTime
     (strict, accepted) <- checked (bodyAccepted study result mesh)
     contact <- checked (spreadCheck fixture mesh)
-    screen <- either (die . T.unpack) pure (screenKeys fixture contact mesh)
     (selectedError, retainedError) <- checked (bodyAngleErrors study mesh)
     angles <- checked (bodyAngles study mesh)
     roots <- checked (rootAngles root mesh)
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     sheet <- checked (spreadSurface fixture mesh)
+    let drawing = spreadSvg [sheet]
+    (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (accepted && isRight drawing) mesh)
     let report =
           object $
             [ "id" .= stem,
@@ -101,7 +103,7 @@ writeCraneBody destination = do
               "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
               "continuousMotionChecked" .= False
             ]
-              ++ screen
+              ++ screened
         file = FoldFile (Just 1.2) (Just "senbazuru body crease preferences") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     BL.writeFile (output </> stem ++ "-check.json") (encode report)
@@ -120,7 +122,7 @@ writeCraneBody destination = do
               BS.writeFile (output </> stem ++ "-complete.glb") bytes
               pure (Just (explain err))
         else pure Nothing
-    when accepted $ case spreadSvg [sheet] of
+    when accepted $ case drawing of
       Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
       Left err -> putStrLn (T.unpack err)
     putStrLn (stem ++ ": strict " ++ show strict ++ ", selected " ++ show accepted ++ "; length " ++ show (maxLengthError mesh) ++ "; selected/retained angle " ++ show (selectedError, retainedError))

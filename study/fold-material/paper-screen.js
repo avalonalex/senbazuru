@@ -8,14 +8,14 @@ const paperScreen = (() => {
   const number = n => Math.abs(n) < 1e-8 ? '0' : Number(n).toPrecision(3);
   const percent = n => `${Number((100 * n).toPrecision(3))}%`;
   const pixels = n => n == null ? '—' : number(n) + ' px';
+  const degrees = n => n == null ? '—' : number(n) + '°';
   const parts = [['strain', 'strain'], ['floor', 'floor'], ['falseCreases', 'false creases', 'false creases one level finer']];
 
   // The headline is the verdict's own; the parts only say which failed, or
   // were not measured. A part not measured is null, which is neither a pass
-  // nor a fail, so `!verdict[key]` would misread it, and a missing verdict
-  // reads as neither too.
+  // nor a fail, so `!verdict[key]` would misread it.
   function headline(screen) {
-    const verdict = screen.verdict || {};
+    const verdict = screen.verdict;
     const failing = parts.filter(([key]) => verdict[key] === false).map(([, label]) => label);
     const unmeasured = parts.filter(([key]) => verdict[key] === null).map(([, label, missing]) => missing || label);
     if (verdict.passes === true) return 'Passes';
@@ -30,7 +30,8 @@ const paperScreen = (() => {
 
   // One row per part of the screen, one column per pose. A pose is
   // {title, screen, picture}; `picture` holds its floors after projecting
-  // onto the drawing, and a pose without one shows a dash there.
+  // onto the drawing, and a pose drawn in no picture shows a dash there.
+  // The body core's two rows appear where some pose is a crane's body.
   function rows(poses, limits) {
     const measures = [
       ['Screen (crossings reported only)', s => headline(s)],
@@ -41,7 +42,13 @@ const paperScreen = (() => {
       [`False creases: joins past ${limits.falseCreaseThresholdDegrees}° · turning, sheet sides × degrees`, s => `${s.falseCreaseJoins} · ${number(s.falseCreaseTurningSheetDegrees)}`],
       ['The same, one level finer', s => s.falseCreaseJoinsFiner == null ? '— (not made again)' : `${s.falseCreaseJoinsFiner} · ${number(s.falseCreaseTurningFinerSheetDegrees)}`]
     ];
-    return [['Paper screen', ...poses.map(p => p.title)], ...measures.map(([name, cell]) => [name, ...poses.map(p => cell(p.screen, p.picture))])];
+    const core = [
+      ['Body core length, sheet sides', s => s.coreLengthSheets == null ? '—' : number(s.coreLengthSheets)],
+      ['Centre folds: midlines / diagonals', s => `${degrees(s.centreMidlineFoldDegrees)} / ${degrees(s.centreDiagonalFoldDegrees)}`]
+    ];
+    const body = s => s.coreLengthSheets != null || s.centreMidlineFoldDegrees != null || s.centreDiagonalFoldDegrees != null;
+    const shown = poses.some(p => body(p.screen)) ? [...measures, ...core] : measures;
+    return [['Paper screen', ...poses.map(p => p.title)], ...shown.map(([name, cell]) => [name, ...poses.map(p => cell(p.screen, p.picture))])];
   }
 
   // Put rows into `container` as a table, the first row as its heading.

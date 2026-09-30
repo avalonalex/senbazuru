@@ -452,7 +452,10 @@ grip is held at either 30 degrees (rigid baseline) or 50 degrees (curved wing).
 Only the middle three quarters of its length can bend.
 
 `crane-spreading/` contains complete material FOLDs, SVG comparisons, accepted
-GLBs and `checks.json`, which holds each control's paper screen. The 50-degree grip runs at two refinements, with the
+GLBs and `checks.json`, which holds each control's
+[paper screen](glossary.md#this-project). A solved pose's false creases one
+level finer are not measured (owner decision 27), and its body core, held,
+has no readings. The 50-degree grip runs at two refinements, with the
 same physical held strips. The incompatible control pushes an upper grip
 through its lower partner; its diagnostic FOLD is excluded from the model
 selector. Regular controls allow twenty iterations per penalty stage; the

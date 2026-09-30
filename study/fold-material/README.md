@@ -331,9 +331,10 @@ spreads the existing crane wing with the body fixed. `crane-spreading.html`
 compares the rigid baseline, a curved 50-degree grip at two refinements and
 an incompatible upper grip. Complete material FOLDs and measurements are
 retained for every control; only accepted endpoints get SVG/GLB views. Every
-control carries a paper screen, as the whole crane's poses do, under `screen`
-in `checks.json`; a solved pose's false creases one level finer are not
-measured. See
+control carries a paper screen, as the whole crane's poses do: under `screen`
+in `checks.json`, with its floor in its drawing beside it in
+`pictureFloorPixels` where the gallery draws it. A solved pose's false creases
+one level finer are not measured. See
 [the instructions](../../docs/usage.md#spreading-one-connected-crane-wing) and
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.

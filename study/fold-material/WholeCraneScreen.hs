@@ -5,10 +5,11 @@
 -- "ScreenReport"'s; this module says which parts of the crane they read.
 --
 -- False creases are the joins, the 'Join' edges a panel was cut along for the
--- mesh, which "CraneSpreadScreen" reads for every crane with a wing moved. A flat crease ('Flat') is a line the crease pattern has and this
--- crane leaves unfolded, so bending paper there bends it along a line the
--- pattern allows, and it is not counted; on More tucked it would add 32.7
--- sheet sides times degrees.
+-- mesh, which "CraneSpreadScreen" reads for every crane with a wing moved. A
+-- flat crease ('Flat') is a line the crease pattern has and this crane leaves
+-- unfolded, so bending paper there bends it along a line the pattern allows,
+-- and it is not counted; on More tucked it would add 32.7 sheet sides times
+-- degrees.
 --
 -- The centre creases are the pattern's folded creases, mountain and valley,
 -- in the body core and through the sheet's centre. Their fold angles tell a
@@ -28,24 +29,42 @@
 -- No region of the crane is declared a tension field, where paper is
 -- expected to stretch, so the strain screen applies to the whole mesh.
 module WholeCraneScreen
-  ( screenPose,
+  ( PoseScreenError (..),
+    screenPose,
     screenFrom,
     turningOn,
   )
 where
 
 import Control.Monad (forM)
-import CraneSpread (CraneSpread (..), spreadCheck, spreadSurface)
-import CraneSpreadScreen (PoseScreenError (..), joinBends)
+import CraneSpread (CraneSpread (..), SpreadError, spreadCheck, spreadSurface)
+import CraneSpreadScreen (joinBends, poseScreen)
 import Data.Bifunctor (first)
 import Data.Set qualified as S
-import FoldBending (Hinge (..), HingeRole (..), bentEdges, hingeBends)
+import FoldBending (BendingError, Hinge (..), HingeRole (..), bentEdges, hingeBends)
 import PaperScreen
 import ScreenReport
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry (boxCentre, boxFromPoints)
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), RefinedSurface (..), Sample (..))
 import WholeCrane (Construction, CranePose, WholeCrane (..), craneConstruction, craneMesh, finerCrane, remadeOn)
+
+data PoseScreenError
+  = PoseSheet !SpreadError
+  | PoseBend !BendingError
+  | PoseScreen !ScreenError
+  | -- | An error on the pose made again on a refinement with this many
+    -- triangles, not on the pose's own mesh. Its vertex numbers are the
+    -- remade mesh's, which no file the gallery writes contains.
+    PoseRemade !Int !PoseScreenError
+  deriving stock (Show)
+
+instance Explain PoseScreenError where
+  explain (PoseSheet err) = explain err
+  explain (PoseBend err) = explain err
+  explain (PoseScreen err) = explain err
+  explain (PoseRemade triangleCount err) = "on the pose made again on " <> tshow triangleCount <> " triangles: " <> explain err
 
 -- | Screen one pose of the whole-crane study, working out everything the
 -- screen reads from the pose alone.
@@ -64,11 +83,12 @@ screenPose study pose = do
 -- | Screen one pose from what the gallery has already worked out for it: its
 -- sheet's chords, its crossing check and each hinge's bend in radians, all
 -- of this mesh, and its false-crease turning on the pose made again one
--- level finer ('turningOn' on 'finerCrane'). "ScreenReport"'s 'screenOf'
--- does the rest; this adds the crane body's readings.
+-- level finer ('turningOn' on 'finerCrane'). 'CraneSpreadScreen.poseScreen'
+-- does the rest, as for every crane with a wing moved; this adds the crane
+-- body's readings.
 screenFrom :: WholeCrane -> Chords -> ContactCheck -> [(Hinge, Double)] -> Maybe Turning -> MaterialMesh -> Either PoseScreenError Screen
 screenFrom study chords contact bends turningFiner mesh = do
-  screen <- first PoseScreen (screenOf chords contact (joinBends (wholeSpread study) (spreadRefined (wholeSpread study)) bends) turningFiner mesh)
+  screen <- first PoseScreen (poseScreen (wholeSpread study) chords contact bends turningFiner mesh)
   let core = wholeCore study
       centreCreases =
         [ (u, v, angle)

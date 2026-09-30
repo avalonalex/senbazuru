@@ -33,15 +33,18 @@ module ScreenReport
     verdictOverall,
     floorPixels,
     screenJson,
+    pictureFloorJson,
     thresholdsJson,
     writeScreenScript,
   )
 where
 
 import Data.Aeson (Value, object, (.=))
+import Data.Aeson.Types (Pair)
 import PaperScreen
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
+import Senbazuru.Render.Camera (Basis)
 import System.Directory (copyFile)
 import System.FilePath ((</>))
 
@@ -67,7 +70,10 @@ floorLimitPixels = 1
 falseCreaseThreshold :: Double
 falseCreaseThreshold = 45
 
--- | The galleries' scale: the flat sheet's side is 600 px.
+-- | The screen's scale: the flat sheet's side is 600 px, as in the whole
+-- crane's drawings. A gallery that draws at another scale is screened at
+-- this one all the same, so that a verdict does not change with the size a
+-- pose is drawn at; its page says the scale of its own drawings.
 pixelsPerSheet :: Double
 pixelsPerSheet = 600
 
@@ -219,6 +225,16 @@ screenJson s =
       Passes -> Just True
       Fails -> Just False
       NotMeasured -> Nothing
+
+-- | A pose's no-stretch floor in one picture a gallery draws it in, at no
+-- strain and at 'strainScreen', as the keys the gallery writes beside the
+-- pose's screen. It is not part of 'Screen' because it depends on the
+-- camera, and a pose drawn in no picture has no such keys.
+pictureFloorJson :: Chords -> Basis -> MaterialMesh -> [Pair]
+pictureFloorJson chords basis mesh =
+  [ "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords basis 0 mesh),
+    "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords basis strainScreen mesh)
+  ]
 
 -- | The screen's thresholds, for the page's labels.
 thresholdsJson :: Value
