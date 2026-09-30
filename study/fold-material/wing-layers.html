@@ -48,12 +48,16 @@
   <h3>The finer meshes</h3>
   <div class="table-wrap screen" id="screen-finer"></div>
   <p class="note">A control that is not accepted is shown for diagnosis; it is
-    drawn in no picture, so it has no picture floor. Here the sheet's side is
-    the wing's length, root to tip, and the figures are drawn at 320 to 670 px
-    to it, so a floor in a figure's own pixels is 0.53 to 1.12 times the
-    figure in the table. The 16-division bend is the 8-division bend with
-    every triangle split into four, but solved again rather than made again,
-    so each is judged on its own mesh (owner decision 27).</p>
+    drawn in no picture, so it has no picture floor. An accepted control's
+    picture floor is taken in its own drawing in <code>wing-layers/</code>,
+    from the camera every figure here uses. Each layer is one sheet unit long,
+    root to tip. This page draws the three bends at 320 px to the unit, the
+    finer bends at 351 and the lifted grip at 626, and each control's own
+    drawing is at 626 to 669, so a floor in a drawing's own pixels is 0.53 to
+    1.12 times the figure in the table. The 16-division bend's mesh is the
+    8-division bend's with every triangle split into four, but the gallery
+    finds its shape by a new solve, and a pose that only a new solve can make
+    again is judged on its own mesh (owner decision 27).</p>
 </section>
 <section>
   <h2>Contact does not glue the layers</h2>
@@ -119,7 +123,8 @@ for(const r of data.runs){
   for(const value of [r.triangles,number(r.maxRelativeEdgeError),number(r.heldPositionError),r.converged?'Yes':'No',r.contact.passed?'Pass':'Failed',r.accepted?'Yes':'No',r.solveCpuSeconds.toFixed(2)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}
   document.querySelector('#measurements').append(tr);
 }
-const main=data.runs.filter(r=>['flat','bend-20','bend-40'].includes(r.id));
+const pick=ids=>data.runs.filter(r=>ids.includes(r.id));
+const main=pick(['flat','bend-20','bend-40']);
 const good=main.length===3&&main.every(r=>r.accepted);
 const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three coarse-mesh shapes converge and pass independent endpoint checks. The grips stay exact and the original crease stays closed.':'At least one main control was not accepted; inspect the measurements.';
 const fine=data.runs.find(r=>r.id==='fine-bend');
@@ -129,11 +134,10 @@ for(const r of data.refinement){
   for(const value of [`${g.fromTriangles} → ${g.toTriangles} triangles`,g.commonVertices,number(g.maxPositionChange),`${(100*r.relativeEnergyChange).toFixed(2)}%`]){const td=document.createElement('td');td.textContent=value;tr.append(td);}
   document.querySelector('#refinement').append(tr);
 }
-const byId=new Map(data.runs.map(r=>[r.id,r]));
-const screen=(target,ids)=>paperScreen.fill(document.querySelector(target),paperScreen.rows(ids.map(id=>byId.get(id)).map(r=>({title:r.accepted?r.title:r.title+' · not accepted',screen:r.screen,picture:r})),data.screenThresholds));
+const screen=(target,runs)=>paperScreen.show(document.querySelector(target),runs,r=>r.accepted?r.title:r.title+' · not accepted',data.screenThresholds);
 document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);
-screen('#screen-main',['flat','bend-20','bend-40']);
-screen('#screen-controls',['perturbed','lifted','bad-grip']);
-screen('#screen-finer',['fine-flat','fine-bend','finest-bend']);
+screen('#screen-main',main);
+screen('#screen-controls',pick(['perturbed','lifted','bad-grip']));
+screen('#screen-finer',pick(['fine-flat','fine-bend','finest-bend']));
 </script>
 </html>

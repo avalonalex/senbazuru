@@ -30,7 +30,7 @@ const camera=document.getElementById('camera');
 data.views.forEach(v=>camera.add(new Option(v.title,v.id)));
 const spread=document.getElementById('spread');
 spread.max=data.openings.length-1;
-const shape=(s,key)=>new Map(s.shape).get(key),fmt=n=>Math.abs(n)<1e-8?'0':Number(n).toPrecision(3);
+const shape=(s,key)=>new Map(s.shape).get(key),fmt=paperScreen.number;
 const labelled=(title,s)=>s&&s.caveat?`${title} · ${s.caveat}`:title;
 // The menus name the poses too, so a placed one carries its caveat there.
 for(const id of ['baseline','candidate'])for(const o of document.getElementById(id).options)o.textContent=labelled(o.textContent,data.states.find(s=>s.id===o.value));

@@ -108,7 +108,7 @@ for (const run of data.runs) {
   const option=document.createElement('option');option.value=run.id;option.textContent=run.title;document.querySelector('#trial').append(option);
 }
 document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);
-paperScreen.fill(document.querySelector('#screen'),paperScreen.rows(data.runs.map(r => ({title: r.selectedAccepted ? r.title : r.title+' · not accepted', screen: r.screen, picture: r})),data.screenThresholds));
+paperScreen.show(document.querySelector('#screen'),data.runs,r => r.selectedAccepted ? r.title : r.title+' · not accepted',data.screenThresholds);
 const free=data.runs.filter(r => ['original','weaker','open'].includes(r.id));
 document.querySelector('#finding').textContent=free.length<3
   ? 'The experiment is still running: '+free.length+' of three free-patch trials has finished. The tables show completed measurements only.'

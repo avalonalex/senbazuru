@@ -4,11 +4,12 @@ module SurfaceScreenSpec (spec) where
 
 import Data.Set qualified as S
 import FoldBending (Hinge (..), HingeRole (..), hingeBends)
-import PaperScreen (Turning (..), sheetChords)
+import PaperScreen (ScreenError (..), Turning (..), sheetChords)
 import ScreenReport
-import Senbazuru.Fold.Types (FaceId (..))
+import Senbazuru.Fold.Types (FaceId (..), Frame (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Contact
+import Senbazuru.Origami.Surface (materialFrame, requireMaterialCoordinates, surfaceFromFrame)
 import SurfaceScreen
 import Test.Hspec
 import UncreasedSurface (uncreasedSurface)
@@ -23,7 +24,12 @@ spec = describe "a pose screened from the surface its gallery writes" $ do
     piece <- right (wingPiece 8 20)
     uncreased <- right (uncreasedSurface (pieceMesh piece))
     surfaceJoins uncreased `shouldBe` bendsOf (pieceHinges piece)
-    S.size (surfaceJoins uncreased) `shouldBe` length (pieceHinges piece)
+    -- A FOLD file may list an edge's two vertices either way round, although
+    -- the writers put the lower first: read back with every edge reversed,
+    -- the surface has the same joins.
+    let written = materialFrame uncreased
+    reversed <- right (surfaceFromFrame written {edgesVertices = [(b, a) | (a, b) <- edgesVertices written]} >>= requireMaterialCoordinates)
+    surfaceJoins reversed `shouldBe` surfaceJoins uncreased
     layers <- right (wingLayers 8 0)
     folded <- right (layersSurface layers (layersMesh layers))
     surfaceJoins folded `shouldBe` bendsOf (layersHinges layers)
@@ -49,11 +55,21 @@ spec = describe "a pose screened from the surface its gallery writes" $ do
     -- surface writes is counted, and nothing else.
     turned <- right (surfaceScreen sheet chords contact [(h, pi / 2) | (h, _) <- bends] mesh)
     turningJoins (screenTurning turned) `shouldBe` S.size (surfaceJoins sheet)
-    S.size (surfaceJoins sheet) `shouldSatisfy` (\joins -> joins > 0 && joins < length bends)
+    S.size (surfaceJoins sheet) `shouldSatisfy` (> 0)
+    -- A join is counted once however many hinges it carries: listing every
+    -- hinge twice changes nothing.
+    doubled <- right (surfaceScreen sheet chords contact (concat [[(h, pi / 2), (h, pi / 2)] | (h, _) <- bends]) mesh)
+    screenTurning doubled `shouldBe` screenTurning turned
     -- The screen counts the pairs its check flags; flag one by hand, not a
     -- real crossing.
     flagged <- right (surfaceScreen sheet chords contact {crossingPanels = [("triangle-0", "triangle-1")]} bends mesh)
     (screenCrossings screen, screenCrossings flagged) `shouldBe` (0, 1)
+    -- A surface written for another mesh is refused rather than matched by
+    -- vertex number, where its joins would name other edges: here the
+    -- one-layer wing's surface, given the diamond's mesh.
+    piece <- right (wingPiece 8 0)
+    other <- right (uncreasedSurface (pieceMesh piece))
+    surfaceScreen other chords contact bends mesh `shouldBe` Left SurfaceOfAnotherMesh
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure

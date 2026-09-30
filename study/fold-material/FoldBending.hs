@@ -36,6 +36,7 @@ module FoldBending
     hingeAngle,
     hingeBends,
     bentEdges,
+    joinsWhere,
     angleError,
     bendingRows,
     bendingEnergy,
@@ -275,6 +276,21 @@ bentEdges mesh bends =
   ]
   where
     material = IM.fromList (zip [0 ..] (map sampleMaterial (samples mesh)))
+
+-- | Each bent edge that passes @isJoin@, once, as its length on the flat
+-- sheet and its bend in degrees, in the hinges' order: what a paper screen
+-- is given for its joins. Every hinge here is built from its edge's two
+-- triangles, so hinges on one edge share its bend, and an edge that carries
+-- a spring beside its panel bend counts once, not twice.
+joinsWhere :: ((Int, Int) -> Bool) -> MaterialMesh -> [(Hinge, Double)] -> [(Double, Double)]
+joinsWhere isJoin mesh bends = go S.empty (bentEdges mesh bends)
+  where
+    go _ [] = []
+    go seen ((_, (a, b), (u, v), angle) : rest)
+      | isJoin edge && S.notMember edge seen = (norm (u ^-^ v), angle) : go (S.insert edge seen) rest
+      | otherwise = go seen rest
+      where
+        edge = (min a b, max a b)
 
 angleError :: Double -> Double -> Double
 angleError actual rest = atan2 (sin (actual - rest)) (cos (actual - rest))

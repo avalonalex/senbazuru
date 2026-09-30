@@ -17,7 +17,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import FoldBending (Hinge, bendingEnergy, hingeBends)
-import FoldMaterial (areaRatio, componentCount)
+import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
 import PaperScreen (sheetChords)
 import ScreenReport (Screen (..), poseScreenKeys, thresholdsJson, writeScreenScript)
@@ -26,6 +26,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain, tshow)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
 import Senbazuru.Geometry (V2)
+import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (ContactCheck, checkLocalTriangleContact)
@@ -125,6 +126,10 @@ measure stem count degrees piece result mesh sheet drawn = do
       heldError = maximum (0 : [norm (actual ^-^ target) | (i, target) <- IM.toList (piecePins piece), Just actual <- [IM.lookup i positions]])
       referenceError = fmap (\reference -> maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples reference))) (pieceReference piece)
       seedChange = maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples (pieceMesh piece)))
+      -- FoldMaterial's areaRatio assumes a unit square. The wing and the
+      -- strip each have area 0.3, so normalize by their actual material
+      -- triangles instead, as the wing-layers gallery does.
+      restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
   pure
     ( object $
         [ "id" .= stem,
@@ -137,7 +142,7 @@ measure stem count degrees piece result mesh sheet drawn = do
           "sourcePanels" .= (1 :: Int),
           "materialCreases" .= (0 :: Int),
           "components" .= componentCount mesh,
-          "areaRatio" .= areaRatio mesh,
+          "areaRatio" .= (areaRatio mesh / restArea),
           "maxRelativeEdgeError" .= maxLengthError mesh,
           "heldPositionError" .= heldError,
           "minPrincipalStrain" .= negate (screenSquash screen),

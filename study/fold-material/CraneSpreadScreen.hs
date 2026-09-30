@@ -30,11 +30,10 @@ module CraneSpreadScreen
 where
 
 import CraneSpread (CraneSpread (..), refinedAssignment)
-import FoldBending (Hinge, bentEdges)
+import FoldBending (Hinge, joinsWhere)
 import PaperScreen (Chords, ScreenError, Turning)
 import ScreenReport (Screen, screenOf)
 import Senbazuru.Fold.Types (Assignment (..))
-import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (ContactCheck)
 import Senbazuru.Origami.Surface (MaterialMesh, RefinedSurface (..))
 
@@ -59,10 +58,6 @@ spreadScreen fixture chords contact bends = poseScreen fixture chords contact be
 -- at levels nothing writes. The @2@ is the edge's triangle count: a hinge
 -- has one either side.
 joinBends :: CraneSpread -> RefinedSurface -> [(Hinge, Double)] -> [(Double, Double)]
-joinBends fixture refined bends =
-  [ (norm (u ^-^ v), angle)
-    | (_, (a, b), (u, v), angle) <- bentEdges (refinedMesh refined) bends,
-      assignment (min a b, max a b) 2 == Join
-  ]
+joinBends fixture refined = joinsWhere (\edge -> assignment edge 2 == Join) (refinedMesh refined)
   where
     assignment = refinedAssignment (spreadSource fixture) refined

@@ -54,12 +54,13 @@
   <h2>Could paper take these shapes?</h2>
   <p id="screen-caption"></p>
   <div class="table-wrap screen" id="screen"></div>
-  <p class="note">These are the three shapes at the mesh chosen above. Here the
-    sheet's side is the wing's length, root to tip, and the figures are drawn
-    at 320 px to it, so a floor in their own pixels is 0.53 times the figure in
-    the table. The 16-division wing is the 8-division wing with every triangle
-    split into four, but solved again rather than made again, so each is
-    judged on its own mesh (owner decision 27).</p>
+  <p class="note">These are the three shapes at the mesh chosen above. The wing
+    is one sheet unit long, root to tip, and the figures are drawn at 320 px
+    to the unit, so a floor in their own pixels is 0.53 times the figure in the
+    table. The 16-division mesh is the 8-division mesh with every triangle
+    split into four, but the gallery finds its shape by a new solve, and a
+    pose that only a new solve can make again is judged on its own mesh
+    (owner decision 27).</p>
 </section>
 <section>
   <h2>Does refining the mesh change the answer?</h2>
@@ -104,9 +105,9 @@ function row(target,values){const tr=document.createElement('tr');for(const valu
 for(const state of data.wings.filter(s=>s.gripDegrees===40)) row(document.querySelector('#measurements'),[state.divisions,state.triangles,number(state.maxRelativeEdgeError),number(state.heldPositionError),state.panelEnergy.toFixed(6),state.converged?'Yes':'No',state.contact.passed?'Pass':'Failed']);
 document.querySelector('#refinement').textContent=data.refinement.map(r=>`${r.fromTriangles} → ${r.toTriangles} triangles: largest shape change ${number(r.maxPositionChange)} sheet lengths at ${r.commonVertices} shared material points.`).join(' ');
 for(const state of data.benchmarks) row(document.querySelector('#benchmarks'),[state.divisions,number(state.referencePositionError),number(state.maxRelativeEdgeError),state.converged?'Yes':'No']);
-function update(){const n=Number(document.querySelector('#resolution').value);const states=data.wings.filter(s=>s.divisions===n);const good=states.every(s=>s.converged&&s.contact.passed);const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three shapes meet solver tolerances and pass independent endpoint contact checks. Root and grip positions are held exactly.':'At least one shape is unconverged or fails contact; inspect checks.json before treating it as an accepted shape.';document.querySelector('#sequence').src=`wing-bending/sequence-${n}.svg`;document.querySelector('#viewer').src=`wing-bending/index.html?model=wing-${n}-40.glb&angle=profile`;document.querySelector('#fold').href=`wing-bending/wing-${n}-40.fold`;paperScreen.fill(document.querySelector('#screen'),paperScreen.rows(states.map(s=>({title:s.gripDegrees===0?'Flat grip':`Grip at ${s.gripDegrees}°`,screen:s.screen,picture:s})),data.screenThresholds));}
+function update(){const n=Number(document.querySelector('#resolution').value);const states=data.wings.filter(s=>s.divisions===n);const good=states.every(s=>s.converged&&s.contact.passed);const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three shapes meet solver tolerances and pass independent endpoint contact checks. Root and grip positions are held exactly.':'At least one shape is unconverged or fails contact; inspect checks.json before treating it as an accepted shape.';document.querySelector('#sequence').src=`wing-bending/sequence-${n}.svg`;document.querySelector('#viewer').src=`wing-bending/index.html?model=wing-${n}-40.glb&angle=profile`;document.querySelector('#fold').href=`wing-bending/wing-${n}-40.fold`;paperScreen.show(document.querySelector('#screen'),states,s=>s.gripDegrees===0?'Flat grip':`Grip at ${s.gripDegrees}°`,data.screenThresholds);}
 document.querySelector('#resolution').addEventListener('change',update);update();
 document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);
-paperScreen.fill(document.querySelector('#strip-screen'),paperScreen.rows(data.benchmarks.map(s=>({title:`Strip · ${s.divisions} spans`,screen:s.screen,picture:s})),data.screenThresholds));
+paperScreen.show(document.querySelector('#strip-screen'),data.benchmarks,s=>`Strip · ${s.divisions} spans`,data.screenThresholds);
 </script>
 </html>
