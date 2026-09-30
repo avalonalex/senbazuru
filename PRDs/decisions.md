@@ -1309,13 +1309,16 @@ accepted and rejected controls stay unchanged at each
    `Material.Verdict`;
 7. `Material.Settle` and the library `Sequence.Material`.
 
-- **Gates.** #208's value-only line search lands before M6's crane equivalence PR
-  (or that PR compares resolved pin sets without solving and solves once in the slow
-  job) and before M8. `run --settle` refuses more than 1,192 refined triangles,
-  counted before solving, until 3–5 compiled runs after #208 justify another
-  number; default CI settles at most 392. The accepted crane-wing meshes solved in
-  5.76 CPU s at 392 triangles and 64.30 CPU s at 1,192, one recorded run each
-  ([07](07-prd-material-consumption.md#one-move-fed-by-hand)) [research].
+- **Gates.** M6's crane equivalence PR compares resolved pin sets without solving
+  and solves once in the slow job, so it does not double the costliest test groups.
+  `run --settle` refuses more than 1,192 refined triangles, counted before solving,
+  until 3–5 compiled runs justify another number; default CI settles at most 392.
+  The accepted crane-wing meshes solved in 5.76 CPU s at 392 triangles and 64.30
+  CPU s at 1,192, one recorded run each
+  ([07](07-prd-material-consumption.md#one-move-fed-by-hand)) [research]. Until
+  2026-09-29 this bullet also gated M6 and M8 on #208's value-only line search,
+  which never landed; the owner withdrew that gate ([§10](#10-corrections) row
+  39), and #441 carries the optimisation.
 - **Stays in the study:** `ContactQuadratic`, `CreasePairContact`, `CoupledCrease`,
   `UnequalCrease`, `CreaseInequality`; discovery, history and correction-sweep
   modes; barrier rows; `ClosedCrease`; `FoldMaterial`'s rounded bends; the `Crane*`
@@ -2162,7 +2165,7 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 | M6 | Study consumes records | `Sequence.Material` in the study; `settle` and `material` blocks; settled illustrations and failure scope; crane spreading re-expressed, pin-set equivalence first; `senbazuru-material-study --sequence SOURCE DIR`; 05 L4's `flapPoseAt` here or at M7b, with its first consumer | advances #195; #114 rewritten |
 | M7a | Realistic GLB mode on existing meshes | A1 normals, A2a texture coordinates, fidelity metadata, `Page.pageDescription`; shown on the crane-spread and wing-bending study meshes | first visible realism |
 | M7b | Motion and lines | G1 animation (`SweptHinge` routes, `Sampled` after M5); 05 L15 (`foldedWalk`); W1 line drawing; `--lines`; glTF crease-line spike | closes #56; advances #104, #48 |
-| M8 | Graduation | [D15](#d15-graduation-from-study-to-library)'s seven stages; `run --settle`; `--allow-unsettled` | gated on #208; #106 later |
+| M8 | Graduation | [D15](#d15-graduation-from-study-to-library)'s seven stages; `run --settle`; `--allow-unsettled` | #106 later |
 | R | Research | thickness offsets and crease radii at vertices; unheld equilibrium; calibration; exact contact at scale; springback rest angles; animated flexible routes | #114, #106, #64 |
 
 **Order.**
@@ -2175,8 +2178,6 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 - 05 L6 lands before M4's runner wraps `ThroughError`.
 - Quarter-fold test 2 needs M3's `motionsAcross` and M4's `creaseLayersThrough`, so
   #60 closes in M4's last PR, after M3 has merged ([C54](#changes-since-draft-v2)).
-- #208's value-only line search lands before M6's crane equivalence PR (or that PR
-  solves nothing) and before M8.
 
 ## 9. Owner decisions
 
@@ -2197,7 +2198,7 @@ and each has to be decided before the milestone named. Decisions 15–25 come fr
 | 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | it stays as the regression; the state-rule page is a new golden | `quarter-fold-steps.svg` and `quarter-fold-step-1.svg` move in that PR, and their `test/fixtures` copy migrates too | M2 |
 | 10 | Eighth turns by trigonometry, or a `sheet square as diamond` start | trigonometry, platform bits in written coordinates stated | `rotate` takes even k only, so frames stay exact; the crane-opening example's first step becomes a header option | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | yes, [§3](#3-recorded-text-this-design-changes) row 8 at M0 | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
-| 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs after #208 | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR before #208 lands; a higher cap admits unmeasured settles | M4 |
+| 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs justify another number | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR; a higher cap admits unmeasured settles | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
 | 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease; **refined 2026-09-24**: that crease has no direction, U, since a later move may fold it either way, a stretch at a time ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
 | 15 | What "refined" requires, and the crane target ([11](11-prd-refined-final-forms.md#4-the-crane)) | **decided 2026-09-29**: both. More tucked stays in the gallery, labelled a schematic; the physical target is the pod; the pillow stays a target only if F2's core-lengthening test passes | picture only: F2–F5 are not needed, and the look track works on labelled sketches; paper only: More tucked leaves the gallery | F0 |
@@ -2228,7 +2229,8 @@ the bird arrows golden ([C70](#changes-since-draft-v2)); `decodeFile`'s words
 
 Findings about the repository's own text and code. Items 1–26 keep v2's numbers;
 27–32 are new; 33–38 were added on 2026-09-23 from
-[E3](research/E3-formal-fold-semantics.md) and its review. *Row* means a
+[E3](research/E3-formal-fold-semantics.md) and its review; 39 was added on
+2026-09-29 from #413. *Row* means a
 [§3](#3-recorded-text-this-design-changes) row carries it; *issue* means M0 files a
 new issue, and none is filed yet
 ([10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
@@ -2275,6 +2277,7 @@ means the text is a research note, a snapshot that is not edited.
 | 36 | 02 §4.3, D2 and the glossary additions called `crease [P, Q]` "Lucero's eighth"; Lucero numbers it O3, the operation he adds, and his O8 is Huzita–Hatori O7 | [web] [E3](research/E3-formal-fold-semantics.md) C | fixed in all three |
 | 37 | E2's construction rule 4 calls `along <line>`, a fold along a line already on the paper, "Lucero's eighth"; Lucero numbers it O3, as row 36 says | [web] [E3](research/E3-formal-fold-semantics.md) C | recorded here; the note is a snapshot and is not edited |
 | 38 | E2 writes `nearest @p` as "Beloch's `toward`"; Beloch's O3 reads `toward X` as a direction, and only its O5 and O6 pick the landing nearest X | [web] [E3](research/E3-formal-fold-semantics.md) finding 10 | recorded here; the note is a snapshot and is not edited |
+| 39 | [D15](#d15-graduation-from-study-to-library) gated M6's crane equivalence PR and M8 on #208's value-only line search, which never landed: #208 closed on 2026-09-23 with #331's parallel test workers, which did not add it | [code] no value-only evaluation in `study/` or `src/`; #208 and #331 read with `gh` | withdrawn by the owner on 2026-09-29 (#413); fixed in D15, §8, decision 12, 07, 09, 10, 11 and the glossary additions; the optimisation is [#441](https://github.com/avalonalex/senbazuru/issues/441) |
 
 ## 11. File plan and writing rules
 

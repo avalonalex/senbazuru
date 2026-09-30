@@ -43,8 +43,7 @@ Four constraints, each backed below:
    held, accepted at 392 and 1,192 triangles; releasing body paper fails.
 4. **The consumer lives in the study until graduation.** M6 delivers
    `senbazuru-material-study --sequence SOURCE DIR`; M8 delivers `run --settle`,
-   after [#208](https://github.com/avalonalex/senbazuru/issues/208) and behind a
-   triangle budget.
+   behind a triangle budget.
 
 *Certificates*, the study's exact proofs that one fixture's route never crosses
 paper ([glossary-additions](glossary-additions.md#assurance)), attach after a run
@@ -224,7 +223,9 @@ factorising (rewriting each iteration's sparse linear system so it can be solved
 Each iteration ends in a *line search*
 ([glossary-additions](glossary-additions.md#material)), which tries step lengths
 and needs only the energy at each try; contact evaluation computes derivatives
-there too. #208's next optimisation is value-only evaluation, which skips them.
+there too. #208 proposed value-only evaluation, which skips them; it never
+landed, and [#441](https://github.com/avalonalex/senbazuru/issues/441) now
+carries it as an optimisation, not a gate.
 Solving old and new crane side by side would
 double the costliest groups (gap-study finding 20).
 
@@ -348,8 +349,8 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 | ID | Requirement |
 | --- | --- |
 | R-07-39 | Seven stages in order, one PR each; 33 goldens and the study's accepted/rejected controls unchanged. |
-| R-07-40 | #208's value-only line search before M6's crane equivalence PR (or that PR compares resolved sets without solving) and before M8. |
-| R-07-41 | `run --settle` refuses more than 1,192 refined triangles, counted before solving, until 3–5 compiled runs after #208; default CI settles ≤ 392. |
+| R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
+| R-07-41 | `run --settle` refuses more than 1,192 refined triangles, counted before solving, until 3–5 compiled runs justify another number; default CI settles ≤ 392. |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
 | R-07-43 | No CI job or test runs an external solver, simulator or other program whose output it reads (the build, format and lint tools excepted); each program used gets a `docs/related-projects.md` row with its licence *as built*; kept outputs get provenance in `examples/README.md`. |
 | R-07-44 | External solvers are oracles only; IPC-family tools apply to open states until a thickness offset exists ([External tools](#external-tools)). A policy recorded in `docs/related-projects.md`, not a tested requirement, since R-07-43 keeps the tools out of CI. |
@@ -794,7 +795,8 @@ labelled, never replaced (B finding 16).
 modes; barrier rows; `ClosedCrease`; `FoldMaterial`'s rounded bends; `Crane*` and
 `Wing*` recipes and galleries; `PetalCertificate` and the registry.
 
-**Gates.** #208 first: contact rows take about 68% of profiled time. 1,192
+**Gates.** M6's equivalence PR solves nothing in the default job, since solving
+old and new crane side by side would double the costliest groups. 1,192
 triangles is the largest accepted crane-wing mesh with a recorded solve time
 (64.30 CPU s, one run). The 4,312-triangle flat-preference crane-root mesh also
 passed its checks ([wing-root-holds.md:18-20](../docs/notes/wing-root-holds.md),
@@ -904,7 +906,7 @@ messages show format only; they were not taken from a run.
 | `recordPoseAt`, `flapPoseAt`, stationary face, per-layer intent from `creaseLayersThrough AtRest` ([05](05-prd-library-additions.md)) | grips, rest, `side stationary`, AC-7 |
 | M5 `CheckedMacro`, `macroPoseAt`, bird route | registry; `rigid-pose` on macros |
 | [04](04-prd-sequence-source-and-cli.md) grammar and flags; [08](08-prd-realistic-rendering.md) two-scene GLB, fidelity extras, `<desc>`, [W1](glossary-additions.md#realistic-rendering) (exact line drawing); [09](09-testing-and-acceptance.md) slow job | text, output, CI |
-| [#208](https://github.com/avalonalex/senbazuru/issues/208) | gate before M6 equivalence and M8 |
+| [#441](https://github.com/avalonalex/senbazuru/issues/441) | an optimisation, not a gate: value-only evaluation in the line search |
 | [#195](https://github.com/avalonalex/senbazuru/issues/195), [#114](https://github.com/avalonalex/senbazuru/issues/114) (rewritten at M6, [10](10-roadmap-risks-questions.md)), [#206](https://github.com/avalonalex/senbazuru/issues/206), [#53](https://github.com/avalonalex/senbazuru/issues/53), [#73](https://github.com/avalonalex/senbazuru/issues/73) | follow-ups, fallback, oracle, file keys |
 
 Order: M4 → M6 → M8; M5 before the bird registry entries ([10](10-roadmap-risks-questions.md)).
@@ -914,7 +916,7 @@ Order: M4 → M6 → M8; M5 before the bird registry entries ([10](10-roadmap-ri
 | Risk | Evidence | Mitigation |
 | --- | --- | --- |
 | Named holds miss `spreadPins` | bands, `rigid-pose 1/3`, `arc-grip` UNVERIFIED; slacks differ | AC-1 first, without solving; fixtures keep their code until it passes |
-| M6 doubles costly CI groups | 164.87 s, 97.48 s (#208) | #208 first, or compare resolved sets; solve once in the slow job |
+| M6 doubles costly CI groups | 164.87 s, 97.48 s (#208) | compare resolved sets without solving; solve once in the slow job |
 | Authors expect settle to beautify any step | a rigid state is already settled | `NoDifference`; [00](00-overview.md) |
 | Tolerance-sized crossings hide in accepted meshes | −6.21e-9 passes 1e-7; GLB packs at 1e-6 of span (B finding 15) | residuals reported as numbers |
 | Settled SVG shows buried creases | `docs/usage.md:464-465` | accepted only; W1 at M7b |
@@ -937,8 +939,8 @@ and [10](10-roadmap-risks-questions.md#6-owner-decisions), each with the default
    [decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8 at M0.
 3. **(12)** Are 392 triangles in default CI and 1,192 behind `run --settle`
    right, and which crane-sized sequences move to the slow job? Default: both
-   numbers, until 3–5 compiled runs after #208; crane-sized sequences in a slow
-   job that is a required check.
+   numbers, until 3–5 compiled runs justify others; crane-sized sequences in a
+   slow job that is a required check.
 
 ## Research links
 
