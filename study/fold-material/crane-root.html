@@ -137,8 +137,7 @@ for (const run of data.runs) {
   }
 }
 document.querySelector('#screen-caption').textContent = paperScreen.caption(data.screenThresholds);
-paperScreen.fill(document.querySelector('#screen'), paperScreen.rows(data.runs.map(run =>
-  ({title: run.accepted ? run.title : run.title + ' · not accepted', screen: run.screen, picture: run})), data.screenThresholds));
+paperScreen.show(document.querySelector('#screen'), data.runs, run => run.accepted ? run.title : run.title + ' · not accepted', data.screenThresholds);
 const flat = data.runs.find(run => run.id === 'flat');
 const released = data.runs.find(run => run.id === 'released');
 const weaker = data.runs.find(run => run.id === 'weaker');

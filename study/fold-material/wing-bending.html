@@ -15,6 +15,7 @@
   .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
   table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
   iframe { width:100%; height:760px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
+  .screen th, .screen td { white-space:normal; }
   @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } }
 </style>
 <header>
@@ -50,6 +51,18 @@
     No motion certificate connects these three shapes.</p>
 </section>
 <section>
+  <h2>Could paper take these shapes?</h2>
+  <p id="screen-caption"></p>
+  <div class="table-wrap screen" id="screen"></div>
+  <p class="note">These are the three shapes at the mesh chosen above. The wing
+    is one sheet unit long, root to tip, and the figures are drawn at 320 px
+    to the unit, so a floor in their own pixels is 0.53 times the figure in the
+    table. The 16-division mesh is the 8-division mesh with every triangle
+    split into four, but the gallery finds its shape by a new solve, and a
+    pose that only a new solve can make again is judged on its own mesh
+    (owner decision 27).</p>
+</section>
+<section>
   <h2>Does refining the mesh change the answer?</h2>
   <p>These rows compare the 40° grip. More divisions add triangles inside the
     same material panel, with zero added creases. Edge error measures stretching
@@ -75,12 +88,16 @@
     version and recovers that reference. This checks the positional controls
     and the bending model before applying them to the wider wing.</p>
   <div class="table-wrap"><table><thead><tr><th>Spans</th><th>Largest position error</th><th>Edge error</th><th>Converged</th></tr></thead><tbody id="benchmarks"></tbody></table></div>
+  <div class="table-wrap screen" id="strip-screen"></div>
+  <p class="note">A strip is drawn only in 3D, with no camera of its own, so its
+    screen has no picture floor.</p>
 </section>
 <p class="note"><strong>Scope:</strong> one sheet, controlled grips, and independent
   checks of the settled shapes. A <a href="wing-layers.html">separate study</a> adds touching wing layers. A connected crane body,
   realistic wing spreading and the motion between equilibria remain in
   <a href="https://github.com/avalonalex/senbazuru/issues/195">#195</a>.
   The current experiment does not predict forces for a measured paper stock.</p>
+<script src="paper-screen.js"></script>
 <script>
 const data=/*WING_DATA*/null;
 const number=x=>x===0?'0':x.toExponential(2);
@@ -88,7 +105,9 @@ function row(target,values){const tr=document.createElement('tr');for(const valu
 for(const state of data.wings.filter(s=>s.gripDegrees===40)) row(document.querySelector('#measurements'),[state.divisions,state.triangles,number(state.maxRelativeEdgeError),number(state.heldPositionError),state.panelEnergy.toFixed(6),state.converged?'Yes':'No',state.contact.passed?'Pass':'Failed']);
 document.querySelector('#refinement').textContent=data.refinement.map(r=>`${r.fromTriangles} → ${r.toTriangles} triangles: largest shape change ${number(r.maxPositionChange)} sheet lengths at ${r.commonVertices} shared material points.`).join(' ');
 for(const state of data.benchmarks) row(document.querySelector('#benchmarks'),[state.divisions,number(state.referencePositionError),number(state.maxRelativeEdgeError),state.converged?'Yes':'No']);
-function update(){const n=Number(document.querySelector('#resolution').value);const states=data.wings.filter(s=>s.divisions===n);const good=states.every(s=>s.converged&&s.contact.passed);const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three shapes meet solver tolerances and pass independent endpoint contact checks. Root and grip positions are held exactly.':'At least one shape is unconverged or fails contact; inspect checks.json before treating it as an accepted shape.';document.querySelector('#sequence').src=`wing-bending/sequence-${n}.svg`;document.querySelector('#viewer').src=`wing-bending/index.html?model=wing-${n}-40.glb&angle=profile`;document.querySelector('#fold').href=`wing-bending/wing-${n}-40.fold`;}
+function update(){const n=Number(document.querySelector('#resolution').value);const states=data.wings.filter(s=>s.divisions===n);const good=states.every(s=>s.converged&&s.contact.passed);const status=document.querySelector('#status');status.className=good?'good':'bad';status.textContent=good?'All three shapes meet solver tolerances and pass independent endpoint contact checks. Root and grip positions are held exactly.':'At least one shape is unconverged or fails contact; inspect checks.json before treating it as an accepted shape.';document.querySelector('#sequence').src=`wing-bending/sequence-${n}.svg`;document.querySelector('#viewer').src=`wing-bending/index.html?model=wing-${n}-40.glb&angle=profile`;document.querySelector('#fold').href=`wing-bending/wing-${n}-40.fold`;paperScreen.show(document.querySelector('#screen'),states,s=>s.gripDegrees===0?'Flat grip':`Grip at ${s.gripDegrees}°`,data.screenThresholds);}
 document.querySelector('#resolution').addEventListener('change',update);update();
+document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);
+paperScreen.show(document.querySelector('#strip-screen'),data.benchmarks,s=>`Strip · ${s.divisions} spans`,data.screenThresholds);
 </script>
 </html>

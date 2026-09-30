@@ -2,6 +2,7 @@
 -- Only converged, independently checked endpoints enter the image/model list.
 -- Unaccepted runs retain their full FOLD geometry and measurements for diagnosis.
 -- This is a static material experiment, not a certified motion between grips.
+-- Every control, accepted or not, carries its paper screen ("SurfaceScreen").
 module WingLayersGallery (writeWingLayers) where
 
 import Control.Exception (evaluate)
@@ -17,6 +18,7 @@ import FoldBending
 import FoldContact (ContactRow (..))
 import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
+import ScreenReport (Screen (..), thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (FaceId (..), FoldFile (..))
 import Senbazuru.Geometry.Polygon (signedArea)
@@ -33,7 +35,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath ((</>))
 import WingBending (finalMesh)
-import WingBendingGallery (refinement, wingSvg)
+import WingBendingGallery (refinement, wingScreen, wingSvg)
 import WingLayers
 
 writeWingLayers :: FilePath -> IO ()
@@ -71,13 +73,14 @@ writeWingLayers destination = do
     ordered <- checked (Contact.prepareContact 0 (V3 0 0 1) [(FaceId 0, FaceId 1)] (layersOwners fixture) mesh)
     rows <- checked (Contact.orderedContacts ordered mesh)
     let accepted = converged result && contactPassed contact && heldError == 0 && maximum (0 : angles) < 1e-7
-        -- FoldMaterial's areaRatio assumes a unit square. This diamond has
+    -- The gallery draws exactly the controls it accepts.
+    (screen, screened) <- either (die . T.unpack) pure (wingScreen sheet contact (layersHinges fixture) accepted mesh)
+    let -- FoldMaterial's areaRatio assumes a unit square. This diamond has
         -- area 0.6, so normalize by its actual material triangles instead.
         restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
-        strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         pairedDistances = [norm (position a ^-^ position b) | (i, j) <- layersPairs fixture, Just a <- [IM.lookup i vertices], Just b <- [IM.lookup j vertices]]
         report =
-          object
+          object $
             [ "id" .= stem,
               "title" .= title,
               "divisions" .= n,
@@ -93,8 +96,8 @@ writeWingLayers destination = do
               "sourcePanels" .= (2 :: Int),
               "materialCreases" .= (1 :: Int),
               "areaRatio" .= (areaRatio mesh / restArea),
-              "minPrincipalStrain" .= minimum (0 : map fst strains),
-              "maxPrincipalStrain" .= maximum (0 : map snd strains),
+              "minPrincipalStrain" .= negate (screenSquash screen),
+              "maxPrincipalStrain" .= screenStretch screen,
               "maxRelativeEdgeError" .= maxLengthError mesh,
               "heldPositionError" .= heldError,
               "maxRootAngleErrorRadians" .= maximum (0 : angles),
@@ -107,6 +110,7 @@ writeWingLayers destination = do
               "contact" .= contact,
               "continuousMotionChecked" .= False
             ]
+              ++ screened
         file = FoldFile (Just 1.2) (Just "senbazuru touching layer study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -118,7 +122,7 @@ writeWingLayers destination = do
     pure (stem, title, accepted, sheet, report, panel)
   let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
       comparisons = [object ["geometry" .= refinement a b, "fromEnergy" .= ea, "toEnergy" .= eb, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons]
+      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
       mainShapes = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
   BL.writeFile (output </> "checks.json") (encode document)
   unless (any (\(stem, _, accepted, _, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")
@@ -131,6 +135,7 @@ writeWingLayers destination = do
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/wing-layers.html"
   TIO.writeFile (destination </> "wing-layers.html") (T.replace "/*LAYER_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote wing-layers.html, accepted surfaces and diagnostic FOLDs to " ++ destination)

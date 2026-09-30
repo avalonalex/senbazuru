@@ -23,7 +23,7 @@ import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
 import PaperScreen (sheetChords)
-import ScreenReport (Screen (..), pictureFloorJson, screenJson, thresholdsJson, writeScreenScript)
+import ScreenReport (Screen (..), poseScreenKeys, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (Explain (..))
@@ -154,7 +154,7 @@ screenKeys fixture contact drawn mesh = do
   bends <- first explain (hingeBends (spreadHinges fixture) mesh)
   screen <- first explain (spreadScreen fixture chords contact bends mesh)
   camera <- spreadCamera
-  pure (screen, ("screen" .= screenJson screen) : if drawn then pictureFloorJson chords camera mesh else [])
+  pure (screen, poseScreenKeys screen chords (if drawn then Just camera else Nothing) mesh)
 
 seconds :: Integer -> Double
 seconds n = fromIntegral n / 1e12

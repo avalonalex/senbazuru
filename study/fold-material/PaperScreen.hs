@@ -80,9 +80,9 @@ import Senbazuru.Render.Camera (Basis, project)
 import Text.Read (readMaybe)
 
 -- | The pair of material vertices that sets a floor, and the floor itself in
--- sheet sides, the flat square's side being 1. It can be negative: then every
--- pair is already closer than the strain screen allows, and no point need
--- move.
+-- sheet units, units of the flat sheet's coordinates (docs/glossary.md). It
+-- can be negative: then every pair is already closer than the strain screen
+-- allows, and no point need move.
 data FloorPair = FloorPair
   { floorDistance :: !Double,
     floorVertices :: !(Int, Int)
@@ -108,6 +108,9 @@ data ScreenError
     UnknownTriangle !Text
   | -- | A triangle has no plane to measure a reach from.
     DegenerateTriangle !Int
+  | -- | The surface whose joins were to be read was written for another
+    -- mesh: its faces are not this mesh's triangles.
+    SurfaceOfAnotherMesh
   deriving stock (Eq, Show)
 
 instance Explain ScreenError where
@@ -119,6 +122,7 @@ instance Explain ScreenError where
   explain (RepeatedMaterialPoint i j) = "vertices " <> tshow i <> " and " <> tshow j <> " are the same point of the flat sheet, so the sheet is cut there, and the no-stretch floor cannot tell which side of the cut a straight line from it leaves by"
   explain (UnknownTriangle name) = "the crossing check named " <> name <> ", which is not a triangle of this mesh"
   explain (DegenerateTriangle i) = "triangle " <> tshow i <> " has no area, so no plane to measure a reach from"
+  explain SurfaceOfAnotherMesh = "the surface given was written for another mesh: its faces are not this mesh's triangles, so its joins cannot be matched to this mesh's hinges"
 
 -- | The pairs of a sheet's vertices the no-stretch floor may use: those whose
 -- chord, the straight line between them on the flat sheet, stays on the
@@ -333,7 +337,7 @@ falseCreaseTurning threshold joins = Turning (length bent) (sum [len * angle | (
     bent = [(len, abs angle) | (len, angle) <- joins, abs angle > threshold]
 
 -- | The core's head-to-tail length: its extent along x, the crane's long
--- axis in the study's coordinates, in sheet sides.
+-- axis in the study's coordinates, in sheet units.
 coreLength :: S.Set Int -> MaterialMesh -> Maybe Double
 coreLength core mesh = case [position s | (i, s) <- zip [0 ..] (samples mesh), S.member i core] of
   [] -> Nothing

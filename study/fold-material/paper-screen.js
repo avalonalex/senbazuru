@@ -5,7 +5,17 @@
 // page's own script may already use `percent` or `number`. Checked by
 // `node study/fold-material/check-paper-screen.mjs`.
 const paperScreen = (() => {
-  const number = n => Math.abs(n) < 1e-8 ? '0' : Number(n).toPrecision(3);
+  // Three significant figures with no exponent, from a hundred-millionth
+  // to about 1e21, far past any screen value: toPrecision writes 4.84e-7
+  // below a millionth and 1.23e+3 from a thousand, beside cells that read
+  // 0.00000119 and 145. Round first, so that 9.996 becomes 10.0 and not
+  // 10.00.
+  const number = n => {
+    const value = Number(n);
+    if (Math.abs(value) < 1e-8) return '0';
+    const rounded = Number(value.toPrecision(3));
+    return rounded.toFixed(Math.max(0, 2 - Math.floor(Math.log10(Math.abs(rounded)))));
+  };
   const percent = n => `${Number((100 * n).toPrecision(3))}%`;
   const pixels = n => n == null ? '—' : number(n) + ' px';
   const degrees = n => n == null ? '—' : number(n) + '°';
@@ -39,17 +49,21 @@ const paperScreen = (() => {
       ['No-stretch floor, 3D · this picture', (s, p) => `${pixels(s.floor3dPixels)} · ${pixels(p && p.pictureFloorPixels)}${pairs(s)}`],
       [`Floor at ${percent(limits.strainScreen)} strain, 3D · this picture`, (s, p) => `${pixels(s.floor3dPixelsAtScreen)} · ${pixels(p && p.pictureFloorPixelsAtScreen)}`],
       ['Crossing pairs, strict test · largest reach-through', s => s.crossingPairCount + (s.deepestReachPixels == null ? '' : ' · ' + pixels(s.deepestReachPixels))],
-      [`False creases: joins past ${limits.falseCreaseThresholdDegrees}° · turning, sheet sides × degrees`, s => `${s.falseCreaseJoins} · ${number(s.falseCreaseTurningSheetDegrees)}`],
+      [`False creases: joins past ${limits.falseCreaseThresholdDegrees}° · turning, sheet units × degrees`, s => `${s.falseCreaseJoins} · ${number(s.falseCreaseTurningSheetDegrees)}`],
       ['The same, one level finer', s => s.falseCreaseJoinsFiner == null ? '— (not made again)' : `${s.falseCreaseJoinsFiner} · ${number(s.falseCreaseTurningFinerSheetDegrees)}`]
     ];
     const core = [
-      ['Body core length, sheet sides', s => s.coreLengthSheets == null ? '—' : number(s.coreLengthSheets)],
+      ['Body core length, sheet units', s => s.coreLengthSheets == null ? '—' : number(s.coreLengthSheets)],
       ['Centre folds: midlines / diagonals', s => `${degrees(s.centreMidlineFoldDegrees)} / ${degrees(s.centreDiagonalFoldDegrees)}`]
     ];
     const body = s => s.coreLengthSheets != null || s.centreMidlineFoldDegrees != null || s.centreDiagonalFoldDegrees != null;
     const shown = poses.some(p => body(p.screen)) ? [...measures, ...core] : measures;
     return [['Paper screen', ...poses.map(p => p.title)], ...shown.map(([name, cell]) => [name, ...poses.map(p => cell(p.screen, p.picture))])];
   }
+
+  // A gallery's runs as the poses of a table, titled by `titleOf`. A gallery
+  // writes a run's floors in its picture beside its screen, on the run.
+  const poses = (runs, titleOf) => runs.map(run => ({title: titleOf(run), screen: run.screen, picture: run}));
 
   // Put rows into `container` as a table, the first row as its heading.
   function fill(container, table) {
@@ -66,9 +80,12 @@ const paperScreen = (() => {
     container.replaceChildren(element);
   }
 
+  // Show a gallery's runs in `container`, one column each.
+  const show = (container, runs, titleOf, limits) => fill(container, rows(poses(runs, titleOf), limits));
+
   function caption(limits) {
-    return `The no-stretch floor is how far some point must move before a pose could be paper. It is a proof, not an estimate: paper cannot stretch, so no two of its points end up further apart than on the flat sheet. Floors and reach-throughs are in pixels at ${limits.pixelsPerSheet} px to the sheet's side. A pose passes with no more than ${percent(limits.strainScreen)} strain (owner decision 16), a floor of at most ${limits.floorLimitPixels} px at that strain, and no join bent past ${limits.falseCreaseThresholdDegrees}°, on the pose's mesh or on the same pose made again with every triangle split into four (PRD 11's targets). A pose that is not made again is judged on its own mesh, and its finer level is not measured, which neither passes nor fails (owner decision 27). A curve the mesh only samples loses turning on the finer mesh; a fold keeps it, and so can a bend narrower than the finer triangles. Strain within ${percent(limits.strictStrainScreen)} is reported and not required. Crossings are reported, not judged: where layers touch, a count measures rounding, and the reach-through is an upper bound on how deep a pair crosses. The screen changes no pose.`;
+    return `The no-stretch floor is how far some point must move before a pose could be paper. It is a proof, not an estimate: paper cannot stretch, so no two of its points end up further apart than on the flat sheet. Floors and reach-throughs are in pixels, ${limits.pixelsPerSheet} to a sheet unit: one unit of the flat sheet's coordinates, the side of the crane's square and the length of the wing studies' test wing. A pose passes with no more than ${percent(limits.strainScreen)} strain (owner decision 16), a floor of at most ${limits.floorLimitPixels} px at that strain, and no join bent past ${limits.falseCreaseThresholdDegrees}°, on the pose's mesh or on the same pose made again with every triangle split into four (PRD 11's targets). A pose that is not made again is judged on its own mesh, and its finer level is not measured, which neither passes nor fails (owner decision 27). A curve the mesh only samples loses turning on the finer mesh; a fold keeps it, and so can a bend narrower than the finer triangles. Strain within ${percent(limits.strictStrainScreen)} is reported and not required. Crossings are reported, not judged: where layers touch, a count measures rounding, and the reach-through is an upper bound on how deep a pair crosses. The screen changes no pose.`;
   }
 
-  return {headline, rows, fill, caption};
+  return {number, headline, rows, poses, fill, show, caption};
 })();

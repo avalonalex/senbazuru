@@ -394,7 +394,10 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory build/fold-material
 
 Open [the controlled bending study](http://127.0.0.1:8000/wing-bending.html).
 `wing-bending/` contains nine wing and three strip FOLD/GLB pairs, SVG
-comparisons and `checks.json`. Select 8, 16 or 24 mesh divisions to compare
+comparisons and `checks.json`, with each shape's
+[paper screen](glossary.md#this-project): a solved shape's false creases one
+level finer are not measured (owner decision 27), and a strip, drawn only in
+3D, has no floor in a picture. Select 8, 16 or 24 mesh divisions to compare
 flat, 20-degree and 40-degree grip placements. Every SVG comparison has one
 camera and scale. The table compares length error, exact held positions,
 bending energy, convergence and independent endpoint contact. The known strip
@@ -422,7 +425,11 @@ permits touching and separation while penalizing penetration.
 
 The page compares flat, 20-degree and 40-degree grips at eight divisions, an
 initially penetrating guess and a lifted upper grip. Accepted shapes have
-SVG/FOLD/GLB exports in `wing-layers/`. The 40-degree bend also runs at 16 and
+SVG/FOLD/GLB exports in `wing-layers/`, and every control's
+[paper screen](glossary.md#this-project) is in `checks.json`: a solved shape's
+false creases one level finer are not measured (owner decision 27), and a
+control that is not accepted is drawn in no picture, so it has no floor in a
+picture. The 40-degree bend also runs at 16 and
 24 divisions, with a shared-camera comparison in `refinement.svg` and material
 position/energy changes in `checks.json`. Only converged shapes passing the
 independent endpoint checks appear in the model selector. Each run records its

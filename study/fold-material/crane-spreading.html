@@ -113,8 +113,7 @@ for (const run of data.runs) {
   row.className = run.accepted ? 'good' : 'bad'; rows.append(row);
 }
 document.querySelector('#screen-caption').textContent = paperScreen.caption(data.screenThresholds);
-paperScreen.fill(document.querySelector('#screen'), paperScreen.rows(data.runs.map(run =>
-  ({title: run.accepted ? run.title : run.title + ' · not accepted', screen: run.screen, picture: run})), data.screenThresholds));
+paperScreen.show(document.querySelector('#screen'), data.runs, run => run.accepted ? run.title : run.title + ' · not accepted', data.screenThresholds);
 const change = data.refinement[0];
 document.querySelector('#refinement').textContent = 'Bending energy changes by ' + percent(change.relativeEnergyChange) + '. Position differences at shared material points are included in the measurements download.';
 </script>

@@ -7,8 +7,9 @@
 -- is to write the same report (owner decision 26), while what a pose's
 -- screen reads differs from gallery to gallery: which edges are joins, and
 -- whether the paper is a crane's body. "CraneSpreadScreen" reads a crane
--- with a wing moved, and "WholeCraneScreen" the whole crane. The measures
--- themselves are "PaperScreen"'s.
+-- with a wing moved, "SurfaceScreen" a pose from the surface its gallery
+-- writes, and "WholeCraneScreen" the whole crane. The measures themselves
+-- are "PaperScreen"'s.
 --
 -- The non-obvious part is that the false-crease verdict has three answers,
 -- not two. False-crease turning is measured on the pose's mesh and, where the
@@ -34,6 +35,7 @@ module ScreenReport
     floorPixels,
     screenJson,
     pictureFloorJson,
+    poseScreenKeys,
     thresholdsJson,
     writeScreenScript,
   )
@@ -70,15 +72,16 @@ floorLimitPixels = 1
 falseCreaseThreshold :: Double
 falseCreaseThreshold = 45
 
--- | The screen's scale: the flat sheet's side is 600 px, as in the whole
--- crane's drawings. A gallery that draws at another scale is screened at
--- this one all the same, so that a verdict does not change with the size a
--- pose is drawn at; its page says the scale of its own drawings.
+-- | The screen's scale: 600 px to a sheet unit, one unit of the flat sheet's
+-- coordinates (docs/glossary.md), as in the whole crane's drawings. A
+-- gallery that draws at another scale is screened at this one all the same,
+-- so that a verdict does not change with the size a pose is drawn at; its
+-- page says the scale of its own drawings.
 pixelsPerSheet :: Double
 pixelsPerSheet = 600
 
--- | One pose's screen. Lengths are in sheet sides, the flat square's side
--- being 1, until 'screenJson' writes them as pixels.
+-- | One pose's screen. Lengths are in sheet units until 'screenJson' writes
+-- them as pixels.
 data Screen = Screen
   { -- | Largest squash and stretch, as non-negative fractions.
     screenSquash :: !Double,
@@ -186,7 +189,7 @@ floorPixels :: FloorPair -> Double
 floorPixels f = pixelsPerSheet * max 0 (floorDistance f)
 
 -- | The screen as a gallery writes it. Floors and reaches are in pixels, the
--- core's length in sheet sides and the turning in sheet sides times degrees,
+-- core's length in sheet units and the turning in sheet units times degrees,
 -- as each key says. A judgement is true, false, or null when not measured.
 -- The thresholds are written once for the whole gallery, by
 -- 'thresholdsJson'.
@@ -235,6 +238,12 @@ pictureFloorJson chords basis mesh =
   [ "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords basis 0 mesh),
     "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords basis strainScreen mesh)
   ]
+
+-- | The keys a gallery's report carries for one pose: its screen, and, if
+-- the gallery draws the pose in a picture from this camera, its floor there
+-- ('pictureFloorJson').
+poseScreenKeys :: Screen -> Chords -> Maybe Basis -> MaterialMesh -> [Pair]
+poseScreenKeys screen chords picture mesh = ("screen" .= screenJson screen) : maybe [] (\basis -> pictureFloorJson chords basis mesh) picture
 
 -- | The screen's thresholds, for the page's labels.
 thresholdsJson :: Value

@@ -35,7 +35,7 @@
 -- shorter than the paper it spans by more than that, which nothing moves.
 module CylinderStrip (Diagonal (..), placedStrip, stripJoins) where
 
-import FoldBending (Bending (..), BendingError, bentEdges, buildPanelHinges, hingeBends)
+import FoldBending (Bending (..), BendingError, buildPanelHinges, hingeBends, joinsWhere)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -101,4 +101,4 @@ stripJoins :: MaterialMesh -> Either BendingError [(Double, Double)]
 stripJoins mesh = do
   hinges <- buildPanelHinges (Bending 1 0.2) mesh
   bends <- hingeBends hinges mesh
-  pure [(norm (u ^-^ v), angle) | (_, _, (u, v), angle) <- bentEdges mesh bends]
+  pure (joinsWhere (const True) mesh bends)
