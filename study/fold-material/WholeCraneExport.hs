@@ -18,17 +18,22 @@
 -- A refusal therefore stops the gallery with its reason, and the missing
 -- layer order gets supplied rather than the shimmer shipped.
 --
+-- Each file also says how its pose was made (PRD 11, R-11-2), twice: as the
+-- geometry level of a fidelity record ("Senbazuru.Render.Fidelity"), where a
+-- pose placed rather than folded is @as prescribed@, and in the name a 3D
+-- viewer lists the model under, which ends "shape sketch".
+--
 -- It is a module of its own so that the test suite, which does not compile
 -- the gallery, can check the choice.
 module WholeCraneExport (viewerGlb) where
 
 import Data.ByteString (ByteString)
-import Data.Text (Text)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface (Surface)
-import Senbazuru.Render.Gltf (ExportMode (..), GltfError, renderSurfaceGlb)
+import Senbazuru.Render.Gltf (ExportMode (..), GlbOptions (..), GltfError, plainGlb, renderSurfaceGlbWith)
+import WholeCrane (CranePose (..), withCaveat)
 
 -- | A pose's file for the viewers: the visible-paper scene, then the
--- complete one.
-viewerGlb :: Text -> Surface material -> Either GltfError ByteString
-viewerGlb title = renderSurfaceGlb defaultBudget VisiblePaper (Just title)
+-- complete one, recording how the pose was made.
+viewerGlb :: CranePose -> Surface material -> Either GltfError ByteString
+viewerGlb pose = renderSurfaceGlbWith (plainGlb VisiblePaper) {glbGeometry = Just (craneGeometry pose)} defaultBudget (Just (withCaveat pose (craneTitle pose)))

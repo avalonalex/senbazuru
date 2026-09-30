@@ -17,7 +17,15 @@
 -- and prescribing a broad, shallow cushion with outward wings. It keeps the
 -- same connected material but greatly distorts it. Neither construction is an
 -- accepted paper pose; the gallery reports their defects beside the drawings.
-module WholeCrane (WholeCrane (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, wholeMeasurements) where
+--
+-- 'wholeCranePoses' lists what the gallery draws, each pose with how its
+-- positions were made. Only the closed crane was folded. Every other pose was
+-- placed where the crane should be, which makes it a /shape sketch/ (see
+-- docs/glossary.md), and its drawings, its GLB and its cards say so. Its FOLD
+-- file does not: a fidelity claim is not FOLD data (D19). The list lives
+-- here, not in the gallery, so that the test suite can check which pose is
+-- which.
+module WholeCrane (WholeCrane (..), CranePose (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, wholeCraneOpenings, wholeCranePoses, craneCaveat, withCaveat, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -39,6 +47,7 @@ import Senbazuru.Geometry.Polygon (cross2)
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface
+import Senbazuru.Render.Fidelity (Geometry (..))
 import SparseSolve
 
 data WholeCrane = WholeCrane
@@ -105,6 +114,59 @@ wholeCrane atlas patch saved = do
   pure (WholeCrane fixture atlas core marks (IM.size anchors))
   where
     analytic p = let V3 x y z = position p; V2 u v = sampleMaterial p; angle = pi / 18 in V3 x ((1 - sqrt 2 / 2) + (y - (1 - sqrt 2 / 2)) * cos angle) (z - (v - u) / sqrt 2 * sin angle)
+
+-- | One pose the gallery draws: the stem of its files, its title, how its
+-- positions were made, and its mesh. Every pose drawn has a geometry level;
+-- the gallery's one diagnostic, a refused solve, is not a 'CranePose'.
+data CranePose = CranePose
+  { craneStem :: !String,
+    craneTitle :: !Text,
+    craneGeometry :: !Geometry,
+    craneMesh :: !MaterialMesh
+  }
+
+-- | The wing spreads the gallery offers: a percentage, the stem of that
+-- pose's files, and its title. At 50% the spread is the narrower body's own,
+-- so the 50% setting reuses the @narrow@ pose, its stem and its title, rather
+-- than drawing the same mesh again under a second name.
+wholeCraneOpenings :: [(Int, String, Text)]
+wholeCraneOpenings = [(0, "spread-0", "More tucked"), (25, "spread-25", "Slightly tucked"), (50, "narrow", "Middle spread"), (75, "spread-75", "Slightly wider"), (100, "spread-100", "More spread")]
+
+-- | Every pose the gallery draws, in its order. The closed crane is the
+-- rigidly folded sheet, cut into the mesh's triangles; every other pose was
+-- placed.
+wholeCranePoses :: WholeCrane -> Either SpreadError [CranePose]
+wholeCranePoses study = do
+  pillow <- pillowCrane study
+  compact <- compactPillowCrane study
+  narrow <- narrowPillowCrane study
+  spreads <- sequence [placed name (title <> " · visual target") <$> pillowCraneAtSpread (fromIntegral percent / 100) study | (percent, name, title) <- wholeCraneOpenings, percent /= 50]
+  pure $
+    [ CranePose "before" "Closed crane" RigidPanels (refinedMesh (spreadRefined fixture)),
+      placed "after" "Opened crane · prescribed static candidate" (spreadMesh fixture),
+      placed "pillow" "Pillow body · visual target" pillow,
+      placed "compact" "Less spread · visual target" compact,
+      placed "narrow" "Narrower body · visual target" narrow
+    ]
+      ++ spreads
+  where
+    fixture = wholeSpread study
+    placed name title = CranePose name title AsPrescribed
+
+-- | What a pose's drawings and cards add to its name so that it is not taken
+-- for paper: "shape sketch" when it was placed rather than folded. Every
+-- level is matched by name, so a level added later is a warning here until
+-- someone decides what it should say.
+craneCaveat :: CranePose -> Maybe Text
+craneCaveat pose = case craneGeometry pose of
+  AsPrescribed -> Just "shape sketch"
+  RigidPanels -> Nothing
+
+-- | Text shown with a pose, such as its title or the title of one of its
+-- drawings, followed by the pose's caveat when it has one:
+-- "Crane upright · three-quarter · shape sketch".
+withCaveat :: CranePose -> Text -> Text
+withCaveat pose text = maybe text (\caveat -> text <> " · " <> caveat) (craneCaveat pose)
 
 -- Material triangles are non-overlapping on the original square, even when
 -- their folded positions coincide. Barycentric weights locate the same piece

@@ -185,6 +185,7 @@ library
     Senbazuru.Origami.Visible
     Senbazuru.Render.Camera
     Senbazuru.Render.CreasePattern
+    Senbazuru.Render.Fidelity
     Senbazuru.Render.Gltf
     Senbazuru.Render.PaperMesh
     Senbazuru.Render.Projected

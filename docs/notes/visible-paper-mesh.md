@@ -52,6 +52,11 @@ The GLB records these references in application-specific `extras`:
 - Optional root `physicalThickness` and `layerRequirements` preserve the
   surface's stored properties. A requirement contains a FOLD-axis `direction`
   and `lowerUpper` panel pairs. These are constraints, not a new contact report.
+- Optional root `fidelity` says how true to paper the file is, on four axes:
+  `geometry`, `motion`, `appearance` and `lines`. It is written only when the
+  caller says where the positions came from, since the positions cannot say:
+  the whole-crane gallery records `as prescribed` for a pose it placed and
+  `rigid panels` for the folded crane. Default exports carry none.
 
 Clipped pieces start at a consistent packed corner so arithmetic noise cannot
 rotate their triangle fans. Weight metadata is rounded to `1e-10`, much finer

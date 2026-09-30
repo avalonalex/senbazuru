@@ -18,7 +18,7 @@ module Senbazuru.Render.GltfSpec (spec) where
 import BasicBases (baseFrame, frogMilestones)
 import Control.Applicative ((<|>))
 import Control.Monad (forM_, when)
-import Data.Aeson (Value (..), toJSON)
+import Data.Aeson (Value (..), object, toJSON, (.=))
 import Data.Aeson.KeyMap qualified as KM
 import Data.Bits (shiftL, (.|.))
 import Data.ByteString (ByteString)
@@ -50,10 +50,20 @@ import Senbazuru.Origami.Folding (foldFrame, foldFrameWith)
 import Senbazuru.Origami.HingeSweep (defaultSweepSettings)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface qualified as Paper
+import Senbazuru.Render.Fidelity (Geometry (..))
 import Senbazuru.Render.Gltf
 import Test.Glb (Glb (..), at, items, nth, parseGlb)
 import Test.Golden (goldenBytes)
 import Test.Hspec
+
+-- | A GLB's JSON without its fidelity record, to compare with one written
+-- without it.
+withoutFidelity :: Value -> Value
+withoutFidelity (Object top)
+  | Just (Object extras) <- KM.lookup "extras" top,
+    Just (Object metadata) <- KM.lookup "senbazuru" extras =
+      Object (KM.insert "extras" (Object (KM.insert "senbazuru" (Object (KM.delete "fidelity" metadata)) extras)) top)
+withoutFidelity json = json
 
 -- | A fixture's key frame, with the name the command line would give it: the
 -- frame's title, else the file's. The crane's title lives on the file.
@@ -370,6 +380,21 @@ spec = do
       let tiny = fr {verticesCoords = map (map (* 0.001)) (verticesCoords fr)}
       glb <- export VisiblePaper (name, tiny) >>= parseGlb
       nub [y | (_, y, _) <- vec3s glb 0] `shouldBe` [0]
+
+    -- Default output makes no claim (R-08-4 in PRD 08). Writing the record
+    -- whatever the caller said, writing it wrong, or letting the option
+    -- change anything else turns this red.
+    it "records its fidelity only when told where the positions came from" $ do
+      (_, source) <- fixture "test/fixtures/quarter-fold.fold"
+      result <- either (fail . show) pure (foldFrameWith source)
+      sheet <- either (fail . show) pure (Paper.surfaceFromFolded result)
+      plain <- either (fail . show) parseGlb (renderSurfaceGlb defaultBudget VisiblePaper Nothing sheet)
+      recorded <- either (fail . show) parseGlb (renderSurfaceGlbWith (plainGlb VisiblePaper) {glbGeometry = Just AsPrescribed} defaultBudget Nothing sheet)
+      let fidelity = at "fidelity" . at "senbazuru" . at "extras" . glbJson
+      fidelity plain `shouldBe` Null
+      fidelity recorded `shouldBe` object ["geometry" .= ("as prescribed" :: Text), "motion" .= ("static" :: Text), "appearance" .= ("A0" :: Text), "lines" .= ("none" :: Text)]
+      withoutFidelity (glbJson recorded) `shouldBe` glbJson plain
+      glbBin recorded `shouldBe` glbBin plain
 
   describe "material identities across every basic base" $
     forM_ ["book", "quarter-fold", "kite", "blintz", "square", "waterbomb", "fish", "bird", "helmet", "organ", "frog", "boat", "pig", "diamond"] $ \name ->

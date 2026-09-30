@@ -59,6 +59,15 @@
 -- the page, and for the same reason: nothing in such a file says which side is
 -- which.
 --
+-- == What a file claims
+--
+-- A caller that knows where the positions came from can say so, and
+-- 'renderSurfaceGlbWith' then records a fidelity record
+-- ("Senbazuru.Render.Fidelity") beside the frame: the geometry level the
+-- caller gave, and the three levels this writer can vouch for itself, which
+-- are static, two flat colours and no lines. 'renderSurfaceGlb' and
+-- 'renderGlb' record none, so no default output changes.
+--
 -- == Why this does not go through 'Senbazuru.Diagram'
 --
 -- Every other backend consumes a 'Senbazuru.Diagram.Diagram', and the
@@ -96,7 +105,10 @@ module Senbazuru.Render.Gltf
   ( -- * Export
     renderGlb,
     renderSurfaceGlb,
+    renderSurfaceGlbWith,
     ExportMode (..),
+    GlbOptions (..),
+    plainGlb,
 
     -- * Errors
     GltfError (..),
@@ -139,6 +151,7 @@ import Senbazuru.Geometry.VectorSpace (norm)
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Surface (Surface, SurfaceError (..), surfaceFaces, surfaceFrame, surfaceFromFrame, surfaceLayerRequirements, surfaceThickness)
 import Senbazuru.Render.Camera (basisFrom, project)
+import Senbazuru.Render.Fidelity (Appearance (..), Fidelity (..), Geometry, Lines (..), Motion (..), fidelityJson)
 import Senbazuru.Render.PaperMesh (PaperMeshError, PaperPiece (..), PaperVertex (..), completePaper, visiblePaper)
 
 -- | The default includes a stable visible scene and the complete sheet.
@@ -146,6 +159,20 @@ import Senbazuru.Render.PaperMesh (PaperMeshError, PaperPiece (..), PaperVertex 
 -- Both preserve shared positions; neither applies display displacement.
 data ExportMode = VisiblePaper | CompletePaper
   deriving stock (Eq, Show)
+
+-- | How to write a GLB, beyond the surface itself. Build one from 'plainGlb'
+-- by record update, so that a field added later leaves the caller as it was.
+data GlbOptions = GlbOptions
+  { glbScenes :: !ExportMode,
+    -- | Where the positions came from, for the file's fidelity record;
+    -- 'Nothing' writes no record.
+    glbGeometry :: !(Maybe Geometry)
+  }
+  deriving stock (Eq, Show)
+
+-- | What 'renderSurfaceGlb' writes: the given scenes and no fidelity record.
+plainGlb :: ExportMode -> GlbOptions
+plainGlb mode = GlbOptions {glbScenes = mode, glbGeometry = Nothing}
 
 -- | Why a frame could not be written out.
 data GltfError
@@ -217,7 +244,13 @@ renderGlb budget mode name fr0 = do
 -- exported corners retain their source material references, even when clipping
 -- introduces a new corner inside a panel. Physical thickness is metadata only.
 renderSurfaceGlb :: Budget -> ExportMode -> Maybe Text -> Surface material -> Either GltfError ByteString
-renderSurfaceGlb budget mode name sheet = do
+renderSurfaceGlb budget mode = renderSurfaceGlbWith (plainGlb mode) budget
+
+-- | 'renderSurfaceGlb' with options. Given a geometry level, it also records
+-- the file's fidelity: that level, and what this writer writes, which is a
+-- static model in two flat colours with no lines.
+renderSurfaceGlbWith :: GlbOptions -> Budget -> Maybe Text -> Surface material -> Either GltfError ByteString
+renderSurfaceGlbWith options budget name sheet = do
   let fr = surfaceFrame sheet
   verts <- first GltfRefused (frameVertices fr)
   faces <- first surfaceError (surfaceFaces sheet)
@@ -228,7 +261,7 @@ renderSurfaceGlb budget mode name sheet = do
       speck = 1e-9 * max 1 span' * max 1 span'
   mapM_ (convexOrRefuse speck) faces
   complete <- first GltfPaperMeshError (completePaper sheet)
-  scenes <- case mode of
+  scenes <- case glbScenes options of
     CompletePaper -> Right [("Complete paper", complete)]
     VisiblePaper -> do
       shown <- first GltfPaperMeshError (visiblePaper budget quantum sheet)
@@ -240,7 +273,8 @@ renderSurfaceGlb budget mode name sheet = do
       -- study contact reports that rounding could stale.
       materialKey key = key `elem` ["senbazuru:material_coords", "senbazuru:source_panels", "senbazuru:source_edges"]
       storedFrame = fr {verticesCoords = map storedPoint verts, frameExtras = KM.filterWithKey (\key _ -> materialKey key) (frameExtras fr)}
-      metadata = A.object (["version" .= (1 :: Int), "frame" .= storedFrame] ++ ["physicalThickness" .= t | Just t <- [surfaceThickness sheet]] ++ ["layerRequirements" .= r | r <- requirements])
+      fidelity g = Fidelity {fidelityGeometry = g, fidelityMotion = Static, fidelityAppearance = TwoFlatColours, fidelityLines = NoLines}
+      metadata = A.object (["version" .= (1 :: Int), "frame" .= storedFrame] ++ ["physicalThickness" .= t | Just t <- [surfaceThickness sheet]] ++ ["layerRequirements" .= r | r <- requirements] ++ ["fidelity" .= fidelityJson (fidelity g) | Just g <- [glbGeometry options]])
   pure (assemble name quantum metadata scenes)
 
 surfaceError :: SurfaceError -> GltfError
