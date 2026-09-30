@@ -1,10 +1,13 @@
 -- | Compare held-wing equilibria, not frames of a certified folding motion.
 -- The solver owns the positions. This module measures them and sends the same
 -- uncreased triangle surface to SVG, FOLD and glTF; HTML only selects results.
-module WingBendingGallery (writeWingBending, wingSvg, refinement) where
+-- Every pose carries its paper screen ("SurfaceScreen"), as do the two-layer
+-- gallery's, through 'wingScreen'.
+module WingBendingGallery (writeWingBending, wingSvg, wingScreen, refinement) where
 
 import Control.Monad (forM)
 import Data.Aeson (Value, encode, object, (.=))
+import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
@@ -13,9 +16,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
-import FoldBending (bendingEnergy)
-import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
+import FoldBending (Hinge, bendingEnergy, hingeBends)
+import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
+import PaperScreen (sheetChords)
+import ScreenReport (Screen (..), poseScreenKeys, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain, tshow)
@@ -23,13 +28,14 @@ import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
 import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Contact (checkLocalTriangleContact)
+import Senbazuru.Origami.Contact (ContactCheck, checkLocalTriangleContact)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
-import Senbazuru.Render.Camera (View (..), basisFrom)
+import Senbazuru.Render.Camera (Basis, View (..), basisFrom)
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
+import SurfaceScreen (surfaceScreen)
 import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath ((</>))
@@ -38,10 +44,27 @@ import WingBending
 
 wingSvg :: [Surface V2] -> Either Text Text
 wingSvg sheets = do
-  camera <- maybe (Left "invalid wing camera") Right (basisFrom (V3 0 1 (-1)) (V3 0 0 1))
+  camera <- wingCamera
   drawing <- first explain (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = length sheets} (View (Just camera) 0) False (map surfaceFrame sheets))
   diagram <- maybe (Left "wing comparison has no geometry") Right drawing
   pure (renderSvg defaultPage {pageWidth = 1080, pageHeight = 340, pageMargin = 28, pageBackground = Nothing, pageTitle = Just "Held wing shapes"} diagram)
+
+-- | The camera every wing drawing is taken from, and so the picture a
+-- screen's picture floor is measured in.
+wingCamera :: Either Text Basis
+wingCamera = maybe (Left "invalid wing camera") Right (basisFrom (V3 0 1 (-1)) (V3 0 0 1))
+
+-- | A pose's paper screen ("SurfaceScreen"), and the keys its report
+-- carries: the screen and, if the gallery draws the pose, its floor in the
+-- picture, taken from 'wingCamera'. @sheet@ is the surface written for the
+-- pose, @contact@ its crossing check and @hinges@ its fixture's hinges.
+wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Either Text (Screen, [Pair])
+wingScreen sheet contact hinges drawn mesh = do
+  chords <- first explain (sheetChords mesh)
+  bends <- first explain (hingeBends hinges mesh)
+  screen <- first explain (surfaceScreen sheet chords contact bends mesh)
+  camera <- wingCamera
+  pure (screen, poseScreenKeys screen chords (if drawn then Just camera else Nothing) mesh)
 
 writeWingBending :: FilePath -> IO ()
 writeWingBending destination = do
@@ -56,7 +79,8 @@ writeWingBending destination = do
       let stem = "wing-" ++ show count ++ "-" ++ show degrees
           title = "Wing · " <> tshow count <> " divisions · grip " <> tshow degrees <> "°"
       model <- writeSurface output stem title sheet
-      report <- measure stem count degrees piece result mesh
+      -- Every wing is drawn, in its resolution's sequence.
+      report <- measure stem count degrees piece result mesh sheet True
       pure (sheet, model, report)
     drawing <- checked (wingSvg [sheet | (sheet, _, _) <- runs])
     TIO.writeFile (output </> "sequence-" ++ show count ++ ".svg") drawing
@@ -68,16 +92,18 @@ writeWingBending destination = do
     sheet <- checked (first explain (uncreasedSurface mesh))
     let stem = "strip-" ++ show count
     model <- writeSurface output stem ("Strip benchmark · " <> tshow count <> " spans") sheet
-    report <- measure stem count 30 piece result mesh
+    -- A strip is drawn only in 3D, with no camera of its own.
+    report <- measure stem count 30 piece result mesh sheet False
     pure (model, report)
   let runs = concat groups
       bent = [sheet | group <- groups, (sheet, _, _) <- drop 2 group]
       changes = [refinement a b | (a, b) <- zip bent (drop 1 bent)]
-      document = object ["wings" .= [r | (_, _, r) <- runs], "benchmarks" .= map snd benchmarks, "refinement" .= changes]
+      document = object ["wings" .= [r | (_, _, r) <- runs], "benchmarks" .= map snd benchmarks, "refinement" .= changes, "screenThresholds" .= thresholdsJson]
   BL.writeFile (output </> "models.json") (encode ([m | (_, m, _) <- runs] ++ map fst benchmarks))
   BL.writeFile (output </> "checks.json") (encode document)
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/wing-bending.html"
   TIO.writeFile (destination </> "wing-bending.html") (T.replace "/*WING_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote wing-bending.html, three resolution comparisons, twelve GLBs/FOLDs and checks.json to " ++ destination)
@@ -90,17 +116,17 @@ writeSurface output stem title sheet = do
   BL.writeFile (output </> stem ++ ".fold") (encode file)
   pure (object ["title" .= title, "path" .= (stem ++ ".glb")])
 
-measure :: String -> Int -> Int -> BendingPiece -> Relaxation -> MaterialMesh -> IO Value
-measure stem count degrees piece result mesh = do
+measure :: String -> Int -> Int -> BendingPiece -> Relaxation -> MaterialMesh -> Surface V2 -> Bool -> IO Value
+measure stem count degrees piece result mesh sheet drawn = do
   contact <- checked (first explain (checkLocalTriangleContact (V3 0 0 1) [] mesh))
   (crease, panel) <- checked (first explain (bendingEnergy (pieceHinges piece) mesh))
+  (screen, screened) <- checked (wingScreen sheet contact (pieceHinges piece) drawn mesh)
   let positions = IM.fromList (zip [0 ..] (map position (samples mesh)))
       heldError = maximum (0 : [norm (actual ^-^ target) | (i, target) <- IM.toList (piecePins piece), Just actual <- [IM.lookup i positions]])
-      strains = [s | triangle <- resolvedTriangles mesh, Just s <- [principalStrains triangle]]
       referenceError = fmap (\reference -> maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples reference))) (pieceReference piece)
       seedChange = maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples (pieceMesh piece)))
   pure
-    ( object
+    ( object $
         [ "id" .= stem,
           "divisions" .= count,
           "gripDegrees" .= degrees,
@@ -114,8 +140,8 @@ measure stem count degrees piece result mesh = do
           "areaRatio" .= areaRatio mesh,
           "maxRelativeEdgeError" .= maxLengthError mesh,
           "heldPositionError" .= heldError,
-          "minPrincipalStrain" .= minimum (0 : map fst strains),
-          "maxPrincipalStrain" .= maximum (0 : map snd strains),
+          "minPrincipalStrain" .= negate (screenSquash screen),
+          "maxPrincipalStrain" .= screenStretch screen,
           "creaseEnergy" .= crease,
           "panelEnergy" .= panel,
           "referencePositionError" .= referenceError,
@@ -125,6 +151,7 @@ measure stem count degrees piece result mesh = do
           "contact" .= contact,
           "continuousMotionChecked" .= False
         ]
+          ++ screened
     )
 
 checked :: Either Text a -> IO a

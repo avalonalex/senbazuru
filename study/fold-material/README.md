@@ -565,7 +565,9 @@ adds two touching layers joined along the root crease of one folded diamond.
 `wing-layers.html` compares exact-grip bends, correction of an initially
 penetrating guess and a lifted upper grip. The 40-degree bend now converges at
 three mesh resolutions, with position and energy comparisons; incompatible
-grips remain a diagnostic. See [the instructions](../../docs/usage.md#two-held-touching-layers)
+grips remain a diagnostic. Every control carries a paper screen, under
+`screen` in `checks.json`, with its floor in its drawing beside it in
+`pictureFloorPixels` where the gallery draws it. See [the instructions](../../docs/usage.md#two-held-touching-layers)
 and [the coupled-solve measurements](../../docs/notes/coupled-touching-layer-solve.md).
 The generated SVG, FOLD and glTF use the same positions; this is static contact,
 not a checked flexible motion or finite-thickness mechanics.
@@ -573,8 +575,8 @@ not a checked flexible motion or finite-thickness mechanics.
 `stack run senbazuru-material-study -- --wing-bending build/fold-material`
 solves a separate uncreased wing-shaped sheet held at its root and tip.
 `wing-bending.html` compares three grip placements at three resolutions, with
-a known bent-strip benchmark and independent endpoint measurements. SVG, FOLD
-and glTF share the solved triangles; the 3D viewer uses the same local Three.js
+a known bent-strip benchmark, independent endpoint measurements and each
+shape's paper screen. SVG, FOLD and glTF share the solved triangles; the 3D viewer uses the same local Three.js
 installation as the checked-flap pages. See [the instructions](../../docs/usage.md#controlled-wing-bending)
 and [the measurements](../../docs/notes/held-wing-bending.md). These static
 shapes do not certify a flexible folding motion or realistic crane spreading.

@@ -34,6 +34,7 @@ module ScreenReport
     floorPixels,
     screenJson,
     pictureFloorJson,
+    poseScreenKeys,
     thresholdsJson,
     writeScreenScript,
   )
@@ -70,7 +71,8 @@ floorLimitPixels = 1
 falseCreaseThreshold :: Double
 falseCreaseThreshold = 45
 
--- | The screen's scale: the flat sheet's side is 600 px, as in the whole
+-- | The screen's scale: 600 px to one unit of material length, which is the
+-- side of the crane's square and the length of a wing, as in the whole
 -- crane's drawings. A gallery that draws at another scale is screened at
 -- this one all the same, so that a verdict does not change with the size a
 -- pose is drawn at; its page says the scale of its own drawings.
@@ -235,6 +237,12 @@ pictureFloorJson chords basis mesh =
   [ "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords basis 0 mesh),
     "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords basis strainScreen mesh)
   ]
+
+-- | The keys a gallery's report carries for one pose: its screen, and, if
+-- the gallery draws the pose in a picture from this camera, its floor there
+-- ('pictureFloorJson').
+poseScreenKeys :: Screen -> Chords -> Maybe Basis -> MaterialMesh -> [Pair]
+poseScreenKeys screen chords picture mesh = ("screen" .= screenJson screen) : maybe [] (\basis -> pictureFloorJson chords basis mesh) picture
 
 -- | The screen's thresholds, for the page's labels.
 thresholdsJson :: Value

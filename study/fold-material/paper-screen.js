@@ -5,7 +5,16 @@
 // page's own script may already use `percent` or `number`. Checked by
 // `node study/fold-material/check-paper-screen.mjs`.
 const paperScreen = (() => {
-  const number = n => Math.abs(n) < 1e-8 ? '0' : Number(n).toPrecision(3);
+  // Three significant figures, never with an exponent: toPrecision writes
+  // 4.84e-7 below a millionth and 1.23e+3 from a thousand, beside cells that
+  // read 0.00000119 and 145.
+  // Round first, so that 9.996 becomes 10.0 and not 10.00.
+  const number = n => {
+    if (Math.abs(n) < 1e-8) return '0';
+    const rounded = Number(n.toPrecision(3));
+    const decimals = 2 - Math.floor(Math.log10(Math.abs(rounded)));
+    return decimals > 0 ? rounded.toFixed(decimals) : String(rounded);
+  };
   const percent = n => `${Number((100 * n).toPrecision(3))}%`;
   const pixels = n => n == null ? '—' : number(n) + ' px';
   const degrees = n => n == null ? '—' : number(n) + '°';

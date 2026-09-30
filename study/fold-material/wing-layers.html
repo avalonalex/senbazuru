@@ -14,6 +14,7 @@
   .note { border-left:3px solid #92744b; padding-left:14px; } .table-wrap { overflow-x:auto; }
   table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
   iframe { width:100%; height:760px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
+  .screen th, .screen td { white-space:normal; }
   @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } }
 </style>
 <header>
@@ -36,6 +37,23 @@
   <p class="note">The paper has zero thickness here. When both layers touch
     exactly, their outside outline looks like a single surface. The declared
     layer order chooses which side is visible. No display gap is added.</p>
+</section>
+<section>
+  <h2>Could paper take these shapes?</h2>
+  <p id="screen-caption"></p>
+  <h3>The three bends above</h3>
+  <div class="table-wrap screen" id="screen-main"></div>
+  <h3>The contact controls</h3>
+  <div class="table-wrap screen" id="screen-controls"></div>
+  <h3>The finer meshes</h3>
+  <div class="table-wrap screen" id="screen-finer"></div>
+  <p class="note">A control that is not accepted is shown for diagnosis; it is
+    drawn in no picture, so it has no picture floor. Here the sheet's side is
+    the wing's length, root to tip, and the figures are drawn at 320 to 670 px
+    to it, so a floor in a figure's own pixels is 0.53 to 1.12 times the
+    figure in the table. The 16-division bend is the 8-division bend with
+    every triangle split into four, but solved again rather than made again,
+    so each is judged on its own mesh (owner decision 27).</p>
 </section>
 <section>
   <h2>Contact does not glue the layers</h2>
@@ -91,6 +109,7 @@
   they are not physical folding steps. Friction, measured paper stiffness,
   finite thickness, a connected crane body and a verified flexible motion remain
   outside this experiment. See <a href="https://github.com/avalonalex/senbazuru/issues/195">#195</a>.</p>
+<script src="paper-screen.js"></script>
 <script>
 const data=/*LAYER_DATA*/null;
 const number=x=>x===0?'0':x.toExponential(2);
@@ -110,5 +129,11 @@ for(const r of data.refinement){
   for(const value of [`${g.fromTriangles} → ${g.toTriangles} triangles`,g.commonVertices,number(g.maxPositionChange),`${(100*r.relativeEnergyChange).toFixed(2)}%`]){const td=document.createElement('td');td.textContent=value;tr.append(td);}
   document.querySelector('#refinement').append(tr);
 }
+const byId=new Map(data.runs.map(r=>[r.id,r]));
+const screen=(target,ids)=>paperScreen.fill(document.querySelector(target),paperScreen.rows(ids.map(id=>byId.get(id)).map(r=>({title:r.accepted?r.title:r.title+' · not accepted',screen:r.screen,picture:r})),data.screenThresholds));
+document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);
+screen('#screen-main',['flat','bend-20','bend-40']);
+screen('#screen-controls',['perturbed','lifted','bad-grip']);
+screen('#screen-finer',['fine-flat','fine-bend','finest-bend']);
 </script>
 </html>

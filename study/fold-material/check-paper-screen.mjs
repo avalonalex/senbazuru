@@ -21,21 +21,23 @@ assert.equal(headline({strain:false,passes:false}),'Fails: strain');
 assert.equal(headline({floor:false,falseCreases:false,passes:false}),'Fails: floor, false creases');
 assert.equal(headline({passes:undefined}),'—'); // a verdict with no answer reads as neither
 // A placed pose that fails everywhere: 20% stretch, a floor of 11.2 px at the
-// screen, and two joins bent past 45 degrees, which the pose made again one
+// screen, and twelve joins bent past 45 degrees, which the pose made again one
 // level finer smooths out. Its sheet is not convex and it is drawn in no
 // picture.
-const placed=screen({strain:false,floor:false,falseCreases:false,passes:false},{stretch:0.2,floor3dPixels:12.3456,floor3dPixelsAtScreen:11.2,floorPairs:[3,10],crossingPairCount:4,deepestReachPixels:0,falseCreaseJoins:2,falseCreaseTurningSheetDegrees:7.5,falseCreaseJoinsFiner:0,falseCreaseTurningFinerSheetDegrees:0});
-const rows=paperScreen.rows([{title:'Solved',screen:screen({}),picture:{pictureFloorPixels:0.25,pictureFloorPixelsAtScreen:0}},{title:'Placed',screen:placed}],limits);
+const placed=screen({strain:false,floor:false,falseCreases:false,passes:false},{stretch:0.2,floor3dPixels:12.3456,floor3dPixelsAtScreen:11.2,floorPairs:[3,10],crossingPairCount:4,deepestReachPixels:0,falseCreaseJoins:12,falseCreaseTurningSheetDegrees:1234.5,falseCreaseJoinsFiner:0,falseCreaseTurningFinerSheetDegrees:0});
+const rows=paperScreen.rows([{title:'Solved',screen:screen({}),picture:{pictureFloorPixels:4.84e-7,pictureFloorPixelsAtScreen:0}},{title:'Placed',screen:placed}],limits);
 assert.deepEqual(rows.map(r=>r.length),[3,3,3,3,3,3,3,3]); // no body core rows: neither pose is a crane's body
 assert.deepEqual(rows[0],['Paper screen','Solved','Placed']);
 assert.deepEqual(rows[1].slice(1),['Not measured: false creases one level finer','Fails: strain, floor, false creases']);
 assert.deepEqual(rows[2],['Largest stretch / squash · within 0.1%','0% / 0.200% · no','20.0% / 0.200% · no']);
 // A pose drawn in no picture has no picture floor, and a floor over some of
 // the pairs says how many.
-assert.deepEqual(rows[3].slice(1),['0.500 px · 0.250 px','12.3 px · — (over 3 of 10 pairs: the sheet is not convex)']);
+// Three figures and no exponent, however small or large: toPrecision would
+// write 4.84e-7 and 1.23e+3.
+assert.deepEqual(rows[3].slice(1),['0.500 px · 0.000000484 px','12.3 px · — (over 3 of 10 pairs: the sheet is not convex)']);
 assert.deepEqual(rows[4],['Floor at 1% strain, 3D · this picture','0 px · 0 px','11.2 px · —']);
 assert.deepEqual(rows[5].slice(1),['0','4 · 0 px']);
-assert.deepEqual(rows[6],['False creases: joins past 45° · turning, sheet sides × degrees','0 · 0','2 · 7.50']);
+assert.deepEqual(rows[6],['False creases: joins past 45° · turning, sheet sides × degrees','0 · 0','12 · 1230']);
 // Zero is a measurement: no join past the threshold one level finer, and a
 // pair that crosses by no depth at all.
 assert.deepEqual(rows[7].slice(1),['— (not made again)','0 · 0']);
