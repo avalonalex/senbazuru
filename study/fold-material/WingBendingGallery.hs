@@ -2,7 +2,9 @@
 -- The solver owns the positions. This module measures them and sends the same
 -- uncreased triangle surface to SVG, FOLD and glTF; HTML only selects results.
 -- Every pose carries its paper screen ("SurfaceScreen"), as do the two-layer
--- gallery's, through 'wingScreen'.
+-- gallery's, through 'wingScreen'. An 8-division pose takes the same grip
+-- solved at 16 divisions as its finer level, where "FinerSolve" shows the two
+-- are the same pose (owner decision 29).
 module WingBendingGallery (writeWingBending, wingSvg, wingScreen, refinement) where
 
 import Control.Monad (forM)
@@ -16,6 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
+import FinerSolve (Pending (..), finishReports)
 import FoldBending (Hinge, bendingEnergy, hingeBends)
 import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
@@ -55,51 +58,61 @@ wingSvg sheets = do
 wingCamera :: Either Text Basis
 wingCamera = maybe (Left "invalid wing camera") Right (basisFrom (V3 0 1 (-1)) (V3 0 0 1))
 
--- | A pose's paper screen ("SurfaceScreen"), and the keys its report
--- carries: the screen and, if the gallery draws the pose, its floor in the
--- picture, taken from 'wingCamera'. @sheet@ is the surface written for the
--- pose, @contact@ its crossing check and @hinges@ its fixture's hinges.
-wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Either Text (Screen, [Pair])
+-- | A pose's paper screen on its own mesh ("SurfaceScreen"), and the keys
+-- its report carries given its final screen: that screen and, if the gallery
+-- draws the pose, its floor in the picture, taken from 'wingCamera'. The
+-- final screen differs only where the gallery's own finer solve settles the
+-- finer level ("FinerSolve"). @sheet@ is the surface written for the pose,
+-- @contact@ its crossing check and @hinges@ its fixture's hinges.
+wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Either Text (Screen, Screen -> [Pair])
 wingScreen sheet contact hinges drawn mesh = do
   chords <- first explain (sheetChords mesh)
   bends <- first explain (hingeBends hinges mesh)
   screen <- first explain (surfaceScreen sheet chords contact bends mesh)
   camera <- wingCamera
-  pure (screen, poseScreenKeys screen chords (if drawn then Just camera else Nothing) mesh)
+  pure (screen, \final -> poseScreenKeys final chords (if drawn then Just camera else Nothing) mesh)
 
 writeWingBending :: FilePath -> IO ()
 writeWingBending destination = do
   let output = destination </> "wing-bending"
   createDirectoryIfMissing True output
-  groups <- forM [8, 16, 24] $ \count -> do
-    runs <- forM [0, 20, 40 :: Int] $ \degrees -> do
+  groups <- forM counts $ \count -> do
+    runs <- forM grips $ \degrees -> do
       piece <- checked (first explain (wingPiece count (fromIntegral degrees)))
       result <- checked (first explain (solvePiece piece))
       mesh <- checked (first explain (finalMesh result))
       sheet <- checked (first explain (uncreasedSurface mesh))
-      let stem = "wing-" ++ show count ++ "-" ++ show degrees
+      let stem = wingId count degrees
           title = "Wing · " <> tshow count <> " divisions · grip " <> tshow degrees <> "°"
       model <- writeSurface output stem title sheet
       -- Every wing is drawn, in its resolution's sequence.
-      report <- measure stem count degrees piece result mesh sheet True
-      pure (sheet, model, report)
+      pending <- measure stem count degrees piece result mesh sheet True
+      pure (sheet, model, pending)
     drawing <- checked (wingSvg [sheet | (sheet, _, _) <- runs])
     TIO.writeFile (output </> "sequence-" ++ show count ++ ".svg") drawing
     pure runs
-  benchmarks <- forM [8, 16, 24] $ \count -> do
+  benchmarks <- forM counts $ \count -> do
     piece <- checked (first explain (stripBenchmark count))
     result <- checked (first explain (solvePiece piece))
     mesh <- checked (first explain (finalMesh result))
     sheet <- checked (first explain (uncreasedSurface mesh))
-    let stem = "strip-" ++ show count
+    let stem = stripId count
     model <- writeSurface output stem ("Strip benchmark · " <> tshow count <> " spans") sheet
     -- A strip is drawn only in 3D, with no camera of its own.
-    report <- measure stem count 30 piece result mesh sheet False
-    pure (model, report)
+    pending <- measure stem count 30 piece result mesh sheet False
+    pure (model, pending)
   let runs = concat groups
       bent = [sheet | group <- groups, (sheet, _, _) <- drop 2 group]
       changes = [refinement a b | (a, b) <- zip bent (drop 1 bent)]
-      document = object ["wings" .= [r | (_, _, r) <- runs], "benchmarks" .= map snd benchmarks, "refinement" .= changes, "screenThresholds" .= thresholdsJson]
+      -- Owner decision 29: the same grip solved at twice the divisions, or
+      -- the same strip at twice the spans, may be a pose's finer level. Of 8,
+      -- 16 and 24, only 8 has its double.
+      finer =
+        [(wingId n g, wingId (2 * n) g, "solved at " <> tshow (2 * n) <> " divisions") | n <- counts, 2 * n `elem` counts, g <- grips]
+          ++ [(stripId n, stripId (2 * n), "solved at " <> tshow (2 * n) <> " spans") | n <- counts, 2 * n `elem` counts]
+  reports <- checked (finishReports finer ([p | (_, _, p) <- runs] ++ map snd benchmarks))
+  let (wingReports, stripReports) = splitAt (length runs) reports
+      document = object ["wings" .= wingReports, "benchmarks" .= stripReports, "refinement" .= changes, "screenThresholds" .= thresholdsJson]
   BL.writeFile (output </> "models.json") (encode ([m | (_, m, _) <- runs] ++ map fst benchmarks))
   BL.writeFile (output </> "checks.json") (encode document)
   viewer <- TIO.readFile "study/gltf/viewer.html"
@@ -109,19 +122,31 @@ writeWingBending destination = do
   TIO.writeFile (destination </> "wing-bending.html") (T.replace "/*WING_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote wing-bending.html, three resolution comparisons, twelve GLBs/FOLDs and checks.json to " ++ destination)
 
-writeSurface :: FilePath -> String -> Text -> Surface V2 -> IO Value
+-- | The wing studies' mesh divisions and grips, in degrees.
+counts, grips :: [Int]
+counts = [8, 16, 24]
+grips = [0, 20, 40]
+
+wingId :: Int -> Int -> Text
+wingId count degrees = "wing-" <> tshow count <> "-" <> tshow degrees
+
+stripId :: Int -> Text
+stripId count = "strip-" <> tshow count
+
+writeSurface :: FilePath -> Text -> Text -> Surface V2 -> IO Value
 writeSurface output stem title sheet = do
   bytes <- checked (first explain (renderSurfaceGlb defaultBudget VisiblePaper (Just title) sheet))
-  BS.writeFile (output </> stem ++ ".glb") bytes
+  BS.writeFile (output </> T.unpack stem ++ ".glb") bytes
   let file = FoldFile (Just 1.2) (Just "senbazuru controlled bending study") Nothing (Just title) Nothing [] (materialFrame sheet) []
-  BL.writeFile (output </> stem ++ ".fold") (encode file)
-  pure (object ["title" .= title, "path" .= (stem ++ ".glb")])
+  BL.writeFile (output </> T.unpack stem ++ ".fold") (encode file)
+  pure (object ["title" .= title, "path" .= (stem <> ".glb")])
 
-measure :: String -> Int -> Int -> BendingPiece -> Relaxation -> MaterialMesh -> Surface V2 -> Bool -> IO Value
+-- | A pose's measurements, as a report that waits for its finer level.
+measure :: Text -> Int -> Int -> BendingPiece -> Relaxation -> MaterialMesh -> Surface V2 -> Bool -> IO Pending
 measure stem count degrees piece result mesh sheet drawn = do
   contact <- checked (first explain (checkLocalTriangleContact (V3 0 0 1) [] mesh))
   (crease, panel) <- checked (first explain (bendingEnergy (pieceHinges piece) mesh))
-  (screen, screened) <- checked (wingScreen sheet contact (pieceHinges piece) drawn mesh)
+  (screen, screenKeys) <- checked (wingScreen sheet contact (pieceHinges piece) drawn mesh)
   let positions = IM.fromList (zip [0 ..] (map position (samples mesh)))
       heldError = maximum (0 : [norm (actual ^-^ target) | (i, target) <- IM.toList (piecePins piece), Just actual <- [IM.lookup i positions]])
       referenceError = fmap (\reference -> maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples reference))) (pieceReference piece)
@@ -130,34 +155,35 @@ measure stem count degrees piece result mesh sheet drawn = do
       -- strip each have area 0.3, so normalize by their actual material
       -- triangles instead, as the wing-layers gallery does.
       restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
-  pure
-    ( object $
-        [ "id" .= stem,
-          "divisions" .= count,
-          "gripDegrees" .= degrees,
-          "converged" .= converged result,
-          "iterations" .= maximum (0 : map completedIterations (checkpoints result)),
-          "vertices" .= length (samples mesh),
-          "triangles" .= length (triangles mesh),
-          "sourcePanels" .= (1 :: Int),
-          "materialCreases" .= (0 :: Int),
-          "components" .= componentCount mesh,
-          "areaRatio" .= (areaRatio mesh / restArea),
-          "maxRelativeEdgeError" .= maxLengthError mesh,
-          "heldPositionError" .= heldError,
-          "minPrincipalStrain" .= negate (screenSquash screen),
-          "maxPrincipalStrain" .= screenStretch screen,
-          "creaseEnergy" .= crease,
-          "panelEnergy" .= panel,
-          "referencePositionError" .= referenceError,
-          "initialGuessChange" .= seedChange,
-          "rootVertices" .= pieceRoot piece,
-          "gripVertices" .= pieceGrip piece,
-          "contact" .= contact,
-          "continuousMotionChecked" .= False
-        ]
-          ++ screened
-    )
+      report final finer =
+        object $
+          [ "id" .= stem,
+            "divisions" .= count,
+            "gripDegrees" .= degrees,
+            "converged" .= converged result,
+            "iterations" .= maximum (0 : map completedIterations (checkpoints result)),
+            "vertices" .= length (samples mesh),
+            "triangles" .= length (triangles mesh),
+            "sourcePanels" .= (1 :: Int),
+            "materialCreases" .= (0 :: Int),
+            "components" .= componentCount mesh,
+            "areaRatio" .= (areaRatio mesh / restArea),
+            "maxRelativeEdgeError" .= maxLengthError mesh,
+            "heldPositionError" .= heldError,
+            "minPrincipalStrain" .= negate (screenSquash final),
+            "maxPrincipalStrain" .= screenStretch final,
+            "creaseEnergy" .= crease,
+            "panelEnergy" .= panel,
+            "referencePositionError" .= referenceError,
+            "initialGuessChange" .= seedChange,
+            "rootVertices" .= pieceRoot piece,
+            "gripVertices" .= pieceGrip piece,
+            "contact" .= contact,
+            "continuousMotionChecked" .= False
+          ]
+            ++ screenKeys final
+            ++ finer
+  pure (Pending stem screen mesh report)
 
 checked :: Either Text a -> IO a
 checked = either (die . T.unpack) pure

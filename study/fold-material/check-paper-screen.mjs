@@ -54,15 +54,25 @@ assert.equal(paperScreen.number(undefined),'NaN');
 const body=paperScreen.rows([{title:'Crane',screen:screen({},{coreLengthSheets:Math.SQRT2-1,centreMidlineFoldDegrees:14,centreDiagonalFoldDegrees:null})},{title:'Wing',screen:screen({})}],limits);
 assert.deepEqual(body.slice(8),[['Body core length, sheet units','0.414','—'],['Centre folds: midlines / diagonals','14.0° / —','— / —']]);
 // A gallery's runs become poses titled by the page, each with its own
-// picture floors, which the gallery writes on the run beside its screen.
-const runs=[{id:'a',title:'A',screen:screen({}),pictureFloorPixels:0.25},{id:'b',title:'B',screen:placed}];
+// picture floors and finer solve, which the gallery writes on the run beside
+// its screen.
+const runs=[{id:'a',title:'A',screen:screen({}),pictureFloorPixels:0.25,finerSolve:{id:'a2',label:'solved at 16 divisions',apartPixels:0.5}},{id:'b',title:'B',screen:placed}];
 const poses=paperScreen.poses(runs,run=>run.title+'!');
-assert.deepEqual(poses.map(p=>[p.title,p.screen,p.picture]),[['A!',runs[0].screen,runs[0]],['B!',placed,runs[1]]]);
+assert.deepEqual(poses.map(p=>[p.title,p.screen,p.picture,p.finer]),[['A!',runs[0].screen,runs[0],runs[0].finerSolve],['B!',placed,runs[1],undefined]]);
 assert.deepEqual(paperScreen.rows(poses,limits)[3].slice(1),['0.500 px · 0.250 px','12.3 px · — (over 3 of 10 pairs: the sheet is not convex)']);
+// A solved pose whose finer level is its gallery's own finer solve says
+// which solve, and how far apart the two are at worst (owner decision 29);
+// a pose made again, as the placed one above, names none. One whose finer
+// solve was refused keeps its finer level not measured.
+const counted=screen({falseCreases:true,passes:true},{falseCreaseJoinsFiner:0,falseCreaseTurningFinerSheetDegrees:0});
+const refused={title:'Strip',screen:screen({}),finerSolve:{id:'strip-16',label:'solved at 16 spans',refused:'the finer mesh has 32 triangles, not 64'}};
+const finer=paperScreen.rows(paperScreen.poses([{title:'Wing',screen:counted,finerSolve:{id:'wing-16-40',label:'solved at 16 divisions',apartPixels:0.8068}},refused],run=>run.title),limits);
+assert.deepEqual(finer[1].slice(1),['Passes','Not measured: false creases one level finer']);
+assert.deepEqual(finer[7].slice(1),['0 · 0 (solved at 16 divisions, 0.807 px apart)','— (not made again)']);
 // The labels and the caption take the thresholds they are given.
 const other={pixelsPerSheet:500,strainScreen:0.02,strictStrainScreen:0.002,floorLimitPixels:2,falseCreaseThresholdDegrees:30};
 const labels=paperScreen.rows([],other).map(r=>r[0]);
 assert.deepEqual([labels[2],labels[4],labels[6]],['Largest stretch / squash · within 0.2%','Floor at 2% strain, 3D · this picture','False creases: joins past 30° · turning, sheet units × degrees']);
 const caption=paperScreen.caption(other);
-for(const words of ['in pixels, 500 to a sheet unit','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported'])assert.ok(caption.includes(words),words);
+for(const words of ['in pixels, 500 to a sheet unit','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','agree within 2 px at every vertex of the coarser mesh','(owner decision 29)'])assert.ok(caption.includes(words),words);
 console.log('paper-screen.js: every check passed');

@@ -14,13 +14,12 @@
 -- "CraneSpreadScreen" reads the same rule without a frame, because the
 -- whole crane is screened again on a refinement nothing writes.
 --
--- The false creases one level finer are not measured, as for every solved
--- pose, and here that looks most like an omission: wing-bending's
--- 16-division mesh is its 8-division mesh with every triangle split into
--- four, the very level the screen would measure. But the gallery finds the
--- pose on it by a new solve, and a pose that only a new solve can /make
--- again/ (docs/glossary.md) is judged on its own mesh (owner decision 27),
--- so every wing here is.
+-- The screen made here leaves the false creases one level finer not
+-- measured, as for every solved pose: a pose that only a new solve can /make
+-- again/ (docs/glossary.md) is judged on its own mesh (owner decision 27).
+-- Both wing galleries happen to solve some poses again on the mesh split
+-- into four, and "FinerSolve" lets that solve settle the finer level where
+-- it is shown to be the same pose (owner decision 29).
 module SurfaceScreen
   ( surfaceJoins,
     surfaceScreen,
@@ -49,7 +48,8 @@ surfaceJoins sheet = S.fromList [edgeKey a b | ((a, b), Join) <- zip (edgesVerti
 -- | Screen a solved pose from the surface its gallery writes for it, given
 -- the chords of its flat sheet ('PaperScreen.sheetChords'), its crossing
 -- check, and each hinge's bend on it in radians ('FoldBending.hingeBends'),
--- all of this mesh. Its finer level is not measured. A surface written for
+-- all of this mesh. Its finer level is left not measured, for "FinerSolve"
+-- to settle where the gallery has a finer solve. A surface written for
 -- another mesh is refused: its joins would name other edges.
 surfaceScreen :: Surface V2 -> Chords -> ContactCheck -> [(Hinge, Double)] -> MaterialMesh -> Either ScreenError Screen
 surfaceScreen sheet chords contact bends mesh = do

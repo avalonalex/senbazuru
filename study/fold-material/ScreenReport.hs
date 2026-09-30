@@ -20,6 +20,9 @@
 -- holds for the whole crane's first candidate, whose remake is work not yet
 -- done. Reading it as a pass would claim half a test that never ran; reading
 -- it as a fail would fail a pose for a reason that is not about the pose.
+-- Owner decision 29 makes one exception: a gallery's own solve on the mesh
+-- split into four settles a solved pose's finer level where it is shown to
+-- be the same pose ("FinerSolve").
 module ScreenReport
   ( Screen (..),
     Judgement (..),
@@ -98,8 +101,9 @@ data Screen = Screen
     screenCrossings :: !Int,
     screenDeepestReach :: !(Maybe (Double, (Int, Int))),
     screenTurning :: !Turning,
-    -- | The same on the pose made again one level finer; nothing for a pose
-    -- that is not made again, whose finer level is not measured.
+    -- | The same on the pose made again one level finer, or on its gallery's
+    -- finer solve ("FinerSolve"); nothing for a pose that is not made
+    -- again, whose finer level is not measured.
     screenTurningFiner :: !(Maybe Turning),
     -- | The body core's head-to-tail length and its median centre-crease
     -- folds in degrees, midlines then diagonals; nothing for paper that is

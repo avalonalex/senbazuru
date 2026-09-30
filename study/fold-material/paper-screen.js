@@ -38,10 +38,18 @@ const paperScreen = (() => {
   // takes the pairs whose chord stays on the paper.
   const pairs = screen => screen.floorPairs ? ` (over ${screen.floorPairs[0]} of ${screen.floorPairs[1]} pairs: the sheet is not convex)` : '';
 
+  // Where a finer level came from when it is not the pose made again: the
+  // gallery's own finer solve (owner decision 29), and how far apart the two
+  // solves are at worst. A solve that did not count set no finer level, so
+  // its cell never gets this far.
+  const from = finer => finer ? ` (${finer.label}, ${number(finer.apartPixels)} px apart)` : '';
+
   // One row per part of the screen, one column per pose. A pose is
-  // {title, screen, picture}; `picture` holds its floors after projecting
-  // onto the drawing, and a pose drawn in no picture shows a dash there.
-  // The body core's two rows appear where some pose is a crane's body.
+  // {title, screen, picture, finer}; `picture` holds its floors after
+  // projecting onto the drawing, and a pose drawn in no picture shows a dash
+  // there; `finer` names the finer solve that settled its finer level, if
+  // one did. The body core's two rows appear where some pose is a crane's
+  // body.
   function rows(poses, limits) {
     const measures = [
       ['Screen (crossings reported only)', s => headline(s)],
@@ -50,7 +58,7 @@ const paperScreen = (() => {
       [`Floor at ${percent(limits.strainScreen)} strain, 3D · this picture`, (s, p) => `${pixels(s.floor3dPixelsAtScreen)} · ${pixels(p && p.pictureFloorPixelsAtScreen)}`],
       ['Crossing pairs, strict test · largest reach-through', s => s.crossingPairCount + (s.deepestReachPixels == null ? '' : ' · ' + pixels(s.deepestReachPixels))],
       [`False creases: joins past ${limits.falseCreaseThresholdDegrees}° · turning, sheet units × degrees`, s => `${s.falseCreaseJoins} · ${number(s.falseCreaseTurningSheetDegrees)}`],
-      ['The same, one level finer', s => s.falseCreaseJoinsFiner == null ? '— (not made again)' : `${s.falseCreaseJoinsFiner} · ${number(s.falseCreaseTurningFinerSheetDegrees)}`]
+      ['The same, one level finer', (s, _, finer) => s.falseCreaseJoinsFiner == null ? '— (not made again)' : `${s.falseCreaseJoinsFiner} · ${number(s.falseCreaseTurningFinerSheetDegrees)}${from(finer)}`]
     ];
     const core = [
       ['Body core length, sheet units', s => s.coreLengthSheets == null ? '—' : number(s.coreLengthSheets)],
@@ -58,12 +66,13 @@ const paperScreen = (() => {
     ];
     const body = s => s.coreLengthSheets != null || s.centreMidlineFoldDegrees != null || s.centreDiagonalFoldDegrees != null;
     const shown = poses.some(p => body(p.screen)) ? [...measures, ...core] : measures;
-    return [['Paper screen', ...poses.map(p => p.title)], ...shown.map(([name, cell]) => [name, ...poses.map(p => cell(p.screen, p.picture))])];
+    return [['Paper screen', ...poses.map(p => p.title)], ...shown.map(([name, cell]) => [name, ...poses.map(p => cell(p.screen, p.picture, p.finer))])];
   }
 
   // A gallery's runs as the poses of a table, titled by `titleOf`. A gallery
-  // writes a run's floors in its picture beside its screen, on the run.
-  const poses = (runs, titleOf) => runs.map(run => ({title: titleOf(run), screen: run.screen, picture: run}));
+  // writes beside a run's screen, on the run, its floors in its picture and
+  // the finer solve it takes its finer level from.
+  const poses = (runs, titleOf) => runs.map(run => ({title: titleOf(run), screen: run.screen, picture: run, finer: run.finerSolve}));
 
   // Put rows into `container` as a table, the first row as its heading.
   function fill(container, table) {
@@ -84,7 +93,7 @@ const paperScreen = (() => {
   const show = (container, runs, titleOf, limits) => fill(container, rows(poses(runs, titleOf), limits));
 
   function caption(limits) {
-    return `The no-stretch floor is how far some point must move before a pose could be paper. It is a proof, not an estimate: paper cannot stretch, so no two of its points end up further apart than on the flat sheet. Floors and reach-throughs are in pixels, ${limits.pixelsPerSheet} to a sheet unit: one unit of the flat sheet's coordinates, the side of the crane's square and the length of the wing studies' test wing. A pose passes with no more than ${percent(limits.strainScreen)} strain (owner decision 16), a floor of at most ${limits.floorLimitPixels} px at that strain, and no join bent past ${limits.falseCreaseThresholdDegrees}°, on the pose's mesh or on the same pose made again with every triangle split into four (PRD 11's targets). A pose that is not made again is judged on its own mesh, and its finer level is not measured, which neither passes nor fails (owner decision 27). A curve the mesh only samples loses turning on the finer mesh; a fold keeps it, and so can a bend narrower than the finer triangles. Strain within ${percent(limits.strictStrainScreen)} is reported and not required. Crossings are reported, not judged: where layers touch, a count measures rounding, and the reach-through is an upper bound on how deep a pair crosses. The screen changes no pose.`;
+    return `The no-stretch floor is how far some point must move before a pose could be paper. It is a proof, not an estimate: paper cannot stretch, so no two of its points end up further apart than on the flat sheet. Floors and reach-throughs are in pixels, ${limits.pixelsPerSheet} to a sheet unit: one unit of the flat sheet's coordinates, the side of the crane's square and the length of the wing studies' test wing. A pose passes with no more than ${percent(limits.strainScreen)} strain (owner decision 16), a floor of at most ${limits.floorLimitPixels} px at that strain, and no join bent past ${limits.falseCreaseThresholdDegrees}°, on the pose's mesh or on the same pose made again with every triangle split into four (PRD 11's targets). A pose that is not made again is judged on its own mesh, and its finer level is not measured, which neither passes nor fails (owner decision 27). Where its gallery has solved the same control on the mesh split into four, and the two solves agree within ${limits.floorLimitPixels} px at every vertex of the coarser mesh, that solve counts as the pose made again (owner decision 29). A curve the mesh only samples loses turning on the finer mesh; a fold keeps it, and so can a bend narrower than the finer triangles. Strain within ${percent(limits.strictStrainScreen)} is reported and not required. Crossings are reported, not judged: where layers touch, a count measures rounding, and the reach-through is an upper bound on how deep a pair crosses. The screen changes no pose.`;
   }
 
   return {number, headline, rows, poses, fill, show, caption};

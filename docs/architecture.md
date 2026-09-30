@@ -325,8 +325,10 @@ the measures of a *paper screen*, which says whether paper could take a pose;
 writes beside each pose and the script a page reads it with;
 `CraneSpreadScreen` screens a crane with a wing moved and says which of its
 edges are joins; `SurfaceScreen` screens a pose from the surface its gallery
-writes, whose frame names the joins; and `WholeCraneScreen` adds the whole
-crane's body core. None changes a pose,
+writes, whose frame names the joins; `FinerSolve` lets a gallery's own solve
+on the mesh split into four settle a solved pose's finer level, where it is
+shown to be the same pose; and `WholeCraneScreen` adds the whole crane's body
+core. None changes a pose,
 though `WholeCraneScreen` makes each pose again on a finer mesh to measure its
 false creases there. `CylinderStrip` is the false-crease
 measure's control, a strip laid on a cylinder: a curve, whose joins a finer

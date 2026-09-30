@@ -334,7 +334,9 @@ retained for every control; only accepted endpoints get SVG/GLB views. Every
 control carries a paper screen, as the whole crane's poses do: under `screen`
 in `checks.json`, with its floor in its drawing beside it in
 `pictureFloorPixels` where the gallery draws it. A solved pose's false creases
-one level finer are not measured. See
+one level finer are not measured: the finer curved grip has 1,192 triangles,
+not four times 392, so it is not the coarser mesh split into four, which owner
+decision 29 would need. See
 [the instructions](../../docs/usage.md#spreading-one-connected-crane-wing) and
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
@@ -567,7 +569,9 @@ penetrating guess and a lifted upper grip. The 40-degree bend now converges at
 three mesh resolutions, with position and energy comparisons; incompatible
 grips remain a diagnostic. Every control carries a paper screen, under
 `screen` in `checks.json`, with its floor in its drawing beside it in
-`pictureFloorPixels` where the gallery draws it. See [the instructions](../../docs/usage.md#two-held-touching-layers)
+`pictureFloorPixels` where the gallery draws it. The flat and 40-degree bends
+take the same grip solved at 16 divisions as their finer level, recorded under
+`finerSolve` (owner decision 29). See [the instructions](../../docs/usage.md#two-held-touching-layers)
 and [the coupled-solve measurements](../../docs/notes/coupled-touching-layer-solve.md).
 The generated SVG, FOLD and glTF use the same positions; this is static contact,
 not a checked flexible motion or finite-thickness mechanics.
@@ -576,7 +580,9 @@ not a checked flexible motion or finite-thickness mechanics.
 solves a separate uncreased wing-shaped sheet held at its root and tip.
 `wing-bending.html` compares three grip placements at three resolutions, with
 a known bent-strip benchmark, independent endpoint measurements and each
-shape's paper screen. SVG, FOLD and glTF share the solved triangles; the 3D viewer uses the same local Three.js
+shape's paper screen. An 8-division shape takes the same grip solved at 16
+divisions as its finer level, recorded under `finerSolve` (owner decision 29).
+SVG, FOLD and glTF share the solved triangles; the 3D viewer uses the same local Three.js
 installation as the checked-flap pages. See [the instructions](../../docs/usage.md#controlled-wing-bending)
 and [the measurements](../../docs/notes/held-wing-bending.md). These static
 shapes do not certify a flexible folding motion or realistic crane spreading.
