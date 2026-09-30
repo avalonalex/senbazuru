@@ -992,7 +992,8 @@ checked coupled angles.
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile points to contact derivatives and sparse
-   factorization; measure a value-only line-search evaluation under #208.
+   factorization; measure a value-only line-search evaluation under
+   [#441](https://github.com/avalonalex/senbazuru/issues/441).
    The full coupled crane follows the small patch only after its geometry
    and visible result are accepted; measure attachment response rather than
    prescribing a photographed head/tail trajectory.
