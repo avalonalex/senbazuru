@@ -18,7 +18,7 @@
   <label id="omission-control" hidden><input id="omissions" type="checkbox"> Highlight omitted marks</label>
 </div>
 <div class="drawings fit" id="drawings">
-  <figure><figcaption>Current drawing · More tucked</figcaption><div class="viewport"><img id="before" alt="Current plain-paper tucked crane"></div><div class="foot">The saved shape and visible paper regions.</div></figure>
+  <figure><figcaption id="before-title">Current drawing · More tucked</figcaption><div class="viewport"><img id="before" alt="Current plain-paper tucked crane"></div><div class="foot">The saved shape and visible paper regions.</div></figure>
   <figure><figcaption id="after-title">Three tones · all crease marks</figcaption><div class="viewport"><img id="after" alt="The same tucked crane with three tones and clearer outlines"></div><div class="foot" id="detail"></div></figure>
 </div>
 <p id="scale-note">Both cards use the same camera and scale. Fit to cards reduces the exported drawing to your screen width.</p>
@@ -30,6 +30,8 @@
 const data = /*CRANE_BOOK_DATA*/null;
 const camera=document.getElementById('camera');
 for(const view of data.views)camera.add(new Option(view.title,view.id));
+// The pose drawn here was placed, not folded, and every card says so.
+const labelled=(text,view)=>view.caveat?`${text} · ${view.caveat}`:text;
 function draw(){
   const view=data.views.find(v=>v.id===camera.value);
   const selective=document.getElementById('treatment').value==='selected';
@@ -38,7 +40,10 @@ function draw(){
   document.getElementById('omission-control').hidden=!selective;
   document.getElementById('before').src=`whole-crane/${view.stem}.svg`;
   document.getElementById('after').src=`whole-crane/${view.stem}${suffix}.svg`;
-  document.getElementById('after-title').textContent=highlight?'Omitted marks highlighted':selective?'Three tones · fewer tiny marks':'Three tones · all crease marks';
+  document.getElementById('after-title').textContent=labelled(highlight?'Omitted marks highlighted':selective?'Three tones · fewer tiny marks':'Three tones · all crease marks',view);
+  document.getElementById('before-title').textContent=labelled('Current drawing · More tucked',view);
+  document.getElementById('before').alt=labelled('Current plain-paper tucked crane',view);
+  document.getElementById('after').alt=labelled('The same tucked crane with three tones and clearer outlines',view);
   document.getElementById('detail').textContent=selective?`${view.omittedCreases.length} of ${view.creaseFragments} crease fragments omitted; all contours retained.`:`All ${view.creaseFragments} visible crease fragments retained; shading and line weights change.`;
   for(const [id,end] of [['download',suffix],['original',''],['colours','-colours']])document.getElementById(id).href=`whole-crane/${view.stem}${end}.svg`;
   const size=document.getElementById('size').value;

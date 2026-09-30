@@ -116,7 +116,7 @@ async function start() {
         if (material.color) material.userData.paperColour = material.color.clone();
       }
     });
-    models.set(model.path, { root, title: model.title, label: model.label });
+    models.set(model.path, { root, title: model.title, caveat: model.caveat });
     status.textContent = `Loaded ${++count} of ${data.models.length} GLB poses…`;
   }));
   // Finish the small batch before reporting failure, so a late successful
@@ -172,8 +172,9 @@ async function start() {
       if (material.flatShading !== flat) { material.flatShading = flat; material.needsUpdate = true; }
     }
   });
-  // A placed pose is named for what it is wherever it is named.
-  const labelled = (title, pose) => pose.label ? `${title} · ${pose.label}` : title;
+  // A placed pose carries its caveat wherever this page names the pose it
+  // shows: the shape menu, the status line and the slider's spoken value.
+  const labelled = (title, model) => model && model.caveat ? `${title} · ${model.caveat}` : title;
   const openingPaths = new Set(data.openings.map(pose => pose.path));
   for (const model of data.models) {
     if (!openingPaths.has(model.path)) shape.add(new Option(labelled(model.title, model), model.path));
@@ -194,11 +195,11 @@ async function start() {
     current = model.root;
     applyAppearance(current);
     scene.add(current);
-    const label = adjusting ? labelled(`${pose.title} · slim body`, pose) : labelled(model.title, model);
+    const label = labelled(adjusting ? `${pose.title} · slim body` : model.title, model);
     document.querySelector('#spread-control').hidden = !adjusting;
     document.querySelector('#spread-help').hidden = !adjusting;
     document.querySelector('#spread-value').textContent = pose.title;
-    spread.setAttribute('aria-valuetext', pose.title);
+    spread.setAttribute('aria-valuetext', labelled(pose.title, models.get(pose.path)));
     host.setAttribute('aria-label', `Interactive crane model: ${label}`);
     status.textContent = `${label} · exposed paper · same camera and scale`;
     download.href = path;

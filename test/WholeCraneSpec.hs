@@ -133,25 +133,27 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   -- leading with it, turns this red.
   it "gives the viewers visible paper first and every layer second" $ \(_, _, study) -> do
     let fixture = wholeSpread study
-    sheet <- right (spreadSurface fixture (refinedMesh (spreadRefined fixture)))
-    glb <- right (viewerGlb RigidPanels "Closed crane" sheet) >>= parseGlb
+        closed = CranePose "before" "Closed crane" RigidPanels (refinedMesh (spreadRefined fixture))
+    sheet <- right (spreadSurface fixture (craneMesh closed))
+    glb <- right (viewerGlb closed sheet) >>= parseGlb
     map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
     at "scene" (glbJson glb) `shouldBe` Number 0
+    -- A folded pose keeps its plain name, and its file says it was folded.
+    map (at "name") (items (at "nodes" (glbJson glb))) `shouldBe` replicate 2 (String "Closed crane")
+    recordedGeometry glb `shouldBe` String "rigid panels"
 
   -- PRD 11's R-11-2: a pose placed rather than folded says so in its file.
-  -- Calling a placed pose folded, or writing the same level whatever the
-  -- pose, turns this red.
-  it "records More tucked as a shape sketch in its GLB, and the closed crane as folded" $ \(_, _, study) -> do
+  -- Calling a placed pose folded, or writing the same level or name whatever
+  -- the pose, turns this or the test above red.
+  it "records More tucked as a shape sketch in its GLB, and only the closed crane as folded" $ \(_, _, study) -> do
     poses <- right (wholeCranePoses study)
-    [(poseName p, poseGeometry p) | p <- poses, poseGeometry p /= Just AsPrescribed] `shouldBe` [("before", Just RigidPanels)]
-    let recorded name = case find ((== name) . poseName) poses of
-          Just pose@(Pose _ title (Just geometry) mesh) -> do
-            sheet <- right (spreadSurface (wholeSpread study) mesh)
-            glb <- right (viewerGlb geometry title sheet) >>= parseGlb
-            pure (at "geometry" (at "fidelity" (at "senbazuru" (at "extras" (glbJson glb)))), poseLabel pose)
-          _ -> fail ("no pose " ++ name ++ " with a geometry level")
-    recorded "spread-0" >>= (`shouldBe` (String "as prescribed", Just "shape sketch"))
-    recorded "before" >>= (`shouldBe` (String "rigid panels", Nothing))
+    [(craneStem p, craneGeometry p) | p <- poses, craneGeometry p /= AsPrescribed] `shouldBe` [("before", RigidPanels)]
+    [craneCaveat p | p <- poses, craneStem p == "before"] `shouldBe` [Nothing]
+    tucked <- maybe (fail "no spread-0 pose") pure (find ((== "spread-0") . craneStem) poses)
+    sheet <- right (spreadSurface (wholeSpread study) (craneMesh tucked))
+    glb <- right (viewerGlb tucked sheet) >>= parseGlb
+    recordedGeometry glb `shouldBe` String "as prescribed"
+    map (at "name") (items (at "nodes" (glbJson glb))) `shouldBe` replicate 2 (String "More tucked · visual target · shape sketch")
 
   -- PRD 11's A-11-1, with the false-crease and core figures of its research
   -- (H1, Y3, Y4) on the same construction. Computed along edges only, the 3D
@@ -187,6 +189,10 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     fst (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
     snd (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
     fmap floorPixels (uprightFloor (spreadMesh fixture)) `shouldSatisfy` maybe False (near 1.02 0.01)
+
+-- | The geometry level a GLB's fidelity record gives, or null.
+recordedGeometry :: Glb -> Value
+recordedGeometry glb = at "geometry" (at "fidelity" (at "senbazuru" (at "extras" (glbJson glb))))
 
 -- | The no-stretch floor in the gallery's upright picture.
 uprightFloor :: MaterialMesh -> Maybe FloorPair

@@ -55,9 +55,10 @@ and the earlier cameras. The selected shape has matching measurements and
 FOLD/GLB download links. Plain/two-sided SVGs and
 complete FOLD/GLB exports share the same geometry. All remain unaccepted
 shape sketches with substantial material distortion, and every placed pose
-says so: its drawings' titles, its gallery and viewer cards, and its GLB's
-fidelity record (`as prescribed`), while the closed crane's records
-`rigid panels`. Beside the drawings, a
+says so: in a caption and the title of each of its drawings, on its cards in
+the gallery, the book page and the 3D viewer, and in its GLB, whose name ends
+"shape sketch" and whose fidelity record reads `as prescribed`. The closed
+crane's reads `rigid panels`. Beside the drawings, a
 *paper screen* says whether paper could take each pose: its strain, the
 [no-stretch floor](../../docs/notes/no-stretch-floor.md) in 3D and in the
 chosen picture, crossings with their largest reach-through, false creases, and
