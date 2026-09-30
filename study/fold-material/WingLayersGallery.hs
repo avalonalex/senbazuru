@@ -3,9 +3,9 @@
 -- Unaccepted runs retain their full FOLD geometry and measurements for diagnosis.
 -- This is a static material experiment, not a certified motion between grips.
 -- Every control, accepted or not, carries its paper screen ("SurfaceScreen").
--- The flat and 40° bends take the same grip solved at 16 divisions as their
--- finer level, where "FinerSolve" shows the two are the same pose (owner
--- decision 29).
+-- The flat and 40° bends, and the 40° bend whose upper layer starts inside
+-- the lower, take the same grip solved at 16 divisions as their finer level,
+-- where "FinerSolve" shows the two are the same pose (owner decision 29).
 module WingLayersGallery (writeWingLayers) where
 
 import Control.Exception (evaluate)
@@ -77,14 +77,18 @@ writeWingLayers destination = do
     ordered <- checked (Contact.prepareContact 0 (V3 0 0 1) [(FaceId 0, FaceId 1)] (layersOwners fixture) mesh)
     rows <- checked (Contact.orderedContacts ordered mesh)
     let accepted = converged result && contactPassed contact && heldError == 0 && maximum (0 : angles) < 1e-7
-    -- The gallery draws exactly the controls it accepts.
-    (screen, screenKeys) <- either (die . T.unpack) pure (wingScreen sheet contact (layersHinges fixture) accepted mesh)
+    -- The gallery draws exactly the controls it accepts. The control is
+    -- screened here with its finer level not measured, for its own turning;
+    -- its report screens it again at the level 'finishReports' settles.
+    let screenAt = wingScreen sheet contact (layersHinges fixture) accepted mesh
+    (own, _) <- either (die . T.unpack) pure (screenAt Nothing)
     let -- FoldMaterial's areaRatio assumes a unit square. This diamond has
         -- area 0.6, so normalize by its actual material triangles instead.
         restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
         pairedDistances = [norm (position a ^-^ position b) | (i, j) <- layersPairs fixture, Just a <- [IM.lookup i vertices], Just b <- [IM.lookup j vertices]]
-        report final finer =
-          object $
+        report finer keys = do
+          (screen, screenKeys) <- screenAt finer
+          pure . object $
             [ "id" .= stem,
               "title" .= title,
               "divisions" .= n,
@@ -100,8 +104,8 @@ writeWingLayers destination = do
               "sourcePanels" .= (2 :: Int),
               "materialCreases" .= (1 :: Int),
               "areaRatio" .= (areaRatio mesh / restArea),
-              "minPrincipalStrain" .= negate (screenSquash final),
-              "maxPrincipalStrain" .= screenStretch final,
+              "minPrincipalStrain" .= negate (screenSquash screen),
+              "maxPrincipalStrain" .= screenStretch screen,
               "maxRelativeEdgeError" .= maxLengthError mesh,
               "heldPositionError" .= heldError,
               "maxRootAngleErrorRadians" .= maximum (0 : angles),
@@ -114,8 +118,8 @@ writeWingLayers destination = do
               "contact" .= contact,
               "continuousMotionChecked" .= False
             ]
-              ++ screenKeys final
-              ++ finer
+              ++ screenKeys
+              ++ keys
         file = FoldFile (Just 1.2) (Just "senbazuru touching layer study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -124,11 +128,15 @@ writeWingLayers destination = do
       drawing <- either (die . T.unpack) pure (wingSvg [sheet])
       TIO.writeFile (output </> stem ++ ".svg") drawing
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic; see checks.json")
-    pure (stem, title, accepted, sheet, Pending (T.pack stem) screen mesh report, panel)
-  -- Owner decision 29: a control solved again on the mesh split into four,
-  -- the same grip at 16 divisions, may be its finer level. The finest bend
-  -- is at 24, not twice 16, and the other controls are solved once.
-  reports <- either (die . T.unpack) pure (finishReports [("flat", "fine-flat", "solved at 16 divisions"), ("bend-40", "fine-bend", "solved at 16 divisions")] [pending | (_, _, _, _, pending, _) <- runs])
+    pure (stem, title, accepted, sheet, Pending (T.pack stem) (layersPins fixture) mesh (screenTurning own) report, panel)
+  -- Owner decision 29: a control solved again on its mesh split into four,
+  -- the same grip at 16 divisions, may give its finer level. The perturbed
+  -- bend differs from the 40° bend only in where its solve starts, so it is
+  -- the same control. The finest bend is at 24, not twice 16; the 20° bend is
+  -- solved once; and the lifted and incompatible grips hold the sheet
+  -- elsewhere.
+  let finer = [(pose, run, "16 divisions") | (pose, run) <- [("flat", "fine-flat"), ("bend-40", "fine-bend"), ("perturbed", "fine-bend")]]
+  reports <- either (die . T.unpack) pure (finishReports finer [pending | (_, _, _, _, pending, _) <- runs])
   let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
       comparisons = [object ["geometry" .= refinement a b, "fromEnergy" .= ea, "toEnergy" .= eb, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
       document = object ["runs" .= reports, "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]

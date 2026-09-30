@@ -569,9 +569,11 @@ penetrating guess and a lifted upper grip. The 40-degree bend now converges at
 three mesh resolutions, with position and energy comparisons; incompatible
 grips remain a diagnostic. Every control carries a paper screen, under
 `screen` in `checks.json`, with its floor in its drawing beside it in
-`pictureFloorPixels` where the gallery draws it. The flat and 40-degree bends
-take the same grip solved at 16 divisions as their finer level, recorded under
-`finerSolve` (owner decision 29). See [the instructions](../../docs/usage.md#two-held-touching-layers)
+`pictureFloorPixels` where the gallery draws it. The flat and 40-degree bends,
+and the 40-degree bend whose upper layer starts inside the lower, take the same grip
+solved at 16 divisions as their finer level where that solve counts as the
+shape made again (owner decision 29); `finerSolve` records how far apart the two
+are, or why the solve does not count. See [the instructions](../../docs/usage.md#two-held-touching-layers)
 and [the coupled-solve measurements](../../docs/notes/coupled-touching-layer-solve.md).
 The generated SVG, FOLD and glTF use the same positions; this is static contact,
 not a checked flexible motion or finite-thickness mechanics.
@@ -581,7 +583,9 @@ solves a separate uncreased wing-shaped sheet held at its root and tip.
 `wing-bending.html` compares three grip placements at three resolutions, with
 a known bent-strip benchmark, independent endpoint measurements and each
 shape's paper screen. An 8-division shape takes the same grip solved at 16
-divisions as its finer level, recorded under `finerSolve` (owner decision 29).
+divisions as its finer level where that solve counts as the shape made again
+(owner decision 29); `finerSolve` records how far apart the two are, or why
+the solve does not count.
 SVG, FOLD and glTF share the solved triangles; the 3D viewer uses the same local Three.js
 installation as the checked-flap pages. See [the instructions](../../docs/usage.md#controlled-wing-bending)
 and [the measurements](../../docs/notes/held-wing-bending.md). These static

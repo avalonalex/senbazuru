@@ -396,12 +396,14 @@ Open [the controlled bending study](http://127.0.0.1:8000/wing-bending.html).
 `wing-bending/` contains nine wing and three strip FOLD/GLB pairs, SVG
 comparisons and `checks.json`, with each shape's
 [paper screen](glossary.md#this-project). An 8-division shape's false creases
-one level finer are those of the same grip solved at 16 divisions, the same
-mesh with every triangle split into four, where the two solves agree within
-the 1 px floor limit (owner decision 29). The 16- and 24-division shapes have
-no such solve, and neither do the strips, whose 16-span mesh is not their
-8-span mesh split into four, so their finer level is not measured (owner
-decision 27). A strip, drawn only in 3D, has no floor in a picture. Select 8, 16 or 24 mesh divisions to compare
+one level finer are those of the same grip solved at 16 divisions, its mesh
+with every triangle split into four, where that solve counts as the shape
+[made again](glossary.md#this-project) (owner decision 29); the table says how
+far apart the two are, or that the solve does not count. The 16- and
+24-division shapes have no such solve. Nor do the strips: each holds its
+first and last span, which shorten as spans are added, so no two strips are
+one [control](glossary.md#this-project). Their finer level is not measured
+(owner decision 27). A strip, drawn only in 3D, has no floor in a picture. Select 8, 16 or 24 mesh divisions to compare
 flat, 20-degree and 40-degree grip placements. Every SVG comparison has one
 camera and scale. The table compares length error, exact held positions,
 bending energy, convergence and independent endpoint contact. The known strip
@@ -431,10 +433,12 @@ The page compares flat, 20-degree and 40-degree grips at eight divisions, an
 initially penetrating guess and a lifted upper grip. Accepted shapes have
 SVG/FOLD/GLB exports in `wing-layers/`, and every control's
 [paper screen](glossary.md#this-project) is in `checks.json`. The flat and
-40-degree bends take the same grip solved at 16 divisions as their finer
-level, where the two solves agree within the 1 px floor limit (owner decision
-29); every other control's false creases one level finer are not measured
-(owner decision 27). A control that is not accepted is drawn in no picture,
+40-degree bends, and the 40-degree bend whose upper layer starts inside the
+lower, which is the same [control](glossary.md#this-project), take the same grip solved at
+16 divisions as their finer level where that solve counts as the shape
+[made again](glossary.md#this-project) (owner decision 29). Every other
+control's false creases one level finer are not measured (owner decision
+27). A control that is not accepted is drawn in no picture,
 so it has no floor in a picture. The 40-degree bend also runs at 16 and
 24 divisions, with a shared-camera comparison in `refinement.svg` and material
 position/energy changes in `checks.json`. Only converged shapes passing the
@@ -469,7 +473,9 @@ GLBs and `checks.json`, which holds each control's
 [paper screen](glossary.md#this-project). A solved pose's false creases one
 level finer are not measured (owner decision 27), and its body core, held,
 has no readings. The 50-degree grip runs at two refinements, with the
-same physical held strips. The incompatible control pushes an upper grip
+same physical held strips, but the finer one has 1,192 triangles, not four
+times 392: it is not the coarser mesh split into four, so it cannot count as
+the curved grip made again (owner decision 29). The incompatible control pushes an upper grip
 through its lower partner; its diagnostic FOLD is excluded from the model
 selector. Regular controls allow twenty iterations per penalty stage; the
 incompatible grip allows two. Generation can take several minutes.
@@ -498,7 +504,10 @@ The flat-preference control repeats at a finer resolution.
 
 `crane-root/` contains full material FOLDs and per-control measurements, accepted
 SVG/GLB shapes, a side-profile comparison and `checks.json`, with each
-control's paper screen. The independent
+control's paper screen. A solved pose's false creases one level finer are not
+measured (owner decision 27): the finer flat-preference control has 4,312
+triangles, not four times 1,176, so it is not the coarser mesh split into four
+and cannot count as that control made again (owner decision 29). The independent
 checks preserve original creases and all source orders; root spring angles are
 reported separately because a preference is not an exact hold. Failed controls
 remain diagnostic FOLDs outside the accepted model selector. A physically valid

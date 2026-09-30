@@ -58,12 +58,12 @@
     is one sheet unit long, root to tip, and the figures are drawn at 320 px
     to the unit, so a floor in their own pixels is 0.53 times the figure in the
     table. The 16-division mesh is the 8-division mesh with every triangle
-    split into four, and the gallery solves each grip on both. So at 8
-    divisions a shape's finer level is its grip solved at 16, which counts as
-    the shape made again where the two solves agree within the 1 px floor
-    limit at every vertex of the coarser mesh (owner decision 29); the table
-    says how far apart they are. The 16- and 24-division shapes have no such
-    solve, and their finer level is not measured (owner decision 27).</p>
+    split into four, and the gallery solves each grip on both, so at 8
+    divisions a shape's finer level is its grip solved at 16, where that solve
+    counts as the shape made again by the rule above (owner decision 29). The
+    table says how far apart the two are, or that the solve does not count.
+    The 16- and 24-division shapes have no such solve, and their finer level
+    is not measured (owner decision 27).</p>
 </section>
 <section>
   <h2>Does refining the mesh change the answer?</h2>
@@ -93,9 +93,9 @@
   <div class="table-wrap"><table><thead><tr><th>Spans</th><th>Largest position error</th><th>Edge error</th><th>Converged</th></tr></thead><tbody id="benchmarks"></tbody></table></div>
   <div class="table-wrap screen" id="strip-screen"></div>
   <p class="note">A strip is drawn only in 3D, with no camera of its own, so its
-    screen has no picture floor. The 16-span strip is not the 8-span strip
-    with every triangle split into four, so no strip has a finer level
-    (owner decision 27).</p>
+    screen has no picture floor. Each strip holds its first and last span,
+    which shorten as spans are added, so no two strips solve the same control,
+    and no strip has a finer level (owner decision 27).</p>
 </section>
 <p class="note"><strong>Scope:</strong> one sheet, controlled grips, and independent
   checks of the settled shapes. A <a href="wing-layers.html">separate study</a> adds touching wing layers. A connected crane body,

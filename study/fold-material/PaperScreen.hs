@@ -56,6 +56,7 @@ module PaperScreen
     falseCreaseTurning,
     coreLength,
     centreFolds,
+    maximumOn,
   )
 where
 

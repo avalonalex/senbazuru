@@ -38,18 +38,21 @@ const paperScreen = (() => {
   // takes the pairs whose chord stays on the paper.
   const pairs = screen => screen.floorPairs ? ` (over ${screen.floorPairs[0]} of ${screen.floorPairs[1]} pairs: the sheet is not convex)` : '';
 
-  // Where a finer level came from when it is not the pose made again: the
-  // gallery's own finer solve (owner decision 29), and how far apart the two
-  // solves are at worst. A solve that did not count set no finer level, so
-  // its cell never gets this far.
-  const from = finer => finer ? ` (${finer.label}, ${number(finer.apartPixels)} px apart)` : '';
+  // The false creases one level finer. Where they come from the gallery's
+  // own finer solve (owner decision 29), the cell names that solve and how
+  // far apart the two are at worst; where the gallery named a finer solve
+  // that does not count, it says so, the finer level then not measured.
+  function finerCell(s, finer) {
+    if (s.falseCreaseJoinsFiner == null) return finer ? `— (the solve at ${finer.label} does not count)` : '— (not made again)';
+    const turning = `${s.falseCreaseJoinsFiner} · ${number(s.falseCreaseTurningFinerSheetDegrees)}`;
+    return finer && finer.apartPixels != null ? `${turning} (solved at ${finer.label}, ${pixels(finer.apartPixels)} apart)` : turning;
+  }
 
   // One row per part of the screen, one column per pose. A pose is
   // {title, screen, picture, finer}; `picture` holds its floors after
   // projecting onto the drawing, and a pose drawn in no picture shows a dash
-  // there; `finer` names the finer solve that settled its finer level, if
-  // one did. The body core's two rows appear where some pose is a crane's
-  // body.
+  // there; `finer` is the finer solve its gallery named for it, counted or
+  // not. The body core's two rows appear where some pose is a crane's body.
   function rows(poses, limits) {
     const measures = [
       ['Screen (crossings reported only)', s => headline(s)],
@@ -58,7 +61,7 @@ const paperScreen = (() => {
       [`Floor at ${percent(limits.strainScreen)} strain, 3D · this picture`, (s, p) => `${pixels(s.floor3dPixelsAtScreen)} · ${pixels(p && p.pictureFloorPixelsAtScreen)}`],
       ['Crossing pairs, strict test · largest reach-through', s => s.crossingPairCount + (s.deepestReachPixels == null ? '' : ' · ' + pixels(s.deepestReachPixels))],
       [`False creases: joins past ${limits.falseCreaseThresholdDegrees}° · turning, sheet units × degrees`, s => `${s.falseCreaseJoins} · ${number(s.falseCreaseTurningSheetDegrees)}`],
-      ['The same, one level finer', (s, _, finer) => s.falseCreaseJoinsFiner == null ? '— (not made again)' : `${s.falseCreaseJoinsFiner} · ${number(s.falseCreaseTurningFinerSheetDegrees)}${from(finer)}`]
+      ['The same, one level finer', (s, _, finer) => finerCell(s, finer)]
     ];
     const core = [
       ['Body core length, sheet units', s => s.coreLengthSheets == null ? '—' : number(s.coreLengthSheets)],
