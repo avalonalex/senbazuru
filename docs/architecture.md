@@ -321,10 +321,12 @@ for diagnostic shape review. It does not replace `Render.Projected` or contact
 acceptance. [The whole-crane note](notes/whole-crane-candidate.md) records the
 failed control and the visual proposal's material defects. `PaperScreen` holds
 the measures of a *paper screen*, which says whether paper could take a pose,
-and `WholeCraneScreen` says which parts of the crane they read; neither moves a
-vertex. `CylinderStrip` is the false-crease measure's control, a strip laid on
-a cylinder: a curve, whose joins a finer mesh bends less. `pillowCrane` adds
-an authored cushion and wing target; `compactPillowCrane` narrows its body and
+and `WholeCraneScreen` says which parts of the crane they read. Neither
+changes a pose, though `WholeCraneScreen` makes each pose again on a finer mesh
+to measure its false creases there. `CylinderStrip` is the false-crease
+measure's control, a strip laid on a cylinder: a curve, whose joins a finer
+mesh bends less. `pillowCrane` adds an authored cushion and wing target;
+`compactPillowCrane` narrows its body and
 raises the same wing arches; `narrowPillowCrane` further narrows only that
 body. `pillowCraneAtSpread` varies its wing angle with the cushion fixed; the
 gallery exports five separately constructed settings, with no browser-side

@@ -34,6 +34,8 @@ module FoldBending
     buildSelectedSurfaceHinges,
     buildPanelHinges,
     hingeAngle,
+    hingeBends,
+    bentEdges,
     angleError,
     bendingRows,
     bendingEnergy,
@@ -252,6 +254,27 @@ hingeAngle hinge vertices = do
   where
     (a, b, c, d) = hingeVertices hinge
     point i = maybe (Left (MissingHingeVertex i)) (Right . position) (IM.lookup i vertices)
+
+-- | Each hinge with its bend in radians on the mesh: the one reading of a
+-- bend that every measure of a pose shares.
+hingeBends :: [Hinge] -> MaterialMesh -> Either BendingError [(Hinge, Double)]
+hingeBends hinges mesh = mapM (\h -> (,) h . fst <$> hingeAngle h points) hinges
+  where
+    points = IM.fromList (zip [0 ..] (samples mesh))
+
+-- | Each bent hinge with its edge, the edge's two ends on the flat sheet,
+-- and its bend in degrees. A hinge's first two vertices are its edge; the
+-- other two are the far corners of the triangles either side.
+bentEdges :: MaterialMesh -> [(Hinge, Double)] -> [(Hinge, (Int, Int), (V2, V2), Double)]
+bentEdges mesh bends =
+  [ (h, (a, b), (u, v), angle * 180 / pi)
+    | (h, angle) <- bends,
+      let (a, b, _, _) = hingeVertices h,
+      Just u <- [IM.lookup a material],
+      Just v <- [IM.lookup b material]
+  ]
+  where
+    material = IM.fromList (zip [0 ..] (map sampleMaterial (samples mesh)))
 
 angleError :: Double -> Double -> Double
 angleError actual rest = atan2 (sin (actual - rest)) (cos (actual - rest))

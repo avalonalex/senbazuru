@@ -3,8 +3,10 @@
 -- catch.
 module PaperScreenSpec (spec) where
 
+import Control.Monad (forM_)
 import CylinderStrip (Diagonal (..), placedStrip, stripJoins)
 import Data.Either (isLeft, isRight)
+import Data.Maybe (isNothing)
 import PaperScreen
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -81,21 +83,34 @@ spec = describe "the paper screen" $ do
   -- degrees and placed exactly on its cylinder: a curve, which a mesh can
   -- only sample.
   describe "false-crease turning on a curve" $ do
-    it "falls to nothing under one refinement, cells cut across the bend" $ do
-      -- The coarse joins bend up to 37 degrees and the fine ones 19. Summed
-      -- with no threshold, the fine joins still come to about 204, so a
-      -- measure that dropped its threshold turns this red.
+    it "falls to nothing past 20 degrees under one refinement, cells cut across the bend" $ do
+      -- The coarse joins bend up to 37 degrees and the fine ones 19. The
+      -- threshold is A-11-2's for this strip, not the screen's 45: placed
+      -- exactly, the strip never bends a join that far. Summed with no
+      -- threshold, the fine joins still come to about 204, so a measure that
+      -- dropped its threshold turns this red.
       coarse <- joinsOf 8 AcrossBend
       fine <- joinsOf 16 AcrossBend
       turningJoins (falseCreaseTurning 20 coarse) `shouldSatisfy` (> 0)
       falseCreaseTurning 20 fine `shouldBe` Turning 0 0
       turningTotal (falseCreaseTurning 0 fine) `shouldSatisfy` (> 100)
 
-    it "keeps its whole turning at every resolution, cells cut along the bend" $ do
-      -- Summed over every join, a curve turns as far however finely it is
-      -- sampled: why the measure needs its threshold.
-      totals <- mapM (\n -> turningTotal . falseCreaseTurning 0 <$> joinsOf n AlongBend) [8, 16, 32]
-      totals `shouldSatisfy` \ts -> maximum ts - minimum ts < 1e-9 && minimum ts > 70
+    it "sums to the strip's area over the radius at any resolution, cells cut along the bend" $ do
+      -- Cut along the bend, every diagonal lies on a straight line of the
+      -- cylinder, and the triangles either side of every other edge lie flat
+      -- together, so the diagonals carry the whole bend: the strip's area
+      -- over the cylinder's radius, however fine the cells. Summed with no
+      -- threshold, a curve never fades, which is why the measure has one.
+      -- Ten cells along make a strip a fifth wide, not a quarter, so a
+      -- placement that took every strip for Y3's would bend it too little and
+      -- turn this red.
+      forM_ [8, 10, 16, 32] $ \n -> do
+        total <- turningTotal . falseCreaseTurning 0 <$> joinsOf n AlongBend
+        total `shouldSatisfy` \t -> abs (t - areaOverRadius n) < 1e-9
+
+    it "refuses a strip with no cells across, or no turn" $ do
+      isNothing (placedStrip 3 AlongBend (3 * pi / 2)) `shouldBe` True
+      isNothing (placedStrip 8 AlongBend 0) `shouldBe` True
 
   describe "the verdict" $ do
     it "judges the floor at the declared strain, not at none" $ do
@@ -113,17 +128,36 @@ spec = describe "the paper screen" $ do
     it "fails false creases found one level finer, where the pose's own mesh has none" $
       verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Just (Turning 2 91)}) `shouldBe` False
 
+    it "fails false creases on a pose not made again one level finer" $
+      -- Half of the test was never run, so the pose has not passed it.
+      verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Nothing}) `shouldBe` False
+
     it "reports the 0.1% screen without requiring it" $ do
       let verdict = screenVerdict (screenWith 0.005 0.005)
       (verdictStrain verdict, verdictStrictStrain verdict) `shouldBe` (True, False)
       verdictPasses verdict `shouldBe` True
 
--- | Every join of research note Y3's strip at @n@ cells, as length and bend.
+-- | Every join of research note Y3's strip at @n@ cells, bent through 270
+-- degrees, as length and bend.
 joinsOf :: Int -> Diagonal -> IO [(Double, Double)]
-joinsOf n diagonal = either (fail . show) pure (stripJoins (placedStrip n diagonal (3 * pi / 2)))
+joinsOf n diagonal = case placedStrip n diagonal (3 * pi / 2) of
+  Nothing -> fail ("no strip at " <> show n <> " cells")
+  Just strip -> either (fail . show) pure (stripJoins strip)
+
+-- | What the joins of the strip at @n@ cells, cut along the bend, sum to in
+-- sheet sides times degrees: its area over the radius of its cylinder. The
+-- strip is one sheet side long and @(n \`div\` 4) / n@ wide. Across the
+-- generators, at 45 degrees, it spans its length plus its width over √2,
+-- and the cylinder turns that span through 270 degrees.
+areaOverRadius :: Int -> Double
+areaOverRadius n = width / radius * 180 / pi
+  where
+    width = fromIntegral (n `div` 4) / fromIntegral n
+    radius = ((1 + width) / sqrt 2) / (3 * pi / 2)
 
 -- | A pose whose floor is within 1 px only at the declared strain, with
--- three crossings and no false creases, squashed and stretched as given.
+-- three crossings and no false creases at either level, squashed and
+-- stretched as given.
 screenWith :: Double -> Double -> Screen
 screenWith squash stretch =
   Screen
@@ -134,7 +168,7 @@ screenWith squash stretch =
       screenCrossings = 3,
       screenDeepestReach = Nothing,
       screenTurning = Turning 0 0,
-      screenTurningFiner = Nothing,
+      screenTurningFiner = Just (Turning 0 0),
       screenCoreLength = Nothing,
       screenCentreFolds = (Nothing, Nothing)
     }

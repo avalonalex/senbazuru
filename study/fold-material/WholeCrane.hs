@@ -25,9 +25,9 @@
 -- file does not: a fidelity claim is not FOLD data (D19). The list lives
 -- here, not in the gallery, so that the test suite can check which pose is
 -- which. Because each pose records its construction rather than only its
--- mesh, 'remadeOn' can make the same pose on a finer mesh, which is how the
--- paper screen tells a fold from a curve.
-module WholeCrane (WholeCrane (..), CranePose (..), Construction (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, spreadAngle, refinedCrane, remadeOn, cranePose, wholeCraneOpenings, wholeCranePoses, craneGeometry, craneCaveat, withCaveat, studyLevel, wholeMeasurements) where
+-- mesh, 'remadeOn' can make the same pose again on a finer mesh, where the
+-- paper screen measures its false creases a second time.
+module WholeCrane (WholeCrane (..), CranePose, craneStem, craneTitle, craneConstruction, craneMesh, Construction (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, refinedCrane, finerCrane, remadeOn, cranePose, wholeCraneOpenings, wholeCranePoses, craneGeometry, craneCaveat, withCaveat, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -117,23 +117,41 @@ wholeCrane atlas patch saved = do
     analytic p = let V3 x y z = position p; V2 u v = sampleMaterial p; angle = pi / 18 in V3 x ((1 - sqrt 2 / 2) + (y - (1 - sqrt 2 / 2)) * cos angle) (z - (v - u) / sqrt 2 * sin angle)
 
 -- | One pose the gallery draws: the stem of its files, its title, how its
--- positions were made, and its mesh. The gallery's one diagnostic, a refused
--- solve, is not a 'CranePose': nothing here says how to make it.
-data CranePose = CranePose
-  { craneStem :: !String,
-    craneTitle :: !Text,
-    craneConstruction :: !Construction,
-    craneMesh :: !MaterialMesh
-  }
+-- positions were made, and its mesh. 'wholeCranePoses' and 'cranePose' are
+-- the only ways to make one, so its mesh is always the one its construction
+-- makes; the screen relies on that, reading the mesh at the study's level
+-- and the construction one level finer. Hiding the constructor is not
+-- enough for that: an exported record field still allows record update,
+-- @pose {craneMesh = other}@, so the parts are read through functions. The
+-- gallery's one diagnostic, a refused solve, is not a 'CranePose': nothing
+-- here says how to make it.
+data CranePose = CranePose !String !Text !Construction !MaterialMesh
+
+-- | The stem of the pose's files.
+craneStem :: CranePose -> String
+craneStem (CranePose stem _ _ _) = stem
+
+-- | The pose's title, as its cards and drawings show it.
+craneTitle :: CranePose -> Text
+craneTitle (CranePose _ title _ _) = title
+
+-- | How the pose's positions were made.
+craneConstruction :: CranePose -> Construction
+craneConstruction (CranePose _ _ construction _) = construction
+
+-- | The pose's mesh, at the study's own resolution.
+craneMesh :: CranePose -> MaterialMesh
+craneMesh (CranePose _ _ _ mesh) = mesh
 
 -- | How a pose's positions are made. Its geometry level follows from this,
--- and so does whether the same pose can be made again on a finer mesh.
+-- and so does whether 'remadeOn' makes it again on a finer mesh.
 data Construction
   = -- | The rigidly folded sheet: the closed crane.
     FoldedSheet
-  | -- | The first candidate, placed around the saved body. The saved body
-    -- exists only at the study's own resolution, so this pose cannot be
-    -- made again on a finer mesh.
+  | -- | The first candidate, placed around the saved body. It is not made
+    -- again on a finer mesh: 'wholeCrane' builds it on the study's own mesh
+    -- and checks that it did, and building it elsewhere is work not yet
+    -- done.
     PlacedAroundBody
   | -- | 'placePillow' with a body width across the wings and a wing tangent
     -- at the body rim.
@@ -158,25 +176,37 @@ wholeCraneOpenings = [(0, "spread-0", "More tucked"), (25, "spread-25", "Slightl
 -- rigidly folded sheet, cut into the mesh's triangles; every other pose was
 -- placed.
 wholeCranePoses :: WholeCrane -> Either SpreadError [CranePose]
-wholeCranePoses study = mapM (\(stem, title, construction) -> CranePose stem title construction <$> made study construction) cranePoseTable
+wholeCranePoses study = do
+  table <- cranePoseTable
+  mapM (\(stem, title, construction) -> CranePose stem title construction <$> made study construction) table
 
 -- | One of the gallery's poses, by the stem of its files.
 cranePose :: WholeCrane -> String -> Either SpreadError CranePose
-cranePose study stem = case [(title, construction) | (name, title, construction) <- cranePoseTable, name == stem] of
-  [(title, construction)] -> CranePose stem title construction <$> made study construction
-  _ -> bad ("the whole-crane gallery draws no pose " <> T.pack stem)
+cranePose study stem = do
+  table <- cranePoseTable
+  case [(title, construction) | (name, title, construction) <- table, name == stem] of
+    [(title, construction)] -> CranePose stem title construction <$> made study construction
+    _ -> bad ("the whole-crane gallery draws no pose " <> T.pack stem)
 
 -- | The gallery's poses: the stem of each one's files, its title, and how
--- it is made.
-cranePoseTable :: [(String, Text, Construction)]
-cranePoseTable =
-  [ ("before", "Closed crane", FoldedSheet),
-    ("after", "Opened crane · prescribed static candidate", PlacedAroundBody),
-    ("pillow", "Pillow body · visual target", pillowShape),
-    ("compact", "Less spread · visual target", compactShape),
-    ("narrow", "Narrower body · visual target", narrowShape)
-  ]
-    ++ [(name, title <> " · visual target", PlacedPillow 0.5 (spreadAngle (fromIntegral percent / 100))) | (percent, name, title) <- wholeCraneOpenings, percent /= 50]
+-- it is made. The spread settings go through 'spreadShape', so an opening
+-- outside 0% to 100% is refused here as 'pillowCraneAtSpread' refuses it.
+cranePoseTable :: Either SpreadError [(String, Text, Construction)]
+cranePoseTable = do
+  spreads <- traverse spreadRow [opening | opening@(percent, _, _) <- wholeCraneOpenings, percent /= 50]
+  pure
+    ( [ ("before", "Closed crane", FoldedSheet),
+        ("after", "Opened crane · prescribed static candidate", PlacedAroundBody),
+        ("pillow", "Pillow body · visual target", pillowShape),
+        ("compact", "Less spread · visual target", compactShape),
+        ("narrow", "Narrower body · visual target", narrowShape)
+      ]
+        ++ spreads
+    )
+  where
+    spreadRow (percent, name, title) = do
+      construction <- spreadShape (fromIntegral percent / 100)
+      pure (name, title <> " · visual target", construction)
 
 -- | A pose's mesh at the study's own resolution.
 made :: WholeCrane -> Construction -> Either SpreadError MaterialMesh
@@ -185,8 +215,9 @@ made study = \case
   PlacedAroundBody -> Right (spreadMesh (wholeSpread study))
   PlacedPillow bodyWidthScale start -> pillowCraneWith bodyWidthScale start study
 
--- | A pose made again on another refinement of the sheet, or nothing when it
--- cannot be: the same construction, sampled more or less finely.
+-- | A pose made again on another refinement of the sheet: the same
+-- construction, sampled more or less finely. Nothing for the first
+-- candidate, which is not made again ('PlacedAroundBody').
 remadeOn :: WholeCrane -> RefinedSurface -> Construction -> Either SpreadError (Maybe MaterialMesh)
 remadeOn study refined = \case
   FoldedSheet -> Right (Just (refinedMesh refined))
@@ -266,9 +297,14 @@ narrowShape = PlacedPillow 0.5 (-(5 * pi / 18))
 -- anchors and continues their displacement, rather than interpolating meshes.
 -- This changes the silhouette, not the status of these invalid paper shapes.
 pillowCraneAtSpread :: Double -> WholeCrane -> Either SpreadError MaterialMesh
-pillowCraneAtSpread amount study = do
+pillowCraneAtSpread amount study = spreadShape amount >>= made study
+
+-- | The narrow cushion with its wings at a spread setting between zero and
+-- one; any other setting, or one that is not a number, is refused.
+spreadShape :: Double -> Either SpreadError Construction
+spreadShape amount = do
   unless (amount >= 0 && amount <= 1) (bad "pillow wing spread must be finite and between zero and one")
-  made study (PlacedPillow 0.5 (spreadAngle amount))
+  pure (PlacedPillow 0.5 (spreadAngle amount))
 
 -- | The wing tangent at the body rim for a spread setting between zero and
 -- one: -70 degrees at zero, -30 at one.
@@ -278,6 +314,13 @@ spreadAngle amount = -(5 * pi / 18) + (amount - 0.5) * (2 * pi / 9)
 -- | How many times the study refines the sheet: its mesh has 448 triangles.
 studyLevel :: Int
 studyLevel = 1
+
+-- | The finer mesh every pose is screened on as well: the sheet refined once
+-- more than the study's own mesh, 1,792 triangles, with its hinges. The
+-- screen and the gallery both take it from here, so both measure the same
+-- level.
+finerCrane :: WholeCrane -> Either SpreadError (RefinedSurface, [Hinge])
+finerCrane study = refinedCrane (studyLevel + 1) (wholeMap study)
 
 -- | The sheet refined @levels@ times, with a hinge on every interior edge:
 -- each crease folded as in the closed crane, every other edge a panel bend.

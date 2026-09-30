@@ -24,6 +24,7 @@ module CraneSpread
     spreadAngleError,
     spreadHeldError,
     spreadSurface,
+    refinedAssignment,
   )
 where
 
@@ -208,10 +209,8 @@ spreadSurface fixture mesh = do
       incidence = M.fromListWith (+) [(key a b, 1 :: Int) | (i, j, k) <- triangles mesh, (a, b) <- [(i, j), (j, k), (k, i)]]
       edges = M.toAscList incidence
       sourceEdges = M.fromList [(key a b, eid) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture)]
-      assignments = M.fromList (zip (map EdgeId [0 ..]) (edgesAssignment (surfaceFrame (spreadSource fixture))))
-      assignment (edge, n) = case M.lookup edge sourceEdges >>= (`M.lookup` assignments) of
-        Just value -> value
-        Nothing -> if n == 1 then Border else Join
+      assignmentOf = refinedAssignment (spreadSource fixture) (spreadRefined fixture)
+      assignment (edge, n) = assignmentOf edge n
       coords (V3 x y z) = [x, y, z]
       frame =
         emptyFrame
@@ -232,6 +231,18 @@ spreadSurface fixture mesh = do
   checked (surfaceFromFrame frame >>= requireMaterialCoordinates)
   where
     owners = refinedPanels (spreadRefined fixture)
+
+-- | The assignment a refined edge is written with: the assignment of the
+-- sheet edge it lies on, or, for an edge the refinement made, 'Border' where
+-- one triangle has it and 'Join' where two do. Every frame the study writes,
+-- and the screen's count of joins, read edges through this one rule.
+refinedAssignment :: Surface V2 -> RefinedSurface -> (Int, Int) -> Int -> Assignment
+refinedAssignment sheet refined = \edge triangleCount -> case M.lookup edge sourceEdges >>= (`M.lookup` assignments) of
+  Just value -> value
+  Nothing -> if triangleCount == 1 then Border else Join
+  where
+    sourceEdges = M.fromList [(key a b, eid) | (eid, (a, b)) <- refinedEdges refined]
+    assignments = M.fromList (zip (map EdgeId [0 ..]) (edgesAssignment (surfaceFrame sheet)))
 
 preserveMaterial :: CraneSpread -> MaterialMesh -> Either SpreadError ()
 preserveMaterial fixture mesh = unless (triangles mesh == triangles original && map sampleMaterial (samples mesh) == map sampleMaterial (samples original)) (Left (SpreadError "crane spreading must retain the full sheet's material and triangle identities"))
