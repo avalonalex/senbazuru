@@ -2184,7 +2184,8 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 Numbered as every PRD's open questions cite them. Each has a recommended default,
 and each has to be decided before the milestone named. Decisions 15–25 come from
 [PRD 11](11-prd-refined-final-forms.md#open-questions-for-the-owner), whose milestones are F0–F7.
-Decisions 26–28 were raised while scoping #410, PRD 11's paper screen.
+Decisions 26–28 were raised while scoping #410, PRD 11's paper screen, and decision
+29 by its wing galleries (#447).
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
@@ -2216,6 +2217,7 @@ Decisions 26–28 were raised while scoping #410, PRD 11's paper screen.
 | 26 | Which gallery poses show a paper screen ([11](11-prd-refined-final-forms.md#1-the-paper-screen), R-11-1) | **decided 2026-09-30**: every pose a gallery draws as paper that could be taken for it, solved or placed: 28 galleries besides whole-crane, listed on #410. Diagnostic, trace, archive-replay and rigid galleries show none, and #410 records why | every entry point, including solver traces and rigid poses whose strain is zero by construction | F0 |
 | 27 | The false creases of a pose that can be made again one level finer only by solving it again (R-11-1) | **decided 2026-09-30**: reported on its own mesh, with the finer level not measured, which neither passes nor fails | solve it again one level finer; or judge it on its own mesh alone, the rule #438 removed | F0 |
 | 28 | The no-stretch floor on a sheet that is not convex (R-11-3) | **decided 2026-09-30**: taken over the pairs whose chord stays on the flat sheet, for which the distance along the paper is the chord, so it is still a proof; on a convex sheet, the floor over every pair | refuse the sheet, as R-11-3 first said; or measure distances within the sheet, exact but a new routine | F0 |
+| 29 | Whether a gallery's own solve one level finer counts as a solved pose made again (R-11-1; raised by #447) | **decided 2026-09-30**: it counts where (1) its mesh is checked to be the pose's mesh with every triangle split into four, (2) it solves the same control, and (3) the two solves agree at every vertex of the coarser mesh within the floor limit, 1 px at the screen's 600 px per sheet unit. Elsewhere the finer level stays not measured, as decision 27 says | never, as decision 27 alone says, so that no solved pose can pass; or wherever the gallery solved the same control on the finer mesh, with no check that the solve found the same shape | F0 |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that
