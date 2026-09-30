@@ -2184,6 +2184,7 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 Numbered as every PRD's open questions cite them. Each has a recommended default,
 and each has to be decided before the milestone named. Decisions 15–25 come from
 [PRD 11](11-prd-refined-final-forms.md#open-questions-for-the-owner), whose milestones are F0–F7.
+Decisions 26–28 were raised while scoping #410, PRD 11's paper screen.
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
@@ -2212,6 +2213,9 @@ and each has to be decided before the milestone named. Decisions 15–25 come fr
 | 23 | An inflate or spread step's settled figure as a page cell with its own three-quarter camera | no: a separate figure after the page (R-11-32) | amends [D14](#d14-material-consumption) (R-07-32) and the AGENTS.md one-camera rule | F7 |
 | 24 | The membrane for inflated paper: tension field with crimps drawn on top, or a plain shell whose folds depend on a seed | tension field | the look depends on a seed, stated with each pose; F2's benchmarks change | F2 |
 | 25 | The finished 3D book figure the ink-volume target is measured against | the owner names one | the flat crane's 4.8, as a floor only | F1 |
+| 26 | Which gallery poses show a paper screen ([11](11-prd-refined-final-forms.md#1-the-paper-screen), R-11-1) | **decided 2026-09-30**: every pose a gallery draws as paper that could be taken for it, solved or placed: 28 galleries besides whole-crane, listed on #410. Diagnostic, trace, archive-replay and rigid galleries show none, and #410 records why | every entry point, including solver traces and rigid poses whose strain is zero by construction | F0 |
+| 27 | The false creases of a pose that can be made again one level finer only by solving it again (R-11-1) | **decided 2026-09-30**: reported on its own mesh, with the finer level not measured, which neither passes nor fails | solve it again one level finer; or judge it on its own mesh alone, the rule #438 removed | F0 |
+| 28 | The no-stretch floor on a sheet that is not convex (R-11-3) | **decided 2026-09-30**: taken over the pairs whose chord stays on the flat sheet, for which the distance along the paper is the chord, so it is still a proof; on a convex sheet, the floor over every pair | refuse the sheet, as R-11-3 first said; or measure distances within the sheet, exact but a new routine | F0 |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that
