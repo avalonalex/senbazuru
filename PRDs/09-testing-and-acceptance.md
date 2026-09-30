@@ -374,10 +374,10 @@ order; "row N" is row N of
 | M5 (c) | Bird route records match `CheckedBird`'s stages within §7's formula tolerance, slow job | a role's formula or its sign changes |
 | M6 (a) | Each default-CI [settle](glossary-additions.md#material) asserts its refined triangle count ≤ 392 (R-07-41's default-CI part) | a default spec refines further |
 | M6 (b) | §6.3's placement | a crane-sized fixture outside `describe "slow"` |
+| M6 (c) | The crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job (R-07-40) | the equivalence PR solves a crane in the default job |
 | M7a (a) | A-10's validator run and screenshot go in the PR, since no CI job runs an external program (R-07-43) | a CI job runs the validator |
 | M7b (a) | A-13 on the 4,312-triangle mesh and A-15's measurement run in the slow job (§6.3) | either runs in the default job |
 | M7b (b) | The manual parts of A-12 and A-23 go in the PR, not CI | a CI job opens a viewer or Blender |
-| M8 (a) | [#208](https://github.com/avalonalex/senbazuru/issues/208)'s value-only line search merged before M6's crane equivalence and before M8 (R-07-40), a gate checked on the issue | an M8 PR opens while #208 is open |
 
 ## 5. The whole crane parses and checks
 
@@ -614,7 +614,7 @@ which moves none ([D5](decisions.md#d5-presentation-and-the-readers-side)).
 | `BlintzSequence` | becomes a sequence, first | M2 |
 | `HelmetSequence` | becomes a sequence, second; a [hinge](glossary-additions.md#origami) named by one material line resolves to several edges | M2 |
 | `CraneWing` | stays; its prefix becomes a sequence | M4 (folding some layers, stacking relations; `expect refused` lands at M2); slow job |
-| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | stay; [holds](glossary-additions.md#material) re-expressed by name, 07 AC-1 first | M6, with #208 or no re-solve (R-07-40) |
+| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | stay; [holds](glossary-additions.md#material) re-expressed by name, 07 AC-1 first | M6, with no re-solve (R-07-40) |
 | `CheckedPetal`, `CheckedBird` | a study-authored sequence of macro-moves; modules shrink to entries in the [certificate](glossary-additions.md#assurance) registry | M5 and the registry (R-07-36); slow job |
 | `BasicBases` endpoints; frog guide | stay (squash and a frog petal are `not modelled`) | — |
 | `cases.json` `single`, `double`, `kite`, `blintz` | stay as state-only controls (`blintz` after owner decision 8) | — |

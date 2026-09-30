@@ -846,7 +846,7 @@ single stiffness preset. Each is a row in
   is needed before 5,000 triangles.
 - D15's gates, which are also the recommended default of owner decision 12 (not
   yet decided), cap `run --settle` at 1,192 refined triangles until 3–5 compiled
-  runs after #208 justify another number, and default CI at 392. The shape track
+  runs justify another number, and default CI at 392. The shape track
   needs 2,000–6,000. The study's galleries state their own budget; the library
   caps stay until F4 measures.
 
@@ -910,7 +910,7 @@ Effort: S a few days, M one to two weeks, L three to six weeks, XL more.
 
 **Order.** F0 → F1; F0 → F2 → F4 → F5; F2 → F6a; F4 → F6b; F1 → F7. F1 and F2
 run in parallel. F3 follows D15 stage 1 and precedes F4; F4 takes D15 stages
-3–7 in order. F4's `Material.Settle` also waits on M8's gates (#208, M6), and F7
+3–7 in order. F4's `Material.Settle` also waits on M8, which follows M6, and F7
 on M7b's W1. The water bomb's source waits on M4.
 
 **Stop rule.** If F2's go/no-go fails within its two weeks, F4 does not start.
