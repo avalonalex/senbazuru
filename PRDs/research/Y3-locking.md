@@ -59,6 +59,13 @@ Four experiments:
 
 ### C: the construction's kinks are folds, fixed in the material, at every resolution
 
+**Corrected 2026-09-29:** they are not folds. Made again by the study's own
+construction at 28,672 and 114,688 triangles, their turning past 45° falls to
+95.5 and 20.0 (#438, [fold-or-curve.md](../../docs/notes/fold-or-curve.md)).
+They are bends narrower than the triangles of the meshes below, which three
+levels could not tell from folds. That the construction makes them, not
+locking, stands.
+
 | mesh | triangles | joins >45° | joins >20° | largest join bend | Σ len×angle, joins >45° | length of joins >45° | max distance to nearest anchor |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | study (spread-0 exactly) | 448 | 15 | 48 | 172.6° | 145 | 1.92 | 0.137 |
@@ -71,6 +78,7 @@ Four experiments:
 - **What happens under refinement:**
   - Each kink stays a fold: its bend stays at 150-173°.
   - Its turning is conserved: Σ len×angle holds at 141-145.
+  - **Corrected 2026-09-29:** the turning holds over these three meshes only. Two finer ones lose it, so the kinks are not folds (above).
   - It moves onto the rim of the prescribed cushion core and the ends of the wing strips.
 - **Drawing displacement, study mesh vs refined ×2:** median 1.2 px, p95 3.8 px, max 22.8 px. Against flipped: p95 9 px.
 - **Strain:** 71-74% of the area is strained >10% in every variant.
@@ -145,7 +153,7 @@ All other timings are single runs under load:
 
 ## What it shows
 
-1. **spread-0's false creases were never touched by a solver.** It is a pure construction (`newSolves: 0`), so locking of a solve cannot have made them. Rerun on flipped and 4× and 16× finer meshes, the construction makes the same folds (154-173°). They carry the same total turning (Σ len×angle 141-145) and pin to the anchor boundary. They are the slope breaks where the Laplacian fill meets the prescribed cushion and wing arches. That is also where the "angular wing roots" come from: the fill meets the arch strips at y = 0.25 and the core rim.
+1. **spread-0's false creases were never touched by a solver.** It is a pure construction (`newSolves: 0`), so locking of a solve cannot have made them. Rerun on flipped and 4× and 16× finer meshes, the construction makes the same folds (154-173°). They carry the same total turning (Σ len×angle 141-145) and pin to the anchor boundary. **Corrected 2026-09-29:** not folds: at 64× and 256× finer (28,672 and 114,688 triangles) the turning falls to 95.5 and 20.0 (#438). The construction, not locking, still makes them. They are the slope breaks where the Laplacian fill meets the prescribed cushion and wing arches. That is also where the "angular wing roots" come from: the fill meets the arch strips at y = 0.25 and the core rim.
 2. **A stiff solver holding the author's anchors makes things much worse, not better.** Holding the construction's anchors gives 138-165 joins >45° at both weights and both meshes. The anchors are mutually incompatible with paper, with 50% error between anchors.
 3. **The study's actual solver regime does not produce kinks on a feasible bend.** On the held wing, joins stay under 4°, and weight, triangulation and refinement change the drawing by at most 0.16 px.
 4. **Locking is real, but mild, and only where curvature is tight and runs across the mesh lines.** The positive control shows joins of 6° (60° turn), 28° (180° turn) and 43° (270° turn) against 3°, 9° and 13.5° with cells along the bend. The drawing error is 1.6-12 px.
@@ -168,7 +176,7 @@ All other timings are single runs under load:
   - use the physical weight (it halves locking and changes feasible drawings by ≤0.01 px);
   - use meshes without slivers;
   - refine once where the curvature radius falls below about 0.3 sheet or bends run across the mesh lines.
-- **Add a fold-versus-curve acceptance check:** Σ length×angle over joins bent past a threshold, compared at two mesh levels. Constant means a fold (a defect unless it is a crease); vanishing means sampled curvature.
+- **Add a fold-versus-curve acceptance check:** Σ length×angle over joins bent past a threshold, compared at two mesh levels. Constant means a fold (a defect unless it is a crease); vanishing means sampled curvature. **Corrected 2026-09-29:** constant over two or three levels does not show a fold; spread-0's turning held over three and fell over the next two (#438).
 - **Measure shape change as drawing displacement at matched material points, not as rasterised silhouette distance.** The silhouette measure reported 6 px for a strip seen edge-on whose vertices moved 0.18 px.
 
 ## Reproduce

@@ -19,7 +19,9 @@ output outside the checkout (finding 4 gives the command).
 > are 119 and 35 by whole days; "31 body PRDs" are PRs. Finding 10's
 > attribution of the false creases to locking is **refuted** by
 > [Y3](Y3-locking.md): the pose's construction makes them (they carry the same
-> total turning at every mesh resolution); locking is real but secondary.
+> total turning at every mesh resolution; **corrected 2026-09-29:** at the
+> three Y3 measured, and not at two finer ones, #438); locking is real but
+> secondary.
 > Scripts named
 > `scripts/H1-diagnosis/…` are kept; the PNG crops it names are not.
 
