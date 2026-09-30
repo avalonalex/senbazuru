@@ -94,7 +94,7 @@ the coupled linear equations into a form solved by substitution. Contact evaluat
 both a gap and its derivatives, which say how that gap changes when vertices
 move. The scalar energy checks in a line search do not need those derivatives,
 but currently pay for them. A value-only evaluation is a bounded performance
-follow-up under [#208](https://github.com/avalonalex/senbazuru/issues/208), with
+follow-up under [#441](https://github.com/avalonalex/senbazuru/issues/441), with
 energy equality and unchanged accepted/rejected controls required before any
 speed claim.
 
