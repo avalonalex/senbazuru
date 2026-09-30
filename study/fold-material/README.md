@@ -330,7 +330,11 @@ for the supported contact and remaining limits.
 spreads the existing crane wing with the body fixed. `crane-spreading.html`
 compares the rigid baseline, a curved 50-degree grip at two refinements and
 an incompatible upper grip. Complete material FOLDs and measurements are
-retained for every control; only accepted endpoints get SVG/GLB views. See
+retained for every control; only accepted endpoints get SVG/GLB views. Every
+control carries a paper screen, as the whole crane's poses do: under `screen`
+in `checks.json`, with its floor in its drawing beside it in
+`pictureFloorPixels` where the gallery draws it. A solved pose's false creases
+one level finer are not measured. See
 [the instructions](../../docs/usage.md#spreading-one-connected-crane-wing) and
 [the study note](../../docs/notes/spreading-connected-wing.md). These static
 shapes do not certify the flexible path between them.
@@ -539,7 +543,8 @@ comparison](../../docs/notes/coupled-body-patch.md).
 compares original, weaker and opened preferences at two body creases while
 retaining the same small free patch and tip grip. `crane-body.html` reports
 both angle policies, signed crease measurements and unchanged length/contact
-requirements. Released-body controls can take several minutes each.
+requirements, and every trial's paper screen. Released-body controls can take
+several minutes each.
 
 `stack run senbazuru-material-study -- --crane-pocket build/fold-material`
 writes `crane-pocket.html`: an original-sheet region map, folded x-ray
@@ -550,8 +555,8 @@ closed cavity or an opening motion. See [the map note](../../docs/notes/crane-po
 `stack run senbazuru-material-study -- --crane-root build/fold-material`
 compares the root-strip hold, released and weakened root springs, a flat-angle
 preference and a small free body region. `crane-root.html` includes side profiles,
-accepted 3D shapes and a refinement comparison; failed attempts keep diagnostic
-FOLDs and measured failures. Both sides of the root share their inserted material
+accepted 3D shapes, a refinement comparison and every control's paper screen;
+failed attempts keep diagnostic FOLDs and measured failures. Both sides of the root share their inserted material
 vertices. See [the instructions](../../docs/usage.md#wing-root-holds-and-material-preferences)
 and [the study note](../../docs/notes/wing-root-holds.md).
 

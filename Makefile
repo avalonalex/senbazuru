@@ -32,10 +32,12 @@ fmt-check:
 lint:
 	hlint src app test study
 
-# Fast browser-data checks for illustration masks and paper lighting (Node.js).
+# Fast browser-data checks for illustration masks, paper lighting and the
+# paper screen's reading on a page (Node.js).
 study-js-check:
 	node study/fold-material/check-illustration-metrics.mjs
 	node study/fold-material/check-paper-lighting.mjs
+	node study/fold-material/check-paper-screen.mjs
 
 # What CI should run.
 check: fmt-check lint study-js-check test

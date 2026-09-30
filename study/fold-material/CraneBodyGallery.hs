@@ -1,7 +1,8 @@
 -- | Publish matched body-angle experiments, keeping diagnostic endpoints out
 -- of the accepted 3D selector. Every solve is evaluated under both the old
 -- strict-angle policy and the selected-preference policy; those two verdicts
--- describe one mesh, not two different physical solutions.
+-- describe one mesh, not two different physical solutions. Every trial,
+-- accepted or not, carries its paper screen ("CraneSpreadScreen").
 module CraneBodyGallery (writeCraneBody) where
 
 import Control.Exception (evaluate)
@@ -9,10 +10,11 @@ import Control.Monad (forM, when)
 import CraneBody
 import CraneRoot
 import CraneSpread
-import CraneSpreadGallery (spreadSvg)
+import CraneSpreadGallery (screenKeys, spreadSvg)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
 import Data.Maybe (isNothing)
 import Data.Set qualified as S
@@ -23,6 +25,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
+import ScreenReport (thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
@@ -64,8 +67,10 @@ writeCraneBody destination = do
     roots <- checked (rootAngles root mesh)
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     sheet <- checked (spreadSurface fixture mesh)
+    let drawing = spreadSvg [sheet]
+    (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (accepted && isRight drawing) mesh)
     let report =
-          object
+          object $
             [ "id" .= stem,
               "title" .= (title :: Text),
               "control" .= show control,
@@ -98,6 +103,7 @@ writeCraneBody destination = do
               "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
               "continuousMotionChecked" .= False
             ]
+              ++ screened
         file = FoldFile (Just 1.2) (Just "senbazuru body crease preferences") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     BL.writeFile (output </> stem ++ "-check.json") (encode report)
@@ -116,17 +122,18 @@ writeCraneBody destination = do
               BS.writeFile (output </> stem ++ "-complete.glb") bytes
               pure (Just (explain err))
         else pure Nothing
-    when accepted $ case spreadSvg [sheet] of
+    when accepted $ case drawing of
       Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
       Left err -> putStrLn (T.unpack err)
     putStrLn (stem ++ ": strict " ++ show strict ++ ", selected " ++ show accepted ++ "; length " ++ show (maxLengthError mesh) ++ "; selected/retained angle " ++ show (selectedError, retainedError))
     hFlush stdout
     pure (stem, title, accepted, export, report)
-  let document = object ["runs" .= [report | (_, _, _, _, report) <- runs], "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _) <- runs]]
+  let document = object ["runs" .= [report | (_, _, _, _, report) <- runs], "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _) <- runs], "screenThresholds" .= thresholdsJson]
   BL.writeFile (output </> "checks.json") (encode document)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, Nothing, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/crane-body.html"
   TIO.writeFile (destination </> "crane-body.html") (T.replace "/*BODY_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote crane-body.html and measurements to " ++ destination)

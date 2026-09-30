@@ -1,13 +1,16 @@
 -- | Static crane spreading controls, measured before any picture is published.
 -- The coarse/fine comparison shares grips and a camera. Only independently
 -- accepted endpoints enter the SVG and glTF gallery; failed controls retain
--- complete material FOLD files for diagnosis.
-module CraneSpreadGallery (writeCraneSpread, spreadSvg) where
+-- complete material FOLD files for diagnosis. Every control, accepted or
+-- not, carries its paper screen ("CraneSpreadScreen").
+module CraneSpreadGallery (writeCraneSpread, spreadSvg, screenKeys) where
 
 import Control.Exception (evaluate)
 import Control.Monad (forM, unless, when)
 import CraneSpread
+import CraneSpreadScreen (spreadScreen)
 import Data.Aeson (encode, object, (.=))
+import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
@@ -17,8 +20,10 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import FoldBending
-import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
+import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
+import PaperScreen (sheetChords)
+import ScreenReport (Screen (..), pictureFloorJson, screenJson, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (Explain (..))
@@ -27,9 +32,10 @@ import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Origami.Contact (ContactCheck)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
-import Senbazuru.Render.Camera (View (..), basisFrom)
+import Senbazuru.Render.Camera (Basis, View (..), basisFrom)
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
@@ -59,15 +65,16 @@ writeCraneSpread destination = do
     accepted <- checked (spreadAccepted fixture result mesh)
     _ <- evaluate accepted
     inspected <- getCPUTime
+    -- The gallery draws exactly the controls it accepts.
+    (screen, screened) <- either (die . T.unpack) pure (screenKeys fixture contact accepted mesh)
     sheet <- checked (spreadSurface fixture mesh)
     angles <- checked (spreadAngleError fixture mesh)
     (crease, panel) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     let initial = IM.fromList (zip [0 ..] (samples (refinedMesh (spreadRefined fixture))))
         bodyError = maximum (0 : [norm (position p ^-^ position q) | (i, p) <- zip [0 ..] (samples mesh), S.member i (spreadBody fixture), Just q <- [IM.lookup i initial]])
-        strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
         report =
-          object
+          object $
             [ "id" .= stem,
               "title" .= title,
               "refinement" .= level,
@@ -86,8 +93,8 @@ writeCraneSpread destination = do
               "heldBodyVertices" .= S.size (spreadBody fixture),
               "maxRelativeEdgeError" .= maxLengthError mesh,
               "areaRatio" .= areaRatio mesh,
-              "minPrincipalStrain" .= minimum (0 : map fst strains),
-              "maxPrincipalStrain" .= maximum (0 : map snd strains),
+              "minPrincipalStrain" .= negate (screenSquash screen),
+              "maxPrincipalStrain" .= screenStretch screen,
               "heldPositionError" .= spreadHeldError fixture mesh,
               "bodyPositionError" .= bodyError,
               "maxCreaseAngleErrorRadians" .= angles,
@@ -98,6 +105,7 @@ writeCraneSpread destination = do
               "checkCpuSeconds" .= seconds (inspected - settled),
               "continuousMotionChecked" .= False
             ]
+              ++ screened
         file = FoldFile (Just 1.2) (Just "senbazuru connected crane spreading study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -109,7 +117,7 @@ writeCraneSpread destination = do
   let baseline = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["rigid", "curved"]]
       bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["curved", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons]
+      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
   BL.writeFile (output </> "checks.json") (encode document)
   drawing <- either (die . T.unpack) pure (spreadSvg baseline)
   TIO.writeFile (output </> "comparison.svg") drawing
@@ -118,16 +126,35 @@ writeCraneSpread destination = do
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/crane-spreading.html"
   TIO.writeFile (destination </> "crane-spreading.html") (T.replace "/*SPREAD_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote crane-spreading.html and checked endpoints to " ++ destination)
 
 spreadSvg :: [Surface V2] -> Either T.Text T.Text
 spreadSvg sheets = do
-  camera <- maybe (Left "invalid crane camera") Right (basisFrom (V3 (-1) 1 (sqrt 2)) (V3 0 0 1))
+  camera <- spreadCamera
   drawing <- first explain (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = length sheets} (View (Just camera) 0) False (map surfaceFrame sheets))
   diagram <- maybe (Left "crane comparison has no geometry") Right drawing
   pure (renderSvg defaultPage {pageWidth = 1080, pageHeight = 380, pageMargin = 28, pageBackground = Nothing, pageTitle = Just "Spreading the connected crane wing"} diagram)
+
+-- | The camera every drawing of a crane with a wing moved is taken from, and
+-- so the picture its paper screen's picture floor is measured in.
+spreadCamera :: Either T.Text Basis
+spreadCamera = maybe (Left "invalid crane camera") Right (basisFrom (V3 (-1) 1 (sqrt 2)) (V3 0 0 1))
+
+-- | A run's paper screen ("CraneSpreadScreen"), and the keys its report
+-- carries: the screen and, if the gallery draws the run, its floor in the
+-- picture, taken from 'spreadCamera'. A run drawn in no picture has no
+-- picture floor. @contact@ is the run's 'spreadCheck'. Which chords the
+-- floor may use depends only on the flat sheet, the fixture's own.
+screenKeys :: CraneSpread -> ContactCheck -> Bool -> MaterialMesh -> Either T.Text (Screen, [Pair])
+screenKeys fixture contact drawn mesh = do
+  chords <- first explain (sheetChords (refinedMesh (spreadRefined fixture)))
+  bends <- first explain (hingeBends (spreadHinges fixture) mesh)
+  screen <- first explain (spreadScreen fixture chords contact bends mesh)
+  camera <- spreadCamera
+  pure (screen, ("screen" .= screenJson screen) : if drawn then pictureFloorJson chords camera mesh else [])
 
 seconds :: Integer -> Double
 seconds n = fromIntegral n / 1e12

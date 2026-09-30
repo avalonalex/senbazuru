@@ -51,6 +51,16 @@
     a flexible crease cannot make those exact holds compatible.</p>
 </section>
 <section>
+  <h2>Could paper take these shapes?</h2>
+  <p id="screen-caption"></p>
+  <div class="table-wrap" id="screen"></div>
+  <p class="note">A trial that is not accepted under the selected-preference policy
+    is shown for diagnosis; it is drawn in no picture, so it has no picture
+    floor. An accepted trial's picture floor is taken in its own SVG drawing
+    in <code>crane-body/</code>, drawn at about 692 px to the sheet's side, so
+    a floor in the drawing's pixels is 1.15 times the figure in the table.</p>
+</section>
+<section>
   <h2>Inspect a trial's checks</h2>
   <label for="trial">Trial </label><select id="trial"></select>
   <div id="details" aria-live="polite">
@@ -83,6 +93,7 @@
   physical folding steps. A failure here does not prove that a larger coupled
   body opening is impossible. Paired wing grips, a pocket boundary and pressure
   remain later work.</p>
+<script src="paper-screen.js"></script>
 <script>
 const data = /*BODY_DATA*/null;
 const byId = new Map(data.runs.map(r => [r.id,r]));
@@ -96,6 +107,8 @@ for (const run of data.runs) {
   row('#comparison',[run.title,pass(run.strictAccepted),pass(run.selectedAccepted),number(run.bodyMovement),percent(run.maxRelativeEdgeError)]);
   const option=document.createElement('option');option.value=run.id;option.textContent=run.title;document.querySelector('#trial').append(option);
 }
+document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);
+paperScreen.fill(document.querySelector('#screen'),paperScreen.rows(data.runs.map(r => ({title: r.selectedAccepted ? r.title : r.title+' · not accepted', screen: r.screen, picture: r})),data.screenThresholds));
 const free=data.runs.filter(r => ['original','weaker','open'].includes(r.id));
 document.querySelector('#finding').textContent=free.length<3
   ? 'The experiment is still running: '+free.length+' of three free-patch trials has finished. The tables show completed measurements only.'

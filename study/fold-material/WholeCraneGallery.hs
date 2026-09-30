@@ -25,8 +25,8 @@ import FoldRelaxation
 import IllustrationComparison (illustrationPage, sharedExtent)
 import IllustrationVisibility
 import PaperLighting (panelCornerNormals)
-import PaperScreen (pictureFloor, sheetChords)
-import ScreenReport (Screen (..), floorPixels, screenJson, strainScreen, thresholdsJson)
+import PaperScreen (sheetChords)
+import ScreenReport (Screen (..), pictureFloorJson, screenJson, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (Grid (..), gridOf)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -231,7 +231,7 @@ viewWholeCrane destination = do
             writeSvg output drawingPage bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks ++ caveat)
             pure [object ["id" .= viewId, "title" .= title, "caveat" .= craneCaveat pose, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (360000 * sourceArea), "toneAreaPixelsSquared" .= (360000 * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
           else pure []
-      pure (shapes, object ["id" .= name, "stem" .= stem, "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords basis 0 mesh), "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords basis strainScreen mesh), "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
+      pure (shapes, object (["id" .= name, "stem" .= stem] ++ pictureFloorJson chords basis mesh ++ ["status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]]), book)
     let comparisons = case viewId of
           "oblique" -> [("comparison.svg", "before", "after", "Before · closed crane", "First opened candidate")]
           "upright" -> [("pillow-comparison.svg", "before", "pillow", "Before · closed crane", "Wider pillow target"), ("compact-comparison.svg", "before", "compact", "Before · closed crane", "Less spread target"), ("spread-comparison.svg", "pillow", "compact", "Earlier · wider target", "Revised · less spread"), ("body-width-comparison.svg", "compact", "narrow", "Previous body width", "Narrower body · same wing angle"), ("narrow-comparison.svg", "before", "narrow", "Before · closed crane", "Narrower body target")]
@@ -265,6 +265,7 @@ viewWholeCrane destination = do
   TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))
   lightingModule <- TIO.readFile "study/fold-material/paper-lighting.mjs"
   TIO.writeFile (output </> "paper-lighting.mjs") lightingModule
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/whole-crane.html"
   TIO.writeFile (destination </> "whole-crane.html") (T.replace "/*WHOLE_CRANE_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode report))) template)
 
