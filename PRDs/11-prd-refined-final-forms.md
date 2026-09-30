@@ -187,14 +187,18 @@ dome (finding 5).
 
 **Where the false creases come from.** H1 and H2 blamed *locking*: nearly
 unstretchable flat triangles that can bend only along their own edges.
-[Y3](research/Y3-locking.md) tested this and **refuted it for the crane**. The
-joins bent more than 45° carry the same total turning, length × angle summed
-over them, at every resolution: 145, 142 and 141 on meshes of 448, 1,792 and
-7,168 triangles. This measure distinguishes the two cases. A smooth curve
-sampled more finely bends less at each join, so its joins fall below 45° and
-drop out of the sum. A real fold keeps its turning. The kinks sit where the
-construction's prescribed regions meet its smoothed fill. On a pose the study
-actually solved, the held wing, no join passes 4° on any mesh or stiffness.
+[Y3](research/Y3-locking.md) tested this and **refuted it for the crane**: no
+solver touched the pose, and its joins bent more than 45° sit where the
+construction's prescribed regions meet its smoothed fill. Their total turning,
+length × angle summed over them, is 145, 142 and 141 on meshes of 448, 1,792
+and 7,168 triangles. A smooth curve sampled more finely bends less at each
+join, so its joins fall below 45° and drop out of the sum; a real fold keeps
+its turning. Y3 read the three figures as a fold. They are not one.
+Two levels finer, at 28,672 and 114,688 triangles, the turning falls to 95.5
+and 20.0 (#438, [fold-or-curve.md](../docs/notes/fold-or-curve.md)). These are
+bends narrower than the coarser meshes' triangles, and agreement over three
+levels does not show a fold. On a pose the study actually solved, the held
+wing, no join passes 4° on any mesh or stiffness.
 Locking is real: on a strip bent across its mesh lines it costs 1.6–12 px, and
 one refinement mostly cures it.
 
@@ -405,7 +409,7 @@ scale (600 px per sheet side) and the gallery's fixed cameras.
 | | Largest stretch inside declared tension-field regions | — | ≤ 1% |
 | | No-stretch floor at the declared strain, picture and 3D (R-11-3) | 17.1 / 20.0 px at zero strain | ≤ 1 px |
 | | Crossing pairs on the *displayed* mesh | 345 | 0 |
-| | False creases: Σ length × angle (sheet lengths × degrees) over joins bent past a threshold (45° on poses), at two mesh levels | 145, 142, 141 (a fold) | 0 at the pose's mesh and one level finer |
+| | False creases: Σ length × angle (sheet lengths × degrees) over joins bent past a threshold (45° on poses), at two mesh levels | 145, 142, 141 at 448, 1,792, 7,168 triangles; 95.5, 20.0 two levels finer | 0 at the pose's mesh and one level finer |
 | | Vertices whose angle sum changed by more than 1° | 99 changed by > 5° | 0 outside tension-field regions |
 | **Drawing** | Ink emitted twice | 74–78% | 0% |
 | | Loose line ends not at a cusp | 7 / 6 / 2 / 12 per view | 0 on an accepted pose |
@@ -951,7 +955,7 @@ requires.
 | # | Check | Turns red when |
 | --- | --- | --- |
 | A-11-1 | The paper screen on `spread-0.fold` reports a zero-strain no-stretch floor of 17.1 px (picture) and 20.0 px (3D), 345 crossing pairs, principal strain +106.8% / −83.6%; on `after.fold`, 1.0 px | the floor is computed along edges only |
-| A-11-2 | False-crease turning at a 45° threshold on `spread-0`'s construction at 448, 1,792 and 7,168 triangles stays within 5% (a fold). At a 20° threshold on Y3's strip bent 270° with cells cut across the bend, the turning falls to 0 under one refinement (a curve) | the measure counts joins (15, 26, 56 on `spread-0`) instead of summing length × angle; or the threshold is dropped, so a curve's conserved total turning is summed |
+| A-11-2 | False-crease turning at a 45° threshold on `spread-0`'s construction at 448, 1,792 and 7,168 triangles stays within 5%, as a fold's would. It is not a fold: at 28,672 and 114,688 triangles the turning falls to 95.5 and 20.0 (#438), so this holds the measure to Y3's figures and says nothing of what the pose is. At a 20° threshold on Y3's strip bent 270° with cells cut across the bend, the turning falls to 0 under one refinement (a curve) | the measure counts joins (15, 26, 56 on `spread-0`) instead of summing length × angle; or the threshold is dropped, so a curve, whose joins never sum to nothing however fine the mesh, scores like a fold |
 | A-11-3 | Book drawing of More tucked: no stretch emitted twice; loose ends reported, not drawn | stretches emitted per region, not per boundary |
 | A-11-4 | A two-colour still of a FOLD-rebuilt surface, from the chosen generator, checked by hand outside CI (D17): ≤ 1% wrong-side pixels against the two-colour SVG rasterised at a matched camera. The matched reference is not built yet (**UNVERIFIED**) | the generator reads the GLB's two copies |
 | A-11-5 | No written corner normal points behind its triangle on `spread-0` (8 corners at risk) | R-08-6 implemented without the rule |
