@@ -122,7 +122,7 @@ Pressure alone then unfolds it, so its creases need rest angles and stiffness
    for curved paper.
 
 **What the owner sees, and when.** In the first week (F0), every gallery pose
-with its paper screen, More tucked labelled a sketch, and the viewer showing
+drawn as paper with its paper screen, More tucked labelled a sketch, and the viewer showing
 coincident layers correctly. In two to three weeks (F1), the valid wing spreads
 (body closed) in the new drawing, viewer and stills. F2's core-lengthening test
 answers "is a pillow body possible here" within its two weeks. An opened body as
@@ -448,6 +448,13 @@ The first requirement costs little and changes what the owner sees.
   - the core's head-to-tail length and the centre-crease angles, which tell a pod
     from a pillow where body depth and volume cannot (a pod reached 92–94% of the
     sketch's core volume, [Y4](research/Y4-crane-v2.md)).
+
+  *Every gallery pose* means every pose a gallery draws as paper that could be
+  taken for it, solved or placed; diagnostic, trace, archive-replay and rigid
+  galleries show no screen. A pose that can be made again one level finer only
+  by solving it again reports its false creases on its own mesh, and the finer
+  level as not measured, which neither passes nor fails (owner decisions 26 and
+  27, 2026-09-30, [decisions §9](decisions.md#9-owner-decisions)).
 - **R-11-2.** A pose built by placing vertices is labelled *shape sketch* in its
   drawing, its GLB extras and its gallery card. PRD 08's geometry axis gains the
   value `as prescribed` ([§Proposed amendments](#proposed-amendments-to-the-decision-record)).
@@ -460,10 +467,15 @@ The first requirement costs little and changes what the owner sees.
   promises only that one of them moves *e*/2. The screen reports it at ε = 0 and
   at the declared ε, and the ≤ 1 px target applies to the second. It needs no
   solver, holds for creased or crumpled paper, and took about 1 s for three
-  models. It assumes a convex sheet; on a non-convex sheet it is refused, since
-  distances must then be measured within the sheet.
-  - **SKETCH:** `data ScreenError = NonConvexSheet | …`, with an `Explain`
-    instance ([D20](decisions.md#d20-errors)).
+  models. On a sheet that is not convex, a straight line between two points can
+  leave the paper, and the distance along the paper is then longer than the
+  line. So the floor is taken over the pairs whose chord stays on the flat
+  sheet, for which the two distances agree: it is still a proof, and on a
+  convex sheet it is the floor over every pair (owner decision 28, 2026-09-30;
+  this first said such a sheet is refused).
+  - **SKETCH:** a `ScreenError` with an `Explain` instance
+    ([D20](decisions.md#d20-errors)) for what the screen cannot read; a sheet
+    that is not convex is no longer one.
 
 An authored target is still useful as a direction to pull towards
 ([§3.6](#36-sketches-become-targets-never-starts)). The screen only stops it being
@@ -897,7 +909,7 @@ Effort: S a few days, M one to two weeks, L three to six weeks, XL more.
 
 | F | Delivers | Effort | Gate to leave it |
 | --- | --- | --- | --- |
-| **F0** | Paper screen on every gallery pose (R-11-1–3); sketch labels; gallery viewers on the visible scene (R-11-10); the owner's blind review of the X1, Y1 and Y2 contact sheets; a physical reference capture; owner decisions 15–17 and 25 | S | Every gallery pose shows its screen; More tucked shows 17.1 px and "shape sketch" |
+| **F0** | Paper screen on every gallery pose drawn as paper (R-11-1–3; decisions 26–28); sketch labels; gallery viewers on the visible scene (R-11-10); the owner's blind review of the X1, Y1 and Y2 contact sheets; a physical reference capture; owner decisions 15–17 and 25 | S | Every gallery pose drawn as paper shows its screen; More tucked shows 17.1 px and "shape sketch" |
 | **F1** | Book drawing (R-11-4–9); viewer look (R-11-11, 12); offline stills (R-11-13–15); visibility broad phase counted | S–M | The Drawing and Appearance rows of [§What "refined" means](#what-refined-means) met on the valid wing spreads and closed crane (A-11-3 to A-11-5); the owner's blind pairs recorded |
 | **F2** | Prototype solver as an oracle: the energy of §3.1, Newton with CCD, adaptive barrier, path driver; the core-lengthening test (§4 item 1); the start bake-off (§3.4); benchmarks (R-11-28). **Budget: two weeks, declared before it starts** | M | **Go/no-go**, all four: the double fold reaches 175° with zero crossings and ≤ 1% strain; the prototype reproduces the study's accepted wing spread within 1 px; the Mylar and tea-bag benchmarks pass; the core-lengthening test has run, contact off and then on, and its result is recorded. The pillow option stays open only if the core reaches ≥ 0.325 (halfway from the closed 0.235 to the sketch's 0.414) at ≤ 3% stretch with zero crossings; otherwise F5 targets the pod |
 | **F3** | D15 stage 1, then `Numeric.Sparse` (up-looking LDLᵀ, AMD) replacing `SparseSolve` as stage 2; `Numeric.Dual` and `HyperDual` (#62) | M | Every accepted and rejected study control keeps its verdict (D15); Hessians match central differences to 1e-6 relative; A-11-12 |
