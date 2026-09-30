@@ -14,6 +14,7 @@
   table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; } th,td { text-align:right; padding:10px 12px; border-bottom:1px solid #dfd5c6; white-space:nowrap; } th:first-child,td:first-child { text-align:left; }
   iframe { width:100%; height:720px; border:0; } .good { color:#385e50; } .bad { color:#a74622; }
   .legend { display:flex; flex-wrap:wrap; gap:20px; } .legend span { border-bottom:3px solid; }
+  #screen th, #screen td { white-space:normal; }
   @media(max-width:650px) { section { padding:12px; } .captions { font-size:.85rem; } iframe { height:560px; } }
 </style>
 <header>
@@ -39,6 +40,16 @@
   <p class="note">These are physical mesh comparisons: the renderer, material
     identities and layer orders are unchanged. No display gap or smoothing of
     crease normals is used to disguise the transition.</p>
+</section>
+<section>
+  <h2>Could paper take these shapes?</h2>
+  <p id="screen-caption"></p>
+  <div class="table-wrap" id="screen"></div>
+  <p class="note">The finer mesh solves the flat preference again with the
+    wing's panels and the root's neighbours divided once more. That is not the
+    flat-preference pose with every triangle split into four, so each is
+    judged on its own mesh. A control that is not accepted is shown for
+    diagnosis.</p>
 </section>
 <section>
   <h2>Measure the turn at the root</h2>
@@ -98,6 +109,7 @@
   Numerical iterates can stretch or cross paper and are not a flexible folding
   route. The illustrative stiffness is not fitted to a real paper sample.
   Two-wing spreading, body inflation and friction remain later studies.</p>
+<script src="paper-screen.js"></script>
 <script>
 const data = /*ROOT_DATA*/null;
 const percent = n => (100 * n).toPrecision(3) + '%';
@@ -121,6 +133,9 @@ for (const run of data.runs) {
     const label = document.createElement('span'); label.textContent = run.title; document.querySelector('#captions').append(label);
   }
 }
+document.querySelector('#screen-caption').textContent = paperScreen.caption(data.screenThresholds);
+paperScreen.fill(document.querySelector('#screen'), paperScreen.rows(data.runs.map(run =>
+  ({title: run.accepted ? run.title : run.title + ' · not accepted', screen: run.screen, picture: run})), data.screenThresholds));
 const flat = data.runs.find(run => run.id === 'flat');
 const released = data.runs.find(run => run.id === 'released');
 const weaker = data.runs.find(run => run.id === 'weaker');

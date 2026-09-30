@@ -452,7 +452,7 @@ grip is held at either 30 degrees (rigid baseline) or 50 degrees (curved wing).
 Only the middle three quarters of its length can bend.
 
 `crane-spreading/` contains complete material FOLDs, SVG comparisons, accepted
-GLBs and `checks.json`. The 50-degree grip runs at two refinements, with the
+GLBs and `checks.json`, which holds each control's paper screen. The 50-degree grip runs at two refinements, with the
 same physical held strips. The incompatible control pushes an upper grip
 through its lower partner; its diagnostic FOLD is excluded from the model
 selector. Regular controls allow twenty iterations per penalty stage; the
@@ -481,7 +481,8 @@ with other body panels stays held. Both sides of the root are subdivided.
 The flat-preference control repeats at a finer resolution.
 
 `crane-root/` contains full material FOLDs and per-control measurements, accepted
-SVG/GLB shapes, a side-profile comparison and `checks.json`. The independent
+SVG/GLB shapes, a side-profile comparison and `checks.json`, with each
+control's paper screen. The independent
 checks preserve original creases and all source orders; root spring angles are
 reported separately because a preference is not an exact hold. Failed controls
 remain diagnostic FOLDs outside the accepted model selector. A physically valid
@@ -529,7 +530,8 @@ stay held. Every solved mesh receives both the old strict-angle verdict and a
 verdict allowing the selected angles to vary; neither changes a solved position.
 
 `crane-body/` contains per-trial FOLDs, signed angles by source crease segment,
-all independent checks and an aggregate `checks.json`. Only accepted endpoints
+all independent checks and an aggregate `checks.json`, with each trial's paper
+screen. Only accepted endpoints
 with a stable GLB enter the viewer; accepted complete-sheet exports remain
 available when visibility fails. The fixed-body reference and incompatible
 upper grip bound the comparison. Forty iterations per penalty stage are allowed

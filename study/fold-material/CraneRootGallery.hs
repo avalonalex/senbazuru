@@ -4,13 +4,15 @@
 -- cannot enter the accepted
 -- 3D model selector. Root spring residuals are reported separately from the
 -- original folded creases, because a soft preference is not an exact hold.
+-- Every control, accepted or not, carries its paper screen
+-- ("CraneSpreadScreen").
 module CraneRootGallery (writeCraneRoot) where
 
 import Control.Exception (evaluate)
 import Control.Monad (forM, when)
 import CraneRoot
 import CraneSpread
-import CraneSpreadGallery (spreadSvg)
+import CraneSpreadGallery (screenKeys, spreadSvg)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
@@ -23,6 +25,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
+import ScreenReport (thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (FoldFile (..), unEdgeId, unFaceId)
@@ -68,6 +71,7 @@ writeCraneRoot destination = do
     settled <- getCPUTime
     accepted <- checked (rootAccepted study result mesh)
     contact <- checked (spreadCheck fixture mesh)
+    screen <- either (die . T.unpack) pure (screenKeys fixture contact mesh)
     angles <- checked (rootAngles study mesh)
     creaseError <- checked (originalCreaseError study mesh)
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)
@@ -92,7 +96,7 @@ writeCraneRoot destination = do
         strains = [strain | triangle <- resolvedTriangles mesh, Just strain <- [principalStrains triangle]]
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
         report =
-          object
+          object $
             [ "id" .= stem,
               "title" .= title,
               "refinement" .= level,
@@ -127,6 +131,7 @@ writeCraneRoot destination = do
               "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
               "continuousMotionChecked" .= False
             ]
+              ++ screen
         file = FoldFile (Just 1.2) (Just "senbazuru crane root material study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     BL.writeFile (output </> stem ++ "-check.json") (encode report)
@@ -135,7 +140,7 @@ writeCraneRoot destination = do
     pure (stem, title, accepted, sheet, report, creaseEnergy + panelEnergy, profile, visible)
   let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _, _) <- runs, stem `elem` ["flat", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeTotalEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= [report | (_, _, _, _, report, _, _, _) <- runs], "refinement" .= comparisons]
+      document = object ["runs" .= [report | (_, _, _, _, report, _, _, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
   BL.writeFile (output </> "checks.json") (encode document)
   let comparison = [(title, sheet) | (stem, title, True, sheet, _, _, _, True) <- runs, stem `elem` ["held", "flat", "body"]]
   drawing <- either (die . T.unpack) pure (spreadSvg (map snd comparison))
@@ -144,6 +149,7 @@ writeCraneRoot destination = do
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _, _, True) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/crane-root.html"
   TIO.writeFile (destination </> "crane-root.html") (T.replace "/*ROOT_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote crane-root.html and measurements to " ++ destination)

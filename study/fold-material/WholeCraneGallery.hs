@@ -26,7 +26,7 @@ import IllustrationComparison (illustrationPage, sharedExtent)
 import IllustrationVisibility
 import PaperLighting (panelCornerNormals)
 import PaperScreen (pictureFloor, sheetChords)
-import ScreenReport (Screen (..), floorPixels, screenJson, strainScreen, thresholdsJson)
+import ScreenReport (Screen (..), floorPixels, screenJson, strainScreen, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (Grid (..), gridOf)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -265,6 +265,7 @@ viewWholeCrane destination = do
   TIO.writeFile (output </> "spread.html") (T.replace "/*CRANE_VIEW_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode viewerData))) (T.replace "./node_modules/" "../checked-flap/node_modules/" spreadViewer))
   lightingModule <- TIO.readFile "study/fold-material/paper-lighting.mjs"
   TIO.writeFile (output </> "paper-lighting.mjs") lightingModule
+  writeScreenScript destination
   template <- TIO.readFile "study/fold-material/whole-crane.html"
   TIO.writeFile (destination </> "whole-crane.html") (T.replace "/*WHOLE_CRANE_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode report))) template)
 

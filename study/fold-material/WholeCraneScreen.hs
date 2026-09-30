@@ -5,7 +5,7 @@
 -- "ScreenReport"'s; this module says which parts of the crane they read.
 --
 -- False creases are the joins, the 'Join' edges a panel was cut along for the
--- mesh. A flat crease ('Flat') is a line the crease pattern has and this
+-- mesh, which "CraneSpreadScreen" reads for every crane with a wing moved. A flat crease ('Flat') is a line the crease pattern has and this
 -- crane leaves unfolded, so bending paper there bends it along a line the
 -- pattern allows, and it is not counted; on More tucked it would add 32.7
 -- sheet sides times degrees.
@@ -28,43 +28,24 @@
 -- No region of the crane is declared a tension field, where paper is
 -- expected to stretch, so the strain screen applies to the whole mesh.
 module WholeCraneScreen
-  ( PoseScreenError (..),
-    screenPose,
+  ( screenPose,
     screenFrom,
     turningOn,
   )
 where
 
 import Control.Monad (forM)
-import CraneSpread (CraneSpread (..), SpreadError, refinedAssignment, spreadCheck, spreadSurface)
+import CraneSpread (CraneSpread (..), spreadCheck, spreadSurface)
+import CraneSpreadScreen (PoseScreenError (..), joinBends)
 import Data.Bifunctor (first)
 import Data.Set qualified as S
-import FoldBending (BendingError, Hinge (..), HingeRole (..), bentEdges, hingeBends)
+import FoldBending (Hinge (..), HingeRole (..), bentEdges, hingeBends)
 import PaperScreen
 import ScreenReport
-import Senbazuru.Explain (Explain (..), tshow)
-import Senbazuru.Fold.Types (Assignment (..))
 import Senbazuru.Geometry (boxCentre, boxFromPoints)
-import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), RefinedSurface (..), Sample (..))
 import WholeCrane (Construction, CranePose, WholeCrane (..), craneConstruction, craneMesh, finerCrane, remadeOn)
-
-data PoseScreenError
-  = PoseSheet !SpreadError
-  | PoseBend !BendingError
-  | PoseScreen !ScreenError
-  | -- | An error on the pose made again on a refinement with this many
-    -- triangles, not on the pose's own mesh. Its vertex numbers are the
-    -- remade mesh's, which no file the gallery writes contains.
-    PoseRemade !Int !PoseScreenError
-  deriving stock (Show)
-
-instance Explain PoseScreenError where
-  explain (PoseSheet err) = explain err
-  explain (PoseBend err) = explain err
-  explain (PoseScreen err) = explain err
-  explain (PoseRemade triangleCount err) = "on the pose made again on " <> tshow triangleCount <> " triangles: " <> explain err
 
 -- | Screen one pose of the whole-crane study, working out everything the
 -- screen reads from the pose alone.
@@ -87,7 +68,7 @@ screenPose study pose = do
 -- does the rest; this adds the crane body's readings.
 screenFrom :: WholeCrane -> Chords -> ContactCheck -> [(Hinge, Double)] -> Maybe Turning -> MaterialMesh -> Either PoseScreenError Screen
 screenFrom study chords contact bends turningFiner mesh = do
-  screen <- first PoseScreen (screenOf chords contact (joinBends study (spreadRefined (wholeSpread study)) bends) turningFiner mesh)
+  screen <- first PoseScreen (screenOf chords contact (joinBends (wholeSpread study) (spreadRefined (wholeSpread study)) bends) turningFiner mesh)
   let core = wholeCore study
       centreCreases =
         [ (u, v, angle)
@@ -102,20 +83,6 @@ screenFrom study chords contact bends turningFiner mesh = do
         screenCentreFolds = maybe (Nothing, Nothing) (`centreFolds` centreCreases) centre
       }
 
--- | Each join of a refinement that a pose bends, as its length on the flat
--- sheet and its bend in degrees. A join is an edge a written frame assigns
--- 'Join', and 'refinedAssignment' is the rule every frame the study writes
--- follows; reading it without writing a frame works at levels nothing
--- writes. The @2@ is the edge's triangle count: a hinge has one either side.
-joinBends :: WholeCrane -> RefinedSurface -> [(Hinge, Double)] -> [(Double, Double)]
-joinBends study refined bends =
-  [ (norm (u ^-^ v), angle)
-    | (_, (a, b), (u, v), angle) <- bentEdges (refinedMesh refined) bends,
-      assignment (min a b, max a b) 2 == Join
-  ]
-  where
-    assignment = refinedAssignment (spreadSource (wholeSpread study)) refined
-
 -- | False-crease turning of a pose made again from its construction on a
 -- refinement of the sheet, given that refinement and its hinges; nothing for
 -- a pose that is not made again. An error says which refinement it came
@@ -125,4 +92,4 @@ turningOn (refined, hinges) study construction = first (PoseRemade (length (tria
   remade <- first PoseSheet (remadeOn study refined construction)
   forM remade $ \mesh -> do
     bends <- first PoseBend (hingeBends hinges mesh)
-    pure (falseCreaseTurning falseCreaseThreshold (joinBends study refined bends))
+    pure (falseCreaseTurning falseCreaseThreshold (joinBends (wholeSpread study) refined bends))

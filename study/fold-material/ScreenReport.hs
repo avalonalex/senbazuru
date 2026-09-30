@@ -1,13 +1,14 @@
 -- | The paper screen as a report (PRD 11, R-11-1): the thresholds, each with
 -- where it comes from, the record one pose's screen fills in, how it is
--- filled from what a gallery has worked out, its verdict, and the JSON a
--- gallery writes beside the pose.
+-- filled from what a gallery has worked out, its verdict, the JSON a
+-- gallery writes beside the pose, and the script its page reads it with.
 --
 -- It is a module of its own because every gallery that draws poses as paper
 -- is to write the same report (owner decision 26), while what a pose's
 -- screen reads differs from gallery to gallery: which edges are joins, and
--- whether the paper is a crane's body. "WholeCraneScreen" reads the crane.
--- The measures themselves are "PaperScreen"'s.
+-- whether the paper is a crane's body. "CraneSpreadScreen" reads a crane
+-- with a wing moved, and "WholeCraneScreen" the whole crane. The measures
+-- themselves are "PaperScreen"'s.
 --
 -- The non-obvious part is that the false-crease verdict has three answers,
 -- not two. False-crease turning is measured on the pose's mesh and, where the
@@ -33,6 +34,7 @@ module ScreenReport
     floorPixels,
     screenJson,
     thresholdsJson,
+    writeScreenScript,
   )
 where
 
@@ -40,6 +42,8 @@ import Data.Aeson (Value, object, (.=))
 import PaperScreen
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
+import System.Directory (copyFile)
+import System.FilePath ((</>))
 
 -- | The strain a pose may carry and still pass, squash or stretch: owner
 -- decision 16 (2026-09-29), 1% principal strain outside declared
@@ -226,3 +230,9 @@ thresholdsJson =
       "floorLimitPixels" .= floorLimitPixels,
       "falseCreaseThresholdDegrees" .= falseCreaseThreshold
     ]
+
+-- | Write @paper-screen.js@, which a page reads 'screenJson' and
+-- 'thresholdsJson' with, into the directory of a gallery's page. Every page
+-- with a screen loads this one script, so a verdict reads the same on each.
+writeScreenScript :: FilePath -> IO ()
+writeScreenScript destination = copyFile "study/fold-material/paper-screen.js" (destination </> "paper-screen.js")
