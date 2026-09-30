@@ -19,7 +19,7 @@ import Data.Maybe (isJust, isNothing)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
-import FoldBending (Hinge (..), bendingEnergy, hingeAngle)
+import FoldBending (Hinge (..), bendingEnergy, hingeBends)
 import FoldMaterial (areaRatio, componentCount, meshEdges)
 import FoldRelaxation
 import IllustrationComparison (illustrationPage, sharedExtent)
@@ -48,7 +48,7 @@ import System.IO (hFlush, stdout)
 import WholeCrane
 import WholeCraneDrawing
 import WholeCraneExport (viewerGlb)
-import WholeCraneScreen (Screen (..), floorPixels, pictureFloor, screenFrom, screenJson, strainScreen, thresholdsJson)
+import WholeCraneScreen (Screen (..), floorPixels, pictureFloor, screenFrom, screenJson, strainScreen, thresholdsJson, turningOn)
 
 startWholeCrane :: FilePath -> FilePath -> IO ()
 startWholeCrane source destination = do
@@ -141,6 +141,10 @@ viewWholeCrane destination = do
         case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
       else pure guess
   drawnStates <- checked (wholeCranePoses study)
+  -- The screen measures false creases a second time on each pose made again
+  -- one level finer, from its construction; the first candidate is not made
+  -- again.
+  finer <- checked (finerCrane study)
   let states = map Drawn drawnStates ++ [Refused endpoint | exists]
   measurements <- forM states $ \state -> do
     let (name, title, mesh) = case state of
@@ -155,9 +159,12 @@ viewWholeCrane destination = do
     (crease, panel) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     let points = IM.fromList (zip [0 ..] (samples mesh))
         edgeError = maximum (0 : [abs (norm (position a ^-^ position b) - norm (sampleMaterial a ^-^ sampleMaterial b)) | (i, j) <- meshEdges mesh, Just a <- [IM.lookup i points], Just b <- [IM.lookup j points]])
-    bends <- forM (spreadHinges fixture) $ \h -> (,) h . fst <$> checked (hingeAngle h points)
+    bends <- checked (hingeBends (spreadHinges fixture) mesh)
     let angles = [object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h] | (h, angle) <- bends]
-    screen <- checked (screenFrom study sheet contact bends mesh)
+    turningFiner <- case state of
+      Drawn pose -> checked (turningOn finer study (craneConstruction pose))
+      Refused _ -> pure Nothing
+    screen <- checked (screenFrom study contact bends turningFiner mesh)
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     case state of
       -- The viewers get visible paper first, the pose's name with its

@@ -2,7 +2,7 @@
 module WholeCraneSpec (spec) where
 
 import BodyPatch
-import Control.Monad (forM_, when)
+import Control.Monad (forM, forM_, when)
 import CranePocket
 import CraneSpread
 import Data.Aeson (Value (..))
@@ -10,8 +10,10 @@ import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.List (find)
 import Data.Set qualified as S
+import Data.Text qualified as T
 import FoldMaterial (componentCount, meshEdges)
 import PaperScreen (FloorPair (..), Turning (..))
+import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
@@ -133,7 +135,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   -- leading with it, turns this red.
   it "gives the viewers visible paper first and every layer second" $ \(_, _, study) -> do
     let fixture = wholeSpread study
-        closed = CranePose "before" "Closed crane" RigidPanels (refinedMesh (spreadRefined fixture))
+    closed <- right (cranePose study "before")
     sheet <- right (spreadSurface fixture (craneMesh closed))
     glb <- right (viewerGlb closed sheet) >>= parseGlb
     map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
@@ -159,8 +161,9 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   -- (H1, Y3, Y4) on the same construction. Computed along edges only, the 3D
   -- floor would be 17.71 px, set by the edge 46-213.
   it "screens More tucked as a shape paper cannot take" $ \(_, _, study) -> do
-    mesh <- right (pillowCraneAtSpread 0 study)
-    screen <- right (screenPose study mesh)
+    tucked <- right (cranePose study "spread-0")
+    screen <- right (screenPose study tucked)
+    let mesh = craneMesh tucked
     fmap floorVertices (screenFloor screen) `shouldBe` Just (37, 46)
     fmap floorPixels (screenFloor screen) `shouldSatisfy` maybe False (near 20.04 0.01)
     -- In the picture, pairs 46-182 and 46-230 tie to within rounding; either
@@ -174,15 +177,56 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screenSquash screen `shouldSatisfy` near 0.836 0.001
     turningJoins (screenTurning screen) `shouldBe` 15
     turningTotal (screenTurning screen) `shouldSatisfy` near 144.8 0.1
+    fmap turningJoins (screenTurningFiner screen) `shouldBe` Just 26
+    fmap turningTotal (screenTurningFiner screen) `shouldSatisfy` maybe False (near 142.18 0.01)
     screenCoreLength screen `shouldSatisfy` maybe False (near 0.414 0.001)
     fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14.04 0.05)
     snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4.03 0.05)
     verdictPasses (screenVerdict screen) `shouldBe` False
 
+  -- PRD 11's A-11-2, the fold half: More tucked made again with every
+  -- triangle split into four, and again, keeps its false-crease turning
+  -- within 5%, as a fold would; research note Y3 measured 145, 142 and 141.
+  -- It is not a fold. Two levels finer still, at 28,672 and 114,688
+  -- triangles and too slow to run here, the turning falls to 96 and 20
+  -- (docs/notes/fold-or-curve.md). So this holds the measure to A-11-2's
+  -- figures; it does not show that More tucked is folded. Counting joins
+  -- instead, 15, 26 and 56, turns it red.
+  it "keeps More tucked's false-crease turning within 5% at 448, 1,792 and 7,168 triangles" $ \(_, _, study) -> do
+    tucked <- right (cranePose study "spread-0")
+    turnings <- forM [1, 2, 3] $ \levels -> do
+      refined <- right (refinedCrane levels (wholeMap study))
+      right (turningOn refined study (craneConstruction tucked)) >>= maybe (fail "More tucked was not made again") pure
+    map turningJoins turnings `shouldBe` [15, 26, 56]
+    let totals = map turningTotal turnings
+    (maximum totals - minimum totals) / maximum totals `shouldSatisfy` (< 0.05)
+
+  -- The first candidate is placed around the saved body and not made again
+  -- on a finer mesh, so its screen has no finer figure. PaperScreenSpec's
+  -- verdict tests say what that does to its false creases.
+  it "does not make the first candidate again one level finer" $ \(_, _, study) -> do
+    candidate <- right (cranePose study "after")
+    screen <- right (screenPose study candidate)
+    screenTurningFiner screen `shouldBe` Nothing
+
+  -- An error while making a pose again names the refinement it came from,
+  -- since its vertex numbers are in no file the gallery writes. The finer
+  -- mesh's hinges reach past the study's own vertices; reporting that as an
+  -- error of the pose itself turns this red.
+  it "says which refinement an error in a remade pose came from" $ \(_, _, study) -> do
+    tucked <- right (cranePose study "spread-0")
+    (coarse, _) <- right (refinedCrane 1 (wholeMap study))
+    (_, finerHinges) <- right (finerCrane study)
+    case turningOn (coarse, finerHinges) study (craneConstruction tucked) of
+      Left err -> explain err `shouldSatisfy` T.isPrefixOf "on the pose made again on 448 triangles: "
+      Right _ -> expectationFailure "the finer mesh's hinges measured the study's own mesh"
+
   it "screens the closed crane as paper and measures the first candidate's picture floor (A-11-1)" $ \(_, _, study) -> do
     let fixture = wholeSpread study
-    closed <- right (screenPose study (refinedMesh (spreadRefined fixture)))
+    folded <- right (cranePose study "before")
+    closed <- right (screenPose study folded)
     screenVerdict closed `shouldBe` Verdict True True True True
+    screenTurningFiner closed `shouldBe` Just (Turning 0 0)
     fmap floorPixels (screenFloorAtScreen closed) `shouldBe` Just 0
     screenCrossings closed `shouldBe` 0
     screenCoreLength closed `shouldSatisfy` maybe False (near 0.235 0.001)

@@ -24,8 +24,10 @@
 -- docs/glossary.md), and its drawings, its GLB and its cards say so. Its FOLD
 -- file does not: a fidelity claim is not FOLD data (D19). The list lives
 -- here, not in the gallery, so that the test suite can check which pose is
--- which.
-module WholeCrane (WholeCrane (..), CranePose (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, wholeCraneOpenings, wholeCranePoses, craneCaveat, withCaveat, wholeMeasurements) where
+-- which. Because each pose records its construction rather than only its
+-- mesh, 'remadeOn' can make the same pose again on a finer mesh, where the
+-- paper screen measures its false creases a second time.
+module WholeCrane (WholeCrane (..), CranePose, craneStem, craneTitle, craneConstruction, craneMesh, Construction (..), wholeCrane, pillowCrane, compactPillowCrane, narrowPillowCrane, pillowCraneAtSpread, refinedCrane, finerCrane, remadeOn, cranePose, wholeCraneOpenings, wholeCranePoses, craneGeometry, craneCaveat, withCaveat, wholeMeasurements) where
 
 import BodyPatch
 import Control.Monad (unless)
@@ -37,6 +39,7 @@ import Data.List (foldl')
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
+import Data.Text qualified as T
 import FoldBending
 import FoldMaterial (componentCount, meshEdges)
 import Senbazuru.Explain (Explain, explain)
@@ -64,9 +67,7 @@ wholeCrane atlas patch saved = do
   unless (patchDegrees patch == 10 && patchLevel patch == 1) (bad "whole crane requires the saved ten-degree refined body")
   _ <- spreadSurface (patchSpread patch) saved
   let sheet = pocketSurface atlas
-  features <- checked (surfaceFeatures sheet)
-  let targets = M.fromList [(creaseId c, if creaseAssignment c == Mountain then -pi else if creaseAssignment c == Valley then pi else 0) | (c, _) <- features, creaseAssignment c `notElem` [Border, Cut]]
-  (refined, hinges) <- checked (buildSurfaceHinges (Bending 1 0.2) 1 sheet targets)
+  (refined, hinges) <- refinedCrane studyLevel atlas
   let base = refinedMesh refined
       tagged = zip (triangles base) (refinedPanels refined)
       memberships = IM.fromListWith S.union [(i, S.singleton r) | (tri, owner) <- tagged, Just r <- [M.lookup owner (pocketRegions atlas)], i <- vertices tri]
@@ -116,14 +117,53 @@ wholeCrane atlas patch saved = do
     analytic p = let V3 x y z = position p; V2 u v = sampleMaterial p; angle = pi / 18 in V3 x ((1 - sqrt 2 / 2) + (y - (1 - sqrt 2 / 2)) * cos angle) (z - (v - u) / sqrt 2 * sin angle)
 
 -- | One pose the gallery draws: the stem of its files, its title, how its
--- positions were made, and its mesh. Every pose drawn has a geometry level;
--- the gallery's one diagnostic, a refused solve, is not a 'CranePose'.
-data CranePose = CranePose
-  { craneStem :: !String,
-    craneTitle :: !Text,
-    craneGeometry :: !Geometry,
-    craneMesh :: !MaterialMesh
-  }
+-- positions were made, and its mesh. 'wholeCranePoses' and 'cranePose' are
+-- the only ways to make one, so its mesh is always the one its construction
+-- makes; the screen relies on that, reading the mesh at the study's level
+-- and the construction one level finer. Hiding the constructor is not
+-- enough for that: an exported record field still allows record update,
+-- @pose {craneMesh = other}@, so the parts are read through functions. The
+-- gallery's one diagnostic, a refused solve, is not a 'CranePose': nothing
+-- here says how to make it.
+data CranePose = CranePose !String !Text !Construction !MaterialMesh
+
+-- | The stem of the pose's files.
+craneStem :: CranePose -> String
+craneStem (CranePose stem _ _ _) = stem
+
+-- | The pose's title, as its cards and drawings show it.
+craneTitle :: CranePose -> Text
+craneTitle (CranePose _ title _ _) = title
+
+-- | How the pose's positions were made.
+craneConstruction :: CranePose -> Construction
+craneConstruction (CranePose _ _ construction _) = construction
+
+-- | The pose's mesh, at the study's own resolution.
+craneMesh :: CranePose -> MaterialMesh
+craneMesh (CranePose _ _ _ mesh) = mesh
+
+-- | How a pose's positions are made. Its geometry level follows from this,
+-- and so does whether 'remadeOn' makes it again on a finer mesh.
+data Construction
+  = -- | The rigidly folded sheet: the closed crane.
+    FoldedSheet
+  | -- | The first candidate, placed around the saved body. It is not made
+    -- again on a finer mesh: 'wholeCrane' builds it on the study's own mesh
+    -- and checks that it did, and building it elsewhere is work not yet
+    -- done.
+    PlacedAroundBody
+  | -- | 'placePillow' with a body width across the wings and a wing tangent
+    -- at the body rim.
+    PlacedPillow !Double !Double
+  deriving stock (Eq, Show)
+
+-- | Where a pose's positions came from, for its fidelity record.
+craneGeometry :: CranePose -> Geometry
+craneGeometry pose = case craneConstruction pose of
+  FoldedSheet -> RigidPanels
+  PlacedAroundBody -> AsPrescribed
+  PlacedPillow _ _ -> AsPrescribed
 
 -- | The wing spreads the gallery offers: a percentage, the stem of that
 -- pose's files, and its title. At 50% the spread is the narrower body's own,
@@ -137,21 +177,52 @@ wholeCraneOpenings = [(0, "spread-0", "More tucked"), (25, "spread-25", "Slightl
 -- placed.
 wholeCranePoses :: WholeCrane -> Either SpreadError [CranePose]
 wholeCranePoses study = do
-  pillow <- pillowCrane study
-  compact <- compactPillowCrane study
-  narrow <- narrowPillowCrane study
-  spreads <- sequence [placed name (title <> " · visual target") <$> pillowCraneAtSpread (fromIntegral percent / 100) study | (percent, name, title) <- wholeCraneOpenings, percent /= 50]
-  pure $
-    [ CranePose "before" "Closed crane" RigidPanels (refinedMesh (spreadRefined fixture)),
-      placed "after" "Opened crane · prescribed static candidate" (spreadMesh fixture),
-      placed "pillow" "Pillow body · visual target" pillow,
-      placed "compact" "Less spread · visual target" compact,
-      placed "narrow" "Narrower body · visual target" narrow
-    ]
-      ++ spreads
+  table <- cranePoseTable
+  mapM (\(stem, title, construction) -> CranePose stem title construction <$> made study construction) table
+
+-- | One of the gallery's poses, by the stem of its files.
+cranePose :: WholeCrane -> String -> Either SpreadError CranePose
+cranePose study stem = do
+  table <- cranePoseTable
+  case [(title, construction) | (name, title, construction) <- table, name == stem] of
+    [(title, construction)] -> CranePose stem title construction <$> made study construction
+    _ -> bad ("the whole-crane gallery draws no pose " <> T.pack stem)
+
+-- | The gallery's poses: the stem of each one's files, its title, and how
+-- it is made. The spread settings go through 'spreadShape', so an opening
+-- outside 0% to 100% is refused here as 'pillowCraneAtSpread' refuses it.
+cranePoseTable :: Either SpreadError [(String, Text, Construction)]
+cranePoseTable = do
+  spreads <- traverse spreadRow [opening | opening@(percent, _, _) <- wholeCraneOpenings, percent /= 50]
+  pure
+    ( [ ("before", "Closed crane", FoldedSheet),
+        ("after", "Opened crane · prescribed static candidate", PlacedAroundBody),
+        ("pillow", "Pillow body · visual target", pillowShape),
+        ("compact", "Less spread · visual target", compactShape),
+        ("narrow", "Narrower body · visual target", narrowShape)
+      ]
+        ++ spreads
+    )
   where
-    fixture = wholeSpread study
-    placed name title = CranePose name title AsPrescribed
+    spreadRow (percent, name, title) = do
+      construction <- spreadShape (fromIntegral percent / 100)
+      pure (name, title <> " · visual target", construction)
+
+-- | A pose's mesh at the study's own resolution.
+made :: WholeCrane -> Construction -> Either SpreadError MaterialMesh
+made study = \case
+  FoldedSheet -> Right (refinedMesh (spreadRefined (wholeSpread study)))
+  PlacedAroundBody -> Right (spreadMesh (wholeSpread study))
+  PlacedPillow bodyWidthScale start -> pillowCraneWith bodyWidthScale start study
+
+-- | A pose made again on another refinement of the sheet: the same
+-- construction, sampled more or less finely. Nothing for the first
+-- candidate, which is not made again ('PlacedAroundBody').
+remadeOn :: WholeCrane -> RefinedSurface -> Construction -> Either SpreadError (Maybe MaterialMesh)
+remadeOn study refined = \case
+  FoldedSheet -> Right (Just (refinedMesh refined))
+  PlacedAroundBody -> Right Nothing
+  PlacedPillow bodyWidthScale start -> Just <$> placePillow (wholeMap study) refined bodyWidthScale start
 
 -- | What a pose's drawings and cards add to its name so that it is not taken
 -- for paper: "shape sketch" when it was placed rather than folded. Every
@@ -195,20 +266,29 @@ type Fit = (V3, V3, V3, V3)
 -- This is authored geometry, not a pressure or material solve. In particular
 -- the graph continuation may strain the collars; retain their diagnostics.
 pillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
-pillowCrane = pillowCraneWith 1 (-(pi / 12))
+pillowCrane study = made study pillowShape
+
+pillowShape :: Construction
+pillowShape = PlacedPillow 1 (-(pi / 12))
 
 -- | A less spread visual target: narrow the cushion across the wings by 25%
 -- and raise each wing arch by 35 degrees. The arch keeps its length and turn;
 -- reducing its horizontal reach does not shorten the wing or scale a drawing.
 -- This is another static construction, not a motion from the wider target.
 compactPillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
-compactPillowCrane = pillowCraneWith 0.75 (-(5 * pi / 18))
+compactPillowCrane study = made study compactShape
+
+compactShape :: Construction
+compactShape = PlacedPillow 0.75 (-(5 * pi / 18))
 
 -- | Narrow only the previous target's body by another third. Its height and
 -- head-to-tail extent stay fixed; the same raised wing arches move inward
 -- with their roots. This isolates body width from a change of wing angle.
 narrowPillowCrane :: WholeCrane -> Either SpreadError MaterialMesh
-narrowPillowCrane = pillowCraneWith 0.5 (-(5 * pi / 18))
+narrowPillowCrane study = made study narrowShape
+
+narrowShape :: Construction
+narrowShape = PlacedPillow 0.5 (-(5 * pi / 18))
 
 -- | An authored wing-spread control on the same narrow cushion. Zero holds
 -- the wings higher (a -70-degree root tangent); one lowers them outward
@@ -217,9 +297,41 @@ narrowPillowCrane = pillowCraneWith 0.5 (-(5 * pi / 18))
 -- anchors and continues their displacement, rather than interpolating meshes.
 -- This changes the silhouette, not the status of these invalid paper shapes.
 pillowCraneAtSpread :: Double -> WholeCrane -> Either SpreadError MaterialMesh
-pillowCraneAtSpread amount study = do
+pillowCraneAtSpread amount study = spreadShape amount >>= made study
+
+-- | The narrow cushion with its wings at a spread setting between zero and
+-- one; any other setting, or one that is not a number, is refused.
+spreadShape :: Double -> Either SpreadError Construction
+spreadShape amount = do
   unless (amount >= 0 && amount <= 1) (bad "pillow wing spread must be finite and between zero and one")
-  pillowCraneWith 0.5 (-(5 * pi / 18) + (amount - 0.5) * (2 * pi / 9)) study
+  pure (PlacedPillow 0.5 (spreadAngle amount))
+
+-- | The wing tangent at the body rim for a spread setting between zero and
+-- one: -70 degrees at zero, -30 at one.
+spreadAngle :: Double -> Double
+spreadAngle amount = -(5 * pi / 18) + (amount - 0.5) * (2 * pi / 9)
+
+-- | How many times the study refines the sheet: its mesh has 448 triangles.
+studyLevel :: Int
+studyLevel = 1
+
+-- | The finer mesh every pose is screened on as well: the sheet refined once
+-- more than the study's own mesh, 1,792 triangles, with its hinges. The
+-- screen and the gallery both take it from here, so both measure the same
+-- level.
+finerCrane :: WholeCrane -> Either SpreadError (RefinedSurface, [Hinge])
+finerCrane study = refinedCrane (studyLevel + 1) (wholeMap study)
+
+-- | The sheet refined @levels@ times, with a hinge on every interior edge:
+-- each crease folded as in the closed crane, every other edge a panel bend.
+-- One level is the study's mesh, 448 triangles; each level more splits every
+-- triangle into four.
+refinedCrane :: Int -> PocketMap -> Either SpreadError (RefinedSurface, [Hinge])
+refinedCrane levels atlas = do
+  let sheet = pocketSurface atlas
+  features <- checked (surfaceFeatures sheet)
+  let targets = M.fromList [(creaseId c, if creaseAssignment c == Mountain then -pi else if creaseAssignment c == Valley then pi else 0) | (c, _) <- features, creaseAssignment c `notElem` [Border, Cut]]
+  checked (buildSurfaceHinges (Bending 1 0.2) levels sheet targets)
 
 -- The first parameter changes only the body's width across the wings. The
 -- second is the wing tangent angle at the body rim; negative angles point up
@@ -227,9 +339,21 @@ pillowCraneAtSpread amount study = do
 pillowCraneWith :: Double -> Double -> WholeCrane -> Either SpreadError MaterialMesh
 pillowCraneWith bodyWidthScale start study = do
   let fixture = wholeSpread study
-      base = refinedMesh (spreadRefined fixture)
+  moved <- placePillow (wholeMap study) (spreadRefined fixture) bodyWidthScale start
+  _ <- spreadSurface fixture moved
+  pure moved
+
+-- | The pillow construction on the sheet at any refinement: cushion anchors
+-- on the body core, arch anchors on the outer wing strips, and a smoothed
+-- fill of everything else. It reads only the mesh and the pocket map, so the
+-- same pose can be placed on a finer mesh.
+placePillow :: PocketMap -> RefinedSurface -> Double -> Double -> Either SpreadError MaterialMesh
+placePillow atlas refined bodyWidthScale start = do
+  let base = refinedMesh refined
+      tagged = zip (triangles base) (refinedPanels refined)
       original = IM.fromList (zip [0 ..] (samples base))
-      memberships = IM.fromListWith S.union [(i, S.singleton r) | (tri, owner) <- zip (triangles base) (refinedPanels (spreadRefined fixture)), Just r <- [M.lookup owner (pocketRegions (wholeMap study))], i <- vertices tri]
+      memberships = IM.fromListWith S.union [(i, S.singleton r) | (tri, owner) <- tagged, Just r <- [M.lookup owner (pocketRegions atlas)], i <- vertices tri]
+      core = S.fromList [i | (tri, owner) <- tagged, owner `elem` regionFaces atlas BodyCore, i <- vertices tri]
       radius = (sqrt 2 - 1) / 2
       cushion p =
         let V2 u v = sampleMaterial p
@@ -237,7 +361,7 @@ pillowCraneWith bodyWidthScale start study = do
             z = (u - v) / sqrt 2
             dome = max 0 (1 - (x / radius) ^ (2 :: Int)) * max 0 (1 - (z / radius) ^ (2 :: Int))
          in V3 (1 + x) (0.44 - 0.045 * dome) (bodyWidthScale * z)
-      anchors = IM.map cushion (IM.filterWithKey (\i _ -> S.member i (wholeCore study)) original)
+      anchors = IM.map cushion (IM.filterWithKey (\i _ -> S.member i core) original)
   -- Spread the outer wing strips as shallow circular arches. Holding entire
   -- strips, rather than only two tips, names the intended wing orientation.
   let wingTarget i p = case S.toList (IM.findWithDefault S.empty i memberships) of
@@ -261,9 +385,7 @@ pillowCraneWith bodyWidthScale start study = do
   -- edge. Penalise relative displacement instead. This smooths an authored
   -- guess; it still cannot enforce paper lengths or contact.
   continued <- continueDisplacementsWith (\a b -> 1 / restDistance a b) base (IM.map position original) targets
-  let moved = base {samples = [p {position = IM.findWithDefault (position p) i continued} | (i, p) <- IM.toList original]}
-  _ <- spreadSurface fixture moved
-  pure moved
+  pure base {samples = [p {position = IM.findWithDefault (position p) i continued} | (i, p) <- IM.toList original]}
 
 -- Least-squares plane tangents, made perpendicular and unit length so the
 -- continuation itself is rigid. It cannot satisfy every deformed attachment;
