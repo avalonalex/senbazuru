@@ -25,6 +25,8 @@ import FoldRelaxation
 import IllustrationComparison (illustrationPage, sharedExtent)
 import IllustrationVisibility
 import PaperLighting (panelCornerNormals)
+import PaperScreen (pictureFloor, sheetChords)
+import ScreenReport (Screen (..), floorPixels, screenJson, strainScreen, thresholdsJson)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (Grid (..), gridOf)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -48,7 +50,7 @@ import System.IO (hFlush, stdout)
 import WholeCrane
 import WholeCraneDrawing
 import WholeCraneExport (viewerGlb)
-import WholeCraneScreen (Screen (..), floorPixels, pictureFloor, screenFrom, screenJson, strainScreen, thresholdsJson, turningOn)
+import WholeCraneScreen (screenFrom, turningOn)
 
 startWholeCrane :: FilePath -> FilePath -> IO ()
 startWholeCrane source destination = do
@@ -141,6 +143,10 @@ viewWholeCrane destination = do
         case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
       else pure guess
   drawnStates <- checked (wholeCranePoses study)
+  -- Which chords the floor may use depends only on the flat sheet, and every
+  -- pose here keeps the sheet's material and triangles ('spreadSurface'
+  -- checks), so one sheet's chords serve every pose and every picture.
+  chords <- checked (sheetChords (refinedMesh (spreadRefined fixture)))
   -- The screen measures false creases a second time on each pose made again
   -- one level finer, from its construction; the first candidate is not made
   -- again.
@@ -164,7 +170,7 @@ viewWholeCrane destination = do
     turningFiner <- case state of
       Drawn pose -> checked (turningOn finer study (craneConstruction pose))
       Refused _ -> pure Nothing
-    screen <- checked (screenFrom study contact bends turningFiner mesh)
+    screen <- checked (screenFrom study chords contact bends turningFiner mesh)
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     case state of
       -- The viewers get visible paper first, the pose's name with its
@@ -225,7 +231,7 @@ viewWholeCrane destination = do
             writeSvg output drawingPage bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks ++ caveat)
             pure [object ["id" .= viewId, "title" .= title, "caveat" .= craneCaveat pose, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (360000 * sourceArea), "toneAreaPixelsSquared" .= (360000 * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
           else pure []
-      pure (shapes, object ["id" .= name, "stem" .= stem, "pictureFloorPixels" .= fmap floorPixels (pictureFloor basis 0 mesh), "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor basis strainScreen mesh), "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
+      pure (shapes, object ["id" .= name, "stem" .= stem, "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords basis 0 mesh), "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords basis strainScreen mesh), "status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]], book)
     let comparisons = case viewId of
           "oblique" -> [("comparison.svg", "before", "after", "Before · closed crane", "First opened candidate")]
           "upright" -> [("pillow-comparison.svg", "before", "pillow", "Before · closed crane", "Wider pillow target"), ("compact-comparison.svg", "before", "compact", "Before · closed crane", "Less spread target"), ("spread-comparison.svg", "pillow", "compact", "Earlier · wider target", "Revised · less spread"), ("body-width-comparison.svg", "compact", "narrow", "Previous body width", "Narrower body · same wing angle"), ("narrow-comparison.svg", "before", "narrow", "Before · closed crane", "Narrower body target")]

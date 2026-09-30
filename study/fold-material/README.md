@@ -66,7 +66,9 @@ its own mesh and on the pose made again with every triangle split into four
 ([fold or curve](../../docs/notes/fold-or-curve.md)), and
 the body core's length and centre folds. The same figures are in
 `checks.json`: under each state's `screen`, in each view's per-state
-`pictureFloorPixels`, and the thresholds once, in `screenThresholds`. The
+`pictureFloorPixels`, and the thresholds once, in `screenThresholds`. Each
+part of a screen's `verdict` is `true`, `false`, or `null` where it was not
+measured. The
 [study note](../../docs/notes/crane-pillow-target.md) records the references,
 controls and diagnostics. The first candidate's optional
 `--whole-crane-correct build/fold-material` control takes at most 40 material

@@ -5,12 +5,14 @@ paper can take. Asking a solver how far it is from paper answers with whatever
 the solver finds. A shorter argument answers with a proof.
 
 **Paper cannot stretch, so two of its points never end up further apart than
-they are on the flat sheet.** Measure every pair of material vertices in the
+the shortest way between them along the flat sheet.** On the crane's square
+that way is a straight line, so measure every pair of material vertices in the
 pose and on the flat square. Where a pair is further apart in the pose, by some
 excess *e*, real paper would have to bring those two points *e* closer, and so
 some point of the pose must move. That is the *no-stretch floor*
 ([glossary](../glossary.md#this-project)): the largest such excess over every
-pair, halved.
+pair, halved. On a sheet that is not a convex shape, it is taken over fewer
+pairs (below).
 
 On More tucked, the owner's preferred crane sketch:
 
@@ -38,12 +40,21 @@ In the gallery's upright picture the worst pair is 46–182, at **17.14 px**.
 Pair 46–230 gives the same floor to within 2 × 10⁻¹³ px, so either may be
 named.
 
-**The sheet must be convex, and uncut.** The argument uses the straight line
-between two points of the flat sheet. On a sheet with a notch, that line can
-leave the paper, and two points may end up further apart than the straight line
-without any stretch. A slit does the same without changing the sheet's area,
-and shows instead as two vertices at one point of the sheet. The screen refuses
-either rather than report a number that is not a bound.
+**The straight line has to stay on the paper.** The argument uses the straight
+line between two points of the flat sheet, their *chord*
+([glossary](../glossary.md#geometry)), because on a convex sheet that is the
+shortest way between them along the paper. On a sheet with a notch, a chord
+can cross the notch, and then its two ends can end up further apart than the
+chord without any stretch. Three unit squares in an L, one arm folded a quarter
+turn up and the other a quarter turn down, are paper, yet the arm tips end 2
+apart while the chord between them, across the notch, is √2 ≈ 1.41: a floor
+over every pair would say some point must move 0.29 of a side. So the floor is
+taken over the pairs whose chord stays on the sheet (owner decision 28). Each
+pair's excess is a proof on its own, so a floor over fewer pairs is still a
+floor; it can only come out smaller. On a convex sheet, such as the crane's
+square, every chord stays and nothing changes. A cut sheet is refused instead,
+however the cut is stored: a straight line from a point on the cut cannot tell
+which side of it the line leaves by.
 
 **Paper may stretch a little.** At a declared strain ε, a pair may be up to
 (1 + ε) times its flat distance apart, and the floor shrinks accordingly. At
@@ -56,5 +67,5 @@ or how near. Finding that takes a solver, and its answer is only as good as the
 solver.
 
 `PaperScreen.noStretchFloor` computes it for every pose in the whole-crane
-gallery. The argument is PRD 11's (R-11-3) and its research note
+gallery, over the chords `PaperScreen.sheetChords` keeps. The argument is PRD 11's (R-11-3) and its research note
 [Y2](../../PRDs/research/Y2-reachability.md).
