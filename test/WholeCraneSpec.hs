@@ -2,7 +2,7 @@
 module WholeCraneSpec (spec) where
 
 import BodyPatch
-import Control.Monad (forM_, when)
+import Control.Monad (forM, forM_, when)
 import CranePocket
 import CraneSpread
 import Data.Aeson (Value (..))
@@ -133,7 +133,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   -- leading with it, turns this red.
   it "gives the viewers visible paper first and every layer second" $ \(_, _, study) -> do
     let fixture = wholeSpread study
-        closed = CranePose "before" "Closed crane" RigidPanels (refinedMesh (spreadRefined fixture))
+        closed = CranePose "before" "Closed crane" FoldedSheet (refinedMesh (spreadRefined fixture))
     sheet <- right (spreadSurface fixture (craneMesh closed))
     glb <- right (viewerGlb closed sheet) >>= parseGlb
     map (at "name") (items (at "scenes" (glbJson glb))) `shouldBe` [String "Visible paper", String "Complete paper"]
@@ -159,8 +159,9 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
   -- (H1, Y3, Y4) on the same construction. Computed along edges only, the 3D
   -- floor would be 17.71 px, set by the edge 46-213.
   it "screens More tucked as a shape paper cannot take" $ \(_, _, study) -> do
-    mesh <- right (pillowCraneAtSpread 0 study)
-    screen <- right (screenPose study mesh)
+    tucked <- right (cranePose study "spread-0")
+    screen <- right (screenPose study tucked)
+    let mesh = craneMesh tucked
     fmap floorVertices (screenFloor screen) `shouldBe` Just (37, 46)
     fmap floorPixels (screenFloor screen) `shouldSatisfy` maybe False (near 20.04 0.01)
     -- In the picture, pairs 46-182 and 46-230 tie to within rounding; either
@@ -174,15 +175,32 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screenSquash screen `shouldSatisfy` near 0.836 0.001
     turningJoins (screenTurning screen) `shouldBe` 15
     turningTotal (screenTurning screen) `shouldSatisfy` near 144.8 0.1
+    fmap turningJoins (screenTurningFiner screen) `shouldBe` Just 26
+    fmap turningTotal (screenTurningFiner screen) `shouldSatisfy` maybe False (near 142.18 0.01)
     screenCoreLength screen `shouldSatisfy` maybe False (near 0.414 0.001)
     fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14.04 0.05)
     snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4.03 0.05)
     verdictPasses (screenVerdict screen) `shouldBe` False
 
+  -- PRD 11's A-11-2, the fold half. More tucked made again with every
+  -- triangle split into four, and again, keeps its turning; research note Y3
+  -- measured 145, 142 and 141. Counting joins instead, 15, 26 and 56, would
+  -- call one fold nearly four times worse, and turns this red.
+  it "keeps More tucked's false-crease turning within 5% at 448, 1,792 and 7,168 triangles" $ \(_, _, study) -> do
+    tucked <- right (cranePose study "spread-0")
+    turnings <- forM [1, 2, 3] $ \levels -> do
+      refined <- right (refinedCrane levels (wholeMap study))
+      right (turningOn refined study tucked) >>= maybe (fail "More tucked cannot be made again") pure
+    map turningJoins turnings `shouldBe` [15, 26, 56]
+    let totals = map turningTotal turnings
+    (maximum totals - minimum totals) / maximum totals `shouldSatisfy` (< 0.05)
+
   it "screens the closed crane as paper and measures the first candidate's picture floor (A-11-1)" $ \(_, _, study) -> do
     let fixture = wholeSpread study
-    closed <- right (screenPose study (refinedMesh (spreadRefined fixture)))
+    folded <- right (cranePose study "before")
+    closed <- right (screenPose study folded)
     screenVerdict closed `shouldBe` Verdict True True True True
+    screenTurningFiner closed `shouldBe` Just (Turning 0 0)
     fmap floorPixels (screenFloorAtScreen closed) `shouldBe` Just 0
     screenCrossings closed `shouldBe` 0
     screenCoreLength closed `shouldSatisfy` maybe False (near 0.235 0.001)

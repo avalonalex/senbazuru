@@ -61,7 +61,9 @@ the gallery, the book page and the 3D viewer, and in its GLB, whose name ends
 crane's reads `rigid panels`. Beside the drawings, a
 *paper screen* says whether paper could take each pose: its strain, the
 [no-stretch floor](../../docs/notes/no-stretch-floor.md) in 3D and in the
-chosen picture, crossings with their largest reach-through, false creases, and
+chosen picture, crossings with their largest reach-through, false creases on
+its own mesh and on the pose made again one level finer
+([fold or curve](../../docs/notes/fold-or-curve.md)), and
 the body core's length and centre folds. The same figures are in
 `checks.json`: under each state's `screen`, in each view's per-state
 `pictureFloorPixels`, and the thresholds once, in `screenThresholds`. The

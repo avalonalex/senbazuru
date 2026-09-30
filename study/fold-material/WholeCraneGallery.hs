@@ -48,7 +48,7 @@ import System.IO (hFlush, stdout)
 import WholeCrane
 import WholeCraneDrawing
 import WholeCraneExport (viewerGlb)
-import WholeCraneScreen (Screen (..), floorPixels, pictureFloor, screenFrom, screenJson, strainScreen, thresholdsJson)
+import WholeCraneScreen (Screen (..), floorPixels, pictureFloor, screenFrom, screenJson, strainScreen, thresholdsJson, turningOn)
 
 startWholeCrane :: FilePath -> FilePath -> IO ()
 startWholeCrane source destination = do
@@ -141,6 +141,9 @@ viewWholeCrane destination = do
         case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
       else pure guess
   drawnStates <- checked (wholeCranePoses study)
+  -- Every drawn pose is made again one level finer, where a fold keeps its
+  -- false-crease turning and a curve the mesh only samples loses it.
+  finer <- checked (refinedCrane (studyLevel + 1) (wholeMap study))
   let states = map Drawn drawnStates ++ [Refused endpoint | exists]
   measurements <- forM states $ \state -> do
     let (name, title, mesh) = case state of
@@ -157,7 +160,8 @@ viewWholeCrane destination = do
         edgeError = maximum (0 : [abs (norm (position a ^-^ position b) - norm (sampleMaterial a ^-^ sampleMaterial b)) | (i, j) <- meshEdges mesh, Just a <- [IM.lookup i points], Just b <- [IM.lookup j points]])
     bends <- forM (spreadHinges fixture) $ \h -> (,) h . fst <$> checked (hingeAngle h points)
     let angles = [object ["vertices" .= hingeVertices h, "role" .= show (hingeRole h), "preferredRadians" .= hingeRest h, "achievedRadians" .= angle, "stiffness" .= hingeStiffness h] | (h, angle) <- bends]
-    screen <- checked (screenFrom study sheet contact bends mesh)
+    turningFiner <- maybe (pure Nothing) (checked . turningOn finer study) drawn
+    screen <- checked (screenFrom study contact bends turningFiner mesh)
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     case state of
       -- The viewers get visible paper first, the pose's name with its

@@ -16,6 +16,13 @@
 -- crease is left out here too: it has no fold for a pose to keep or undo, so
 -- it cannot say which of the two a pose is.
 --
+-- False-crease turning is measured twice (R-11-1): on the pose's mesh, and
+-- on the pose made again with every triangle split into four. A fold keeps
+-- its turning on the finer mesh; a curve that the mesh only samples bends
+-- each join less there, and loses it (A-11-2). The first candidate is
+-- placed around a saved body that exists only at the study's resolution, so
+-- it cannot be made again, and its verdict rests on its own mesh.
+--
 -- No region of the crane is declared a tension field, where paper is
 -- expected to stretch, so the strain screen applies to the whole mesh.
 module WholeCraneScreen
@@ -34,27 +41,28 @@ module WholeCraneScreen
     pictureFloor,
     floorPixels,
     joinBends,
+    turningOn,
     screenJson,
     thresholdsJson,
   )
 where
 
+import Control.Monad (forM)
 import CraneSpread (CraneSpread (..), SpreadError, spreadCheck, spreadSurface)
 import Data.Aeson (Value, object, (.=))
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.Map.Strict qualified as M
+import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import FoldBending (BendingError, Hinge (..), HingeRole (..), hingeAngle)
 import PaperScreen
 import Senbazuru.Explain (Explain (..))
-import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), boxCentre, boxFromPoints)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (ContactCheck (..))
-import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..), Surface, surfaceFrame)
+import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), RefinedSurface (..), Sample (..))
 import Senbazuru.Render.Camera (Basis, project)
-import WholeCrane (WholeCrane (..))
+import WholeCrane (CranePose (..), WholeCrane (..), refinedCrane, remadeOn, studyLevel)
 
 -- | The strain a pose may carry and still pass, squash or stretch: owner
 -- decision 16 (2026-09-29), 1% principal strain outside declared
@@ -96,6 +104,9 @@ data Screen = Screen
     screenCrossings :: !Int,
     screenDeepestReach :: !(Maybe (Double, (Int, Int))),
     screenTurning :: !Turning,
+    -- | The same on the pose made again one level finer; nothing for a pose
+    -- that cannot be made again.
+    screenTurningFiner :: !(Maybe Turning),
     screenCoreLength :: !(Maybe Double),
     -- | Median centre-crease folds in degrees: midlines, then diagonals.
     screenCentreFolds :: !(Maybe Double, Maybe Double)
@@ -114,7 +125,8 @@ data Verdict = Verdict
     -- picture's floor is never larger, since projecting never lengthens, so
     -- this settles every camera at once.
     verdictFloor :: !Bool,
-    -- | No join bent past 'falseCreaseThreshold'.
+    -- | No join bent past 'falseCreaseThreshold', on the pose's mesh or one
+    -- level finer.
     verdictFalseCreases :: !Bool
   }
   deriving stock (Eq, Show)
@@ -131,21 +143,24 @@ instance Explain PoseScreenError where
   explain (PoseScreen err) = explain err
 
 -- | Screen one pose of the whole-crane study, working out everything the
--- screen reads from the mesh alone.
-screenPose :: WholeCrane -> MaterialMesh -> Either PoseScreenError Screen
-screenPose study mesh = do
+-- screen reads from the pose alone.
+screenPose :: WholeCrane -> CranePose -> Either PoseScreenError Screen
+screenPose study pose = do
   let fixture = wholeSpread study
+      mesh = craneMesh pose
       points = IM.fromList (zip [0 ..] (samples mesh))
-  sheet <- first PoseSheet (spreadSurface fixture mesh)
+  _ <- first PoseSheet (spreadSurface fixture mesh)
   contact <- first PoseSheet (spreadCheck fixture mesh)
   bends <- mapM (\h -> (,) h . fst <$> first PoseBend (hingeAngle h points)) (spreadHinges fixture)
-  screenFrom study sheet contact bends mesh
+  finer <- first PoseSheet (refinedCrane (studyLevel + 1) (wholeMap study))
+  turningFiner <- turningOn finer study pose
+  screenFrom study contact bends turningFiner mesh
 
 -- | Screen one pose from what the gallery has already worked out for it: its
--- surface, its crossing check, and each hinge's bend in radians. All three
--- must be of this mesh.
-screenFrom :: WholeCrane -> Surface material -> ContactCheck -> [(Hinge, Double)] -> MaterialMesh -> Either PoseScreenError Screen
-screenFrom study sheet contact bends mesh = do
+-- crossing check, each hinge's bend in radians, and its turning one level
+-- finer. All must be of this mesh.
+screenFrom :: WholeCrane -> ContactCheck -> [(Hinge, Double)] -> Maybe Turning -> MaterialMesh -> Either PoseScreenError Screen
+screenFrom study contact bends turningFiner mesh = do
   first PoseScreen (sheetIsConvex mesh)
   deepest <- first PoseScreen (deepestReach mesh (crossingPanels contact))
   let placed = [(sampleMaterial s, position s) | s <- samples mesh]
@@ -166,22 +181,37 @@ screenFrom study sheet contact bends mesh = do
         screenFloorAtScreen = noStretchFloor strainScreen placed,
         screenCrossings = length (crossingPanels contact),
         screenDeepestReach = deepest,
-        screenTurning = falseCreaseTurning falseCreaseThreshold (joinBends (surfaceFrame sheet) mesh bends),
+        screenTurning = falseCreaseTurning falseCreaseThreshold (joinBends (spreadRefined (wholeSpread study)) bends),
+        screenTurningFiner = turningFiner,
         screenCoreLength = coreLength core mesh,
         screenCentreFolds = maybe (Nothing, Nothing) (`centreFolds` centreCreases) centre
       }
 
 -- | Each join a pose bends, as its length on the flat sheet and its bend in
--- degrees: the 'PanelBend' hinges whose edge the frame assigns 'Join'.
-joinBends :: Frame -> MaterialMesh -> [(Hinge, Double)] -> [(Double, Double)]
-joinBends frame mesh bends =
+-- degrees: the 'PanelBend' hinges on edges the refinement made, which lie on
+-- no edge of the sheet it refined. Those are exactly the edges a written
+-- frame assigns 'Join'; the refinement says so at any level, with no frame
+-- to write.
+joinBends :: RefinedSurface -> [(Hinge, Double)] -> [(Double, Double)]
+joinBends refined bends =
   [ (norm (u ^-^ v), angle)
-    | (h, (a, b), (u, v), angle) <- bentEdges mesh bends,
+    | (h, (a, b), (u, v), angle) <- bentEdges (refinedMesh refined) bends,
       hingeRole h == PanelBend,
-      M.lookup (min a b, max a b) assignments == Just Join
+      S.notMember (min a b, max a b) sheetEdges
   ]
   where
-    assignments = M.fromList [((min a b, max a b), assignment) | ((VertexId a, VertexId b), assignment) <- zip (edgesVertices frame) (edgesAssignment frame)]
+    sheetEdges = S.fromList [(min a b, max a b) | (_, (a, b)) <- refinedEdges refined]
+
+-- | False-crease turning of a pose made again on another refinement of the
+-- sheet, given that refinement and its hinges; nothing for a pose that cannot
+-- be made again.
+turningOn :: (RefinedSurface, [Hinge]) -> WholeCrane -> CranePose -> Either PoseScreenError (Maybe Turning)
+turningOn (refined, hinges) study pose = do
+  remade <- first PoseSheet (remadeOn study refined (craneConstruction pose))
+  forM remade $ \mesh -> do
+    let points = IM.fromList (zip [0 ..] (samples mesh))
+    bends <- mapM (\h -> (,) h . fst <$> first PoseBend (hingeAngle h points)) hinges
+    pure (falseCreaseTurning falseCreaseThreshold (joinBends refined bends))
 
 -- | Each hinge with its edge, the edge's two ends on the flat sheet, and its
 -- bend in degrees. A hinge's first two vertices are its edge; the other two
@@ -212,7 +242,7 @@ screenVerdict s =
     { verdictStrain = within strainScreen,
       verdictStrictStrain = within strictStrainScreen,
       verdictFloor = all ((<= floorLimitPixels) . floorPixels) (screenFloorAtScreen s),
-      verdictFalseCreases = turningJoins (screenTurning s) == 0
+      verdictFalseCreases = all ((== 0) . turningJoins) (screenTurning s : maybeToList (screenTurningFiner s))
     }
   where
     within limit = screenSquash s <= limit && screenStretch s <= limit
@@ -240,6 +270,8 @@ screenJson s =
       "deepestReachTriangles" .= fmap snd (screenDeepestReach s),
       "falseCreaseJoins" .= turningJoins (screenTurning s),
       "falseCreaseTurningSheetDegrees" .= turningTotal (screenTurning s),
+      "falseCreaseJoinsFiner" .= fmap turningJoins (screenTurningFiner s),
+      "falseCreaseTurningFinerSheetDegrees" .= fmap turningTotal (screenTurningFiner s),
       "coreLengthSheets" .= screenCoreLength s,
       "centreMidlineFoldDegrees" .= fst (screenCentreFolds s),
       "centreDiagonalFoldDegrees" .= snd (screenCentreFolds s),

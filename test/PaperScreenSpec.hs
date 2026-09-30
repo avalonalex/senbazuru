@@ -3,6 +3,7 @@
 -- catch.
 module PaperScreenSpec (spec) where
 
+import CylinderStrip (Diagonal (..), placedStrip, stripJoins)
 import Data.Either (isLeft, isRight)
 import PaperScreen
 import Senbazuru.Geometry (V2 (..))
@@ -75,6 +76,27 @@ spec = describe "the paper screen" $ do
           ]
     centreFolds centre segments `shouldBe` (Just 100, Just 30)
 
+  -- PRD 11's A-11-2, the curve half. Research note Y3's strip, one sheet
+  -- side by a quarter, bent through 270 degrees about generators at 45
+  -- degrees and placed exactly on its cylinder: a curve, which a mesh can
+  -- only sample.
+  describe "false-crease turning on a curve" $ do
+    it "falls to nothing under one refinement, cells cut across the bend" $ do
+      -- The coarse joins bend up to 37 degrees and the fine ones 19. Summed
+      -- with no threshold, the fine joins still come to about 204, so a
+      -- measure that dropped its threshold turns this red.
+      coarse <- joinsOf 8 AcrossBend
+      fine <- joinsOf 16 AcrossBend
+      turningJoins (falseCreaseTurning 20 coarse) `shouldSatisfy` (> 0)
+      falseCreaseTurning 20 fine `shouldBe` Turning 0 0
+      turningTotal (falseCreaseTurning 0 fine) `shouldSatisfy` (> 100)
+
+    it "keeps its whole turning at every resolution, cells cut along the bend" $ do
+      -- Summed over every join, a curve turns as far however finely it is
+      -- sampled: why the measure needs its threshold.
+      totals <- mapM (\n -> turningTotal . falseCreaseTurning 0 <$> joinsOf n AlongBend) [8, 16, 32]
+      totals `shouldSatisfy` \ts -> maximum ts - minimum ts < 1e-9 && minimum ts > 70
+
   describe "the verdict" $ do
     it "judges the floor at the declared strain, not at none" $ do
       -- 1.2 px at no strain, 0.8 px at the 1% screen: the 1 px target applies
@@ -88,10 +110,17 @@ spec = describe "the paper screen" $ do
       verdictStrain verdict `shouldBe` False
       verdictPasses verdict `shouldBe` False
 
+    it "fails false creases found one level finer, where the pose's own mesh has none" $
+      verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Just (Turning 2 91)}) `shouldBe` False
+
     it "reports the 0.1% screen without requiring it" $ do
       let verdict = screenVerdict (screenWith 0.005 0.005)
       (verdictStrain verdict, verdictStrictStrain verdict) `shouldBe` (True, False)
       verdictPasses verdict `shouldBe` True
+
+-- | Every join of research note Y3's strip at @n@ cells, as length and bend.
+joinsOf :: Int -> Diagonal -> IO [(Double, Double)]
+joinsOf n diagonal = either (fail . show) pure (stripJoins (placedStrip n diagonal (3 * pi / 2)))
 
 -- | A pose whose floor is within 1 px only at the declared strain, with
 -- three crossings and no false creases, squashed and stretched as given.
@@ -105,6 +134,7 @@ screenWith squash stretch =
       screenCrossings = 3,
       screenDeepestReach = Nothing,
       screenTurning = Turning 0 0,
+      screenTurningFiner = Nothing,
       screenCoreLength = Nothing,
       screenCentreFolds = (Nothing, Nothing)
     }

@@ -31,7 +31,7 @@ import Data.ByteString (ByteString)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface (Surface)
 import Senbazuru.Render.Gltf (ExportMode (..), GlbOptions (..), GltfError, plainGlb, renderSurfaceGlbWith)
-import WholeCrane (CranePose (..), withCaveat)
+import WholeCrane (CranePose (..), craneGeometry, withCaveat)
 
 -- | A pose's file for the viewers: the visible-paper scene, then the
 -- complete one, recording how the pose was made.
