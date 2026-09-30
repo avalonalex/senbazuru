@@ -25,8 +25,8 @@ import FoldRelaxation
 import IllustrationComparison (illustrationPage, sharedExtent)
 import IllustrationVisibility
 import PaperLighting (panelCornerNormals)
-import PaperScreen (sheetChords)
-import ScreenReport (Screen (..), floorPixels, pictureFloor, screenJson, strainScreen, thresholdsJson)
+import PaperScreen (pictureFloor, sheetChords)
+import ScreenReport (Screen (..), floorPixels, screenJson, strainScreen, thresholdsJson)
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (Grid (..), gridOf)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -143,6 +143,10 @@ viewWholeCrane destination = do
         case reverse points of p : _ -> pure p; _ -> die "missing whole-crane checkpoint"
       else pure guess
   drawnStates <- checked (wholeCranePoses study)
+  -- Which chords the floor may use depends only on the flat sheet, and every
+  -- pose here keeps the sheet's material and triangles ('spreadSurface'
+  -- checks), so one sheet's chords serve every pose and every picture.
+  chords <- checked (sheetChords (refinedMesh (spreadRefined fixture)))
   -- The screen measures false creases a second time on each pose made again
   -- one level finer, from its construction; the first candidate is not made
   -- again.
@@ -166,7 +170,7 @@ viewWholeCrane destination = do
     turningFiner <- case state of
       Drawn pose -> checked (turningOn finer study (craneConstruction pose))
       Refused _ -> pure Nothing
-    screen <- checked (screenFrom study contact bends turningFiner mesh)
+    screen <- checked (screenFrom study chords contact bends turningFiner mesh)
     BL.writeFile (output </> name ++ ".fold") (encode (FoldFile (Just 1.2) (Just "senbazuru whole-crane study") Nothing (Just title) Nothing [] (materialFrame sheet) []))
     case state of
       -- The viewers get visible paper first, the pose's name with its
@@ -193,7 +197,6 @@ viewWholeCrane destination = do
       let name = craneStem pose
           mesh = craneMesh pose
       sheet <- checked (spreadSurface fixture mesh)
-      chords <- checked (sheetChords mesh)
       let frame = surfaceFrame sheet
       inherited <- checked (inheritedOrders fixture frame)
       audit <- checked (illustrationVisibility (0.1 / 600) basis frame inherited)

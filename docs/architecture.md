@@ -321,8 +321,8 @@ for diagnostic shape review. It does not replace `Render.Projected` or contact
 acceptance. [The whole-crane note](notes/whole-crane-candidate.md) records the
 failed control and the visual proposal's material defects. `PaperScreen` holds
 the measures of a *paper screen*, which says whether paper could take a pose;
-`ScreenReport` holds its thresholds, its verdict and the JSON every gallery
-writes; and `WholeCraneScreen` says which parts of the crane they read. None
+`ScreenReport` holds its thresholds, its verdict and the JSON a gallery
+writes beside each pose; and `WholeCraneScreen` says which parts of the crane they read. None
 changes a pose, though `WholeCraneScreen` makes each pose again on a finer mesh
 to measure its false creases there. `CylinderStrip` is the false-crease
 measure's control, a strip laid on a cylinder: a curve, whose joins a finer

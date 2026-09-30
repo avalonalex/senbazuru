@@ -29,9 +29,10 @@
 -- apart than the chord without any stretch. So the floor is taken over the
 -- pairs whose chord stays on the sheet ('sheetChords', owner decision 28). A
 -- floor over fewer pairs is still a floor, since each pair's excess is a
--- proof on its own; it can only be smaller. A slit, which stores one material
--- point twice, is refused instead, since a chord from the cut cannot tell
--- which side of it the chord leaves by.
+-- proof on its own; it can only be smaller. A cut sheet is refused instead,
+-- since a line from a point on a cut cannot tell which side of the cut it
+-- leaves by, and so is a mesh the screen cannot read: one with no triangle,
+-- a triangle with no area, or a point that is not finite.
 --
 -- A count of crossings on touching paper measures rounding, not paper
 -- (@docs/notes/crossing-counts-on-touching-paper.md@). Owner decision 16
@@ -45,7 +46,10 @@ module PaperScreen
     Turning (..),
     Chords (..),
     sheetChords,
+    keptPairs,
+    finitePoints,
     noStretchFloor,
+    pictureFloor,
     strainExtremes,
     reachThrough,
     deepestReach,
@@ -55,7 +59,9 @@ module PaperScreen
   )
 where
 
+import Control.Monad (when)
 import Data.IntMap.Strict qualified as IM
+import Data.IntSet qualified as IS
 import Data.List (foldl', sort, sortOn, tails)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust, mapMaybe)
@@ -65,11 +71,12 @@ import Data.Text qualified as T
 import FoldMaterial (resolvedTriangles)
 import FoldRelaxation (principalStrains)
 import Senbazuru.Explain (Explain (..), tshow)
-import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (cross2, distanceOutside, distanceToSegment, segmentsCross, signedArea)
+import Senbazuru.Geometry (V2 (..), boxFromPoints, boxSize)
+import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, segmentsCross, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), cross, spanAlong)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
+import Senbazuru.Render.Camera (Basis, project)
 import Text.Read (readMaybe)
 
 -- | The pair of material vertices that sets a floor, and the floor itself in
@@ -84,8 +91,19 @@ data FloorPair = FloorPair
 
 -- | Why a pose could not be screened.
 data ScreenError
-  = -- | Two vertices share a material point: the sheet is cut there.
+  = -- | The mesh has no triangle, so there is no sheet to screen.
+    EmptySheet
+  | -- | Triangle @i@ names vertex @v@, which the mesh does not have.
+    UnknownVertex !Int !Int
+  | -- | A triangle has no area on the flat sheet.
+    DegenerateSheetTriangle !Int
+  | -- | Two vertices share a material point: the sheet is cut there.
     RepeatedMaterialPoint !Int !Int
+  | -- | The sheet is cut along this edge of its boundary: there is paper on
+    -- both sides of it.
+    CutAlong !Int !Int
+  | -- | A vertex is not at a finite place, on the flat sheet or in the pose.
+    NonFinitePoint !Int
   | -- | A flagged pair named a triangle the mesh does not have.
     UnknownTriangle !Text
   | -- | A triangle has no plane to measure a reach from.
@@ -93,6 +111,11 @@ data ScreenError
   deriving stock (Eq, Show)
 
 instance Explain ScreenError where
+  explain EmptySheet = "the mesh has no triangles, so there is no sheet to screen"
+  explain (UnknownVertex i v) = "triangle " <> tshow i <> " names vertex " <> tshow v <> ", which the mesh does not have"
+  explain (DegenerateSheetTriangle i) = "triangle " <> tshow i <> " has no area on the flat sheet, so the sheet's outline cannot be read from it"
+  explain (CutAlong a b) = "the sheet is cut along the edge from vertex " <> tshow a <> " to vertex " <> tshow b <> ": there is paper on both sides of it, so the no-stretch floor cannot tell which side of the cut a straight line leaves by"
+  explain (NonFinitePoint i) = "vertex " <> tshow i <> " is not at a finite place, on the flat sheet or in the pose, so the screen cannot measure it"
   explain (RepeatedMaterialPoint i j) = "vertices " <> tshow i <> " and " <> tshow j <> " are the same point of the flat sheet, so the sheet is cut there, and the no-stretch floor cannot tell which side of the cut a straight line from it leaves by"
   explain (UnknownTriangle name) = "the crossing check named " <> name <> ", which is not a triangle of this mesh"
   explain (DegenerateTriangle i) = "triangle " <> tshow i <> " has no area, so no plane to measure a reach from"
@@ -108,23 +131,39 @@ data Chords
     ChordsOnSheet !(S.Set (Int, Int))
   deriving stock (Eq, Show)
 
--- | The chords of a mesh's flat sheet that the floor may use, or a refusal
--- for a sheet with a slit. A slit removes no area, so it is found where it is
--- stored: as two vertices at one material point. A notch shows as a convex
--- hull larger than the sheet.
+-- | The chords of a mesh's flat sheet that the floor may use, or a refusal.
+-- A sheet is refused when the screen cannot read it (no triangle, a triangle
+-- naming a vertex the mesh lacks or having no area, a point that is not
+-- finite) and when it is cut. A cut is found where it is stored, as two
+-- vertices at one material point, and wherever it is stored, as a boundary
+-- edge with paper on the far side of it too. A notch shows as a convex hull
+-- larger than the sheet.
 --
--- On a sheet with a notch, a chord stays on the paper when it crosses no edge
--- of the sheet's boundary, passes through none of the boundary's corners on
--- the way, and has its midpoint on the paper. Then no point along it meets
--- the boundary, so it is on the paper throughout or off it throughout. A
--- chord that only grazes a corner, as one along the diagonal of an L passes
--- its inside corner, is left out with the rest: leaving a pair out can make
--- the floor smaller, never wrong.
+-- On a sheet with a notch, a chord stays on the paper when it crosses no
+-- edge of the boundary and each of its pieces, split at the boundary's
+-- corners it passes through, has its midpoint on the paper. A piece then
+-- meets the boundary only at its ends, so it is on the paper throughout or
+-- off it throughout. A point is on the paper when it lies within a hair of
+-- the boundary, or inside it by the even-odd rule: a ray from it crosses the
+-- boundary an odd number of times.
 sheetChords :: MaterialMesh -> Either ScreenError Chords
 sheetChords mesh = do
-  case [(i, j) | (i, u) : rest <- tails indexed, (j, v) <- rest, norm (u ^-^ v) < 1e-12] of
+  case [i | (i, u) <- indexed, not (finite2 u)] of
+    i : _ -> Left (NonFinitePoint i)
+    [] -> Right ()
+  when (null (triangles mesh)) (Left EmptySheet)
+  faces <- mapM corners (zip [0 ..] (triangles mesh))
+  case [i | (i, face) <- zip [0 :: Int ..] faces, noArea face] of
+    i : _ -> Left (DegenerateSheetTriangle i)
+    [] -> Right ()
+  case [(i, j) | (i, u) : rest <- tails indexed, (j, v) <- rest, norm (u ^-^ v) <= hair] of
     (i, j) : _ -> Left (RepeatedMaterialPoint i j)
     [] -> Right ()
+  case [(a, b) | (a, b, u, v, w) <- boundary, cutAlong u v w] of
+    (a, b) : _ -> Left (CutAlong a b)
+    [] -> Right ()
+  let sheetArea = sum (map (abs . signedArea) faces)
+      hullArea = abs (signedArea (hull (map snd indexed)))
   pure $
     if hullArea - sheetArea <= 1e-9 * max 1 hullArea
       then EveryChord
@@ -132,23 +171,58 @@ sheetChords mesh = do
   where
     indexed = zip [0 ..] (map sampleMaterial (samples mesh))
     material = IM.fromList indexed
-    faces = [[sampleMaterial a, sampleMaterial b, sampleMaterial c] | (a, b, c) <- resolvedTriangles mesh]
-    sheetArea = sum (map (abs . signedArea) faces)
-    hullArea = abs (signedArea (hull (map snd indexed)))
-    -- 'distanceOutside' wants each triangle anticlockwise.
-    anticlockwise = [if signedArea face < 0 then reverse face else face | face <- faces]
-    -- The boundary: the edges that only one triangle has.
-    incidence = M.fromListWith (+) [((min a b, max a b), 1 :: Int) | (i, j, k) <- triangles mesh, (a, b) <- [(i, j), (j, k), (k, i)]]
-    boundary = [(u, v) | ((a, b), 1) <- M.toList incidence, Just u <- [IM.lookup a material], Just v <- [IM.lookup b material]]
-    boundaryCorners = concat [[u, v] | (u, v) <- boundary]
-    hair = 1e-9
-    onPaper u v =
-      not (any (segmentsCross hair (u, v)) boundary)
-        && not (any grazes boundaryCorners)
-        && any (\face -> distanceOutside face midpoint <= hair) anticlockwise
+    corners (i, (a, b, c)) = mapM (\v -> maybe (Left (UnknownVertex i v)) Right (IM.lookup v material)) [a, b, c]
+    -- A triangle is flat when its height over its longest side is a hair.
+    noArea face = case face of
+      [a, b, c] -> 2 * abs (signedArea face) <= hair * maximum [norm (b ^-^ a), norm (c ^-^ b), norm (a ^-^ c)]
+      _ -> True
+    -- Distances are judged to a hair, and a cut is looked for a step off
+    -- each boundary edge, both scaled to the sheet as the library's
+    -- tolerances are.
+    scale = maybe 1 (max 1 . norm . boxSize) (boxFromPoints (map snd indexed))
+    hair = 1e-9 * scale
+    step = 1e-6 * scale
+    -- The boundary: each edge that only one triangle has, with its ends and
+    -- that triangle's third corner, which says which side the paper is on.
+    owners = M.fromListWith (++) [((min a b, max a b), [c]) | (i, j, k) <- triangles mesh, (a, b, c) <- [(i, j, k), (j, k, i), (k, i, j)]]
+    boundary = [(a, b, u, v, w) | ((a, b), [c]) <- M.toList owners, Just u <- [IM.lookup a material], Just v <- [IM.lookup b material], Just w <- [IM.lookup c material]]
+    edges = [(u, v) | (_, _, u, v, _) <- boundary]
+    cornerPoints = [p | i <- IS.toList (IS.fromList (concat [[a, b] | (a, b, _, _, _) <- boundary])), Just p <- [IM.lookup i material]]
+    -- A step off the middle of a boundary edge, away from its triangle,
+    -- lands off the paper unless there is paper beyond the edge as well.
+    cutAlong u v w = insideBoundary (middle ^+^ (step / norm across) *^ away)
       where
-        midpoint = 0.5 *^ (u ^+^ v)
-        grazes p = distanceToSegment (u, v) p <= hair && norm (p ^-^ u) > hair && norm (p ^-^ v) > hair
+        middle = 0.5 *^ (u ^+^ v)
+        across = let V2 x y = v ^-^ u in V2 (negate y) x
+        away = if dot across (w ^-^ middle) > 0 then (-1) *^ across else across
+    insideBoundary (V2 x y) = odd (length [() | (V2 ax ay, V2 bx by) <- edges, (ay > y) /= (by > y), x < ax + (y - ay) * (bx - ax) / (by - ay)])
+    paperAt p = any (\e -> distanceToSegment e p <= hair) edges || insideBoundary p
+    onPaper u v =
+      not (any (segmentsCross hair (u, v)) edges)
+        && all paperAt [0.5 *^ (p ^+^ q) | (p, q) <- zip stops (drop 1 stops)]
+      where
+        touched = [c | c <- cornerPoints, distanceToSegment (u, v) c <= hair, norm (c ^-^ u) > hair, norm (c ^-^ v) > hair]
+        stops = u : sortOn (\c -> dot (c ^-^ u) (v ^-^ u)) touched ++ [v]
+    finite2 (V2 x y) = all finiteNumber [x, y]
+
+-- | How many pairs a sheet's chords keep, of how many there are among this
+-- many vertices; nothing on a convex sheet, where every pair counts.
+keptPairs :: Chords -> Int -> Maybe (Int, Int)
+keptPairs EveryChord _ = Nothing
+keptPairs (ChordsOnSheet kept) vertices = Just (S.size kept, vertices * (vertices - 1) `div` 2)
+
+-- | Refuse a pose with a point that is not finite, on the flat sheet or in
+-- the pose. Every measure would carry a NaN through, and a comparison with
+-- NaN is false whichever way it is asked, so a verdict could pass it.
+finitePoints :: MaterialMesh -> Either ScreenError ()
+finitePoints mesh = case [i | (i, s) <- zip [0 ..] (samples mesh), not (all finiteNumber (coordinates s))] of
+  i : _ -> Left (NonFinitePoint i)
+  [] -> Right ()
+  where
+    coordinates s = let V2 u v = sampleMaterial s; V3 x y z = position s in [u, v, x, y, z]
+
+finiteNumber :: Double -> Bool
+finiteNumber x = not (isNaN x || isInfinite x)
 
 -- | Andrew's monotone chain: the lower hull left to right, then the upper
 -- hull back, each dropping a point that does not turn anticlockwise.
@@ -170,7 +244,8 @@ hull points = case sortOn (\(V2 x y) -> (x, y)) points of
 -- floor in space; points projected onto a page give the floor in that
 -- picture, which is a floor too, since projecting never lengthens. The
 -- distance is always straight-line length: another measure would not make
--- the floor a bound.
+-- the floor a bound. The chords must be those of the mesh the points come
+-- from, in its vertex order.
 noStretchFloor :: (VectorSpace a) => Chords -> Double -> [(V2, a)] -> Maybe FloorPair
 noStretchFloor chords epsilon placed = maximumOn floorDistance pairs
   where
@@ -184,6 +259,11 @@ noStretchFloor chords epsilon placed = maximumOn floorDistance pairs
     kept i j = case chords of
       EveryChord -> True
       ChordsOnSheet on -> S.member (i, j) on
+
+-- | The no-stretch floor in one picture: distances measured after projecting
+-- onto the page, so never larger than the floor in 3D.
+pictureFloor :: Chords -> Basis -> Double -> MaterialMesh -> Maybe FloorPair
+pictureFloor chords basis epsilon mesh = noStretchFloor chords epsilon [(sampleMaterial s, project basis (position s)) | s <- samples mesh]
 
 -- | The largest squash and the largest stretch over the mesh's triangles, as
 -- non-negative fractions: squash 0.2 is a side shortened by a fifth.

@@ -12,7 +12,7 @@ import Data.List (find)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import FoldMaterial (componentCount, meshEdges)
-import PaperScreen (FloorPair (..), Turning (..), sheetChords)
+import PaperScreen (FloorPair (..), Turning (..), pictureFloor, sheetChords)
 import ScreenReport
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -169,8 +169,9 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     fmap floorPixels (screenFloor screen) `shouldSatisfy` maybe False (near 20.04 0.01)
     -- In the picture, pairs 46-182 and 46-230 tie to within rounding; either
     -- sets the same floor.
-    fmap floorVertices (uprightFloor mesh) `shouldSatisfy` (`elem` [Just (46, 182), Just (46, 230)])
-    fmap floorPixels (uprightFloor mesh) `shouldSatisfy` maybe False (near 17.14 0.01)
+    upright <- uprightFloor mesh
+    fmap floorVertices upright `shouldSatisfy` (`elem` [Just (46, 182), Just (46, 230)])
+    fmap floorPixels upright `shouldSatisfy` maybe False (near 17.14 0.01)
     screenCrossings screen `shouldBe` 345
     fmap snd (screenDeepestReach screen) `shouldBe` Just (2, 29)
     fmap ((pixelsPerSheet *) . fst) (screenDeepestReach screen) `shouldSatisfy` maybe False (near 17.35 0.01)
@@ -237,18 +238,20 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screenCoreLength closed `shouldSatisfy` maybe False (near 0.235 0.001)
     fst (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
     snd (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
-    fmap floorPixels (uprightFloor (spreadMesh fixture)) `shouldSatisfy` maybe False (near 1.02 0.01)
+    upright <- uprightFloor (spreadMesh fixture)
+    fmap floorPixels upright `shouldSatisfy` maybe False (near 1.02 0.01)
 
 -- | The geometry level a GLB's fidelity record gives, or null.
 recordedGeometry :: Glb -> Value
 recordedGeometry glb = at "geometry" (at "fidelity" (at "senbazuru" (at "extras" (glbJson glb))))
 
--- | The no-stretch floor in the gallery's upright picture.
-uprightFloor :: MaterialMesh -> Maybe FloorPair
+-- | The no-stretch floor in the gallery's upright picture; a sheet the screen
+-- refuses fails the test with the reason.
+uprightFloor :: MaterialMesh -> IO (Maybe FloorPair)
 uprightFloor mesh = do
-  basis <- basisFrom (V3 1 (sqrt 2) (-1)) (V3 0 (-1) 0)
-  chords <- either (const Nothing) Just (sheetChords mesh)
-  pictureFloor chords basis 0 mesh
+  basis <- maybe (fail "the upright camera has no basis") pure (basisFrom (V3 1 (sqrt 2) (-1)) (V3 0 (-1) 0))
+  chords <- right (sheetChords mesh)
+  pure (pictureFloor chords basis 0 mesh)
 
 near :: Double -> Double -> Double -> Bool
 near expected tolerance actual = abs (actual - expected) <= tolerance

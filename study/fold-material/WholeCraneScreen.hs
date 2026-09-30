@@ -21,9 +21,9 @@
 -- its turning on the finer mesh, while a curve that the mesh only samples
 -- bends each join less there and loses it (A-11-2); a bend narrower than
 -- the mesh can keep it for several levels before it goes
--- (docs/notes/fold-or-curve.md). A pose that is not made again, such as the
--- first candidate, is judged on its own mesh, with its finer level not
--- measured (owner decision 27).
+-- (docs/notes/fold-or-curve.md). The first candidate is not made again, so
+-- its finer level is not measured ("ScreenReport"), and it fails on its own
+-- mesh anyway, where four joins bend past 45 degrees.
 --
 -- No region of the crane is declared a tension field, where paper is
 -- expected to stretch, so the strain screen applies to the whole mesh.
@@ -75,39 +75,30 @@ screenPose study pose = do
   _ <- first PoseSheet (spreadSurface fixture mesh)
   contact <- first PoseSheet (spreadCheck fixture mesh)
   bends <- first PoseBend (hingeBends (spreadHinges fixture) mesh)
+  chords <- first PoseScreen (sheetChords mesh)
   finer <- first PoseSheet (finerCrane study)
   turningFiner <- turningOn finer study (craneConstruction pose)
-  screenFrom study contact bends turningFiner mesh
+  screenFrom study chords contact bends turningFiner mesh
 
 -- | Screen one pose from what the gallery has already worked out for it: its
--- crossing check and each hinge's bend in radians, both on this mesh, and
--- its false-crease turning on the pose made again one level finer
--- ('turningOn' on 'finerCrane').
-screenFrom :: WholeCrane -> ContactCheck -> [(Hinge, Double)] -> Maybe Turning -> MaterialMesh -> Either PoseScreenError Screen
-screenFrom study contact bends turningFiner mesh = do
-  chords <- first PoseScreen (sheetChords mesh)
-  deepest <- first PoseScreen (deepestReach mesh (crossingPanels contact))
-  let placed = [(sampleMaterial s, position s) | s <- samples mesh]
-      (squash, stretch) = strainExtremes mesh
-      core = wholeCore study
+-- sheet's chords, its crossing check and each hinge's bend in radians, all
+-- of this mesh, and its false-crease turning on the pose made again one
+-- level finer ('turningOn' on 'finerCrane'). "ScreenReport"'s 'screenOf'
+-- does the rest; this adds the crane body's readings.
+screenFrom :: WholeCrane -> Chords -> ContactCheck -> [(Hinge, Double)] -> Maybe Turning -> MaterialMesh -> Either PoseScreenError Screen
+screenFrom study chords contact bends turningFiner mesh = do
+  screen <- first PoseScreen (screenOf chords contact (joinBends study (spreadRefined (wholeSpread study)) bends) turningFiner mesh)
+  let core = wholeCore study
       centreCreases =
         [ (u, v, angle)
           | (h, (a, b), (u, v), angle) <- bentEdges mesh bends,
             S.member a core && S.member b core,
             SurfaceCrease _ <- [hingeRole h]
         ]
-      centre = boxCentre <$> boxFromPoints (map fst placed)
+      centre = boxCentre <$> boxFromPoints (map sampleMaterial (samples mesh))
   pure $!
-    Screen
-      { screenSquash = squash,
-        screenStretch = stretch,
-        screenFloor = noStretchFloor chords 0 placed,
-        screenFloorAtScreen = noStretchFloor chords strainScreen placed,
-        screenCrossings = length (crossingPanels contact),
-        screenDeepestReach = deepest,
-        screenTurning = falseCreaseTurning falseCreaseThreshold (joinBends study (spreadRefined (wholeSpread study)) bends),
-        screenTurningFiner = turningFiner,
-        screenCoreLength = coreLength core mesh,
+    screen
+      { screenCoreLength = coreLength core mesh,
         screenCentreFolds = maybe (Nothing, Nothing) (`centreFolds` centreCreases) centre
       }
 

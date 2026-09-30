@@ -42,8 +42,9 @@ out not to be one is how a project talks itself out of shipping.
 
 The first use came from somewhere else. The material study's paper screen
 (`PaperScreen.hull`) compares a sheet's hull with the sheet's own area to tell
-whether the sheet is convex, which the [no-stretch floor](no-stretch-floor.md)
-needs before it can promise anything.
+whether the sheet is convex. On a convex sheet the
+[no-stretch floor](no-stretch-floor.md) may use every pair of points; on any
+other it keeps only the pairs whose straight line stays on the paper.
 
 ## References
 

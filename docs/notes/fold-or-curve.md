@@ -82,7 +82,9 @@ levels does not show a fold.
 **The screen measures two levels.** Every whole-crane pose is screened on its
 own mesh and again with every triangle split into four, and passes the
 false-crease part only with no join past 45° at either. The first candidate,
-placed around a saved body, is not made again, so it cannot pass that part.
+placed around a saved body, is not made again: its finer level is not
+measured, which neither passes nor fails (owner decision 27), and it fails on
+its own mesh anyway, where four joins bend past 45°.
 The other sketches lose 13% to 41% of their turning one level finer, and all
 still have joins past 45° there; two levels cannot say how much of that loss
 is curvature.
