@@ -38,12 +38,21 @@ In the gallery's upright picture the worst pair is 46–182, at **17.14 px**.
 Pair 46–230 gives the same floor to within 2 × 10⁻¹³ px, so either may be
 named.
 
-**The sheet must be convex, and uncut.** The argument uses the straight line
-between two points of the flat sheet. On a sheet with a notch, that line can
-leave the paper, and two points may end up further apart than the straight line
-without any stretch. A slit does the same without changing the sheet's area,
-and shows instead as two vertices at one point of the sheet. The screen refuses
-either rather than report a number that is not a bound.
+**The straight line has to stay on the paper.** The argument uses the straight
+line between two points of the flat sheet, their *chord*. Paper cannot carry
+two points further apart than the shortest way between them along the paper,
+and on a convex sheet that way is the chord. On a sheet with a notch, a chord
+can cross the notch, and then its two ends can end up further apart than the
+chord without any stretch. Three unit squares in an L, one arm folded a quarter
+turn up and the other a quarter turn down, are paper, yet the arm tips end 2
+apart while the chord between them, across the notch, is √2 ≈ 1.41: a floor
+over every pair would say some point must move 0.29 of a side. So the floor is
+taken over the pairs whose chord stays on the sheet (owner decision 28). Each
+pair's excess is a proof on its own, so a floor over fewer pairs is still a
+floor; it can only come out smaller. On a convex sheet, such as the crane's
+square, every chord stays and nothing changes. A slit is refused instead: it
+stores one point of the sheet twice, and a chord from where it opens cannot
+tell which side of the cut it leaves by.
 
 **Paper may stretch a little.** At a declared strain ε, a pair may be up to
 (1 + ε) times its flat distance apart, and the floor shrinks accordingly. At
@@ -56,5 +65,5 @@ or how near. Finding that takes a solver, and its answer is only as good as the
 solver.
 
 `PaperScreen.noStretchFloor` computes it for every pose in the whole-crane
-gallery. The argument is PRD 11's (R-11-3) and its research note
+gallery, over the chords `PaperScreen.sheetChords` keeps. The argument is PRD 11's (R-11-3) and its research note
 [Y2](../../PRDs/research/Y2-reachability.md).

@@ -12,7 +12,8 @@ import Data.List (find)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import FoldMaterial (componentCount, meshEdges)
-import PaperScreen (FloorPair (..), Turning (..))
+import PaperScreen (FloorPair (..), Turning (..), sheetChords)
+import ScreenReport
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
@@ -182,7 +183,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screenCoreLength screen `shouldSatisfy` maybe False (near 0.414 0.001)
     fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14.04 0.05)
     snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4.03 0.05)
-    verdictPasses (screenVerdict screen) `shouldBe` False
+    verdictOverall (screenVerdict screen) `shouldBe` Fails
 
   -- PRD 11's A-11-2, the fold half: More tucked made again with every
   -- triangle split into four, and again, keeps its false-crease turning
@@ -202,12 +203,16 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     (maximum totals - minimum totals) / maximum totals `shouldSatisfy` (< 0.05)
 
   -- The first candidate is placed around the saved body and not made again
-  -- on a finer mesh, so its screen has no finer figure. PaperScreenSpec's
-  -- verdict tests say what that does to its false creases.
+  -- on a finer mesh, so its screen has no finer figure. Its own mesh already
+  -- bends four joins past 45 degrees, so its false creases fail whatever the
+  -- finer level would say; reading an unmeasured level as enough to save it
+  -- turns this red.
   it "does not make the first candidate again one level finer" $ \(_, _, study) -> do
     candidate <- right (cranePose study "after")
     screen <- right (screenPose study candidate)
     screenTurningFiner screen `shouldBe` Nothing
+    turningJoins (screenTurning screen) `shouldBe` 4
+    verdictFalseCreases (screenVerdict screen) `shouldBe` Fails
 
   -- An error while making a pose again names the refinement it came from,
   -- since its vertex numbers are in no file the gallery writes. The finer
@@ -225,7 +230,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     let fixture = wholeSpread study
     folded <- right (cranePose study "before")
     closed <- right (screenPose study folded)
-    screenVerdict closed `shouldBe` Verdict True True True True
+    screenVerdict closed `shouldBe` Verdict True True True Passes
     screenTurningFiner closed `shouldBe` Just (Turning 0 0)
     fmap floorPixels (screenFloorAtScreen closed) `shouldBe` Just 0
     screenCrossings closed `shouldBe` 0
@@ -242,7 +247,8 @@ recordedGeometry glb = at "geometry" (at "fidelity" (at "senbazuru" (at "extras"
 uprightFloor :: MaterialMesh -> Maybe FloorPair
 uprightFloor mesh = do
   basis <- basisFrom (V3 1 (sqrt 2) (-1)) (V3 0 (-1) 0)
-  pictureFloor basis 0 mesh
+  chords <- either (const Nothing) Just (sheetChords mesh)
+  pictureFloor chords basis 0 mesh
 
 near :: Double -> Double -> Double -> Bool
 near expected tolerance actual = abs (actual - expected) <= tolerance

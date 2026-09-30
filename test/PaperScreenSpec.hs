@@ -5,43 +5,66 @@ module PaperScreenSpec (spec) where
 
 import Control.Monad (forM_)
 import CylinderStrip (Diagonal (..), placedStrip, stripJoins)
-import Data.Either (isLeft, isRight)
 import Data.Maybe (isNothing)
+import Data.Set qualified as S
 import PaperScreen
+import ScreenReport (Judgement (..), Screen (..), Verdict (..), pixelsPerSheet, screenVerdict, verdictOverall)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 import Test.Hspec
-import WholeCraneScreen (Screen (..), Verdict (..), pixelsPerSheet, screenVerdict, verdictPasses)
 
 spec :: Spec
 spec = describe "the paper screen" $ do
   it "halves the excess of the pair furthest apart" $ do
     -- Material distance 1, placed 1.2: the pair can share 0.2, so one of the
     -- two points moves at least 0.1. Dropping the halving gives 0.2.
-    noStretchFloor 0 [(V2 0 0, V3 0 0 0), (V2 1 0, V3 1.2 0 0)]
+    noStretchFloor EveryChord 0 [(V2 0 0, V3 0 0 0), (V2 1 0, V3 1.2 0 0)]
       `shouldBe` Just (FloorPair ((1.2 - 1) / 2) (0, 1))
 
   it "lets the declared strain absorb its share of the excess" $ do
     -- At 1% the pair may be 1.01 apart, so only 0.19 remains to share.
-    fmap floorDistance (noStretchFloor 0.01 [(V2 0 0, V3 0 0 0), (V2 1 0, V3 1.2 0 0)])
+    fmap floorDistance (noStretchFloor EveryChord 0.01 [(V2 0 0, V3 0 0 0), (V2 1 0, V3 1.2 0 0)])
       `shouldSatisfy` maybe False (\d -> abs (d - (1.2 - 1.01) / 2) < 1e-12)
 
   it "reports how much room is left when no pair is too far apart" $
     -- A negative floor: every pair is closer than the flat sheet allows.
-    fmap floorDistance (noStretchFloor 0 [(V2 0 0, V3 0 0 0), (V2 1 0, V3 0.5 0 0)])
+    fmap floorDistance (noStretchFloor EveryChord 0 [(V2 0 0, V3 0 0 0), (V2 1 0, V3 0.5 0 0)])
       `shouldBe` Just (-0.25)
 
-  it "accepts a square sheet and refuses one with a notch" $ do
-    sheetIsConvex square `shouldSatisfy` isRight
-    -- An L: its hull is larger than the paper, so a chord can leave it.
-    sheetIsConvex ell `shouldSatisfy` isLeft
+  it "takes every chord of a square, and only the chords of an L that stay on it" $ do
+    sheetChords square `shouldBe` Right EveryChord
+    -- The L's arm ends, vertices 2 and 4: their chord runs through the notch
+    -- and meets the paper only at its ends, so only its midpoint shows it is
+    -- off the paper. The chord from 1 to 4 crosses the notch's lower edge,
+    -- which only the crossing test sees. The chord from 1 to 5 stays on the
+    -- paper but passes through the inside corner, 3, and is left out, which
+    -- only the corner test does. Dropping any one test keeps one of them.
+    case sheetChords ell of
+      Right (ChordsOnSheet kept) -> do
+        map (`S.member` kept) [(2, 4), (1, 4), (1, 5)] `shouldBe` [False, False, False]
+        -- Inside, along an inner edge, and along the paper's own edge.
+        map (`S.member` kept) [(0, 4), (0, 3), (2, 3)] `shouldBe` [True, True, True]
+      other -> expectationFailure ("expected the L's chords, found " <> show other)
+
+  it "measures the paper of a folded L round its notch, not across it" $ do
+    -- Three unit squares in an L, one arm folded a quarter turn up and the
+    -- other a quarter turn down: paper, since nothing stretched. The arm
+    -- tips, vertices 5 and 7, end 2 apart, while the chord between them on
+    -- the flat sheet is sqrt 2 long, so a floor over every pair would say
+    -- some point must move (2 - sqrt 2) / 2. That chord crosses the notch;
+    -- along the paper the tips are 2 apart, and nothing need move.
+    chords <- either (fail . show) pure (sheetChords (sheet (map fst foldedEll) ellSquares))
+    fmap floorDistance (noStretchFloor chords 0 placedEll) `shouldBe` Just 0
+    let everyPair = noStretchFloor EveryChord 0 placedEll
+    fmap floorVertices everyPair `shouldBe` Just (5, 7)
+    fmap floorDistance everyPair `shouldSatisfy` maybe False (\d -> abs (d - (2 - sqrt 2) / 2) < 1e-12)
 
   it "refuses a sheet with a slit, which has the area of an uncut one" $
-    -- The two sides of the slit could be pulled apart without stretching, so
-    -- a floor would be set by a pair whose flat distance is 0. The area test
-    -- alone passes this sheet.
-    sheetIsConvex slit `shouldBe` Left (RepeatedMaterialPoint 1 2)
+    -- A chord from where the slit opens cannot tell which side of the cut it
+    -- leaves by, and the two sides could be pulled apart without stretching.
+    -- The area test alone passes this sheet.
+    sheetChords slit `shouldBe` Left (RepeatedMaterialPoint 1 2)
 
   it "takes the smaller reach, so a card resting on a table is barely in it" $ do
     -- The table is huge and flat; the card stands on it with one corner
@@ -118,24 +141,37 @@ spec = describe "the paper screen" $ do
       -- to the second. The three crossings are reported, not judged.
       let verdict = screenVerdict (screenWith 0 0)
       verdictFloor verdict `shouldBe` True
-      verdictPasses verdict `shouldBe` True
+      verdictOverall verdict `shouldBe` Passes
 
     it "fails a pose squashed past the screen, not only one stretched" $ do
       let verdict = screenVerdict (screenWith 0.02 0)
       verdictStrain verdict `shouldBe` False
-      verdictPasses verdict `shouldBe` False
+      verdictOverall verdict `shouldBe` Fails
 
     it "fails false creases found one level finer, where the pose's own mesh has none" $
-      verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Just (Turning 2 91)}) `shouldBe` False
+      verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Just (Turning 2 91)}) `shouldBe` Fails
 
-    it "fails false creases on a pose not made again one level finer" $
-      -- Half of the test was never run, so the pose has not passed it.
-      verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Nothing}) `shouldBe` False
+    it "neither passes nor fails false creases on a pose not made again one level finer" $ do
+      -- Owner decision 27: half of the test was never run, so the pose has
+      -- not passed it, and failing it would fail every solved pose for a
+      -- reason that is not about the pose.
+      let verdict = screenVerdict (screenWith 0 0) {screenTurningFiner = Nothing}
+      verdictFalseCreases verdict `shouldBe` NotMeasured
+      verdictOverall verdict `shouldBe` NotMeasured
+
+    it "fails false creases on the pose's own mesh, whatever the finer level" $ do
+      -- A level not measured must not hide a failure on the one that was.
+      let verdict = screenVerdict (screenWith 0 0) {screenTurning = Turning 1 50, screenTurningFiner = Nothing}
+      verdictFalseCreases verdict `shouldBe` Fails
+      verdictOverall verdict `shouldBe` Fails
+
+    it "fails a pose that fails a required part, whatever was not measured" $
+      verdictOverall (screenVerdict (screenWith 0.02 0) {screenTurningFiner = Nothing}) `shouldBe` Fails
 
     it "reports the 0.1% screen without requiring it" $ do
       let verdict = screenVerdict (screenWith 0.005 0.005)
       (verdictStrain verdict, verdictStrictStrain verdict) `shouldBe` (True, False)
-      verdictPasses verdict `shouldBe` True
+      verdictOverall verdict `shouldBe` Passes
 
 -- | Every join of research note Y3's strip at @n@ cells, bent through 270
 -- degrees, as length and bend.
@@ -181,6 +217,30 @@ square = sheet [(0, 0), (1, 0), (1, 1), (0, 1)] [(0, 1, 2), (0, 2, 3)]
 
 ell :: MaterialMesh
 ell = sheet [(0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)] [(0, 1, 2), (0, 2, 3), (0, 3, 5), (3, 4, 5)]
+
+-- | Three unit squares in an L, the notch at the top right, as triangles of
+-- 'foldedEll''s vertices.
+ellSquares :: [(Int, Int, Int)]
+ellSquares = [(0, 1, 4), (0, 4, 3), (1, 2, 5), (1, 5, 4), (3, 4, 7), (3, 7, 6)]
+
+-- | The L's vertices on the flat sheet and in a pose that folds its right
+-- arm a quarter turn down along x = 1 and its upper arm a quarter turn up
+-- along y = 1.
+foldedEll :: [((Double, Double), V3)]
+foldedEll =
+  [ ((0, 0), V3 0 0 0),
+    ((1, 0), V3 1 0 0),
+    ((2, 0), V3 1 0 (-1)),
+    ((0, 1), V3 0 1 0),
+    ((1, 1), V3 1 1 0),
+    ((2, 1), V3 1 1 (-1)),
+    ((0, 2), V3 0 1 1),
+    ((1, 2), V3 1 1 1)
+  ]
+
+-- | 'foldedEll' as the floor reads it.
+placedEll :: [(V2, V3)]
+placedEll = [(V2 u v, x) | ((u, v), x) <- foldedEll]
 
 -- | A unit square cut from the middle of its bottom edge to its centre:
 -- vertices 1 and 2 are the two sides of the cut, at one point of the sheet.

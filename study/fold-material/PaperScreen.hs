@@ -22,11 +22,16 @@
 -- stretch, so no two of its points end up further apart than they are on the
 -- flat sheet. A pair too far apart by @e@ can share the correction, each
 -- moving @e/2@ towards the other, so the floor promises only that one of them
--- moves @e/2@. That promise is a proof, not an estimate, but only while the
--- straight line between the two points lies in the sheet. On a sheet with a
--- notch, or a slit that stores one material point twice, two points can be
--- further apart than a straight line allows without any stretch. So such a
--- sheet is refused rather than measured.
+-- moves @e/2@. That promise is a proof, not an estimate, but only for a pair
+-- whose straight line on the flat sheet, its chord, stays on the paper: then
+-- the distance along the paper is the chord's length. On a sheet that is not
+-- convex, a chord can cross a notch, and its two ends can then move further
+-- apart than the chord without any stretch. So the floor is taken over the
+-- pairs whose chord stays on the sheet ('sheetChords', owner decision 28). A
+-- floor over fewer pairs is still a floor, since each pair's excess is a
+-- proof on its own; it can only be smaller. A slit, which stores one material
+-- point twice, is refused instead, since a chord from the cut cannot tell
+-- which side of it the chord leaves by.
 --
 -- A count of crossings on touching paper measures rounding, not paper
 -- (@docs/notes/crossing-counts-on-touching-paper.md@). Owner decision 16
@@ -38,7 +43,8 @@ module PaperScreen
   ( FloorPair (..),
     ScreenError (..),
     Turning (..),
-    sheetIsConvex,
+    Chords (..),
+    sheetChords,
     noStretchFloor,
     strainExtremes,
     reachThrough,
@@ -51,15 +57,16 @@ where
 
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', sort, sortOn, tails)
+import Data.Map.Strict qualified as M
 import Data.Maybe (isJust, mapMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import FoldMaterial (resolvedTriangles)
 import FoldRelaxation (principalStrains)
-import Senbazuru.Explain (Explain (..), num, tshow)
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (cross2, signedArea)
+import Senbazuru.Geometry.Polygon (cross2, distanceOutside, distanceToSegment, segmentsCross, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), cross, spanAlong)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
@@ -77,9 +84,7 @@ data FloorPair = FloorPair
 
 -- | Why a pose could not be screened.
 data ScreenError
-  = -- | The sheet's convex hull is larger than the sheet by this area.
-    NonConvexSheet !Double
-  | -- | Two vertices share a material point: the sheet is cut there.
+  = -- | Two vertices share a material point: the sheet is cut there.
     RepeatedMaterialPoint !Int !Int
   | -- | A flagged pair named a triangle the mesh does not have.
     UnknownTriangle !Text
@@ -88,27 +93,62 @@ data ScreenError
   deriving stock (Eq, Show)
 
 instance Explain ScreenError where
-  explain (NonConvexSheet excess) = "the sheet is not convex (its convex hull's area is larger by " <> num excess <> "), so a straight line between two of its points can leave the paper and the no-stretch floor would not be a bound"
-  explain (RepeatedMaterialPoint i j) = "vertices " <> tshow i <> " and " <> tshow j <> " are the same point of the flat sheet, so the sheet is cut there and the no-stretch floor would not be a bound"
+  explain (RepeatedMaterialPoint i j) = "vertices " <> tshow i <> " and " <> tshow j <> " are the same point of the flat sheet, so the sheet is cut there, and the no-stretch floor cannot tell which side of the cut a straight line from it leaves by"
   explain (UnknownTriangle name) = "the crossing check named " <> name <> ", which is not a triangle of this mesh"
   explain (DegenerateTriangle i) = "triangle " <> tshow i <> " has no area, so no plane to measure a reach from"
 
--- | Refuse a sheet on which a straight line between two of its points can
--- leave the paper: the floor's promise needs every chord of the sheet to lie
--- in it. A notch shows as a convex hull larger than the sheet. A slit does
--- not, since it removes no area, so it is found where it is stored: as two
--- vertices at one material point.
-sheetIsConvex :: MaterialMesh -> Either ScreenError ()
-sheetIsConvex mesh = do
+-- | The pairs of a sheet's vertices the no-stretch floor may use: those whose
+-- chord, the straight line between them on the flat sheet, stays on the
+-- paper.
+data Chords
+  = -- | A convex sheet, on which every chord stays.
+    EveryChord
+  | -- | A sheet that is not convex: the pairs, smaller vertex first, whose
+    -- chord stays on it.
+    ChordsOnSheet !(S.Set (Int, Int))
+  deriving stock (Eq, Show)
+
+-- | The chords of a mesh's flat sheet that the floor may use, or a refusal
+-- for a sheet with a slit. A slit removes no area, so it is found where it is
+-- stored: as two vertices at one material point. A notch shows as a convex
+-- hull larger than the sheet.
+--
+-- On a sheet with a notch, a chord stays on the paper when it crosses no edge
+-- of the sheet's boundary, passes through none of the boundary's corners on
+-- the way, and has its midpoint on the paper. Then no point along it meets
+-- the boundary, so it is on the paper throughout or off it throughout. A
+-- chord that only grazes a corner, as one along the diagonal of an L passes
+-- its inside corner, is left out with the rest: leaving a pair out can make
+-- the floor smaller, never wrong.
+sheetChords :: MaterialMesh -> Either ScreenError Chords
+sheetChords mesh = do
   case [(i, j) | (i, u) : rest <- tails indexed, (j, v) <- rest, norm (u ^-^ v) < 1e-12] of
     (i, j) : _ -> Left (RepeatedMaterialPoint i j)
     [] -> Right ()
-  if excess > 1e-9 * max 1 hullArea then Left (NonConvexSheet excess) else Right ()
+  pure $
+    if hullArea - sheetArea <= 1e-9 * max 1 hullArea
+      then EveryChord
+      else ChordsOnSheet (S.fromList [(i, j) | (i, u) : rest <- tails indexed, (j, v) <- rest, onPaper u v])
   where
     indexed = zip [0 ..] (map sampleMaterial (samples mesh))
-    sheetArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
-    hullArea = abs (signedArea (hull (map sampleMaterial (samples mesh))))
-    excess = hullArea - sheetArea
+    material = IM.fromList indexed
+    faces = [[sampleMaterial a, sampleMaterial b, sampleMaterial c] | (a, b, c) <- resolvedTriangles mesh]
+    sheetArea = sum (map (abs . signedArea) faces)
+    hullArea = abs (signedArea (hull (map snd indexed)))
+    -- 'distanceOutside' wants each triangle anticlockwise.
+    anticlockwise = [if signedArea face < 0 then reverse face else face | face <- faces]
+    -- The boundary: the edges that only one triangle has.
+    incidence = M.fromListWith (+) [((min a b, max a b), 1 :: Int) | (i, j, k) <- triangles mesh, (a, b) <- [(i, j), (j, k), (k, i)]]
+    boundary = [(u, v) | ((a, b), 1) <- M.toList incidence, Just u <- [IM.lookup a material], Just v <- [IM.lookup b material]]
+    boundaryCorners = concat [[u, v] | (u, v) <- boundary]
+    hair = 1e-9
+    onPaper u v =
+      not (any (segmentsCross hair (u, v)) boundary)
+        && not (any grazes boundaryCorners)
+        && any (\face -> distanceOutside face midpoint <= hair) anticlockwise
+      where
+        midpoint = 0.5 *^ (u ^+^ v)
+        grazes p = distanceToSegment (u, v) p <= hair && norm (p ^-^ u) > hair && norm (p ^-^ v) > hair
 
 -- | Andrew's monotone chain: the lower hull left to right, then the upper
 -- hull back, each dropping a point that does not turn anticlockwise.
@@ -124,21 +164,26 @@ hull points = case sortOn (\(V2 x y) -> (x, y)) points of
     keep stack p = p : stack
 
 -- | The no-stretch floor at strain screen @epsilon@: over every pair of
--- material vertices, the largest @(|x_i - x_j| - (1 + epsilon) |u_i - u_j|) / 2@,
--- where @u@ is the flat-sheet position and @x@ the placed one. Placed points
--- in 3D give the floor in space; points projected onto a page give the floor
--- in that picture, which is a floor too, since projecting never lengthens.
--- The distance is always straight-line length: another measure would not
--- make the floor a bound.
-noStretchFloor :: (VectorSpace a) => Double -> [(V2, a)] -> Maybe FloorPair
-noStretchFloor epsilon placed = maximumOn floorDistance pairs
+-- material vertices whose chord the sheet keeps ('sheetChords'), the largest
+-- @(|x_i - x_j| - (1 + epsilon) |u_i - u_j|) / 2@, where @u@ is the
+-- flat-sheet position and @x@ the placed one. Placed points in 3D give the
+-- floor in space; points projected onto a page give the floor in that
+-- picture, which is a floor too, since projecting never lengthens. The
+-- distance is always straight-line length: another measure would not make
+-- the floor a bound.
+noStretchFloor :: (VectorSpace a) => Chords -> Double -> [(V2, a)] -> Maybe FloorPair
+noStretchFloor chords epsilon placed = maximumOn floorDistance pairs
   where
     indexed = zip [0 ..] placed
     pairs =
       [ FloorPair ((norm (x ^-^ y) - (1 + epsilon) * norm (u ^-^ v)) / 2) (i, j)
         | (i, (u, x)) : rest <- tails indexed,
-          (j, (v, y)) <- rest
+          (j, (v, y)) <- rest,
+          kept i j
       ]
+    kept i j = case chords of
+      EveryChord -> True
+      ChordsOnSheet on -> S.member (i, j) on
 
 -- | The largest squash and the largest stretch over the mesh's triangles, as
 -- non-negative fractions: squash 0.2 is a side shortened by a fifth.
