@@ -3,8 +3,8 @@
 -- uncreased triangle surface to SVG, FOLD and glTF; HTML only selects results.
 -- Every pose carries its paper screen ("SurfaceScreen"), as do the two-layer
 -- gallery's, through 'wingScreen'. An 8-division pose takes the same grip
--- solved at 16 divisions as its finer level, where "FinerSolve" shows the two
--- are the same pose (owner decision 29).
+-- solved at 16 divisions as its finer level, where "FinerSolve" counts that
+-- solve as the pose made again (owner decisions 29 and 31).
 module WingBendingGallery (writeWingBending, wingSvg, wingScreen, refinement) where
 
 import Control.Monad (forM)
@@ -61,10 +61,9 @@ wingCamera = maybe (Left "invalid wing camera") Right (basisFrom (V3 0 1 (-1)) (
 -- | A pose's paper screen ("SurfaceScreen") at the finer level it is given,
 -- and the keys its report carries: the screen and, if the gallery draws the
 -- pose, its floor in the picture, taken from 'wingCamera'. The finer level is
--- nothing, not measured, or the gallery's own finer solve's turning where
--- "FinerSolve" shows the two are the same pose. @sheet@ is the surface
--- written for the pose, @contact@ its crossing check and @hinges@ its
--- fixture's hinges.
+-- nothing, not measured, or the turning of the gallery's own finer solve
+-- where "FinerSolve" counts it. @sheet@ is the surface written for the pose,
+-- @contact@ its crossing check and @hinges@ its fixture's hinges.
 wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Maybe Turning -> Either Text (Screen, [Pair])
 wingScreen sheet contact hinges drawn mesh finer = do
   chords <- first explain (sheetChords mesh)
@@ -158,6 +157,9 @@ measure stem count degrees piece result mesh sheet drawn = do
       -- strip each have area 0.3, so normalize by their actual material
       -- triangles instead, as the wing-layers gallery does.
       restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
+      -- The gallery accepts a shape that converged and passes its contact
+      -- check. The report says so, and the page's status line reads it.
+      accepted = converged result && contactPassed contact
       report finer keys = do
         (screen, screenKeys) <- screenAt finer
         pure . object $
@@ -183,13 +185,12 @@ measure stem count degrees piece result mesh sheet drawn = do
             "rootVertices" .= pieceRoot piece,
             "gripVertices" .= pieceGrip piece,
             "contact" .= contact,
+            "accepted" .= accepted,
             "continuousMotionChecked" .= False
           ]
             ++ screenKeys
             ++ keys
-  -- The gallery accepts a shape that converged and passes its contact
-  -- check, as the page's status line does.
-  pure (Pending stem (converged result && contactPassed contact) (piecePins piece) mesh (screenTurning own) report)
+  pure (Pending stem accepted (piecePins piece) mesh (screenTurning own) report)
 
 checked :: Either Text a -> IO a
 checked = either (die . T.unpack) pure

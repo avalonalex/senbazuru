@@ -398,7 +398,7 @@ comparisons and `checks.json`, with each shape's
 [paper screen](glossary.md#this-project). An 8-division shape's false creases
 one level finer are those of the same grip solved at 16 divisions, its mesh
 with every triangle split into four, where that solve counts as the shape
-[made again](glossary.md#this-project) (owner decision 29); the table says how
+[made again](glossary.md#this-project) (owner decisions 29 and 31); the table says how
 far apart the two are, or that the solve does not count. The 16- and
 24-division shapes have no such solve. Nor do the strips: each holds its
 first and last span, which shorten as spans are added, so no two strips are
@@ -436,7 +436,7 @@ SVG/FOLD/GLB exports in `wing-layers/`, and every control's
 40-degree bends, and the 40-degree bend whose upper layer starts inside the
 lower, which is the same [control](glossary.md#this-project), take the same grip solved at
 16 divisions as their finer level where that solve counts as the shape
-[made again](glossary.md#this-project) (owner decision 29). Every other
+[made again](glossary.md#this-project) (owner decisions 29 and 31). Every other
 control's false creases one level finer are not measured (owner decision
 27). A control that is not accepted is drawn in no picture,
 so it has no floor in a picture. The 40-degree bend also runs at 16 and

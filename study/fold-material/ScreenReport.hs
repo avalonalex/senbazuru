@@ -20,9 +20,9 @@
 -- holds for the whole crane's first candidate, whose remake is work not yet
 -- done. Reading it as a pass would claim half a test that never ran; reading
 -- it as a fail would fail a pose for a reason that is not about the pose.
--- Owner decision 29 makes one exception: a gallery's own solve on the mesh
--- split into four settles a solved pose's finer level where it is shown to
--- be the same pose ("FinerSolve").
+-- Owner decisions 29 and 31 make one exception: a gallery's own solve on the
+-- mesh split into four settles a solved pose's finer level where the gallery
+-- accepts that solve and it is shown to be the same pose ("FinerSolve").
 module ScreenReport
   ( Screen (..),
     Judgement (..),

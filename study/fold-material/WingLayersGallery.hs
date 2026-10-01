@@ -5,7 +5,8 @@
 -- Every control, accepted or not, carries its paper screen ("SurfaceScreen").
 -- The flat and 40° bends, and the 40° bend whose upper layer starts inside
 -- the lower, take the same grip solved at 16 divisions as their finer level,
--- where "FinerSolve" shows the two are the same pose (owner decision 29).
+-- where "FinerSolve" counts that solve as the pose made again (owner
+-- decisions 29 and 31).
 module WingLayersGallery (writeWingLayers) where
 
 import Control.Exception (evaluate)

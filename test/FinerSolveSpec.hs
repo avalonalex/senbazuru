@@ -1,7 +1,8 @@
 -- | A gallery's own finer solve as a solved pose's finer level (owner
--- decision 29): which finer meshes are the pose's mesh split into four and
--- hold the sheet as it does, how close the two solves must be, and what a
--- pose's screen and report take from it. The fixtures are the flat wing's
+-- decisions 29 and 31): which finer meshes are the pose's mesh split into
+-- four and hold the sheet as it does, how close the two solves must be, that
+-- the gallery must accept the finer solve, and what a pose's screen and
+-- report take from it. The fixtures are the flat wing's
 -- seed meshes, held as the gallery holds them. They lie in the plane z = 0,
 -- so a vertex lifted along z by 1/600 is exactly 1 px away: 1/600 is no
 -- double, but the roundings in writing it and in multiplying it back by 600
@@ -101,13 +102,20 @@ spec = describe "a gallery's own finer solve as a pose's finer level" $ do
     finest <- flatWing 24
     let pose = handOver "wing-8-0" coarse (Turning 0 0)
         creased = handOver "wing-16-0" fine (Turning 3 120)
-    finerLevel "16 divisions" creased pose `shouldBe` (Just (Turning 3 120), ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "apartPixels" .= (0 :: Double)]])
+        counted = (Just (Turning 3 120), ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "accepted" .= True, "apartPixels" .= (0 :: Double)]])
+    finerLevel "16 divisions" creased pose `shouldBe` counted
     -- A finer solve its gallery does not accept does not count, however
-    -- close it lies (owner decision 31).
+    -- close it lies (owner decision 31), and its refusal says so before any
+    -- other: the 24-division wing, which is not the 8-division one split
+    -- into four, is refused for not being accepted. The pose's own
+    -- acceptance is not asked.
     finerLevel "16 divisions" creased {pendingAccepted = False} pose
-      `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "refused" .= explain FinerNotAccepted]])
+      `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "accepted" .= False, "refused" .= explain FinerNotAccepted]])
+    finerLevel "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) {pendingAccepted = False} pose
+      `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-24-0", "label" .= text "24 divisions", "accepted" .= False, "refused" .= explain FinerNotAccepted]])
+    finerLevel "16 divisions" creased pose {pendingAccepted = False} `shouldBe` counted
     finerLevel "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) pose
-      `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-24-0", "label" .= text "24 divisions", "refused" .= explain (FinerTriangleCount 256 576)]])
+      `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-24-0", "label" .= text "24 divisions", "accepted" .= True, "refused" .= explain (FinerTriangleCount 256 576)]])
     -- The screen takes the finer level it is given: none leaves it not
     -- measured, and a finer solve with a join past the threshold fails a
     -- pose that has none.
@@ -120,7 +128,7 @@ spec = describe "a gallery's own finer solve as a pose's finer level" $ do
     let poses = [handOver "coarse" coarse (Turning 0 0), handOver "fine" fine (Turning 3 120)]
     finishReports [("coarse", "fine", "16 divisions")] poses
       `shouldBe` Right
-        [ object ["pose" .= text "coarse", "finerJoins" .= Just (3 :: Int), "finerSolve" .= object ["id" .= text "fine", "label" .= text "16 divisions", "apartPixels" .= (0 :: Double)]],
+        [ object ["pose" .= text "coarse", "finerJoins" .= Just (3 :: Int), "finerSolve" .= object ["id" .= text "fine", "label" .= text "16 divisions", "accepted" .= True, "apartPixels" .= (0 :: Double)]],
           object ["pose" .= text "fine", "finerJoins" .= (Nothing :: Maybe Int)]
         ]
     finishReports [("coarse", "finer", "")] poses `shouldSatisfy` isLeft
