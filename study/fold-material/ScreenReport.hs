@@ -114,11 +114,14 @@ figure page d = Figure (renderSvg page d) (PageScale across)
   where
     V2 across _ = tScale (pageTransform page d)
 
--- | The scale a page screens its poses at: the largest its drawings are
--- at, so that a pose that passes passes in every drawing on the page, and a
--- pose the page draws in none is screened at that scale too. A page that
--- draws nothing has no scale, so a gallery whose drawings depend on its
--- results says what to do without one.
+-- | The scale a page screens its poses at, its /page scale/
+-- (docs/glossary.md): the largest at which its gallery draws the paper, in
+-- the figures on the page or the drawings it writes beside them, so that a
+-- pose that passes passes in every one of them. A pose drawn in none is
+-- screened at that scale too. A plot of measurements, such as crane-root's
+-- side profiles, is not a drawing of the paper and is not given here. A
+-- page that draws no paper has no scale: its gallery writes its
+-- measurements without screens and publishes no page.
 pageScale :: NonEmpty Figure -> PageScale
 pageScale = maximum . fmap figureScale
 
@@ -235,13 +238,16 @@ floorPixels scale f = pixelsPerSheet scale * max 0 (floorDistance f)
 
 -- | The screen as a gallery writes it, on a page drawn at this scale. Floors
 -- and reaches are in that page's pixels, the core's length in sheet units
--- and the turning in sheet units times degrees, as each key says. A
--- judgement is true, false, or null when not measured. The thresholds and
--- the scale are written once for the whole gallery, by 'thresholdsJson'.
+-- and the turning in sheet units times degrees, as each key says, and the
+-- scale is written with them, so that a screen copied out of its gallery's
+-- report still says what its pixels are. A judgement is true, false, or
+-- null when not measured. The thresholds are written once for the whole
+-- gallery, by 'thresholdsJson'.
 screenJson :: PageScale -> Screen -> Value
 screenJson scale s =
   object
-    [ "squash" .= screenSquash s,
+    [ "pagePixelsPerSheet" .= pixelsPerSheet scale,
+      "squash" .= screenSquash s,
       "stretch" .= screenStretch s,
       "floor3dPixels" .= fmap (floorPixels scale) (screenFloor s),
       "floorVertices" .= fmap floorVertices (screenFloor s),
@@ -292,10 +298,14 @@ poseScreenKeys :: PageScale -> Screen -> Chords -> Maybe Basis -> MaterialMesh -
 poseScreenKeys scale screen chords picture mesh = ("screen" .= screenJson scale screen) : maybe [] (\basis -> pictureFloorJson scale chords basis mesh) picture
 
 -- | The screen's thresholds and the page's scale, for the page's labels.
+-- The scale's key is not the one a screen at a fixed 600 px to a sheet unit
+-- was written under, so that a page made before decision 30, beside one
+-- made after it and sharing its script, shows no scale rather than 600 as
+-- its own.
 thresholdsJson :: PageScale -> Value
 thresholdsJson scale =
   object
-    [ "pixelsPerSheet" .= pixelsPerSheet scale,
+    [ "pagePixelsPerSheet" .= pixelsPerSheet scale,
       "strainScreen" .= strainScreen,
       "strictStrainScreen" .= strictStrainScreen,
       "floorLimitPixels" .= floorLimitPixels,

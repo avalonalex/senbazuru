@@ -19,6 +19,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
 import Data.List.NonEmpty (nonEmpty)
+import Data.Maybe (isJust, isNothing)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -79,20 +80,13 @@ writeCraneRoot destination = do
     profile <- checked (rootProfile study mesh)
     let visibleResult = renderSurfaceGlb defaultBudget VisiblePaper (Just title) sheet
         drawing = spreadFigure [sheet]
+        -- The gallery draws an accepted control by itself where it can. That
+        -- drawing is the control's picture, and one of the page's drawings.
+        own = if accepted then either (const Nothing) Just drawing else Nothing
         visible = accepted && isRight visibleResult
         visibleError = if accepted then either (Just . explain) (const Nothing) visibleResult else Nothing
         svgError = if accepted then either Just (const Nothing) drawing else Nothing
-    (screen, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (accepted && isRight drawing) mesh)
-    when accepted $ do
-      case visibleResult of
-        Right bytes -> BS.writeFile (output </> stem ++ ".glb") bytes
-        Left err -> do
-          putStrLn (stem ++ ": stable-view export unavailable: " ++ T.unpack (explain err))
-          bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
-          BS.writeFile (output </> stem ++ "-complete.glb") bytes
-      case drawing of
-        Right svg -> TIO.writeFile (output </> stem ++ ".svg") (figureSvg svg)
-        Left err -> putStrLn (stem ++ ": SVG unavailable: " ++ T.unpack err)
+    (screen, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (isJust own) mesh)
     let degrees = map ((180 / pi *) . abs . snd) angles
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
         measured =
@@ -130,32 +124,38 @@ writeCraneRoot destination = do
             "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
             "continuousMotionChecked" .= False
           ]
-        report scale = object (measured ++ screened scale)
+        report scale = object (measured ++ maybe [] screened scale)
         file = FoldFile (Just 1.2) (Just "senbazuru crane root material study") Nothing (Just title) Nothing [] (materialFrame sheet) []
-        -- The page draws an accepted control by itself where it can.
-        own = if accepted then either (const Nothing) Just drawing else Nothing
     BL.writeFile (output </> stem ++ ".fold") (encode file)
-    -- A control's measurements are written as soon as they are taken, so a
-    -- later failure cannot discard them. Its screen waits for the page's
-    -- scale, which only the page's drawings fix (owner decision 30), and the
-    -- file is written again with it below.
+    -- A control's measurements are written before any renderer runs, so an
+    -- export failure cannot discard them. Its screen waits for the page's
+    -- scale, and the file is written again with it below.
     BL.writeFile (output </> stem ++ "-check.json") (encode (object measured))
+    when accepted $ case visibleResult of
+      Right bytes -> BS.writeFile (output </> stem ++ ".glb") bytes
+      Left err -> do
+        putStrLn (stem ++ ": stable-view export unavailable: " ++ T.unpack (explain err))
+        bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
+        BS.writeFile (output </> stem ++ "-complete.glb") bytes
+    forM_ own $ \svg -> TIO.writeFile (output </> stem ++ ".svg") (figureSvg svg)
+    forM_ svgError $ \err -> putStrLn (stem ++ ": SVG unavailable: " ++ T.unpack err)
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic")
     hFlush stdout
     pure (stem, title, accepted, sheet, report, creaseEnergy + panelEnergy, profile, visible, own)
   let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _, _, _) <- runs, stem `elem` ["flat", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeTotalEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      comparison = [(title, sheet) | (stem, title, True, sheet, _, _, _, True, _) <- runs, stem `elem` ["held", "flat", "body"]]
-      compared = spreadFigure (map snd comparison)
-      drawn = either (const []) pure compared ++ [own | (_, _, _, _, _, _, _, _, Just own) <- runs]
-  -- The page draws each accepted control by itself and the comparison, and
-  -- screens every control at the largest of their scales (owner decision
-  -- 30). A page that draws no control has no scale to screen at.
-  scale <- maybe (die "No crane-root control was drawn, so the page has no scale to screen at; refusing to publish the gallery") (pure . pageScale) (nonEmpty drawn)
-  forM_ runs $ \(stem, _, _, _, report, _, _, _, _) -> BL.writeFile (output </> stem ++ "-check.json") (encode (report scale))
-  let document = object ["runs" .= [report scale | (_, _, _, _, report, _, _, _, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson scale]
+      -- The page's scale is the largest of the controls' own drawings. The
+      -- comparison draws some of them together, on the same page from the
+      -- same camera, so it is never larger; the profiles are a plot of
+      -- heights along the wing, not a drawing of the paper.
+      scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, _, _, _, Just own) <- runs]
+      reports = [(stem, report scale) | (stem, _, _, _, report, _, _, _, _) <- runs]
+  forM_ reports $ \(stem, report) -> BL.writeFile (output </> stem ++ "-check.json") (encode report)
+  let document = object ["runs" .= map snd reports, "refinement" .= comparisons, "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
-  drawing <- either (die . T.unpack) pure compared
+  when (isNothing scale) (die "No crane-root control was drawn, so the page has no scale to screen at; checks.json holds the measurements without screens. Refusing to publish the gallery")
+  let comparison = [(title, sheet) | (stem, title, True, sheet, _, _, _, True, _) <- runs, stem `elem` ["held", "flat", "body"]]
+  drawing <- either (die . T.unpack) pure (spreadFigure (map snd comparison))
   TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
   TIO.writeFile (output </> "profile.svg") (profileSvg [(stem, points) | (stem, _, True, _, _, _, points, _, _) <- runs, stem `elem` ["held", "released", "weaker", "flat", "body"]])
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _, _, True, _) <- runs])

@@ -12,13 +12,13 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import PaperScreen
-import ScreenReport (Figure (..), Judgement (..), PageScale (..), Screen (..), Verdict (..), figure, floorPixels, pageScale, pictureFloorJson, screenJson, screenOf, screenVerdict, verdictOverall)
+import ScreenReport (Figure (..), Judgement (..), PageScale (..), Screen (..), Verdict (..), figure, floorPixels, pageScale, pictureFloorJson, poseScreenKeys, screenJson, screenOf, screenVerdict, thresholdsJson, verdictOverall)
 import Senbazuru.Diagram (Colour (..), Shape (..), diagramWithExtent, solid)
 import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
-import Senbazuru.Render.Camera (basisFrom)
+import Senbazuru.Render.Camera (topDown)
 import Senbazuru.Render.Svg (Page (..), defaultPage)
 import Test.Hspec
 
@@ -207,10 +207,8 @@ spec = describe "the paper screen" $ do
       -- Owner decision 30: the floor that is 0.8 px on a page drawn at 600
       -- px to a sheet unit is 1.2 px on one drawn at 900, past the 1 px
       -- limit, and the screen itself is the same.
-      let larger = PageScale 900
-          floorAt scale = fmap (floorPixels scale) (screenFloorAtScreen (screenWith 0 0))
-      fmap (subtract 0.8) (floorAt page) `shouldSatisfy` maybe False ((< 1e-12) . abs)
-      fmap (subtract 1.2) (floorAt larger) `shouldSatisfy` maybe False ((< 1e-12) . abs)
+      let floorAt scale = fmap (floorPixels scale) (screenFloorAtScreen (screenWith 0 0))
+      [floorAt page, floorAt larger] `shouldSatisfy` closeTo [0.8, 1.2]
       verdictFloor (screenVerdict page (screenWith 0 0)) `shouldBe` True
       verdictFloor (screenVerdict larger (screenWith 0 0)) `shouldBe` False
       verdictOverall (screenVerdict larger (screenWith 0 0)) `shouldBe` Fails
@@ -218,15 +216,26 @@ spec = describe "the paper screen" $ do
     it "writes floors, reach-throughs and a picture's floor in the page's pixels" $ do
       -- On a page drawn at 900 px to a sheet unit, the floors that are 1.2
       -- and 0.8 px at 600 are 1.8 and 1.2, and a reach of a thousandth of a
-      -- sheet unit is 0.9 px. The square stretched by 0.2% one way, seen
-      -- from above, is a thousandth of a sheet unit from paper in the
-      -- picture, 0.9 px, and within the 1% screen.
-      let larger = PageScale 900
-          written = screenJson larger (screenWith 0 0) {screenDeepestReach = Just (0.001, (0, 1))}
-          stretched = square {samples = [Sample (V2 u v) (V3 (1.002 * u) v 0) | Sample (V2 u v) _ <- samples square]}
-      top <- maybe (fail "no camera looking down") pure (basisFrom (V3 0 0 (-1)) (V3 0 1 0))
-      map (`pixelsOf` written) ["floor3dPixels", "floor3dPixelsAtScreen", "deepestReachPixels"] `shouldSatisfy` closeTo [1.8, 1.2, 0.9]
-      map (`pixelsOf` object (pictureFloorJson larger EveryChord top stretched)) ["pictureFloorPixels", "pictureFloorPixelsAtScreen"] `shouldSatisfy` closeTo [0.9, 0]
+      -- sheet unit is 0.9 px. The square stretched by 3% one way, seen from
+      -- above, is 0.015 of a sheet unit from paper in the picture, 13.5 px,
+      -- and 0.01 at the 1% screen, 9 px. The screen also says which pixels
+      -- it is in, so that a copy of it made away from its page's thresholds
+      -- still says so.
+      let written = screenJson larger (screenWith 0 0) {screenDeepestReach = Just (0.001, (0, 1))}
+      map (`pixelsOf` written) ["pagePixelsPerSheet", "floor3dPixels", "floor3dPixelsAtScreen", "deepestReachPixels"] `shouldSatisfy` closeTo [900, 1.8, 1.2, 0.9]
+      map (`pixelsOf` object (pictureFloorJson larger EveryChord topDown stretched)) ["pictureFloorPixels", "pictureFloorPixelsAtScreen"] `shouldSatisfy` closeTo [13.5, 9]
+
+    it "carries the page's scale into every key a gallery writes for a pose, and into its thresholds" $ do
+      -- What a gallery writes for a pose drawn in a picture: its screen and
+      -- its floor there, both at the page's scale, and the scale once more
+      -- for the caption.
+      let written = object (poseScreenKeys larger (screenWith 0 0) EveryChord (Just topDown) stretched)
+          screen = case written of
+            Object keys -> KM.lookup "screen" keys
+            _ -> Nothing
+      map (`pixelsOf` written) ["pictureFloorPixels", "pictureFloorPixelsAtScreen"] `shouldSatisfy` closeTo [13.5, 9]
+      map (\key -> screen >>= pixelsOf key) ["pagePixelsPerSheet", "floor3dPixelsAtScreen"] `shouldSatisfy` closeTo [900, 1.2]
+      [pixelsOf "pagePixelsPerSheet" (thresholdsJson larger)] `shouldSatisfy` closeTo [900]
 
     it "takes a page's scale from its drawings, the largest of them" $ do
       -- On a 200-unit page with a 10-unit margin, a drawing one sheet unit
@@ -237,7 +246,7 @@ spec = describe "the paper screen" $ do
       let page200 = defaultPage {pageWidth = 200, pageHeight = 200, pageMargin = 10}
           drawn width = figure page200 (diagramWithExtent (Box (V2 0 0) (V2 width 1)) [Polyline (solid (Colour "#000000") 1) [V2 0 0, V2 width 0]])
       map (figureScale . drawn) [1, 2] `shouldBe` [PageScale 180, PageScale 90]
-      pageScale (drawn 2 :| [drawn 1]) `shouldBe` PageScale 180
+      map pageScale [drawn 1 :| [drawn 2], drawn 2 :| [drawn 1]] `shouldBe` [PageScale 180, PageScale 180]
 
     it "reports the 0.1% screen without requiring it" $ do
       let verdict = screenVerdict page (screenWith 0.005 0.005)
@@ -262,9 +271,16 @@ areaOverRadius n = width / radius * 180 / pi
     width = fromIntegral (n `div` 4) / fromIntegral n
     radius = ((1 + width) / sqrt 2) / (3 * pi / 2)
 
--- | A page drawn at 600 px to a sheet unit, as the whole crane's.
-page :: PageScale
+-- | A page drawn at 600 px to a sheet unit, as the whole crane's, and one
+-- drawn half as large again.
+page, larger :: PageScale
 page = PageScale 600
+larger = PageScale 900
+
+-- | The square stretched by 3% along x: 0.015 of a sheet unit from paper,
+-- and 0.01 at the 1% screen, its floor set by the sides along the stretch.
+stretched :: MaterialMesh
+stretched = square {samples = [Sample (V2 u v) (V3 (1.03 * u) v 0) | Sample (V2 u v) _ <- samples square]}
 
 -- | A pose whose floor is within 1 px on 'page' only at the declared strain,
 -- with three crossings and no false creases at either level, squashed and
@@ -337,7 +353,6 @@ slitOpenedBy gap = sheet [(0, 0), (0.5, 0), (0.5 + gap, 0), (1, 0), (1, 1), (0, 
 hangingCut :: MaterialMesh
 hangingCut = sheet [(0, 0), (0.5, 0), (1, 0), (1, 1), (0, 1), (0.5, 0.5), (0.5, 0.25)] [(0, 1, 5), (0, 5, 4), (5, 3, 4), (1, 2, 6), (6, 2, 3), (6, 3, 5)]
 
--- | One key of a screen's JSON verdict.
 -- | A number a report writes under this key.
 pixelsOf :: Key -> Value -> Maybe Double
 pixelsOf key (Object written) | Just (Number n) <- KM.lookup key written = Just (realToFrac n)
@@ -347,6 +362,7 @@ pixelsOf _ _ = Nothing
 closeTo :: [Double] -> [Maybe Double] -> Bool
 closeTo expected actual = length expected == length actual && and (zipWith (\e a -> maybe False (\x -> abs (x - e) < 1e-9) a) expected actual)
 
+-- | One key of a screen's JSON verdict.
 verdictKey :: Key -> Value -> Maybe Value
 verdictKey key (Object written) | Just (Object verdict) <- KM.lookup "verdict" written = KM.lookup key verdict
 verdictKey _ _ = Nothing

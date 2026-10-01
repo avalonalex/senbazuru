@@ -14,8 +14,9 @@ import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Either (rights)
 import Data.IntMap.Strict qualified as IM
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty (nonEmpty)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -106,7 +107,7 @@ writeCraneSpread destination = do
               "checkCpuSeconds" .= seconds (inspected - settled),
               "continuousMotionChecked" .= False
             ]
-              ++ screened scale
+              ++ maybe [] screened scale
         file = FoldFile (Just 1.2) (Just "senbazuru connected crane spreading study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -118,14 +119,16 @@ writeCraneSpread destination = do
   let baseline = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["rigid", "curved"]]
       bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["curved", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-  drawing <- either (die . T.unpack) pure (spreadFigure baseline)
-  finer <- either (die . T.unpack) pure (spreadFigure (map fst bent))
-  -- The page draws these two figures, and screens every control at the
-  -- larger of their scales (owner decision 30).
-  let scale = pageScale (drawing :| [finer])
-  let document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson scale]
+      compared = spreadFigure baseline
+      refined = spreadFigure (map fst bent)
+      -- The page's drawings are these two figures. The measurements are
+      -- written before either is refused, at the scale of those that drew.
+      scale = pageScale <$> nonEmpty (rights [compared, refined])
+      document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
+  drawing <- either (die . T.unpack) pure compared
   TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
+  finer <- either (die . T.unpack) pure refined
   TIO.writeFile (output </> "refinement.svg") (figureSvg finer)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
@@ -150,12 +153,11 @@ spreadCamera :: Either T.Text Basis
 spreadCamera = maybe (Left "invalid crane camera") Right (basisFrom (V3 (-1) 1 (sqrt 2)) (V3 0 0 1))
 
 -- | A run's paper screen ("CraneSpreadScreen"), and the keys its report
--- carries on a page drawn at a given scale: the screen and, if the gallery
--- draws the run, its floor in the picture, taken from 'spreadCamera'. A run
--- drawn in no picture has no picture floor. The keys wait for the scale,
--- since only the page's drawings fix it, once every run is solved (owner
--- decision 30). @contact@ is the run's 'spreadCheck'. Which chords the floor
--- may use depends only on the flat sheet, the fixture's own.
+-- carries on a page drawn at a given scale ('ScreenReport.pageScale'): the
+-- screen and, if the gallery draws the run, its floor in the picture, taken
+-- from 'spreadCamera'. A run drawn in no picture has no picture floor.
+-- @contact@ is the run's 'spreadCheck'. Which chords the floor may use
+-- depends only on the flat sheet, the fixture's own.
 screenKeys :: CraneSpread -> ContactCheck -> Bool -> MaterialMesh -> Either T.Text (Screen, PageScale -> [Pair])
 screenKeys fixture contact drawn mesh = do
   chords <- first explain (sheetChords (refinedMesh (spreadRefined fixture)))

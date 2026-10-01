@@ -35,8 +35,9 @@
 -- each coarse triangle splits into and nothing else. Agreement is judged at
 -- the coarser mesh's vertices only, as the decision says: between them the
 -- coarser mesh is flat, so at a finer solve's edge midpoints the two can lie
--- further apart where the paper curves, up to 1.3 px on the wing gripped at
--- 40 degrees, whose vertices agree within 0.81 px.
+-- further apart where the paper curves: on the wing gripped at 40 degrees,
+-- up to 0.0022 sheet units, where its vertices agree within 0.0013 (1.3 and
+-- 0.81 px at 600 px to a sheet unit).
 module FinerSolve
   ( SameFinerPose (..),
     FinerSolveRefusal (..),
@@ -184,16 +185,17 @@ midpoint p q = 0.5 *^ (p ^+^ q)
 -- page's scale are settled: its id; whether the gallery accepts its solve;
 -- the points the solve holds, each with the position it is held at; its
 -- mesh; its own false-crease turning, which is the finer level it gives a
--- coarser pose; and its report, given the page's scale, its finer level and
--- the keys about its finer solve. The report screens the pose at that finer
--- level, so no screen made before it is settled can reach the report.
+-- coarser pose; and its report, given the page's scale, none where the page
+-- draws no paper, its finer level and the keys about its finer solve. The
+-- report screens the pose at that finer level, so no screen made before it
+-- is settled can reach the report.
 data Pending = Pending
   { pendingId :: !Text,
     pendingAccepted :: !Bool,
     pendingHeld :: !(IM.IntMap V3),
     pendingMesh :: !MaterialMesh,
     pendingTurning :: !Turning,
-    pendingReport :: PageScale -> Maybe Turning -> [Pair] -> Either Text Value
+    pendingReport :: Maybe PageScale -> Maybe Turning -> [Pair] -> Either Text Value
   }
 
 -- | A pose's finer level from the finer solve its gallery names for it, on
@@ -219,10 +221,12 @@ finerLevel scale label finer pose = case counted of
 -- | Every pose's report, in order, on a page drawn at @scale@, each pose
 -- taking its finer level from the run its gallery names as the same control
 -- one level finer: a pose's id, that run's id, and the label a page gives
--- it. A pose named in no pair keeps its finer level not measured. A name the
--- gallery does not have, two runs with one id, or one pose named in two
--- pairs is refused, since each is a mistake in the gallery, not a finding.
-finishReports :: PageScale -> [(Text, Text, Text)] -> [Pending] -> Either Text [Value]
+-- it. A pose named in no pair keeps its finer level not measured, and so
+-- does every pose on a page that draws no paper, which has no scale to
+-- compare two solves in. A name the gallery does not have, two runs with one
+-- id, or one pose named in two pairs is refused, since each is a mistake in
+-- the gallery, not a finding.
+finishReports :: Maybe PageScale -> [(Text, Text, Text)] -> [Pending] -> Either Text [Value]
 finishReports scale pairs poses = do
   unless (null (repeated (map pendingId poses))) (Left ("the gallery has more than one run named " <> T.intercalate ", " (repeated (map pendingId poses))))
   unless (null (repeated named)) (Left ("the gallery names more than one finer solve for " <> T.intercalate ", " (repeated named)))
@@ -236,7 +240,7 @@ finishReports scale pairs poses = do
       _ <- run pose
       found <- run finer
       pure (pose, (found, label))
-    report finerOf pose = case M.lookup (pendingId pose) finerOf of
-      Just (finer, label) -> uncurry (pendingReport pose scale) (finerLevel scale label finer pose)
-      Nothing -> pendingReport pose scale Nothing []
+    report finerOf pose = case (scale, M.lookup (pendingId pose) finerOf) of
+      (Just page, Just (finer, label)) -> uncurry (pendingReport pose scale) (finerLevel page label finer pose)
+      _ -> pendingReport pose scale Nothing []
     repeated xs = M.keys (M.filter (> (1 :: Int)) (M.fromListWith (+) [(x, 1) | x <- xs]))

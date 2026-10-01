@@ -14,7 +14,6 @@ import Control.Monad (forM, unless, when)
 import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Either (rights)
 import Data.IntMap.Strict qualified as IM
 import Data.List.NonEmpty (nonEmpty)
 import Data.Text qualified as T
@@ -121,7 +120,7 @@ writeWingLayers destination = do
               "contact" .= contact,
               "continuousMotionChecked" .= False
             ]
-              ++ screenKeys scale
+              ++ maybe [] screenKeys scale
               ++ keys
         file = FoldFile (Just 1.2) (Just "senbazuru touching layer study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
@@ -146,22 +145,21 @@ writeWingLayers destination = do
       bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
       comparisons = [object ["geometry" .= refinement a b, "fromEnergy" .= ea, "toEnergy" .= eb, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
       mainShapes = [sheet | (stem, _, True, sheet, _, _, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
-      refinedFigure = wingFigure (map fst bent)
-      sequenceFigure = wingFigure mainShapes
-  -- The page draws each accepted control by itself and the two
-  -- comparisons, and screens every control at the largest of their scales
-  -- (owner decision 30). A comparison refused below still counts, so that
-  -- the measurements written first are at the scale its page would show.
-  scale <- maybe (die "No wing-layers control was drawn, so the page has no scale to screen at; refusing to publish the gallery") (pure . pageScale) (nonEmpty ([own | (_, _, _, _, _, _, Just own) <- runs] ++ rights [refinedFigure, sequenceFigure]))
+      -- The page's scale is the largest of the controls' own drawings. The
+      -- two comparisons draw some of them together, on the same page from
+      -- the same camera, so neither is ever larger. With no control
+      -- accepted there is no scale, and the gallery stops below, after
+      -- writing the measurements, for the lifted grip.
+      scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, _, Just own) <- runs]
   reports <- either (die . T.unpack) pure (finishReports scale finer [pending | (_, _, _, _, pending, _, _) <- runs])
-  let document = object ["runs" .= reports, "refinement" .= comparisons, "screenThresholds" .= thresholdsJson scale]
+  let document = object ["runs" .= reports, "refinement" .= comparisons, "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
   unless (any (\(stem, _, accepted, _, _, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")
   when (length mainShapes /= 3) (die "Two-layer comparison did not pass; refusing to publish a complete gallery")
   when (length bent /= 3) (die "Resolution comparison did not converge; refusing to publish its illustration")
-  refined <- either (die . T.unpack) pure refinedFigure
+  refined <- either (die . T.unpack) pure (wingFigure (map fst bent))
   TIO.writeFile (output </> "refinement.svg") (figureSvg refined)
-  comparison <- either (die . T.unpack) pure sequenceFigure
+  comparison <- either (die . T.unpack) pure (wingFigure mainShapes)
   TIO.writeFile (output </> "sequence.svg") (figureSvg comparison)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"

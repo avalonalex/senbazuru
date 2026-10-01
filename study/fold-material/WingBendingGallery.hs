@@ -13,8 +13,9 @@ import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Foldable (toList)
 import Data.IntMap.Strict qualified as IM
-import Data.List.NonEmpty (nonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -62,12 +63,11 @@ wingCamera :: Either Text Basis
 wingCamera = maybe (Left "invalid wing camera") Right (basisFrom (V3 0 1 (-1)) (V3 0 0 1))
 
 -- | A pose's paper screen ("SurfaceScreen") at the finer level it is given,
--- and the keys its report carries on a page drawn at a given scale: the
--- screen and, if the gallery draws the pose, its floor in the picture, taken
--- from 'wingCamera'. The keys wait for the scale, since only the page's
--- drawings fix it (owner decision 30). The finer level is nothing, not
--- measured, or the turning of the gallery's own finer solve where
--- "FinerSolve" counts it. @sheet@ is the surface written for the pose,
+-- and the keys its report carries on a page drawn at a given scale
+-- ('ScreenReport.pageScale'): the screen and, if the gallery draws the pose,
+-- its floor in the picture, taken from 'wingCamera'. The finer level is
+-- nothing, not measured, or the turning of the gallery's own finer solve
+-- where "FinerSolve" counts it. @sheet@ is the surface written for the pose,
 -- @contact@ its crossing check and @hinges@ its fixture's hinges.
 wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Maybe Turning -> Either Text (Screen, PageScale -> [Pair])
 wingScreen sheet contact hinges drawn mesh finer = do
@@ -107,19 +107,18 @@ writeWingBending destination = do
     pending <- measure stem count 30 piece result mesh sheet False
     pure (model, pending)
   let runs = concatMap fst groups
-      bent = [sheet | (group, _) <- groups, (sheet, _, _) <- drop 2 group]
+      bent = [sheet | (group, _) <- toList groups, (sheet, _, _) <- drop 2 group]
       changes = [refinement a b | (a, b) <- zip bent (drop 1 bent)]
+      -- The page's drawings are its comparisons, one for each mesh.
+      scale = pageScale (fmap snd groups)
   -- Owner decision 29: an 8-division wing's finer level may be the same grip
   -- solved at 16, on its mesh split into four. A strip holds its first and
   -- last span, which shorten as spans are added, so no two strips solve the
   -- same control.
-  -- The page draws one comparison for each mesh, and screens every pose,
-  -- strips included, at the largest of their scales (owner decision 30).
-  scale <- maybe (die "The wing-bending page draws no comparison, so it has no scale to screen at") (pure . pageScale) (nonEmpty (map snd groups))
-  wingReports <- checked (finishReports scale [(wingId 8 g, wingId 16 g, "16 divisions") | g <- grips] [p | (_, _, p) <- runs])
-  stripReports <- checked (finishReports scale [] (map snd benchmarks))
+  wingReports <- checked (finishReports (Just scale) [(wingId 8 g, wingId 16 g, "16 divisions") | g <- grips] [p | (_, _, p) <- runs])
+  stripReports <- checked (finishReports (Just scale) [] (map snd (toList benchmarks)))
   let document = object ["wings" .= wingReports, "benchmarks" .= stripReports, "refinement" .= changes, "screenThresholds" .= thresholdsJson scale]
-  BL.writeFile (output </> "models.json") (encode ([m | (_, m, _) <- runs] ++ map fst benchmarks))
+  BL.writeFile (output </> "models.json") (encode ([m | (_, m, _) <- runs] ++ map fst (toList benchmarks)))
   BL.writeFile (output </> "checks.json") (encode document)
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
@@ -128,9 +127,13 @@ writeWingBending destination = do
   TIO.writeFile (destination </> "wing-bending.html") (T.replace "/*WING_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote wing-bending.html, three resolution comparisons, twelve GLBs/FOLDs and checks.json to " ++ destination)
 
--- | The wing studies' mesh divisions and grips, in degrees.
-counts, grips :: [Int]
-counts = [8, 16, 24]
+-- | The wing studies' mesh divisions and grips, in degrees. There is at
+-- least one mesh, and so at least one comparison to take the page's scale
+-- from.
+counts :: NonEmpty Int
+counts = 8 :| [16, 24]
+
+grips :: [Int]
 grips = [0, 20, 40]
 
 wingId :: Int -> Int -> Text
@@ -196,7 +199,7 @@ measure stem count degrees piece result mesh sheet drawn = do
             "accepted" .= accepted,
             "continuousMotionChecked" .= False
           ]
-            ++ screenKeys scale
+            ++ maybe [] screenKeys scale
             ++ keys
   pure (Pending stem accepted (piecePins piece) mesh (screenTurning own) report)
 

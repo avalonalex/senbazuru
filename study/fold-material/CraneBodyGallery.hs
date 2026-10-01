@@ -14,10 +14,9 @@ import CraneSpreadGallery (screenKeys, spreadFigure)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
 import Data.List.NonEmpty (nonEmpty)
-import Data.Maybe (isNothing)
+import Data.Maybe (isJust, isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -69,7 +68,10 @@ writeCraneBody destination = do
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     sheet <- checked (spreadSurface fixture mesh)
     let drawing = spreadFigure [sheet]
-    (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (accepted && isRight drawing) mesh)
+        -- The gallery draws an accepted trial by itself where it can. That
+        -- drawing is the trial's picture, and one of the page's drawings.
+        own = if accepted then either (const Nothing) Just drawing else Nothing
+    (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (isJust own) mesh)
     let measured =
           [ "id" .= stem,
             "title" .= (title :: Text),
@@ -103,13 +105,13 @@ writeCraneBody destination = do
             "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
             "continuousMotionChecked" .= False
           ]
-        report scale = object (measured ++ screened scale)
+        report scale = object (measured ++ maybe [] screened scale)
         file = FoldFile (Just 1.2) (Just "senbazuru body crease preferences") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     -- Publish measurements before attempting a renderer: export failures must
     -- not discard an expensive experiment or turn physical acceptance false.
-    -- The screen waits for the page's scale, which only the page's drawings
-    -- fix (owner decision 30), and the file is written again with it below.
+    -- The screen waits for the page's scale, and the file is written again
+    -- with it below.
     BL.writeFile (output </> stem ++ "-check.json") (encode (object measured))
     export <-
       if accepted
@@ -124,19 +126,21 @@ writeCraneBody destination = do
               BS.writeFile (output </> stem ++ "-complete.glb") bytes
               pure (Just (explain err))
         else pure Nothing
-    when accepted $ case drawing of
-      Right svg -> TIO.writeFile (output </> stem ++ ".svg") (figureSvg svg)
-      Left err -> putStrLn (T.unpack err)
+    forM_ own $ \svg -> TIO.writeFile (output </> stem ++ ".svg") (figureSvg svg)
+    case (accepted, drawing) of
+      (True, Left err) -> putStrLn (T.unpack err)
+      _ -> pure ()
     putStrLn (stem ++ ": strict " ++ show strict ++ ", selected " ++ show accepted ++ "; length " ++ show (maxLengthError mesh) ++ "; selected/retained angle " ++ show (selectedError, retainedError))
     hFlush stdout
-    pure (stem, title, accepted, export, report, if accepted then either (const Nothing) Just drawing else Nothing)
-  -- The page's drawings are each accepted trial by itself, and every trial
-  -- is screened at the largest of their scales (owner decision 30). A page
-  -- that draws no trial has no scale to screen at.
-  scale <- maybe (die "No crane-body trial was drawn, so the page has no scale to screen at; refusing to publish the gallery") (pure . pageScale) (nonEmpty [own | (_, _, _, _, _, Just own) <- runs])
-  forM_ runs $ \(stem, _, _, _, report, _) -> BL.writeFile (output </> stem ++ "-check.json") (encode (report scale))
-  let document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _, _) <- runs], "screenThresholds" .= thresholdsJson scale]
+    pure (stem, title, accepted, export, report, own)
+  -- The page's drawings are the accepted trials' own, written beside it; the
+  -- page itself shows none of them.
+  let scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, Just own) <- runs]
+      reports = [(stem, report scale) | (stem, _, _, _, report, _) <- runs]
+  forM_ reports $ \(stem, report) -> BL.writeFile (output </> stem ++ "-check.json") (encode report)
+  let document = object ["runs" .= map snd reports, "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _, _) <- runs], "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
+  when (isNothing scale) (die "No crane-body trial was drawn, so the page has no scale to screen at; checks.json holds the measurements without screens. Refusing to publish the page")
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, Nothing, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)

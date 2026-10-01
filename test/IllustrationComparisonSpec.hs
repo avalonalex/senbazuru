@@ -6,8 +6,8 @@ import Data.Either (isLeft)
 import IllustrationComparison
 import IllustrationDistance
 import IllustrationHighlights
-import Senbazuru.Diagram (Diagram (..), Shape (..), shapePoints)
-import Senbazuru.Geometry (Box (..), V2 (..), applyTransform, boxContains, fitBox)
+import Senbazuru.Diagram (Diagram (..), Shape (..), diagramWithExtent, shapePoints)
+import Senbazuru.Geometry (Box (..), V2 (..), applyTransform, boxContains)
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -45,12 +45,16 @@ spec = describe "illustration-scale material comparison" $ do
     materialDifferences flat flat {triangles = [(0, 1, 42)]} `shouldSatisfy` isLeft
     materialDifferences flat flat {triangles = [(0, 1, 1)]} `shouldSatisfy` isLeft
 
-  it "uses exactly 600 page units per sheet unit with the SVG y flip" $ do
+  -- The whole crane is screened at illustrationScale because its pages are
+  -- drawn at it; asking the renderer's own transform keeps that true if the
+  -- renderer ever lays a page out differently.
+  it "draws at illustrationScale page units per sheet unit, 600, with the SVG y flip" $ do
     let box = Box (V2 (-0.2) (-0.5)) (V2 0.4 0.6)
         page = illustrationPage "Shared scale" box
-        transform = fitBox box (pageContentBox page)
+        transform = pageTransform page (diagramWithExtent box [])
         delta = applyTransform transform (V2 0.1 0.1) ^-^ applyTransform transform (V2 0 0)
-    delta `shouldBe` V2 60 (-60)
+    delta `shouldBe` V2 (illustrationScale / 10) (negate illustrationScale / 10)
+    illustrationScale `shouldBe` 600
 
   it "shares one extent across displaced meshes rather than fitting each" $ do
     let moved = flat {samples = [p {position = position p ^+^ V3 0.01 0 0} | p <- samples flat]}
@@ -218,7 +222,7 @@ spec = describe "illustration-scale material comparison" $ do
     tile <- case highlightTiles r of t : _ -> pure t; [] -> expectationFailure "missing detail tile" >> fail "no tile"
     let box = tileBox tile
         page = highlightPage "Detail" detailScale box
-        transform = fitBox box (pageContentBox page)
+        transform = pageTransform page (diagramWithExtent box [])
         drawing = detailDrawing tile [rectangle (-10) (-10) 100 100] []
     pageWidth page `shouldSatisfy` close 552
     (applyTransform transform (V2 1 1) ^-^ applyTransform transform (V2 0 0)) `shouldBe` V2 32 (-32)

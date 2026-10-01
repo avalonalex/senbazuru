@@ -8,7 +8,7 @@ const source=await readFile(new URL('./paper-screen.js',import.meta.url),'utf8')
 // A plain script's `const` is no property of the global object, so ask for
 // it by name. It runs in this realm, so its arrays compare equal to ours.
 const paperScreen=vm.runInThisContext(source+'\npaperScreen');
-const limits={pixelsPerSheet:600,strainScreen:0.01,strictStrainScreen:0.001,floorLimitPixels:1,falseCreaseThresholdDegrees:45};
+const limits={pagePixelsPerSheet:600,strainScreen:0.01,strictStrainScreen:0.001,floorLimitPixels:1,falseCreaseThresholdDegrees:45};
 // A solved pose that screens as paper up to its finer level, which it was
 // not made again to measure: 0.12% stretch and 0.2% squash, within the 1%
 // screen but not 0.1%, and a floor of half a pixel that the 1% screen
@@ -83,9 +83,14 @@ assert.deepEqual(finer[7].slice(1),['0 · 0 (solved at 16 divisions, 0.807 px ap
 // The labels and the caption take the thresholds and the page's scale they
 // are given, the scale to three figures as the cells are, and the caption
 // states each condition under which a gallery's finer solve counts.
-const other={pixelsPerSheet:691.9316,strainScreen:0.02,strictStrainScreen:0.002,floorLimitPixels:2,falseCreaseThresholdDegrees:30};
+const other={pagePixelsPerSheet:691.9316,strainScreen:0.02,strictStrainScreen:0.002,floorLimitPixels:2,falseCreaseThresholdDegrees:30};
 const labels=paperScreen.rows([],other).map(r=>r[0]);
 assert.deepEqual([labels[2],labels[4],labels[6]],['Largest stretch / squash · within 0.2%','Floor at 2% strain, 3D · this picture','False creases: joins past 30° · turning, sheet units × degrees']);
 const caption=paperScreen.caption(other);
-for(const words of ["in this page's pixels, 692 to a sheet unit, the largest scale it draws a sheet at",'(owner decision 30)','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','accepts that solve','agree within 2 px at every vertex of the coarser mesh','(owner decisions 29 and 31)'])assert.ok(caption.includes(words),words);
+for(const words of ['in pixels at 692 to a sheet unit, the largest scale at which this gallery draws the paper','(owner decision 30)','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','accepts that solve','agree within 2 px at every vertex of the coarser mesh','(owner decisions 29 and 31)'])assert.ok(caption.includes(words),words);
+// A page made before decision 30 wrote its fixed 600 under another key. With
+// this script beside it, its caption gives no scale rather than 600 as the
+// scale the page draws at.
+const {pagePixelsPerSheet: _, ...older} = other;
+assert.ok(paperScreen.caption({...older, pixelsPerSheet: 600}).includes('in pixels at NaN to a sheet unit'));
 console.log('paper-screen.js: every check passed');

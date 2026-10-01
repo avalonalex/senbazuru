@@ -151,6 +151,8 @@ viewWholeCrane destination = do
   -- 'illustrationScale', so the page draws every pose at that scale, and
   -- screens it there (owner decision 30).
   let scale = PageScale illustrationScale
+      -- An area in square pixels, from one in square sheet units.
+      squarePixels = pixelsPerSheet scale * pixelsPerSheet scale
   -- The screen measures false creases a second time on each pose made again
   -- one level finer, from its construction; the first candidate is not made
   -- again.
@@ -191,7 +193,7 @@ viewWholeCrane destination = do
         BS.writeFile (output </> name ++ ".glb") bytes
     putStrLn (name ++ ": relative edge error " ++ show (maxLengthError mesh) ++ "; " ++ show shape)
     hFlush stdout
-    pure (object ["id" .= name, "title" .= title, "geometry" .= fmap (geometryName . craneGeometry) drawn, "caveat" .= (craneCaveat =<< drawn), "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (600 * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= negate (screenSquash screen), "maxPrincipalStrain" .= screenStretch screen, "angles" .= angles, "screen" .= screenJson scale screen])
+    pure (object ["id" .= name, "title" .= title, "geometry" .= fmap (geometryName . craneGeometry) drawn, "caveat" .= (craneCaveat =<< drawn), "vertices" .= length (samples mesh), "triangles" .= length (triangles mesh), "components" .= componentCount mesh, "areaRatio" .= areaRatio mesh, "maxRelativeEdgeError" .= maxLengthError mesh, "maxEdgeErrorPixels" .= (pixelsPerSheet scale * edgeError), "shape" .= shape, "creaseEnergy" .= crease, "panelEnergy" .= panel, "contact" .= contact, "minPrincipalStrain" .= negate (screenSquash screen), "maxPrincipalStrain" .= screenStretch screen, "angles" .= angles, "screen" .= screenJson scale screen])
   views <- forM [("upright", "Crane upright · three-quarter", V3 1 (sqrt 2) (-1), V3 0 (-1) 0), ("opposite", "Opposite side · three-quarter", V3 1 (sqrt 2) 1, V3 0 (-1) 0), ("low", "Low angle · three-quarter", V3 1 0.4 (-1), V3 0 (-1) 0), ("head", "From the head · slight tilt", V3 1 0.25 0.15, V3 0 (-1) 0), ("tail", "From the tail · slight tilt", V3 (-1) 0.25 0.15, V3 0 (-1) 0), ("top", "Above the body · slight tilt", V3 0 1 0.15, V3 (-1) 0 0), ("side", "Crane upright · side", V3 0 0 (-1), V3 0 (-1) 0), ("oblique", "Earlier camera · Z up", V3 (-1) 1 (sqrt 2), V3 0 0 1), ("reverse", "Earlier reverse · Z up", V3 1 1 (sqrt 2), V3 0 0 1), ("front", "Earlier front · Z up", V3 0 1 0.2, V3 0 0 1), ("below", "Under the body · slight tilt", V3 0 (-1) 0.15, V3 1 0 0)] $ \(viewId, title, direction, up) -> do
     basis <- maybe (die "invalid whole-crane camera") pure (basisFrom direction up)
     bounds <- checked (sharedExtent basis (map craneMesh drawnStates))
@@ -203,7 +205,7 @@ viewWholeCrane destination = do
       sheet <- checked (spreadSurface fixture mesh)
       let frame = surfaceFrame sheet
       inherited <- checked (inheritedOrders fixture frame)
-      audit <- checked (illustrationVisibility (0.1 / 600) basis frame inherited)
+      audit <- checked (illustrationVisibility (0.1 / pixelsPerSheet scale) basis frame inherited)
       drawn <- case auditForm audit of
         Just visible | null (auditUncovered audit) -> pure (DepthDrawing visible [] 0)
         _ -> either (die . T.unpack) pure (depthDrawing basis frame inherited)
@@ -233,9 +235,9 @@ viewWholeCrane destination = do
             writeSvg output drawingPage bounds (stem ++ "-book-full") (bookShapes 0 drawing ++ uncertainty ++ caveat)
             writeSvg output drawingPage bounds (stem ++ "-book") (bookShapes 2 drawing ++ uncertainty ++ caveat)
             writeSvg output drawingPage bounds (stem ++ "-book-omissions") (bookShapes 2 drawing ++ uncertainty ++ marks ++ caveat)
-            pure [object ["id" .= viewId, "title" .= title, "caveat" .= craneCaveat pose, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (360000 * sourceArea), "toneAreaPixelsSquared" .= (360000 * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
+            pure [object ["id" .= viewId, "title" .= title, "caveat" .= craneCaveat pose, "stem" .= stem, "width" .= pageWidth page, "height" .= pageHeight page, "sourceAreaPixelsSquared" .= (squarePixels * sourceArea), "toneAreaPixelsSquared" .= (squarePixels * toneArea), "contours" .= [map xy [a, b] | (a, b) <- bookContours drawing], "creaseFragments" .= length (bookCreases drawing), "omittedCreases" .= [map xy [a, b] | (a, b) <- omitted], "tones" .= [object ["colour" .= colourText colour, "rings" .= map (map xy) rings] | (colour, rings) <- bookTones drawing]]]
           else pure []
-      pure (shapes, object (["id" .= name, "stem" .= stem] ++ pictureFloorJson scale chords basis mesh ++ ["status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (360000 * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]]), book)
+      pure (shapes, object (["id" .= name, "stem" .= stem] ++ pictureFloorJson scale chords basis mesh ++ ["status" .= auditStatus audit, "resolved" .= (isJust (auditForm audit) && null (auditUncovered audit)), "unresolvedPairs" .= length [() | p <- auditPairs audit, isNothing (pairRelation p)], "depthPreviewMissingAreaPixelsSquared" .= (squarePixels * sum (map (abs . signedArea) (depthMissing drawn))), "depthPreviewIdTies" .= depthIdTies drawn, "previewRegions" .= [object ["triangle" .= unFaceId (regionFace r), "front" .= regionTopSide r, "pieces" .= map (map (xy . project basis)) (regionPieces r)] | r <- formRegions seen]]), book)
     let comparisons = case viewId of
           "oblique" -> [("comparison.svg", "before", "after", "Before · closed crane", "First opened candidate")]
           "upright" -> [("pillow-comparison.svg", "before", "pillow", "Before · closed crane", "Wider pillow target"), ("compact-comparison.svg", "before", "compact", "Before · closed crane", "Less spread target"), ("spread-comparison.svg", "pillow", "compact", "Earlier · wider target", "Revised · less spread"), ("body-width-comparison.svg", "compact", "narrow", "Previous body width", "Narrower body · same wing angle"), ("narrow-comparison.svg", "before", "narrow", "Before · closed crane", "Narrower body target")]
@@ -251,7 +253,7 @@ viewWholeCrane destination = do
       drawing <- maybe (die "no comparison figures") pure (gridOf (Grid 2 0.12 Nothing) figures)
       TIO.writeFile (output </> filename) (renderSvg (illustrationPage "Whole crane: before and after" (diagramExtent drawing)) drawing)
     pure (object ["id" .= viewId, "title" .= title, "direction" .= xyz direction, "up" .= xyz up, "width" .= pageWidth page, "height" .= pageHeight page, "states" .= [s | (_, s, _) <- shown]], concat [b | (_, _, b) <- shown])
-  let bookReport = object ["pixelsPerSheetUnit" .= (600 :: Int), "minimumCreasePixels" .= (2 :: Int), "geometryChanged" .= False, "views" .= concatMap snd views]
+  let bookReport = object ["pixelsPerSheetUnit" .= pixelsPerSheet scale, "minimumCreasePixels" .= (2 :: Int), "geometryChanged" .= False, "views" .= concatMap snd views]
   BL.writeFile (output </> "book-checks.json") (encode bookReport)
   bookTemplate <- TIO.readFile "study/fold-material/crane-book.html"
   TIO.writeFile (destination </> "crane-book.html") (T.replace "/*CRANE_BOOK_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode bookReport))) bookTemplate)
