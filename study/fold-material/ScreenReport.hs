@@ -23,16 +23,28 @@
 -- Owner decisions 29 and 31 make one exception: a gallery's own solve on the
 -- mesh split into four settles a solved pose's finer level where the gallery
 -- accepts that solve and it is shown to be the same pose ("FinerSolve").
+--
+-- The other non-obvious part is that a screen has no pixels of its own.
+-- Floors and reach-throughs are measured in sheet units, and only a page
+-- turns them into pixels: owner decision 30 judges the 1 px floor limit at
+-- the scale the page draws its poses at, so the same pose can pass on a
+-- page that draws it small and fail on one that draws it large. A screen is
+-- therefore judged and written at a 'PageScale' given to 'screenVerdict' and
+-- 'screenJson', never at one stored in it, and a gallery screens a pose
+-- before its page's drawings, which are what fix the scale, exist.
 module ScreenReport
   ( Screen (..),
     Judgement (..),
     Verdict (..),
+    PageScale (..),
+    Figure (..),
+    figure,
+    pageScale,
     screenOf,
     strainScreen,
     strictStrainScreen,
     floorLimitPixels,
     falseCreaseThreshold,
-    pixelsPerSheet,
     screenVerdict,
     verdictOverall,
     floorPixels,
@@ -46,10 +58,15 @@ where
 
 import Data.Aeson (Value, object, (.=))
 import Data.Aeson.Types (Pair)
+import Data.List.NonEmpty (NonEmpty)
+import Data.Text (Text)
 import PaperScreen
+import Senbazuru.Diagram (Diagram)
+import Senbazuru.Geometry (Transform (..), V2 (..))
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 import Senbazuru.Render.Camera (Basis)
+import Senbazuru.Render.Svg (Page, pageTransform, renderSvg)
 import System.Directory (copyFile)
 import System.FilePath ((</>))
 
@@ -75,16 +92,41 @@ floorLimitPixels = 1
 falseCreaseThreshold :: Double
 falseCreaseThreshold = 45
 
--- | The screen's scale: 600 px to a sheet unit, one unit of the flat sheet's
--- coordinates (docs/glossary.md), as in the whole crane's drawings. A
--- gallery that draws at another scale is screened at this one all the same,
--- so that a verdict does not change with the size a pose is drawn at; its
--- page says the scale of its own drawings.
-pixelsPerSheet :: Double
-pixelsPerSheet = 600
+-- | The scale a page draws its poses at, in pixels to a sheet unit, one unit
+-- of the flat sheet's coordinates (docs/glossary.md). The screen gives a
+-- pose's floors and reach-throughs in these pixels and judges
+-- 'floorLimitPixels' in them, so that a verdict follows the size the page
+-- draws a pose at (owner decision 30).
+newtype PageScale = PageScale {pixelsPerSheet :: Double}
+  deriving stock (Eq, Ord, Show)
+
+-- | A drawing as a gallery writes it: its SVG, and the scale it draws at.
+data Figure = Figure
+  { figureSvg :: !Text,
+    figureScale :: !PageScale
+  }
+
+-- | A diagram drawn on a page, with the scale 'renderSvg' draws it at. Every
+-- gallery here draws one sheet unit as one unit of its model, so the
+-- transform's page units per model unit are pixels per sheet unit.
+figure :: Page -> Diagram -> Figure
+figure page d = Figure (renderSvg page d) (PageScale across)
+  where
+    V2 across _ = tScale (pageTransform page d)
+
+-- | The scale a page screens its poses at, its /page scale/
+-- (docs/glossary.md): the largest at which its gallery draws the paper, in
+-- the figures on the page or the drawings it writes beside them, so that a
+-- pose that passes passes in every one of them. A pose drawn in none is
+-- screened at that scale too. A plot of measurements, such as crane-root's
+-- side profiles, is not a drawing of the paper and is not given here. A
+-- page that draws no paper has no scale: its gallery writes its
+-- measurements without screens and publishes no page.
+pageScale :: NonEmpty Figure -> PageScale
+pageScale = maximum . fmap figureScale
 
 -- | One pose's screen. Lengths are in sheet units until 'screenJson' writes
--- them as pixels.
+-- them as pixels at a page's scale.
 data Screen = Screen
   { -- | Largest squash and stretch, as non-negative fractions.
     screenSquash :: !Double,
@@ -125,9 +167,9 @@ data Verdict = Verdict
     verdictStrain :: !Bool,
     -- | Both within 'strictStrainScreen'; reported, not required.
     verdictStrictStrain :: !Bool,
-    -- | The 3D floor at 'strainScreen' within 'floorLimitPixels'. A
-    -- picture's floor is never larger, since projecting never lengthens, so
-    -- this settles every camera at once.
+    -- | The 3D floor at 'strainScreen' within 'floorLimitPixels' at the
+    -- page's scale. A picture's floor is never larger, since projecting
+    -- never lengthens, so this settles every camera at once.
     verdictFloor :: !Bool,
     -- | No join bent past 'falseCreaseThreshold', on the pose's mesh and on
     -- the pose made again one level finer. 'NotMeasured' when the pose has
@@ -163,12 +205,13 @@ screenOf chords contact joins turningFiner mesh = do
         screenCentreFolds = (Nothing, Nothing)
       }
 
-screenVerdict :: Screen -> Verdict
-screenVerdict s =
+-- | Which parts of the screen a pose passes, on a page drawn at this scale.
+screenVerdict :: PageScale -> Screen -> Verdict
+screenVerdict scale s =
   Verdict
     { verdictStrain = within strainScreen,
       verdictStrictStrain = within strictStrainScreen,
-      verdictFloor = all ((<= floorLimitPixels) . floorPixels) (screenFloorAtScreen s),
+      verdictFloor = all ((<= floorLimitPixels) . floorPixels scale) (screenFloorAtScreen s),
       verdictFalseCreases = falseCreases
     }
   where
@@ -188,27 +231,31 @@ verdictOverall v
   | verdictFalseCreases v == NotMeasured = NotMeasured
   | otherwise = Passes
 
--- | A floor in pixels; a negative floor, room to spare, is none.
-floorPixels :: FloorPair -> Double
-floorPixels f = pixelsPerSheet * max 0 (floorDistance f)
+-- | A floor in pixels at a page's scale; a negative floor, room to spare, is
+-- none.
+floorPixels :: PageScale -> FloorPair -> Double
+floorPixels scale f = pixelsPerSheet scale * max 0 (floorDistance f)
 
--- | The screen as a gallery writes it. Floors and reaches are in pixels, the
--- core's length in sheet units and the turning in sheet units times degrees,
--- as each key says. A judgement is true, false, or null when not measured.
--- The thresholds are written once for the whole gallery, by
--- 'thresholdsJson'.
-screenJson :: Screen -> Value
-screenJson s =
+-- | The screen as a gallery writes it, on a page drawn at this scale. Floors
+-- and reaches are in that page's pixels, the core's length in sheet units
+-- and the turning in sheet units times degrees, as each key says, and the
+-- scale is written with them, so that a screen copied out of its gallery's
+-- report still says what its pixels are. A judgement is true, false, or
+-- null when not measured. The thresholds are written once for the whole
+-- gallery, by 'thresholdsJson'.
+screenJson :: PageScale -> Screen -> Value
+screenJson scale s =
   object
-    [ "squash" .= screenSquash s,
+    [ "pagePixelsPerSheet" .= pixelsPerSheet scale,
+      "squash" .= screenSquash s,
       "stretch" .= screenStretch s,
-      "floor3dPixels" .= fmap floorPixels (screenFloor s),
+      "floor3dPixels" .= fmap (floorPixels scale) (screenFloor s),
       "floorVertices" .= fmap floorVertices (screenFloor s),
-      "floor3dPixelsAtScreen" .= fmap floorPixels (screenFloorAtScreen s),
+      "floor3dPixelsAtScreen" .= fmap (floorPixels scale) (screenFloorAtScreen s),
       "floorVerticesAtScreen" .= fmap floorVertices (screenFloorAtScreen s),
       "floorPairs" .= screenFloorPairs s,
       "crossingPairCount" .= screenCrossings s,
-      "deepestReachPixels" .= fmap ((pixelsPerSheet *) . fst) (screenDeepestReach s),
+      "deepestReachPixels" .= fmap ((pixelsPerSheet scale *) . fst) (screenDeepestReach s),
       "deepestReachTriangles" .= fmap snd (screenDeepestReach s),
       "falseCreaseJoins" .= turningJoins (screenTurning s),
       "falseCreaseTurningSheetDegrees" .= turningTotal (screenTurning s),
@@ -227,33 +274,38 @@ screenJson s =
           ]
     ]
   where
-    verdict = screenVerdict s
+    verdict = screenVerdict scale s
     judged = \case
       Passes -> Just True
       Fails -> Just False
       NotMeasured -> Nothing
 
 -- | A pose's no-stretch floor in one picture a gallery draws it in, at no
--- strain and at 'strainScreen', as the keys the gallery writes beside the
--- pose's screen. It is not part of 'Screen' because it depends on the
--- camera, and a pose drawn in no picture has no such keys.
-pictureFloorJson :: Chords -> Basis -> MaterialMesh -> [Pair]
-pictureFloorJson chords basis mesh =
-  [ "pictureFloorPixels" .= fmap floorPixels (pictureFloor chords basis 0 mesh),
-    "pictureFloorPixelsAtScreen" .= fmap floorPixels (pictureFloor chords basis strainScreen mesh)
+-- strain and at 'strainScreen', in pixels at the page's scale, as the keys
+-- the gallery writes beside the pose's screen. It is not part of 'Screen'
+-- because it depends on the camera, and a pose drawn in no picture has no
+-- such keys.
+pictureFloorJson :: PageScale -> Chords -> Basis -> MaterialMesh -> [Pair]
+pictureFloorJson scale chords basis mesh =
+  [ "pictureFloorPixels" .= fmap (floorPixels scale) (pictureFloor chords basis 0 mesh),
+    "pictureFloorPixelsAtScreen" .= fmap (floorPixels scale) (pictureFloor chords basis strainScreen mesh)
   ]
 
--- | The keys a gallery's report carries for one pose: its screen, and, if
--- the gallery draws the pose in a picture from this camera, its floor there
--- ('pictureFloorJson').
-poseScreenKeys :: Screen -> Chords -> Maybe Basis -> MaterialMesh -> [Pair]
-poseScreenKeys screen chords picture mesh = ("screen" .= screenJson screen) : maybe [] (\basis -> pictureFloorJson chords basis mesh) picture
+-- | The keys a gallery's report carries for one pose on a page drawn at
+-- this scale: its screen, and, if the gallery draws the pose in a picture
+-- from this camera, its floor there ('pictureFloorJson').
+poseScreenKeys :: PageScale -> Screen -> Chords -> Maybe Basis -> MaterialMesh -> [Pair]
+poseScreenKeys scale screen chords picture mesh = ("screen" .= screenJson scale screen) : maybe [] (\basis -> pictureFloorJson scale chords basis mesh) picture
 
--- | The screen's thresholds, for the page's labels.
-thresholdsJson :: Value
-thresholdsJson =
+-- | The screen's thresholds and the page's scale, for the page's labels.
+-- The scale's key is not the one a screen at a fixed 600 px to a sheet unit
+-- was written under, so that a page made before decision 30, beside one
+-- made after it and sharing its script, shows no scale rather than 600 as
+-- its own.
+thresholdsJson :: PageScale -> Value
+thresholdsJson scale =
   object
-    [ "pixelsPerSheet" .= pixelsPerSheet,
+    [ "pagePixelsPerSheet" .= pixelsPerSheet scale,
       "strainScreen" .= strainScreen,
       "strictStrainScreen" .= strictStrainScreen,
       "floorLimitPixels" .= floorLimitPixels,

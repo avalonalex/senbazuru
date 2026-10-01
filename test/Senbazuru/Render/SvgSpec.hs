@@ -197,6 +197,18 @@ spec = do
       T.count "stroke-dasharray" out `shouldBe` 1
       out `shouldSatisfy` T.isInfixOf "stroke-dasharray=\"4 2\""
 
+    it "draws with the transform pageTransform gives, at its scale" $ do
+      -- A drawing twice as wide as it is tall fills the 180-unit content box
+      -- across and only half of it down, so one model unit is 90 page units,
+      -- y flipped, and the drawing is centred top to bottom.
+      let wide = diagramWithExtent (Box (V2 0 0) (V2 2 1)) [Polyline (solid (Colour "#000000") 1) [V2 0 0, V2 2 0]]
+          toPage = pageTransform testPage wide
+          V2 x0 y0 = applyTransform toPage (V2 0 0)
+          V2 x1 y1 = applyTransform toPage (V2 2 0)
+      tScale toPage `shouldBe` V2 90 (-90)
+      renderSvg testPage wide `shouldSatisfy` T.isInfixOf (T.unwords ["M", formatNumber x0, formatNumber y0, "L", formatNumber x1, formatNumber y1])
+      renderSvg testPage wide `shouldSatisfy` T.isInfixOf "M 10 145 L 190 145"
+
     it "flips the y axis, so model (0,0) is at the bottom of the page" $
       -- The content box is 10..190. Model y = 0 is the bottom of the extent, so
       -- it must land at page y = 190, not 10.

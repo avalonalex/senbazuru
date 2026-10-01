@@ -5,17 +5,21 @@ module PaperScreenSpec (spec) where
 
 import Control.Monad (forM_)
 import CylinderStrip (Diagonal (..), placedStrip, stripJoins)
-import Data.Aeson (Value (..))
+import Data.Aeson (Value (..), object)
 import Data.Aeson.Key (Key)
 import Data.Aeson.KeyMap qualified as KM
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import PaperScreen
-import ScreenReport (Judgement (..), Screen (..), Verdict (..), pixelsPerSheet, screenJson, screenOf, screenVerdict, verdictOverall)
-import Senbazuru.Geometry (V2 (..))
+import ScreenReport (Figure (..), Judgement (..), PageScale (..), Screen (..), Verdict (..), figure, floorPixels, pageScale, pictureFloorJson, poseScreenKeys, screenJson, screenOf, screenVerdict, thresholdsJson, verdictOverall)
+import Senbazuru.Diagram (Colour (..), Shape (..), diagramWithExtent, solid)
+import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Contact (ContactCheck (..))
 import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
+import Senbazuru.Render.Camera (topDown)
+import Senbazuru.Render.Svg (Page (..), defaultPage)
 import Test.Hspec
 
 spec :: Spec
@@ -163,44 +167,89 @@ spec = describe "the paper screen" $ do
     it "judges the floor at the declared strain, not at none" $ do
       -- 1.2 px at no strain, 0.8 px at the 1% screen: the 1 px target applies
       -- to the second. The three crossings are reported, not judged.
-      let verdict = screenVerdict (screenWith 0 0)
+      let verdict = screenVerdict page (screenWith 0 0)
       verdictFloor verdict `shouldBe` True
       verdictOverall verdict `shouldBe` Passes
 
     it "fails a pose squashed past the screen, not only one stretched" $ do
-      let verdict = screenVerdict (screenWith 0.02 0)
+      let verdict = screenVerdict page (screenWith 0.02 0)
       verdictStrain verdict `shouldBe` False
       verdictOverall verdict `shouldBe` Fails
 
     it "fails false creases found one level finer, where the pose's own mesh has none" $
-      verdictFalseCreases (screenVerdict (screenWith 0 0) {screenTurningFiner = Just (Turning 2 91)}) `shouldBe` Fails
+      verdictFalseCreases (screenVerdict page (screenWith 0 0) {screenTurningFiner = Just (Turning 2 91)}) `shouldBe` Fails
 
     it "neither passes nor fails false creases on a pose not made again one level finer" $ do
       -- Owner decision 27: half of the test was never run, so the pose has
       -- not passed it, and failing it would fail every solved pose for a
       -- reason that is not about the pose.
-      let verdict = screenVerdict (screenWith 0 0) {screenTurningFiner = Nothing}
+      let verdict = screenVerdict page (screenWith 0 0) {screenTurningFiner = Nothing}
       verdictFalseCreases verdict `shouldBe` NotMeasured
       verdictOverall verdict `shouldBe` NotMeasured
 
     it "fails false creases on the pose's own mesh, whatever the finer level" $ do
       -- A level not measured must not hide a failure on the one that was.
-      let verdict = screenVerdict (screenWith 0 0) {screenTurning = Turning 1 50, screenTurningFiner = Nothing}
+      let verdict = screenVerdict page (screenWith 0 0) {screenTurning = Turning 1 50, screenTurningFiner = Nothing}
       verdictFalseCreases verdict `shouldBe` Fails
       verdictOverall verdict `shouldBe` Fails
 
     it "fails a pose that fails a required part, whatever was not measured" $ do
-      verdictOverall (screenVerdict (screenWith 0.02 0) {screenTurningFiner = Nothing}) `shouldBe` Fails
+      verdictOverall (screenVerdict page (screenWith 0.02 0) {screenTurningFiner = Nothing}) `shouldBe` Fails
       -- The floor too: 5 px at the declared strain.
-      verdictOverall (screenVerdict (screenWith 0 0) {screenFloorAtScreen = Just (FloorPair (5 / pixelsPerSheet) (0, 1)), screenTurningFiner = Nothing})
+      verdictOverall (screenVerdict page (screenWith 0 0) {screenFloorAtScreen = Just (FloorPair (5 / pixelsPerSheet page) (0, 1)), screenTurningFiner = Nothing})
         `shouldBe` Fails
 
     it "writes a part not measured as null, which the page reads as neither" $ do
-      let written = screenJson (screenWith 0 0) {screenTurningFiner = Nothing}
+      let written = screenJson page (screenWith 0 0) {screenTurningFiner = Nothing}
       map (`verdictKey` written) ["falseCreases", "passes", "strain"] `shouldBe` [Just Null, Just Null, Just (Bool True)]
 
+    it "judges the floor in the pixels of the page, so a larger drawing can fail what a smaller one passes" $ do
+      -- Owner decision 30: the floor that is 0.8 px on a page drawn at 600
+      -- px to a sheet unit is 1.2 px on one drawn at 900, past the 1 px
+      -- limit, and the screen itself is the same.
+      let floorAt scale = fmap (floorPixels scale) (screenFloorAtScreen (screenWith 0 0))
+      [floorAt page, floorAt larger] `shouldSatisfy` closeTo [0.8, 1.2]
+      verdictFloor (screenVerdict page (screenWith 0 0)) `shouldBe` True
+      verdictFloor (screenVerdict larger (screenWith 0 0)) `shouldBe` False
+      verdictOverall (screenVerdict larger (screenWith 0 0)) `shouldBe` Fails
+
+    it "writes floors, reach-throughs and a picture's floor in the page's pixels" $ do
+      -- On a page drawn at 900 px to a sheet unit, the floors that are 1.2
+      -- and 0.8 px at 600 are 1.8 and 1.2, and a reach of a thousandth of a
+      -- sheet unit is 0.9 px. The square stretched by 3% one way, seen from
+      -- above, is 0.015 of a sheet unit from paper in the picture, 13.5 px,
+      -- and 0.01 at the 1% screen, 9 px. The screen also says which pixels
+      -- it is in, so that a copy of it made away from its page's thresholds
+      -- still says so.
+      let written = screenJson larger (screenWith 0 0) {screenDeepestReach = Just (0.001, (0, 1))}
+      map (`pixelsOf` written) ["pagePixelsPerSheet", "floor3dPixels", "floor3dPixelsAtScreen", "deepestReachPixels"] `shouldSatisfy` closeTo [900, 1.8, 1.2, 0.9]
+      map (`pixelsOf` object (pictureFloorJson larger EveryChord topDown stretched)) ["pictureFloorPixels", "pictureFloorPixelsAtScreen"] `shouldSatisfy` closeTo [13.5, 9]
+
+    it "carries the page's scale into every key a gallery writes for a pose, and into its thresholds" $ do
+      -- What a gallery writes for a pose drawn in a picture: its screen and
+      -- its floor there, both at the page's scale, and the scale once more
+      -- for the caption.
+      let written = object (poseScreenKeys larger (screenWith 0 0) EveryChord (Just topDown) stretched)
+          screen = case written of
+            Object keys -> KM.lookup "screen" keys
+            _ -> Nothing
+      map (`pixelsOf` written) ["pictureFloorPixels", "pictureFloorPixelsAtScreen"] `shouldSatisfy` closeTo [13.5, 9]
+      map (\key -> screen >>= pixelsOf key) ["pagePixelsPerSheet", "floor3dPixelsAtScreen"] `shouldSatisfy` closeTo [900, 1.2]
+      [pixelsOf "pagePixelsPerSheet" (thresholdsJson larger)] `shouldSatisfy` closeTo [900]
+
+    it "takes a page's scale from its drawings, the largest of them" $ do
+      -- On a 200-unit page with a 10-unit margin, a drawing one sheet unit
+      -- across and one tall fills the 180-unit box, at 180 px to the unit;
+      -- one twice as wide as it is tall fills it across, at 90. Reading the
+      -- transform's y scale instead, which is negative because the page
+      -- flips y, would screen every floor as none.
+      let page200 = defaultPage {pageWidth = 200, pageHeight = 200, pageMargin = 10}
+          drawn width = figure page200 (diagramWithExtent (Box (V2 0 0) (V2 width 1)) [Polyline (solid (Colour "#000000") 1) [V2 0 0, V2 width 0]])
+      map (figureScale . drawn) [1, 2] `shouldBe` [PageScale 180, PageScale 90]
+      map pageScale [drawn 1 :| [drawn 2], drawn 2 :| [drawn 1]] `shouldBe` [PageScale 180, PageScale 180]
+
     it "reports the 0.1% screen without requiring it" $ do
-      let verdict = screenVerdict (screenWith 0.005 0.005)
+      let verdict = screenVerdict page (screenWith 0.005 0.005)
       (verdictStrain verdict, verdictStrictStrain verdict) `shouldBe` (True, False)
       verdictOverall verdict `shouldBe` Passes
 
@@ -222,16 +271,27 @@ areaOverRadius n = width / radius * 180 / pi
     width = fromIntegral (n `div` 4) / fromIntegral n
     radius = ((1 + width) / sqrt 2) / (3 * pi / 2)
 
--- | A pose whose floor is within 1 px only at the declared strain, with
--- three crossings and no false creases at either level, squashed and
+-- | A page drawn at 600 px to a sheet unit, as the whole crane's, and one
+-- drawn half as large again.
+page, larger :: PageScale
+page = PageScale 600
+larger = PageScale 900
+
+-- | The square stretched by 3% along x: 0.015 of a sheet unit from paper,
+-- and 0.01 at the 1% screen, its floor set by the sides along the stretch.
+stretched :: MaterialMesh
+stretched = square {samples = [Sample (V2 u v) (V3 (1.03 * u) v 0) | Sample (V2 u v) _ <- samples square]}
+
+-- | A pose whose floor is within 1 px on 'page' only at the declared strain,
+-- with three crossings and no false creases at either level, squashed and
 -- stretched as given.
 screenWith :: Double -> Double -> Screen
 screenWith squash stretch =
   Screen
     { screenSquash = squash,
       screenStretch = stretch,
-      screenFloor = Just (FloorPair (1.2 / pixelsPerSheet) (0, 1)),
-      screenFloorAtScreen = Just (FloorPair (0.8 / pixelsPerSheet) (0, 1)),
+      screenFloor = Just (FloorPair (1.2 / pixelsPerSheet page) (0, 1)),
+      screenFloorAtScreen = Just (FloorPair (0.8 / pixelsPerSheet page) (0, 1)),
       screenFloorPairs = Nothing,
       screenCrossings = 3,
       screenDeepestReach = Nothing,
@@ -292,6 +352,15 @@ slitOpenedBy gap = sheet [(0, 0), (0.5, 0), (0.5 + gap, 0), (1, 0), (1, 1), (0, 
 -- that bounds the left side.
 hangingCut :: MaterialMesh
 hangingCut = sheet [(0, 0), (0.5, 0), (1, 0), (1, 1), (0, 1), (0.5, 0.5), (0.5, 0.25)] [(0, 1, 5), (0, 5, 4), (5, 3, 4), (1, 2, 6), (6, 2, 3), (6, 3, 5)]
+
+-- | A number a report writes under this key.
+pixelsOf :: Key -> Value -> Maybe Double
+pixelsOf key (Object written) | Just (Number n) <- KM.lookup key written = Just (realToFrac n)
+pixelsOf _ _ = Nothing
+
+-- | Every number present, and each within rounding of the one expected.
+closeTo :: [Double] -> [Maybe Double] -> Bool
+closeTo expected actual = length expected == length actual && and (zipWith (\e a -> maybe False (\x -> abs (x - e) < 1e-9) a) expected actual)
 
 -- | One key of a screen's JSON verdict.
 verdictKey :: Key -> Value -> Maybe Value

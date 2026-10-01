@@ -12,6 +12,7 @@ import Data.List (find)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import FoldMaterial (componentCount, meshEdges)
+import IllustrationComparison (illustrationScale)
 import PaperScreen (FloorPair (..), Turning (..), pictureFloor, sheetChords)
 import ScreenReport
 import Senbazuru.Explain (explain)
@@ -166,15 +167,15 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screen <- right (screenPose study tucked)
     let mesh = craneMesh tucked
     fmap floorVertices (screenFloor screen) `shouldBe` Just (37, 46)
-    fmap floorPixels (screenFloor screen) `shouldSatisfy` maybe False (near 20.04 0.01)
+    fmap (floorPixels crane) (screenFloor screen) `shouldSatisfy` maybe False (near 20.04 0.01)
     -- In the picture, pairs 46-182 and 46-230 tie to within rounding; either
     -- sets the same floor.
     upright <- uprightFloor mesh
     fmap floorVertices upright `shouldSatisfy` (`elem` [Just (46, 182), Just (46, 230)])
-    fmap floorPixels upright `shouldSatisfy` maybe False (near 17.14 0.01)
+    fmap (floorPixels crane) upright `shouldSatisfy` maybe False (near 17.14 0.01)
     screenCrossings screen `shouldBe` 345
     fmap snd (screenDeepestReach screen) `shouldBe` Just (2, 29)
-    fmap ((pixelsPerSheet *) . fst) (screenDeepestReach screen) `shouldSatisfy` maybe False (near 17.35 0.01)
+    fmap ((pixelsPerSheet crane *) . fst) (screenDeepestReach screen) `shouldSatisfy` maybe False (near 17.35 0.01)
     screenStretch screen `shouldSatisfy` near 1.068 0.001
     screenSquash screen `shouldSatisfy` near 0.836 0.001
     turningJoins (screenTurning screen) `shouldBe` 15
@@ -184,7 +185,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screenCoreLength screen `shouldSatisfy` maybe False (near 0.414 0.001)
     fst (screenCentreFolds screen) `shouldSatisfy` maybe False (near 14.04 0.05)
     snd (screenCentreFolds screen) `shouldSatisfy` maybe False (near 4.03 0.05)
-    verdictOverall (screenVerdict screen) `shouldBe` Fails
+    verdictOverall (screenVerdict crane screen) `shouldBe` Fails
 
   -- PRD 11's A-11-2, the fold half: More tucked made again with every
   -- triangle split into four, and again, keeps its false-crease turning
@@ -213,7 +214,7 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     screen <- right (screenPose study candidate)
     screenTurningFiner screen `shouldBe` Nothing
     turningJoins (screenTurning screen) `shouldBe` 4
-    verdictFalseCreases (screenVerdict screen) `shouldBe` Fails
+    verdictFalseCreases (screenVerdict crane screen) `shouldBe` Fails
 
   -- An error while making a pose again names the refinement it came from,
   -- since its vertex numbers are in no file the gallery writes. The finer
@@ -231,15 +232,20 @@ spec = beforeAll load $ describe "one connected whole-crane candidate" $ do
     let fixture = wholeSpread study
     folded <- right (cranePose study "before")
     closed <- right (screenPose study folded)
-    screenVerdict closed `shouldBe` Verdict True True True Passes
+    screenVerdict crane closed `shouldBe` Verdict True True True Passes
     screenTurningFiner closed `shouldBe` Just (Turning 0 0)
-    fmap floorPixels (screenFloorAtScreen closed) `shouldBe` Just 0
+    fmap (floorPixels crane) (screenFloorAtScreen closed) `shouldBe` Just 0
     screenCrossings closed `shouldBe` 0
     screenCoreLength closed `shouldSatisfy` maybe False (near 0.235 0.001)
     fst (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
     snd (screenCentreFolds closed) `shouldSatisfy` maybe False (near 180 0.5)
     upright <- uprightFloor (spreadMesh fixture)
-    fmap floorPixels upright `shouldSatisfy` maybe False (near 1.02 0.01)
+    fmap (floorPixels crane) upright `shouldSatisfy` maybe False (near 1.02 0.01)
+
+-- | The whole crane's page, which draws every pose at 600 px to a sheet
+-- unit: the scale PRD 11's figures for More tucked are in.
+crane :: PageScale
+crane = PageScale illustrationScale
 
 -- | The geometry level a GLB's fidelity record gives, or null.
 recordedGeometry :: Glb -> Value

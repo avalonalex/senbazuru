@@ -5,7 +5,7 @@
 -- gallery's, through 'wingScreen'. An 8-division pose takes the same grip
 -- solved at 16 divisions as its finer level, where "FinerSolve" counts that
 -- solve as the pose made again (owner decisions 29 and 31).
-module WingBendingGallery (writeWingBending, wingSvg, wingScreen, refinement) where
+module WingBendingGallery (writeWingBending, wingFigure, wingScreen, refinement) where
 
 import Control.Monad (forM)
 import Data.Aeson (Value, encode, object, (.=))
@@ -13,7 +13,9 @@ import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Foldable (toList)
 import Data.IntMap.Strict qualified as IM
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -23,7 +25,7 @@ import FoldBending (Hinge, bendingEnergy, hingeBends)
 import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
 import PaperScreen (Turning, sheetChords)
-import ScreenReport (Screen (..), poseScreenKeys, thresholdsJson, writeScreenScript)
+import ScreenReport (Figure (..), PageScale, Screen (..), figure, pageScale, poseScreenKeys, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain, tshow)
@@ -38,7 +40,7 @@ import Senbazuru.Origami.Surface
 import Senbazuru.Render.Camera (Basis, View (..), basisFrom)
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
 import Senbazuru.Render.Steps (stepPage)
-import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
+import Senbazuru.Render.Svg (Page (..), defaultPage)
 import SurfaceScreen (surfaceScreen)
 import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
@@ -46,12 +48,14 @@ import System.FilePath ((</>))
 import UncreasedSurface
 import WingBending
 
-wingSvg :: [Surface V2] -> Either Text Text
-wingSvg sheets = do
+-- | Wing sheets drawn side by side from 'wingCamera', with the scale the
+-- page draws them at.
+wingFigure :: [Surface V2] -> Either Text Figure
+wingFigure sheets = do
   camera <- wingCamera
   drawing <- first explain (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = length sheets} (View (Just camera) 0) False (map surfaceFrame sheets))
   diagram <- maybe (Left "wing comparison has no geometry") Right drawing
-  pure (renderSvg defaultPage {pageWidth = 1080, pageHeight = 340, pageMargin = 28, pageBackground = Nothing, pageTitle = Just "Held wing shapes"} diagram)
+  pure (figure defaultPage {pageWidth = 1080, pageHeight = 340, pageMargin = 28, pageBackground = Nothing, pageTitle = Just "Held wing shapes"} diagram)
 
 -- | The camera every wing drawing is taken from, and so the picture a
 -- screen's picture floor is measured in.
@@ -59,18 +63,19 @@ wingCamera :: Either Text Basis
 wingCamera = maybe (Left "invalid wing camera") Right (basisFrom (V3 0 1 (-1)) (V3 0 0 1))
 
 -- | A pose's paper screen ("SurfaceScreen") at the finer level it is given,
--- and the keys its report carries: the screen and, if the gallery draws the
--- pose, its floor in the picture, taken from 'wingCamera'. The finer level is
+-- and the keys its report carries on a page drawn at a given scale
+-- ('ScreenReport.pageScale'): the screen and, if the gallery draws the pose,
+-- its floor in the picture, taken from 'wingCamera'. The finer level is
 -- nothing, not measured, or the turning of the gallery's own finer solve
 -- where "FinerSolve" counts it. @sheet@ is the surface written for the pose,
 -- @contact@ its crossing check and @hinges@ its fixture's hinges.
-wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Maybe Turning -> Either Text (Screen, [Pair])
+wingScreen :: Surface V2 -> ContactCheck -> [Hinge] -> Bool -> MaterialMesh -> Maybe Turning -> Either Text (Screen, PageScale -> [Pair])
 wingScreen sheet contact hinges drawn mesh finer = do
   chords <- first explain (sheetChords mesh)
   bends <- first explain (hingeBends hinges mesh)
   screen <- first explain (surfaceScreen sheet chords contact bends finer mesh)
   camera <- wingCamera
-  pure (screen, poseScreenKeys screen chords (if drawn then Just camera else Nothing) mesh)
+  pure (screen, \scale -> poseScreenKeys scale screen chords (if drawn then Just camera else Nothing) mesh)
 
 writeWingBending :: FilePath -> IO ()
 writeWingBending destination = do
@@ -88,9 +93,9 @@ writeWingBending destination = do
       -- Every wing is drawn, in its resolution's sequence.
       pending <- measure stem count degrees piece result mesh sheet True
       pure (sheet, model, pending)
-    drawing <- checked (wingSvg [sheet | (sheet, _, _) <- runs])
-    TIO.writeFile (output </> "sequence-" ++ show count ++ ".svg") drawing
-    pure runs
+    drawing <- checked (wingFigure [sheet | (sheet, _, _) <- runs])
+    TIO.writeFile (output </> "sequence-" ++ show count ++ ".svg") (figureSvg drawing)
+    pure (runs, drawing)
   benchmarks <- forM counts $ \count -> do
     piece <- checked (first explain (stripBenchmark count))
     result <- checked (first explain (solvePiece piece))
@@ -101,17 +106,19 @@ writeWingBending destination = do
     -- A strip is drawn only in 3D, with no camera of its own.
     pending <- measure stem count 30 piece result mesh sheet False
     pure (model, pending)
-  let runs = concat groups
-      bent = [sheet | group <- groups, (sheet, _, _) <- drop 2 group]
+  let runs = concatMap fst groups
+      bent = [sheet | (group, _) <- toList groups, (sheet, _, _) <- drop 2 group]
       changes = [refinement a b | (a, b) <- zip bent (drop 1 bent)]
+      -- The page's drawings are its comparisons, one for each mesh.
+      scale = pageScale (fmap snd groups)
   -- Owner decision 29: an 8-division wing's finer level may be the same grip
   -- solved at 16, on its mesh split into four. A strip holds its first and
   -- last span, which shorten as spans are added, so no two strips solve the
   -- same control.
-  wingReports <- checked (finishReports [(wingId 8 g, wingId 16 g, "16 divisions") | g <- grips] [p | (_, _, p) <- runs])
-  stripReports <- checked (finishReports [] (map snd benchmarks))
-  let document = object ["wings" .= wingReports, "benchmarks" .= stripReports, "refinement" .= changes, "screenThresholds" .= thresholdsJson]
-  BL.writeFile (output </> "models.json") (encode ([m | (_, m, _) <- runs] ++ map fst benchmarks))
+  wingReports <- checked (finishReports (Just scale) [(wingId 8 g, wingId 16 g, "16 divisions") | g <- grips] [p | (_, _, p) <- runs])
+  stripReports <- checked (finishReports (Just scale) [] (map snd (toList benchmarks)))
+  let document = object ["wings" .= wingReports, "benchmarks" .= stripReports, "refinement" .= changes, "screenThresholds" .= thresholdsJson scale]
+  BL.writeFile (output </> "models.json") (encode ([m | (_, m, _) <- runs] ++ map fst (toList benchmarks)))
   BL.writeFile (output </> "checks.json") (encode document)
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
@@ -120,9 +127,13 @@ writeWingBending destination = do
   TIO.writeFile (destination </> "wing-bending.html") (T.replace "/*WING_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote wing-bending.html, three resolution comparisons, twelve GLBs/FOLDs and checks.json to " ++ destination)
 
--- | The wing studies' mesh divisions and grips, in degrees.
-counts, grips :: [Int]
-counts = [8, 16, 24]
+-- | The wing studies' mesh divisions and grips, in degrees. There is at
+-- least one mesh, and so at least one comparison to take the page's scale
+-- from.
+counts :: NonEmpty Int
+counts = 8 :| [16, 24]
+
+grips :: [Int]
 grips = [0, 20, 40]
 
 wingId :: Int -> Int -> Text
@@ -160,7 +171,7 @@ measure stem count degrees piece result mesh sheet drawn = do
       -- The gallery accepts a shape that converged and passes its contact
       -- check. The report says so, and the page's status line reads it.
       accepted = converged result && contactPassed contact
-      report finer keys = do
+      report scale finer keys = do
         (screen, screenKeys) <- screenAt finer
         pure . object $
           [ "id" .= stem,
@@ -188,7 +199,7 @@ measure stem count degrees piece result mesh sheet drawn = do
             "accepted" .= accepted,
             "continuousMotionChecked" .= False
           ]
-            ++ screenKeys
+            ++ maybe [] screenKeys scale
             ++ keys
   pure (Pending stem accepted (piecePins piece) mesh (screenTurning own) report)
 

@@ -321,8 +321,8 @@ for diagnostic shape review. It does not replace `Render.Projected` or contact
 acceptance. [The whole-crane note](notes/whole-crane-candidate.md) records the
 failed control and the visual proposal's material defects. `PaperScreen` holds
 the measures of a *paper screen*, which says whether paper could take a pose;
-`ScreenReport` holds its thresholds, its verdict, the JSON a gallery
-writes beside each pose and the script a page reads it with;
+`ScreenReport` holds its thresholds, its verdict at a page's scale, the
+JSON a gallery writes beside each pose and the script a page reads it with;
 `CraneSpreadScreen` screens a crane with a wing moved and says which of its
 edges are joins; `SurfaceScreen` screens a pose from the surface its gallery
 writes, whose frame names the joins; `FinerSolve` lets a gallery's own solve

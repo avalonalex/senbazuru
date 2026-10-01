@@ -15,7 +15,8 @@
 -- 1. its mesh is the pose's mesh with every triangle split into four;
 -- 2. it solves the same control;
 -- 3. the two solves agree at every vertex of the coarser mesh within the
---    floor limit, 'floorLimitPixels' at 'pixelsPerSheet'.
+--    floor limit, 'floorLimitPixels' at the scale the page draws its poses
+--    at (owner decision 30).
 --
 -- 'sameFinerPose' checks the first and the third, and of the second what a
 -- mesh can show: that both solves hold the sheet at the same points, and
@@ -34,8 +35,9 @@
 -- each coarse triangle splits into and nothing else. Agreement is judged at
 -- the coarser mesh's vertices only, as the decision says: between them the
 -- coarser mesh is flat, so at a finer solve's edge midpoints the two can lie
--- further apart where the paper curves, up to 1.3 px on the wing gripped at
--- 40 degrees, whose vertices agree within 0.81 px.
+-- further apart where the paper curves: on the wing gripped at 40 degrees,
+-- up to 0.0022 sheet units, where its vertices agree within 0.0013 (1.3 and
+-- 0.81 px at 600 px to a sheet unit).
 module FinerSolve
   ( SameFinerPose (..),
     FinerSolveRefusal (..),
@@ -56,7 +58,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import PaperScreen (Turning, maximumOn)
-import ScreenReport (floorLimitPixels, pixelsPerSheet)
+import ScreenReport (PageScale (..), floorLimitPixels)
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3)
@@ -65,7 +67,7 @@ import Senbazuru.Origami.Surface (MaterialMesh, Mesh (..), Sample (..))
 
 -- | A finer solve shown to be the same pose one level finer: how far apart
 -- the two solves are at worst, over the coarser mesh's vertices, in pixels
--- at the screen's scale.
+-- at the page's scale.
 newtype SameFinerPose = SameFinerPose {finerApartPixels :: Double}
   deriving stock (Eq, Show)
 
@@ -120,17 +122,17 @@ samePoint = 1e-9
 -- | Whether @fine@, holding the sheet at @fineHeld@, is the pose @coarse@,
 -- holding it at @coarseHeld@, one level finer: its mesh split into four,
 -- holding the same points, and the coarser mesh's held vertices in the same
--- places, and within the floor limit of it at every vertex. The result is
--- how far apart the two are at worst. A held map gives each held vertex the
--- position it is held at.
-sameFinerPose :: IM.IntMap V3 -> MaterialMesh -> IM.IntMap V3 -> MaterialMesh -> Either FinerSolveRefusal SameFinerPose
-sameFinerPose coarseHeld coarse fineHeld fine = do
+-- places, and within the floor limit of it at every vertex, on a page drawn
+-- at @scale@. The result is how far apart the two are at worst. A held map
+-- gives each held vertex the position it is held at.
+sameFinerPose :: PageScale -> IM.IntMap V3 -> MaterialMesh -> IM.IntMap V3 -> MaterialMesh -> Either FinerSolveRefusal SameFinerPose
+sameFinerPose scale coarseHeld coarse fineHeld fine = do
   let expected = 4 * length (triangles coarse)
   unless (length (triangles fine) == expected) (Left (FinerTriangleCount expected (length (triangles fine))))
   matched <- concat <$> forM (zip [0 ..] (triangles coarse)) split
   -- A vertex shared by several coarse triangles is matched once for each;
   -- every match finds the same finer vertex, so keeping one loses nothing.
-  let apart = [(v, pixelsPerSheet * norm (position c ^-^ position f)) | (v, (c, f)) <- IM.toList (IM.fromList matched)]
+  let apart = [(v, pixelsPerSheet scale * norm (position c ^-^ position f)) | (v, (c, f)) <- IM.toList (IM.fromList matched)]
       -- A comparison with NaN is false whichever way it is asked, so a
       -- distance that is no number is refused by name, and the worst is
       -- found with NaN ranked above every number.
@@ -179,49 +181,53 @@ sameFinerPose coarseHeld coarse fineHeld fine = do
 midpoint :: V2 -> V2 -> V2
 midpoint p q = 0.5 *^ (p ^+^ q)
 
--- | A pose as its gallery hands it over before its finer level is settled:
--- its id; whether the gallery accepts its solve; the points the solve holds,
--- each with the position it is held at; its mesh; its own false-crease
--- turning, which is the finer level it gives a coarser pose; and its report,
--- given its finer level and the keys about its finer solve. The report
--- screens the pose at that finer level, so no screen made before it is
--- settled can reach the report.
+-- | A pose as its gallery hands it over before its finer level and its
+-- page's scale are settled: its id; whether the gallery accepts its solve;
+-- the points the solve holds, each with the position it is held at; its
+-- mesh; its own false-crease turning, which is the finer level it gives a
+-- coarser pose; and its report, given the page's scale, none where the page
+-- draws no paper, its finer level and the keys about its finer solve. The
+-- report screens the pose at that finer level, so no screen made before it
+-- is settled can reach the report.
 data Pending = Pending
   { pendingId :: !Text,
     pendingAccepted :: !Bool,
     pendingHeld :: !(IM.IntMap V3),
     pendingMesh :: !MaterialMesh,
     pendingTurning :: !Turning,
-    pendingReport :: Maybe Turning -> [Pair] -> Either Text Value
+    pendingReport :: Maybe PageScale -> Maybe Turning -> [Pair] -> Either Text Value
   }
 
--- | A pose's finer level from the finer solve its gallery names for it, and
--- the keys its report carries about that solve: its id, how a page labels
--- it, whether the gallery accepts it, and how far apart the two are, or why
--- it does not count. The finer level is the finer solve's own false-crease
--- turning where its gallery accepts it and 'sameFinerPose' shows the two
--- are the same pose, and not measured where either fails. Only the finer
--- solve's acceptance is asked, never the pose's: the screen judges every
--- pose's shape whatever its gallery makes of it, and only the solve that
--- stands for the pose made again has to be one its gallery stands behind.
-finerLevel :: Text -> Pending -> Pending -> (Maybe Turning, [Pair])
-finerLevel label finer pose = case counted of
+-- | A pose's finer level from the finer solve its gallery names for it, on
+-- a page drawn at @scale@, and the keys its report carries about that
+-- solve: its id, how a page labels it, whether the gallery accepts it, and
+-- how far apart the two are, or why it does not count. The finer level is
+-- the finer solve's own false-crease turning where its gallery accepts it
+-- and 'sameFinerPose' shows the two are the same pose, and not measured
+-- where either fails. Only the finer solve's acceptance is asked, never the
+-- pose's: the screen judges every pose's shape whatever its gallery makes
+-- of it, and only the solve that stands for the pose made again has to be
+-- one its gallery stands behind.
+finerLevel :: PageScale -> Text -> Pending -> Pending -> (Maybe Turning, [Pair])
+finerLevel scale label finer pose = case counted of
   Right same -> (Just (pendingTurning finer), keys ["apartPixels" .= finerApartPixels same])
   Left refusal -> (Nothing, keys ["refused" .= explain refusal])
   where
     counted = do
       unless (pendingAccepted finer) (Left FinerNotAccepted)
-      sameFinerPose (pendingHeld pose) (pendingMesh pose) (pendingHeld finer) (pendingMesh finer)
+      sameFinerPose scale (pendingHeld pose) (pendingMesh pose) (pendingHeld finer) (pendingMesh finer)
     keys more = ["finerSolve" .= object (["id" .= pendingId finer, "label" .= label, "accepted" .= pendingAccepted finer] ++ more)]
 
--- | Every pose's report, in order, each pose taking its finer level from the
--- run its gallery names as the same control one level finer: a pose's id,
--- that run's id, and the label a page gives it. A pose named in no pair
--- keeps its finer level not measured. A name the gallery does not have, two
--- runs with one id, or one pose named in two pairs is refused, since each is
--- a mistake in the gallery, not a finding.
-finishReports :: [(Text, Text, Text)] -> [Pending] -> Either Text [Value]
-finishReports pairs poses = do
+-- | Every pose's report, in order, on a page drawn at @scale@, each pose
+-- taking its finer level from the run its gallery names as the same control
+-- one level finer: a pose's id, that run's id, and the label a page gives
+-- it. A pose named in no pair keeps its finer level not measured, and so
+-- does every pose on a page that draws no paper, which has no scale to
+-- compare two solves in. A name the gallery does not have, two runs with one
+-- id, or one pose named in two pairs is refused, since each is a mistake in
+-- the gallery, not a finding.
+finishReports :: Maybe PageScale -> [(Text, Text, Text)] -> [Pending] -> Either Text [Value]
+finishReports scale pairs poses = do
   unless (null (repeated (map pendingId poses))) (Left ("the gallery has more than one run named " <> T.intercalate ", " (repeated (map pendingId poses))))
   unless (null (repeated named)) (Left ("the gallery names more than one finer solve for " <> T.intercalate ", " (repeated named)))
   finerOf <- M.fromList <$> traverse resolve pairs
@@ -234,7 +240,7 @@ finishReports pairs poses = do
       _ <- run pose
       found <- run finer
       pure (pose, (found, label))
-    report finerOf pose = case M.lookup (pendingId pose) finerOf of
-      Just (finer, label) -> uncurry (pendingReport pose) (finerLevel label finer pose)
-      Nothing -> pendingReport pose Nothing []
+    report finerOf pose = case (scale, M.lookup (pendingId pose) finerOf) of
+      (Just page, Just (finer, label)) -> uncurry (pendingReport pose scale) (finerLevel page label finer pose)
+      _ -> pendingReport pose scale Nothing []
     repeated xs = M.keys (M.filter (> (1 :: Int)) (M.fromListWith (+) [(x, 1) | x <- xs]))

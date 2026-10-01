@@ -6,17 +6,17 @@
 module CraneBodyGallery (writeCraneBody) where
 
 import Control.Exception (evaluate)
-import Control.Monad (forM, when)
+import Control.Monad (forM, forM_, when)
 import CraneBody
 import CraneRoot
 import CraneSpread
-import CraneSpreadGallery (screenKeys, spreadSvg)
+import CraneSpreadGallery (screenKeys, spreadFigure)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
-import Data.Maybe (isNothing)
+import Data.List.NonEmpty (nonEmpty)
+import Data.Maybe (isJust, isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -25,7 +25,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
-import ScreenReport (thresholdsJson, writeScreenScript)
+import ScreenReport (Figure (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
@@ -67,48 +67,52 @@ writeCraneBody destination = do
     roots <- checked (rootAngles root mesh)
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)
     sheet <- checked (spreadSurface fixture mesh)
-    let drawing = spreadSvg [sheet]
-    (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (accepted && isRight drawing) mesh)
-    let report =
-          object $
-            [ "id" .= stem,
-              "title" .= (title :: Text),
-              "control" .= show control,
-              "strictAccepted" .= strict,
-              "selectedAccepted" .= accepted,
-              "converged" .= converged result,
-              "equilibrium" .= fmap equilibrium (equilibriumCheck result),
-              "iterationLimitPerStage" .= limit,
-              "iterations" .= maximum (0 : map completedIterations (checkpoints result)),
-              "refinement" .= (3 :: Int),
-              "vertices" .= length (samples mesh),
-              "triangles" .= length (triangles mesh),
-              "components" .= componentCount mesh,
-              "heldVertices" .= IM.size (spreadPins fixture),
-              "sourceOrders" .= length (spreadOrders fixture),
-              "activeSourceOrders" .= length (spreadContactOrders fixture),
-              "releasedPanels" .= (if stem == "fixed" then [] else map unFaceId (S.toAscList (rootNeighbours root))),
-              "selectedCreases" .= map unEdgeId (S.toAscList (bodySelected study)),
-              "angles" .= [object ["sourceEdge" .= unEdgeId (angleSource a), "selected" .= angleSelected a, "achievedRadians" .= angleAchieved a, "originalRadians" .= angleOriginal a, "preferredRadians" .= anglePreferred a] | a <- angles],
-              "rootAnglesRadians" .= map snd roots,
-              "maxSelectedOriginalErrorRadians" .= selectedError,
-              "maxRetainedOriginalErrorRadians" .= retainedError,
-              "maxRelativeEdgeError" .= maxLengthError mesh,
-              "areaRatio" .= areaRatio mesh,
-              "heldPositionError" .= spreadHeldError fixture mesh,
-              "bodyMovement" .= rootBodyMovement root mesh,
-              "creaseEnergy" .= creaseEnergy,
-              "panelEnergy" .= panelEnergy,
-              "contact" .= contact,
-              "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
-              "continuousMotionChecked" .= False
-            ]
-              ++ screened
+    let drawing = spreadFigure [sheet]
+        -- The gallery draws an accepted trial by itself where it can. That
+        -- drawing is the trial's picture, and one of the page's drawings.
+        own = if accepted then either (const Nothing) Just drawing else Nothing
+    (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (isJust own) mesh)
+    let measured =
+          [ "id" .= stem,
+            "title" .= (title :: Text),
+            "control" .= show control,
+            "strictAccepted" .= strict,
+            "selectedAccepted" .= accepted,
+            "converged" .= converged result,
+            "equilibrium" .= fmap equilibrium (equilibriumCheck result),
+            "iterationLimitPerStage" .= limit,
+            "iterations" .= maximum (0 : map completedIterations (checkpoints result)),
+            "refinement" .= (3 :: Int),
+            "vertices" .= length (samples mesh),
+            "triangles" .= length (triangles mesh),
+            "components" .= componentCount mesh,
+            "heldVertices" .= IM.size (spreadPins fixture),
+            "sourceOrders" .= length (spreadOrders fixture),
+            "activeSourceOrders" .= length (spreadContactOrders fixture),
+            "releasedPanels" .= (if stem == "fixed" then [] else map unFaceId (S.toAscList (rootNeighbours root))),
+            "selectedCreases" .= map unEdgeId (S.toAscList (bodySelected study)),
+            "angles" .= [object ["sourceEdge" .= unEdgeId (angleSource a), "selected" .= angleSelected a, "achievedRadians" .= angleAchieved a, "originalRadians" .= angleOriginal a, "preferredRadians" .= anglePreferred a] | a <- angles],
+            "rootAnglesRadians" .= map snd roots,
+            "maxSelectedOriginalErrorRadians" .= selectedError,
+            "maxRetainedOriginalErrorRadians" .= retainedError,
+            "maxRelativeEdgeError" .= maxLengthError mesh,
+            "areaRatio" .= areaRatio mesh,
+            "heldPositionError" .= spreadHeldError fixture mesh,
+            "bodyMovement" .= rootBodyMovement root mesh,
+            "creaseEnergy" .= creaseEnergy,
+            "panelEnergy" .= panelEnergy,
+            "contact" .= contact,
+            "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
+            "continuousMotionChecked" .= False
+          ]
+        report scale = object (measured ++ maybe [] screened scale)
         file = FoldFile (Just 1.2) (Just "senbazuru body crease preferences") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
-    BL.writeFile (output </> stem ++ "-check.json") (encode report)
     -- Publish measurements before attempting a renderer: export failures must
     -- not discard an expensive experiment or turn physical acceptance false.
+    -- The screen waits for the page's scale, and the file is written again
+    -- with it below.
+    BL.writeFile (output </> stem ++ "-check.json") (encode (object measured))
     export <-
       if accepted
         then do
@@ -122,15 +126,22 @@ writeCraneBody destination = do
               BS.writeFile (output </> stem ++ "-complete.glb") bytes
               pure (Just (explain err))
         else pure Nothing
-    when accepted $ case drawing of
-      Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
-      Left err -> putStrLn (T.unpack err)
+    forM_ own $ \svg -> TIO.writeFile (output </> stem ++ ".svg") (figureSvg svg)
+    case (accepted, drawing) of
+      (True, Left err) -> putStrLn (T.unpack err)
+      _ -> pure ()
     putStrLn (stem ++ ": strict " ++ show strict ++ ", selected " ++ show accepted ++ "; length " ++ show (maxLengthError mesh) ++ "; selected/retained angle " ++ show (selectedError, retainedError))
     hFlush stdout
-    pure (stem, title, accepted, export, report)
-  let document = object ["runs" .= [report | (_, _, _, _, report) <- runs], "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _) <- runs], "screenThresholds" .= thresholdsJson]
+    pure (stem, title, accepted, export, report, own)
+  -- The page's drawings are the accepted trials' own, written beside it; the
+  -- page itself shows none of them.
+  let scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, Just own) <- runs]
+      reports = [(stem, report scale) | (stem, _, _, _, report, _) <- runs]
+  forM_ reports $ \(stem, report) -> BL.writeFile (output </> stem ++ "-check.json") (encode report)
+  let document = object ["runs" .= map snd reports, "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _, _) <- runs], "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
-  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, Nothing, _) <- runs])
+  when (isNothing scale) (die "No crane-body trial was drawn, so the page has no scale to screen at; checks.json holds the measurements without screens. Refusing to publish the page")
+  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, Nothing, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
   writeScreenScript destination
