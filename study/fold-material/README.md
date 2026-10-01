@@ -572,7 +572,7 @@ grips remain a diagnostic. Every control carries a paper screen, under
 `pictureFloorPixels` where the gallery draws it. The flat and 40-degree bends,
 and the 40-degree bend whose upper layer starts inside the lower, take the same grip
 solved at 16 divisions as their finer level where that solve counts as the
-shape made again (owner decision 29); `finerSolve` records how far apart the two
+shape made again (owner decisions 29 and 31); `finerSolve` records how far apart the two
 are, or why the solve does not count. See [the instructions](../../docs/usage.md#two-held-touching-layers)
 and [the coupled-solve measurements](../../docs/notes/coupled-touching-layer-solve.md).
 The generated SVG, FOLD and glTF use the same positions; this is static contact,
@@ -584,7 +584,7 @@ solves a separate uncreased wing-shaped sheet held at its root and tip.
 a known bent-strip benchmark, independent endpoint measurements and each
 shape's paper screen. An 8-division shape takes the same grip solved at 16
 divisions as its finer level where that solve counts as the shape made again
-(owner decision 29); `finerSolve` records how far apart the two are, or why
+(owner decisions 29 and 31); `finerSolve` records how far apart the two are, or why
 the solve does not count.
 SVG, FOLD and glTF share the solved triangles; the 3D viewer uses the same local Three.js
 installation as the checked-flap pages. See [the instructions](../../docs/usage.md#controlled-wing-bending)

@@ -19,7 +19,7 @@
 -- solve can /make again/ (docs/glossary.md) is judged on its own mesh (owner
 -- decision 27). Both wing galleries solve some poses again on the mesh split
 -- into four, and there the finer level is that solve's turning where
--- "FinerSolve" shows it is the same pose (owner decision 29).
+-- "FinerSolve" counts it (owner decisions 29 and 31).
 module SurfaceScreen
   ( surfaceJoins,
     surfaceScreen,

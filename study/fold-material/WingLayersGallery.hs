@@ -5,7 +5,8 @@
 -- Every control, accepted or not, carries its paper screen ("SurfaceScreen").
 -- The flat and 40° bends, and the 40° bend whose upper layer starts inside
 -- the lower, take the same grip solved at 16 divisions as their finer level,
--- where "FinerSolve" shows the two are the same pose (owner decision 29).
+-- where "FinerSolve" counts that solve as the pose made again (owner
+-- decisions 29 and 31).
 module WingLayersGallery (writeWingLayers) where
 
 import Control.Exception (evaluate)
@@ -128,7 +129,7 @@ writeWingLayers destination = do
       drawing <- either (die . T.unpack) pure (wingSvg [sheet])
       TIO.writeFile (output </> stem ++ ".svg") drawing
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic; see checks.json")
-    pure (stem, title, accepted, sheet, Pending (T.pack stem) (layersPins fixture) mesh (screenTurning own) report, panel)
+    pure (stem, title, accepted, sheet, Pending (T.pack stem) accepted (layersPins fixture) mesh (screenTurning own) report, panel)
   -- Owner decision 29: a control solved again on its mesh split into four,
   -- the same grip at 16 divisions, may give its finer level. The perturbed
   -- bend differs from the 40° bend only in where its solve starts, so it is
