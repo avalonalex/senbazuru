@@ -401,7 +401,9 @@ paper (here: paper-like parameters, stated as such).
 ## What "refined" means
 
 Three layers, each measurable, then the owner's eye. All at a declared page
-scale (600 px per sheet side) and the gallery's fixed cameras.
+scale and the gallery's fixed cameras. The figures below are the whole
+crane's, at 600 px per sheet side; each gallery's paper screen uses its own
+page's drawing scale (owner decision 30, 2026-09-30).
 
 | Layer | Measure | Today, More tucked | Target |
 | --- | --- | --- | --- |
