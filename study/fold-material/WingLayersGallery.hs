@@ -3,6 +3,9 @@
 -- Unaccepted runs retain their full FOLD geometry and measurements for diagnosis.
 -- This is a static material experiment, not a certified motion between grips.
 -- Every control, accepted or not, carries its paper screen ("SurfaceScreen").
+-- The flat and 40° bends, and the 40° bend whose upper layer starts inside
+-- the lower, take the same grip solved at 16 divisions as their finer level,
+-- where "FinerSolve" shows the two are the same pose (owner decision 29).
 module WingLayersGallery (writeWingLayers) where
 
 import Control.Exception (evaluate)
@@ -14,6 +17,7 @@ import Data.IntMap.Strict qualified as IM
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
+import FinerSolve (Pending (..), finishReports)
 import FoldBending
 import FoldContact (ContactRow (..))
 import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
@@ -73,14 +77,18 @@ writeWingLayers destination = do
     ordered <- checked (Contact.prepareContact 0 (V3 0 0 1) [(FaceId 0, FaceId 1)] (layersOwners fixture) mesh)
     rows <- checked (Contact.orderedContacts ordered mesh)
     let accepted = converged result && contactPassed contact && heldError == 0 && maximum (0 : angles) < 1e-7
-    -- The gallery draws exactly the controls it accepts.
-    (screen, screened) <- either (die . T.unpack) pure (wingScreen sheet contact (layersHinges fixture) accepted mesh)
+    -- The gallery draws exactly the controls it accepts. The control is
+    -- screened here with its finer level not measured, for its own turning;
+    -- its report screens it again at the level 'finishReports' settles.
+    let screenAt = wingScreen sheet contact (layersHinges fixture) accepted mesh
+    (own, _) <- either (die . T.unpack) pure (screenAt Nothing)
     let -- FoldMaterial's areaRatio assumes a unit square. This diamond has
         -- area 0.6, so normalize by its actual material triangles instead.
         restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
         pairedDistances = [norm (position a ^-^ position b) | (i, j) <- layersPairs fixture, Just a <- [IM.lookup i vertices], Just b <- [IM.lookup j vertices]]
-        report =
-          object $
+        report finer keys = do
+          (screen, screenKeys) <- screenAt finer
+          pure . object $
             [ "id" .= stem,
               "title" .= title,
               "divisions" .= n,
@@ -110,7 +118,8 @@ writeWingLayers destination = do
               "contact" .= contact,
               "continuousMotionChecked" .= False
             ]
-              ++ screened
+              ++ screenKeys
+              ++ keys
         file = FoldFile (Just 1.2) (Just "senbazuru touching layer study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -119,10 +128,18 @@ writeWingLayers destination = do
       drawing <- either (die . T.unpack) pure (wingSvg [sheet])
       TIO.writeFile (output </> stem ++ ".svg") drawing
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic; see checks.json")
-    pure (stem, title, accepted, sheet, report, panel)
+    pure (stem, title, accepted, sheet, Pending (T.pack stem) (layersPins fixture) mesh (screenTurning own) report, panel)
+  -- Owner decision 29: a control solved again on its mesh split into four,
+  -- the same grip at 16 divisions, may give its finer level. The perturbed
+  -- bend differs from the 40° bend only in where its solve starts, so it is
+  -- the same control. The finest bend is at 24, not twice 16; the 20° bend is
+  -- solved once; and the lifted and incompatible grips hold the sheet
+  -- elsewhere.
+  let finer = [(pose, run, "16 divisions") | (pose, run) <- [("flat", "fine-flat"), ("bend-40", "fine-bend"), ("perturbed", "fine-bend")]]
+  reports <- either (die . T.unpack) pure (finishReports finer [pending | (_, _, _, _, pending, _) <- runs])
   let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
       comparisons = [object ["geometry" .= refinement a b, "fromEnergy" .= ea, "toEnergy" .= eb, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
+      document = object ["runs" .= reports, "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
       mainShapes = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
   BL.writeFile (output </> "checks.json") (encode document)
   unless (any (\(stem, _, accepted, _, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")

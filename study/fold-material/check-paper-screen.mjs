@@ -53,16 +53,35 @@ assert.equal(paperScreen.number(undefined),'NaN');
 // reading.
 const body=paperScreen.rows([{title:'Crane',screen:screen({},{coreLengthSheets:Math.SQRT2-1,centreMidlineFoldDegrees:14,centreDiagonalFoldDegrees:null})},{title:'Wing',screen:screen({})}],limits);
 assert.deepEqual(body.slice(8),[['Body core length, sheet units','0.414','—'],['Centre folds: midlines / diagonals','14.0° / —','— / —']]);
+// A solved pose whose finer level is its gallery's own finer solve (owner
+// decision 29) has that level on its screen, as the gallery writes it.
+const counted=screen({falseCreases:true,passes:true},{falseCreaseJoinsFiner:0,falseCreaseTurningFinerSheetDegrees:0});
 // A gallery's runs become poses titled by the page, each with its own
-// picture floors, which the gallery writes on the run beside its screen.
-const runs=[{id:'a',title:'A',screen:screen({}),pictureFloorPixels:0.25},{id:'b',title:'B',screen:placed}];
+// picture floors and finer solve, which the gallery writes on the run beside
+// its screen; each column shows its own.
+const runs=[{id:'a',title:'A',screen:counted,pictureFloorPixels:0.25,finerSolve:{id:'a2',label:'16 divisions',apartPixels:0.5}},{id:'b',title:'B',screen:placed}];
 const poses=paperScreen.poses(runs,run=>run.title+'!');
-assert.deepEqual(poses.map(p=>[p.title,p.screen,p.picture]),[['A!',runs[0].screen,runs[0]],['B!',placed,runs[1]]]);
-assert.deepEqual(paperScreen.rows(poses,limits)[3].slice(1),['0.500 px · 0.250 px','12.3 px · — (over 3 of 10 pairs: the sheet is not convex)']);
+assert.deepEqual(poses.map(p=>[p.title,p.screen,p.picture,p.finer]),[['A!',counted,runs[0],runs[0].finerSolve],['B!',placed,runs[1],undefined]]);
+const posed=paperScreen.rows(poses,limits);
+assert.deepEqual(posed[3].slice(1),['0.500 px · 0.250 px','12.3 px · — (over 3 of 10 pairs: the sheet is not convex)']);
+assert.deepEqual(posed[7].slice(1),['0 · 0 (solved at 16 divisions, 0.500 px apart)','40 · 212']);
+// The cell names the finer solve and how far apart the two are at worst; a
+// finer solve that does not count says so, where no pair was named at all
+// says the pose was not made again; and a pose made again, as the placed one
+// above, names no solve even beside one its gallery named that did not count.
+const finer=paperScreen.rows(paperScreen.poses([
+  {title:'Wing',screen:counted,finerSolve:{id:'wing-16-40',label:'16 divisions',apartPixels:0.8068}},
+  {title:'Finer',screen:counted,finerSolve:{id:'wing-32-40',label:'32 divisions',apartPixels:0.25}},
+  {title:'Refused',screen:screen({}),finerSolve:{id:'wing-16-20',label:'16 divisions',refused:'at vertex 12 of this mesh the two solves are 1.04 px apart'}},
+  {title:'Unpaired',screen:screen({})},
+  {title:'Made again',screen:placed,finerSolve:{id:'x',label:'16 divisions',refused:'the finer mesh has 32 triangles, not 64'}}
+],run=>run.title),limits);
+assert.deepEqual(finer[1].slice(1),['Passes','Passes','Not measured: false creases one level finer','Not measured: false creases one level finer','Fails: strain, floor, false creases']);
+assert.deepEqual(finer[7].slice(1),['0 · 0 (solved at 16 divisions, 0.807 px apart)','0 · 0 (solved at 32 divisions, 0.250 px apart)','— (the solve at 16 divisions does not count)','— (not made again)','40 · 212']);
 // The labels and the caption take the thresholds they are given.
 const other={pixelsPerSheet:500,strainScreen:0.02,strictStrainScreen:0.002,floorLimitPixels:2,falseCreaseThresholdDegrees:30};
 const labels=paperScreen.rows([],other).map(r=>r[0]);
 assert.deepEqual([labels[2],labels[4],labels[6]],['Largest stretch / squash · within 0.2%','Floor at 2% strain, 3D · this picture','False creases: joins past 30° · turning, sheet units × degrees']);
 const caption=paperScreen.caption(other);
-for(const words of ['in pixels, 500 to a sheet unit','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported'])assert.ok(caption.includes(words),words);
+for(const words of ['in pixels, 500 to a sheet unit','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','agree within 2 px at every vertex of the coarser mesh','(owner decision 29)'])assert.ok(caption.includes(words),words);
 console.log('paper-screen.js: every check passed');

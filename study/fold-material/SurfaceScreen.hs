@@ -14,13 +14,12 @@
 -- "CraneSpreadScreen" reads the same rule without a frame, because the
 -- whole crane is screened again on a refinement nothing writes.
 --
--- The false creases one level finer are not measured, as for every solved
--- pose, and here that looks most like an omission: wing-bending's
--- 16-division mesh is its 8-division mesh with every triangle split into
--- four, the very level the screen would measure. But the gallery finds the
--- pose on it by a new solve, and a pose that only a new solve can /make
--- again/ (docs/glossary.md) is judged on its own mesh (owner decision 27),
--- so every wing here is.
+-- The false creases one level finer are whatever the gallery gives. For a
+-- solved pose that is usually nothing, not measured: a pose that only a new
+-- solve can /make again/ (docs/glossary.md) is judged on its own mesh (owner
+-- decision 27). Both wing galleries solve some poses again on the mesh split
+-- into four, and there the finer level is that solve's turning where
+-- "FinerSolve" shows it is the same pose (owner decision 29).
 module SurfaceScreen
   ( surfaceJoins,
     surfaceScreen,
@@ -30,7 +29,7 @@ where
 import Control.Monad (unless)
 import Data.Set qualified as S
 import FoldBending (Hinge, joinsWhere)
-import PaperScreen (Chords, ScreenError (..))
+import PaperScreen (Chords, ScreenError (..), Turning)
 import ScreenReport (Screen, screenOf)
 import Senbazuru.Fold.Query (edgeKey)
 import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..))
@@ -49,11 +48,12 @@ surfaceJoins sheet = S.fromList [edgeKey a b | ((a, b), Join) <- zip (edgesVerti
 -- | Screen a solved pose from the surface its gallery writes for it, given
 -- the chords of its flat sheet ('PaperScreen.sheetChords'), its crossing
 -- check, and each hinge's bend on it in radians ('FoldBending.hingeBends'),
--- all of this mesh. Its finer level is not measured. A surface written for
--- another mesh is refused: its joins would name other edges.
-surfaceScreen :: Surface V2 -> Chords -> ContactCheck -> [(Hinge, Double)] -> MaterialMesh -> Either ScreenError Screen
-surfaceScreen sheet chords contact bends mesh = do
+-- all of this mesh, and its false-crease turning one level finer: nothing,
+-- not measured, or its gallery's finer solve's ("FinerSolve"). A surface
+-- written for another mesh is refused: its joins would name other edges.
+surfaceScreen :: Surface V2 -> Chords -> ContactCheck -> [(Hinge, Double)] -> Maybe Turning -> MaterialMesh -> Either ScreenError Screen
+surfaceScreen sheet chords contact bends finer mesh = do
   unless (facesVertices (surfaceFrame sheet) == [map VertexId [a, b, c] | (a, b, c) <- triangles mesh]) (Left SurfaceOfAnotherMesh)
-  screenOf chords contact (joinsWhere (`S.member` written) mesh bends) Nothing mesh
+  screenOf chords contact (joinsWhere (`S.member` written) mesh bends) finer mesh
   where
     written = surfaceJoins sheet
