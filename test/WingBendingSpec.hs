@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import FoldBending
 import FoldMaterial (componentCount)
 import FoldRelaxation
+import ScreenReport (Figure (..))
 import Senbazuru.Fold.Query (Crease (..))
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
@@ -23,7 +24,7 @@ import Test.Golden (goldenText)
 import Test.Hspec
 import UncreasedSurface
 import WingBending
-import WingBendingGallery (wingSvg)
+import WingBendingGallery (wingFigure)
 
 spec :: Spec
 spec = describe "controlled wing bending" $ do
@@ -96,7 +97,7 @@ spec = describe "controlled wing bending" $ do
     piece <- right (stripBenchmark 8)
     reference <- maybe (fail "missing strip reference") pure (pieceReference piece)
     sheet <- right (uncreasedSurface reference)
-    drawing <- right (wingSvg [sheet])
+    drawing <- figureSvg <$> right (wingFigure [sheet])
     drawing `shouldSatisfy` (not . T.isInfixOf "stroke=\"#bdbdbd\"")
     goldenText "test/golden/bent-strip.svg" drawing
 

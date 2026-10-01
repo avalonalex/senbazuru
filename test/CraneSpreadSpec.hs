@@ -89,11 +89,12 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     screen <- right (spreadScreen fixture chords contact bends mesh)
     -- The crane's own folds are folded flat, far past 45 degrees, and none
     -- of them is a false crease; no join is bent past 45 degrees. Nor does
-    -- the pose fail on strain or the floor, so its verdict is that of a
-    -- finer level not measured.
+    -- the pose fail on strain or the floor, whose pixels are far below one
+    -- at any scale a page draws at, so its verdict is that of a finer level
+    -- not measured.
     length [() | (h, angle) <- bends, abs angle > pi / 4, SurfaceCrease _ <- [hingeRole h]] `shouldSatisfy` (> 0)
     screenTurning screen `shouldBe` Turning 0 0
-    verdictOverall (screenVerdict screen) `shouldBe` NotMeasured
+    verdictOverall (screenVerdict (PageScale 600) screen) `shouldBe` NotMeasured
     -- Turn every hinge a quarter turn, as no mesh here does: the joins among
     -- them are counted, and only the joins.
     turned <- right (spreadScreen fixture chords contact [(h, pi / 2) | (h, _) <- bends] mesh)

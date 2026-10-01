@@ -47,10 +47,11 @@ spec = describe "a pose screened from the surface its gallery writes" $ do
     screen <- right (surfaceScreen sheet chords contact bends Nothing mesh)
     -- The crease is folded flat, far past 45 degrees, and it is no join; no
     -- join is bent past 45 degrees. Nor does the pose fail on strain or the
-    -- floor, so its verdict is that of a finer level not measured.
+    -- floor, whose pixels are far below one at any scale a page draws at, so
+    -- its verdict is that of a finer level not measured.
     length [() | (h, angle) <- bends, abs angle > pi / 4, SurfaceCrease _ <- [hingeRole h]] `shouldSatisfy` (> 0)
     screenTurning screen `shouldBe` Turning 0 0
-    verdictOverall (screenVerdict screen) `shouldBe` NotMeasured
+    verdictOverall (screenVerdict (PageScale 600) screen) `shouldBe` NotMeasured
     -- Turn every hinge a quarter turn, as no mesh here does: every join the
     -- surface writes is counted, and nothing else.
     turned <- right (surfaceScreen sheet chords contact [(h, pi / 2) | (h, _) <- bends] Nothing mesh)

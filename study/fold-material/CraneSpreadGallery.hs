@@ -3,7 +3,7 @@
 -- accepted endpoints enter the SVG and glTF gallery; failed controls retain
 -- complete material FOLD files for diagnosis. Every control, accepted or
 -- not, carries its paper screen ("CraneSpreadScreen").
-module CraneSpreadGallery (writeCraneSpread, spreadSvg, screenKeys) where
+module CraneSpreadGallery (writeCraneSpread, spreadFigure, screenKeys) where
 
 import Control.Exception (evaluate)
 import Control.Monad (forM, unless, when)
@@ -15,6 +15,7 @@ import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -23,7 +24,7 @@ import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
 import PaperScreen (sheetChords)
-import ScreenReport (Screen (..), poseScreenKeys, thresholdsJson, writeScreenScript)
+import ScreenReport (Figure (..), PageScale, Screen (..), figure, pageScale, poseScreenKeys, thresholdsJson, writeScreenScript)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (Explain (..))
@@ -38,7 +39,7 @@ import Senbazuru.Origami.Surface
 import Senbazuru.Render.Camera (Basis, View (..), basisFrom)
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
 import Senbazuru.Render.Steps (stepPage)
-import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
+import Senbazuru.Render.Svg (Page (..), defaultPage)
 import SparseSolve (LinearReport (..))
 import System.CPUTime (getCPUTime)
 import System.Directory (createDirectoryIfMissing)
@@ -73,7 +74,7 @@ writeCraneSpread destination = do
     let initial = IM.fromList (zip [0 ..] (samples (refinedMesh (spreadRefined fixture))))
         bodyError = maximum (0 : [norm (position p ^-^ position q) | (i, p) <- zip [0 ..] (samples mesh), S.member i (spreadBody fixture), Just q <- [IM.lookup i initial]])
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
-        report =
+        report scale =
           object $
             [ "id" .= stem,
               "title" .= title,
@@ -105,7 +106,7 @@ writeCraneSpread destination = do
               "checkCpuSeconds" .= seconds (inspected - settled),
               "continuousMotionChecked" .= False
             ]
-              ++ screened
+              ++ screened scale
         file = FoldFile (Just 1.2) (Just "senbazuru connected crane spreading study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
     when accepted $ do
@@ -117,12 +118,15 @@ writeCraneSpread destination = do
   let baseline = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["rigid", "curved"]]
       bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["curved", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= [report | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
+  drawing <- either (die . T.unpack) pure (spreadFigure baseline)
+  finer <- either (die . T.unpack) pure (spreadFigure (map fst bent))
+  -- The page draws these two figures, and screens every control at the
+  -- larger of their scales (owner decision 30).
+  let scale = pageScale (drawing :| [finer])
+  let document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
-  drawing <- either (die . T.unpack) pure (spreadSvg baseline)
-  TIO.writeFile (output </> "comparison.svg") drawing
-  finer <- either (die . T.unpack) pure (spreadSvg (map fst bent))
-  TIO.writeFile (output </> "refinement.svg") finer
+  TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
+  TIO.writeFile (output </> "refinement.svg") (figureSvg finer)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
@@ -131,12 +135,14 @@ writeCraneSpread destination = do
   TIO.writeFile (destination </> "crane-spreading.html") (T.replace "/*SPREAD_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
   putStrLn ("Wrote crane-spreading.html and checked endpoints to " ++ destination)
 
-spreadSvg :: [Surface V2] -> Either T.Text T.Text
-spreadSvg sheets = do
+-- | Crane sheets drawn side by side from 'spreadCamera', with the scale the
+-- page draws them at.
+spreadFigure :: [Surface V2] -> Either T.Text Figure
+spreadFigure sheets = do
   camera <- spreadCamera
   drawing <- first explain (stepPage defaultTheme defaultBudget (defaultGrid defaultTheme) {gridColumns = length sheets} (View (Just camera) 0) False (map surfaceFrame sheets))
   diagram <- maybe (Left "crane comparison has no geometry") Right drawing
-  pure (renderSvg defaultPage {pageWidth = 1080, pageHeight = 380, pageMargin = 28, pageBackground = Nothing, pageTitle = Just "Spreading the connected crane wing"} diagram)
+  pure (figure defaultPage {pageWidth = 1080, pageHeight = 380, pageMargin = 28, pageBackground = Nothing, pageTitle = Just "Spreading the connected crane wing"} diagram)
 
 -- | The camera every drawing of a crane with a wing moved is taken from, and
 -- so the picture its paper screen's picture floor is measured in.
@@ -144,17 +150,19 @@ spreadCamera :: Either T.Text Basis
 spreadCamera = maybe (Left "invalid crane camera") Right (basisFrom (V3 (-1) 1 (sqrt 2)) (V3 0 0 1))
 
 -- | A run's paper screen ("CraneSpreadScreen"), and the keys its report
--- carries: the screen and, if the gallery draws the run, its floor in the
--- picture, taken from 'spreadCamera'. A run drawn in no picture has no
--- picture floor. @contact@ is the run's 'spreadCheck'. Which chords the
--- floor may use depends only on the flat sheet, the fixture's own.
-screenKeys :: CraneSpread -> ContactCheck -> Bool -> MaterialMesh -> Either T.Text (Screen, [Pair])
+-- carries on a page drawn at a given scale: the screen and, if the gallery
+-- draws the run, its floor in the picture, taken from 'spreadCamera'. A run
+-- drawn in no picture has no picture floor. The keys wait for the scale,
+-- since only the page's drawings fix it, once every run is solved (owner
+-- decision 30). @contact@ is the run's 'spreadCheck'. Which chords the floor
+-- may use depends only on the flat sheet, the fixture's own.
+screenKeys :: CraneSpread -> ContactCheck -> Bool -> MaterialMesh -> Either T.Text (Screen, PageScale -> [Pair])
 screenKeys fixture contact drawn mesh = do
   chords <- first explain (sheetChords (refinedMesh (spreadRefined fixture)))
   bends <- first explain (hingeBends (spreadHinges fixture) mesh)
   screen <- first explain (spreadScreen fixture chords contact bends mesh)
   camera <- spreadCamera
-  pure (screen, poseScreenKeys screen chords (if drawn then Just camera else Nothing) mesh)
+  pure (screen, \scale -> poseScreenKeys scale screen chords (if drawn then Just camera else Nothing) mesh)
 
 seconds :: Integer -> Double
 seconds n = fromIntegral n / 1e12

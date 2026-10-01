@@ -14,7 +14,9 @@ import Control.Monad (forM, unless, when)
 import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Either (rights)
 import Data.IntMap.Strict qualified as IM
+import Data.List.NonEmpty (nonEmpty)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
@@ -23,7 +25,7 @@ import FoldBending
 import FoldContact (ContactRow (..))
 import FoldMaterial (areaRatio, componentCount, resolvedTriangles)
 import FoldRelaxation
-import ScreenReport (Screen (..), thresholdsJson, writeScreenScript)
+import ScreenReport (Figure (..), Screen (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (FaceId (..), FoldFile (..))
 import Senbazuru.Geometry.Polygon (signedArea)
@@ -40,7 +42,7 @@ import System.Directory (createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath ((</>))
 import WingBending (finalMesh)
-import WingBendingGallery (refinement, wingScreen, wingSvg)
+import WingBendingGallery (refinement, wingFigure, wingScreen)
 import WingLayers
 
 writeWingLayers :: FilePath -> IO ()
@@ -87,7 +89,7 @@ writeWingLayers destination = do
         -- area 0.6, so normalize by its actual material triangles instead.
         restArea = sum [abs (signedArea [sampleMaterial a, sampleMaterial b, sampleMaterial c]) | (a, b, c) <- resolvedTriangles mesh]
         pairedDistances = [norm (position a ^-^ position b) | (i, j) <- layersPairs fixture, Just a <- [IM.lookup i vertices], Just b <- [IM.lookup j vertices]]
-        report finer keys = do
+        report scale finer keys = do
           (screen, screenKeys) <- screenAt finer
           pure . object $
             [ "id" .= stem,
@@ -119,17 +121,21 @@ writeWingLayers destination = do
               "contact" .= contact,
               "continuousMotionChecked" .= False
             ]
-              ++ screenKeys
+              ++ screenKeys scale
               ++ keys
         file = FoldFile (Just 1.2) (Just "senbazuru touching layer study") Nothing (Just title) Nothing [] (materialFrame sheet) []
     BL.writeFile (output </> stem ++ ".fold") (encode file)
-    when accepted $ do
-      bytes <- checked (renderSurfaceGlb defaultBudget VisiblePaper (Just title) sheet)
-      BS.writeFile (output </> stem ++ ".glb") bytes
-      drawing <- either (die . T.unpack) pure (wingSvg [sheet])
-      TIO.writeFile (output </> stem ++ ".svg") drawing
+    drawn <-
+      if accepted
+        then do
+          bytes <- checked (renderSurfaceGlb defaultBudget VisiblePaper (Just title) sheet)
+          BS.writeFile (output </> stem ++ ".glb") bytes
+          drawing <- either (die . T.unpack) pure (wingFigure [sheet])
+          TIO.writeFile (output </> stem ++ ".svg") (figureSvg drawing)
+          pure (Just drawing)
+        else pure Nothing
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic; see checks.json")
-    pure (stem, title, accepted, sheet, Pending (T.pack stem) accepted (layersPins fixture) mesh (screenTurning own) report, panel)
+    pure (stem, title, accepted, sheet, Pending (T.pack stem) accepted (layersPins fixture) mesh (screenTurning own) report, panel, drawn)
   -- Owner decision 29: a control solved again on its mesh split into four,
   -- the same grip at 16 divisions, may give its finer level. The perturbed
   -- bend differs from the 40° bend only in where its solve starts, so it is
@@ -137,20 +143,27 @@ writeWingLayers destination = do
   -- solved once; and the lifted and incompatible grips hold the sheet
   -- elsewhere.
   let finer = [(pose, run, "16 divisions") | (pose, run) <- [("flat", "fine-flat"), ("bend-40", "fine-bend"), ("perturbed", "fine-bend")]]
-  reports <- either (die . T.unpack) pure (finishReports finer [pending | (_, _, _, _, pending, _) <- runs])
-  let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
+      bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _) <- runs, stem `elem` ["bend-40", "fine-bend", "finest-bend"]]
       comparisons = [object ["geometry" .= refinement a b, "fromEnergy" .= ea, "toEnergy" .= eb, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= reports, "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
-      mainShapes = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
+      mainShapes = [sheet | (stem, _, True, sheet, _, _, _) <- runs, stem `elem` ["flat", "bend-20", "bend-40"]]
+      refinedFigure = wingFigure (map fst bent)
+      sequenceFigure = wingFigure mainShapes
+  -- The page draws each accepted control by itself and the two
+  -- comparisons, and screens every control at the largest of their scales
+  -- (owner decision 30). A comparison refused below still counts, so that
+  -- the measurements written first are at the scale its page would show.
+  scale <- maybe (die "No wing-layers control was drawn, so the page has no scale to screen at; refusing to publish the gallery") (pure . pageScale) (nonEmpty ([own | (_, _, _, _, _, _, Just own) <- runs] ++ rights [refinedFigure, sequenceFigure]))
+  reports <- either (die . T.unpack) pure (finishReports scale finer [pending | (_, _, _, _, pending, _, _) <- runs])
+  let document = object ["runs" .= reports, "refinement" .= comparisons, "screenThresholds" .= thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
-  unless (any (\(stem, _, accepted, _, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")
+  unless (any (\(stem, _, accepted, _, _, _, _) -> stem == "lifted" && accepted) runs) (die "Lifted-grip control did not pass; refusing to publish its illustration")
   when (length mainShapes /= 3) (die "Two-layer comparison did not pass; refusing to publish a complete gallery")
   when (length bent /= 3) (die "Resolution comparison did not converge; refusing to publish its illustration")
-  refined <- either (die . T.unpack) pure (wingSvg (map fst bent))
-  TIO.writeFile (output </> "refinement.svg") refined
-  comparison <- either (die . T.unpack) pure (wingSvg mainShapes)
-  TIO.writeFile (output </> "sequence.svg") comparison
-  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
+  refined <- either (die . T.unpack) pure refinedFigure
+  TIO.writeFile (output </> "refinement.svg") (figureSvg refined)
+  comparison <- either (die . T.unpack) pure sequenceFigure
+  TIO.writeFile (output </> "sequence.svg") (figureSvg comparison)
+  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
   writeScreenScript destination

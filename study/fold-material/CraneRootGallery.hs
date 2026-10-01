@@ -9,15 +9,16 @@
 module CraneRootGallery (writeCraneRoot) where
 
 import Control.Exception (evaluate)
-import Control.Monad (forM, when)
+import Control.Monad (forM, forM_, when)
 import CraneRoot
 import CraneSpread
-import CraneSpreadGallery (screenKeys, spreadSvg)
+import CraneSpreadGallery (screenKeys, spreadFigure)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
+import Data.List.NonEmpty (nonEmpty)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -25,7 +26,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
-import ScreenReport (Screen (..), thresholdsJson, writeScreenScript)
+import ScreenReport (Figure (..), Screen (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types (FoldFile (..), unEdgeId, unFaceId)
@@ -77,7 +78,7 @@ writeCraneRoot destination = do
     sheet <- checked (spreadSurface fixture mesh)
     profile <- checked (rootProfile study mesh)
     let visibleResult = renderSurfaceGlb defaultBudget VisiblePaper (Just title) sheet
-        drawing = spreadSvg [sheet]
+        drawing = spreadFigure [sheet]
         visible = accepted && isRight visibleResult
         visibleError = if accepted then either (Just . explain) (const Nothing) visibleResult else Nothing
         svgError = if accepted then either Just (const Nothing) drawing else Nothing
@@ -90,62 +91,74 @@ writeCraneRoot destination = do
           bytes <- checked (renderSurfaceGlb defaultBudget CompletePaper (Just title) sheet)
           BS.writeFile (output </> stem ++ "-complete.glb") bytes
       case drawing of
-        Right svg -> TIO.writeFile (output </> stem ++ ".svg") svg
+        Right svg -> TIO.writeFile (output </> stem ++ ".svg") (figureSvg svg)
         Left err -> putStrLn (stem ++ ": SVG unavailable: " ++ T.unpack err)
     let degrees = map ((180 / pi *) . abs . snd) angles
         equilibrium check = let linear = equilibriumLinear check in object ["linearConverged" .= linearConverged linear, "linearResidual" .= linearResidual linear, "linearThreshold" .= linearThreshold linear, "fullMovement" .= equilibriumMovement check, "movementThreshold" .= (1e-7 :: Double)]
-        report =
-          object $
-            [ "id" .= stem,
-              "title" .= title,
-              "refinement" .= level,
-              "control" .= show control,
-              "iterationLimitPerStage" .= limit,
-              "accepted" .= accepted,
-              "visibleGlbAvailable" .= visible,
-              "visibleGlbError" .= visibleError,
-              "svgError" .= svgError,
-              "converged" .= converged result,
-              "equilibrium" .= fmap equilibrium (equilibriumCheck result),
-              "vertices" .= length (samples mesh),
-              "triangles" .= length (triangles mesh),
-              "components" .= componentCount mesh,
-              "heldVertices" .= IM.size (spreadPins fixture),
-              "neighbourPanels" .= map unFaceId (S.toList (rootNeighbours study)),
-              "sourceOrders" .= length (spreadOrders fixture),
-              "activeSourceOrders" .= length (spreadContactOrders fixture),
-              "rootAnglesRadians" .= [object ["sourceEdge" .= unEdgeId eid, "angle" .= angle] | (eid, angle) <- angles],
-              "minRootDegrees" .= minimum (180 : degrees),
-              "maxRootDegrees" .= maximum (0 : degrees),
-              "maxOriginalCreaseErrorRadians" .= creaseError,
-              "maxRelativeEdgeError" .= maxLengthError mesh,
-              "areaRatio" .= areaRatio mesh,
-              "minPrincipalStrain" .= negate (screenSquash screen),
-              "maxPrincipalStrain" .= screenStretch screen,
-              "heldPositionError" .= spreadHeldError fixture mesh,
-              "bodyMovement" .= rootBodyMovement study mesh,
-              "creaseEnergy" .= creaseEnergy,
-              "panelEnergy" .= panelEnergy,
-              "contact" .= contact,
-              "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
-              "continuousMotionChecked" .= False
-            ]
-              ++ screened
+        measured =
+          [ "id" .= stem,
+            "title" .= title,
+            "refinement" .= level,
+            "control" .= show control,
+            "iterationLimitPerStage" .= limit,
+            "accepted" .= accepted,
+            "visibleGlbAvailable" .= visible,
+            "visibleGlbError" .= visibleError,
+            "svgError" .= svgError,
+            "converged" .= converged result,
+            "equilibrium" .= fmap equilibrium (equilibriumCheck result),
+            "vertices" .= length (samples mesh),
+            "triangles" .= length (triangles mesh),
+            "components" .= componentCount mesh,
+            "heldVertices" .= IM.size (spreadPins fixture),
+            "neighbourPanels" .= map unFaceId (S.toList (rootNeighbours study)),
+            "sourceOrders" .= length (spreadOrders fixture),
+            "activeSourceOrders" .= length (spreadContactOrders fixture),
+            "rootAnglesRadians" .= [object ["sourceEdge" .= unEdgeId eid, "angle" .= angle] | (eid, angle) <- angles],
+            "minRootDegrees" .= minimum (180 : degrees),
+            "maxRootDegrees" .= maximum (0 : degrees),
+            "maxOriginalCreaseErrorRadians" .= creaseError,
+            "maxRelativeEdgeError" .= maxLengthError mesh,
+            "areaRatio" .= areaRatio mesh,
+            "minPrincipalStrain" .= negate (screenSquash screen),
+            "maxPrincipalStrain" .= screenStretch screen,
+            "heldPositionError" .= spreadHeldError fixture mesh,
+            "bodyMovement" .= rootBodyMovement study mesh,
+            "creaseEnergy" .= creaseEnergy,
+            "panelEnergy" .= panelEnergy,
+            "contact" .= contact,
+            "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
+            "continuousMotionChecked" .= False
+          ]
+        report scale = object (measured ++ screened scale)
         file = FoldFile (Just 1.2) (Just "senbazuru crane root material study") Nothing (Just title) Nothing [] (materialFrame sheet) []
+        -- The page draws an accepted control by itself where it can.
+        own = if accepted then either (const Nothing) Just drawing else Nothing
     BL.writeFile (output </> stem ++ ".fold") (encode file)
-    BL.writeFile (output </> stem ++ "-check.json") (encode report)
+    -- A control's measurements are written as soon as they are taken, so a
+    -- later failure cannot discard them. Its screen waits for the page's
+    -- scale, which only the page's drawings fix (owner decision 30), and the
+    -- file is written again with it below.
+    BL.writeFile (output </> stem ++ "-check.json") (encode (object measured))
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic")
     hFlush stdout
-    pure (stem, title, accepted, sheet, report, creaseEnergy + panelEnergy, profile, visible)
-  let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _, _) <- runs, stem `elem` ["flat", "fine"]]
+    pure (stem, title, accepted, sheet, report, creaseEnergy + panelEnergy, profile, visible, own)
+  let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _, _, _) <- runs, stem `elem` ["flat", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeTotalEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
-      document = object ["runs" .= [report | (_, _, _, _, report, _, _, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson]
+      comparison = [(title, sheet) | (stem, title, True, sheet, _, _, _, True, _) <- runs, stem `elem` ["held", "flat", "body"]]
+      compared = spreadFigure (map snd comparison)
+      drawn = either (const []) pure compared ++ [own | (_, _, _, _, _, _, _, _, Just own) <- runs]
+  -- The page draws each accepted control by itself and the comparison, and
+  -- screens every control at the largest of their scales (owner decision
+  -- 30). A page that draws no control has no scale to screen at.
+  scale <- maybe (die "No crane-root control was drawn, so the page has no scale to screen at; refusing to publish the gallery") (pure . pageScale) (nonEmpty drawn)
+  forM_ runs $ \(stem, _, _, _, report, _, _, _, _) -> BL.writeFile (output </> stem ++ "-check.json") (encode (report scale))
+  let document = object ["runs" .= [report scale | (_, _, _, _, report, _, _, _, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
-  let comparison = [(title, sheet) | (stem, title, True, sheet, _, _, _, True) <- runs, stem `elem` ["held", "flat", "body"]]
-  drawing <- either (die . T.unpack) pure (spreadSvg (map snd comparison))
-  TIO.writeFile (output </> "comparison.svg") drawing
-  TIO.writeFile (output </> "profile.svg") (profileSvg [(stem, points) | (stem, _, True, _, _, _, points, _) <- runs, stem `elem` ["held", "released", "weaker", "flat", "body"]])
-  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _, _, True) <- runs])
+  drawing <- either (die . T.unpack) pure compared
+  TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
+  TIO.writeFile (output </> "profile.svg") (profileSvg [(stem, points) | (stem, _, True, _, _, _, points, _, _) <- runs, stem `elem` ["held", "released", "weaker", "flat", "body"]])
+  BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _, _, True, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)
   writeScreenScript destination

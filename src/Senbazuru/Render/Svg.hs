@@ -38,6 +38,7 @@ module Senbazuru.Render.Svg
 
     -- * Rendering
     renderSvg,
+    pageTransform,
 
     -- * Formatting internals, exposed for testing
     formatNumber,
@@ -114,6 +115,15 @@ pageContentBox p =
   where
     m = pageMargin p
 
+-- | The transform 'renderSvg' draws a diagram on a page with, from model
+-- units to page units: the diagram's extent fitted into the page's content
+-- box ('fitBox'). Its scale is the size the page draws the model at, in page
+-- units per model unit. A caller that needs that size asks here rather than
+-- fitting the box again, so that its answer stays the renderer's own if the
+-- renderer ever lays a page out differently.
+pageTransform :: Page -> Diagram -> Transform
+pageTransform page d = fitBox (diagramExtent d) (pageContentBox page)
+
 -- | Render a diagram as a standalone SVG document.
 renderSvg :: Page -> Diagram -> Text
 renderSvg page d =
@@ -138,7 +148,7 @@ renderSvg page d =
       <> "</svg>\n"
   where
     toPage :: Transform
-    toPage = fitBox (diagramExtent d) (pageContentBox page)
+    toPage = pageTransform page d
 
     title = case pageTitle page of
       Nothing -> mempty

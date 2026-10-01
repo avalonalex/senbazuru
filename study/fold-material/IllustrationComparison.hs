@@ -18,6 +18,7 @@ module IllustrationComparison
     materialDifferences,
     projectedChange,
     sharedExtent,
+    illustrationScale,
     illustrationPage,
     visibleMasks,
     layerRegions,
@@ -101,11 +102,18 @@ projectedChange basis = maximum . (0 :) . map (norm . project basis)
 sharedExtent :: Basis -> [MaterialMesh] -> Either IllustrationError Box
 sharedExtent basis = maybe (Left (IllustrationError "no points to draw")) Right . boxFromPoints . map (project basis . position) . concatMap samples
 
+-- | The scale every illustration is drawn at, in pixels to a sheet unit.
+-- 'illustrationPage' sizes the page to the drawing at this scale, rather
+-- than fitting the drawing to a page, so the scale is fixed before anything
+-- is drawn.
+illustrationScale :: Double
+illustrationScale = 600
+
 illustrationPage :: Text -> Box -> Page
 illustrationPage title (Box (V2 x0 y0) (V2 x1 y1)) =
   defaultPage
-    { pageWidth = 600 * (x1 - x0) + 40,
-      pageHeight = 600 * (y1 - y0) + 40,
+    { pageWidth = illustrationScale * (x1 - x0) + 40,
+      pageHeight = illustrationScale * (y1 - y0) + 40,
       pageMargin = 20,
       pageBackground = Nothing,
       pageTitle = Just title

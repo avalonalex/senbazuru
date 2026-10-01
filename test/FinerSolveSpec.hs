@@ -1,15 +1,17 @@
 -- | A gallery's own finer solve as a solved pose's finer level (owner
--- decisions 29 and 31): which finer meshes are the pose's mesh split into
--- four and hold the sheet as it does, how close the two solves must be, that
--- the gallery must accept the finer solve, and what a pose's screen and
--- report take from it. The fixtures are the flat wing's
--- seed meshes, held as the gallery holds them. They lie in the plane z = 0,
--- so a vertex lifted along z by 1/600 is exactly 1 px away: 1/600 is no
--- double, but the roundings in writing it and in multiplying it back by 600
--- cancel.
+-- decisions 29 to 31): which finer meshes are the pose's mesh split into
+-- four and hold the sheet as it does, how close the two solves must be on a
+-- page, that the gallery must accept the finer solve, and what a pose's
+-- screen and report take from it. The fixtures are the flat wing's seed
+-- meshes, held as the gallery holds them. They lie in the plane z = 0, so on
+-- a page drawn at 600 px to a sheet unit a vertex lifted along z by 1/600 is
+-- exactly 1 px away: 1/600 is no double, but the roundings in writing it and
+-- in multiplying it back by 600 cancel.
 module FinerSolveSpec (spec) where
 
-import Data.Aeson (Value, object, (.=))
+import Data.Aeson (Value (..), object, toJSON, (.=))
+import Data.Aeson.Key (Key)
+import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Types (Pair)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
@@ -92,6 +94,13 @@ spec = describe "a gallery's own finer solve as a pose's finer level" $ do
     case same coarse (lifted (1.01 / 600)) of
       Left (SolvesApart at pixels) -> (at, abs (pixels - 1.01) < 1e-9) `shouldBe` (v, True)
       other -> expectationFailure ("expected the solves refused as 1.01 px apart, got " ++ show other)
+    -- The limit is in the pixels of the page (owner decision 30): the same
+    -- lift is 2 px on a page drawn twice as large, and 0.53 px on one drawn
+    -- at 320, as the wing-bending page is.
+    sameOn (PageScale 1200) coarse (lifted (1 / 600)) `shouldBe` Left (SolvesApart v 2)
+    case sameOn (PageScale 320) coarse (lifted (1 / 600)) of
+      Right (SameFinerPose pixels) -> pixels `shouldSatisfy` (\p -> abs (p - 320 / 600) < 1e-12)
+      other -> expectationFailure ("expected the solves counted 0.53 px apart, got " ++ show other)
     case same coarse (lifted (0 / 0)) of
       Left (SolvesApart at pixels) -> (at, isNaN pixels) `shouldBe` (v, True)
       other -> expectationFailure ("expected a distance that is no number refused, got " ++ show other)
@@ -103,38 +112,58 @@ spec = describe "a gallery's own finer solve as a pose's finer level" $ do
     let pose = handOver "wing-8-0" coarse (Turning 0 0)
         creased = handOver "wing-16-0" fine (Turning 3 120)
         counted = (Just (Turning 3 120), ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "accepted" .= True, "apartPixels" .= (0 :: Double)]])
-    finerLevel "16 divisions" creased pose `shouldBe` counted
+    finerLevel page "16 divisions" creased pose `shouldBe` counted
     -- A finer solve its gallery does not accept does not count, however
     -- close it lies (owner decision 31), and its refusal says so before any
     -- other: the 24-division wing, which is not the 8-division one split
     -- into four, is refused for not being accepted. The pose's own
     -- acceptance is not asked.
-    finerLevel "16 divisions" creased {pendingAccepted = False} pose
+    finerLevel page "16 divisions" creased {pendingAccepted = False} pose
       `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "accepted" .= False, "refused" .= explain FinerNotAccepted]])
-    finerLevel "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) {pendingAccepted = False} pose
+    finerLevel page "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) {pendingAccepted = False} pose
       `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-24-0", "label" .= text "24 divisions", "accepted" .= False, "refused" .= explain FinerNotAccepted]])
-    finerLevel "16 divisions" creased pose {pendingAccepted = False} `shouldBe` counted
-    finerLevel "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) pose
+    finerLevel page "16 divisions" creased pose {pendingAccepted = False} `shouldBe` counted
+    finerLevel page "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) pose
       `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-24-0", "label" .= text "24 divisions", "accepted" .= True, "refused" .= explain (FinerTriangleCount 256 576)]])
     -- The screen takes the finer level it is given: none leaves it not
     -- measured, and a finer solve with a join past the threshold fails a
     -- pose that has none.
-    verdicts <- mapM (fmap (verdictOverall . screenVerdict) . screenAt 8) [Nothing, Just (Turning 0 0), Just (Turning 3 120)]
+    verdicts <- mapM (fmap (verdictOverall . screenVerdict page) . screenAt 8) [Nothing, Just (Turning 0 0), Just (Turning 3 120)]
     verdicts `shouldBe` [NotMeasured, Passes, Fails]
 
+  -- Every report is made on the page it is shown on, here one drawn at 320
+  -- px to a sheet unit, as the wing-bending page is.
   it "pairs a gallery's poses by the ids it names, and refuses a name it does not have or has twice" $ do
     coarse <- flatWing 8
     fine <- flatWing 16
     let poses = [handOver "coarse" coarse (Turning 0 0), handOver "fine" fine (Turning 3 120)]
-    finishReports [("coarse", "fine", "16 divisions")] poses
+        wings = PageScale 320
+    finishReports wings [("coarse", "fine", "16 divisions")] poses
       `shouldBe` Right
-        [ object ["pose" .= text "coarse", "finerJoins" .= Just (3 :: Int), "finerSolve" .= object ["id" .= text "fine", "label" .= text "16 divisions", "accepted" .= True, "apartPixels" .= (0 :: Double)]],
-          object ["pose" .= text "fine", "finerJoins" .= (Nothing :: Maybe Int)]
+        [ object ["pose" .= text "coarse", "pixelsPerSheet" .= (320 :: Double), "finerJoins" .= Just (3 :: Int), "finerSolve" .= object ["id" .= text "fine", "label" .= text "16 divisions", "accepted" .= True, "apartPixels" .= (0 :: Double)]],
+          object ["pose" .= text "fine", "pixelsPerSheet" .= (320 :: Double), "finerJoins" .= (Nothing :: Maybe Int)]
         ]
-    finishReports [("coarse", "finer", "")] poses `shouldSatisfy` isLeft
-    finishReports [("coars", "fine", "")] poses `shouldSatisfy` isLeft
-    finishReports [("coarse", "fine", ""), ("coarse", "fine", "")] poses `shouldSatisfy` isLeft
-    finishReports [] (poses ++ take 1 poses) `shouldSatisfy` isLeft
+    finishReports wings [("coarse", "finer", "")] poses `shouldSatisfy` isLeft
+    finishReports wings [("coars", "fine", "")] poses `shouldSatisfy` isLeft
+    finishReports wings [("coarse", "fine", ""), ("coarse", "fine", "")] poses `shouldSatisfy` isLeft
+    finishReports wings [] (poses ++ take 1 poses) `shouldSatisfy` isLeft
+
+  -- A finer solve lifted by 1.5/600 at one vertex is 0.8 px from the pose on
+  -- a page drawn at 320 and 1.5 px on one drawn at 600, so the page's scale
+  -- must reach the check as well as the report.
+  it "settles each pose's finer level on the page its report is made on" $ do
+    coarse <- flatWing 8
+    fine <- flatWing 16
+    i <- maybe (fail "no vertex at (0.5, 0)") pure (vertexAt (wingMesh fine) (V2 0.5 0))
+    let raised = withMesh fine (alterSample i (\s -> s {position = position s ^+^ V3 0 0 (1.5 / 600)}) (wingMesh fine))
+        settle scale = map (field "finerJoins") <$> finishReports scale [("coarse", "fine", "16 divisions")] [handOver "coarse" coarse (Turning 0 0), handOver "fine" raised (Turning 3 120)]
+    settle (PageScale 320) `shouldBe` Right [Just (toJSON (Just (3 :: Int))), Just Null]
+    settle page `shouldBe` Right [Just Null, Just Null]
+
+-- | One key of a report, where the report is an object that has it.
+field :: Key -> Value -> Maybe Value
+field key (Object o) = KM.lookup key o
+field _ _ = Nothing
 
 -- | A flat wing as its gallery holds it: the points held, each with where,
 -- and the seed mesh.
@@ -148,17 +177,25 @@ flatWing divisions = do
 withMesh :: Wing -> MaterialMesh -> Wing
 withMesh wing mesh = wing {wingMesh = mesh}
 
-same :: Wing -> Wing -> Either FinerSolveRefusal SameFinerPose
-same coarse fine = sameFinerPose (wingHeld coarse) (wingMesh coarse) (wingHeld fine) (wingMesh fine)
+-- | A page drawn at 600 px to a sheet unit.
+page :: PageScale
+page = PageScale 600
 
--- | A pose as a gallery hands it over, whose report says whose it is and
--- how many joins its finer level has, so that a report routed to the wrong
--- pose, or given the wrong finer level, shows.
+same :: Wing -> Wing -> Either FinerSolveRefusal SameFinerPose
+same = sameOn page
+
+sameOn :: PageScale -> Wing -> Wing -> Either FinerSolveRefusal SameFinerPose
+sameOn scale coarse fine = sameFinerPose scale (wingHeld coarse) (wingMesh coarse) (wingHeld fine) (wingMesh fine)
+
+-- | A pose as a gallery hands it over, whose report says whose it is, the
+-- page's scale and how many joins its finer level has, so that a report
+-- routed to the wrong pose, made on the wrong page or given the wrong finer
+-- level, shows.
 handOver :: Text -> Wing -> Turning -> Pending
 handOver name wing turning = Pending name True (wingHeld wing) (wingMesh wing) turning report
   where
-    report :: Maybe Turning -> [Pair] -> Either Text Value
-    report finer keys = Right (object (("pose" .= name) : ("finerJoins" .= fmap turningJoins finer) : keys))
+    report :: PageScale -> Maybe Turning -> [Pair] -> Either Text Value
+    report scale finer keys = Right (object (("pose" .= name) : ("pixelsPerSheet" .= pixelsPerSheet scale) : ("finerJoins" .= fmap turningJoins finer) : keys))
 
 -- | The flat wing's screen at this many divisions, at a given finer level,
 -- as the gallery screens it.
