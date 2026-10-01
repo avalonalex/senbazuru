@@ -470,9 +470,11 @@ The first requirement costs little and changes what the owner sees.
 - **R-11-3.** The no-stretch floor, as [Y2](research/Y2-reachability.md) defines
   it: for every pair of material vertices,
   `(|xᵢ − xⱼ| − (1 + ε) |uᵢ − uⱼ|) / 2` at page scale, each page's own drawing
-  scale (owner decision 30, 2026-09-30), where `x` is the pose position, `u`
-  the flat-sheet position and ε the declared strain screen; the
-  floor is the largest value, in 3D and after projection. **The halving is not a
+  scale (owner decision 30, 2026-09-30): the largest at which its gallery draws
+  the paper, on the page or in the drawings it writes beside it (owner
+  decisions 32 and 33, 2026-10-01). Here `x` is the pose position, `u` the
+  flat-sheet position and ε the declared strain screen; the floor is the
+  largest value, in 3D and after projection. **The halving is not a
   slip:** two points too far apart by *e* can share the correction, so the floor
   promises only that one of them moves *e*/2. The screen reports it at ε = 0 and
   at the declared ε, and the ≤ 1 px target applies to the second. It needs no
@@ -919,7 +921,7 @@ Effort: S a few days, M one to two weeks, L three to six weeks, XL more.
 
 | F | Delivers | Effort | Gate to leave it |
 | --- | --- | --- | --- |
-| **F0** | Paper screen on every gallery pose drawn as paper (R-11-1–3; decisions 26–31); sketch labels; gallery viewers on the visible scene (R-11-10); the owner's blind review of the X1, Y1 and Y2 contact sheets; a physical reference capture; owner decisions 15–17 and 25 | S | Every gallery pose drawn as paper shows its screen; More tucked shows 17.1 px and "shape sketch" |
+| **F0** | Paper screen on every gallery pose drawn as paper (R-11-1–3; decisions 26–33); sketch labels; gallery viewers on the visible scene (R-11-10); the owner's blind review of the X1, Y1 and Y2 contact sheets; a physical reference capture; owner decisions 15–17 and 25 | S | Every gallery pose drawn as paper shows its screen; More tucked shows 17.1 px and "shape sketch" |
 | **F1** | Book drawing (R-11-4–9); viewer look (R-11-11, 12); offline stills (R-11-13–15); visibility broad phase counted | S–M | The Drawing and Appearance rows of [§What "refined" means](#what-refined-means) met on the valid wing spreads and closed crane (A-11-3 to A-11-5); the owner's blind pairs recorded |
 | **F2** | Prototype solver as an oracle: the energy of §3.1, Newton with CCD, adaptive barrier, path driver; the core-lengthening test (§4 item 1); the start bake-off (§3.4); benchmarks (R-11-28). **Budget: two weeks, declared before it starts** | M | **Go/no-go**, all four: the double fold reaches 175° with zero crossings and ≤ 1% strain; the prototype reproduces the study's accepted wing spread within 1 px; the Mylar and tea-bag benchmarks pass; the core-lengthening test has run, contact off and then on, and its result is recorded. The pillow option stays open only if the core reaches ≥ 0.325 (halfway from the closed 0.235 to the sketch's 0.414) at ≤ 3% stretch with zero crossings; otherwise F5 targets the pod |
 | **F3** | D15 stage 1, then `Numeric.Sparse` (up-looking LDLᵀ, AMD) replacing `SparseSolve` as stage 2; `Numeric.Dual` and `HyperDual` (#62) | M | Every accepted and rejected study control keeps its verdict (D15); Hessians match central differences to 1e-6 relative; A-11-12 |
