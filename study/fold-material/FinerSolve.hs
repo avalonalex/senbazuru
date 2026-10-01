@@ -20,7 +20,10 @@
 -- 'sameFinerPose' checks the first and the third, and of the second what a
 -- mesh can show: that both solves hold the sheet at the same points, in the
 -- same places. The rest of a control, its stiffness, contact order and
--- settings, only the gallery knows, so each gallery names its pairs.
+-- settings, only the gallery knows, so each gallery names its pairs. A
+-- finer solve its gallery does not accept, for example one that did not
+-- converge, does not count either (owner decision 31): what the gallery
+-- shows only for diagnosis cannot stand for another pose.
 --
 -- What a newcomer would get wrong is matching the two meshes by vertex
 -- number. The finer mesh numbers its vertices its own way; what the two
@@ -89,6 +92,8 @@ data FinerSolveRefusal
   | -- | At this vertex the two solves are this many pixels apart, beyond the
     -- floor limit or no finite distance at all.
     SolvesApart !Int !Double
+  | -- | The gallery does not accept the finer solve.
+    FinerNotAccepted
   deriving stock (Eq, Show)
 
 instance Explain FinerSolveRefusal where
@@ -100,6 +105,7 @@ instance Explain FinerSolveRefusal where
     MissingFinerTriangle t (a, b, c) -> "the finer mesh has no triangle on its vertices " <> tshow a <> ", " <> tshow b <> " and " <> tshow c <> ", one of the four that triangle " <> tshow t <> " splits into, so it is not this mesh split into four"
     DifferentHolds p -> "at " <> point p <> " one solve holds the sheet and the other does not, or they hold it in different places, so they do not solve the same control"
     SolvesApart v pixels -> "at vertex " <> tshow v <> " of this mesh the two solves are " <> num pixels <> " px apart, not within the floor limit, so the finer solve may be another shape"
+    FinerNotAccepted -> "the gallery does not accept the finer solve, which it shows only for diagnosis, so it cannot stand for this pose made again"
     where
       point (V2 u v) = "(" <> num u <> ", " <> num v <> ") on the flat sheet"
 
@@ -170,13 +176,15 @@ midpoint :: V2 -> V2 -> V2
 midpoint p q = 0.5 *^ (p ^+^ q)
 
 -- | A pose as its gallery hands it over before its finer level is settled:
--- its id; the points its solve holds, each with the position it is held at;
--- its mesh; its own false-crease turning, which is the finer level it gives
--- a coarser pose; and its report, given its finer level and the keys about
--- its finer solve. The report screens the pose at that finer level, so no
--- screen made before it is settled can reach the report.
+-- its id; whether the gallery accepts its solve; the points the solve holds,
+-- each with the position it is held at; its mesh; its own false-crease
+-- turning, which is the finer level it gives a coarser pose; and its report,
+-- given its finer level and the keys about its finer solve. The report
+-- screens the pose at that finer level, so no screen made before it is
+-- settled can reach the report.
 data Pending = Pending
   { pendingId :: !Text,
+    pendingAccepted :: !Bool,
     pendingHeld :: !(IM.IntMap V3),
     pendingMesh :: !MaterialMesh,
     pendingTurning :: !Turning,
@@ -186,13 +194,17 @@ data Pending = Pending
 -- | A pose's finer level from the finer solve its gallery names for it, and
 -- the keys its report carries about that solve: its id, how a page labels
 -- it, and how far apart the two are, or why it does not count. The finer
--- level is the finer solve's own false-crease turning where 'sameFinerPose'
--- shows the two are the same pose, and not measured where it does not.
+-- level is the finer solve's own false-crease turning where its gallery
+-- accepts it and 'sameFinerPose' shows the two are the same pose, and not
+-- measured where either fails.
 finerLevel :: Text -> Pending -> Pending -> (Maybe Turning, [Pair])
-finerLevel label finer pose = case sameFinerPose (pendingHeld pose) (pendingMesh pose) (pendingHeld finer) (pendingMesh finer) of
+finerLevel label finer pose = case counted of
   Right same -> (Just (pendingTurning finer), keys ["apartPixels" .= finerApartPixels same])
   Left refusal -> (Nothing, keys ["refused" .= explain refusal])
   where
+    counted = do
+      unless (pendingAccepted finer) (Left FinerNotAccepted)
+      sameFinerPose (pendingHeld pose) (pendingMesh pose) (pendingHeld finer) (pendingMesh finer)
     keys more = ["finerSolve" .= object (["id" .= pendingId finer, "label" .= label] ++ more)]
 
 -- | Every pose's report, in order, each pose taking its finer level from the

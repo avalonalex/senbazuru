@@ -32,7 +32,7 @@ import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Contact (ContactCheck, checkLocalTriangleContact)
+import Senbazuru.Origami.Contact (ContactCheck, checkLocalTriangleContact, contactPassed)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Camera (Basis, View (..), basisFrom)
@@ -187,7 +187,9 @@ measure stem count degrees piece result mesh sheet drawn = do
           ]
             ++ screenKeys
             ++ keys
-  pure (Pending stem (piecePins piece) mesh (screenTurning own) report)
+  -- The gallery accepts a shape that converged and passes its contact
+  -- check, as the page's status line does.
+  pure (Pending stem (converged result && contactPassed contact) (piecePins piece) mesh (screenTurning own) report)
 
 checked :: Either Text a -> IO a
 checked = either (die . T.unpack) pure

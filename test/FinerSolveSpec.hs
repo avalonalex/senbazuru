@@ -102,6 +102,10 @@ spec = describe "a gallery's own finer solve as a pose's finer level" $ do
     let pose = handOver "wing-8-0" coarse (Turning 0 0)
         creased = handOver "wing-16-0" fine (Turning 3 120)
     finerLevel "16 divisions" creased pose `shouldBe` (Just (Turning 3 120), ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "apartPixels" .= (0 :: Double)]])
+    -- A finer solve its gallery does not accept does not count, however
+    -- close it lies (owner decision 31).
+    finerLevel "16 divisions" creased {pendingAccepted = False} pose
+      `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-16-0", "label" .= text "16 divisions", "refused" .= explain FinerNotAccepted]])
     finerLevel "24 divisions" (handOver "wing-24-0" finest (Turning 0 0)) pose
       `shouldBe` (Nothing, ["finerSolve" .= object ["id" .= text "wing-24-0", "label" .= text "24 divisions", "refused" .= explain (FinerTriangleCount 256 576)]])
     -- The screen takes the finer level it is given: none leaves it not
@@ -143,7 +147,7 @@ same coarse fine = sameFinerPose (wingHeld coarse) (wingMesh coarse) (wingHeld f
 -- how many joins its finer level has, so that a report routed to the wrong
 -- pose, or given the wrong finer level, shows.
 handOver :: Text -> Wing -> Turning -> Pending
-handOver name wing turning = Pending name (wingHeld wing) (wingMesh wing) turning report
+handOver name wing turning = Pending name True (wingHeld wing) (wingMesh wing) turning report
   where
     report :: Maybe Turning -> [Pair] -> Either Text Value
     report finer keys = Right (object (("pose" .= name) : ("finerJoins" .= fmap turningJoins finer) : keys))

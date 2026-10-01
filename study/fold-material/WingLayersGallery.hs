@@ -128,7 +128,7 @@ writeWingLayers destination = do
       drawing <- either (die . T.unpack) pure (wingSvg [sheet])
       TIO.writeFile (output </> stem ++ ".svg") drawing
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic; see checks.json")
-    pure (stem, title, accepted, sheet, Pending (T.pack stem) (layersPins fixture) mesh (screenTurning own) report, panel)
+    pure (stem, title, accepted, sheet, Pending (T.pack stem) accepted (layersPins fixture) mesh (screenTurning own) report, panel)
   -- Owner decision 29: a control solved again on its mesh split into four,
   -- the same grip at 16 divisions, may give its finer level. The perturbed
   -- bend differs from the 40° bend only in where its solve starts, so it is

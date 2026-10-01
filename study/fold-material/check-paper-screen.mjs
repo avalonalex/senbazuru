@@ -83,5 +83,5 @@ const other={pixelsPerSheet:500,strainScreen:0.02,strictStrainScreen:0.002,floor
 const labels=paperScreen.rows([],other).map(r=>r[0]);
 assert.deepEqual([labels[2],labels[4],labels[6]],['Largest stretch / squash · within 0.2%','Floor at 2% strain, 3D · this picture','False creases: joins past 30° · turning, sheet units × degrees']);
 const caption=paperScreen.caption(other);
-for(const words of ['in pixels, 500 to a sheet unit','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','agree within 2 px at every vertex of the coarser mesh','(owner decision 29)'])assert.ok(caption.includes(words),words);
+for(const words of ['in pixels, 500 to a sheet unit','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','accepts that solve','within 2 px of each other at every vertex of the coarser mesh','(owner decisions 29 and 31)'])assert.ok(caption.includes(words),words);
 console.log('paper-screen.js: every check passed');
