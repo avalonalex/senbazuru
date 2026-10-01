@@ -2,10 +2,13 @@
 
 The [connected crane experiment](spreading-connected-wing.md) fixes a strip at
 the wing's root at 30 degrees, while its tip grip turns to 50 degrees. The
-root is the line where the wing meets the body. Fixing that strip already
-determines a sharp change of direction there, regardless of what its crease
-spring prefers. Remove the hold before asking whether a different spring
-produces a smoother transition.
+root is a crease the study adds halfway along the wing, not the crane's real
+*wing root* ([glossary](../glossary.md)), so the body panels below are the
+inner part of the wing itself
+([#455](https://github.com/avalonalex/senbazuru/issues/455)). Fixing that
+strip already determines a sharp change of direction there, regardless of
+what its crease spring prefers. Remove the hold before asking whether a
+different spring produces a smoother transition.
 
 Run the comparisons from the repository root:
 

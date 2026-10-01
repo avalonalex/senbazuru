@@ -1,9 +1,13 @@
 -- | Separate the holds from the material preference at a crane wing's root.
--- A root is the line where the wing meets the body. The earlier experiment
--- fixes a whole strip there at 30 degrees, so changing a crease spring cannot
--- change that strip's direction. Here the tip grip stays identical while the
--- root strip and then its four neighbouring body panels can be released.
--- See docs/glossary.md for material coordinates, panels and rest angles.
+-- The root here is the crease CraneWing adds halfway along the wing, not the
+-- crane's real wing root, so the four panels across it, which the controls
+-- call body panels, are the inner part of the wing itself (#455). The
+-- earlier experiment fixes a whole strip at the root at 30 degrees, so
+-- changing a crease spring cannot change that strip's direction. Here the
+-- tip grip stays identical while the root strip and then its four
+-- neighbouring body panels can be released.
+-- See docs/glossary.md for the wing root, material coordinates, panels and
+-- rest angles.
 --
 -- A spring's rest angle is a preference, not an exact hold. The four authored
 -- wing-root edges therefore have measured achieved angles, separate from the
@@ -102,10 +106,11 @@ rootBodyMovement study mesh = maximum (0 : [norm (position p ^-^ position q) | (
     fixture = rootSpread study
     original = refinedMesh (spreadRefined fixture)
 
--- | A side profile along the wing's middle, continuing into the selected body
--- panels. Choose the layer whose original material normal points up, using
--- ownership rather than welding coincident samples from the two layers.
--- Sorting uses the original straight profile, not the deformed position.
+-- | A side profile along the wing's middle, from where it meets the body,
+-- across the root, to its tip. Choose the layer whose original material
+-- normal points up, using ownership rather than welding coincident samples
+-- from the two layers. Sorting uses the original straight profile, not the
+-- deformed position.
 rootProfile :: CraneRoot -> MaterialMesh -> Either SpreadError [V3]
 rootProfile study mesh = do
   unless (triangles mesh == triangles original && map sampleMaterial (samples mesh) == map sampleMaterial (samples original)) (Left (SpreadError "a root profile needs unchanged material identities"))

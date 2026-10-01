@@ -169,14 +169,16 @@ writeCraneRoot destination = do
 checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure
 
--- One scale for every profile; the original root lies halfway along the plot.
+-- One scale for every profile. The plot runs along the wing's middle from
+-- where it meets the body, y = 1/2, to its tip, y = 0, so the crease the
+-- study adds and calls the root, y = 1/4, lies halfway along (#455).
 -- y points towards the body and z points up in the model. Negating both draws
 -- the wing tip to the right and its downward displacement down the SVG page.
 profileSvg :: [(String, [V3])] -> T.Text
 profileSvg curves =
-  "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 430\" role=\"img\"><title>Measured side profiles through the wing root</title>"
+  "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 430\" role=\"img\"><title>Measured side profiles along the wing's middle, from where it meets the body to its tip</title>"
     <> "<path d=\"M40 80H1040M540 50V410\" stroke=\"#c2b7a4\" stroke-dasharray=\"4 5\" fill=\"none\"/>"
-    <> "<g font-family=\"system-ui,sans-serif\" font-size=\"18\" fill=\"#292d28\"><text x=\"40\" y=\"35\">Body</text><text x=\"470\" y=\"35\">Original root</text><text x=\"930\" y=\"35\">Wing tip</text></g>"
+    <> "<g font-family=\"system-ui,sans-serif\" font-size=\"18\" fill=\"#292d28\"><text x=\"40\" y=\"35\">Wing meets body</text><text x=\"540\" y=\"35\" text-anchor=\"middle\">Added crease (the study's root)</text><text x=\"930\" y=\"35\">Wing tip</text></g>"
     <> T.concat ["<polyline fill=\"none\" stroke=\"" <> color stem <> "\" stroke-width=\"2.5\" points=\"" <> T.unwords [formatNumber (40 + 2000 * (0.5 - y)) <> "," <> formatNumber (80 - 2000 * z) | V3 _ y z <- points] <> "\"/>" | (stem, points) <- curves]
     <> "</svg>"
   where
