@@ -4,8 +4,13 @@
 -- visible side without moving either piece. This is a drawing approximation,
 -- not a collision certificate or physical thickness.
 --
--- This bounded study mirrors Render.Projected's projection and coverage checks
--- and reuses Origami.Visible's polygon subtraction and hidden-edge handling.
+-- This bounded study mirrors Render.Projected's projection, and its coverage
+-- check as it was before that check began cutting a leftover piece again,
+-- skipping nothing: here any piece left by the first pass counts as uncovered.
+-- So a piece a few specks big that several regions cover between them is
+-- reported here and drawn there, and the uncovered patches the body notes
+-- record were measured by this older rule. It reuses Origami.Visible's polygon
+-- subtraction and hidden-edge handling.
 -- Keeping the experiment here leaves production tolerances unchanged. Its
 -- extra record explains every overlapping pair, including unresolved regions;
 -- callers must not grade a whole-face fallback as successful visibility.

@@ -206,7 +206,7 @@ scalar barrier and is "not an implementation of that paper's full method"
   contact along z. This is the crane wing.
 - *Research*: releasing large regions (body), general 3D contact direction,
   exact contact at scale, rounded crease radii, thickness as geometry,
-  calibrated stiffness, unheld equilibrium (wing-root-holds.md:98-100), pocket
+  calibrated stiffness, unheld equilibrium (wing-root-holds.md:101-103), pocket
   opening (#106), and any certificate of motion between states.
 - *SVG wireframe*: J edges are not drawn as creases (held-wing-bending.md:55-58),
   but the SVG painter assumes layer order and would hide violations, which is
@@ -241,14 +241,16 @@ contact-off endpoints that converge while crossing (unequal-crease-controls.md:6
 1e-7 checker (near-closed-crease.md:42-46). GLB packs positions at 1e-6 of the
 model span, so it cannot show these residuals (visible-paper-mesh.md:17-28;
 contact-correction-at-a-crease.md:88-92). Rendering can fail independently of
-physical acceptance: an accepted fine crane-root mesh is refused by the
-stable-view export (`ImpossibleStacking`, #206) while the complete scene works.
+physical acceptance: an accepted fine crane-root mesh was refused by the
+stable-view export (`ImpossibleStacking`, #206) while the complete scene
+worked. The refusal was the coverage check miscounting a tip a few specks
+big, fixed by #459.
 
 **16. The study's own failure policy.** Failed solves are published only as
 labelled diagnostics; only accepted endpoints enter 3D selectors; positions
 are never snapped and grips never silently moved to manufacture success
 (spreading-connected-wing.md:64-69; body-angle-preferences.md:63-65;
-wing-root-holds.md:81-85; WingLayers.hs:99-101).
+wing-root-holds.md:81-88; WingLayers.hs:99-101).
 
 ### Graduation (question e)
 

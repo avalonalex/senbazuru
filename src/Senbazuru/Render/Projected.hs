@@ -85,29 +85,27 @@ projectedForm basis fr supplied = do
 -- visible regions to cover the original silhouette; cycles with no shared
 -- patch (a valid interleaving) still pass.
 --
--- A cut passes over a region that would take no more than @speck@ of a piece,
--- because even a cut that takes almost nothing splits the piece into as many
--- parts as the region has sides. So a piece only a few specks big comes
--- through every cut whenever the regions covering it each take less than a
--- speck of it: on a solved crane, the 1.4-speck tip of one face, of which the
--- two faces in front of it took 0.47 and 0.94. Such a piece is a hole only if
--- the regions, all added up, leave more than a speck of it. Visible regions
--- overlap only by the specks their own cuts passed over, since every pair of
--- panels overlapping by more than a speck was given an order; so their sum is
--- what they cover. Testing the piece's own area first only spares that sum
--- for the slivers cutting leaves.
+-- The first pass skips a cut that would take no more than @speck@ of a piece,
+-- for the reason "Senbazuru.Origami.Visible" gives for the same rule in its
+-- @regionsOf@: a cut that takes almost nothing still splits the piece, and
+-- every part must then be tried against every region left. Skipped cuts add
+-- up, though. A piece a few specks big comes through whenever each region
+-- over it covers no more than a speck of it, however much they cover between
+-- them, as a corner does in ProjectedSpec. So a piece that comes through is
+-- cut again by every region, skipping nothing, and is a hole only if more
+-- than a speck of it is left. Measuring what is left, rather than adding up
+-- what each region covers, counts a patch two regions share once.
 uncovered :: Double -> [Shadow] -> VisibleForm -> Maybe FaceId
-uncovered speck panels seen = case [shadowId panel | panel <- panels, any hole (foldl' cut [shadowRing panel] regions)] of
+uncovered speck panels seen = case [shadowId panel | panel <- panels, any hole (foldl' (cut speck) [shadowRing panel] regions)] of
   fid : _ -> Just fid
   [] -> Nothing
   where
     regions = [[V2 x y | V3 x y _ <- piece] | region <- formRegions seen, piece <- regionPieces region]
-    cut pieces cover = concatMap (cutOne cover) pieces
-    cutOne cover piece
-      | overlap cover piece <= speck = [piece]
-      | otherwise = subtractConvex speck cover piece
-    hole piece = let area = abs (signedArea piece) in area > speck && area - sum [overlap cover piece | cover <- regions] > speck
-    overlap cover piece = abs (signedArea (clipConvex cover piece))
+    cut allowance pieces cover = concatMap (cutOne allowance cover) pieces
+    cutOne allowance cover piece
+      | abs (signedArea (clipConvex cover piece)) <= allowance = [piece]
+      | otherwise = subtractConvex allowance cover piece
+    hole piece = sum (map (abs . signedArea) (foldl' (cut 0) [piece] regions)) > speck
 
 -- An edge-on face paints no area. It can be omitted when all its edges also
 -- belong to surviving neighbours, which supply their real depth and outline.

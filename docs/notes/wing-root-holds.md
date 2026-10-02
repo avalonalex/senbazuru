@@ -78,11 +78,14 @@ radians. Independent contact checking finds 49 crossing triangle pairs and
 no retained order is reversed. Its 26.03–26.93° root turn is therefore only a
 failed diagnostic, not evidence of a valid smoother transition.
 
-The finer accepted mesh exposes a separate stable-view export refusal
-([#206](https://github.com/avalonalex/senbazuru/issues/206)). Its complete-sheet
-GLB succeeds. The gallery retains physical acceptance, geometry and measurements
-while recording the rendering failure separately; the stable-view selector
-omits that mesh. No physical position or layer order is changed for display.
+The finer accepted mesh's stable-view export was refused
+([#206](https://github.com/avalonalex/senbazuru/issues/206)) by a miscount, not
+a layer-order problem. The eight coplanar layers at the refused spot are in a
+consistent order. The tip of face 26 there, 1.03e-9 in area, was covered 0.31e-9
+and 0.71e-9 by the visible regions of two other faces, and the coverage check
+skipped any cut that would take no more than 1e-9 of a piece. It now cuts such
+a piece again, skipping nothing, and the mesh exports. No physical position or
+layer order was changed for display.
 
 A zero rest angle still leaves a crease spring at the authored wing-root
 line. It does not replace that line with ordinary uncreased panel material.

@@ -621,7 +621,7 @@ The two resist differently. A crease spring is weighted by its material length
 alone, while a panel bend is also weighted by the areas of the two triangles
 beside it, so a line settled as a crease can concentrate the turn at that line
 where panel paper would spread it through the paper nearby
-([wing-root-holds.md:87-92](../docs/notes/wing-root-holds.md)).
+([wing-root-holds.md:90-95](../docs/notes/wing-root-holds.md)).
 
 ### SettleSpec and SettleInput: two contracts
 
@@ -932,7 +932,7 @@ and [10](10-roadmap-risks-questions.md#6-owner-decisions), each with the default
 
 1. **(4)** Should a precrease's crease, U at 0, settle as a crease spring at rest 0
    or as uncreased panel, and should the sheet file's `F` edges stay panel bends
-   ([wing-root-holds.md:87-92](../docs/notes/wing-root-holds.md))? Default: a
+   ([wing-root-holds.md:90-95](../docs/notes/wing-root-holds.md))? Default: a
    crease spring at rest 0, and `F` edges stay panel bends.
 2. **(11)** Should the external-tools rule go into AGENTS.md or only
    `docs/related-projects.md`? Default: AGENTS.md, as
