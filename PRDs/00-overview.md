@@ -301,9 +301,9 @@ These figures are recorded in repository notes, not re-measured
 - thickness is stored and not interpreted.
 
 The only path from a rigid fold to bent paper is `craneSpreadWith`
-([`CraneSpread.hs:80-115`](../study/fold-material/CraneSpread.hs#L80-L115)). It
+([`CraneSpread.hs:84-133`](../study/fold-material/CraneSpread.hs#L84-L133)). It
 takes one hand-built move, not a surface: `CraneWing`'s 90° turn of one crane wing
-([`CraneWing.hs:80`](../study/fold-material/CraneWing.hs#L80)). From that move it
+([`CraneWing.hs:123`](../study/fold-material/CraneWing.hs#L123)). From that move it
 takes:
 
 - the start state (`:85`);

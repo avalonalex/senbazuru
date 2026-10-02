@@ -2,10 +2,14 @@
 -- A root is the line where the wing meets the body. The earlier experiment
 -- fixes a whole strip there at 30 degrees, so changing a crease spring cannot
 -- change that strip's direction. Here the tip grip stays identical while the
--- root strip and then its four neighbouring body panels can be released.
+-- root strip and then the body panels across the root can be released.
 -- See docs/glossary.md for material coordinates, panels and rest angles.
 --
--- A spring's rest angle is a preference, not an exact hold. The four authored
+-- The root is the wing crease CraneWing adds, at folded y = 1/4 unless a study
+-- moves it ('craneRootAt'): four segments there, eight above the wing's widest
+-- point, each with one body panel across it.
+--
+-- A spring's rest angle is a preference, not an exact hold. The authored
 -- wing-root edges therefore have measured achieved angles, separate from the
 -- original mountain/valley creases which this bounded study keeps folded.
 -- Making a spring weaker need not make a smoother surface: rotation can become
@@ -15,6 +19,8 @@ module CraneRoot
   ( RootControl (..),
     CraneRoot (..),
     craneRoot,
+    craneRootAt,
+    rigidBase,
     rootAngles,
     originalCreaseError,
     rootBodyMovement,
@@ -25,6 +31,7 @@ where
 
 import Control.Monad (unless)
 import CraneSpread
+import CraneWing (buildCraneWingAt, craneHinge, craneHingeY, craneWidest, studyHinge)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
@@ -45,7 +52,11 @@ data RootControl = HeldRoot | ReleasedRoot | WeakerRoot | FlatRoot | FreeBody
 data CraneRoot = CraneRoot
   { rootSpread :: !CraneSpread,
     rootEdges :: !(S.Set EdgeId),
-    rootNeighbours :: !(S.Set FaceId)
+    rootNeighbours :: !(S.Set FaceId),
+    -- | The folded line y the wing turns about, and the wing's widest point
+    -- ('CraneWing').
+    rootHingeY :: !Double,
+    rootWidest :: !Double
   }
   deriving stock (Show)
 
@@ -54,8 +65,13 @@ data CraneRoot = CraneRoot
 -- any OTHER panel remain held, even if also used by a released panel. Thus
 -- the patch's distant boundary stays attached to the unchanged crane.
 craneRoot :: Frame -> Int -> RootControl -> Either SpreadError CraneRoot
-craneRoot source level control = do
-  fixture <- craneSpreadWith WingAndRootNeighbours source level 20
+craneRoot = craneRootAt studyHinge
+
+-- | The same controls about a wing creased along the folded line y = @hingeY@.
+craneRootAt :: Double -> Frame -> Int -> RootControl -> Either SpreadError CraneRoot
+craneRootAt hingeY source level control = do
+  creased <- first SpreadError (buildCraneWingAt hingeY source)
+  fixture <- craneSpreadFromWing WingAndRootNeighbours creased level 20
   features <- first (SpreadError . explain) (surfaceFeatures (spreadSource fixture))
   let roots = [(creaseId edge, owners) | (edge, owners) <- features, creaseAssignment edge == Unassigned]
       edges = S.fromList (map fst roots)
@@ -74,8 +90,9 @@ craneRoot source level control = do
           FreeBody -> hinge {hingeRest = 0}
           _ -> hinge
         _ -> hinge
-  unless (S.size edges == 4 && S.size nearby == 4) (Left (SpreadError "expected four wing-root edges and four neighbouring body panels"))
-  pure (CraneRoot fixture {spreadPins = pins, spreadHinges = map change (spreadHinges fixture)} edges nearby)
+  unless (S.size edges == length (craneHinge creased) && S.size nearby == S.size edges) $
+    Left (SpreadError "expected a wing-root edge for every wing-crease segment and one neighbouring body panel across each")
+  pure (CraneRoot fixture {spreadPins = pins, spreadHinges = map change (spreadHinges fixture)} edges nearby (craneHingeY creased) (craneWidest creased))
 
 -- | Signed angles in radians for every refined root segment, with source ids.
 -- The two touching layers have opposite material normals, so their signs
@@ -130,3 +147,35 @@ rootAccepted study result mesh = do
   pure (converged result && maxLengthError mesh <= 1e-5 && spreadHeldError fixture mesh == 0 && creases < 1e-5 && contactPassed contact)
   where
     fixture = rootSpread study
+
+-- | Turn a control's base as one piece. Above the wing's widest point the
+-- paper between it and the hinge is four layers deep ('CraneWing'); a released
+-- control solved with it bending as a sheet stalled at y = 0.376 (#455). Pin
+-- every vertex of that base where the flat crane's base lands turned by
+-- @theta@ degrees about the hinge, the way the root strip turns in
+-- 'craneSpread', and start from @solved@ with the base moved there. With the
+-- hinge below the widest point, no vertex of the turning wing lies at or above
+-- it: there is no base, and the control comes back unchanged.
+rigidBase :: Double -> CraneRoot -> MaterialMesh -> CraneRoot
+rigidBase theta study solved
+  | IM.null base = study
+  | otherwise = study {rootSpread = fixture {spreadPins = IM.union base (spreadPins fixture), spreadMesh = solved {samples = placed}}}
+  where
+    fixture = rootSpread study
+    flat = refinedMesh (spreadRefined fixture)
+    hingeY = rootHingeY study
+    turn = theta * pi / 180
+    corners (a, b, c) = [a, b, c]
+    wing = S.fromList [v | (tri, owner) <- zip (triangles flat) (refinedPanels (spreadRefined fixture)), S.member owner (spreadMoving fixture), v <- corners tri]
+    -- The hinge's own vertices stay where the body holds them.
+    base =
+      IM.fromList
+        [ (i, V3 x (hingeY - len * cos turn) (negate (len * sin turn)))
+          | (i, p) <- zip [0 ..] (samples flat),
+            S.member i wing,
+            let V3 x y _ = position p,
+            y >= rootWidest study - 1e-9,
+            let len = hingeY - y,
+            len > 1e-12
+        ]
+    placed = [maybe q (\target -> q {position = target}) (IM.lookup i base) | (i, q) <- zip [0 ..] (samples solved)]

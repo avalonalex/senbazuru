@@ -52,12 +52,12 @@ ids or owners.
 | Both panels moving `CreasePairContact` + `CoupledCrease` / `UnequalCrease` | owners must be `FaceId 0`/`1` (CreasePairContact.hs:62), facing preserved (76), all shared crease vertices held (CoupledCrease.hs:75), repair only along z | `InequalityResult` | **Fixture** | Symmetric: gap 0, edge error 7.39e-7/3.22e-6 (coupled-crease-contact.md:63-71). Unequal preference: max gap 7.271e-7 at 32 triangles becomes 0.007009 at 64 (unequal-crease-controls.md:56-61, 87-93) | - |
 | Exact prescribed references `ClosedCrease`, `FoldMaterial` rounded bends | subdivision / `FoldCase` | meshes | **Fixture**, "not equilibria or folding paths" (ClosedCrease.hs:12; FoldMaterial.hs:18-19) | Rounded double fold stretches 200% in the upper band, +4.71% area (two-bends-need-more-than-radii.md:53-60) | - |
 | Measures `principalStrains`, `maxLengthError` (FoldRelaxation.hs:189-217); `meshEdges`, `edgeStrains`, `componentCount` (FoldMaterial.hs:179-217) | mesh | numbers | General (but live in a fixture module) | - | - |
-| Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:185-232); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:104) | - |
-| Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:179-183; CraneRoot.hs:126-130; CraneBody.hs:101-106) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
+| Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:212-259); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:104) | - |
+| Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:206-210; CraneRoot.hs:143-147; CraneBody.hs:101-106) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
 
 **2. CI already pays for these solves.** The test suite compiles
 `study/fold-material` (senbazuru.cabal:190-193) and runs short crane solves
-(e.g. `Settings 20 1e-5` at refinement 3, test/CraneSpreadSpec.hs:27). #208
+(e.g. `Settings 20 1e-5` at refinement 3, test/CraneSpreadSpec.hs:28). #208
 records a 10m48s `stack test` step, with the `CraneRoot` group ~164.87 s and
 `CraneSpread` ~97.48 s (approximate wall times, different runners).
 
@@ -65,7 +65,7 @@ records a 10m48s `stack test` step, with the `CraneRoot` group ~164.87 s and
 
 **3. What a solve needs from its caller.** Reconstructed from the one
 end-to-end path that starts at a rigid fold, `CraneSpread.craneSpreadWith`
-(CraneSpread.hs:80-115) and `solveSpread` (136-139):
+(CraneSpread.hs:84-133) and `solveSpread` (136-139):
 
 1. **A `Surface V2`**, i.e. known original-sheet coordinates. Only
    `surfaceFromFolded` guarantees them, and it requires the pattern to lie at
@@ -81,21 +81,21 @@ end-to-end path that starts at a rigid fold, `CraneSpread.craneSpreadWith`
    `edges_foldAngle` is deliberately never used as a default
    (FoldBending.hs:138-145, 177-182). `CraneSpread` supplies ±π for existing
    folds and converts the reference state's degrees for the new hinge
-   (CraneSpread.hs:89-94).
+   (CraneSpread.hs:105-110).
 4. **Stiffness** `Bending 1 0.2` in every crane/wing fixture (e.g.
-   CraneSpread.hs:98), explicitly illustrative (crease-and-panel-energy.md:26-35).
+   CraneSpread.hs:114), explicitly illustrative (crease-and-panel-energy.md:26-35).
 5. **Holds**: an `IntMap V3` keyed by refined mesh vertex id, installed before
    the first measurement (FoldRelaxation.hs:244-247). Every fixture chooses
    them by coordinate tests on its own geometry: body = vertices of unselected
-   panels, root/grip = y-fraction bands (CraneSpread.hs:101-107).
+   panels, root/grip = y-fraction bands (CraneSpread.hs:117-125).
 6. **Target geometry for moved grips**: a prescribed curve (`bentPoint`,
-   CraneSpread.hs:117-134). The "load" is a displacement, not a force.
+   CraneSpread.hs:142-161). The "load" is a displacement, not a force.
 7. **Contact**: `prepareContact clearance direction pairs owners mesh`
    (SurfaceContact.hs:131-144), with clearance 0, direction `V3 0 0 1`, owners
    = `refinedPanels`, and pairs converted from the flat state's `faceOrders`
-   by the sign of each reference face normal (CraneSpread.hs:108-114), then
+   by the sign of each reference face normal (CraneSpread.hs:126-132), then
    transitively closed **before** dropping pairs with no free vertex
-   (CraneSpread.hs:141-148).
+   (CraneSpread.hs:168-175).
 8. **`Settings`**: iteration limit **per stage** (four stages) and length
    tolerance (FoldRelaxation.hs:113-121, 491). Everything else is a hidden
    constant: contact weight, damping, CG limit 3000 and floor 1e-6, movement
@@ -117,11 +117,11 @@ error, then an adapter to `Surface V2` for the renderers.
 - Holding a crease *line* fixes its position, not the orientation of the
   paper beside it (unequal-crease-controls.md:13-17).
 - Touching layers have opposite material normals, so equal geometric turns
-  carry opposite signed angles (CraneRoot.hs:80-82).
+  carry opposite signed angles (CraneRoot.hs:97-99).
 - Near ±180° `angleError` picks the branch nearest the rest angle; it does
   not record motion through 180° (FoldBending.hs:11-16).
 - Solver iterates are not a folding motion and may stretch or cross paper
-  (FoldRelaxation.hs:9; CraneSpread.hs:11-12).
+  (FoldRelaxation.hs:9; CraneSpread.hs:12-13).
 - Coincident is not shared: only real crease vertices are shared ids
   (WingLayers.hs:1-4).
 - `hingesWith` refuses material triangles that are not counterclockwise
@@ -279,7 +279,7 @@ the unit-square packet along. Generic measures (`meshEdges`, `edgeStrains`,
 `componentCount`) live in the fixture module `FoldMaterial`.
 
 **19. Error types would need work.** Several study errors are `newtype ... Text`
-built by `explain`ing a lower error (`SpreadError`, CraneSpread.hs:70, 253-254;
+built by `explain`ing a lower error (`SpreadError`, CraneSpread.hs:74, 253-254;
 `InequalityError`, CreaseInequality.hs:46). AGENTS.md:160-162 requires error
 types that point at the offending element; a Text wrapper loses that
 structure. `RelaxError`, `BendingError` and `ContactError` are already
@@ -319,7 +319,7 @@ data Verdict = Accepted | Diagnostic [Reason]
 
 Why this shape: holds in panel ids or material coordinates survive refinement
 (finding 3.5); `FromFaceOrders` encodes the transitive-closure-before-filter
-rule once (CraneSpread.hs:141-148) instead of per fixture; the verdict makes
+rule once (CraneSpread.hs:168-175) instead of per fixture; the verdict makes
 "converged but invalid" unrepresentable as success (finding 14); returning a
 `Surface V2` means both renderers work unchanged (finding 12).
 

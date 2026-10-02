@@ -454,7 +454,7 @@ table in the next version of this record.
      sitting on the working pattern before the fold: `foldFrameWith` copies them
      and re-signs any whose second face it re-wound (#78). A state's first
      stacking: fold, solve on `foldedFrame`, record the orders on the working
-     pattern, refold. Never attach orders to a `Folded` as `CraneWing.hs:79` does;
+     pattern, refold. Never attach orders to a `Folded` as `CraneWing.hs:122` does;
   4. re-resolve every id after a topology change;
   5. anchor by material point, and re-anchor as above;
   6. join-check every step: positions within 1e-12 × `modelSpan`
@@ -792,7 +792,7 @@ table in the next version of this record.
   folded, so nothing is left for `Flap` to check; and `creaseAllAlong` returns no
   new ids ([`:138`](../src/Senbazuru/Fold/Creasing.hs#L138)), which is why
   `CraneWing` marks its new hinge `U` and finds it as "every `Unassigned` edge"
-  ([`CraneWing.hs:65`](../study/fold-material/CraneWing.hs#L65)) [code].
+  ([`CraneWing.hs:98`](../study/fold-material/CraneWing.hs#L98)) [code].
 - **`AtRest`** writes every new piece at 0 with its requested assignment; cut
   pieces of old edges keep their parent's angle. On a frame with no
   `edges_foldAngle`, it writes the whole array, existing edges as `foldAnglesOf`
@@ -1205,7 +1205,7 @@ The decisions:
   through the move, through `recordPoseAt`; `SettleNoPose` for a record with no
   route) or at a registered generator. v1 registers `arc-grip ROOT° EXTRA°`,
   accepting a 30° root and 0–20° extra, as `craneSpreadWith` does
-  ([`CraneSpread.hs:82-83`](../study/fold-material/CraneSpread.hs#L82-L83)) [code];
+  ([`CraneSpread.hs:99-100`](../study/fold-material/CraneSpread.hs#L99-L100)) [code];
   else `GripOutOfRange`. A generator also sets the start positions of free vertices
   on its side; other free vertices start at their side's `rigid-pose` target if
   one exists, else at `recordBefore` (R-07-16). A vertex whose targets differ by
@@ -1213,7 +1213,7 @@ The decisions:
 - **Rest angles.** `RestAngles = RestAtPose PoseRef | RestAtPoseExcept PoseRef [(CreaseLine, Rational)]`, where a `CreaseLine` is written `crease [P, Q]`, `hinge of NAME` or `crease of NAME` inside `except { … }` ([04 grammar](04-prd-sequence-source-and-cli.md#grammar));
   every active crease rests at its angle in that pose; never derived from an
   assignment, so `CraneSpread`'s rule, −π for a mountain and +π otherwise
-  ([`CraneSpread.hs:89-93`](../study/fold-material/CraneSpread.hs#L89-L93)) [code],
+  ([`CraneSpread.hs:105-109`](../study/fold-material/CraneSpread.hs#L105-L109)) [code],
   is deleted when the crane is re-expressed. Rest comes from the settle, else the
   material block; neither is `SettleNoRest` (R-07-19).
 - **`NoDifference` is computable** ([C39](#changes-since-draft-v2)): refused when the
@@ -1225,7 +1225,7 @@ The decisions:
   "no released hold"; releasing a hold cannot move anything from an equilibrium
   start, so that clause tests nothing.
 - **Stiffness.** A named preset; v1's `illustrative` is `Bending 1 0.2`, as
-  `CraneSpread` builds its hinges ([`CraneSpread.hs:98`](../study/fold-material/CraneSpread.hs#L98))
+  `CraneSpread` builds its hinges ([`CraneSpread.hs:114`](../study/fold-material/CraneSpread.hs#L114))
   [code], and outputs say so. Precrease stiffness is owner decision 4.
 - **Two contracts, two error types** ([C6](#changes-since-draft-v2)).
   `Sequence.Material` holds `SettleSpec` and
@@ -1272,7 +1272,7 @@ The decisions:
   crease segments are compared
   ([07](07-prd-material-consumption.md#every-existing-crane-control-re-expressed))
   [prd]. `WeakerRoot` and `WeakerBody` scale some springs' stiffness by 0.1
-  ([`CraneRoot.hs:72`](../study/fold-material/CraneRoot.hs#L72),
+  ([`CraneRoot.hs:88`](../study/fold-material/CraneRoot.hs#L88),
   [`CraneBody.hs:70`](../study/fold-material/CraneBody.hs#L70)) [code], which one
   global preset cannot say; `CraneInternal`'s force restriction and borrowed orders,
   `crossedGrip`'s offset and `WingBending`'s own mesh are also fixtures.
@@ -2263,7 +2263,7 @@ means the text is a research note, a snapshot that is not edited.
 | 11 | `docs/glossary.md` defines rest angle twice, differently (`:19`, `:83`) | [code] | row 10 |
 | 12 | `check` silently skips Maekawa at a vertex touching a `U` edge | [code] `FlatFold.hs:503-506`; [bin] | issue |
 | 13 | `Creasing.existingAt` takes the first vertex within tolerance, not the nearest | [code] [`Creasing.hs:323-327`](../src/Senbazuru/Fold/Creasing.hs#L323-L327) | issue, before M2's resolver |
-| 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:65`](../study/fold-material/CraneWing.hs#L65); [jq] 0 `U` edges | issue |
+| 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:98`](../study/fold-material/CraneWing.hs#L98); [jq] 0 `U` edges | issue |
 | 15 | The blintz manifest and recipe fold corners in opposite directions | [jq, code] | owner decision 8 |
 | 16 | Manifest angle literals are not the documented formulas' `Double`s. Rabbit ear at m = 30: the stored `97.58514830800293` is one ulp from the `atan2` form. Petal at t = 175: the stored `-166.98236060695527` is **three** ulps from the code's own `atan2` expression ([`CheckedPetal.hs:107`](../study/fold-material/CheckedPetal.hs#L107)), which gives `…518`. v2 said one ulp for both ([C58](#changes-since-draft-v2)) | [py] appendix command 7 | issue, M5 |
 | 17 | At least nine tolerance formulas act as "a hair" | [code] [gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md) finding 2 | issue, D2's prerequisite |
@@ -2417,7 +2417,7 @@ lists edits for.
 | C24 | `canonical` normaliser in the round-trip property | 04 "Canonical form" | 04's four-row table | adopted | 03, 04 |
 | C25 | `decodeFile`'s message names no command; `app/` adds the `run` hint | 04 §"Reading a source" note | `Load.hs:102-106`, `Query.hs:68-71` [code] | adopted-modified | 04 |
 | C26 | Presentation change: *some* vertex moves (R-05-12′) | 05 L3 note; 01 §4.13 note | 3 of 9, 3 of 9, 5 of 13, 2 of 8 axis vertices; 0 of 15 and 0 of 2 rigid pairs [py] | adopted | 01, 05 |
-| C27 | `creaseAllAlongWith` at M2 | 05 L2; 10 §2 note | `Creasing.hs:138`, `:290-292`, `:316-320`; `CraneWing.hs:65` [code] | adopted | 05, 10 |
+| C27 | `creaseAllAlongWith` at M2 | 05 L2; 10 §2 note | `Creasing.hs:138`, `:290-292`, `:316-320`; `CraneWing.hs:98` [code] | adopted | 05, 10 |
 | C28 | `RoutePose` in `Origami.Route`, re-exported by `Sequence.Record` | 05 L4 note | layer rows 4 and 6 | adopted | 05 |
 | C29 | τ = 1e-10 degrees | 05 L1 | `Surface.hs:278`, `StudyCase.hs:208` [code] | adopted | 05 |
 | C30 | `AtRest` writes the whole angle array when a frame has none | 05 R-05-8 | `Folding.hs:507-533` [code] | adopted | 05 |
@@ -2430,7 +2430,7 @@ lists edits for.
 | C37 | `StepError` unchanged | 06 R-06-3 | `Steps.hs:58-62`, `Cli.hs:855-863` [code] | adopted | 06 |
 | C38 | Authored samples are states and figures without caption or arrows; checking adds `RunSettings.macroChecks` interior poses | 06 §2; 03 A-6 | v2 D9 ties evidence to illustration | adopted-modified | 02, 05, 06 |
 | C39 | `NoDifference` without the "released hold" clause | 07 note | rigid control 1.39e-11 / 1.44e-27 [research] | adopted | 07 |
-| C40 | Controls the vocabulary cannot name stay fixtures | 07 control table | `CraneRoot.hs:72`, `CraneBody.hs:70` [code] | adopted | 07 |
+| C40 | Controls the vocabulary cannot name stay fixtures | 07 control table | `CraneRoot.hs:88`, `CraneBody.hs:70` [code] | adopted | 07 |
 | C41 | `refine REGION INTEGER` and a `rest` line in the crane settle | 07 note under the crane block | control 2 needs a region; R-07-19 | adopted | 04, 07 |
 | C42 | 07's proposed rules R-07-10, -13, -16, -17, -19, -22, -29 | 07 "Points this file adds" | each against v2 D14 | adopted | 07 |
 | C43 | Silhouettes from edges of any assignment; #104's done-when names `--view front` | 08 R-08-17, "#104, amended" | 27 silhouettes front, 0 iso [py]; 40 `B`, 280 `F` [jq]; #104 text [ran] | adopted | 01, 08 |

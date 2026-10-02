@@ -71,7 +71,7 @@ The PRDs should:
    (keyFrame source)))` (`test/BlintzSequenceSpec.hs:31`) pattern-matches the
    `Either`, which runs every `prepareFlap … >>= checkFlap` in the recipe
    (`study/fold-material/BlintzSequence.hs:57-73`) before any `it` starts.
-   `CraneWingSpec.hs:32` does the same with `buildCraneWing`, and
+   `CraneWingSpec.hs:33` does the same with `buildCraneWing`, and
    `CheckedBirdSpec.hs:40` with `prepareBird`.
 
 2. **`BlintzSequenceSpec`, 5 runs through the binary with
@@ -128,7 +128,7 @@ The PRDs should:
    `refineSurface` (`Flap.hs:219`). A step that adds a crease also pays
    `creaseAllAlong`, which re-cuts and re-traces the pattern
    (`Fold/Creasing.hs:159`). The crane recipe also solves a layer order
-   (`CraneWing.hs:78`), for which `Stacking.hs:180-183` claims "about 60ms" on
+   (`CraneWing.hs:121`), for which `Stacking.hs:180-183` claims "about 60ms" on
    the crane. That is the owner's figure, not re-measured here.
 
 7. **`checkFlap` is quadratic in triangles before it subdivides anything.**
@@ -143,7 +143,7 @@ The PRDs should:
    list comprehensions over `triangleOwners` squared. Each candidate pair does
    a linear `find` over faces and a coplanarity test (`Flap.hs:253-269`), so
    that part is O(T²·F). On the crane the start has 76 faces after the new
-   crease (`CraneWing.hs:66`) and 63 vertices (`CraneWingSpec.hs:39`). The
+   crease (`CraneWing.hs:101`) and 63 vertices (`CraneWingSpec.hs:40`). The
    triangle count was not printed, because the driver never ran.
 
 8. **The interval count is already exposed and deterministic.** `SweepCheck`
@@ -154,7 +154,7 @@ The PRDs should:
 
 9. **The repo already has a pattern for fixtures that are skipped when
    filtered.** `beforeAll load` wraps the heavy crane-material specs:
-   `CraneRootSpec.hs:23`, `CraneSpreadSpec.hs:24`, `CraneBodySpec.hs:23`,
+   `CraneRootSpec.hs:24`, `CraneSpreadSpec.hs:25`, `CraneBodySpec.hs:23`,
    `CranePocketSpec.hs:22`, `CraneInternalSpec.hs:23`, and `WingBendingSpec.hs:54,65`.
    hspec runs a `beforeAll` action only when an item under it runs. That is why
    those specs (#208's 164.87 s `CraneRoot` group) add nothing to the
@@ -220,7 +220,7 @@ The PRDs should:
       (`Origami/Surface.hs` `transformSurface`), so it can carry trig bits.
     - Material coordinates are exact source numbers for the blintz, helmet and
       bird. They are **trig-derived** wherever a crease was mapped back through
-      `applyRigid (inverse placement)`, as in `CraneWing.hs:99-100`.
+      `applyRigid (inverse placement)`, as in `CraneWing.hs:153-154`.
 
     So an exact GLB golden of a creased-through-layers step can differ across
     platforms in its JSON chunk even when every packed position agrees.

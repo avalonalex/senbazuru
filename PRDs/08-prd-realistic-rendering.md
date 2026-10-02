@@ -70,7 +70,7 @@ viewer pages load) shades flat
 renders today", finding 1, code read). That is right for rigid panels. The
 study's bent meshes are hundreds of planar triangles joined by `J` (join) edges,
 which mark two triangles as one piece of paper
-([`CraneSpread.hs:210-214`](../study/fold-material/CraneSpread.hs#L210-L214),
+([`CraneSpread.hs:237-241`](../study/fold-material/CraneSpread.hs#L237-L241),
 [`UncreasedSurface.hs:1-10`](../study/fold-material/UncreasedSurface.hs#L1-L10)),
 exported through this path
 ([`CraneSpreadGallery.hs:103-105`](../study/fold-material/CraneSpreadGallery.hs#L103-L105),
@@ -491,7 +491,7 @@ omission. `export --fold --smooth` is that second caller today, because its
 are proposed spellings the PRs settle.
 
 **Regions.** `spreadSurface` marks an edge `J` exactly when no source edge
-contains it ([`CraneSpread.hs:210-214`](../study/fold-material/CraneSpread.hs#L210-L214)),
+contains it ([`CraneSpread.hs:237-241`](../study/fold-material/CraneSpread.hs#L237-L241)),
 so a crane-spread region is one source panel's triangles, and a wing piece is one
 region. A vertex on a crease between panels gets two normals; one inside a panel
 gets one. Regions come from `J` connectivity, not `senbazuru:source_panels`,
@@ -901,7 +901,7 @@ how sheen or translucency looks on paper; W2 (milestone R,
 | A-10 | Crane-spread curved and fine smooth GLBs: validator 0/0; a three.js screenshot shows no facets (manual) | a non-unit normal |
 | A-11 | **W1, before any W1 test:** record whether `projectedForm` declines (`Right Nothing` or `Left ImpossibleStacking`) on the crane-spread curved and fine meshes. A-13 needs a mesh where it does, because only there does today's painter draw buried creases for W1 to remove. If neither declines, A-13's failing case is the 4,312-triangle crane-root mesh from #206 | — (a measurement) |
 | A-12 | **Lines spike:** validator 0/0; three.js `GLTFLoader` screenshots (from `study/gltf`) of quarter fold and crane from both sides, lines visible without z-fighting (a line and a triangle at one depth flickering through each other) (manual); headless Blender `bpy` import counts loose edges equal to segments written; that loose edges do not render in Blender is **UNVERIFIED** and recorded | `lineLift` at or below one packing quantum |
-| A-13 | **W1 (a):** the crane-spread solves hold every body vertex where it lies in the flat folded crane they start from ([`spreading-connected-wing.md:16`](../docs/notes/spreading-connected-wing.md); a *hold*, [glossary-additions](glossary-additions.md#material)), and so does #206's flat-preference control ([`CraneRoot.hs:68`](../study/fold-material/CraneRoot.hs#L68), [`CraneRootGallery.hs:51`](../study/fold-material/CraneRootGallery.hs#L51)), so the body's creases do not move. On crane-spread curved and fine and the 4,312-triangle crane-root mesh (slow job), from top-down and from bottom-up: the *wing's shadow* is the part of the page the wing covers in the flat start or in the settled state. Outside it, W1's drawn length of each body crease equals `visibleForm`'s on the flat folded crane, within τ | ties decided without orders; band shrunk |
+| A-13 | **W1 (a):** the crane-spread solves hold every body vertex where it lies in the flat folded crane they start from ([`spreading-connected-wing.md:16`](../docs/notes/spreading-connected-wing.md); a *hold*, [glossary-additions](glossary-additions.md#material)), and so does #206's flat-preference control ([`CraneRoot.hs:84`](../study/fold-material/CraneRoot.hs#L84), [`CraneRootGallery.hs:51`](../study/fold-material/CraneRootGallery.hs#L51)), so the body's creases do not move. On crane-spread curved and fine and the 4,312-triangle crane-root mesh (slow job), from top-down and from bottom-up: the *wing's shadow* is the part of the page the wing covers in the flat start or in the settled state. Outside it, W1's drawn length of each body crease equals `visibleForm`'s on the flat folded crane, within τ | ties decided without orders; band shrunk |
 | A-14 | **W1 (b):** tests dropping the order tie-break and shrinking τ to `1e-9` each fail on the mutated code, shown in the PR | a mutation passes, so the test cannot fail |
 | A-15 | **W1 (c):** candidate × face pairs after the broad phase, 3–5 compiled runs at 392, 1,192 and 4,312 triangles; no size promised before | — (a measurement) |
 | A-16 | W1 top-down on the folded crane draws the stretches `visibleForm` draws, compared by length within τ | faces containing a segment allowed to occlude it |

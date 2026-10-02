@@ -265,7 +265,7 @@ The rerun of the gap script on `crane.fold` shows landmark forms exist:
   is exactly the seed component `[2, 3, 6, 7]`.
 - Material (0.25, 1) (face 2, t = 0.5) and material (0, 0.75) (face 3, t = 0.5)
   are both at folded (1.0, 0.25). A line through those two would be degenerate.
-- The tip (0, 1) is at folded (1, 0) (gap-layer summary; `CraneWingSpec.hs:99`).
+- The tip (0, 1) is at folded (1, 0) (gap-layer summary; `CraneWingSpec.hs:127`).
 
 **Proposal.**
 
