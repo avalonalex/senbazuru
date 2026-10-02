@@ -26,8 +26,8 @@ from distance along the page.
 segment belongs to an exposed piece of triangle 2 or 39, and no uncovered
 visibility region touches it. The low camera’s earlier coverage residual
 elsewhere is gone: cut again with nothing skipped, as production's coverage
-check does ([#459](https://github.com/avalonalex/senbazuru/pull/459)), the
-visible regions cover it (re-measured 2026-10-02). Triangle ids name this specimen’s refined mesh;
+check does ([#459](https://github.com/avalonalex/senbazuru/pull/459)), no
+more than a speck of it is left uncovered (re-measured 2026-10-02). Triangle ids name this specimen’s refined mesh;
 original crane face ids locate the same paper in `examples/crane.fold`.
 
 Drawing coverage is not quite geometric separation. Three views place the

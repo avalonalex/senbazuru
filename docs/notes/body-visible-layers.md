@@ -29,14 +29,14 @@ visible-region and hidden-edge subtraction. Production rendering is unchanged.
 All eight strict views decline visibility. With the illustration allowance,
 **every pairwise overlap resolves in all eight views**. The largest depth
 actually overridden is **0.000054 px**, far below the allowance. **All eight
-views cover the sheet.** Three were first measured with tiny uncovered
-patches: seed/top 0.000487 px², second/top 0.000394 px² and seed/below
-0.000361 px², 1.0–1.35 specks at 600 px per sheet unit. None was paper left
-uncovered. The study's coverage check skipped every cut that would take no
-more than a speck of a piece, and these patches came through cuts it skipped.
-It now uses production's check, which cuts such a piece again with nothing
-skipped ([#459](https://github.com/avalonalex/senbazuru/pull/459)), and
-nothing is left of any of the three (re-measured 2026-10-02). The gallery
+views cover the sheet** to the coverage check, which allows a speck. Three were
+first measured with tiny uncovered patches: seed/top 0.000487 px², second/top
+0.000394 px² and seed/below 0.000361 px², 1.0–1.35 specks at 600 px per sheet
+unit. The study's coverage check skipped every cut that would take no more
+than a speck of a piece, and these patches came through cuts it skipped. It
+now uses production's check, which cuts such a piece again with nothing
+skipped ([#459](https://github.com/avalonalex/senbazuru/pull/459)), and no
+more than a speck of any of the three is left (re-measured 2026-10-02). The gallery
 still shows uncovered paper in red wherever any remains, without moving paper
 or inventing a face owner.
 

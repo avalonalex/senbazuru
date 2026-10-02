@@ -72,7 +72,7 @@ with its top and below residuals from the
 [visible-layer comparison](body-visible-layers.md). All three came through
 cuts the study's coverage check skipped, and cut again with nothing skipped,
 as production does ([#459](https://github.com/avalonalex/senbazuru/pull/459)),
-nothing is left (re-measured 2026-10-02). Each difference is now one number
+no more than a speck of any is left (re-measured 2026-10-02). Each difference is now one number
 inside the range first reported for it; crease ink moves most, its lower
 estimate by up to 0.644 px² in the 45° below view.
 At actual size, the side views show a wider lower opening and more cream inner

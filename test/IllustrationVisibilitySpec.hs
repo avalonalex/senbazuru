@@ -64,19 +64,21 @@ spec = describe "illustration-only depth ties" $ do
           (name, auditForm result) `shouldBe` (name, Just form)
           (name, auditUncovered result) `shouldBe` (name, [])
           (name, auditStatus result) `shouldBe` (name, "visible regions cover the sheet")
+        Right Nothing -> (name, auditForm result) `shouldBe` (name, Nothing)
         Left (ImpossibleStacking _) -> do
           (name, null (auditUncovered result)) `shouldBe` (name, False)
           (name, auditStatus result) `shouldBe` (name, "partial visibility: uncovered paper")
         other -> expectationFailure (name <> ": production gave " <> show other)
 
--- | Views production draws or refuses, for the agreement test.
+-- | Views production draws, refuses or declines, for the agreement test.
 strictViews :: [(String, Basis, Frame, [FaceOrder])]
 strictViews =
   [ ("separated, looking down", topDown, panels [flat, rectangle (const 1)], order),
     ("separated, isometric", isometric, panels [flat, rectangle (const 1)], order),
     ("isometric corner between the two specks", isometric, cornerShown, []),
     ("corner covered by faces each under a speck of it", topDown, sharedCorner, []),
-    ("three faces in a circle", topDown, panels [flat, flat, flat], circle)
+    ("three faces in a circle", topDown, panels [flat, flat, flat], circle),
+    ("touching faces with no order", topDown, panels [flat, flat], [])
   ]
   where
     circle = [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 2) Above, FaceOrder (FaceId 2) (FaceId 0) Above]
