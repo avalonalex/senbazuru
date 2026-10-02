@@ -128,19 +128,23 @@ spec = describe "projected open-fold visibility" $ do
         let towards = map (zipWith (+) [0, 0, 0.1])
          in projectedForm (turnedBy roll topDown) (cornerShown corner 1 towards) [] `shouldSatisfy` either (const False) isJust
   -- A square with a smaller square at its centre and four trapezoids round it.
-  -- Seen isometrically the centre's shadow is 1.5e-9, between the two specks
-  -- above: too small to paint, but it was kept as a face and then refused as
-  -- the file's fault, a face without a normal. It is dropped like any other
-  -- face too small to paint, and its edges all belong to the trapezoids.
+  -- Seen isometrically the centre's shadow is 1.5e-9, between this frame's two
+  -- specks, 1e-9 from its 3D spans and 2e-9 from its picture: too small to
+  -- paint, but it was kept as a face and then refused as the file's fault, a
+  -- face without a normal. It is dropped like any other face too small to
+  -- paint, and its edges all belong to the trapezoids.
   it "drops a face too small to paint rather than calling the file faulty" $ do
     let side = sqrt (sqrt 3 * 1.5e-9)
-        (lo, hi) = (0.5 - side / 2, 0.5 + side / 2)
-        fr =
-          mesh
-            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [lo, lo, 0], [hi, lo, 0], [hi, hi, 0], [lo, hi, 0]]
-            [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7]]
-    seen <- visible isometric fr []
+    seen <- visible isometric (centredSquare side []) []
     S.fromList (map regionFace (formRegions seen)) `shouldBe` S.fromList (map FaceId [0 .. 3])
+  -- The other way round: a copy of the outer square 10 below makes the model
+  -- deeper along the line of sight than the picture is wide, so its 3D speck,
+  -- 1e-7, is the larger. A centre of 5e-9 was dropped by that speck, and the
+  -- paper 10 below showed through the hole it left. It is painted.
+  it "paints a face the picture can show however deep the model is" $ do
+    let below = [[0, 0, -10], [1, 0, -10], [1, 1, -10], [0, 1, -10]]
+    seen <- visible topDown (centredSquare (sqrt 5e-9) below) []
+    S.fromList (map regionFace (formRegions seen)) `shouldBe` S.fromList (map FaceId [0 .. 4])
 
 -- | The unit square at z = 0, under a copy of itself moved by @towards@ with
 -- its (1, 1) corner cut off, so that only that corner of the first face shows.
@@ -168,6 +172,15 @@ panels rings =
     }
   where
     ids = [map VertexId [offset .. offset + length ring - 1] | (offset, ring) <- zip (scanl (+) 0 (map length rings)) rings]
+
+-- | The unit square at z = 0 as four trapezoids round a centred square of side
+-- @side@, faces 0 to 3 and 4, and then @extra@ as one more face, 5, if given.
+centredSquare :: Double -> [[Double]] -> Frame
+centredSquare side extra = mesh (corners ++ extra) (rings ++ [[8 .. 7 + length extra] | not (null extra)])
+  where
+    (lo, hi) = (0.5 - side / 2, 0.5 + side / 2)
+    corners = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [lo, lo, 0], [hi, lo, 0], [hi, hi, 0], [lo, hi, 0]]
+    rings = [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7]]
 
 -- | Faces sharing their vertices, as a folded pattern's do. The outline is the
 -- sheet's border; every edge two faces share is an unfolded crease.
