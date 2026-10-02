@@ -48,6 +48,48 @@ spec = describe "projected open-fold visibility" $ do
     let flat = rectangle 0 1 0 1 (\_ _ -> 0)
         orders = [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 2) Above, FaceOrder (FaceId 2) (FaceId 0) Above]
     projectedForm topDown (panels [flat, flat, flat]) orders `shouldBe` Left (ImpossibleStacking (FaceId 0))
+  -- The coverage check's first pass skips a cut that would take no more than a
+  -- speck of a piece, an area of 1e-9 for a model this size. The second face
+  -- covers all of the first but a corner of 2.4 specks, and the third hides
+  -- that corner. The last three hide the third, each in front of 0.8 of a
+  -- speck of the corner: none of their cuts is made, though between them they
+  -- cover all of it. The corner is larger than the patch the next test
+  -- refuses, so no rule on a leftover's own size passes both.
+  it "accepts a corner hidden by faces that each cover less than a speck of it" $ do
+    let e = sqrt 4.8e-9
+        -- The corner's long side runs from side 0 to side 1. A line from
+        -- (1, 1) to side t cuts off 2t² of the corner for t up to a half, to
+        -- within e, so lines to sqrt (1/6) and its mirror cut it in thirds.
+        side t = (0.5 - t * e, 0.5 - e + t * e)
+        third = sqrt (1 / 6)
+        at z = map (\(x, y) -> [x, y, z])
+        faces =
+          [ at 0 [(0, 0), (0.5, 0), (0.5, 0.5), (0, 0.5)],
+            at 0.1 [(0, 0), (0.5, 0), side 0, side 1, (0, 0.5)],
+            at 0.2 [side 0, (1, 1), side 1],
+            at 0.3 [side 0, (1, 1), side third],
+            at 0.3 [side third, (1, 1), side (1 - third)],
+            at 0.3 [side (1 - third), (1, 1), side 1]
+          ]
+    projectedForm topDown (panels faces) [] `shouldSatisfy` either (const False) isJust
+  -- Three copies of a 2-speck patch in a cycle each surrender it to another.
+  -- Two faces in front, with no order to anything, cover the same 0.6 of a
+  -- speck of it. Added up, their covers would leave 0.8 of a speck and pass;
+  -- 1.4 specks are in no visible region at all.
+  it "refuses a cycle's shared patch that faces in front cover only in part" $ do
+    let a = sqrt 4e-9
+        q = sqrt 0.6e-9
+        at z = map (\(x, y) -> [x, y, z])
+        patch = at 0 [(0.5, 0.5), (0.5 + a, 0.5), (0.5, 0.5 + a)]
+        faces =
+          [ patch,
+            patch,
+            patch,
+            at 0.1 [(0.5, 0), (0.5 + q, 0), (0.5 + q, 0.5 + q), (0.5, 0.5 + q)],
+            at 0.2 [(0, 0.5), (0.5 + q, 0.5), (0.5 + q, 0.5 + q), (0, 0.5 + q)]
+          ]
+        orders = [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 2) Above, FaceOrder (FaceId 2) (FaceId 0) Above]
+    projectedForm topDown (panels faces) orders `shouldBe` Left (ImpossibleStacking (FaceId 0))
   it "clips a buried crease to the exposed ends" $ do
     let fr = panels [rectangle 0 0.5 0 1 (\_ _ -> 0), rectangle 0.5 1 0 1 (\_ _ -> 0), rectangle 0.25 0.75 0.25 0.75 (\_ _ -> 1)]
     seen <- visible topDown fr []
