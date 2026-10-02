@@ -6,6 +6,7 @@ import Control.Monad (forM_)
 import CraneGallery (craneSvg)
 import CraneWing
 import Data.Aeson (eitherDecode, encode)
+import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.List (nub, sort)
 import Data.Set qualified as S
@@ -44,6 +45,33 @@ spec = describe "checked crane wing" $ do
     forM_ [vertex | (i, (u, v)) <- zip (map EdgeId [0 ..]) (edgesVertices start), i `elem` craneHinge wing, vertex <- [u, v]] $ \vid -> do
       p <- require "crease vertex" (lookup vid (zip (map VertexId [0 ..]) actual))
       abs (v3y p - 0.25) `shouldSatisfy` (< 1e-12)
+
+  -- The neck and tail bases, where a crane's wing opens (#455), lie above the
+  -- wing's widest point. There the crease also cuts the four triangles folded
+  -- inside the wing, and a join along the widest point gives the base between
+  -- them faces of its own.
+  it "creases every layer of the wing along a line above its widest point" $ do
+    high <- right (buildCraneWingAt 0.376 (keyFrame source))
+    let start = foldedFrame (craneStart high)
+        joins frame = length (filter (== Join) (edgesAssignment frame))
+    actual <- right (frameVertices start)
+    craneWidest high `shouldSatisfy` (\y -> y > 0.324 && y < 0.325)
+    craneWidest wing `shouldBe` craneWidest high
+    length (craneHinge high) `shouldBe` 8
+    length (facesVertices start) `shouldBe` 72 + 8 + 4
+    joins start - joins (foldedFrame (craneStart wing)) `shouldBe` 4
+    length (flapMovingFaces (craneOpening high)) `shouldBe` 12
+    forM_ [vertex | (i, (u, v)) <- zip (map EdgeId [0 ..]) (edgesVertices start), i `elem` craneHinge high, vertex <- [u, v]] $ \vid -> do
+      p <- require "crease vertex" (lookup vid (zip (map VertexId [0 ..]) actual))
+      abs (v3y p - 0.376) `shouldSatisfy` (< 1e-12)
+    sweepOutcome (flapCheck (craneOpening high)) `shouldBe` SweepClear
+    case prepareFlapAlong (craneHinge high) (craneSide high) (-90) (craneStart high) >>= checkFlap defaultSweepSettings of
+      Left (FlapEndpointOrder 0 _) -> pure ()
+      other -> expectationFailure (show other)
+
+  it "refuses a crease line that does not cross the wing" $
+    forM_ [0, 0.5, 0 / 0] $
+      \y -> buildCraneWingAt y (keyFrame source) `shouldSatisfy` isLeft
 
   it "accepts the entire outward turn and refuses departure through the other wing" $ do
     sweepOutcome (flapCheck (craneOpening wing)) `shouldBe` SweepClear

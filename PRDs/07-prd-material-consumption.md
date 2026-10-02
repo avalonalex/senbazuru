@@ -72,31 +72,31 @@ side of that box ([02](02-language-semantics.md) records it at resolution). In
 fractions of the stored coordinates, s would be 1 − 5.55e-17.
 
 The recipe `CraneWing` folds the file holding face 0 still
-([`CraneWing.hs:54-57`](../study/fold-material/CraneWing.hs#L54-L57)), creases
-across the wing along folded y = 1/4 ([`:98`](../study/fold-material/CraneWing.hs#L98)),
-turning 72 faces (flat regions between creases) into 76 ([`:60-66`](../study/fold-material/CraneWing.hs#L60-L66)),
+([`CraneWing.hs:87-90`](../study/fold-material/CraneWing.hs#L87-L90)), creases
+across the wing along folded y = 1/4 ([`:76`](../study/fold-material/CraneWing.hs#L76)),
+turning 72 faces (flat regions between creases) into 76 ([`:93-103`](../study/fold-material/CraneWing.hs#L93-L103)),
 picks the [stacking](glossary-additions.md#running-a-sequence) with the tail
 tucked between the body layers, index 2 of five
-([`:75-78`](../study/fold-material/CraneWing.hs#L75-L78)), takes "every
-`Unassigned` edge" as the [*hinge*](glossary-additions.md#origami) ([`:65`](../study/fold-material/CraneWing.hs#L65)),
-and checks a +90° turn of the side holding vertex 2
-([`:72`](../study/fold-material/CraneWing.hs#L72), [`:80`](../study/fold-material/CraneWing.hs#L80)).
+([`:119-122`](../study/fold-material/CraneWing.hs#L119-L122)), takes "every
+`Unassigned` edge" as the [*hinge*](glossary-additions.md#origami) ([`:98`](../study/fold-material/CraneWing.hs#L98)),
+and checks a +90° turn of the face on the tip's side of the hinge
+([`:116`](../study/fold-material/CraneWing.hs#L116), [`:124`](../study/fold-material/CraneWing.hs#L124)).
 The −90° turn is refused as `FlapEndpointOrder`, because the wing would pass
 through the layer it rests against
-([`:81-84`](../study/fold-material/CraneWing.hs#L81-L84)).
+([`:125-128`](../study/fold-material/CraneWing.hs#L125-L128)).
 
 `craneSpreadWith` bends that wing and takes the *move*, not a surface
-([`CraneSpread.hs:80-115`](../study/fold-material/CraneSpread.hs#L80-L115)): the
-start state (`:85`), the rigid pose one third of the way through the 90° turn
-(`:86`, written `30 / 90`), the moving faces
-(`:88`), the hinge ids (`:91`, `:97`) and the start's [face orders](../docs/glossary.md#the-fold-format) turned into
-lower/upper pairs by each face normal's sign (`:108-114`). It picks holds by
-testing its own coordinates ([`:101-106`](../study/fold-material/CraneSpread.hs#L101-L106)).
+([`CraneSpread.hs:84-139`](../study/fold-material/CraneSpread.hs#L84-L139)): the
+start state (`:108`), the rigid pose one third of the way through the 90° turn
+(`:108`, written `30 / 90`), the moving faces
+(`:110`), the hinge ids (`:113`, `:119`) and the start's [face orders](../docs/glossary.md#the-fold-format) turned into
+lower/upper pairs by each face normal's sign (`:132-138`). It picks holds by
+testing its own coordinates ([`:123-130`](../study/fold-material/CraneSpread.hs#L123-L130)).
 
 **The `fraction` line below looks like a mistake and is not.** Its `y` is the
 *folded* start position, not a material coordinate: the wing lies in two layers
 and its hinge is "a bent chain on the OPEN sheet"
-([`CraneWing.hs:8-10`](../study/fold-material/CraneWing.hs#L8-L10)), so a
+([`CraneWing.hs:13-20`](../study/fold-material/CraneWing.hs#L13-L20)), so a
 straight strip beside the hinge is several unrelated regions of the sheet. Its
 two 0.25s mean different things: the first is the hinge's folded y, the second
 the wing's length beyond the hinge. Both happen to be 1/4 on this fixture.
@@ -142,18 +142,18 @@ EOF
 ```
 
 Vertex 2 is material corner (0, 1), the tip, and folds to (1, 0), where
-[`CraneWingSpec.hs:98-99`](../test/CraneWingSpec.hs#L98-L99) expects it at
+[`CraneWingSpec.hs:126-127`](../test/CraneWingSpec.hs#L126-L127) expects it at
 progress 0 (`-0.0` is a signed zero, equal to 0). Vertex 28, material (1/2, 1),
 folds to (1, 1/2). The wing faces span folded y from 0 to 1/2, so the tip side of
 y = 1/4 is exactly 1/4 long. Only face 0 contains (19/20, 1/3). The check assumes
 Haskell keeps the file's face numbering; face 0's guard
-([`CraneWing.hs:57`](../study/fold-material/CraneWing.hs#L57)) agrees but does
+([`CraneWing.hs:90`](../study/fold-material/CraneWing.hs#L90)) agrees but does
 not prove it for faces 2, 3, 6, 7.
 
 So `fraction ≤ 0.125` means "within 1/32 of the hinge" and `≥ 0.875` means "at
-least 7/32 from it". `bentPoint` ([`:117-134`](../study/fold-material/CraneSpread.hs#L117-L134))
+least 7/32 from it". `bentPoint` ([`:117-134`](../study/fold-material/CraneSpread.hs#L148-L167))
 holds the first strip rigidly at 30°, puts the grip on a circular arc a further
-angle on, and starts every free wing vertex on that arc (`:105`). One run on
+angle on, and starts every free wing vertex on that arc (`:129`). One run on
 2026-09-13 ([spreading-connected-wing.md:35-39](../docs/notes/spreading-connected-wing.md)):
 
 | Control | Triangles | Max edge error | Panel bending energy | Solve CPU s |
@@ -169,11 +169,11 @@ angle on, and starts every free wing vertex on that arc (`:105`). One run on
   "(a) What the study takes from a move today").
 - **Ids hold in one numbering**: the hinge ids exist in the 76-face crane, not the
   72-face one.
-- **The hinge is found by `Unassigned`** ([`CraneWing.hs:65`](../study/fold-material/CraneWing.hs#L65),
-  [`CraneRoot.hs:60`](../study/fold-material/CraneRoot.hs#L60)); sequences write
+- **The hinge is found by `Unassigned`** ([`CraneWing.hs:98`](../study/fold-material/CraneWing.hs#L98),
+  [`CraneRoot.hs:76`](../study/fold-material/CraneRoot.hs#L76)); sequences write
   new creases M or V ([02](02-language-semantics.md)).
 - **Rest angles come from assignments**: −π if `Mountain`, else +π
-  ([`CraneSpread.hs:90-94`](../study/fold-material/CraneSpread.hs#L90-L94)). Every
+  ([`CraneSpread.hs:112-116`](../study/fold-material/CraneSpread.hs#L112-L116)). Every
   active crease needs one ([`FoldBending.hs:177-182`](../study/fold-material/FoldBending.hs#L177-L182)),
   and M, V or U at angle 0 is active ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)),
   so a precrease, whose crease is U, would get a spring pulling flat paper shut.
@@ -183,7 +183,7 @@ angle on, and starts every free wing vertex on that arc (`:105`). One run on
 - **Pins are keyed by mesh vertex id.** A *pin* is one mesh vertex together with
   the exact position a hold or grip fixes it at; `spreadPins` is `CraneSpread`'s
   map from mesh vertex id to that position
-  ([`CraneSpread.hs:107`](../study/fold-material/CraneSpread.hs#L107)). The ids are
+  ([`CraneSpread.hs:131`](../study/fold-material/CraneSpread.hs#L131)). The ids are
   made by refinement
   ([`FoldRelaxation.hs:244-247`](../study/fold-material/FoldRelaxation.hs#L244-L247)).
 
@@ -374,18 +374,18 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 
 **On the crane wing**, `fold behind 90° corner north-west to midpoint of edge
 north` has `recordBefore` = the creased, unturned crane: 76 faces
-([`CraneWing.hs:66`](../study/fold-material/CraneWing.hs#L66)), 138 edges and 902
+([`CraneWing.hs:102`](../study/fold-material/CraneWing.hs#L102)), 138 edges and 902
 orders ([spreading-connected-wing.md:41-42](../docs/notes/spreading-connected-wing.md)).
 `recordHinge` has four segments with `craneHinge`'s ids; `recordMoving` has seed
-`corner north-west` and four faces ([`CraneSpreadSpec.hs:31`](../test/CraneSpreadSpec.hs#L31));
+`corner north-west` and four faces ([`CraneSpreadSpec.hs:32`](../test/CraneSpreadSpec.hs#L32));
 `recordAfter` keeps those 76 faces, since a flap turn never re-cuts
-([`CraneWingSpec.hs:92`](../test/CraneWingSpec.hs#L92)). The 72-face crane is the
+([`CraneWingSpec.hs:120`](../test/CraneWingSpec.hs#L120)). The 72-face crane is the
 fold state the move receives, before the move adds its hinge crease;
 `recordBefore` is taken after creasing so that its ids match `recordAfter`'s.
 
 **Why unpresented.** `CraneSpread` converts orders by each face normal's z sign
-([`CraneSpread.hs:108-114`](../study/fold-material/CraneSpread.hs#L108-L114)) and
-solves along `V3 0 0 1` (`:138`); a turned-over surface would invert every pair.
+([`CraneSpread.hs:132-138`](../study/fold-material/CraneSpread.hs#L132-L138)) and
+solves along `V3 0 0 1` (`:171`); a turned-over surface would invert every pair.
 `transformSurface` also empties frame extras
 ([`Surface.hs:292`](../src/Senbazuru/Origami/Surface.hs#L292)), including the
 source-panel keys a settled GLB keeps ([`Gltf.hs:241`](../src/Senbazuru/Render/Gltf.hs#L241)).
@@ -399,7 +399,7 @@ its [intent assignment](glossary-additions.md#the-fold-format) it stays an activ
 sign check ([`:181`](../study/fold-material/FoldBending.hs#L181)). The four
 segments alternate intent layer by layer ([02](02-language-semantics.md)), as their
 signed angles do: "the two touching layers have opposite material normals"
-([`CraneRoot.hs:80-82`](../study/fold-material/CraneRoot.hs#L80-L82)).
+([`CraneRoot.hs:97-99`](../study/fold-material/CraneRoot.hs#L97-L99)).
 
 ### Where a settle starts
 
@@ -421,8 +421,8 @@ The settled surface depicts rigid pose p with the named grips, not the move's en
 state. Orders learned from a separated reference (`relaxDiscoveredContact`,
 [`FoldRelaxation.hs:286-289`](../study/fold-material/FoldRelaxation.hs#L286-L289))
 are a later registered option, never a fallback. Closure before filtering
-([`CraneSpread.hs:141-150`](../study/fold-material/CraneSpread.hs#L141-L150)) is
-pinned by [`CraneRootSpec.hs:59-61`](../test/CraneRootSpec.hs#L59-L61).
+([`CraneSpread.hs:174-183`](../study/fold-material/CraneSpread.hs#L174-L183)) is
+pinned by [`CraneRootSpec.hs:92-94`](../test/CraneRootSpec.hs#L92-L94).
 
 ### Naming holds and grips
 
@@ -451,7 +451,7 @@ In the table, S is `moving` or `stationary`, and R is any region, such as
 | --- | --- |
 | `side stationary`, `side moving` | panels outside or inside the record's moving faces |
 | `across-hinge S` | panels on side S owning a hinge segment |
-| `closed R` | every vertex of every triangle of R, shared boundary vertices included ([`CraneRoot.hs:52-55`](../study/fold-material/CraneRoot.hs#L52-L55)) |
+| `closed R` | every vertex of every triangle of R, shared boundary vertices included ([`CraneRoot.hs:63-66`](../study/fold-material/CraneRoot.hs#L63-L66)) |
 | `band S d0..d1` | vertices on side S at distance d0–d1 sheet lengths from the hinge line in `recordBefore`; `d1` optional |
 | `material-band u0..u1` | vertices by material u ([`WingBending.hs:62-63`](../study/fold-material/WingBending.hs#L62-L63)) |
 | `crease-line [P, Q]` | refined vertices on creases along material segment [P, Q] |
@@ -481,12 +481,12 @@ carries, and why its fold line, flap and direction are right is
 [One move, fed by hand](#one-move-fed-by-hand). The sequence's layer selection refuses a covered flap
 before `Flap`'s sweep runs ([D8](decisions.md#d8-folding-some-layers)), while
 `CraneWing` calls `prepareFlapAlong` with no selection step
-([`CraneWing.hs:80-84`](../study/fold-material/CraneWing.hs#L80-L84)), so only
+([`CraneWing.hs:124-128`](../study/fold-material/CraneWing.hs#L124-L128)), so only
 the recipe reaches `Flap`'s refusal. This file adds the `material` line and the
 `settle` block. Below they are shown in the step they belong to, copied exactly
 from §7 with the `expect refused` line left in, so what you copy is §7's step.
 `stiffness illustrative` means `Bending 1 0.2`, the value
-[`CraneSpread.hs:98`](../study/fold-material/CraneSpread.hs#L98) passes
+[`CraneSpread.hs:120`](../study/fold-material/CraneSpread.hs#L120) passes
 (**Stiffness**, below).
 
 ```text
@@ -522,11 +522,11 @@ settle or the material block, R-07-19 refuses the settle as `SettleNoRest`.
 - **Root-strip target.** Within 1/32 of the hinge, `bentPoint` is a rigid 30°
   turn about y = 1/4, z = 0 for any extra angle (`middle` and `after` vanish,
   `:128-134`). At the tip with extra 0 it gives (x, 1/4 − 1/4 cos 30°,
-  −1/4 sin 30°), the formula `CraneWingSpec.hs:98-99` checks `flapAt` against
+  −1/4 sin 30°), the formula `CraneWingSpec.hs:126-127` checks `flapAt` against
   within 1e-12, but only at progress 0, 0.17, 0.51, 0.83, 1
-  ([`:89`](../test/CraneWingSpec.hs#L89)). Equality at 1/3 is **UNVERIFIED**.
+  ([`:117`](../test/CraneWingSpec.hs#L117)). Equality at 1/3 is **UNVERIFIED**.
 - **Grip.** `bentPoint` hard-codes hinge y = 0.25, length 0.25 and root 30°
-  (`:122-125`); the registered `arc-grip` must read them from the record and
+  (`:150-153`); the registered `arc-grip` must read them from the record and
   bands. **UNVERIFIED** until AC-1.
 
 ### Every existing crane control, re-expressed
@@ -537,26 +537,26 @@ line re-read; rows 15–21 correct or extend it.
 
 | # | Control | Code | Against the wing record | Status |
 | --- | --- | --- | --- | --- |
-| 1 | refine wing | [`CraneSpread.hs:95-96`](../study/fold-material/CraneSpread.hs#L95-L96) | `refine side moving 3` | yes |
-| 2 | + root neighbours | `:97` | `refine side moving union across-hinge stationary 3` | yes |
-| 3 | body | `:101` | `hold closed side stationary` (hinge vertices included, unmoved at `:105`) | yes |
-| 4 | selected | `:102` | `closed side moving` | yes |
-| 5 | root strip at 30° | `:103`, `:106` | `hold band moving 0..1/32 at rigid-pose 1/3` | UNVERIFIED |
-| 6 | tip grip | `:104-105` | `grip band moving 7/32.. arc-grip 30° EXTRA°` | UNVERIFIED |
-| 7 | contact pairs | `:108-114`, `:141-150` | derived (R-07-8) | yes |
-| 8 | root edges | [`CraneRoot.hs:60`](../study/fold-material/CraneRoot.hs#L60) | `hinge of wing` | yes |
-| 9 | root neighbours `[7, 8, 27, 43]` | `:60-63`; [`CraneRootSpec.hs:34`](../test/CraneRootSpec.hs#L34) | `across-hinge stationary` | yes |
-| 10 | distant | `:67` | `closed (side stationary minus across-hinge stationary)` | yes |
-| 11 | `HeldRoot` | `:58`, `:69` | rows 3 + 5 + 6, refined as row 2, extra 20° | yes |
-| 12 | `ReleasedRoot` | `:68-69` | rows 3 + 6 | yes |
-| 13 | `FlatRoot` | `:73` | row 12 + `rest at rigid-pose 1/3 except { hinge of wing at 0° }` | yes |
-| 14 | `FreeBody` | `:67-68`, `:74` | rows 10 + 6 + row 13's rest | yes |
-| 15 | `WeakerRoot` (stiffness × 0.1 on root) | `:72` | none: one global `stiffness` | **fixture** |
+| 1 | refine wing | [`CraneSpread.hs:117-118`](../study/fold-material/CraneSpread.hs#L117-L118) | `refine side moving 3` | yes |
+| 2 | + root neighbours | `:119` | `refine side moving union across-hinge stationary 3` | yes |
+| 3 | body | `:123` | `hold closed side stationary` (hinge vertices included, unmoved at `:129`) | yes |
+| 4 | selected | `:124` | `closed side moving` | yes |
+| 5 | root strip at 30° | `:125`, `:130` | `hold band moving 0..1/32 at rigid-pose 1/3` | UNVERIFIED |
+| 6 | tip grip | `:128-129` | `grip band moving 7/32.. arc-grip 30° EXTRA°` | UNVERIFIED |
+| 7 | contact pairs | `:132-138`, `:174-183` | derived (R-07-8) | yes |
+| 8 | root edges | [`CraneRoot.hs:76`](../study/fold-material/CraneRoot.hs#L76) | `hinge of wing` | yes |
+| 9 | root neighbours `[7, 8, 27, 43]` | `:76-79`; [`CraneRootSpec.hs:35`](../test/CraneRootSpec.hs#L35) | `across-hinge stationary` | yes |
+| 10 | distant | `:100` | `closed (side stationary minus across-hinge stationary)` | yes |
+| 11 | `HeldRoot` | `:91`, `:102` | rows 3 + 5 + 6, refined as row 2, extra 20° | yes |
+| 12 | `ReleasedRoot` | `:101-102` | rows 3 + 6 | yes |
+| 13 | `FlatRoot` | `:106` | row 12 + `rest at rigid-pose 1/3 except { hinge of wing at 0° }` | yes |
+| 14 | `FreeBody` | `:100-101`, `:107` | rows 10 + 6 + row 13's rest | yes |
+| 15 | `WeakerRoot` (stiffness × 0.1 on root) | `:105` | none: one global `stiffness` | **fixture** |
 | 16 | `CraneBody` `OpenBody` (±170° on `EdgeId` 21, 46) | [`CraneBody.hs:66`](../study/fold-material/CraneBody.hs#L66), `:71`; [`CraneBodySpec.hs:28`](../test/CraneBodySpec.hs#L28) | row 14 + `rest … except { crease [P, Q] at ±170°; … }`. The research row *held* these creases; the code changes their springs | yes once segments are read (UNVERIFIED); pocket roles stay fixture data ([`CranePocket.hs:46-50`](../study/fold-material/CranePocket.hs#L46-L50)) |
 | 17 | `CraneBody` `WeakerBody` | `:70` | none, as row 15 | **fixture** |
 | 18 | `CraneInternal` `HeldLines` (creases 26, 51; 9 vertices per line; 16 added) | [`CraneInternal.hs:55`](../study/fold-material/CraneInternal.hs#L55), `:62-64`; [`CraneInternalSpec.hs:30`](../test/CraneInternalSpec.hs#L30), `:50` | `hold crease-line [P, Q] union crease-line [R, S]` | yes once segments are read (UNVERIFIED) |
 | 19 | `InternalForces`, `FixedPatch`, `ContinuedPatch` | `:8-11`, `:52`, `:60-61`, `:79-82` | none: force restriction, borrowed orders, budget continuation; "always a diagnostic" | **fixture** |
-| 20 | `crossedGrip` | [`CraneSpread.hs:155-163`](../study/fold-material/CraneSpread.hs#L155-L163) | `layer upper of band moving 7/32..` (`:161`); the −0.005 offset (`:162`) has no target | **fixture** |
+| 20 | `crossedGrip` | [`CraneSpread.hs:188-196`](../study/fold-material/CraneSpread.hs#L188-L196) | `layer upper of band moving 7/32..` (`:194`); the −0.005 offset (`:195`) has no target | **fixture** |
 | 21 | `WingBending` root, grip | [`WingBending.hs:62-63`](../study/fold-material/WingBending.hs#L62-L63) | `material-band 0..1/8`, `7/8..1` | own mesh, no record: **fixture** |
 
 Cautions kept from the note. A hold is not the
@@ -564,10 +564,10 @@ Cautions kept from the note. A hold is not the
 solve, while the anchor is the face folding keeps still. Two layers at the same
 folded position are different paper, so a band picks both, and
 `layer upper|lower` chooses one. Tests that pin ids today
-([`CraneRootSpec.hs:34`](../test/CraneRootSpec.hs#L34)'s root-neighbour faces,
+([`CraneRootSpec.hs:35`](../test/CraneRootSpec.hs#L35)'s root-neighbour faces,
 [`CraneInternalSpec.hs:27`](../test/CraneInternalSpec.hs#L27)'s face pairs) will
 instead assert the material point each of those faces contains. Their counts stay:
-902 orders ([`CraneRootSpec.hs:40`](../test/CraneRootSpec.hs#L40)) and 16 added
+902 orders ([`CraneRootSpec.hs:41`](../test/CraneRootSpec.hs#L41)) and 16 added
 hold vertices ([`CraneInternalSpec.hs:50`](../test/CraneInternalSpec.hs#L50)).
 Each is a reviewed test change.
 
@@ -585,7 +585,7 @@ unchanged angle. `crane.fold` has no `edges_foldAngle` and its active non-border
 creases are its 58 M and 41 V (jq above), at ±180°.
 `python3 -c 'import math; print(-180*math.pi/180 == -math.pi, 180*math.pi/180 == math.pi)'`
 prints `True True`, and GHC's `Double` shares IEEE semantics (not run in GHC), so
-the targets map can equal [`CraneSpread.hs:94`](../study/fold-material/CraneSpread.hs#L94)
+the targets map can equal [`CraneSpread.hs:116`](../study/fold-material/CraneSpread.hs#L116)
 exactly.
 
 **`NoDifference`** (R-07-20): springs resting at the start and targets in it
@@ -602,11 +602,11 @@ baseline (`craneSpread source 3 0`) also shows no bending (panel energy
 1.44e-27), yet it is allowed: it rests and grips at the rigid pose 1/3 of the way
 through the turn, a state no rigid figure of this step draws, and it is the
 control showing that the solver reproduces a rigid pose within 1e-8
-([`CraneSpreadSpec.hs:59-64`](../test/CraneSpreadSpec.hs#L59-L64)).
+([`CraneSpreadSpec.hs:91-96`](../test/CraneSpreadSpec.hs#L91-L96)).
 
 **Stiffness.** `illustrative` = `Bending 1 0.2`, crease stiffness 1 and panel
 stiffness 0.2 ([`FoldBending.hs:59-62`](../study/fold-material/FoldBending.hs#L59-L62)), as every crane and wing fixture
-([`CraneSpread.hs:98`](../study/fold-material/CraneSpread.hs#L98),
+([`CraneSpread.hs:120`](../study/fold-material/CraneSpread.hs#L120),
 [`WingBending.hs:65`](../study/fold-material/WingBending.hs#L65)).
 
 **Precrease stiffness (owner decision 4).** A *precrease*
@@ -786,8 +786,8 @@ labelled, never replaced (B finding 16).
 | 2 | `SparseSolve`, `DirectionalDistance` | `Numeric.*` | graduates stating it is "not a bounded-memory solver for arbitrary meshes" ([`SparseSolve.hs:16-17`](../study/fold-material/SparseSolve.hs#L16-L17)) |
 | 3 | surface hinges ([`FoldBending.hs:146-156`](../study/fold-material/FoldBending.hs#L146-L156)) | `Material.Bending` | drops fixture `buildHinges` ([`:124-136`](../study/fold-material/FoldBending.hs#L124-L136)), `PacketRestAngles` |
 | 4 | penalty rows, `prepareContact` ([`SurfaceContact.hs:131-144`](../study/fold-material/SurfaceContact.hs#L131-L144)) | `Material.Contact` | barrier rows stay: only `relaxBarrierLocalHistory` uses them ([`FoldRelaxation.hs:416-417`](../study/fold-material/FoldRelaxation.hs#L416-L417)); `relaxPinnedContact` uses penalty ([`:256-261`](../study/fold-material/FoldRelaxation.hs#L256-L261)) |
-| 5 | `relaxPinnedHinges`, `relaxPinnedContact`, `diagnosePinnedContact` ([`:248-269`](../study/fold-material/FoldRelaxation.hs#L248-L269)) | `Material.Relax` | structured errors; `SpreadError` wraps `Text` ([`CraneSpread.hs:70`](../study/fold-material/CraneSpread.hs#L70)) |
-| 6 | `spreadSurface` ([`:189-232`](../study/fold-material/CraneSpread.hs#L189-L232)) replacing [`UncreasedSurface.hs:30`](../study/fold-material/UncreasedSurface.hs#L30), [`WingLayers.hs:108`](../study/fold-material/WingLayers.hs#L108), [`ClosedCrease.hs:116`](../study/fold-material/ClosedCrease.hs#L116); `spreadAccepted` ([`:179-183`](../study/fold-material/CraneSpread.hs#L179-L183)) | `Material.Export`, `Material.Verdict` | `Reason`s = today's gates: converged, edge error ≤ 1e-5, held error 0, crease error < 1e-5, contact passed (`:183`) |
+| 5 | `relaxPinnedHinges`, `relaxPinnedContact`, `diagnosePinnedContact` ([`:248-269`](../study/fold-material/FoldRelaxation.hs#L248-L269)) | `Material.Relax` | structured errors; `SpreadError` wraps `Text` ([`CraneSpread.hs:74`](../study/fold-material/CraneSpread.hs#L74)) |
+| 6 | `spreadSurface` ([`:222-265`](../study/fold-material/CraneSpread.hs#L222-L265)) replacing [`UncreasedSurface.hs:30`](../study/fold-material/UncreasedSurface.hs#L30), [`WingLayers.hs:108`](../study/fold-material/WingLayers.hs#L108), [`ClosedCrease.hs:116`](../study/fold-material/ClosedCrease.hs#L116); `spreadAccepted` ([`:179-183`](../study/fold-material/CraneSpread.hs#L212-L216)) | `Material.Export`, `Material.Verdict` | `Reason`s = today's gates: converged, edge error ≤ 1e-5, held error 0, crease error < 1e-5, contact passed (`:216`) |
 | 7 | `Sequence.Material`; `settle` | `Sequence.Material`, `Material.Settle` | `run --settle`, `--allow-unsettled` |
 
 **Stays in the study:** `ContactQuadratic`, `CreasePairContact`, `CoupledCrease`,
@@ -845,7 +845,7 @@ nested `explain`; `num` for measured values, `tshow` for ids and counts.
 | Constructor | Example message |
 | --- | --- |
 | `SettleOnNoMove` | "this step turns no paper; put the settle block in the step that folds" |
-| `SettleStartNotFlat` | "the paper before the move is not flat: (internal vertex 2) lies 0.25 off its plane" (vertex 2 is the tip in the record's numbering, [`CraneWing.hs:72`](../study/fold-material/CraneWing.hs#L72); 0.25 is its depth after the wing's 90° turn, `CraneWingSpec.hs:99`) |
+| `SettleStartNotFlat` | "the paper before the move is not flat: (internal vertex 2) lies 0.25 off its plane" (vertex 2 is the tip in the record's numbering, [`CraneWingSpec.hs:125`](../test/CraneWingSpec.hs#L125); 0.25 is its depth after the wing's 90° turn, `CraneWingSpec.hs:127`) |
 | `SettleNoPose`, `SettleNoRest` | "rigid-pose 1/3 needs a checked route; this checkpoint records none" · "no rest pose in the settle or material block" |
 | `NoDifference` | "the paper rests where it starts and no grip moves it, so the solve would return it unchanged" |
 | `EmptyRegion` | "`band moving 3/10..` has no mesh vertex at refinement 3" (the moving side is 1/4 long) |
@@ -880,10 +880,10 @@ messages show format only; they were not taken from a run.
 
 | # | Check | Turns red when |
 | --- | --- | --- |
-| AC-1 | Wing record's resolved pins equal `spreadPins` of `craneSpread source 3 20` ([`CraneSpreadSpec.hs:26`](../test/CraneSpreadSpec.hs#L26)): same ids, positions within 1e-12, without solving; M6's first test (R-07-11–16) | band in material coordinates; `closed` dropping shared hinge vertices; `rigid-pose` read at 30 instead of 1/3 |
+| AC-1 | Wing record's resolved pins equal `spreadPins` of `craneSpread source 3 20` ([`CraneSpreadSpec.hs:27`](../test/CraneSpreadSpec.hs#L27)): same ids, positions within 1e-12, without solving; M6's first test (R-07-11–16) | band in material coordinates; `closed` dropping shared hinge vertices; `rigid-pose` read at 30 instead of 1/3 |
 | AC-2 | Refined surface equals `spreadRefined` | `refine side moving` also refining across the hinge |
-| AC-3 | `RestAtPose (PoseOnRoute (1/3))` gives exactly `CraneSpread.hs:94`'s targets (R-07-18) | Mountain → +π slip; resting at `PoseAfter` |
-| AC-4 | Contact pairs equal `spreadContactOrders`; `CraneRootSpec.hs:59-61`'s case holds (R-07-8) | filtering before closing |
+| AC-3 | `RestAtPose (PoseOnRoute (1/3))` gives exactly `CraneSpread.hs:116`'s targets (R-07-18) | Mountain → +π slip; resting at `PoseAfter` |
+| AC-4 | Contact pairs equal `spreadContactOrders`; `CraneRootSpec.hs:92-94`'s case holds (R-07-8) | filtering before closing |
 | AC-5 | Hinge ids equal `craneHinge`; `recordBefore` has 76 faces (R-07-3) | recording before creasing |
 | AC-6 | `turn over left-right` before the step, with `fold behind` rewritten `fold in front`, leaves pins and contact pairs unchanged (R-07-2). The word must change because `in front`/`behind` is read from the reader's side, which a turn-over flips ([02 §5.1](02-language-semantics.md#51-the-readers-side)); the record is not presented, so its pins must not move | presenting inside the record |
 | AC-7 | The wing settle builds hinges without `MissingRestAngle`/`InvalidRestAngle` (R-07-4) | solver surface from a written frame; one intent on all four segments |

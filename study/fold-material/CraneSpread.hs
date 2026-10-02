@@ -1,10 +1,11 @@
 -- | Bend an existing crane wing while retaining the rest of the same sheet.
 -- CraneWing supplies the connected material, the wing selection and the tail
--- tucked between body layers. Only those four wing panels are refined densely;
--- neighbouring triangles split along shared edges so no seam is opened.
+-- tucked between body layers. Only the wing's panels are refined densely, four
+-- with the hinge at 1/4; neighbouring triangles split along shared edges so no
+-- seam is opened.
 -- See docs/glossary.md for panels, material coordinates and layer order.
 --
--- The body stays fixed. A short root strip is held at 30 degrees; a tip grip
+-- The body stays fixed. A root strip is held at 30 degrees; a tip grip
 -- is turned a further 20 degrees. Integrating those directions gives the
 -- grip's position without shortening its material length. The curved initial
 -- guess is then relaxed with length, crease, panel-bending and contact terms.
@@ -16,6 +17,9 @@ module CraneSpread
     SpreadRefinement (..),
     craneSpread,
     craneSpreadWith,
+    craneSpreadWithAt,
+    craneSpreadFromWing,
+    rootStrip,
     solveSpread,
     spreadContactOrders,
     crossedGrip,
@@ -79,10 +83,28 @@ craneSpread :: Frame -> Int -> Double -> Either SpreadError CraneSpread
 craneSpread = craneSpreadWith WingOnly
 
 craneSpreadWith :: SpreadRefinement -> Frame -> Int -> Double -> Either SpreadError CraneSpread
-craneSpreadWith selection source level degrees = do
+craneSpreadWith = craneSpreadWithAt studyHinge
+
+-- | The same spread about a wing creased along the folded line y = @hingeY@
+-- ('buildCraneWingAt').
+craneSpreadWithAt :: Double -> SpreadRefinement -> Frame -> Int -> Double -> Either SpreadError CraneSpread
+craneSpreadWithAt hingeY selection source level degrees = do
+  spreadControls level degrees
+  wing <- first SpreadError (buildCraneWingAt hingeY source)
+  craneSpreadFromWing selection wing level degrees
+
+-- The controls are checked before any wing is built.
+spreadControls :: Int -> Double -> Either SpreadError ()
+spreadControls level degrees =
   unless (level `elem` [3, 4] && finite degrees && degrees >= 0 && degrees <= 20) $
     Left (SpreadError "crane spreading requires refinement 3 or 4 and a finite extra grip angle from 0 to 20 degrees")
-  wing <- first SpreadError (buildCraneWing source)
+
+-- | Spread a wing already built. The held strips and the bend are measured
+-- from its hinge line, as fractions of the wing's length from there, except
+-- the root strip above the wing's widest point ('rootStrip').
+craneSpreadFromWing :: SpreadRefinement -> CraneWing -> Int -> Double -> Either SpreadError CraneSpread
+craneSpreadFromWing selection wing level degrees = do
+  spreadControls level degrees
   sheet <- checked (surfaceFromFolded (craneStart wing))
   reference <- checked (flapAt (craneOpening wing) (30 / 90))
   features <- checked (surfaceFeatures sheet)
@@ -101,10 +123,12 @@ craneSpreadWith selection source level degrees = do
       tagged = zip (triangles base) (refinedPanels refined)
       body = S.fromList [v | (tri, owner) <- tagged, S.notMember owner moving, v <- vertices tri]
       selected = S.fromList [v | (tri, owner) <- tagged, S.member owner moving, v <- vertices tri]
-      fraction p = let V3 _ y _ = position p in (0.25 - y) / 0.25
+      hingeY = craneHingeY wing
+      rootLength = rootStrip wing
+      fraction p = let V3 _ y _ = position p in (hingeY - y) / hingeY
       grip = S.fromList [i | (i, p) <- zip [0 ..] (samples base), S.member i selected, fraction p >= 0.875 - 1e-8]
-      moved = [if S.member i selected && S.notMember i body then p {position = bentPoint degrees (position p)} else p | (i, p) <- zip [0 ..] (samples base)]
-      held i p = S.member i body || (S.member i selected && fraction p <= 0.125 + 1e-8) || S.member i grip
+      moved = [if S.member i selected && S.notMember i body then p {position = bentPoint hingeY rootLength degrees (position p)} else p | (i, p) <- zip [0 ..] (samples base)]
+      held i p = S.member i body || (S.member i selected && fraction p <= rootLength / hingeY + 1e-8) || S.member i grip
       pins = IM.fromList [(i, position q) | (i, (p, q)) <- zip [0 ..] (zip (samples base) moved), held i p]
   faces <- checked (frameFaces (surfaceFrame sheet))
   let normals = M.fromList [(faceId face, polygonNormal (faceCorners face)) | face <- faces]
@@ -115,14 +139,23 @@ craneSpreadWith selection source level degrees = do
   orders <- mapM order (faceOrders (surfaceFrame sheet))
   pure (CraneSpread sheet refined base {samples = moved} pins body moving hinges orders grip)
 
--- The root is y=1/4 in this fixture's folded coordinates. x follows the wing
--- width; length runs towards decreasing y. Integrate unit tangents through a
--- circular arc between the two held strips. Zero curvature is the rigid limit.
-bentPoint :: Double -> V3 -> V3
-bentPoint degrees (V3 x y _) =
-  let len = 0.25 - y
-      start = 0.25 * 0.125
-      stop = 0.25 * 0.875
+-- | The held root strip's length along the wing from its hinge: an eighth of
+-- the wing, or, when the hinge is above the wing's widest point, all of the
+-- base between them. That base is four layers deep, and the studies turn it
+-- as one piece ('CraneWing').
+rootStrip :: CraneWing -> Double
+rootStrip wing = max (craneHingeY wing / 8) (craneHingeY wing - craneWidest wing)
+
+-- The root is the hinge line y = hingeY in this fixture's folded coordinates,
+-- and the strip rootLength long from it is held at 30 degrees. x follows the
+-- wing width; length runs towards decreasing y. Integrate unit tangents
+-- through a circular arc between the two held strips. Zero curvature is the
+-- rigid limit.
+bentPoint :: Double -> Double -> Double -> V3 -> V3
+bentPoint hingeY rootLength degrees (V3 x y _) =
+  let len = hingeY - y
+      start = rootLength
+      stop = hingeY * 0.875
       root = 30 * pi / 180
       turn = degrees * pi / 180
       arc = stop - start
@@ -132,7 +165,7 @@ bentPoint degrees (V3 x y _) =
       after = max 0 (len - stop)
       dy = if degrees == 0 then middle * cos root else (sin (root + curvature * middle) - sin root) / curvature
       dz = if degrees == 0 then middle * sin root else (cos root - cos (root + curvature * middle)) / curvature
-   in V3 x (0.25 - before * cos root - dy - after * cos (root + turn)) (-(before * sin root) - dz - after * sin (root + turn))
+   in V3 x (hingeY - before * cos root - dy - after * cos (root + turn)) (-(before * sin root) - dz - after * sin (root + turn))
 
 solveSpread :: Settings -> CraneSpread -> Either SpreadError Relaxation
 solveSpread settings fixture = do

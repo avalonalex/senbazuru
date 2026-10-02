@@ -65,7 +65,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
 
 4. **Feature edges versus triangulation edges.**
    - `Origami.Surface.surfaceFeatures` returns border, mountain, valley, unassigned and cut edges, plus any edge with a nonzero angle. Mesh diagonals never enter that list (`src/Senbazuru/Origami/Surface.hs:272-285`).
-   - The study turns a curved triangle mesh into a renderable `Surface` by marking interior mesh edges `J` (join) and boundary edges `B`. It does this in `UncreasedSurface` (`study/fold-material/UncreasedSurface.hs:1-4, 36-41`) and `CraneSpread` (`study/fold-material/CraneSpread.hs:214`).
+   - The study turns a curved triangle mesh into a renderable `Surface` by marking interior mesh edges `J` (join) and boundary edges `B`. It does this in `UncreasedSurface` (`study/fold-material/UncreasedSurface.hs:1-4, 36-41`) and `CraneSpread` (`study/fold-material/CraneSpread.hs:247`).
    - `strokeFor` returns `Nothing` for `Join` (`Style.hs:280-281`), so **triangulation edges already disappear from SVG, and feature edges remain**. That is the right split for a wireframe of a curved model.
    - glTF writes no lines of any kind (`Gltf.hs:52`). `PaperPiece` carries corners and a panel id, not edges (`src/Senbazuru/Render/PaperMesh.hs:47-54`).
    - The study's WebGL viewer draws feature lines itself. `authoredValue` emits `lines` once per owning panel (`study/fold-material/Main.hs:192-217`, see line 213), and the viewer draws them with `gl.LINES` (`study/fold-material/viewer.html:241-244, 286-290`).

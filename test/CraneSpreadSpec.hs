@@ -5,6 +5,7 @@ module CraneSpreadSpec (spec) where
 import Control.Monad (forM_)
 import CraneSpread
 import CraneSpreadScreen
+import CraneWing (buildCraneWing, buildCraneWingAt, craneHingeY, craneWidest)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Map.Strict qualified as M
@@ -60,6 +61,32 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     rigid <- right (craneSpread source 3 0)
     let paired = zip (samples mesh) (samples (spreadMesh rigid))
     maximum (0 : [norm (position a ^-^ position b) | (a, b) <- paired]) `shouldSatisfy` (> 0.02)
+
+  -- Above the wing's widest point the held root strip is the whole base
+  -- between it and the hinge, four layers deep, turned 30 degrees as one
+  -- piece. About 1/4 it is the eighth of the wing next to the hinge.
+  it "holds the whole base at the root when the hinge is above the widest point" $ \source -> do
+    quarter <- right (buildCraneWing source)
+    rootStrip quarter `shouldBe` 0.25 / 8
+    wing <- right (buildCraneWingAt 0.376 source)
+    fixture <- right (craneSpreadFromWing WingOnly wing 3 20)
+    let hingeY = craneHingeY wing
+        widest = craneWidest wing
+        turn = 30 * pi / 180
+        flat = refinedMesh (spreadRefined fixture)
+        corners (a, b, c) = [a, b, c]
+        moving = S.fromList [v | (tri, owner) <- zip (triangles flat) (refinedPanels (spreadRefined fixture)), S.member owner (spreadMoving fixture), v <- corners tri]
+        base = [(i, p) | (i, p) <- zip [0 ..] (map position (samples flat)), S.member i moving, let V3 _ y _ = p, y >= widest - 1e-9, hingeY - y > 1e-12]
+    rootStrip wing `shouldBe` hingeY - widest
+    length base `shouldSatisfy` (> 8)
+    pinned <- mapM (\(i, p) -> maybe (fail ("base vertex " ++ show i ++ " is not held")) (\q -> pure (p, q)) (IM.lookup i (spreadPins fixture))) base
+    -- Held where the flat base lands turned 30 degrees about the hinge: in
+    -- the plane through the hinge line at that angle, as far from the line.
+    forM_ pinned $ \(V3 _ y _, q@(V3 _ qy qz)) -> do
+      abs (qz * cos turn - (qy - hingeY) * sin turn) `shouldSatisfy` (< 1e-12)
+      abs (norm (q ^-^ V3 (v3x q) hingeY 0) - (hingeY - y)) `shouldSatisfy` (< 1e-12)
+    -- As one piece: no two of its vertices move apart or together.
+    maximum [abs (norm (q ^-^ q') - norm (p ^-^ p')) | (p, q) <- pinned, (p', q') <- pinned] `shouldSatisfy` (< 1e-12)
 
   it "recovers the rigid 30-degree baseline without adding curvature" $ \source -> do
     fixture <- right (craneSpread source 3 0)

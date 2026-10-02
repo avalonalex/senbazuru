@@ -292,7 +292,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
      any whose second face it re-wound (`Folding.hs:385`), as the blintz and helmet
      recipes do (`BlintzSequence.hs:63-64`). A state's first stacking: fold, solve
      on `foldedFrame`, record the chosen orders on the working pattern, refold. Do
-     not attach orders to a `Folded` as `CraneWing.hs:79` does (L1-4, refuted
+     not attach orders to a `Folded` as `CraneWing.hs:123` does (L1-4, refuted
      objection; its skeptic's wording adopted);
   4. re-resolve every id after a topology change;
   5. anchor by material point; re-anchor as above;
@@ -677,7 +677,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
 - **Rest angles** (L5-6 BETTER): `data RestAngles = RestAtPose PoseRef |
   RestAtPoseExcept PoseRef [(CreaseLine, Rational)]` (degrees as seen); every active
   crease rests at its angle in that pose; never derived from an assignment (delete the
-  rule at `CraneSpread.hs:90-94`). A settle with rest pose = start pose, no released
+  rule at `CraneSpread.hs:112-116`). A settle with rest pose = start pose, no released
   hold and no moved grip is refused as `NoDifference` (a rigid state is already an
   equilibrium, B finding 6). **Owner decision**: precreased M/V at 0 becomes an active
   crease with rest 0 and crease stiffness; source-file F edges stay panel bends until

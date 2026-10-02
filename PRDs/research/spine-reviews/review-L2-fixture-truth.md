@@ -210,14 +210,14 @@ Measured (`crane.py`, `crane2.py`; faces in file order):
   matches gap-layer-selective-folds F11's "face up: 2 no, 3 no, 6 yes, 7 yes".
 - **Folded extent.** x∈[0.646,1.354], y∈[0,0.538], z = 0. Tip v2 is material
   (0,1) and folded (1,0,0).
-- **Sense.** CraneWingSpec.hs:99 pins the tip at
+- **Sense.** CraneWingSpec.hs:127 pins the tip at
   `(1, 0.25 − 0.25 cos a, −0.25 sin a)`. At +90 it ends at **z = −¼**, away
   from a +z reader.
   - Wing A (faces 2, 3, 6, 7) lies **under** wing B as seen from +z. The note's
     taco rule puts 6 over 2 and 7 over 3, and "top 2 from +z picks wing B, not
     wing A" (gap-layer-selective-folds F14, script).
   - The −90 refusal is departure "through the other wing"
-    (CraneWingSpec.hs:47-53; a-wing-resting-on-paper.md:11).
+    (CraneWingSpec.hs:75-81; a-wing-resting-on-paper.md:11).
 
   Seen from +z this is a **mountain**. It reads as a valley only from below,
   which is where checked-crane.svg looks from: `basisFrom (V3 (-1) 1 (sqrt 2))`
@@ -232,7 +232,7 @@ Measured (`crane.py`, `crane2.py`; faces in file order):
   - Tail faces 8–15 all contain v0 = (0,0) and fold onto one folded centroid,
     (1.1485, 0.3948).
   - The tail must be above body faces 27 and 65 and below 29 and 66, in world z
-    (CraneWingSpec.hs:61-81).
+    (CraneWingSpec.hs:89-109).
   - Every tail face overlaps those body faces: `required ⊆ worldOrder`, and
     `worldOrder` comes only from `faceOrders`.
   - Points strictly inside:
@@ -242,7 +242,7 @@ Measured (`crane.py`, `crane2.py`; faces in file order):
     - body face 65: (0.3, 0.39), margin 0.012;
     - body face 66: (0.49, 0.065), margin 0.010.
 - **Stacking.** Index 2 is picked by `solveStackingAs defaultBudget [2]`
-  (CraneWing.hs:78). "Indices 0 and 1 expose the root on one side; 3 and 4
+  (CraneWing.hs:122). "Indices 0 and 1 expose the root on one side; 3 and 4
   expose it on the other" (several-stackings.md:11-12).
 
 ### Corrected example
@@ -386,7 +386,7 @@ repeats them.
   comment says "pick a point in face 0", but (0.5,0.5) is vertex 24, on three
   edges, far from face 0, which spans x∈[0.866,1].
 - **Evidence.**
-  - CraneWing.hs:57-59 (face 0 ring check).
+  - CraneWing.hs:90-92 (face 0 ring check).
   - `crane.py`: face 0 material corners `(0.866,0.324),(1,0),(1,0.5),(0.9005,0.5)`.
   - `crane2.py`: `(0.95, 1/3) faces [0] min edge distance 0.05000`.
 - **Proposal.** `anchor (19/20, 1/3)   # strictly inside face 0, 0.05 from its nearest edge`.
@@ -399,9 +399,9 @@ repeats them.
   mountain. It reads "valley" only from below: CraneGallery's camera
   (−1, 1, √2) looks towards +z.
 - **Evidence.**
-  - CraneWingSpec.hs:99: expectedTip z = −0.25 sin a.
+  - CraneWingSpec.hs:127: expectedTip z = −0.25 sin a.
   - gap-layer-selective-folds F14: "Top 2 from +z picks wing B, not wing A".
-  - CraneWingSpec.hs:47-53: −90 refused through the other wing.
+  - CraneWingSpec.hs:75-81: −90 refused through the other wing.
   - Camera.hs:107 (topDown); CraneGallery.hs:36.
 - **Proposal.** `fold mountain 90 model (0, 1/4)-(2, 1/4) flap containing (0.02, 0.97)`,
   captioned "Fold the lower wing down, behind." Replace the "writer to verify"
@@ -480,10 +480,10 @@ repeats them.
   D11 refuses. CraneWingSpec's predicate needs the tail above faces 27 and 65
   **and** below 29 and 66. No test shows that any set of relations leaves
   exactly index 2: the spec checks only that index 2 satisfies them and the
-  first order does not (CraneWingSpec.hs:74-81).
+  first order does not (CraneWingSpec.hs:102-109).
 - **Evidence.**
   - several-stackings.md:11-12.
-  - CraneWingSpec.hs:61-81.
+  - CraneWingSpec.hs:89-109.
   - `crane2.py` points strictly inside faces 10, 27, 29, 65, 66 (margins above).
   - Not run: `solveStacking` on the creased crane.
 - **Proposal.**
@@ -625,8 +625,8 @@ repeats them.
   `bird.py` barycentric (0.385, 0.341, 0.273); CheckedPetal.hs:53.
 - **Bird centre.** It is vertex v8, and there is exactly one collapse match on
   the flat bird. Evidence: jq; gap-exact-landmarks F9, F13.
-- **Crane wing facts.** Folded line y = ¼ (CraneWing.hs:98), faces
-  `[2,3,6,7]` (:93), +90 accepted and −90 refused with `FlapEndpointOrder 0`
+- **Crane wing facts.** Folded line y = ¼ (CraneWing.hs:76), faces
+  `[2,3,6,7]` (:141), +90 accepted and −90 refused with `FlapEndpointOrder 0`
   (:80-84, refusal at :82), stacking index 2 (:78).
 - **Crane seed.** (0.02, 0.97) is strictly inside face 7, 0.0070 from edge 24,
   and folds onto the tip side at (1.0071, 0.0354). Evidence: `crane2.py`,

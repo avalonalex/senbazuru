@@ -21,7 +21,7 @@ splitting the face graph along that line. It is not senbazuru, and GHC was not
 run. Two checks tie it to the real code:
 
 - It puts material vertex 2 of `examples/crane.fold` at folded `(1, 0)`, which
-  is the tip position `CraneWingSpec.hs:99` expects at progress 0.
+  is the tip position `CraneWingSpec.hs:127` expects at progress 0.
 - The worst disagreement between faces about a shared vertex is `3.0e-13`.
 
 Every number marked **(script)** comes from it. Reproduce with
@@ -132,21 +132,21 @@ and a way to carry accepted orders across the crease.
 6. **CraneWing is the only precedent, and four of its steps are hand-written.**
    - It clips a fixed long line `(0,0.25)–(2,0.25)` to hand-named faces
      `[2,3,6,7]`. It maps each piece back with `inverse` placements and creases
-     with `Unassigned` (`CraneWing.hs:90-101`).
+     with `Unassigned` (`CraneWing.hs:140-159`).
    - Its clip has **neither** of ThroughLayers' guards: the length test and the
      midpoint-strictly-inside test (`ThroughLayers.hs:289-290`). A face touched
      only along an edge would produce a degenerate share there. This is the
      drift AGENTS.md warns about for policies copied into a second place.
    - It restores the anchor face's ring to position 0 after re-tracing, so the
-     crane does not move (`CraneWing.hs:14-15`, `56-63`).
+     crane does not move (`CraneWing.hs:29-30`, `56-63`).
    - It recovers the hinge as "every `Unassigned` edge" and checks there are 4
-     (`:65-66`). That only works because `crane.fold` has no U edges (`jq`: 0).
+     (`:98-103`). That only works because `crane.fold` has no U edges (`jq`: 0).
      `CranePocket.hs:131,138` depends on the same trick ("AuthoredRoot", count
      4).
    - It picks the moving face as the one containing both hinge ends and
      material vertex 2 (`:72-74`).
    - It re-solves the stacking and takes index `[2]` (`:75-79`). A test checks
-     the tail relations that justify that index (`CraneWingSpec.hs:62-81`).
+     the tail relations that justify that index (`CraneWingSpec.hs:90-109`).
 
 7. **The accepted order is not preserved across a crease; the precedent
    re-solves it.** `layerOrderFor` re-solves only when a frame has no orders
@@ -193,7 +193,7 @@ and a way to carry accepted orders across the crease.
 
     Wing A's four shares on the sheet run (0.25,1) → (0.25,0.896) →
     (0.177,0.823) → (0.104,0.75) → (0,0.75). That is the "bent chain" the
-    header describes (`CraneWing.hs:8-10`).
+    header describes (`CraneWing.hs:13-20`).
 
 12. **The seed rule gives `[2,3,6,7]` without naming a face.** Seed the
     material point (0.02, 0.97): it lies in face 7 and folds onto the tip side.
@@ -214,9 +214,9 @@ and a way to carry accepted orders across the crease.
     own first rule (`Stacking.hs:49-52`). By it, from +z: 6 over 2 (edge 48),
     7 over 3 (edge 24), 0 over 4 (edge 35) and 1 over 5 (edge 12) (script).
     The order between the two wings comes from the checked turn:
-    - the accepted +90° lowers the tip to z = −0.25 (`CraneWingSpec.hs:99`);
+    - the accepted +90° lowers the tip to z = −0.25 (`CraneWingSpec.hs:127`);
     - the −90° direction, which lifts the tip, is refused with
-      `FlapEndpointOrder 0` (`CraneWing.hs:81-84`, `CraneWingSpec.hs:52-54`);
+      `FlapEndpointOrder 0` (`CraneWing.hs:125-128`, `CraneWingSpec.hs:80-82`);
     - the note says that refusal is the stationary wing being in the way
       (`a-wing-resting-on-paper.md`, paragraph 5).
     So wing B lies on wing A's +z side. At every point of the line, top to
@@ -382,7 +382,7 @@ What the interpreter can do itself, with exports that exist today:
 
 - the piece-graph walk (`facesAlongEdges`, `foldedPlacements`, `clipSegment`,
   `strictlyInside`);
-- restoring the anchor by a material point (`CraneWing.hs:56-63` does it by
+- restoring the anchor by a material point (`CraneWing.hs:89-96` does it by
   ring);
 - choosing `Flap`'s moving face as whichever face of the first hinge edge lies
   on the seed's side;
@@ -519,7 +519,7 @@ Two takeaways for the PRDs:
   (`Stacking.hs:49-52`), not the solver. For the quarter fold and the square
   base's four faces the rule alone gives a total order. For the crane, wing B
   being on wing A's +z side is **inferred** from assertions at
-  `CraneWingSpec.hs:52-54` and `:96-100`, which I read but did not run. A
+  `CraneWingSpec.hs:80-82` and `:124-128`, which I read but did not run. A
   direct check would compare `solveStackingAs defaultBudget [2]` orders for
   pairs (0, 2), (4, 6), (1, 3), (5, 7) through `nearness`.
 - That `Flap`'s endpoint check at progress 0 covers *every* touching

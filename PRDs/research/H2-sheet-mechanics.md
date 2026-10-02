@@ -100,7 +100,7 @@ contact-free poses such as wing curl.
      formulas (`FoldBending.hs:228-251`).
    - **Constants.** They are labelled illustrative: `Bending 1 5` by default
      (`FoldBending.hs:57-66`) and `Bending 1 0.2` in the crane fixtures
-     (`WholeCrane.hs:60`, `CraneSpread.hs:98`).
+     (`WholeCrane.hs:60`, `CraneSpread.hs:120`).
    - **Missing next to Filipov et al.'s three behaviours** (stretch/shear, panel
      bending, crease folding; `[paper]` Filipov et al. 2017, §8.1): a membrane
      that is a material rather than a penalty.

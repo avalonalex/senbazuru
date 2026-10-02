@@ -131,22 +131,23 @@ How the recipe sets up and runs:
 **F5. Crane wing: ids are *computed*, not written.**
 
 - It checks the anchor by a sorted material ring and a face count of 72
-  (`CraneWing.hs:56-58`).
+  (`CraneWing.hs:89-91`).
 - It clips the folded line y = 1/4 to four hand-picked faces `[2,3,6,7]`. It
   maps each clip back to material space by the inverse fold transform
-  (`CraneWing.hs:87-101`) and adds the result with `creaseAllAlong`
-  (`CraneWing.hs:60`).
+  (`CraneWing.hs:131-159`) and adds the result with `creaseAllAlong`
+  (`CraneWing.hs:93`).
 - It then recovers ids from the result:
-  - the anchor, by matching the sorted ring (`:61-63`);
-  - the hinge, as every `Unassigned` edge, expecting exactly 4 (`:65-66`);
-  - the moving side, as the one face containing both hinge vertices and
-    `VertexId 2` (`:72-74`).
-- It picks stacking **index** `[2]` of five valid orders (`:75-79`).
+  - the anchor, by matching the sorted ring (`:94-96`);
+  - the hinge, as every `Unassigned` edge, expecting one per face the line
+    crosses, 4 at y = 1/4 (`:98-103`);
+  - the moving side, as the one face containing both ends of the hinge's
+    first segment on the tip's side of the line (`:116-118`).
+- It picks stacking **index** `[2]` of five valid orders (`:119-123`).
 - It travels +90 and *requires* −90 to be refused with `FlapEndpointOrder`
-  (`:80-84`).
-- Poses are 0, 30, 60, 90 (`:103-108`).
+  (`:124-128`).
+- Poses are 0, 30, 60, 90 (`:161-166`).
 - The module comment states the rule that ids "are then selected from their
-  result, never carried across that boundary" (`CraneWing.hs:11-12`).
+  result, never carried across that boundary" (`CraneWing.hs:20-22`).
 
 **F6. FlapGallery hands off onto the source frame, not `foldedPattern`.**
 
@@ -279,7 +280,7 @@ coordinates.**
 - Each recipe therefore reorders faces once:
   - blintz: `BlintzSequence.hs:6-8`, `:44-47`;
   - helmet: `HelmetSequence.hs:8-9`, `:41-44`;
-  - crane: keeps the original face zero first, `CraneWing.hs:14-15`, `:61-63`.
+  - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:94-96`.
 - Why it matters (`docs/notes/chaining-checked-folds.md`, third paragraph):
   - `flapAt` holds the flap's stationary face still (`Flap.hs:346-348`).
   - An independent refold holds face 0 still.
@@ -345,10 +346,10 @@ coordinates.**
 - The rule appears three times:
   - cutting "can renumber the input" (`Flap.hs:9-10`);
   - transforms are keyed by the *cut* pattern (`Folding.hs:286-292`);
-  - crane ids are re-selected after creasing (`CraneWing.hs:11-12`,
-    `:61-74`).
+  - crane ids are re-selected after creasing (`CraneWing.hs:20-22`,
+    `:94-118`).
 - Material rings or points survive renumbering, and the tests use them for
-  that reason (`test/CraneWingSpec.hs:63-68`; `StudyCase.hs:117-118`).
+  that reason (`test/CraneWingSpec.hs:91-96`; `StudyCase.hs:117-118`).
 
 **F18. Orders for touching stacks are mandatory input, not optional
 metadata.**
@@ -363,16 +364,16 @@ metadata.**
 **F19. Choosing among valid stackings is a recipe decision, and an index is
 fragile.**
 
-- The crane picks index 2 so the tail is tucked (`CraneWing.hs:15-19`,
-  `:75-79`).
+- The crane picks index 2 so the tail is tucked (`CraneWing.hs:30-34`,
+  `:119-123`).
 - The test checks the geometric meaning, not the index, and shows the first
-  order fails it (`test/CraneWingSpec.hs:56-81`).
+  order fails it (`test/CraneWingSpec.hs:84-109`).
 
 **F20. Expected refusals are part of the recipes.**
 
 - Blintz: reopening through the centre is refused
   (`BlintzSequenceSpec.hs:110-115`).
-- Crane: −90 must be refused (`CraneWing.hs:81-84`).
+- Crane: −90 must be refused (`CraneWing.hs:125-128`).
 - Helmet: the body-side reopening is refused
   (`HelmetSequenceSpec.hs:164-175`).
 - Bird: a reflected collapse and reversed orders are refused
@@ -625,7 +626,7 @@ Still missing from this sketch:
 | --- | --- | --- |
 | Blintz | `test/golden/checked-blintz.svg` | `BlintzSequenceSpec.hs:125-127` |
 | Helmet | `test/golden/checked-helmet.svg` | `HelmetSequenceSpec.hs:185-187` |
-| Crane wing | `test/golden/checked-crane.svg` | `CraneWingSpec.hs:144-145` |
+| Crane wing | `test/golden/checked-crane.svg` | `CraneWingSpec.hs:172-173` |
 | Bird (certified) | `checked-bird-above.svg`, `checked-bird-below.svg` | `CheckedBirdSpec.hs:169-173` |
 | First petal | `checked-petal.svg` | `CheckedPetalSpec.hs:135-138` |
 | Manifest bird | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` | `BirdSequenceSpec.hs:78-84` |
@@ -650,7 +651,7 @@ Still missing from this sketch:
 
 These checks use tolerances, not exact values: 1e-12 material error, per-face
 vertex placement, achieved angles within 1e-9 or 1e-8, and contact passing.
-Examples: `BlintzSequenceSpec.hs:41-87`, `CraneWingSpec.hs:83-134` (1e-10 and
+Examples: `BlintzSequenceSpec.hs:41-87`, `CraneWingSpec.hs:111-162` (1e-10 and
 1e-11 because the fixture starts at 1.4e-11), and `CheckedBirdSpec.hs:127-143`.
 They would pass for any correct re-expression.
 

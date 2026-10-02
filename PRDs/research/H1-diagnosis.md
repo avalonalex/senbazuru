@@ -308,7 +308,7 @@ More tucked has 345 crossing pairs and 1,982 reversed orders (finding 4).
   turns face orders into lower/upper pairs by the z-sign of each face normal
   and solves contact along +z (`PRDs/decisions.md` D14, "Records are
   unpresented"). `solveSpread` calls `relaxPinnedContact`
-  (`CraneSpread.hs:136-139`).
+  (`CraneSpread.hs:169-172`).
 - **The whole-crane correction reuses that policy,** and the note already
   doubts it (`whole-crane-candidate.md:53-55` [note]).
 - **An opened body turns its walls upright**, where a z-order means nothing.

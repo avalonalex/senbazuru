@@ -14,6 +14,7 @@ import FoldMaterial (componentCount)
 import FoldRelaxation
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
+import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Surface
 import Test.Hspec
@@ -39,6 +40,38 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
       original (spreadHinges fixture) `shouldBe` original (spreadHinges baseline)
     componentCount (spreadMesh baseline) `shouldBe` 1
     length (spreadOrders baseline) `shouldBe` 902
+
+  -- A base is the paper between the wing's widest point and a hinge above it.
+  -- A hinge below the widest point has none, and the control is unchanged.
+  it "turns a released control's base about the hinge only above the widest point" $ \source -> do
+    low <- right (craneRoot source 3 FlatRoot)
+    let kept = rootSpread (rigidBase 28 low (spreadMesh (rootSpread low)))
+    spreadPins kept `shouldBe` spreadPins (rootSpread low)
+    spreadMesh kept `shouldBe` spreadMesh (rootSpread low)
+    high <- right (craneRootAt 0.376 source 3 FlatRoot)
+    S.size (rootEdges high) `shouldBe` 8
+    S.size (rootNeighbours high) `shouldBe` 8
+    let fixture = rootSpread high
+        theta = 28
+        turn = theta * pi / 180
+        hingeY = rootHingeY high
+        widest = rootWidest high
+        turned = rootSpread (rigidBase theta high (spreadMesh fixture))
+        added = IM.difference (spreadPins turned) (spreadPins fixture)
+        flat = IM.fromList (zip [0 ..] (map position (samples (refinedMesh (spreadRefined fixture)))))
+        start = IM.fromList (zip [0 ..] (map position (samples (spreadMesh turned))))
+    IM.size added `shouldSatisfy` (> 8)
+    IM.isSubmapOf (spreadPins fixture) (spreadPins turned) `shouldBe` True
+    forM_ (IM.toList added) $ \(i, q@(V3 _ qy qz)) -> do
+      V3 _ y _ <- maybe (fail "missing vertex") pure (IM.lookup i flat)
+      y `shouldSatisfy` (>= widest - 1e-9)
+      abs (qz * cos turn - (qy - hingeY) * sin turn) `shouldSatisfy` (< 1e-12)
+      IM.lookup i start `shouldBe` Just q
+    -- The base's far edge, along the widest point, drops by (h - w) sin theta.
+    abs (minimum [z | V3 _ _ z <- IM.elems added] + (hingeY - widest) * sin turn) `shouldSatisfy` (< 1e-12)
+    -- A held control already holds its base at 30 degrees and keeps it there.
+    held <- right (craneRootAt 0.376 source 3 HeldRoot)
+    spreadPins (rootSpread (rigidBase theta held (spreadMesh (rootSpread held)))) `shouldBe` spreadPins (rootSpread held)
 
   it "activates body contacts when body vertices become free and keeps the distant boundary held" $ \source -> do
     fixed <- rootSpread <$> right (craneRoot source 3 FlatRoot)
