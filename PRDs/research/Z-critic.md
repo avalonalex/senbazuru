@@ -52,7 +52,7 @@ exact landmarks, measured cost, and the study's input contract.
 | 26 | #104 cites `docs/notes/inflate-outside-draw-inside.md`, which does not exist (G) | confirmed | #104 body, paragraph 2; no such file in `docs/notes/` |
 | 27 | Manifest rabbit-ear literal at m = 30 is not bit-reproducible from the documented formula; `175*(90/175)` is `89.99999999999999` (A2 F8, F32) | confirmed (in Python) | `docs/notes/rabbit-ear-motion.md:39-41` formula gives `97.58514830800294`, manifest has `…293`; m = 15, 60, 175 match. GHC not run. |
 | 28 | The glossary defines rest angle twice, differently (D) | confirmed | `docs/glossary.md:19` and `:84` |
-| 29 | The crane-wing recipe finds its hinge as "every `Unassigned` edge" after `creaseAllAlong`, and picks stacking index `[2]` (A2 F5) | confirmed | `CraneWing.hs:107-137`. Consequence no file draws out: the new hinge is **U at angle 0**, a third convention for an unbent crease (see contradiction 3). |
+| 29 | The crane-wing recipe finds its hinge as "every `Unassigned` edge" after `creaseAllAlong`, and picks stacking index `[2]` (A2 F5) | confirmed | `CraneWing.hs:109-139`. Consequence no file draws out: the new hinge is **U at angle 0**, a third convention for an unbent crease (see contradiction 3). |
 | 30 | Test suite compiles the study (D A20, B) | confirmed | `senbazuru.cabal:193` `hs-source-dirs: test, study/fold-material` |
 | 31 | "A resolved per-state full angle list is what … the CLI's `render --steps` already consume" (A2 implication 12, citing `docs/architecture.md:444-449`) | **wrong** | Those lines say `buildCaseSequence` writes folded frames with coplanar `faceOrders`. `stepPage` draws positions, and `--steps` refuses `--fold` (`Cli.hs:844`). An angle table can be an internal intermediate form, but the CLI does not read one. |
 | 32 | "#95's proposed half-turn keeps the centre fixed too", so no arrow (C finding 27) | **wrong** | #95 specifies `(x, y, z) ↦ (−x, y, −z)`, a half turn about the page axis at x = 0. The quarter fold's final frame spans x ∈ [0.5, 1] (`jq`), so its centre moves to x ≈ −0.75 and `Step` would report a translation. D C5 has this right. |
@@ -84,7 +84,7 @@ and G. Each file already lists these as unverified.
    - `Creasing.hs` ("a valley with an angle of zero is not a valley") and
      PR #72 via D C3: M/V at 0 is wrong. Yet `quarter-fold-steps.fold` uses
      exactly that (spot check 20).
-   - `CraneWing.hs:107-117`: `U` at 0 (spot check 29).
+   - `CraneWing.hs:109-119`: `U` at 0 (spot check 29).
 4. **What `render --steps` consumes.** A2 implication 12 says angle tables. C
    (finding 16, contract (iii)) says already-folded frames. C is right (spot
    check 31).
@@ -132,7 +132,7 @@ No file works this through with real calls:
 - A1 leaves top-layers-only as an open question.
 - D (A17) says the move has no implementation.
 
-`CraneWing.hs:102-192` is a hand-written instance: it clips a line to
+`CraneWing.hs:104-194` is a hand-written instance: it clips a line to
 hand-picked faces `[2,3,6,7]`, maps it back with inverse placements, creases
 with `U`, recovers the hinge, and picks a stacking index. Nobody has turned it
 into a rule. **Brief** in the index.

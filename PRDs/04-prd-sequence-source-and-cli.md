@@ -936,7 +936,7 @@ The anchor's comment is checked by the command above; the comments marked
 **UNVERIFIED** are not. The *tail-tucked stacking* is the one of the fixture's five
 layer orders that puts all eight tail faces between the two sides of the body,
 index 2
-([CraneWing.hs:133-136](../study/fold-material/CraneWing.hs#L133-L136);
+([CraneWing.hs:135-138](../study/fold-material/CraneWing.hs#L135-L138);
 [several stackings](../docs/notes/several-stackings.md)). *CraneSpread's root strip*
 is the short strip of wing beside the hinge that the study holds at a fixed angle
 ([CraneSpread.hs:8](../study/fold-material/CraneSpread.hs#L8)).

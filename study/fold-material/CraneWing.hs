@@ -80,7 +80,9 @@ studyHinge = 0.25
 -- the line from the base of the neck to the base of the tail, found by
 -- 'FlapRoot.findRoot' from the wing's tip at sheet corner (0, 1) rather than
 -- typed in (decision 35). 'buildCraneWingAt' creases along a level line, so
--- a root whose ends are not level to a millionth of the sheet is refused.
+-- a root whose ends are not level to a millionth of the sheet is refused. The
+-- rule keeps a root only if the flap turns about it; 'buildCraneWingAt' makes
+-- that check when it builds the wing, so this does not repeat it.
 wingRoot :: Frame -> Either Text Double
 wingRoot source = do
   root <- prepare source (V2 0 1) >>= findRoot

@@ -43,6 +43,9 @@ spec = describe "a flap's root" $ do
     turnResult turned `shouldSatisfy` isLeft
     tail' <- right (prepare source (V2 1 1))
     isLeft (findRoot tail') `shouldBe` True
+  it "refuses a pattern whose own unassigned creases it could mistake for its crease" $ do
+    let marked = source {edgesAssignment = Unassigned : drop 1 (edgesAssignment source)}
+    isLeft (prepare marked (V2 0 1)) `shouldBe` True
   it "gives CraneWing a level line to crease the wing along" $ do
     hinge <- right (wingRoot source)
     hinge `shouldSatisfy` near 0.37584856

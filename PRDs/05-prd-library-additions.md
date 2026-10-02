@@ -69,7 +69,7 @@ Each line is something a runner cannot do with today's exports.
   ([`Crossings.hs:343-347`](../src/Senbazuru/Fold/Crossings.hs#L343-L347)). The
   one precedent writes its new creases as `U` and finds its new hinge as
   "every `Unassigned` edge", and checks there are four
-  ([`CraneWing.hs:112-117`](../study/fold-material/CraneWing.hs#L112-L117)).
+  ([`CraneWing.hs:114-119`](../study/fold-material/CraneWing.hs#L114-L119)).
 - **Creasing folds new creases at once**: a new mountain or valley gets ±180
   whenever the angle array exists
   ([`Creasing.hs:290-292`](../src/Senbazuru/Fold/Creasing.hs#L290-L292),
@@ -84,7 +84,7 @@ Each line is something a runner cannot do with today's exports.
   two overlapping faces lies above; creasing empties them
   ([`Creasing.hs:266`](../src/Senbazuru/Fold/Creasing.hs#L266)), and the crane
   recipe re-solves and picks index 2 of five
-  ([`CraneWing.hs:133-136`](../study/fold-material/CraneWing.hs#L133-L136)).
+  ([`CraneWing.hs:135-138`](../study/fold-material/CraneWing.hs#L135-L138)).
 - **Step inference refuses a growing graph and counts a turn-over as a motion**
   ([`Step.hs:94-96`](../src/Senbazuru/Origami/Step.hs#L94-L96),
   [`:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34)).
@@ -317,7 +317,7 @@ and creasing re-traces faces in edge order
 `[0,4]` and `[8,4,1,5]`: the first traced face is the one beside edge 0, not
 the file's face 0, so without it the two folds differ by a rigid motion of the
 whole model. `CraneWing` reorders for the same reason
-([`CraneWing.hs:108-110`](../study/fold-material/CraneWing.hs#L108-L110)).
+([`CraneWing.hs:110-112`](../study/fold-material/CraneWing.hs#L110-L112)).
 
 **Outputs unchanged.** `crease` and `creaseThroughLayers` still reach
 `creaseAllAlong`; no golden is produced by creasing.
@@ -751,7 +751,7 @@ counted from 1.
 | Test | Turns red if |
 | --- | --- |
 | Every face selected equals `creaseThroughLayers` byte for byte on every `ThroughLayersSpec` input | the flip or a guard differs |
-| `crane.fold`, faces {2, 3, 6, 7}, line (0, 1/4)–(2, 1/4), `FlatForAssignment`, `Unassigned`: four ids equal to `CraneWing`'s U-edge hinge, 76 faces after tracing ([`CraneWing.hs:112-117`](../study/fold-material/CraneWing.hs#L112-L117)) | restricted shares differ from the hand clip |
+| `crane.fold`, faces {2, 3, 6, 7}, line (0, 1/4)–(2, 1/4), `FlatForAssignment`, `Unassigned`: four ids equal to `CraneWing`'s U-edge hinge, 76 faces after tracing ([`CraneWing.hs:114-119`](../study/fold-material/CraneWing.hs#L114-L119)) | restricted shares differ from the hand clip |
 | `AtRest` on [`ThroughLayersSpec.hs:104-120`](../test/Senbazuru/Origami/ThroughLayersSpec.hs#L104-L120)'s line: new pieces at 0, V and M as that test lists | alternation lost, or `U` written |
 | Two requests in one call equal one `creaseAllAlongWith` over the concatenated shares | requests are creased in turn |
 | A moved vertex gives `NotTheWorkingFold`; face 99 gives `LayerNotInThisFold` | a check is missing |
@@ -873,7 +873,7 @@ on material points, as L5 does.
 
 | Test | Turns red if |
 | --- | --- |
-| Crane creased by L8 under `AtRest`. The parent orders are the stacking of `crane.fold`, among its five, under which the tail relations of [`CraneWingSpec.hs:84-109`](../test/CraneWingSpec.hs#L84-L109) hold, resolved through material rings as that test does. Carried, the relations hold on the child without `solveStackingAs [2]`. That index 2 on the *creased* 76-face frame ([`CraneWing.hs:133-136`](../study/fold-material/CraneWing.hs#L133-L136)) is the same stacking on the uncreased one is **UNVERIFIED**, so the parent is chosen by relation, not by index | a pair is lost |
+| Crane creased by L8 under `AtRest`. The parent orders are the stacking of `crane.fold`, among its five, under which the tail relations of [`CraneWingSpec.hs:84-109`](../test/CraneWingSpec.hs#L84-L109) hold, resolved through material rings as that test does. Carried, the relations hold on the child without `solveStackingAs [2]`. That index 2 on the *creased* 76-face frame ([`CraneWing.hs:135-138`](../study/fold-material/CraneWing.hs#L135-L138)) is the same stacking on the uncreased one is **UNVERIFIED**, so the parent is chosen by relation, not by index | a pair is lost |
 | Every rule of `stackingRules child` holds under the carried orders | a sign flips |
 | A `FlatForAssignment` child gives `CreasedNotAtRest` | the exactness guard is skipped |
 
@@ -1274,7 +1274,7 @@ come out of that walk, not a second one in the exporter
   it is changed by record update, which a new field does not break:
   `grep -rn "{foldedFrame = \|Folded {$" src test study app` finds four,
   `FlapSpec.hs:351`, `SurfaceSpec.hs:73`, `BasicBaseGallery.hs:76` and
-  `CraneWing.hs:137`.
+  `CraneWing.hs:139`.
 
 **The line that looks like a typo.** A face's placement is its parent's placement
 `after` the turn, not the turn after the parent: the turn is built from the parent

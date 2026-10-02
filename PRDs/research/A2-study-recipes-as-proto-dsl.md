@@ -131,21 +131,21 @@ How the recipe sets up and runs:
 **F5. Crane wing: ids are *computed*, not written.**
 
 - It checks the anchor by a sorted material ring and a face count of 72
-  (`CraneWing.hs:103-105`).
+  (`CraneWing.hs:105-107`).
 - It clips the folded line y = 1/4 to four hand-picked faces `[2,3,6,7]`. It
   maps each clip back to material space by the inverse fold transform
-  (`CraneWing.hs:145-173`) and adds the result with `creaseAllAlong`
-  (`CraneWing.hs:107`).
+  (`CraneWing.hs:147-175`) and adds the result with `creaseAllAlong`
+  (`CraneWing.hs:109`).
 - It then recovers ids from the result:
-  - the anchor, by matching the sorted ring (`:108-110`);
+  - the anchor, by matching the sorted ring (`:110-112`);
   - the hinge, as every `Unassigned` edge, expecting one per face the line
-    crosses, 4 at y = 1/4 (`:112-117`);
+    crosses, 4 at y = 1/4 (`:114-119`);
   - the moving side, as the one face containing both ends of the hinge's
-    first segment on the tip's side of the line (`:130-132`).
-- It picks stacking **index** `[2]` of five valid orders (`:133-137`).
+    first segment on the tip's side of the line (`:132-134`).
+- It picks stacking **index** `[2]` of five valid orders (`:135-139`).
 - It travels +90 and *requires* −90 to be refused with `FlapEndpointOrder`
-  (`:138-142`).
-- Poses are 0, 30, 60, 90 (`:175-180`).
+  (`:140-144`).
+- Poses are 0, 30, 60, 90 (`:177-182`).
 - The module comment states the rule that ids "are then selected from their
   result, never carried across that boundary" (`CraneWing.hs:20-22`).
 
@@ -280,7 +280,7 @@ coordinates.**
 - Each recipe therefore reorders faces once:
   - blintz: `BlintzSequence.hs:6-8`, `:44-47`;
   - helmet: `HelmetSequence.hs:8-9`, `:41-44`;
-  - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:108-110`.
+  - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:110-112`.
 - Why it matters (`docs/notes/chaining-checked-folds.md`, third paragraph):
   - `flapAt` holds the flap's stationary face still (`Flap.hs:358-360`).
   - An independent refold holds face 0 still.
@@ -347,7 +347,7 @@ coordinates.**
   - cutting "can renumber the input" (`Flap.hs:9-10`);
   - transforms are keyed by the *cut* pattern (`Folding.hs:286-292`);
   - crane ids are re-selected after creasing (`CraneWing.hs:20-22`,
-    `:108-132`).
+    `:110-134`).
 - Material rings or points survive renumbering, and the tests use them for
   that reason (`test/CraneWingSpec.hs:91-96`; `StudyCase.hs:117-118`).
 
@@ -365,7 +365,7 @@ metadata.**
 fragile.**
 
 - The crane picks index 2 so the tail is tucked (`CraneWing.hs:30-34`,
-  `:133-137`).
+  `:135-139`).
 - The test checks the geometric meaning, not the index, and shows the first
   order fails it (`test/CraneWingSpec.hs:84-109`).
 
@@ -373,7 +373,7 @@ fragile.**
 
 - Blintz: reopening through the centre is refused
   (`BlintzSequenceSpec.hs:110-115`).
-- Crane: −90 must be refused (`CraneWing.hs:139-142`).
+- Crane: −90 must be refused (`CraneWing.hs:141-144`).
 - Helmet: the body-side reopening is refused
   (`HelmetSequenceSpec.hs:164-175`).
 - Bird: a reflected collapse and reversed orders are refused

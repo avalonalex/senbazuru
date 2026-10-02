@@ -105,12 +105,12 @@ fixture migrates, and #60's done-when needs amending.
      topology (`src/Senbazuru/Origami/Surface.hs:248-252`). So the reopened
      corner is written **M at 0**. Code reading; not run.
 8. **`CraneWing` writes U, first at 0 and then at nonzero angles.**
-   - The wing crease is created as `Unassigned` (`CraneWing.hs:163`, `93`).
-   - The hinge is then found as "every U edge" (`CraneWing.hs:112`). Here U is
+   - The wing crease is created as `Unassigned` (`CraneWing.hs:165`, `93`).
+   - The hinge is then found as "every U edge" (`CraneWing.hs:114`). Here U is
      doing a second job: recovering ids, because `creaseAllAlong` does not
      return the new edge ids.
    - After the turn, `craneFile` writes `materialFrame` of poses at 30°, 60°
-     and 90° (`CraneWing.hs:176-192`), keeping U (`Flap.hs:355-356`). The output
+     and 90° (`CraneWing.hs:178-194`), keeping U (`Flap.hs:355-356`). The output
      therefore holds **U at nonzero angles**, contrary to the spec's "zero for
      unassigned". Code reading; not run.
 9. **The precreases note writes F at 0** (finding 4).
@@ -332,7 +332,7 @@ binary predates #141's projected visibility:
   reopened corner.
 - `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`).
 - `checked-crane.svg` (`CraneWingSpec.hs:173`): U at 0/30/60/90 becomes F/V.
-  `CraneWing.hs:112` must keep finding U in the working frame.
+  `CraneWing.hs:114` must keep finding U in the working frame.
 - `checked-petal.svg` (`CheckedPetalSpec.hs:138`).
 - `docs/img/bird-sequence-preview.svg`, `frog-sequence.svg` and `bird-open.svg`.
 - The blintz, crane and helmet galleries render through `stepPage`
@@ -398,7 +398,7 @@ pattern.
 - Should `Flap` refuse travel whose sign contradicts the working assignment
   (finding 11), or is the working assignment advisory?
 - Should `Creasing` return the new edge ids, so recipes stop using U as a
-  marker (`CraneWing.hs:112`)?
+  marker (`CraneWing.hs:114`)?
 
 ## Unverified
 

@@ -179,9 +179,9 @@ rest angles by `EdgeId`).
 
 **Evidence.**
 - The start is the creased, re-folded state with its chosen orders:
-  `CraneWing.hs:108-143` (`creased <- creaseAllAlong`, `folded <- foldFrameWith creased`,
+  `CraneWing.hs:110-145` (`creased <- creaseAllAlong`, `folded <- foldFrameWith creased`,
   `start = folded {…orders}`).
-- The hinge is taken from that frame (`:112-117`).
+- The hinge is taken from that frame (`:114-119`).
 - `CraneSpread.hs:108` refines `surfaceFromFolded (craneStart wing)`.
 - `:113` looks hinge ids up in that same numbering.
 - Gap-study F7: a crease-adding step's before and after states number the same

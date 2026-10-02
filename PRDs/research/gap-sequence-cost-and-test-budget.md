@@ -128,7 +128,7 @@ The PRDs should:
    `refineSurface` (`Flap.hs:222`). A step that adds a crease also pays
    `creaseAllAlong`, which re-cuts and re-traces the pattern
    (`Fold/Creasing.hs:159`). The crane recipe also solves a layer order
-   (`CraneWing.hs:136`), for which `Stacking.hs:180-183` claims "about 60ms" on
+   (`CraneWing.hs:138`), for which `Stacking.hs:180-183` claims "about 60ms" on
    the crane. That is the owner's figure, not re-measured here.
 
 7. **`checkFlap` is quadratic in triangles before it subdivides anything.**
@@ -143,7 +143,7 @@ The PRDs should:
    list comprehensions over `triangleOwners` squared. Each candidate pair does
    a linear `find` over faces and a coplanarity test (`Flap.hs:256-272`), so
    that part is O(T²·F). On the crane the start has 76 faces after the new
-   crease (`CraneWing.hs:116`) and 63 vertices (`CraneWingSpec.hs:40`). The
+   crease (`CraneWing.hs:118`) and 63 vertices (`CraneWingSpec.hs:40`). The
    triangle count was not printed, because the driver never ran.
 
 8. **The interval count is already exposed and deterministic.** `SweepCheck`
@@ -220,7 +220,7 @@ The PRDs should:
       (`Origami/Surface.hs` `transformSurface`), so it can carry trig bits.
     - Material coordinates are exact source numbers for the blintz, helmet and
       bird. They are **trig-derived** wherever a crease was mapped back through
-      `applyRigid (inverse placement)`, as in `CraneWing.hs:171-172`.
+      `applyRigid (inverse placement)`, as in `CraneWing.hs:173-174`.
 
     So an exact GLB golden of a creased-through-layers step can differ across
     platforms in its JSON chunk even when every packed position agrees.

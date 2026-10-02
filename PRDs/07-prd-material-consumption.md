@@ -72,18 +72,18 @@ side of that box ([02](02-language-semantics.md) records it at resolution). In
 fractions of the stored coordinates, s would be 1 − 5.55e-17.
 
 The recipe `CraneWing` folds the file holding face 0 still
-([`CraneWing.hs:101-104`](../study/fold-material/CraneWing.hs#L101-L104)), creases
+([`CraneWing.hs:103-106`](../study/fold-material/CraneWing.hs#L103-L106)), creases
 across the wing along folded y = 1/4 ([`:77`](../study/fold-material/CraneWing.hs#L77)),
-turning 72 faces (flat regions between creases) into 76 ([`:107-117`](../study/fold-material/CraneWing.hs#L107-L117)),
+turning 72 faces (flat regions between creases) into 76 ([`:109-119`](../study/fold-material/CraneWing.hs#L109-L119)),
 picks the [stacking](glossary-additions.md#running-a-sequence) with the tail
 tucked between the body layers, index 2 of five
-([`:133-136`](../study/fold-material/CraneWing.hs#L133-L136)), takes "every
-`Unassigned` edge" as the [*hinge*](glossary-additions.md#origami) ([`:112`](../study/fold-material/CraneWing.hs#L112)),
+([`:135-138`](../study/fold-material/CraneWing.hs#L135-L138)), takes "every
+`Unassigned` edge" as the [*hinge*](glossary-additions.md#origami) ([`:114`](../study/fold-material/CraneWing.hs#L114)),
 and checks a +90° turn of the face on the tip's side of the hinge
-([`:130`](../study/fold-material/CraneWing.hs#L130), [`:138`](../study/fold-material/CraneWing.hs#L138)).
+([`:132`](../study/fold-material/CraneWing.hs#L132), [`:140`](../study/fold-material/CraneWing.hs#L140)).
 The −90° turn is refused as `FlapEndpointOrder`, because the wing would pass
 through the layer it rests against
-([`:139-142`](../study/fold-material/CraneWing.hs#L139-L142)).
+([`:141-144`](../study/fold-material/CraneWing.hs#L141-L144)).
 
 `craneSpreadWith` bends that wing and takes the *move*, not a surface
 ([`CraneSpread.hs:84-139`](../study/fold-material/CraneSpread.hs#L84-L139)): the
@@ -147,7 +147,7 @@ progress 0 (`-0.0` is a signed zero, equal to 0). Vertex 28, material (1/2, 1),
 folds to (1, 1/2). The wing faces span folded y from 0 to 1/2, so the tip side of
 y = 1/4 is exactly 1/4 long. Only face 0 contains (19/20, 1/3). The check assumes
 Haskell keeps the file's face numbering; face 0's guard
-([`CraneWing.hs:104`](../study/fold-material/CraneWing.hs#L104)) agrees but does
+([`CraneWing.hs:106`](../study/fold-material/CraneWing.hs#L106)) agrees but does
 not prove it for faces 2, 3, 6, 7.
 
 So `fraction ≤ 0.125` means "within 1/32 of the hinge" and `≥ 0.875` means "at
@@ -169,7 +169,7 @@ angle on, and starts every free wing vertex on that arc (`:129`). One run on
   "(a) What the study takes from a move today").
 - **Ids hold in one numbering**: the hinge ids exist in the 76-face crane, not the
   72-face one.
-- **The hinge is found by `Unassigned`** ([`CraneWing.hs:112`](../study/fold-material/CraneWing.hs#L112),
+- **The hinge is found by `Unassigned`** ([`CraneWing.hs:114`](../study/fold-material/CraneWing.hs#L114),
   [`CraneRoot.hs:76`](../study/fold-material/CraneRoot.hs#L76)); sequences write
   new creases M or V ([02](02-language-semantics.md)).
 - **Rest angles come from assignments**: −π if `Mountain`, else +π
@@ -374,7 +374,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 
 **On the crane wing**, `fold behind 90° corner north-west to midpoint of edge
 north` has `recordBefore` = the creased, unturned crane: 76 faces
-([`CraneWing.hs:116`](../study/fold-material/CraneWing.hs#L116)), 138 edges and 902
+([`CraneWing.hs:118`](../study/fold-material/CraneWing.hs#L118)), 138 edges and 902
 orders ([spreading-connected-wing.md:41-42](../docs/notes/spreading-connected-wing.md)).
 `recordHinge` has four segments with `craneHinge`'s ids; `recordMoving` has seed
 `corner north-west` and four faces ([`CraneSpreadSpec.hs:32`](../test/CraneSpreadSpec.hs#L32));
@@ -481,7 +481,7 @@ carries, and why its fold line, flap and direction are right is
 [One move, fed by hand](#one-move-fed-by-hand). The sequence's layer selection refuses a covered flap
 before `Flap`'s sweep runs ([D8](decisions.md#d8-folding-some-layers)), while
 `CraneWing` calls `prepareFlapAlong` with no selection step
-([`CraneWing.hs:138-142`](../study/fold-material/CraneWing.hs#L138-L142)), so only
+([`CraneWing.hs:140-144`](../study/fold-material/CraneWing.hs#L140-L144)), so only
 the recipe reaches `Flap`'s refusal. This file adds the `material` line and the
 `settle` block. Below they are shown in the step they belong to, copied exactly
 from §7 with the `expect refused` line left in, so what you copy is §7's step.

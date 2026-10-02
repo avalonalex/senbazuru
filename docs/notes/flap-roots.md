@@ -60,10 +60,10 @@ alone would not say which flap: both wings end at folded (1, 0).
 
 The wing's root is the line the owner chose by eye, y = 0.376, to three
 decimals. An independent union of the faces' shadows finds the same two
-reflex corners in the folded outline, to 1e-9. Searching the tail's edge in
-full, which finds nothing, took 0.35 CPU seconds. Finding a wing's root and
-checking the turn took 8.3, most of it folding and solving the layer order
-again.
+reflex corners in the folded outline, to 1e-9. In two runs, searching the
+tail's edge in full, which finds nothing, took 0.35 and 0.36 CPU seconds, and
+finding a wing's root and checking the turn took 8.2 to 8.4, most of it
+folding and solving the layer order again.
 
 **Where it stops.** The neck and the tail are reverse-folded: they leave the
 body between its layers. On one side the neck's edge meets the same visible
@@ -72,8 +72,13 @@ shows nothing, so the rule's second end lands on the head and the turn check
 refuses it. The tail's edge never meets visible paper at all. So the rule finds
 roots that show in the outline, and refuses, rather than guesses, roots hidden
 between layers. Finding those needs the outline of the flap's own layers
-against their neighbours in the stack, not the model's outline. It has been
-tried on one model.
+against their neighbours in the stack, not the model's outline.
+
+The rule also reads every jump as the flap's edge meeting other paper. A
+flap whose own outline steps outward, or a sideways protrusion ending, makes
+the run's end jump too, and the rule would put the root at that step, nearer
+the tip than the real one. The turn check would not catch that, since the
+crease stays in the flap's own paper. It has been tried on one model.
 
 ```bash
 stack run senbazuru-material-study -- --flap-root build/fold-material
@@ -81,4 +86,5 @@ stack run senbazuru-material-study -- --flap-root build/fold-material
 
 `flap-root/checks.json` holds each corner's root and turn, and the wing scan
 above. `CraneWing.wingRoot` gives the crane studies their hinge from this
-rule, so it is not typed in anywhere.
+rule, so no gallery types it in. (Some tests still build wings at an explicit
+0.376, to test the wing's construction at a given line.)

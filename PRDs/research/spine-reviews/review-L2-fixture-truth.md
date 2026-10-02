@@ -242,7 +242,7 @@ Measured (`crane.py`, `crane2.py`; faces in file order):
     - body face 65: (0.3, 0.39), margin 0.012;
     - body face 66: (0.49, 0.065), margin 0.010.
 - **Stacking.** Index 2 is picked by `solveStackingAs defaultBudget [2]`
-  (CraneWing.hs:136). "Indices 0 and 1 expose the root on one side; 3 and 4
+  (CraneWing.hs:138). "Indices 0 and 1 expose the root on one side; 3 and 4
   expose it on the other" (several-stackings.md:11-12).
 
 ### Corrected example
@@ -386,7 +386,7 @@ repeats them.
   comment says "pick a point in face 0", but (0.5,0.5) is vertex 24, on three
   edges, far from face 0, which spans x∈[0.866,1].
 - **Evidence.**
-  - CraneWing.hs:104-106 (face 0 ring check).
+  - CraneWing.hs:106-108 (face 0 ring check).
   - `crane.py`: face 0 material corners `(0.866,0.324),(1,0),(1,0.5),(0.9005,0.5)`.
   - `crane2.py`: `(0.95, 1/3) faces [0] min edge distance 0.05000`.
 - **Proposal.** `anchor (19/20, 1/3)   # strictly inside face 0, 0.05 from its nearest edge`.

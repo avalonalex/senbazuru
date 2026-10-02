@@ -21,6 +21,7 @@
 -- paper still joined to the tip, and checks that it turns.
 module FlapRoot (Prepared (..), prepare, Turn (..), turnAbout, Root (..), findRoot, writeFlapRoot) where
 
+import Control.Monad (when)
 import Data.Aeson (encode, object, (.=))
 import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
@@ -63,6 +64,10 @@ data Prepared = Prepared
 
 prepare :: Frame -> V2 -> Either Text Prepared
 prepare source (V2 cx cy) = do
+  -- 'turnAbout' finds its own crease as the unassigned edges, so a pattern
+  -- with unassigned creases of its own would have them cut too.
+  when (Unassigned `elem` edgesAssignment source) $
+    Left "the pattern already has unassigned creases, which the probe's crease could not be told apart from"
   folded <- first explain (foldFrameWith source)
   sheet <- first explain (flatSheet (foldedFrame folded))
   tipVertex <- case [i | (i, c) <- zip [0 :: Int ..] (verticesCoords (foldedPattern folded)), near c] of
@@ -108,8 +113,9 @@ data Turn = Turn
     -- | How many faces stay joined to the tip once the crease is cut.
     turnFlapFaces :: !Int,
     -- | How far that paper reaches along the segment's direction, measured
-    -- from its first end, against the segment's own length: past either end,
-    -- the crease runs into paper beside the flap.
+    -- from its first end. This is the whole flap's extent, not the crease's:
+    -- it passes the crease's ends wherever the flap is wider than at its
+    -- root, as the crane wing is at its widest point.
     turnFlapAlong :: !(Double, Double),
     turnLength :: !Double,
     -- | The way it turns and how many faces move, or why neither way does.
@@ -189,10 +195,17 @@ data Root = Root
 
 -- | Probe lines across the flap, square to the line from its tip to the
 -- middle of the model, every 1/400 of the model's span. On each side, bisect
--- each step down to a hair to see whether the run's end jumped within it,
--- and stop at the first that did: a jump is the end leaving the flap's edge
--- for the paper beside it. A continuous edge changes the end by less and less
--- as the step narrows; a jump does not.
+-- each step until the doubles run out to see whether the run's end jumped
+-- within it, and stop at the first that did. A continuous edge changes the
+-- end by less and less as the step narrows; a jump does not.
+--
+-- The rule reads the first jump as the flap's edge meeting the paper beside
+-- it, and on the crane's wings that is what it is. But the end also jumps
+-- where the flap's own outline steps outward, or where a sideways
+-- protrusion ends, and this cannot tell those apart. A step in the flap's own
+-- paper would put the root nearer the tip than the real one, and the turn
+-- check would still pass: the crease stays in the flap's paper either way.
+-- It has been tried on one model.
 findRoot :: Prepared -> Either Text Root
 findRoot prepared = do
   let sheet = preparedSheet prepared
