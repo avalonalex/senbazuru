@@ -118,14 +118,14 @@ claiming otherwise. A half turn about model y or x keeps every axis span, so
   175° petal is built with `rotationAbout`, from `cos` and `sin`
   (`Rigid.hs:114-129`).
 - **Flap refuses an aligned start.** Flap rejects any start whose positions are
-  not an untouched `foldFrameWith` within 1e-9 × span (`Flap.hs:171-181`,
+  not an untouched `foldFrameWith` within 1e-9 × span (`Flap.hs:174-184`,
   `FlapStartMismatch`). So the alignment must be applied *outside* Flap, to its
   output surfaces. `transformSurface` then drops `frameExtras`
   (`Surface.hs:287-296`), so material coordinates must be put back afterwards.
 - **The join check.** Invariant 6 has to compare positions *after* alignment.
 
 **Evidence.** `src/Senbazuru/Origami/Folding.hs:577-585`;
-`src/Senbazuru/Origami/Flap.hs:171-181, 339-352`;
+`src/Senbazuru/Origami/Flap.hs:174-184, 339-352`;
 `src/Senbazuru/Geometry/Rigid.hs:114-129`;
 `study/fold-material/BlintzSequence.hs:5-8` ("anchoring a corner would turn the
 whole model").
@@ -149,20 +149,20 @@ whole model").
 ### L1-4 (major) · D3 invariant 3: "never patch a `Folded`" forbids the only way to hand Flap its mandatory stack orders
 
 **Claim.** Flap reads the orders it needs from the `foldedFrame` it is given
-(`Flap.hs:223`: `suppliedOrders = faceOrders suppliedFrame`). It refuses a
+(`Flap.hs:226`: `suppliedOrders = faceOrders suppliedFrame`). It refuses a
 touching stack without them (A2 F18: the helmet test strips orders and expects
 refusal). Its start check compares angle count, face rings and positions
-(`Flap.hs:173-181`), never orders. The only precedent sets them by patching:
+(`Flap.hs:176-184`), never orders. The only precedent sets them by patching:
 `folded {foldedFrame = frame {faceOrders = orders}}` (`CraneWing.hs:123`). Read
 literally, invariant 3 makes every fold on a stacked model unbuildable.
 
-**Evidence.** `src/Senbazuru/Origami/Flap.hs:171-181, 223-235`;
+**Evidence.** `src/Senbazuru/Origami/Flap.hs:174-184, 223-235`;
 `study/fold-material/CraneWing.hs:123`; A2 F15, F18.
 
 **Proposal.** Replace invariant 3 with:
 
 > 3. Re-fold after every handoff. Never change a `Folded`'s coordinates, faces,
->    angles or placements (`FlapStartMismatch`, `Flap.hs:173-181`). Hand
+>    angles or placements (`FlapStartMismatch`, `Flap.hs:176-184`). Hand
 >    accepted orders to Flap only by setting `foldedFrame.faceOrders` on an
 >    untouched `foldFrameWith` result (`CraneWing.hs:123`). Write them against
 >    `foldedFrame`'s counter-clockwise rings, never `foldedPattern`'s
@@ -230,11 +230,11 @@ layers.
   neither with a raw `Folded` flips never.
 
 D8's signature takes a `Folded` without saying which. The constructor is public,
-so nothing checks (`Flap.hs:169-170`). L1-3 already requires the raw fold for
+so nothing checks (`Flap.hs:172-173`). L1-3 already requires the raw fold for
 Flap, so the two moves would disagree unless this is pinned.
 
 **Evidence.** `src/Senbazuru/Origami/ThroughLayers.hs:227-229, 285-296,
-321-328`; `src/Senbazuru/Origami/Flap.hs:169-181`; spine D5 bullet 3, D8
+321-328`; `src/Senbazuru/Origami/Flap.hs:172-184`; spine D5 bullet 3, D8
 signature, §4 `Sense`.
 
 **Proposal.** In D8:
@@ -269,7 +269,7 @@ three things: it creases, it re-traces, and it turns.
     kind of move.
   - Holds like `band S d0..d1`, "distance from the hinge in the start pose",
     need the hinge in the numbering of the pose they measure.
-- **Record equality.** `CheckedFlap` derives only `Show` (`Flap.hs:95-96`), so a
+- **Record equality.** `CheckedFlap` derives only `Show` (`Flap.hs:98-99`), so a
   `StepRecord` holding it cannot derive `Eq`. The blintz/helmet equivalence PRs
   (D16) will need a comparison projection.
 - **Duplicated state.** `recordOrders` and `recordRequirements` repeat what
@@ -278,7 +278,7 @@ three things: it creases, it re-traces, and it turns.
 
 **Evidence.** `study/fold-material/CraneWing.hs:89-124`;
 `src/Senbazuru/Fold/Crossings.hs:304-315, 343-358`;
-`src/Senbazuru/Origami/Flap.hs:95-96`; gap-study-consumption-contract finding 7
+`src/Senbazuru/Origami/Flap.hs:98-99`; gap-study-consumption-contract finding 7
 and open question 4.
 
 **Proposal.** In D14 and §4:
@@ -549,7 +549,7 @@ output.
 - **Flag names.** `ThroughError.LineStopsOnTheModel` prints `--from`/`--to` via
   `creaseEndFlag` (`ThroughLayers.hs:194-201`, `Query.hs:68-71`).
 - **Internal ids.** Flap and Folding messages name edge and face ids of the
-  step-local cut pattern (`Flap.hs:130-148`; `Folding.hs:180-218`). D2 says
+  step-local cut pattern (`Flap.hs:133-151`; `Folding.hs:180-218`). D2 says
   those ids "never appear in the language".
 
 So `instance Explain SequenceError` must pattern-match through `FoldError`,
@@ -559,7 +559,7 @@ the spine's single sentence underestimates that work.
 
 **Evidence.** `src/Senbazuru/Origami/ThroughLayers.hs:194-209`;
 `src/Senbazuru/Fold/Query.hs:68-71, 173, 312-316`;
-`src/Senbazuru/Origami/Flap.hs:124-150`.
+`src/Senbazuru/Origami/Flap.hs:127-153`.
 
 **Proposal.** In D12:
 
@@ -670,7 +670,7 @@ return the proper rotation.
 - **No stationary face.** `recordStationary :: Maybe (MaterialPoint, FaceId)`
   needs Flap's stationary face, which is not exported (`Flap.hs:49-59`: no
   accessor for `stationaryFace`). The runner must recompute it the way
-  `Flap.hs:193-195` does.
+  `Flap.hs:196-198` does.
 
 **Evidence.** Spine D1 line 95, §4 lines 673-680; `src/Senbazuru/Origami/Flap.hs:49-59,
 193-195`.
@@ -697,7 +697,7 @@ return the proper rotation.
   crossings (`Crossings.hs:309, 334-341`). `mergedCrossings` drops a crossing
   near an existing vertex rather than moving it (`:180-185`). Across a flap turn
   or macro the graph is unchanged: Flap refolds the same pattern with only
-  angles changed (`Flap.hs:343-345`). Across presentation, vertex ids are
+  angles changed (`Flap.hs:355-357`). Across presentation, vertex ids are
   untouched and `transformSurface` moves positions only (`Surface.hs:287-296`).
   Re-anchoring reorders faces, not vertices (`CraneWing.hs:94-96`).
 - **The new-crease pieces really are an edge-list suffix.** Old edge ids shift
@@ -709,7 +709,7 @@ return the proper rotation.
 - **`Fold.Faces.tolerance` is `1e-9 ×` the diagonal of the sheet's bounding box**
   (`Faces.hs:248-251`).
 - **Flap derives per-segment travel signs from the stationary face's ring
-  direction** (`Flap.hs:208-216`), as D5 cites.
+  direction** (`Flap.hs:211-219`), as D5 cites.
 - **`rotationAbout` uses `cos`/`sin`, and `Rigid(..)` and `Mat3(..)` are
   exported unchecked** (`Rigid.hs:28-40, 51, 76-79, 114-129`), so exact ±1
   quarter turns are constructible and nothing refuses a reflection.

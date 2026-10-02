@@ -172,8 +172,8 @@ material consumer. [D14](decisions.md#d14-material-consumption) decides the reco
 `MoveRecord` derives `Eq` and tests compare records with `==`. That takes one
 library change, [05](05-prd-library-additions.md) L14 at M2. `FlapMotion` and
 `CheckedFlap` derive only `Show`
-([`Flap.hs:93`](../src/Senbazuru/Origami/Flap.hs#L93),
-[`:96`](../src/Senbazuru/Origami/Flap.hs#L96)), although every field's type derives
+([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
+[`:99`](../src/Senbazuru/Origami/Flap.hs#L99)), although every field's type derives
 `Eq`: `Folded` ([`Folding.hs:324`](../src/Senbazuru/Origami/Folding.hs#L324)),
 `HingeSweep` and `SweepCheck` ([`HingeSweep.hs:89`](../src/Senbazuru/Origami/HingeSweep.hs#L89),
 [`:101`](../src/Senbazuru/Origami/HingeSweep.hs#L101)), `FaceOrder`
@@ -810,7 +810,7 @@ F2 and F3 centroids are at z = −0.0044, behind the sheet; at −180 the refold
 the fixture's first folded state within 6.1e-17 [py], moving vertices 0, 3 and 7
 [jq]. The expected carried orders are `FaceOrder 3 0 Below` (F3 below F0, against
 F0's normal) and `FaceOrder 2 1 Below`, built from the contacts at the end of the
-turn ([`Flap.hs:301`](../src/Senbazuru/Origami/Flap.hs#L301)). **UNVERIFIED**: the
+turn ([`Flap.hs:313`](../src/Senbazuru/Origami/Flap.hs#L313)). **UNVERIFIED**: the
 contacts `HingeSweep` reports.
 
 Step 1 laid the west half exactly on the east half, so v0 now sits on v1, v3 on v2
@@ -870,8 +870,8 @@ lies in z = 0. So [constructions](glossary-additions.md#references) are allowed.
   side, from which `Flap` works out the signed travel as §5.5 shows.
   `prepareFlapToward` ([05](05-prd-library-additions.md) L14; #344, #368) signs
   the travel and then does what `prepareFlapAlong` does
-  ([`Flap.hs:225-226`](../src/Senbazuru/Origami/Flap.hs#L225-L226),
-  [`:232`](../src/Senbazuru/Origami/Flap.hs#L232)).
+  ([`Flap.hs:228-229`](../src/Senbazuru/Origami/Flap.hs#L228-L229),
+  [`:235`](../src/Senbazuru/Origami/Flap.hs#L235)).
 
 ### 5.5 Raw sense and travel
 
@@ -887,8 +887,8 @@ towards raw +z.
 −travel, right-handed, about an axis along that crease, pointing the way the
 stationary face's counter-clockwise ring runs, in folded coordinates
 ([`Flap.hs:10-13`](../src/Senbazuru/Origami/Flap.hs#L10-L13),
-[`:272-278`](../src/Senbazuru/Origami/Flap.hs#L272-L278),
-[`:302`](../src/Senbazuru/Origami/Flap.hs#L302)). For edge 9 the stationary face is
+[`:275-281`](../src/Senbazuru/Origami/Flap.hs#L275-L281),
+[`:314`](../src/Senbazuru/Origami/Flap.hs#L314)). For edge 9 the stationary face is
 F0, so the axis is v5 → v8 = (−1, 0, 0), from v5 = (1, ½, 0). A small right-handed
 turn by θ moves a point at offset r by about θ (axis × r); for v2, r = (0, ½, 0) and
 axis × r = (0, 0, −½). For a small fraction δ of the turn θ = −travel·δ, so v2 rises exactly when
@@ -898,14 +898,14 @@ At progress ½ (edge 9 at +90, edge 11 at −90), F1 and F2 have centroid z = +0
 while F0 and F3 stay at 0, placements agree within 6.1e-17, and rotating the moving
 vertices −90° about the axis lands exactly on the refold, v2 at (1, ½, ½) [py]. That
 agreement is what `Flap`'s `comparePoint` requires of `HingeSweep`'s path
-([`Flap.hs:474-477`](../src/Senbazuru/Origami/Flap.hs#L474-L477)).
+([`Flap.hs:486-489`](../src/Senbazuru/Origami/Flap.hs#L486-L489)).
 
 **Why the runner passes a side, not +180**
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
 [C5](decisions.md#changes-since-draft-v2)). The sign just worked out depends on the
 direction of `Flap`'s axis, which `Flap` derives from the first segment's
 stationary face's ring and does not export
-([`Flap.hs:272-278`](../src/Senbazuru/Origami/Flap.hs#L272-L278)). With edge 11
+([`Flap.hs:275-281`](../src/Senbazuru/Origami/Flap.hs#L275-L281)). With edge 11
 listed first, the same valley would be travel −180, because both faces beside
 edge 11 lie face down. So the raw sense alone cannot sign the travel, and the
 library, which reads the faces' placements, signs it. `Origami.Flap` has
@@ -922,7 +922,7 @@ face beside it towards that face's own top, so it reads the moving face beside
 each segment from its placement, and sets travel to +A when the side agrees with
 the first such face's way up and −A otherwise; every segment's reading must agree
 ([owner decision 13](decisions.md#d5-presentation-and-the-readers-side),
-[`Flap.hs:320-352`](../src/Senbazuru/Origami/Flap.hs#L320-L352)). A moving face that does not lie flat is
+[`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)). A moving face that does not lie flat is
 refused as `FlapMovingNotFlat`, and moving faces on both sides of the hinge line as
 `FlapMovesBothWays`. The runner passes `TowardPlusZ` for a raw valley. Here the
 moving face beside edge 9 is F1, top up, so travel is +180; listing edge 11 first
@@ -935,7 +935,7 @@ one valley writes opposite signs on edges 9 and 11 is
 [02 §5.3](02-language-semantics.md#53-one-conversion-for-the-whole-model); this
 section shows where the code makes the sign.
 
-[`Flap.hs:208-216`](../src/Senbazuru/Origami/Flap.hs#L208-L216) handles each
+[`Flap.hs:211-219`](../src/Senbazuru/Origami/Flap.hs#L211-L219) handles each
 segment in turn. It finds the segment's stationary face, and that face's ring edge
 u → v along the crease. The segment gets `travel` when (v − u)·axis > 0, and
 `−travel` otherwise:
@@ -949,7 +949,7 @@ F3 lies upside down after step 1, so its ring runs the other way along the share
 line, and edge 11 takes −travel. The fixture's last state agrees [jq].
 
 Both segments' ends lie within 6.1e-17 of the hinge line, below `Flap`'s 1e-12
-([`Flap.hs:207`](../src/Senbazuru/Origami/Flap.hs#L207)) [py]. Step 1 works the
+([`Flap.hs:210`](../src/Senbazuru/Origami/Flap.hs#L210)) [py]. Step 1 works the
 same way: edges 8 (F0, v8 → v4) and 10 (F1, v6 → v8) both give +0.5, so both
 take −180 [py].
 
@@ -959,7 +959,7 @@ take −180 [py].
   through paper, to depth 20 within 4096 [sweep intervals](glossary-additions.md#geometry)
   ([`HingeSweep.hs:95`](../src/Senbazuru/Origami/HingeSweep.hs#L95)). `FaceOrder 2 1`
   (both moving) and `FaceOrder 3 0` (both stationary) move rigidly
-  ([`Flap.hs:223-233`](../src/Senbazuru/Origami/Flap.hs#L223-L233)), and the end
+  ([`Flap.hs:226-236`](../src/Senbazuru/Origami/Flap.hs#L226-L236)), and the end
   contacts add new orders. From the reader the stacking should end F2, F1, F0, F3
   [reasoned]: F2 lay on F1's back, and F1 lands face down on F0. **UNVERIFIED**: the
   reported orders and the interval count.
@@ -971,7 +971,7 @@ take −180 [py].
   `modelSpan`, the largest extent along any axis, which is 1 here
   ([`V3.hs:72-73`](../src/Senbazuru/Geometry/V3.hs#L72-L73)); angles, edges, rings as
   vertex sets, orders and material coordinates agree exactly. F0 never moves, so `Flap`'s stationary correction is the identity
-  ([`Flap.hs:346-348`](../src/Senbazuru/Origami/Flap.hs#L346-L348)) and the two folds
+  ([`Flap.hs:358-360`](../src/Senbazuru/Origami/Flap.hs#L358-L360)) and the two folds
   should agree exactly [reasoned]. The Python refold is within 1.2e-16 of the
   fixture's last state [py].
 - **Cost.** About 7 folds per checked step, counted in the code, not timed
@@ -1100,7 +1100,7 @@ and `Flap`'s sign rule. Run it as `python3 - <<'EOF' … EOF`:
 
 ```python
 # Re-implementation of Origami.Folding's walk (Folding.hs:577-653) and
-# Flap's per-segment sign (Flap.hs:193-216) on examples/quarter-fold-steps.fold.
+# Flap's per-segment sign (Flap.hs:196-219) on examples/quarter-fold-steps.fold.
 import json, math
 d = json.load(open("examples/quarter-fold-steps.fold"))
 MAT = [(float(x), float(y), 0.0) for x, y in d["vertices_coords"]]
@@ -1177,7 +1177,7 @@ def component(seed, removed):
     return sorted(seen)
 normal = lambda f, P: tuple(sum(c) for c in zip(*[cross(P[a], P[b]) for a, b in ring(f)]))
 print("state1 face normals", [normal(f, P1) for f in range(4)])
-def segment_signs(eids, side, P):              # Flap.hs:193-216 with expected = P
+def segment_signs(eids, side, P):              # Flap.hs:196-219 with expected = P
     moving = component(side, eids); first = eids[0]
     fixed = [g for g in NB[key(*E[first])] if g != side][0]
     frm, to = [(a, b) for a, b in ring(fixed) if key(a, b) == key(*E[first])][0]
@@ -1192,7 +1192,7 @@ def segment_signs(eids, side, P):              # Flap.hs:193-216 with expected =
 print("step 1 [8,10] side F3:", segment_signs([8, 10], 3, MAT))
 print("step 2 [9,11] side F1:", segment_signs([9, 11], 1, P1))
 moving, fixed, (frm, _), axis, _ = segment_signs([9, 11], 1, P1)
-sweep = rotation(P1[frm], axis, -180 * 0.5 * math.pi / 180)      # Flap.hs:222, progress 1/2
+sweep = rotation(P1[frm], axis, -180 * 0.5 * math.pi / 180)      # Flap.hs:225, progress 1/2
 mv = sorted({v for f in moving for v in FACES[f]})
 print("sweep vs refold at 1/2, max distance over moving vertices", max(norm(sub(apply(sweep, P1[v]), Ph[v])) for v in mv), "v2 at", tuple(round(c, 12) + 0.0 for c in Ph[2]))
 rule = lambda a, x, t=1e-10: a if a in "BCJ" else ("M" if x < -t else "V" if x > t else "F")

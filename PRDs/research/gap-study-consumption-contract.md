@@ -48,9 +48,9 @@ the path, so B's `settle` signature cannot be the whole interface.
 
 **2. The library does not export the stationary side of a checked flap.**
 `FlapMotion` has `movingFaces`, `stationaryFace` and `creaseTravels` fields
-(`src/Senbazuru/Origami/Flap.hs:81-91`). The module exports only
+(`src/Senbazuru/Origami/Flap.hs:84-94`). The module exports only
 `flapMovingFaces`, `flapCheck` and `flapAt` for a `CheckedFlap`
-(`Flap.hs:49-59`, `:282-294`). A record that names the stationary seed
+(`Flap.hs:49-59`, `:286-298`). A record that names the stationary seed
 therefore needs either a new accessor or the runner to keep what it resolved.
 
 **3. Two kinds of order reach the study, and they must not be merged.**
@@ -100,7 +100,7 @@ states.** A single Boolean would erase the difference between them.
 | Evidence | Where | What it establishes |
 | --- | --- | --- |
 | None: state only | `StudyCase` angle tables (`docs/architecture.md:421-422`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
-| Interval sweep | `checkFlap` returns an opaque `CheckedFlap`; every pose is re-folded and compared with the checked hinge path (`Flap.hs:19-25`, `:249-280`) | the whole single-hinge turn, up to HingeSweep's conservative refusals |
+| Interval sweep | `checkFlap` returns an opaque `CheckedFlap`; every pose is re-folded and compared with the checked hinge path (`Flap.hs:19-25`, `:252-284`) | the whole single-hinge turn, up to HingeSweep's conservative refusals |
 | Exact ideal-path certificate | `PetalCertificate` bounds the ideal sheet; `CheckedBird` compares Double poses within 1e-12 (`PetalCertificate.hs:1-15`, `CheckedBird.hs:120-129`) | the ideal path of one fixture |
 | Not a motion at all | a static boundary-value solve whose iterates "are allowed to stretch and cross paper" (`CraneSpread.hs:12-13`) | an endpoint only |
 

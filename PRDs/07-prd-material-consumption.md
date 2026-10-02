@@ -178,7 +178,7 @@ angle on, and starts every free wing vertex on that arc (`:129`). One run on
   and M, V or U at angle 0 is active ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)),
   so a precrease, whose crease is U, would get a spring pulling flat paper shut.
 - **The stationary side is not exported**: `stationaryFace` is a field
-  ([`Flap.hs:85`](../src/Senbazuru/Origami/Flap.hs#L85)), not an export
+  ([`Flap.hs:88`](../src/Senbazuru/Origami/Flap.hs#L88)), not an export
   ([`:49-59`](../src/Senbazuru/Origami/Flap.hs#L49-L59)).
 - **Pins are keyed by mesh vertex id.** A *pin* is one mesh vertex together with
   the exact position a hold or grip fixes it at; `spreadPins` is `CraneSpread`'s

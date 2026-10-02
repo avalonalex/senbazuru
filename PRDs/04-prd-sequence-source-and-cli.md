@@ -976,7 +976,7 @@ is the short strip of wing beside the hinge that the study holds at a fixed angl
   turns towards, and it runs before `Flap`'s sweep
   ([D8](decisions.md#d8-folding-some-layers),
   [02 §6.3](02-language-semantics.md#63-which-layers) step 4). `CraneWing` gets
-  `FlapEndpointOrder` ([Flap.hs:120](../src/Senbazuru/Origami/Flap.hs#L120)) only
+  `FlapEndpointOrder` ([Flap.hs:123](../src/Senbazuru/Origami/Flap.hs#L123)) only
   because it calls `Flap` with no selection step
   ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)).
 - **UNVERIFIED:** that the two relations leave exactly one stacking

@@ -101,7 +101,7 @@ fixture migrates, and #60's done-when needs amending.
    - The blintz step "Reopen the first corner" (`BlintzSequence.hs:55`) brings
      edge 8 back to 0.
    - `surfaceAt` changes only the angles and keeps the pattern's assignments
-     (`src/Senbazuru/Origami/Flap.hs:343-344`), and `materialFrame` copies the
+     (`src/Senbazuru/Origami/Flap.hs:355-356`), and `materialFrame` copies the
      topology (`src/Senbazuru/Origami/Surface.hs:248-252`). So the reopened
      corner is written **M at 0**. Code reading; not run.
 8. **`CraneWing` writes U, first at 0 and then at nonzero angles.**
@@ -110,7 +110,7 @@ fixture migrates, and #60's done-when needs amending.
      doing a second job: recovering ids, because `creaseAllAlong` does not
      return the new edge ids.
    - After the turn, `craneFile` writes `materialFrame` of poses at 30°, 60°
-     and 90° (`CraneWing.hs:162-178`), keeping U (`Flap.hs:343-344`). The output
+     and 90° (`CraneWing.hs:162-178`), keeping U (`Flap.hs:355-356`). The output
      therefore holds **U at nonzero angles**, contrary to the spec's "zero for
      unassigned". Code reading; not run.
 9. **The precreases note writes F at 0** (finding 4).
@@ -128,12 +128,12 @@ fixture migrates, and #60's done-when needs amending.
     - Trap: **M/V at 0 survives only while the angle array survives**. Drop the
       array anywhere and every such crease folds flat.
     - F and U fold to 0 on both paths.
-11. **Flap accepts only M, V or U as a hinge** (`Flap.hs:187`).
+11. **Flap accepts only M, V or U as a hinge** (`Flap.hs:190`).
     - That is the only place it reads an assignment (grep).
     - The sign of travel comes from the stationary face's winding
-      (`Flap.hs:208-216`), not from the assignment. So by code reading a V can
+      (`Flap.hs:211-219`), not from the assignment. So by code reading a V can
       be driven to a negative angle without refusal.
-    - It requires explicit angles (`Flap.hs:172-173`).
+    - It requires explicit angles (`Flap.hs:175-176`).
 12. **Stacking** takes the direction from a nonzero angle first and only then
     from the assignment (`src/Senbazuru/Origami/Stacking.hs:705-727`). The
     direction is used only for a taco hinge (`creaseRule`, `636-639`). A crease
@@ -242,7 +242,7 @@ the crease after reading only the written frame back?
 
 | Candidate | FOLD sign rule | `Flap` can turn it later | Step-1 SVG | quarter-fold-steps golden | `check` (Maekawa) | `foldFrameWith` round trip | `materialFrame` / material study |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **1. M/V at 0** (the direction it was made or last bent in) | Departs: 0 is neither positive nor negative; contradicts `Types.hs:301-304` | Yes, from the frame (`Flap.hs:187`) | Dashed/chain *instruction* on every crease, including step-3 creases on step 1; solid ink across flat paper on step 2 | None; the fixture is this | Passes the fixture; **false violation** when a precrease ends flat or reverses (finding 19) | Only with explicit angles; absent angles fold it to ±180 (`Folding.hs:511-512`) | Copied verbatim; a hinge needing a control, sign-checked (`FoldBending.hs:180-181`) |
+| **1. M/V at 0** (the direction it was made or last bent in) | Departs: 0 is neither positive nor negative; contradicts `Types.hs:301-304` | Yes, from the frame (`Flap.hs:190`) | Dashed/chain *instruction* on every crease, including step-3 creases on step 1; solid ink across flat paper on step 2 | None; the fixture is this | Passes the fixture; **false violation** when a precrease ends flat or reverses (finding 19) | Only with explicit angles; absent angles fold it to ±180 (`Folding.hs:511-512`) | Copied verbatim; a hinge needing a control, sign-checked (`FoldBending.hs:180-181`) |
 | **2. F at 0, reassigned by sign when bent** (the frame's state) | Consistent in every frame, *if* the rewrite runs at every write; F left at a nonzero angle is the failure mode (`StudyCase.hs:207-210` rewrites only in `buildCaseFrame`) | **No**, from the frame (`FlapNotHinge`); needs a working pattern with M/V | Faint `#bdbdbd` 0.6 lines, no instruction (measured) | Changes: 4 paths in `quarter-fold-step-1.svg`, 5 in `quarter-fold-steps.svg` (measured) | Dissolved; a sheet with no bent creases checks nothing; flat guides pass (finding 19) | Folds as 0 whether angles are present or absent; the most robust | Copied verbatim; **uncreased paper**, a control is refused (`FoldBending.hs:166`) |
 | **3. U at 0** | Consistent at 0; U then written at a nonzero angle after a turn (CraneWing) is not; and U claims ignorance the interpreter does not have (spec 276-277) | Yes, from the frame | Byte-identical to 2 (measured) | Same changes as 2 | **Maekawa silently skipped** at every vertex touching a U (`FlatFold.hs:503-506`, `559-585`) | Folds as 0 either way | Copied verbatim; a hinge needing a control, sign unconstrained (`FoldBending.hs:181`) |
 | **4. Eventual (target-state) direction + explicit angles + sign rewrite while bent** (the bird file's rule) | Departs for M/V at rest; F-in-target is consistent | Yes for creases bent at the end; **no** for creases flat at the end (F) | Same as 1 for target-M/V creases; faint for target-flat guides | None for quarter-fold-steps (its target has no F); none for `bird-base-sequence.fold` (already this) | Frame 1 is checked against the finished pattern: meaningful, no false violation | As 1 (explicit angles mandatory) | As 1 for M/V, as 2 for target-F. **Needs the whole sequence evaluated before frame 1 is written** |
@@ -276,7 +276,7 @@ file.** Exactly:
   - that it was precreased;
   - which segments form one hinge.
 
-  The working pattern gives `Flap` the M or V it requires (`Flap.hs:187`).
+  The working pattern gives `Flap` the M or V it requires (`Flap.hs:190`).
   Resuming a sequence therefore needs its source, not its output.
 
 Why this and not candidate 4, which changes no golden:

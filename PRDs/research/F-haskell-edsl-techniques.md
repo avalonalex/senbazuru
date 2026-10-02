@@ -115,7 +115,7 @@ folded state and a material pattern from step to step, not a `Frame`.
      `Origami.ThroughLayers` puts that into a message
      (src/Senbazuru/Origami/ThroughLayers.hs:195).
    - `FlapError` names `EdgeId`s and `FaceId`s of the *cut* pattern
-     (Flap.hs:103-111). A file's author never wrote those ids.
+     (Flap.hs:106-114). A file's author never wrote those ids.
 
    A sequence layer must therefore translate: a step span, the author's
    reference name, and the file's own spelling of an argument.
@@ -373,7 +373,7 @@ folded state and a material pattern from step to step, not a `Frame`.
     - A flap must be a complete cut; an incomplete one is refused
       (Flap.hs:1-6).
     - The turn must be collision-free over its interval (`FlapCollision`,
-      `FlapUnresolved`, Flap.hs:118-119).
+      `FlapUnresolved`, Flap.hs:121-122).
     - A material-point reference must land strictly inside exactly one face
       (StudyCase.hs:139-143).
     - The refolded join must agree with the accepted endpoint

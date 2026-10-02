@@ -383,7 +383,7 @@ table in the next version of this record.
   after an `unfold`. That departs from `Fold.Creasing`'s "a valley with an angle of
   nought is not a valley" ([`Creasing.hs:281-286`](../src/Senbazuru/Fold/Creasing.hs#L281-L286)).
   It is needed because `Flap` turns only M, V or U
-  ([`Flap.hs:187`](../src/Senbazuru/Origami/Flap.hs#L187)) [code] and a collapse
+  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)) [code] and a collapse
   binds on direction; it is safe because folding reads explicit angles first and
   stacking reads an assignment only at angle 0, where a crease orders nothing.
   Written frames restore the FOLD rule ([D4](#d4-written-frames-follow-the-state-rule)).
@@ -554,7 +554,7 @@ table in the next version of this record.
   *first* listed segment's angle, and every other segment's sign follows from
   its own stationary face's ring direction
   ([`Flap.hs:10-16`](../src/Senbazuru/Origami/Flap.hs#L10-L16),
-  [`:280-297`](../src/Senbazuru/Origami/Flap.hs#L280-L297)) [code]. Both faces beside edge 11 were turned
+  [`:284-301`](../src/Senbazuru/Origami/Flap.hs#L284-L301)) [code]. Both faces beside edge 11 were turned
   over by step 1, so the same physical turn is −180 there; with edge 11 listed
   first the valley would need travel −180
   ([01 §5.6](01-architecture.md#56-travel-per-segment)) [py]. So the sign of
@@ -567,7 +567,7 @@ table in the next version of this record.
   with `data Toward = TowardPlusZ | TowardMinusZ`. As the amendment below
   decides, it reads the moving face beside each segment: travel is +A when
   "towards +z" agrees with that face's way up and −A otherwise, and every
-  segment's reading must agree ([`Flap.hs:320-352`](../src/Senbazuru/Origami/Flap.hs#L320-L352)) [code].
+  segment's reading must agree ([`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)) [code].
   The runner passes `TowardPlusZ` for a raw valley.
 
   | Raw sense | Moving face shows its top | shows its back |
@@ -595,7 +595,7 @@ table in the next version of this record.
     definitions do sign a closed hinge, but relative to the paper, which is
     the reading this replaces (E3 finding 5).
   - *The rule*, proposed here and adopted by #368
-    ([`Flap.hs:320-352`](../src/Senbazuru/Origami/Flap.hs#L320-L352)). A positive change in a crease's
+    ([`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)). A positive change in a crease's
     angle moves the face beside it towards that face's own top, so the sign
     follows from the moving face's way up, and `TowardPlusZ` means the turn
     that sets the moving paper beside the hinge off towards +z. The moving face
@@ -821,7 +821,7 @@ table in the next version of this record.
   note's own count line says 7; its table rows marked "existing" are six
   ([review L3](research/spine-reviews/review-L3-author-ergonomics.md) L3-16).
 - **An existing `F` crease cannot be a hinge.** `Flap` turns only M, V or U
-  ([`Flap.hs:187`](../src/Senbazuru/Origami/Flap.hs#L187)) [code], so such a fold
+  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)) [code], so such a fold
   is refused as `ExistingHingeFlat`.
 - **Unselected layers get no crease.**
 - **Evidence status.** The rule reproduces `CraneWing`'s faces `[2,3,6,7]` on
@@ -930,8 +930,8 @@ table in the next version of this record.
   unfold that retraces the route ([D12](#d12-the-text-syntax)).
 - **Records derive `Eq`, which needs a library change** ([C4](#changes-since-draft-v2)).
   `FlapMotion` and `CheckedFlap` derive only `Show`
-  ([`Flap.hs:93`](../src/Senbazuru/Origami/Flap.hs#L93),
-  [`:96`](../src/Senbazuru/Origami/Flap.hs#L96)), although every field type derives
+  ([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
+  [`:99`](../src/Senbazuru/Origami/Flap.hs#L99)), although every field type derives
   `Eq`: `Folded` ([`Folding.hs:324`](../src/Senbazuru/Origami/Folding.hs#L324)),
   `HingeSweep` and `SweepCheck`
   ([`HingeSweep.hs:89`](../src/Senbazuru/Origami/HingeSweep.hs#L89),
@@ -1350,7 +1350,7 @@ accepted and rejected controls stay unchanged at each
   key frame is its state 0). Compared: edges and face rings exactly; positions (the
   fixture's 2D coordinates padded with z = 0) within 1e-12 × `modelSpan`; **angles
   exactly** ([C52](#changes-since-draft-v2)), because a flap endpoint is
-  `angle + progress * travel` ([`Flap.hs:457`](../src/Senbazuru/Origami/Flap.hs#L457))
+  `angle + progress * travel` ([`Flap.hs:469`](../src/Senbazuru/Origami/Flap.hs#L469))
   [code] with progress 1 and whole-number doubles, which IEEE arithmetic gives
   exactly; assignments by `assignmentAtRest`; `frame_classes`. Not compared:
   `frame_title`, `faceOrders`, `frame_attributes`. **The line that looks like a
@@ -2394,8 +2394,8 @@ lists edits for.
 | C1 | Three new pieces, two of them contracts (the `Sequence` value is shared, not a contract) | 00 "What connecting them means"; 01 §2 | v2 §1 says three contracts, its picture labels two | adopted-modified | README, 00, 01 |
 | C2 | Sequences today come in four recipe forms, not "every sequence is a recipe naming ids"; two multi-frame FOLD examples exist | 00 "The two halves today" | A2 "Summary" [research]; `file_frames` counts [jq] | adopted | 00 |
 | C3 | `Run` defined in `Sequence.Record` without `FoldState`; `Sequence.*` levels; `writtenStates` shared by writer and page; row 7 may import `Sequence.Error` | 01 §1.2 rule 4 note; 06 R-06-20 | v2 DAG row 7 and §5 sketch; no `Internal` module in `src` [ran] | adopted-modified | 01, 02, 03, 04, 06 |
-| C4 | `FlapMotion` and `CheckedFlap` derive `Eq` (05 L14) | 01 §2.2 note | `Flap.hs:93`, `:96`; field types' derivings at `Folding.hs:324`, `HingeSweep.hs:89`, `:101`, `Surface.hs:123`, `Rigid.hs:80` [code] | adopted | 01, 05 |
-| C5 | The hinge turn takes a raw side; `Flap` sets the first segment's sign from its stationary face (`prepareFlapToward`, `FlapStationaryNotFlat`); superseded in part by [D5](#d5-presentation-and-the-readers-side)'s amendment, which reads the moving face | 02 §5.3 note; 01 §5.5 note | `Flap.hs:10-16`, `:201-216` [code]; edge 9 +180, edge 11 −180 [prd] | adopted-modified | 01, 02, 05 |
+| C4 | `FlapMotion` and `CheckedFlap` derive `Eq` (05 L14) | 01 §2.2 note | `Flap.hs:96`, `:99`; field types' derivings at `Folding.hs:324`, `HingeSweep.hs:89`, `:101`, `Surface.hs:123`, `Rigid.hs:80` [code] | adopted | 01, 05 |
+| C5 | The hinge turn takes a raw side; `Flap` sets the first segment's sign from its stationary face (`prepareFlapToward`, `FlapStationaryNotFlat`); superseded in part by [D5](#d5-presentation-and-the-readers-side)'s amendment, which reads the moving face | 02 §5.3 note; 01 §5.5 note | `Flap.hs:10-16`, `:204-219` [code]; edge 9 +180, edge 11 −180 [prd] | adopted-modified | 01, 02, 05 |
 | C6 | Two settle error types: `SettleStepError` wraps `Material.Settle`'s `SettleError` | 07 "SettleSpec and SettleInput" note | layer rule: `Material.*` knows no moves (§2) | adopted | 01, 02, 07 |
 | C7 | `closing` is written after the last step, stored as `hClosing` | 04 ambiguity table | 04 grammar `source` production | adopted | 02, 03, 04 |
 | C8 | `expect refused` is a move inside a step, produces no record and no state, and is kept in the `Run` | 02 §6.1, §9; 04 ambiguity table; 06 §2; 09 E10; 02 G12 | v2 D10 has no refusal constructor; `BlintzSequenceSpec.hs:110-115` [code] | adopted-modified | 02, 04, 06, 09 |
@@ -2407,7 +2407,7 @@ lists edits for.
 | C14 | No move outside a step; the diamond start is a first step | here | v2 §7 crane opening and crane wing examples against v2 §6 grammar | adopted | 04, 09 |
 | C15 | Optional captions; `fold and unfold` takes no angle; string escapes; `n/0` a parse error; reserved words never names | 04 lexical and ambiguity tables; 03 note | v2 grammar allowed a precrease angle | adopted | 02, 03, 04 |
 | C16 | Batching stays inside one step; corrected example | here (02 §6.5) | v2 D22 lines 939-940 contradict themselves | adopted-modified | 02, 05 |
-| C17 | Intent at start: F beyond τ becomes M or V; U stays U | 02 §2.2 note | `StudyCase.hs:208`, `Flap.hs:187` [code] | adopted | 02, glossary-additions |
+| C17 | Intent at start: F beyond τ becomes M or V; U stays U | 02 §2.2 note | `StudyCase.hs:208`, `Flap.hs:190` [code] | adopted | 02, glossary-additions |
 | C18 | `checkpoint` reads angles by `foldAnglesOf`, as `start folded` does | here | `Folding.hs:507-533` [code]; v2 D21 | adopted-modified | 02 |
 | C19 | An anchor a new crease passes through moves to the largest unturned piece; 02's claim that the authoring test hits it is removed | 02 §14 G1 | 09 §2.3 writes `anchor (3/4, 1/4)` [prd] | adopted-modified | 02, 09 |
 | C20 | The default anchor is a vertex mean, not a centroid | 02 §2.3 note | `StudyCase.hs:242-248` [code] | adopted | 02, glossary-additions |
@@ -2442,7 +2442,7 @@ lists edits for.
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |
 | C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:378`; `ci.yml` jobs [code] | adopted-modified (owner decision with default) | 09, 10 |
-| C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:343` [code] | adopted | 09 |
+| C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:355` [code] | adopted | 09 |
 | C53 | Golden check with `--diff-filter` and three dots | 09 §1.2 | both commands print nothing [ran] | adopted | 06, 08, 09 |
 | C54 | #60 closes at M4 | here (10 §4 note said M3) | 09 §2.3's milestone | adopted-modified | 10 |
 | C55 | #54 advanced, not closed; #96 amended at M0 | 10 §4 | issue checklists per 10 [prd] | adopted | 10 |
@@ -2459,7 +2459,7 @@ lists edits for.
 | C66 | The `LineStopsOnTheModel` sentence as row 17 | 10 §3 | `ThroughLayers.hs:195` [code] | adopted | 01, 10 |
 | C67 | Existing library messages keep bare ids in v1 | 05 open question | pinned sentences in specs and docs [prd] | adopted-modified (decided, follow-up issue) | 05 |
 | C68 | A record's seed for `L1 to L2` is the vertex mean of the face beside L1's longest segment | here (01 §5.8 left it to 02) | (1/4, 3/4) on quarter-fold step 2 [py] | adopted-modified | 01, 02 |
-| C69 | An existing `F` hinge is refused as `ExistingHingeFlat`, with residue | 02 §6.2 | `Flap.hs:187` [code] | adopted | 02 |
+| C69 | An existing `F` hinge is refused as `ExistingHingeFlat`, with residue | 02 §6.2 | `Flap.hs:190` [code] | adopted | 02 |
 | C70 | `bird-base-sequence-arrows.svg` pinned before 05 L3 | 09 §1.3; open question 7 | no golden draws that file with arrows (`BirdSequenceSpec.hs:79` passes `False`) [prd] | adopted | 09 |
 | C71 | Existing `runIO` specs unchanged until their deletion PRs | 09 open question 6 | 14 spec files use `runIO` [prd] | adopted | 09 |
 | C72 | The crane's existing-crease count is 6 (the research note's count line says 7) | 02 §6.2 | the note's table [research] | adopted | 02 |
