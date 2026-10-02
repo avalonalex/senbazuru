@@ -70,6 +70,9 @@
 -- only at an edge, are offered to HingeSweep's resting-plane check; this names
 -- candidates, not accepted contact. Any resulting departure orders must agree
 -- with the supplied order. See @docs\/notes\/a-wing-resting-on-paper.md@.
+-- The hinge's own corners reach the sweep exactly on its axis, since they
+-- define it and folding leaves them off it only by rounding; every other
+-- corner near the axis still faces the sweep's tighter allowance.
 module Senbazuru.Origami.Flap
   ( FlapMotion,
     CheckedFlap,
@@ -297,7 +300,17 @@ prepareHinge eids@(eid : _) side request supplied = do
   let travels = [(e, if along then travel else negate travel) | (e, along, _) <- directions]
   sheet <- first FlapSurface (surfaceFromFolded start)
   (mesh, owners) <- first FlapSurface (refineSurface 0 sheet)
-  let normalized = mesh {samples = [p {position = (1 / scale) *^ (position p ^-^ origin)} | p <- samples mesh]}
+  -- The hinge's own corners define its axis, and 'segmentAlong' has already
+  -- held them to within 1e-12 of it. Folding leaves them off it by rounding,
+  -- 1.1e-13 for a crease drawn across the crane's wing, and the sweep refuses
+  -- any corner that far off which it is not told is on the hinge. So the copy
+  -- it checks has them exactly on the axis; any other near-axis corner still
+  -- meets the sweep's own allowance.
+  let hingeCorners = S.fromList [unVertexId v | (_, x, y, _, _) <- segments, v <- [x, y]]
+      direction = (1 / norm (finish ^-^ origin)) *^ (finish ^-^ origin)
+      relative p = (1 / scale) *^ (p ^-^ origin)
+      onAxis q = dot q direction *^ direction
+      normalized = mesh {samples = [p {position = (if S.member i hingeCorners then onAxis else id) (relative (position p))} | (i, p) <- zip [0 ..] (samples mesh)]}
       moving = S.toList (S.fromList [unVertexId vid | face <- faces, S.member (faceId face) selected, vid <- faceVertexIds face])
   sweep <- first FlapSweep (prepareSweep (V3 0 0 0) ((1 / scale) *^ (finish ^-^ origin)) (negate travel * pi / 180) moving normalized)
   let suppliedOrders = faceOrders suppliedFrame

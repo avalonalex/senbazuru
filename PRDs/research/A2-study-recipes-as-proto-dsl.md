@@ -54,7 +54,7 @@ There are also two surprises that bear on acceptance tests:
   is refused (`StudyCase.hs:152-153`).
 - **Flap moves.** The library entry point takes "Crease id, incident face on
   the moving side, signed travel in degrees, and a folding result". Its ids
-  belong to the returned cut pattern (`src/Senbazuru/Origami/Flap.hs:152-155`,
+  belong to the returned cut pattern (`src/Senbazuru/Origami/Flap.hs:155-158`,
   `:9-13`).
 - **Certified stages.** `data BirdStage = SquareCollapse | FrontPetal |
   BackPetal | PressPetals` (`CheckedBird.hs:48`). Progress becomes hinge
@@ -115,8 +115,8 @@ How the recipe sets up and runs:
 - Moves (`HelmetSequence.hs:47-51`): `([8,9], FaceId 5, 180)`,
   `([10,12], FaceId 1, 180)`, `([13,11], FaceId 2, 180)`.
 - The first id in each list sets the sign. The operation derives the other
-  segments' signs from their stationary faces (`Flap.hs:157-161`,
-  `Flap.hs:208-216`).
+  segments' signs from their stationary faces (`Flap.hs:160-164`,
+  `Flap.hs:211-219`).
 - In the fixture, 10 and 13 are `V` while 12 and 11 are `M` (jq). So
   `[13, 11]` deliberately lists the valley first.
 - The note explains that edge 10 closes to +180 while edge 12 closes to −180
@@ -268,7 +268,7 @@ coordinates.**
 
 - The recipes clear `frameExtras` (`BlintzSequence.hs:42`, `:63`).
 - The flap operation itself rebuilds from angles with `faceOrders = []` and
-  `frameExtras = mempty` (`Flap.hs:172`, `Flap.hs:344`).
+  `frameExtras = mempty` (`Flap.hs:175`, `Flap.hs:357`).
 - This matches the repo rule that a move "must drop what it invalidates"
   (AGENTS.md, Conventions).
 
@@ -282,7 +282,7 @@ coordinates.**
   - helmet: `HelmetSequence.hs:8-9`, `:41-44`;
   - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:94-96`.
 - Why it matters (`docs/notes/chaining-checked-folds.md`, third paragraph):
-  - `flapAt` holds the flap's stationary face still (`Flap.hs:346-348`).
+  - `flapAt` holds the flap's stationary face still (`Flap.hs:359-361`).
   - An independent refold holds face 0 still.
   - If those differ, joining the two inserts a whole-sheet rotation.
 - The invariant, which the recipes enforce only indirectly through F14:
@@ -319,24 +319,24 @@ coordinates.**
 **F15. The flap start must be an untouched `foldFrameWith` result.**
 
 - `prepareFlapAlong` rebuilds the angle state and returns
-  `FlapStartMismatch` in any of these cases (`Flap.hs:169-181`):
+  `FlapStartMismatch` in any of these cases (`Flap.hs:172-184`):
   - the angle count differs;
   - the face rings differ;
   - any position differs by more than 1e-9 of the span.
-- Why: "Folded's constructor is public" (`Flap.hs:169-170`).
+- Why: "Folded's constructor is public" (`Flap.hs:172-173`).
 - An interpreter must therefore re-fold after every handoff rather than patch
   a `Folded` value.
 
 **F16. Endpoint angles are exact sums, and endpoint orders are computed.**
 
-- Pose angles are `angle + progress * travel` (`Flap.hs:343`), so endpoints
+- Pose angles are `angle + progress * travel` (`Flap.hs:356`), so endpoints
   are exactly representable here: −180 + 180 = 0.
 - The tests pin exact lists, e.g. `[-180, 0, 0, 0]` …
   `[0, -180, -180, -180]` (`BlintzSequenceSpec.hs:37-38`;
   `HelmetSequenceSpec.hs:82-83`).
 - Orders at a pose are retained stack orders plus endpoint contacts
-  (`Flap.hs:290-294`). Starting orders are checked against departure
-  (`Flap.hs:303-312`).
+  (`Flap.hs:293-297`). Starting orders are checked against departure
+  (`Flap.hs:316-325`).
 - Order counts per endpoint: blintz `[1,2,3,4,3]`
   (`BlintzSequenceSpec.hs:39`); helmet `[3,7,11]`
   (`HelmetSequenceSpec.hs:84`).
@@ -475,7 +475,7 @@ format" (`docs/architecture.md:409-413`).
 - A flap is "the set of faces reached after removing the selected creases";
   the segments must "lie on one line in the CURRENT folded shape"
   (`Flap.hs:1-6`).
-- Anything else is refused as `FlapCoupled` (`Flap.hs:196-199`). The helmet
+- Anything else is refused as `FlapCoupled` (`Flap.hs:199-202`). The helmet
   test covers this: a single diagonal segment `[8]` is refused
   (`HelmetSequenceSpec.hs:40`).
 - In the recipes this covers blintz, helmet, the crane wing and the flap
@@ -552,7 +552,7 @@ Still missing from the sketch:
   only after `foldFrameWith` (F2, F17). The face numbering (FaceId 2 for the
   lower-right corner) cannot be read from the fixture file.
 - **Illustration arithmetic.** `Halfway` must be `flapAt 0.5`, so that angles
-  come out as `angle + 0.5 * travel` (`Flap.hs:343`).
+  come out as `angle + 0.5 * travel` (`Flap.hs:356`).
 - **Anchor rule.** Either reorder faces as the recipe does, or anchor by
   material point as `StudyCase` does (F13). The two are different code paths.
 

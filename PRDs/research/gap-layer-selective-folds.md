@@ -94,12 +94,12 @@ and a way to carry accepted orders across the crease.
    - removes the selected creases' links from the face graph;
    - walks from the moving face;
    - refuses `FlapCoupled` if the stationary face is reached
-     (`Flap.hs:196-199`).
+     (`Flap.hs:199-202`).
    Every selected segment must:
-   - be M, V or U (`:187`, else `FlapNotHinge`);
-   - separate moving from stationary paper (`:209`, `FlapNotBoundary`);
+   - be M, V or U (`:190`, else `FlapNotHinge`);
+   - separate moving from stationary paper (`:212`, `FlapNotBoundary`);
    - lie on the hinge line in the *folded* shape, within `1e-12` of the
-     sheet's span (`:207`, `:215`, `FlapUnalignedCrease`).
+     sheet's span (`:210`, `:218`, `FlapUnalignedCrease`).
    Ids must come from `foldedPattern`, because cutting renumbers (`:9-10`). The
    module does not discover coupled motions (`:1-6`). Each overlapping pair
    needs a supplied order, and none is inferred from coincident positions
@@ -317,13 +317,13 @@ A crease at angle 0 on unselected layers leaves Flap's connectivity unchanged
 (finding 13), so it never causes `FlapCoupled`. It still costs:
 
 - **Collinearity catches nothing.** Those segments lie on the same folded line
-  and pass the `onLine` check (`Flap.hs:207`). Put them in a hinge list, as
+  and pass the `onLine` check (`Flap.hs:210`). Put them in a hinge list, as
   `CraneWing`'s every-U-edge recovery would, and they fail only at
-  `FlapNotBoundary` (`:209`).
+  `FlapNotBoundary` (`:212`).
 - **Unneeded refusals.** They inherit ThroughLayers' ends test for layers the
   reader never touched. On the crane line that means 12 creases instead of 4.
 - **A lasting choice between U and F.** `F` blocks any later hinge there
-  (`:187`). `U` keeps it usable, but writes a crease no book step made.
+  (`:190`). `U` keeps it usable, but writes a crease no book step made.
 - **No gain on step pages.** They change the topology that `motionsBetween`
   compares (`Step.hs:94-96`) exactly as much as the selected creases do.
 
@@ -388,7 +388,7 @@ What the interpreter can do itself, with exports that exist today:
   on the seed's side;
 - after the turn reaches ±180, relabelling U as M or V from the angle's sign
   (FOLD: a valley's angle is in (0, 180], `Creasing.hs:281-286`). Flap already
-  gives each segment the sign its stationary face needs (`Flap.hs:208-216`),
+  gives each segment the sign its stationary face needs (`Flap.hs:211-219`),
   so the M/V alternation falls out without `facesUp`.
 
 The selection rule itself belongs in the library too. PRDs 1 and 2 both need
@@ -524,7 +524,7 @@ Two takeaways for the PRDs:
   pairs (0, 2), (4, 6), (1, 3), (5, 7) through `nearness`.
 - That `Flap`'s endpoint check at progress 0 covers *every* touching
   stationary face, which finding 14 relies on, is my reading of
-  `Flap.hs:303-312` and the note. It was not traced through `HingeSweep`.
+  `Flap.hs:316-325` and the note. It was not traced through `HingeSweep`.
 - The crane table's R rows are not computed. The origami.me text was read
   through a fetch summariser, twice. The two summaries disagreed on step 6's
   layer wording: once "single layer", once nothing stated. Finding 17 computes

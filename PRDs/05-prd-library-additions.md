@@ -89,16 +89,16 @@ Each line is something a runner cannot do with today's exports.
   ([`Step.hs:94-96`](../src/Senbazuru/Origami/Step.hs#L94-L96),
   [`:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34)).
 - **Flap gives positions, not per-face motions, and hides its stationary face**
-  ([`Flap.hs:290-294`](../src/Senbazuru/Origami/Flap.hs#L290-L294),
+  ([`Flap.hs:293-297`](../src/Senbazuru/Origami/Flap.hs#L293-L297),
   [`:49-59`](../src/Senbazuru/Origami/Flap.hs#L49-L59)).
 - **Flap's travel sign depends on that hidden face.** Travel is the change in the
   *first* listed segment's angle, and each other segment's sign follows its own
   stationary face's ring ([`Flap.hs:14-16`](../src/Senbazuru/Origami/Flap.hs#L14-L16),
-  [`:208-216`](../src/Senbazuru/Origami/Flap.hs#L208-L216)), so a caller holding
+  [`:211-219`](../src/Senbazuru/Origami/Flap.hs#L211-L219)), so a caller holding
   only "valley" cannot choose it (L14).
 - **Flap's values cannot be compared**: `FlapMotion` and `CheckedFlap` derive only
-  `Show` ([`Flap.hs:93`](../src/Senbazuru/Origami/Flap.hs#L93),
-  [`:96`](../src/Senbazuru/Origami/Flap.hs#L96)).
+  `Show` ([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
+  [`:99`](../src/Senbazuru/Origami/Flap.hs#L99)).
 - **Folding discards its tree**: `spanningWalk` returns placements and not which
   face placed which
   ([`Folding.hs:572-577`](../src/Senbazuru/Origami/Folding.hs#L572-L577)).
@@ -390,7 +390,7 @@ turn-over would get an arrow.
   vertex to move would give the runner's own turn-overs of these sheets arrows,
   and is rejected. A flap turn cannot qualify under "some": its stationary face
   keeps three non-collinear vertices still
-  ([`Flap.hs:346-348`](../src/Senbazuru/Origami/Flap.hs#L346-L348)), so the only
+  ([`Flap.hs:359-361`](../src/Senbazuru/Origami/Flap.hs#L359-L361)), so the only
   fit is the identity, which the moved vertices contradict.
 - **R-05-13.** [`Step.hs:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34) is
   replaced in the same PR by
@@ -456,11 +456,11 @@ flapAt checked progress = routeSurface <$> flapPoseAt checked progress
 **Why.** A *move record* names the face a move held still
 ([glossary-additions](glossary-additions.md#running-a-sequence),
 [D14](decisions.md#d14-material-consumption));
-`FlapMotion` stores it ([`Flap.hs:85`](../src/Senbazuru/Origami/Flap.hs#L85),
-chosen at [`:195`](../src/Senbazuru/Origami/Flap.hs#L195)) and nothing exports
+`FlapMotion` stores it ([`Flap.hs:88`](../src/Senbazuru/Origami/Flap.hs#L88),
+chosen at [`:198`](../src/Senbazuru/Origami/Flap.hs#L198)) and nothing exports
 it. Animation keys and `rigid-pose` grips need one rigid motion per face along
 the route ([D10](decisions.md#d10-assurance-as-evidence-values)); `surfaceAt` computes them
-([`:345`](../src/Senbazuru/Origami/Flap.hs#L345)) and discards them, and
+([`:358`](../src/Senbazuru/Origami/Flap.hs#L358)) and discards them, and
 re-deriving them adds a `foldFrameWith` call to the roughly seven a checked step
 already makes
 ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)
@@ -472,17 +472,17 @@ already makes
   `Folded` given to `prepareFlapAlong`
   ([`Flap.hs:9-10`](../src/Senbazuru/Origami/Flap.hs#L9-L10)).
 - **R-05-15.** `surfaceAt` becomes one internal function returning its angles
-  ([`:343`](../src/Senbazuru/Origami/Flap.hs#L343)), fold
-  ([`:345`](../src/Senbazuru/Origami/Flap.hs#L345)) and *stationary correction*:
+  ([`:356`](../src/Senbazuru/Origami/Flap.hs#L356)), fold
+  ([`:358`](../src/Senbazuru/Origami/Flap.hs#L358)) and *stationary correction*:
   refolding puts the faces somewhere new, and the correction is the rigid motion
   that puts the held face back where it was before the refold
   (``before `after` inverse afterPose``,
-  [`:346-348`](../src/Senbazuru/Origami/Flap.hs#L346-L348)). `flapPoseAt`
+  [`:359-361`](../src/Senbazuru/Origami/Flap.hs#L359-L361)). `flapPoseAt`
   returns those angles, `flapAt`'s surface with its orders
-  ([`:292-294`](../src/Senbazuru/Origami/Flap.hs#L292-L294)), and every placement
+  ([`:295-297`](../src/Senbazuru/Origami/Flap.hs#L295-L297)), and every placement
   composed as ``correction `after` placement``. One `foldFrameWith` per call, as `flapAt`;
   progress outside [0, 1] refused as today
-  ([`:340`](../src/Senbazuru/Origami/Flap.hs#L340)).
+  ([`:353`](../src/Senbazuru/Origami/Flap.hs#L353)).
 
 **Refusals.** Existing `FlapError`s only.
 
@@ -638,7 +638,7 @@ untouchedFold :: Folded -> Either StartError Folded      -- the fresh refold on 
 **Why.** An *untouched* fold is a `Folded` equal to what `foldFrameWith` returns
 for its own pattern and angles: one nobody edited afterwards. `Folded`'s
 constructor is public, so `Flap` rebuilds the state rather than trust one
-([`Flap.hs:169-181`](../src/Senbazuru/Origami/Flap.hs#L169-L181)).
+([`Flap.hs:172-184`](../src/Senbazuru/Origami/Flap.hs#L172-L184)).
 L8 takes a `Folded` for the same reason, and a copy would drift. The check
 ignores orders, which is why the runner puts orders on the working pattern before
 folding ([02 §2.4, invariant 3](02-language-semantics.md#24-the-seven-invariants);
@@ -647,13 +647,13 @@ folding ([02 §2.4, invariant 3](02-language-semantics.md#24-the-seven-invariant
 **Semantics.**
 
 - **R-05-24.** `untouchedFold` is
-  [`Flap.hs:171-173`](../src/Senbazuru/Origami/Flap.hs#L171-L173) and
-  [`:175-181`](../src/Senbazuru/Origami/Flap.hs#L175-L181) verbatim: rebuild the
+  [`Flap.hs:174-176`](../src/Senbazuru/Origami/Flap.hs#L174-L176) and
+  [`:178-184`](../src/Senbazuru/Origami/Flap.hs#L178-L184) verbatim: rebuild the
   pattern with the folded angles and no orders, refuse a length mismatch, refold,
   compare rings, then positions within 1e-9 × `modelSpan`.
 - **R-05-25.** `Flap` maps the constructors to `FlapFolding`, `FlapGeometry`,
   `FlapStartMismatch`, and runs its surface check
-  ([`:174`](../src/Senbazuru/Origami/Flap.hs#L174)) immediately after. Only a
+  ([`:177`](../src/Senbazuru/Origami/Flap.hs#L177)) immediately after. Only a
   `Folded` failing *both* the surface check and a start check after the length
   test changes its reported reason: from `FlapSurface` to `FlapFolding`,
   `FlapGeometry` or `FlapStartMismatch`, because the surface check now runs
@@ -1019,7 +1019,7 @@ the study.
 
 ```haskell
 -- SKETCH
-data CheckedMacro          -- opaque; only checkMacro builds one, as with CheckedFlap (Flap.hs:95-96);
+data CheckedMacro          -- opaque; only checkMacro builds one, as with CheckedFlap (Flap.hs:98-99);
                            -- deriving stock (Eq, Show) from the start (D10)
 data SampleReport          -- the parameters checked and the checks run at each; Eq, Show
 data MacroError            -- Explain in this module
@@ -1092,17 +1092,17 @@ Grips and animation keys need poses anywhere on the route
 ([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment).
 
 ```haskell
-data FlapMotion = FlapMotion { … }          -- opaque (Flap.hs:108-120)
+data FlapMotion = FlapMotion { … }          -- opaque (Flap.hs:111-123)
   deriving stock (Eq, Show)
 data CheckedFlap = CheckedFlap !FlapMotion !SweepCheck
-  deriving stock (Eq, Show)                 -- (Flap.hs:122-123)
+  deriving stock (Eq, Show)                 -- (Flap.hs:125-126)
 
-data Toward = TowardPlusZ | TowardMinusZ    -- (Flap.hs:130)
+data Toward = TowardPlusZ | TowardMinusZ    -- (Flap.hs:133)
   deriving stock (Eq, Show)
 
 prepareFlapToward :: [EdgeId] -> FaceId -> Double -> Toward -> Folded -> Either FlapError FlapMotion
 
--- new FlapError constructors (Flap.hs:142-143, :153)
+-- new FlapError constructors (Flap.hs:145-146, :153)
   | FlapMovingNotFlat !FaceId !Double       -- a moving face beside the hinge, and its spread in z
   | FlapMovesBothWays !FaceId !FaceId       -- two moving faces beside the hinge, either side of its line
   | FlapInvalidTurn !Double                 -- a size of turn that is negative, above 360 or not finite
@@ -1118,7 +1118,7 @@ signed change in the *first* listed segment's fold angle; every other segment
 takes `travel` or `−travel` by comparing its own stationary face's ring direction
 along the hinge with the first's
 ([`Flap.hs:14-16`](../src/Senbazuru/Origami/Flap.hs#L14-L16),
-[`:280-297`](../src/Senbazuru/Origami/Flap.hs#L280-L297)). The face that moves
+[`:283-300`](../src/Senbazuru/Origami/Flap.hs#L283-L300)). The face that moves
 beside edge 9 is face 1, lying top up; the one beside edge 11 is face 2, which
 step 1 turned over: in `file_frames[0]`, face 2's ring `[8,6,3,7]` has signed
 area −0.25 in written x, y
@@ -1129,7 +1129,7 @@ travel +180, and with edge 11 first the same valley is −180
 [§5.6](01-architecture.md#56-travel-per-segment)). A caller holding "valley"
 cannot pick the sign without knowing which way up the moving face beside the
 first crease lies, and `Flap` reads that from the placements of its own refold
-([`Flap.hs:320-352`](../src/Senbazuru/Origami/Flap.hs#L320-L352)), never from the `Folded` a caller
+([`Flap.hs:333-365`](../src/Senbazuru/Origami/Flap.hs#L333-L365)), never from the `Folded` a caller
 hands it. Way-up decisions stay in the library, which already reads the faces'
 placements
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
@@ -1151,13 +1151,13 @@ placements
 
 - **R-05-44.** `FlapMotion` and `CheckedFlap` gain `deriving stock (Eq)`. Both stay
   opaque: the export list names the types without constructors
-  ([`Flap.hs:74-75`](../src/Senbazuru/Origami/Flap.hs#L74-L75)).
+  ([`Flap.hs:77-78`](../src/Senbazuru/Origami/Flap.hs#L77-L78)).
 - **R-05-45.** `prepareFlapToward eids side magnitude toward q` is
   `prepareFlapAlong eids side travel q`
-  ([`Flap.hs:225-232`](../src/Senbazuru/Origami/Flap.hs#L225-L232)) with `travel`
+  ([`Flap.hs:228-235`](../src/Senbazuru/Origami/Flap.hs#L228-L235)) with `travel`
   chosen once the moving face beside each segment is known
-  ([`:280-297`](../src/Senbazuru/Origami/Flap.hs#L280-L297)). Read each face's placement in
-  the refolded start (`start`, [`:247`](../src/Senbazuru/Origami/Flap.hs#L247)),
+  ([`:283-300`](../src/Senbazuru/Origami/Flap.hs#L283-L300)). Read each face's placement in
+  the refolded start (`start`, [`:250`](../src/Senbazuru/Origami/Flap.hs#L250)),
   not in the supplied `Folded`, whose constructor is public. A positive change
   in a crease's angle moves the face beside it towards that face's own top, so
   which way up the face lies, `facesUp` of its placement
@@ -1185,7 +1185,7 @@ placements
   disagrees, at any size of turn, 0 included: the moving faces lie on both
   sides of the hinge line, so no one direction fits. A magnitude that is
   negative, non-finite or above 360 is `FlapInvalidTurn`
-  ([`:237`](../src/Senbazuru/Origami/Flap.hs#L237)).
+  ([`:237`](../src/Senbazuru/Origami/Flap.hs#L240)).
 - **R-05-47.** `prepareFlap` and `prepareFlapAlong` are unchanged, and existing
   callers keep passing signed travels. The runner passes `TowardPlusZ` for a
   raw valley and `TowardMinusZ` for a raw mountain; what the raw sense is

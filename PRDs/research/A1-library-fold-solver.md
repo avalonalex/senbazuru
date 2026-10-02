@@ -71,7 +71,7 @@ foldedPlacements :: !(IM.IntMap Rigid) }` (`Folding.hs:283-324`).
 - `foldedPattern`'s `edgesFoldAngle` is the file's (possibly empty) array;
   only `foldedFrame`'s is guaranteed explicit (`Folding.hs:383` vs `390`).
 - The `Folded` constructor is exported (`Folding.hs:80`), so a caller can forge
-  one; `Flap` defends by re-folding and comparing (`Flap.hs:169-181`,
+  one; `Flap` defends by re-folding and comparing (`Flap.hs:172-184`,
   `FlapStartMismatch`).
 
 **3. `Surface material` is the renderer hand-off, with a hidden constructor.**
@@ -109,7 +109,7 @@ contact (`Surface.hs:21-24`). Its `topology` keeps `edgesFoldAngle`,
   returns the frame's own orders, or solves them only for flat-folded models
   with convex faces, returning `Nothing` otherwise (`Stacking.hs:386-400`;
   header `Stacking.hs:18-29`). A state with paper in the air gets its orders
-  only from a checked flap's endpoint contacts (`Flap.hs:290-301`) or from a
+  only from a checked flap's endpoint contacts (`Flap.hs:293-314`) or from a
   study declaration (`StudyCase.hs:121-147`).
 
 **5. What the checked recipes thread from one move to the next.** Blintz and
@@ -154,9 +154,9 @@ normalise rings once at initialisation.
 | Crease a flat sheet | `creaseAlong :: V2 -> V2 -> Assignment -> Frame -> Either FoldError Frame` (`Creasing.hs:90`); `creaseAllAlong :: [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame` (`138`) | Not a folded form (`148`); each end meets an existing edge or corner (`186-190`); nonzero length; no repeated pair; batch refusals are order-independent (`116-120`); ends to new points are interned to one vertex (`109-114`) | `FoldError`: `SheetIsFolded`, `CreaseEndMeetsNothing`, `CreaseWithoutLength`, `CreaseRepeated`, `ArrayLengthMismatch`, plus anything `withPlanarFaces` refuses |
 | Crease through layers | `creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame` (`ThroughLayers.hs:227`) | Input is a pattern **with angles**; folds it internally (`229`); result must be flat (`234`); ends not strictly inside any face (`241-247`); every face creased; assignment flipped per face-down layer (`296`, `327-340`); returns a **pattern**, never a folded form | `ThroughError` (`ThroughLayers.hs:111-176`) |
 | Cut + trace | `withPlanarFaces :: Frame -> Either FoldError Frame` (`Crossings.hs:150`) | A frame that records faces is returned untouched (`Crossings.hs:128`; `Faces.hs:136-149`) | `FoldError` (`EdgesCross`, `EdgesOverlap`, `CreaseBridge`, `SheetInPieces`, ...) |
-| Prepare a flap turn | `prepareFlap :: EdgeId -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`Flap.hs:154`); `prepareFlapAlong :: [EdgeId] -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`162`) | `Folded` must be exactly what `foldFrameWith` returns (`169-181`); ids from `foldedPattern`; travel finite, at most 360 degrees (`165`); each segment an `M`/`V`/`U` edge with two faces (`187-191`); removing the segments must separate the moving side (`199`); all segments on one line in the folded shape (`215`); orders retained only within one motion group and plane (`223-233`) | `FlapError` (`Flap.hs:98-122`) |
-| Check it | `checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap` (`Flap.hs:249`) | Interval check over the whole turn; endpoint orders checked (`273-280`, `303-312`) | `FlapCollision`, `FlapUnresolved`, `FlapEndpointOrder`, `FlapSweep` |
-| Pose it | `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)` (`Flap.hs:290`); `flapCheck :: CheckedFlap -> SweepCheck`; `flapMovingFaces :: CheckedFlap -> [FaceId]` | Progress in [0, 1]; each pose re-folded from angles, aligned to the stationary face, compared with the swept path (`338-352`) | `FlapInvalidProgress`, `FlapPathMismatch`, nested |
+| Prepare a flap turn | `prepareFlap :: EdgeId -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`Flap.hs:157`); `prepareFlapAlong :: [EdgeId] -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`162`) | `Folded` must be exactly what `foldFrameWith` returns (`169-181`); ids from `foldedPattern`; travel finite, at most 360 degrees (`165`); each segment an `M`/`V`/`U` edge with two faces (`187-191`); removing the segments must separate the moving side (`199`); all segments on one line in the folded shape (`215`); orders retained only within one motion group and plane (`223-233`) | `FlapError` (`Flap.hs:101-125`) |
+| Check it | `checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap` (`Flap.hs:252`) | Interval check over the whole turn; endpoint orders checked (`273-280`, `303-312`) | `FlapCollision`, `FlapUnresolved`, `FlapEndpointOrder`, `FlapSweep` |
+| Pose it | `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)` (`Flap.hs:293`); `flapCheck :: CheckedFlap -> SweepCheck`; `flapMovingFaces :: CheckedFlap -> [FaceId]` | Progress in [0, 1]; each pose re-folded from angles, aligned to the stationary face, compared with the swept path (`338-352`) | `FlapInvalidProgress`, `FlapPathMismatch`, nested |
 | Lower-level hinge | `prepareSweep :: V3 -> V3 -> Double -> [Int] -> MaterialMesh -> Either SweepError HingeSweep` (`HingeSweep.hs:146`); `checkSweep`, `checkSweepWithFlatEndpoints`, `checkSweepWithRigidContacts`, `checkSweepWithLayerContacts` (`215-241`) | One fixed axis, radians, at most one full turn (`149`); no triangle mixes moving and fixed vertices off-axis (`173`) | `SweepError` (`HingeSweep.hs:114-127`) |
 | Move the whole model | `transformSurface :: Rigid -> Surface material -> Either SurfaceError (Surface material)` (`Surface.hs:287`); build with `rotationAbout :: V3 -> V3 -> Double -> Rigid`, `after`, `inverse` (`Rigid.hs:95`, `114`, `159`) | Rotates requirement direction; keeps material and thickness; drops `frameExtras` (`Surface.hs:284-296`) | `SurfaceError` |
 | Attach layer data | `withFaceOrders :: [FaceOrder] -> Surface m -> Either SurfaceError (Surface m)`; `withLayerRequirements :: V3 -> [(FaceId, FaceId)] -> Surface m -> Either SurfaceError (Surface m)`; `withPhysicalThickness :: Maybe Double -> Surface m -> Either SurfaceError (Surface m)` (`Surface.hs:260`, `306`, `301`) | Range checks only | `SurfaceError` (`Surface.hs:125-144`) |
@@ -174,7 +174,7 @@ Things a newcomer would get wrong about these:
   through every layer", instantly, with no motion check; its own test says the
   creases are written at plus or minus 180 so the result is the next state
   (`test/Senbazuru/Origami/ThroughLayersSpec.hs:134-146`). A `Flat` assignment
-  gives angle 0 but then `Flap` refuses that edge as a hinge (`Flap.hs:187`).
+  gives angle 0 but then `Flap` refuses that edge as a hinge (`Flap.hs:190`).
   A precrease-then-fold move needs a caller to set the new edges' angles to 0
   while keeping `M`/`V`, and the new edge ids are not returned.
 - **Flap travel is a change in FOLD angle, signed relative to the stationary
@@ -214,7 +214,7 @@ Things a newcomer would get wrong about these:
   two individually correct states can differ by a whole-model rigid motion.
   The recipes put a stationary face first once, before any orders exist
   (`BlintzSequence.hs:5-8`, `44-48`; `HelmetSequence.hs:8-10`, `45-48`);
-  `Flap` realigns poses to its stationary face (`Flap.hs:346-348`); `StudyCase`
+  `Flap` realigns poses to its stationary face (`Flap.hs:359-361`); `StudyCase`
   picks the held face by a material point (`StudyCase.hs:165-172`). Reordering
   faces renumbers them, so it is safe only while `faceOrders` is empty.
 - **Placements are keyed by the cut pattern's face ids** (`Folding.hs:317-322`),
@@ -231,7 +231,7 @@ Things a newcomer would get wrong about these:
 - **Re-folding a pattern that records faces is id-stable.** `splitCrossings`
   and `withTracedFaces` both return such a frame unchanged
   (`Crossings.hs:128`, `Faces.hs:138`), so `foldFrameWith (pattern { angles })`
-  keeps vertex, edge and face ids. `Flap` relies on this (`Flap.hs:175-181`).
+  keeps vertex, edge and face ids. `Flap` relies on this (`Flap.hs:178-184`).
 - **Material coordinates.** The glossary defines them as identity through
   folding (`docs/glossary.md:81`). `creaseThroughLayers` maps folded points
   back to the sheet with `inverse` placements (`ThroughLayers.hs:291-305`).
@@ -272,14 +272,14 @@ Things a newcomer would get wrong about these:
   `WindingClash` (`Stacking.hs:18-29`, `386-400`; `Query.hs:124-139`).
 - **Endpoint orders** in a flap: supplied starting orders must agree with
   departure; contradictions are `FlapEndpointOrder` / `FlapStackOrder`
-  (`Flap.hs:303-329`).
+  (`Flap.hs:316-342`).
 
 **Refused, by design:**
 
 - Coupled creases: `FlapCoupled` when removing the selected creases leaves
-  another path between the sides (`Flap.hs:199`). Tested on every interior
+  another path between the sides (`Flap.hs:202`). Tested on every interior
   crease of the quarter fold (`test/Senbazuru/Origami/FlapSpec.hs:327-343`).
-- Creases on different axes: `FlapUnalignedCrease` (`Flap.hs:215`).
+- Creases on different axes: `FlapUnalignedCrease` (`Flap.hs:218`).
 - Sliding contact and unsupported seams: a declared contact pair with
   different motions is `InvalidRigidContact` (`HingeSweep.hs:280-285`); an
   unjoined stack edge on the hinge needs a declared partner with real shared
@@ -419,7 +419,7 @@ How existing operations fill it:
    a precrease flag) would remove the geometry-based rediscovery. That is a
    library PRD item, not a DSL workaround.
 5. **Keep presentation outside `Folded`.** `Flap` refuses anything but raw
-   `foldFrameWith` output (`Flap.hs:169-181`). Turn-over and page rotation
+   `foldFrameWith` output (`Flap.hs:172-184`). Turn-over and page rotation
    should be a `Rigid` applied at export via `transformSurface`, built only
    from `rotationAbout`.
 

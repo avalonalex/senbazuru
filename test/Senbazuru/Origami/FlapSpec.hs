@@ -14,7 +14,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (Face (..), frameFaces, frameVertices)
-import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), cross, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
@@ -381,6 +381,20 @@ spec = describe "checked flap rotation" $ do
         [a, b] -> angleBetween a b `shouldSatisfy` (< 1e-6)
         _ -> expectationFailure "reopening changed panel count"
 
+  -- Creasing a folded model leaves a hinge's corners on its axis only to
+  -- rounding: the crane's wing crease puts one 1.1e-13 off it. The sweep
+  -- refuses a corner that far off when it is not part of the hinge, so the
+  -- hinge's own corners must reach it exactly on the axis they define.
+  it "lifts a flap whose hinge corners meet its axis only to rounding" $
+    forM_ [0, 1e-13] $ \offset -> do
+      start <- restingHinge offset
+      case prepareFlapAlong [EdgeId 9, EdgeId 10] (FaceId 2) (-90) start >>= checkFlap defaultSweepSettings of
+        Right lifted -> sweepOutcome (flapCheck lifted) `shouldBe` SweepClear
+        Left err -> expectationFailure ("offset " ++ show offset ++ ": the lift away from the layer below was refused: " ++ show err)
+      case prepareFlapAlong [EdgeId 9, EdgeId 10] (FaceId 2) 90 start >>= checkFlap defaultSweepSettings of
+        Left FlapEndpointOrder {} -> pure ()
+        other -> expectationFailure ("offset " ++ show offset ++ ": the turn into the layer below was not refused: " ++ show other)
+
   it "rejects departure through the declared resting layer, including reversed order notation" $ do
     forM_ [FaceOrder (FaceId 1) (FaceId 0) Above, FaceOrder (FaceId 0) (FaceId 1) Above] $ \order -> do
       start <- right (foldFrameWith (singleAt 180) {faceOrders = [order]})
@@ -555,6 +569,27 @@ angleBetween a b = acos (max (-1) (min 1 (dot (normal a) (normal b)))) * 180 / p
 
 name :: FaceId -> T.Text
 name = T.pack . show . unFaceId
+
+-- | A unit square folded in half along x = 1/2, so that its right half lies on
+-- its left. The top layer is creased again at x = 3/4, and the strip beyond
+-- that crease (face 2) is the flap, lying on the bottom layer across its
+-- hinge. The hinge is two segments, edges 9 and 10, joined at (3/4, 1/2); its
+-- far corner, vertex 5, sits @offset@ off the line through the first segment.
+-- The flap's ring starts at vertex 3 so that its fan has no flat triangle
+-- along the hinge.
+restingHinge :: Double -> IO Folded
+restingHinge offset = do
+  let sheet =
+        emptyFrame
+          { verticesCoords = [[0, 0], [0.5, 0], [0.75, 0], [1, 0], [1, 1], [0.75 + offset, 1], [0.5, 1], [0, 1], [0.75, 0.5]],
+            edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0), (1, 6), (2, 8), (8, 5)]],
+            edgesAssignment = replicate 8 Border ++ [Valley, Unassigned, Unassigned],
+            edgesFoldAngle = replicate 8 0 ++ [180, 0, 0],
+            facesVertices = map (map VertexId) [[0, 1, 6, 7], [1, 2, 8, 5, 6], [3, 4, 5, 8, 2]]
+          }
+  bare <- right (foldFrameWith sheet)
+  orders <- right (layerOrderFor defaultBudget (foldedFrame bare)) >>= maybe (fail "the half-folded square has no layer order") pure
+  pure bare {foldedFrame = (foldedFrame bare) {faceOrders = orders}}
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure

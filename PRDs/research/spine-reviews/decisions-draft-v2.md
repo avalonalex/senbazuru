@@ -286,7 +286,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
      coordinates back as material;
   2. drop `frameExtras` and stale faces on every transform;
   3. re-fold after every handoff; never patch a `Folded` (`FlapStartMismatch`,
-     `Flap.hs:169-181`, which does not check orders, so a patch changing only orders
+     `Flap.hs:172-184`, which does not check orders, so a patch changing only orders
      would pass unnoticed). **Orders reach `Flap` by being on the working pattern
      before the fold**: `foldFrameWith` copies them into `foldedFrame`, re-signing
      any whose second face it re-wound (`Folding.hs:385`), as the blintz and helmet
@@ -375,7 +375,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
   sense negated exactly when `presentation after anchor placement` sends ẑ to −ẑ. That one
   raw sense sets the `Assignment` for new creases and the sign of `Flap`'s travel.
   Each layer's way up (`ThroughLayers.facesUp`) and each hinge segment's sign
-  (`Flap.hs:208-216`) stay in the library; the runner never applies them itself.
+  (`Flap.hs:211-219`) stay in the library; the runner never applies them itself.
   Constructions use raw positions (they are invariant); only `model [...]` is mapped
   through the inverse.
 - **Render options never change a step's meaning.** `run -o x.foldseq.fold` and

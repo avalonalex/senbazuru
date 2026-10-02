@@ -192,7 +192,7 @@ at 0 before the paper turns and again after an `unfold`. That departs from
 pre-crease's crease is the exception: it has no direction, so it is U (§6.4).
 
 - *Why it is needed.* `Flap` turns only M, V or U
-  ([`Flap.hs:187`](../src/Senbazuru/Origami/Flap.hs#L187)), and a collapse binds on
+  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)), and a collapse binds on
   direction (§8.2).
 - *Why it is safe.* Folding reads explicit angles before assignments. Stacking takes
   a crease's direction from a nonzero angle first, and from its assignment only at 0
@@ -352,7 +352,7 @@ invariants an interpreter must enforce").
 | --- | --- | --- |
 | 1 | Carry accepted angles and orders onto the working pattern. Never feed folded coordinates back as material ([`BlintzSequence.hs:63`](../study/fold-material/BlintzSequence.hs#L63)) | The folded sheet is folded a second time |
 | 2 | Drop `frameExtras` and stale faces on every transform ([`Creasing.hs:265-267`](../src/Senbazuru/Fold/Creasing.hs#L265-L267)) | Stale faces name the wrong paper |
-| 3 | Refold after every handoff, and never patch a `Folded`, folding's result (the cut pattern and where it folds to). Orders reach `Flap` by sitting on the working pattern before the fold. `foldFrameWith` copies them, and it may reverse a face's ring. A `faceOrders` sign is read against its second face's normal, so it then flips every order whose second face it reversed (missing that was [#78](https://github.com/avalonalex/senbazuru/issues/78); [`Folding.hs:385`](../src/Senbazuru/Origami/Folding.hs#L385), [`:482-486`](../src/Senbazuru/Origami/Folding.hs#L482-L486)). The blintz does this ([`BlintzSequence.hs:63-64`](../study/fold-material/BlintzSequence.hs#L63-L64)). A state's first stacking: fold, solve on `foldedFrame`, record the orders on the working pattern, refold. Never attach orders to a `Folded` as [`CraneWing.hs:123`](../study/fold-material/CraneWing.hs#L123) does | `Flap`'s start check ignores orders ([`Flap.hs:169-181`](../src/Senbazuru/Origami/Flap.hs#L169-L181)), so a patch changing only orders passes unseen |
+| 3 | Refold after every handoff, and never patch a `Folded`, folding's result (the cut pattern and where it folds to). Orders reach `Flap` by sitting on the working pattern before the fold. `foldFrameWith` copies them, and it may reverse a face's ring. A `faceOrders` sign is read against its second face's normal, so it then flips every order whose second face it reversed (missing that was [#78](https://github.com/avalonalex/senbazuru/issues/78); [`Folding.hs:385`](../src/Senbazuru/Origami/Folding.hs#L385), [`:482-486`](../src/Senbazuru/Origami/Folding.hs#L482-L486)). The blintz does this ([`BlintzSequence.hs:63-64`](../study/fold-material/BlintzSequence.hs#L63-L64)). A state's first stacking: fold, solve on `foldedFrame`, record the orders on the working pattern, refold. Never attach orders to a `Folded` as [`CraneWing.hs:123`](../study/fold-material/CraneWing.hs#L123) does | `Flap`'s start check ignores orders ([`Flap.hs:172-184`](../src/Senbazuru/Origami/Flap.hs#L172-L184)), so a patch changing only orders passes unseen |
 | 4 | Re-resolve every id after a topology change | Creasing empties faces, and cutting shifts edge ids |
 | 5 | Anchor by material point, and re-anchor as in §2.3 | Re-tracing can put a different face first |
 | 6 | Join-check every step. Positions must agree within 1e-12 × `modelSpan` ([`BlintzSequence.hs:69`](../study/fold-material/BlintzSequence.hs#L69)). Angles, edge lists, face rings, orders and material coordinates must be exactly equal, as at [`CheckedBird.hs:145-146`](../study/fold-material/CheckedBird.hs#L145-L146). `CheckedBird` compares rings as written; the runner compares them as `map sort facesVertices`, so a re-trace that starts a ring at another vertex is not a break | A changed fixture silently inserts a rigid jump ([`BlintzSequence.hs:13-15`](../study/fold-material/BlintzSequence.hs#L13-L15)) |
@@ -635,7 +635,7 @@ places:
      segment's angle, and `Flap` derives every other segment's sign from that
      segment's own stationary face's ring
      ([`Flap.hs:10-16`](../src/Senbazuru/Origami/Flap.hs#L10-L16),
-     [`:280-297`](../src/Senbazuru/Origami/Flap.hs#L280-L297)).
+     [`:283-300`](../src/Senbazuru/Origami/Flap.hs#L283-L300)).
 
 | Raw sense | Moving face shows its top towards raw +z | Moving face shows its back |
 | --- | --- | --- |
@@ -753,7 +753,7 @@ whose only moves are `let`, or which has none, is refused before any geometry as
   [05](05-prd-library-additions.md)'s.
 - **Flat creases cannot hinge.** An existing F crease is refused as
   `ExistingHingeFlat`, because `Flap` turns only M, V or U
-  ([`Flap.hs:187`](../src/Senbazuru/Origami/Flap.hs#L187)). Giving an F hinge an
+  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)). Giving an F hinge an
   intent from the fold's sense, by the per-layer rule creasing uses, is a later
   library function, not v1 ([D8](decisions.md#d8-folding-some-layers)).
 
@@ -1239,7 +1239,7 @@ which value.
 
 | Value | Claims |
 | --- | --- |
-| `SweptHinge CheckedFlap` | one hinge turn checked over its whole path; `CheckedFlap` is opaque ([`Flap.hs:95-96`](../src/Senbazuru/Origami/Flap.hs#L95-L96)) |
+| `SweptHinge CheckedFlap` | one hinge turn checked over its whole path; `CheckedFlap` is opaque ([`Flap.hs:98-99`](../src/Senbazuru/Origami/Flap.hs#L98-L99)) |
 | `Sampled CheckedMacro SampleReport` | a coupled route checked at sample poses; `CheckedMacro` is opaque |
 | `StateOnly` | end state checked, route not |
 | `Presented` | only presentation changed |
@@ -1258,8 +1258,8 @@ which value.
   `RoutePose` lives in `Origami.Route`, and `Sequence.Record` re-exports it.
 - **Records derive `Eq`.** No record field holds a function. `Flap`'s `FlapMotion`
   and `CheckedFlap` derive only `Show` today
-  ([`Flap.hs:93`](../src/Senbazuru/Origami/Flap.hs#L93),
-  [`:96`](../src/Senbazuru/Origami/Flap.hs#L96)), so 05 adds `Eq` to both.
+  ([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
+  [`:99`](../src/Senbazuru/Origami/Flap.hs#L99)), so 05 adds `Eq` to both.
 - **`expect refused` has no evidence**, because it produces no record (§9).
 - **Certificates**, exact proofs of one fixture's route, attach after the run in the
   study. They are keyed by macro name and fixture fingerprint, and never downgraded
@@ -1436,7 +1436,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `RelationOnOneFace`, `RelationNotOverlapping`, `RelationsContradict` | the library's `StackingError` ([05](05-prd-library-additions.md)), wrapped by `StackingChoiceError` | §7: a relation's two points in one face; a relation's faces do not overlap; relations leave none | the relations |
 | `StillAmbiguous`, `SeveralStackings` | `StackingChoiceError` | §7: relations leave two or more; no relations and several stackings, including a macro landing flat (§8.1) | count; open pairs as `layers … above …` |
 | `GaveUpStacking` | `FoldError` ([`Query.hs:139`](../src/Senbazuru/Fold/Query.hs#L139)), wrapped as `StackingRefused` in `StackingError` ([`Stacking.hs:448`](../src/Senbazuru/Origami/Stacking.hs#L448)) | budget exhausted | the budget |
-| `FlapCoupled`, `FlapNotHinge`, `FlapNotBoundary`, `FlapUnalignedCrease`, `FlapEndpointOrder`, `FlapStackOrder`, `FlapStartMismatch` | `FlapError` ([`Flap.hs:104-121`](../src/Senbazuru/Origami/Flap.hs#L104-L121)) in `MoveFailure` | the hinge turn is refused | the library's words; ids as internal |
+| `FlapCoupled`, `FlapNotHinge`, `FlapNotBoundary`, `FlapUnalignedCrease`, `FlapEndpointOrder`, `FlapStackOrder`, `FlapStartMismatch` | `FlapError` ([`Flap.hs:107-124`](../src/Senbazuru/Origami/Flap.hs#L107-L124)) in `MoveFailure` | the hinge turn is refused | the library's words; ids as internal |
 | `FlapMovingNotFlat` | `FlapError`, with `prepareFlapToward` ([05](05-prd-library-additions.md) L14), in `MoveFailure` | a moving face beside the hinge does not lie flat by `hasRelief` (§5.3) | the face, internal |
 | `FlapMovesBothWays` | `FlapError`, with `prepareFlapToward` ([05](05-prd-library-additions.md) L14), in `MoveFailure` | moving faces beside the hinge lie on both sides of its line, whatever the size of the turn (§5.3) | two faces, internal |
 | `TornAt`, `AngleNotAchieved` | `FoldingError` ([`Folding.hs:154`](../src/Senbazuru/Origami/Folding.hs#L154), [`:170`](../src/Senbazuru/Origami/Folding.hs#L170)) in `MoveFailure` | a pose, checkpoint or macro pose fails to close | the vertex or crease, internal |

@@ -602,7 +602,7 @@ Checked with `grep` for `| **Term` rows in `docs/glossary.md`.
 - *Diagram:* x-ray line, cut-away, side view, silhouette, caption.
 - *Material:*
   - hold or grip, and control (an opening control);
-  - subdivision edge versus material crease, hinted at under **Panel** (`:82`);
+  - subdivision edge versus material crease, hinted at under **Panel** (`:85`);
   - pocket or cavity, and mid-surface;
   - numerical correction versus folding motion.
 

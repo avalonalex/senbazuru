@@ -116,16 +116,16 @@ The PRDs should:
    A frame that records faces skips the cutting (`Fold/Crossings.hs:128`), but
    it is still read, oriented and walked. Per step:
 
-   - `prepareFlapAlong` folds once itself (`Origami/Flap.hs:175`), then calls
-     `surfaceAt` at progress 1 and 0.5 (`:237-238`).
-   - Every `surfaceAt` folds again (`:345`).
-   - `checkFlap` calls `checkEndpointOrder` at 0 and 1 (`:277`), and each of
-     those calls `surfaceAt` (`:305`).
-   - The recipe's `flapAt motion 1` is one more (`:292`).
+   - `prepareFlapAlong` folds once itself (`Origami/Flap.hs:178`), then calls
+     `surfaceAt` at progress 1 and 0.5 (`:240-241`).
+   - Every `surfaceAt` folds again (`:358`).
+   - `checkFlap` calls `checkEndpointOrder` at 0 and 1 (`:280`), and each of
+     those calls `surfaceAt` (`:318`).
+   - The recipe's `flapAt motion 1` is one more (`:295`).
    - The join check is one more (`BlintzSequence.hs:64`).
 
    That totals **7 `foldFrameWith` per step** (1 + 2 + 2 + 1 + 1), plus one
-   `refineSurface` (`Flap.hs:219`). A step that adds a crease also pays
+   `refineSurface` (`Flap.hs:222`). A step that adds a crease also pays
    `creaseAllAlong`, which re-cuts and re-traces the pattern
    (`Fold/Creasing.hs:159`). The crane recipe also solves a layer order
    (`CraneWing.hs:122`), for which `Stacking.hs:180-183` claims "about 60ms" on
@@ -141,7 +141,7 @@ The PRDs should:
 
    Before the sweep, `checkFlap` builds `contacts` and `resting` with nested
    list comprehensions over `triangleOwners` squared. Each candidate pair does
-   a linear `find` over faces and a coplanarity test (`Flap.hs:253-269`), so
+   a linear `find` over faces and a coplanarity test (`Flap.hs:256-272`), so
    that part is O(T²·F). On the crane the start has 76 faces after the new
    crease (`CraneWing.hs:102`) and 63 vertices (`CraneWingSpec.hs:40`). The
    triangle count was not printed, because the driver never ran.
@@ -230,7 +230,7 @@ The PRDs should:
     which drops negative zero (`Fold/Types.hs:585-596`). Given identical bits
     the text is deterministic, so every coordinate is platform-sensitive, and
     so is any angle or material coordinate computed with trig. Angles a flap
-    step writes are `angle + progress * travel` (`Flap.hs:343`). That is basic
+    step writes are `angle + progress * travel` (`Flap.hs:356`). That is basic
     IEEE arithmetic on the author's numbers, so it is identical across
     platforms, whereas petal-stage angles (`birdHinges`) involve trig.
 
@@ -341,7 +341,7 @@ For platform stability:
 
 1. Should the sequence runner cache one `foldFrameWith` result per state
    instead of re-folding? `Flap.prepareFlapAlong` deliberately rebuilds the
-   start from angles (`Flap.hs:169-181`), so caching needs the library to
+   start from angles (`Flap.hs:172-184`), so caching needs the library to
    accept a trusted value. Does that weaken the `FlapStartMismatch` guarantee?
 2. Should per-step budgets live in the sequence text (author-visible), in the
    runner's defaults, or only in tests?

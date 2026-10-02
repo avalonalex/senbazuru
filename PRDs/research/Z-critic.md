@@ -29,7 +29,7 @@ exact landmarks, measured cost, and the study's input contract.
 | 3 | The walk holds the first face still, "`faces !! 0`" (A1) | confirmed (wording) | Root is the first face, but the code is a total pattern match `(f : _)`, not `!!` (`Folding.hs:577-588`). The claim is right and the quote is a paraphrase. |
 | 4 | `creaseAllAlong` clears `facesVertices`, `faceOrders`, `frameExtras`; new M/V creases get ±180 when an angle array exists (A1, E2) | confirmed | `Fold/Creasing.hs:252-268`, `280-320` (`flatAngleFor`) |
 | 5 | `motionsBetween` refuses frames whose `edges_vertices` or `faces_vertices` differ (A1, C, D) | confirmed | `Origami/Step.hs:88-96`, `118-126` |
-| 6 | `prepareFlapAlong` rebuilds the start and refuses `FlapStartMismatch`; travel ≤ 360; hinge must be M/V/U, so an `F` edge is `FlapNotHinge` (A1, A2) | confirmed | `Origami/Flap.hs:161-195` |
+| 6 | `prepareFlapAlong` rebuilds the start and refuses `FlapStartMismatch`; travel ≤ 360; hinge must be M/V/U, so an `F` edge is `FlapNotHinge` (A1, A2) | confirmed | `Origami/Flap.hs:164-198` |
 | 7 | `creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame`, points read in folded coordinates, assignment named from +z, returns a pattern (A1, E2) | confirmed | `Origami/ThroughLayers.hs:216-227` |
 | 8 | GLB `extras.senbazuru.frame` keeps only `senbazuru:material_coords`, `source_panels`, `source_edges`; any other vendor key is dropped (C) | confirmed | `Render/Gltf.hs:237-242` |
 | 9 | `surfaceDiagram = creasePatternAuto theme budget view . surfaceFrame` (C, B) | confirmed | `Render/CreasePattern.hs:152-157` |

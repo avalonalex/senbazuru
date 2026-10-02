@@ -31,6 +31,17 @@ one-sided departure over at most a half-turn. Near-axis corners fixed by
 preparation must also meet the tighter contact allowance. Naming a pair never
 skips those checks. The old entry points keep their stricter policy.
 
+That allowance is 64 units in the last place of the sheet's span, about
+`1.4e-14`, and a hinge's own corners can miss it. They are found by folding,
+so they lie on the hinge's axis only to rounding: a crease drawn across the
+crane's wing at `y = 0.3` leaves one corner `2e-14` off the line through the
+first segment, and at `y = 0.32` `1.1e-13`. Every turn about those lines was
+refused at its start. The allowance is right for a corner that is merely
+near the axis, which preparation would otherwise fix in place on the wrong
+side, so `Flap` keeps it and instead hands the sweep the hinge's own corners
+exactly on the axis they define. It has already required them within `1e-12`
+of it, so the check's copy moves by no more than that.
+
 Geometry supplies a departure side; it does not choose the starting stack.
 `Flap` compares the resulting orders with the crane's initial layer order.
 Turning the selected wing the other way fails that check even though its final

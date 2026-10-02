@@ -85,13 +85,13 @@ the cheap check.
 5. **A flap is currently named by a hinge (edge ids) plus one face on the
    moving side, and the library works out the rest.** `prepareFlap :: EdgeId ->
    FaceId -> Double -> Folded` and `prepareFlapAlong :: [EdgeId] -> FaceId -> …`
-   (`src/Senbazuru/Origami/Flap.hs:152-162`). The flap is the connected set of
+   (`src/Senbazuru/Origami/Flap.hs:155-165`). The flap is the connected set of
    faces left after removing the hinge creases from the face graph
-   (`Flap.hs:2-6`, computed at `:196-199`). The call is refused if the
+   (`Flap.hs:2-6`, computed at `:199-202`). The call is refused if the
    stationary face is reachable (`FlapCoupled`), if a hinge segment does not
-   separate moving from still paper (`FlapNotBoundary`, `:209`), or if the
+   separate moving from still paper (`FlapNotBoundary`, `:212`), or if the
    segments are not collinear in the *current* folded shape
-   (`FlapUnalignedCrease`, `:207-216`). Ids must come from the cut pattern
+   (`FlapUnalignedCrease`, `:210-219`). Ids must come from the cut pattern
    (`Flap.hs:9-10`). **The line a newcomer will think is wrong:** a stationary
    face on an upside-down layer turns the same physical way with the opposite
    sign of FOLD angle (`Flap.hs:14-17`). The helmet recipe relies on this
@@ -421,7 +421,7 @@ the step label, the reference text, and the candidates found.
      or if it is off the sheet.
    - *As a flap seed:* resolve the face, then grow the flap as `Flap.hs`
      does: the component on the moving side once the hinge is removed.
-     **Refuse** with `FlapCoupled`/`FlapNotBoundary` (`Flap.hs:196-216`).
+     **Refuse** with `FlapCoupled`/`FlapNotBoundary` (`Flap.hs:199-219`).
      **Flap names survive later splits; panel names do not.** If a later
      crease splits the kite's `lower-right` panel, `@(0.8, 0.1)` still grows to
      the same flap, but as a panel name it now means only one piece. Anything
