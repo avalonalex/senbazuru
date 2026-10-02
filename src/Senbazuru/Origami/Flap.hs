@@ -279,7 +279,8 @@ prepareHinge eids@(eid : _) side request supplied = do
   origin <- point from
   finish <- point to
   let axis = (1 / norm (finish ^-^ origin)) *^ (finish ^-^ origin)
-      onLine p = norm (cross axis ((1 / scale) *^ (p ^-^ origin))) < 1e-12
+      relative p = (1 / scale) *^ (p ^-^ origin)
+      onLine p = norm (cross axis (relative p)) < 1e-12
       -- Whether a segment's stationary face runs along the hinge the same way
       -- as the first one's, and which face beside it moves. One running the
       -- other way turns by -travel.
@@ -307,9 +308,7 @@ prepareHinge eids@(eid : _) side request supplied = do
   -- it checks has them exactly on the axis; any other near-axis corner still
   -- meets the sweep's own allowance.
   let hingeCorners = S.fromList [unVertexId v | (_, x, y, _, _) <- segments, v <- [x, y]]
-      direction = (1 / norm (finish ^-^ origin)) *^ (finish ^-^ origin)
-      relative p = (1 / scale) *^ (p ^-^ origin)
-      onAxis q = dot q direction *^ direction
+      onAxis q = dot q axis *^ axis
       normalized = mesh {samples = [p {position = (if S.member i hingeCorners then onAxis else id) (relative (position p))} | (i, p) <- zip [0 ..] (samples mesh)]}
       moving = S.toList (S.fromList [unVertexId vid | face <- faces, S.member (faceId face) selected, vid <- faceVertexIds face])
   sweep <- first FlapSweep (prepareSweep (V3 0 0 0) ((1 / scale) *^ (finish ^-^ origin)) (negate travel * pi / 180) moving normalized)

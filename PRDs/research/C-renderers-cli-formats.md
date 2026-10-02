@@ -171,7 +171,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
 
 21. **A scheme does not fit that pattern as-is.**
     - Its value is a program: `[Move]` per #60's sketch, `apply :: Move -> Frame -> Either MoveError Frame` (issue #60 text).
-    - Running it needs `Fold.Creasing` (`creaseAlong`, `creaseAllAlong :: … -> Frame -> Either FoldError Frame`, `Fold/Creasing.hs:90, 138`), `Origami.ThroughLayers.creaseThroughLayers` (`ThroughLayers.hs:227`), `Origami.Folding` and `Origami.Flap` (`prepareFlap`, `checkFlap`, `flapAt`, `Flap.hs:157-293`).
+    - Running it needs `Fold.Creasing` (`creaseAlong`, `creaseAllAlong :: … -> Frame -> Either FoldError Frame`, `Fold/Creasing.hs:90, 138`), `Origami.ThroughLayers.creaseThroughLayers` (`ThroughLayers.hs:227`), `Origami.Folding` and `Origami.Flap` (`prepareFlap`, `checkFlap`, `flapAt`, `Flap.hs:157-294`).
     - Putting the interpreter in `Import.*`, or behind `Load.decodeFile`, would make the top of the pipeline import the folding stack. That inverts the drawn flow (`architecture.md:12-73`).
     - It may also need a *second* file read (the starting pattern), which the pure `decodeFile :: FilePath -> ByteString -> Either LoadError FoldFile` signature cannot do.
     - The architecture already predicts the right shape. Authoring moves are "a frame in, a frame out", and reach the pipeline "by being a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand" (`architecture.md:81-86`).

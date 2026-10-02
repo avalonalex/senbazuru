@@ -268,7 +268,7 @@ coordinates.**
 
 - The recipes clear `frameExtras` (`BlintzSequence.hs:42`, `:63`).
 - The flap operation itself rebuilds from angles with `faceOrders = []` and
-  `frameExtras = mempty` (`Flap.hs:175`, `Flap.hs:357`).
+  `frameExtras = mempty` (`Flap.hs:175`, `Flap.hs:356`).
 - This matches the repo rule that a move "must drop what it invalidates"
   (AGENTS.md, Conventions).
 
@@ -282,7 +282,7 @@ coordinates.**
   - helmet: `HelmetSequence.hs:8-9`, `:41-44`;
   - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:94-96`.
 - Why it matters (`docs/notes/chaining-checked-folds.md`, third paragraph):
-  - `flapAt` holds the flap's stationary face still (`Flap.hs:359-361`).
+  - `flapAt` holds the flap's stationary face still (`Flap.hs:358-360`).
   - An independent refold holds face 0 still.
   - If those differ, joining the two inserts a whole-sheet rotation.
 - The invariant, which the recipes enforce only indirectly through F14:
@@ -329,14 +329,14 @@ coordinates.**
 
 **F16. Endpoint angles are exact sums, and endpoint orders are computed.**
 
-- Pose angles are `angle + progress * travel` (`Flap.hs:356`), so endpoints
+- Pose angles are `angle + progress * travel` (`Flap.hs:355`), so endpoints
   are exactly representable here: −180 + 180 = 0.
 - The tests pin exact lists, e.g. `[-180, 0, 0, 0]` …
   `[0, -180, -180, -180]` (`BlintzSequenceSpec.hs:37-38`;
   `HelmetSequenceSpec.hs:82-83`).
 - Orders at a pose are retained stack orders plus endpoint contacts
-  (`Flap.hs:293-297`). Starting orders are checked against departure
-  (`Flap.hs:316-325`).
+  (`Flap.hs:294-298`). Starting orders are checked against departure
+  (`Flap.hs:315-324`).
 - Order counts per endpoint: blintz `[1,2,3,4,3]`
   (`BlintzSequenceSpec.hs:39`); helmet `[3,7,11]`
   (`HelmetSequenceSpec.hs:84`).
@@ -552,7 +552,7 @@ Still missing from the sketch:
   only after `foldFrameWith` (F2, F17). The face numbering (FaceId 2 for the
   lower-right corner) cannot be read from the fixture file.
 - **Illustration arithmetic.** `Halfway` must be `flapAt 0.5`, so that angles
-  come out as `angle + 0.5 * travel` (`Flap.hs:356`).
+  come out as `angle + 0.5 * travel` (`Flap.hs:355`).
 - **Anchor rule.** Either reorder faces as the recipe does, or anchor by
   material point as `StudyCase` does (F13). The two are different code paths.
 

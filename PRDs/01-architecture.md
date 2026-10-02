@@ -810,7 +810,7 @@ F2 and F3 centroids are at z = −0.0044, behind the sheet; at −180 the refold
 the fixture's first folded state within 6.1e-17 [py], moving vertices 0, 3 and 7
 [jq]. The expected carried orders are `FaceOrder 3 0 Below` (F3 below F0, against
 F0's normal) and `FaceOrder 2 1 Below`, built from the contacts at the end of the
-turn ([`Flap.hs:314`](../src/Senbazuru/Origami/Flap.hs#L314)). **UNVERIFIED**: the
+turn ([`Flap.hs:313`](../src/Senbazuru/Origami/Flap.hs#L313)). **UNVERIFIED**: the
 contacts `HingeSweep` reports.
 
 Step 1 laid the west half exactly on the east half, so v0 now sits on v1, v3 on v2
@@ -888,7 +888,7 @@ towards raw +z.
 stationary face's counter-clockwise ring runs, in folded coordinates
 ([`Flap.hs:10-13`](../src/Senbazuru/Origami/Flap.hs#L10-L13),
 [`:275-281`](../src/Senbazuru/Origami/Flap.hs#L275-L281),
-[`:315`](../src/Senbazuru/Origami/Flap.hs#L315)). For edge 9 the stationary face is
+[`:314`](../src/Senbazuru/Origami/Flap.hs#L314)). For edge 9 the stationary face is
 F0, so the axis is v5 → v8 = (−1, 0, 0), from v5 = (1, ½, 0). A small right-handed
 turn by θ moves a point at offset r by about θ (axis × r); for v2, r = (0, ½, 0) and
 axis × r = (0, 0, −½). For a small fraction δ of the turn θ = −travel·δ, so v2 rises exactly when
@@ -898,7 +898,7 @@ At progress ½ (edge 9 at +90, edge 11 at −90), F1 and F2 have centroid z = +0
 while F0 and F3 stay at 0, placements agree within 6.1e-17, and rotating the moving
 vertices −90° about the axis lands exactly on the refold, v2 at (1, ½, ½) [py]. That
 agreement is what `Flap`'s `comparePoint` requires of `HingeSweep`'s path
-([`Flap.hs:487-490`](../src/Senbazuru/Origami/Flap.hs#L487-L490)).
+([`Flap.hs:486-489`](../src/Senbazuru/Origami/Flap.hs#L486-L489)).
 
 **Why the runner passes a side, not +180**
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
@@ -922,7 +922,7 @@ face beside it towards that face's own top, so it reads the moving face beside
 each segment from its placement, and sets travel to +A when the side agrees with
 the first such face's way up and −A otherwise; every segment's reading must agree
 ([owner decision 13](decisions.md#d5-presentation-and-the-readers-side),
-[`Flap.hs:333-365`](../src/Senbazuru/Origami/Flap.hs#L333-L365)). A moving face that does not lie flat is
+[`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)). A moving face that does not lie flat is
 refused as `FlapMovingNotFlat`, and moving faces on both sides of the hinge line as
 `FlapMovesBothWays`. The runner passes `TowardPlusZ` for a raw valley. Here the
 moving face beside edge 9 is F1, top up, so travel is +180; listing edge 11 first
@@ -971,7 +971,7 @@ take −180 [py].
   `modelSpan`, the largest extent along any axis, which is 1 here
   ([`V3.hs:72-73`](../src/Senbazuru/Geometry/V3.hs#L72-L73)); angles, edges, rings as
   vertex sets, orders and material coordinates agree exactly. F0 never moves, so `Flap`'s stationary correction is the identity
-  ([`Flap.hs:359-361`](../src/Senbazuru/Origami/Flap.hs#L359-L361)) and the two folds
+  ([`Flap.hs:358-360`](../src/Senbazuru/Origami/Flap.hs#L358-L360)) and the two folds
   should agree exactly [reasoned]. The Python refold is within 1.2e-16 of the
   fixture's last state [py].
 - **Cost.** About 7 folds per checked step, counted in the code, not timed

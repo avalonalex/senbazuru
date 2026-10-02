@@ -221,7 +221,7 @@ positions, not per-face `Rigid`s. G1's node transforms need placements, so each
 animation key means re-folding the angle list, which is a counted cost.
 
 **Evidence.**
-- `Flap.hs:288-297`: `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)`.
+- `Flap.hs:289-298`: `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)`.
 - `foldedPlacements` exists only on `Folded` (`Folding.hs:283-322`).
 - Gap-study (a) sketch: `SweepChecked CheckedFlap -- gives flapAt`.
 - Gap-sequence-cost F6: about 7 folds per checked step, read from code.

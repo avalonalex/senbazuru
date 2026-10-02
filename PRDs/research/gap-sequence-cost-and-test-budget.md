@@ -118,10 +118,10 @@ The PRDs should:
 
    - `prepareFlapAlong` folds once itself (`Origami/Flap.hs:178`), then calls
      `surfaceAt` at progress 1 and 0.5 (`:240-241`).
-   - Every `surfaceAt` folds again (`:358`).
+   - Every `surfaceAt` folds again (`:357`).
    - `checkFlap` calls `checkEndpointOrder` at 0 and 1 (`:280`), and each of
-     those calls `surfaceAt` (`:318`).
-   - The recipe's `flapAt motion 1` is one more (`:295`).
+     those calls `surfaceAt` (`:317`).
+   - The recipe's `flapAt motion 1` is one more (`:296`).
    - The join check is one more (`BlintzSequence.hs:64`).
 
    That totals **7 `foldFrameWith` per step** (1 + 2 + 2 + 1 + 1), plus one
@@ -230,7 +230,7 @@ The PRDs should:
     which drops negative zero (`Fold/Types.hs:585-596`). Given identical bits
     the text is deterministic, so every coordinate is platform-sensitive, and
     so is any angle or material coordinate computed with trig. Angles a flap
-    step writes are `angle + progress * travel` (`Flap.hs:356`). That is basic
+    step writes are `angle + progress * travel` (`Flap.hs:355`). That is basic
     IEEE arithmetic on the author's numbers, so it is identical across
     platforms, whereas petal-stage angles (`birdHinges`) involve trig.
 

@@ -635,7 +635,7 @@ places:
      segment's angle, and `Flap` derives every other segment's sign from that
      segment's own stationary face's ring
      ([`Flap.hs:10-16`](../src/Senbazuru/Origami/Flap.hs#L10-L16),
-     [`:283-300`](../src/Senbazuru/Origami/Flap.hs#L283-L300)).
+     [`:284-301`](../src/Senbazuru/Origami/Flap.hs#L284-L301)).
 
 | Raw sense | Moving face shows its top towards raw +z | Moving face shows its back |
 | --- | --- | --- |

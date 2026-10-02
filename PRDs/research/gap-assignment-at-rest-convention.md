@@ -101,7 +101,7 @@ fixture migrates, and #60's done-when needs amending.
    - The blintz step "Reopen the first corner" (`BlintzSequence.hs:55`) brings
      edge 8 back to 0.
    - `surfaceAt` changes only the angles and keeps the pattern's assignments
-     (`src/Senbazuru/Origami/Flap.hs:356-357`), and `materialFrame` copies the
+     (`src/Senbazuru/Origami/Flap.hs:355-356`), and `materialFrame` copies the
      topology (`src/Senbazuru/Origami/Surface.hs:248-252`). So the reopened
      corner is written **M at 0**. Code reading; not run.
 8. **`CraneWing` writes U, first at 0 and then at nonzero angles.**
@@ -110,7 +110,7 @@ fixture migrates, and #60's done-when needs amending.
      doing a second job: recovering ids, because `creaseAllAlong` does not
      return the new edge ids.
    - After the turn, `craneFile` writes `materialFrame` of poses at 30°, 60°
-     and 90° (`CraneWing.hs:162-178`), keeping U (`Flap.hs:356-357`). The output
+     and 90° (`CraneWing.hs:162-178`), keeping U (`Flap.hs:355-356`). The output
      therefore holds **U at nonzero angles**, contrary to the spec's "zero for
      unassigned". Code reading; not run.
 9. **The precreases note writes F at 0** (finding 4).

@@ -109,7 +109,7 @@ contact (`Surface.hs:21-24`). Its `topology` keeps `edgesFoldAngle`,
   returns the frame's own orders, or solves them only for flat-folded models
   with convex faces, returning `Nothing` otherwise (`Stacking.hs:386-400`;
   header `Stacking.hs:18-29`). A state with paper in the air gets its orders
-  only from a checked flap's endpoint contacts (`Flap.hs:293-314`) or from a
+  only from a checked flap's endpoint contacts (`Flap.hs:294-313`) or from a
   study declaration (`StudyCase.hs:121-147`).
 
 **5. What the checked recipes thread from one move to the next.** Blintz and
@@ -156,7 +156,7 @@ normalise rings once at initialisation.
 | Cut + trace | `withPlanarFaces :: Frame -> Either FoldError Frame` (`Crossings.hs:150`) | A frame that records faces is returned untouched (`Crossings.hs:128`; `Faces.hs:136-149`) | `FoldError` (`EdgesCross`, `EdgesOverlap`, `CreaseBridge`, `SheetInPieces`, ...) |
 | Prepare a flap turn | `prepareFlap :: EdgeId -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`Flap.hs:157`); `prepareFlapAlong :: [EdgeId] -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`162`) | `Folded` must be exactly what `foldFrameWith` returns (`169-181`); ids from `foldedPattern`; travel finite, at most 360 degrees (`165`); each segment an `M`/`V`/`U` edge with two faces (`187-191`); removing the segments must separate the moving side (`199`); all segments on one line in the folded shape (`215`); orders retained only within one motion group and plane (`223-233`) | `FlapError` (`Flap.hs:101-125`) |
 | Check it | `checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap` (`Flap.hs:252`) | Interval check over the whole turn; endpoint orders checked (`273-280`, `303-312`) | `FlapCollision`, `FlapUnresolved`, `FlapEndpointOrder`, `FlapSweep` |
-| Pose it | `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)` (`Flap.hs:293`); `flapCheck :: CheckedFlap -> SweepCheck`; `flapMovingFaces :: CheckedFlap -> [FaceId]` | Progress in [0, 1]; each pose re-folded from angles, aligned to the stationary face, compared with the swept path (`338-352`) | `FlapInvalidProgress`, `FlapPathMismatch`, nested |
+| Pose it | `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)` (`Flap.hs:294`); `flapCheck :: CheckedFlap -> SweepCheck`; `flapMovingFaces :: CheckedFlap -> [FaceId]` | Progress in [0, 1]; each pose re-folded from angles, aligned to the stationary face, compared with the swept path (`338-352`) | `FlapInvalidProgress`, `FlapPathMismatch`, nested |
 | Lower-level hinge | `prepareSweep :: V3 -> V3 -> Double -> [Int] -> MaterialMesh -> Either SweepError HingeSweep` (`HingeSweep.hs:146`); `checkSweep`, `checkSweepWithFlatEndpoints`, `checkSweepWithRigidContacts`, `checkSweepWithLayerContacts` (`215-241`) | One fixed axis, radians, at most one full turn (`149`); no triangle mixes moving and fixed vertices off-axis (`173`) | `SweepError` (`HingeSweep.hs:114-127`) |
 | Move the whole model | `transformSurface :: Rigid -> Surface material -> Either SurfaceError (Surface material)` (`Surface.hs:287`); build with `rotationAbout :: V3 -> V3 -> Double -> Rigid`, `after`, `inverse` (`Rigid.hs:95`, `114`, `159`) | Rotates requirement direction; keeps material and thickness; drops `frameExtras` (`Surface.hs:284-296`) | `SurfaceError` |
 | Attach layer data | `withFaceOrders :: [FaceOrder] -> Surface m -> Either SurfaceError (Surface m)`; `withLayerRequirements :: V3 -> [(FaceId, FaceId)] -> Surface m -> Either SurfaceError (Surface m)`; `withPhysicalThickness :: Maybe Double -> Surface m -> Either SurfaceError (Surface m)` (`Surface.hs:260`, `306`, `301`) | Range checks only | `SurfaceError` (`Surface.hs:125-144`) |
@@ -214,7 +214,7 @@ Things a newcomer would get wrong about these:
   two individually correct states can differ by a whole-model rigid motion.
   The recipes put a stationary face first once, before any orders exist
   (`BlintzSequence.hs:5-8`, `44-48`; `HelmetSequence.hs:8-10`, `45-48`);
-  `Flap` realigns poses to its stationary face (`Flap.hs:359-361`); `StudyCase`
+  `Flap` realigns poses to its stationary face (`Flap.hs:358-360`); `StudyCase`
   picks the held face by a material point (`StudyCase.hs:165-172`). Reordering
   faces renumbers them, so it is safe only while `faceOrders` is empty.
 - **Placements are keyed by the cut pattern's face ids** (`Folding.hs:317-322`),
@@ -272,7 +272,7 @@ Things a newcomer would get wrong about these:
   `WindingClash` (`Stacking.hs:18-29`, `386-400`; `Query.hs:124-139`).
 - **Endpoint orders** in a flap: supplied starting orders must agree with
   departure; contradictions are `FlapEndpointOrder` / `FlapStackOrder`
-  (`Flap.hs:316-342`).
+  (`Flap.hs:315-341`).
 
 **Refused, by design:**
 

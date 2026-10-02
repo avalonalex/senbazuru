@@ -554,7 +554,7 @@ table in the next version of this record.
   *first* listed segment's angle, and every other segment's sign follows from
   its own stationary face's ring direction
   ([`Flap.hs:10-16`](../src/Senbazuru/Origami/Flap.hs#L10-L16),
-  [`:283-300`](../src/Senbazuru/Origami/Flap.hs#L283-L300)) [code]. Both faces beside edge 11 were turned
+  [`:284-301`](../src/Senbazuru/Origami/Flap.hs#L284-L301)) [code]. Both faces beside edge 11 were turned
   over by step 1, so the same physical turn is −180 there; with edge 11 listed
   first the valley would need travel −180
   ([01 §5.6](01-architecture.md#56-travel-per-segment)) [py]. So the sign of
@@ -567,7 +567,7 @@ table in the next version of this record.
   with `data Toward = TowardPlusZ | TowardMinusZ`. As the amendment below
   decides, it reads the moving face beside each segment: travel is +A when
   "towards +z" agrees with that face's way up and −A otherwise, and every
-  segment's reading must agree ([`Flap.hs:333-365`](../src/Senbazuru/Origami/Flap.hs#L333-L365)) [code].
+  segment's reading must agree ([`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)) [code].
   The runner passes `TowardPlusZ` for a raw valley.
 
   | Raw sense | Moving face shows its top | shows its back |
@@ -595,7 +595,7 @@ table in the next version of this record.
     definitions do sign a closed hinge, but relative to the paper, which is
     the reading this replaces (E3 finding 5).
   - *The rule*, proposed here and adopted by #368
-    ([`Flap.hs:333-365`](../src/Senbazuru/Origami/Flap.hs#L333-L365)). A positive change in a crease's
+    ([`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)). A positive change in a crease's
     angle moves the face beside it towards that face's own top, so the sign
     follows from the moving face's way up, and `TowardPlusZ` means the turn
     that sets the moving paper beside the hinge off towards +z. The moving face
@@ -1350,7 +1350,7 @@ accepted and rejected controls stay unchanged at each
   key frame is its state 0). Compared: edges and face rings exactly; positions (the
   fixture's 2D coordinates padded with z = 0) within 1e-12 × `modelSpan`; **angles
   exactly** ([C52](#changes-since-draft-v2)), because a flap endpoint is
-  `angle + progress * travel` ([`Flap.hs:470`](../src/Senbazuru/Origami/Flap.hs#L470))
+  `angle + progress * travel` ([`Flap.hs:469`](../src/Senbazuru/Origami/Flap.hs#L469))
   [code] with progress 1 and whole-number doubles, which IEEE arithmetic gives
   exactly; assignments by `assignmentAtRest`; `frame_classes`. Not compared:
   `frame_title`, `faceOrders`, `frame_attributes`. **The line that looks like a
@@ -2442,7 +2442,7 @@ lists edits for.
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |
 | C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:378`; `ci.yml` jobs [code] | adopted-modified (owner decision with default) | 09, 10 |
-| C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:356` [code] | adopted | 09 |
+| C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:355` [code] | adopted | 09 |
 | C53 | Golden check with `--diff-filter` and three dots | 09 §1.2 | both commands print nothing [ran] | adopted | 06, 08, 09 |
 | C54 | #60 closes at M4 | here (10 §4 note said M3) | 09 §2.3's milestone | adopted-modified | 10 |
 | C55 | #54 advanced, not closed; #96 amended at M0 | 10 §4 | issue checklists per 10 [prd] | adopted | 10 |

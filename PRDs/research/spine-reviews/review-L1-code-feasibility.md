@@ -697,7 +697,7 @@ return the proper rotation.
   crossings (`Crossings.hs:309, 334-341`). `mergedCrossings` drops a crossing
   near an existing vertex rather than moving it (`:180-185`). Across a flap turn
   or macro the graph is unchanged: Flap refolds the same pattern with only
-  angles changed (`Flap.hs:356-358`). Across presentation, vertex ids are
+  angles changed (`Flap.hs:355-357`). Across presentation, vertex ids are
   untouched and `transformSurface` moves positions only (`Surface.hs:287-296`).
   Re-anchoring reorders faces, not vertices (`CraneWing.hs:94-96`).
 - **The new-crease pieces really are an edge-list suffix.** Old edge ids shift

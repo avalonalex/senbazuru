@@ -524,7 +524,7 @@ Two takeaways for the PRDs:
   pairs (0, 2), (4, 6), (1, 3), (5, 7) through `nearness`.
 - That `Flap`'s endpoint check at progress 0 covers *every* touching
   stationary face, which finding 14 relies on, is my reading of
-  `Flap.hs:316-325` and the note. It was not traced through `HingeSweep`.
+  `Flap.hs:315-324` and the note. It was not traced through `HingeSweep`.
 - The crane table's R rows are not computed. The origami.me text was read
   through a fetch summariser, twice. The two summaries disagreed on step 6's
   layer wording: once "single layer", once nothing stated. Finding 17 computes
