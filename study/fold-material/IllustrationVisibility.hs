@@ -9,8 +9,12 @@
 -- skipping nothing: here any piece left by the first pass counts as uncovered.
 -- So a piece a few specks big that several regions cover between them is
 -- reported here and drawn there, and the uncovered patches the body notes
--- record were measured by this older rule. It reuses Origami.Visible's polygon
--- subtraction and hidden-edge handling.
+-- record were measured by this older rule. It also keeps measuring every area
+-- against the model's 3D spans, where production now judges areas in the
+-- picture by the speck Origami.Flat gives the flattened frame. In an oblique
+-- view the two differ: by a factor of two for the unit square seen
+-- isometrically. It reuses Origami.Visible's polygon subtraction and
+-- hidden-edge handling.
 -- Keeping the experiment here leaves production tolerances unchanged. Its
 -- extra record explains every overlapping pair, including unresolved regions;
 -- callers must not grade a whole-face fallback as successful visibility.

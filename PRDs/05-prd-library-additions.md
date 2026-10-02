@@ -796,7 +796,7 @@ the faces do not overlap.
 - **R-05-31.** `flatSheet`, then cut the segment at every panel-boundary
   crossing. A stretch's faces are those whose interior strictly contains its
   midpoint, by `strictlyInside` with `sheetHair`, the sheet's length tolerance
-  ([`Flat.hs:113`](../src/Senbazuru/Origami/Flat.hs#L113)), as `shareFor` does.
+  ([`Flat.hs:114`](../src/Senbazuru/Origami/Flat.hs#L114)), as `shareFor` does.
   Faces meeting along a stretch that runs down their edge do not cover it.
 - **R-05-32.** Sort by `nearness fromAbove`, true for a viewer on raw +z (the
   runner passes the reader's side). A pair ordered neither way is
@@ -851,12 +851,12 @@ on material points, as L5 does.
   contains the child's material centroid strictly inside, by more than that
   tolerance. Every face here is convex, so the centroid is inside its own face:
   the sheet tolerance R-05-35 uses comes from `flatSheet`, which refuses a
-  concave face ([`Flat.hs:126-128`](../src/Senbazuru/Origami/Flat.hs#L126-L128)).
+  concave face ([`Flat.hs:127-129`](../src/Senbazuru/Origami/Flat.hs#L127-L129)).
   L5's `insideRing` is for crease patterns that never pass through `flatSheet`.
   None or several is `ChildOutsideParents c`.
 - **R-05-35.** Children with different parents that overlap by more than
   `sheetSpeck`, the sheet's area tolerance
-  ([`Flat.hs:117`](../src/Senbazuru/Origami/Flat.hs#L117); the test at
+  ([`Flat.hs:118`](../src/Senbazuru/Origami/Flat.hs#L118); the test at
   [`Visible.hs:304`](../src/Senbazuru/Origami/Visible.hs#L304)), take their
   parents' order, faces and orders both read from `foldedFrame`
   ([`Folding.hs:303-308`](../src/Senbazuru/Origami/Folding.hs#L303-L308));

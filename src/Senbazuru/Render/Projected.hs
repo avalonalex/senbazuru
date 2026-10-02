@@ -14,6 +14,19 @@
 -- camera plane so the caller can project them through the same basis as its
 -- other geometry. Neither operation changes the input frame.
 --
+-- Two yardsticks judge a view, and the speck here is deliberately not this
+-- module's hair times its scale. Lengths in the model, how far a corner is from
+-- its face's plane and how far apart two faces are along the line of sight,
+-- are measured against the model's own size in 3D. Areas in the picture,
+-- whether a shadow is too small to paint, whether two overlap and whether the
+-- visible regions cover a face, use the speck "Senbazuru.Origami.Flat" gives
+-- the flattened frame ('yardsticks'), because "Senbazuru.Origami.Visible"
+-- cuts the regions with that speck. The two differ either way: seen
+-- isometrically, the unit square's shadow is sqrt 2 across and its speck twice
+-- the 3D one, while a model deep along the line of sight has the larger 3D
+-- speck. Judged by one speck and cut with the other, a corner between the two
+-- was dropped by the cutting and then refused as uncovered.
+--
 -- Coplanar overlaps still need the file's layer orders. Separated panels use
 -- actual depth, even if an obsolete order says otherwise. Intersecting panels,
 -- non-planar or concave faces and unresolved depth ties decline this path.
@@ -34,7 +47,7 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea, subtractConvex)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal, spanAlong)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Flat (FlatError (..))
+import Senbazuru.Origami.Flat (FlatError (..), yardsticks)
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, basisForward, basisRight, basisUp, project)
 
@@ -54,7 +67,9 @@ projectedForm basis fr supplied = do
   orders <- frameFaceOrders fr {faceOrders = supplied}
   let scale = maximum (1 : [spanAlong component vertices | component <- [v3x, v3y, v3z]])
       hair = 1e-9 * scale
-      speck = hair * scale
+      -- The vertices as the temporary frame holds them, flat in the picture.
+      pictured = [V3 x y 0 | V2 x y <- map (project basis) vertices]
+      (_, speck) = yardsticks pictured
       shadows = traverse (shadowOf basis hair speck) faces
   case shadows of
     Nothing -> pure Nothing
@@ -70,13 +85,15 @@ projectedForm basis fr supplied = do
       case sequence [orderPair hair speck known a b | a : rest <- tails panels, b <- rest] of
         Nothing -> pure Nothing
         Just relations -> do
-          let coordinates p = let V2 x y = project basis p in [x, y, 0]
-              mappedOrders = map renameOrder (concat relations)
-              flat = fr {verticesCoords = map coordinates vertices, facesVertices = map faceVertexIds surviving, faceOrders = mappedOrders, frameExtras = mempty}
+          let mappedOrders = map renameOrder (concat relations)
+              flat = fr {verticesCoords = [[x, y, z] | V3 x y z <- pictured], facesVertices = map faceVertexIds surviving, faceOrders = mappedOrders, frameExtras = mempty}
           case visibleForm True flat mappedOrders of
             Right seen -> case uncovered speck panels seen of
               Just fid -> Left (ImpossibleStacking fid)
               Nothing -> pure (Just (liftForm basis (renamed oldIds) seen))
+            -- Flat refuses a face only by the area test 'shadowOf' has already
+            -- made with the same speck, so no error here names a face, and the
+            -- temporary frame's face ids need no renaming back.
             Left (FlatRefused err) -> Left err
             Left _ -> pure Nothing
 

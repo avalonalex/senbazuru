@@ -93,7 +93,7 @@ thickness before starting from a flat stack.
        an edge only where the paper differs across it (`Visible.hs:26-50`).
      - `Render.Projected` for open convex planar panels. It compares depths at
        the corners of overlapping shadows. It declines intersecting,
-       non-planar, concave and unresolved-tie cases (`Projected.hs:1-23`;
+       non-planar, concave and unresolved-tie cases (`Projected.hs:1-36`;
        `docs/notes/projected-panel-visibility.md:44-49`).
      - An older painter fallback for everything else.
    - **Line vocabulary.** It is the printed-book one (`Diagram/Style.hs:12-23`).
@@ -501,10 +501,10 @@ thickness before starting from a flat stack.
 
 22. **Hidden lines and line weight.**
     - **Visibility.** It is already computed per view by subtraction for convex
-      planar faces (`Visible.hs:26-50`; `Projected.hs:1-23`). A bent panel
+      planar faces (`Visible.hs:26-50`; `Projected.hs:1-36`). A bent panel
       refined into triangles is a set of such faces. What still declines is
       intersecting panels, coplanar ties and free edge-on outlines
-      (`Projected.hs:17-23`).
+      (`Projected.hs:30-36`).
     - **Book conventions.** Yoshizawa–Randlett uses solid edges, dashed
       valleys, dash-dot mountains, thin existing creases and dotted hidden
       lines (<https://en.wikipedia.org/wiki/Yoshizawa%E2%80%93Randlett_system>).

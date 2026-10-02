@@ -92,7 +92,7 @@ tolerances disagree:
 
 | Where | Tolerance | Effect |
 | --- | --- | --- |
-| `Render.Projected` | depth gaps at `1e-9 ×` model span ([`Projected.hs:55-57`](../src/Senbazuru/Render/Projected.hs#L55-L57)) | gaps changing sign beyond it decline the view ([`:160-166`](../src/Senbazuru/Render/Projected.hs#L160-L166)); a coverage failure is `ImpossibleStacking` ([`:77-78`](../src/Senbazuru/Render/Projected.hs#L77-L78)) |
+| `Render.Projected` | depth gaps at `1e-9 ×` model span ([`Projected.hs:68-69`](../src/Senbazuru/Render/Projected.hs#L68-L69)) | gaps changing sign beyond it decline the view ([`:177-183`](../src/Senbazuru/Render/Projected.hs#L177-L183)); a coverage failure is `ImpossibleStacking` ([`:91-92`](../src/Senbazuru/Render/Projected.hs#L91-L92)) |
 | `Origami.Contact` | `panelTolerance = 1e-7` ([`Contact.hs:83-84`](../src/Senbazuru/Origami/Contact.hs#L83-L84)) | what the study's contact check accepts |
 | `Render.PaperMesh` | coplanar groups at `1e-6 ×` span ([`PaperMesh.hs:106-112`](../src/Senbazuru/Render/PaperMesh.hs#L106-L112)) | the GLB visible scene |
 
@@ -654,7 +654,7 @@ what tell the layer above from the crease's own layer.
    otherwise.
 2. **Facing.** With n̂ the unit normal and forward pointing from the reader into
    the page, a face is away when n̂ · forward > 1e-9, towards when it is below
-   −1e-9, and edge-on when `|n̂ · forward| ≤ 1e-9`, `Projected`'s threshold ([`Projected.hs:135`](../src/Senbazuru/Render/Projected.hs#L135)).
+   −1e-9, and edge-on when `|n̂ · forward| ≤ 1e-9`, `Projected`'s threshold ([`Projected.hs:152`](../src/Senbazuru/Render/Projected.hs#L152)).
 3. **Candidates** per R-08-17, each labelled with its assignment or as a
    silhouette.
 4. **Project** a segment P₀P₁ onto the page; its depth is linear in t ∈ [0, 1].
@@ -667,7 +667,7 @@ what tell the layer above from the crease's own layer.
       g < −τ (T behind: no effect) or within the band (a tie).
    4. A tie goes to orders: nearness from `faceOrders`, read against the second
       face's normal and the view as `Projected.suppliedNearness` does
-      ([`Projected.hs:139-158`](../src/Senbazuru/Render/Projected.hs#L139-L158)),
+      ([`Projected.hs:156-175`](../src/Senbazuru/Render/Projected.hs#L156-L175)),
       closed as `Origami.Contact.closure` does
       ([`Contact.hs:152-164`](../src/Senbazuru/Origami/Contact.hs#L152-L164)).
       T nearer than every face containing the segment: hidden. Some face
