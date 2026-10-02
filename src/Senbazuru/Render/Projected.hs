@@ -34,7 +34,7 @@
 -- neighbours; free edge-on outlines decline. A successful result is visibility
 -- for one view, not a contact
 -- certificate or a folding simulation.
-module Senbazuru.Render.Projected (projectedForm) where
+module Senbazuru.Render.Projected (projectedForm, picture, uncoveredParts) where
 
 import Control.Monad (foldM)
 import Data.List (foldl', tails)
@@ -67,9 +67,7 @@ projectedForm basis fr supplied = do
   orders <- frameFaceOrders fr {faceOrders = supplied}
   let scale = maximum (1 : [spanAlong component vertices | component <- [v3x, v3y, v3z]])
       hair = 1e-9 * scale
-      -- The vertices as the temporary frame holds them, flat in the picture.
-      pictured = [V3 x y 0 | V2 x y <- map (project basis) vertices]
-      (_, speck) = yardsticks pictured
+      (pictured, speck) = picture basis vertices
       shadows = traverse (shadowOf basis hair speck) faces
   case shadows of
     Nothing -> pure Nothing
@@ -97,10 +95,28 @@ projectedForm basis fr supplied = do
             Left (FlatRefused err) -> Left err
             Left _ -> pure Nothing
 
+-- | A view's vertices as its temporary frame holds them, flat in the picture,
+-- and the speck "Senbazuru.Origami.Flat" gives that frame, which every area in
+-- the picture is judged by (see the header). Exported, with 'uncoveredParts',
+-- so that the material study's visibility experiment judges a view as this
+-- module does rather than by a copy of the rule.
+picture :: Basis -> [V3] -> ([V3], Double)
+picture basis vertices = (pictured, snd (yardsticks pictured))
+  where
+    pictured = [V3 x y 0 | V2 x y <- map (project basis) vertices]
+
 -- A contradictory cycle can make every face surrender the same patch to
 -- another. Pair checks alone do not see that hole. Require the resulting
 -- visible regions to cover the original silhouette; cycles with no shared
 -- patch (a valid interleaving) still pass.
+uncovered :: Double -> [Shadow] -> VisibleForm -> Maybe FaceId
+uncovered speck panels seen = case [shadowId panel | (panel, left) <- zip panels (uncoveredParts speck seen (map shadowRing panels)), not (null left)] of
+  fid : _ -> Just fid
+  [] -> Nothing
+
+-- | For each shadow, the parts of it that no visible region covers, by the
+-- rule 'projectedForm' refuses a view by: a shadow with any part left is a
+-- hole. Areas are in the picture, so @speck@ is the one 'picture' gives.
 --
 -- The first pass skips a cut that would take no more than @speck@ of a piece,
 -- for the reason "Senbazuru.Origami.Visible" gives for the same rule in its
@@ -109,20 +125,24 @@ projectedForm basis fr supplied = do
 -- up, though. A piece a few specks big comes through whenever each region
 -- over it covers no more than a speck of it, however much they cover between
 -- them, as a corner does in ProjectedSpec. So a piece that comes through is
--- cut again by every region, skipping nothing, and is a hole only if more
--- than a speck of it is left. Measuring what is left, rather than adding up
--- what each region covers, counts a patch two regions share once.
-uncovered :: Double -> [Shadow] -> VisibleForm -> Maybe FaceId
-uncovered speck panels seen = case [shadowId panel | panel <- panels, any hole (foldl' (cut speck) [shadowRing panel] regions)] of
-  fid : _ -> Just fid
-  [] -> Nothing
+-- cut again by every region, skipping nothing, and is left only if more than
+-- a speck of it remains. Measuring what remains, rather than adding up what
+-- each region covers, counts a patch two regions share once.
+uncoveredParts :: Double -> VisibleForm -> [[V2]] -> [[[V2]]]
+uncoveredParts speck seen = map leftOver
   where
     regions = [[V2 x y | V3 x y _ <- piece] | region <- formRegions seen, piece <- regionPieces region]
+    leftOver ring =
+      concat
+        [ left
+          | piece <- foldl' (cut speck) [ring] regions,
+            let left = foldl' (cut 0) [piece] regions,
+            sum (map (abs . signedArea) left) > speck
+        ]
     cut allowance pieces cover = concatMap (cutOne allowance cover) pieces
     cutOne allowance cover piece
       | abs (signedArea (clipConvex cover piece)) <= allowance = [piece]
       | otherwise = subtractConvex allowance cover piece
-    hole piece = sum (map (abs . signedArea) (foldl' (cut 0) [piece] regions)) > speck
 
 -- An edge-on face paints no area. It can be omitted when all its edges also
 -- belong to surviving neighbours, which supply their real depth and outline.

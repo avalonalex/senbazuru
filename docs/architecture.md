@@ -137,7 +137,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
-| `Senbazuru.Render.Projected` | Convex open panels → viewing relations over their overlapping shadows → the existing flat visible-region machinery. Temporary projected frames never become material exports. |
+| `Senbazuru.Render.Projected` | Convex open panels → viewing relations over their overlapping shadows → the existing flat visible-region machinery. Temporary projected frames never become material exports. Its picture speck and coverage check are shared with the study's `IllustrationVisibility`. |
 | `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
 | `Senbazuru.Render.PaperMesh` | Shared surface → complete panels or exposed pieces on both sides of each plane. Clipped corners retain weighted material vertex references. |
 | `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. Records a fidelity record only when its caller says where the positions came from. |

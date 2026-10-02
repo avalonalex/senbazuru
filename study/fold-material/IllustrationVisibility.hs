@@ -4,16 +4,13 @@
 -- visible side without moving either piece. This is a drawing approximation,
 -- not a collision certificate or physical thickness.
 --
--- This bounded study mirrors Render.Projected's projection, and its coverage
--- check as it was before that check began cutting a leftover piece again,
--- skipping nothing: here any piece left by the first pass counts as uncovered.
--- So a piece a few specks big that several regions cover between them is
--- reported here and drawn there, and the uncovered patches the body notes
--- record were measured by this older rule. It also keeps measuring every area
--- against the model's 3D spans, where production now judges areas in the
--- picture by the speck Origami.Flat gives the flattened frame. In an oblique
--- view the two differ: by a factor of two for the unit square seen
--- isometrically. It reuses Origami.Visible's polygon subtraction and
+-- This bounded study mirrors Render.Projected's projection. It judges areas in
+-- the picture by the same speck and finds uncovered paper by the same coverage
+-- check, calling Render.Projected's 'picture' and 'uncoveredParts' rather than
+-- keeping copies, which twice fell behind production. With no allowance it
+-- therefore draws what production draws and reports uncovered paper exactly
+-- where production refuses; it reports every uncovered part, where production
+-- stops at the first face. It reuses Origami.Visible's polygon subtraction and
 -- hidden-edge handling.
 -- Keeping the experiment here leaves production tolerances unchanged. Its
 -- extra record explains every overlapping pair, including unresolved regions;
@@ -23,7 +20,7 @@
 module IllustrationVisibility (VisibilityAudit (..), PairAudit (..), illustrationVisibility) where
 
 import Control.Monad (foldM)
-import Data.List (foldl', tails)
+import Data.List (tails)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
@@ -31,12 +28,13 @@ import Data.Text (Text)
 import Senbazuru.Fold.Query (Face (..), FoldError (..), edgeKey, frameFaceOrders, frameFaces, frameVertices, ringEdges)
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Frame (..), Stacking (..))
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea, subtractConvex)
+import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal, spanAlong)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flat (FlatError (..))
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, basisForward, basisRight, basisUp, project)
+import Senbazuru.Render.Projected (picture, uncoveredParts)
 
 data VisibilityAudit = VisibilityAudit
   { auditPairs :: ![PairAudit],
@@ -72,7 +70,7 @@ illustrationVisibility allowance basis fr supplied = do
   orders <- frameFaceOrders fr {faceOrders = supplied}
   let scale = maximum (1 : [spanAlong component vertices | component <- [v3x, v3y, v3z]])
       hair = 1e-9 * scale
-      speck = hair * scale
+      (pictured, speck) = picture basis vertices
       declined = VisibilityAudit [] Nothing []
   if allowance < 0 || isNaN allowance || isInfinite allowance
     then pure (declined "invalid allowance")
@@ -92,29 +90,15 @@ illustrationVisibility allowance basis fr supplied = do
         case traverse pairRelation pairs of
           Nothing -> pure (report Nothing "unresolved overlapping pairs")
           Just relations -> do
-            let coordinates p = let V2 x y = project basis p in [x, y, 0]
-                mappedOrders = map renameOrder relations
-                flat = fr {verticesCoords = map coordinates vertices, facesVertices = map faceVertexIds surviving, faceOrders = mappedOrders, frameExtras = mempty}
+            let mappedOrders = map renameOrder relations
+                flat = fr {verticesCoords = [[x, y, z] | V3 x y z <- pictured], facesVertices = map faceVertexIds surviving, faceOrders = mappedOrders, frameExtras = mempty}
             case visibleForm True flat mappedOrders of
               Right seen ->
-                let missing = uncovered speck panels seen
+                let missing = concat (uncoveredParts speck seen (map shadowRing panels))
                     result = Just (liftForm basis (renamed oldIds) seen)
                  in pure (VisibilityAudit pairs result missing (if null missing then "visible regions cover the sheet" else "partial visibility: uncovered paper"))
               Left (FlatRefused err) -> Left err
               Left _ -> pure (report Nothing "flat visibility refused")
-
--- A contradictory cycle can make every face surrender the same patch to
--- another. Pair checks alone do not see that hole. Require the resulting
--- visible regions to cover the original silhouette; cycles with no shared
--- patch (a valid interleaving) still pass.
-uncovered :: Double -> [Shadow] -> VisibleForm -> [[V2]]
-uncovered speck panels seen = [piece | panel <- panels, piece <- foldl' cut [shadowRing panel] regions, abs (signedArea piece) > speck]
-  where
-    regions = [[V2 x y | V3 x y _ <- piece] | region <- formRegions seen, piece <- regionPieces region]
-    cut pieces cover = concatMap (cutOne cover) pieces
-    cutOne cover piece
-      | abs (signedArea (clipConvex cover piece)) <= speck = [piece]
-      | otherwise = subtractConvex speck cover piece
 
 -- An edge-on face paints no area. It can be omitted when all its edges also
 -- belong to surviving neighbours, which supply their real depth and outline.
