@@ -2185,8 +2185,8 @@ Numbered as every PRD's open questions cite them. Each has a recommended default
 and each has to be decided before the milestone named. Decisions 15–25 come from
 [PRD 11](11-prd-refined-final-forms.md#open-questions-for-the-owner), whose milestones are F0–F7.
 Decisions 26–28 were raised while scoping #410, PRD 11's paper screen, decision 29
-by its wing galleries (#447), decisions 30 and 31 by #446 and #449, and decisions
-32 and 33 by #453.
+by its wing galleries (#447), decisions 30 and 31 by #446 and #449, decisions
+32 and 33 by #453, and decisions 34 and 35 by #455.
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
@@ -2223,6 +2223,8 @@ by its wing galleries (#447), decisions 30 and 31 by #446 and #449, and decision
 | 31 | Whether a finer solve its gallery does not accept, for example because it did not converge or failed its contact check, counts as a solved pose made again (decision 29; raised by #449) | **decided 2026-09-30**: it does not count: the pose's finer level stays not measured, and its report says the gallery does not accept that solve | count it differently, for example reporting its false creases beside the pose without letting them decide the verdict, which the owner named as the other way; or count it, as decision 29 alone allows | F0 |
 | 32 | Which drawings set a page's scale (decision 30): only those the page shows, or also those its gallery writes beside it (raised by #453; #456) | **decided 2026-10-01**: also those beside it. A page's scale is the largest at which its gallery draws the paper, on the page or in the drawings it writes beside it, so that a pose that passes passes in every one of them. wing-layers stays at 669 px per sheet unit, the scale of its controls' own drawings in `wing-layers/` | only the drawings the page shows: wing-layers at 626, its lifted grip's figure, and a page that shows none, such as crane-body's, would need another rule (decision 33) | F0 |
 | 33 | The scale of a page that shows no drawing, such as crane-body's, which shows tables and a 3D viewer (raised by #453; #456) | **decided 2026-10-01**: the scale of the drawings its gallery writes beside it, as decision 32 gives: crane-body's trials' own drawings, at 692 px per sheet unit. A page whose gallery draws no paper at all has no scale; its gallery writes the measurements without screens and publishes no page | the fixed 600 px per sheet unit of the whole crane's drawings, for any page that shows no drawing | F0 |
+| 34 | Where the crane-with-a-wing studies hinge the wing (#455) | **decided 2026-10-02**: at its root, the line from the base of the neck to the base of the tail, where a crane's wing opens: folded y = 0.37585 on `examples/crane.fold`. Found by decision 35's rule, not typed in. The galleries move to it from y = 1/4; `crane-root` keeps its 1/4 controls beside it for comparison | y = 1/4, a quarter of the sheet from the wing's tip, where the studies have hinged it so far; or where the wing's paper leaves the body's, y ≈ 0.29–0.32 | F0 |
+| 35 | How a study makes a choice the model leaves open, such as where a flap hinges or the angle a rigid base settles at (#455) | **decided 2026-10-02**: by a stated rule the code applies, the same for every model, not by the owner model by model; the owner reviews the rules and where they fail. A flap's root joins the first corners on each side of its tip where its outline meets other paper, and is kept only if the flap then turns about it; a root hidden between layers, as the crane's neck and tail have, is refused, not guessed. A rigid base settles at the angle of least bending energy | the owner chooses each case, which does not scale to the many models the project should fold | F0 |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that
