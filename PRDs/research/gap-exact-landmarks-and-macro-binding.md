@@ -71,7 +71,7 @@ step ends at.
    | --- | --- | --- |
    | `Fold.Faces.tolerance` (`Faces.hs:248-251`) | 1e-9 × bounding-box **diagonal**, no floor | creasing: length, "meets something", interning (`Creasing.hs:150`, `:176-177`, `:186-190`, `:231`, `:243`) |
    | `Import.Segments.mergeTolerance` (`Segments.hs:194-196`) | 1e-9 × diagonal, no floor | merging `.cp`/`.opx` endpoints |
-   | `Origami.Flat.sheetHair` (`Flat.hs:218-221`) | 1e-9 × max(1, larger x/y **span**) | the glossary's **Hair** (`docs/glossary.md:48`) |
+   | `Origami.Flat.sheetHair` (`Flat.hs:218-221`) | 1e-9 × max(1, larger x/y **span**) | the glossary's **Hair** (`docs/glossary.md:49`) |
    | `Origami.Folding.sheetTolerance` (`Folding.hs:847-854`) | 1e-9 × max(1, larger span) | `TornAt`, `loopsClose` (`:368`, `:376-377`, `:810-811`) |
    | `StudyCase` strictly-inside (`StudyCase.hs:141`, `:168`) | absolute 1e-10 | naming panels and the fixed panel by material point |
    | `CheckedPetal`/`CheckedBird` `samePoints` (`CheckedPetal.hs:96`, `CheckedBird.hs:148-149`) | absolute 1e-12 | pose vs certified ideal path |

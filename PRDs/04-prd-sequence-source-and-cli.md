@@ -121,7 +121,7 @@ Each requirement points at the design section that details it.
 | R-04-23 | `--check` parses and checks, opens no sheet, prints one summary line and runs no geometry. It refuses `-o`, `--report`, `--layer-budget`, `--frame` and the page flags. |
 | R-04-24 | `--report` writes `Sequence.Record.renderRunReport :: Run -> [Text]` to stderr under a heading naming the source, as `check` formats its report ([Cli.hs:962-966](../app/Senbazuru/Cli.hs#L962-L966)). It prints each `expect refused` outcome too, which has no record and is kept on its step in the `Run` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). |
 | R-04-25 | `--layer-budget N` reaches `runSequence` and the renderer for every geometric output. |
-| R-04-26 | `--frame N` goes only with `.glb`. It counts as every verb does, frame 0 being the key frame, so `--frame N` selects state N − 1, which is `file_frames[N − 1]` ([D13](decisions.md#d13-the-run-verb-and-io), [D24](decisions.md#d24-states-figures-and-their-numbers)); `bird-base-sequence.fold`'s states are read the same way ([usage.md:1023-1024](../docs/usage.md)). With no `--frame` it selects the last state. `0` and values past the state count are refused, naming the count. |
+| R-04-26 | `--frame N` goes only with `.glb`. It counts as every verb does, frame 0 being the key frame, so `--frame N` selects state N − 1, which is `file_frames[N − 1]` ([D13](decisions.md#d13-the-run-verb-and-io), [D24](decisions.md#d24-states-figures-and-their-numbers)); `bird-base-sequence.fold`'s states are read the same way ([usage.md:1040-1041](../docs/usage.md)). With no `--frame` it selects the last state. `0` and values past the state count are refused, naming the count. |
 | R-04-27 | `--columns`, `--view`, `--width` and `--height` go only with `.svg`, with `render`'s defaults. `--all-layers` goes only with `.glb`. `--author` and `--description` go only with `.fold`, because they fill `file_author` and `file_description`, which only the sequence file has ([D4](decisions.md#d4-written-frames-follow-the-state-rule)). |
 | R-04-28 | Any refusal exits nonzero. At a `not modelled` move, `runSequence` returns `Right` a `Run` whose `runStop` names the step and which holds every record and state before it. `run` writes those states, then prints `runRefusal`'s `StepRefused … NotModelled` and exits nonzero, so the work up to the gap is kept ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). Every other refusal returns no partial run. |
 | R-04-29 | The library adds megaparsec, parser-combinators and transformers, and the executable adds `containers` and `filepath` ([bounds](#dependencies-in-the-cabal-file)). |
@@ -936,7 +936,7 @@ The anchor's comment is checked by the command above; the comments marked
 **UNVERIFIED** are not. The *tail-tucked stacking* is the one of the fixture's five
 layer orders that puts all eight tail faces between the two sides of the body,
 index 2
-([CraneWing.hs:119-122](../study/fold-material/CraneWing.hs#L119-L122);
+([CraneWing.hs:133-136](../study/fold-material/CraneWing.hs#L133-L136);
 [several stackings](../docs/notes/several-stackings.md)). *CraneSpread's root strip*
 is the short strip of wing beside the hinge that the study holds at a fixed angle
 ([CraneSpread.hs:8](../study/fold-material/CraneSpread.hs#L8)).

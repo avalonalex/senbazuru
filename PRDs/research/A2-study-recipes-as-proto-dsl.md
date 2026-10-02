@@ -131,21 +131,21 @@ How the recipe sets up and runs:
 **F5. Crane wing: ids are *computed*, not written.**
 
 - It checks the anchor by a sorted material ring and a face count of 72
-  (`CraneWing.hs:89-91`).
+  (`CraneWing.hs:103-105`).
 - It clips the folded line y = 1/4 to four hand-picked faces `[2,3,6,7]`. It
   maps each clip back to material space by the inverse fold transform
-  (`CraneWing.hs:131-159`) and adds the result with `creaseAllAlong`
-  (`CraneWing.hs:93`).
+  (`CraneWing.hs:145-173`) and adds the result with `creaseAllAlong`
+  (`CraneWing.hs:107`).
 - It then recovers ids from the result:
-  - the anchor, by matching the sorted ring (`:94-96`);
+  - the anchor, by matching the sorted ring (`:108-110`);
   - the hinge, as every `Unassigned` edge, expecting one per face the line
-    crosses, 4 at y = 1/4 (`:98-103`);
+    crosses, 4 at y = 1/4 (`:112-117`);
   - the moving side, as the one face containing both ends of the hinge's
-    first segment on the tip's side of the line (`:116-118`).
-- It picks stacking **index** `[2]` of five valid orders (`:119-123`).
+    first segment on the tip's side of the line (`:130-132`).
+- It picks stacking **index** `[2]` of five valid orders (`:133-137`).
 - It travels +90 and *requires* −90 to be refused with `FlapEndpointOrder`
-  (`:124-128`).
-- Poses are 0, 30, 60, 90 (`:161-166`).
+  (`:138-142`).
+- Poses are 0, 30, 60, 90 (`:175-180`).
 - The module comment states the rule that ids "are then selected from their
   result, never carried across that boundary" (`CraneWing.hs:20-22`).
 
@@ -280,7 +280,7 @@ coordinates.**
 - Each recipe therefore reorders faces once:
   - blintz: `BlintzSequence.hs:6-8`, `:44-47`;
   - helmet: `HelmetSequence.hs:8-9`, `:41-44`;
-  - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:94-96`.
+  - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:108-110`.
 - Why it matters (`docs/notes/chaining-checked-folds.md`, third paragraph):
   - `flapAt` holds the flap's stationary face still (`Flap.hs:358-360`).
   - An independent refold holds face 0 still.
@@ -347,7 +347,7 @@ coordinates.**
   - cutting "can renumber the input" (`Flap.hs:9-10`);
   - transforms are keyed by the *cut* pattern (`Folding.hs:286-292`);
   - crane ids are re-selected after creasing (`CraneWing.hs:20-22`,
-    `:94-118`).
+    `:108-132`).
 - Material rings or points survive renumbering, and the tests use them for
   that reason (`test/CraneWingSpec.hs:91-96`; `StudyCase.hs:117-118`).
 
@@ -365,7 +365,7 @@ metadata.**
 fragile.**
 
 - The crane picks index 2 so the tail is tucked (`CraneWing.hs:30-34`,
-  `:119-123`).
+  `:133-137`).
 - The test checks the geometric meaning, not the index, and shows the first
   order fails it (`test/CraneWingSpec.hs:84-109`).
 
@@ -373,7 +373,7 @@ fragile.**
 
 - Blintz: reopening through the centre is refused
   (`BlintzSequenceSpec.hs:110-115`).
-- Crane: −90 must be refused (`CraneWing.hs:125-128`).
+- Crane: −90 must be refused (`CraneWing.hs:139-142`).
 - Helmet: the body-side reopening is refused
   (`HelmetSequenceSpec.hs:164-175`).
 - Bird: a reflected collapse and reversed orders are refused
@@ -405,7 +405,7 @@ The file is a top-level JSON array of cases. Each case (`StudyCase.hs:63-76`):
 Validation beyond parsing:
 
 - **Ids** must be unique, non-empty, and made of lowercase ASCII, digits and
-  `-`. `steps` must be non-empty (`Main.hs:95-96`, `:174-175`).
+  `-`. `steps` must be non-empty (`Main.hs:96-97`, `:175-176`).
 - **Angles**: one per source edge (`StudyCase.hs:152-153`).
 - **Folded material**:
   - lies in the unit square at z = 0;
@@ -425,13 +425,13 @@ Validation beyond parsing:
   (`docs/notes/symmetric-base-collapse.md`, last paragraph).
 
 The manifest "is read by the study executable; it is not a new library input
-format" (`docs/architecture.md:409-413`).
+format" (`docs/architecture.md:417-421`).
 
 **F22. What the manifest cannot express.** Each item has evidence.
 
 1. **Motion between states.** There is no path and no certificate; "they do
    not change the prescribed pose or certify motion between states"
-   (`docs/architecture.md:421-422`).
+   (`docs/architecture.md:429-430`).
 2. **Contact orders that change during a sequence.** Orders are per case.
    - Rabbit ear: its moving panels swap order mid-turn, so the case declares
      only the stable relations and leaves overlaps at closure to a separate
@@ -710,7 +710,7 @@ coordinates.**
 3. **Address creases and faces geometrically; treat raw ids as resolved
    output, not input.** There are three precedents:
    - `at: [u, v]` panel names (F21);
-   - `crease --from X,Y --to X,Y` (`docs/usage.md:779-796`);
+   - `crease --from X,Y --to X,Y` (`docs/usage.md:796-813`);
    - `CraneWing`'s material segments (F5).
 
    The language needs an answer for irrational landmarks, such as snapping
@@ -762,7 +762,7 @@ coordinates.**
       formula route changes at least one state.
 12. **Keep the angle-table level as a compilation target.** A resolved,
     per-state full angle list is what `StudyCase`, `buildCaseSequence` and
-    the CLI's `render --steps` already consume (`docs/architecture.md:436-441`).
+    the CLI's `render --steps` already consume (`docs/architecture.md:444-449`).
     The DSL could compile down to it, which gives a debuggable intermediate
     form.
 

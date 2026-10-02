@@ -34,13 +34,14 @@
 -- traditional arrangement of a model with several possible stackings.
 -- This recipe does not construct the crane from a square, move its other wing,
 -- or expand its body. It exercises the production operation on a real fixture.
-module CraneWing (CraneWing (..), buildCraneWing, buildCraneWingAt, studyHinge, craneStates, craneFile) where
+module CraneWing (CraneWing (..), buildCraneWing, buildCraneWingAt, studyHinge, wingRoot, craneStates, craneFile) where
 
 import Control.Monad (unless)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (find, partition, sort)
 import Data.Text (Text)
+import FlapRoot (Root (..), findRoot, prepare)
 import Senbazuru.Explain (explain, tshow)
 import Senbazuru.Fold.Creasing (creaseAllAlong)
 import Senbazuru.Fold.Query (frameVertices)
@@ -74,6 +75,19 @@ data CraneWing = CraneWing
 -- the wing's tip.
 studyHinge :: Double
 studyHinge = 0.25
+
+-- | The folded line y = h the wing hinges at by owner decision 34: its root,
+-- the line from the base of the neck to the base of the tail, found by
+-- 'FlapRoot.findRoot' from the wing's tip at sheet corner (0, 1) rather than
+-- typed in (decision 35). 'buildCraneWingAt' creases along a level line, so
+-- a root whose ends are not level to a millionth of the sheet is refused.
+wingRoot :: Frame -> Either Text Double
+wingRoot source = do
+  root <- prepare source (V2 0 1) >>= findRoot
+  let (V2 _ low, V2 _ high) = rootEnds root
+  unless (abs (high - low) <= 1e-6) $
+    Left ("the wing's root is not level: its ends are at folded y = " <> tshow low <> " and " <> tshow high)
+  pure ((low + high) / 2)
 
 buildCraneWing :: Frame -> Either Text CraneWing
 buildCraneWing = buildCraneWingAt studyHinge

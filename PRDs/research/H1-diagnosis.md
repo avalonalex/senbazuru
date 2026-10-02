@@ -101,7 +101,7 @@ without stretching (cylinders, cones); a dome is not [fetched: Wikipedia].
 **Gaussian curvature** measures that, and for a triangle mesh it shows up as a
 change in the sum of corner angles around a vertex: paper that only bends keeps
 its flat angle sum exactly. A **J edge** (join) is a numerical triangle edge
-inside one [panel](../../docs/glossary.md), not a crease (`docs/glossary.md:64`).
+inside one [panel](../../docs/glossary.md), not a crease (`docs/glossary.md:65`).
 A **contour** is a visible edge of paper against background or against paper
 at another depth. A **silhouette** is the part of the contour where a smooth
 surface turns away from the viewer. **Penalty** contact charges energy for

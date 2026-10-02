@@ -83,7 +83,7 @@ Each entry gives the rule, where it is recorded, and whether the request
     operations or captions);
   - `docs/related-projects.md:24` (origami-diagrams stores arrows; senbazuru
     infers them);
-  - `docs/glossary.md:39`.
+  - `docs/glossary.md:40`.
 - *Verdict: strains.* A scheme knows what each step is, which is the information
   #36 plans to reconstruct by classifying motions. Today's inference cannot see
   some moves:
@@ -197,7 +197,7 @@ reproducible.**
     a display spacing that was named `--thickness`.
   - The DSL adds a third question: is an amount in a scheme a fraction of the
     sheet, model units, or degrees? Model units differ by a factor of 400
-    between a `.cp` square and a unit-square `.fold` (`glossary.md:46`).
+    between a `.cp` square and a unit-square `.fold` (`glossary.md:47`).
   - **[analysis]** A typed EDSL is the cheapest place to apply #63's phantom
     units.
 
@@ -241,8 +241,8 @@ reproducible.**
   `BlintzSequence.hs:50-56` — and they are valid for one fixture only.
 - *Precedent for an alternative:* `StudyCase.buildCasePose` resolves panel names
   from points on the original sheet, so declarations survive renumbering
-  (`architecture.md:417-419`). `Surface` carries material coordinates
-  (`architecture.md:462-467`).
+  (`architecture.md:425-427`). `Surface` carries material coordinates
+  (`architecture.md:470-475`).
 
 **A15. The folding walk holds one face still, and today the recipes choose it by
 hand.**
@@ -295,7 +295,7 @@ general.**
 language.**
 - *Source:* `BlintzSequence.hs:4` ("a recipe … not an instruction language");
   `architecture.md:206-207` (neither module adds a general instruction format);
-  `architecture.md:412-413` (the study manifest is not a new library input
+  `architecture.md:420-421` (the study manifest is not a new library input
   format); `study/fold-material/StudyCase.hs:212-214`.
 - *Verdict: overturned by the request, deliberately.* PRDs 1 and 2 build the
   general format these modules disclaim.
@@ -307,7 +307,7 @@ language.**
 **A20. The library imports no study code; the study is its own executable and is
 compiled into the tests.**
 - *Source:*
-  - `architecture.md:201`, `:230-232` and `:405-406`;
+  - `architecture.md:201`, `:230-232` and `:413-414`;
   - `senbazuru.cabal:175-189`: the study executable depends on the library plus
     `directory`;
   - `senbazuru.cabal:193`: the test suite's source directories include
@@ -322,8 +322,8 @@ compiled into the tests.**
 
 **A21. Backends consume `Diagram`; the 3D exception consumes `Surface`.**
 - *Source:*
-  - `AGENTS.md:214-222`; `architecture.md:176-182` and `:470-473`;
-  - `architecture.md:402-405`: the study's corrected meshes use a depth-buffered
+  - `AGENTS.md:214-222`; `architecture.md:176-182` and `:478-481`;
+  - `architecture.md:410-413`: the study's corrected meshes use a depth-buffered
     viewer, because the SVG painter assumes a layer order those meshes can
     violate;
   - `architecture.md:123`: `Render.Projected` handles convex open panels;
@@ -346,7 +346,7 @@ compiled into the tests.**
 radius does not follow from layer count.**
 - *Source:*
   - `paper-thickness.md:3-17`; `docs/notes/connected-paper-surface.md:18-26`;
-    `glossary.md:123`; #146 done-when 4;
+    `glossary.md:124`; #146 done-when 4;
   - `docs/notes/two-bends-need-more-than-radii.md`: in the double fold, the upper
     layer's second bend stretches by 200%, and the surface has 4.71% more area
     than the sheet;

@@ -72,7 +72,7 @@ folded state and a material pattern from step to step, not a `Frame`.
    study/fold-material/cases.json. This is the project's own answer to what
    docs/related-projects.md:86-97 calls the topological naming problem, and
    it is plain data. (*Material coordinates*: a point's position on the
-   unfolded sheet, docs/glossary.md:81.)
+   unfolded sheet, docs/glossary.md:82.)
 
 4. **The per-edge angle lists in `cases.json` are the opposite of
    "writable without a calculator".** `CaseSpec` supplies a complete angle
@@ -302,7 +302,7 @@ folded state and a material pattern from step to step, not a `Frame`.
     column
     (https://hackage.haskell.org/package/aeson-2.1.2.1/docs/Data-Aeson-Types.html).
     The study reads `cases.json` with `eitherDecode` and passes the message
-    straight to `die` (study/fold-material/Main.hs:94). `yaml` 0.11.11.2
+    straight to `die` (study/fold-material/Main.hs:95). `yaml` 0.11.11.2
     gives line and column for *syntax* errors, but `FromJSON` failures come
     back as aeson errors with a path
     (https://hackage.haskell.org/package/yaml-0.11.11.2/docs/Data-Yaml.html).

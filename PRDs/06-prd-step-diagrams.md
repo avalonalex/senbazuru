@@ -123,7 +123,7 @@ imports, signature, definition and comments, leaves 23 call lines in 15 files:
 
 | Arrows on (`True`) | Arrows off (`False`) |
 | --- | --- |
-| `Cli.hs:854` (the flag) · `FlapSpec.hs:292`, `:312`, `:322` · `SvgSpec.hs:133` · `CraneGallery.hs:38` · `FlapGallery.hs:92` · `PetalGallery.hs:45` · `BlintzGallery.hs:39` · `HelmetGallery.hs:38` | `BirdSequenceSpec.hs:79` · `BasicBaseSpec.hs:216` · `StepsSpec.hs:46`, `:56`, `:57`, `:61`, `:62`, `:68`, `:69` · `CraneSpreadGallery.hs:128` · `WingBendingGallery.hs:42` · `BasicBaseGallery.hs:145` · `study/fold-material/Main.hs:170` |
+| `Cli.hs:854` (the flag) · `FlapSpec.hs:292`, `:312`, `:322` · `SvgSpec.hs:133` · `CraneGallery.hs:38` · `FlapGallery.hs:92` · `PetalGallery.hs:45` · `BlintzGallery.hs:39` · `HelmetGallery.hs:38` | `BirdSequenceSpec.hs:79` · `BasicBaseSpec.hs:216` · `StepsSpec.hs:46`, `:56`, `:57`, `:61`, `:62`, `:68`, `:69` · `CraneSpreadGallery.hs:128` · `WingBendingGallery.hs:42` · `BasicBaseGallery.hs:145` · `study/fold-material/Main.hs:171` |
 
 (The research note's list omits `FlapGallery.hs:92`.)
 
@@ -479,7 +479,7 @@ sequence's state 13 in [D24](decisions.md#d24-states-figures-and-their-numbers)'
 numbering, which `render --frame 14` draws, because `--frame 0` is the key frame
 ([D13](decisions.md#d13-the-run-verb-and-io)). `jq` prints 16 `file_frames` and 0
 key-frame vertices for this file, and `file_frames[11]` is "… hinge 90°", the
-state [`usage.md:1023-1024`](../docs/usage.md) calls frame 12.
+state [`usage.md:1040-1041`](../docs/usage.md) calls frame 12.
 
 R-06-12 asserts only the "yes" rows. Seen from above, the `left-right` turn mirrors
 the picture across a line parallel to model y. At a 45° roll that line lies

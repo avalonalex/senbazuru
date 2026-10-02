@@ -18,7 +18,7 @@ import Control.Monad (forM, forM_, when)
 import CraneRoot
 import CraneSpread
 import CraneSpreadGallery (screenKeys, spreadFigure)
-import CraneWing (studyHinge)
+import CraneWing (studyHinge, wingRoot)
 import Data.Aeson (encode, object, (.=))
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
@@ -34,6 +34,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
+import Numeric (showFFloat)
 import ScreenReport (Figure (..), Screen (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -54,9 +55,12 @@ import WingBendingGallery (refinement)
 
 writeCraneRoot :: FilePath -> IO ()
 writeCraneRoot destination = do
+  source <- loadFoldFile "examples/crane.fold" >>= checked
+  -- The wing's root, the neck and tail bases, where a crane's wing opens:
+  -- found by the root rule, not typed in (owner decisions 34 and 35).
+  neckHinge <- either (die . T.unpack) pure (wingRoot (keyFrame source))
   let output = destination </> "crane-root"
-      -- The last two hinge the wing at the neck and tail bases, where a
-      -- crane's wing opens (#455), above the wing's widest point.
+      -- The last two hinge the wing at its root, above its widest point.
       controls =
         [ ("held", "Held root · 30°", 3, HeldRoot, False, studyHinge),
           ("released", "Released strip · 30° preference", 3, ReleasedRoot, False, studyHinge),
@@ -69,7 +73,6 @@ writeCraneRoot destination = do
           ("flat-neck", "Flat preference · hinge at the neck and tail bases", 3, FlatRoot, False, neckHinge)
         ]
   createDirectoryIfMissing True output
-  source <- loadFoldFile "examples/crane.fold" >>= checked
   runs <- forM controls $ \(stem, title, level, control, invalid, hinge) -> do
     original <- checked (craneRootAt hinge (keyFrame source) level control)
     let posed = if invalid then original {rootSpread = crossedGrip (rootSpread original)} else original
@@ -184,7 +187,7 @@ writeCraneRoot destination = do
   let comparison = [(title, sheet) | (stem, title, True, sheet, _, _, _, True, _) <- runs, stem `elem` ["held", "flat", "body"]]
   drawing <- either (die . T.unpack) pure (spreadFigure (map snd comparison))
   TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
-  TIO.writeFile (output </> "profile.svg") (profileSvg [(stem, points) | (stem, _, True, _, _, _, points, _, _) <- runs, stem `elem` ["held", "released", "weaker", "flat", "body", "held-neck", "flat-neck"]])
+  TIO.writeFile (output </> "profile.svg") (profileSvg neckHinge [(stem, points) | (stem, _, True, _, _, _, points, _, _) <- runs, stem `elem` ["held", "released", "weaker", "flat", "body", "held-neck", "flat-neck"]])
   -- Each control beside the same control hinged at the neck and tail bases,
   -- drawn together from one camera at one scale.
   forM_ [("hinge-held", "held", "held-neck"), ("hinge-flat", "flat", "flat-neck")] $ \(name, quarter, neck) ->
@@ -203,27 +206,34 @@ checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure
 
 -- One scale for every profile; the hinge at 1/4 lies halfway along the plot
--- and the neck and tail bases, y = 0.376, at x = 288. y points towards the
--- body and z points up in the model. Negating both draws the wing tip to the
--- right and its downward displacement down the SVG page. A control hinged at
--- the neck and tail bases is dashed, in the colour of its 1/4 counterpart.
-profileSvg :: [(String, [V3])] -> T.Text
-profileSvg curves =
+-- and the wing's root, the neck and tail bases, at @root@, further in. y
+-- points towards the body and z points up in the model. Negating both draws
+-- the wing tip to the right and its downward displacement down the SVG page.
+-- A control hinged at the root is dashed, in the colour of its 1/4
+-- counterpart.
+profileSvg :: Double -> [(String, [V3])] -> T.Text
+profileSvg root curves =
   "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1080 590\" role=\"img\"><title>Measured side profiles through the wing root</title>"
-    <> "<path d=\"M40 80H1040M540 50V580M288 50V580\" stroke=\"#c2b7a4\" stroke-dasharray=\"4 5\" fill=\"none\"/>"
-    <> "<g font-family=\"system-ui,sans-serif\" font-size=\"18\" fill=\"#292d28\"><text x=\"40\" y=\"35\">Body</text><text x=\"545\" y=\"35\">Hinge at y = 1/4 (solid)</text><text x=\"278\" y=\"548\" text-anchor=\"end\">Neck and tail bases,</text><text x=\"278\" y=\"570\" text-anchor=\"end\">y = 0.376 (dashed)</text><text x=\"930\" y=\"35\">Wing tip</text></g>"
-    <> T.concat ["<polyline fill=\"none\" stroke=\"" <> color base <> "\" stroke-width=\"2.5\"" <> dash <> " points=\"" <> T.unwords [formatNumber (40 + 2000 * (0.5 - y)) <> "," <> formatNumber (80 - 2000 * z) | V3 _ y z <- points] <> "\"/>" | (stem, points) <- curves, let (base, dash) = neck stem]
+    <> "<path d=\"M40 80H1040M540 50V580M"
+    <> rootX
+    <> " 50V580\" stroke=\"#c2b7a4\" stroke-dasharray=\"4 5\" fill=\"none\"/>"
+    <> "<g font-family=\"system-ui,sans-serif\" font-size=\"18\" fill=\"#292d28\"><text x=\"40\" y=\"35\">Body</text><text x=\"545\" y=\"35\">Hinge at y = 1/4 (solid)</text><text x=\""
+    <> labelX
+    <> "\" y=\"548\" text-anchor=\"end\">Neck and tail bases,</text><text x=\""
+    <> labelX
+    <> "\" y=\"570\" text-anchor=\"end\">y = "
+    <> T.pack (showFFloat (Just 3) root "")
+    <> " (dashed)</text><text x=\"930\" y=\"35\">Wing tip</text></g>"
+    <> T.concat ["<polyline fill=\"none\" stroke=\"" <> color base <> "\" stroke-width=\"2.5\"" <> dash <> " points=\"" <> T.unwords [formatNumber (x y) <> "," <> formatNumber (80 - 2000 * z) | V3 _ y z <- points] <> "\"/>" | (stem, points) <- curves, let (base, dash) = neck stem]
     <> "</svg>"
   where
+    x y = 40 + 2000 * (0.5 - y)
+    rootX = formatNumber (x root)
+    labelX = formatNumber (x root - 10)
     neck stem = case T.stripSuffix "-neck" (T.pack stem) of
       Just quarter -> (T.unpack quarter, " stroke-dasharray=\"7 4\"")
       Nothing -> (stem, "")
     color stem = case stem of "held" -> "#675949"; "released" -> "#a94e32"; "weaker" -> "#bc862b"; "flat" -> "#267364"; _ -> "#5654a0"
-
--- | The neck and tail bases: on the folded fixture the wing's outline returns
--- to its narrow width here and the neck and tail paper begins beside it.
-neckHinge :: Double
-neckHinge = 0.376
 
 -- | A released control whose base turns as one piece ('rigidBase'), held at
 -- the angle that leaves the paper, hinge included, the least bending energy.

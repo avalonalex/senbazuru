@@ -68,13 +68,13 @@ is `--no-fill`, which strokes every crease, buried ones included.
    - The study turns a curved triangle mesh into a renderable `Surface` by marking interior mesh edges `J` (join) and boundary edges `B`. It does this in `UncreasedSurface` (`study/fold-material/UncreasedSurface.hs:1-4, 36-41`) and `CraneSpread` (`study/fold-material/CraneSpread.hs:247`).
    - `strokeFor` returns `Nothing` for `Join` (`Style.hs:280-281`), so **triangulation edges already disappear from SVG, and feature edges remain**. That is the right split for a wireframe of a curved model.
    - glTF writes no lines of any kind (`Gltf.hs:52`). `PaperPiece` carries corners and a panel id, not edges (`src/Senbazuru/Render/PaperMesh.hs:47-54`).
-   - The study's WebGL viewer draws feature lines itself. `authoredValue` emits `lines` once per owning panel (`study/fold-material/Main.hs:192-217`, see line 213), and the viewer draws them with `gl.LINES` (`study/fold-material/viewer.html:241-244, 286-290`).
+   - The study's WebGL viewer draws feature lines itself. `authoredValue` emits `lines` once per owning panel (`study/fold-material/Main.hs:194-219`, see line 213), and the viewer draws them with `gl.LINES` (`study/fold-material/viewer.html:241-244, 286-290`).
    - `docs/tour.md:596-597` says the SVG outlines of those relaxed meshes still retain some buried crease lines, and points readers to the 3D views.
 
 5. **The SVG visibility machinery has limits a realistic wireframe would hit.**
    - `Render.Projected` handles only convex, planar, non-intersecting open panels. It returns `Nothing`, and so falls back, for non-planar, non-convex, intersecting or depth-tied panels (`src/Senbazuru/Render/Projected.hs:30-36, 120-125, 148-154`).
    - It compares every pair of panels (`Projected.hs:83`, `tails` over panels).
-   - `docs/architecture.md:402-407` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
+   - `docs/architecture.md:410-415` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
 
 ### (b) glTF today
 
@@ -156,7 +156,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
 18. **I/O rule.**
     - "Only `Senbazuru.Fold.Load` does I/O, reading and writing alike". `Import.*` takes `Text` and returns values (`architecture.md:155-158`; `Load.hs:5-10`).
     - No library module other than the CLI imports `Fold.Load`. Only the study executable and the CLI do (grep `import Senbazuru.Fold.Load` over `src app study test`).
-    - Precedent for a sequence description naming a source file: the study's `cases.json` has a `source` path (`study/fold-material/StudyCase.hs:63-76`). `Main` resolves it with `loadFoldFile` inside the *executable* (`study/fold-material/Main.hs:94, 177-179`). Architecture calls that manifest "not a new library input format" (`architecture.md:412-413`).
+    - Precedent for a sequence description naming a source file: the study's `cases.json` has a `source` path (`study/fold-material/StudyCase.hs:63-76`). `Main` resolves it with `loadFoldFile` inside the *executable* (`study/fold-material/Main.hs:95, 177-179`). Architecture calls that manifest "not a new library input format" (`architecture.md:420-421`).
 
 ### (d) "A new input format becomes a Frame and stops there"
 
@@ -218,7 +218,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
     - All three have 12 identical `edges_vertices` and 4 faces, with assignments `BBBBBBBBMVMM` in **every** frame. Frame 0's angles are all 0; frames 1 and 2 set −180/180 on the moved creases (jq).
     - So the "flat sheet" already carries the crease of step 3. The golden `test/golden/quarter-fold-steps.svg` has 4 dashed strokes (1 valley `6 3.5`, 3 mountain `9 3 1.2 3 1.2 3`), 2 quadratic arrow paths and 3 `<text>` labels.
     - Step 1 therefore draws all four future creases as instructions. Only frame 0 is `creasePattern`, and only `CreasePatternNotation` dashes (`Style.hs:286-289`).
-    - `examples/bird-base-sequence.fold` uses the other convention: an empty key frame and 16 titled `foldedForm` frames, each with `faceOrders` (11-60 entries). That is why `--frame 12` is the 12th state (`usage.md:1023-1025`).
+    - `examples/bird-base-sequence.fold` uses the other convention: an empty key frame and 16 titled `foldedForm` frames, each with `faceOrders` (11-60 entries). That is why `--frame 12` is the 12th state (`usage.md:1040-1042`).
     - FOLD has no key for arrows, operations or captions. `frame_inherit` is decoded but not resolved, so every frame repeats the whole graph (`docs/fold-reference.md:187-200, 219-226`; `src/Senbazuru/Fold/Types.hs:151-153`).
 
 27. **What `Step` cannot infer.**

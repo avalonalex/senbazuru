@@ -312,6 +312,14 @@ recipe. `Flap` and `HingeSweep` own the general rule that a hinge may rest on
 another layer while its moving interior separates to one side; the departure
 order is checked against the supplied starting order.
 
+`FlapRoot` finds where a flap turns from, its root, by a rule rather than by
+hand (owner decisions 34 and 35). Walking in from the flap's tip, the root
+joins the first corner on each side where the flap's outline meets other
+paper, and is kept only if the flap then turns about it. `CraneWing.wingRoot`
+gives the crane studies their hinge from it. It sees only roots that show in
+the outline: one hidden between layers is refused. See
+[the note](notes/flap-roots.md).
+
 `WholeCrane` continues the saved opened body into the full connected crane and
 prescribes both wing bends. Its construction can strain paper; it is not an
 angle-driven folding operation. `WholeCraneGallery` separates candidate creation,
