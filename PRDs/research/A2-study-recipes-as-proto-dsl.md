@@ -710,7 +710,7 @@ coordinates.**
 3. **Address creases and faces geometrically; treat raw ids as resolved
    output, not input.** There are three precedents:
    - `at: [u, v]` panel names (F21);
-   - `crease --from X,Y --to X,Y` (`docs/usage.md:773-790`);
+   - `crease --from X,Y --to X,Y` (`docs/usage.md:779-796`);
    - `CraneWing`'s material segments (F5).
 
    The language needs an answer for irrational landmarks, such as snapping

@@ -390,8 +390,10 @@ test-suite senbazuru-test
     WingBendingGallery
     UncreasedSurface
     CraneSpread
+    CraneSpreadGallery
     CraneSpreadSpec
     CraneRoot
+    CraneRootGallery
     CraneRootSpec
     CraneWingSpec
     CraneWing

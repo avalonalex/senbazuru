@@ -5,6 +5,7 @@ module CraneRootSpec (spec) where
 
 import Control.Monad (forM_)
 import CraneRoot
+import CraneRootGallery (goldenSection)
 import CraneSpread
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
@@ -72,6 +73,29 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     -- A held control already holds its base at 30 degrees and keeps it there.
     held <- right (craneRootAt 0.376 source 3 HeldRoot)
     spreadPins (rootSpread (rigidBase theta held (spreadMesh (rootSpread held)))) `shouldBe` spreadPins (rootSpread held)
+
+  -- The base search narrows 15 to 45 degrees by the golden ratio until the
+  -- bracket is under 0.05 degree: two evaluations, then one per narrowing,
+  -- fourteen of them. Each solve starts from its neighbour's mesh, so every
+  -- evaluation after the first two is handed a payload made by an earlier one.
+  it "finds a minimum by golden section, handing each evaluation a neighbour's start" $ \_ -> do
+    let phi = (sqrt 5 - 1) / 2
+        f :: [Double] -> Double -> Either () (Double, [Double])
+        f seen x = Right ((x - 28.4) ^ (2 :: Int), x : seen)
+    ((x, fx, chain), evaluations) <- either (const (fail "the search failed")) pure (goldenSection 0.05 15 45 [] f)
+    let tried = [(t, ft) | (t, ft, _) <- evaluations]
+    abs (x - 28.4) `shouldSatisfy` (< 0.05)
+    fx `shouldBe` (x - 28.4) ^ (2 :: Int)
+    length tried `shouldBe` 16
+    take 2 (map fst tried) `shouldBe` [45 - phi * 30, 15 + phi * 30]
+    map fst tried `shouldSatisfy` all (\t -> t > 15 && t < 45)
+    -- The winner's chain of starts runs back through earlier evaluations;
+    -- handing every evaluation the first start would leave it only [x].
+    take 1 chain `shouldBe` [x]
+    length chain `shouldSatisfy` (> 1)
+    drop 1 chain `shouldSatisfy` all (`elem` map fst tried)
+    -- Each evaluation is reported with the payload its own call made.
+    evaluations `shouldSatisfy` all (\(t, _, made) -> take 1 made == [t])
 
   it "activates body contacts when body vertices become free and keeps the distant boundary held" $ \source -> do
     fixed <- rootSpread <$> right (craneRoot source 3 FlatRoot)

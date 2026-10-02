@@ -500,7 +500,12 @@ server and Three.js installation. Its controls share the 50-degree tip grip:
 hold the root strip, release it, weaken its spring, prefer a flat root, and
 release the four body panels immediately across the root. Any vertex shared
 with other body panels stays held. Both sides of the root are subdivided.
-The flat-preference control repeats at a finer resolution.
+The flat-preference control repeats at a finer resolution. The held and
+flat-preference controls repeat with the wing hinged at the neck and tail
+bases, y = 0.376, rather than y = 1/4; there the flat preference turns the
+wing's base as one piece, at the angle a 16-solve search finds, and
+`hinge-held.svg` and `hinge-flat.svg` draw each control at both hinges
+([the note](notes/wing-hinged-at-the-neck.md)).
 
 `crane-root/` contains full material FOLDs and per-control measurements, accepted
 SVG/GLB shapes, a side-profile comparison and `checks.json`, with each
@@ -518,7 +523,8 @@ stable view used to fail that way
 The SVG outline path also retains some
 buried crease lines here; the stable 3D views show surface occlusion. Forty iterations
 per penalty stage are allowed, or two for an intentionally crossed grip.
-Body relaxation and the finer mesh can take several minutes.
+Body relaxation, the finer mesh and the base search at the neck and tail
+bases can take several minutes each.
 
 A flat rest angle still leaves a crease spring at the root; it does not turn
 that line into uncreased panel material. These are illustrative static solves,

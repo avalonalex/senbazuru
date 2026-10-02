@@ -60,10 +60,28 @@
   <p id="finding"></p>
   <img src="crane-root/profile.svg" alt="Measured side profiles along the wing's middle, continuing into the body">
   <div class="legend" id="legend"></div>
-  <p>The dashed vertical line marks the original root position. Each curve
-    follows material vertices on one layer along the middle of the wing.
-    The tip is held at the same position in every control. A weaker crease
-    can make rotation cheaper at the root, allowing a larger sharp turn there.</p>
+  <p>The dashed vertical lines mark the two hinges: y = 1/4 in the middle of
+    the plot, and the neck and tail bases further in. Dashed curves are the
+    controls hinged at the neck and tail bases. Each curve follows material
+    vertices on one layer along the middle of the wing. Every control grips
+    the outer eighth of its wing at 50° about its own hinge, so the tip is
+    held at the same position in every control hinged at y = 1/4; a wing
+    hinged further in is longer, and its tip hangs lower. A weaker crease can
+    make rotation cheaper at the root, allowing a larger sharp turn there.</p>
+</section>
+<section>
+  <h2>Hinge the wing at the neck and tail bases</h2>
+  <p>A crane's wing opens along the line from the base of its neck to the base
+    of its tail, nearer the body than the studies' crease at y = 1/4. On the
+    folded fixture that line is y = 0.376, above the wing's widest point. There
+    the crease cuts every layer of the wing, and the paper between the widest
+    point and the hinge turns as one piece
+    (<a href="https://github.com/avalonalex/senbazuru/issues/455">#455</a>).</p>
+  <img src="crane-root/hinge-held.svg" alt="The held-root control hinged at y = 1/4 and at the neck and tail bases, from one camera at one scale">
+  <p class="note">Held root at 30°: hinged at y = 1/4, then at the neck and tail bases.</p>
+  <img src="crane-root/hinge-flat.svg" alt="The flat-preference control hinged at y = 1/4 and at the neck and tail bases, from one camera at one scale">
+  <p class="note">Flat preference: hinged at y = 1/4, then at the neck and tail bases.</p>
+  <p id="neck-result"></p>
 </section>
 <section>
   <h2>Inspect accepted shapes</h2>
@@ -92,8 +110,9 @@
   <p>Acceptance requires solver equilibrium, relative material edge errors
     at most 0.001%, exact remaining holds, and an independent check of all
     triangle contacts and 902 source layer orders. Original mountain/valley
-    crease angles must stay within 0.00001 radians. The four wing-root springs
-    are measured separately: their preferred angles are deliberately soft.</p>
+    crease angles must stay within 0.00001 radians. The wing-root springs, four
+    about y = 1/4 and eight at the neck and tail bases, are measured separately:
+    their preferred angles are deliberately soft.</p>
   <div class="table-wrap"><table><thead><tr><th>Control / FOLD</th><th>Root turn</th><th>Edge error</th><th>Body motion</th><th>Contact</th><th>Accepted</th></tr></thead><tbody id="measurements"></tbody></table></div>
   <p>The incompatible control pushes the upper tip grip through its lower
     partner. Exact holds cannot move to hide that conflict. Regular controls
@@ -119,7 +138,7 @@ const data = /*ROOT_DATA*/null;
 const percent = n => (100 * n).toPrecision(3) + '%';
 const number = n => n === 0 ? '0' : n.toPrecision(3);
 const angle = run => run.minRootDegrees.toFixed(2) + '–' + run.maxRootDegrees.toFixed(2) + '°';
-const colors = {held:'#675949',released:'#a94e32',weaker:'#bc862b',flat:'#267364',body:'#5654a0'};
+const colors = {held:'#675949',released:'#a94e32',weaker:'#bc862b',flat:'#267364',body:'#5654a0','held-neck':'#675949','flat-neck':'#267364'};
 for (const run of data.runs) {
   const row = document.createElement('tr');
   const name = document.createElement('td');
@@ -131,7 +150,7 @@ for (const run of data.runs) {
   }
   row.className = run.accepted ? 'good' : 'bad'; document.querySelector('#measurements').append(row);
   if (run.accepted && colors[run.id]) {
-    const label = document.createElement('span'); label.textContent = run.title; label.style.color = colors[run.id]; document.querySelector('#legend').append(label);
+    const label = document.createElement('span'); label.textContent = run.title + (run.id.endsWith('-neck') ? ' (dashed)' : ''); label.style.color = colors[run.id]; document.querySelector('#legend').append(label);
   }
   if (run.visibleGlbAvailable && ['held','flat','body'].includes(run.id)) {
     const label = document.createElement('span'); label.textContent = run.title; document.querySelector('#captions').append(label);
@@ -159,6 +178,12 @@ document.querySelector('#body-result').textContent = body.accepted
   : 'This attempt is not accepted. Solver convergence: ' + (body.converged ? 'yes' : 'no') +
     '; maximum edge error: ' + percent(body.maxRelativeEdgeError) + '; original fold-angle error: ' + number(body.maxOriginalCreaseErrorRadians) + ' radians; contact: ' + (body.contact.passed ? 'pass' : 'fail') +
     '. The maximum body displacement is ' + number(body.bodyMovement) + ' model units. Its smaller root angle alone does not make it valid paper.';
+const heldNeck = data.runs.find(run => run.id === 'held-neck');
+const flatNeck = data.runs.find(run => run.id === 'flat-neck');
+document.querySelector('#neck-result').textContent = 'Held at 30°, the root turns ' + angle(heldNeck) + (heldNeck.accepted ? '' : ', but the endpoint is not accepted') +
+  '. With a flat preference the base settles at ' + flatNeck.baseDegrees.toFixed(2) + '°, the least bending energy, hinge included, among ' +
+  flatNeck.baseSearch.length + ' angles tried between 15° and 45°, ' + flatNeck.baseSearch.filter(tried => tried.converged).length +
+  ' of whose solves converged' + (flatNeck.accepted ? '' : '; this endpoint is not accepted') + '.';
 const change = data.refinement[0];
 const fine = data.runs.find(run => run.id === 'fine');
 document.querySelector('#refinement').textContent = change
