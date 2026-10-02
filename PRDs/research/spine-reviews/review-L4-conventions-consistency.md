@@ -339,8 +339,8 @@ spine does not answer it.
 
 **Evidence.** `python3` over `examples/bird-base.cp`: x ∈ [−200, 200],
 y ∈ [−200, 200]. `jq` over `crane.fold`, `bird-base.fold`, `blintz-base.fold`:
-[0, 1]. `docs/glossary.md:46` (hair: a `.cp` 400-unit square and a unit square
-do not share numbers) and `:81`; `AGENTS.md:173-178`; spine D2 lines 123-126,
+[0, 1]. `docs/glossary.md:47` (hair: a `.cp` 400-unit square and a unit square
+do not share numbers) and `:82`; `AGENTS.md:173-178`; spine D2 lines 123-126,
 D14 lines 489 and 494-495; D research A11.
 
 **Proposal.** Add to D2:
@@ -648,7 +648,7 @@ there are two copies, and they will drift.
 The glossary already shows this failure: §6 item 11 records rest angle defined
 twice, differently.
 
-**Evidence.** `AGENTS.md:47-49`, `:109`; `docs/glossary.md:19` and `:83`;
+**Evidence.** `AGENTS.md:47-49`, `:109`; `docs/glossary.md:19` and `:84`;
 spine §7 lines 887-889 and 901-902, M0 line 615.
 
 **Proposal.** Replace §7's vocabulary bullet with:
@@ -702,7 +702,7 @@ folded anything" (AGENTS) cannot follow the PRDs without these.
 
 **Evidence.** `grep -o '^| \*\*[^*]*\*\*' docs/glossary.md` (full term list:
 Crease pattern … Ear clipping; none of the above appear);
-`docs/glossary.md:48`, `:58`; `AGENTS.md:62-65`.
+`docs/glossary.md:49`, `:59`; `AGENTS.md:62-65`.
 
 **Proposal.** Put exactly this list into `PRDs/glossary-additions.md` (L4-17).
 Each row gets one or two plain-word sentences and, where it has one, the
@@ -733,7 +733,7 @@ using a term not on the list adds it there first.
   same models" and calls it "same blintz".
 
 **Evidence.** spine D1 lines 94-95, §4 lines 655-680, D2 lines 151-153, §5
-lines 768-777 and 819-830, M0 line 615; `docs/glossary.md:48`, `:58`;
+lines 768-777 and 819-830, M0 line 615; `docs/glossary.md:49`, `:59`;
 `architecture.md:108`; #97 body ("Record the decision … in
 `docs/notes/schemes.md`").
 
@@ -797,7 +797,7 @@ rules without citing a shared source:
 These sit beside D2's `Fold.Faces.tolerance` (`1e-9 ×` sheet diagonal) and the
 glossary's hair (`Origami.Flat.sheetHair`).
 
-**Evidence.** `Fold/Faces.hs:248-251`; `docs/glossary.md:46`; spine D2 lines
+**Evidence.** `Fold/Faces.hs:248-251`; `docs/glossary.md:47`; spine D2 lines
 139-141 and 170-171, D3 lines 198-199, D9 line 376, D16 lines 577-578, §6 item
 17.
 

@@ -43,7 +43,7 @@ things from `CraneWing`'s move:
 
 `CraneWing` carries exactly these fields: `craneStart`, `craneHinge`,
 `craneSide`, `craneOpening :: CheckedFlap` and `craneRefusal`
-(`CraneWing.hs:59-70`). A `Surface V2` has lost the hinge, the moving side and
+(`CraneWing.hs:60-71`). A `Surface V2` has lost the hinge, the moving side and
 the path, so B's `settle` signature cannot be the whole interface.
 
 **2. The library does not export the stationary side of a checked flap.**
@@ -89,7 +89,7 @@ unbent-crease convention.**
 **5. Hinges are found by assignment, which breaks the same way.**
 
 - `CraneWing` recovers its hinge as "every `Unassigned` edge"
-  (`CraneWing.hs:98-103`).
+  (`CraneWing.hs:114-119`).
 - `CraneRoot` finds the root edges by the same test
   (`CraneRoot.hs:76`).
 - Neither survives a sequence that assigns the new crease M or V.
@@ -99,14 +99,14 @@ states.** A single Boolean would erase the difference between them.
 
 | Evidence | Where | What it establishes |
 | --- | --- | --- |
-| None: state only | `StudyCase` angle tables (`docs/architecture.md:421-422`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
+| None: state only | `StudyCase` angle tables (`docs/architecture.md:429-430`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
 | Interval sweep | `checkFlap` returns an opaque `CheckedFlap`; every pose is re-folded and compared with the checked hinge path (`Flap.hs:19-25`, `:252-284`) | the whole single-hinge turn, up to HingeSweep's conservative refusals |
 | Exact ideal-path certificate | `PetalCertificate` bounds the ideal sheet; `CheckedBird` compares Double poses within 1e-12 (`PetalCertificate.hs:1-15`, `CheckedBird.hs:120-129`) | the ideal path of one fixture |
 | Not a motion at all | a static boundary-value solve whose iterates "are allowed to stretch and cross paper" (`CraneSpread.hs:12-13`) | an endpoint only |
 
 **7. Ids are valid only inside one pattern.** Folding keys transforms to the
 *cut* pattern (`Folding.hs:286-301`). `CraneWing` re-selects ids after
-creasing (`CraneWing.hs:20-22`, `:94-118`). `StudyCase` names panels by material
+creasing (`CraneWing.hs:20-22`, `:110-134`). `StudyCase` names panels by material
 point so that renumbering "cannot silently change an order's meaning"
 (`StudyCase.hs:117-118`). A crease-adding step's before and after states
 therefore number the same paper differently.
@@ -115,10 +115,10 @@ therefore number the same paper differently.
 
 - **Direction.** The study executable `build-depends` on `senbazuru`
   (`senbazuru.cabal:179-189`). "The library imports no study code"
-  (`docs/architecture.md:201`, again `:405`). The study already calls library
-  moves directly (`BlintzSequence.hs:27-30`, `CraneWing.hs:45-57`).
+  (`docs/architecture.md:201`, again `:413`). The study already calls library
+  moves directly (`BlintzSequence.hs:27-30`, `CraneWing.hs:46-58`).
 - **The existing handoff runs study → CLI**, through ordinary FOLD
-  (`study/fold-material/Main.hs:141-151`; `docs/architecture.md:436-441`).
+  (`study/fold-material/Main.hs:142-152`; `docs/architecture.md:444-449`).
 - **What a file loses.** `materialFrame` does not serialise thickness or
   directional requirements (`Surface.hs:242-247`). The GLB keeps only three
   `senbazuru:` extras keys (`Render/Gltf.hs:238-242`). A `CheckedFlap` is
@@ -236,7 +236,7 @@ source order (`CraneSpread.hs:198-201`).
   cannot outlive their inputs (`:13-14`, `:51-53`).
 
 **17. The CLI cannot reach certificates, and the study has one entry point.**
-The study's `main` is a flag dispatch over galleries (`Main.hs:62-89`). The
+The study's `main` is a flag dispatch over galleries (`Main.hs:63-90`). The
 `bird-petal` manifest case also feeds `CheckedBird`'s named contact panels
 (`CheckedBird.hs:123`; `PetalGallery.hs:53-56`).
 
@@ -558,7 +558,7 @@ two PRs:
 | --- | --- | --- | --- |
 | `BlintzSequence` | **becomes a sequence** (first) | runner, flap step with material seeds, an anchor rule | `BlintzSequenceSpec.hs:35-39`, `41-96`, `110-127`; `checked-blintz.svg` |
 | `HelmetSequence` | **becomes a sequence** (second) | a hinge named by one material line resolving to several edges (`[8,9]`, `[10,12]`, `[13,11]`; `HelmetSequence.hs:48-50`); a 120° illustration rule as presentation (`:70-84`) | `HelmetSequenceSpec.hs:40`, `47-51`, `79-84`, `143-150`, `164-175`, `187`; `checked-helmet.svg`. Moving-face ids (`:81`) depend on the face reorder and may need material rings. |
-| `CraneWing` | **stays a fixture recipe**; later a sequence prefix | layer-selective crease (hand-picked faces `[2,3,6,7]`, `CraneWing.hs:143`), stacking by predicate instead of index `[2]` (`:122`), an expected-refusal step (`:125-128`), and an unbent-crease convention that is not `U` (finding 5) | `CraneWingSpec.hs:84-109`, `83-134`, `145`; `checked-crane.svg`; and every crane spec below, since they build from it (`CraneSpread.hs:93`) |
+| `CraneWing` | **stays a fixture recipe**; later a sequence prefix | layer-selective crease (hand-picked faces `[2,3,6,7]`, `CraneWing.hs:159`), stacking by predicate instead of index `[2]` (`:138`), an expected-refusal step (`:141-144`), and an unbent-crease convention that is not `U` (finding 5) | `CraneWingSpec.hs:84-109`, `83-134`, `145`; `checked-crane.svg`; and every crane spec below, since they build from it (`CraneSpread.hs:93`) |
 | `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:28-123`, `CraneBodySpec`, `CraneInternalSpec.hs:24-50` |
 | `CheckedPetal`, `CheckedBird` | **become a study-authored sequence of coupled macros**; modules shrink to registry entries | library collapse and petal macros (sampled), macro parameters, stage-activated landing orders (`CheckedBird.hs:131-137`), the registry | `CheckedBirdSpec.hs:44`, `97-109`, `159`, `169-173`; `CheckedPetalSpec.hs:125`, `135-138`; `PetalFoldSpec` |
 | `BasicBases` six endpoints | **stay fixtures** | none; they are endpoint constructions that regenerate `examples/*-base.fold` | `BasicBaseSpec` per base (`:51`) |

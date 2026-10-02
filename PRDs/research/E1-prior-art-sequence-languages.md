@@ -255,7 +255,7 @@ Issue #96 says "three papers built one [a vocabulary] anyway" and then lists fou
 **16. The Yoshizawa–Randlett system and fold definitions.**
 - *History.* Yoshizawa introduced the symbols in 1954; Randlett and Harbin extended them; Randlett described the system in 1961 (https://en.wikipedia.org/wiki/Yoshizawa%E2%80%93Randlett_system).
 - *Definitions.* Operational definitions of reverse folds, squash, rabbit ear, petal ("two side-by-side rabbit ears" joined along a reference crease), swivel and open/closed sinks are at https://en.wikibooks.org/wiki/Origami/Techniques/Practice.
-- *Senbazuru's glossary.* It defines squash, rabbit ear, petal, puff and collapse (`docs/glossary.md:31-37`).
+- *Senbazuru's glossary.* It defines squash, rabbit ear, petal, puff and collapse (`docs/glossary.md:32-38`).
 
 **17. The moves, each with a geometric meaning and a motion class.**
 
@@ -274,7 +274,7 @@ The motion classes:
 | Rotate | Spin the model in the page's own plane | Whole (view) | Doodle `\rotate`; Lang's circle symbol |
 | Inside reverse fold | On a doubled flap joined along a spine crease, fold two creases out from a point on the spine. The flap's end turns inside out between the layers, and the spine beyond that point changes from valley to mountain | Coupled | Wikibooks. The layers must separate: it is not one hinge through all layers |
 | Outside reverse fold | The same, but the end wraps round the outside | Coupled | Wikibooks |
-| Squash | Lift a doubled flap, open its pocket, press it flat, symmetric about its old spine | Coupled | `glossary.md:32`; endpoint study `six-more-base-endpoints.md:21-24` |
+| Squash | Lift a doubled flap, open its pocket, press it flat, symmetric about its old spine | Coupled | `glossary.md:33`; endpoint study `six-more-base-endpoints.md:21-24` |
 | Petal | Lift one layer's tip while its two sides fold inwards, making a long narrow flap | Coupled (checked) | `petal-fold-motion.md:48, 54`: the side angle obeys `tan(s/2)=sin22.5°·tan(t/2)`, two midline segments open from −180°; `CheckedBird.hs:1-14` |
 | Rabbit ear | Gather a triangle along three creases meeting at a point, plus one reversed crease, into a pointed flap | Coupled (checked) | `rabbit-ear-motion.md:11, 55`; Doodle `\rabbit_ear` |
 | Open sink | Push a point into the model while opening the layers, reversing the creases round the tip | Coupled, passes through a 3D state | Wikibooks |
@@ -282,8 +282,8 @@ The motion classes:
 | Crimp | Two reverse folds made together on a doubled strip | Coupled | Wikipedia Y–R |
 | Pleat | A parallel valley and mountain, like an accordion | Hinge ×2 (can be done one after the other) | Wikipedia Y–R |
 | Swivel | A flap rotates about a fixed point while a crease forms along one edge | Coupled | Wikibooks |
-| Inflate / puff | Blow a pocket out into a 3D body | Bend | `glossary.md:35`; `the-puff-is-a-drawing.md:16` |
-| Collapse (not Y–R) | Many precreased folds close at once | Coupled when rigid (`CheckedBird.hs:107-109`), Bend for a square twist (`endpoints-and-routes.md:21`) | `glossary.md:37` |
+| Inflate / puff | Blow a pocket out into a 3D body | Bend | `glossary.md:36`; `the-puff-is-a-drawing.md:16` |
+| Collapse (not Y–R) | Many precreased folds close at once | Coupled when rigid (`CheckedBird.hs:107-109`), Bend for a square twist (`endpoints-and-routes.md:21`) | `glossary.md:38` |
 
 ### F. Side by side, and against senbazuru
 

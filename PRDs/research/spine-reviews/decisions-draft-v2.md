@@ -292,7 +292,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
      any whose second face it re-wound (`Folding.hs:385`), as the blintz and helmet
      recipes do (`BlintzSequence.hs:63-64`). A state's first stacking: fold, solve
      on `foldedFrame`, record the chosen orders on the working pattern, refold. Do
-     not attach orders to a `Folded` as `CraneWing.hs:123` does (L1-4, refuted
+     not attach orders to a `Folded` as `CraneWing.hs:139` does (L1-4, refuted
      objection; its skeptic's wording adopted);
   4. re-resolve every id after a topology change;
   5. anchor by material point; re-anchor as above;

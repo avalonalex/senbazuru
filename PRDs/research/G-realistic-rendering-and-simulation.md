@@ -368,7 +368,7 @@ thickness before starting from a flat stack.
       plastics (`KHR_materials_transmission/README.md:68-70`).
     - **Volume.** A nonzero thickness requires a closed manifold mesh
       (`KHR_materials_volume/README.md:90`, `:112`). A folded sheet is not
-      watertight (`docs/glossary.md:125`), so volume does not apply to a sheet.
+      watertight (`docs/glossary.md:126`), so volume does not apply to a sheet.
     - **Sheen.** Models velvet-like micro-fibres
       (`KHR_materials_sheen/README.md:38`, `:80`).
       - three.js `MeshPhysicalMaterial` has `sheen`, `transmission`,

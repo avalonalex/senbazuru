@@ -196,7 +196,7 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | 14 | `docs/architecture.md:202-211`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
 | 15 | `AGENTS.md:378-379` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
 | 16 | `docs/roadmap.md:82-87`, `:368-373` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
-| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:872-878` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
+| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:889-895` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists | the PR closing #60 (M4) |
 
 Row 14's range was `202-213` in v2. `grep -n` puts the blintz sentence at
@@ -454,7 +454,7 @@ table in the next version of this record.
      sitting on the working pattern before the fold: `foldFrameWith` copies them
      and re-signs any whose second face it re-wound (#78). A state's first
      stacking: fold, solve on `foldedFrame`, record the orders on the working
-     pattern, refold. Never attach orders to a `Folded` as `CraneWing.hs:123` does;
+     pattern, refold. Never attach orders to a `Folded` as `CraneWing.hs:139` does;
   4. re-resolve every id after a topology change;
   5. anchor by material point, and re-anchor as above;
   6. join-check every step: positions within 1e-12 × `modelSpan`
@@ -792,7 +792,7 @@ table in the next version of this record.
   folded, so nothing is left for `Flap` to check; and `creaseAllAlong` returns no
   new ids ([`:138`](../src/Senbazuru/Fold/Creasing.hs#L138)), which is why
   `CraneWing` marks its new hinge `U` and finds it as "every `Unassigned` edge"
-  ([`CraneWing.hs:98`](../study/fold-material/CraneWing.hs#L98)) [code].
+  ([`CraneWing.hs:114`](../study/fold-material/CraneWing.hs#L114)) [code].
 - **`AtRest`** writes every new piece at 0 with its requested assignment; cut
   pieces of old edges keep their parent's angle. On a frame with no
   `edges_foldAngle`, it writes the whole array, existing edges as `foldAnglesOf`
@@ -1102,7 +1102,7 @@ The decisions:
   ([`Cli.hs:484-493`](../app/Senbazuru/Cli.hs#L484-L493)) [code]. A written
   sequence file's key frame has no vertices, so state k is `--frame k+1`, as
   `bird-base-sequence.fold`'s "frames 1–16 are the folding states"
-  ([`usage.md:1023-1024`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
+  ([`usage.md:1040-1041`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
   therefore writes the same bytes as `export` of `run`'s `.fold` at `--frame N`.
   `--frame 0` and out-of-range values are refused, naming the state count.
 - **I/O.** `Fold.Load.readSequenceText :: FilePath -> IO (Either LoadError Text)`
@@ -1610,7 +1610,7 @@ accepted and rejected controls stay unchanged at each
   ([`ThroughLayers.hs:96`](../src/Senbazuru/Origami/ThroughLayers.hs#L96),
   [`:195`](../src/Senbazuru/Origami/ThroughLayers.hs#L195)) [code]. That PR changes
   the sentence at `ThroughLayersSpec.hs:271-275` and the example at
-  `docs/usage.md:872-878` ([§3](#3-recorded-text-this-design-changes) row 17), and
+  `docs/usage.md:889-895` ([§3](#3-recorded-text-this-design-changes) row 17), and
   lands before M4. `decodeFile`'s `.foldseq` refusal follows the same rule
   ([D13](#d13-the-run-verb-and-io)).
 - **Stacking errors split by who can detect them** ([D11](#d11-stacking-choices-are-relations)).
@@ -2263,7 +2263,7 @@ means the text is a research note, a snapshot that is not edited.
 | 11 | `docs/glossary.md` defines rest angle twice, differently (`:19`, `:83`) | [code] | row 10 |
 | 12 | `check` silently skips Maekawa at a vertex touching a `U` edge | [code] `FlatFold.hs:503-506`; [bin] | issue |
 | 13 | `Creasing.existingAt` takes the first vertex within tolerance, not the nearest | [code] [`Creasing.hs:323-327`](../src/Senbazuru/Fold/Creasing.hs#L323-L327) | issue, before M2's resolver |
-| 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:98`](../study/fold-material/CraneWing.hs#L98); [jq] 0 `U` edges | issue |
+| 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:114`](../study/fold-material/CraneWing.hs#L114); [jq] 0 `U` edges | issue |
 | 15 | The blintz manifest and recipe fold corners in opposite directions | [jq, code] | owner decision 8 |
 | 16 | Manifest angle literals are not the documented formulas' `Double`s. Rabbit ear at m = 30: the stored `97.58514830800293` is one ulp from the `atan2` form. Petal at t = 175: the stored `-166.98236060695527` is **three** ulps from the code's own `atan2` expression ([`CheckedPetal.hs:107`](../study/fold-material/CheckedPetal.hs#L107)), which gives `…518`. v2 said one ulp for both ([C58](#changes-since-draft-v2)) | [py] appendix command 7 | issue, M5 |
 | 17 | At least nine tolerance formulas act as "a hair" | [code] [gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md) finding 2 | issue, D2's prerequisite |
@@ -2417,7 +2417,7 @@ lists edits for.
 | C24 | `canonical` normaliser in the round-trip property | 04 "Canonical form" | 04's four-row table | adopted | 03, 04 |
 | C25 | `decodeFile`'s message names no command; `app/` adds the `run` hint | 04 §"Reading a source" note | `Load.hs:102-106`, `Query.hs:68-71` [code] | adopted-modified | 04 |
 | C26 | Presentation change: *some* vertex moves (R-05-12′) | 05 L3 note; 01 §4.13 note | 3 of 9, 3 of 9, 5 of 13, 2 of 8 axis vertices; 0 of 15 and 0 of 2 rigid pairs [py] | adopted | 01, 05 |
-| C27 | `creaseAllAlongWith` at M2 | 05 L2; 10 §2 note | `Creasing.hs:138`, `:290-292`, `:316-320`; `CraneWing.hs:98` [code] | adopted | 05, 10 |
+| C27 | `creaseAllAlongWith` at M2 | 05 L2; 10 §2 note | `Creasing.hs:138`, `:290-292`, `:316-320`; `CraneWing.hs:114` [code] | adopted | 05, 10 |
 | C28 | `RoutePose` in `Origami.Route`, re-exported by `Sequence.Record` | 05 L4 note | layer rows 4 and 6 | adopted | 05 |
 | C29 | τ = 1e-10 degrees | 05 L1 | `Surface.hs:278`, `StudyCase.hs:208` [code] | adopted | 05 |
 | C30 | `AtRest` writes the whole angle array when a frame has none | 05 R-05-8 | `Folding.hs:507-533` [code] | adopted | 05 |
@@ -2449,7 +2449,7 @@ lists edits for.
 | C56 | `docs/roadmap.md` order passages as row 16 | 10 §3 | `docs/roadmap.md:82-87`, `:368-373` [code] | adopted | 01, 10 |
 | C57 | Caption overlap: recommended gutter ≥ 42/340 on captioned pages | 06 open question 7; 10 §6 | 06 §8 arithmetic [prd] | adopted-modified (owner decision 7 with default) | 06, 10 |
 | C58 | The petal literal is three ulps from the code's `atan2` form | 10 §7.2 item 16 | `CheckedPetal.hs:107` [code]; [py] | adopted | 10 |
-| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:484-493`, `usage.md:1023-1024` [code] | adopted-modified | 01, 02, 04, 06, 09 |
+| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:484-493`, `usage.md:1040-1041` [code] | adopted-modified | 01, 02, 04, 06, 09 |
 | C60 | "Anchor placement", "move record"; "step record" retired | glossary-additions; v2 D3 | `grep` of "step record" [ran] | adopted | glossary-additions |
 | C61 | Pose angles converted once for the whole model | 02 §8.6 note | quarter-fold half-way pose [prd] | adopted | 02 |
 | C62 | `Sequence.RunPlan` holds its own option types | here (04 `Plan`) | `Camera.hs:188`, `Gltf.hs:147` [code] | adopted-modified | 04 |

@@ -7,15 +7,17 @@ body, along the line from the base of the neck to the base of the tail
 ([#455](https://github.com/avalonalex/senbazuru/issues/455)). The fixture
 lands upside down, with the wing's tip at y = 0 and the body's underside at
 y = 1/2 ([README](../../README.md#why-the-crane-is-upside-down)), and that
-line is y = 0.376: there the wing's outline narrows back to x 0.876–1.124,
-and the neck and tail paper begins beside it.
+line is y = 0.37585: there the wing's outline narrows back to x 0.876–1.124,
+and the neck and tail paper begins beside it. It is the wing's root, and the
+study finds it by the rule in [flap-roots.md](flap-roots.md) rather than by
+hand (owner decisions 34 and 35).
 
 Moving the hinge there changes what it crosses. Below the wing's widest point,
 y = 0.324, a crease across the wing meets four faces on two layers. Above it,
 the wing's sides are creased to four small triangles folded inside it, and the
 crease has to cut those too, through all layers
 ([glossary](../glossary.md#origami)): a triangle it missed would be joined both
-to paper that turns and to paper that stays put. So the crease at 0.376 is
+to paper that turns and to paper that stays put. So the crease at the root is
 eight segments rather than four, and the paper between the widest point and
 the hinge, the wing's *base*, gets panels of its own (`CraneWing`).
 
@@ -27,7 +29,7 @@ stack run senbazuru-material-study -- --crane-root build/fold-material
 
 The wing-root study (see [wing-root-holds.md](wing-root-holds.md)) now runs two
 of its controls at both hinges. The held control fixes the strip beside the
-hinge at 30°; at 0.376 that strip is the whole base. The flat-preference
+hinge at 30°; at the root that strip is the whole base. The flat-preference
 control releases it and gives the hinge's springs a rest angle of zero. Every
 control grips the outer eighth of its wing at 50° about its own hinge, so the
 two hinges hold their tips in different places: compare the shapes, not where
@@ -53,19 +55,19 @@ Measured on 2026-10-02:
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | Held root | y = 1/4 | 1,176 | 30.00° | 2.9e-7 | 2.4e-7 | yes |
 | Flat preference | y = 1/4 | 1,176 | 28.22° | 1.7e-7 | 7.5e-8 | yes |
-| Held root | y = 0.376 | 2,196 | 30.00° | 1.8e-7 | 8.3e-7 | yes |
-| Flat preference | y = 0.376 | 2,196 | 28.39° | 2.3e-7 | 2.3e-7 | yes |
+| Held root | y = 0.37585 | 2,196 | 30.00° | 1.8e-7 | 8.3e-7 | yes |
+| Flat preference | y = 0.37585 | 2,196 | 28.38° | 2.3e-7 | 2.3e-7 | yes |
 
-At 0.376 the flat preference's root turn is θ itself, because the base is held
+At the root the flat preference's root turn is θ itself, because the base is held
 at θ; at 1/4 it is where a free solve settled. The two dashed curves in the
 side profile almost coincide.
 
 The energy fixes θ to about a degree, not to 0.05°, which is only the width
-of the search's last bracket. Against the least energy found, at 28.39°:
+of the search's last bracket. Against the least energy found, at 28.38°:
 
-| θ | 22.08° | 26.46° | 27.49° | 28.39° | 29.16° | 30.84° | 33.54° |
+| θ | 22.08° | 26.46° | 27.49° | 28.38° | 29.16° | 30.84° | 33.54° |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Bending energy | 3.14× | +7.3% | +1.3% | least | +0.8% | +7.1% | +26% |
+| Bending energy | 3.15× | +7.3% | +1.3% | least | +0.8% | +7.1% | +26% |
 
 Fifteen of the 16 solves converged. The one that did not, at 22.08°, is the
 one that ruled out the low end: its energy, three times the least, sent the
@@ -77,8 +79,9 @@ The search assumes one minimum between 15° and 45°. Taken in order of θ, all
 nothing was tried below 22° or above 34°, and a second minimum there would go
 unseen. The stiffnesses are illustrative, as in the rest of the study, so θ
 is the best angle for these springs rather than for paper. The 16 solves make
-the flat-preference control about a hundred times slower at 0.376 than at
-1/4: 501 and 507 CPU seconds in two runs, against 4.8 and 4.7.
+the flat-preference control over a hundred times slower at the root than
+at 1/4: 596 CPU seconds, against 4.8. At y = 0.376, before the root was
+found by rule, two runs took 501 and 507.
 
 `hinge-held.svg` and `hinge-flat.svg` draw each control at both hinges, from
 one camera at one scale. They are for the owner to decide whether the

@@ -153,18 +153,18 @@ whole model").
 touching stack without them (A2 F18: the helmet test strips orders and expects
 refusal). Its start check compares angle count, face rings and positions
 (`Flap.hs:176-184`), never orders. The only precedent sets them by patching:
-`folded {foldedFrame = frame {faceOrders = orders}}` (`CraneWing.hs:123`). Read
+`folded {foldedFrame = frame {faceOrders = orders}}` (`CraneWing.hs:139`). Read
 literally, invariant 3 makes every fold on a stacked model unbuildable.
 
 **Evidence.** `src/Senbazuru/Origami/Flap.hs:174-184, 223-235`;
-`study/fold-material/CraneWing.hs:123`; A2 F15, F18.
+`study/fold-material/CraneWing.hs:139`; A2 F15, F18.
 
 **Proposal.** Replace invariant 3 with:
 
 > 3. Re-fold after every handoff. Never change a `Folded`'s coordinates, faces,
 >    angles or placements (`FlapStartMismatch`, `Flap.hs:176-184`). Hand
 >    accepted orders to Flap only by setting `foldedFrame.faceOrders` on an
->    untouched `foldFrameWith` result (`CraneWing.hs:123`). Write them against
+>    untouched `foldFrameWith` result (`CraneWing.hs:139`). Write them against
 >    `foldedFrame`'s counter-clockwise rings, never `foldedPattern`'s
 >    (`Folding.hs:303-308`).
 
@@ -183,7 +183,7 @@ deliberate: "A valley with an angle of nought is not a valley"
 So a `creaseLayersThrough … Valley` on the working pattern would fold every new
 crease flat at once. D8's "exact, since a crease at angle 0 moves no paper" is
 false for that output. The precedent dodges the problem by creasing `Unassigned`
-and finding the hinge as "every U edge" (`CraneWing.hs:98, 101`), which is
+and finding the hinge as "every U edge" (`CraneWing.hs:114, 101`), which is
 correction 14. Changing new creases to 0 inside the shared function would in
 turn change `crease --folded` (`Cli.hs:761`) and the ThroughLayers tests, which
 say "The creases are written at plus or minus 180" (`ThroughLayersSpec.hs:135`).
@@ -194,7 +194,7 @@ That breaks D8's "goldens unchanged".
 - `src/Senbazuru/Fold/Creasing.hs:281-292, 316-320`;
   `src/Senbazuru/Origami/ThroughLayers.hs:261-264, 296`.
 - `test/Senbazuru/Origami/ThroughLayersSpec.hs:135`.
-- `study/fold-material/CraneWing.hs:98, 101`.
+- `study/fold-material/CraneWing.hs:114, 101`.
 - gap-layer-selective-folds finding 4 ("through this API an unselected layer's
   crease 'at angle 0' can only be U or F").
 
@@ -258,7 +258,7 @@ three things: it creases, it re-traces, and it turns.
 
 - **The ids live in the middle state.** Hinge ids, moving faces and the
   `CheckedFlap` exist only in the creased pattern. That is `CraneWing`'s
-  `frame` after `creaseAllAlong` (`CraneWing.hs:93-124`).
+  `frame` after `creaseAllAlong` (`CraneWing.hs:109-140`).
 - **Before and after disagree.** `recordBefore` (uncreased) numbers edges and
   faces differently from `recordAfter`. Cutting replaces old edges in place,
   shifting later ids (`Crossings.hs:310, 343-347`), and faces are re-traced.
@@ -276,7 +276,7 @@ three things: it creases, it re-traces, and it turns.
   `Surface` already stores (`Surface.hs:115-122, 257-263, 306-312`). Two copies
   can disagree.
 
-**Evidence.** `study/fold-material/CraneWing.hs:89-124`;
+**Evidence.** `study/fold-material/CraneWing.hs:105-140`;
 `src/Senbazuru/Fold/Crossings.hs:304-315, 343-358`;
 `src/Senbazuru/Origami/Flap.hs:98-99`; gap-study-consumption-contract finding 7
 and open question 4.
@@ -699,7 +699,7 @@ return the proper rotation.
   or macro the graph is unchanged: Flap refolds the same pattern with only
   angles changed (`Flap.hs:355-357`). Across presentation, vertex ids are
   untouched and `transformSurface` moves positions only (`Surface.hs:287-296`).
-  Re-anchoring reorders faces, not vertices (`CraneWing.hs:94-96`).
+  Re-anchoring reorders faces, not vertices (`CraneWing.hs:110-112`).
 - **The new-crease pieces really are an edge-list suffix.** Old edge ids shift
   when earlier edges are cut (`Creasing.hs:255`; `Crossings.hs:267-271, 310,
   343-347`).
@@ -716,7 +716,7 @@ return the proper rotation.
 - **`foldFrameWith` roots the walk at the first listed face**
   (`Folding.hs:577-585`) and re-signs orders whose second face was re-wound
   (`Folding.hs:482-486`). Putting the anchor face first before orders exist is
-  the precedent's mechanism (`CraneWing.hs:94-96`, `BlintzSequence.hs:44-47`).
+  the precedent's mechanism (`CraneWing.hs:110-112`, `BlintzSequence.hs:44-47`).
 - **Stacking does not disagree between intent-M-at-0 and state-rule-F-at-0.**
   Direction comes from a nonzero angle first, else the assignment
   (`Stacking.hs:705-728`), and `creaseRule` only uses it for a taco

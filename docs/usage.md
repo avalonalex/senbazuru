@@ -502,7 +502,8 @@ release the four body panels immediately across the root. Any vertex shared
 with other body panels stays held. Both sides of the root are subdivided.
 The flat-preference control repeats at a finer resolution. The held and
 flat-preference controls repeat with the wing hinged at the neck and tail
-bases, y = 0.376, rather than y = 1/4; there the flat preference turns the
+bases, the wing's root, rather than at y = 1/4. The gallery finds that line,
+y = 0.37585, by the root rule below, not by hand. There the flat preference turns the
 wing's base as one piece, at the angle a 16-solve search finds, and
 `hinge-held.svg` and `hinge-flat.svg` draw each control at both hinges
 ([the note](notes/wing-hinged-at-the-neck.md)).
@@ -530,6 +531,22 @@ A flat rest angle still leaves a crease spring at the root; it does not turn
 that line into uncreased panel material. These are illustrative static solves,
 not measured paper stiffness or a certified spreading route. See
 [the findings and remaining limitation](notes/wing-root-holds.md).
+
+### Where a flap turns from
+
+```bash
+stack run senbazuru-material-study -- --flap-root build/fold-material
+```
+
+For each corner of the crane's sheet, find the root of the flap whose tip it
+is, the line the flap turns from, and turn the flap about it; then, for the
+wing, probe lines square to its axis from its tip inwards, creasing each
+through every layer and turning the wing about it. `flap-root/checks.json`
+records each root's ends, the paper that turns with the tip, and the turn or
+the reason there is none. Both wings find their root at the neck and tail
+bases; the neck and the tail are refused, because their roots lie between
+the body's layers. A few minutes, most of it in the probes. See
+[the note](notes/flap-roots.md).
 
 ### Crane pocket material map
 
