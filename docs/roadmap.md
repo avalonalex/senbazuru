@@ -107,15 +107,15 @@ Provisional 0.1 px distance and 0.1% local-strain screens separate these cases;
 they are review aids, not solver defaults. [#391](https://github.com/avalonalex/senbazuru/issues/391)
 [compares their visible layers](notes/body-visible-layers.md) with unchanged
 geometry: the 0.1 px allowance resolves every pairwise overlap in eight views,
-with at most 0.000054 px of depth overridden. Five views cover the sheet;
-three have under 0.0005 px² uncovered, explicitly retained as uncertainty.
+with at most 0.000054 px of depth overridden. All eight cover the sheet; the
+three patches under 0.0005 px² first reported uncovered came from skipped cuts.
 Actual-size and magnified masks distinguish silhouette, colour, panel identity
 and crease ink. [#393](https://github.com/avalonalex/senbazuru/issues/393)
 [tests one larger opening](notes/body-larger-opening.md): moving the same grips
 from 5° to 10° and taking forty corrections adds **21.77 drawing pixels** of
 central depth. Length, strain, holds and order-height screens pass; a 0.232 px
 intersection exceeds the declared 0.1 px screen. All visible layer pairs resolve,
-with a tiny low-view coverage residual. [#395's drawing-context inspection](notes/body-intersection-context.md)
+and every view covers the sheet. [#395's drawing-context inspection](notes/body-intersection-context.md)
 finds the entire 2–39 crossing covered in all four drawings. Three views have
 positive geometric cover depth; the underside uses the existing depth tie over
 0.000742 px of the segment, at only 3.76e-9 px wrong-side depth. No solve or rule
@@ -982,8 +982,8 @@ checked coupled angles.
    tie explicitly measured. Decide static illustration acceptance from these
    views before another solve; no contact threshold changes here.
    [#391's visible-layer comparison](notes/body-visible-layers.md) resolves all
-   pairwise overlaps under the declared allowance; three views retain tiny
-   coverage uncertainty. It supplies the visibility policy for the new opening;
+   pairwise overlaps under the declared allowance, and every view covers the
+   sheet. It supplies the visibility policy for the new opening;
    its saved geometry and strict verdicts remain unchanged. Review the opened
    specimen at actual size before greater precision or another limiting-pair
    repair.

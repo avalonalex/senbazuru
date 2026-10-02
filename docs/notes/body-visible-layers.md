@@ -28,13 +28,17 @@ visible-region and hidden-edge subtraction. Production rendering is unchanged.
 
 All eight strict views decline visibility. With the illustration allowance,
 **every pairwise overlap resolves in all eight views**. The largest depth
-actually overridden is **0.000054 px**, far below the allowance. Five views
-cover the sheet to the existing polygon check. Three retain tiny uncovered
-patches: seed/top 0.000487 px², second/top 0.000394 px², and seed/below
-0.000361 px². Their largest spans are 0.072, 0.038 and 0.045 px. These are
-reported coverage residuals, not proof of a cyclic layer order or a new
-material defect. The gallery shows them in red and retains uncertainty around
-them; it does not patch them by moving paper or inventing a face owner.
+actually overridden is **0.000054 px**, far below the allowance. **All eight
+views cover the sheet** to the coverage check, which allows a speck. Three were
+first measured with tiny uncovered patches: seed/top 0.000487 px², second/top
+0.000394 px² and seed/below 0.000361 px², 1.0–1.35 specks at 600 px per sheet
+unit. The study's coverage check skipped every cut that would take no more
+than a speck of a piece, and these patches came through cuts it skipped. It
+now uses production's check, which cuts such a piece again with nothing
+skipped ([#459](https://github.com/avalonalex/senbazuru/pull/459)), and no
+more than a speck of any of the three is left (re-measured 2026-10-02). The gallery
+still shows uncovered paper in red wherever any remains, without moving paper
+or inventing a face owner.
 
 The two poses are drawn with one shared extent per camera, at actual size and
 4×. Pink masks show the union of changed regions: silhouette, paper colour,
@@ -45,19 +49,24 @@ crease strokes are used in the paper drawing and ink mask.
 
 | Camera | Silhouette difference, px² | Exposed-colour difference, px² | Source-panel difference, px² |
 | --- | ---: | ---: | ---: |
-| Top | 1.069–1.070 | 1.269–1.270 | 1.980–1.981 |
+| Top | 1.069 | 1.269 | 1.980 |
 | Side, 45° above | 10.155 | 20.650 | 26.171 |
-| Side, 45° below | 8.75798–8.75834 | 22.53291–22.53327 | 27.90377–27.90413 |
+| Side, 45° below | 8.758 | 22.533 | 27.904 |
 | Side, 15° above | 13.772 | 27.742 | 35.000 |
 
-Ranges exclude uncovered regions from the lower estimate and include their
-entire area in the upper estimate. A crease stroke can reach 0.4 px beyond
-unknown paper, so its uncertainty uses expanded bounding boxes instead of
-borrowing the smaller paper-area bound. The gallery exports those masks and
-intervals too. These are floating-point polygon measurements: an independent
-polygon engine (Shapely/GEOS) checks all sixteen masks within 0.001 px², not a claim of
-exact arithmetic. The complete above/low views have crease-ink differences of
-5.558 and 8.022 px².
+Where paper is uncovered, a difference is a range: the lower estimate
+excludes the uncovered regions and the upper includes their whole area. A
+crease stroke can reach 0.4 px beyond unknown paper, so its uncertainty uses
+expanded bounding boxes instead of borrowing the smaller paper-area bound.
+With every view covered, each difference is now one number, and each lies
+inside the range first reported for it; the largest move of a lower estimate
+is 0.0021 px², in the top view's crease ink. The gallery exports the masks
+and any intervals. These are floating-point polygon measurements: an
+independent polygon engine (Shapely/GEOS) checked all sixteen masks as first
+measured within 0.001 px², not a claim of exact arithmetic, and that check
+has not been repeated on the re-measured masks. The crease-ink differences
+are 0.602, 5.558, 5.755 and 8.022 px² in the top, 45° above, 45° below and
+15° above views.
 
 Area alone does not describe visual importance. A narrow strip along a long
 edge can add up to tens of square pixels while staying below a pixel in width.
@@ -71,7 +80,7 @@ Neither is a converged solution or a checked flexible motion.
 **Next:** review these as approximate static illustration candidates. If their
 visible layering is credible, use this drawing-scale policy to assess one
 bounded, visibly useful opening from the recovered shape. Do not make repairing
-these coverage residuals or strict contact crossings a prerequisite. No new
+strict contact crossings a prerequisite. No new
 opened-body result is claimed here; the larger strained and angle-derived
 controls from the previous study remain rejected.
 

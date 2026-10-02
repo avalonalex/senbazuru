@@ -121,7 +121,7 @@ read the Haddock module headers; for the domain, start with
 | [crossing-counts-on-touching-paper.md](crossing-counts-on-touching-paper.md) | On paper that touches itself, a crossing count measures rounding; the smaller reach-through bounds how far paper passes through paper |
 | [fold-or-curve.md](fold-or-curve.md) | Split every triangle in four: a fold keeps its false-crease turning and a curve the mesh only samples loses it, but More tucked kept its for three levels and lost it in two more |
 | [no-stretch-floor.md](no-stretch-floor.md) | Paper cannot stretch, so a pair further apart than on the flat sheet proves some point must move: More tucked at least 20 px |
-| [body-visible-layers.md](body-visible-layers.md) | Inherited order resolves shallow wrong-side depth without moving saved paper; compare exposed regions and retain tiny coverage uncertainty |
+| [body-visible-layers.md](body-visible-layers.md) | Inherited order resolves shallow wrong-side depth without moving saved paper; compare exposed regions; every view's visible regions cover the sheet |
 | [body-illustration-tolerances.md](body-illustration-tolerances.md) | Saved body errors at drawing size, provisional review screens and the remaining visibility limitation |
 | [body-angle-audit.md](body-angle-audit.md) | Exact arithmetic audits the saved selected equations without new body solves |
 | [body-angle-contact.md](body-angle-contact.md) | Considering inherited layer overlaps and loop closure together during crease-angle construction |

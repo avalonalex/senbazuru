@@ -65,9 +65,16 @@ Larger crease and panel energies than the seed are expected when the holds ask
 for more opening; comparing their magnitudes is not a convergence test.
 
 All endpoint pair orders resolve under the established 0.1 px depth-tie policy.
-The largest overridden depth is only 0.000180 px. Top and both 45° views cover
-the sheet; the low view retains 0.000443 px² of uncovered paper. The recovered
-seed's earlier top/below coverage residuals remain in comparison uncertainty.
+The largest overridden depth is only 0.000180 px. All four views cover the
+sheet, for the seed, the guess and the endpoint. The endpoint's low view was
+first measured with 0.000443 px² of uncovered paper, and the recovered seed
+with its top and below residuals from the
+[visible-layer comparison](body-visible-layers.md). All three came through
+cuts the study's coverage check skipped, and cut again with nothing skipped,
+as production does ([#459](https://github.com/avalonalex/senbazuru/pull/459)),
+no more than a speck of any is left (re-measured 2026-10-02). Each difference is now one number
+inside the range first reported for it; crease ink moves most, its lower
+estimate by up to 0.644 px² in the 45° below view.
 At actual size, the side views show a wider lower opening and more cream inner
 paper; magnification keeps the small numerical residuals inspectable.
 
@@ -97,7 +104,7 @@ reproduces all sixteen difference-mask shapes within `5e-9 px²` of symmetric
 area difference. Two source-owner masks contain nearly coincident overlapping
 pieces, so summing their floating-point polygon areas overstates the union by
 up to **0.02034 px²**. The gallery therefore adds ±0.05 px² reporting uncertainty
-to area intervals, alongside uncovered-paper uncertainty. This does not change
+to area intervals, alongside any uncovered-paper uncertainty. This does not change
 a contact or length screen, and the drawn masks remain the review evidence.
 Small tests exercise the guess and its input refusals without running this
 body solve in CI.
