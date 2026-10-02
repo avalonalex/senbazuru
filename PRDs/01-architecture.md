@@ -287,7 +287,7 @@ schedules it.
 | 14 | `docs/architecture.md:202-211`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
 | 15 | `AGENTS.md:378-379`, "all three CI checks" | the M4 PR adding the slow job |
 | 16 | `docs/roadmap.md:82-87`, `:368-373` | M0 |
-| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:866-872` | the follow-up PR fixing `LineStopsOnTheModel`, before M4 |
+| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:872-878` | the follow-up PR fixing `LineStopsOnTheModel`, before M4 |
 | 18 | `README.md:213-219` roadmap item 2, `docs/roadmap.md` item 2 | the PR closing #60 (M4) |
 
 ### 4.1 `docs/architecture.md:81-86`
@@ -644,13 +644,13 @@ Item 2 is unchanged except for an appended sentence, "The sequence language in i
 >    `PRDs/10-roadmap-risks-questions.md`: #96 amended and #97 decided at M0 (#97
 >    closes at M2), #95 at M2, #94 and #36 at M3, and #60 at M4.
 
-### 4.17 `ThroughLayersSpec.hs:271-275` and `docs/usage.md:866-872`
+### 4.17 `ThroughLayersSpec.hs:271-275` and `docs/usage.md:872-878`
 
 Current, the sentence the spec pins for the end (0.2, 0.2) on `diagonal-cp.fold`:
 "--from is inside face 0 of the folded model rather than on that face's edge, so
 that layer would be creased only part of the way across. Each layer the line
 reaches has to be creased right across, so move this end onto an edge or clear of
-the paper". `docs/usage.md:868-871` quotes the same sentence from a run on
+the paper". `docs/usage.md:874-877` quotes the same sentence from a run on
 `examples/bird-base.cp`, starting "--from is inside face 12".
 
 The sentence starts with `creaseEndFlag end`

@@ -154,7 +154,7 @@ The PRDs should:
 
 9. **The repo already has a pattern for fixtures that are skipped when
    filtered.** `beforeAll load` wraps the heavy crane-material specs:
-   `CraneRootSpec.hs:24`, `CraneSpreadSpec.hs:25`, `CraneBodySpec.hs:23`,
+   `CraneRootSpec.hs:27`, `CraneSpreadSpec.hs:25`, `CraneBodySpec.hs:23`,
    `CranePocketSpec.hs:22`, `CraneInternalSpec.hs:23`, and `WingBendingSpec.hs:54,65`.
    hspec runs a `beforeAll` action only when an item under it runs. That is why
    those specs (#208's 164.87 s `CraneRoot` group) add nothing to the

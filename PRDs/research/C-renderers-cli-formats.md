@@ -218,7 +218,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
     - All three have 12 identical `edges_vertices` and 4 faces, with assignments `BBBBBBBBMVMM` in **every** frame. Frame 0's angles are all 0; frames 1 and 2 set −180/180 on the moved creases (jq).
     - So the "flat sheet" already carries the crease of step 3. The golden `test/golden/quarter-fold-steps.svg` has 4 dashed strokes (1 valley `6 3.5`, 3 mountain `9 3 1.2 3 1.2 3`), 2 quadratic arrow paths and 3 `<text>` labels.
     - Step 1 therefore draws all four future creases as instructions. Only frame 0 is `creasePattern`, and only `CreasePatternNotation` dashes (`Style.hs:286-289`).
-    - `examples/bird-base-sequence.fold` uses the other convention: an empty key frame and 16 titled `foldedForm` frames, each with `faceOrders` (11-60 entries). That is why `--frame 12` is the 12th state (`usage.md:1017-1019`).
+    - `examples/bird-base-sequence.fold` uses the other convention: an empty key frame and 16 titled `foldedForm` frames, each with `faceOrders` (11-60 entries). That is why `--frame 12` is the 12th state (`usage.md:1023-1025`).
     - FOLD has no key for arrows, operations or captions. `frame_inherit` is decoded but not resolved, so every frame repeats the whole graph (`docs/fold-reference.md:187-200, 219-226`; `src/Senbazuru/Fold/Types.hs:151-153`).
 
 27. **What `Step` cannot infer.**

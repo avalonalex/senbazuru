@@ -422,7 +422,7 @@ state. Orders learned from a separated reference (`relaxDiscoveredContact`,
 [`FoldRelaxation.hs:286-289`](../study/fold-material/FoldRelaxation.hs#L286-L289))
 are a later registered option, never a fallback. Closure before filtering
 ([`CraneSpread.hs:174-183`](../study/fold-material/CraneSpread.hs#L174-L183)) is
-pinned by [`CraneRootSpec.hs:92-94`](../test/CraneRootSpec.hs#L92-L94).
+pinned by [`CraneRootSpec.hs:121-123`](../test/CraneRootSpec.hs#L121-L123).
 
 ### Naming holds and grips
 
@@ -545,13 +545,13 @@ line re-read; rows 15–21 correct or extend it.
 | 6 | tip grip | `:128-129` | `grip band moving 7/32.. arc-grip 30° EXTRA°` | UNVERIFIED |
 | 7 | contact pairs | `:132-138`, `:174-183` | derived (R-07-8) | yes |
 | 8 | root edges | [`CraneRoot.hs:76`](../study/fold-material/CraneRoot.hs#L76) | `hinge of wing` | yes |
-| 9 | root neighbours `[7, 8, 27, 43]` | `:76-79`; [`CraneRootSpec.hs:35`](../test/CraneRootSpec.hs#L35) | `across-hinge stationary` | yes |
-| 10 | distant | `:100` | `closed (side stationary minus across-hinge stationary)` | yes |
-| 11 | `HeldRoot` | `:91`, `:102` | rows 3 + 5 + 6, refined as row 2, extra 20° | yes |
-| 12 | `ReleasedRoot` | `:101-102` | rows 3 + 6 | yes |
-| 13 | `FlatRoot` | `:106` | row 12 + `rest at rigid-pose 1/3 except { hinge of wing at 0° }` | yes |
-| 14 | `FreeBody` | `:100-101`, `:107` | rows 10 + 6 + row 13's rest | yes |
-| 15 | `WeakerRoot` (stiffness × 0.1 on root) | `:105` | none: one global `stiffness` | **fixture** |
+| 9 | root neighbours `[7, 8, 27, 43]` | `:76-79`; [`CraneRootSpec.hs:38`](../test/CraneRootSpec.hs#L38) | `across-hinge stationary` | yes |
+| 10 | distant | `:129` | `closed (side stationary minus across-hinge stationary)` | yes |
+| 11 | `HeldRoot` | `:120`, `:131` | rows 3 + 5 + 6, refined as row 2, extra 20° | yes |
+| 12 | `ReleasedRoot` | `:130-131` | rows 3 + 6 | yes |
+| 13 | `FlatRoot` | `:135` | row 12 + `rest at rigid-pose 1/3 except { hinge of wing at 0° }` | yes |
+| 14 | `FreeBody` | `:129-130`, `:136` | rows 10 + 6 + row 13's rest | yes |
+| 15 | `WeakerRoot` (stiffness × 0.1 on root) | `:134` | none: one global `stiffness` | **fixture** |
 | 16 | `CraneBody` `OpenBody` (±170° on `EdgeId` 21, 46) | [`CraneBody.hs:66`](../study/fold-material/CraneBody.hs#L66), `:71`; [`CraneBodySpec.hs:28`](../test/CraneBodySpec.hs#L28) | row 14 + `rest … except { crease [P, Q] at ±170°; … }`. The research row *held* these creases; the code changes their springs | yes once segments are read (UNVERIFIED); pocket roles stay fixture data ([`CranePocket.hs:46-50`](../study/fold-material/CranePocket.hs#L46-L50)) |
 | 17 | `CraneBody` `WeakerBody` | `:70` | none, as row 15 | **fixture** |
 | 18 | `CraneInternal` `HeldLines` (creases 26, 51; 9 vertices per line; 16 added) | [`CraneInternal.hs:55`](../study/fold-material/CraneInternal.hs#L55), `:62-64`; [`CraneInternalSpec.hs:30`](../test/CraneInternalSpec.hs#L30), `:50` | `hold crease-line [P, Q] union crease-line [R, S]` | yes once segments are read (UNVERIFIED) |
@@ -564,10 +564,10 @@ Cautions kept from the note. A hold is not the
 solve, while the anchor is the face folding keeps still. Two layers at the same
 folded position are different paper, so a band picks both, and
 `layer upper|lower` chooses one. Tests that pin ids today
-([`CraneRootSpec.hs:35`](../test/CraneRootSpec.hs#L35)'s root-neighbour faces,
+([`CraneRootSpec.hs:38`](../test/CraneRootSpec.hs#L38)'s root-neighbour faces,
 [`CraneInternalSpec.hs:27`](../test/CraneInternalSpec.hs#L27)'s face pairs) will
 instead assert the material point each of those faces contains. Their counts stay:
-902 orders ([`CraneRootSpec.hs:41`](../test/CraneRootSpec.hs#L41)) and 16 added
+902 orders ([`CraneRootSpec.hs:44`](../test/CraneRootSpec.hs#L44)) and 16 added
 hold vertices ([`CraneInternalSpec.hs:50`](../test/CraneInternalSpec.hs#L50)).
 Each is a reviewed test change.
 
@@ -692,7 +692,7 @@ of `Fold.Faces.tolerance`.
 Accepted settles write `crane.settled-wing.glb` and `.svg`. The GLB puts the
 complete sheet first and adds the visible scene only if it exports, because the
 two fail independently ([#206](https://github.com/avalonalex/senbazuru/issues/206);
-the study already falls back, [`CraneRootGallery.hs:76-87`](../study/fold-material/CraneRootGallery.hs#L76-L87)).
+the study already falls back, [`CraneRootGallery.hs:100-111`](../study/fold-material/CraneRootGallery.hs#L100-L111)).
 Today ([`Gltf.hs:147`](../src/Senbazuru/Render/Gltf.hs#L147),
 [`:231-235`](../src/Senbazuru/Render/Gltf.hs#L231-L235)) `VisiblePaper` writes
 the visible scene then the complete one, and fails outright if the visible scene
@@ -701,7 +701,7 @@ complete sheet first and drops a failed visible scene is
 [08](08-prd-realistic-rendering.md)'s. Until M7b's line
 drawing, the SVG uses today's path, which "retains some buried crease lines" on
 these meshes ([`docs/usage.md:464-465`](../docs/usage.md)); the study writes SVG
-only when accepted ([`CraneRootGallery.hs:81-90`](../study/fold-material/CraneRootGallery.hs#L81-L90)).
+only when accepted ([`CraneRootGallery.hs:105-114`](../study/fold-material/CraneRootGallery.hs#L105-L114)).
 
 | Step k's settle | k's settled files | Other settles | Rigid outputs | Exit |
 | --- | --- | --- | --- | --- |
@@ -883,7 +883,7 @@ messages show format only; they were not taken from a run.
 | AC-1 | Wing record's resolved pins equal `spreadPins` of `craneSpread source 3 20` ([`CraneSpreadSpec.hs:27`](../test/CraneSpreadSpec.hs#L27)): same ids, positions within 1e-12, without solving; M6's first test (R-07-11–16) | band in material coordinates; `closed` dropping shared hinge vertices; `rigid-pose` read at 30 instead of 1/3 |
 | AC-2 | Refined surface equals `spreadRefined` | `refine side moving` also refining across the hinge |
 | AC-3 | `RestAtPose (PoseOnRoute (1/3))` gives exactly `CraneSpread.hs:116`'s targets (R-07-18) | Mountain → +π slip; resting at `PoseAfter` |
-| AC-4 | Contact pairs equal `spreadContactOrders`; `CraneRootSpec.hs:92-94`'s case holds (R-07-8) | filtering before closing |
+| AC-4 | Contact pairs equal `spreadContactOrders`; `CraneRootSpec.hs:121-123`'s case holds (R-07-8) | filtering before closing |
 | AC-5 | Hinge ids equal `craneHinge`; `recordBefore` has 76 faces (R-07-3) | recording before creasing |
 | AC-6 | `turn over left-right` before the step, with `fold behind` rewritten `fold in front`, leaves pins and contact pairs unchanged (R-07-2). The word must change because `in front`/`behind` is read from the reader's side, which a turn-over flips ([02 §5.1](02-language-semantics.md#51-the-readers-side)); the record is not presented, so its pins must not move | presenting inside the record |
 | AC-7 | The wing settle builds hinges without `MissingRestAngle`/`InvalidRestAngle` (R-07-4) | solver surface from a written frame; one intent on all four segments |
