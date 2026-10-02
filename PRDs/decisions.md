@@ -454,7 +454,7 @@ table in the next version of this record.
      sitting on the working pattern before the fold: `foldFrameWith` copies them
      and re-signs any whose second face it re-wound (#78). A state's first
      stacking: fold, solve on `foldedFrame`, record the orders on the working
-     pattern, refold. Never attach orders to a `Folded` as `CraneWing.hs:122` does;
+     pattern, refold. Never attach orders to a `Folded` as `CraneWing.hs:123` does;
   4. re-resolve every id after a topology change;
   5. anchor by material point, and re-anchor as above;
   6. join-check every step: positions within 1e-12 × `modelSpan`
@@ -1213,7 +1213,7 @@ The decisions:
 - **Rest angles.** `RestAngles = RestAtPose PoseRef | RestAtPoseExcept PoseRef [(CreaseLine, Rational)]`, where a `CreaseLine` is written `crease [P, Q]`, `hinge of NAME` or `crease of NAME` inside `except { … }` ([04 grammar](04-prd-sequence-source-and-cli.md#grammar));
   every active crease rests at its angle in that pose; never derived from an
   assignment, so `CraneSpread`'s rule, −π for a mountain and +π otherwise
-  ([`CraneSpread.hs:105-109`](../study/fold-material/CraneSpread.hs#L105-L109)) [code],
+  ([`CraneSpread.hs:111-115`](../study/fold-material/CraneSpread.hs#L111-L115)) [code],
   is deleted when the crane is re-expressed. Rest comes from the settle, else the
   material block; neither is `SettleNoRest` (R-07-19).
 - **`NoDifference` is computable** ([C39](#changes-since-draft-v2)): refused when the
@@ -1225,7 +1225,7 @@ The decisions:
   "no released hold"; releasing a hold cannot move anything from an equilibrium
   start, so that clause tests nothing.
 - **Stiffness.** A named preset; v1's `illustrative` is `Bending 1 0.2`, as
-  `CraneSpread` builds its hinges ([`CraneSpread.hs:114`](../study/fold-material/CraneSpread.hs#L114))
+  `CraneSpread` builds its hinges ([`CraneSpread.hs:120`](../study/fold-material/CraneSpread.hs#L120))
   [code], and outputs say so. Precrease stiffness is owner decision 4.
 - **Two contracts, two error types** ([C6](#changes-since-draft-v2)).
   `Sequence.Material` holds `SettleSpec` and

@@ -179,11 +179,11 @@ rest angles by `EdgeId`).
 
 **Evidence.**
 - The start is the creased, re-folded state with its chosen orders:
-  `CraneWing.hs:94-128` (`creased <- creaseAllAlong`, `folded <- foldFrameWith creased`,
+  `CraneWing.hs:94-129` (`creased <- creaseAllAlong`, `folded <- foldFrameWith creased`,
   `start = folded {…orders}`).
-- The hinge is taken from that frame (`:98-102`).
-- `CraneSpread.hs:102` refines `surfaceFromFolded (craneStart wing)`.
-- `:107` looks hinge ids up in that same numbering.
+- The hinge is taken from that frame (`:98-103`).
+- `CraneSpread.hs:108` refines `surfaceFromFolded (craneStart wing)`.
+- `:113` looks hinge ids up in that same numbering.
 - Gap-study F7: a crease-adding step's before and after states number the same
   paper differently.
 
@@ -265,10 +265,10 @@ It also never says which assignments the record's `Surface`s carry:
 Either choice silently changes the physics.
 
 **Evidence.**
-- `CraneSpread.hs:106-110` is the rest rule.
+- `CraneSpread.hs:112-116` is the rest rule.
 - `Surface.hs` `surfaceFeatures`: a crease is active if it is B/M/V/U/C or its
   angle exceeds 1e-10.
-- `FoldBending.hs` `hingesForSurface` (read at `:183-210`): a rest angle is
+- `FoldBending.hs` `hingesForSurface` (read at `:189-216`): a rest angle is
   required for every active non-border crease, the sign must match M/V, and a
   segment with no control is classified `PanelBend, 0`.
 - Spine D4 says the consumer takes rest intent "from the StepRecord" but gives
@@ -291,7 +291,7 @@ Also:
   for the owner, marked open.
 
 Acceptance: the crane spread's `RestAtPose (1/3)` produces the same `targets`
-map as `CraneSpread.hs:110`. The change that turns it red is a
+map as `CraneSpread.hs:116`. The change that turns it red is a
 `Mountain → +π` sign slip.
 
 ---
@@ -317,7 +317,7 @@ state"; §5 crane example; §4 `StepHeader.stepSettle`.
    `rigid-pose 1/3`, but a step with no move has no moving side and no route.
 
 **Evidence.**
-- `CraneSpread.hs:102`, `:126-132`, `:165`.
+- `CraneSpread.hs:108`, `:132-138`, `:171`.
 - `SurfaceContact.hs:189-191`: `if max lowerAlignment upperAlignment <= 1e-8 then Left (UncheckableContactPair i j)`.
 - B "Not yet general" bullet 1.
 - Spine §4, lines 659-673 (no settle constructor); §5, lines 811-816.
@@ -590,8 +590,8 @@ extras. That removes `senbazuru:source_panels` and `source_edges`, which A1's
 per-panel averaging and the GLB provenance rely on for settled meshes.
 
 **Evidence.**
-- `CraneSpread.hs:126-132` (`above = (orderStacking pair == Above) == (z > 0)`)
-  and `:165` (`V3 0 0 1`).
+- `CraneSpread.hs:132-138` (`above = (orderStacking pair == Above) == (z > 0)`)
+  and `:171` (`V3 0 0 1`).
 - `Surface.hs` `transformSurface`: `frameExtras = mempty`.
 - `Gltf.hs` `renderSurfaceGlb`: the extras whitelist keeps exactly those keys.
 
@@ -726,7 +726,7 @@ root strip towards negative z by a hard-coded 30°. Whether that matches the sig
 of `flapAt` for a +90 fold was not checked.
 
 **Evidence.**
-- `CraneSpread.hs:119-124`, `:147-161`.
+- `CraneSpread.hs:125-130`, `:153-167`.
 - Gap-study "Unverified", bullets 1-2 and 3.
 
 **Proposal.**
@@ -768,7 +768,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
   differs" is correct.
 - **Gap-study F1 is exact.** `CraneSpread` consumes the start `Folded`,
   `flapAt (craneOpening wing) (30/90)`, `flapMovingFaces`, `craneHinge` ids and
-  the start state's `faceOrders` (`CraneSpread.hs:101-132`).
+  the start state's `faceOrders` (`CraneSpread.hs:107-138`).
 - **F2 holds.** `Flap` exports no stationary-side accessor: the export list has
   `flapAt`, `flapCheck`, `flapMovingFaces` (`Flap.hs:49-59`), while
   `stationaryFace` is a record field at `:85`. The spine's

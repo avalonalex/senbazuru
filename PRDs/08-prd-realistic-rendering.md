@@ -70,7 +70,7 @@ viewer pages load) shades flat
 renders today", finding 1, code read). That is right for rigid panels. The
 study's bent meshes are hundreds of planar triangles joined by `J` (join) edges,
 which mark two triangles as one piece of paper
-([`CraneSpread.hs:237-241`](../study/fold-material/CraneSpread.hs#L237-L241),
+([`CraneSpread.hs:243-247`](../study/fold-material/CraneSpread.hs#L243-L247),
 [`UncreasedSurface.hs:1-10`](../study/fold-material/UncreasedSurface.hs#L1-L10)),
 exported through this path
 ([`CraneSpreadGallery.hs:103-105`](../study/fold-material/CraneSpreadGallery.hs#L103-L105),
@@ -491,7 +491,7 @@ omission. `export --fold --smooth` is that second caller today, because its
 are proposed spellings the PRs settle.
 
 **Regions.** `spreadSurface` marks an edge `J` exactly when no source edge
-contains it ([`CraneSpread.hs:237-241`](../study/fold-material/CraneSpread.hs#L237-L241)),
+contains it ([`CraneSpread.hs:243-247`](../study/fold-material/CraneSpread.hs#L243-L247)),
 so a crane-spread region is one source panel's triangles, and a wing piece is one
 region. A vertex on a crease between panels gets two normals; one inside a panel
 gets one. Regions come from `J` connectivity, not `senbazuru:source_panels`,

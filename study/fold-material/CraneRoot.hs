@@ -148,18 +148,19 @@ rootAccepted study result mesh = do
   where
     fixture = rootSpread study
 
--- | Turn a control's base as one piece. Above the wing's widest point the
--- paper between it and the hinge is four layers deep ('CraneWing'); a released
--- control solved with it bending as a sheet stalled at y = 0.376 (#455). Pin
--- every vertex of that base where the flat crane's base lands turned by
--- @theta@ degrees about the hinge, the way the root strip turns in
--- 'craneSpread', and start from @solved@ with the base moved there. With the
--- hinge below the widest point, no vertex of the turning wing lies at or above
--- it: there is no base, and the control comes back unchanged.
+-- | Turn a released control's base as one piece. Above the wing's widest
+-- point the paper between it and the hinge is four layers deep ('CraneWing');
+-- a released control solved with it bending as a sheet stalled at y = 0.376
+-- (#455). Pin every vertex of that base where the flat crane's base lands
+-- turned by @theta@ degrees about the hinge, the way the root strip turns in
+-- 'craneSpread', and start from @solved@ with the base moved there. A vertex
+-- the control already holds keeps its hold, so a held control comes back
+-- unchanged. With the hinge below the widest point, no vertex of the turning
+-- wing lies at or above it: there is no base, and nothing changes either.
 rigidBase :: Double -> CraneRoot -> MaterialMesh -> CraneRoot
 rigidBase theta study solved
   | IM.null base = study
-  | otherwise = study {rootSpread = fixture {spreadPins = IM.union base (spreadPins fixture), spreadMesh = solved {samples = placed}}}
+  | otherwise = study {rootSpread = fixture {spreadPins = IM.union (spreadPins fixture) base, spreadMesh = solved {samples = placed}}}
   where
     fixture = rootSpread study
     flat = refinedMesh (spreadRefined fixture)
@@ -173,6 +174,7 @@ rigidBase theta study solved
         [ (i, V3 x (hingeY - len * cos turn) (negate (len * sin turn)))
           | (i, p) <- zip [0 ..] (samples flat),
             S.member i wing,
+            IM.notMember i (spreadPins fixture),
             let V3 x y _ = position p,
             y >= rootWidest study - 1e-9,
             let len = hingeY - y,

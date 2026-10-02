@@ -153,18 +153,18 @@ whole model").
 touching stack without them (A2 F18: the helmet test strips orders and expects
 refusal). Its start check compares angle count, face rings and positions
 (`Flap.hs:173-181`), never orders. The only precedent sets them by patching:
-`folded {foldedFrame = frame {faceOrders = orders}}` (`CraneWing.hs:122`). Read
+`folded {foldedFrame = frame {faceOrders = orders}}` (`CraneWing.hs:123`). Read
 literally, invariant 3 makes every fold on a stacked model unbuildable.
 
 **Evidence.** `src/Senbazuru/Origami/Flap.hs:171-181, 223-235`;
-`study/fold-material/CraneWing.hs:122`; A2 F15, F18.
+`study/fold-material/CraneWing.hs:123`; A2 F15, F18.
 
 **Proposal.** Replace invariant 3 with:
 
 > 3. Re-fold after every handoff. Never change a `Folded`'s coordinates, faces,
 >    angles or placements (`FlapStartMismatch`, `Flap.hs:173-181`). Hand
 >    accepted orders to Flap only by setting `foldedFrame.faceOrders` on an
->    untouched `foldFrameWith` result (`CraneWing.hs:122`). Write them against
+>    untouched `foldFrameWith` result (`CraneWing.hs:123`). Write them against
 >    `foldedFrame`'s counter-clockwise rings, never `foldedPattern`'s
 >    (`Folding.hs:303-308`).
 
@@ -258,7 +258,7 @@ three things: it creases, it re-traces, and it turns.
 
 - **The ids live in the middle state.** Hinge ids, moving faces and the
   `CheckedFlap` exist only in the creased pattern. That is `CraneWing`'s
-  `frame` after `creaseAllAlong` (`CraneWing.hs:93-123`).
+  `frame` after `creaseAllAlong` (`CraneWing.hs:93-124`).
 - **Before and after disagree.** `recordBefore` (uncreased) numbers edges and
   faces differently from `recordAfter`. Cutting replaces old edges in place,
   shifting later ids (`Crossings.hs:310, 343-347`), and faces are re-traced.
@@ -276,7 +276,7 @@ three things: it creases, it re-traces, and it turns.
   `Surface` already stores (`Surface.hs:115-122, 257-263, 306-312`). Two copies
   can disagree.
 
-**Evidence.** `study/fold-material/CraneWing.hs:89-123`;
+**Evidence.** `study/fold-material/CraneWing.hs:89-124`;
 `src/Senbazuru/Fold/Crossings.hs:304-315, 343-358`;
 `src/Senbazuru/Origami/Flap.hs:95-96`; gap-study-consumption-contract finding 7
 and open question 4.

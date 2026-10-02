@@ -69,6 +69,9 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
       IM.lookup i start `shouldBe` Just q
     -- The base's far edge, along the widest point, drops by (h - w) sin theta.
     abs (minimum [z | V3 _ _ z <- IM.elems added] + (hingeY - widest) * sin turn) `shouldSatisfy` (< 1e-12)
+    -- A held control already holds its base at 30 degrees and keeps it there.
+    held <- right (craneRootAt 0.376 source 3 HeldRoot)
+    spreadPins (rootSpread (rigidBase theta held (spreadMesh (rootSpread held)))) `shouldBe` spreadPins (rootSpread held)
 
   it "activates body contacts when body vertices become free and keeps the distant boundary held" $ \source -> do
     fixed <- rootSpread <$> right (craneRoot source 3 FlatRoot)

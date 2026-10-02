@@ -132,7 +132,7 @@ and a way to carry accepted orders across the crease.
 6. **CraneWing is the only precedent, and four of its steps are hand-written.**
    - It clips a fixed long line `(0,0.25)–(2,0.25)` to hand-named faces
      `[2,3,6,7]`. It maps each piece back with `inverse` placements and creases
-     with `Unassigned` (`CraneWing.hs:138-155`).
+     with `Unassigned` (`CraneWing.hs:140-159`).
    - Its clip has **neither** of ThroughLayers' guards: the length test and the
      midpoint-strictly-inside test (`ThroughLayers.hs:289-290`). A face touched
      only along an edge would produce a degenerate share there. This is the
@@ -140,7 +140,7 @@ and a way to carry accepted orders across the crease.
    - It restores the anchor face's ring to position 0 after re-tracing, so the
      crane does not move (`CraneWing.hs:29-30`, `56-63`).
    - It recovers the hinge as "every `Unassigned` edge" and checks there are 4
-     (`:98-102`). That only works because `crane.fold` has no U edges (`jq`: 0).
+     (`:98-103`). That only works because `crane.fold` has no U edges (`jq`: 0).
      `CranePocket.hs:131,138` depends on the same trick ("AuthoredRoot", count
      4).
    - It picks the moving face as the one containing both hinge ends and
@@ -216,7 +216,7 @@ and a way to carry accepted orders across the crease.
     The order between the two wings comes from the checked turn:
     - the accepted +90° lowers the tip to z = −0.25 (`CraneWingSpec.hs:127`);
     - the −90° direction, which lifts the tip, is refused with
-      `FlapEndpointOrder 0` (`CraneWing.hs:124-127`, `CraneWingSpec.hs:80-82`);
+      `FlapEndpointOrder 0` (`CraneWing.hs:125-128`, `CraneWingSpec.hs:80-82`);
     - the note says that refusal is the stationary wing being in the way
       (`a-wing-resting-on-paper.md`, paragraph 5).
     So wing B lies on wing A's +z side. At every point of the line, top to

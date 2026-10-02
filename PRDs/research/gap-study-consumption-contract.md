@@ -32,7 +32,7 @@ default build links GPL code, and ipc-toolkit is a library, not a solver.
 ### (a) What the study takes from a move today
 
 **1. The one rigid-to-material path consumes a move, not a surface.**
-`craneSpreadWith` (`study/fold-material/CraneSpread.hs:84-133`) uses five
+`craneSpreadWith` (`study/fold-material/CraneSpread.hs:84-139`) uses five
 things from `CraneWing`'s move:
 
 - the start state: `surfaceFromFolded (craneStart wing)` (`:85`);
@@ -62,9 +62,9 @@ therefore needs either a new accessor or the runner to keep what it resolved.
   [(FaceId, FaceId)])` (`Surface.hs:152`). `StudyCase` attaches them from
   named panels (`StudyCase.hs:125-127`).
 - `CraneSpread` turns the first kind into lower/upper pairs along +z. It uses
-  the sign of each relative face's normal (`CraneSpread.hs:126-132`). On
+  the sign of each relative face's normal (`CraneSpread.hs:132-138`). On
   export it re-signs every triangle order against the *upper* triangle's
-  normal (`:212-234`).
+  normal (`:218-240`).
 
 Newcomer trap: a FOLD order is relative to one face's normal, not to world +z.
 Paper that has turned over flips its meaning.
@@ -74,7 +74,7 @@ unbent-crease convention.**
 
 - **The rule.** The hinge gets the reference pose's angle; every other
   non-border crease gets −π if `Mountain`, otherwise +π
-  (`CraneSpread.hs:106-110`).
+  (`CraneSpread.hs:112-116`).
 - **Why this is safe today.** `surfaceFeatures` lists a crease as active if it
   is B/M/V/U/C, or if its angle exceeds 1e-10 (`Surface.hs:278`). The
   bending builder demands an explicit rest angle for every active crease and
@@ -83,13 +83,13 @@ unbent-crease convention.**
   `examples/crane.fold`), so no flat guide is active.
 - **Where it breaks.** Suppose a sequence writes an unbent crease as M/V at
   angle 0, which is A1's convention (b) and contradiction 3 in the critic.
-  That crease is then active, and `CraneSpread.hs:108` would give it a rest
+  That crease is then active, and `CraneSpread.hs:114` would give it a rest
   angle of ±π: a spring pulling open paper shut.
 
 **5. Hinges are found by assignment, which breaks the same way.**
 
 - `CraneWing` recovers its hinge as "every `Unassigned` edge"
-  (`CraneWing.hs:98-102`).
+  (`CraneWing.hs:98-103`).
 - `CraneRoot` finds the root edges by the same test
   (`CraneRoot.hs:76`).
 - Neither survives a sequence that assigns the new crease M or V.
@@ -106,7 +106,7 @@ states.** A single Boolean would erase the difference between them.
 
 **7. Ids are valid only inside one pattern.** Folding keys transforms to the
 *cut* pattern (`Folding.hs:286-301`). `CraneWing` re-selects ids after
-creasing (`CraneWing.hs:20-22`, `:94-117`). `StudyCase` names panels by material
+creasing (`CraneWing.hs:20-22`, `:94-118`). `StudyCase` names panels by material
 point so that renumbering "cannot silently change an order's meaning"
 (`StudyCase.hs:117-118`). A crease-adding step's before and after states
 therefore number the same paper differently.
@@ -127,7 +127,7 @@ therefore number the same paper differently.
 ### (b) How holds, grips and contact panels are chosen today
 
 **9. `CraneSpread` chooses every hold with coordinate tests on its own
-geometry.** All of the following are in `CraneSpread.hs:111-125`:
+geometry.** All of the following are in `CraneSpread.hs:117-131`:
 
 - **Refinement.** `WingOnly` refines the moving faces.
   `WingAndRootNeighbours` also refines every owner of a hinge segment
@@ -158,14 +158,14 @@ straight strip in the folded wing is several unrelated regions of the sheet.
 - `roots` are the `Unassigned` edges and their owners. `nearby` is the owners
   minus the wing (`:60-63`); the test pins these as `FaceId`s `[7, 8, 27, 43]`
   (`test/CraneRootSpec.hs:35`).
-- `distant` is every vertex of a triangle outside wing ∪ nearby (`:97`). The
+- `distant` is every vertex of a triangle outside wing ∪ nearby (`:100`). The
   header states the rule: vertices of any *other* panel stay held even when a
-  released panel shares them (`:82-85`).
+  released panel shares them (`:85-88`).
 - Holds: `HeldRoot` keeps every pin. The other controls keep only the grip
   plus body (`ReleasedRoot`, `WeakerRoot`, `FlatRoot`), or the grip plus
-  distant (`FreeBody`) (`:98-99`).
+  distant (`FreeBody`) (`:101-102`).
 - Springs on root edges: stiffness × 0.1 for `WeakerRoot`, rest 0 for
-  `FlatRoot` and `FreeBody` (`:100-106`).
+  `FlatRoot` and `FreeBody` (`:103-109`).
 - The test also pins `length spreadOrders == 902` (`CraneRootSpec.hs:41`).
 
 **11. The other crane fixtures add named creases by raw id.**
@@ -206,10 +206,10 @@ material face, with tolerance 1e-10 (`StudyCase.hs:139-143`). `fixedPanel`
 anchors the same way (`:161-172`).
 
 **15. Contact panels are derived, not named.** Orders are transitively closed
-*before* pairs with no free vertex are dropped (`CraneSpread.hs:168-177`). The
+*before* pairs with no free vertex are dropped (`CraneSpread.hs:174-183`). The
 test proves the order matters: A below B and B below C must still produce A
-below C (`CraneRootSpec.hs:89-91`). The independent check still uses every
-source order (`CraneSpread.hs:192-195`).
+below C (`CraneRootSpec.hs:92-94`). The independent check still uses every
+source order (`CraneSpread.hs:198-201`).
 
 ### (c) Certificates
 
@@ -425,7 +425,7 @@ Why each choice:
   hold only within the named state (finding 7).
 - **Angles as data.** The study must take rest angles from `stepAngles` (or
   `flapAt p`), never from assignments. Remove the derivation at
-  `CraneSpread.hs:106-110` and the `Unassigned` searches (findings 4-5).
+  `CraneSpread.hs:112-116` and the `Unassigned` searches (findings 4-5).
 - **The evidence gates nothing in a static settle.** B finding 6 shows a rigid
   state is already an equilibrium. A static solve needs `stepBefore`, the
   seeds and a stated difference (a released hold or a turned grip). It does
@@ -454,7 +454,7 @@ Proposed vocabulary (sketch):
 | `side Stationary`, `side Moving` | panels on that side of the step's move, from `stepStationary` / `stepMoving` |
 | `acrossHinge s` | panels on side `s` that own a hinge segment |
 | `closed r` | every vertex of every triangle owned by region `r`, shared boundary vertices included (the `CraneRoot.hs:63-66` rule) |
-| `band s (d0, d1)` | samples on side `s` whose start-pose distance from the hinge line, measured in the hinge's plane, lies in `[d0, d1]` sheet units, with 1e-8 slack (`CraneSpread.hs:122-124`) |
+| `band s (d0, d1)` | samples on side `s` whose start-pose distance from the hinge line, measured in the hinge's plane, lies in `[d0, d1]` sheet units, with 1e-8 slack (`CraneSpread.hs:128-130`) |
 | `materialBand (u0, u1)` / `materialRegion polygon` | samples by material coordinate (the `WingBending` style) |
 | `creaseLine seg` | every refined vertex on the segments of the creases lying along material segment `seg` (E2 rule 2) |
 | `minus`, `union` | set operations on regions |
@@ -470,13 +470,13 @@ wing flap:
 
 | Existing | Code | Scheme |
 | --- | --- | --- |
-| refine wing | `CraneSpread.hs:111-112` | `refine (side Moving)` |
-| refine wing + root neighbours | `:113` | `refine (side Moving ∪ acrossHinge Stationary)` |
-| body | `:117` | `closed (side Stationary)` |
-| selected | `:118` | `closed (side Moving)` |
-| root strip, 30° | `:119-124`, `bentPoint` root | `band Moving (0, 1/32)` held at `rigidPose (1/3)` (unverified equivalence, see below) |
-| tip grip | `:122-123` | `band Moving (7/32, ∞)` with target `arcGrip 30 θ` |
-| contact pairs | `:126-132`, `:168-177` | not named: `stepOrders` closed, then kept only where a triangle has a free vertex |
+| refine wing | `CraneSpread.hs:117-118` | `refine (side Moving)` |
+| refine wing + root neighbours | `:119` | `refine (side Moving ∪ acrossHinge Stationary)` |
+| body | `:123` | `closed (side Stationary)` |
+| selected | `:124` | `closed (side Moving)` |
+| root strip, 30° | `:125-130`, `bentPoint` root | `band Moving (0, 1/32)` held at `rigidPose (1/3)` (unverified equivalence, see below) |
+| tip grip | `:128-129` | `band Moving (7/32, ∞)` with target `arcGrip 30 θ` |
+| contact pairs | `:132-138`, `:174-183` | not named: `stepOrders` closed, then kept only where a triangle has a free vertex |
 | root edges | `CraneRoot.hs:76` | `hinge m`, never "the `Unassigned` edges" |
 | root neighbours `[7,8,27,43]` | `:76-79` | `acrossHinge Stationary` |
 | distant | `:83` | `closed (side Stationary minus acrossHinge Stationary)` |
@@ -485,7 +485,7 @@ wing flap:
 | `FreeBody` | `:84-90` | distant ∪ grip; rest 0 on `hinge m` |
 | two opening creases | `CraneBody.hs:66` | `creaseLine` for each, named by material segment; `CranePocket` roles stay fixture data |
 | internal crease lines 26, 51 | `CraneInternal.hs:55`, `:62-64` | `creaseLine seg26 ∪ creaseLine seg51` |
-| crossed upper grip | `CraneSpread.hs:182-190` | `layer Upper of band Moving (7/32, ∞)`, then offset |
+| crossed upper grip | `CraneSpread.hs:188-196` | `layer Upper of band Moving (7/32, ∞)`, then offset |
 
 Three cautions for the PRD:
 
@@ -494,7 +494,7 @@ Three cautions for the PRD:
   two need not coincide.
 - **Coincident is not shared.** A folded-pose band picks both layers. A grip on
   one layer needs `layer`, as `crossedGrip` does through orders
-  (`CraneSpread.hs:188`).
+  (`CraneSpread.hs:194`).
 - **Spec assertions will change.** Moving the fixtures to names should turn
   the pinned `FaceId`s (`CraneRootSpec.hs:35`) and `EdgeId`s
   (`CraneInternalSpec.hs:27`) into material-seed assertions. Keep the resolved
@@ -558,8 +558,8 @@ two PRs:
 | --- | --- | --- | --- |
 | `BlintzSequence` | **becomes a sequence** (first) | runner, flap step with material seeds, an anchor rule | `BlintzSequenceSpec.hs:35-39`, `41-96`, `110-127`; `checked-blintz.svg` |
 | `HelmetSequence` | **becomes a sequence** (second) | a hinge named by one material line resolving to several edges (`[8,9]`, `[10,12]`, `[13,11]`; `HelmetSequence.hs:48-50`); a 120° illustration rule as presentation (`:70-84`) | `HelmetSequenceSpec.hs:40`, `47-51`, `79-84`, `143-150`, `164-175`, `187`; `checked-helmet.svg`. Moving-face ids (`:81`) depend on the face reorder and may need material rings. |
-| `CraneWing` | **stays a fixture recipe**; later a sequence prefix | layer-selective crease (hand-picked faces `[2,3,6,7]`, `CraneWing.hs:141`), stacking by predicate instead of index `[2]` (`:121`), an expected-refusal step (`:124-127`), and an unbent-crease convention that is not `U` (finding 5) | `CraneWingSpec.hs:84-109`, `83-134`, `145`; `checked-crane.svg`; and every crane spec below, since they build from it (`CraneSpread.hs:101`) |
-| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:25-91`, `CraneBodySpec`, `CraneInternalSpec.hs:24-50` |
+| `CraneWing` | **stays a fixture recipe**; later a sequence prefix | layer-selective crease (hand-picked faces `[2,3,6,7]`, `CraneWing.hs:143`), stacking by predicate instead of index `[2]` (`:122`), an expected-refusal step (`:125-128`), and an unbent-crease convention that is not `U` (finding 5) | `CraneWingSpec.hs:84-109`, `83-134`, `145`; `checked-crane.svg`; and every crane spec below, since they build from it (`CraneSpread.hs:93`) |
+| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:25-94`, `CraneBodySpec`, `CraneInternalSpec.hs:24-50` |
 | `CheckedPetal`, `CheckedBird` | **become a study-authored sequence of coupled macros**; modules shrink to registry entries | library collapse and petal macros (sampled), macro parameters, stage-activated landing orders (`CheckedBird.hs:131-137`), the registry | `CheckedBirdSpec.hs:44`, `97-109`, `159`, `169-173`; `CheckedPetalSpec.hs:125`, `135-138`; `PetalFoldSpec` |
 | `BasicBases` six endpoints | **stay fixtures** | none; they are endpoint constructions that regenerate `examples/*-base.fold` | `BasicBaseSpec` per base (`:51`) |
 | frog guide (`frogMilestones`, `writeFrogGuide`) | **stays a fixture** | squash and petal on a frog, a turnover as presentation instead of by key name (`BasicBaseGallery.hs:126`), stacking choice (`:74`) | `BasicBaseSpec.hs:170-220`; `frog-sequence.svg` |
@@ -598,7 +598,7 @@ two PRs:
 
 1. **Band measure.** Should `band` use absolute sheet units, as proposed here,
    or a fraction of the side's extent? The crane uses a fraction of a constant
-   0.25 (`CraneSpread.hs:119`).
+   0.25 (`CraneSpread.hs:125`).
 2. **Where `layer Upper/Lower` resolves.** Against `stepOrders` only, or also
    against directional requirements for a non-flat start?
 3. **Stationary side.** Should the runner expose `stationaryFace` through a new

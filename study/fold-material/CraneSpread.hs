@@ -5,7 +5,7 @@
 -- seam is opened.
 -- See docs/glossary.md for panels, material coordinates and layer order.
 --
--- The body stays fixed. A short root strip is held at 30 degrees; a tip grip
+-- The body stays fixed. A root strip is held at 30 degrees; a tip grip
 -- is turned a further 20 degrees. Integrating those directions gives the
 -- grip's position without shortening its material length. The curved initial
 -- guess is then relaxed with length, crease, panel-bending and contact terms.
@@ -89,16 +89,22 @@ craneSpreadWith = craneSpreadWithAt studyHinge
 -- ('buildCraneWingAt').
 craneSpreadWithAt :: Double -> SpreadRefinement -> Frame -> Int -> Double -> Either SpreadError CraneSpread
 craneSpreadWithAt hingeY selection source level degrees = do
+  spreadControls level degrees
   wing <- first SpreadError (buildCraneWingAt hingeY source)
   craneSpreadFromWing selection wing level degrees
+
+-- The controls are checked before any wing is built.
+spreadControls :: Int -> Double -> Either SpreadError ()
+spreadControls level degrees =
+  unless (level `elem` [3, 4] && finite degrees && degrees >= 0 && degrees <= 20) $
+    Left (SpreadError "crane spreading requires refinement 3 or 4 and a finite extra grip angle from 0 to 20 degrees")
 
 -- | Spread a wing already built. The held strips and the bend are measured
 -- from its hinge line, as fractions of the wing's length from there, except
 -- the root strip above the wing's widest point ('rootStrip').
 craneSpreadFromWing :: SpreadRefinement -> CraneWing -> Int -> Double -> Either SpreadError CraneSpread
 craneSpreadFromWing selection wing level degrees = do
-  unless (level `elem` [3, 4] && finite degrees && degrees >= 0 && degrees <= 20) $
-    Left (SpreadError "crane spreading requires refinement 3 or 4 and a finite extra grip angle from 0 to 20 degrees")
+  spreadControls level degrees
   sheet <- checked (surfaceFromFolded (craneStart wing))
   reference <- checked (flapAt (craneOpening wing) (30 / 90))
   features <- checked (surfaceFeatures sheet)

@@ -242,7 +242,7 @@ Measured (`crane.py`, `crane2.py`; faces in file order):
     - body face 65: (0.3, 0.39), margin 0.012;
     - body face 66: (0.49, 0.065), margin 0.010.
 - **Stacking.** Index 2 is picked by `solveStackingAs defaultBudget [2]`
-  (CraneWing.hs:121). "Indices 0 and 1 expose the root on one side; 3 and 4
+  (CraneWing.hs:122). "Indices 0 and 1 expose the root on one side; 3 and 4
   expose it on the other" (several-stackings.md:11-12).
 
 ### Corrected example

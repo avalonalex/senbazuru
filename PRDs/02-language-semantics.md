@@ -352,7 +352,7 @@ invariants an interpreter must enforce").
 | --- | --- | --- |
 | 1 | Carry accepted angles and orders onto the working pattern. Never feed folded coordinates back as material ([`BlintzSequence.hs:63`](../study/fold-material/BlintzSequence.hs#L63)) | The folded sheet is folded a second time |
 | 2 | Drop `frameExtras` and stale faces on every transform ([`Creasing.hs:265-267`](../src/Senbazuru/Fold/Creasing.hs#L265-L267)) | Stale faces name the wrong paper |
-| 3 | Refold after every handoff, and never patch a `Folded`, folding's result (the cut pattern and where it folds to). Orders reach `Flap` by sitting on the working pattern before the fold. `foldFrameWith` copies them, and it may reverse a face's ring. A `faceOrders` sign is read against its second face's normal, so it then flips every order whose second face it reversed (missing that was [#78](https://github.com/avalonalex/senbazuru/issues/78); [`Folding.hs:385`](../src/Senbazuru/Origami/Folding.hs#L385), [`:482-486`](../src/Senbazuru/Origami/Folding.hs#L482-L486)). The blintz does this ([`BlintzSequence.hs:63-64`](../study/fold-material/BlintzSequence.hs#L63-L64)). A state's first stacking: fold, solve on `foldedFrame`, record the orders on the working pattern, refold. Never attach orders to a `Folded` as [`CraneWing.hs:122`](../study/fold-material/CraneWing.hs#L122) does | `Flap`'s start check ignores orders ([`Flap.hs:169-181`](../src/Senbazuru/Origami/Flap.hs#L169-L181)), so a patch changing only orders passes unseen |
+| 3 | Refold after every handoff, and never patch a `Folded`, folding's result (the cut pattern and where it folds to). Orders reach `Flap` by sitting on the working pattern before the fold. `foldFrameWith` copies them, and it may reverse a face's ring. A `faceOrders` sign is read against its second face's normal, so it then flips every order whose second face it reversed (missing that was [#78](https://github.com/avalonalex/senbazuru/issues/78); [`Folding.hs:385`](../src/Senbazuru/Origami/Folding.hs#L385), [`:482-486`](../src/Senbazuru/Origami/Folding.hs#L482-L486)). The blintz does this ([`BlintzSequence.hs:63-64`](../study/fold-material/BlintzSequence.hs#L63-L64)). A state's first stacking: fold, solve on `foldedFrame`, record the orders on the working pattern, refold. Never attach orders to a `Folded` as [`CraneWing.hs:123`](../study/fold-material/CraneWing.hs#L123) does | `Flap`'s start check ignores orders ([`Flap.hs:169-181`](../src/Senbazuru/Origami/Flap.hs#L169-L181)), so a patch changing only orders passes unseen |
 | 4 | Re-resolve every id after a topology change | Creasing empties faces, and cutting shifts edge ids |
 | 5 | Anchor by material point, and re-anchor as in §2.3 | Re-tracing can put a different face first |
 | 6 | Join-check every step. Positions must agree within 1e-12 × `modelSpan` ([`BlintzSequence.hs:69`](../study/fold-material/BlintzSequence.hs#L69)). Angles, edge lists, face rings, orders and material coordinates must be exactly equal, as at [`CheckedBird.hs:145-146`](../study/fold-material/CheckedBird.hs#L145-L146). `CheckedBird` compares rings as written; the runner compares them as `map sort facesVertices`, so a re-trace that starts a ring at another vertex is not a break | A changed fixture silently inserts a rigid jump ([`BlintzSequence.hs:13-15`](../study/fold-material/BlintzSequence.hs#L13-L15)) |
@@ -825,14 +825,14 @@ longest current material segment, ties to the lowest, then leftmost, segment.
 - *Points.* Folded with face 0 as root, vertex 2 (corner north-west) is at
   (1, 4.6e-14), and vertex 28 (the edge's midpoint, within 1.2e-14) is at (1, 0.5).
 - *Line.* Their O2 is y = 1/4, the line `CraneWing` clips
-  ([`CraneWing.hs:152`](../study/fold-material/CraneWing.hs#L152)). It crosses 16
+  ([`CraneWing.hs:156`](../study/fold-material/CraneWing.hs#L156)). It crosses 16
   faces, and no end is strictly inside any.
 - *Seed.* The step names no `moving` point, so its seed is its first argument,
   corner north-west. That is a vertex, so §4.4's vertex rule applies, and it lies
   in exactly faces 2, 3, 6 and 7 [py, [check C](#check-c)]. The script needs an
   interior point, so the component was computed from (0.02, 0.97), in face 7 on the
   corner's side of the line. It is faces 2, 3, 6 and 7: `CraneWing`'s hand-picked
-  set ([`:141`](../study/fold-material/CraneWing.hs#L141)).
+  set ([`:143`](../study/fold-material/CraneWing.hs#L143)).
 - *Sense.* The recipe's accepted turn lowers the tip to z = −1/4, away from the
   reader, hence `behind`
   ([gap-layer-selective-folds](research/gap-layer-selective-folds.md) finding 14).
@@ -957,7 +957,7 @@ three points lie only in tail face 10 and body faces 27 and 29, at 0.0274, 0.049
 and 0.0491 from the nearest edge.
 
 **UNVERIFIED:** that these two relations leave exactly the tail-tucked stacking,
-today's index 2 of 5 ([`CraneWing.hs:121`](../study/fold-material/CraneWing.hs#L121)),
+today's index 2 of 5 ([`CraneWing.hs:122`](../study/fold-material/CraneWing.hs#L122)),
 and that removing either leaves two or more. That is an M4 acceptance test
 ([09](09-testing-and-acceptance.md)).
 
@@ -1216,7 +1216,7 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
   ```
 
   - *What it records.* The physical fact behind `CraneWing`'s refused −90
-    ([`CraneWing.hs:124-127`](../study/fold-material/CraneWing.hs#L124-L127)): wing B,
+    ([`CraneWing.hs:125-128`](../study/fold-material/CraneWing.hs#L125-L128)): wing B,
     which stays still, lies on wing A's reader side, so wing A cannot turn towards
     the reader. That wing B lies there is inferred (§13).
   - *Why `FlapCovered`* (**UNVERIFIED** until M4's runner raises it,

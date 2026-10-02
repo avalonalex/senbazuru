@@ -936,7 +936,7 @@ The anchor's comment is checked by the command above; the comments marked
 **UNVERIFIED** are not. The *tail-tucked stacking* is the one of the fixture's five
 layer orders that puts all eight tail faces between the two sides of the body,
 index 2
-([CraneWing.hs:118-121](../study/fold-material/CraneWing.hs#L118-L121);
+([CraneWing.hs:119-122](../study/fold-material/CraneWing.hs#L119-L122);
 [several stackings](../docs/notes/several-stackings.md)). *CraneSpread's root strip*
 is the short strip of wing beside the hinge that the study holds at a fixed angle
 ([CraneSpread.hs:8](../study/fold-material/CraneSpread.hs#L8)).
@@ -964,9 +964,9 @@ is the short strip of wing beside the hinge that the study holds at a fixed angl
   ([D8](decisions.md#d8-folding-some-layers)).
 - **The `material` and `settle` lines.** `stiffness illustrative` is
   `Bending 1 0.2`, the stiffness `CraneSpread` builds its hinges with
-  ([CraneSpread.hs:114](../study/fold-material/CraneSpread.hs#L114)).
+  ([CraneSpread.hs:120](../study/fold-material/CraneSpread.hs#L120)).
   `refine side moving 3` refines the wing at level 3, one of the two levels
-  `craneSpreadWith` accepts ([:82-83](../study/fold-material/CraneSpread.hs#L99-L100)).
+  `craneSpreadWith` accepts ([:99-100](../study/fold-material/CraneSpread.hs#L99-L100)).
   `rest at rigid-pose 1/3` rests every active crease at its angle a third of the way
   through this 90° fold, the wing at 30°; with no rest line here or in the
   `material` block, the settle is refused as `SettleNoRest`

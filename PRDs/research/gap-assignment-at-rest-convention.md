@@ -105,12 +105,12 @@ fixture migrates, and #60's done-when needs amending.
      topology (`src/Senbazuru/Origami/Surface.hs:248-252`). So the reopened
      corner is written **M at 0**. Code reading; not run.
 8. **`CraneWing` writes U, first at 0 and then at nonzero angles.**
-   - The wing crease is created as `Unassigned` (`CraneWing.hs:145`, `93`).
+   - The wing crease is created as `Unassigned` (`CraneWing.hs:149`, `93`).
    - The hinge is then found as "every U edge" (`CraneWing.hs:98`). Here U is
      doing a second job: recovering ids, because `creaseAllAlong` does not
      return the new edge ids.
    - After the turn, `craneFile` writes `materialFrame` of poses at 30°, 60°
-     and 90° (`CraneWing.hs:158-174`), keeping U (`Flap.hs:343-344`). The output
+     and 90° (`CraneWing.hs:162-178`), keeping U (`Flap.hs:343-344`). The output
      therefore holds **U at nonzero angles**, contrary to the spec's "zero for
      unassigned". Code reading; not run.
 9. **The precreases note writes F at 0** (finding 4).

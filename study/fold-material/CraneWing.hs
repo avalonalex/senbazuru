@@ -89,7 +89,7 @@ buildCraneWingAt hingeY source = do
   anchor <- case facesVertices material of
     ring : _ | length (facesVertices material) == 72 && sort ring == map VertexId [46, 49, 54, 55] -> Right ring
     _ -> Left "expected the material topology of examples/crane.fold"
-  (segments, crossed, widest) <- wingSegments hingeY original
+  (segments, widest) <- wingSegments hingeY original
   creased <- first explain (creaseAllAlong segments material)
   let (anchors, rest) = partition ((== sort anchor) . sort) (facesVertices creased)
   unless (length anchors == 1) (Left "adding the wing crease changed the fixed anchor")
@@ -98,6 +98,7 @@ buildCraneWingAt hingeY source = do
       hinge = [EdgeId i | (i, assignment) <- zip [0 ..] (edgesAssignment frame), assignment == Unassigned]
   -- Each segment cuts one face in two, and only the line's segments are
   -- unassigned: the joins are J.
+  let crossed = length [() | (_, _, Unassigned) <- segments]
   unless (length hinge == crossed && length (facesVertices frame) == 72 + length segments) $
     Left ("expected " <> tshow crossed <> " wing-crease segments and " <> tshow (72 + length segments) <> " faces, not " <> tshow (length hinge) <> " and " <> tshow (length (facesVertices frame)))
   (u, v) <- case hinge of
@@ -131,20 +132,23 @@ buildCraneWingAt hingeY source = do
 -- tip to the body's underside, and 32, 34, 35 and 38, the triangles folded
 -- inside it above its widest point. Its four faces have corners only at the
 -- tip, at the widest point and on the underside, so the widest point is
--- their lowest corner past the tip. Clip the long line to each face it
--- crosses before taking it back to material space, and return the segments
--- with the number on the line and the widest point. This is a fixture recipe,
--- not selection of visible layers from a mouse click.
-wingSegments :: Double -> Folded -> Either Text ([(V2, V2, Assignment)], Int, Double)
+-- their only corner strictly between the two. The line must cross all four;
+-- it crosses the triangles only above the widest point. Clip the long line to
+-- each face it crosses before taking it back to material space, and return
+-- the segments with the widest point. This is a fixture recipe, not selection
+-- of visible layers from a mouse click.
+wingSegments :: Double -> Folded -> Either Text ([(V2, V2, Assignment)], Double)
 wingSegments hingeY folded = do
   sheet <- first explain (flatSheet (foldedFrame folded))
   faces <- traverse (panel sheet . FaceId) [2, 3, 6, 7]
   insides <- traverse (panel sheet . FaceId) [32, 34, 35, 38]
+  widest <- case [y | p <- faces, V2 _ y <- panelRing p, y > 1e-9, y < 0.5 - 1e-9] of
+    [] -> Left "expected the wing's faces to have a corner between its tip and the body's underside, at its widest point"
+    ys -> Right (minimum ys)
   let crosses p = let ys = [y | V2 _ y <- panelRing p] in minimum ys < hingeY - 1e-9 && maximum ys > hingeY + 1e-9
-      widest = minimum (0.5 : [y | p <- faces, V2 _ y <- panelRing p, y > 1e-9])
-  hinges <- traverse (share sheet hingeY Unassigned) (filter crosses (faces ++ insides))
+  hinges <- traverse (share sheet hingeY Unassigned) (faces ++ filter crosses insides)
   joins <- if hingeY > widest + 1e-9 then traverse (share sheet widest Join) faces else pure []
-  pure (hinges ++ joins, length hinges, widest)
+  pure (hinges ++ joins, widest)
   where
     panel sheet fid = maybe (Left "missing crane wing face") Right (find ((== fid) . panelId) (sheetPanels sheet))
     share sheet lineY assignment face = do

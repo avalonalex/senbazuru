@@ -134,18 +134,18 @@ How the recipe sets up and runs:
   (`CraneWing.hs:89-91`).
 - It clips the folded line y = 1/4 to four hand-picked faces `[2,3,6,7]`. It
   maps each clip back to material space by the inverse fold transform
-  (`CraneWing.hs:130-155`) and adds the result with `creaseAllAlong`
+  (`CraneWing.hs:131-159`) and adds the result with `creaseAllAlong`
   (`CraneWing.hs:93`).
 - It then recovers ids from the result:
   - the anchor, by matching the sorted ring (`:94-96`);
   - the hinge, as every `Unassigned` edge, expecting one per face the line
-    crosses, 4 at y = 1/4 (`:98-102`);
+    crosses, 4 at y = 1/4 (`:98-103`);
   - the moving side, as the one face containing both ends of the hinge's
-    first segment on the tip's side of the line (`:115-117`).
-- It picks stacking **index** `[2]` of five valid orders (`:118-122`).
+    first segment on the tip's side of the line (`:116-118`).
+- It picks stacking **index** `[2]` of five valid orders (`:119-123`).
 - It travels +90 and *requires* −90 to be refused with `FlapEndpointOrder`
-  (`:123-127`).
-- Poses are 0, 30, 60, 90 (`:157-162`).
+  (`:124-128`).
+- Poses are 0, 30, 60, 90 (`:161-166`).
 - The module comment states the rule that ids "are then selected from their
   result, never carried across that boundary" (`CraneWing.hs:20-22`).
 
@@ -347,7 +347,7 @@ coordinates.**
   - cutting "can renumber the input" (`Flap.hs:9-10`);
   - transforms are keyed by the *cut* pattern (`Folding.hs:286-292`);
   - crane ids are re-selected after creasing (`CraneWing.hs:20-22`,
-    `:94-117`).
+    `:94-118`).
 - Material rings or points survive renumbering, and the tests use them for
   that reason (`test/CraneWingSpec.hs:91-96`; `StudyCase.hs:117-118`).
 
@@ -365,7 +365,7 @@ metadata.**
 fragile.**
 
 - The crane picks index 2 so the tail is tucked (`CraneWing.hs:30-34`,
-  `:118-122`).
+  `:119-123`).
 - The test checks the geometric meaning, not the index, and shows the first
   order fails it (`test/CraneWingSpec.hs:84-109`).
 
@@ -373,7 +373,7 @@ fragile.**
 
 - Blintz: reopening through the centre is refused
   (`BlintzSequenceSpec.hs:110-115`).
-- Crane: −90 must be refused (`CraneWing.hs:124-127`).
+- Crane: −90 must be refused (`CraneWing.hs:125-128`).
 - Helmet: the body-side reopening is refused
   (`HelmetSequenceSpec.hs:164-175`).
 - Bird: a reflected collapse and reversed orders are refused
