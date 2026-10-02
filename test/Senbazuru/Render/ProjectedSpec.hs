@@ -48,6 +48,22 @@ spec = describe "projected open-fold visibility" $ do
     let flat = rectangle 0 1 0 1 (\_ _ -> 0)
         orders = [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 2) Above, FaceOrder (FaceId 2) (FaceId 0) Above]
     projectedForm topDown (panels [flat, flat, flat]) orders `shouldBe` Left (ImpossibleStacking (FaceId 0))
+  -- The coverage check's cuts pass over a region that would take no more than
+  -- a speck of a piece, an area of 1e-9 for a model this size. The second face
+  -- covers all of the first but a corner of 1.5 specks, and the third hides
+  -- that corner. The last two hide the third, each in front of 0.75 of a speck
+  -- of the corner: all of it is covered, though neither of their cuts is made.
+  it "accepts a corner hidden by faces that each cover less than a speck of it" $ do
+    let e = sqrt 3e-9
+        at z = map (\(x, y) -> [x, y, z])
+        faces =
+          [ at 0 [(0, 0), (0.5, 0), (0.5, 0.5), (0, 0.5)],
+            at 0.1 [(0, 0), (0.5, 0), (0.5, 0.5 - e), (0.5 - e, 0.5), (0, 0.5)],
+            at 0.2 [(0.5, 0.5 - e), (1, 1), (0.5 - e, 0.5)],
+            at 0.3 [(0.5, 0.5 - e), (1, 1), (0.5 - e / 2, 0.5 - e / 2)],
+            at 0.3 [(0.5 - e / 2, 0.5 - e / 2), (1, 1), (0.5 - e, 0.5)]
+          ]
+    projectedForm topDown (panels faces) [] `shouldSatisfy` either (const False) isJust
   it "clips a buried crease to the exposed ends" $ do
     let fr = panels [rectangle 0 0.5 0 1 (\_ _ -> 0), rectangle 0.5 1 0 1 (\_ _ -> 0), rectangle 0.25 0.75 0.25 0.75 (\_ _ -> 1)]
     seen <- visible topDown fr []
