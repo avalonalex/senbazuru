@@ -2,7 +2,9 @@
 module Senbazuru.Render.ProjectedSpec (spec) where
 
 import Data.Either (isLeft)
+import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
+import Data.Set qualified as S
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
@@ -106,6 +108,51 @@ spec = describe "projected open-fold visibility" $ do
   it "works through an oblique viewing basis" $ do
     let fr = panels [rectangle 0 1 0 1 (\_ _ -> 0), rectangle 0 1 0 1 (\_ _ -> 1)]
     projectedForm isometric fr [] `shouldSatisfy` either (const False) isJust
+  -- A face of the unit square, under a copy of itself moved towards the viewer
+  -- with one corner cut off, shows only that corner. Seen isometrically the
+  -- square's shadow is sqrt 2 across, so the visible regions are cut with a
+  -- speck of 2e-9. The model's own spans, 1.1 in 3D, give 1.21e-9. A corner
+  -- between the two used to be dropped by the cutting and then found
+  -- uncovered by the coverage check, and refused as a cycle.
+  it "judges what a shadow leaves uncovered by the speck its regions were cut with" $
+    forAll (choose (0.5e-9, 3e-9)) $ \corner ->
+      let towards = map (zipWith (+) [0.1, -0.1, 0.1])
+       in projectedForm isometric (cornerShown corner (sqrt 3) towards) [] `shouldSatisfy` either (const False) isJust
+  -- Turning the camera about its line of sight changes nothing in the picture
+  -- but its axes, and so the shadow's axis-aligned spans: rolled by 45° the
+  -- unit square's are sqrt 2, not 1. Whether a view can be drawn must not
+  -- depend on that.
+  it "draws a view however the camera is rolled" $
+    forAll (choose (0, 2 * pi)) $ \roll ->
+      forAll (choose (0.5e-9, 3e-9)) $ \corner ->
+        let towards = map (zipWith (+) [0, 0, 0.1])
+         in projectedForm (turnedBy roll topDown) (cornerShown corner 1 towards) [] `shouldSatisfy` either (const False) isJust
+  -- A square with a smaller square at its centre and four trapezoids round it.
+  -- Seen isometrically the centre's shadow is 1.5e-9, between the two specks
+  -- above: too small to paint, but it was kept as a face and then refused as
+  -- the file's fault, a face without a normal. It is dropped like any other
+  -- face too small to paint, and its edges all belong to the trapezoids.
+  it "drops a face too small to paint rather than calling the file faulty" $ do
+    let side = sqrt (sqrt 3 * 1.5e-9)
+        (lo, hi) = (0.5 - side / 2, 0.5 + side / 2)
+        fr =
+          mesh
+            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [lo, lo, 0], [hi, lo, 0], [hi, hi, 0], [lo, hi, 0]]
+            [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7]]
+    seen <- visible isometric fr []
+    S.fromList (map regionFace (formRegions seen)) `shouldBe` S.fromList (map FaceId [0 .. 3])
+
+-- | The unit square at z = 0, under a copy of itself moved by @towards@ with
+-- its (1, 1) corner cut off, so that only that corner of the first face shows.
+-- The corner's shadow is @corner@ when the view divides areas in the xy plane
+-- by @foreshortening@: the corner's legs are then
+-- sqrt (2 * foreshortening * corner).
+cornerShown :: Double -> Double -> ([[Double]] -> [[Double]]) -> Frame
+cornerShown corner foreshortening towards = panels [square, towards cut]
+  where
+    leg = sqrt (2 * foreshortening * corner)
+    square = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]]
+    cut = [[0, 0, 0], [1, 0, 0], [1, 1 - leg, 0], [1 - leg, 1, 0], [0, 1, 0]]
 
 rectangle :: Double -> Double -> Double -> Double -> (Double -> Double -> Double) -> [[Double]]
 rectangle x0 x1 y0 y1 z = [[x, y, z x y] | (x, y) <- [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]]
@@ -121,6 +168,20 @@ panels rings =
     }
   where
     ids = [map VertexId [offset .. offset + length ring - 1] | (offset, ring) <- zip (scanl (+) 0 (map length rings)) rings]
+
+-- | Faces sharing their vertices, as a folded pattern's do. The outline is the
+-- sheet's border; every edge two faces share is an unfolded crease.
+mesh :: [[Double]] -> [[Int]] -> Frame
+mesh coords rings =
+  emptyFrame
+    { frameClasses = ["foldedForm"],
+      verticesCoords = coords,
+      facesVertices = map (map VertexId) rings,
+      edgesVertices = [(VertexId a, VertexId b) | (a, b) <- M.keys uses],
+      edgesAssignment = [if n == 1 then Border else Flat | n <- M.elems uses]
+    }
+  where
+    uses = M.fromListWith (+) [((min a b, max a b), 1 :: Int) | vs <- rings, (a, b) <- zip vs (drop 1 vs ++ take 1 vs)]
 
 visible :: Basis -> Frame -> [FaceOrder] -> IO VisibleForm
 visible basis fr orders = case projectedForm basis fr orders of

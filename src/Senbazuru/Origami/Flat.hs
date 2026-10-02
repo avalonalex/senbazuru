@@ -53,6 +53,7 @@ module Senbazuru.Origami.Flat
     Panel (..),
     flatSheet,
     vertexAt,
+    yardsticks,
 
     -- * Why it is not one
     FlatError (..),
@@ -186,13 +187,7 @@ flatSheet fr = do
   if hasRelief verts then Left (PaperInTheAir (zSpan verts)) else Right ()
   faces <- refused (frameFaces fr)
   creases <- refused (frameCreases fr)
-  -- Measured across the plane rather than in all three directions, because the
-  -- model is flat and its z extent is rounding noise. Bounded below by 1 so
-  -- that a model smaller than a unit does not shrink its own tolerance to
-  -- nothing.
-  let scale = max 1 (max (spanAlong v3x verts) (spanAlong v3y verts))
-      hair = 1e-9 * scale
-      speck = hair * scale
+  let (hair, speck) = yardsticks verts
   panels <- traverse (toPanel speck) faces
   pure
     Sheet
@@ -207,6 +202,23 @@ flatSheet fr = do
   where
     refused :: Either FoldError a -> Either FlatError a
     refused = first FlatRefused
+
+-- | The hair and the speck, in that order, that 'flatSheet' judges a model
+-- with these vertices by.
+--
+-- Measured across the plane rather than in all three directions, because the
+-- model is flat and its z extent is rounding noise. Bounded below by 1 so that
+-- a model smaller than a unit does not shrink its own tolerance to nothing.
+--
+-- Exported for "Senbazuru.Render.Projected", which flattens a view of an open
+-- fold into a frame for "Senbazuru.Origami.Visible" and has to judge the
+-- shadows it puts there by the speck they will be cut with. A copy of this rule
+-- there would agree with this one only by hand.
+yardsticks :: [V3] -> (Double, Double)
+yardsticks verts = (hair, hair * scale)
+  where
+    scale = max 1 (max (spanAlong v3x verts) (spanAlong v3y verts))
+    hair = 1e-9 * scale
 
 -- | Where a vertex of the frame lies in the plane.
 --
