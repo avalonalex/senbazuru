@@ -157,16 +157,16 @@ straight strip in the folded wing is several unrelated regions of the sheet.
 
 - `roots` are the `Unassigned` edges and their owners. `nearby` is the owners
   minus the wing (`:60-63`); the test pins these as `FaceId`s `[7, 8, 27, 43]`
-  (`test/CraneRootSpec.hs:36`).
-- `distant` is every vertex of a triangle outside wing ∪ nearby (`:124`). The
+  (`test/CraneRootSpec.hs:38`).
+- `distant` is every vertex of a triangle outside wing ∪ nearby (`:129`). The
   header states the rule: vertices of any *other* panel stay held even when a
-  released panel shares them (`:109-112`).
+  released panel shares them (`:114-117`).
 - Holds: `HeldRoot` keeps every pin. The other controls keep only the grip
   plus body (`ReleasedRoot`, `WeakerRoot`, `FlatRoot`), or the grip plus
-  distant (`FreeBody`) (`:125-126`).
+  distant (`FreeBody`) (`:130-131`).
 - Springs on root edges: stiffness × 0.1 for `WeakerRoot`, rest 0 for
-  `FlatRoot` and `FreeBody` (`:127-133`).
-- The test also pins `length spreadOrders == 902` (`CraneRootSpec.hs:42`).
+  `FlatRoot` and `FreeBody` (`:132-138`).
+- The test also pins `length spreadOrders == 902` (`CraneRootSpec.hs:44`).
 
 **11. The other crane fixtures add named creases by raw id.**
 
@@ -208,7 +208,7 @@ anchors the same way (`:161-172`).
 **15. Contact panels are derived, not named.** Orders are transitively closed
 *before* pairs with no free vertex are dropped (`CraneSpread.hs:174-183`). The
 test proves the order matters: A below B and B below C must still produce A
-below C (`CraneRootSpec.hs:116-118`). The independent check still uses every
+below C (`CraneRootSpec.hs:121-123`). The independent check still uses every
 source order (`CraneSpread.hs:198-201`).
 
 ### (c) Certificates
@@ -496,7 +496,7 @@ Three cautions for the PRD:
   one layer needs `layer`, as `crossedGrip` does through orders
   (`CraneSpread.hs:194`).
 - **Spec assertions will change.** Moving the fixtures to names should turn
-  the pinned `FaceId`s (`CraneRootSpec.hs:36`) and `EdgeId`s
+  the pinned `FaceId`s (`CraneRootSpec.hs:38`) and `EdgeId`s
   (`CraneInternalSpec.hs:27`) into material-seed assertions. Keep the resolved
   counts (902 orders, 16 held vertices) as regression checks that the scheme
   resolves to the same sets. That is a reviewed test change, not a free one.
@@ -559,7 +559,7 @@ two PRs:
 | `BlintzSequence` | **becomes a sequence** (first) | runner, flap step with material seeds, an anchor rule | `BlintzSequenceSpec.hs:35-39`, `41-96`, `110-127`; `checked-blintz.svg` |
 | `HelmetSequence` | **becomes a sequence** (second) | a hinge named by one material line resolving to several edges (`[8,9]`, `[10,12]`, `[13,11]`; `HelmetSequence.hs:48-50`); a 120° illustration rule as presentation (`:70-84`) | `HelmetSequenceSpec.hs:40`, `47-51`, `79-84`, `143-150`, `164-175`, `187`; `checked-helmet.svg`. Moving-face ids (`:81`) depend on the face reorder and may need material rings. |
 | `CraneWing` | **stays a fixture recipe**; later a sequence prefix | layer-selective crease (hand-picked faces `[2,3,6,7]`, `CraneWing.hs:143`), stacking by predicate instead of index `[2]` (`:122`), an expected-refusal step (`:125-128`), and an unbent-crease convention that is not `U` (finding 5) | `CraneWingSpec.hs:84-109`, `83-134`, `145`; `checked-crane.svg`; and every crane spec below, since they build from it (`CraneSpread.hs:93`) |
-| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:25-118`, `CraneBodySpec`, `CraneInternalSpec.hs:24-50` |
+| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:28-123`, `CraneBodySpec`, `CraneInternalSpec.hs:24-50` |
 | `CheckedPetal`, `CheckedBird` | **become a study-authored sequence of coupled macros**; modules shrink to registry entries | library collapse and petal macros (sampled), macro parameters, stage-activated landing orders (`CheckedBird.hs:131-137`), the registry | `CheckedBirdSpec.hs:44`, `97-109`, `159`, `169-173`; `CheckedPetalSpec.hs:125`, `135-138`; `PetalFoldSpec` |
 | `BasicBases` six endpoints | **stay fixtures** | none; they are endpoint constructions that regenerate `examples/*-base.fold` | `BasicBaseSpec` per base (`:51`) |
 | frog guide (`frogMilestones`, `writeFrogGuide`) | **stays a fixture** | squash and petal on a frog, a turnover as presentation instead of by key name (`BasicBaseGallery.hs:126`), stacking choice (`:74`) | `BasicBaseSpec.hs:170-220`; `frog-sequence.svg` |

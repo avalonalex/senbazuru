@@ -109,10 +109,12 @@
   <h2>What passes the checks?</h2>
   <p>Acceptance requires solver equilibrium, relative material edge errors
     at most 0.001%, exact remaining holds, and an independent check of all
-    triangle contacts and 902 source layer orders. Original mountain/valley
-    crease angles must stay within 0.00001 radians. The wing-root springs, four
-    about y = 1/4 and eight at the neck and tail bases, are measured separately:
-    their preferred angles are deliberately soft.</p>
+    triangle contacts and 902 source layer orders, 1,058 with the wing hinged
+    at the neck and tail bases, whose crease cuts more faces. Original
+    mountain/valley crease angles must stay within 0.00001 radians. The
+    wing-root springs, four about y = 1/4 and eight at the neck and tail
+    bases, are measured separately: their preferred angles are deliberately
+    soft.</p>
   <div class="table-wrap"><table><thead><tr><th>Control / FOLD</th><th>Root turn</th><th>Edge error</th><th>Body motion</th><th>Contact</th><th>Accepted</th></tr></thead><tbody id="measurements"></tbody></table></div>
   <p>The incompatible control pushes the upper tip grip through its lower
     partner. Exact holds cannot move to hide that conflict. Regular controls
@@ -123,9 +125,11 @@
 <section>
   <h2>Does refinement change the conclusion?</h2>
   <p>Both sides of the root receive dense triangles: four wing panels and four
-    neighbouring body panels. Every inserted midpoint is shared by its material
-    neighbours. The flat-preference control repeats with sixteen spans per
-    source edge instead of eight, with the same held regions and stiffness.</p>
+    neighbouring body panels, or with the wing hinged at the neck and tail
+    bases, every wing panel and the eight body panels across its hinge. Every
+    inserted midpoint is shared by its material neighbours. The
+    flat-preference control repeats with sixteen spans per source edge instead
+    of eight, with the same held regions and stiffness.</p>
   <p id="refinement"></p>
 </section>
 <p class="note"><strong>Scope:</strong> independently checked static endpoints.

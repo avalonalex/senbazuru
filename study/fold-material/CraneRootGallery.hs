@@ -75,9 +75,11 @@ writeCraneRoot destination = do
     let posed = if invalid then original {rootSpread = crossedGrip (rootSpread original)} else original
         limit = if invalid then 2 else 40
         settings = Settings limit 1e-5
-        -- A released control with a base turns it as one piece, at the angle
-        -- the search finds; every other control is one ordinary solve.
-        hasBase = control /= HeldRoot && rootHingeY posed > rootWidest posed
+        -- A control whose base 'rigidBase' would turn searches for the angle
+        -- to turn it at. Every other control is one ordinary solve: a held
+        -- one already holds its base, and below the widest point there is
+        -- none.
+        hasBase = spreadPins (rootSpread (rigidBase 30 posed (spreadMesh (rootSpread posed)))) /= spreadPins (rootSpread posed)
     putStrLn ("Solving " ++ stem)
     hFlush stdout
     start <- getCPUTime
@@ -169,9 +171,10 @@ writeCraneRoot destination = do
   let bent = [(sheet, energy) | (stem, _, True, sheet, _, energy, _, _, _) <- runs, stem `elem` ["flat", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeTotalEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
       -- The page's scale is the largest of the controls' own drawings. The
-      -- comparison draws some of them together, on the same page from the
-      -- same camera, so it is never larger; the profiles are a plot of
-      -- heights along the wing, not a drawing of the paper.
+      -- comparison and the two hinge figures draw some of them together, on
+      -- the same page from the same camera, so they are never larger; the
+      -- profiles are a plot of heights along the wing, not a drawing of the
+      -- paper.
       scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, _, _, _, Just own) <- runs]
       reports = [(stem, report scale) | (stem, _, _, _, report, _, _, _, _) <- runs]
   forM_ reports $ \(stem, report) -> BL.writeFile (output </> stem ++ "-check.json") (encode report)
@@ -235,8 +238,9 @@ data BaseSearch = BaseSearch
     baseTried :: ![(Double, Double, Bool)]
   }
 
--- | Search 15 to 45 degrees, to 0.05 degree. Each solve starts from the mesh
--- of the bracket point beside it.
+-- | Search 15 to 45 degrees, to 0.05 degree. The first two solves start
+-- from the control's own mesh, and each later one from the mesh of the
+-- bracket point beside it.
 searchBase :: Settings -> CraneRoot -> Either SpreadError BaseSearch
 searchBase settings study = do
   ((theta, _, (_, found)), tried) <- goldenSection 0.05 15 45 (spreadMesh (rootSpread study), Nothing) solveAt
@@ -251,9 +255,12 @@ searchBase settings study = do
       pure (crease + panel, (mesh, Just (turned, result, mesh)))
 
 -- | The least value of @f@ on [@lo@, @hi@] by golden-section search, narrowed
--- until the bracket is narrower than @tolerance@. Each evaluation is handed
--- the payload of the bracket point it replaces a neighbour of, so a solve can
--- start from the last one nearby. Returns the best argument, its value and
+-- until the bracket is narrower than @tolerance@, which must be positive and
+-- well above the rounding of @lo@ and @hi@: a bracket that rounding stops
+-- shrinking never gets narrower, and the search would not end. Each
+-- evaluation is handed the payload of the interior point that stays beside
+-- it, the nearest point already evaluated, so a solve can start from the last
+-- one nearby. Returns the best argument, its value and
 -- payload, and every evaluation, with its payload, in the order made. It
 -- assumes one minimum in the bracket, as a search by bracketing must.
 goldenSection :: Double -> Double -> Double -> s -> (s -> Double -> Either e (Double, s)) -> Either e ((Double, Double, s), [(Double, Double, s)])

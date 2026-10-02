@@ -9,6 +9,8 @@ import CraneRootGallery (goldenSection)
 import CraneSpread
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
+import Data.List (minimumBy)
+import Data.Ord (comparing)
 import Data.Set qualified as S
 import FoldBending
 import FoldMaterial (componentCount)
@@ -76,8 +78,10 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
 
   -- The base search narrows 15 to 45 degrees by the golden ratio until the
   -- bracket is under 0.05 degree: two evaluations, then one per narrowing,
-  -- fourteen of them. Each solve starts from its neighbour's mesh, so every
-  -- evaluation after the first two is handed a payload made by an earlier one.
+  -- fourteen of them. Each solve after the first two starts from the mesh of
+  -- the bracket point beside it, which is always the nearest point already
+  -- evaluated: the new point lies 0.236 of the bracket from it and 0.382 from
+  -- the nearer end.
   it "finds a minimum by golden section, handing each evaluation a neighbour's start" $ \_ -> do
     let phi = (sqrt 5 - 1) / 2
         f :: [Double] -> Double -> Either () (Double, [Double])
@@ -89,13 +93,14 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     length tried `shouldBe` 16
     take 2 (map fst tried) `shouldBe` [45 - phi * 30, 15 + phi * 30]
     map fst tried `shouldSatisfy` all (\t -> t > 15 && t < 45)
-    -- The winner's chain of starts runs back through earlier evaluations;
-    -- handing every evaluation the first start would leave it only [x].
+    -- Each evaluation is reported with the payload its own call made, and the
+    -- winner with its own. Handing an evaluation the first start, or the far
+    -- bracket point's, breaks the last line.
     take 1 chain `shouldBe` [x]
-    length chain `shouldSatisfy` (> 1)
-    drop 1 chain `shouldSatisfy` all (`elem` map fst tried)
-    -- Each evaluation is reported with the payload its own call made.
     evaluations `shouldSatisfy` all (\(t, _, made) -> take 1 made == [t])
+    let nearest t = minimumBy (comparing (\u -> abs (u - t)))
+    [take 1 (drop 1 made) | (_, _, made) <- drop 2 evaluations]
+      `shouldBe` [[nearest t [u | (u, _, _) <- take k evaluations]] | (k, (t, _, _)) <- drop 2 (zip [0 ..] evaluations)]
 
   it "activates body contacts when body vertices become free and keeps the distant boundary held" $ \source -> do
     fixed <- rootSpread <$> right (craneRoot source 3 FlatRoot)

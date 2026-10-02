@@ -44,8 +44,8 @@ included, and every panel stores bent across a triangle edge. It finds that
 θ by golden-section search over 15–45°. Keep a bracket and two points inside
 it at the golden ratio, and drop the end beside the worse point. The better
 point is then already one of the new bracket's two, so each narrowing costs
-one solve. Narrowing to 0.05° takes 16 solves, each starting from the mesh
-of the bracket point beside it.
+one solve. Narrowing to 0.05° takes 16 solves. After the first two, each
+starts from the mesh of the bracket point beside it.
 
 Measured on 2026-10-02:
 
