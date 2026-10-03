@@ -6,9 +6,10 @@
 module CraneSpreadGallery (writeCraneSpread, spreadFigure, screenKeys) where
 
 import Control.Exception (evaluate)
-import Control.Monad (forM, unless, when)
+import Control.Monad (forM, forM_, unless, when)
 import CraneSpread
 import CraneSpreadScreen (spreadScreen)
+import CraneWing (wingRoot)
 import Data.Aeson (encode, object, (.=))
 import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
@@ -55,8 +56,11 @@ writeCraneSpread destination = do
       controls = [("rigid", "Rigid wing · 30° root", 3, 0, False), ("curved", "Curved wing · 50° grip", 3, 20, False), ("fine", "Curved wing · finer mesh", 4, 20, False), ("crossed-grip", "Upper grip below lower · incompatible", 3, 20, True)]
   createDirectoryIfMissing True output
   source <- loadFoldFile "examples/crane.fold" >>= checked
+  -- The wing hinges at its root, the neck and tail bases, found by rule
+  -- rather than typed in (owner decisions 34 and 35).
+  hinge <- either (die . T.unpack) pure (wingRoot (keyFrame source))
   runs <- forM controls $ \(stem, title, level, degrees, invalid) -> do
-    original <- checked (craneSpread (keyFrame source) level degrees)
+    original <- checked (craneSpreadWithAt hinge WingOnly (keyFrame source) level degrees)
     let fixture = if invalid then crossedGrip original else original
     start <- getCPUTime
     result <- checked (solveSpread (Settings (if invalid then 2 else 20) 1e-5) fixture)
@@ -78,6 +82,7 @@ writeCraneSpread destination = do
         report scale =
           object $
             [ "id" .= stem,
+              "hingeY" .= hinge,
               "title" .= title,
               "refinement" .= level,
               "rootDegrees" .= (30 :: Int),
@@ -115,21 +120,28 @@ writeCraneSpread destination = do
       BS.writeFile (output </> stem ++ ".glb") bytes
     putStrLn (stem ++ ": " ++ if accepted then "accepted" else "unaccepted diagnostic")
     pure (stem, title, accepted, sheet, report, panel)
-  unless ([accepted | (_, _, accepted, _, _, _) <- runs] == [True, True, True, False]) (die "Unexpected crane control result; refusing to publish the gallery")
   let baseline = [sheet | (stem, _, True, sheet, _, _) <- runs, stem `elem` ["rigid", "curved"]]
       bent = [(sheet, energy) | (stem, _, True, sheet, _, energy) <- runs, stem `elem` ["curved", "fine"]]
       comparisons = [object ["geometry" .= refinement a b, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
       compared = spreadFigure baseline
-      refined = spreadFigure (map fst bent)
-      -- The page's drawings are these two figures. The measurements are
-      -- written before either is refused, at the scale of those that drew.
-      scale = pageScale <$> nonEmpty (rights [compared, refined])
+      -- Drawn only when both meshes are accepted: a figure of the curved wing
+      -- alone would be drawn larger, and set the page's scale. At the wing's
+      -- root the finer mesh does not converge (#469).
+      refined = if length bent == 2 then Just (spreadFigure (map fst bent)) else Nothing
+      -- The page's drawings are these figures. The measurements are written
+      -- before any is refused, at the scale of those that drew.
+      scale = pageScale <$> nonEmpty (rights (compared : maybe [] pure refined))
       document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
+  -- Refused only after the measurements are written, so a control that fails
+  -- can still be read. The finer mesh is reported either way (#469).
+  let acceptedAs wanted = or [accepted | (stem, _, accepted, _, _, _) <- runs, stem == wanted]
+  unless (acceptedAs "rigid" && acceptedAs "curved" && not (acceptedAs "crossed-grip")) (die "Unexpected crane control result; refusing to publish the gallery")
   drawing <- either (die . T.unpack) pure compared
   TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
-  finer <- either (die . T.unpack) pure refined
-  TIO.writeFile (output </> "refinement.svg") (figureSvg finer)
+  forM_ refined $ \figure' -> do
+    finer <- either (die . T.unpack) pure figure'
+    TIO.writeFile (output </> "refinement.svg") (figureSvg finer)
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, _, _, _) <- runs])
   viewer <- TIO.readFile "study/gltf/viewer.html"
   TIO.writeFile (output </> "index.html") (T.replace "./node_modules/" "../checked-flap/node_modules/" viewer)

@@ -77,7 +77,7 @@ thickness before starting from a flat stack.
      (`Gltf.hs:276-284`).
    - **Study exports.** The study writes bent endpoints with `CompletePaper`
      (`study/fold-material/CoupledCreaseGallery.hs:80`) or `VisiblePaper`
-     (`CraneSpreadGallery.hs:104`). With no `NORMAL` attribute, those shade
+     (`CraneSpreadGallery.hs:109`). With no `NORMAL` attribute, those shade
      faceted in any viewer (finding 1).
    - **The study's own viewer.** Its WebGL viewer does compute normals. It sums
      them per group, so lighting splits at sharp creases while material indices

@@ -154,7 +154,7 @@ So `fraction ≤ 0.125` means "within 1/32 of the hinge" and `≥ 0.875` means "
 least 7/32 from it". `bentPoint` ([`:117-134`](../study/fold-material/CraneSpread.hs#L148-L167))
 holds the first strip rigidly at 30°, puts the grip on a circular arc a further
 angle on, and starts every free wing vertex on that arc (`:129`). One run on
-2026-09-13 ([spreading-connected-wing.md:35-39](../docs/notes/spreading-connected-wing.md)):
+2026-09-13 ([spreading-connected-wing.md:63-67](../docs/notes/spreading-connected-wing.md)):
 
 | Control | Triangles | Max edge error | Panel bending energy | Solve CPU s |
 | --- | ---: | ---: | ---: | ---: |
@@ -202,11 +202,11 @@ Single recorded runs on one machine, not re-measured here
 
 | Case | Result | Cost | Source |
 | --- | --- | --- | --- |
-| Crane wing, body held | accepted at 392 and 1,192 triangles | 5.76, 64.30 CPU s | [spreading-connected-wing.md:35-39](../docs/notes/spreading-connected-wing.md) |
+| Crane wing, body held | accepted at 392 and 1,192 triangles | 5.76, 64.30 CPU s | [spreading-connected-wing.md:63-67](../docs/notes/spreading-connected-wing.md) |
 | Four body panels released | unconverged after 118 iterations; 49 crossing triangle pairs; edge error 3.75e-5 | about nine CPU minutes each | [body-angle-preferences.md:66-77](../docs/notes/body-angle-preferences.md) |
 | Same, 80 more iterations | edge error → 2.07e-5, angle error 0.0187 → 0.0194 rad; still invalid | +452 CPU s | B finding 1 (note) |
 | Exact nonnegative contact | gap 0 on 32- and 64-triangle meshes where penalty leaves −5.9e-11 and −8.4e-11; fixture only | — | B finding 1 (note) |
-| Mesh dependence | energy changes 3.95% between the accepted crane meshes | — | [spreading-connected-wing.md:47-48](../docs/notes/spreading-connected-wing.md) |
+| Mesh dependence | energy changes 3.95% between the accepted crane meshes | — | [spreading-connected-wing.md:73-74](../docs/notes/spreading-connected-wing.md) |
 | Tolerance-sized wrongness | a −6.21e-9 crossing passes the 1e-7 check | — | B finding 15 (note) |
 | Rendering vs acceptance | an accepted 4,312-triangle crane-root mesh fails the visible glTF scene; complete-sheet GLB works | — | [#206](https://github.com/avalonalex/senbazuru/issues/206) |
 
@@ -375,7 +375,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 **On the crane wing**, `fold behind 90° corner north-west to midpoint of edge
 north` has `recordBefore` = the creased, unturned crane: 76 faces
 ([`CraneWing.hs:118`](../study/fold-material/CraneWing.hs#L118)), 138 edges and 902
-orders ([spreading-connected-wing.md:41-42](../docs/notes/spreading-connected-wing.md)).
+orders ([spreading-connected-wing.md:69-70](../docs/notes/spreading-connected-wing.md)).
 `recordHinge` has four segments with `craneHinge`'s ids; `recordMoving` has seed
 `corner north-west` and four faces ([`CraneSpreadSpec.hs:32`](../test/CraneSpreadSpec.hs#L32));
 `recordAfter` keeps those 76 faces, since a flap turn never re-cuts
@@ -720,7 +720,7 @@ allows it until [#73](https://github.com/avalonalex/senbazuru/issues/73)), GLB
 whose painter assumes the layer order they can violate
 ([`docs/architecture.md:410-412`](../docs/architecture.md)); the study keeps
 a failed endpoint as a diagnostic that "never appears as an accepted model"
-([spreading-connected-wing.md:64-69](../docs/notes/spreading-connected-wing.md)).
+([spreading-connected-wing.md:90-96](../docs/notes/spreading-connected-wing.md)).
 
 ### Certificates attach after the run
 
@@ -802,7 +802,7 @@ triangles is the largest accepted crane-wing mesh with a recorded solve time
 passed its checks ([wing-root-holds.md:18-20](../docs/notes/wing-root-holds.md),
 `:32`, `:40`) but has no recorded solve time. The crane-wing note calls
 two resolutions "a useful comparison, not evidence that the answer has stopped
-depending on the mesh" ([spreading-connected-wing.md:47-48](../docs/notes/spreading-connected-wing.md)).
+depending on the mesh" ([spreading-connected-wing.md:73-74](../docs/notes/spreading-connected-wing.md)).
 392 (5.76 CPU s) is the default-CI ceiling; larger settles run in the slow job
 with fixtures in `beforeAll` ([glossary-additions](glossary-additions.md#code-and-tests)).
 Budgets count refined triangles before solving, never seconds.
@@ -894,7 +894,7 @@ messages show format only; they were not taken from a run.
 | AC-12 | Bird records → `Certified` ×4; the same macros on `square-base.fold` → `NoCertificateFor`; a wrong-branch (`False`) call → `Refused`, never `Sampled`; each entry's sample poses equal `175 * fraction` exactly (R-07-36–38) | keying by macro name only; mapping `Refused` to `Sampled`; a pose written as an absolute angle |
 | AC-13 | More than 1,192 refined triangles → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
 | AC-14 | `material { size 15cm; thickness 0.1mm }` stores exactly 1/1500 on `crane.fold` (s = 1 in `Double`, R-07-24); a built `mm` frame with s = 100 → `UnitMismatch` (R-07-24–26) | using the refined mesh's extent; ignoring `frame_unit` |
-| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); the gallery's `[True, True, True, False]` ([`CraneSpreadGallery.hs:108`](../study/fold-material/CraneSpreadGallery.hs#L108)) unchanged (R-07-39) | a stage altering an energy or tolerance |
+| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); the gallery's `[True, True, True, False]` ([`CraneSpreadGallery.hs:113`](../study/fold-material/CraneSpreadGallery.hs#L113)) unchanged (R-07-39) | a stage altering an energy or tolerance |
 | AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external solver or simulator or reads such a program's output; `stack`, ormolu and hlint are excepted (R-07-43) | a test shelling out to a simulator |
 | AC-17 | One example value per constructor of `SettleStepError`, `SettleError`, `Reason` and `Refused`, produced by a function that matches each type with no wildcard, and an `explain` golden for each; a property over the examples checks that no message contains a Haskell constructor name or record syntax (R-07-45) | a constructor added without an example (an incomplete-pattern warning, which the cold `stack clean && stack build --test` shows; there is no `-Werror`); a message built with `show` |
 
