@@ -1273,7 +1273,7 @@ The decisions:
   ([07](07-prd-material-consumption.md#every-existing-crane-control-re-expressed))
   [prd]. `WeakerRoot` and `WeakerBody` scale some springs' stiffness by 0.1
   ([`CraneRoot.hs:88`](../study/fold-material/CraneRoot.hs#L88),
-  [`CraneBody.hs:70`](../study/fold-material/CraneBody.hs#L70)) [code], which one
+  [`CraneBody.hs:80`](../study/fold-material/CraneBody.hs#L80)) [code], which one
   global preset cannot say; `CraneInternal`'s force restriction and borrowed orders,
   `crossedGrip`'s offset and `WingBending`'s own mesh are also fixtures.
 - **First M6 test.** The wing record's resolved pins equal `spreadPins` of
@@ -2434,7 +2434,7 @@ lists edits for.
 | C37 | `StepError` unchanged | 06 R-06-3 | `Steps.hs:58-62`, `Cli.hs:855-863` [code] | adopted | 06 |
 | C38 | Authored samples are states and figures without caption or arrows; checking adds `RunSettings.macroChecks` interior poses | 06 §2; 03 A-6 | v2 D9 ties evidence to illustration | adopted-modified | 02, 05, 06 |
 | C39 | `NoDifference` without the "released hold" clause | 07 note | rigid control 1.39e-11 / 1.44e-27 [research] | adopted | 07 |
-| C40 | Controls the vocabulary cannot name stay fixtures | 07 control table | `CraneRoot.hs:88`, `CraneBody.hs:70` [code] | adopted | 07 |
+| C40 | Controls the vocabulary cannot name stay fixtures | 07 control table | `CraneRoot.hs:88`, `CraneBody.hs:80` [code] | adopted | 07 |
 | C41 | `refine REGION INTEGER` and a `rest` line in the crane settle | 07 note under the crane block | control 2 needs a region; R-07-19 | adopted | 04, 07 |
 | C42 | 07's proposed rules R-07-10, -13, -16, -17, -19, -22, -29 | 07 "Points this file adds" | each against v2 D14 | adopted | 07 |
 | C43 | Silhouettes from edges of any assignment; #104's done-when names `--view front` | 08 R-08-17, "#104, amended" | 27 silhouettes front, 0 iso [py]; 40 `B`, 280 `F` [jq]; #104 text [ran] | adopted | 01, 08 |

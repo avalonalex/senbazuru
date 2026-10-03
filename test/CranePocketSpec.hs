@@ -6,6 +6,7 @@ module CranePocketSpec (spec) where
 import Control.Monad (forM_, when)
 import CranePocket
 import CranePocketGallery (pocketSvg)
+import CraneWing (CraneWing (..), buildCraneWingAt, wingRoot)
 import Data.Either (isLeft)
 import Data.List (sort)
 import Data.Map.Strict qualified as M
@@ -70,6 +71,18 @@ spec = beforeAll load $ describe "the crane pocket material map" $ do
       pocketSvg True (Just r) study `shouldSatisfy` T.isInfixOf "Folded x-ray"
     remapped <- right (mapCranePocket sheet)
     materialFrame (pocketSurface remapped) `shouldBe` materialFrame sheet
+
+  -- Owner decision 37: the map checks the crane's structure, not the 1/4
+  -- fixture's counts, so it also maps the crane hinged at its wing's root,
+  -- where the hinge cuts more panels and has more segments.
+  it "maps the crane with the wing hinged at its root" $ \_ -> do
+    source <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= right)
+    hinge <- right (wingRoot source)
+    crane <- right (buildCraneWingAt hinge source)
+    study <- right (surfaceFromFolded (craneStart crane)) >>= right . mapCranePocket
+    sort (concatMap (regionFaces study) regions) `shouldBe` map FaceId [0 .. 83]
+    length [e | e <- pocketEdges study, pocketRole e == AuthoredRoot] `shouldBe` 8
+    length (pocketCoreBoundary study) `shouldBe` 16
 
 load :: IO PocketMap
 load = loadFoldFile "examples/crane.fold" >>= right >>= right . buildCranePocket . keyFrame

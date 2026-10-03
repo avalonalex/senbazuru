@@ -419,7 +419,10 @@ crane-internal drops contact forces in some controls.
 `CranePocket` maps the same unchanged crane into five connected material
 regions and classifies candidate opening creases. It includes flat edge
 incidence as well as physical crease features, because those edges also connect
-the regions. `CranePocketGallery` draws original-sheet and folded x-ray maps
+the regions. `mapCranePocket` checks the crane's structure rather than one
+fixture's counts, so it maps the crane with the wing hinged at y = 1/4 or at
+its root; `buildCranePocket`, the 1/4 map whose panel ids the body galleries
+take on trust, still refuses any other counts. `CranePocketGallery` draws original-sheet and folded x-ray maps
 through `Diagram` and exports the unmodified FOLD/GLB. It adds no cavity,
 pressure or new motion solver; see [the pocket map](notes/crane-pocket-map.md).
 `BodyPatch` extracts the mapped body core and both adjoining wing collars as a

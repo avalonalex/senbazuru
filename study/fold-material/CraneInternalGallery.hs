@@ -24,7 +24,7 @@ import FoldBending
 import FoldContact (ContactRow (..))
 import FoldMaterial (meshEdges)
 import FoldRelaxation
-import RigidBase (BaseCheck (..), BaseSearch (..), Solve, checkBase, checkPassed, searchBase)
+import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), Solve, baseReport, checkBase, checkPassed, searchBase, takeBase)
 import Senbazuru.Diagram
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -99,12 +99,6 @@ prepareInternal = do
 solveWith :: Settings -> InternalStudy -> Solve TrialDiagnostics
 solveWith settings study root = solveInternal settings study {internalRoot = root}
 
--- | How a trial's base angle was set: by its own search, by another
--- control's search and checked 1° either side, or taken without the check
--- by a continuation and by the profiling probe, which make no choice of
--- their own.
-data Base = Searched | Checked !(BaseCheck TrialDiagnostics) | Taken
-
 runInternalTrial :: Prepared -> String -> FilePath -> IO Value
 runInternalTrial prepared key destination = do
   let named = controls ++ [("original-short", "Original patch · short profiling probe", OriginalPatch)]
@@ -143,9 +137,8 @@ runInternalTrial prepared key destination = do
       pure (turned, r, a, Taken)
     _
       | key == "original-short" -> do
-          let turned = turnFrom initial
-          (r, a) <- checked (solveInternal settings turned)
-          pure (turned, r, a, Taken)
+          (turned, r, a) <- checked (takeBase (solveWith settings unturned) theta (internalRoot unturned))
+          pure (unturned {internalRoot = turned}, r, a, Taken)
       | otherwise -> do
           check <- checked (checkBase (solveWith settings unturned) theta (internalRoot unturned))
           pure (unturned {internalRoot = checkStudy check}, checkResult check, checkExtra check, Checked check)
@@ -202,16 +195,6 @@ runInternalTrial prepared key destination = do
   putStrLn (key ++ ": accepted " ++ show accepted ++ ", converged " ++ show (converged result) ++ ", length " ++ show (maxLengthError mesh) ++ ", blocked " ++ show (blockedStages audit))
   hFlush stdout
   pure report
-
--- | How the trial's base angle was set, with the evidence for it.
-baseReport :: BaseSearch a -> Base -> Value
-baseReport search = \case
-  Searched -> object ["set" .= ("searched" :: Text), "tried" .= [angle d e c | (d, e, c) <- baseTried search]]
-  Checked check -> object ["set" .= ("checked" :: Text), "energy" .= checkEnergy check, "passed" .= checkPassed check, "sides" .= [angle d e c | (d, e, c) <- checkSides check]]
-  Taken -> object ["set" .= ("taken" :: Text)]
-  where
-    angle :: Double -> Double -> Bool -> Value
-    angle degrees energy settledThere = object ["degrees" .= degrees, "energy" .= energy, "converged" .= settledThere]
 
 exportMesh :: CraneSpread -> FilePath -> Text -> MaterialMesh -> IO ()
 exportMesh fixture path title mesh = do
