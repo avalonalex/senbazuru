@@ -607,7 +607,7 @@ the end ([`Query.hs:160-165`](../src/Senbazuru/Fold/Query.hs#L160-L165),
 - **R-05-23.** Two texts change in the same PR. The pinned sentence
   ([`ThroughLayersSpec.hs:271-275`](../test/Senbazuru/Origami/ThroughLayersSpec.hs#L271-L275))
   becomes "the end at (0.2, 0.2) is inside face 0 …". The example in
-  [`usage.md:889-895`](../docs/usage.md), a separate run on
+  [`usage.md:896-902`](../docs/usage.md), a separate run on
   `bird-base.cp`, becomes "the end at (-200.0, 150.0) is inside face 12 …".
   Only the first is pinned by a test. The digits are `coord`'s ("gives back
   `0.01` and `3.0`").

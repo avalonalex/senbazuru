@@ -13,24 +13,52 @@ Run this static experiment from the repository root:
 stack run senbazuru-material-study -- --crane-spreading build/fold-material
 ```
 
-Hold every body vertex at its original position. Hold the first eighth of the
-wing at 30 degrees from its resting plane, and the final eighth at 50 degrees.
-Place those grips by integrating a circular arc through the middle three
-quarters; this supplies an initial guess and exact grip positions. The middle
-is then free to relax under material-length, crease-angle, panel-bending and
-contact terms. The circular arc is not imposed on its free vertices.
+Hold every body vertex at its original position. The wing turns from its
+root, the line from the base of the neck to the base of the tail, folded
+y = 0.37585, which the study finds by rule ([flap-roots.md](flap-roots.md);
+owner decisions 34 and 35). Hold the wing's base, between its widest point and
+the root, at 30 degrees from its resting plane, and the final eighth of its
+length at 50 degrees. Place those grips by integrating a circular arc through
+the paper between; this supplies an initial guess and exact grip positions.
+The paper between is then free to relax under material-length, crease-angle,
+panel-bending and contact terms. The circular arc is not imposed on its free
+vertices.
 
-Only the four wing panels receive dense subdivision. Adjacent triangles split
+Only the wing's panels receive dense subdivision. Adjacent triangles split
 where they share a newly divided edge, so both sides use the same midpoint id.
-This gives 392 triangles with eight spans per wing panel, and 1,192 with sixteen.
-Uniformly dividing the whole crane would require 7,168 and 28,672 triangles.
-The body is held, so most of that uniform subdivision would add cost without
-adding any freedom. Original creases keep their source edge ids; subdivision
-edges are joins, not additional material creases. See the
-[glossary](../glossary.md) for material coordinates, panels and layer order.
+At the root the crease cuts all eight of the wing's faces and the base gets
+panels of its own, so the wing has more panels than at the studies' earlier
+hinge, y = 1/4: 1,188 triangles with eight spans per wing panel, and 4,324 with
+sixteen. The body is held, so dividing it would add cost without adding
+freedom. Original creases keep their source edge ids; subdivision edges are
+joins, not additional material creases. See the [glossary](../glossary.md)
+for material coordinates, panels and layer order.
 
-A run on 2026-09-13 produced these measurements. Length errors are relative to
-the original material; CPU times measure the solve, excluding export.
+A run on 2026-10-02 at the root produced these measurements. Length errors are
+relative to the original material; CPU times measure the solve, excluding
+export.
+
+| Control | Triangles | Maximum edge error | Maximum crease-angle error | Panel bending energy | Solve CPU seconds |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Rigid 30-degree grip | 1,188 | 1.39e-11 | 4.34e-13 rad | 2.27e-25 | 1.07 |
+| Curved 50-degree grip | 1,188 | 1.81e-7 | 8.31e-7 rad | 0.0131812 | 9.75 |
+| Curved, finer mesh | 4,324 | 2.22e-7 | 4.54e-6 rad | 0.0133058 | 1,004, **not converged** |
+
+The rigid and curved endpoints are accepted. They keep one material component,
+84 source panels, 153 source edges and 978 source orders, and their body and
+grip position errors are exactly zero. The curved wing's most compressed and
+stretched directions have strains of -4.42e-7 and 2.84e-7.
+
+The finer mesh does not converge: its solve ran 43 iterations without passing
+its stopping test. With 40 and 100 iterations allowed per penalty stage, it
+ran 63 and 123, and its energy and errors stopped changing, so the shape is
+settled and the stopping test is what fails
+([#469](https://github.com/avalonalex/senbazuru/issues/469)). It passes every
+contact check, but an unconverged solve is not accepted, so the page has no
+two-resolution comparison at the root.
+
+At y = 1/4, measured on 2026-09-13, the wing had four panels: 392 triangles
+with eight spans and 1,192 with sixteen.
 
 | Control | Triangles | Maximum edge error | Maximum crease-angle error | Panel bending energy | Solve CPU seconds |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -38,15 +66,13 @@ the original material; CPU times measure the solve, excluding export.
 | Curved 50-degree grip | 392 | 2.92e-7 | 2.37e-7 rad | 0.0121775 | 5.76 |
 | Curved, finer mesh | 1,192 | 3.48e-7 | 3.95e-6 rad | 0.0126582 | 64.30 |
 
-All three endpoints retain one material component, 76 source panels, 138
-source edges and 902 source orders. Body and grip position errors are exactly
-zero. Independent checks examine all triangle pairs, including within each
-bending panel, and all retained orders. The finer result's most compressed and
-stretched directions have strains of -8.82e-7 and 6.38e-7. Matching material
-points move at most 0.000167 between the two curved meshes; bending energy
-changes by 3.95%. Two resolutions give a useful comparison, not evidence that
-the answer has stopped depending on the mesh. Stiffness is illustrative rather
-than calibrated to a paper sample.
+All three endpoints there retained one material component, 76 source panels,
+138 source edges and 902 source orders. The finer result's most compressed and
+stretched directions had strains of -8.82e-7 and 6.38e-7. Matching material
+points moved at most 0.000167 between the two curved meshes, and bending
+energy changed by 3.95%. Two resolutions give a useful comparison, not
+evidence that the answer has stopped depending on the mesh. Stiffness is
+illustrative rather than calibrated to a paper sample.
 
 The independent contact check initially flagged narrow overlaps at the wing's
 central seam. Their widths were about 2.5e-9 model units: an area-only test had
@@ -63,8 +89,9 @@ This export margin is separate from the solver and endpoint contact tolerance.
 
 The incompatible control pushes only independent upper-grip vertices 0.005
 units below their lower partners. After its small solve budget, the body and
-grips remain exact, but the layer order is still reversed by 0.005 and the
-maximum edge error is 12.4%. This endpoint stays a diagnostic FOLD file and
+grips remain exact, but 18 source orders are still reversed and the maximum
+edge error is 9.59% at the root (at y = 1/4, the order was still reversed by
+0.005, with 12.4%). This endpoint stays a diagnostic FOLD file and
 never appears as an accepted model. A numerical solve cannot rescue an
 incompatible exact grip by silently moving it.
 

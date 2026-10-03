@@ -42,7 +42,7 @@ ids or owners.
 | Crease and panel springs `FoldBending.buildSurfaceHinges` / `buildSelectedSurfaceHinges` / `buildPanelHinges` (FoldBending.hs:146-191) | `Bending{creaseStiffness,panelStiffness}`, refinement level, `Surface V2`, `Map EdgeId Double` rest angles | `RefinedSurface`, `[Hinge]` | General; `buildHinges` (121-136) is fixture (`u = 0.5` test) | Stiffer panels bend less but miss crease targets more: at B=5, creases reach 179.30-179.71° for a 170° target (crease-and-panel-energy.md:71-78) | not recorded |
 | Staged elastic solve `relaxBending` / `relaxHinges` (FoldRelaxation.hs:227-242) | `Settings`, `[Hinge]`, mesh | `Relaxation` + `EquilibriumCheck` | `relaxHinges` general, no contact force; `relaxBending` uses packet contact | Penalty stages 1e2..1e8, contact weight 100x, damping 1e-3, full-step movement <= 1e-7 required (FoldRelaxation.hs:491, 584-586, 645) | - |
 | Exact grips `relaxPinnedHinges` (FoldRelaxation.hs:244-251) | `IntMap V3` pins keyed by **refined mesh vertex id** | `Relaxation` | General | Held wing at 8/16/24 divisions all converge; 16->24 changes positions 0.000418, energy 1.7% (held-wing-bending.md:30-42); known strip recovered within 1.3e-7 (44-50) | - |
-| Held contact `relaxPinnedContact` + `SurfaceContact.prepareContact` + `SparseSolve` factor (FoldRelaxation.hs:253-261, 609) | pins, hinges, `OrderedContact` (clearance, direction, lower/upper `FaceId` pairs, owner per triangle) | `Relaxation` | General in type; **one fixed direction** and **supplied orders** | Two layers 8/16/24 divisions converge (coupled-touching-layer-solve.md:47-59). Crane wing with body held passes at 392 and 1,192 triangles (spreading-connected-wing.md:35-46). Releasing four body panels: unconverged after 118 iterations, edge error 3.75e-5, angle error 0.0187 rad, 49 crossing pairs (body-angle-preferences.md:73-80; wing-root-holds.md:73-79) | 0.83/6.75/35.71 CPU s (two layers); 0.47/5.76/64.30 s (crane wing); ~9 CPU min each failed body trial (body-angle-preferences.md:80); 549 and 468 s internal diagnostics (internal-crease-diagnostic.md:105-106) |
+| Held contact `relaxPinnedContact` + `SurfaceContact.prepareContact` + `SparseSolve` factor (FoldRelaxation.hs:253-261, 609) | pins, hinges, `OrderedContact` (clearance, direction, lower/upper `FaceId` pairs, owner per triangle) | `Relaxation` | General in type; **one fixed direction** and **supplied orders** | Two layers 8/16/24 divisions converge (coupled-touching-layer-solve.md:47-59). Crane wing with body held passes at 392 and 1,192 triangles (spreading-connected-wing.md:63-73). Releasing four body panels: unconverged after 118 iterations, edge error 3.75e-5, angle error 0.0187 rad, 49 crossing pairs (body-angle-preferences.md:73-80; wing-root-holds.md:73-79) | 0.83/6.75/35.71 CPU s (two layers); 0.47/5.76/64.30 s (crane wing); ~9 CPU min each failed body trial (body-angle-preferences.md:80); 549 and 468 s internal diagnostics (internal-crease-diagnostic.md:105-106) |
 | Audit and continuation `diagnosePinnedContact` / `continuePinnedContact` (FoldRelaxation.hs:263-278) | same | + `TrialDiagnostics` | General | 80 more final-stage iterations: edge error 3.75e-5 -> 2.07e-5 but angle error 0.0187 -> 0.0194; still invalid (internal-crease-diagnostic.md:40-46) | +452 CPU s |
 | Declared / discovered panel order `relaxSurfaceContact`, `relaxDiscoveredContact` (FoldRelaxation.hs:280-289; ContactDiscovery.hs:1-24) | orders, or a **separated reference pose** | `Relaxation` | General, but discovery refuses any pair not ordered in the reference (ContactDiscovery.hs:208-216) | Small controls only | - |
 | Local triangle contact and growing history `relaxLocalContact`, `relaxLocalHistory` (FoldRelaxation.hs:291-306; LocalContactDiscovery.hs:1-32) | `LocalReference` (clearance, search distance, axis) | `Relaxation`, learned reference | General; history only from accepted steps | Small curl fixtures | - |
@@ -52,7 +52,7 @@ ids or owners.
 | Both panels moving `CreasePairContact` + `CoupledCrease` / `UnequalCrease` | owners must be `FaceId 0`/`1` (CreasePairContact.hs:62), facing preserved (76), all shared crease vertices held (CoupledCrease.hs:75), repair only along z | `InequalityResult` | **Fixture** | Symmetric: gap 0, edge error 7.39e-7/3.22e-6 (coupled-crease-contact.md:63-71). Unequal preference: max gap 7.271e-7 at 32 triangles becomes 0.007009 at 64 (unequal-crease-controls.md:56-61, 87-93) | - |
 | Exact prescribed references `ClosedCrease`, `FoldMaterial` rounded bends | subdivision / `FoldCase` | meshes | **Fixture**, "not equilibria or folding paths" (ClosedCrease.hs:12; FoldMaterial.hs:18-19) | Rounded double fold stretches 200% in the upper band, +4.71% area (two-bends-need-more-than-radii.md:53-60) | - |
 | Measures `principalStrains`, `maxLengthError` (FoldRelaxation.hs:189-217); `meshEdges`, `edgeStrains`, `componentCount` (FoldMaterial.hs:179-217) | mesh | numbers | General (but live in a fixture module) | - | - |
-| Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:218-265); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:104) | - |
+| Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:218-265); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:109) | - |
 | Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:212-216; CraneRoot.hs:143-147; CraneBody.hs:101-106) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
 
 **2. CI already pays for these solves.** The test suite compiles
@@ -131,7 +131,7 @@ error, then an adapter to `Surface V2` for the renderers.
 
 **6. A rigid state is already a settled state.** The rigid 30° crane control
 solves to edge error 1.39e-11 and panel energy 1.44e-27
-(spreading-connected-wing.md:37). With holds at rigid positions and rest
+(spreading-connected-wing.md:65). With holds at rigid positions and rest
 angles equal to achieved angles, nothing moves. Visible bending appeared only
 when a grip was turned 20° further. The PRDs cannot promise that "settle"
 makes an unaltered rigid step look more realistic.
@@ -171,7 +171,7 @@ also expose separate fold and panel stiffness parameters, with their ratio
 controlling how rigid the sheet behaves, and note the triangulation diagonal
 choice matters. Our panels are fan-triangulated from the first corner
 (Surface.hs `fan`), a different choice. Measured refinement effects: 1.7-3.95%
-energy (held-wing-bending.md:40-41; spreading-connected-wing.md:47-48), 0.83°
+energy (held-wing-bending.md:40-41; spreading-connected-wing.md:73-74), 0.83°
 root angle (wing-root-holds.md:44-47), and a qualitative change from touching
 to 0.007 separation (unequal-crease-controls.md:87-93).
 
@@ -233,7 +233,7 @@ machine; the notes themselves disclaim them as guarantees
 still improving (internal-crease-diagnostic.md:40-46); blocked line search
 (rejected-bending-trials.md:52-58); incompatible holds that a successful
 linear solve cannot rescue (coupled-touching-layer-solve.md:71-75;
-spreading-connected-wing.md:64-69); and converged-but-invalid, e.g.
+spreading-connected-wing.md:90-96); and converged-but-invalid, e.g.
 contact-off endpoints that converge while crossing (unequal-crease-controls.md:66-70).
 "Converged" is necessary, not sufficient.
 
@@ -249,7 +249,7 @@ big, fixed by #459.
 **16. The study's own failure policy.** Failed solves are published only as
 labelled diagnostics; only accepted endpoints enter 3D selectors; positions
 are never snapped and grips never silently moved to manufacture success
-(spreading-connected-wing.md:64-69; body-angle-preferences.md:63-65;
+(spreading-connected-wing.md:90-96; body-angle-preferences.md:63-65;
 wing-root-holds.md:81-88; WingLayers.hs:99-101).
 
 ### Graduation (question e)

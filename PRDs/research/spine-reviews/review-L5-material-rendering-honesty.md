@@ -28,7 +28,7 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
 - **The study already draws these meshes through the same path.** The crane
   spread and crane root SVGs go through
   `stepPage` → `creasePatternFrom` → `layerOrderFor` → `visibleForm` → (`PaperInTheAir`)
-  → `projectedForm`. The call is at `CraneSpreadGallery.hs:125-130`, and
+  → `projectedForm`. The call is at `CraneSpreadGallery.hs:132-141`, and
   `CraneRootGallery.hs:104` reuses `spreadSvg`. The dispatch is
   `CreasePattern.hs:215-240`.
 - **`Projected` declined on them.** When `projectedForm` returns `Nothing`, the
@@ -531,7 +531,7 @@ travel with a screenshot.
 - Spine §3 table and "Order constraints" (lines 626-627).
 - §5 crane example.
 - D16 migration bullet.
-- `CraneSpreadGallery.hs:103-105` (accepted spread GLB exported today).
+- `CraneSpreadGallery.hs:108-110` (accepted spread GLB exported today).
 - L5-2 (A1 is invisible on rigid panels).
 
 **Proposal.** Order constraints become:
@@ -786,7 +786,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
 - **Refined triangles are fine for glTF.** `PaperNotPlanar` is judged per face
   (`PaperMesh.hs:99-105`), so refined triangles always pass. The visible glTF
   scene of the 392-triangle crane spread is exported today
-  (`CraneSpreadGallery.hs:103-105`). Its failure mode is #206's
+  (`CraneSpreadGallery.hs:108-110`). Its failure mode is #206's
   `ImpossibleStacking` on 4,312 triangles, not planarity.
 - **Triangulation edges already vanish from SVG.** `strokeFor` returns `Nothing`
   for `Join` (`Style.hs:280-281`), and `surfaceFeatures` never lists mesh

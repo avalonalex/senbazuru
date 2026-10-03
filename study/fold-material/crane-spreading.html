@@ -33,8 +33,10 @@
     exactly where they started. These are separately checked static shapes.</p>
   <img src="crane-spreading/comparison.svg" alt="The same crane with a flat wing and a gently curved wing, from one camera and at the same scale">
   <div class="captions"><span>Flat wing · root and grip at 30°</span><span>Curved wing · root 30°, grip 50°</span></div>
-  <p class="note">The first and last eighth of the wing's length are held.
-    Its middle is free to bend. Existing crease lines remain sharp, and the
+  <p class="note">The wing turns from its root, the line from the base of the
+    neck to the base of the tail. Its base, between its widest point and the
+    root, and the last eighth of its length are held.
+    The paper between is free to bend. Existing crease lines remain sharp, and the
     connection to the body uses the same material vertices. Coincident points
     on separate layers remain independent: touching does not glue them together.</p>
 </section>
@@ -77,11 +79,13 @@
 </section>
 <section>
   <h2>Does a finer wing agree?</h2>
-  <p>Only the four material panels forming this wing receive dense refinement.
+  <p>Only the material panels forming this wing receive dense refinement.
     Neighbours split where they share a newly divided edge, keeping the sheet
     connected. The held regions and stiffness stay the same in both solves.</p>
-  <img src="crane-spreading/refinement.svg" alt="The curved crane wing solved with eight and sixteen spans per wing panel">
+  <div id="refinement-figure">
+  <img id="refinement-image" alt="The curved crane wing solved with eight and sixteen spans per wing panel">
   <div class="captions"><span>8 spans per wing panel</span><span>16 spans per wing panel</span></div>
+  </div>
   <p id="refinement"></p>
   <p>Bending energy measures this model's resistance to curvature. The stiffness
     is illustrative, not calibrated to a particular paper. Two resolutions
@@ -113,6 +117,19 @@ for (const run of data.runs) {
 document.querySelector('#screen-caption').textContent = paperScreen.caption(data.screenThresholds);
 paperScreen.show(document.querySelector('#screen'), data.runs, run => run.accepted ? run.title : run.title + ' · not accepted', data.screenThresholds);
 const change = data.refinement[0];
-document.querySelector('#refinement').textContent = 'Bending energy changes by ' + percent(change.relativeEnergyChange) + '. Position differences at shared material points are included in the measurements download.';
+const fine = data.runs.find(run => run.id === 'fine');
+if (change) {
+  document.querySelector('#refinement-image').src = 'crane-spreading/refinement.svg';
+  document.querySelector('#refinement').textContent = 'Bending energy changes by ' + percent(change.relativeEnergyChange) + '. Position differences at shared material points are included in the measurements download.';
+} else {
+  // The same checks spreadAccepted makes, so the page names the one that failed.
+  document.querySelector('#refinement-figure').hidden = true;
+  const failing = fine ? [!fine.converged && 'convergence', !fine.contact.passed && 'contact', fine.maxRelativeEdgeError > 1e-5 && 'edge length',
+    fine.maxCreaseAngleErrorRadians >= 1e-5 && 'crease angles', fine.heldPositionError > 0 && 'held positions'].filter(Boolean) : [];
+  document.querySelector('#refinement').textContent = !fine ? 'The finer mesh was not solved, so there is no comparison.'
+    : 'The finer mesh is not accepted. It fails the ' + failing.join(', ') + (failing.length > 1 ? ' checks' : ' check') + ' after ' + fine.iterations + ' iterations, with edge error ' +
+      percent(fine.maxRelativeEdgeError) + ' and contact ' + (fine.contact.passed ? 'passing' : 'failing') +
+      ', so there is no comparison at this hinge. Its shape is kept as a diagnostic FOLD; #469 tracks its convergence.';
+}
 </script>
 </html>

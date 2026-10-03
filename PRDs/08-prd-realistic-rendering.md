@@ -73,7 +73,7 @@ which mark two triangles as one piece of paper
 ([`CraneSpread.hs:243-247`](../study/fold-material/CraneSpread.hs#L243-L247),
 [`UncreasedSurface.hs:1-10`](../study/fold-material/UncreasedSurface.hs#L1-L10)),
 exported through this path
-([`CraneSpreadGallery.hs:103-105`](../study/fold-material/CraneSpreadGallery.hs#L103-L105),
+([`CraneSpreadGallery.hs:108-110`](../study/fold-material/CraneSpreadGallery.hs#L108-L110),
 [`WingBendingGallery.hs:85-87`](../study/fold-material/WingBendingGallery.hs#L85-L87)),
 so a curved wing shows its facets. The study's WebGL viewer instead averages
 normals "within a panel only"
@@ -112,7 +112,7 @@ outline path also retains some buried crease lines here"
 `ImpossibleStacking` on an accepted 4,312-triangle crane-root mesh. Whether the
 crane-spread meshes (the crane's wing bent open by the study's solver with every
 body vertex held, 392 and 1,192 triangles,
-[`spreading-connected-wing.md:25`](../docs/notes/spreading-connected-wing.md))
+[`spreading-connected-wing.md:60-61`](../docs/notes/spreading-connected-wing.md))
 reach the painter is recorded nowhere. Today's nearest "wireframe", `--no-fill`,
 strokes buried creases too ([C](research/C-renderers-cli-formats.md) "(a) What
 each backend consumes, and the layering rule", finding 3).
@@ -533,7 +533,7 @@ curl -sS https://raw.githubusercontent.com/KhronosGroup/glTF/c18432787e6d545a121
 
 **Demonstration.** M7a ships on existing meshes: the crane-spread curved
 (392 triangles) and fine (1,192) wings, solved in 5.76 and 64.30 CPU seconds
-([`spreading-connected-wing.md:37-39`](../docs/notes/spreading-connected-wing.md)),
+([`spreading-connected-wing.md:65-67`](../docs/notes/spreading-connected-wing.md)),
 and the wing-bending pieces. Its golden, `test/golden/bent-strip-smooth.glb`, uses
 the analytic bent strip already pinned as `bent-strip.svg`, which needs no solve
 ([`WingBendingSpec.hs:94-100`](../test/WingBendingSpec.hs#L94-L100)).

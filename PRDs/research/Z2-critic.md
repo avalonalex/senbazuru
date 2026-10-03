@@ -123,7 +123,7 @@ crane, which may be the wrong reference.
 4. **Valid shape against invalid shape, through the same look.** All
    presentation experiments used More tucked: H5 findings 2–4 and 22, H6 all,
    H7 finding 14. The accepted wing spread with the body held (392 and 1,192
-   triangles, `spreading-connected-wing.md:35-39` [note]) and the #394 body
+   triangles, `spreading-connected-wing.md:63-67` [note]) and the #394 body
    specimen (strain 0.0018%, H1 finding 5) are the only near-paper non-flat
    shapes. No note shows what H5's recipe or H6's restyle make of them.
 5. **No physical ground truth.** Every note that asks whether More tucked is
