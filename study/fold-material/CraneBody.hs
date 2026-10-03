@@ -1,7 +1,8 @@
 -- | Test angle preferences on the same small body patch as CraneRoot.
--- The four panels beside one wing root can move; every vertex shared with
--- other panels and the original tip grip remain held. The pocket map supplies
--- candidate opening creases, of which only two touch this released patch.
+-- The panels beside one wing root can move, four with the hinge at y = 1/4
+-- and eight at the wing's root; every vertex shared with other panels and the
+-- original tip grip remain held. The pocket map supplies candidate opening
+-- creases, of which only two touch this released patch.
 -- See docs/glossary.md for panels, material coordinates and rest angles.
 --
 -- The old strict angle limit was an acceptance gate, not a solver constraint.
@@ -14,6 +15,7 @@ module CraneBody
     CraneBody (..),
     BodyAngle (..),
     craneBody,
+    craneBodyAt,
     bodyAngles,
     bodyAngleErrors,
     bodyAccepted,
@@ -24,6 +26,7 @@ import Control.Monad (unless)
 import CranePocket
 import CraneRoot
 import CraneSpread
+import CraneWing (studyHinge)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.Map.Strict qualified as M
@@ -58,9 +61,16 @@ data BodyAngle = BodyAngle
   }
   deriving stock (Eq, Show)
 
+-- | The study with the wing hinged at y = 1/4.
 craneBody :: Frame -> Int -> BodyControl -> Either SpreadError CraneBody
-craneBody source level control = do
-  original <- craneRoot source level FreeBody
+craneBody = craneBodyAt studyHinge
+
+-- | The study with the wing hinged at @hingeY@. The pocket map supplies the
+-- opening creases beside the released patch wherever the hinge is (owner
+-- decision 37): 21 and 46 at y = 1/4, 22 and 49 at the wing's root.
+craneBodyAt :: Double -> Frame -> Int -> BodyControl -> Either SpreadError CraneBody
+craneBodyAt hingeY source level control = do
+  original <- craneRootAt hingeY source level FreeBody
   let fixture = rootSpread original
   atlas <- first (SpreadError . explain) (mapCranePocket (spreadSource fixture))
   let selected = S.fromList [creaseId (pocketCrease edge) | edge <- pocketEdges atlas, pocketRole edge == CandidateOpening, any (`S.member` rootNeighbours original) (pocketOwners edge)]

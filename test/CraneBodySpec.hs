@@ -8,6 +8,7 @@ import Control.Monad (forM_)
 import CraneBody
 import CraneRoot
 import CraneSpread
+import CraneWing (wingRoot)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
 import FoldBending
@@ -69,6 +70,16 @@ spec = parallel $ beforeAll load $ describe "selected crane body angle preferenc
     right (bodyAccepted changedSelected result mesh) `shouldReturn` (False, True)
     right (bodyAccepted changedOther result mesh) `shouldReturn` (False, False)
     right (bodyAccepted changedSelected result {converged = False} mesh) `shouldReturn` (False, False)
+
+  -- Owner decision 37: the pocket map gives the opening creases beside the
+  -- released patch wherever the hinge is. At the root the patch is eight
+  -- panels, and the two creases are 22 and 49, both valleys like 21 and 46.
+  it "selects the two opening creases beside the patch at the wing's root" $ \_ -> do
+    source <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= right)
+    hinge <- right (wingRoot source)
+    study <- right (craneBodyAt hinge source 3 OriginalPreferences)
+    bodySelected study `shouldBe` S.fromList (map EdgeId [22, 49])
+    rootNeighbours (bodyRoot study) `shouldBe` S.fromList (map FaceId [9, 10, 25, 26, 31, 44, 45, 51])
 
   it "does not let the selected policy hide an incompatible touching-layer grip" $ \studies -> do
     let study = originalBody studies

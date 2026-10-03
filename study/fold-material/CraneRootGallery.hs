@@ -34,7 +34,7 @@ import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
 import Numeric (showFFloat)
-import RigidBase (BaseSearch (..), searchBase)
+import RigidBase (BaseSearch (..), searchBase, spreadSolve)
 import ScreenReport (Figure (..), Screen (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -89,7 +89,7 @@ writeCraneRoot destination = do
     (study, result, mesh, search) <-
       if hasBase
         then do
-          found <- checked (searchBase (\root -> (,()) <$> solveSpread settings (rootSpread root)) posed)
+          found <- checked (searchBase (spreadSolve settings) posed)
           pure (baseStudy found, baseResult found, baseMesh found, Just found)
         else do
           r <- checked (solveSpread settings (rootSpread posed))

@@ -53,7 +53,7 @@ ids or owners.
 | Exact prescribed references `ClosedCrease`, `FoldMaterial` rounded bends | subdivision / `FoldCase` | meshes | **Fixture**, "not equilibria or folding paths" (ClosedCrease.hs:12; FoldMaterial.hs:18-19) | Rounded double fold stretches 200% in the upper band, +4.71% area (two-bends-need-more-than-radii.md:53-60) | - |
 | Measures `principalStrains`, `maxLengthError` (FoldRelaxation.hs:189-217); `meshEdges`, `edgeStrains`, `componentCount` (FoldMaterial.hs:179-217) | mesh | numbers | General (but live in a fixture module) | - | - |
 | Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:218-265); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:109) | - |
-| Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:212-216; CraneRoot.hs:143-147; CraneBody.hs:101-106) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
+| Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:212-216; CraneRoot.hs:143-147; CraneBody.hs:111-116) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
 
 **2. CI already pays for these solves.** The test suite compiles
 `study/fold-material` (senbazuru.cabal:190-193) and runs short crane solves

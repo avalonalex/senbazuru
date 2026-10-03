@@ -22,6 +22,7 @@
 -- different problem. So both take the solve as a function ('Solve').
 module RigidBase
   ( Solve,
+    spreadSolve,
     BaseSearch (..),
     searchBase,
     goldenSection,
@@ -29,13 +30,17 @@ module RigidBase
     checkBase,
     checkPassed,
     sidesPass,
+    Base (..),
+    baseReport,
   )
 where
 
 import Control.Monad (forM)
 import CraneRoot
 import CraneSpread
+import Data.Aeson (Value, object, (.=))
 import Data.Bifunctor (first)
+import Data.Text (Text)
 import FoldBending
 import FoldRelaxation
 import Senbazuru.Explain (explain)
@@ -46,6 +51,11 @@ import WingBending (finalMesh)
 -- already turned: the solver's result, and whatever else the gallery
 -- reports about the solve, such as crane-internal's refused corrections.
 type Solve a = CraneRoot -> Either SpreadError (Relaxation, a)
+
+-- | The ordinary solve, with every retained contact force, for a gallery
+-- that reports nothing else about it.
+spreadSolve :: Settings -> Solve ()
+spreadSolve settings root = (,()) <$> solveSpread settings (rootSpread root)
 
 -- | A released control whose base turns as one piece ('rigidBase'), held at
 -- the angle that leaves the paper, hinge included, the least bending energy.
@@ -118,6 +128,22 @@ checkPassed check = sidesPass (checkEnergy check) (checkSides check)
 -- counts like any other.
 sidesPass :: Double -> [(Double, Double, Bool)] -> Bool
 sidesPass energy = all (\(_, side, _) -> side >= energy)
+
+-- | How a trial's base angle was set: by its own search, by another
+-- control's search and checked 1° either side, or taken without the check
+-- by a trial that makes no choice of its own, such as a continuation or a
+-- control made to fail (owner decision 36).
+data Base a = Searched | Checked !(BaseCheck a) | Taken
+
+-- | How the trial's base angle was set, with the evidence for it.
+baseReport :: BaseSearch a -> Base a -> Value
+baseReport search = \case
+  Searched -> object ["set" .= ("searched" :: Text), "tried" .= [angle d e c | (d, e, c) <- baseTried search]]
+  Checked check -> object ["set" .= ("checked" :: Text), "energy" .= checkEnergy check, "passed" .= checkPassed check, "sides" .= [angle d e c | (d, e, c) <- checkSides check]]
+  Taken -> object ["set" .= ("taken" :: Text)]
+  where
+    angle :: Double -> Double -> Bool -> Value
+    angle degrees energy settledThere = object ["degrees" .= degrees, "energy" .= energy, "converged" .= settledThere]
 
 -- | Turn the control's base to @degrees@, starting from @start@, solve it,
 -- and measure the bending energy of the paper, hinge included.

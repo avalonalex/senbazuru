@@ -5,9 +5,12 @@
 -- movable flaps: their collars also share edges around the body core.
 -- See docs/glossary.md for panels, material coordinates and crease assignments.
 --
--- This fixture-specific map is deliberately made before a new solve. It keeps
+-- This crane-specific map is deliberately made before a new solve. It keeps
 -- the tail-tucked surface unchanged and names candidate angle freedoms without
--- certifying that they are sufficient. In particular, the core's perimeter is
+-- certifying that they are sufficient. It checks the crane's structure, not
+-- one fixture's counts of panels and edges, so the wing's hinge can move
+-- (owner decision 37): the hinge cuts different panels at y = 1/4 and at the
+-- wing's root, and it is the only authored crease. The core's perimeter is
 -- an INTERNAL material interface, not the rim of a hole. Four distinct sheet
 -- edge midpoints coincide at the underside in this flat state; they provide
 -- landmarks for a later opening measurement, not a closed pressure cavity.
@@ -115,9 +118,7 @@ mapCranePocket sheet = do
   -- region boundaries cross uncreased paper, which must stay connected.
   let incidence = M.fromListWith (++) [(edgeKey a b, [faceId f]) | f <- faces, (a, b) <- ringEdges (faceVertexIds f)]
       features = [(edge, M.findWithDefault [] (edgeKey (creaseFrom edge) (creaseTo edge)) incidence) | edge <- creases]
-  unless (length faces == 76 && length features == 138 && length points == 63) $
-    Left (PocketError "expected the 76-panel, 138-edge, 63-vertex crane wing fixture")
-  unless (M.size incidence == 138 && S.size (S.fromList [edgeKey (creaseFrom e) (creaseTo e) | e <- creases]) == 138 && all ((/= Cut) . creaseAssignment) creases) $
+  unless (M.size incidence == length features && S.size (S.fromList [edgeKey (creaseFrom e) (creaseTo e) | e <- creases]) == length features && all ((/= Cut) . creaseAssignment) creases) $
     Left (PocketError "the crane map needs every distinct material edge and no cuts")
   centre <- landmark (V2 0.5 0.5)
   tips <- traverse (\(r, p) -> (r,) <$> landmark p) [(WingA, V2 0 1), (WingB, V2 1 0), (Tail, V2 0 0), (NeckHead, V2 1 1)]
@@ -135,8 +136,8 @@ mapCranePocket sheet = do
       coreBoundary = [creaseId edge | (edge, owners) <- features, length (filter (`S.member` group BodyCore) owners) == 1]
   unless (all (\(edge, owners) -> length owners `elem` [1, 2] && (length owners == 1) == (creaseAssignment edge == Border)) features) $
     Left (PocketError "the crane needs one owner per paper edge and two per interior material edge")
-  unless (length [() | e <- edges, pocketRole e == AuthoredRoot] == 4 && S.size (group BodyCore) == 8) $
-    Left (PocketError "expected four authored root controls and eight central body panels")
+  unless (any ((== AuthoredRoot) . pocketRole) edges && S.size (group BodyCore) == 8) $
+    Left (PocketError "expected the wing's hinge as authored root controls and eight central body panels")
   mapM_ (\r -> unless (connected (group r) features) (Left (PocketError (regionName r <> " is not one edge-connected material region")))) regions
   mapM_ (\(r, v) -> unless (all (\f -> v `notElem` faceVertexIds f || S.member (faceId f) (group r)) faces) (Left (PocketError ("corner landmark leaves " <> regionName r)))) tips
   let result = PocketMap sheet membership edges centre tips lips coreBoundary

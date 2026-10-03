@@ -11,6 +11,7 @@ import CraneBody
 import CraneRoot
 import CraneSpread
 import CraneSpreadGallery (screenKeys, spreadFigure)
+import CraneWing (wingRoot)
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
@@ -25,6 +26,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
+import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), baseReport, checkBase, checkPassed, searchBase, spreadSolve)
 import ScreenReport (Figure (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -46,21 +48,54 @@ writeCraneBody destination = do
       controls = [("fixed", "Fixed body reference", OriginalPreferences), ("original", "Free patch · original springs", OriginalPreferences), ("weaker", "Free patch · selected springs × 0.1", WeakerBody), ("open", "Free patch · selected preference 170°", OpenBody), ("crossed", "Incompatible upper grip", WeakerBody)]
   createDirectoryIfMissing True output
   source <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= checked)
+  -- The wing hinges at its root, found by rule (owner decisions 34 and 35).
+  hinge <- either (die . T.unpack) pure (wingRoot source)
+  -- Every control turns the wing's base as one piece. The fixed control
+  -- holds the body and prefers a flat hinge, so it is the gallery's
+  -- flat-preference control: it searches for the base angle, and every other
+  -- control takes the angle it finds (owner decision 36).
+  fixedRoot <- checked (craneRootAt hinge source 3 FlatRoot)
+  putStrLn "Searching the fixed control's base angle"
+  hFlush stdout
+  searchStart <- getCPUTime
+  search <- checked (searchBase (spreadSolve (Settings 40 1e-5)) fixedRoot)
+  _ <- evaluate (baseDegrees search)
+  searchEnd <- getCPUTime
+  let theta = baseDegrees search
+  putStrLn ("Base angle " ++ show theta ++ " degrees")
   runs <- forM controls $ \(stem, title, control) -> do
-    base <- checked (craneBody source 3 control)
-    held <- if stem == "fixed" then checked (craneRoot source 3 FlatRoot) else pure (bodyRoot base)
-    let study = base {bodyRoot = if stem == "crossed" then held {rootSpread = crossedGrip (rootSpread held)} else held}
-        root = bodyRoot study
-        fixture = rootSpread root
+    base <- checked (craneBodyAt hinge source 3 control)
+    let held = bodyRoot base
+        posed
+          | stem == "fixed" = fixedRoot
+          | stem == "crossed" = held {rootSpread = crossedGrip (rootSpread held)}
+          | otherwise = held
         limit = if stem == "crossed" then 2 else 40
+        settings = Settings limit 1e-5
     putStrLn ("Solving " ++ stem)
     hFlush stdout
     start <- getCPUTime
-    result <- checked (solveSpread (Settings limit 1e-5) fixture)
+    -- The incompatible grip is made to fail, so it has no angle of its own
+    -- to check and takes the search's unchecked.
+    (root, result, set) <- case stem of
+      "fixed" -> pure (baseStudy search, baseResult search, Searched)
+      "crossed" -> do
+        let turned = rigidBase theta posed (spreadMesh (rootSpread posed))
+        r <- checked (solveSpread settings (rootSpread turned))
+        pure (turned, r, Taken)
+      _ -> do
+        check <- checked (checkBase (spreadSolve settings) theta posed)
+        pure (checkStudy check, checkResult check, Checked check)
+    let study = base {bodyRoot = root}
+        fixture = rootSpread root
     mesh <- checked (finalMesh result)
     _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
     settled <- getCPUTime
-    (strict, accepted) <- checked (bodyAccepted study result mesh)
+    (strictValid, valid) <- checked (bodyAccepted study result mesh)
+    let passed = case set of Checked check -> checkPassed check; _ -> True
+        strict = strictValid && passed
+        accepted = valid && passed
+        seconds = fromIntegral (settled - start) / 1e12 + (if stem == "fixed" then fromIntegral (searchEnd - searchStart) / 1e12 else 0)
     contact <- checked (spreadCheck fixture mesh)
     (selectedError, retainedError) <- checked (bodyAngleErrors study mesh)
     angles <- checked (bodyAngles study mesh)
@@ -102,7 +137,10 @@ writeCraneBody destination = do
             "creaseEnergy" .= creaseEnergy,
             "panelEnergy" .= panelEnergy,
             "contact" .= contact,
-            "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
+            "hingeY" .= hinge,
+            "baseDegrees" .= theta,
+            "base" .= baseReport search set,
+            "solveCpuSeconds" .= (seconds :: Double),
             "continuousMotionChecked" .= False
           ]
         report scale = object (measured ++ maybe [] screened scale)

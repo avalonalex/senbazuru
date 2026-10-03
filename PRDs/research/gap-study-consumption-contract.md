@@ -171,9 +171,9 @@ straight strip in the folded wing is several unrelated regions of the sheet.
 **11. The other crane fixtures add named creases by raw id.**
 
 - **`CraneBody`.** It takes the two `CandidateOpening` creases of the
-  `CranePocket` map that touch the root neighbours (`CraneBody.hs:66`,
-  `:74`). The map's regions and roles are hand-made fixture data
-  (`CranePocket.hs:1-13`, `:46-50`).
+  `CranePocket` map that touch the root neighbours (`CraneBody.hs:76`,
+  `:84`). The map's regions and roles are hand-made fixture data
+  (`CranePocket.hs:1-16`, `:49-53`).
 - **`CraneInternal`.** It hard-coded `EdgeId 26` and `51`; it now finds them by rule (`CraneInternal.hs:69`, owner decision 37).
   Its extra holds are the vertices of those creases' refined segments
   (`:62-64`). Tests pin 9 vertices per line, one of them already held, and
@@ -483,7 +483,7 @@ wing flap:
 | `HeldRoot` | `:85` | body ∪ root strip ∪ grip |
 | `ReleasedRoot` / `WeakerRoot` / `FlatRoot` | `:84-92` | body ∪ grip; spring changes on `hinge m` |
 | `FreeBody` | `:84-90` | distant ∪ grip; rest 0 on `hinge m` |
-| two opening creases | `CraneBody.hs:66` | `creaseLine` for each, named by material segment; `CranePocket` roles stay fixture data |
+| two opening creases | `CraneBody.hs:76` | `creaseLine` for each, named by material segment; `CranePocket` roles stay fixture data |
 | internal crease lines 26, 51 | `CraneInternal.hs:69`, `:77-79` | `creaseLine seg26 ∪ creaseLine seg51` |
 | crossed upper grip | `CraneSpread.hs:188-196` | `layer Upper of band Moving (7/32, ∞)`, then offset |
 
