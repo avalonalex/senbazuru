@@ -203,7 +203,7 @@ Single recorded runs on one machine, not re-measured here
 | Case | Result | Cost | Source |
 | --- | --- | --- | --- |
 | Crane wing, body held | accepted at 392 and 1,192 triangles | 5.76, 64.30 CPU s | [spreading-connected-wing.md:63-67](../docs/notes/spreading-connected-wing.md) |
-| Four body panels released | unconverged after 118 iterations; 49 crossing triangle pairs; edge error 3.75e-5 | about nine CPU minutes each | [body-angle-preferences.md:66-77](../docs/notes/body-angle-preferences.md) |
+| Four body panels released | unconverged after 118 iterations; 49 crossing triangle pairs; edge error 3.75e-5 | about nine CPU minutes each | [body-angle-preferences.md:68-79](../docs/notes/body-angle-preferences.md) |
 | Same, 80 more iterations | edge error → 2.07e-5, angle error 0.0187 → 0.0194 rad; still invalid | +452 CPU s | B finding 1 (note) |
 | Exact nonnegative contact | gap 0 on 32- and 64-triangle meshes where penalty leaves −5.9e-11 and −8.4e-11; fixture only | — | B finding 1 (note) |
 | Mesh dependence | energy changes 3.95% between the accepted crane meshes | — | [spreading-connected-wing.md:73-74](../docs/notes/spreading-connected-wing.md) |
@@ -855,7 +855,7 @@ nested `explain`; `num` for measured values, `tshow` for ids and counts.
 | `UnitMismatch` | "the sheet file is 100 mm across (frame_unit mm) but the material block says `size 15cm`" |
 | `TriangleBudget` | "4,312 triangles; settles accept at most 1,192 until measured otherwise" |
 | `RefineRefused` etc. | nested `explain` unchanged, e.g. a non-convex panel ([`Surface.hs:343`](../src/Senbazuru/Origami/Surface.hs#L343)) |
-| `Reason` | "not converged after 118 iterations; relative edge error 3.75e-5; 49 crossing triangle pairs" ([body-angle-preferences.md:72-77](../docs/notes/body-angle-preferences.md)) |
+| `Reason` | "not converged after 118 iterations; relative edge error 3.75e-5; 49 crossing triangle pairs" ([body-angle-preferences.md:74-79](../docs/notes/body-angle-preferences.md)) |
 | `Refused` | "petal certificate refused: bird path contact unresolved for panels …" ([`PetalCertificate.hs:301`](../study/fold-material/PetalCertificate.hs#L301)) |
 
 Apart from vertex 2 in `SettleStartNotFlat`, the ids and the distance in these

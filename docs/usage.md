@@ -579,11 +579,20 @@ stack run senbazuru-material-study -- --crane-body build/fold-material
 ```
 
 Open [the body-angle study](http://127.0.0.1:8000/crane-body.html) on the same
-server. The original, weaker-spring and 170-degree preference trials free the
-same four root-neighbour panels with the same tip grip. They select only mapped
-candidate creases 21 and 46. The central body core, other wing, neck and tail
+server. The wing hinges at its root, found by rule. The original, weaker-spring
+and 170-degree preference trials free the same eight root-neighbour panels with
+the same tip grip. They select only the pocket map's candidate opening creases
+beside those panels, 22 and 49 at the root, where y = 1/4 gave 21 and 46 (owner
+decision 37). The central body core, other wing, neck and tail
 stay held. Every solved mesh receives both the old strict-angle verdict and a
 verdict allowing the selected angles to vary; neither changes a solved position.
+
+Every trial turns the wing's base as one piece about the hinge. The fixed-body
+reference prefers a flat hinge and searches for the base angle of least bending
+energy; the other trials hold their base at that angle (owner decision 36). The
+three free-patch trials are each solved again 1° either side, and are not
+accepted if a side ends with less bending energy; the incompatible grip takes
+the angle unchecked.
 
 `crane-body/` contains per-trial FOLDs, signed angles by source crease segment,
 all independent checks and an aggregate `checks.json`, with each trial's paper

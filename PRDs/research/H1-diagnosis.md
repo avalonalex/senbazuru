@@ -124,7 +124,7 @@ without bound as two surfaces approach, and needs a positive gap to start
 | 13 | #173 | Directional barrier | IPC's scalar barrier applied to the distance to *violating a retained order* | Closing strip settles at 1.18e-8 after 99 checked corrections. It is wired only into the local-history strip mode, and its API takes no holds, so it never ran on a crane | `directional-contact-distance.md:52-61`; `body-barrier-comparison.md:45-47` [note]; `BendingGallery.hs:273` [code] |
 | 13 | #176–#192 | Checked **rigid** flap routes | Exact polynomial sign checks of rigid rotations: blintz, both bird petals, square-base collapse, helmet | **Worked.** 23 bird states exported | `study/fold-material/README.md` §"Crease preferences" [note] |
 | 13–14 | #197–#207 | Pinned holds; wing bending | Exact grips removed from the unknowns; coupled sparse factor; one crane wing spread with the **body held** | **Accepted** at 392 and 1,192 triangles in 5.76 and 64.30 CPU s. Freeing four body panels fails | `spreading-connected-wing.md:63-67`; `wing-root-holds.md` [note] |
-| 14 | #209–#215 | Body release with angle preferences; internal crease holds | Free four body panels; vary preferences at creases 21/46 and 26/51 | All unconverged after 118 iterations: 49 crossing triangle pairs, about nine CPU minutes each | `body-angle-preferences.md:72-77`; `internal-crease-diagnostic.md` [note] |
+| 14 | #209–#215 | Body release with angle preferences; internal crease holds | Free four body panels; vary preferences at creases 21/46 and 26/51 | All unconverged after 118 iterations: 49 crossing triangle pairs, about nine CPU minutes each | `body-angle-preferences.md:74-79`; `internal-crease-diagnostic.md` [note] |
 | 14 | #217–#225 | Exact nonnegative contact at one crease | Constrained gaps instead of penalties | The penalty leaves −6e-11; the constraints give exact zero, but only on 32- and 64-triangle fixtures | `nonnegative-crease-contact.md` [note]; #195 items 9–13 [issue] |
 | 15–20 | #228–#314, about 40 PRs | Mesh-refinement and cost-convergence studies: bands, prescribed bends, held panels, illustration-scale overlays | Refine bands from 2×1 to 8×2; compare energies and openings | Targets missed (opening changes 37.74%). One 512-triangle solve takes **2491.6 CPU s**. The owner deprioritised this on 09-20 | #195 items 14–47 [issue]; `illustration-material-priority.md:3-9` [note] |
 | 20 | #318 | Body patch | 16 panels joining both wing roots, free outer boundary; 30 and 120 triangles; 5° and 10° grips | Coarse runs pass geometry but never settle. The refined run fails: 4.01% length error, 124 crossing pairs | `coupled-body-patch.md:44-65` [note] |
@@ -549,7 +549,7 @@ specific missing pieces above do.
 | Run | Triangles | Cost | Outcome | Source |
 | --- | ---: | --- | --- | --- |
 | Wing spread, body held | 392 / 1,192 | 5.76 / 64.30 CPU s | accepted | `spreading-connected-wing.md:63-67` |
-| Four body panels released | 1,176 (609 vertices) | about 9 CPU min each | unconverged | `body-angle-preferences.md:30`, `:77` |
+| Four body panels released | 1,176 (609 vertices) | about 9 CPU min each | unconverged | `body-angle-preferences.md:32`, `:79` |
 | Body patch, four controls | 30 / 120 | about 52 CPU s total | coarse unsettled; refined fails | `coupled-body-patch.md:64-65` |
 | Constraint-first initialisation | 120 | 487.93 CPU s | fails | `body-feasible-initialization.md:80` |
 | Held panel | 512 | 184.70 + 10.15 CPU s | accepted | `held-panel-refinement.md:54` |
