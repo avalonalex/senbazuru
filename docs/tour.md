@@ -553,8 +553,8 @@ still, which turned a flap already folded over the wrong way and made a
 [the direction note](notes/turning-towards-a-side.md) says why.
 
 The [checked crane wing](usage.md#checked-crane-wing-movement) adds a crease
-across one wing of the real crane fixture and lowers its two layers through
-90°, keeping the body still and the tail tucked between its layers. Its hinge
+across one wing of the real crane fixture, at the wing's root, and lowers the
+wing through 90°, keeping the body still and the tail tucked between its layers. Its hinge
 rests on the other wing's interior.
 The whole-turn check establishes that the moving interior lifts to one side;
 the starting layer order refuses the opposite direction. Returning to that

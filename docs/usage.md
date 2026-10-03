@@ -347,8 +347,10 @@ solver for creases on different axes. See [the hinge note](notes/aligned-crease-
 ### Checked crane-wing movement
 
 The crane study adds a crease across the wing containing the original sheet's
-`(0,1)` corner, then lowers its two touching layers through 90°. The crease
-lies a quarter sheet-side from the wing tip. The other wing, neck, tail and
+`(0,1)` corner, then lowers the wing through 90°. The crease lies at the
+wing's root, the line from the base of the neck to the base of the tail,
+found by rule (owner decisions 34 and 35); there the wing is four layers deep,
+and all of them turn together. The other wing, neck, tail and
 body stay fixed. The complete turn passes the continuous contact check;
 turning the other way is refused by the starting layer order.
 The chosen order tucks the tail between the body layers on both sides; the
