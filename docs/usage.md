@@ -661,6 +661,9 @@ stack run senbazuru-material-study -- --closed-crease --recheck-crane \
 ```
 
 All six endpoint FOLDs must exist; missing or mismatched material is an error.
+They are rebuilt at the hinge their gallery recorded in its `checks.json`; an
+archive from before the gallery moved to the wing's root records none, and
+was solved at y = 1/4.
 Results go to `closed-crease/crane-recheck.json`; old reports stay intact.
 See [the contact finding](notes/near-closed-crease.md).
 

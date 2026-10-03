@@ -28,6 +28,7 @@ module RigidBase
     BaseCheck (..),
     checkBase,
     checkPassed,
+    sidesPass,
   )
 where
 
@@ -67,7 +68,12 @@ searchBase :: Solve a -> CraneRoot -> Either SpreadError (BaseSearch a)
 searchBase solve study = do
   ((theta, _, (_, found)), tried) <- goldenSection 0.05 15 45 (spreadMesh (rootSpread study), Nothing) solveAt
   (turned, result, extra, mesh) <- maybe (Left (SpreadError "the base search made no solve")) Right found
-  pure (BaseSearch theta turned result extra mesh [(degree, energy, maybe False (\(_, r, _, _) -> converged r) made) | (degree, energy, (_, made)) <- tried])
+  let record = [(degree, energy, maybe False (\(_, r, _, _) -> converged r) made) | (degree, energy, (_, made)) <- tried]
+  -- Force the record now. Each element is otherwise a thunk over its solve's
+  -- mesh, history and audit, and a gallery that keeps the search for its
+  -- whole run would keep all sixteen solves with it.
+  mapM_ (\(degree, energy, settled) -> degree `seq` energy `seq` settled `seq` Right ()) record
+  pure (BaseSearch theta turned result extra mesh record)
   where
     solveAt (start, _) theta = do
       (turned, result, extra, mesh, energy) <- solveTurned solve study start theta
@@ -96,13 +102,22 @@ checkBase solve theta study = do
   (turned, result, extra, mesh, energy) <- solveTurned solve study (spreadMesh (rootSpread study)) theta
   sides <- forM [theta - 1, theta + 1] $ \side -> do
     (_, sideResult, _, _, sideEnergy) <- solveTurned solve study mesh side
-    pure (side, sideEnergy, converged sideResult)
+    -- Forced here, so that a side keeps nothing of its solve but these.
+    let !settled = converged sideResult
+        !energy' = sideEnergy
+    pure (side, energy', settled)
   pure (BaseCheck theta turned result extra mesh energy sides)
 
 -- | The check fails, and the control is refused, when either side ends with
 -- less bending energy than the angle it checks.
 checkPassed :: BaseCheck a -> Bool
-checkPassed check = all (\(_, energy, _) -> energy >= checkEnergy check) (checkSides check)
+checkPassed check = sidesPass (checkEnergy check) (checkSides check)
+
+-- | Whether every side, in degrees with its energy and convergence, ends with
+-- at least @energy@. A side that ends equal passes, and an unconverged side
+-- counts like any other.
+sidesPass :: Double -> [(Double, Double, Bool)] -> Bool
+sidesPass energy = all (\(_, side, _) -> side >= energy)
 
 -- | Turn the control's base to @degrees@, starting from @start@, solve it,
 -- and measure the bending energy of the paper, hinge included.

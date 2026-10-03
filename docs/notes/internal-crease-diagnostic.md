@@ -155,7 +155,8 @@ finds 28.383°, the angle `crane-root`'s flat-preference control finds. Every
 other control holds its base there, and the four that vary holds and forces
 are solved again 1° either side, refused if a side ends with less bending
 energy (owner decision 36). All controls keep the 978 source orders of the
-larger fixture in the independent check.
+larger fixture in the independent check. The held-vertex counts below include
+the base, which the 1/4 table had no need to hold.
 
 Measured on 2026-10-03, one run:
 
@@ -185,7 +186,7 @@ at 27.383° and 29.383°. The two reduced-force controls' sides do not
 converge; they are compared all the same, as decision 36 says, and also end
 higher.
 
-The gallery took 7,965 CPU seconds, 2.3 hours, with a peak of 12 GB. The
+The gallery took 7,965 CPU seconds over 2.3 hours, with a peak of 12 GB. The
 search took 575; the original's three solves 3,902, and the held lines'
 2,374; the reduced-force controls 644 and 349, the first stopped by its last
 stage's iteration limit and the second by a line search that found no step;

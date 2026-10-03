@@ -14,7 +14,7 @@ import Data.Set qualified as S
 import FoldBending
 import FoldMaterial (componentCount)
 import FoldRelaxation
-import RigidBase (goldenSection)
+import RigidBase (goldenSection, sidesPass)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -156,6 +156,14 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     mesh <- right (finalMesh result)
     right (rootAccepted study result mesh) `shouldReturn` False
     spreadHeldError fixture mesh `shouldBe` 0
+
+  -- Owner decision 36: a side refuses the reused angle only by ending with
+  -- strictly less bending energy, and an unconverged side counts all the same.
+  it "refuses a reused base angle only when a side ends with less bending energy" $ \_ -> do
+    sidesPass 0.1 [(27, 0.102, True), (29, 0.101, True)] `shouldBe` True
+    sidesPass 0.1 [(27, 0.1, True), (29, 0.1, True)] `shouldBe` True
+    sidesPass 0.1 [(27, 0.102, True), (29, 0.099, True)] `shouldBe` False
+    sidesPass 0.1 [(27, 0.099, False), (29, 0.102, True)] `shouldBe` False
 
 load :: IO Frame
 load = keyFrame <$> (loadFoldFile "examples/crane.fold" >>= right)
