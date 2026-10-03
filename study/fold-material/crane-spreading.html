@@ -36,7 +36,7 @@
   <p class="note">The wing turns from its root, the line from the base of the
     neck to the base of the tail. Its base, between its widest point and the
     root, and the last eighth of its length are held.
-    Its middle is free to bend. Existing crease lines remain sharp, and the
+    The paper between is free to bend. Existing crease lines remain sharp, and the
     connection to the body uses the same material vertices. Coincident points
     on separate layers remain independent: touching does not glue them together.</p>
 </section>
@@ -122,10 +122,14 @@ if (change) {
   document.querySelector('#refinement-image').src = 'crane-spreading/refinement.svg';
   document.querySelector('#refinement').textContent = 'Bending energy changes by ' + percent(change.relativeEnergyChange) + '. Position differences at shared material points are included in the measurements download.';
 } else {
+  // The same checks spreadAccepted makes, so the page names the one that failed.
   document.querySelector('#refinement-figure').hidden = true;
-  document.querySelector('#refinement').textContent = 'The finer mesh does not converge: its solve stopped after ' + fine.iterations +
-    ' iterations, with edge error ' + percent(fine.maxRelativeEdgeError) + ' and contact ' + (fine.contact.passed ? 'passing' : 'failing') +
-    ', so there is no comparison at this hinge. Its shape is kept as a diagnostic FOLD (#469).';
+  const failing = fine ? [!fine.converged && 'convergence', !fine.contact.passed && 'contact', fine.maxRelativeEdgeError > 1e-5 && 'edge length',
+    fine.maxCreaseAngleErrorRadians >= 1e-5 && 'crease angles', fine.heldPositionError > 0 && 'held positions'].filter(Boolean) : [];
+  document.querySelector('#refinement').textContent = !fine ? 'The finer mesh was not solved, so there is no comparison.'
+    : 'The finer mesh is not accepted. It fails the ' + failing.join(', ') + (failing.length > 1 ? ' checks' : ' check') + ' after ' + fine.iterations + ' iterations, with edge error ' +
+      percent(fine.maxRelativeEdgeError) + ' and contact ' + (fine.contact.passed ? 'passing' : 'failing') +
+      ', so there is no comparison at this hinge. Its shape is kept as a diagnostic FOLD; #469 tracks its convergence.';
 }
 </script>
 </html>
