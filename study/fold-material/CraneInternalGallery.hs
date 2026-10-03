@@ -279,14 +279,16 @@ internalMap folded study = renderSvg page drawing
     tagged = zip (triangles mesh) (refinedPanels (spreadRefined fixture))
     selected = [(t, owner) | (t, owner) <- tagged, S.member owner (rootNeighbours root)]
     ring (a, b, c) = corners [a, b, c]
-    -- One colour per crease, in id order, and a paler one for the two panels
-    -- its contact order joins: teal and rust for the first two, as before.
-    palette = cycle [("#397f88", "#b5d4d5"), ("#b35836", "#e7c4b1"), ("#5f5a8c", "#cfcbe2"), ("#7d7a2e", "#dedbb3")]
-    colour eid = Colour (maybe "#9b968b" fst (lookup eid (zip (internalCreases study) palette)))
-    pale pair = Colour (maybe "#e5dfd3" snd (lookup pair (zip (internalPairs study) palette)))
+    -- One colour per crease, in id order: teal and rust for the first two, as
+    -- before. The panels the creases join share one pale fill, because at the
+    -- root two creases share a panel and a colour per pair would paint over
+    -- one of them.
+    palette = cycle ["#397f88", "#b35836", "#5f5a8c", "#7d7a2e"]
+    colour eid = Colour (fromMaybe "#9b968b" (lookup eid (zip (internalCreases study) palette)))
+    joined = S.fromList [face | (a, b) <- internalPairs study, face <- [a, b]]
     shapes =
       [Fill (Colour "#e5dfd3") [ring tri | (tri, _) <- if folded then selected else tagged]]
-        ++ [Fill (pale (a, b)) [ring tri | (tri, owner) <- selected, owner `elem` [a, b]] | (a, b) <- internalPairs study]
+        ++ [Fill (Colour "#e9d5b9") [ring tri | (tri, owner) <- selected, S.member owner joined]]
         ++ [Polyline (solid (Colour "#9b968b") 0.5) (corners [a, b]) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), eid `notElem` internalCreases study, not folded || (S.member a patchPoints && S.member b patchPoints)]
         ++ [Polyline (solid (colour eid) 2.4) (corners [a, b]) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), eid `elem` internalCreases study]
         ++ [Offset (V2 (-3) 4) (Label (if IM.member i (spreadPins fixture) then Colour "#242923" else Colour "#77786e") 17 p (if IM.member i (spreadPins fixture) then "+" else "·")) | i <- S.toList linePoints, Just p <- [IM.lookup i points]]
