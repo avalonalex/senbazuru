@@ -26,7 +26,7 @@ import Data.Text.IO qualified as TIO
 import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
-import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), baseReport, checkBase, checkPassed, searchBase, spreadSolve)
+import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), baseReport, checkBase, checkPassed, searchBase, spreadSolve, takeBase)
 import ScreenReport (Figure (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -80,8 +80,7 @@ writeCraneBody destination = do
     (root, result, set) <- case stem of
       "fixed" -> pure (baseStudy search, baseResult search, Searched)
       "crossed" -> do
-        let turned = rigidBase theta posed (spreadMesh (rootSpread posed))
-        r <- checked (solveSpread settings (rootSpread turned))
+        (turned, r, ()) <- checked (takeBase (spreadSolve settings) theta posed)
         pure (turned, r, Taken)
       _ -> do
         check <- checked (checkBase (spreadSolve settings) theta posed)

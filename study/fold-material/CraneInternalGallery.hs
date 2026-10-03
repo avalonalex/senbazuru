@@ -24,7 +24,7 @@ import FoldBending
 import FoldContact (ContactRow (..))
 import FoldMaterial (meshEdges)
 import FoldRelaxation
-import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), Solve, baseReport, checkBase, checkPassed, searchBase)
+import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), Solve, baseReport, checkBase, checkPassed, searchBase, takeBase)
 import Senbazuru.Diagram
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -137,9 +137,8 @@ runInternalTrial prepared key destination = do
       pure (turned, r, a, Taken)
     _
       | key == "original-short" -> do
-          let turned = turnFrom initial
-          (r, a) <- checked (solveInternal settings turned)
-          pure (turned, r, a, Taken)
+          (turned, r, a) <- checked (takeBase (solveWith settings unturned) theta (internalRoot unturned))
+          pure (unturned {internalRoot = turned}, r, a, Taken)
       | otherwise -> do
           check <- checked (checkBase (solveWith settings unturned) theta (internalRoot unturned))
           pure (unturned {internalRoot = checkStudy check}, checkResult check, checkExtra check, Checked check)

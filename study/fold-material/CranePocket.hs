@@ -7,13 +7,15 @@
 --
 -- This crane-specific map is deliberately made before a new solve. It keeps
 -- the tail-tucked surface unchanged and names candidate angle freedoms without
--- certifying that they are sufficient. It checks the crane's structure, not
--- one fixture's counts of panels and edges, so the wing's hinge can move
--- (owner decision 37): the hinge cuts different panels at y = 1/4 and at the
--- wing's root, and it is the only authored crease. The core's perimeter is
--- an INTERNAL material interface, not the rim of a hole. Four distinct sheet
--- edge midpoints coincide at the underside in this flat state; they provide
--- landmarks for a later opening measurement, not a closed pressure cavity.
+-- certifying that they are sufficient. 'mapCranePocket' checks the crane's
+-- structure, not one fixture's counts of panels and edges, so the wing's hinge
+-- can move (owner decision 37): the hinge cuts different panels at y = 1/4 and
+-- at the wing's root. 'buildCranePocket', the map at 1/4 whose panel ids the
+-- body galleries take on trust, still refuses any other counts. The core's
+-- perimeter is an INTERNAL material interface, not the rim of a hole. Four
+-- distinct sheet edge midpoints coincide at the underside in this flat state;
+-- they provide landmarks for a later opening measurement, not a closed
+-- pressure cavity.
 module CranePocket
   ( Region (..),
     EdgeRole (..),
@@ -101,11 +103,16 @@ roleName = \case
   CandidateOpening -> "Candidate opening crease"
   RetainedPreference -> "Retain fold preference"
 
+-- | The map of the crane hinged at y = 1/4. The body galleries name its
+-- panels by id, so a changed recipe is refused here rather than mapped.
 buildCranePocket :: Frame -> Either PocketError PocketMap
 buildCranePocket source = do
   crane <- first PocketError (buildCraneWing source)
   sheet <- checked (surfaceFromFolded (craneStart crane))
-  mapCranePocket sheet
+  study <- mapCranePocket sheet
+  unless (M.size (pocketRegions study) == 76 && length (pocketEdges study) == 138 && length (surfaceSamples sheet) == 63 && length [() | e <- pocketEdges study, pocketRole e == AuthoredRoot] == 4) $
+    Left (PocketError "expected the 76-panel, 138-edge, 63-vertex crane wing fixture with four authored root controls")
+  pure study
 
 -- | Resolve landmarks from original-sheet coordinates, never folded proximity
 -- or the current numbering of faces. Refuse a changed recipe rather than

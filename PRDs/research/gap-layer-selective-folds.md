@@ -141,8 +141,8 @@ and a way to carry accepted orders across the crease.
      crane does not move (`CraneWing.hs:29-30`, `56-63`).
    - It recovers the hinge as "every `Unassigned` edge" and checks there are 4
      (`:114-119`). That only works because `crane.fold` has no U edges (`jq`: 0).
-     `CranePocket.hs:132,139` depends on the same trick ("AuthoredRoot"; count
-     4 until owner decision 37 made it at least one).
+     `CranePocket.hs:139,113` depends on the same trick ("AuthoredRoot"; count
+     4, kept at 1/4 when owner decision 37 let the map work at any hinge).
    - It picks the moving face as the one containing both hinge ends and
      material vertex 2 (`:72-74`).
    - It re-solves the stacking and takes index `[2]` (`:75-79`). A test checks

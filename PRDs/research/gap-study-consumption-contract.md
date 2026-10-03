@@ -173,7 +173,7 @@ straight strip in the folded wing is several unrelated regions of the sheet.
 - **`CraneBody`.** It takes the two `CandidateOpening` creases of the
   `CranePocket` map that touch the root neighbours (`CraneBody.hs:76`,
   `:84`). The map's regions and roles are hand-made fixture data
-  (`CranePocket.hs:1-16`, `:49-53`).
+  (`CranePocket.hs:1-18`, `:51-55`).
 - **`CraneInternal`.** It hard-coded `EdgeId 26` and `51`; it now finds them by rule (`CraneInternal.hs:69`, owner decision 37).
   Its extra holds are the vertices of those creases' refined segments
   (`:62-64`). Tests pin 9 vertices per line, one of them already held, and

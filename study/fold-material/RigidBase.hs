@@ -30,6 +30,7 @@ module RigidBase
     checkBase,
     checkPassed,
     sidesPass,
+    takeBase,
     Base (..),
     baseReport,
   )
@@ -128,6 +129,14 @@ checkPassed check = sidesPass (checkEnergy check) (checkSides check)
 -- counts like any other.
 sidesPass :: Double -> [(Double, Double, Bool)] -> Bool
 sidesPass energy = all (\(_, side, _) -> side >= energy)
+
+-- | Hold the control's base at @theta@ and solve it once from its own mesh,
+-- with no check: for a trial that makes no choice of its own.
+takeBase :: Solve a -> Double -> CraneRoot -> Either SpreadError (CraneRoot, Relaxation, a)
+takeBase solve theta study = do
+  let turned = rigidBase theta study (spreadMesh (rootSpread study))
+  (result, extra) <- solve turned
+  pure (turned, result, extra)
 
 -- | How a trial's base angle was set: by its own search, by another
 -- control's search and checked 1° either side, or taken without the check
