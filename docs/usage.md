@@ -370,8 +370,8 @@ angles, orders, length errors and the rejected direction. The SVG page uses
 one camera and scale. These are selected poses from a continuously checked
 route, not a contact test limited to those four poses.
 
-The hinge rests across the stationary wing's interior. The moving interior
-must stay strictly on one side of that plane throughout the turn, and its
+The wing starts against the other wing and the body's core. The moving interior
+must stay strictly on one side of the plane it starts on throughout the turn, and its
 departure must agree with the initial order. No paper is displaced or joined
 across the touching layers. See [the contact note](notes/a-wing-resting-on-paper.md).
 This fixture recipe does not check the preceding construction of the crane,

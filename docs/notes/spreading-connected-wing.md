@@ -2,7 +2,7 @@
 
 Start with the crane from `examples/crane.fold`, including the tail tucked
 between the body layers. The [rigid-wing study](../usage.md#checked-crane-wing-movement) selects
-four material panels which fold into two touching layers. They are already
+the wing's material panels, folded into touching layers. They are already
 connected to the body. Bending them must preserve their material identities
 and the creases joining them; adding a separately shaped wing would not test
 that connection.

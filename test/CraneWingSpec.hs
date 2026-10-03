@@ -172,6 +172,16 @@ spec = describe "checked crane wing" $ do
   it "renders four reviewed illustrations with one camera and scale" $
     right (craneSvg (craneFile states)) >>= goldenText "test/golden/checked-crane.svg"
 
+  -- The gallery lowers the wing about its root (owner decisions 34 and 35),
+  -- above the widest point, where the crease cuts eight faces four layers
+  -- deep. Its states must keep their paper unstretched as the 1/4 ones do.
+  it "lowers the wing about its root with every state keeping its lengths" $ do
+    hinge <- right (wingRoot (keyFrame source))
+    root <- right (buildCraneWingAt hinge (keyFrame source))
+    rooted <- right (craneStates root)
+    map fst rooted `shouldBe` map fst states
+    forM_ rooted $ \(_, sheet) -> materialError sheet `shouldSatisfy` (< 1e-9)
+
 materialError :: Surface V2 -> Double
 materialError sheet = maximum (0 : errors)
   where
