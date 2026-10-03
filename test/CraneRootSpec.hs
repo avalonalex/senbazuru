@@ -5,7 +5,6 @@ module CraneRootSpec (spec) where
 
 import Control.Monad (forM_)
 import CraneRoot
-import CraneRootGallery (goldenSection)
 import CraneSpread
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
@@ -15,6 +14,7 @@ import Data.Set qualified as S
 import FoldBending
 import FoldMaterial (componentCount)
 import FoldRelaxation
+import RigidBase (goldenSection)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..))

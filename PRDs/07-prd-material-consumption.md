@@ -554,7 +554,7 @@ line re-read; rows 15–21 correct or extend it.
 | 15 | `WeakerRoot` (stiffness × 0.1 on root) | `:134` | none: one global `stiffness` | **fixture** |
 | 16 | `CraneBody` `OpenBody` (±170° on `EdgeId` 21, 46) | [`CraneBody.hs:66`](../study/fold-material/CraneBody.hs#L66), `:71`; [`CraneBodySpec.hs:28`](../test/CraneBodySpec.hs#L28) | row 14 + `rest … except { crease [P, Q] at ±170°; … }`. The research row *held* these creases; the code changes their springs | yes once segments are read (UNVERIFIED); pocket roles stay fixture data ([`CranePocket.hs:46-50`](../study/fold-material/CranePocket.hs#L46-L50)) |
 | 17 | `CraneBody` `WeakerBody` | `:70` | none, as row 15 | **fixture** |
-| 18 | `CraneInternal` `HeldLines` (creases 26, 51; 9 vertices per line; 16 added) | [`CraneInternal.hs:55`](../study/fold-material/CraneInternal.hs#L55), `:62-64`; [`CraneInternalSpec.hs:30`](../test/CraneInternalSpec.hs#L30), `:50` | `hold crease-line [P, Q] union crease-line [R, S]` | yes once segments are read (UNVERIFIED) |
+| 18 | `CraneInternal` `HeldLines` (creases 26, 51; 9 vertices per line; 16 added) | [`CraneInternal.hs:69`](../study/fold-material/CraneInternal.hs#L69), `:77-79`; [`CraneInternalSpec.hs:37`](../test/CraneInternalSpec.hs#L37), `:57` | `hold crease-line [P, Q] union crease-line [R, S]` | yes once segments are read (UNVERIFIED) |
 | 19 | `InternalForces`, `FixedPatch`, `ContinuedPatch` | `:8-11`, `:52`, `:60-61`, `:79-82` | none: force restriction, borrowed orders, budget continuation; "always a diagnostic" | **fixture** |
 | 20 | `crossedGrip` | [`CraneSpread.hs:188-196`](../study/fold-material/CraneSpread.hs#L188-L196) | `layer upper of band moving 7/32..` (`:194`); the −0.005 offset (`:195`) has no target | **fixture** |
 | 21 | `WingBending` root, grip | [`WingBending.hs:62-63`](../study/fold-material/WingBending.hs#L62-L63) | `material-band 0..1/8`, `7/8..1` | own mesh, no record: **fixture** |
@@ -565,10 +565,10 @@ solve, while the anchor is the face folding keeps still. Two layers at the same
 folded position are different paper, so a band picks both, and
 `layer upper|lower` chooses one. Tests that pin ids today
 ([`CraneRootSpec.hs:38`](../test/CraneRootSpec.hs#L38)'s root-neighbour faces,
-[`CraneInternalSpec.hs:27`](../test/CraneInternalSpec.hs#L27)'s face pairs) will
+[`CraneInternalSpec.hs:34`](../test/CraneInternalSpec.hs#L34)'s face pairs) will
 instead assert the material point each of those faces contains. Their counts stay:
 902 orders ([`CraneRootSpec.hs:44`](../test/CraneRootSpec.hs#L44)) and 16 added
-hold vertices ([`CraneInternalSpec.hs:50`](../test/CraneInternalSpec.hs#L50)).
+hold vertices ([`CraneInternalSpec.hs:57`](../test/CraneInternalSpec.hs#L57)).
 Each is a reviewed test change.
 
 ### Rest angles, stiffness and NoDifference
