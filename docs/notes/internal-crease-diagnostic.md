@@ -8,6 +8,8 @@ these shared material lines and separate boundary effects from contact forces.
 The ids refer to the study's cut source pattern, which already contains the
 wing-root lines; subdivision carries each source id onto its mesh segments.
 The [glossary](../glossary.md) defines panels, creases and layer orders.
+With the wing hinged at its root, where the studies now hinge it, the same
+release passes; see [the last section](#with-the-wing-hinged-at-its-root).
 
 ```bash
 stack run senbazuru-material-study -- --crane-internal build/fold-material
@@ -123,6 +125,10 @@ stack --profile exec -- ghc -O2 -prof -fprof-auto -rtsopts \
 /tmp/senbazuru-profile-internal +RTS -p -po/tmp/senbazuru-internal -RTS
 ```
 
+The figures above were measured with the wing hinged at 1/4. At the root,
+`writeInternalTrial` runs the fixed control's sixteen-solve base search before
+any trial, so this profile would now include it.
+
 The next geometric experiment should extract one nearly closed shared crease
 and its two bending panels, with the same contact order and boundary holds.
 Compare signed gaps, triangle intersections and achieved crease angles there,
@@ -131,3 +137,58 @@ study narrows the numerical failure; it does not prove that the held crane has
 no compatible shape. A larger body release, paired wing grips and a continuously
 checked flexible route remain separate work under
 [#195](https://github.com/avalonalex/senbazuru/issues/195).
+
+## With the wing hinged at its root
+
+The studies now hinge the wing at its root, folded y = 0.37585
+([flap-roots.md](flap-roots.md)). The released patch beside it is eight
+panels, 9, 10, 25, 26, 31, 44, 45 and 51, and the rule of owner decision 37,
+every mountain crease with both panels in the patch, finds four inside it:
+28 joins panels 25 and 26, 30 joins 25 and 10, 55 joins 44 and 45, and 57
+joins 44 and 9. Each line again has nine shared vertices, one of them held.
+Applied at 1/4, the same rule gives 26 and 51.
+
+Above the wing's widest point its paper is four layers deep, and every
+control turns that base as one piece about the hinge. The whole-patch-held
+control searches for the angle that leaves the least bending energy and
+finds 28.383°, the angle `crane-root`'s flat-preference control finds. Every
+other control holds its base there, and the four that vary holds and forces
+are solved again 1° either side, refused if a side ends with less bending
+energy (owner decision 36). All controls keep the 978 source orders of the
+larger fixture in the independent check. The held-vertex counts below include
+the base, which the 1/4 table had no need to hold.
+
+Measured on 2026-10-03, one run:
+
+| Control | Held vertices | Force orders | Iterations | Equilibrium | Relative edge error | Original-angle error (rad) | Crossing reports | Accepted |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
+| Original | 493 | 570 | 62 | Yes | 5.02e-6 | 6.66e-6 | 0 | yes |
+| Crease lines held | 525 | 570 | 51 | Yes | 5.19e-6 | 2.69e-5 | 0 | no |
+| Internal forces only | 493 | 4 | 87 | No | 5.17e-5 | 0.0188 | 1,236 | no |
+| Held lines + internal forces | 525 | 4 | 63 | No | 1.06e-4 | 0.0134 | 941 | no |
+| Whole patch held | 1,013 | 106 | 20 | Yes | 2.28e-7 | 2.35e-7 | 0 | yes |
+| Original continued | 493 | 570 | 0 more | Yes | 5.02e-6 | 6.66e-6 | 0 | yes |
+
+The release that fails at 1/4 passes at the root. The original converges in
+62 iterations with no crossing report, every original angle within the
+`1e-5`-radian limit, and the continuation has nothing left to do. Holding the
+crease lines, the one change that reached equilibrium at 1/4, now costs
+acceptance: it still converges with no crossing report, but crease 28 ends
+`2.69e-5` radians from its original angle, over the limit. Omitting the
+surrounding contact forces still ruins the whole-sheet result, with 17,184
+and 17,288 reversed order reports. So the question this note asked, why the
+released body fails, does not arise at the root; the controls stay as a
+record of how holds and forces change a release that passes.
+
+The base check passes everywhere it runs. For the original and held
+controls the sides end 1.71% and 1.35% above the angle's bending energy,
+at 27.383° and 29.383°. The two reduced-force controls' sides do not
+converge; they are compared all the same, as decision 36 says, and also end
+higher.
+
+The gallery took 7,965 CPU seconds over 2.3 hours, with a peak of 12 GB. The
+search took 575; the original's three solves 3,902, and the held lines'
+2,374; the reduced-force controls 644 and 349, the first stopped by its last
+stage's iteration limit and the second by a line search that found no step;
+the continuation 19.5.
+

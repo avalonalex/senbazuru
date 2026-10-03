@@ -11,7 +11,7 @@
 -- There a released control turns the wing's base as one piece, at the angle
 -- 'searchBase' finds, so its reported root turn is that chosen angle, not
 -- something the solve settled.
-module CraneRootGallery (writeCraneRoot, goldenSection) where
+module CraneRootGallery (writeCraneRoot) where
 
 import Control.Exception (evaluate)
 import Control.Monad (forM, forM_, when)
@@ -20,7 +20,6 @@ import CraneSpread
 import CraneSpreadGallery (screenKeys, spreadFigure)
 import CraneWing (studyHinge, wingRoot)
 import Data.Aeson (encode, object, (.=))
-import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Either (isRight)
@@ -35,6 +34,7 @@ import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
 import Numeric (showFFloat)
+import RigidBase (BaseSearch (..), searchBase)
 import ScreenReport (Figure (..), Screen (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -89,7 +89,7 @@ writeCraneRoot destination = do
     (study, result, mesh, search) <-
       if hasBase
         then do
-          found <- checked (searchBase settings posed)
+          found <- checked (searchBase (\root -> (,()) <$> solveSpread settings (rootSpread root)) posed)
           pure (baseStudy found, baseResult found, baseMesh found, Just found)
         else do
           r <- checked (solveSpread settings (rootSpread posed))
@@ -234,61 +234,3 @@ profileSvg root curves =
       Just quarter -> (T.unpack quarter, " stroke-dasharray=\"7 4\"")
       Nothing -> (stem, "")
     color stem = case stem of "held" -> "#675949"; "released" -> "#a94e32"; "weaker" -> "#bc862b"; "flat" -> "#267364"; _ -> "#5654a0"
-
--- | A released control whose base turns as one piece ('rigidBase'), held at
--- the angle that leaves the paper, hinge included, the least bending energy.
-data BaseSearch = BaseSearch
-  { baseDegrees :: !Double,
-    baseStudy :: !CraneRoot,
-    baseResult :: !Relaxation,
-    baseMesh :: !MaterialMesh,
-    -- | Every angle tried, in degrees, with its bending energy and whether
-    -- its solve converged, in order. An unconverged energy still steers the
-    -- search, so the record says which ones were.
-    baseTried :: ![(Double, Double, Bool)]
-  }
-
--- | Search 15 to 45 degrees, to 0.05 degree. The first two solves start
--- from the control's own mesh, and each later one from the mesh of the
--- bracket point beside it.
-searchBase :: Settings -> CraneRoot -> Either SpreadError BaseSearch
-searchBase settings study = do
-  ((theta, _, (_, found)), tried) <- goldenSection 0.05 15 45 (spreadMesh (rootSpread study), Nothing) solveAt
-  (turned, result, mesh) <- maybe (Left (SpreadError "the base search made no solve")) Right found
-  pure (BaseSearch theta turned result mesh [(degree, energy, maybe False (\(_, r, _) -> converged r) made) | (degree, energy, (_, made)) <- tried])
-  where
-    solveAt (start, _) theta = do
-      let turned = rigidBase theta study start
-      result <- solveSpread settings (rootSpread turned)
-      mesh <- first (SpreadError . explain) (finalMesh result)
-      (crease, panel) <- first (SpreadError . explain) (bendingEnergy (spreadHinges (rootSpread turned)) mesh)
-      pure (crease + panel, (mesh, Just (turned, result, mesh)))
-
--- | The least value of @f@ on [@lo@, @hi@] by golden-section search, narrowed
--- until the bracket is narrower than @tolerance@, which must be positive and
--- well above the rounding of @lo@ and @hi@: a bracket that rounding stops
--- shrinking never gets narrower, and the search would not end. Each
--- evaluation is handed the payload of the interior point that stays beside
--- it, the nearest point already evaluated, so a solve can start from the last
--- one nearby. Returns the best argument, its value and
--- payload, and every evaluation, with its payload, in the order made. It
--- assumes one minimum in the bracket, as a search by bracketing must.
-goldenSection :: Double -> Double -> Double -> s -> (s -> Double -> Either e (Double, s)) -> Either e ((Double, Double, s), [(Double, Double, s)])
-goldenSection tolerance lo hi start f = do
-  (fc, sc) <- f start c0
-  (fd, sd) <- f start d0
-  go lo hi (c0, fc, sc) (d0, fd, sd) [(d0, fd, sd), (c0, fc, sc)]
-  where
-    phi = (sqrt 5 - 1) / 2
-    c0 = hi - phi * (hi - lo)
-    d0 = lo + phi * (hi - lo)
-    go a b c@(xc, fc, sc) d@(xd, fd, sd) tried
-      | b - a < tolerance = Right (if fc <= fd then c else d, reverse tried)
-      | fc <= fd = do
-          let x = xd - phi * (xd - a)
-          (fx, sx) <- f sc x
-          go a xd (x, fx, sx) c ((x, fx, sx) : tried)
-      | otherwise = do
-          let x = xc + phi * (b - xc)
-          (fx, sx) <- f sd x
-          go xc b d (x, fx, sx) ((x, fx, sx) : tried)

@@ -9,6 +9,7 @@ import Control.Monad (forM, forM_, unless)
 import CraneInternal
 import CraneRoot
 import CraneSpread
+import CraneWing (wingRoot)
 import Data.Aeson (Value, encode, object, (.=))
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
@@ -23,6 +24,7 @@ import FoldBending
 import FoldContact (ContactRow (..))
 import FoldMaterial (meshEdges)
 import FoldRelaxation
+import RigidBase (BaseCheck (..), BaseSearch (..), Solve, checkBase, checkPassed, searchBase)
 import Senbazuru.Diagram
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -47,49 +49,115 @@ controls = [("original", "Original free patch", OriginalPatch), ("held", "Crease
 
 writeCraneInternal :: FilePath -> IO ()
 writeCraneInternal destination = do
-  reports <- forM controls $ \(key, _, _) -> writeInternalTrial key destination
-  let document = object ["runs" .= reports]
+  prepared <- prepareInternal
+  reports <- forM controls $ \(key, _, _) -> runInternalTrial prepared key destination
+  let creases = [object ["crease" .= unEdgeId eid, "lower" .= unFaceId lower, "upper" .= unFaceId upper] | (eid, (lower, upper)) <- zip (internalCreases (preparedFixed prepared)) (internalPairs (preparedFixed prepared))]
+      document = object ["hingeY" .= preparedHinge prepared, "baseDegrees" .= baseDegrees (preparedSearch prepared), "creases" .= creases, "runs" .= reports]
   BL.writeFile (destination </> "crane-internal" </> "checks.json") (encode document)
   template <- TIO.readFile "study/fold-material/crane-internal.html"
   TIO.writeFile (destination </> "crane-internal.html") (T.replace "/*INTERNAL_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
 
 -- | One named control is also an entry point, so profiling need not repeat
--- every unrelated solve. It writes the same report as the complete gallery.
+-- every unrelated solve. It writes the same report as the complete gallery,
+-- and so it runs the fixed control's base search first: every control's base
+-- is held at the angle that search finds.
 writeInternalTrial :: String -> FilePath -> IO Value
 writeInternalTrial key destination = do
+  prepared <- prepareInternal
+  runInternalTrial prepared key destination
+
+-- | What every trial shares: the crane, the wing's root, found by rule, and
+-- the fixed control's base search. The fixed control holds the body and
+-- prefers a flat hinge, so it is the gallery's flat-preference control, and
+-- every other control's base takes the angle its search finds (owner
+-- decision 36).
+data Prepared = Prepared
+  { preparedSource :: !Frame,
+    preparedHinge :: !Double,
+    -- | The fixed control, unturned. Every control has the same creases,
+    -- found by the same rule, so the page names them from this one.
+    preparedFixed :: !InternalStudy,
+    preparedSearch :: !(BaseSearch TrialDiagnostics),
+    preparedSeconds :: !Double
+  }
+
+prepareInternal :: IO Prepared
+prepareInternal = do
+  source <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= checked)
+  hinge <- either (die . T.unpack) pure (wingRoot source)
+  fixed <- checked (internalStudyAt hinge source FixedPatch)
+  putStrLn "Searching the fixed control's base angle"
+  hFlush stdout
+  start <- getCPUTime
+  search <- checked (searchBase (solveWith (Settings 40 1e-5) fixed) (internalRoot fixed))
+  _ <- evaluate (baseDegrees search)
+  settled <- getCPUTime
+  putStrLn ("Base angle " ++ show (baseDegrees search) ++ " degrees")
+  pure (Prepared source hinge fixed search (fromIntegral (settled - start) / 1e12))
+
+-- | A study's own solve, for 'searchBase' and 'checkBase' to turn its base.
+solveWith :: Settings -> InternalStudy -> Solve TrialDiagnostics
+solveWith settings study root = solveInternal settings study {internalRoot = root}
+
+-- | How a trial's base angle was set: by its own search, by another
+-- control's search and checked 1° either side, or taken without the check
+-- by a continuation and by the profiling probe, which make no choice of
+-- their own.
+data Base = Searched | Checked !(BaseCheck TrialDiagnostics) | Taken
+
+runInternalTrial :: Prepared -> String -> FilePath -> IO Value
+runInternalTrial prepared key destination = do
   let named = controls ++ [("original-short", "Original patch · short profiling probe", OriginalPatch)]
   (title, control) <- case [(title, control) | (name, title, control) <- named, name == key] of
     [entry] -> pure entry
     _ -> die "internal control must be original, held, internal, held-internal, fixed, continued or original-short"
   let output = destination </> "crane-internal"
+      search = preparedSearch prepared
+      theta = baseDegrees search
   createDirectoryIfMissing True output
-  source <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= checked)
-  study <- checked (internalStudy source control)
-  let root = internalRoot study
-      fixture = rootSpread root
-      limit
+  unturned <- checked (internalStudyAt (preparedHinge prepared) (preparedSource prepared) control)
+  let limit
         | key == "original-short" = 2
         | control == ContinuedPatch = 80
         | otherwise = 40
+      settings = Settings limit 1e-5
+      turnFrom mesh = unturned {internalRoot = rigidBase theta (internalRoot unturned) mesh}
   initial <-
     if control == ContinuedPatch
       then do
         frame <- keyFrame <$> (loadFoldFile (output </> "original.fold") >>= checked)
         sheet <- checked (surfaceFromFrame frame >>= requireMaterialCoordinates)
-        let mesh = spreadMesh fixture
+        let mesh = spreadMesh (rootSpread (internalRoot unturned))
         unless (facesVertices frame == [map VertexId [a, b, c] | (a, b, c) <- triangles mesh]) (die "the continuation needs the original diagnostic's triangle identities")
         pure mesh {samples = surfaceSamples sheet}
-      else pure (spreadMesh fixture)
-  forM_ [folded | key == "original", folded <- [False, True]] $ \folded -> TIO.writeFile (output </> (if folded then "folded.svg" else "material.svg")) (internalMap folded study)
+      else pure (spreadMesh (rootSpread (internalRoot unturned)))
+  forM_ [folded | key == "original", folded <- [False, True]] $ \folded -> TIO.writeFile (output </> (if folded then "folded.svg" else "material.svg")) (internalMap folded unturned)
   putStrLn ("Solving internal control " ++ key)
   hFlush stdout
   start <- getCPUTime
-  (result, audit) <- checked (if control == ContinuedPatch then continueInternal (Settings limit 1e-5) study initial else solveInternal (Settings limit 1e-5) study)
+  (study, result, audit, base) <- case control of
+    FixedPatch -> pure (unturned {internalRoot = baseStudy search}, baseResult search, baseExtra search, Searched)
+    ContinuedPatch -> do
+      let turned = turnFrom initial
+      (r, a) <- checked (continueInternal settings turned (spreadMesh (rootSpread (internalRoot turned))))
+      pure (turned, r, a, Taken)
+    _
+      | key == "original-short" -> do
+          let turned = turnFrom initial
+          (r, a) <- checked (solveInternal settings turned)
+          pure (turned, r, a, Taken)
+      | otherwise -> do
+          check <- checked (checkBase (solveWith settings unturned) theta (internalRoot unturned))
+          pure (unturned {internalRoot = checkStudy check}, checkResult check, checkExtra check, Checked check)
+  let root = internalRoot study
+      fixture = rootSpread root
   mesh <- checked (finalMesh result)
   _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
   settled <- getCPUTime
   contact <- checked (spreadCheck fixture mesh)
-  accepted <- checked (internalAccepted study result mesh)
+  valid <- checked (internalAccepted study result mesh)
+  let accepted = valid && case base of Checked check -> checkPassed check; _ -> True
+      seconds = fromIntegral (settled - start) / 1e12 + (if control == FixedPatch then preparedSeconds prepared else 0)
   angles <- checked (originalCreaseError root mesh)
   measured <- snapshot study mesh
   refusals <- forM (rejectionSummaries audit) $ \summary -> do
@@ -119,7 +187,9 @@ writeInternalTrial key destination = do
             "checkpoints" .= [object ["iteration" .= completedIterations c, "lengthError" .= checkpointError c] | c <- checkpoints result],
             "blockedStages" .= [object ["iteration" .= blockedIteration b, "lengthWeight" .= blockedLengthWeight b] | b <- blockedStages audit],
             "refusals" .= refusals,
-            "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
+            "baseDegrees" .= theta,
+            "base" .= baseReport search base,
+            "solveCpuSeconds" .= (seconds :: Double),
             "continuousMotionChecked" .= False
           ]
   BL.writeFile (output </> key ++ "-check.json") (encode report)
@@ -132,6 +202,16 @@ writeInternalTrial key destination = do
   putStrLn (key ++ ": accepted " ++ show accepted ++ ", converged " ++ show (converged result) ++ ", length " ++ show (maxLengthError mesh) ++ ", blocked " ++ show (blockedStages audit))
   hFlush stdout
   pure report
+
+-- | How the trial's base angle was set, with the evidence for it.
+baseReport :: BaseSearch a -> Base -> Value
+baseReport search = \case
+  Searched -> object ["set" .= ("searched" :: Text), "tried" .= [angle d e c | (d, e, c) <- baseTried search]]
+  Checked check -> object ["set" .= ("checked" :: Text), "energy" .= checkEnergy check, "passed" .= checkPassed check, "sides" .= [angle d e c | (d, e, c) <- checkSides check]]
+  Taken -> object ["set" .= ("taken" :: Text)]
+  where
+    angle :: Double -> Double -> Bool -> Value
+    angle degrees energy settledThere = object ["degrees" .= degrees, "energy" .= energy, "converged" .= settledThere]
 
 exportMesh :: CraneSpread -> FilePath -> Text -> MaterialMesh -> IO ()
 exportMesh fixture path title mesh = do
@@ -162,7 +242,7 @@ snapshot study mesh = do
     pure (residual * residual)
   angular <- checked (bendingRows (spreadHinges fixture) mesh)
   force <- contactStats fixture mesh (internalRequirements study)
-  folds <- forM internalCreases $ \eid -> do
+  folds <- forM (internalCreases study) $ \eid -> do
     let hinges = [h | h <- spreadHinges fixture, hingeRole h == SurfaceCrease eid]
         line = internalLineVertices study eid
     values <- mapM (checked . (`hingeAngle` points)) hinges
@@ -199,15 +279,20 @@ internalMap folded study = renderSvg page drawing
     tagged = zip (triangles mesh) (refinedPanels (spreadRefined fixture))
     selected = [(t, owner) | (t, owner) <- tagged, S.member owner (rootNeighbours root)]
     ring (a, b, c) = corners [a, b, c]
-    colour eid = Colour (if eid == EdgeId 26 then "#397f88" else "#b35836")
-    pale owners = Colour (if FaceId 8 `elem` owners then "#b5d4d5" else "#e7c4b1")
+    -- One colour per crease, in id order: teal and rust for the first two, as
+    -- before. The panels the creases join share one pale fill, because at the
+    -- root two creases share a panel and a colour per pair would paint over
+    -- one of them.
+    palette = cycle ["#397f88", "#b35836", "#5f5a8c", "#7d7a2e"]
+    colour eid = Colour (fromMaybe "#9b968b" (lookup eid (zip (internalCreases study) palette)))
+    joined = S.fromList [face | (a, b) <- internalPairs study, face <- [a, b]]
     shapes =
       [Fill (Colour "#e5dfd3") [ring tri | (tri, _) <- if folded then selected else tagged]]
-        ++ [Fill (pale [a, b]) [ring tri | (tri, owner) <- selected, owner `elem` [a, b]] | (a, b) <- internalPairs study]
-        ++ [Polyline (solid (Colour "#9b968b") 0.5) (corners [a, b]) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), eid `notElem` internalCreases, not folded || (S.member a patchPoints && S.member b patchPoints)]
-        ++ [Polyline (solid (colour eid) 2.4) (corners [a, b]) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), eid `elem` internalCreases]
+        ++ [Fill (Colour "#e9d5b9") [ring tri | (tri, owner) <- selected, S.member owner joined]]
+        ++ [Polyline (solid (Colour "#9b968b") 0.5) (corners [a, b]) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), eid `notElem` internalCreases study, not folded || (S.member a patchPoints && S.member b patchPoints)]
+        ++ [Polyline (solid (colour eid) 2.4) (corners [a, b]) | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), eid `elem` internalCreases study]
         ++ [Offset (V2 (-3) 4) (Label (if IM.member i (spreadPins fixture) then Colour "#242923" else Colour "#77786e") 17 p (if IM.member i (spreadPins fixture) then "+" else "·")) | i <- S.toList linePoints, Just p <- [IM.lookup i points]]
-    linePoints = S.unions (map (internalLineVertices study) internalCreases)
+    linePoints = S.unions (map (internalLineVertices study) (internalCreases study))
     patchPoints = S.fromList [v | ((a, b, c), _) <- selected, v <- [a, b, c]]
     extent = fromMaybe (Box (V2 0 0) (V2 1 1)) (boxFromPoints (if folded then concatMap (ring . fst) selected else IM.elems points))
     drawing = diagramWithExtent extent shapes

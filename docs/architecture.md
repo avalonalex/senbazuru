@@ -410,6 +410,12 @@ so held intermediate panels cannot hide a needed contact requirement.
 `CraneRootGallery` adds measured side profiles and retains failed body/grip
 attempts as diagnostics. Rendering failures retain complete-sheet inspection
 exports separately from physical acceptance. See [the wing-root study](notes/wing-root-holds.md).
+`RigidBase` chooses the angle at which a released control holds the wing's
+base, which turns as one piece (`CraneRoot.rigidBase`): by golden-section
+search for the least bending energy, or, in a gallery that searches its
+flat-preference control, that angle checked 1° either side (owner decisions
+35 and 36). Both take the gallery's own solve as a function, because
+crane-internal drops contact forces in some controls.
 `CranePocket` maps the same unchanged crane into five connected material
 regions and classifies candidate opening creases. It includes flat edge
 incidence as well as physical crease features, because those edges also connect
@@ -584,8 +590,9 @@ original crease targets separately from edited spring targets, so the strict
 and selective acceptance policies measure the same reference. `CraneBodyGallery`
 publishes matched controls, complete diagnostics and only accepted 3D models.
 It introduces no solver changes; see [angle gates and springs](notes/body-angle-preferences.md).
-`CraneInternal` makes matched boundary/contact controls around two retained
-body folds, preserving shared material ids and all independent checks.
+`CraneInternal` makes matched boundary/contact controls around the mountain
+folds inside the released body patch, found by rule (owner decision 37),
+preserving shared material ids and all independent checks.
 `CraneInternalGallery` records rejected-trial energies and groups crossing
 reports by original panel pair. `FoldRelaxation.diagnosePinnedContact` adds the
 existing bounded trial audit without changing the held-contact solve;

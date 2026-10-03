@@ -601,20 +601,32 @@ stack run senbazuru-material-study -- --crane-internal build/fold-material
 ```
 
 Open [the internal-crease study](http://127.0.0.1:8000/crane-internal.html).
-It locates shared creases 26 and 51 on the original sheet and in a folded
-x-ray, then compares holding their vertices with removing surrounding contact
-forces. The independent whole-sheet check retains every source layer order.
+The wing hinges at its root, found by rule. The study takes every mountain
+crease with both panels in the released body patch, also by rule (owner
+decision 37): 28, 30, 55 and 57 at the root, where y = 1/4 gave 26 and 51.
+It locates them on the original sheet and in a folded x-ray, then compares
+holding their vertices with removing surrounding contact forces. The
+independent whole-sheet check retains every source layer order.
 Reduced-force controls remain diagnostics even if their geometry passes.
 The fixed-body reference and an eighty-iteration continuation of the original
-failed endpoint complete the comparison.
+endpoint complete the comparison.
+
+Every control turns the wing's base as one piece about the hinge. The
+fixed-body reference prefers a flat hinge and searches for the base angle of
+least bending energy, sixteen solves; every other control holds its base at
+that angle (owner decision 36). The four that vary holds and forces are each
+solved again 1° either side, and are not accepted if a side ends with less
+bending energy; the continuation keeps the original's angle unchecked.
 
 These long static solves run outside the test suite. A single control can be
 run as `--crane-internal CONTROL build/fold-material`, with `CONTROL` one of
 `original`, `held`, `internal`, `held-internal`, `fixed`, or `continued`.
-`continued` reads `crane-internal/original.fold` in the output directory;
-run `original` first. It keeps the final penalty weight instead of restarting
-the softer stages. `original-short` limits each stage to two iterations for
-profiling; it is not an acceptance control.
+Each runs the fixed control's base search first, since every control's base
+angle comes from it. `continued` reads `crane-internal/original.fold` in the
+output directory; run `original` first. It keeps the final penalty weight
+instead of restarting the softer stages. `original-short` limits each stage
+to two iterations for profiling; it is not an acceptance control, and takes
+the angle unchecked.
 
 Per-trial JSON records iteration limits, endpoint checks, contact rows and
 energy components for the first and last rejected corrections of each kind.
@@ -649,6 +661,9 @@ stack run senbazuru-material-study -- --closed-crease --recheck-crane \
 ```
 
 All six endpoint FOLDs must exist; missing or mismatched material is an error.
+They are rebuilt at the hinge their gallery recorded in its `checks.json`; an
+archive from before the gallery moved to the wing's root records none, and
+was solved at y = 1/4.
 Results go to `closed-crease/crane-recheck.json`; old reports stay intact.
 See [the contact finding](notes/near-closed-crease.md).
 

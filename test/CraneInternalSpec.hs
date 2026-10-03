@@ -7,6 +7,7 @@ import Control.Monad (forM_)
 import CraneInternal
 import CraneRoot
 import CraneSpread
+import CraneWing (wingRoot)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Set qualified as S
@@ -31,7 +32,7 @@ spec = parallel $ do
       original <- right (internalStudy source OriginalPatch)
       let fixture = rootSpread (internalRoot original)
       internalPairs original `shouldBe` [(FaceId 27, FaceId 8), (FaceId 43, FaceId 7)]
-      forM_ internalCreases $ \eid -> do
+      forM_ (internalCreases original) $ \eid -> do
         let line = internalLineVertices original eid
         S.size line `shouldBe` 9
         length (filter (`IM.member` spreadPins fixture) (S.toList line)) `shouldBe` 1
@@ -50,7 +51,7 @@ spec = parallel $ do
       held <- right (internalStudy source HeldLines)
       let originalPins = spreadPins (rootSpread (internalRoot original))
           heldPins = spreadPins (rootSpread (internalRoot held))
-          linesHeld = S.unions (map (internalLineVertices original) internalCreases)
+          linesHeld = S.unions (map (internalLineVertices original) (internalCreases original))
       IM.intersection heldPins originalPins `shouldBe` originalPins
       IM.keys (IM.difference heldPins originalPins) `shouldBe` [v | v <- S.toAscList linesHeld, IM.notMember v originalPins]
       IM.size heldPins - IM.size originalPins `shouldBe` 16
@@ -67,6 +68,18 @@ spec = parallel $ do
       reversedOrders report `shouldSatisfy` (not . null)
       fullInternalForces study `shouldBe` False
       right (internalAccepted bad (Relaxation [] True Nothing) (spreadMesh fixture)) `shouldReturn` False
+
+    -- Owner decision 37: the creases are found by rule, so the same rule must
+    -- give the 1/4 study's creases back and find the root's four. The fixed
+    -- control holds its body, so its orders come from the body-free fixture.
+    it "finds the patch's mountain creases by rule, at 1/4 and at the wing's root" $ \source -> do
+      quarter <- right (internalStudy source OriginalPatch)
+      internalCreases quarter `shouldBe` map EdgeId [26, 51]
+      hinge <- right (wingRoot source)
+      forM_ [OriginalPatch, FixedPatch] $ \control -> do
+        study <- right (internalStudyAt hinge source control)
+        internalCreases study `shouldBe` map EdgeId [28, 30, 55, 57]
+        internalPairs study `shouldBe` [(FaceId 25, FaceId 26), (FaceId 25, FaceId 10), (FaceId 44, FaceId 45), (FaceId 44, FaceId 9)]
 
   it "records held-contact refusals without changing the solved result" $ do
     free <- right (wingLayers 8 20)

@@ -174,10 +174,10 @@ straight strip in the folded wing is several unrelated regions of the sheet.
   `CranePocket` map that touch the root neighbours (`CraneBody.hs:66`,
   `:74`). The map's regions and roles are hand-made fixture data
   (`CranePocket.hs:1-13`, `:46-50`).
-- **`CraneInternal`.** It hard-codes `EdgeId 26` and `51` (`CraneInternal.hs:55`).
+- **`CraneInternal`.** It hard-coded `EdgeId 26` and `51`; it now finds them by rule (`CraneInternal.hs:69`, owner decision 37).
   Its extra holds are the vertices of those creases' refined segments
   (`:62-64`). Tests pin 9 vertices per line, one of them already held, and
-  exactly 16 added holds (`test/CraneInternalSpec.hs:30-31`, `:50`).
+  exactly 16 added holds (`test/CraneInternalSpec.hs:37-38`, `:57`).
 
 **12. The uncreased controls hold material regions; the two-layer control
 copies by index.**
@@ -484,7 +484,7 @@ wing flap:
 | `ReleasedRoot` / `WeakerRoot` / `FlatRoot` | `:84-92` | body ∪ grip; spring changes on `hinge m` |
 | `FreeBody` | `:84-90` | distant ∪ grip; rest 0 on `hinge m` |
 | two opening creases | `CraneBody.hs:66` | `creaseLine` for each, named by material segment; `CranePocket` roles stay fixture data |
-| internal crease lines 26, 51 | `CraneInternal.hs:55`, `:62-64` | `creaseLine seg26 ∪ creaseLine seg51` |
+| internal crease lines 26, 51 | `CraneInternal.hs:69`, `:77-79` | `creaseLine seg26 ∪ creaseLine seg51` |
 | crossed upper grip | `CraneSpread.hs:188-196` | `layer Upper of band Moving (7/32, ∞)`, then offset |
 
 Three cautions for the PRD:
@@ -497,7 +497,7 @@ Three cautions for the PRD:
   (`CraneSpread.hs:194`).
 - **Spec assertions will change.** Moving the fixtures to names should turn
   the pinned `FaceId`s (`CraneRootSpec.hs:38`) and `EdgeId`s
-  (`CraneInternalSpec.hs:27`) into material-seed assertions. Keep the resolved
+  (`CraneInternalSpec.hs:34`) into material-seed assertions. Keep the resolved
   counts (902 orders, 16 held vertices) as regression checks that the scheme
   resolves to the same sets. That is a reviewed test change, not a free one.
 
@@ -559,7 +559,7 @@ two PRs:
 | `BlintzSequence` | **becomes a sequence** (first) | runner, flap step with material seeds, an anchor rule | `BlintzSequenceSpec.hs:35-39`, `41-96`, `110-127`; `checked-blintz.svg` |
 | `HelmetSequence` | **becomes a sequence** (second) | a hinge named by one material line resolving to several edges (`[8,9]`, `[10,12]`, `[13,11]`; `HelmetSequence.hs:48-50`); a 120° illustration rule as presentation (`:70-84`) | `HelmetSequenceSpec.hs:40`, `47-51`, `79-84`, `143-150`, `164-175`, `187`; `checked-helmet.svg`. Moving-face ids (`:81`) depend on the face reorder and may need material rings. |
 | `CraneWing` | **stays a fixture recipe**; later a sequence prefix | layer-selective crease (hand-picked faces `[2,3,6,7]`, `CraneWing.hs:159`), stacking by predicate instead of index `[2]` (`:138`), an expected-refusal step (`:141-144`), and an unbent-crease convention that is not `U` (finding 5) | `CraneWingSpec.hs:84-109`, `83-134`, `145`; `checked-crane.svg`; and every crane spec below, since they build from it (`CraneSpread.hs:93`) |
-| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:28-123`, `CraneBodySpec`, `CraneInternalSpec.hs:24-50` |
+| `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | **stay fixtures**; holds re-expressed with (b) in a behaviour-preserving PR | a study-side region resolver; rest angles from the record | `CraneSpreadSpec.hs:26-111`, `CraneRootSpec.hs:28-123`, `CraneBodySpec`, `CraneInternalSpec.hs:31-57` |
 | `CheckedPetal`, `CheckedBird` | **become a study-authored sequence of coupled macros**; modules shrink to registry entries | library collapse and petal macros (sampled), macro parameters, stage-activated landing orders (`CheckedBird.hs:131-137`), the registry | `CheckedBirdSpec.hs:44`, `97-109`, `159`, `169-173`; `CheckedPetalSpec.hs:125`, `135-138`; `PetalFoldSpec` |
 | `BasicBases` six endpoints | **stay fixtures** | none; they are endpoint constructions that regenerate `examples/*-base.fold` | `BasicBaseSpec` per base (`:51`) |
 | frog guide (`frogMilestones`, `writeFrogGuide`) | **stays a fixture** | squash and petal on a frog, a turnover as presentation instead of by key name (`BasicBaseGallery.hs:126`), stacking choice (`:74`) | `BasicBaseSpec.hs:170-220`; `frog-sequence.svg` |

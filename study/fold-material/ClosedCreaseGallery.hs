@@ -9,10 +9,13 @@ import Control.Monad (forM, unless)
 import CraneInternal
 import CraneRoot (rootSpread)
 import CraneSpread
-import Data.Aeson (encode, object, (.=))
+import CraneWing (studyHinge)
+import Data.Aeson (eitherDecode, encode, object, withObject, (.:?), (.=))
+import Data.Aeson.Types (parseEither)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.IntMap.Strict qualified as IM
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -145,11 +148,16 @@ plot extent title shapes = renderSvg defaultPage {pageWidth = 560, pageHeight = 
 
 -- | Recheck the six archived #215 endpoint FOLDs without changing positions,
 -- holds or solver history. Failure to find an input is an error, never a skip.
+-- The endpoints are rebuilt at the hinge their gallery recorded in its
+-- checks.json; an archive from before the gallery moved to the wing's root
+-- records none, and was solved at y = 1/4.
 writeCraneRecheck :: FilePath -> FilePath -> IO ()
 writeCraneRecheck sourceDirectory destination = do
   source <- keyFrame <$> (loadFoldFile "examples/crane.fold" >>= checked)
+  recorded <- BL.readFile (sourceDirectory </> "checks.json")
+  hinge <- either (die . ("crane recheck cannot read its source's checks.json: " ++)) (pure . fromMaybe studyHinge) (eitherDecode recorded >>= parseEither (withObject "checks" (.:? "hingeY")))
   reports <- forM [("original", OriginalPatch), ("held", HeldLines), ("internal", InternalForces), ("held-internal", HeldLinesInternalForces), ("fixed", FixedPatch), ("continued", ContinuedPatch)] $ \(key, control) -> do
-    fixture <- rootSpread . internalRoot <$> checked (internalStudy source control)
+    fixture <- rootSpread . internalRoot <$> checked (internalStudyAt hinge source control)
     frame <- keyFrame <$> (loadFoldFile (sourceDirectory </> key ++ ".fold") >>= checked)
     sheet <- checked (surfaceFromFrame frame >>= requireMaterialCoordinates)
     let reference = spreadMesh fixture
@@ -159,7 +167,7 @@ writeCraneRecheck sourceDirectory destination = do
     putStrLn (key ++ ": " ++ show (length (crossingPanels contact)) ++ " crossings, " ++ show (length (reversedOrders contact)) ++ " reversed orders, " ++ show (length (unorderedContacts contact)) ++ " unordered pairs")
     pure (object ["id" .= key, "source" .= (sourceDirectory </> key ++ ".fold"), "contact" .= contact, "maxRelativeEdgeError" .= maxLengthError mesh, "solveRepeated" .= False])
   createDirectoryIfMissing True (destination </> "closed-crease")
-  BL.writeFile (destination </> "closed-crease" </> "crane-recheck.json") (encode (object ["runs" .= reports]))
+  BL.writeFile (destination </> "closed-crease" </> "crane-recheck.json") (encode (object ["hingeY" .= hinge, "runs" .= reports]))
 
 checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure

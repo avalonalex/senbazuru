@@ -1,11 +1,14 @@
--- | Isolate the two mountain folds inside the released crane body patch.
--- A mountain crease bends the paper's front side outward; here both folds
--- start fully closed. Their material edges join panels 8/27 and 7/43.
--- Each subdivided crease has nine shared vertices, but the old boundary holds
--- only its far end. Holding the remaining line vertices is a diagnostic of
--- crease-line bending, not a new material law. See docs/glossary.md.
+-- | Isolate the mountain folds inside the released crane body patch.
+-- A mountain crease bends the paper's front side outward; here every such
+-- fold starts fully closed. They are found by rule, not named (owner decision
+-- 37): every mountain crease with both panels in the patch. With the wing
+-- hinged at y = 1/4 that is two, 26 and 51, joining panels 8/27 and 7/43;
+-- hinged at its root, four, 28, 30, 55 and 57.
+-- Each subdivided crease has nine shared vertices at 1/4, but the old boundary
+-- holds only its far end. Holding the remaining line vertices is a diagnostic
+-- of crease-line bending, not a new material law. See docs/glossary.md.
 --
--- Independently restrict solver contact forces to those two panel pairs.
+-- Independently restrict solver contact forces to those creases' panel pairs.
 -- All source orders still survive in the fixture and independent endpoint
 -- check. A reduced-force solve is always a diagnostic: passing geometric
 -- checks would not establish equilibrium with the omitted contacts present.
@@ -13,7 +16,7 @@ module CraneInternal
   ( InternalControl (..),
     InternalStudy (..),
     internalStudy,
-    internalCreases,
+    internalStudyAt,
     internalLineVertices,
     internalRequirements,
     fullInternalForces,
@@ -23,14 +26,16 @@ module CraneInternal
   )
 where
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import CraneRoot
 import CraneSpread
+import CraneWing (studyHinge)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
+import Data.List (sortOn)
 import Data.Set qualified as S
 import FoldRelaxation
-import Senbazuru.Explain (explain)
+import Senbazuru.Explain (explain, tshow)
 import Senbazuru.Fold.Query (Crease (..))
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -43,33 +48,44 @@ data InternalControl = OriginalPatch | HeldLines | InternalForces | HeldLinesInt
 data InternalStudy = InternalStudy
   { internalRoot :: !CraneRoot,
     internalControl :: !InternalControl,
+    -- | The mountain creases inside the released patch, in id order.
+    internalCreases :: ![EdgeId],
+    -- | The one contact order between each crease's two panels, in the same
+    -- order as the creases.
     internalPairs :: ![(FaceId, FaceId)]
   }
   deriving stock (Show)
 
+-- | The study with the wing hinged at y = 1/4.
 internalStudy :: Frame -> InternalControl -> Either SpreadError InternalStudy
-internalStudy source control = do
-  root <- craneRoot source 3 (if control == FixedPatch then FlatRoot else FreeBody)
+internalStudy = internalStudyAt studyHinge
+
+-- | The study with the wing hinged at @hingeY@. A crease with no contact
+-- order between its panels, or more than one, is refused rather than guessed.
+internalStudyAt :: Double -> Frame -> InternalControl -> Either SpreadError InternalStudy
+internalStudyAt hingeY source control = do
+  root <- craneRootAt hingeY source 3 (if control == FixedPatch then FlatRoot else FreeBody)
   features <- first (SpreadError . explain) (surfaceFeatures (spreadSource (rootSpread root)))
-  let interior = [(creaseId edge, owners) | (edge, owners) <- features, creaseAssignment edge == Mountain, all (`S.member` rootNeighbours root) owners]
-      wanted = S.fromList (map EdgeId [26, 51])
+  let interior = sortOn fst [(creaseId edge, owners) | (edge, owners) <- features, creaseAssignment edge == Mountain, all (`S.member` rootNeighbours root) owners]
+      wanted = S.fromList (map fst interior)
       fixture = rootSpread root
-      matches (a, b) = any (\(_, owners) -> S.fromList owners == S.fromList [a, b]) interior
+      between owners (a, b) = S.fromList owners == S.fromList [a, b]
   -- A fixed-body reference has no force rows between these held panels.
   -- Obtain their orientation from the same fixture with its body released.
-  free <- if control == FixedPatch then craneRoot source 3 FreeBody else pure root
-  let pairs = filter matches (spreadContactOrders (rootSpread free))
+  free <- if control == FixedPatch then craneRootAt hingeY source 3 FreeBody else pure root
+  let orders = spreadContactOrders (rootSpread free)
       vertices = S.fromList [v | (eid, (a, b)) <- refinedEdges (spreadRefined fixture), S.member eid wanted, v <- [a, b]]
       holds = IM.fromList [(i, position p) | (i, p) <- zip [0 ..] (samples (refinedMesh (spreadRefined fixture))), S.member i vertices]
       pins = if control `elem` [HeldLines, HeldLinesInternalForces] then IM.union (spreadPins fixture) holds else spreadPins fixture
-  unless (S.fromList (map fst interior) == wanted && length pairs == 2) (Left (SpreadError "expected internal mountain creases 26 and 51 and their two retained panel orders"))
+      pairFor (eid, owners) = case filter (between owners) orders of
+        [pair] -> Right pair
+        found -> Left (SpreadError ("crease " <> tshow (unEdgeId eid) <> " inside the released patch has " <> tshow (length found) <> " contact orders between its panels, not one"))
+  when (null interior) (Left (SpreadError "no mountain crease lies inside the released patch"))
+  pairs <- traverse pairFor interior
   -- Force selection is applied after holds: the full control may drop newly
   -- constant pairs, but never discard a required order involving free paper.
   let changed = root {rootSpread = fixture {spreadPins = pins}}
-  pure (InternalStudy changed control pairs)
-
-internalCreases :: [EdgeId]
-internalCreases = map EdgeId [26, 51]
+  pure (InternalStudy changed control (map fst interior) pairs)
 
 internalLineVertices :: InternalStudy -> EdgeId -> S.Set Int
 internalLineVertices study eid = S.fromList [v | (source, (a, b)) <- refinedEdges (spreadRefined fixture), source == eid, v <- [a, b]]
