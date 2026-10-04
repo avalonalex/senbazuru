@@ -5,16 +5,19 @@
 -- camera plane. See docs/glossary.md for the fold vocabulary.
 --
 -- These live apart from "Senbazuru.Render.Projected" because they have a second
--- consumer. The material study's @IllustrationVisibility@ decides some pairs of
--- panels differently from production, by a depth-tie allowance, so it cannot
--- call 'Senbazuru.Render.Projected.projectedForm'. It kept copies of the rest
--- instead, and they fell behind production twice in a week: #459 made the
+-- consumer. The material study's @IllustrationVisibility@ lets a file's
+-- declared layer order overrule depth wherever the depth against it is within
+-- an allowance its caller gives, where production allows only a hair, so it
+-- cannot call 'Senbazuru.Render.Projected.projectedForm'. It kept copies of the
+-- rest instead, and they fell behind production twice in a week: #459 made the
 -- coverage check cut again, skipping nothing, any piece its first pass lets
 -- through, and #463 began judging areas in the picture by the picture's speck.
 -- Each time, the copy called paper uncovered that production draws. Both now
--- import this module, and what is left to differ is the decision about each
--- pair: production's @orderPair@, the study's @auditPair@. The library imports
--- no study code, as for "Senbazuru.Origami.HingeSweep".
+-- import this module. What differs is the decision about each pair,
+-- production's @orderPair@ and the study's @auditPair@; the short pipeline
+-- around it, flattening the surviving faces into a frame for
+-- "Senbazuru.Origami.Visible", is still written out in both. The library
+-- imports no study code, as for "Senbazuru.Origami.HingeSweep".
 --
 -- Two yardsticks judge a view, and they are measured against different sizes
 -- on purpose. Lengths in the model, how far a corner is from its face's plane
@@ -49,7 +52,7 @@ import Senbazuru.Fold.Query (Face (..), FoldError (..), edgeKey, ringEdges)
 import Senbazuru.Fold.Types (FaceId, FaceOrder (..), Stacking (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea, subtractConvex)
-import Senbazuru.Geometry.V3 (V3 (..), polygonNormal, spanAlong)
+import Senbazuru.Geometry.V3 (V3 (..), modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flat (yardsticks)
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..))
@@ -57,9 +60,10 @@ import Senbazuru.Render.Camera (Basis, basisForward, basisRight, basisUp, projec
 
 -- | A face's shadow. The ring is turned anticlockwise, and 'shadowFront' says
 -- whether the face's own winding already ran that way in the picture.
--- 'shadowDepth' increases away from the viewer. The constructor is not exported, as for
--- 'Basis', so every shadow is one 'shadowOf' made: convex, and more than a
--- speck in area.
+-- 'shadowDepth' increases away from the viewer. The constructor is not
+-- exported, as for 'Basis', so only 'shadowOf' builds one, convex and more than
+-- a speck in area. The field names still allow a record update elsewhere, and
+-- nothing checks a shadow again after one.
 data Shadow = Shadow
   { shadowId :: !FaceId,
     shadowRing :: ![V2],
@@ -122,12 +126,10 @@ suppliedNearness panels orders = foldM record M.empty (concatMap entries orders)
       _ -> Right (M.insert pair near known)
 
 -- | The hair every length in the model is judged by: a billionth of the
--- model's largest extent in 3D, or of a unit if that is larger (see the
--- header).
+-- model's largest extent in 3D ('modelSpan'), or of a unit if that is larger
+-- (see the header).
 modelHair :: [V3] -> Double
-modelHair vertices = 1e-9 * scale
-  where
-    scale = maximum (1 : [spanAlong component vertices | component <- [v3x, v3y, v3z]])
+modelHair vertices = 1e-9 * max 1 (modelSpan vertices)
 
 -- | A view's vertices as its temporary frame holds them, flat in the picture,
 -- and the speck "Senbazuru.Origami.Flat" gives that frame, which every area in

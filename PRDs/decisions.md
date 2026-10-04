@@ -1509,7 +1509,7 @@ accepted and rejected controls stay unchanged at each
   silhouette candidates from `--view front` are shared edges, so `F`, and a rule
   limited to `J` finds none [py]. A face is away when n̂ · forward > 1e-9, edge-on within ±1e-9, the threshold
   `Render.Projected` already uses
-  ([`Shadows.hs:88`](../src/Senbazuru/Render/Shadows.hs#L88)) [code]; a band
+  ([`Shadows.hs:92`](../src/Senbazuru/Render/Shadows.hs#L92)) [code]; a band
   of edge-on faces gives one outline, not two (46 edges separate differing classes
   from the front, 27 separate away from not-away [py]). Visibility is exact per
   segment interval: project, clip against each face's projected outline, compare the
@@ -2443,7 +2443,7 @@ lists edits for.
 | C44 | One animation hierarchy per checkpoint interval; `StateOnly` transitions switch sub-hierarchies; complete scene | 08 R-08-24, -27, -30 | `checkpoint` breaks the prefix rule (D6) | adopted | 08 |
 | C45 | `Origami.Folding` exports its walk's tree (05 L15) | 08 Dependencies | `Folding.hs:586-591`, `:342-344` [code] | adopted | 05, 08 |
 | C46 | Records keep presentation and anchor placement, before and after | 06 Dependencies | v2 single `recordDisplay` | adopted-modified | 01, 02, 06, 08 |
-| C47 | Geometry level "as read"; W1's edge-on threshold 1e-9 | 08 Design | `Shadows.hs:88` [code] | adopted | 08 |
+| C47 | Geometry level "as read"; W1's edge-on threshold 1e-9 | 08 Design | `Shadows.hs:92` [code] | adopted | 08 |
 | C48 | Test 2 matching rules T1–T5 | 09 §2.3 note | hand-built frames: v2 clauses false, T1–T2 true [py] | adopted | 01, 09 |
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |

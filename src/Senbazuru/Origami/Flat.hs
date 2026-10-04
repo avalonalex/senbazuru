@@ -211,9 +211,9 @@ flatSheet fr = do
 -- a model smaller than a unit does not shrink its own tolerance to nothing.
 --
 -- Exported for "Senbazuru.Render.Shadows", which flattens a view of an open
--- fold for "Senbazuru.Origami.Visible" and has to judge the shadows it puts
--- there by the speck they will be cut with. A copy of this rule
--- there would agree with this one only by hand.
+-- fold for "Senbazuru.Origami.Visible" and has to judge the view's shadows by
+-- the speck they will be cut with. A copy of this rule there would agree with
+-- this one only by hand.
 yardsticks :: [V3] -> (Double, Double)
 yardsticks verts = (hair, hair * scale)
   where

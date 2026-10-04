@@ -39,7 +39,7 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
   does not apply. The fallback was reached because `Projected` declined.
 - **The tolerances disagree by a factor of 100.** `Projected` treats any pair
   whose depth gaps change sign by more than `hair = 1e-9 × scale` as
-  intersecting and declines (`Shadows.hs:128`, `Projected.hs:91-96`). Contact acceptance
+  intersecting and declines (`Shadows.hs:132`, `Projected.hs:91-96`). Contact acceptance
   uses `panelTolerance = 1e-7` (`Origami/Contact.hs:83-84`). B finding 15
   records a real crossing of −6.21e-9 that passes acceptance, which is beyond
   `Projected`'s hair.
@@ -794,7 +794,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
   therefore needs no dihedral threshold.
 - **`Projected` behaves as described.** It compares every pair of panels
   (`Projected.hs:66`) and declines non-planar or non-convex faces
-  (`Shadows.hs:85-86`) and mixed-sign gaps (`Projected.hs:91-96`). The
+  (`Shadows.hs:89-90`) and mixed-sign gaps (`Projected.hs:91-96`). The
   spine's "measure before promising sizes" is warranted.
 - **G1's starting point is correct.** `spanningWalk` roots at the first face and
   placements are keyed against the cut pattern (`Folding.hs:284-323`,

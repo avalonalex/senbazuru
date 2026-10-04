@@ -72,7 +72,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
    - `docs/tour.md:602-603` says the SVG outlines of those relaxed meshes still retain some buried crease lines, and points readers to the 3D views.
 
 5. **The SVG visibility machinery has limits a realistic wireframe would hit.**
-   - `Render.Projected` handles only convex, planar, non-intersecting open panels. It returns `Nothing`, and so falls back, for non-planar, non-convex, intersecting or depth-tied panels (`src/Senbazuru/Render/Projected.hs:24-30, 90-96`; `src/Senbazuru/Render/Shadows.hs:85-90`).
+   - `Render.Projected` handles only convex, planar, non-intersecting open panels. It returns `Nothing`, and so falls back, for non-planar, non-convex, intersecting or depth-tied panels (`src/Senbazuru/Render/Projected.hs:24-30, 90-96`; `src/Senbazuru/Render/Shadows.hs:89-94`).
    - It compares every pair of panels (`Projected.hs:66`, `tails` over panels).
    - `docs/architecture.md:910-915` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
 

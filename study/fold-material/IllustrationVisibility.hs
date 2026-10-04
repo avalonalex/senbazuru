@@ -5,13 +5,16 @@
 -- not a collision certificate or physical thickness.
 --
 -- This bounded study mirrors Render.Projected's projection. It decides each
--- pair of panels its own way and takes everything else from Render.Shadows,
--- which production imports too: the shadows, both yardsticks, the supplied
--- orders, the coverage check and the lifting. Its copies of those fell behind
--- production twice. With no allowance it therefore draws what production
--- draws and reports uncovered paper exactly where production refuses; it
--- reports every uncovered part, where production stops at the first face. It
--- reuses Origami.Visible's polygon subtraction and hidden-edge handling.
+-- pair of panels its own way, and takes what judges a view from
+-- Render.Shadows, which production imports too: the shadows, both yardsticks,
+-- the supplied orders, the coverage check and the lifting. Its copies of those
+-- fell behind production twice. The short pipeline around them, renaming the
+-- surviving faces and flattening them into a frame for Origami.Visible, is
+-- still a copy of production's, identical today. With no allowance it
+-- therefore draws what production draws and reports uncovered paper exactly
+-- where production refuses; it reports every uncovered part, where production
+-- stops at the first face. It reuses Origami.Visible's polygon subtraction and
+-- hidden-edge handling.
 -- Keeping the experiment here leaves production tolerances unchanged. Its
 -- extra record explains every overlapping pair, including unresolved regions;
 -- callers must not grade a whole-face fallback as successful visibility.
