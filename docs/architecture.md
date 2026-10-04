@@ -417,6 +417,10 @@ search for the least bending energy, or, in a gallery that searches its
 flat-preference control, that angle checked 1° either side (owner decisions
 35 and 36). Both take the gallery's own solve as a function, because
 crane-internal drops contact forces in some controls.
+`CraneQuick` is the quick tier: the flat-preference control at the wing's
+root, holding the body, its base at an angle `RigidBase.searchNear` finds
+within 5° of the control's starting turn. Its GLB's fidelity record names
+what it held (owner decision 39). See [the quick tier](notes/quick-tier.md).
 `CranePocket` maps the same unchanged crane into five connected material
 regions and classifies candidate opening creases. It includes flat edge
 incidence as well as physical crease features, because those edges also connect

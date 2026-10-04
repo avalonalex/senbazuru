@@ -7,9 +7,11 @@
 -- paper may be able to take its shape. A /fidelity record/ says which kind of
 -- output a file is, on four independent axes (D19 in @PRDs/decisions.md@):
 --
--- * __geometry__, where the positions came from: folded with rigid panels, or
---   placed where the shape should be rather than folded or settled, which
---   makes the pose a /shape sketch/ (see docs/glossary.md);
+-- * __geometry__, where the positions came from: folded with rigid panels;
+--   settled by a solver as a bending sheet of no thickness, naming what the
+--   solve held that the model leaves free (owner decision 39); or placed
+--   where the shape should be rather than folded or settled, which makes the
+--   pose a /shape sketch/ (see docs/glossary.md);
 -- * __motion__, whether anything moves;
 -- * __appearance__, how the paper is coloured and shaded;
 -- * __lines__, which lines are drawn.
@@ -54,6 +56,13 @@ import Data.Text (Text)
 data Geometry
   = -- | Folded: every panel flat and rigid, turning only at its creases.
     RigidPanels
+  | -- | Settled by a solver as a sheet of no thickness that bends, D19's
+    -- "bent zero-thickness". The list names what the solve held that the
+    -- model leaves free, such as a body held still while a wing spreads, so
+    -- the record claims a true solve of held paper and no more (owner
+    -- decision 39). An empty list claims nothing was held but the pose's own
+    -- grips.
+    Settled ![Text]
   | -- | Placed where the shape should be, rather than folded or settled: a
     -- shape sketch, which paper may be unable to take.
     AsPrescribed
@@ -88,19 +97,23 @@ data Fidelity = Fidelity
 geometryName :: Geometry -> Text
 geometryName = \case
   RigidPanels -> "rigid panels"
+  Settled _ -> "bent zero-thickness"
   AsPrescribed -> "as prescribed"
 
 -- | The record as a GLB writes it, each level in the words of D19, except
 -- lines: D19 names only the line styles of drawings (W0 to W2), so a model
--- that draws no lines says @none@, PRD 08's word for it.
+-- that draws no lines says @none@, PRD 08's word for it. A settled geometry
+-- adds @held@, what its solve held.
 fidelityJson :: Fidelity -> Value
 fidelityJson f =
   object
-    [ "geometry" .= geometryName (fidelityGeometry f),
-      "motion" .= motionName (fidelityMotion f),
-      "appearance" .= appearanceName (fidelityAppearance f),
-      "lines" .= linesName (fidelityLines f)
-    ]
+    ( [ "geometry" .= geometryName (fidelityGeometry f),
+        "motion" .= motionName (fidelityMotion f),
+        "appearance" .= appearanceName (fidelityAppearance f),
+        "lines" .= linesName (fidelityLines f)
+      ]
+        ++ ["held" .= held | Settled held <- [fidelityGeometry f]]
+    )
   where
     motionName :: Motion -> Text
     motionName Static = "static"

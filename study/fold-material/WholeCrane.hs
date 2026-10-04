@@ -232,6 +232,7 @@ craneCaveat :: CranePose -> Maybe Text
 craneCaveat pose = case craneGeometry pose of
   AsPrescribed -> Just "shape sketch"
   RigidPanels -> Nothing
+  Settled _ -> Nothing
 
 -- | Text shown with a pose, such as its title or the title of one of its
 -- drawings, followed by the pose's caveat when it has one:

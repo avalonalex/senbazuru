@@ -14,7 +14,7 @@ import Data.Set qualified as S
 import FoldBending
 import FoldMaterial (componentCount)
 import FoldRelaxation
-import RigidBase (goldenSection, sidesPass)
+import RigidBase (goldenSection, landsAtEdge, sidesPass, startingTurn)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..))
@@ -164,6 +164,23 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     sidesPass 0.1 [(27, 0.1, True), (29, 0.1, True)] `shouldBe` True
     sidesPass 0.1 [(27, 0.102, True), (29, 0.099, True)] `shouldBe` False
     sidesPass 0.1 [(27, 0.099, False), (29, 0.102, True)] `shouldBe` False
+
+  -- The quick tier searches within 5° of the turn its control's root starts
+  -- at, read from the control (#474). The crane's controls start their root
+  -- at 30°; reading the wrong creases or the wrong mesh turns this red.
+  it "reads the turn a control's root starts at from its own starting mesh" $ \source -> do
+    study <- right (craneRoot source 3 FlatRoot)
+    turn <- right (startingTurn study)
+    turn `shouldSatisfy` (\t -> abs (t - 30) < 1e-9)
+
+  -- A narrow search that lands within two final bracket widths of an end
+  -- may have crept towards a least beyond it, so the full search runs.
+  it "widens a narrow search whose answer lands at an end" $ \_ -> do
+    landsAtEdge 0.5 25 35 28.4 `shouldBe` False
+    landsAtEdge 0.5 25 35 25.9 `shouldBe` True
+    landsAtEdge 0.5 25 35 34.1 `shouldBe` True
+    landsAtEdge 0.5 25 35 26.1 `shouldBe` False
+    landsAtEdge 0.05 25 35 25.9 `shouldBe` False
 
 load :: IO Frame
 load = keyFrame <$> (loadFoldFile "examples/crane.fold" >>= right)

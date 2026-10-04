@@ -255,7 +255,7 @@ wing-root-holds.md:81-88; WingLayers.hs:99-101).
 ### Graduation (question e)
 
 **17. Layering is already respected.** No `src` or `app` module imports a
-study module (grep; architecture.md:909-913 says the same). The mechanics
+study module (grep; architecture.md:913-917 says the same). The mechanics
 modules import only `Explain`, `Geometry.*`, `Fold.Types/Query`,
 `Origami.Surface/Contact/HingeSweep` (import headers of FoldRelaxation.hs:98-116,
 FoldBending.hs:46-58, SurfaceContact.hs:55-66). None mentions `Render` or

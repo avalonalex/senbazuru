@@ -200,7 +200,7 @@ gives the current text and the full replacement under the same row number. Row
 | M2, the presentation-classification PR | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change |
 | M3 | 12 | `AGENTS.md:229-233` | `stepPageWith` joins that list |
 | M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
-| before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the `LineStopsOnTheModel` sentence names the end by its point |
+| before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point |
 | M4, the PR adding the slow job | 15 | `AGENTS.md:390-391` | "all three CI checks" names the slow job and whether it is required (owner decision 12) |
 | M4, the PR closing #60 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists |
 

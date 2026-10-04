@@ -626,6 +626,17 @@ spec = do
         >>= export VisiblePaper
         >>= goldenBytes "test/golden/simple.glb"
 
+  -- A settled geometry names what its solve held (owner decision 39). A
+  -- record that dropped the list, renamed the level, or let the list leak
+  -- into another level's record (the test above) turns this red.
+  describe "a settled fidelity record" $
+    it "names what the solve held" $ do
+      (_, source) <- fixture "test/fixtures/quarter-fold.fold"
+      result <- either (fail . show) pure (foldFrameWith source)
+      sheet <- either (fail . show) pure (Paper.surfaceFromFolded result)
+      recorded <- either (fail . show) parseGlb (renderSurfaceGlbWith (plainGlb VisiblePaper) {glbGeometry = Just (Settled ["the body"])} defaultBudget Nothing sheet)
+      at "fidelity" (at "senbazuru" (at "extras" (glbJson recorded))) `shouldBe` object ["geometry" .= ("bent zero-thickness" :: Text), "motion" .= ("static" :: Text), "appearance" .= ("A0" :: Text), "lines" .= ("none" :: Text), "held" .= (["the body"] :: [Text])]
+
 -- Reconstruct every graphics vertex from its source material ids. Clipping
 -- introduces weighted corners; complete-paper copies must keep a single id.
 checkMaterialReferences :: Glb -> Expectation

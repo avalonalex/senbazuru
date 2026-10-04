@@ -405,7 +405,7 @@ The file is a top-level JSON array of cases. Each case (`StudyCase.hs:63-76`):
 Validation beyond parsing:
 
 - **Ids** must be unique, non-empty, and made of lowercase ASCII, digits and
-  `-`. `steps` must be non-empty (`Main.hs:96-97`, `:175-176`).
+  `-`. `steps` must be non-empty (`Main.hs:97-98`, `:176-177`).
 - **Angles**: one per source edge (`StudyCase.hs:152-153`).
 - **Folded material**:
   - lies in the unit square at z = 0;
@@ -425,13 +425,13 @@ Validation beyond parsing:
   (`docs/notes/symmetric-base-collapse.md`, last paragraph).
 
 The manifest "is read by the study executable; it is not a new library input
-format" (`docs/architecture.md:917-921`).
+format" (`docs/architecture.md:921-925`).
 
 **F22. What the manifest cannot express.** Each item has evidence.
 
 1. **Motion between states.** There is no path and no certificate; "they do
    not change the prescribed pose or certify motion between states"
-   (`docs/architecture.md:929-930`).
+   (`docs/architecture.md:933-934`).
 2. **Contact orders that change during a sequence.** Orders are per case.
    - Rabbit ear: its moving panels swap order mid-turn, so the case declares
      only the stable relations and leaves overlaps at closure to a separate
@@ -710,7 +710,7 @@ coordinates.**
 3. **Address creases and faces geometrically; treat raw ids as resolved
    output, not input.** There are three precedents:
    - `at: [u, v]` panel names (F21);
-   - `crease --from X,Y --to X,Y` (`docs/usage.md:1531-1548`);
+   - `crease --from X,Y --to X,Y` (`docs/usage.md:1559-1576`);
    - `CraneWing`'s material segments (F5).
 
    The language needs an answer for irrational landmarks, such as snapping
@@ -762,7 +762,7 @@ coordinates.**
       formula route changes at least one state.
 12. **Keep the angle-table level as a compilation target.** A resolved,
     per-state full angle list is what `StudyCase`, `buildCaseSequence` and
-    the CLI's `render --steps` already consume (`docs/architecture.md:944-949`).
+    the CLI's `render --steps` already consume (`docs/architecture.md:948-953`).
     The DSL could compile down to it, which gives a debuggable intermediate
     form.
 

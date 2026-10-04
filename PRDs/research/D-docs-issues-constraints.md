@@ -241,8 +241,8 @@ reproducible.**
   `BlintzSequence.hs:50-56` — and they are valid for one fixture only.
 - *Precedent for an alternative:* `StudyCase.buildCasePose` resolves panel names
   from points on the original sheet, so declarations survive renumbering
-  (`architecture.md:925-927`). `Surface` carries material coordinates
-  (`architecture.md:970-975`).
+  (`architecture.md:929-931`). `Surface` carries material coordinates
+  (`architecture.md:974-979`).
 
 **A15. The folding walk holds one face still, and today the recipes choose it by
 hand.**
@@ -295,7 +295,7 @@ general.**
 language.**
 - *Source:* `BlintzSequence.hs:4` ("a recipe … not an instruction language");
   `architecture.md:292-293` (neither module adds a general instruction format);
-  `architecture.md:920-921` (the study manifest is not a new library input
+  `architecture.md:924-925` (the study manifest is not a new library input
   format); `study/fold-material/StudyCase.hs:212-214`.
 - *Verdict: overturned by the request, deliberately.* PRDs 1 and 2 build the
   general format these modules disclaim.
@@ -307,7 +307,7 @@ language.**
 **A20. The library imports no study code; the study is its own executable and is
 compiled into the tests.**
 - *Source:*
-  - `architecture.md:287`, `:372-374` and `:913-914`;
+  - `architecture.md:287`, `:372-374` and `:917-918`;
   - `senbazuru.cabal:239-253`: the study executable depends on the library plus
     `directory`;
   - `senbazuru.cabal:259`: the test suite's source directories include
@@ -322,8 +322,8 @@ compiled into the tests.**
 
 **A21. Backends consume `Diagram`; the 3D exception consumes `Surface`.**
 - *Source:*
-  - `AGENTS.md:226-234`; `architecture.md:262-268` and `:978-981`;
-  - `architecture.md:910-913`: the study's corrected meshes use a depth-buffered
+  - `AGENTS.md:226-234`; `architecture.md:262-268` and `:982-985`;
+  - `architecture.md:914-917`: the study's corrected meshes use a depth-buffered
     viewer, because the SVG painter assumes a layer order those meshes can
     violate;
   - `architecture.md:141`: `Render.Projected` handles convex open panels;

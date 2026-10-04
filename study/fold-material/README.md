@@ -563,6 +563,15 @@ failed attempts keep diagnostic FOLDs and measured failures. Both sides of the r
 vertices. See [the instructions](../../docs/usage.md#wing-root-holds-and-material-preferences)
 and [the study note](../../docs/notes/wing-root-holds.md).
 
+`stack run senbazuru-material-study -- --crane-quick build/fold-material`
+writes `crane-quick/`: one crane with a wing spread from its root, settled in
+about three CPU minutes by holding the body and turning the wing's base as one
+piece, its angle searched to 0.5° near the control's own starting turn. The
+GLB's fidelity record names what was held (owner decision 39). Given FOLD
+endpoints the galleries accepted, `checks.json` records how far the quick
+shape lies from each. See [the instructions](../../docs/usage.md#a-spread-crane-in-minutes-the-quick-tier)
+and [the note](../../docs/notes/quick-tier.md).
+
 `stack run senbazuru-material-study -- --wing-layers build/fold-material`
 adds two touching layers joined along the root crease of one folded diamond.
 `wing-layers.html` compares exact-grip bends, correction of an initially

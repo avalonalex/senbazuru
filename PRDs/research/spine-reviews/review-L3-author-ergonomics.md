@@ -15,7 +15,7 @@ Evidence used:
   0,0.25 2,0.25 0.02,0.97`), rerun here;
 - `sed` on `Origami/Folding.hs:34-56`, `Render/Camera.hs:176-194`,
   `Diagram/Style.hs:112-142`, `docs/glossary.md:28-51`,
-  `study/fold-material/README.md:841-856` and
+  `study/fold-material/README.md:850-865` and
   `docs/notes/precreases-and-target-states.md`;
 - `gh issue view 97`;
 - one WebFetch of https://origami.me/crane/ (paraphrased; copyrighted);
@@ -302,7 +302,7 @@ way.
 - "First argument moves" then moves the half the reader calls the other one.
 - gap-exact implication 5 already bans front/back for macro disambiguators.
 - The study already uses compass names for material regions:
-  `README.md:853-855` defines a name like `south-west` by the original south
+  `README.md:862-864` defines a name like `south-west` by the original south
   edge.
 
 **Proposal.**

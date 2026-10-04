@@ -135,11 +135,11 @@ thickness before starting from a flat stack.
      - The bird petals, with 23 exported states
        (`study/fold-material/README.md:308-317`).
      - The state selector jumps between computed poses and never interpolates
-       (`README.md:751-754`).
+       (`README.md:760-763`).
      - There are no intermediate states of the double fold's second fold,
-       because that needs a path between curved panels (`README.md:737-744`).
+       because that needs a path between curved panels (`README.md:746-753`).
    - **(e) Explicitly open.** Physical thickness, paper calibration and general
-     continuous collision checking (`README.md:729-730`).
+     continuous collision checking (`README.md:738-739`).
    - **Animation.** Searching `src`, `app` and `study/fold-material/*.hs` for
      `animations` finds nothing; no glTF animation exists anywhere.
 
@@ -517,7 +517,7 @@ thickness before starting from a flat stack.
 23. **The ladder.** Animation of *rigid* routes sits low, because it needs no
     new physics and its failure modes are exactly derivable (finding 18a).
     Animated *flexible* routes sit last, because no checked flexible path
-    exists (`README.md:737-744`; `directional-contact-distance.md:77-79`).
+    exists (`README.md:746-753`; `directional-contact-distance.md:77-79`).
 
     | Level | Data a sequence must supply | glTF output | SVG output | Coverage today |
     | --- | --- | --- | --- | --- |
@@ -525,7 +525,7 @@ thickness before starting from a flat stack.
     | **G1** G0 animated along a checked route | G0 plus an ordered list of checked states, dense enough for loop closure; per-face `Rigid` | Spanning-tree node hierarchy, TRS keys under 180° per crease; STEP visibility switching or the complete scene | Step pages, or one figure per key | States exist (`README.md:308-317`; `Flap.hs:43-48`); **no animation** (#56; grep) |
     | **G2** rounded creases plus thickness offsets | G0 plus physical thickness, display exaggeration, per-crease wrap count from face orders, a vertex rule | Connected fillet strips, offset front/back surfaces, `NORMAL` on fillets | Spine bands in offset or side view (#114, #50) | **Study prototype and counterexample** (5a); thickness as metadata (`Surface.hs:298-304`) |
     | **G3** bent panels with contact, static endpoints | G2 plus crease rest angles and stiffness, panel stiffness, held/grip regions and targets (`WingBending.hs:1-10`), directional layer requirements (`Surface.hs:118-121`), a checked G0 start | Smooth-normal bent panels, provenance kept in extras | Provenance lines, silhouettes (#104), visibility | **Study only** (5b, 5c; `README.md:324-343, 485-501`); constants illustrative; thickness absent; rendering gap (`roadmap.md:251`) |
-    | **G4** animated flexible route | G3 plus time-parameterised controls; a checked mesh per key | Morph crossfade of dense keys, or per-key meshes | Frames | **None** (`README.md:737-744`) |
+    | **G4** animated flexible route | G3 plus time-parameterised controls; a checked mesh per key | Morph crossfade of dense keys, or per-key meshes | Frames | **None** (`README.md:746-753`) |
 
     Two axes run alongside the ladder:
     - **Appearance.** A0 flat colours on two sides (today); A1 smooth normals
@@ -576,7 +576,7 @@ thickness before starting from a flat stack.
    - no interpenetration and no layer reversal;
    - fillet radius derived from thickness and wrap count.
 
-   Paper calibration is open (`README.md:729-730`) and the study's stiffnesses
+   Paper calibration is open (`README.md:738-739`) and the study's stiffnesses
    are illustrative. A PRD promising paper-accurate shapes would be promising
    something nobody can verify.
 

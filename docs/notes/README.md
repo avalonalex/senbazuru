@@ -72,6 +72,7 @@ read the Haddock module headers; for the domain, start with
 | [wing-root-holds.md](wing-root-holds.md) | Separate an exact root hold from a crease preference, and retain contact requirements through held body layers |
 | [wing-hinged-at-the-neck.md](wing-hinged-at-the-neck.md) | Hinged at the neck and tail bases, the crane's wing creases through every layer and its base turns as one piece, at the angle of least bending energy |
 | [flap-roots.md](flap-roots.md) | A flap's root, the line it turns from, found where its outline first meets the paper beside it; the crane wing's lands on the owner's line, and roots hidden between layers are refused |
+| [quick-tier.md](quick-tier.md) | Holding the crane's body while the wing spreads changes its shape by under 0.01 px and settles in minutes, where releasing it takes hours; the output's fidelity record says what was held |
 | [opening-a-crane.md](opening-a-crane.md) | Real crane finishing couples both wings to the body pocket; crease identities can survive while angles and neck/tail attachments move |
 | [crane-pocket-map.md](crane-pocket-map.md) | The central body patch has an internal perimeter, while four separate sheet-edge landmarks meet underneath; a material map is not yet a cavity |
 | [body-angle-preferences.md](body-angle-preferences.md) | Matched body-angle controls separate material preferences from endpoint acceptance. |

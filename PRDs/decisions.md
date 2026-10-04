@@ -196,7 +196,7 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
 | 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
-| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
+| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists | the PR closing #60 (M4) |
 
 Row 14's range was `288-299` in v2. `grep -n` puts the blintz sentence at
@@ -1102,7 +1102,7 @@ The decisions:
   ([`Cli.hs:515-524`](../app/Senbazuru/Cli.hs#L515-L524)) [code]. A written
   sequence file's key frame has no vertices, so state k is `--frame k+1`, as
   `bird-base-sequence.fold`'s "frames 1–16 are the folding states"
-  ([`usage.md:1813-1814`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
+  ([`usage.md:1841-1842`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
   therefore writes the same bytes as `export` of `run`'s `.fold` at `--frame N`.
   `--frame 0` and out-of-range values are refused, naming the state count.
 - **I/O.** `Fold.Load.readSequenceText :: FilePath -> IO (Either LoadError Text)`
@@ -1463,7 +1463,7 @@ accepted and rejected controls stay unchanged at each
   every one, in glTF `extras.senbazuru.fidelity` and in an SVG `<desc>` through a
   new optional `Page.pageDescription`; default outputs and the 33 goldens carry
   none.
-  - *Geometry:* rigid panels · bent zero-thickness (settled, [D14](#d14-material-consumption))
+  - *Geometry:* rigid panels · bent zero-thickness (settled, [D14](#d14-material-consumption); it names what its solve held that the model leaves free, owner decision 39)
     · thickness offsets (research) · **as read**, for a file senbazuru did not
     produce ([C47](#changes-since-draft-v2)). `export --smooth` of an arbitrary file
     cannot know whether its panels are rigid (`puffed-square.fold` is a hand-made
@@ -1610,7 +1610,7 @@ accepted and rejected controls stay unchanged at each
   ([`ThroughLayers.hs:96`](../src/Senbazuru/Origami/ThroughLayers.hs#L96),
   [`:196`](../src/Senbazuru/Origami/ThroughLayers.hs#L196)) [code]. That PR changes
   the sentence at `ThroughLayersSpec.hs:271-275` and the example at
-  `docs/usage.md:1624-1630` ([§3](#3-recorded-text-this-design-changes) row 17), and
+  `docs/usage.md:1652-1658` ([§3](#3-recorded-text-this-design-changes) row 17), and
   lands before M4. `decodeFile`'s `.foldseq` refusal follows the same rule
   ([D13](#d13-the-run-verb-and-io)).
 - **Stacking errors split by who can detect them** ([D11](#d11-stacking-choices-are-relations)).
@@ -2455,7 +2455,7 @@ lists edits for.
 | C56 | `docs/roadmap.md` order passages as row 16 | 10 §3 | `docs/roadmap.md:271-276`, `:1004-1009` [code] | adopted | 01, 10 |
 | C57 | Caption overlap: recommended gutter ≥ 42/340 on captioned pages | 06 open question 7; 10 §6 | 06 §8 arithmetic [prd] | adopted-modified (owner decision 7 with default) | 06, 10 |
 | C58 | The petal literal is three ulps from the code's `atan2` form | 10 §7.2 item 16 | `CheckedPetal.hs:107` [code]; [py] | adopted | 10 |
-| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:515-524`, `usage.md:1813-1814` [code] | adopted-modified | 01, 02, 04, 06, 09 |
+| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:515-524`, `usage.md:1841-1842` [code] | adopted-modified | 01, 02, 04, 06, 09 |
 | C60 | "Anchor placement", "move record"; "step record" retired | glossary-additions; v2 D3 | `grep` of "step record" [ran] | adopted | glossary-additions |
 | C61 | Pose angles converted once for the whole model | 02 §8.6 note | quarter-fold half-way pose [prd] | adopted | 02 |
 | C62 | `Sequence.RunPlan` holds its own option types | here (04 `Plan`) | `Camera.hs:188`, `Gltf.hs:160` [code] | adopted-modified | 04 |

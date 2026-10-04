@@ -302,7 +302,7 @@ folded state and a material pattern from step to step, not a `Frame`.
     column
     (https://hackage.haskell.org/package/aeson-2.1.2.1/docs/Data-Aeson-Types.html).
     The study reads `cases.json` with `eitherDecode` and passes the message
-    straight to `die` (study/fold-material/Main.hs:201). `yaml` 0.11.11.2
+    straight to `die` (study/fold-material/Main.hs:203). `yaml` 0.11.11.2
     gives line and column for *syntax* errors, but `FromJSON` failures come
     back as aeson errors with a path
     (https://hackage.haskell.org/package/yaml-0.11.11.2/docs/Data-Yaml.html).
