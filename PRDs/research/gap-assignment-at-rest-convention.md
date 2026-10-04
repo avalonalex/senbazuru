@@ -230,7 +230,7 @@ fixture migrates, and #60's done-when needs amending.
       makes `check` reject a correct flat sheet.
 20. **#60 treats this golden as the test.**
     - #60's done-when asks a scheme to reproduce `quarter-fold-steps.fold`
-      (`gh issue view 60`; `docs/roadmap.md:82-86`).
+      (`gh issue view 60`; `docs/roadmap.md:271-275`).
     - The owner's comment there says the exact-coordinates bullet cannot hold,
       and that the second bullet (the `render --steps` page) is the achievable
       one, "so the golden really is the test".

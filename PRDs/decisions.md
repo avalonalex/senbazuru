@@ -180,8 +180,8 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 
 | # | Where | Change (summary) | Lands |
 | --- | --- | --- | --- |
-| 1 | `docs/architecture.md:81-86` | `Fold.Creasing` is frame in, frame out; a sequence's moves are not: `Sequence.Run` returns records, and what reaches the pipeline as a file is the written `FoldFile` | M0 |
-| 2 | `AGENTS.md:193-196`, `docs/architecture.md:170-175` | stated exception: a sequence source is a program, not an input format | M0, no later than M1's `Sequence.Parse` PR |
+| 1 | `docs/architecture.md:81-103` | `Fold.Creasing` is frame in, frame out; a sequence's moves are not: `Sequence.Run` returns records, and what reaches the pipeline as a file is the written `FoldFile` | M0 |
+| 2 | `AGENTS.md:193-196`, `docs/architecture.md:196-201` | stated exception: a sequence source is a program, not an input format | M0, no later than M1's `Sequence.Parse` PR |
 | 3 | [#60](https://github.com/avalonalex/senbazuru/issues/60) | `runSequence` returning a run of records; "one interpreter" superseded; done-when split into folding equivalence and authoring ([D16](#d16-testing-and-acceptance)) | M0 |
 | 4 | [#95](https://github.com/avalonalex/senbazuru/issues/95) | turn over is presentation about a model-intrinsic axis ([D5](#d5-presentation-and-the-readers-side)) | M0 |
 | 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0 |
@@ -189,19 +189,19 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§10](#10-corrections)); #104's done-when names `--view front` ([D19](#d19-realistic-rendering)) | M0 |
 | 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0 |
 | 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
-| 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:83`) and flat-folded (`:21`) | M0, first PR |
+| 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR |
 | 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2 |
-| 12 | `AGENTS.md:217-221`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3 |
+| 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation |
-| 14 | `docs/architecture.md:202-211`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
-| 15 | `AGENTS.md:378-379` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
-| 16 | `docs/roadmap.md:82-87`, `:368-373` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
-| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:896-902` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
+| 14 | `docs/architecture.md:287-296`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
+| 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
+| 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
+| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists | the PR closing #60 (M4) |
 
-Row 14's range was `202-213` in v2. `grep -n` puts the blintz sentence at
-`docs/architecture.md:202` and the end of the helmet sentence at `:211`, with
-`HingeSweep`'s paragraph starting at `:212` [code], so `202-211` is right.
+Row 14's range was `287-298` in v2. `grep -n` puts the blintz sentence at
+`docs/architecture.md:287` and the end of the helmet sentence at `:296`, with
+`HingeSweep`'s paragraph starting at `:297` [code], so `287-296` is right.
 
 ---
 
@@ -1102,7 +1102,7 @@ The decisions:
   ([`Cli.hs:484-493`](../app/Senbazuru/Cli.hs#L484-L493)) [code]. A written
   sequence file's key frame has no vertices, so state k is `--frame k+1`, as
   `bird-base-sequence.fold`'s "frames 1–16 are the folding states"
-  ([`usage.md:1047-1048`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
+  ([`usage.md:1813-1814`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
   therefore writes the same bytes as `export` of `run`'s `.fold` at `--frame N`.
   `--frame 0` and out-of-range values are refused, naming the state count.
 - **I/O.** `Fold.Load.readSequenceText :: FilePath -> IO (Either LoadError Text)`
@@ -1396,7 +1396,7 @@ accepted and rejected controls stay unchanged at each
   [py]). Existing `runIO` specs stay as they are until their recipe's deletion PR
   ([C71](#changes-since-draft-v2)). A slow job is a fourth CI job beside today's
   `test`, `format` and `lint` ([`ci.yml`](../.github/workflows/ci.yml)) [code], and
-  `AGENTS.md:378` requires "all three CI checks": owner decision 12 and
+  `AGENTS.md:390` requires "all three CI checks": owner decision 12 and
   [§3](#3-recorded-text-this-design-changes) row 15 ([C51](#changes-since-draft-v2)).
 - **Angle equality.** Exact for driving parameters, copied literals, endpoints
   pinned by a guard, flap endpoints on whole-number angles, and two outputs of one
@@ -1610,7 +1610,7 @@ accepted and rejected controls stay unchanged at each
   ([`ThroughLayers.hs:96`](../src/Senbazuru/Origami/ThroughLayers.hs#L96),
   [`:195`](../src/Senbazuru/Origami/ThroughLayers.hs#L195)) [code]. That PR changes
   the sentence at `ThroughLayersSpec.hs:271-275` and the example at
-  `docs/usage.md:896-902` ([§3](#3-recorded-text-this-design-changes) row 17), and
+  `docs/usage.md:1624-1630` ([§3](#3-recorded-text-this-design-changes) row 17), and
   lands before M4. `decodeFile`'s `.foldseq` refusal follows the same rule
   ([D13](#d13-the-run-verb-and-io)).
 - **Stacking errors split by who can detect them** ([D11](#d11-stacking-choices-are-relations)).
@@ -2266,7 +2266,7 @@ means the text is a research note, a snapshot that is not edited.
 | 8 | #96 says three papers and lists four | [web] [E1](research/E1-prior-art-sequence-languages.md) "D. The 2026 papers" | amend #96 with row 9 |
 | 9 | `docs/related-projects.md`: Doodle is GPLv2, ReferenceFinder GPL-2.0, origami-diagrams moved to `amkraft/` and MIT only in `package.json` | [web] [E1](research/E1-prior-art-sequence-languages.md), [E2](research/E2-references-and-persistent-naming.md) | fixed in `docs/related-projects.md` by #361 |
 | 10 | `docs/notes/huzita-hatori.md`'s dates disagree with Alperin and Lang | [web] [E2](research/E2-references-and-persistent-naming.md) finding 11 | issue |
-| 11 | `docs/glossary.md` defines rest angle twice, differently (`:19`, `:83`) | [code] | row 10 |
+| 11 | `docs/glossary.md` defines rest angle twice, differently (`:19`, `:86`) | [code] | row 10 |
 | 12 | `check` silently skips Maekawa at a vertex touching a `U` edge | [code] `FlatFold.hs:503-506`; [bin] | issue |
 | 13 | `Creasing.existingAt` takes the first vertex within tolerance, not the nearest | [code] [`Creasing.hs:323-327`](../src/Senbazuru/Fold/Creasing.hs#L323-L327) | issue, before M2's resolver |
 | 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:114`](../study/fold-material/CraneWing.hs#L114); [jq] 0 `U` edges | issue |
@@ -2283,8 +2283,8 @@ means the text is a research note, a snapshot that is not edited.
 | 25 | The study viewer's paper colours disagree with `Diagram.Style`'s | [code] `viewer.html:168` | issue, M7a |
 | 26 | `docs/notes/a-crease-is-a-hinge.md`'s "about 200 thicknesses" and 30–40° Mylar figures are not in the cited abstract | [web] [B](research/B-material-study-mechanics.md) "Unverified" | study-note issue, M0 |
 | 27 | #104's first done-when bullet cannot be met: from `--view iso` no face of `puffed-square.fold` turns away | [py] appendix command 4; issue text | row 7 |
-| 28 | `docs/roadmap.md` records the old order: #97 before #95 and #54, and #93, #96, #97 "only then" #95, #94, #36 | [code] `docs/roadmap.md:82-87`, `:368-373` | row 16 |
-| 29 | `AGENTS.md:378` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code]; `ci.yml` has `test`, `format`, `lint` | row 15, owner decision 12 |
+| 28 | `docs/roadmap.md` records the old order: #97 before #95 and #54, and #93, #96, #97 "only then" #95, #94, #36 | [code] `docs/roadmap.md:271-276`, `:1004-1009` | row 16 |
+| 29 | `AGENTS.md:390` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code]; `ci.yml` has `test`, `format`, `lint` | row 15, owner decision 12 |
 | 30 | `README.md:213` and `docs/roadmap.md` item 2 call the vocabulary missing | [ran] `grep -n` | row 18 |
 | 31 | A library message names CLI flags: `LineStopsOnTheModel` starts with `creaseEndFlag`'s `--from`/`--to` | [code] [`ThroughLayers.hs:195`](../src/Senbazuru/Origami/ThroughLayers.hs#L195), [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71) | issue, before M4; row 17 |
 | 32 | The research note's count line says 7 of the crane's 12 some-layer steps hinge on existing creases; its own table marks 6 | [research] [gap-layer-selective-folds](research/gap-layer-selective-folds.md) "(e) The traditional crane, step by step" | recorded here; the note is a snapshot and is not edited |
@@ -2447,20 +2447,20 @@ lists edits for.
 | C48 | Test 2 matching rules T1–T5 | 09 §2.3 note | hand-built frames: v2 clauses false, T1–T2 true [py] | adopted | 01, 09 |
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |
-| C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:378`; `ci.yml` jobs [code] | adopted-modified (owner decision with default) | 09, 10 |
+| C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:390`; `ci.yml` jobs [code] | adopted-modified (owner decision with default) | 09, 10 |
 | C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:355` [code] | adopted | 09 |
 | C53 | Golden check with `--diff-filter` and three dots | 09 §1.2 | both commands print nothing [ran] | adopted | 06, 08, 09 |
 | C54 | #60 closes at M4 | here (10 §4 note said M3) | 09 §2.3's milestone | adopted-modified | 10 |
 | C55 | #54 advanced, not closed; #96 amended at M0 | 10 §4 | issue checklists per 10 [prd] | adopted | 10 |
-| C56 | `docs/roadmap.md` order passages as row 16 | 10 §3 | `docs/roadmap.md:82-87`, `:368-373` [code] | adopted | 01, 10 |
+| C56 | `docs/roadmap.md` order passages as row 16 | 10 §3 | `docs/roadmap.md:271-276`, `:1004-1009` [code] | adopted | 01, 10 |
 | C57 | Caption overlap: recommended gutter ≥ 42/340 on captioned pages | 06 open question 7; 10 §6 | 06 §8 arithmetic [prd] | adopted-modified (owner decision 7 with default) | 06, 10 |
 | C58 | The petal literal is three ulps from the code's `atan2` form | 10 §7.2 item 16 | `CheckedPetal.hs:107` [code]; [py] | adopted | 10 |
-| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:484-493`, `usage.md:1047-1048` [code] | adopted-modified | 01, 02, 04, 06, 09 |
+| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:484-493`, `usage.md:1813-1814` [code] | adopted-modified | 01, 02, 04, 06, 09 |
 | C60 | "Anchor placement", "move record"; "step record" retired | glossary-additions; v2 D3 | `grep` of "step record" [ran] | adopted | glossary-additions |
 | C61 | Pose angles converted once for the whole model | 02 §8.6 note | quarter-fold half-way pose [prd] | adopted | 02 |
 | C62 | `Sequence.RunPlan` holds its own option types | here (04 `Plan`) | `Camera.hs:188`, `Gltf.hs:147` [code] | adopted-modified | 04 |
 | C63 | Glossary *Sequence file* counts state 0 | 03 A-6 note | 02 §11 layout | adopted | glossary-additions |
-| C64 | Row 14's range is `docs/architecture.md:202-211` | 01 §4.14 | `grep -n` [ran] | adopted | 10 |
+| C64 | Row 14's range is `docs/architecture.md:287-296` | 01 §4.14 | `grep -n` [ran] | adopted | 10 |
 | C65 | Row 12 lands in two PRs (`runSequence` at M2, `stepPageWith` at M3) | 01 §4.12; 10 §3 | `stepPageWith` takes a `Budget` | adopted | 01, 10 |
 | C66 | The `LineStopsOnTheModel` sentence as row 17 | 10 §3 | `ThroughLayers.hs:195` [code] | adopted | 01, 10 |
 | C67 | Existing library messages keep bare ids in v1 | 05 open question | pinned sentences in specs and docs [prd] | adopted-modified (decided, follow-up issue) | 05 |
@@ -2559,7 +2559,7 @@ what this record cites.
 10. **`crane.fold`.** `jq '[.edges_assignment[] | select(.=="U")] | length' examples/crane.fold`
     prints `0`.
 11. **Lines and files.** `grep -n` for the blintz and `HingeSweep` sentences in
-    `docs/architecture.md` gives lines 202, 211 and 212; `grep -n "vocabulary\|#60" README.md`
+    `docs/architecture.md` gives lines 287, 296 and 297; `grep -n "vocabulary\|#60" README.md`
     gives line 213; `grep -n creaseEndFlag src/Senbazuru/Origami/ThroughLayers.hs`
     gives lines 96 and 195; `find src -path '*Internal*'` prints nothing;
     `grep -rn "step record" PRDs/*.md` finds four rows of `glossary-additions.md`.

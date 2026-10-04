@@ -179,7 +179,7 @@ A few words recur. The [glossary](../../docs/glossary.md) has **layer order** an
      ([crane-pillow-target.md](../../docs/notes/crane-pillow-target.md), lines 44-55).
    - **A correction to the task brief.** "448–1,344" is triangles and
      triangle *corners*: 448 × 3 = 1,344
-     ([crane-panel-lighting.md](../../docs/notes/crane-panel-lighting.md), line 39).
+     ([crane-panel-lighting.md](../../docs/notes/crane-panel-lighting.md), line 41).
      The meshes have 448 triangles and 237 vertices. [ran]
 
 ### B. What robust contact methods guarantee, and what they require

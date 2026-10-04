@@ -50,13 +50,13 @@ thickness before starting from a flat stack.
    so by switching to flat shading (`GLTFLoader.js:3554`). No animation is
    written, pending #56 (`Gltf.hs:52-55`). Physical thickness is metadata only
    (`Gltf.hs:29`, `:243`; `src/Senbazuru/Origami/Surface.hs:21-24`, `:298-304`;
-   `docs/usage.md:190-191`).
+   `docs/usage.md:211-212`).
 
 2. **Issue #114's premises are out of date; do not build to them.**
    - **The body.** It says `Render.Gltf` lifts faces by layer number and
      derives a radius from `--thickness` and `layerDepths`. Both the lifting
      and the flag were removed (`docs/notes/paper-thickness.md:3-17`;
-     `docs/tour.md:472`; `docs/usage.md:190`). The later note says a display
+     `docs/tour.md:472`; `docs/usage.md:211`). The later note says a display
      layer number does not determine how much material a crease wraps
      (`docs/notes/a-crease-is-a-hinge.md:92-97`).
    - **The second comment.** It claims one connected component per face.
@@ -64,7 +64,7 @@ thickness before starting from a flat stack.
      its own corners (`src/Senbazuru/Render/PaperMesh.hs:74-77`), and
      `assemble` concatenates corners per piece into `POSITION`
      (`Gltf.hs:369-371`). But there is no gap. Positions coincide, and material
-     connectivity is stored in extras (`docs/notes/visible-paper-mesh.md:64-67`).
+     connectivity is stored in extras (`docs/notes/visible-paper-mesh.md:69-72`).
      A "mesh is connected" acceptance test must count components through the
      `materialWeights` extras or the source topology, not through glTF index
      adjacency.
@@ -84,7 +84,7 @@ thickness before starting from a flat stack.
      stay shared (`study/fold-material/viewer.html:94`, `:220-237`;
      `docs/notes/sharp-creases-and-opening-panels.md:69-71`).
    - **The roadmap** calls general bent-panel rendering a study-to-production
-     gap (`docs/roadmap.md:62`).
+     gap (`docs/roadmap.md:251`).
 
 4. **SVG today has three paths, book notation, and no silhouette pass.**
    - **Paths.** `Render.CreasePattern` chooses between three
@@ -102,7 +102,7 @@ thickness before starting from a flat stack.
      wireframe again (`Style.hs:35-47`).
    - **Offset view.** It uses two weights, with buried sheets at a third of a
      crease (`CreasePattern.hs:69-76`; `Style.hs:176-184`).
-   - **Silhouettes.** #104 is open (`docs/roadmap.md:222-227`). One
+   - **Silhouettes.** #104 is open (`docs/roadmap.md:439-444`). One
      measurement matters here: dropping non-silhouette edges from the crane's
      offset view removed only 6 of 242 edge copies, because nearly every
      crease of a folded model already separates faces at different depths
@@ -368,7 +368,7 @@ thickness before starting from a flat stack.
       plastics (`KHR_materials_transmission/README.md:68-70`).
     - **Volume.** A nonzero thickness requires a closed manifold mesh
       (`KHR_materials_volume/README.md:90`, `:112`). A folded sheet is not
-      watertight (`docs/glossary.md:126`), so volume does not apply to a sheet.
+      watertight (`docs/glossary.md:146`), so volume does not apply to a sheet.
     - **Sheen.** Models velvet-like micro-fibres
       (`KHR_materials_sheen/README.md:38`, `:80`).
       - three.js `MeshPhysicalMaterial` has `sheen`, `transmission`,
@@ -453,7 +453,7 @@ thickness before starting from a flat stack.
       - **Extensions.** `KHR_node_visibility` is absent from both three.js
         GLTFLoader's handlers and Blender's import list.
       - **The complete scene** avoids switching but flickers where layers touch
-        (`visible-paper-mesh.md:70-76`).
+        (`visible-paper-mesh.md:75-81`).
 
 ### D. SVG wireframe of a 3D paper surface
 
@@ -524,7 +524,7 @@ thickness before starting from a flat stack.
     | **G0** rigid, faceted, zero thickness, static states | Crease pattern; a complete angle list per state (`StudyCase.hs:5-10`) or folded frames; face orders for coplanar overlap; anchor face (`BlintzSequence.hs:5-8`) | Two scenes, flat normals, two sides by winding | Visible/Projected, book notation | **Production** (findings 1, 4); study checked states (5d) |
     | **G1** G0 animated along a checked route | G0 plus an ordered list of checked states, dense enough for loop closure; per-face `Rigid` | Spanning-tree node hierarchy, TRS keys under 180° per crease; STEP visibility switching or the complete scene | Step pages, or one figure per key | States exist (`README.md:48-57`; `Flap.hs:19-24`); **no animation** (#56; grep) |
     | **G2** rounded creases plus thickness offsets | G0 plus physical thickness, display exaggeration, per-crease wrap count from face orders, a vertex rule | Connected fillet strips, offset front/back surfaces, `NORMAL` on fillets | Spine bands in offset or side view (#114, #50) | **Study prototype and counterexample** (5a); thickness as metadata (`Surface.hs:298-304`) |
-    | **G3** bent panels with contact, static endpoints | G2 plus crease rest angles and stiffness, panel stiffness, held/grip regions and targets (`WingBending.hs:1-10`), directional layer requirements (`Surface.hs:118-121`), a checked G0 start | Smooth-normal bent panels, provenance kept in extras | Provenance lines, silhouettes (#104), visibility | **Study only** (5b, 5c; `README.md:64-95`); constants illustrative; thickness absent; rendering gap (`roadmap.md:62`) |
+    | **G3** bent panels with contact, static endpoints | G2 plus crease rest angles and stiffness, panel stiffness, held/grip regions and targets (`WingBending.hs:1-10`), directional layer requirements (`Surface.hs:118-121`), a checked G0 start | Smooth-normal bent panels, provenance kept in extras | Provenance lines, silhouettes (#104), visibility | **Study only** (5b, 5c; `README.md:64-95`); constants illustrative; thickness absent; rendering gap (`roadmap.md:251`) |
     | **G4** animated flexible route | G3 plus time-parameterised controls; a checked mesh per key | Morph crossfade of dense keys, or per-key meshes | Frames | **None** (`README.md:311-318`) |
 
     Two axes run alongside the ladder:

@@ -34,8 +34,8 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
 - **`Projected` declined on them.** When `projectedForm` returns `Nothing`, the
   fallbacks draw every crease, buried or not (`CreasePattern.hs:222-224`, `:249-254`).
   The docs record exactly that outcome on accepted meshes: "The SVG outline path
-  also retains some buried crease lines here" (`docs/usage.md:464-465`;
-  `docs/tour.md:596-597`). Triangles are convex, so the `ConcaveFace` branch
+  also retains some buried crease lines here" (`docs/usage.md:533-534`;
+  `docs/tour.md:602-603`). Triangles are convex, so the `ConcaveFace` branch
   does not apply. The fallback was reached because `Projected` declined.
 - **The tolerances disagree by a factor of 100.** `Projected` treats any pair
   whose depth gaps change sign by more than `hair = 1e-9 × scale` as
@@ -53,7 +53,7 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
   works" is not evidence that the SVG will.
 - **The architecture already says this.** "Corrected meshes use the
   depth-buffered viewer because the SVG painter assumes the very layer order
-  those meshes can violate" (`docs/architecture.md:410-412`). Z-critic §6
+  those meshes can violate" (`docs/architecture.md:909-911`). Z-critic §6
   raised the same risk, and the spine did not answer it.
 
 **Proposal.** Replace the W1 bullet in D14 with:
@@ -106,7 +106,7 @@ What a user actually gets for an arbitrary sequence at M7 is animation, UVs
 - Measured on the crane: dropping non-silhouette edges removed 6 of 242 edge
   copies (`docs/notes/layer-numbers.md:111-115`).
 - Bent-panel rendering is recorded as "a study-to-production gap"
-  (`docs/roadmap.md:62`).
+  (`docs/roadmap.md:251`).
 
 **Proposal.** Replace that paragraph with:
 
@@ -806,7 +806,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
   findings 22-24. Spine and gap note agree that nothing is to be edited in
   AGENTS.md now.
 - **The failure policy matches practice.** Keeping diagnostics out of the SVG
-  painter matches `docs/architecture.md:410-412` and the study
+  painter matches `docs/architecture.md:909-911` and the study
   (`CraneRootGallery.hs:105-117` writes SVG and GLB only for accepted meshes).
 - **D15 matches B.** The graduation order and the stays-in-study list agree with
   B's "Graduation order", and #208 is open with the timings quoted.

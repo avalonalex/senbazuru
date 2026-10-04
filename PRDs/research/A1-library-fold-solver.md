@@ -11,7 +11,7 @@ Terms used below: a *crease pattern* is the flat sheet with its fold lines
 drawn on it; a *folded form* is where that paper ends up; a *fold angle* is
 how far the paper turns at a crease (0 is flat, +180 is a valley closed flat,
 -180 a mountain closed flat); *material coordinates* are where a point was on
-the unfolded sheet (`docs/glossary.md:82`); a *face* or *panel* is one flat
+the unfolded sheet (`docs/glossary.md:84`); a *face* or *panel* is one flat
 region between creases.
 
 ## Summary
@@ -233,7 +233,7 @@ Things a newcomer would get wrong about these:
   (`Crossings.hs:128`, `Faces.hs:138`), so `foldFrameWith (pattern { angles })`
   keeps vertex, edge and face ids. `Flap` relies on this (`Flap.hs:178-184`).
 - **Material coordinates.** The glossary defines them as identity through
-  folding (`docs/glossary.md:82`). `creaseThroughLayers` maps folded points
+  folding (`docs/glossary.md:84`). `creaseThroughLayers` maps folded points
   back to the sheet with `inverse` placements (`ThroughLayers.hs:291-305`).
   `StudyCase` names panels by a material point strictly inside exactly one face,
   "so face renumbering during crease cutting cannot silently change an order's

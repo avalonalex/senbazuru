@@ -352,7 +352,7 @@ order; "row N" is row N of
 | # | Stated here | Red when |
 | --- | --- | --- |
 | M0 (a) | Every link in rows moved into `docs/glossary.md` resolves from `docs/` | a moved row still links `research/…` or another path relative to `PRDs/` |
-| M0 (b) | *Rest angle* is defined once; today the [Origami](../docs/glossary.md#origami) section (line 19) and the [Geometry](../docs/glossary.md#geometry) section (line 83) each define it | both rows kept |
+| M0 (b) | *Rest angle* is defined once; today the [Origami](../docs/glossary.md#origami) section (line 19) and the [Geometry](../docs/glossary.md#geometry) section (line 86) each define it | both rows kept |
 | M0 (c) | §1.2's first command prints nothing | an M0 PR changes or deletes a tracked golden |
 | M1 (a) | §5's assertions, on 04 A5's source | as in §5 |
 | M1 (b) | A golden of `explain` text for each `StaticProblem` in 02's catalogue, as [D20](decisions.md#d20-errors) (errors) corrects it | a message built with `show` |
@@ -517,7 +517,7 @@ with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
 today's `test`, `format` and `lint`
 ([`ci.yml:11`](../.github/workflows/ci.yml#L11), [`:36`](../.github/workflows/ci.yml#L36),
 [`:71`](../.github/workflows/ci.yml#L71)), and
-[`AGENTS.md:378-379`](../AGENTS.md#workflow) requires "all three CI checks" green
+[`AGENTS.md:390-391`](../AGENTS.md#workflow) requires "all three CI checks" green
 before merge. The M4 PR adding the slow job changes that sentence
 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 15,
 [C51](decisions.md#changes-since-draft-v2)). Owner decision 12's default makes the

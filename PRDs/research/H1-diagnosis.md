@@ -135,7 +135,7 @@ without bound as two surfaces approach, and needs a positive gap to start
 | 26 | #390–#396 | Drawing-scale screens, visible layers, one larger 10° opening, intersection in context | One 40-correction continuation from the recovered seed | Body depth 21.7 → **43.5 px**, strain **0.0018%**, one intersection of 0.232 px. Unsettled: the proposal is 5,138× above the stop | `body-larger-opening.md:40-62` [note] |
 | 26 | #398 | **Prescribed whole-crane sketch** | Copy the 49 body vertices; rigid-fit the wings; spread the rest by a graph continuation; circular wing bend | 5.26% edge error, +22.3% stretch, 683 crossing pairs. The bounded correction diverges to 745% edge error | `whole-crane-candidate.md:16-57` [note] |
 | 26 | #400 | **Pillow targets** and wing-spread slider | Release the body; authored dome cushion; wing arches; continuation weighted by 1/length | 57–104% edge error; 217–345 crossing pairs | `crane-pillow-target.md:31-84` [note] |
-| 27 | #402 | Interactive GLB viewer | Browser selection of the nine GLBs | Presentation only | `crane-pillow-target.md:133-145` [note] |
+| 27 | #402 | Interactive GLB viewer | Browser selection of the nine GLBs | Presentation only | `crane-pillow-target.md:133-146` [note] |
 | 27 | #404 | Panel lighting; book drawing | Normals averaged per panel; three tones; contour ink; optional short-crease omission | Lighting seams reduced; the shape defects are unchanged | `crane-panel-lighting.md`, `crane-book-drawing.md` [note] |
 
 **2. A pattern separates what worked from what did not** [reasoned from finding 1].
@@ -481,7 +481,7 @@ rather than as one folded point (`whole-after-crop.png`,
 Averaging normals per panel changes 1,125 of 1,344 triangle corners in More
 tucked. Eight corners keep flat normals because their average points behind
 the triangle, a sign of reversed patches. Downloads keep flat lighting
-(`crane-panel-lighting.md:39-41`, `:31-36`).
+(`crane-panel-lighting.md:41-43`, `:31-37`).
 
 **19. The production flat drawings are clean, which locates the problem**
 [ran]. `crane-folded.png` and `bird-open.png` show exact planar panels, two

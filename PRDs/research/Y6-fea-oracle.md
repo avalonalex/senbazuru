@@ -202,7 +202,7 @@ These were fetched and read on 2026-09-28 unless marked otherwise.
   - Validation is experimental: pressure-volume curves from a syringe pump, with energy obtained by integrating them.
   - Hinges are made by scoring or engraving thinner material.
   - It contains **no finite-element analysis at all** (0 hits for Abaqus or finite element).
-  - `docs/related-projects.md:56` and `docs/notes/the-puff-is-a-drawing.md:162` attribute an Abaqus model with shells, pressure and self-contact to this work. The Supplementary Information does not support that.
+  - `docs/related-projects.md:60` and `docs/notes/the-puff-is-a-drawing.md:162` attribute an Abaqus model with shells, pressure and self-contact to this work. The Supplementary Information does not support that.
 - **LS-DYNA Keyword Manual vol. I, v960**, `*AIRBAG_REFERENCE_GEOMETRY` (p. 1.42): https://lsdyna.ansys.com/wp-content/uploads/2025/02/ls-dyna_960_manual_k_vol-1.pdf
   - Using the folded bag as its own reference would let the stretching and compression from folding distort the deployed shape.
   - So the unstretched configuration is supplied separately, and stresses are measured against it.
@@ -291,7 +291,7 @@ These were fetched and read on 2026-09-28 unless marked otherwise.
    A FOLD-to-.inp writer is small; `gen.py` here is about 150 lines. Name the gotchas in its notes.
 3. **Benchmark.** Gate any in-repo inflation solver on the tea bag: V = 0.202 ± 2% and thickness about 0.50 in the tension-field limit, plus X2's Mylar balloon. Gate on volume, not on shape.
 4. **Non-uniqueness.** State in the PRD that wrinkled or folded inflation is not unique: a physically based puffed pose needs a stated path and seed. Put the choice between tension-field and plain membrane, or a measured paper bag, to the owner as an explicit decision.
-5. **Docs.** Fix or mark unverified the Melancon claims at `docs/related-projects.md:56` and `docs/notes/the-puff-is-a-drawing.md:162`.
+5. **Docs.** Fix or mark unverified the Melancon claims at `docs/related-projects.md:60` and `docs/notes/the-puff-is-a-drawing.md:162`.
 6. **From airbags.** Take two things: build the start geometrically with fold widths and keep the flat sheet as the stress-free reference. Consider scheduling the minimum contact distance (small at first, growing) as the IPC counterpart of the contact-thickness ramp, to ease X3's contact jam. Do not take the industry's tolerance for initial penetration.
 7. **Literature for the notes.** Solomon et al. 2012 is the reference for smoothing panels without stretching them. Burgoon et al. 2006 is the precedent showing that discrete shells without contact cannot fold a crane.
 
