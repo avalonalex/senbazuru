@@ -54,13 +54,13 @@ A GLB is glTF's binary 3D file ([glossary](../docs/glossary.md#this-project)).
 
 | Property | Today | Where |
 | --- | --- | --- |
-| Scenes | "Visible paper" (buried coplanar paper removed) and "Complete paper" | [`Gltf.hs:13-20`](../src/Senbazuru/Render/Gltf.hs#L13-L20), [`:231-235`](../src/Senbazuru/Render/Gltf.hs#L231-L235) |
-| Two colours | Each face written twice, the second with reversed *winding* (corner order), into `paper` and `paper underside` | [`:31-42`](../src/Senbazuru/Render/Gltf.hs#L31-L42), [`:344-346`](../src/Senbazuru/Render/Gltf.hs#L344-L346) |
-| Materials | Base colour, metallic 0, roughness 1; no `doubleSided`, so viewers skip triangles seen from behind (*back-face culling*) | [`:384`](../src/Senbazuru/Render/Gltf.hs#L384); spec `Specification.adoc:2470` |
+| Scenes | "Visible paper" (buried coplanar paper removed) and "Complete paper" | [`Gltf.hs:13-20`](../src/Senbazuru/Render/Gltf.hs#L13-L20), [`:264-268`](../src/Senbazuru/Render/Gltf.hs#L264-L268) |
+| Two colours | Each face written twice, the second with reversed *winding* (corner order), into `paper` and `paper underside` | [`:31-42`](../src/Senbazuru/Render/Gltf.hs#L31-L42), [`:378-380`](../src/Senbazuru/Render/Gltf.hs#L378-L380) |
+| Materials | Base colour, metallic 0, roughness 1; no `doubleSided`, so viewers skip triangles seen from behind (*back-face culling*) | [`:418`](../src/Senbazuru/Render/Gltf.hs#L418); spec `Specification.adoc:2470` |
 | Normals | None: "flat is exactly right for paper" | [`:49-50`](../src/Senbazuru/Render/Gltf.hs#L49-L50) |
 | Lines, animation | None | [`:52-55`](../src/Senbazuru/Render/Gltf.hs#L52-L55) |
-| Metadata | `extras.senbazuru`: `version`, `frame`, optional `physicalThickness`, `layerRequirements`; frame extras cut to three keys | [`:236-243`](../src/Senbazuru/Render/Gltf.hs#L236-L243) |
-| Positions | Rounded to 1e-6 of the model's span through an `Integer` | [`:261-264`](../src/Senbazuru/Render/Gltf.hs#L261-L264), [`:311-314`](../src/Senbazuru/Render/Gltf.hs#L311-L314) |
+| Metadata | `extras.senbazuru`: `version`, `frame`, optional `physicalThickness`, `layerRequirements`; frame extras cut to three keys | [`:269-277`](../src/Senbazuru/Render/Gltf.hs#L269-L277) |
+| Positions | Rounded to 1e-6 of the model's span through an `Integer` | [`:295-298`](../src/Senbazuru/Render/Gltf.hs#L295-L298), [`:345-348`](../src/Senbazuru/Render/Gltf.hs#L345-L348) |
 
 A *normal* is the unit direction perpendicular to a surface, which lighting
 reads ([glossary](../docs/glossary.md#geometry)). With none written, viewers
@@ -70,11 +70,11 @@ viewer pages load) shades flat
 renders today", finding 1, code read). That is right for rigid panels. The
 study's bent meshes are hundreds of planar triangles joined by `J` (join) edges,
 which mark two triangles as one piece of paper
-([`CraneSpread.hs:243-247`](../study/fold-material/CraneSpread.hs#L243-L247),
+([`CraneSpread.hs:273-278`](../study/fold-material/CraneSpread.hs#L273-L278),
 [`UncreasedSurface.hs:1-10`](../study/fold-material/UncreasedSurface.hs#L1-L10)),
 exported through this path
-([`CraneSpreadGallery.hs:108-110`](../study/fold-material/CraneSpreadGallery.hs#L108-L110),
-[`WingBendingGallery.hs:85-87`](../study/fold-material/WingBendingGallery.hs#L85-L87)),
+([`CraneSpreadGallery.hs:118-120`](../study/fold-material/CraneSpreadGallery.hs#L118-L120),
+[`WingBendingGallery.hs:145-147`](../study/fold-material/WingBendingGallery.hs#L145-L147)),
 so a curved wing shows its facets. The study's WebGL viewer instead averages
 normals "within a panel only"
 ([`viewer.html:218-229`](../study/fold-material/viewer.html#L218-L229)), the rule
@@ -120,8 +120,8 @@ each backend consumes, and the layering rule", finding 3).
 ### Nothing records what an output claims
 
 `Page`'s one text field, `pageTitle`, becomes `<title>`
-([`Svg.hs:81-94`](../src/Senbazuru/Render/Svg.hs#L81-L94),
-[`:143-145`](../src/Senbazuru/Render/Svg.hs#L143-L145)). A settled wing's GLB cannot say it is an illustrative
+([`Svg.hs:82-95`](../src/Senbazuru/Render/Svg.hs#L82-L95),
+[`:153-155`](../src/Senbazuru/Render/Svg.hs#L153-L155)). A settled wing's GLB cannot say it is an illustrative
 zero-thickness solve. The project made this mistake once: a display spacing named
 `--thickness` shipped and was removed
 ([paper-thickness.md](../docs/notes/paper-thickness.md)).
@@ -159,7 +159,7 @@ hinge comes apart between keys: halfway through a half turn the gap equals the
 hinge's distance from the node's origin ([G](research/G-realistic-rendering-and-simulation.md)
 "C. glTF realism", finding 18a, derived). The per-face transforms #56 calls
 discarded exist as `foldedPlacements`
-([`Folding.hs:283-323`](../src/Senbazuru/Origami/Folding.hs#L283-L323)).
+([`Folding.hs:284-324`](../src/Senbazuru/Origami/Folding.hs#L284-L324)).
 
 ## Goals
 
@@ -286,9 +286,9 @@ inputs such as `puffed-square.fold`. **No bent paper is reachable from the
   `export --fold --smooth` must keep the `Folded` that `foldFrameWith` returns and
   build its surface with `surfaceFromFolded`, so that it reaches the `Surface V2`
   entry point. Today `paperFor` returns only a `Frame`
-  ([`Cli.hs:775`](../app/Senbazuru/Cli.hs#L775)) and `renderGlb` builds a
+  ([`Cli.hs:884`](../app/Senbazuru/Cli.hs#L884)) and `renderGlb` builds a
   `Surface (Maybe V2)` with `surfaceFromFrame`
-  ([`Gltf.hs:210`](../src/Senbazuru/Render/Gltf.hs#L210)).
+  ([`Gltf.hs:237`](../src/Senbazuru/Render/Gltf.hs#L237)).
 - **R-08-10.** On planar panels every normal equals its face's flat normal. The
   mode adds no texture, material extension or `doubleSided`.
 - **R-08-11.** The study's gallery programs (`CraneSpreadGallery`,
@@ -437,11 +437,11 @@ crane-spread smooth GLB (bent) and a W1 SVG of the rigid folded crane would carr
 
 Only new modes, because any key in default output moves `crane-folded.glb`,
 `quarter-fold-folded.glb` and `simple.glb`
-([`GltfSpec.hs:644-658`](../test/Senbazuru/Render/GltfSpec.hs#L644-L658)).
+([`GltfSpec.hs:613-627`](../test/Senbazuru/Render/GltfSpec.hs#L613-L627)).
 `pageDescription` breaks no call site: every other `Page` in `src`, `app`, `test`
 and `study` is a record update of `defaultPage`, or of `testPage`, itself one
 (`grep -rn --include='*.hs' -E "Page \{|defaultPage \{" src app test study`; e.g.
-[`Cli.hs:909-916`](../app/Senbazuru/Cli.hs#L909-L916),
+[`Cli.hs:1023-1030`](../app/Senbazuru/Cli.hs#L1023-L1030),
 [`SvgSpec.hs:141-147`](../test/Senbazuru/Render/SvgSpec.hs#L141-L147)).
 
 Rejected: a sidecar file, which does not travel with the picture; fidelity inside
@@ -491,14 +491,14 @@ omission. `export --fold --smooth` is that second caller today, because its
 are proposed spellings the PRs settle.
 
 **Regions.** `spreadSurface` marks an edge `J` exactly when no source edge
-contains it ([`CraneSpread.hs:243-247`](../study/fold-material/CraneSpread.hs#L243-L247)),
+contains it ([`CraneSpread.hs:273-278`](../study/fold-material/CraneSpread.hs#L273-L278)),
 so a crane-spread region is one source panel's triangles, and a wing piece is one
 region. A vertex on a crease between panels gets two normals; one inside a panel
 gets one. Regions come from `J` connectivity, not `senbazuru:source_panels`,
 because `transformSurface` drops frame extras
 ([`Surface.hs:287-292`](../src/Senbazuru/Origami/Surface.hs#L287-L292)); a test
 checks both agree where both exist. An unnormalised face normal's length is
-twice its area ([`Gltf.hs:278`](../src/Senbazuru/Render/Gltf.hs#L278)), so large
+twice its area ([`Gltf.hs:312`](../src/Senbazuru/Render/Gltf.hs#L312)), so large
 triangles weigh more, as in the study viewer. Normals come from packed positions
 so their bytes depend only on bytes already written; raw positions computed
 through `sin` and `cos` can differ in their last bits between platforms
@@ -508,7 +508,7 @@ through `sin` and `cos` can differ in their last bits between platforms
 **Two lines that look like typos.**
 
 - **The underside's normal is negated.** Both copies share one `POSITION`
-  accessor ([`Gltf.hs:380`](../src/Senbazuru/Render/Gltf.hs#L380)). The underside
+  accessor ([`Gltf.hs:414`](../src/Senbazuru/Render/Gltf.hs#L414)). The underside
   copy is wound to face down, but lighting reads `NORMAL` as written; sharing the
   top's would light the underside from inside the paper. With `doubleSided`
   false nothing flips it (spec `Specification.adoc:2470-2472`).
@@ -536,7 +536,7 @@ curl -sS https://raw.githubusercontent.com/KhronosGroup/glTF/c18432787e6d545a121
 ([`spreading-connected-wing.md:65-67`](../docs/notes/spreading-connected-wing.md)),
 and the wing-bending pieces. Its golden, `test/golden/bent-strip-smooth.glb`, uses
 the analytic bent strip already pinned as `bent-strip.svg`, which needs no solve
-([`WingBendingSpec.hs:94-100`](../test/WingBendingSpec.hs#L94-L100)).
+([`WingBendingSpec.hs:96-102`](../test/WingBendingSpec.hs#L96-L102)).
 
 ### glTF crease lines: a spike before a requirement
 
@@ -556,7 +556,7 @@ whether three.js and Blender show `LINES` lying on triangles is unmeasured
 3. Offsets each side's copy by `lineLift` along **that side's** panel normal; an
    averaged normal vanishes at a flat-folded crease (the quarter-fold numbers).
 4. Picks `lineLift` above `quantumFor span`
-   ([`Gltf.hs:261-264`](../src/Senbazuru/Render/Gltf.hs#L261-L264)), or packing
+   ([`Gltf.hs:295-298`](../src/Senbazuru/Render/Gltf.hs#L295-L298)), or packing
    rounds the line back onto the paper. This PRD states no value.
 5. Uses an unlit ink material: lines with no `NORMAL` "SHOULD be rendered without
    lighting" and "SHOULD have widths of 1px" (spec `Specification.adoc:2491-2494`).
@@ -686,7 +686,7 @@ that accepted it.
 | --- | --- | --- |
 | `B`, `C` | border 1.6 | [`Style.hs:213`](../src/Senbazuru/Diagram/Style.hs#L213), [`:270-271`](../src/Senbazuru/Diagram/Style.hs#L270-L271) |
 | `M`, `V` | crease 1.0, solid as on a folded form | [`:214`](../src/Senbazuru/Diagram/Style.hs#L214), [`:286-289`](../src/Senbazuru/Diagram/Style.hs#L286-L289) |
-| `F`, `U` | ghost 0.6 unless `--hide-flat` | [`:215`](../src/Senbazuru/Diagram/Style.hs#L215), [`:274-279`](../src/Senbazuru/Diagram/Style.hs#L274-L279), [`Cli.hs:556-557`](../app/Senbazuru/Cli.hs#L556-L557) |
+| `F`, `U` | ghost 0.6 unless `--hide-flat` | [`:215`](../src/Senbazuru/Diagram/Style.hs#L215), [`:274-279`](../src/Senbazuru/Diagram/Style.hs#L274-L279), [`Cli.hs:655-656`](../app/Senbazuru/Cli.hs#L655-L656) |
 | silhouette, any assignment | crease 1.0, even with `--hide-flat` | #104: "drawn whether or not `--hide-flat` is on" |
 | `J`, `--lines mesh` only | `themeBuriedWidth` 0.35 | [`Style.hs:233`](../src/Senbazuru/Diagram/Style.hs#L233) |
 
@@ -726,8 +726,8 @@ visibility.
 **Why nested nodes.** In the blintz, the south-east corner turns about the crease
 (1/2, 0)–(1, 1/2). `Origami.Folding` places a child face by a turn of the negated
 fold angle about its parent's ring edge `a → b`
-([`Folding.hs:650-653`](../src/Senbazuru/Origami/Folding.hs#L650-L653)), composed
-as ``parent `after` turn`` ([`:619-624`](../src/Senbazuru/Origami/Folding.hs#L619-L624));
+([`Folding.hs:664-667`](../src/Senbazuru/Origami/Folding.hs#L664-L667)), composed
+as ``parent `after` turn`` ([`:633-638`](../src/Senbazuru/Origami/Folding.hs#L633-L638));
 the central square's counterclockwise ring runs (1/2, 0) → (1, 1/2), so the
 recipe's −180° *mountain* (negative fold angle) is a +180° turn about that direction. Python applying
 Rodrigues' formula (the standard rotation of a point about an axis) as
@@ -736,7 +736,7 @@ Rodrigues' formula (the standard rotation of a point about an axis) as
 
 | Turn | Corner (1, 0, 0) lands at | Node rotation as a *quaternion* (x, y, z, w), glTF's four-number rotation |
 | --- | --- | --- |
-| 90° | (0.75, 0.25, −0.3536) | (0.5, 0.5, 0, 0.7071) in FOLD axes; (0.5, 0, −0.5, 0.7071) after the (x, z, −y) swap ([`Gltf.hs:295-300`](../src/Senbazuru/Render/Gltf.hs#L295-L300)) |
+| 90° | (0.75, 0.25, −0.3536) | (0.5, 0.5, 0, 0.7071) in FOLD axes; (0.5, 0, −0.5, 0.7071) after the (x, z, −y) swap ([`Gltf.hs:329-334`](../src/Senbazuru/Render/Gltf.hs#L329-L334)) |
 | 180° | (0.5, 0.5, 0) | (0.7071, 0.7071, 0, 0) in FOLD axes; (0.7071, 0, −0.7071, 0) after the swap |
 
 Half-way, the corner is below the sheet, as a mountain should be. With keys only
@@ -758,15 +758,15 @@ so each mesh node's world transform is its parent's `after` the turn, exactly
 `Folding`'s rule, and every translation is constant.
 
 `spanningWalk` returns placements, not its tree
-([`Folding.hs:572-577`](../src/Senbazuru/Origami/Folding.hs#L572-L577)). The
+([`Folding.hs:586-591`](../src/Senbazuru/Origami/Folding.hs#L586-L591)). The
 exporter needs each face's parent and crossing edge from **that** walk, because
 there is to be "one spanning walk and not two implementations of it that can
-drift" ([`:328-330`](../src/Senbazuru/Origami/Folding.hs#L328-L330)).
+drift" ([`:342-344`](../src/Senbazuru/Origami/Folding.hs#L342-L344)).
 So `Origami.Folding` exports that tree as
 `foldedWalk :: Folded -> IntMap (FaceId, EdgeId)` (**SKETCH**, 05 L15, at M7b,
 [§5](decisions.md#5-type-sketch)): each face's parent and crossing edge, keyed
 like `foldedPlacements` by the faces of `foldedPattern`, the cut pattern the walk
-ran on ([`Folding.hs:318-322`](../src/Senbazuru/Origami/Folding.hs#L318-L322)),
+ran on ([`Folding.hs:319-323`](../src/Senbazuru/Origami/Folding.hs#L319-L323)),
 with no entry for the root face ([D19](decisions.md#d19-realistic-rendering)).
 
 **Earlier states.** Over the checkpoint interval's final cut pattern, a crease
@@ -826,8 +826,8 @@ passed the *join check*, which requires positions to agree within
   turning a tree crease by ≥ 180° gets its middle p, repeatedly.
 - **Midpoint refold.** Fold at the per-crease average of the two keys' angles
   through `foldFrameWith`, whose `TornAt` and `loopsClose` checks
-  ([`Folding.hs:154`](../src/Senbazuru/Origami/Folding.hs#L154),
-  [`:377`](../src/Senbazuru/Origami/Folding.hs#L377)) decide. Those are the
+  ([`Folding.hs:155`](../src/Senbazuru/Origami/Folding.hs#L155),
+  [`:391`](../src/Senbazuru/Origami/Folding.hs#L391)) decide. Those are the
   angles the viewer shows halfway, because slerp turns each tree crease by the
   linearly interpolated angle. Folding at the route's middle p instead would
   check a pose the viewer never shows, so passing it would say nothing about the
@@ -901,7 +901,7 @@ how sheen or translucency looks on paper; W2 (milestone R,
 | A-10 | Crane-spread curved and fine smooth GLBs: validator 0/0; a three.js screenshot shows no facets (manual) | a non-unit normal |
 | A-11 | **W1, before any W1 test:** record whether `projectedForm` declines (`Right Nothing` or `Left ImpossibleStacking`) on the crane-spread curved and fine meshes. A-13 needs a mesh where it does, because only there does today's painter draw buried creases for W1 to remove. If neither declines, A-13's failing case is the 4,312-triangle crane-root mesh from #206 | — (a measurement) |
 | A-12 | **Lines spike:** validator 0/0; three.js `GLTFLoader` screenshots (from `study/gltf`) of quarter fold and crane from both sides, lines visible without z-fighting (a line and a triangle at one depth flickering through each other) (manual); headless Blender `bpy` import counts loose edges equal to segments written; that loose edges do not render in Blender is **UNVERIFIED** and recorded | `lineLift` at or below one packing quantum |
-| A-13 | **W1 (a):** the crane-spread solves hold every body vertex where it lies in the flat folded crane they start from ([`spreading-connected-wing.md:16`](../docs/notes/spreading-connected-wing.md); a *hold*, [glossary-additions](glossary-additions.md#material)), and so does #206's flat-preference control ([`CraneRoot.hs:84`](../study/fold-material/CraneRoot.hs#L84), [`CraneRootGallery.hs:64`](../study/fold-material/CraneRootGallery.hs#L64)), so the body's creases do not move. On crane-spread curved and fine and the 4,312-triangle crane-root mesh (slow job), from top-down and from bottom-up: the *wing's shadow* is the part of the page the wing covers in the flat start or in the settled state. Outside it, W1's drawn length of each body crease equals `visibleForm`'s on the flat folded crane, within τ | ties decided without orders; band shrunk |
+| A-13 | **W1 (a):** the crane-spread solves hold every body vertex where it lies in the flat folded crane they start from ([`spreading-connected-wing.md:16`](../docs/notes/spreading-connected-wing.md); a *hold*, [glossary-additions](glossary-additions.md#material)), and so does #206's flat-preference control ([`CraneRoot.hs:84`](../study/fold-material/CraneRoot.hs#L84), [`CraneRootGallery.hs:69`](../study/fold-material/CraneRootGallery.hs#L69)), so the body's creases do not move. On crane-spread curved and fine and the 4,312-triangle crane-root mesh (slow job), from top-down and from bottom-up: the *wing's shadow* is the part of the page the wing covers in the flat start or in the settled state. Outside it, W1's drawn length of each body crease equals `visibleForm`'s on the flat folded crane, within τ | ties decided without orders; band shrunk |
 | A-14 | **W1 (b):** tests dropping the order tie-break and shrinking τ to `1e-9` each fail on the mutated code, shown in the PR | a mutation passes, so the test cannot fail |
 | A-15 | **W1 (c):** candidate × face pairs after the broad phase, 3–5 compiled runs at 392, 1,192 and 4,312 triangles; no size promised before | — (a measurement) |
 | A-16 | W1 top-down on the folded crane draws the stretches `visibleForm` draws, compared by length within τ | faces containing a segment allowed to occlude it |

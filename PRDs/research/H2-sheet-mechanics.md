@@ -91,16 +91,16 @@ contact-free poses such as wing curl.
 1. **The bending energy is Discrete Shells plus crease hinges, as G11 said.**
    - **Panels.** Every interior edge carries `½ k (θ − θ₀)²` with weight
      `panelStiffness · 2 l² / (twice the two triangles' area)`, which equals
-     `k · l / h_mean` (`[code]` `study/fold-material/FoldBending.hs:209-220`,
-     line 218; header `:18-23`).
-   - **Creases.** A crease segment gets `creaseStiffness · l` (`FoldBending.hs:218`).
+     `k · l / h_mean` (`[code]` `study/fold-material/FoldBending.hs:212-223`,
+     line 221; header `:18-23`).
+   - **Creases.** A crease segment gets `creaseStiffness · l` (`FoldBending.hs:221`).
      That is Lechenault's hinge `M = κ W (φ − φ₀)` per unit length (finding 7),
      so the study's `κ` and a measured `κ` are the same kind of number.
    - **Angle.** The signed dihedral and its gradient are the standard hinge
-     formulas (`FoldBending.hs:228-251`).
+     formulas (`FoldBending.hs:231-254`).
    - **Constants.** They are labelled illustrative: `Bending 1 5` by default
-     (`FoldBending.hs:57-66`) and `Bending 1 0.2` in the crane fixtures
-     (`WholeCrane.hs:60`, `CraneSpread.hs:120`).
+     (`FoldBending.hs:60-69`) and `Bending 1 0.2` in the crane fixtures
+     (`WholeCrane.hs:334`, `CraneSpread.hs:121`).
    - **Missing next to Filipov et al.'s three behaviours** (stretch/shear, panel
      bending, crease folding; `[paper]` Filipov et al. 2017, §8.1): a membrane
      that is a material rather than a penalty.
@@ -133,7 +133,7 @@ contact-free poses such as wing curl.
 
 3. **The solver is Gauss-Newton, which drops half the bending Hessian.**
    - **What the code does.** Each hinge is a residual `√k · angleError`
-     (`FoldBending.hs:259-268`). The step solves `JᵀJ + 10⁻³ I` by conjugate
+     (`FoldBending.hs:298-307`). The step solves `JᵀJ + 10⁻³ I` by conjugate
      gradients (`FoldRelaxation.hs:631-663`), and a line search halves the step
      up to 30 times (`:687`, `:697`).
    - **What it leaves out.** Tamstorf & Grinspun write the bending Hessian as
@@ -156,14 +156,14 @@ contact-free poses such as wing curl.
      (`docs/notes/body-barrier-comparison.md:84-116`).
    - **The body is squashed by the recipe.** The pillow recipe maps material
      `(u, v)` to `x = (1 − u − v)/√2`, `z = (u − v)/√2`, adds a dome of height
-     0.045, and then multiplies `z` by `bodyWidthScale` (`WholeCrane.hs:171-177`).
+     0.045, and then multiplies `z` by `bodyWidthScale` (`WholeCrane.hs:357-363`).
      The owner's "More tucked" pose uses the narrow body, `bodyWidthScale = 0.5`
-     (`WholeCrane.hs:149`, `:157-160`;
+     (`WholeCrane.hs:291`, `:299-307`;
      `docs/notes/crane-pillow-target.md:148`). That is a 50% compression across
      the wings, written into the target.
    - **The rest is not length-preserving either.** It is filled by a
      least-squares graph smoothing weighted by inverse edge length
-     (`WholeCrane.hs:198-201`, `:236-242`), which "does not preserve its
+     (`WholeCrane.hs:384-387`, `:420-426`), which "does not preserve its
      length" (`crane-pillow-target.md:58-61`).
    - **Consequence** (`[reasoned]`). The recorded +152% / −82% local strains
      (`crane-pillow-target.md:72-78`) measure the recipe, not a failure of
@@ -282,7 +282,7 @@ contact-free poses such as wing curl.
      | 0.4 | −11.61% |
 
    - **The pillow target's own proportions.** It rises 0.045 over half-width
-     `(√2 − 1)/2`, a ratio of 0.217 (`WholeCrane.hs:171-177`). Made smooth,
+     `(√2 − 1)/2`, a ratio of 0.217 (`WholeCrane.hs:357-363`). Made smooth,
      that shape needs about 3.2% compression at its rim `[ran]`. That is 30×
      the owner's provisional 0.1% local-strain screen
      (`docs/notes/illustration-material-priority.md:14-17`).
@@ -554,9 +554,9 @@ contact-free poses such as wing curl.
     | Layer | Recommended | Why | Study today |
     | --- | --- | --- | --- |
     | Membrane | Per-triangle StVK on Green strain, `ν = 0.23`, at physical `γ ≈ 5e7`. Optionally a strain-limit barrier at about 1% on top (C-IPC-style, G13) | A material, not a penalty; sets Poisson; less locking; a 1% cap keeps pictures honest (finding 21) | Edge springs, `w` staged to 1e8, `ν` fixed at 1/3 (`FoldRelaxation.hs:543`, `:670-711`) |
-    | Panel bending | Keep the hinge energy `k l/h_mean`, normalised `B = 1`. Move to midedge/BAC only if refinement shows visible mesh dependence | Cheapest; the benchmark says when to upgrade | `FoldBending.hs:218`, illustrative |
-    | Crease | `κ l (θ − θ₀)²`, `κ = B/L*`, `L* ≈ 150-215 t` (0.07-0.10 sheet for kami); MERLIN-style stiffening near ±π | Measured (finding 7); guards against hinge flip | Same form, `L*_study = 0.2` (`WholeCrane.hs:60`) |
-    | Rest angles and curl | `θ₀` per crease from the step that made it, minus a declared springback. Panel rest curvature (plastic curl) authored by a shaping step | History sets rest angle (Jules 2020); hand-curled wings are plastic (ARCSim) | Fixed authored `θ₀` (`FoldBending.hs:138-145`); `BendControl` (`:6-7`) |
+    | Panel bending | Keep the hinge energy `k l/h_mean`, normalised `B = 1`. Move to midedge/BAC only if refinement shows visible mesh dependence | Cheapest; the benchmark says when to upgrade | `FoldBending.hs:221`, illustrative |
+    | Crease | `κ l (θ − θ₀)²`, `κ = B/L*`, `L* ≈ 150-215 t` (0.07-0.10 sheet for kami); MERLIN-style stiffening near ±π | Measured (finding 7); guards against hinge flip | Same form, `L*_study = 0.2` (`WholeCrane.hs:334`) |
+    | Rest angles and curl | `θ₀` per crease from the step that made it, minus a declared springback. Panel rest curvature (plastic curl) authored by a shaping step | History sets rest angle (Jules 2020); hand-curled wings are plastic (ARCSim) | Fixed authored `θ₀` (`FoldBending.hs:141-148`); `BendControl` (`:6-7`) |
     | Loads | Exact grips; optional gravity (`(L/ℓ_g)³ ≈ 16`); pressure `−pV` over a declared cavity | Inflation; drooping flaps | Grips only (`FoldRelaxation.hs:251-258`); `grep -il "gravity\|pressure"` finds only comments `[ran]` |
     | Contact | Unsigned point-triangle and edge-edge barrier at `d̂` about physical thickness; CCD caps each step; directional checks kept as diagnostics | Order is kept automatically along a path that never crosses (G13) | Directional barrier/penalty on a model axis (`SurfaceContact.hs:1-38`); CCD refuses steps (`CorrectionSweep.hs:1-21`) |
     | Start state | The checked rigid flat-folded state, layers offset by thickness from `faceOrders`, joined by thickness-scale strips | A separated, near-isometric start: the thing #379, #381 and #383 could not build | Prescribed or constructed guesses (finding 4) |

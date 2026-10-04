@@ -244,7 +244,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
     assignments** and explicit `edges_foldAngle`. It keeps M/V at angle 0 on
     precreased-and-flat creases **on purpose**, departing from `Creasing`'s "a valley
     at 0 is not a valley" (L1-5). Safe because folding reads explicit angles first
-    (`Folding.hs:508-511`) and stacking falls back to the assignment only at angle 0,
+    (`Folding.hs:522-525`) and stacking falls back to the assignment only at angle 0,
     a tortilla that orders nothing (`Stacking.hs:637-639, 700-727`). Written frames
     restore the FOLD rule (D4).
   - accepted orders live on the working pattern (`faceOrders`) and directional
@@ -286,10 +286,10 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
      coordinates back as material;
   2. drop `frameExtras` and stale faces on every transform;
   3. re-fold after every handoff; never patch a `Folded` (`FlapStartMismatch`,
-     `Flap.hs:172-184`, which does not check orders, so a patch changing only orders
+     `Flap.hs:244-256`, which does not check orders, so a patch changing only orders
      would pass unnoticed). **Orders reach `Flap` by being on the working pattern
      before the fold**: `foldFrameWith` copies them into `foldedFrame`, re-signing
-     any whose second face it re-wound (`Folding.hs:385`), as the blintz and helmet
+     any whose second face it re-wound (`Folding.hs:399`), as the blintz and helmet
      recipes do (`BlintzSequence.hs:63-64`). A state's first stacking: fold, solve
      on `foldedFrame`, record the chosen orders on the working pattern, refold. Do
      not attach orders to a `Folded` as `CraneWing.hs:139` does (L1-4, refuted
@@ -375,7 +375,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
   sense negated exactly when `presentation after anchor placement` sends ẑ to −ẑ. That one
   raw sense sets the `Assignment` for new creases and the sign of `Flap`'s travel.
   Each layer's way up (`ThroughLayers.facesUp`) and each hinge segment's sign
-  (`Flap.hs:211-219`) stay in the library; the runner never applies them itself.
+  (`Flap.hs:284-301`) stay in the library; the runner never applies them itself.
   Constructions use raw positions (they are invariant); only `model [...]` is mapped
   through the inverse.
 - **Render options never change a step's meaning.** `run -o x.foldseq.fold` and
@@ -677,7 +677,7 @@ Each: **what**, **why** (research or review key), **rejected**, **residue**.
 - **Rest angles** (L5-6 BETTER): `data RestAngles = RestAtPose PoseRef |
   RestAtPoseExcept PoseRef [(CreaseLine, Rational)]` (degrees as seen); every active
   crease rests at its angle in that pose; never derived from an assignment (delete the
-  rule at `CraneSpread.hs:112-116`). A settle with rest pose = start pose, no released
+  rule at `CraneSpread.hs:113-117`). A settle with rest pose = start pose, no released
   hold and no moved grip is refused as `NoDifference` (a rigid state is already an
   equilibrium, B finding 6). **Owner decision**: precreased M/V at 0 becomes an active
   crease with rest 0 and crease stiffness; source-file F edges stay panel bends until

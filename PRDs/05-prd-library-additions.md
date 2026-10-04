@@ -36,7 +36,7 @@ creases, folds and checks one turn about a *hinge*, the line paper turns about
 raw edge and *face* (flat region between creases) ids of a *cut pattern*: the
 [crease pattern](../docs/glossary.md#origami) after crossing creases are split
 and faces traced, the only numbering folding's results refer to
-([`Folding.hs:286-302`](../src/Senbazuru/Origami/Folding.hs#L286-L302)). Fifteen
+([`Folding.hs:287-303`](../src/Senbazuru/Origami/Folding.hs#L287-L303)). Fifteen
 small additions close the gap. Two are new modules; the rest sit beside the
 function they extend. **None changes an existing output**, and each item says
 why.
@@ -78,7 +78,7 @@ Each line is something a runner cannot do with today's exports.
   was made as ([glossary-additions](glossary-additions.md#the-fold-format)).
 - **Creasing through layers takes every layer and folds its own input**
   ([`ThroughLayers.hs:56-61`](../src/Senbazuru/Origami/ThroughLayers.hs#L56-L61),
-  [`:227-229`](../src/Senbazuru/Origami/ThroughLayers.hs#L227-L229)), so faces
+  [`:228-230`](../src/Senbazuru/Origami/ThroughLayers.hs#L228-L230)), so faces
   chosen from the caller's own fold may be numbered differently.
 - **Layer orders are lost across a crease.** FOLD's `faceOrders` say which of
   two overlapping faces lies above; creasing empties them
@@ -89,21 +89,21 @@ Each line is something a runner cannot do with today's exports.
   ([`Step.hs:94-96`](../src/Senbazuru/Origami/Step.hs#L94-L96),
   [`:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34)).
 - **Flap gives positions, not per-face motions, and hides its stationary face**
-  ([`Flap.hs:294-298`](../src/Senbazuru/Origami/Flap.hs#L294-L298),
-  [`:49-59`](../src/Senbazuru/Origami/Flap.hs#L49-L59)).
+  ([`Flap.hs:416-420`](../src/Senbazuru/Origami/Flap.hs#L416-L420),
+  [`:76-89`](../src/Senbazuru/Origami/Flap.hs#L76-L89)).
 - **Flap's travel sign depends on that hidden face.** Travel is the change in the
   *first* listed segment's angle, and each other segment's sign follows its own
   stationary face's ring ([`Flap.hs:14-16`](../src/Senbazuru/Origami/Flap.hs#L14-L16),
-  [`:211-219`](../src/Senbazuru/Origami/Flap.hs#L211-L219)), so a caller holding
+  [`:284-301`](../src/Senbazuru/Origami/Flap.hs#L284-L301)), so a caller holding
   only "valley" cannot choose it (L14).
 - **Flap's values cannot be compared**: `FlapMotion` and `CheckedFlap` derive only
-  `Show` ([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
-  [`:99`](../src/Senbazuru/Origami/Flap.hs#L99)).
+  `Show` ([`Flap.hs:123`](../src/Senbazuru/Origami/Flap.hs#L123),
+  [`:126`](../src/Senbazuru/Origami/Flap.hs#L126)).
 - **Folding discards its tree**: `spanningWalk` returns placements and not which
   face placed which
-  ([`Folding.hs:572-577`](../src/Senbazuru/Origami/Folding.hs#L572-L577)).
+  ([`Folding.hs:586-591`](../src/Senbazuru/Origami/Folding.hs#L586-L591)).
 - **A library message names a CLI flag**
-  ([`ThroughLayers.hs:194-195`](../src/Senbazuru/Origami/ThroughLayers.hs#L194-L195)).
+  ([`ThroughLayers.hs:195-196`](../src/Senbazuru/Origami/ThroughLayers.hs#L195-L196)).
 - **Nothing checks a rigid motion is a rotation**: `Rigid` "will hold any 3×3
   matrix … and nothing here checks"
   ([`Rigid.hs:24-26`](../src/Senbazuru/Geometry/Rigid.hs#L24-L26)).
@@ -134,7 +134,7 @@ Each line is something a runner cannot do with today's exports.
 Users: `Sequence.Run` (every item); `Render.Sequence` (L3, L5,
 [06](06-prd-step-diagrams.md)); the study consumer and animated glTF (L4, L13,
 L15, [07](07-prd-material-consumption.md), [08](08-prd-realistic-rendering.md));
-`senbazuru crease --folded` ([`Cli.hs:761`](../app/Senbazuru/Cli.hs#L761)),
+`senbazuru crease --folded` ([`Cli.hs:870`](../app/Senbazuru/Cli.hs#L870)),
 unchanged except L6's wording.
 
 The scenario using most of them is "fold the top flap down along this line" on a
@@ -199,7 +199,7 @@ M or V at angle 0 on edges 8–11 of the key frame and 9, 11 of frame 1.
 
 - **R-05-4.** `B`, `C`, `J` pass through; `M`, `V`, `F`, `U` become `M` below
   −τ, `V` above τ, `F` otherwise. Angles are FOLD degrees
-  ([`Folding.hs:488-490`](../src/Senbazuru/Origami/Folding.hs#L488-L490)).
+  ([`Folding.hs:502-504`](../src/Senbazuru/Origami/Folding.hs#L502-L504)).
 - **R-05-5.** τ = 1e-10°, equal to both literals, so migrating either later
   changes no comparison ([D4](decisions.md#d4-written-frames-follow-the-state-rule),
   [C29](decisions.md#changes-since-draft-v2)).
@@ -280,7 +280,7 @@ them (not senbazuru); **UNVERIFIED in Haskell** until the first test runs.
 - **R-05-8.** `AtRest` on a frame without `edges_foldAngle` writes the whole
   array: existing edges get what `foldAnglesOf` reads for an absent array (M
   −180, V +180, else 0,
-  [`Folding.hs:507-532`](../src/Senbazuru/Origami/Folding.hs#L507-L532)), new
+  [`Folding.hs:521-546`](../src/Senbazuru/Origami/Folding.hs#L521-L546)), new
   pieces 0. Leaving it absent would fold the new valley to 180
   ([C30](decisions.md#changes-since-draft-v2)).
 - **R-05-9.** List *i* holds request *i*'s pieces from its first end. When
@@ -307,10 +307,10 @@ and "The creases are written at plus or minus 180"
 | The batch above returns `[[8,9],[10,11,12]]` | ids come from counts, or chains are regrouped |
 | `creaseAllAlong` equals `fst <$> creaseAllAlongWith FlatForAssignment` on every `CreasingSpec` and `ThroughLayersSpec` input | the refactor moves an angle or id |
 | Under `AtRest`, every returned id has angle 0 and its requested assignment, every other edge its parent's angle | a cut old crease is zeroed |
-| Under `AtRest`, on every `CreasingSpec` and `ThroughLayersSpec` input that folds: folding the output places the input's vertices as folding the input does, within `sheetTolerance` ([`Folding.hs:847-848`](../src/Senbazuru/Origami/Folding.hs#L847-L848)), after the output's faces are reordered so that a face whose every vertex lies in the input's face 0 comes first | a new crease gets ±180, or an absent array stays absent |
+| Under `AtRest`, on every `CreasingSpec` and `ThroughLayersSpec` input that folds: folding the output places the input's vertices as folding the input does, within `sheetTolerance` ([`Folding.hs:861-862`](../src/Senbazuru/Origami/Folding.hs#L861-L862)), after the output's faces are reordered so that a face whose every vertex lies in the input's face 0 comes first | a new crease gets ±180, or an absent array stays absent |
 
 The reordering in the last row is not optional. Folding holds its first face
-still ([`Folding.hs:583-585`](../src/Senbazuru/Origami/Folding.hs#L583-L585)),
+still ([`Folding.hs:597-599`](../src/Senbazuru/Origami/Folding.hs#L597-L599)),
 and creasing re-traces faces in edge order
 ([`Faces.hs:375-384`](../src/Senbazuru/Fold/Faces.hs#L375-L384)). On
 `quarter-fold.fold`, `jq -c '.edges_vertices[0], .faces_vertices[0]'` prints
@@ -390,7 +390,7 @@ turn-over would get an arrow.
   vertex to move would give the runner's own turn-overs of these sheets arrows,
   and is rejected. A flap turn cannot qualify under "some": its stationary face
   keeps three non-collinear vertices still
-  ([`Flap.hs:358-360`](../src/Senbazuru/Origami/Flap.hs#L358-L360)), so the only
+  ([`Flap.hs:472-474`](../src/Senbazuru/Origami/Flap.hs#L472-L474)), so the only
   fit is the identity, which the moved vertices contradict.
 - **R-05-13.** [`Step.hs:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34) is
   replaced in the same PR by
@@ -416,9 +416,9 @@ prints `0 15` for `bird-base-sequence.fold` and `0 2` for
 `quarter-fold-steps.fold`: no consecutive pair keeps every distance while
 something moves. The goldens drawn with inferred arrows are `checked-flap`,
 `checked-flat-flap`, `checked-stack-flap` and `checked-aligned-stack`
-([`FlapSpec.hs:292`](../test/Senbazuru/Origami/FlapSpec.hs#L292),
-[`:312`](../test/Senbazuru/Origami/FlapSpec.hs#L312),
-[`:322`](../test/Senbazuru/Origami/FlapSpec.hs#L322)) and `quarter-fold-steps`
+([`FlapSpec.hs:293`](../test/Senbazuru/Origami/FlapSpec.hs#L293),
+[`:313`](../test/Senbazuru/Origami/FlapSpec.hs#L313),
+[`:323`](../test/Senbazuru/Origami/FlapSpec.hs#L323)) and `quarter-fold-steps`
 ([`SvgSpec.hs:133`](../test/Senbazuru/Render/SvgSpec.hs#L133)). Each pair in them
 is a flap turn with a stationary face held still, so the rule does not classify
 it. No existing golden draws `bird-base-sequence.fold` with arrows, so a PR before
@@ -456,11 +456,11 @@ flapAt checked progress = routeSurface <$> flapPoseAt checked progress
 **Why.** A *move record* names the face a move held still
 ([glossary-additions](glossary-additions.md#running-a-sequence),
 [D14](decisions.md#d14-material-consumption));
-`FlapMotion` stores it ([`Flap.hs:88`](../src/Senbazuru/Origami/Flap.hs#L88),
-chosen at [`:198`](../src/Senbazuru/Origami/Flap.hs#L198)) and nothing exports
+`FlapMotion` stores it ([`Flap.hs:115`](../src/Senbazuru/Origami/Flap.hs#L115),
+chosen at [`:270`](../src/Senbazuru/Origami/Flap.hs#L270)) and nothing exports
 it. Animation keys and `rigid-pose` grips need one rigid motion per face along
 the route ([D10](decisions.md#d10-assurance-as-evidence-values)); `surfaceAt` computes them
-([`:357`](../src/Senbazuru/Origami/Flap.hs#L357)) and discards them, and
+([`:471`](../src/Senbazuru/Origami/Flap.hs#L471)) and discards them, and
 re-deriving them adds a `foldFrameWith` call to the roughly seven a checked step
 already makes
 ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)
@@ -472,17 +472,17 @@ already makes
   `Folded` given to `prepareFlapAlong`
   ([`Flap.hs:9-10`](../src/Senbazuru/Origami/Flap.hs#L9-L10)).
 - **R-05-15.** `surfaceAt` becomes one internal function returning its angles
-  ([`:355`](../src/Senbazuru/Origami/Flap.hs#L355)), fold
-  ([`:357`](../src/Senbazuru/Origami/Flap.hs#L357)) and *stationary correction*:
+  ([`:469`](../src/Senbazuru/Origami/Flap.hs#L469)), fold
+  ([`:471`](../src/Senbazuru/Origami/Flap.hs#L471)) and *stationary correction*:
   refolding puts the faces somewhere new, and the correction is the rigid motion
   that puts the held face back where it was before the refold
   (``before `after` inverse afterPose``,
-  [`:358-360`](../src/Senbazuru/Origami/Flap.hs#L358-L360)). `flapPoseAt`
+  [`:472-474`](../src/Senbazuru/Origami/Flap.hs#L472-L474)). `flapPoseAt`
   returns those angles, `flapAt`'s surface with its orders
-  ([`:296-298`](../src/Senbazuru/Origami/Flap.hs#L296-L298)), and every placement
+  ([`:418-420`](../src/Senbazuru/Origami/Flap.hs#L418-L420)), and every placement
   composed as ``correction `after` placement``. One `foldFrameWith` per call, as `flapAt`;
   progress outside [0, 1] refused as today
-  ([`:352`](../src/Senbazuru/Origami/Flap.hs#L352)).
+  ([`:466`](../src/Senbazuru/Origami/Flap.hs#L466)).
 
 **Refusals.** Existing `FlapError`s only.
 
@@ -584,7 +584,7 @@ LineStopsOnTheModel !CreaseEnd !V2 !FaceId     -- SKETCH; was !CreaseEnd !FaceId
 ```
 
 **Why.** Its message starts with `creaseEndFlag end`, `--from` or `--to`
-([`ThroughLayers.hs:194-201`](../src/Senbazuru/Origami/ThroughLayers.hs#L194-L201),
+([`ThroughLayers.hs:195-202`](../src/Senbazuru/Origami/ThroughLayers.hs#L195-L202),
 [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71)); a runner has no
 flags. `CreaseEndMeetsNothing` already names the point and "deliberately /not/"
 the end ([`Query.hs:160-165`](../src/Senbazuru/Fold/Query.hs#L160-L165),
@@ -638,7 +638,7 @@ untouchedFold :: Folded -> Either StartError Folded      -- the fresh refold on 
 **Why.** An *untouched* fold is a `Folded` equal to what `foldFrameWith` returns
 for its own pattern and angles: one nobody edited afterwards. `Folded`'s
 constructor is public, so `Flap` rebuilds the state rather than trust one
-([`Flap.hs:172-184`](../src/Senbazuru/Origami/Flap.hs#L172-L184)).
+([`Flap.hs:244-256`](../src/Senbazuru/Origami/Flap.hs#L244-L256)).
 L8 takes a `Folded` for the same reason, and a copy would drift. The check
 ignores orders, which is why the runner puts orders on the working pattern before
 folding ([02 §2.4, invariant 3](02-language-semantics.md#24-the-seven-invariants);
@@ -647,13 +647,13 @@ folding ([02 §2.4, invariant 3](02-language-semantics.md#24-the-seven-invariant
 **Semantics.**
 
 - **R-05-24.** `untouchedFold` is
-  [`Flap.hs:174-176`](../src/Senbazuru/Origami/Flap.hs#L174-L176) and
-  [`:178-184`](../src/Senbazuru/Origami/Flap.hs#L178-L184) verbatim: rebuild the
+  [`Flap.hs:246-248`](../src/Senbazuru/Origami/Flap.hs#L246-L248) and
+  [`:250-256`](../src/Senbazuru/Origami/Flap.hs#L250-L256) verbatim: rebuild the
   pattern with the folded angles and no orders, refuse a length mismatch, refold,
   compare rings, then positions within 1e-9 × `modelSpan`.
 - **R-05-25.** `Flap` maps the constructors to `FlapFolding`, `FlapGeometry`,
   `FlapStartMismatch`, and runs its surface check
-  ([`:177`](../src/Senbazuru/Origami/Flap.hs#L177)) immediately after. Only a
+  ([`:249`](../src/Senbazuru/Origami/Flap.hs#L249)) immediately after. Only a
   `Folded` failing *both* the surface check and a start check after the length
   test changes its reported reason: from `FlapSurface` to `FlapFolding`,
   `FlapGeometry` or `FlapStartMismatch`, because the surface check now runs
@@ -703,16 +703,16 @@ one.
   calls the unchecked worker, having just folded, so `crease --folded` gains no
   fold.
 - **R-05-27.** Per request, in order:
-  1. `LineWithoutLength` ([`:237`](../src/Senbazuru/Origami/ThroughLayers.hs#L237));
+  1. `LineWithoutLength` ([`:238`](../src/Senbazuru/Origami/ThroughLayers.hs#L238));
   2. each id a face of the fold, else `LayerNotInThisFold`; an empty set is
      `NoLayersChosen`;
-  3. the ends test ([`:241-247`](../src/Senbazuru/Origami/ThroughLayers.hs#L241-L247))
+  3. the ends test ([`:242-248`](../src/Senbazuru/Origami/ThroughLayers.hs#L242-L248))
      and `LayerNotPlaced` over **selected** faces only;
   4. *shares* for selected faces, with `shareFor`'s three guards
-     ([`:285-297`](../src/Senbazuru/Origami/ThroughLayers.hs#L285-L297)). A
+     ([`:286-298`](../src/Senbazuru/Origami/ThroughLayers.hs#L286-L298)). A
      share is the piece of the line crossing one face, carried back onto the
      unfolded sheet with the assignment it gets there (`LayerCrease`,
-     [`:266-273`](../src/Senbazuru/Origami/ThroughLayers.hs#L266-L273));
+     [`:267-274`](../src/Senbazuru/Origami/ThroughLayers.hs#L267-L274));
   5. `NoPaperUnderTheLine` when none has a share.
 
   A selected face the line misses is skipped, as every uncrossed face is today,
@@ -720,8 +720,8 @@ one.
 - **R-05-28.** All shares of all requests go to **one** `creaseAllAlongWith`
   call on `foldedPattern`; `creasedEdges` regroups its lists per request.
 - **R-05-29.** Each share's assignment is flipped on face-down layers as now
-  ([`:296`](../src/Senbazuru/Origami/ThroughLayers.hs#L296),
-  [`:327-340`](../src/Senbazuru/Origami/ThroughLayers.hs#L327-L340)). **This
+  ([`:297`](../src/Senbazuru/Origami/ThroughLayers.hs#L297),
+  [`:322-332`](../src/Senbazuru/Origami/ThroughLayers.hs#L322-L332)). **This
   looks wrong and is not:** under `AtRest` a requested valley is written M at 0
   on face-down layers. Mountain and valley are named from the side the pattern
   is drawn on, and a face-down layer shows the reader its other side, so the
@@ -859,7 +859,7 @@ on material points, as L5 does.
   ([`Flat.hs:118`](../src/Senbazuru/Origami/Flat.hs#L118); the test at
   [`Visible.hs:304`](../src/Senbazuru/Origami/Visible.hs#L304)), take their
   parents' order, faces and orders both read from `foldedFrame`
-  ([`Folding.hs:303-308`](../src/Senbazuru/Origami/Folding.hs#L303-L308));
+  ([`Folding.hs:304-309`](../src/Senbazuru/Origami/Folding.hs#L304-L309));
   unordered parents are `ParentsUnordered p q`. Children of one parent never
   overlap.
 - **The line that looks like a typo:** the sign is copied unchanged although the
@@ -867,7 +867,7 @@ on material points, as L5 does.
   a child keeps its parent's: nothing moved, and traced rings are anticlockwise
   ([`Faces.hs:98`](../src/Senbazuru/Fold/Faces.hs#L98)). Orders are returned
   against the child's `foldedPattern` winding, so refolding re-signs any re-wound
-  ring as usual ([`Folding.hs:385`](../src/Senbazuru/Origami/Folding.hs#L385)).
+  ring as usual ([`Folding.hs:399`](../src/Senbazuru/Origami/Folding.hs#L399)).
 
 **Acceptance.**
 
@@ -1019,7 +1019,7 @@ the study.
 
 ```haskell
 -- SKETCH
-data CheckedMacro          -- opaque; only checkMacro builds one, as with CheckedFlap (Flap.hs:98-99);
+data CheckedMacro          -- opaque; only checkMacro builds one, as with CheckedFlap (Flap.hs:125-126);
                            -- deriving stock (Eq, Show) from the start (D10)
 data SampleReport          -- the parameters checked and the checks run at each; Eq, Show
 data MacroError            -- Explain in this module
@@ -1129,7 +1129,7 @@ travel +180, and with edge 11 first the same valley is −180
 [§5.6](01-architecture.md#56-travel-per-segment)). A caller holding "valley"
 cannot pick the sign without knowing which way up the moving face beside the
 first crease lies, and `Flap` reads that from the placements of its own refold
-([`Flap.hs:332-364`](../src/Senbazuru/Origami/Flap.hs#L332-L364)), never from the `Folded` a caller
+([`Flap.hs:333-358`](../src/Senbazuru/Origami/Flap.hs#L333-L358)), never from the `Folded` a caller
 hands it. Way-up decisions stay in the library, which already reads the faces'
 placements
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
@@ -1138,7 +1138,7 @@ placements
 **Why `Eq`.** Move records derive `Eq`, and a record holds `SweptHinge CheckedFlap`
 ([D10](decisions.md#d10-assurance-as-evidence-values),
 [C4](decisions.md#changes-since-draft-v2)). Every field type already derives it:
-`Folded` ([`Folding.hs:324`](../src/Senbazuru/Origami/Folding.hs#L324)),
+`Folded` ([`Folding.hs:325`](../src/Senbazuru/Origami/Folding.hs#L325)),
 `HingeSweep` and `SweepCheck`
 ([`HingeSweep.hs:89`](../src/Senbazuru/Origami/HingeSweep.hs#L89),
 [`:101`](../src/Senbazuru/Origami/HingeSweep.hs#L101)), `FaceOrder`
@@ -1185,7 +1185,7 @@ placements
   disagrees, at any size of turn, 0 included: the moving faces lie on both
   sides of the hinge line, so no one direction fits. A magnitude that is
   negative, non-finite or above 360 is `FlapInvalidTurn`
-  ([`:237`](../src/Senbazuru/Origami/Flap.hs#L240)).
+  ([`:240`](../src/Senbazuru/Origami/Flap.hs#L240)).
 - **R-05-47.** `prepareFlap` and `prepareFlapAlong` are unchanged, and existing
   callers keep passing signed travels. The runner passes `TowardPlusZ` for a
   raw valley and `TowardMinusZ` for a raw mountain; what the raw sense is
@@ -1251,12 +1251,12 @@ node, turning about the crease between them
 is a face's parent is decided by folding's *spanning walk*, a tree of crossings
 from the first face that places each face once: for each face it reaches it
 composes ``parent `after` turn``
-([`Folding.hs:619-624`](../src/Senbazuru/Origami/Folding.hs#L619-L624)), keeps
-the first arrival ([`:609`](../src/Senbazuru/Origami/Folding.hs#L609)), and
+([`Folding.hs:633-638`](../src/Senbazuru/Origami/Folding.hs#L633-L638)), keeps
+the first arrival ([`:623`](../src/Senbazuru/Origami/Folding.hs#L623)), and
 returns only the placements
-([`:572-577`](../src/Senbazuru/Origami/Folding.hs#L572-L577)). `Folding` insists
+([`:586-591`](../src/Senbazuru/Origami/Folding.hs#L586-L591)). `Folding` insists
 on "one spanning walk and not two implementations of it that can drift"
-([`:328-330`](../src/Senbazuru/Origami/Folding.hs#L328-L330)), so the tree must
+([`:342-344`](../src/Senbazuru/Origami/Folding.hs#L342-L344)), so the tree must
 come out of that walk, not a second one in the exporter
 ([C45](decisions.md#changes-since-draft-v2)).
 
@@ -1264,22 +1264,22 @@ come out of that walk, not a second one in the exporter
 
 - **R-05-48.** `spanningWalk` returns, beside each placement, the face it was
   reached from and the id of the crease crossed (the crease map already holds the
-  id, [`Folding.hs:628-630`](../src/Senbazuru/Origami/Folding.hs#L628-L630)),
+  id, [`Folding.hs:642-644`](../src/Senbazuru/Origami/Folding.hs#L642-L644)),
   under the same first-arrival rule, so tree and placements come from one pass.
-  The first face, the root ([`:583-585`](../src/Senbazuru/Origami/Folding.hs#L583-L585)),
+  The first face, the root ([`:597-599`](../src/Senbazuru/Origami/Folding.hs#L597-L599)),
   has no entry; every other face has exactly one. Ids are `foldedPattern`'s, as
-  the placements' are ([`:286-302`](../src/Senbazuru/Origami/Folding.hs#L286-L302)).
+  the placements' are ([`:287-303`](../src/Senbazuru/Origami/Folding.hs#L287-L303)).
 - **R-05-49.** `foldFrameWith` stores it in `foldedWalk`. `Folded` is built only
-  there ([`:378-392`](../src/Senbazuru/Origami/Folding.hs#L378-L392)); elsewhere
+  there ([`:392-406`](../src/Senbazuru/Origami/Folding.hs#L392-L406)); elsewhere
   it is changed by record update, which a new field does not break:
   `grep -rn "{foldedFrame = \|Folded {$" src test study app` finds four,
-  `FlapSpec.hs:351`, `SurfaceSpec.hs:73`, `BasicBaseGallery.hs:76` and
+  `FlapSpec.hs:355`, `SurfaceSpec.hs:73`, `BasicBaseGallery.hs:76` and
   `CraneWing.hs:139`.
 
 **The line that looks like a typo.** A face's placement is its parent's placement
 `after` the turn, not the turn after the parent: the turn is built from the parent
 face's corners in flat pattern coordinates, where the crease lies
-([`Folding.hs:650-652`](../src/Senbazuru/Origami/Folding.hs#L650-L652)), so it is
+([`Folding.hs:664-666`](../src/Senbazuru/Origami/Folding.hs#L664-L666)), so it is
 applied first and the result then carried to wherever the parent went. This is
 AGENTS.md's `M[parent] · R_flat`, and a glTF child node, whose transform is applied
 inside its parent's, composes the same way.
@@ -1294,7 +1294,7 @@ warns against.
 | Test | Turns red if |
 | --- | --- |
 | On `crane.fold` and each state of `quarter-fold-steps.fold`: one entry per face but the first, and following parents from any face reaches the first without revisiting one | a face is missed, or a cycle is recorded |
-| For every entry f ↦ (p, e): e lies on both faces' rings, and `foldedPlacements ! f` equals, exactly, ``(foldedPlacements ! p) `after` rotationAbout a (b − a) (−θ)``, with a → b the crease's direction in p's counter-clockwise ring and θ its fold angle in radians, converted as `creaseIndex` converts it, degrees × π / 180 ([`Folding.hs:552-554`](../src/Senbazuru/Origami/Folding.hs#L552-L554)) | the entry names a parent or crease other than the one that placed the face |
+| For every entry f ↦ (p, e): e lies on both faces' rings, and `foldedPlacements ! f` equals, exactly, ``(foldedPlacements ! p) `after` rotationAbout a (b − a) (−θ)``, with a → b the crease's direction in p's counter-clockwise ring and θ its fold angle in radians, converted as `creaseIndex` converts it, degrees × π / 180 ([`Folding.hs:566-568`](../src/Senbazuru/Origami/Folding.hs#L566-L568)) | the entry names a parent or crease other than the one that placed the face |
 | Every existing `FoldingSpec` case passes unchanged | recording the tree changes the walk's order or its first-arrival rule |
 
 **Outputs unchanged.** No renderer reads the field before M7b, and placements come
@@ -1346,9 +1346,9 @@ The per-item tables are the criteria. Across all items:
   [09 §1.4](09-testing-and-acceptance.md#14-the-build-is-warning-free-from-cold)).
   A match that misses a new constructor shows as an `-Wincomplete-patterns`
   warning (part of `-Wall`,
-  [`senbazuru.cabal:100-108`](../senbazuru.cabal#L100-L108)) in a cold build.
+  [`senbazuru.cabal:144-152`](../senbazuru.cabal#L144-L152)) in a cold build.
   Nothing fails on it: the flags have no `-Werror`, and CI's test job only builds
-  and tests ([`ci.yml:33-34`](../.github/workflows/ci.yml#L33-L34)). So the PR
+  and tests ([`ci.yml:70-76`](../.github/workflows/ci.yml#L70-L76)). So the PR
   author pastes the warning-free cold-build log, and the wildcard matchers that
   would silently absorb a constructor are reviewed by hand.
 

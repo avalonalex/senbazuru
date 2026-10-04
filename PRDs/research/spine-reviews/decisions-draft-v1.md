@@ -259,7 +259,7 @@ Each decision: **what**, **why** (with research keys), **rejected**, **residue**
   - `valley`/`mountain` in a step are **as seen by the reader at that step**
     (book convention). The runner maps a sense through the presentation and each
     layer's way up to FOLD signs; `Flap` already derives per-segment signs from
-    the stationary face (Flap.hs:211-219). `top N layers` counts from the
+    the stationary face (Flap.hs:284-301). `top N layers` counts from the
     viewer's current side.
   - Written frames are **presented** (a file re-rendered without notes shows the
     turned model). `Origami.Step` classifies a frame pair related by one

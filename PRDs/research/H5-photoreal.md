@@ -103,11 +103,11 @@ into a no-geometry-change viewer pass (S), a study-only offline still generator
      - no environment map, no shadows and no ambient occlusion (grep of the file
        for `shadow`, `environment` and `AO` finds none).
    - **Materials.** They are the GLB's own: base colour, metallic 0, roughness 1
-     (`src/Senbazuru/Render/Gltf.hs:384`) [code]. The page only swaps the colour
-     and toggles flat shading (`whole-crane-3d.html:162-168`).
+     (`src/Senbazuru/Render/Gltf.hs:418`) [code]. The page only swaps the colour
+     and toggles flat shading (`whole-crane-3d.html:166-172`).
    - **What PaperLighting adds.** Normals averaged per original panel, joined to
      GLB corners by material reference (`study/fold-material/PaperLighting.hs`;
-     `paper-lighting.mjs:4-9`) [code]. Downloads keep flat lighting
+     `paper-lighting.mjs:12-17`) [code]. Downloads keep flat lighting
      (`docs/notes/crane-panel-lighting.md:37`) [code].
    - **The consequence** [reasoned]:
      - a model with no shadow cannot sit on anything;

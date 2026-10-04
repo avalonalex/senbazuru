@@ -67,15 +67,15 @@ and a way to carry accepted orders across the crease.
    all layers from the near ones. It calls the second a different move that
    would need a depth question this module never asks (`ThroughLayers.hs:56-61`).
    The code matches:
-   - shares are computed for every panel (`:254`);
-   - the ends are refused if strictly inside *any* face (`:241-247`);
-   - one batch is handed to `creaseAllAlong` (`:261-264`).
-   The function takes a `Frame` and folds it itself (`:227-229`). A caller that
+   - shares are computed for every panel (`:255`);
+   - the ends are refused if strictly inside *any* face (`:242-248`);
+   - one batch is handed to `creaseAllAlong` (`:262-265`).
+   The function takes a `Frame` and folds it itself (`:228-230`). A caller that
    chose faces from its own `foldFrameWith` result is therefore relying on the
    second fold numbering faces the same way. Only `creaseThroughLayers`,
    `ThroughError` and `renderThroughError` are exported (`:82-86`). The share
-   function (`shareFor`, `:285-297`) and the per-layer flip (`facesUp`,
-   `theOtherWay`, `:327-340`) are private.
+   function (`shareFor`, `:286-298`) and the per-layer flip (`facesUp`,
+   `theOtherWay`, `:322-332`) are private.
 
 2. **Issue #70 set this as an open decision. The code decided "refuse by
    omission", and the issue's own mechanism is not what shipped.** The #70
@@ -94,16 +94,16 @@ and a way to carry accepted orders across the crease.
    - removes the selected creases' links from the face graph;
    - walks from the moving face;
    - refuses `FlapCoupled` if the stationary face is reached
-     (`Flap.hs:199-202`).
+     (`Flap.hs:271-274`).
    Every selected segment must:
-   - be M, V or U (`:190`, else `FlapNotHinge`);
-   - separate moving from stationary paper (`:212`, `FlapNotBoundary`);
+   - be M, V or U (`:262`, else `FlapNotHinge`);
+   - separate moving from stationary paper (`:288`, `FlapNotBoundary`);
    - lie on the hinge line in the *folded* shape, within `1e-12` of the
-     sheet's span (`:210`, `:218`, `FlapUnalignedCrease`).
+     sheet's span (`:283`, `:295`, `FlapUnalignedCrease`).
    Ids must come from `foldedPattern`, because cutting renumbers (`:9-10`). The
    module does not discover coupled motions (`:1-6`). Each overlapping pair
    needs a supplied order, and none is inferred from coincident positions
-   (`:33-34`).
+   (`:57-58`).
 
 4. **`creaseAllAlong` writes ±180 for M/V whenever an angle array exists.** It
    drops faces, orders and extras, and appends the new edges at the end.
@@ -134,18 +134,18 @@ and a way to carry accepted orders across the crease.
      `[2,3,6,7]`. It maps each piece back with `inverse` placements and creases
      with `Unassigned` (`CraneWing.hs:156-175`).
    - Its clip has **neither** of ThroughLayers' guards: the length test and the
-     midpoint-strictly-inside test (`ThroughLayers.hs:289-290`). A face touched
+     midpoint-strictly-inside test (`ThroughLayers.hs:290-291`). A face touched
      only along an edge would produce a degenerate share there. This is the
      drift AGENTS.md warns about for policies copied into a second place.
    - It restores the anchor face's ring to position 0 after re-tracing, so the
-     crane does not move (`CraneWing.hs:29-30`, `56-63`).
+     crane does not move (`CraneWing.hs:29-30`, `105-112`).
    - It recovers the hinge as "every `Unassigned` edge" and checks there are 4
      (`:114-119`). That only works because `crane.fold` has no U edges (`jq`: 0).
      `CranePocket.hs:139,113` depends on the same trick ("AuthoredRoot"; count
      4, kept at 1/4 when owner decision 37 let the map work at any hinge).
    - It picks the moving face as the one containing both hinge ends and
-     material vertex 2 (`:72-74`).
-   - It re-solves the stacking and takes index `[2]` (`:75-79`). A test checks
+     material vertex 2 (`:132-134`).
+   - It re-solves the stacking and takes index `[2]` (`:135-139`). A test checks
      the tail relations that justify that index (`CraneWingSpec.hs:90-109`).
 
 7. **The accepted order is not preserved across a crease; the precedent
@@ -166,7 +166,7 @@ and a way to carry accepted orders across the crease.
    if the pair really does not overlap. The module exports only `VisibleForm`,
    `Region`, `VisibleEdge` and `visibleForm`. An interpreter that wants
    "nearer" would have to restate the sign convention, and
-   `Folding.hs:303-308` warns that faces and orders must come from the same
+   `Folding.hs:304-309` warns that faces and orders must come from the same
    frame, `foldedFrame`.
 
 9. **Layer numbers are the wrong count for "top n".** `layerDepths` gives the
@@ -279,7 +279,7 @@ Steps:
 
 1. Read `flatSheet (foldedFrame …)`. Compute each face's share with
    ThroughLayers' three guards: clip, length above the hair, midpoint strictly
-   inside (`ThroughLayers.hs:285-297`). Call the crossed faces C, each with its
+   inside (`ThroughLayers.hs:286-298`). Call the crossed faces C, each with its
    interval along the line.
 2. Collect existing edges that lie along the line inside (p, q). These are
    hinge candidates that need no crease: crane steps 15–23 fold along existing
@@ -317,13 +317,13 @@ A crease at angle 0 on unselected layers leaves Flap's connectivity unchanged
 (finding 13), so it never causes `FlapCoupled`. It still costs:
 
 - **Collinearity catches nothing.** Those segments lie on the same folded line
-  and pass the `onLine` check (`Flap.hs:210`). Put them in a hinge list, as
+  and pass the `onLine` check (`Flap.hs:283`). Put them in a hinge list, as
   `CraneWing`'s every-U-edge recovery would, and they fail only at
-  `FlapNotBoundary` (`:212`).
+  `FlapNotBoundary` (`:288`).
 - **Unneeded refusals.** They inherit ThroughLayers' ends test for layers the
   reader never touched. On the crane line that means 12 creases instead of 4.
 - **A lasting choice between U and F.** `F` blocks any later hinge there
-  (`:190`). `U` keeps it usable, but writes a crease no book step made.
+  (`:262`). `U` keeps it usable, but writes a crease no book step made.
 - **No gain on step pages.** They change the topology that `motionsBetween`
   compares (`Step.hs:94-96`) exactly as much as the selected creases do.
 
@@ -388,7 +388,7 @@ What the interpreter can do itself, with exports that exist today:
   on the seed's side;
 - after the turn reaches ±180, relabelling U as M or V from the angle's sign
   (FOLD: a valley's angle is in (0, 180], `Creasing.hs:281-286`). Flap already
-  gives each segment the sign its stationary face needs (`Flap.hs:211-219`),
+  gives each segment the sign its stationary face needs (`Flap.hs:284-301`),
   so the M/V alternation falls out without `facesUp`.
 
 The selection rule itself belongs in the library too. PRDs 1 and 2 both need
@@ -482,7 +482,7 @@ Two takeaways for the PRDs:
 - The some-layers move plus turn-over covers most of a book.
 - "Fold along an existing crease" must resolve to edge ids without drawing a
   crease. ThroughLayers refuses that case today as `NoPaperUnderTheLine`
-  (`ThroughLayers.hs:129-132`).
+  (`ThroughLayers.hs:130-133`).
 
 ## Open questions
 
@@ -524,7 +524,7 @@ Two takeaways for the PRDs:
   pairs (0, 2), (4, 6), (1, 3), (5, 7) through `nearness`.
 - That `Flap`'s endpoint check at progress 0 covers *every* touching
   stationary face, which finding 14 relies on, is my reading of
-  `Flap.hs:315-324` and the note. It was not traced through `HingeSweep`.
+  `Flap.hs:429-438` and the note. It was not traced through `HingeSweep`.
 - The crane table's R rows are not computed. The origami.me text was read
   through a fetch summariser, twice. The two summaries disagreed on step 6's
   layer wording: once "single layer", once nothing stated. Finding 17 computes

@@ -63,7 +63,7 @@ With no notes, all 33 tracked goldens stay byte-identical.
 
 3. **`withArrows` draws one kind of mark.** It appends one `Arrow (arrowFor …)`
    per motion, and nothing when the projected ends are closer than
-   `1e-6·max 1 (max w h)` (`Render/CreasePattern.hs:592-605`). Its comment says
+   `1e-6·max 1 (max w h)` (`Render/CreasePattern.hs:592-604`). Its comment says
    books mark a turn-over with a loop, and that senbazuru has neither a loop nor
    a pair of arrows (`:584-591`). `CreasePatternSpec.hs:400-411` pins that no
    arrow is drawn from above and one is drawn from the side. `arrowFor` is the
@@ -86,9 +86,9 @@ With no notes, all 33 tracked goldens stay byte-identical.
 
 5. **Mixed-unit shapes are finished in the backend.**
    - `Label` and `Arrow` are projected first. The type size and head length are
-     then applied in page units (`Render/Svg.hs:181-192`, `197-230`).
-   - The head is clamped to half the arrow's page length (`Svg.hs:215`).
-   - `Offset` changes the transform, not the points (`Svg.hs:176`). It does not
+     then applied in page units (`Render/Svg.hs:191-202`, `207-240`).
+   - The head is clamped to half the arrow's page length (`Svg.hs:225`).
+   - `Offset` changes the transform, not the points (`Svg.hs:186`). It does not
      enter `shapePoints`, so it cannot rescale the page (`Diagram.hs:234-238`).
    - A newcomer reads `Label`'s `V2` as a page position. It is a model point,
      and only its size is in page units (`Diagram.hs:194-201`).
@@ -99,20 +99,20 @@ With no notes, all 33 tracked goldens stay byte-identical.
    - Cutting does too (`Fold/Crossings.hs:73-80`).
    - `withFaceOrders` and `transformSurface` set `frameExtras = mempty`
      (`Origami/Surface.hs:263`, `292`).
-   - The GLB keeps three `senbazuru:` keys (`Render/Gltf.hs:237-242`).
+   - The GLB keeps three `senbazuru:` keys (`Render/Gltf.hs:270-275`).
    - FOLD itself has no arrow or operation key (Step's header,
      `Step.hs:5-8`).
 
 7. **Who calls the page.**
-   - The CLI calls `stepPage` (`app/Senbazuru/Cli.hs:854`). It uses
-     `withArrows` and `motionsBetween` for single frames (`:886`, `:922-929`),
+   - The CLI calls `stepPage` (`app/Senbazuru/Cli.hs:968`). It uses
+     `withArrows` and `motionsBetween` for single frames (`:1000`, `:1036-1043`),
      and refuses `--steps` with `--frame`, `--fold` or `--stacking`
-     (`:843-851`).
+     (`:957-965`).
    - Arrows on: CraneGallery `:38`, PetalGallery `:45` (used by both
      `petalSvg` and `birdSvg`, `:39-45`), BlintzGallery `:39`, HelmetGallery
-     `:38`, FlapSpec `:292`, `:312`, `:322`, SvgSpec `:133`.
+     `:38`, FlapSpec `:293`, `:313`, `:323`, SvgSpec `:133`.
    - Arrows off: BirdSequenceSpec `:79`, BasicBaseSpec `:216`, WingBendingGallery
-     `:42`, CraneSpreadGallery `:128`, BasicBaseGallery `:145`, `Main.hs:171`,
+     `:56`, CraneSpreadGallery `:158`, BasicBaseGallery `:145`, `Main.hs:171`,
      StepsSpec.
 
    Changing `stepPage`'s arity therefore touches about fifteen call sites.
@@ -263,8 +263,8 @@ With no notes, all 33 tracked goldens stay byte-identical.
     - `creaseAllAlong` appends vertices and edges and clears faces
       (`Creasing.hs:251-267`).
     - Face transforms are keyed by the **cut** pattern's faces
-      (`Origami/Folding.hs:286-322`).
-    - The spanning walk holds the first face still (`Folding.hs:577-585`).
+      (`Origami/Folding.hs:287-323`).
+    - The spanning walk holds the first face still (`Folding.hs:591-599`).
     - A1 (c) adds that edge ids shift when an edge is cut, and that faces are
       re-traced in half-edge order.
 
@@ -278,7 +278,7 @@ With no notes, all 33 tracked goldens stay byte-identical.
       (`Surface.hs:179-195`).
     - `materialFrame` writes the key (`Surface.hs:248-252`).
     - `FlapSpec` passes `map materialFrame states` to `stepPage` with arrows on,
-      for four goldens (`FlapSpec.hs:292`, `312`, `322`).
+      for four goldens (`FlapSpec.hs:293`, `313`, `323`).
     - `bird-base-sequence.fold` frames carry no such key, and all 16 share one
       `edges_vertices` and one `faces_vertices` (`jq`, `unique | length` = 1).
 
@@ -480,7 +480,7 @@ by (E2).
   - It extends **into** the figure, so it can overlap its own drawing but never
     a neighbour's.
   - The size is a theme field in page units. It needs no clamping, unlike
-    `Svg.hs:215`, because its length is not derived from model geometry.
+    `Svg.hs:225`, because its length is not derived from model geometry.
 
 ### (e) Golden plan
 
@@ -541,7 +541,7 @@ by (E2).
   `1e-12·span`, on the quarter fold **and** on a bird frame (the asymmetric
   case, finding 13).
 - Each head shape's page bytes are equal at model sizes 1 and 400, and so are
-  the loop symbol's. This extends `SvgSpec.hs:251-256`.
+  the loop symbol's. This extends `SvgSpec.hs:263-268`.
 - A caption's anchor is never below its own cell for 1-60 figures, in
   LayoutSpec.
 
@@ -583,7 +583,7 @@ gridOfCaptioned :: Grid -> [(Diagram, Maybe Text)] -> Maybe Diagram   -- gridOf 
 ```
 
 `StepError` wraps only `FoldError` today (`Steps.hs:58-62`), and the CLI takes
-it apart (`Cli.hs:855-862`). A note refused for its own reasons, such as a
+it apart (`Cli.hs:969-976`). A note refused for its own reasons, such as a
 `noteThen` on the last figure or `TopLayers` contradicted by `faceOrders`,
 needs a sum type there. That breaks the CLI's pattern match, so the PRD should
 list it as a deliberate change.
@@ -591,7 +591,7 @@ list it as a deliberate change.
 ## Open questions
 
 1. **Overflowing captions.** The backend has no font metrics: it emits a
-   generic `sans-serif` and records markup, not glyphs (`Svg.hs:177-180`).
+   generic `sans-serif` and records markup, not glyphs (`Svg.hs:187-190`).
    Should an overflow be squashed to the cell width with SVG `textLength`,
    truncated by an estimated width, or refused?
 2. **Which way turns are passed.** Should presentation be applied inside
@@ -623,7 +623,7 @@ list it as a deliberate change.
 - That Blintz, Helmet, Crane, Petal and Bird gallery frames carry
   `senbazuru:material_coords`. Their modules mention `materialFrame` (grep),
   but I did not trace their frames.
-- That `bent-strip.svg`'s page goes through `WingBendingGallery:42`'s
+- That `bent-strip.svg`'s page goes through `WingBendingGallery:56`'s
   `stepPage … False`. This is inferred from the import and the call, not
   traced.
 - GHC's value of `sin pi`. Only Python's was computed; both normally use the

@@ -7,7 +7,7 @@ checked against the fixtures, the recipes and their specs. Nothing was compiled
 or run in Haskell. Numbers come from `jq`/`python3` on the fixture JSON, and from
 a pure-Python re-implementation of `Origami.Folding`'s walk: rotate the child by
 `-angle` about the crease directed along the parent's counter-clockwise ring,
-`M[child] = M[parent] · R` (Folding.hs:33-54, 641-652). Scripts are in
+`M[child] = M[parent] · R` (Folding.hs:33-54, 655-666). Scripts are in
 [`../scripts/fixture-checks/`](../scripts/fixture-checks) (`fold.py`, `quarter.py`, `quarter2.py`, `blintz.py`,
 `crane.py`, `crane2.py`, `bird.py`).
 
@@ -110,7 +110,7 @@ Measured:
   `basisFrom (V3 (-1) 0 1)` (BlintzGallery.hs:38). Its forward vector has +z,
   so the camera looks up from below, where the same folds read as valleys.
 - **After move 4** the four material corners meet at (½,½,0)
-  (BlintzSequenceSpec.hs:106-107).
+  (BlintzSequenceSpec.hs:107-108).
 
 The example is right about lines, order and sense seen from +z. It fails two
 spine rules: `centre` resolved as a vertex (objection L2-4), and `sheet` taken
@@ -273,7 +273,7 @@ goldens that do so are exactly 12:
 | golden | generator | why no pair is one whole-model motion |
 | --- | --- | --- |
 | quarter-fold-step-1, quarter-fold-steps | SvgSpec.hs:133 (`True`), `renderStep 0` + `withArrows topDown` | F0's vertices are unchanged in all three frames (jq) |
-| checked-flap, checked-flat-flap, checked-stack-flap, checked-aligned-stack | FlapSpec.hs:292, 312, 322 (`True`); `flapAt` at 0, ⅓, ⅔, 1 | poses are "aligned to keep the stationary side still" (Flap.hs:22) |
+| checked-flap, checked-flat-flap, checked-stack-flap, checked-aligned-stack | FlapSpec.hs:293, 313, 323 (`True`); `flapAt` at 0, ⅓, ⅔, 1 | poses are "aligned to keep the stationary side still" (Flap.hs:46) |
 | checked-blintz, checked-helmet, checked-crane | BlintzGallery.hs:39, HelmetGallery.hs:38, CraneGallery.hs:38 (`True`); `flapAt` states | same stationary side; consecutive states are distinct (11, 7 and 4 listed poses) |
 | checked-petal, checked-bird-above, checked-bird-below | PetalGallery.hs:45 (`True`), CheckedBirdSpec.hs:173 | StudyCase fixed panel (0.58, 0.4) (CheckedPetal.hs:53); 8 and 23 distinct poses |
 
@@ -283,7 +283,7 @@ The other goldens with a presented turn are drawn with arrows off: frog-sequence
 (BasicBaseSpec.hs:216 `False`; turnover at BasicBaseGallery.hs:121-127) and the
 bird-sequence goldens (BirdSequenceSpec.hs:79 `False`).
 `examples/bird-base-sequence.fold`, which the CLI can draw with `--arrows`
-(Cli.hs:568, off by default), has no such pair either. Each of its 15 pairs moves
+(Cli.hs:667, off by default), has no such pair either. Each of its 15 pairs moves
 3 or 6 of 13 vertices without keeping all pairwise distances (python). The claim
 holds, **structurally**. One gap is objection L2-13.
 
@@ -502,7 +502,7 @@ repeats them.
 
 - **Claim.** Corners are boundary vertices, never strictly inside a face. After
   the blintz, material corner (1,0) sits at (½,½) with the other three corners
-  (BlintzSequenceSpec.hs:106-107). On crane.fold, corner (0,1) is on faces 2, 3,
+  (BlintzSequenceSpec.hs:107-108). On crane.fold, corner (0,1) is on faces 2, 3,
   6 and 7. So `unfold c1`, or any "flap containing corner …", is refused under
   D2's region rule, or is ambiguous if resolved by current position.
 - **Evidence.**
@@ -634,7 +634,7 @@ repeats them.
 - **D5's golden claim holds structurally.** Each of the 12 arrow-bearing
   goldens holds a face fixed between consecutive frames. The turn-over frog
   sequence and the bird-sequence goldens are drawn with arrows off. Evidence:
-  the table in §5; SvgSpec.hs:133; FlapSpec.hs:292/312/322; Flap.hs:22;
+  the table in §5; SvgSpec.hs:133; FlapSpec.hs:293/312/322; Flap.hs:46;
   CheckedPetal.hs:53; BasicBaseSpec.hs:216; BirdSequenceSpec.hs:79.
 
 ## Not checked

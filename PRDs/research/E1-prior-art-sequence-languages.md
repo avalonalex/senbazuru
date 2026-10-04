@@ -303,13 +303,13 @@ The motion classes:
 | FoldingAgent | one or more primitives | add_vertex, fold, unfold, rotate, flip | direction ±1 + moving-set closure | edge ids, edge fraction | Flat-Folder compile | programs + states | paper CC BY 4.0 |
 
 **19. Where senbazuru's vocabulary stands today.**
-- *The `crease` verb.* It takes raw coordinates, `--from X,Y --to X,Y`, with one of `--mountain`, `--valley`, `--flat` or `--unassigned`, and `--folded` to crease through the layers (`app/Senbazuru/Cli.hs:262-282, 316-320`). Each end must meet something already drawn (`src/Senbazuru/Fold/Creasing.hs:38-47`).
+- *The `crease` verb.* It takes raw coordinates, `--from X,Y --to X,Y`, with one of `--mountain`, `--valley`, `--flat` or `--unassigned`, and `--folded` to crease through the layers (`app/Senbazuru/Cli.hs:278-298, 332-336`). Each end must meet something already drawn (`src/Senbazuru/Fold/Creasing.hs:38-47`).
 - *Through the layers.* `ThroughLayers` always creases every layer under the line; folding only the near layers is left to the vocabulary (`ThroughLayers.hs:56-61`).
 - *A flap.* `Flap` selects a flap by crease id, a face on the moving side, and signed travel, with ids taken from the pattern *after* cutting (`Flap.hs:1-17`). A second path joining the two sides is refused, and creases on different axes need a coupled motion (`docs/notes/checked-flap-operation.md:11, 16`).
 - *The study recipes.* Each step is a tuple of title, `EdgeId`, `FaceId` and travel (`BlintzSequence.hs:50-56`, `HelmetSequence.hs:47-51`), and a header says outright that this is not an instruction language (`BlintzSequence.hs:4-5`). The bird is four certified stages (`CheckedBird.hs:48, 83-87`).
 - *Naming by position on the sheet.* The petal case names its fixed panel by a point on the original sheet, `fixedPanel: [0.58, 0.4]`, which survives face renumbering (`docs/notes/petal-fold-motion.md:62`; `study/fold-material/cases.json:174`).
 - *Checking the route.* `HingeSweep` checks a whole rotation over an angle interval, and gives up with `Unresolved` rather than guess (`HingeSweep.hs:1-11, 49-51`). A valid state is not a route (`endpoints-and-routes.md:8`).
-- *Flat folds.* At ±180° a mountain and a valley are the same rigid motion (`Origami/Folding.hs:542-545`).
+- *Flat folds.* At ±180° a mountain and a valley are the same rigid motion (`Origami/Folding.hs:556-559`).
 - *Naming flaps.* The problem is recorded as CAD's topological naming problem (`docs/related-projects.md:101-108`).
 
 ## Implications for the design

@@ -108,24 +108,24 @@ folded state and a material pattern from step to step, not a `Frame`.
    - `ImportError` already carries line numbers
      (src/Senbazuru/Import/Segments.hs:148-153). `LoadError` notes that aeson
      returns a message about JSON while the segment readers can name a line
-     (src/Senbazuru/Fold/Load.hs:71-75).
+     (src/Senbazuru/Fold/Load.hs:86-90).
    - **Library errors leak CLI words.** `CreaseEnd` exists because the user
      "typed the two ends as separate flags" (src/Senbazuru/Fold/Query.hs:57-64).
      `creaseEndFlag` renders it as `--from`/`--to` (Query.hs:68-71), and
      `Origami.ThroughLayers` puts that into a message
-     (src/Senbazuru/Origami/ThroughLayers.hs:195).
+     (src/Senbazuru/Origami/ThroughLayers.hs:196).
    - `FlapError` names `EdgeId`s and `FaceId`s of the *cut* pattern
-     (Flap.hs:106-114). A file's author never wrote those ids.
+     (Flap.hs:141-151). A file's author never wrote those ids.
 
    A sequence layer must therefore translate: a step span, the author's
    reference name, and the file's own spelling of an argument.
 
 8. **Existing text-input decisions worth inheriting.** The CLI's `point`
-   reader (app/Senbazuru/Cli.hs:298-310) refuses NaN and Infinity, because
-   `reads` accepts them and they reach the geometry silently (Cli.hs:303-306).
-   It uses `x,y` so that one end is one value (Cli.hs:287-289). Assignment
+   reader (app/Senbazuru/Cli.hs:314-326) refuses NaN and Infinity, because
+   `reads` accepts them and they reach the geometry silently (Cli.hs:319-322).
+   It uses `x,y` so that one end is one value (Cli.hs:303-305). Assignment
    is spelled as a book says it, `--valley` rather than `V`
-   (Cli.hs:312-320).
+   (Cli.hs:328-336).
 
 9. **Batching is a performance contract the syntax tree must allow.**
    `creaseAllAlong` exists because re-deriving faces per crease is cubic
@@ -137,7 +137,7 @@ folded state and a material pattern from step to step, not a `Frame`.
 10. **Purity boundary and test infrastructure.**
     - `Fold.Load` is the only I/O module (Load.hs:5-9), so a parser should
       take `Text`, not a path.
-    - The project already depends on aeson (senbazuru.cabal:153),
+    - The project already depends on aeson (senbazuru.cabal:214),
       optparse-applicative in the executable only (:170), and QuickCheck 2.14
       (:321), on snapshot `lts-22.44` (stack.yaml:4).
     - Hand-written `Arbitrary` instances already exist
@@ -302,7 +302,7 @@ folded state and a material pattern from step to step, not a `Frame`.
     column
     (https://hackage.haskell.org/package/aeson-2.1.2.1/docs/Data-Aeson-Types.html).
     The study reads `cases.json` with `eitherDecode` and passes the message
-    straight to `die` (study/fold-material/Main.hs:95). `yaml` 0.11.11.2
+    straight to `die` (study/fold-material/Main.hs:201). `yaml` 0.11.11.2
     gives line and column for *syntax* errors, but `FromJSON` failures come
     back as aeson errors with a path
     (https://hackage.haskell.org/package/yaml-0.11.11.2/docs/Data-Yaml.html).
@@ -373,7 +373,7 @@ folded state and a material pattern from step to step, not a `Frame`.
     - A flap must be a complete cut; an incomplete one is refused
       (Flap.hs:1-6).
     - The turn must be collision-free over its interval (`FlapCollision`,
-      `FlapUnresolved`, Flap.hs:121-122).
+      `FlapUnresolved`, Flap.hs:159-160).
     - A material-point reference must land strictly inside exactly one face
       (StudyCase.hs:139-143).
     - The refolded join must agree with the accepted endpoint
