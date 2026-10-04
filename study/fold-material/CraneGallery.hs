@@ -44,7 +44,9 @@ writeCraneGallery destination = do
   let output = destination </> "checked-crane"
   createDirectoryIfMissing True output
   source <- loadFoldFile "examples/crane.fold" >>= checked . first explain
-  wing <- checked (buildCraneWing (keyFrame source))
+  -- The wing hinges at its root, found by rule (owner decisions 34 and 35).
+  hinge <- checked (wingRoot (keyFrame source))
+  wing <- checked (buildCraneWingAt hinge (keyFrame source))
   states <- checked (craneStates wing)
   let file = craneFile states
   BL.writeFile (output </> "sequence.fold") (encode file)

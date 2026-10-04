@@ -305,7 +305,7 @@ can also support an unjoined stack boundary, while the same plane separation
 check still covers the turning interior. Sliding contact remains unsupported.
 See [the operation note](notes/checked-flap-operation.md).
 
-`CraneWing` adds four crease segments to the existing crane fixture, chooses
+`CraneWing` adds a crease's segments to the existing crane fixture, chooses
 one wing and checks its 90-degree departure. `CraneGallery` exports four SVG,
 FOLD and glTF illustrations. The study owns the fixture selection and crease
 recipe. `Flap` and `HingeSweep` own the general rule that a hinge may rest on
