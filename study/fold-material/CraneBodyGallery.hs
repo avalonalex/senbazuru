@@ -177,9 +177,10 @@ writeCraneBody destination = do
       scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, Just own) <- runs]
       reports = [(stem, report scale) | (stem, _, _, _, report, _) <- runs]
   forM_ reports $ \(stem, report) -> BL.writeFile (output </> stem ++ "-check.json") (encode report)
-  -- How far each free-patch trial's paper lies from the fixed body's, on
-  -- every run: the comparison owner decision 39 keeps, which says whether the
-  -- quick tier's held body is a label or a change of shape.
+  -- How far each other trial's paper lies from the fixed body's, on every
+  -- run: the comparison owner decision 39 keeps, which says whether the quick
+  -- tier's held body is a label or a change of shape. Only an accepted
+  -- trial's distance says that; the incompatible grip's measures its grip.
   let held = heldComparison (pixelsPerSheet <$> scale) "fixed" (map snd results)
       document = object ["runs" .= map snd reports, "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _, _) <- runs], "screenThresholds" .= fmap thresholdsJson scale, "heldComparison" .= held]
   BL.writeFile (output </> "checks.json") (encode document)

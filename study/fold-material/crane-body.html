@@ -62,7 +62,8 @@
     reference's at its farthest point, in pixels at this page's drawing scale.
     Under a pixel, holding the body changes nothing a drawing can show; that
     is what lets a quick solve hold it, and this run measures it again (owner
-    decision 39).</p>
+    decision 39). Only an accepted trial's distance says this: the incompatible
+    grip's measures how far its forced grip moved the paper.</p>
 </section>
 <section>
   <h2>Could paper take these shapes?</h2>
@@ -122,7 +123,7 @@ const baseCell = r => r.base.set==='searched' ? 'Searched, '+angle(r.baseDegrees
 const fromHeld = r => {
   const c = data.heldComparison;
   if (!c || c.error) return '—';
-  if (r.id === c.held) return 'Reference';
+  if (r.id === c.held) return c.heldAccepted ? 'Reference' : 'Reference, not accepted';
   const e = (c.released || []).find(x => x.id === r.id);
   return !e ? '—' : e.error ? 'Not compared: ' + e.error : e.pixelsAtPageScale === undefined ? number(e.largestDisplacement) + ' units' : number(e.pixelsAtPageScale) + ' px';
 };

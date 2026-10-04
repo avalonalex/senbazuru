@@ -611,8 +611,9 @@ the fixed-body reference's at its farthest point: `heldComparison` in
 drawing scale, and the last column of the page's comparison table. It is the
 comparison owner decision 39 keeps, so that the
 [quick tier](#a-spread-crane-in-minutes-the-quick-tier)'s held body stays a
-label and not a change of shape. It compares endpoints already solved, and
-adds no solve.
+label and not a change of shape. Only an accepted trial's distance answers
+that; the incompatible grip's measures its forced grip. It compares endpoints
+already solved, and adds no solve.
 
 ### Internal body-crease diagnosis
 
@@ -656,9 +657,10 @@ motion certificate is implied. See [the diagnostic findings](notes/internal-crea
 
 The complete gallery's `checks.json` also gives `heldComparison`: how far each
 control's paper lies from the fixed-body reference's at its farthest point,
-as `--crane-body` records it (owner decision 39). This page draws no paper, so
-it has no drawing scale, and the comparison is in sheet units and at 600 px
-per sheet unit. A single control's run records no comparison.
+as `--crane-body` records it (owner decision 39). The page draws the crease
+maps but none of the trials' endpoints, so it has no scale they are drawn at,
+and the comparison is in sheet units and at 600 px per sheet unit. A single
+control's run records no comparison.
 
 ### A spread crane in minutes: the quick tier
 

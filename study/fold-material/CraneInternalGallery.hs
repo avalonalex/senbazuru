@@ -53,8 +53,9 @@ writeCraneInternal destination = do
   results <- forM controls $ \(key, _, _) -> runInternalTrial prepared key destination
   let creases = [object ["crease" .= unEdgeId eid, "lower" .= unFaceId lower, "upper" .= unFaceId upper] | (eid, (lower, upper)) <- zip (internalCreases (preparedFixed prepared)) (internalPairs (preparedFixed prepared))]
       -- How far each other trial's paper lies from the whole patch held, on
-      -- every run: the comparison owner decision 39 keeps. This gallery draws
-      -- no paper, so it has no page scale to give pixels at.
+      -- every run: the comparison owner decision 39 keeps. The page draws the
+      -- crease maps but no trial's endpoint, so there is no scale the
+      -- endpoints are drawn at to give pixels at.
       held = heldComparison Nothing "fixed" (map snd results)
       document = object ["hingeY" .= preparedHinge prepared, "baseDegrees" .= baseDegrees (preparedSearch prepared), "creases" .= creases, "runs" .= map fst results, "heldComparison" .= held]
   BL.writeFile (destination </> "crane-internal" </> "checks.json") (encode document)
