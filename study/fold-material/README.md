@@ -529,7 +529,9 @@ crane endpoints without repeating their solves, and [the finding](../../docs/not
 `stack run senbazuru-material-study -- --crane-internal build/fold-material`
 locates creases 26/51 and compares shared-line holds with internal-only contact
 forces. Every endpoint keeps the independent whole-sheet checks. A continuation
-separates reaching the iteration limit from exhausting the line search.
+separates reaching the iteration limit from exhausting the line search. A
+complete run records how far each control lies from the fixed body
+(`heldComparison`, owner decision 39).
 These slow controls stay outside CI; see [usage](../../docs/usage.md#internal-body-crease-diagnosis)
 and [findings](../../docs/notes/internal-crease-diagnostic.md).
 
@@ -547,7 +549,8 @@ compares original, weaker and opened preferences at two body creases while
 retaining the same small free patch and tip grip. `crane-body.html` reports
 both angle policies, signed crease measurements and unchanged length/contact
 requirements, and every trial's paper screen. Released-body controls can take
-several minutes each.
+several minutes each. Every run also records how far each trial's paper lies
+from the fixed body's (`heldComparison`, owner decision 39).
 
 `stack run senbazuru-material-study -- --crane-pocket build/fold-material`
 writes `crane-pocket.html`: an original-sheet region map, folded x-ray

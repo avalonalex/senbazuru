@@ -605,6 +605,15 @@ upper grip bound the comparison. Forty iterations per penalty stage are allowed
 for ordinary controls; these released-body solves can take several minutes each.
 The negative control allows two. See [the angle-policy note](notes/body-angle-preferences.md).
 
+On every run the gallery also measures how far each trial's paper lies from
+the fixed-body reference's at its farthest point: `heldComparison` in
+`checks.json`, in sheet units, at 600 px per sheet unit and at the page's
+drawing scale, and the last column of the page's comparison table. It is the
+comparison owner decision 39 keeps, so that the
+[quick tier](#a-spread-crane-in-minutes-the-quick-tier)'s held body stays a
+label and not a change of shape. It compares endpoints already solved, and
+adds no solve.
+
 ### Internal body-crease diagnosis
 
 ```bash
@@ -644,6 +653,12 @@ energy components for the first and last rejected corrections of each kind.
 The endpoint and last rejected correction are saved as diagnostic FOLDs.
 The gallery keeps failed meshes out of accepted-model views. No flexible
 motion certificate is implied. See [the diagnostic findings](notes/internal-crease-diagnostic.md).
+
+The complete gallery's `checks.json` also gives `heldComparison`: how far each
+control's paper lies from the fixed-body reference's at its farthest point,
+as `--crane-body` records it (owner decision 39). This page draws no paper, so
+it has no drawing scale, and the comparison is in sheet units and at 600 px
+per sheet unit. A single control's run records no comparison.
 
 ### A spread crane in minutes: the quick tier
 
