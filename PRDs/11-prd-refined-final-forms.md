@@ -472,7 +472,9 @@ The first requirement costs little and changes what the owner sees.
   `(|xᵢ − xⱼ| − (1 + ε) |uᵢ − uⱼ|) / 2` at page scale, each page's own drawing
   scale (owner decision 30, 2026-09-30): the largest at which its gallery draws
   the paper, on the page or in the drawings it writes beside it (owner
-  decisions 32 and 33, 2026-10-01). Here `x` is the pose position, `u` the
+  decisions 32 and 33, 2026-10-01). A plot of measurements, such as
+  crane-root's side profile, is not a drawing of the paper (owner decision 38,
+  2026-10-03). Here `x` is the pose position, `u` the
   flat-sheet position and ε the declared strain screen; the floor is the
   largest value, in 3D and after projection. **The halving is not a
   slip:** two points too far apart by *e* can share the correction, so the floor

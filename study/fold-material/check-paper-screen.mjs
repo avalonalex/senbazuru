@@ -87,7 +87,7 @@ const other={pagePixelsPerSheet:691.9316,strainScreen:0.02,strictStrainScreen:0.
 const labels=paperScreen.rows([],other).map(r=>r[0]);
 assert.deepEqual([labels[2],labels[4],labels[6]],['Largest stretch / squash · within 0.2%','Floor at 2% strain, 3D · this picture','False creases: joins past 30° · turning, sheet units × degrees']);
 const caption=paperScreen.caption(other);
-for(const words of ['in pixels at 692 to a sheet unit, the largest scale at which this gallery draws the paper','(owner decision 30)','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','accepts that solve','agree within 2 px at every vertex of the coarser mesh','(owner decisions 29 and 31)'])assert.ok(caption.includes(words),words);
+for(const words of ['in pixels at 692 to a sheet unit, the largest scale at which this gallery draws the paper','(owner decision 30)','is not a drawing of the paper and does not set this scale (owner decision 38)','no more than 2% strain','at most 2 px at that strain','no join bent past 30°','within 0.2% is reported','accepts that solve','agree within 2 px at every vertex of the coarser mesh','(owner decisions 29 and 31)'])assert.ok(caption.includes(words),words);
 // A page made before decision 30 wrote its fixed 600 under another key. With
 // this script beside it, its caption gives no scale rather than 600 as the
 // scale the page draws at.
