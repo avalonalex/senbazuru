@@ -146,6 +146,27 @@ painting one face after another needs an order without one. The gallery keeps
 their complete-sheet GLBs instead, as it does for any accepted mesh whose
 stable view fails.
 
+Every run also measures how far each trial's paper lies from the fixed-body
+reference's, at its farthest point: the comparison owner decision 39 keeps,
+so that the quick tier's held body stays a label
+([quick-tier.md](quick-tier.md)). Measured on 2026-10-04, in a run that
+reproduced every verdict above, at the page's 692 px per sheet unit:
+
+| Trial | Accepted | Farthest from the fixed body (sheet units) | Pixels |
+| --- | --- | ---: | ---: |
+| Original | yes | 5.53e-7 | 0.000383 |
+| Weaker | yes | 5.53e-7 | 0.000383 |
+| Open preference | yes | 5.53e-7 | 0.000383 |
+| Incompatible grip | no | 0.005 | 3.46 |
+
+For the three free patches the figure equals the body's own movement to
+every digit: the fixed body stays where it started, and the farthest paper
+is a body vertex. The incompatible grip's body moves 1.8e-13, yet its paper
+lies 0.005 from the held shape, as far as its upper grip is pushed through its
+partner. So the comparison is not a second copy of the body's movement: it
+asks how far the shape moved, which is what holding the body has to leave
+unchanged.
+
 The gallery took 11,372 CPU seconds over 3.2 hours, with a peak of 5.9 GB:
 526 for the search, 3,834, 3,294 and 3,184 for the three free-patch trials'
 three solves each, and 490 for the incompatible grip.

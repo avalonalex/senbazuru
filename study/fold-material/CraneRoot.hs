@@ -24,6 +24,8 @@ module CraneRoot
     rootAngles,
     originalCreaseError,
     rootBodyMovement,
+    largestDisplacement,
+    heldComparison,
     rootProfile,
     rootAccepted,
   )
@@ -32,15 +34,18 @@ where
 import Control.Monad (unless)
 import CraneSpread
 import CraneWing (buildCraneWingAt, craneHinge, craneHingeY, craneWidest, studyHinge)
+import Data.Aeson (Value, object, (.=))
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
 import Data.Set qualified as S
+import Data.Text (Text)
 import FoldBending
 import FoldRelaxation
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Query (Crease (..), Face (..), frameFaces)
 import Senbazuru.Fold.Types
+import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact (contactPassed)
@@ -118,6 +123,33 @@ rootBodyMovement study mesh = maximum (0 : [norm (position p ^-^ position q) | (
   where
     fixture = rootSpread study
     original = refinedMesh (spreadRefined fixture)
+
+-- | How far one endpoint lies from another: the largest distance between the
+-- positions of matching samples. Samples match by index, so both must hold the
+-- same material in the same order; 'Nothing' where they do not, since pairing
+-- them would measure between different paper. 'rootBodyMovement' measures the
+-- body against where it started; this measures all the paper against another
+-- solve, which is how a body gallery asks whether holding the body changed the
+-- shape (owner decision 39).
+largestDisplacement :: [Sample V2] -> [Sample V2] -> Maybe Double
+largestDisplacement these those
+  | map sampleMaterial these /= map sampleMaterial those = Nothing
+  | otherwise = Just (maximum (0 : zipWith (\p q -> norm (position p ^-^ position q)) these those))
+
+-- | How far each released control's endpoint lies from the held control's,
+-- as a body gallery records it on every run (owner decision 39): in sheet
+-- units, in pixels at 600 per sheet unit, and at the page's own scale where
+-- the gallery draws its paper. Each endpoint is a control's id, whether its
+-- gallery accepts it, and its samples. A gallery's controls all solve one
+-- mesh, so an endpoint that cannot be compared is a fault, recorded rather
+-- than fatal: by then the gallery has run for hours.
+heldComparison :: Maybe Double -> String -> [(String, Bool, [Sample V2])] -> Value
+heldComparison scale heldId endpoints = case [(accepted, s) | (key, accepted, s) <- endpoints, key == heldId] of
+  [(accepted, held)] -> object ["held" .= heldId, "heldAccepted" .= accepted, "released" .= [entry held e | e@(key, _, _) <- endpoints, key /= heldId]]
+  _ -> object ["held" .= heldId, "error" .= ("the gallery has no single endpoint of that id" :: Text)]
+  where
+    entry held (key, accepted, s) = object (["id" .= key, "accepted" .= accepted] ++ maybe ["error" .= ("it is not on the held control's mesh" :: Text)] measured (largestDisplacement held s))
+    measured d = ["largestDisplacement" .= d, "pixelsAt600" .= (600 * d)] ++ ["pixelsAtPageScale" .= (k * d) | Just k <- [scale]]
 
 -- | A side profile along the wing's middle, continuing into the selected body
 -- panels. Choose the layer whose original material normal points up, using

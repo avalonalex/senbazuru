@@ -188,6 +188,28 @@ at 27.383° and 29.383°. The two reduced-force controls' sides do not
 converge; they are compared all the same, as decision 36 says, and also end
 higher.
 
+Every complete run also measures how far each control's paper lies from the
+whole patch held, at its farthest point: the comparison owner decision 39
+keeps, so that the quick tier's held body stays a label
+([quick-tier.md](quick-tier.md)). Measured on 2026-10-04, in a run that
+reproduced every verdict above:
+
+| Control | Accepted | Farthest from the whole patch held (sheet units) | Pixels at 600 per sheet unit |
+| --- | --- | ---: | ---: |
+| Original | yes | 5.53e-7 | 0.000332 |
+| Crease lines held | no | 5.09e-7 | 0.000305 |
+| Internal forces only | no | 0.00118 | 0.711 |
+| Held lines + internal forces | no | 0.000937 | 0.562 |
+| Original continued | yes | 5.53e-7 | 0.000332 |
+
+Each figure equals that control's body movement to every digit. The whole
+patch held keeps the body where it started, and the farthest point is a body
+vertex, so here the comparison measures the body: no other paper lies farther
+from the held shape. The two accepted releases lie a three-thousandth of a pixel from the
+held shape. The reduced-force controls' bodies move further, because they
+leave out contact forces that hold it; neither is accepted, so neither says
+anything about holding the body.
+
 The gallery took 7,965 CPU seconds over 2.3 hours, with a peak of 12 GB. The
 search took 575; the original's three solves 3,902, and the held lines'
 2,374; the reduced-force controls 644 and 349, the first stopped by its last
