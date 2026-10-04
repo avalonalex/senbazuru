@@ -1064,7 +1064,7 @@ Found while researching this file, outside `PRDs/`, so not edited here:
      more than `2.42e-7` of the sheet through another: 0.00036 t, 0.000145 px.
      The study's check misses no crossing deeper than its `1e-7`.
 4. **`senbazuru-material-study --help` writes a gallery into `./--help/`.**
-   `Main.hs:161` takes any single argument as the output directory.
+   `Main.hs:162` takes any single argument as the output directory.
 5. **`senbazuru export examples/squaretwist.fold` refuses** the visible scene:
    "panel 8 needs a planar surface". Face 8 is out of plane by about 1e-6;
    `--all-layers` works ([X1](research/X1-paper-look-renders.md)).

@@ -645,6 +645,34 @@ The endpoint and last rejected correction are saved as diagnostic FOLDs.
 The gallery keeps failed meshes out of accepted-model views. No flexible
 motion certificate is implied. See [the diagnostic findings](notes/internal-crease-diagnostic.md).
 
+### A spread crane in minutes: the quick tier
+
+```bash
+stack run senbazuru-material-study -- --crane-quick build/fold-material
+```
+
+`crane-quick/` holds one crane with a wing spread from its root, settled in
+about three CPU minutes where the galleries above take hours: `quick.fold`,
+`quick.svg`, `quick.glb` and `checks.json`. It is the flat-preference
+control at the wing's root, which holds the body still (owner decision 39).
+The wing's base turns as one piece at the angle of least bending energy
+within 5° of the turn the control's root starts at, to 0.5°; an answer at
+an end of that range runs the full 15–45° search instead. The GLB's fidelity
+record gives the geometry as `bent zero-thickness` and lists what was held:
+the body, and the base at its angle. A stable view that cannot be built
+falls back to `quick-complete.glb`.
+
+Given the galleries' FOLD endpoints on the same mesh, it also records how
+far its own endpoint lies from each, in pixels at its drawing scale and at
+600 px per sheet unit:
+
+```bash
+stack run senbazuru-material-study -- --crane-quick build/fold-material \
+  build/fold-material/crane-body/original.fold build/fold-material/crane-internal/held.fold
+```
+
+See [the quick tier](notes/quick-tier.md).
+
 ### One nearly closed crease
 
 ```bash

@@ -25,6 +25,10 @@ module RigidBase
     spreadSolve,
     BaseSearch (..),
     searchBase,
+    searchBaseWithin,
+    searchNear,
+    landsAtEdge,
+    startingTurn,
     goldenSection,
     BaseCheck (..),
     checkBase,
@@ -76,8 +80,43 @@ data BaseSearch a = BaseSearch
 -- from the control's own mesh, and each later one from the mesh of the
 -- bracket point beside it.
 searchBase :: Solve a -> CraneRoot -> Either SpreadError (BaseSearch a)
-searchBase solve study = do
-  ((theta, _, (_, found)), tried) <- goldenSection 0.05 15 45 (spreadMesh (rootSpread study), Nothing) solveAt
+searchBase = searchBaseWithin 0.05 15 45
+
+-- | The quick tier's search (owner's choices on #474): within 5° of
+-- @centre@, to 0.5°, which skips the far angles that cost a full search most
+-- of its time. Half a degree off the least moves the crane's spread wing by
+-- 0.38 px at its 692 px drawing scale, measured, inside the 1 px a quick
+-- result may differ by. A least energy that lands at an end of the bracket
+-- may lie beyond it, so the full 15-45° search runs instead; the flag says
+-- whether it did.
+searchNear :: Solve a -> Double -> CraneRoot -> Either SpreadError (BaseSearch a, Bool)
+searchNear solve centre study = do
+  near <- searchBaseWithin 0.5 (centre - 5) (centre + 5) solve study
+  if landsAtEdge 0.5 (centre - 5) (centre + 5) (baseDegrees near)
+    then (,True) <$> searchBase solve study
+    else pure (near, False)
+
+-- | The turn, in degrees, that the control's root starts at: the mean size
+-- of its root creases' angles in its own starting mesh. 'searchNear' is
+-- centred on it, so the centre is read from the control, not typed in.
+startingTurn :: CraneRoot -> Either SpreadError Double
+startingTurn study = do
+  angles <- rootAngles study (spreadMesh (rootSpread study))
+  case angles of
+    [] -> Left (SpreadError "the control has no root crease to read a starting turn from")
+    _ -> Right (180 / pi * sum (map (abs . snd) angles) / fromIntegral (length angles))
+
+-- | Whether a search to @tolerance@ degrees answered within two of its final
+-- bracket widths of an end of the bracket @lo@ to @hi@. There the least may
+-- lie beyond the bracket, and golden section has only crept towards it.
+landsAtEdge :: Double -> Double -> Double -> Double -> Bool
+landsAtEdge tolerance lo hi theta = theta - lo < 2 * tolerance || hi - theta < 2 * tolerance
+
+-- | 'searchBase' over the bracket @lo@ to @hi@ degrees, narrowed until it is
+-- narrower than @tolerance@ degrees.
+searchBaseWithin :: Double -> Double -> Double -> Solve a -> CraneRoot -> Either SpreadError (BaseSearch a)
+searchBaseWithin tolerance lo hi solve study = do
+  ((theta, _, (_, found)), tried) <- goldenSection tolerance lo hi (spreadMesh (rootSpread study), Nothing) solveAt
   (turned, result, extra, mesh) <- maybe (Left (SpreadError "the base search made no solve")) Right found
   let record = [(degree, energy, maybe False (\(_, r, _, _) -> converged r) made) | (degree, energy, (_, made)) <- tried]
   -- Force the record now. Each element is otherwise a thunk over its solve's

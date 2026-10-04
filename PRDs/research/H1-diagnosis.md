@@ -230,12 +230,12 @@ crane.
   copies those 49 vertices exactly, but carries the body's movement into the
   remaining paper by `continueDisplacements`. That is a linear graph
   calculation in which neighbouring vertices prefer equal displacement
-  (`WholeCrane.hs:416-434`). The module's own comment calls it an "INITIAL
+  (`WholeCrane.hs:417-435`). The module's own comment calls it an "INITIAL
   GUESS" that "can strain paper" (`WholeCrane.hs:7-9`). The result is 5.26%
   edge error.
 - **The pillow targets abandon the solved body altogether.** They prescribe a
   cushion and wing arches, then continue displacements with weight
-  1/restDistance (`WholeCrane.hs:357-387`). The comment says this "still cannot
+  1/restDistance (`WholeCrane.hs:358-388`). The comment says this "still cannot
   enforce paper lengths or contact" (`:384-386`).
 - **The notes say the same.** The linear graph calculation "does not preserve"
   edge length (`crane-pillow-target.md:58-63`).
@@ -248,7 +248,7 @@ because the body was narrowed.
 shape** [code, ran, fetched].
 
 The cushion height is a product of two parabolas,
-`max 0 (1-(x/r)^2) * max 0 (1-(z/r)^2)` (`WholeCrane.hs:357-363`). That is a
+`max 0 (1-(x/r)^2) * max 0 (1-(z/r)^2)` (`WholeCrane.hs:358-364`). That is a
 dome: curved along both x and z. A developable surface has zero Gaussian
 curvature; a dome's is positive [fetched: Wikipedia, "Developable surface"].
 
@@ -285,7 +285,7 @@ sheet unit [ran].
 The authored curves turn much less than these joins do [reasoned]:
 
 - The wing arch has radius 0.5/(π/6) ≈ 0.955 sheet units, 573 px
-  (`WholeCrane.hs:370-376`). A 34 px chord turns about 3.4° and bulges
+  (`WholeCrane.hs:371-377`). A 34 px chord turns about 3.4° and bulges
   0.25 px.
 - The cushion across its narrowed axis turns at most about 27° per edge.
 
@@ -349,7 +349,7 @@ The study is in exactly this regime:
 - the final length penalty weight is 1e8 (`FoldRelaxation.hs:543`);
 - contact is 100× that (`:638`);
 - panel bending weights are Bl/h with B = 0.2 in every crane fixture
-  (`WholeCrane.hs:334`; `FoldBending.hs:221`);
+  (`WholeCrane.hs:335`; `FoldBending.hs:221`);
 - acceptance needs 1e-5 relative length error
   (`FoldRelaxation.hs:125-126`).
 

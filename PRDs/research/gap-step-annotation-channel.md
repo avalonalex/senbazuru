@@ -112,7 +112,7 @@ With no notes, all 33 tracked goldens stay byte-identical.
      `petalSvg` and `birdSvg`, `:39-45`), BlintzGallery `:39`, HelmetGallery
      `:38`, FlapSpec `:293`, `:313`, `:323`, SvgSpec `:133`.
    - Arrows off: BirdSequenceSpec `:79`, BasicBaseSpec `:216`, WingBendingGallery
-     `:56`, CraneSpreadGallery `:158`, BasicBaseGallery `:145`, `Main.hs:171`,
+     `:56`, CraneSpreadGallery `:158`, BasicBaseGallery `:145`, `Main.hs:172`,
      StepsSpec.
 
    Changing `stepPage`'s arity therefore touches about fifteen call sites.
