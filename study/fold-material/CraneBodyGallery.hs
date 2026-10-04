@@ -27,7 +27,7 @@ import FoldBending
 import FoldMaterial (areaRatio, componentCount)
 import FoldRelaxation
 import RigidBase (Base (..), BaseCheck (..), BaseSearch (..), baseReport, checkBase, checkPassed, searchBase, spreadSolve, takeBase)
-import ScreenReport (Figure (..), pageScale, thresholdsJson, writeScreenScript)
+import ScreenReport (Figure (..), PageScale (..), pageScale, thresholdsJson, writeScreenScript)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
@@ -63,7 +63,7 @@ writeCraneBody destination = do
   searchEnd <- getCPUTime
   let theta = baseDegrees search
   putStrLn ("Base angle " ++ show theta ++ " degrees")
-  runs <- forM controls $ \(stem, title, control) -> do
+  results <- forM controls $ \(stem, title, control) -> do
     base <- checked (craneBodyAt hinge source 3 control)
     let held = bodyRoot base
         posed
@@ -170,13 +170,18 @@ writeCraneBody destination = do
       _ -> pure ()
     putStrLn (stem ++ ": strict " ++ show strict ++ ", selected " ++ show accepted ++ "; length " ++ show (maxLengthError mesh) ++ "; selected/retained angle " ++ show (selectedError, retainedError))
     hFlush stdout
-    pure (stem, title, accepted, export, report, own)
-  -- The page's drawings are the accepted trials' own, written beside it; the
-  -- page itself shows none of them.
-  let scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, Just own) <- runs]
+    pure ((stem, title, accepted, export, report, own), (stem, accepted, samples mesh))
+  let runs = map fst results
+      -- The page's drawings are the accepted trials' own, written beside it;
+      -- the page itself shows none of them.
+      scale = pageScale <$> nonEmpty [own | (_, _, _, _, _, Just own) <- runs]
       reports = [(stem, report scale) | (stem, _, _, _, report, _) <- runs]
   forM_ reports $ \(stem, report) -> BL.writeFile (output </> stem ++ "-check.json") (encode report)
-  let document = object ["runs" .= map snd reports, "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _, _) <- runs], "screenThresholds" .= fmap thresholdsJson scale]
+  -- How far each free-patch trial's paper lies from the fixed body's, on
+  -- every run: the comparison owner decision 39 keeps, which says whether the
+  -- quick tier's held body is a label or a change of shape.
+  let held = heldComparison (pixelsPerSheet <$> scale) "fixed" (map snd results)
+      document = object ["runs" .= map snd reports, "exports" .= [object ["id" .= stem, "stableAvailable" .= (accepted && isNothing err), "error" .= err] | (stem, _, accepted, err, _, _) <- runs], "screenThresholds" .= fmap thresholdsJson scale, "heldComparison" .= held]
   BL.writeFile (output </> "checks.json") (encode document)
   when (isNothing scale) (die "No crane-body trial was drawn, so the page has no scale to screen at; checks.json holds the measurements without screens. Refusing to publish the page")
   BL.writeFile (output </> "models.json") (encode [object ["title" .= title, "path" .= (stem ++ ".glb")] | (stem, title, True, Nothing, _, _) <- runs])

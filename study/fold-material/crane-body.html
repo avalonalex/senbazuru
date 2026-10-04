@@ -52,12 +52,17 @@
     every other trial holds its base there. The three free-patch trials are each
     solved again 1° either side, and are not accepted if either side ends with
     less bending energy. The incompatible grip takes the angle unchecked.</p>
-  <div class="table-wrap"><table><thead><tr><th>Trial</th><th>Strict angles</th><th>Selected preferences</th><th>Patch displacement</th><th>Length error</th><th>Base angle</th></tr></thead><tbody id="comparison"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>Trial</th><th>Strict angles</th><th>Selected preferences</th><th>Patch displacement</th><th>Length error</th><th>Base angle</th><th>Farthest from the fixed body</th></tr></thead><tbody id="comparison"></tbody></table></div>
   <p id="finding"></p>
   <p>The fixed-body reference holds the body and prefers a flat hinge, the setup
     the wing-root study accepts. The incompatible
     control pushes an upper grip 0.005 model units through its lower partner;
     a flexible crease cannot make those exact holds compatible.</p>
+  <p>The last column is how far each trial's paper lies from the fixed-body
+    reference's at its farthest point, in pixels at this page's drawing scale.
+    Under a pixel, holding the body changes nothing a drawing can show; that
+    is what lets a quick solve hold it, and this run measures it again (owner
+    decision 39).</p>
 </section>
 <section>
   <h2>Could paper take these shapes?</h2>
@@ -114,6 +119,13 @@ const difference = a => Math.abs(Math.atan2(Math.sin(a.achievedRadians-a.origina
 function row(target,values) { const tr=document.createElement('tr'); for (const value of values) {const td=document.createElement('td');td.textContent=value;tr.append(td);} document.querySelector(target).append(tr); }
 const angle = d => d.toFixed(3) + '°';
 const baseCell = r => r.base.set==='searched' ? 'Searched, '+angle(r.baseDegrees) : r.base.set==='checked' ? angle(r.baseDegrees)+(r.base.passed ? ', checked' : ', check failed') : angle(r.baseDegrees)+', unchecked';
+const fromHeld = r => {
+  const c = data.heldComparison;
+  if (!c || c.error) return '—';
+  if (r.id === c.held) return 'Reference';
+  const e = (c.released || []).find(x => x.id === r.id);
+  return !e ? '—' : e.error ? 'Not compared: ' + e.error : e.pixelsAtPageScale === undefined ? number(e.largestDisplacement) + ' units' : number(e.pixelsAtPageScale) + ' px';
+};
 const original = byId.get('original') || data.runs[0];
 document.querySelector('#hinge').textContent='folded y = '+original.hingeY.toFixed(5);
 document.querySelector('#panel-count').textContent=original.releasedPanels.length;
@@ -121,7 +133,7 @@ document.querySelector('#selected-ids').textContent=original.selectedCreases.joi
 document.querySelector('#order-count').textContent=original.sourceOrders;
 document.querySelector('#theta').textContent=angle(original.baseDegrees);
 for (const run of data.runs) {
-  row('#comparison',[run.title,pass(run.strictAccepted),pass(run.selectedAccepted),number(run.bodyMovement),percent(run.maxRelativeEdgeError),baseCell(run)]);
+  row('#comparison',[run.title,pass(run.strictAccepted),pass(run.selectedAccepted),number(run.bodyMovement),percent(run.maxRelativeEdgeError),baseCell(run),fromHeld(run)]);
   const option=document.createElement('option');option.value=run.id;option.textContent=run.title;document.querySelector('#trial').append(option);
 }
 document.querySelector('#screen-caption').textContent=paperScreen.caption(data.screenThresholds);

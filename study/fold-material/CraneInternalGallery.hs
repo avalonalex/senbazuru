@@ -50,9 +50,13 @@ controls = [("original", "Original free patch", OriginalPatch), ("held", "Crease
 writeCraneInternal :: FilePath -> IO ()
 writeCraneInternal destination = do
   prepared <- prepareInternal
-  reports <- forM controls $ \(key, _, _) -> runInternalTrial prepared key destination
+  results <- forM controls $ \(key, _, _) -> runInternalTrial prepared key destination
   let creases = [object ["crease" .= unEdgeId eid, "lower" .= unFaceId lower, "upper" .= unFaceId upper] | (eid, (lower, upper)) <- zip (internalCreases (preparedFixed prepared)) (internalPairs (preparedFixed prepared))]
-      document = object ["hingeY" .= preparedHinge prepared, "baseDegrees" .= baseDegrees (preparedSearch prepared), "creases" .= creases, "runs" .= reports]
+      -- How far each other trial's paper lies from the whole patch held, on
+      -- every run: the comparison owner decision 39 keeps. This gallery draws
+      -- no paper, so it has no page scale to give pixels at.
+      held = heldComparison Nothing "fixed" (map snd results)
+      document = object ["hingeY" .= preparedHinge prepared, "baseDegrees" .= baseDegrees (preparedSearch prepared), "creases" .= creases, "runs" .= map fst results, "heldComparison" .= held]
   BL.writeFile (destination </> "crane-internal" </> "checks.json") (encode document)
   template <- TIO.readFile "study/fold-material/crane-internal.html"
   TIO.writeFile (destination </> "crane-internal.html") (T.replace "/*INTERNAL_DATA*/null" (TE.decodeUtf8 (BL.toStrict (encode document))) template)
@@ -64,7 +68,7 @@ writeCraneInternal destination = do
 writeInternalTrial :: String -> FilePath -> IO Value
 writeInternalTrial key destination = do
   prepared <- prepareInternal
-  runInternalTrial prepared key destination
+  fst <$> runInternalTrial prepared key destination
 
 -- | What every trial shares: the crane, the wing's root, found by rule, and
 -- the fixed control's base search. The fixed control holds the body and
@@ -99,7 +103,8 @@ prepareInternal = do
 solveWith :: Settings -> InternalStudy -> Solve TrialDiagnostics
 solveWith settings study root = solveInternal settings study {internalRoot = root}
 
-runInternalTrial :: Prepared -> String -> FilePath -> IO Value
+-- | A trial's report, and its endpoint as 'heldComparison' takes it.
+runInternalTrial :: Prepared -> String -> FilePath -> IO (Value, (String, Bool, [Sample V2]))
 runInternalTrial prepared key destination = do
   let named = controls ++ [("original-short", "Original patch · short profiling probe", OriginalPatch)]
   (title, control) <- case [(title, control) | (name, title, control) <- named, name == key] of
@@ -198,7 +203,7 @@ runInternalTrial prepared key destination = do
     exportMesh fixture (output </> stem ++ "-finish.fold") "Last rejected correction: proposal, not accepted" (trialFinish trial)
   putStrLn (key ++ ": accepted " ++ show accepted ++ ", converged " ++ show (converged result) ++ ", length " ++ show (maxLengthError mesh) ++ ", blocked " ++ show (blockedStages audit))
   hFlush stdout
-  pure report
+  pure (report, (key, accepted, samples mesh))
 
 exportMesh :: CraneSpread -> FilePath -> Text -> MaterialMesh -> IO ()
 exportMesh fixture path title mesh = do

@@ -6,17 +6,20 @@ module CraneRootSpec (spec) where
 import Control.Monad (forM_)
 import CraneRoot
 import CraneSpread
+import Data.Aeson (object, (.=))
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.List (minimumBy)
 import Data.Ord (comparing)
 import Data.Set qualified as S
+import Data.Text (Text)
 import FoldBending
 import FoldMaterial (componentCount)
 import FoldRelaxation
 import RigidBase (goldenSection, landsAtEdge, sidesPass, startingTurn)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Surface
@@ -181,6 +184,46 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     landsAtEdge 0.5 25 35 34.1 `shouldBe` True
     landsAtEdge 0.5 25 35 26.1 `shouldBe` False
     landsAtEdge 0.05 25 35 25.9 `shouldBe` False
+
+  -- How far a released endpoint lies from the held one is the largest
+  -- distance between matching samples (owner decision 39). Taking the first
+  -- or the mean distance, or pairing samples of different material, turns
+  -- this red.
+  it "measures one endpoint against another by its farthest matching sample" $ \_ -> do
+    largestDisplacement sheet sheet `shouldBe` Just 0
+    largestDisplacement sheet moved `shouldBe` Just 0.25
+    largestDisplacement sheet elsewhere `shouldBe` Nothing
+    largestDisplacement sheet (take 2 sheet) `shouldBe` Nothing
+
+  -- A body gallery records each released control against the held one, with
+  -- its verdict, in pixels at 600 and at the page's scale where it has one.
+  -- A control on another mesh, or a gallery without the held control, is
+  -- recorded rather than fatal.
+  it "records each released endpoint against the held one" $ \_ -> do
+    heldComparison (Just 692) "fixed" [("fixed", True, sheet), ("original", True, moved), ("crossed", False, elsewhere)]
+      `shouldBe` object
+        [ "held" .= ("fixed" :: Text),
+          "heldAccepted" .= True,
+          "released"
+            .= [ object ["id" .= ("original" :: Text), "accepted" .= True, "largestDisplacement" .= (0.25 :: Double), "pixelsAt600" .= (150 :: Double), "pixelsAtPageScale" .= (173 :: Double)],
+                 object ["id" .= ("crossed" :: Text), "accepted" .= False, "error" .= ("it is not on the held control's mesh" :: Text)]
+               ]
+        ]
+    heldComparison Nothing "fixed" [("fixed", False, sheet), ("original", True, moved)]
+      `shouldBe` object
+        [ "held" .= ("fixed" :: Text),
+          "heldAccepted" .= False,
+          "released" .= [object ["id" .= ("original" :: Text), "accepted" .= True, "largestDisplacement" .= (0.25 :: Double), "pixelsAt600" .= (150 :: Double)]]
+        ]
+    heldComparison Nothing "fixed" [("original", True, moved)]
+      `shouldBe` object ["held" .= ("fixed" :: Text), "error" .= ("the gallery has no single endpoint of that id" :: Text)]
+
+-- Three samples of a sheet; the same with two of them lifted, the farther by
+-- a quarter; and the same positions on paper in another order.
+sheet, moved, elsewhere :: [Sample V2]
+sheet = [Sample (V2 0 0) (V3 0 0 0), Sample (V2 1 0) (V3 1 0 0), Sample (V2 0 1) (V3 0 1 0)]
+moved = [Sample (V2 0 0) (V3 0 0 0.125), Sample (V2 1 0) (V3 1 0 0.25), Sample (V2 0 1) (V3 0 1 0)]
+elsewhere = [Sample (V2 0 0) (V3 0 0 0), Sample (V2 0 1) (V3 1 0 0), Sample (V2 1 0) (V3 0 1 0)]
 
 load :: IO Frame
 load = keyFrame <$> (loadFoldFile "examples/crane.fold" >>= right)

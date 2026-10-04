@@ -45,7 +45,6 @@ import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2)
-import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface
 import Senbazuru.Render.Fidelity (Geometry (..))
@@ -130,14 +129,13 @@ writeCraneQuick destination references = do
 compareWith :: Maybe PageScale -> Surface V2 -> FilePath -> IO Value
 compareWith scale sheet path = do
   loaded <- loadFoldFile path
-  let ours = surfaceSamples sheet
+  let notOnMesh :: Either Text a
+      notOnMesh = Left "it is not on the quick tier's mesh, so its vertices cannot be compared"
       compared = do
         file <- first explain loaded
         reference <- first explain (surfaceFromFrame (keyFrame file) >>= requireMaterialCoordinates)
-        let theirs = surfaceSamples reference
-        unless (facesVertices (surfaceFrame reference) == facesVertices (surfaceFrame sheet) && map sampleMaterial theirs == map sampleMaterial ours) $
-          Left "it is not on the quick tier's mesh, so its vertices cannot be compared"
-        pure (maximum (0 : zipWith (\p q -> norm (position p ^-^ position q)) ours theirs))
+        unless (facesVertices (surfaceFrame reference) == facesVertices (surfaceFrame sheet)) notOnMesh
+        maybe notOnMesh Right (largestDisplacement (surfaceSamples sheet) (surfaceSamples reference))
   case compared of
     Left err -> do
       putStrLn (path ++ ": not compared: " ++ T.unpack err)
