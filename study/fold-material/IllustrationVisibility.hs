@@ -4,14 +4,14 @@
 -- visible side without moving either piece. This is a drawing approximation,
 -- not a collision certificate or physical thickness.
 --
--- This bounded study mirrors Render.Projected's projection. It judges areas in
--- the picture by the same speck and finds uncovered paper by the same coverage
--- check, calling Render.Projected's 'picture' and 'uncoveredParts' rather than
--- keeping copies, which twice fell behind production. With no allowance it
--- therefore draws what production draws and reports uncovered paper exactly
--- where production refuses; it reports every uncovered part, where production
--- stops at the first face. It reuses Origami.Visible's polygon subtraction and
--- hidden-edge handling.
+-- This bounded study mirrors Render.Projected's projection. It decides each
+-- pair of panels its own way and takes everything else from Render.Shadows,
+-- which production imports too: the shadows, both yardsticks, the supplied
+-- orders, the coverage check and the lifting. Its copies of those fell behind
+-- production twice. With no allowance it therefore draws what production
+-- draws and reports uncovered paper exactly where production refuses; it
+-- reports every uncovered part, where production stops at the first face. It
+-- reuses Origami.Visible's polygon subtraction and hidden-edge handling.
 -- Keeping the experiment here leaves production tolerances unchanged. Its
 -- extra record explains every overlapping pair, including unresolved regions;
 -- callers must not grade a whole-face fallback as successful visibility.
@@ -19,22 +19,19 @@
 -- complete coverage. Those patches remain explicit comparison uncertainty.
 module IllustrationVisibility (VisibilityAudit (..), PairAudit (..), illustrationVisibility) where
 
-import Control.Monad (foldM)
 import Data.List (tails)
 import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes)
-import Data.Set qualified as S
 import Data.Text (Text)
-import Senbazuru.Fold.Query (Face (..), FoldError (..), edgeKey, frameFaceOrders, frameFaces, frameVertices, ringEdges)
+import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaceOrders, frameFaces, frameVertices)
 import Senbazuru.Fold.Types (FaceId (..), FaceOrder (..), Frame (..), Stacking (..))
-import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea)
-import Senbazuru.Geometry.V3 (V3 (..), polygonNormal, spanAlong)
-import Senbazuru.Geometry.VectorSpace
+import Senbazuru.Geometry (V2)
+import Senbazuru.Geometry.Polygon (clipConvex, signedArea)
+import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flat (FlatError (..))
-import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
-import Senbazuru.Render.Camera (Basis, basisForward, basisRight, basisUp, project)
-import Senbazuru.Render.Projected (picture, uncoveredParts)
+import Senbazuru.Origami.Visible (VisibleForm, visibleForm)
+import Senbazuru.Render.Camera (Basis)
+import Senbazuru.Render.Shadows (Shadow (..), edgesAccountedFor, liftForm, modelHair, picture, shadowOf, suppliedNearness, uncoveredParts)
 
 data VisibilityAudit = VisibilityAudit
   { auditPairs :: ![PairAudit],
@@ -54,13 +51,6 @@ data PairAudit = PairAudit
   }
   deriving stock (Show)
 
-data Shadow = Shadow
-  { shadowId :: !FaceId,
-    shadowRing :: ![V2],
-    shadowFront :: !Bool,
-    shadowDepth :: V2 -> Double
-  }
-
 -- | Allowance is in model depth units, not polygon area or screen width.
 -- The caller keeps strict production rendering as a separate baseline.
 illustrationVisibility :: Double -> Basis -> Frame -> [FaceOrder] -> Either FoldError VisibilityAudit
@@ -68,8 +58,7 @@ illustrationVisibility allowance basis fr supplied = do
   vertices <- frameVertices fr
   faces <- frameFaces fr
   orders <- frameFaceOrders fr {faceOrders = supplied}
-  let scale = maximum (1 : [spanAlong component vertices | component <- [v3x, v3y, v3z]])
-      hair = 1e-9 * scale
+  let hair = modelHair vertices
       (pictured, speck) = picture basis vertices
       declined = VisibilityAudit [] Nothing []
   if allowance < 0 || isNaN allowance || isInfinite allowance
@@ -100,56 +89,6 @@ illustrationVisibility allowance basis fr supplied = do
               Left (FlatRefused err) -> Left err
               Left _ -> pure (report Nothing "flat visibility refused")
 
--- An edge-on face paints no area. It can be omitted when all its edges also
--- belong to surviving neighbours, which supply their real depth and outline.
--- A free edge seen end-on needs a separate line-depth test, so decline that
--- case rather than accidentally hiding it behind unrelated paper.
-edgesAccountedFor :: [Face] -> [Maybe Shadow] -> Bool
-edgesAccountedFor faces projected = all (`S.member` retained) omitted
-  where
-    keys face = [edgeKey a b | (a, b) <- ringEdges (faceVertexIds face)]
-    retained = S.fromList (concat [keys f | (f, Just _) <- zip faces projected])
-    omitted = concat [keys f | (f, Nothing) <- zip faces projected]
-
-shadowOf :: Basis -> Double -> Double -> Face -> Maybe (Maybe Shadow)
-shadowOf basis hair speck face = case faceCorners face of
-  [] -> Nothing
-  origin : _ -> do
-    normal <- normalize (polygonNormal (faceCorners face))
-    let ring = map (project basis) (faceCorners face)
-        area = signedArea ring
-        facing = dot normal (basisForward basis)
-        planar = all ((<= hair) . abs . dot normal . (^-^ origin)) (faceCorners face)
-        depthAt (V2 x y) =
-          (dot normal origin - x * dot normal (basisRight basis) - y * dot normal (basisUp basis)) / facing
-    if not planar || not (isConvex speck ring)
-      then Nothing
-      else
-        if abs area <= speck || abs facing <= 1e-9
-          then Just Nothing
-          else Just (Just (Shadow (faceId face) (if area > 0 then ring else reverse ring) (area > 0) depthAt))
-
--- | FOLD signs refer to the second face's normal. Camera projection preserves
--- its facing sign, including when looking from underneath. Record both ways
--- round so a reversed entry cannot evade the contradiction check.
-suppliedNearness :: [Shadow] -> [FaceOrder] -> Either FoldError (M.Map (FaceId, FaceId) Bool)
-suppliedNearness panels orders = foldM record M.empty (concatMap entries orders)
-  where
-    fronts = M.fromList [(shadowId p, shadowFront p) | p <- panels]
-    entries o = case orderStacking o of
-      Unordered -> []
-      stacking
-        | Just front <- M.lookup (orderRelativeTo o) fronts,
-          M.member (orderFace o) fronts ->
-            let f = orderFace o
-                g = orderRelativeTo o
-                near = (stacking == Above) == front
-             in [((f, g), near), ((g, f), not near)]
-      _ -> []
-    record known (pair@(f, g), near) = case M.lookup pair known of
-      Just previous | previous /= near -> Left (ContradictoryStacking f g)
-      _ -> Right (M.insert pair near known)
-
 -- Each overlap is convex and depth difference is linear. Its corner
 -- extrema bound the WHOLE overlap, not just sampled interior points. Only the
 -- depth contradicting an inherited order is overridden; a wide separation
@@ -173,14 +112,3 @@ auditPair allowance hair speck known a b
       | all ((<= max hair allowance) . abs) gaps = ("missing order", Nothing)
       | otherwise = ("crossing outside allowance", Nothing)
     relation near = FaceOrder (shadowId a) (shadowId b) (if near == shadowFront b then Above else Below)
-
-liftForm :: Basis -> (FaceId -> FaceId) -> VisibleForm -> VisibleForm
-liftForm basis originalId seen =
-  seen
-    { formRegions = [r {regionFace = originalId (regionFace r), regionPieces = map (map liftPoint) (regionPieces r)} | r <- formRegions seen],
-      formEdges = map liftEdge (formEdges seen),
-      formSheetEdges = [(fmap originalId owner, liftEdge edge) | (owner, edge) <- formSheetEdges seen]
-    }
-  where
-    liftPoint (V3 x y _) = x *^ basisRight basis ^+^ y *^ basisUp basis
-    liftEdge edge = edge {visibleFrom = liftPoint (visibleFrom edge), visibleTo = liftPoint (visibleTo edge)}
