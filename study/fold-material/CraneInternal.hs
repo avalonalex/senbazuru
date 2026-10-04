@@ -21,6 +21,7 @@ module CraneInternal
     internalRequirements,
     fullInternalForces,
     internalAccepted,
+    internalAcceptable,
     solveInternal,
     continueInternal,
   )
@@ -103,7 +104,13 @@ fullInternalForces study = internalControl study `notElem` [InternalForces, Held
 internalAccepted :: InternalStudy -> Relaxation -> MaterialMesh -> Either SpreadError Bool
 internalAccepted study result mesh = do
   valid <- rootAccepted (internalRoot study) result mesh
-  pure (fullInternalForces study && valid)
+  pure (internalAcceptable study && valid)
+
+-- | Whether 'internalAccepted' could accept this control at all, whatever its
+-- solve: one that leaves out contact forces never is. A control it never
+-- accepts skips the base angle's 1° check (owner decision 36).
+internalAcceptable :: InternalStudy -> Bool
+internalAcceptable = fullInternalForces
 
 solveInternal :: Settings -> InternalStudy -> Either SpreadError (Relaxation, TrialDiagnostics)
 solveInternal settings study = do

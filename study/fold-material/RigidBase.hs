@@ -12,9 +12,9 @@
 --   by golden-section search, sixteen solves.
 -- * Decision 36: in a gallery that runs that search on its flat-preference
 --   control, every other released control takes the angle found there, and
---   'checkBase' solves it again 1° either side. On the body-free control at
---   the root, that control's own search chose the same angle at 23 times
---   the cost of one solve.
+--   'checkBase' solves it again 1° either side, unless the gallery can never
+--   accept the control. On the body-free control at the root, that control's
+--   own search chose the same angle at 23 times the cost of one solve.
 --
 -- The thing a newcomer would get wrong: a solve here must be the gallery's
 -- own. crane-internal drops contact forces in some controls, and a search
@@ -131,7 +131,8 @@ sidesPass :: Double -> [(Double, Double, Bool)] -> Bool
 sidesPass energy = all (\(_, side, _) -> side >= energy)
 
 -- | Hold the control's base at @theta@ and solve it once from its own mesh,
--- with no check: for a trial that makes no choice of its own.
+-- with no check: for a trial that makes no choice of its own, or that its
+-- gallery can never accept.
 takeBase :: Solve a -> Double -> CraneRoot -> Either SpreadError (CraneRoot, Relaxation, a)
 takeBase solve theta study = do
   let turned = rigidBase theta study (spreadMesh (rootSpread study))
@@ -140,8 +141,9 @@ takeBase solve theta study = do
 
 -- | How a trial's base angle was set: by its own search, by another
 -- control's search and checked 1° either side, or taken without the check
--- by a trial that makes no choice of its own, such as a continuation or a
--- control made to fail (owner decision 36).
+-- by a trial that makes no choice of its own, such as a continuation, or
+-- that its gallery can never accept, such as a control made to fail or one
+-- that leaves out contact forces (owner decision 36).
 data Base a = Searched | Checked !(BaseCheck a) | Taken
 
 -- | How the trial's base angle was set, with the evidence for it.

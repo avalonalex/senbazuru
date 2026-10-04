@@ -136,7 +136,11 @@ runInternalTrial prepared key destination = do
       (r, a) <- checked (continueInternal settings turned (spreadMesh (rootSpread (internalRoot turned))))
       pure (turned, r, a, Taken)
     _
-      | key == "original-short" -> do
+      -- A trial the gallery can never accept takes the angle unchecked, since
+      -- the check could not change its verdict (owner decision 36, refined
+      -- 2026-10-03): the controls that leave out contact forces. So does the
+      -- profiling probe, which makes no choice of its own.
+      | key == "original-short" || not (internalAcceptable unturned) -> do
           (turned, r, a) <- checked (takeBase (solveWith settings unturned) theta (internalRoot unturned))
           pure (unturned {internalRoot = turned}, r, a, Taken)
       | otherwise -> do
