@@ -140,7 +140,7 @@ runInternalTrial prepared key destination = do
       -- the check could not change its verdict (owner decision 36, refined
       -- 2026-10-03): the controls that leave out contact forces. So does the
       -- profiling probe, which makes no choice of its own.
-      | key == "original-short" || not (fullInternalForces unturned) -> do
+      | key == "original-short" || not (internalAcceptable unturned) -> do
           (turned, r, a) <- checked (takeBase (solveWith settings unturned) theta (internalRoot unturned))
           pure (unturned {internalRoot = turned}, r, a, Taken)
       | otherwise -> do
