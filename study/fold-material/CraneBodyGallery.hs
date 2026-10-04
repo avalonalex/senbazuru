@@ -75,8 +75,9 @@ writeCraneBody destination = do
     putStrLn ("Solving " ++ stem)
     hFlush stdout
     start <- getCPUTime
-    -- The incompatible grip is made to fail, so it has no angle of its own
-    -- to check and takes the search's unchecked.
+    -- The incompatible grip is made to fail, so the gallery can never accept
+    -- it and the check could not change its verdict: it takes the search's
+    -- angle unchecked (owner decision 36).
     (root, result, set) <- case stem of
       "fixed" -> pure (baseStudy search, baseResult search, Searched)
       "crossed" -> do

@@ -625,9 +625,9 @@ endpoint complete the comparison.
 Every control turns the wing's base as one piece about the hinge. The
 fixed-body reference prefers a flat hinge and searches for the base angle of
 least bending energy, sixteen solves; every other control holds its base at
-that angle (owner decision 36). The four that vary holds and forces are each
-solved again 1° either side, and are not accepted if a side ends with less
-bending energy; the continuation keeps the original's angle unchecked.
+that angle (owner decision 36). The original and held-line controls are solved again
+1° either side, refused if a side ends with less bending energy; the two that leave
+out contact forces are never accepted, and keep it unchecked, as the continuation does.
 
 These long static solves run outside the test suite. A single control can be
 run as `--crane-internal CONTROL build/fold-material`, with `CONTROL` one of

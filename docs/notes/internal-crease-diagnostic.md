@@ -152,9 +152,11 @@ Above the wing's widest point its paper is four layers deep, and every
 control turns that base as one piece about the hinge. The whole-patch-held
 control searches for the angle that leaves the least bending energy and
 finds 28.383°, the angle `crane-root`'s flat-preference control finds. Every
-other control holds its base there, and the four that vary holds and forces
-are solved again 1° either side, refused if a side ends with less bending
-energy (owner decision 36). All controls keep the 978 source orders of the
+other control holds its base there. In the run below, the four that vary holds
+and forces were solved again 1° either side, refused if a side ends with less
+bending energy (owner decision 36). Since then the two that leave out contact
+forces take the angle unchecked: the gallery never accepts them, so the check
+could not change their verdict. All controls keep the 978 source orders of the
 larger fixture in the independent check. The held-vertex counts below include
 the base, which the 1/4 table had no need to hold.
 
