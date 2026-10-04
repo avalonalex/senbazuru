@@ -84,12 +84,12 @@ Sequence → Render → app` has four problems:
 
 1. **It omits `Diagram`.** `Diagram.Style` imports `Fold.Types`, and
    `Render.Gltf` and `Render.Steps` import `Diagram.*`. The architecture rule
-   "Origami must not mention a diagram" (`architecture.md:150-153`) is a
+   "Origami must not mention a diagram" (`architecture.md:176-179`) is a
    sibling constraint, and a chain cannot express it.
 2. **It places `Numeric` after `Origami`,** which licenses `Numeric.Sparse` to
    import paper. D15 describes that module as "knows no paper". The study
    sources it graduates from import only `Geometry.V3`/`VectorSpace`.
-3. **It reads as `Explain` may import `Geometry`.** `architecture.md:143-148`
+3. **It reads as `Explain` may import `Geometry`.** `architecture.md:169-174`
    says `Explain` "depends on nothing in the project either".
 4. **It invites a cycle at graduation.** §4 line 721 labels
    `settleStep :: SettleSpec -> StepRecord -> …` "study first,
@@ -98,7 +98,7 @@ Sequence → Render → app` has four problems:
    `Sequence.Record`, which the order places to its right.
 
 **Evidence.** The import graph above; spine line 80, D15 lines 545-554, §4
-lines 721-726; `architecture.md:142-153`; gap-study-consumption-contract line
+lines 721-726; `architecture.md:168-179`; gap-study-consumption-contract line
 435 puts `settleStep` "study-side". `SparseSolve <- Geometry.V3
 Geometry.VectorSpace`; `DirectionalDistance <- Geometry.V3
 Geometry.VectorSpace`.
@@ -123,7 +123,7 @@ Geometry.VectorSpace`.
 
 **Claim.** The spine frames D13 as an exception only to "a new input format
 becomes a `Frame`". The recorded text it most directly contradicts is
-`architecture.md:81-86`:
+`architecture.md:81-103`:
 
 > Everything an authoring vocabulary (#60) adds will have that shape, and will
 > reach the rest of the pipeline the way a file does — by being a `Frame` that
@@ -136,7 +136,7 @@ D1 supersedes only #60's *reason* ("one interpreter"). It also silently drops
 two more #60 decisions: `apply :: Move -> Frame -> Either MoveError Frame`, and
 `scanl` giving `[Frame]`. #95's `apply TurnOver` goes the same way. The runner
 threads `FoldState`, not `Frame`. The study's recorded "not an instruction
-language" (`architecture.md:206-207`; D research A19) is also overturned
+language" (`architecture.md:291-292`; D research A19) is also overturned
 without a note.
 
 Where these land is inconsistent:
@@ -147,8 +147,8 @@ Where these land is inconsistent:
 - §7: "no file under PRDs/ … proposes edits except as listed follow-ups", and
   there is no list.
 
-**Evidence.** `architecture.md:81-86`, `:170-175`, `:206-207`;
-`AGENTS.md:193-197`, `:376` ("Record lasting decisions in the repository");
+**Evidence.** `architecture.md:81-103`, `:196-201`, `:291-292`;
+`AGENTS.md:193-197`, `:388` ("Record lasting decisions in the repository");
 #60 body, Approach and first code block; #95 Approach ("`apply :: Move -> Frame
 -> Either MoveError Frame`"); spine D1 lines 108-109, D13 lines 465-469, D17
 lines 587-589, M0 line 615, §7 lines 901-902.
@@ -157,7 +157,7 @@ lines 587-589, M0 line 615, §7 lines 901-902.
 per rule. Each row has the quoted current text, the replacement text, the file
 or issue it lands in, and the milestone.
 
-1. `architecture.md:81-86` → "A sequence is run, not read. `Sequence.Run`
+1. `architecture.md:81-103` → "A sequence is run, not read. `Sequence.Run`
    threads a `FoldState` and returns a `FoldFile` and `[StepRecord]`. The file
    reaches the pipeline as any `.fold` does. What needs the moves themselves
    (`Render.Sequence`, the material consumer) takes the records."
@@ -168,7 +168,7 @@ or issue it lands in, and the milestone.
 3. #60 Approach (`apply`, `scanl`, "one interpreter") → superseded by D1/D3,
    with the reason.
 4. #95 Approach → superseded by D5.
-5. `architecture.md:206-207` and the `BlintzSequence.hs:4` header → superseded
+5. `architecture.md:291-292` and the `BlintzSequence.hs:4` header → superseded
    once blintz migrates (D16).
 6. `docs/notes/no-sequence-solver.md`, first reason → D18.
 
@@ -191,7 +191,7 @@ owner's recorded plan (#110) to keep "which order" policy beside
 `layerOrderFor`, because "a policy spelled out per caller is a policy the next
 caller forgets".
 
-**Evidence.** `AGENTS.md:217-222`; `Origami/Stacking.hs:165` (`newtype
+**Evidence.** `AGENTS.md:229-234`; `Origami/Stacking.hs:165` (`newtype
 Budget`), `:386` (`layerOrderFor :: Budget -> Frame -> Either FoldError (Maybe
 [FaceOrder])`); #110 body (`withLayerOrder :: Budget -> Frame -> Either
 FoldError Frame`, and "`--stacking` asks for a particular order by index, which
@@ -339,8 +339,8 @@ spine does not answer it.
 
 **Evidence.** `python3` over `examples/bird-base.cp`: x ∈ [−200, 200],
 y ∈ [−200, 200]. `jq` over `crane.fold`, `bird-base.fold`, `blintz-base.fold`:
-[0, 1]. `docs/glossary.md:47` (hair: a `.cp` 400-unit square and a unit square
-do not share numbers) and `:82`; `AGENTS.md:173-178`; spine D2 lines 123-126,
+[0, 1]. `docs/glossary.md:49` (hair: a `.cp` 400-unit square and a unit square
+do not share numbers) and `:84`; `AGENTS.md:173-178`; spine D2 lines 123-126,
 D14 lines 489 and 494-495; D research A11.
 
 **Proposal.** Add to D2:
@@ -618,7 +618,7 @@ But the existing function takes a `Frame`, not a `Folded`, so the wrapper must
 fold first, and the PRD should say so. §6 item 21 (`creaseAllAlong` returns no
 new edge ids) is the same gap at the flat level.
 
-**Evidence.** `AGENTS.md:206-213`; `Fold/Creasing.hs:138` (`creaseAllAlong ::
+**Evidence.** `AGENTS.md:218-225`; `Fold/Creasing.hs:138` (`creaseAllAlong ::
 [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame`);
 `Origami/ThroughLayers.hs:227` (`creaseThroughLayers :: V2 -> V2 -> Assignment
 -> Frame -> Either ThroughError Frame`); spine D8 lines 335-339, §6 item 21.
@@ -648,7 +648,7 @@ there are two copies, and they will drift.
 The glossary already shows this failure: §6 item 11 records rest angle defined
 twice, differently.
 
-**Evidence.** `AGENTS.md:47-49`, `:109`; `docs/glossary.md:19` and `:84`;
+**Evidence.** `AGENTS.md:47-49`, `:109`; `docs/glossary.md:19` and `:86`;
 spine §7 lines 887-889 and 901-902, M0 line 615.
 
 **Proposal.** Replace §7's vocabulary bullet with:
@@ -702,7 +702,7 @@ folded anything" (AGENTS) cannot follow the PRDs without these.
 
 **Evidence.** `grep -o '^| \*\*[^*]*\*\*' docs/glossary.md` (full term list:
 Crease pattern … Ear clipping; none of the above appear);
-`docs/glossary.md:49`, `:59`; `AGENTS.md:62-65`.
+`docs/glossary.md:51`, `:61`; `AGENTS.md:62-65`.
 
 **Proposal.** Put exactly this list into `PRDs/glossary-additions.md` (L4-17).
 Each row gets one or two plain-word sentences and, where it has one, the
@@ -733,8 +733,8 @@ using a term not on the list adds it there first.
   same models" and calls it "same blintz".
 
 **Evidence.** spine D1 lines 94-95, §4 lines 655-680, D2 lines 151-153, §5
-lines 768-777 and 819-830, M0 line 615; `docs/glossary.md:49`, `:59`;
-`architecture.md:108`; #97 body ("Record the decision … in
+lines 768-777 and 819-830, M0 line 615; `docs/glossary.md:51`, `:61`;
+`architecture.md:125`; #97 body ("Record the decision … in
 `docs/notes/schemes.md`").
 
 **Proposal.**
@@ -797,7 +797,7 @@ rules without citing a shared source:
 These sit beside D2's `Fold.Faces.tolerance` (`1e-9 ×` sheet diagonal) and the
 glossary's hair (`Origami.Flat.sheetHair`).
 
-**Evidence.** `Fold/Faces.hs:248-251`; `docs/glossary.md:47`; spine D2 lines
+**Evidence.** `Fold/Faces.hs:248-251`; `docs/glossary.md:49`; spine D2 lines
 139-141 and 170-171, D3 lines 198-199, D9 line 376, D16 lines 577-578, §6 item
 17.
 

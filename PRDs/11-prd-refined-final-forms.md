@@ -1038,7 +1038,7 @@ commands that regenerate them.
 Found while researching this file, outside `PRDs/`, so not edited here:
 
 1. **Melancon et al. 2021 is misattributed.** Fixed by #406.
-   `docs/related-projects.md:56` said
+   `docs/related-projects.md:60` said
    Bertoldi's group modelled inflatable origami in Abaqus as shells with pressure
    and self-contact, and `docs/notes/the-puff-is-a-drawing.md:162` repeats it. The
    paper's Supplementary Information contains no finite-element analysis: design

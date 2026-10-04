@@ -29,8 +29,8 @@ Every number marked **(script)** comes from it. Reproduce with
 some faces, or use `layer-selection-analyse.py tacos <fold>`.
 
 Terms used below: see `docs/glossary.md`. It defines flap (`:29`), layer order
-(`:40`), taco (`:41`), layer number (`:47`), face ordering (`:63`) and material
-coordinates (`:81`). A **share** is the piece of the drawn line that lies on
+(`:43`), taco (`:44`), layer number (`:50`), face ordering (`:66`) and material
+coordinates (`:84`). A **share** is the piece of the drawn line that lies on
 one face, mapped back to the flat sheet.
 
 ## Summary

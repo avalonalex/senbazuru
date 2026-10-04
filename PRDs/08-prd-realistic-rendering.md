@@ -105,9 +105,9 @@ to the painter, which draws every crease on top, buried or not. The GLB's visibl
 scene groups layers at 1e-6 of the span, too coarse to show such a crossing at
 all (same finding). The docs record the painter's result on the crane-root
 meshes (the wing-root study's, `senbazuru-material-study --crane-root`,
-[`usage.md:446`](../docs/usage.md)): "The SVG
+[`usage.md:504`](../docs/usage.md)): "The SVG
 outline path also retains some buried crease lines here"
-([`usage.md:464-465`](../docs/usage.md), [`tour.md:596-597`](../docs/tour.md)).
+([`usage.md:533-534`](../docs/usage.md), [`tour.md:602-603`](../docs/tour.md)).
 [#206](https://github.com/avalonalex/senbazuru/issues/206) records
 `ImpossibleStacking` on an accepted 4,312-triangle crane-root mesh. Whether the
 crane-spread meshes (the crane's wing bent open by the study's solver with every
@@ -294,7 +294,7 @@ inputs such as `puffed-square.fold`. **No bent paper is reachable from the
 - **R-08-11.** The study's gallery programs (`CraneSpreadGallery`,
   `WingBendingGallery`) write a smooth GLB beside every accepted crane-spread and
   wing-bending GLB (wing-bending: a triangular sheet held at its wide root and
-  bent by a small grip near its tip, [`usage.md:357-360`](../docs/usage.md)), each passing `study/gltf/validate.cjs` with 0
+  bent by a small grip near its tip, [`usage.md:386-389`](../docs/usage.md)), each passing `study/gltf/validate.cjs` with 0
   errors and 0 warnings.
 
 ### glTF crease lines: a spike
@@ -691,7 +691,7 @@ that accepted it.
 | `J`, `--lines mesh` only | `themeBuriedWidth` 0.35 | [`Style.hs:233`](../src/Senbazuru/Diagram/Style.hs#L233) |
 
 `Render.LineDrawing` produces a `Diagram` for `Render.Svg`, the rule for 2D
-backends ([`architecture.md:176-182`](../docs/architecture.md)), and imports
+backends ([`architecture.md:261-267`](../docs/architecture.md)), and imports
 `Style`, not `Render.CreasePattern`.
 
 **SKETCH.**

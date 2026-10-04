@@ -184,9 +184,9 @@ gives the current text and the full replacement under the same row number. Row
 
 | When | Row | Where | Change |
 | --- | --- | --- | --- |
-| M0, first PR | 10 | `docs/glossary.md` | move [glossary-additions](glossary-additions.md) in; fix rest angle (`:19`, `:83`) and flat-folded (`:21`) |
-| M0 | 1 | `docs/architecture.md:81-86` | a sequence's moves are not "a frame in, a frame out" |
-| M0, no later than M1's `Sequence.Parse` PR | 2 | `AGENTS.md:193-196`, `docs/architecture.md:170-175` | a sequence source is a program: the stated exception |
+| M0, first PR | 10 | `docs/glossary.md` | move [glossary-additions](glossary-additions.md) in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) |
+| M0 | 1 | `docs/architecture.md:81-103` | a sequence's moves are not "a frame in, a frame out" |
+| M0, no later than M1's `Sequence.Parse` PR | 2 | `AGENTS.md:193-196`, `docs/architecture.md:196-201` | a sequence source is a program: the stated exception |
 | M0 | 3 | #60 | `runSequence` returning records; "one interpreter" superseded; done-when split into folding equivalence and authoring |
 | M0 | 4 | #95 | turn over is presentation about a model-intrinsic axis |
 | M0 | 5 | #97 | note renamed `sequences.md`; "scheme" retired; closes at M2 |
@@ -194,25 +194,25 @@ gives the current text and the full replacement under the same row number. Row
 | M0 | 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§7.1](#71-already-carried-by-a-recorded-text-row-or-a-prd-requirement)); #94's done-when met through `run -o x.svg`; #104's names `--view front` |
 | M0 | 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring |
 | M0, with #96 | 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal |
-| M0 | 16 | `docs/roadmap.md:82-87`, `:368-373` | the recorded issue order replaced by the milestones |
+| M0 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded issue order replaced by the milestones |
 | M2 | 11 | `AGENTS.md:173-177` | sheet and physical lengths, each converted in one place |
-| M2 | 12 | `AGENTS.md:217-221` | add `runSequence` to the `--layer-budget` list |
+| M2 | 12 | `AGENTS.md:229-233` | add `runSequence` to the `--layer-budget` list |
 | M2, the presentation-classification PR | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change |
-| M3 | 12 | `AGENTS.md:217-221` | `stepPageWith` joins that list |
-| M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:202-211`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
-| before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:896-902` | the `LineStopsOnTheModel` sentence names the end by its point |
-| M4, the PR adding the slow job | 15 | `AGENTS.md:378-379` | "all three CI checks" names the slow job and whether it is required (owner decision 12) |
+| M3 | 12 | `AGENTS.md:229-233` | `stepPageWith` joins that list |
+| M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:287-296`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
+| before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the `LineStopsOnTheModel` sentence names the end by its point |
+| M4, the PR adding the slow job | 15 | `AGENTS.md:390-391` | "all three CI checks" names the slow job and whether it is required (owner decision 12) |
 | M4, the PR closing #60 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists |
 
 Row 16's two passages record the old order. Lines 82-87 put #97 before #95 and
-#54; lines 368-373 order #93, #96, #97, and "only then" #95, #94 and #36. M0
+#54; lines 1004-1009 order #93, #96, #97, and "only then" #95, #94 and #36. M0
 decides #97 without #93, and the milestones schedule #95 at M2, #94 and #36 at
 M3, and #60's close at M4 ([C56](decisions.md#changes-since-draft-v2)).
 [D](research/D-docs-issues-constraints.md), "B. How the relevant open issues
 depend on each other — question (b)", reads the same chain from those lines.
 
-Row 14's range ends at `docs/architecture.md:211`, the last line of the helmet
-sentence; `HingeSweep`'s paragraph starts at `:212` (`sed -n 200,213p
+Row 14's range ends at `docs/architecture.md:296`, the last line of the helmet
+sentence; `HingeSweep`'s paragraph starts at `:297` (`sed -n 285,298p
 docs/architecture.md`; [C64](decisions.md#changes-since-draft-v2)). Row 17's
 sentence is the one `ThroughLayersSpec` pins and `docs/usage.md` quotes
 ([C66](decisions.md#changes-since-draft-v2)); row 18 is
@@ -373,14 +373,14 @@ needs a new issue.
 | 5 | #56's "transforms are discarded" is stale (`foldedPlacements`) | [code] [01 §4](01-architecture.md#4-recorded-text-this-design-changes) | 7 |
 | 6 | #104 cites a note that does not exist; its done-when lets default goldens move | [ls] `ls docs/notes/inflate-outside-draw-inside.md`: no such file | 7 |
 | 7 | #60's done-when tests folding, not authoring; coordinates need a tolerance; macros are not compositions | [jq, code] #60's comment of 2026-09-07: refolding `quarter-fold-steps.fold` reproduces its coordinates only to within 6e-17, and as `[x, y, z]` where the file has `[x, y]`; [gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md), "B. Signatures, checked by hand" | 3 |
-| 11 | Two rest-angle definitions | [code] [docs/glossary.md:19](../docs/glossary.md), `:84` | 10 |
+| 11 | Two rest-angle definitions | [code] [docs/glossary.md:19](../docs/glossary.md), `:86` | 10 |
 | 21 | `creaseAllAlong` returns no new edge ids | [code] [Creasing.hs:138](../src/Senbazuru/Fold/Creasing.hs#L138) | [05 L2](05-prd-library-additions.md#l2-creaseallalongwith-and-newcreaseangle) |
 | 23 | #64's framing is overtaken | [docs] [README.md:158-164](../README.md) | 7 |
 | 24 | `Origami.Step`'s header calls a turn-over a motion | [code] [Step.hs:30-34](../src/Senbazuru/Origami/Step.hs#L30-L34) | 13 |
 | 27 | #104's first done-when bullet cannot be met: from `--view iso` no face of `puffed-square.fold` turns away, so there is no silhouette to draw | [py] decisions.md [appendix](decisions.md#appendix-commands-behind-the-numbers) command 4 prints `iso away: 0 edge-on: 0 silhouettes: 0`; [issue]; [08 "#104, amended"](08-prd-realistic-rendering.md#104-amended) | 7 |
-| 28 | `docs/roadmap.md` records the old order: #97 before #95 and #54 (`:82-87`); #93, #96, #97, then "only then" #95, #94 and #36 (`:368-373`) | [code] lines read | 16 |
-| 29 | `AGENTS.md:378-379` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code] [ci.yml](../.github/workflows/ci.yml) has jobs `test`, `format`, `lint` | 15, with owner decision 12 |
-| 30 | Roadmap item 2 calls the vocabulary missing, in `README.md` (`:213`) and `docs/roadmap.md` (`:82-87`) | [code] lines read | 18 |
+| 28 | `docs/roadmap.md` records the old order: #97 before #95 and #54 (`:271-276`); #93, #96, #97, then "only then" #95, #94 and #36 (`:1004-1009`) | [code] lines read | 16 |
+| 29 | `AGENTS.md:390-391` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code] [ci.yml](../.github/workflows/ci.yml) has jobs `test`, `format`, `lint` | 15, with owner decision 12 |
+| 30 | Roadmap item 2 calls the vocabulary missing, in `README.md` (`:213`) and `docs/roadmap.md` (`:271-276`) | [code] lines read | 18 |
 
 ### 7.2 New issues to file
 

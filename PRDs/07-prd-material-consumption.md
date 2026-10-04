@@ -700,7 +700,7 @@ fails; `CompletePaper` writes only the complete scene. A writer that puts the
 complete sheet first and drops a failed visible scene is
 [08](08-prd-realistic-rendering.md)'s. Until M7b's line
 drawing, the SVG uses today's path, which "retains some buried crease lines" on
-these meshes ([`docs/usage.md:464-465`](../docs/usage.md)); the study writes SVG
+these meshes ([`docs/usage.md:533-534`](../docs/usage.md)); the study writes SVG
 only when accepted ([`CraneRootGallery.hs:108-117`](../study/fold-material/CraneRootGallery.hs#L108-L117)).
 
 | Step k's settle | k's settled files | Other settles | Rigid outputs | Exit |
@@ -718,7 +718,7 @@ The unsettled record goes in the file's key frame under a new key,
 allows it until [#73](https://github.com/avalonalex/senbazuru/issues/73)), GLB
 `extras.senbazuru`, and SVG `<desc>` (08). Unaccepted meshes never go to SVG,
 whose painter assumes the layer order they can violate
-([`docs/architecture.md:410-412`](../docs/architecture.md)); the study keeps
+([`docs/architecture.md:909-911`](../docs/architecture.md)); the study keeps
 a failed endpoint as a diagnostic that "never appears as an accepted model"
 ([spreading-connected-wing.md:90-96](../docs/notes/spreading-connected-wing.md)).
 
@@ -919,7 +919,7 @@ Order: M4 → M6 → M8; M5 before the bird registry entries ([10](10-roadmap-ri
 | M6 doubles costly CI groups | 164.87 s, 97.48 s (#208) | compare resolved sets without solving; solve once in the slow job |
 | Authors expect settle to beautify any step | a rigid state is already settled | `NoDifference`; [00](00-overview.md) |
 | Tolerance-sized crossings hide in accepted meshes | −6.21e-9 passes 1e-7; GLB packs at 1e-6 of span (B finding 15) | residuals reported as numbers |
-| Settled SVG shows buried creases | `docs/usage.md:464-465` | accepted only; W1 at M7b |
+| Settled SVG shows buried creases | `docs/usage.md:533-534` | accepted only; W1 at M7b |
 | Results depend on the mesh | 3.95%; a qualitative change at 64 triangles (B finding 9) | report refinement level; `illustrative` |
 | Few settles start flat; non-convex panels | the wing's next move starts at 90°; [`Surface.hs:343`](../src/Senbazuru/Origami/Surface.hs#L343) | named refusals; discovery later |
 | Per-spring controls cannot be named | mapping rows 15, 17, 19 | they stay fixtures |

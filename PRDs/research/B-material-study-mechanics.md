@@ -145,7 +145,7 @@ radius (a-crease-is-a-hinge.md:83-106; #114 body). The study built exactly
 that: lower radius r, upper r + 2r = 3r, sharing one material band. The upper
 band is extended 200% and the sheet gains 4.71% area; refinement does not fix
 it (two-bends-need-more-than-radii.md:47-68). The roadmap records that a 3:1
-ratio "can still stretch the paper" (roadmap.md:161-162). `FoldMaterial`'s
+ratio "can still stretch the paper" (roadmap.md:366-367). `FoldMaterial`'s
 radius is a fixed 0.015 "visible demonstration scale" (FoldMaterial.hs:61-64)
 on a unit square. No module in `src` produces a crease radius. Current solved
 "roundness" is panel bending beside a sharp hinge, not a fillet.
@@ -255,11 +255,11 @@ wing-root-holds.md:81-88; WingLayers.hs:99-101).
 ### Graduation (question e)
 
 **17. Layering is already respected.** No `src` or `app` module imports a
-study module (grep; architecture.md:409-413 says the same). The mechanics
+study module (grep; architecture.md:908-912 says the same). The mechanics
 modules import only `Explain`, `Geometry.*`, `Fold.Types/Query`,
 `Origami.Surface/Contact/HingeSweep` (import headers of FoldRelaxation.hs:94-111,
 FoldBending.hs:43-55, SurfaceContact.hs:53-64). None mentions `Render` or
-`Diagram`, so they would satisfy the `Origami.*` rule (architecture.md:150-153).
+`Diagram`, so they would satisfy the `Origami.*` rule (architecture.md:176-179).
 
 **18. But the general core is entangled with fixtures.** Study-internal
 imports (grep of import lines):
@@ -336,7 +336,7 @@ rule once (CraneSpread.hs:174-181) instead of per fixture; the verdict makes
 - Exact contact: only the two-panel fixture. The general path is penalty,
   with negative residuals.
 - Panels must be convex for refinement (Surface.hs `planarConvex`); the
-  roadmap expects non-convex faces in real files (roadmap.md:151-155).
+  roadmap expects non-convex faces in real files (roadmap.md:356-360).
 
 **Failure policy for renderers.** Follow the study's existing discipline
 (finding 16). Recommended:
@@ -436,6 +436,6 @@ and whether settle is opt-in per step.
   tested.
 - **Whether DSL-authored rigid states commonly produce non-convex panels**
   that `refineSurface` refuses is not known; the roadmap only expects some
-  (roadmap.md:151-155).
+  (roadmap.md:356-360).
 - **Whether `relaxPinnedContact` behaves with an empty pin map** on a real
   model: untested and unrecorded.

@@ -70,9 +70,9 @@ folded state and a material pattern from step to step, not a `Frame`.
    carrier is `PanelTag {tagName, tagAt}` (study/fold-material/ContactSpec.hs:10-19),
    written as `{"name": "centre", "at": [0.6, 0.6]}` in
    study/fold-material/cases.json. This is the project's own answer to what
-   docs/related-projects.md:86-97 calls the topological naming problem, and
+   docs/related-projects.md:98-109 calls the topological naming problem, and
    it is plain data. (*Material coordinates*: a point's position on the
-   unfolded sheet, docs/glossary.md:82.)
+   unfolded sheet, docs/glossary.md:84.)
 
 4. **The per-edge angle lists in `cases.json` are the opposite of
    "writable without a calculator".** `CaseSpec` supplies a complete angle
@@ -131,7 +131,7 @@ folded state and a material pattern from step to step, not a `Frame`.
    `creaseAllAlong` exists because re-deriving faces per crease is cubic
    (src/Senbazuru/Fold/Creasing.hs:93-105). Its refusals are decided against
    the frame as it was, so they do not depend on order (Creasing.hs:116-120).
-   AGENTS.md:206-212 requires batches. A step must be able to hold several
+   AGENTS.md:218-224 requires batches. A step must be able to hold several
    creases, interpreted with one call.
 
 10. **Purity boundary and test infrastructure.**
@@ -416,7 +416,7 @@ folded state and a material pattern from step to step, not a `Frame`.
   - `stepFrames` — projects results to `[Frame]` for `stepPage`;
   - `prettyScheme` — to text;
   - the material study consumes the per-step `Surface V2` values, which
-    `Origami.Surface` already shares (docs/architecture.md:115).
+    `Origami.Surface` already shares (docs/architecture.md:132).
 - **Parser**: megaparsec, `FilePath -> Text -> Either … Scheme`, pure. File
   reading stays at the I/O boundary (finding 10).
 - **Errors**: `SchemeError` with an `Explain` instance. Every run-time

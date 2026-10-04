@@ -83,7 +83,7 @@ Each entry gives the rule, where it is recorded, and whether the request
     operations or captions);
   - `docs/related-projects.md:24` (origami-diagrams stores arrows; senbazuru
     infers them);
-  - `docs/glossary.md:40`.
+  - `docs/glossary.md:42`.
 - *Verdict: strains.* A scheme knows what each step is, which is the information
   #36 plans to reconstruct by classifying motions. Today's inference cannot see
   some moves:
@@ -104,7 +104,7 @@ Each entry gives the rule, where it is recorded, and whether the request
 
 **A5. A move drops what it invalidates, and creases are drawn in batches.**
 - *Source:*
-  - `AGENTS.md:206-213`;
+  - `AGENTS.md:218-225`;
   - `src/Senbazuru/Fold/Creasing.hs:18-35`: a new crease is cut, the faces are
     re-traced, and extras are dropped;
   - `Creasing.hs:90-101`: re-validating after each crease is cubic (#77);
@@ -158,15 +158,15 @@ names the offending element.**
   - #94: an untitled frame is byte-identical;
   - #110 and #111: no golden moves.
 
-  Related: `AGENTS.md:266`, never accept a golden diff you have not read.
+  Related: `AGENTS.md:278`, never accept a golden diff you have not read.
 - *Verdict: strains, mostly PRD 3.* Realistic output must be a second view — a
   new verb, flag or glTF scene — and not a change to the defaults of `render` or
-  `export`. `docs/roadmap.md:222-227` already notes that #104's silhouettes
+  `export`. `docs/roadmap.md:439-444` already notes that #104's silhouettes
   change every folded-form golden.
 
 **A9. A new input format becomes a `Frame` and stops there.**
-- *Source:* `AGENTS.md:193-197`; `docs/architecture.md:155-158` (only
-  `Fold.Load` does I/O, and `Import.*` takes `Text`) and `:170-175`.
+- *Source:* `AGENTS.md:193-197`; `docs/architecture.md:181-184` (only
+  `Fold.Load` does I/O, and `Import.*` takes `Text`) and `:196-201`.
 - *Verdict: needs an explicit revisit.* A scheme is not a crease-pattern format.
   It is a program over a starting sheet that yields a `FoldFile` of many frames.
 - Read strictly, nothing downstream may know that a frame came from a scheme.
@@ -181,8 +181,8 @@ names the offending element.**
 
 **A10. Do the geometry in Haskell, not in SVG attributes; keep numbers
 reproducible.**
-- *Source:* `AGENTS.md:223-226`; `src/Senbazuru/Render/Svg.hs:16-24`;
-  `AGENTS.md:271-273` (`formatNumber`).
+- *Source:* `AGENTS.md:235-238`; `src/Senbazuru/Render/Svg.hs:16-24`;
+  `AGENTS.md:283-285` (`formatNumber`).
 - *Verdict: reinforces.* A wireframe of curved paper is many projected segments
   computed in Haskell, with no `transform` attribute anywhere.
 
@@ -197,17 +197,17 @@ reproducible.**
     a display spacing that was named `--thickness`.
   - The DSL adds a third question: is an amount in a scheme a fraction of the
     sheet, model units, or degrees? Model units differ by a factor of 400
-    between a `.cp` square and a unit-square `.fold` (`glossary.md:47`).
+    between a `.cp` square and a unit-square `.fold` (`glossary.md:49`).
   - **[analysis]** A typed EDSL is the cheapest place to apply #63's phantom
     units.
 
 **A12. `--layer-budget` reaches every entry point.**
-- *Source:* `AGENTS.md:217-222`; `app/Senbazuru/Cli.hs:385-400`; `stepPage`
+- *Source:* `AGENTS.md:229-234`; `app/Senbazuru/Cli.hs:385-400`; `stepPage`
   takes a `Budget` (`Steps.hs`).
 - *Verdict: reinforces.* The interpreter and any `run` verb take a `Budget`.
 - *Related strain:* `--steps` refuses `--stacking`, because one list of stacking
   indices means nothing across a page of frames (`Cli.hs:845-851`;
-  `docs/usage.md:125-127`). A sequence does need per-step layer choices:
+  `docs/usage.md:146-148`). A sequence does need per-step layer choices:
   - the crane-wing recipe needs the order with the tail tucked between the body
     layers (#193 result; `docs/notes/several-stackings.md:9-15`);
   - `several-stackings.md:12-15` says the index merely selects an order, while
@@ -216,38 +216,38 @@ reproducible.**
   A scheme should therefore state the relation it wants, not an index.
 
 **A13. The state is fold angles; vertex positions are never interpolated.**
-- *Source:* `AGENTS.md:300-307`; `docs/notes/fold-angles-are-the-state.md:11-31`;
+- *Source:* `AGENTS.md:312-319`; `docs/notes/fold-angles-are-the-state.md:11-31`;
   #27 point 4; #56 body; `docs/notes/the-puff-is-a-drawing.md:144-147`
   (coordinates may come from outside; hand-edited angles may not).
 - *Verdict: reinforces PRDs 1 and 2.* A move sets angles or adds creases, and
   positions are derived.
 - *Strains PRD 3:* the study's corrections move vertices numerically, and
-  `roadmap.md:132-135` says those straight paths can stretch the sheet and are
+  `roadmap.md:337-340` says those straight paths can stretch the sheet and are
   not folding instructions. A realistic in-between state must be either a
   checked state or labelled as a solver artefact.
 
 **A14. Ids belong to the *cut* pattern and are renumbered — the naming problem.**
 - *Source:*
-  - `AGENTS.md:308-311`;
+  - `AGENTS.md:320-323`;
   - `src/Senbazuru/Origami/Folding.hs:283-313`: `foldedPattern` is not the input
     frame, and `unit-square.fold` goes in with 8 vertices and comes out with 9;
   - `src/Senbazuru/Origami/Flap.hs:9-10`: select ids from `foldedPattern`;
   - `study/fold-material/BlintzSequence.hs:4-8`: the recipe's edge ids refer to
     the fixture after cutting, and faces are reordered;
-  - `related-projects.md:85-106`: the topological naming problem.
+  - `related-projects.md:97-118`: the topological naming problem.
 - *Verdict: overturns any design that puts `EdgeId` or `FaceId` in a written
   scheme.* The study's recipes are exactly that — for example
   `("Fold the first corner…", EdgeId 8, FaceId 2, -180)` in
   `BlintzSequence.hs:50-56` — and they are valid for one fixture only.
 - *Precedent for an alternative:* `StudyCase.buildCasePose` resolves panel names
   from points on the original sheet, so declarations survive renumbering
-  (`architecture.md:425-427`). `Surface` carries material coordinates
-  (`architecture.md:470-475`).
+  (`architecture.md:924-926`). `Surface` carries material coordinates
+  (`architecture.md:969-974`).
 
 **A15. The folding walk holds one face still, and today the recipes choose it by
 hand.**
 - *Source:* `BlintzSequence.hs:5-8`; `study/fold-material/HelmetSequence.hs:8-10`;
-  `architecture.md:204-205`; `Flap.hs:19-24` (poses are aligned so the
+  `architecture.md:289-290`; `Flap.hs:19-24` (poses are aligned so the
   stationary side stays still).
 - *Verdict: strains.* A scheme has to say what stays still. Otherwise the anchor
   is whichever face happens to be listed first, the whole model can turn between
@@ -256,7 +256,7 @@ hand.**
 
 **A16. At ±180° a mountain and a valley are the same rigid motion, and creasing
 through layers alternates M and V.**
-- *Source:* `AGENTS.md:312-314` and `:351-357`;
+- *Source:* `AGENTS.md:324-326` and `:363-369`;
   `src/Senbazuru/Origami/ThroughLayers.hs:36-54`;
   `docs/notes/creasing-through-layers.md:30-41`.
 - *Verdict: reinforces, with a newcomer trap.*
@@ -294,8 +294,8 @@ general.**
 **A19. The study's recipes and manifests are deliberately not an instruction
 language.**
 - *Source:* `BlintzSequence.hs:4` ("a recipe … not an instruction language");
-  `architecture.md:206-207` (neither module adds a general instruction format);
-  `architecture.md:420-421` (the study manifest is not a new library input
+  `architecture.md:291-292` (neither module adds a general instruction format);
+  `architecture.md:919-920` (the study manifest is not a new library input
   format); `study/fold-material/StudyCase.hs:212-214`.
 - *Verdict: overturned by the request, deliberately.* PRDs 1 and 2 build the
   general format these modules disclaim.
@@ -307,7 +307,7 @@ language.**
 **A20. The library imports no study code; the study is its own executable and is
 compiled into the tests.**
 - *Source:*
-  - `architecture.md:201`, `:230-232` and `:413-414`;
+  - `architecture.md:286`, `:371-373` and `:912-913`;
   - `senbazuru.cabal:175-189`: the study executable depends on the library plus
     `directory`;
   - `senbazuru.cabal:193`: the test suite's source directories include
@@ -322,12 +322,12 @@ compiled into the tests.**
 
 **A21. Backends consume `Diagram`; the 3D exception consumes `Surface`.**
 - *Source:*
-  - `AGENTS.md:214-222`; `architecture.md:176-182` and `:478-481`;
-  - `architecture.md:410-413`: the study's corrected meshes use a depth-buffered
+  - `AGENTS.md:226-234`; `architecture.md:261-267` and `:977-980`;
+  - `architecture.md:909-912`: the study's corrected meshes use a depth-buffered
     viewer, because the SVG painter assumes a layer order those meshes can
     violate;
-  - `architecture.md:123`: `Render.Projected` handles convex open panels;
-  - `roadmap.md:61-62`: rendering general bent panels remains a
+  - `architecture.md:140`: `Render.Projected` handles convex open panels;
+  - `roadmap.md:250-251`: rendering general bent panels remains a
     study-to-production gap.
 - *Verdict: reinforces the route* — glTF from `Surface`, SVG via
   `surfaceDiagram`.
@@ -335,7 +335,7 @@ compiled into the tests.**
   plan it together with #104.
 
 **A22. One camera and one scale per page.**
-- *Source:* `AGENTS.md:358-362`; `Steps.hs:15-26`;
+- *Source:* `AGENTS.md:370-374`; `Steps.hs:15-26`;
   `the-puff-is-a-drawing.md:44-50` (books break this exactly once, at the step
   where the model stops being flat, and senbazuru has no such exception).
 - *Verdict: strained by PRD 3, and by any per-step `view` in a scheme.* The
@@ -346,7 +346,7 @@ compiled into the tests.**
 radius does not follow from layer count.**
 - *Source:*
   - `paper-thickness.md:3-17`; `docs/notes/connected-paper-surface.md:18-26`;
-    `glossary.md:124`; #146 done-when 4;
+    `glossary.md:144`; #146 done-when 4;
   - `docs/notes/two-bends-need-more-than-radii.md`: in the double fold, the upper
     layer's second bend stretches by 200%, and the surface has 4.71% more area
     than the sheet;
@@ -412,7 +412,7 @@ questions.**
 "A ← B" means A waits on B. Statuses are from `gh issue list` on 2026-09-14.
 
 ```
-#60 vocabulary (roadmap) ← #97 scheme format ← #96 note on the 2026 papers   (roadmap.md:370-373)
+#60 vocabulary (roadmap) ← #97 scheme format ← #96 note on the 2026 papers   (roadmap.md:1006-1009)
   #97 gates #95 turn over (#97 body); then #94 captions and #36 arrow kinds
   #95 → #36 (the looped arrow);  #36 ~ #48 x-ray lines, #49 cut-away (both scoped by Step)
 #60 ← #54 flap rotation [largely done as Origami.Flap] ← #52 degree-4 closed form
@@ -427,7 +427,7 @@ closed prerequisites: #34 faces, #19/#57 writer, #72 crease, #70 through layers,
   #195 curved wing (study) → #106;  #206 visibility refusal;  #208 CI cost
 #50 side view (thickness is now optional metadata, #146)
 #64 rigid vs compliant note (not yet written) frames #55, #56, #61, #106
-roadmap.md:368-374 orders #93 corpus sweep (with #87 behind it) before #96 and #97
+roadmap.md:1004-1010 orders #93 corpus sweep (with #87 behind it) before #96 and #97
 ```
 
 What the PRDs would do to each:
@@ -557,7 +557,7 @@ by the solver it describes.**
 
 **C10. #106 done-when 1 is not reachable with current fixtures.**
 - `examples/` has `waterbomb-base.fold`, but no waterbomb balloon.
-- `roadmap.md:313-315` says the crane pocket map "does not yet identify a closed
+- `roadmap.md:546-548` says the crane pocket map "does not yet identify a closed
   cavity".
 
 **C11. #97 done-when 2 reuses #60's test and inherits C2-C4.** The bird base,
@@ -689,7 +689,7 @@ Checked with `grep` for `| **Term` rows in `docs/glossary.md`.
 - **#95:** that `apply TurnOver` followed by `render` equals
   `render --view bottom --rotate 180`. Not run.
 - **External sources:** the contents of the 2026 papers (#96;
-  `related-projects.md:115-124`), DIAMOND (#36), Doodle, Foldinator and Eos.
+  `related-projects.md:127-136`), DIAMOND (#36), Doodle, Foldinator and Eos.
   None was fetched. `related-projects.md` marks several of their licences "not
   checked", ReferenceFinder's included (`:36`).
 - **Measurements:** #208's CI timings and #87's profiles are taken as reported

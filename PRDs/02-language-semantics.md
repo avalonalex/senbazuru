@@ -1325,7 +1325,7 @@ the writer and the page call it, so the page draws exactly the states the file h
   `--frame k+1`. **That looks off by one and is not:** the written key frame holds
   no state. `bird-base-sequence.fold` is laid out the same way, with a key frame of
   no vertices and 16 states [jq], which `docs/usage.md` calls frames 1–16
-  ([`usage.md:1047-1048`](../docs/usage.md)).
+  ([`usage.md:1813-1814`](../docs/usage.md)).
 - *Vendor keys.* `senbazuru:material_coords` and `senbazuru:assurance` go only on
   `file_frames` entries, written after the last transform.
 

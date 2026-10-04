@@ -14,7 +14,7 @@ Evidence used:
 - the gap note's own script (`../scripts/layer-selection-analyse.py line examples/crane.fold
   0,0.25 2,0.25 0.02,0.97`), rerun here;
 - `sed` on `Origami/Folding.hs:34-56`, `Render/Camera.hs:176-194`,
-  `Diagram/Style.hs:112-142`, `docs/glossary.md:28-49`,
+  `Diagram/Style.hs:112-142`, `docs/glossary.md:28-51`,
   `study/fold-material/README.md:415-430` and
   `docs/notes/precreases-and-target-states.md`;
 - `gh issue view 97`;
@@ -176,7 +176,7 @@ A book figure routinely carries several instructions:
 - all four blintz corners.
 
 The glossary already defines a **Step** as one picture plus its instruction
-(`docs/glossary.md:49`). origami-diagrams stores an array per frame because one
+(`docs/glossary.md:51`). origami-diagrams stores an array per frame because one
 printed figure can hold several instructions (E1 finding 4).
 
 The spine contradicts itself. D12 says a step "runs to the next `step`" (line
@@ -536,7 +536,7 @@ the EDSL captions identical to the text.
 
 - origami.me says fold and unfold in steps 1, 3, 10 and 26. None says
   precrease.
-- The glossary defines book fold and cupboard fold (`docs/glossary.md:31-32`).
+- The glossary defines book fold and cupboard fold (`docs/glossary.md:31`, `:34`).
 - The language has no `fold in half`, `fold behind` or `fold in front`,
   `swing`, or `open and squash`.
 
@@ -568,9 +568,9 @@ on existing creases."
 
 - `.fseq` is the xLights/Falcon Player light-show sequence format (web search:
   manual.xlights.org, github.com/Cryptkeeper/fseq-file-format).
-- `docs/roadmap.md:85-86,145,371`, #97's title and body, and F's sketch
+- `docs/roadmap.md:274-275,350,1007`, #97's title and body, and F's sketch
   (`Scheme`, `SchemeError`) all say "scheme". The glossary says
-  "diagram sequence" (`docs/glossary.md:49,58`).
+  "diagram sequence" (`docs/glossary.md:51,61`).
 - The AST's `Step` collides with the existing `Senbazuru.Origami.Step` module (a
   frame-pair motion).
 - `repeat` and `sequence` are Prelude functions, so a builder spelling them

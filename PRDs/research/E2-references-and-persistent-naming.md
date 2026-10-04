@@ -260,7 +260,7 @@ the cheap check.
     rather than structural ones. It says this reached parity with realthunder's
     original work in 1.0. The practical advice is still to attach to origin
     planes, datum planes and coordinate systems, not to generated faces.
-    `docs/related-projects.md:85-98` already says a written fold hits this
+    `docs/related-projects.md:97-110` already says a written fold hits this
     problem the moment it says "petal fold the front flap".
 
 17. **History-based naming: Kripac 1997; E-REP / Capoyleas, Chen & Hoffmann

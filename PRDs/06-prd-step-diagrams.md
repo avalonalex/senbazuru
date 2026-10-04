@@ -479,7 +479,7 @@ sequence's state 13 in [D24](decisions.md#d24-states-figures-and-their-numbers)'
 numbering, which `render --frame 14` draws, because `--frame 0` is the key frame
 ([D13](decisions.md#d13-the-run-verb-and-io)). `jq` prints 16 `file_frames` and 0
 key-frame vertices for this file, and `file_frames[11]` is "… hinge 90°", the
-state [`usage.md:1047-1048`](../docs/usage.md) calls frame 12.
+state [`usage.md:1813-1814`](../docs/usage.md) calls frame 12.
 
 R-06-12 asserts only the "yes" rows. Seen from above, the `left-right` turn mirrors
 the picture across a line parallel to model y. At a 45° roll that line lies

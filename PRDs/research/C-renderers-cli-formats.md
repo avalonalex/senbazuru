@@ -50,16 +50,16 @@ is `--no-fill`, which strokes every crease, buried ones included.
    - `Render.Svg.renderSvg :: Page -> Diagram -> Text` (`src/Senbazuru/Render/Svg.hs:118`) is the only consumer of `Diagram`.
 
 2. **The layering rule for backends.**
-   - New 2D backends must consume `Diagram` and must never traverse `Frame` a second time. The one stated exception is a 3D backend, because `Diagram` is `V2` with no depth (`docs/architecture.md:176-182`; `Gltf.hs:62-70`).
-   - `Render.Gltf` must not import `Render.CreasePattern`. The two share only `Origami.Stacking.layerOrderFor` (`architecture.md:180-182`). `Gltf.hs:126-142` confirms it imports only `Diagram`'s `Colour`, the two paper colours from `Diagram.Style`, and `Render.Camera` / `Render.PaperMesh`.
-   - `Diagram` must not know FOLD, and `Render.Svg` must not know what a mountain fold is (`architecture.md:149, 154`).
+   - New 2D backends must consume `Diagram` and must never traverse `Frame` a second time. The one stated exception is a 3D backend, because `Diagram` is `V2` with no depth (`docs/architecture.md:261-267`; `Gltf.hs:62-70`).
+   - `Render.Gltf` must not import `Render.CreasePattern`. The two share only `Origami.Stacking.layerOrderFor` (`architecture.md:265-267`). `Gltf.hs:126-142` confirms it imports only `Diagram`'s `Colour`, the two paper colours from `Diagram.Style`, and `Render.Camera` / `Render.PaperMesh`.
+   - `Diagram` must not know FOLD, and `Render.Svg` must not know what a mountain fold is (`architecture.md:175, 180`).
    - The two-unit rule is a hard constraint on anything a sequence page adds (captions, arrow kinds): model-unit coordinates, page-unit widths and sizes (`src/Senbazuru/Diagram.hs:21-47`). `Arrow`, `Label` and `Offset` are the three shapes that are finished by the backend (`Diagram.hs:186-222`).
 
 3. **What "wireframe" means today: stroked creases, not mesh edges.**
    - `Theme.themePaper = Nothing` is the wireframe switch (`src/Senbazuru/Diagram/Style.hs:195-203`). `--no-fill` sets it (`app/Senbazuru/Cli.hs:559-565, 898-900`).
    - With no paper, both notations draw `everyCrease`: every edge in `edges_vertices`, sorted by `creaseOrder`, projected and stroked. Nothing is hidden (`CreasePattern.hs:205, 213, 243-246`).
    - A folded form with paper but no layer order falls back to projected visibility, else to `everyCrease` (`CreasePattern.hs:222-224, 250-254`).
-   - So today's SVG "wireframe" draws buried edges at full weight. It is explicitly an escape hatch for files whose layers cannot be stacked (`docs/usage.md:116`).
+   - So today's SVG "wireframe" draws buried edges at full weight. It is explicitly an escape hatch for files whose layers cannot be stacked (`docs/usage.md:137`).
    - The hidden-edge dotted line is in the notation table and unused (`Style.hs:22, 41-47`). Selective x-ray lines are issue #48, which is open.
    - No silhouette pass exists. Issue #104 proposes one, and its own text says a curved mesh with `--hide-flat` loses its outline. That claim is not verified here; see Unverified.
 
@@ -69,12 +69,12 @@ is `--no-fill`, which strokes every crease, buried ones included.
    - `strokeFor` returns `Nothing` for `Join` (`Style.hs:280-281`), so **triangulation edges already disappear from SVG, and feature edges remain**. That is the right split for a wireframe of a curved model.
    - glTF writes no lines of any kind (`Gltf.hs:52`). `PaperPiece` carries corners and a panel id, not edges (`src/Senbazuru/Render/PaperMesh.hs:47-54`).
    - The study's WebGL viewer draws feature lines itself. `authoredValue` emits `lines` once per owning panel (`study/fold-material/Main.hs:194-219`, see line 213), and the viewer draws them with `gl.LINES` (`study/fold-material/viewer.html:241-244, 286-290`).
-   - `docs/tour.md:596-597` says the SVG outlines of those relaxed meshes still retain some buried crease lines, and points readers to the 3D views.
+   - `docs/tour.md:602-603` says the SVG outlines of those relaxed meshes still retain some buried crease lines, and points readers to the 3D views.
 
 5. **The SVG visibility machinery has limits a realistic wireframe would hit.**
    - `Render.Projected` handles only convex, planar, non-intersecting open panels. It returns `Nothing`, and so falls back, for non-planar, non-convex, intersecting or depth-tied panels (`src/Senbazuru/Render/Projected.hs:30-36, 120-125, 148-154`).
    - It compares every pair of panels (`Projected.hs:83`, `tails` over panels).
-   - `docs/architecture.md:410-415` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
+   - `docs/architecture.md:909-914` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
 
 ### (b) glTF today
 
@@ -115,8 +115,8 @@ is `--no-fill`, which strokes every crease, buried ones included.
     - The Khronos extensions index lists `KHR_animation_pointer` as ratified (https://github.com/KhronosGroup/glTF/blob/main/extensions/README.md).
 
 12. **What is missing for "realistic", by component.**
-    - *Curved panels.* The visible scene requires planar panels (`PaperNotPlanar`, `PaperMesh.hs:99-105`). Shared refinement requires convex planar panels (`usage.md:201-203`). A curved sheet must arrive as many planar triangles joined by `J` edges (finding 4), and each triangle then becomes its own coplanarity group (`PaperMesh.hs:106-112`).
-    - *Rounded creases.* Exist only as study constructions (`FoldMaterial` rounded variants, `docs/architecture.md:233`), with the material-budget caveat in `docs/notes/two-bends-need-more-than-radii.md`.
+    - *Curved panels.* The visible scene requires planar panels (`PaperNotPlanar`, `PaperMesh.hs:99-105`). Shared refinement requires convex planar panels (`usage.md:222-224`). A curved sheet must arrive as many planar triangles joined by `J` edges (finding 4), and each triangle then becomes its own coplanarity group (`PaperMesh.hs:106-112`).
+    - *Rounded creases.* Exist only as study constructions (`FoldMaterial` rounded variants, `docs/architecture.md:374`), with the material-budget caveat in `docs/notes/two-bends-need-more-than-radii.md`.
     - *Thickness.* Metadata only (finding 9).
     - *PBR paper.* One factor per side. The extensions index lists `KHR_materials_sheen`, `KHR_materials_transmission`, `KHR_materials_volume` and `KHR_materials_specular` as ratified, and `KHR_materials_diffuse_transmission` as a release candidate (extensions README URL above).
     - *Crease lines.* None. Primitive `mode` 1 is `LINES`; the default is 4, `TRIANGLES` (https://raw.githubusercontent.com/KhronosGroup/glTF/main/specification/2.0/schema/mesh.primitive.schema.json).
@@ -154,13 +154,13 @@ is `--no-fill`, which strokes every crease, buried ones included.
     - A scheme interpreter must therefore live in the library, with the CLI as plumbing only.
 
 18. **I/O rule.**
-    - "Only `Senbazuru.Fold.Load` does I/O, reading and writing alike". `Import.*` takes `Text` and returns values (`architecture.md:155-158`; `Load.hs:5-10`).
+    - "Only `Senbazuru.Fold.Load` does I/O, reading and writing alike". `Import.*` takes `Text` and returns values (`architecture.md:181-184`; `Load.hs:5-10`).
     - No library module other than the CLI imports `Fold.Load`. Only the study executable and the CLI do (grep `import Senbazuru.Fold.Load` over `src app study test`).
-    - Precedent for a sequence description naming a source file: the study's `cases.json` has a `source` path (`study/fold-material/StudyCase.hs:63-76`). `Main` resolves it with `loadFoldFile` inside the *executable* (`study/fold-material/Main.hs:95, 177-179`). Architecture calls that manifest "not a new library input format" (`architecture.md:420-421`).
+    - Precedent for a sequence description naming a source file: the study's `cases.json` has a `source` path (`study/fold-material/StudyCase.hs:63-76`). `Main` resolves it with `loadFoldFile` inside the *executable* (`study/fold-material/Main.hs:95, 177-179`). Architecture calls that manifest "not a new library input format" (`architecture.md:919-920`).
 
 ### (d) "A new input format becomes a Frame and stops there"
 
-19. **What the rule says and protects.** `Import.*` may know FOLD because producing a `Frame` is its whole job. Nothing downstream may know where a frame came from. What a format cannot say, the frame does not say (`architecture.md:170-175`; AGENTS.md "Conventions").
+19. **What the rule says and protects.** `Import.*` may know FOLD because producing a `Frame` is its whole job. Nothing downstream may know where a frame came from. What a format cannot say, the frame does not say (`architecture.md:196-201`; AGENTS.md "Conventions").
 
 20. **The existing pattern for a text reader is small and pure.**
     - `parseCp :: Text -> Either ImportError [Segment]` (`src/Senbazuru/Import/Cp.hs:76-79`) and `parseOpx` on tagsoup tags (`src/Senbazuru/Import/Opx.hs:81, 87-88`).
@@ -174,7 +174,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
     - Running it needs `Fold.Creasing` (`creaseAlong`, `creaseAllAlong :: … -> Frame -> Either FoldError Frame`, `Fold/Creasing.hs:90, 138`), `Origami.ThroughLayers.creaseThroughLayers` (`ThroughLayers.hs:227`), `Origami.Folding` and `Origami.Flap` (`prepareFlap`, `checkFlap`, `flapAt`, `Flap.hs:157-294`).
     - Putting the interpreter in `Import.*`, or behind `Load.decodeFile`, would make the top of the pipeline import the folding stack. That inverts the drawn flow (`architecture.md:12-73`).
     - It may also need a *second* file read (the starting pattern), which the pure `decodeFile :: FilePath -> ByteString -> Either LoadError FoldFile` signature cannot do.
-    - The architecture already predicts the right shape. Authoring moves are "a frame in, a frame out", and reach the pipeline "by being a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand" (`architecture.md:81-86`).
+    - The architecture already predicts the right shape. Authoring moves are "a frame in, a frame out", and reach the pipeline "by being a `Frame` that `Fold.Query` cannot tell from one somebody wrote by hand" (`architecture.md:81-103`).
     - So the rule holds for the scheme's **output**. The **parser plus interpreter** needs a stated position: parse (pure, `Text -> Either SchemeError Scheme`) → interpret (library, beside `Fold.Creasing` / `Origami.*`) → `FoldFile`. `Load` only reads bytes.
 
 ### (e) Dependencies
@@ -218,7 +218,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
     - All three have 12 identical `edges_vertices` and 4 faces, with assignments `BBBBBBBBMVMM` in **every** frame. Frame 0's angles are all 0; frames 1 and 2 set −180/180 on the moved creases (jq).
     - So the "flat sheet" already carries the crease of step 3. The golden `test/golden/quarter-fold-steps.svg` has 4 dashed strokes (1 valley `6 3.5`, 3 mountain `9 3 1.2 3 1.2 3`), 2 quadratic arrow paths and 3 `<text>` labels.
     - Step 1 therefore draws all four future creases as instructions. Only frame 0 is `creasePattern`, and only `CreasePatternNotation` dashes (`Style.hs:286-289`).
-    - `examples/bird-base-sequence.fold` uses the other convention: an empty key frame and 16 titled `foldedForm` frames, each with `faceOrders` (11-60 entries). That is why `--frame 12` is the 12th state (`usage.md:1047-1049`).
+    - `examples/bird-base-sequence.fold` uses the other convention: an empty key frame and 16 titled `foldedForm` frames, each with `faceOrders` (11-60 entries). That is why `--frame 12` is the 12th state (`usage.md:1813-1815`).
     - FOLD has no key for arrows, operations or captions. `frame_inherit` is decoded but not resolved, so every frame repeats the whole graph (`docs/fold-reference.md:187-200, 219-226`; `src/Senbazuru/Fold/Types.hs:151-153`).
 
 27. **What `Step` cannot infer.**
@@ -239,7 +239,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
   - (i) Every frame of a sequence shares one `edges_vertices` / `faces_vertices`. Otherwise `--arrows` fails with `FramesDiffer`. That means creases added by later moves must be **backfilled** into earlier frames at angle 0, which is what the fixture does.
   - (ii) Backfilling makes step 1 draw every future crease dashed (finding 26). The PRD must either accept that (it matches the current golden) or require a later change: `Step` matching frames by material identity, or a notation that draws only the next move's creases.
   - (iii) Frames are folded coordinates, not angle-only patterns, because `--steps` refuses `--fold`.
-  - (iv) Coplanar overlaps carry `faceOrders`, as the bird sequence does. Otherwise open coplanar layers are refused by the default GLB (`usage.md:178-184`) and fall back in SVG.
+  - (iv) Coplanar overlaps carry `faceOrders`, as the bird sequence does. Otherwise open coplanar layers are refused by the default GLB (`usage.md:199-205`) and fall back in SVG.
   - (v) Pick one key-frame convention: metadata-only key frame (bird) or key frame is step 1 (quarter fold). `--frame N`, `info` and `stepPage` numbering all depend on it.
   - (vi) Write `frame_title` per step, and `file_classes: ["diagrams"]`. Say in the PRD that nothing renders titles until #94. `soleFrame` drops `diagrams` if frames are removed (`Types.hs:232-252`).
 - **Do not rely on vendor keys to carry move intent** (arrow kind, "top layer only") to the renderers. Transforms drop `frameExtras` (AGENTS.md "Preserve at the boundary") and the GLB keeps only three `senbazuru:` keys (`Gltf.hs:241`). If intent must reach the drawing, the PRD needs a typed channel: a `[Step]` value beside `[Frame]` passed to a library function. Don't make `stepPage` re-infer it.

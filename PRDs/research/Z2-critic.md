@@ -465,7 +465,7 @@ Both are minor, but the glossary should hold one definition of the wrap count.
    - *Its limit, as the paper states it.* The tools restrict fold lines to
      parallel or orthogonal folds of the whole stack. A crane's reverse and
      petal folds are harder. This limit is from the paper.
-2. **General shell FEA.** `docs/related-projects.md:43-60` lists LS-DYNA,
+2. **General shell FEA.** `docs/related-projects.md:43-64` lists LS-DYNA,
    Abaqus, CalculiX, Code_Aster, Kratos, MERLIN, Blender and ArcSim for exactly
    this problem [code]. `the-puff-is-a-drawing.md:162` cites Melancon et al.,
    Nature 592 (2021), whose inflatable origami used shell elements, pressure

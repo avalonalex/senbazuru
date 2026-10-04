@@ -159,7 +159,7 @@ contact-free poses such as wing curl.
      0.045, and then multiplies `z` by `bodyWidthScale` (`WholeCrane.hs:171-177`).
      The owner's "More tucked" pose uses the narrow body, `bodyWidthScale = 0.5`
      (`WholeCrane.hs:149`, `:157-160`;
-     `docs/notes/crane-pillow-target.md:147`). That is a 50% compression across
+     `docs/notes/crane-pillow-target.md:148`). That is a 50% compression across
      the wings, written into the target.
    - **The rest is not length-preserving either.** It is filled by a
      least-squares graph smoothing weighted by inverse edge length

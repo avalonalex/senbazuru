@@ -108,7 +108,7 @@ into a no-geometry-change viewer pass (S), a study-only offline still generator
    - **What PaperLighting adds.** Normals averaged per original panel, joined to
      GLB corners by material reference (`study/fold-material/PaperLighting.hs`;
      `paper-lighting.mjs:4-9`) [code]. Downloads keep flat lighting
-     (`docs/notes/crane-panel-lighting.md:35`) [code].
+     (`docs/notes/crane-panel-lighting.md:37`) [code].
    - **The consequence** [reasoned]:
      - a model with no shadow cannot sit on anything;
      - ACES shifts pale colours (finding 20).
@@ -156,7 +156,7 @@ into a no-geometry-change viewer pass (S), a study-only offline still generator
        corners flat instead of 8).
    - **Deviation statistics** [ran] (`normal_dev.py` on `spread-0.fold`):
      - 1,344 corners, 8 of them kept flat, which matches the note's "eight"
-       (`crane-panel-lighting.md:39-40`);
+       (`crane-panel-lighting.md:41-42`);
      - median deviation from the triangle's own normal 2.2°, 90th percentile
        12.7°, 99th percentile 38.5°, maximum 69.8°;
      - 26 corners deviate by more than 30°.

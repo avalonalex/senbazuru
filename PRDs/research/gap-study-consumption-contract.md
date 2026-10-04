@@ -99,7 +99,7 @@ states.** A single Boolean would erase the difference between them.
 
 | Evidence | Where | What it establishes |
 | --- | --- | --- |
-| None: state only | `StudyCase` angle tables (`docs/architecture.md:429-430`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
+| None: state only | `StudyCase` angle tables (`docs/architecture.md:928-929`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
 | Interval sweep | `checkFlap` returns an opaque `CheckedFlap`; every pose is re-folded and compared with the checked hinge path (`Flap.hs:19-25`, `:252-284`) | the whole single-hinge turn, up to HingeSweep's conservative refusals |
 | Exact ideal-path certificate | `PetalCertificate` bounds the ideal sheet; `CheckedBird` compares Double poses within 1e-12 (`PetalCertificate.hs:1-15`, `CheckedBird.hs:120-129`) | the ideal path of one fixture |
 | Not a motion at all | a static boundary-value solve whose iterates "are allowed to stretch and cross paper" (`CraneSpread.hs:12-13`) | an endpoint only |
@@ -115,10 +115,10 @@ therefore number the same paper differently.
 
 - **Direction.** The study executable `build-depends` on `senbazuru`
   (`senbazuru.cabal:179-189`). "The library imports no study code"
-  (`docs/architecture.md:201`, again `:413`). The study already calls library
+  (`docs/architecture.md:286`, again `:912`). The study already calls library
   moves directly (`BlintzSequence.hs:27-30`, `CraneWing.hs:46-58`).
 - **The existing handoff runs study → CLI**, through ordinary FOLD
-  (`study/fold-material/Main.hs:142-152`; `docs/architecture.md:444-449`).
+  (`study/fold-material/Main.hs:142-152`; `docs/architecture.md:943-948`).
 - **What a file loses.** `materialFrame` does not serialise thickness or
   directional requirements (`Surface.hs:242-247`). The GLB keeps only three
   `senbazuru:` extras keys (`Render/Gltf.hs:238-242`). A `CheckedFlap` is
@@ -377,7 +377,7 @@ label is not the licence of the binary its default build produces.
 ### (a) The per-step record, and who imports what
 
 Define the record **in the library** (an `Origami.*` module, since it knows
-paper and not drawing; `docs/architecture.md:150-153`). The study imports the
+paper and not drawing; `docs/architecture.md:176-179`). The study imports the
 library runner, as it already imports `Origami.Flap`. The study consumes the
 **sequence source** (an EDSL value, or a file parsed by the library) and runs
 it itself. It must never parse rendered FOLD or GLB back, because those drop

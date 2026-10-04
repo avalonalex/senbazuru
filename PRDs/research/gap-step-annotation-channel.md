@@ -161,7 +161,7 @@ With no notes, all 33 tracked goldens stay byte-identical.
     this pair that yields both. The resolution needs the camera, which `Step`
     does not have (it imports no camera, `Step.hs:49-63`), and which way up each face lies. AGENTS.md
     warns that winding is trusted as written, and that a backwards-wound file
-    draws colours swapped (`AGENTS.md:315-323`). Step 1's creases are both M
+    draws colours swapped (`AGENTS.md:327-335`). Step 1's creases are both M
     (8 and 10, 0 → −180), and the golden draws them with today's single arrow
     style.
 
@@ -575,7 +575,7 @@ data StepNote = StepNote
 noNote :: StepNote                          -- Nothing, InferArrows, Nothing, Nothing, AllLayers
 stepPageWith  :: Theme -> Budget -> Grid -> View -> Bool -> [(Frame, StepNote)] -> Either StepError (Maybe Diagram)
 stepPage      :: Theme -> Budget -> Grid -> View -> Bool -> [Frame] -> Either StepError (Maybe Diagram)
-                 -- = stepPageWith … . map (\f -> (f, noNote)); one implementation, as AGENTS.md:217-221 requires of --layer-budget
+                 -- = stepPageWith … . map (\f -> (f, noNote)); one implementation, as AGENTS.md:229-233 requires of --layer-budget
 presentFrames :: Basis -> [(Frame, Maybe Presentation)] -> [Frame]
 
 -- Senbazuru.Diagram.Layout
