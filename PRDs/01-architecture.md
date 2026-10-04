@@ -58,7 +58,7 @@ family the only rule is no cycles: today `Origami.Flap` imports `Origami.Folding
 | 5 | `Material.*` (M8) | rows 1–3, `Origami.*` | — |
 | 6 | `Sequence.*` (M1–M6) | rows 1 and 3, `Origami.*`; `Material.*` only from `Sequence.Material`; inside the family, §1.3's levels | — |
 | 7 | `Render.*` | rows 1–5, and from `Sequence.*` only `Sequence.Record` and `Sequence.Error` | `Render.*` imports only rows 1, 3 and 4 and its own family; `Render.Svg` imports only `Diagram`, `Geometry` and `Geometry.Polygon`; `Render.Gltf` does not import `Render.CreasePattern` |
-| 8 | `app/` | the library | every verb reads its input through `withFoldFile` ([`Cli.hs:693-698`](../app/Senbazuru/Cli.hs#L693-L698)) |
+| 8 | `app/` | the library | every verb reads its input through `withFoldFile` ([`Cli.hs:784-789`](../app/Senbazuru/Cli.hs#L784-L789)) |
 
 Rows 1, 3, 4 and 7 of *Checked today* are the output of this loop, run at
 `568dcb6`:
@@ -69,7 +69,7 @@ for f in $(find src -name '*.hs' | sort); do m=$(echo $f | sed 's#src/##; s#\.hs
 
 Row 2's cell is `grep '^import' study/fold-material/SparseSolve.hs
 study/fold-material/DirectionalDistance.hs`, and row 8's is read from
-[`Cli.hs:693-698`](../app/Senbazuru/Cli.hs#L693-L698). Every existing module fits
+[`Cli.hs:784-789`](../app/Senbazuru/Cli.hs#L784-L789). Every existing module fits
 its row. The loop sees only `Senbazuru.*` imports, so the check that no `src/`
 module imports a `study/` module is a `grep` of `src/` for each
 `study/fold-material/*.hs` module name, which finds none.
@@ -161,20 +161,20 @@ material consumer. [D14](decisions.md#d14-material-consumption) decides the reco
 
 | Invariant | Why |
 | --- | --- |
-| **Unpresented.** `recordBefore` and `recordAfter` are raw `foldFrameWith` geometry of the [working pattern](glossary-additions.md#running-a-sequence), with the [anchor](glossary-additions.md#running-a-sequence)'s face unmoved. The record keeps [presentation](glossary-additions.md#running-a-sequence) and [anchor placement](glossary-additions.md#running-a-sequence) as separate (before, after) pairs, `recordPresentation` and `recordPlacement`. `displayBefore` and `displayAfter` compose them, placement first and then presentation, and only writers and renderers apply them. | The study reads each `faceOrders` entry, which of two overlapping faces lies above the other, by whether its reference face's normal points to +z ([`CraneSpread.hs:136`](../study/fold-material/CraneSpread.hs#L136)), and solves contact along +z ([`:171`](../study/fold-material/CraneSpread.hs#L171)). A record presented turned over would flip every normal's z, so every above-or-below would be read backwards. The display is kept as two pairs because a `turn over` changes presentation between its before and after, a re-anchoring fold changes placement, and animation needs the two as separate nodes; one display field could not say which display a turn-over's before-state had ([D14](decisions.md#d14-material-consumption), [C46](decisions.md#changes-since-draft-v2)). |
+| **Unpresented.** `recordBefore` and `recordAfter` are raw `foldFrameWith` geometry of the [working pattern](glossary-additions.md#running-a-sequence), with the [anchor](glossary-additions.md#running-a-sequence)'s face unmoved. The record keeps [presentation](glossary-additions.md#running-a-sequence) and [anchor placement](glossary-additions.md#running-a-sequence) as separate (before, after) pairs, `recordPresentation` and `recordPlacement`. `displayBefore` and `displayAfter` compose them, placement first and then presentation, and only writers and renderers apply them. | The study reads each `faceOrders` entry, which of two overlapping faces lies above the other, by whether its reference face's normal points to +z ([`CraneSpread.hs:137`](../study/fold-material/CraneSpread.hs#L137)), and solves contact along +z ([`:172`](../study/fold-material/CraneSpread.hs#L172)). A record presented turned over would flip every normal's z, so every above-or-below would be read backwards. The display is kept as two pairs because a `turn over` changes presentation between its before and after, a re-anchoring fold changes placement, and animation needs the two as separate nodes; one display field could not say which display a turn-over's before-state had ([D14](decisions.md#d14-material-consumption), [C46](decisions.md#changes-since-draft-v2)). |
 | **One numbering.** Every id is in `recordBefore`'s numbering, which `recordAfter` shares (faces compared as `map sort facesVertices`, [`Surface.hs:207`](../src/Senbazuru/Origami/Surface.hs#L207)). For a fold that creases, `recordBefore` is the cut, creased, unturned state. A flap turn never re-cuts; a move kind that re-cuts after moving must be split or record a mapping. | `CraneSpread` refines that state and looks hinge ids up in it ([gap-study-consumption-contract](research/gap-study-consumption-contract.md) "(a) What the study takes from a move today"). |
 | **Nothing stored twice.** Orders and layer requirements are read from the surfaces. | `Surface` holds both ([`Surface.hs:115-123`](../src/Senbazuru/Origami/Surface.hs#L115-L123)). |
-| **Evidence is a value:** one of the [route evidence](glossary-additions.md#assurance) constructors `NoMotion`, `Presented`, `StateOnly`, `Sampled CheckedMacro SampleReport` or `SweptHinge CheckedFlap`. `recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose` gives the model at a pose: `PoseRef` is `PoseBefore`, `PoseAfter` or `PoseOnRoute r`, a `Rational` fraction r of the way along the checked route ([02 §10](02-language-semantics.md#10-assurance)). `RoutePose` holds that pose's angles, surface and face placements; it lives in a new `Origami.Route`, which `Sequence.Record` re-exports, because `Origami.Flap` may not import `Sequence.*` ([05 L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)). `PoseError` is `NoRoute`, or the `FlapError` or `MacroError` of rebuilding a pose; `recordPoseAt` refuses `PoseOnRoute` as `NoRoute` for the first three constructors, which have no checked route ([D10](decisions.md#d10-assurance-as-evidence-values)). | A Boolean gives no pose; `CheckedFlap` is opaque ([`Flap.hs:19-20`](../src/Senbazuru/Origami/Flap.hs#L19-L20)). |
-| **Intent survives.** Surfaces handed to the solver keep [intent assignments](glossary-additions.md#the-fold-format); only `Sequence.Write` applies the [state rule](glossary-additions.md#the-fold-format). | A crease about to fold still lies at 0. Written `F`, it would drop out of `surfaceFeatures`, which keeps an `F` edge only at a nonzero angle ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)), and the bending solver would treat it as a bend inside a panel, not a crease ([`FoldBending.hs:160-171`](../study/fold-material/FoldBending.hs#L160-L171)). |
+| **Evidence is a value:** one of the [route evidence](glossary-additions.md#assurance) constructors `NoMotion`, `Presented`, `StateOnly`, `Sampled CheckedMacro SampleReport` or `SweptHinge CheckedFlap`. `recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose` gives the model at a pose: `PoseRef` is `PoseBefore`, `PoseAfter` or `PoseOnRoute r`, a `Rational` fraction r of the way along the checked route ([02 §10](02-language-semantics.md#10-assurance)). `RoutePose` holds that pose's angles, surface and face placements; it lives in a new `Origami.Route`, which `Sequence.Record` re-exports, because `Origami.Flap` may not import `Sequence.*` ([05 L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)). `PoseError` is `NoRoute`, or the `FlapError` or `MacroError` of rebuilding a pose; `recordPoseAt` refuses `PoseOnRoute` as `NoRoute` for the first three constructors, which have no checked route ([D10](decisions.md#d10-assurance-as-evidence-values)). | A Boolean gives no pose; `CheckedFlap` is opaque ([`Flap.hs:43-44`](../src/Senbazuru/Origami/Flap.hs#L43-L44)). |
+| **Intent survives.** Surfaces handed to the solver keep [intent assignments](glossary-additions.md#the-fold-format); only `Sequence.Write` applies the [state rule](glossary-additions.md#the-fold-format). | A crease about to fold still lies at 0. Written `F`, it would drop out of `surfaceFeatures`, which keeps an `F` edge only at a nonzero angle ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)), and the bending solver would treat it as a bend inside a panel, not a crease ([`FoldBending.hs:163-174`](../study/fold-material/FoldBending.hs#L163-L174)). |
 
 **Records derive `Eq`** ([D10](decisions.md#d10-assurance-as-evidence-values),
 [C4](decisions.md#changes-since-draft-v2)). No record field holds a function, so
 `MoveRecord` derives `Eq` and tests compare records with `==`. That takes one
 library change, [05](05-prd-library-additions.md) L14 at M2. `FlapMotion` and
 `CheckedFlap` derive only `Show`
-([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
-[`:99`](../src/Senbazuru/Origami/Flap.hs#L99)), although every field's type derives
-`Eq`: `Folded` ([`Folding.hs:324`](../src/Senbazuru/Origami/Folding.hs#L324)),
+([`Flap.hs:123`](../src/Senbazuru/Origami/Flap.hs#L123),
+[`:126`](../src/Senbazuru/Origami/Flap.hs#L126)), although every field's type derives
+`Eq`: `Folded` ([`Folding.hs:325`](../src/Senbazuru/Origami/Folding.hs#L325)),
 `HingeSweep` and `SweepCheck` ([`HingeSweep.hs:89`](../src/Senbazuru/Origami/HingeSweep.hs#L89),
 [`:101`](../src/Senbazuru/Origami/HingeSweep.hs#L101)), `FaceOrder`
 ([`Types.hs:357`](../src/Senbazuru/Fold/Types.hs#L357)), `EdgeId` and `FaceId`
@@ -217,7 +217,7 @@ A *sequence source*, the text an author writes
 
 - **It needs the folding stack.** Running it needs `Fold.Creasing`,
   `Origami.Folding` and `Origami.Flap`; reading it in `Fold.Load.decodeFile`
-  ([`Load.hs:102-106`](../src/Senbazuru/Fold/Load.hs#L102-L106)) would drag that
+  ([`Load.hs:131-136`](../src/Senbazuru/Fold/Load.hs#L131-L136)) would drag that
   stack to the top of the pipeline.
 - **It needs a second file**, its sheet, which
   `decodeFile :: FilePath -> ByteString -> …` cannot read
@@ -466,10 +466,10 @@ Current: a four-row table (`resolveAssignments`, `foldAnglesOf`,
 | Issue | Current | Replacement |
 | --- | --- | --- |
 | [#36](https://github.com/avalonalex/senbazuru/issues/36) | Done-when 1: a pair "reflecting every vertex through the sheet's plane produces a turn-over arrow". Approach: arrow kind "from the assignment that changed". | "A pair related by one whole-model proper rigid motion is a presentation change: no inferred arrow, and a sequence's `turn over` places a `Symbol`. A reflection is the mirror model." Approach: "Arrow kind comes from the move record; one motion can change a `V` and an `M` crease together (quarter-fold step 2 sets edge 9 to +180 and edge 11 to −180)." |
-| [#94](https://github.com/avalonalex/senbazuru/issues/94) | "`frame_title` and `frame_description` are decoded into `Frame` and nothing reads them"; done-when: the quarter fold "given titles, draws them under the figures", and the single-frame `render --arrows` page "draws the title too". | "The CLI reads `frame_title` for `info`, the page title and the glTF title (`Cli.hs:981`, `:879`, `:779`), but nothing draws it under a figure. A file cannot say whether its titles name states, as the fixture's "Step 2: folded in half" does, or give instructions, as a written sequence file's do: there a state's `frame_title` is the caption of the step leaving it. So `render --steps` never draws `frame_title`, and every page it draws stays byte-identical, `quarter-fold-steps.svg` included. Captions come from step notes." Done when: "`run -o x.svg` draws each step's caption under the figure of the state the step starts from, and the `closing` caption under the last figure, pinned by a new golden; every tracked golden stays byte-identical. Closes at M3." ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page), [C35](decisions.md#changes-since-draft-v2)) |
+| [#94](https://github.com/avalonalex/senbazuru/issues/94) | "`frame_title` and `frame_description` are decoded into `Frame` and nothing reads them"; done-when: the quarter fold "given titles, draws them under the figures", and the single-frame `render --arrows` page "draws the title too". | "The CLI reads `frame_title` for `info`, the page title and the glTF title (`Cli.hs:1095`, `:993`, `:888`), but nothing draws it under a figure. A file cannot say whether its titles name states, as the fixture's "Step 2: folded in half" does, or give instructions, as a written sequence file's do: there a state's `frame_title` is the caption of the step leaving it. So `render --steps` never draws `frame_title`, and every page it draws stays byte-identical, `quarter-fold-steps.svg` included. Captions come from step notes." Done when: "`run -o x.svg` draws each step's caption under the figure of the state the step starts from, and the `closing` caption under the last figure, pinned by a new golden; every tracked golden stays byte-identical. Closes at M3." ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page), [C35](decisions.md#changes-since-draft-v2)) |
 | [#104](https://github.com/avalonalex/senbazuru/issues/104) | Cites `docs/notes/inflate-outside-draw-inside.md`; done-when 1 asks `render examples/puffed-square.fold --view iso --hide-flat` to draw "the dome's outline"; done-when 3 lets two examples change "except for any edge that is a silhouette". | "Default `render` output is byte-identical; `render examples/puffed-square.fold --view front --hide-flat --lines features` draws the visible boundary and silhouette, as a new golden." A *silhouette* is an edge between a face turned towards the reader and one turned away, of any assignment: the file's 320 edges are 40 `B` and 280 `F` (`jq`), so a rule limited to `J` edges finds none of its 27 candidates from the front. From `--view iso` no face of the file turns away, so done-when 1 cannot be met; from `--view front`, the view of done-when 2, 90 of 200 faces do ([08](08-prd-realistic-rendering.md#104-amended), [D19](decisions.md#d19-realistic-rendering)). The cited note does not exist (`ls`). M7b advances the issue without closing it. |
 | [#114](https://github.com/avalonalex/senbazuru/issues/114) | "Both numbers already exist: `Origami.Layers.layerDepths` and `--thickness`"; the export "lifts each face by its layer number". | "`--thickness` and face lifting were removed (`docs/notes/paper-thickness.md:8`, `docs/architecture.md:143`), and a second bend rounded over a first stretches 200% (`docs/notes/two-bends-need-more-than-radii.md:55`): thickness as geometry is research." Full rewrite at M6. |
-| [#56](https://github.com/avalonalex/senbazuru/issues/56) | Transforms are what `spanningWalk` "computes and currently discards"; step 1, "Expose the per-face `Rigid`s". | "`foldFrameWith` returns them as `foldedPlacements` (`Folding.hs:322`), used by `Flap` and `ThroughLayers`. Keys come from checked routes via `recordPoseAt`, over one node hierarchy per checkpoint interval, on that interval's final cut pattern, with each face's parent and crossing edge taken from `Origami.Folding`'s own walk. Closes at M7b." ([D19](decisions.md#d19-realistic-rendering)) |
+| [#56](https://github.com/avalonalex/senbazuru/issues/56) | Transforms are what `spanningWalk` "computes and currently discards"; step 1, "Expose the per-face `Rigid`s". | "`foldFrameWith` returns them as `foldedPlacements` (`Folding.hs:323`), used by `Flap` and `ThroughLayers`. Keys come from checked routes via `recordPoseAt`, over one node hierarchy per checkpoint interval, on that interval's final cut pattern, with each face's parent and crossing edge taken from `Origami.Folding`'s own walk. Closes at M7b." ([D19](decisions.md#d19-realistic-rendering)) |
 | [#64](https://github.com/avalonalex/senbazuru/issues/64) | "**Inflate the body** is *outside the model*, not merely hard." | "Opening a body is a stated future goal (`README.md:158-164`, #106); what lies outside the rigid model is bending and pressure, not opening." |
 
 ### 4.8 `AGENTS.md` "Third-party material"
@@ -619,7 +619,7 @@ without #93, and the milestones schedule #95 at M2, #94 and #36 at M3, and #60's
 close at M4 ([decisions §8](decisions.md#8-milestones)). The PR keeps the file's
 full issue links; the text below writes them as numbers.
 
-Current, roadmap item 2 (`:84-87`): "The done-when — reproduce
+Current, roadmap item 2 (`:273-276`): "The done-when — reproduce
 `examples/quarter-fold-steps.fold` from a written scheme — is not met. What stands
 in the way is a decision, #97, on how a scheme is written down, before the second
 move #95 and the flap rotation #54."
@@ -632,7 +632,7 @@ Replacement for those two sentences:
 > turning the model over (#95) at M2, arrows and captions (#36, #94) at M3, and
 > folding some layers, which advances #54, at M4, where #60 closes.
 
-Current, items 2 and 3 of the ordered list (`:368-373`): item 2 is #93, the sweep;
+Current, items 2 and 3 of the ordered list (`:1004-1009`): item 2 is #93, the sweep;
 item 3 reads "#96 then #97: read what the 2026 papers use as their vocabulary, then
 decide the scheme format. Only then #95, #94 and #36, which give a written scheme
 its arrows and captions."
@@ -654,7 +654,7 @@ the paper". `docs/usage.md:1626-1629` quotes the same sentence from a run on
 `examples/bird-base.cp`, starting "--from is inside face 12".
 
 The sentence starts with `creaseEndFlag end`
-([`ThroughLayers.hs:194-195`](../src/Senbazuru/Origami/ThroughLayers.hs#L194-L195),
+([`ThroughLayers.hs:195-196`](../src/Senbazuru/Origami/ThroughLayers.hs#L195-L196),
 [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71)): a command-line word in
 a library message, which a sequence run has no flag to match
 ([D20](decisions.md#d20-errors)).
@@ -797,7 +797,7 @@ here.
   so [sheet lengths](glossary-additions.md#references) equal model units. (3/4, 1/4) is strictly
   inside F0 alone, 0.25 from its boundary and 0.354 from the nearest vertex [py].
   `Origami.Folding` holds its first face still and places everything else relative
-  to it ([`Folding.hs:578-585`](../src/Senbazuru/Origami/Folding.hs#L578-L585)), so
+  to it ([`Folding.hs:592-599`](../src/Senbazuru/Origami/Folding.hs#L592-L599)), so
   the runner puts the anchor's face first. F0 already is first, so nothing is
   reordered, and anchor placement and presentation are the identity: coloured side
   up, no whole-model turn yet.
@@ -810,7 +810,7 @@ F2 and F3 centroids are at z = −0.0044, behind the sheet; at −180 the refold
 the fixture's first folded state within 6.1e-17 [py], moving vertices 0, 3 and 7
 [jq]. The expected carried orders are `FaceOrder 3 0 Below` (F3 below F0, against
 F0's normal) and `FaceOrder 2 1 Below`, built from the contacts at the end of the
-turn ([`Flap.hs:313`](../src/Senbazuru/Origami/Flap.hs#L313)). **UNVERIFIED**: the
+turn ([`Flap.hs:427`](../src/Senbazuru/Origami/Flap.hs#L427)). **UNVERIFIED**: the
 contacts `HingeSweep` reports.
 
 Step 1 laid the west half exactly on the east half, so v0 now sits on v1, v3 on v2
@@ -935,7 +935,7 @@ one valley writes opposite signs on edges 9 and 11 is
 [02 §5.3](02-language-semantics.md#53-one-conversion-for-the-whole-model); this
 section shows where the code makes the sign.
 
-[`Flap.hs:211-219`](../src/Senbazuru/Origami/Flap.hs#L211-L219) handles each
+[`Flap.hs:284-301`](../src/Senbazuru/Origami/Flap.hs#L284-L301) handles each
 segment in turn. It finds the segment's stationary face, and that face's ring edge
 u → v along the crease. The segment gets `travel` when (v − u)·axis > 0, and
 `−travel` otherwise:
@@ -949,7 +949,7 @@ F3 lies upside down after step 1, so its ring runs the other way along the share
 line, and edge 11 takes −travel. The fixture's last state agrees [jq].
 
 Both segments' ends lie within 6.1e-17 of the hinge line, below `Flap`'s 1e-12
-([`Flap.hs:210`](../src/Senbazuru/Origami/Flap.hs#L210)) [py]. Step 1 works the
+([`Flap.hs:283`](../src/Senbazuru/Origami/Flap.hs#L283)) [py]. Step 1 works the
 same way: edges 8 (F0, v8 → v4) and 10 (F1, v6 → v8) both give +0.5, so both
 take −180 [py].
 
@@ -959,7 +959,7 @@ take −180 [py].
   through paper, to depth 20 within 4096 [sweep intervals](glossary-additions.md#geometry)
   ([`HingeSweep.hs:95`](../src/Senbazuru/Origami/HingeSweep.hs#L95)). `FaceOrder 2 1`
   (both moving) and `FaceOrder 3 0` (both stationary) move rigidly
-  ([`Flap.hs:226-236`](../src/Senbazuru/Origami/Flap.hs#L226-L236)), and the end
+  ([`Flap.hs:315-325`](../src/Senbazuru/Origami/Flap.hs#L315-L325)), and the end
   contacts add new orders. From the reader the stacking should end F2, F1, F0, F3
   [reasoned]: F2 lay on F1's back, and F1 lands face down on F0. **UNVERIFIED**: the
   reported orders and the interval count.
@@ -971,7 +971,7 @@ take −180 [py].
   `modelSpan`, the largest extent along any axis, which is 1 here
   ([`V3.hs:72-73`](../src/Senbazuru/Geometry/V3.hs#L72-L73)); angles, edges, rings as
   vertex sets, orders and material coordinates agree exactly. F0 never moves, so `Flap`'s stationary correction is the identity
-  ([`Flap.hs:358-360`](../src/Senbazuru/Origami/Flap.hs#L358-L360)) and the two folds
+  ([`Flap.hs:472-474`](../src/Senbazuru/Origami/Flap.hs#L472-L474)) and the two folds
   should agree exactly [reasoned]. The Python refold is within 1.2e-16 of the
   fixture's last state [py].
 - **Cost.** About 7 folds per checked step, counted in the code, not timed
@@ -1091,7 +1091,7 @@ It prints `edges with material y = 1 [4, 5] lengths ['1/2', '1/2']` and
 `leftmost 5 face 2 [8, 6, 3, 7] vertex mean ('1/4', '3/4')`.
 
 **[py]** the refold. This re-implements `Folding`'s spanning walk
-([`Folding.hs:577-653`](../src/Senbazuru/Origami/Folding.hs#L577-L653)), with
+([`Folding.hs:591-667`](../src/Senbazuru/Origami/Folding.hs#L591-L667)), with
 rotations as in [`Rigid.hs:95-129`](../src/Senbazuru/Geometry/Rigid.hs#L95-L129),
 and `Flap`'s sign rule. Run it as `python3 - <<'EOF' … EOF`:
 
@@ -1099,8 +1099,8 @@ and `Flap`'s sign rule. Run it as `python3 - <<'EOF' … EOF`:
 <summary>Script</summary>
 
 ```python
-# Re-implementation of Origami.Folding's walk (Folding.hs:577-653) and
-# Flap's per-segment sign (Flap.hs:196-219) on examples/quarter-fold-steps.fold.
+# Re-implementation of Origami.Folding's walk (Folding.hs:591-667) and
+# Flap's per-segment sign (Flap.hs:268-301) on examples/quarter-fold-steps.fold.
 import json, math
 d = json.load(open("examples/quarter-fold-steps.fold"))
 MAT = [(float(x), float(y), 0.0) for x, y in d["vertices_coords"]]
@@ -1177,7 +1177,7 @@ def component(seed, removed):
     return sorted(seen)
 normal = lambda f, P: tuple(sum(c) for c in zip(*[cross(P[a], P[b]) for a, b in ring(f)]))
 print("state1 face normals", [normal(f, P1) for f in range(4)])
-def segment_signs(eids, side, P):              # Flap.hs:196-219 with expected = P
+def segment_signs(eids, side, P):              # Flap.hs:268-301 with expected = P
     moving = component(side, eids); first = eids[0]
     fixed = [g for g in NB[key(*E[first])] if g != side][0]
     frm, to = [(a, b) for a, b in ring(fixed) if key(a, b) == key(*E[first])][0]
@@ -1192,7 +1192,7 @@ def segment_signs(eids, side, P):              # Flap.hs:196-219 with expected =
 print("step 1 [8,10] side F3:", segment_signs([8, 10], 3, MAT))
 print("step 2 [9,11] side F1:", segment_signs([9, 11], 1, P1))
 moving, fixed, (frm, _), axis, _ = segment_signs([9, 11], 1, P1)
-sweep = rotation(P1[frm], axis, -180 * 0.5 * math.pi / 180)      # Flap.hs:225, progress 1/2
+sweep = rotation(P1[frm], axis, -180 * 0.5 * math.pi / 180)      # Flap.hs:314, progress 1/2
 mv = sorted({v for f in moving for v in FACES[f]})
 print("sweep vs refold at 1/2, max distance over moving vertices", max(norm(sub(apply(sweep, P1[v]), Ph[v])) for v in mv), "v2 at", tuple(round(c, 12) + 0.0 for c in Ph[2]))
 rule = lambda a, x, t=1e-10: a if a in "BCJ" else ("M" if x < -t else "V" if x > t else "F")

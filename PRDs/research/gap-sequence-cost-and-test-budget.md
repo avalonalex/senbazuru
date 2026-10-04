@@ -112,20 +112,20 @@ The PRDs should:
 ### From reading the code (counts, not timings)
 
 6. **One checked step folds the whole pattern about seven times.**
-   `foldFrameWith` starts with `withPlanarFaces` (`Origami/Folding.hs:351`).
+   `foldFrameWith` starts with `withPlanarFaces` (`Origami/Folding.hs:365`).
    A frame that records faces skips the cutting (`Fold/Crossings.hs:128`), but
    it is still read, oriented and walked. Per step:
 
-   - `prepareFlapAlong` folds once itself (`Origami/Flap.hs:178`), then calls
-     `surfaceAt` at progress 1 and 0.5 (`:240-241`).
-   - Every `surfaceAt` folds again (`:357`).
-   - `checkFlap` calls `checkEndpointOrder` at 0 and 1 (`:280`), and each of
-     those calls `surfaceAt` (`:317`).
-   - The recipe's `flapAt motion 1` is one more (`:296`).
+   - `prepareFlapAlong` folds once itself (`Origami/Flap.hs:250`), then calls
+     `surfaceAt` at progress 1 and 0.5 (`:329-330`).
+   - Every `surfaceAt` folds again (`:471`).
+   - `checkFlap` calls `checkEndpointOrder` at 0 and 1 (`:396`), and each of
+     those calls `surfaceAt` (`:431`).
+   - The recipe's `flapAt motion 1` is one more (`:418`).
    - The join check is one more (`BlintzSequence.hs:64`).
 
    That totals **7 `foldFrameWith` per step** (1 + 2 + 2 + 1 + 1), plus one
-   `refineSurface` (`Flap.hs:222`). A step that adds a crease also pays
+   `refineSurface` (`Flap.hs:303`). A step that adds a crease also pays
    `creaseAllAlong`, which re-cuts and re-traces the pattern
    (`Fold/Creasing.hs:159`). The crane recipe also solves a layer order
    (`CraneWing.hs:138`), for which `Stacking.hs:180-183` claims "about 60ms" on
@@ -141,7 +141,7 @@ The PRDs should:
 
    Before the sweep, `checkFlap` builds `contacts` and `resting` with nested
    list comprehensions over `triangleOwners` squared. Each candidate pair does
-   a linear `find` over faces and a coplanarity test (`Flap.hs:256-272`), so
+   a linear `find` over faces and a coplanarity test (`Flap.hs:372-388`), so
    that part is O(T²·F). On the crane the start has 76 faces after the new
    crease (`CraneWing.hs:118`) and 63 vertices (`CraneWingSpec.hs:40`). The
    triangle count was not printed, because the driver never ran.
@@ -154,8 +154,8 @@ The PRDs should:
 
 9. **The repo already has a pattern for fixtures that are skipped when
    filtered.** `beforeAll load` wraps the heavy crane-material specs:
-   `CraneRootSpec.hs:27`, `CraneSpreadSpec.hs:25`, `CraneBodySpec.hs:25`,
-   `CranePocketSpec.hs:23`, `CraneInternalSpec.hs:30`, and `WingBendingSpec.hs:54,65`.
+   `CraneRootSpec.hs:28`, `CraneSpreadSpec.hs:30`, `CraneBodySpec.hs:25`,
+   `CranePocketSpec.hs:23`, `CraneInternalSpec.hs:30`, and `WingBendingSpec.hs:56,67`.
    hspec runs a `beforeAll` action only when an item under it runs. That is why
    those specs (#208's 164.87 s `CraneRoot` group) add nothing to the
    zero-match baseline in finding 1, while the rigid-sequence specs do.
@@ -191,31 +191,31 @@ The PRDs should:
 
 13. **The SVG number format.** `formatNumber` writes 3 decimals with
     `showFFloat (Just 3)`, strips trailing zeros and maps `-0` to `0`
-    (`Render/Svg.hs:332-345`). It is a pure function of the bits, so a
+    (`Render/Svg.hs:342-355`). It is a pure function of the bits, so a
     platform difference reaches the SVG only if it moves a coordinate across a
     0.0005 rounding boundary.
 
     The larger risk is discrete. Clipping can change which polygon corner comes
     first, and `closedPathData` now normalises that by taking the smallest
-    rotation of the *formatted* strings (`Svg.hs:281-294`). Formatting happens
+    rotation of the *formatted* strings (`Svg.hs:291-304`). Formatting happens
     before the comparison, so sub-print noise cannot choose the start.
 
 14. **GLB positions.** Positions are rounded to `quantumFor span = 1e-6 *
-    span` through an `Integer`, then narrowed to `Float` (`Render/Gltf.hs:261-264`,
-    `311-314`). Only a coordinate within float noise of a half-quantum boundary
+    span` through an `Integer`, then narrowed to `Float` (`Render/Gltf.hs:295-298`,
+    `345-348`). Only a coordinate within float noise of a half-quantum boundary
     can flip. `canonicalPiece` picks each clipped piece's first corner by
-    packed position (`:386-399`); two corners that pack equal keep input
+    packed position (`:420-433`); two corners that pack equal keep input
     order, so a tie is still order-sensitive. Material weights are rounded at
-    1e-10 (`:402-406`).
+    1e-10 (`:436-440`).
 
 15. **GLB JSON numbers that are *not* rounded.** The JSON chunk embeds
-    `extras.senbazuru.frame` (`Gltf.hs:236-243`), and some of its numbers go
+    `extras.senbazuru.frame` (`Gltf.hs:269-277`), and some of its numbers go
     out raw:
 
     - `storedFrame` replaces `vertices_coords` with packed points, but keeps
       `edges_foldAngle` as it is. It also keeps `senbazuru:material_coords`,
-      `source_panels` and `source_edges` from `frameExtras` (`:241-242`).
-    - `layerRequirements` writes its `direction` vector raw (`:236`), and
+      `source_panels` and `source_edges` from `frameExtras` (`:274-275`).
+    - `layerRequirements` writes its `direction` vector raw (`:269`), and
       `transformSurface` rotates that vector with the rigid motion
       (`Origami/Surface.hs` `transformSurface`), so it can carry trig bits.
     - Material coordinates are exact source numbers for the blintz, helmet and
@@ -226,11 +226,11 @@ The PRDs should:
     platforms in its JSON chunk even when every packed position agrees.
 
 16. **FOLD output.** `encodeFoldFile` is aeson `encode` plus a newline
-    (`Fold/Load.hs:182-183`). Doubles go through `toJSON` (a `Scientific`),
+    (`Fold/Load.hs:234-235`). Doubles go through `toJSON` (a `Scientific`),
     which drops negative zero (`Fold/Types.hs:585-596`). Given identical bits
     the text is deterministic, so every coordinate is platform-sensitive, and
     so is any angle or material coordinate computed with trig. Angles a flap
-    step writes are `angle + progress * travel` (`Flap.hs:355`). That is basic
+    step writes are `angle + progress * travel` (`Flap.hs:469`). That is basic
     IEEE arithmetic on the author's numbers, so it is identical across
     platforms, whereas petal-stage angles (`birdHinges`) involve trig.
 
@@ -244,15 +244,15 @@ The PRDs should:
 18. **Plumbing that exists today.**
     - `goldenText` and `goldenBytes` write `.actual.svg` / `.actual.glb` next
       to the golden and report the first differing line or byte
-      (`test/Test/Golden.hs:38-125`). `.gitignore` excludes those files.
+      (`test/Test/Golden.hs:38-127`). `.gitignore` excludes those files.
     - GLB goldens are made by folding a fixture, then `renderGlb defaultBudget
-      VisiblePaper` (`test/Senbazuru/Render/GltfSpec.hs:70-77`, `644-658`).
+      VisiblePaper` (`test/Senbazuru/Render/GltfSpec.hs:78-85`, `613-627`).
     - `stepPage` has signature `Theme -> Budget -> Grid -> View -> Bool ->
       [Frame]` (`Render/Steps.hs:90-100`). With arrows on, it calls
       `motionsBetween`, which refuses a pair whose `edges_vertices` or
       `faces_vertices` differ (`Origami/Step.hs:88-96`).
     - The CLI's `--steps` refuses `--frame`, `--fold` and `--stacking`
-      (`app/Senbazuru/Cli.hs:843-851`).
+      (`app/Senbazuru/Cli.hs:957-965`).
     - No test invokes the CLI (a grep of `test/` finds no `Senbazuru.Cli`,
       `readProcess` or `callProcess`). `Senbazuru.Cli` is in `app/`, outside
       the test suite's `hs-source-dirs`.
@@ -341,7 +341,7 @@ For platform stability:
 
 1. Should the sequence runner cache one `foldFrameWith` result per state
    instead of re-folding? `Flap.prepareFlapAlong` deliberately rebuilds the
-   start from angles (`Flap.hs:172-184`), so caching needs the library to
+   start from angles (`Flap.hs:244-256`), so caching needs the library to
    accept a trusted value. Does that weaken the `FlapStartMismatch` guarantee?
 2. Should per-step budgets live in the sequence text (author-visible), in the
    runner's defaults, or only in tests?
@@ -351,7 +351,7 @@ For platform stability:
    coordinates are rounded like `packedWeight`.
 4. Should `extras.senbazuru.frame`'s raw doubles (angles, material coordinates,
    layer directions) be rounded at export the way material weights are
-   (`Gltf.hs:402-406`)? That would change existing goldens, against the
+   (`Gltf.hs:436-440`)? That would change existing goldens, against the
    keep-default-output rule, so it would need its own issue.
 5. Does moving `BlintzSequenceSpec`/`HelmetSequenceSpec`/`CraneWingSpec`/`CheckedBirdSpec`
    fixtures from `runIO` to `beforeAll` belong to #208 or to the sequence PRDs?
@@ -394,7 +394,7 @@ For platform stability:
    was not authorised. The repo's own evidence (finding 12) is the owner's
    observation, not a controlled comparison.
 5. **Whether `hasRelief` (which sets the `2D`/`3D` frame attribute,
-   `Folding.hs:387`) uses a tolerance.** Not checked. If it compares z against
+   `Folding.hs:401`) uses a tolerance.** Not checked. If it compares z against
    exactly 0, it would make E4's exact attribute comparison platform-sensitive.
 6. **The crane stacking figure of "about 60ms"** (`Stacking.hs:180-183`) is
    the repository's claim, not re-measured.

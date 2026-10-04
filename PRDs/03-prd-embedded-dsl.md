@@ -62,7 +62,7 @@ equals the blintz parsed from text once source positions are stripped.
   steps depend on computed results ([F] "B. Embedding styles", finding 14).
 - **The library has no `State` dependency.** Its `build-depends` has no
   `transformers` or `mtl`
-  ([`senbazuru.cabal:152-159`](../senbazuru.cabal#L152-L159)).
+  ([`senbazuru.cabal:213-222`](../senbazuru.cabal#L213-L222)).
 
 ## Goals
 
@@ -243,7 +243,7 @@ hingeOf, creaseOf :: Ref StepK -> Line
   once.
 - Neither state holds a `Frame`, so building cannot fold, fail or do I/O.
 - `Name` derives `IsString`, which lets `step "c1"` typecheck under the package's
-  `OverloadedStrings` ([`senbazuru.cabal:95-99`](../senbazuru.cabal#L95-L99)).
+  `OverloadedStrings` ([`senbazuru.cabal:139-143`](../senbazuru.cabal#L139-L143)).
 - **Captions.** A step's caption is `Maybe Text`, because the text may leave it out
   ([D12](decisions.md#d12-the-text-syntax),
   [04](04-prd-sequence-source-and-cli.md#how-the-ambiguities-are-resolved)).
@@ -571,11 +571,11 @@ ghci> either (T.putStrLn . explain) (\f -> saveFoldFile "blintz.foldseq.fold" f 
 - **Why `:set` is explicit.** Stack's docs do not say whether the cabal file's
   default extensions reach the prompt (**UNVERIFIED**).
 - **Existing functions:**
-  - `loadFoldFile`, [`Load.hs:142`](../src/Senbazuru/Fold/Load.hs#L142);
+  - `loadFoldFile`, [`Load.hs:194`](../src/Senbazuru/Fold/Load.hs#L194);
   - `keyFrame`, [`Types.hs:128`](../src/Senbazuru/Fold/Types.hs#L128);
   - `defaultBudget`, [`Stacking.hs:184`](../src/Senbazuru/Origami/Stacking.hs#L184);
-  - `saveFoldFile`, [`Load.hs:190`](../src/Senbazuru/Fold/Load.hs#L190), whose error
-    has an `Explain` instance ([`:168`](../src/Senbazuru/Fold/Load.hs#L168)).
+  - `saveFoldFile`, [`Load.hs:242`](../src/Senbazuru/Fold/Load.hs#L242), whose error
+    has an `Explain` instance ([`:220`](../src/Senbazuru/Fold/Load.hs#L220)).
 
 ### Rejected alternatives
 
@@ -638,7 +638,7 @@ All run in default CI; only A-6 folds paper. `stripSpans` sets every span to
   need the parser and printer. `transformers` joins the library stanza with
   megaparsec and parser-combinators ([04](04-prd-sequence-source-and-cli.md)).
   QuickCheck is already a test dependency
-  ([`senbazuru.cabal:321`](../senbazuru.cabal#L321)).
+  ([`senbazuru.cabal:496`](../senbazuru.cabal#L496)).
 - **M2.** `Sequence.Record` with `Run` and `writtenStates`, the runner and the
   writer ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)), for
   A-6 and GHCi.

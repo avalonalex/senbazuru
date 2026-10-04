@@ -66,7 +66,7 @@ is folded flat ([glossary](../docs/glossary.md#origami);
 - **Why move 4 names `FaceId 1`.** Because the file records no faces, they are
   *traced*: worked out from the creases by following edges round each region.
   `foldFrameWith` does this through `Fold.Crossings.withPlanarFaces`
-  ([`Folding.hs:286-289`](../src/Senbazuru/Origami/Folding.hs#L286-L289)).
+  ([`Folding.hs:287-290`](../src/Senbazuru/Origami/Folding.hs#L287-L290)).
   Tracing finds the four corner triangles, then the central square. The recipe
   moves the square to the front, as `[centre, a, b, c, d]`
   ([`BlintzSequence.hs:44-47`](../study/fold-material/BlintzSequence.hs#L44-L47)).
@@ -128,7 +128,7 @@ Reading the source ([references](glossary-additions.md#references)):
   recipe gets the same effect by putting the central square first
   ([`BlintzSequence.hs:44-47`](../study/fold-material/BlintzSequence.hs#L44-L47)),
   because folding holds the first face still
-  ([`Folding.hs:583-585`](../src/Senbazuru/Origami/Folding.hs#L583-L585)).
+  ([`Folding.hs:597-599`](../src/Senbazuru/Origami/Folding.hs#L597-L599)).
 - **`sheet "…"`** is relative to the source file, here at the repository root.
 
 **Checked against the fixture.** The script below uses exact fractions. For each
@@ -176,7 +176,7 @@ the next, so each fold line is exactly one existing crease and no move adds one.
 **Which way the corners go.** The recipe folds them below the sheet
 ([`BlintzGallery.hs:3-4`](../study/fold-material/BlintzGallery.hs#L3-L4);
 every corner `Below` the centre,
-[`BlintzSequenceSpec.hs:108`](../test/BlintzSequenceSpec.hs#L108)). Seen from +z
+[`BlintzSequenceSpec.hs:109`](../test/BlintzSequenceSpec.hs#L109)). Seen from +z
 that is a mountain, hence `behind`. The study has a second copy of this fold: the
 `blintz` case in `cases.json`, a list of per-state angles the study executable
 reads. It turns the same edges to +90° and then +175°, which is up
@@ -210,19 +210,19 @@ run a sequence source or a `Sequence`: nothing in it performs a list of moves.
 | Piece | What it does | Where |
 | --- | --- | --- |
 | `Fold.Creasing.creaseAllAlong` | adds creases to a *crease pattern*, the flat sheet with its creases marked | [`Creasing.hs:138`](../src/Senbazuru/Fold/Creasing.hs#L138) |
-| `Origami.ThroughLayers.creaseThroughLayers` | creases every layer under a line on a [flat-folded](glossary-additions.md#words-the-prds-narrow) model, returning "a crease pattern, never a folded form" (where the paper ends up) | [`ThroughLayers.hs:220-227`](../src/Senbazuru/Origami/ThroughLayers.hs#L220-L227) |
-| `Origami.Folding.foldFrameWith` | turns fold angles into a `Folded`: the folded form, the *cut* pattern its ids refer to (creases split into pieces where they cross; no slit, which is what FOLD's `C` means), and one [rigid transform](../docs/glossary.md#geometry) per face | [`Folding.hs:283-322`](../src/Senbazuru/Origami/Folding.hs#L283-L322), [`:331`](../src/Senbazuru/Origami/Folding.hs#L331) |
-| `Origami.Flap` | one hinge turn: `prepareFlap` picks it by ids, `checkFlap` checks the whole path for paper crossing paper, `flapAt` poses it | [`Flap.hs:157`](../src/Senbazuru/Origami/Flap.hs#L157), [`:252`](../src/Senbazuru/Origami/Flap.hs#L252), [`:294`](../src/Senbazuru/Origami/Flap.hs#L294) |
+| `Origami.ThroughLayers.creaseThroughLayers` | creases every layer under a line on a [flat-folded](glossary-additions.md#words-the-prds-narrow) model, returning "a crease pattern, never a folded form" (where the paper ends up) | [`ThroughLayers.hs:221-228`](../src/Senbazuru/Origami/ThroughLayers.hs#L221-L228) |
+| `Origami.Folding.foldFrameWith` | turns fold angles into a `Folded`: the folded form, the *cut* pattern its ids refer to (creases split into pieces where they cross; no slit, which is what FOLD's `C` means), and one [rigid transform](../docs/glossary.md#geometry) per face | [`Folding.hs:284-323`](../src/Senbazuru/Origami/Folding.hs#L284-L323), [`:345`](../src/Senbazuru/Origami/Folding.hs#L345) |
+| `Origami.Flap` | one hinge turn: `prepareFlap` picks it by ids, `checkFlap` checks the whole path for paper crossing paper, `flapAt` poses it | [`Flap.hs:198`](../src/Senbazuru/Origami/Flap.hs#L198), [`:368`](../src/Senbazuru/Origami/Flap.hs#L368), [`:416`](../src/Senbazuru/Origami/Flap.hs#L416) |
 | `Origami.Surface` | what renderers and the study receive: topology, positions, material coordinates | [`Surface.hs:115`](../src/Senbazuru/Origami/Surface.hs#L115) |
-| `Render.Steps.stepPage`, `Render.Gltf.renderSurfaceGlb` | a page of figures from `[Frame]`; a GLB (glTF's binary 3D file) from a surface | [`Steps.hs:90`](../src/Senbazuru/Render/Steps.hs#L90), [`Gltf.hs:219`](../src/Senbazuru/Render/Gltf.hs#L219) |
+| `Render.Steps.stepPage`, `Render.Gltf.renderSurfaceGlb` | a page of figures from `[Frame]`; a GLB (glTF's binary 3D file) from a surface | [`Steps.hs:90`](../src/Senbazuru/Render/Steps.hs#L90), [`Gltf.hs:246`](../src/Senbazuru/Render/Gltf.hs#L246) |
 
 None of the CLI's six verbs (`render`, `info`, `check`, `export`, `crease`,
 `fold`) reads a sequence source
-([`Cli.hs:78-84`](../app/Senbazuru/Cli.hs#L78-L84),
-[`:218-247`](../app/Senbazuru/Cli.hs#L218-L247)). `render --steps` draws an
+([`Cli.hs:81-87`](../app/Senbazuru/Cli.hs#L81-L87),
+[`:228-263`](../app/Senbazuru/Cli.hs#L228-L263)). `render --steps` draws an
 existing *sequence*, a multi-frame FOLD file
 ([glossary](../docs/glossary.md#the-fold-format)), but performs no moves
-([`:576-580`](../app/Senbazuru/Cli.hs#L576-L580)).
+([`:675-679`](../app/Senbazuru/Cli.hs#L675-L679)).
 
 The only code that performs moves one after another is the study's recipes, and
 they write a sequence down in four forms, of which the blintz table is one
@@ -260,8 +260,8 @@ metadata and its first frame
 ### The material study
 
 `study/fold-material/` builds `senbazuru-material-study`
-([`senbazuru.cabal:175`](../senbazuru.cabal#L175)), and the test suite also
-compiles it ([`:193`](../senbazuru.cabal#L193)). Its solver has three defining
+([`senbazuru.cabal:238`](../senbazuru.cabal#L238)), and the test suite also
+compiles it ([`:258`](../senbazuru.cabal#L258)). Its solver has three defining
 properties
 ([B-material-study-mechanics](research/B-material-study-mechanics.md)
 "Summary"):
@@ -280,7 +280,7 @@ unfolded sheet ([`FoldRelaxation.hs:3-8`](../study/fold-material/FoldRelaxation.
 Springs resist each crease turning away from a preferred angle and each panel
 bending. A penalty pushes apart layers that overlap, measured along one fixed
 direction (`relaxPinnedContact`,
-[`:256`](../study/fold-material/FoldRelaxation.hs#L256)). The rows for
+[`:263`](../study/fold-material/FoldRelaxation.hs#L263)). The rows for
 [Gauss–Newton, line search and penalty contact](glossary-additions.md#material)
 name the numerical methods. Separately, `CheckedBird` carries exact
 [certificates](glossary-additions.md#assurance) for routes where several creases
@@ -301,20 +301,20 @@ These figures are recorded in repository notes, not re-measured
 - thickness is stored and not interpreted.
 
 The only path from a rigid fold to bent paper is `craneSpreadWith`
-([`CraneSpread.hs:84-139`](../study/fold-material/CraneSpread.hs#L84-L139)). It
+([`CraneSpread.hs:85-140`](../study/fold-material/CraneSpread.hs#L85-L140)). It
 takes one hand-built move, not a surface: `CraneWing`'s 90° turn of one crane wing
 ([`CraneWing.hs:140`](../study/fold-material/CraneWing.hs#L140)). From that move it
 takes:
 
-- the start state (`:85`);
+- the start state (`:108`);
 - a rigid pose 30° into the 90° turn, written `30 / 90` because `flapAt` takes a
-  fraction of the move (`:86`);
-- the moving faces (`:88`);
-- the hinge edge ids (`:91`, `:97`);
+  fraction of the move (`:109`);
+- the moving faces (`:111`);
+- the hinge edge ids (`:114`, `:120`);
 - the start state's accepted face orders, turned into lower/upper contact pairs
-  along +z (`:108-114`).
+  along +z (`:133-139`).
 
-It also derives *rest angles*, the angles its springs prefer (`:89-93`). The
+It also derives *rest angles*, the angles its springs prefer (`:112-116`). The
 hinge creases prefer that 30° pose's angles. Every other crease prefers −180° if
 its assignment (its mountain or valley label) is mountain, and +180° otherwise.
 See [gap-study-consumption-contract](research/gap-study-consumption-contract.md)

@@ -168,7 +168,7 @@ states, never the working pattern
 
 | Part | What it is | Why |
 | --- | --- | --- |
-| *Working pattern* | The crease pattern cut at crossings, in material coordinates: rings counter-clockwise, the anchor's face first, intent assignments, explicit `edges_foldAngle`, and the accepted orders as `faceOrders` | Folding holds the first face still ([`Folding.hs:577-585`](../src/Senbazuru/Origami/Folding.hs#L577-L585)) and reads explicit angles first ([`:507-512`](../src/Senbazuru/Origami/Folding.hs#L507-L512)) |
+| *Working pattern* | The crease pattern cut at crossings, in material coordinates: rings counter-clockwise, the anchor's face first, intent assignments, explicit `edges_foldAngle`, and the accepted orders as `faceOrders` | Folding holds the first face still ([`Folding.hs:591-599`](../src/Senbazuru/Origami/Folding.hs#L591-L599)) and reads explicit angles first ([`:521-526`](../src/Senbazuru/Origami/Folding.hs#L521-L526)) |
 | *Directional layer requirements* | Face pairs a material solve keeps in order along a direction ([glossary-additions](glossary-additions.md#running-a-sequence)), where a move supplied them | The material consumer reads them ([07](07-prd-material-consumption.md)) |
 | *Anchor* | A material point | Face ids do not survive creasing ([A1](research/A1-library-fold-solver.md) "(c) Identifiers that do not survive, and the ones that do") |
 | *Anchor placement* | A `Rigid`: a proper rotation, identity at start, possibly built with trigonometry | Keeps the picture still across a re-anchor (§2.3) |
@@ -192,7 +192,7 @@ at 0 before the paper turns and again after an `unfold`. That departs from
 pre-crease's crease is the exception: it has no direction, so it is U (§6.4).
 
 - *Why it is needed.* `Flap` turns only M, V or U
-  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)), and a collapse binds on
+  ([`Flap.hs:262`](../src/Senbazuru/Origami/Flap.hs#L262)), and a collapse binds on
   direction (§8.2).
 - *Why it is safe.* Folding reads explicit angles before assignments. Stacking takes
   a crease's direction from a nonzero angle first, and from its assignment only at 0
@@ -215,7 +215,7 @@ are [D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)'s
      the file has;
    - one whose `Query.frameKind` is `FoldedForm`, as `SheetAlreadyFolded`. That is
      the test folding uses for `AlreadyFolded`
-     ([`Folding.hs:338-339`](../src/Senbazuru/Origami/Folding.hs#L338-L339)).
+     ([`Folding.hs:352-353`](../src/Senbazuru/Origami/Folding.hs#L352-L353)).
 2. **Clean-up.** Drop `faceOrders` and `frameExtras`, apply `withPlanarFaces`, and
    normalise the rings.
 3. **Intent.** M and V are kept. An F crease whose file angle is outside ±τ becomes
@@ -238,7 +238,7 @@ are [D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)'s
      [`HelmetSequence.hs:39`](../study/fold-material/HelmetSequence.hs#L39));
    - *`start folded { … }`*, a header field, keeps angles as `foldAnglesOf` reads
      them: explicit angles first, otherwise M −180, V +180 and everything else 0
-     ([`Folding.hs:507-533`](../src/Senbazuru/Origami/Folding.hs#L507-L533)). It then
+     ([`Folding.hs:521-547`](../src/Senbazuru/Origami/Folding.hs#L521-L547)). It then
      chooses a *stacking*, one complete layer order, by §7;
    - *`sheet square`* is the unit square: 4 vertices, 4 border edges, 1 face.
 
@@ -295,7 +295,7 @@ That keeps the reader's side defined (§5). The move `anchor P` does the same on
 demand.
 
 **Why nothing jumps** [reasoned from
-[`Folding.hs:577-585`](../src/Senbazuru/Origami/Folding.hs#L577-L585)]. Rooting the
+[`Folding.hs:591-599`](../src/Senbazuru/Origami/Folding.hs#L591-L599)]. Rooting the
 raw fold at the new face composes every face placement with h⁻¹. Composing the
 anchor placement with h cancels it.
 
@@ -352,7 +352,7 @@ invariants an interpreter must enforce").
 | --- | --- | --- |
 | 1 | Carry accepted angles and orders onto the working pattern. Never feed folded coordinates back as material ([`BlintzSequence.hs:63`](../study/fold-material/BlintzSequence.hs#L63)) | The folded sheet is folded a second time |
 | 2 | Drop `frameExtras` and stale faces on every transform ([`Creasing.hs:265-267`](../src/Senbazuru/Fold/Creasing.hs#L265-L267)) | Stale faces name the wrong paper |
-| 3 | Refold after every handoff, and never patch a `Folded`, folding's result (the cut pattern and where it folds to). Orders reach `Flap` by sitting on the working pattern before the fold. `foldFrameWith` copies them, and it may reverse a face's ring. A `faceOrders` sign is read against its second face's normal, so it then flips every order whose second face it reversed (missing that was [#78](https://github.com/avalonalex/senbazuru/issues/78); [`Folding.hs:385`](../src/Senbazuru/Origami/Folding.hs#L385), [`:482-486`](../src/Senbazuru/Origami/Folding.hs#L482-L486)). The blintz does this ([`BlintzSequence.hs:63-64`](../study/fold-material/BlintzSequence.hs#L63-L64)). A state's first stacking: fold, solve on `foldedFrame`, record the orders on the working pattern, refold. Never attach orders to a `Folded` as [`CraneWing.hs:139`](../study/fold-material/CraneWing.hs#L139) does | `Flap`'s start check ignores orders ([`Flap.hs:172-184`](../src/Senbazuru/Origami/Flap.hs#L172-L184)), so a patch changing only orders passes unseen |
+| 3 | Refold after every handoff, and never patch a `Folded`, folding's result (the cut pattern and where it folds to). Orders reach `Flap` by sitting on the working pattern before the fold. `foldFrameWith` copies them, and it may reverse a face's ring. A `faceOrders` sign is read against its second face's normal, so it then flips every order whose second face it reversed (missing that was [#78](https://github.com/avalonalex/senbazuru/issues/78); [`Folding.hs:399`](../src/Senbazuru/Origami/Folding.hs#L399), [`:496-500`](../src/Senbazuru/Origami/Folding.hs#L496-L500)). The blintz does this ([`BlintzSequence.hs:63-64`](../study/fold-material/BlintzSequence.hs#L63-L64)). A state's first stacking: fold, solve on `foldedFrame`, record the orders on the working pattern, refold. Never attach orders to a `Folded` as [`CraneWing.hs:139`](../study/fold-material/CraneWing.hs#L139) does | `Flap`'s start check ignores orders ([`Flap.hs:244-256`](../src/Senbazuru/Origami/Flap.hs#L244-L256)), so a patch changing only orders passes unseen |
 | 4 | Re-resolve every id after a topology change | Creasing empties faces, and cutting shifts edge ids |
 | 5 | Anchor by material point, and re-anchor as in §2.3 | Re-tracing can put a different face first |
 | 6 | Join-check every step. Positions must agree within 1e-12 × `modelSpan` ([`BlintzSequence.hs:69`](../study/fold-material/BlintzSequence.hs#L69)). Angles, edge lists, face rings, orders and material coordinates must be exactly equal, as at [`CheckedBird.hs:145-146`](../study/fold-material/CheckedBird.hs#L145-L146). `CheckedBird` compares rings as written; the runner compares them as `map sort facesVertices`, so a re-trace that starts a ring at another vertex is not a break | A changed fixture silently inserts a rigid jump ([`BlintzSequence.hs:13-15`](../study/fold-material/BlintzSequence.hs#L13-L15)) |
@@ -625,7 +625,7 @@ places:
 1. **New creases on a flat sheet.** The raw sense names their assignment.
 2. **Creasing through layers.** It is the assignment handed to the library, which
    flips it on face-down layers itself
-   ([`ThroughLayers.hs:321-340`](../src/Senbazuru/Origami/ThroughLayers.hs#L321-L340)).
+   ([`ThroughLayers.hs:322-332`](../src/Senbazuru/Origami/ThroughLayers.hs#L322-L332)).
 3. **The hinge turn.**
    - *Physically,* a valley turns the moving paper towards the reader's side.
    - *In FOLD terms,* each hinge segment's angle changes by A or −A. The sign
@@ -753,7 +753,7 @@ whose only moves are `let`, or which has none, is refused before any geometry as
   [05](05-prd-library-additions.md)'s.
 - **Flat creases cannot hinge.** An existing F crease is refused as
   `ExistingHingeFlat`, because `Flap` turns only M, V or U
-  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)). Giving an F hinge an
+  ([`Flap.hs:262`](../src/Senbazuru/Origami/Flap.hs#L262)). Giving an F hinge an
   intent from the fold's sense, by the per-layer rule creasing uses, is a later
   library function, not v1 ([D8](decisions.md#d8-folding-some-layers)).
 
@@ -783,7 +783,7 @@ implement it are [05](05-prd-library-additions.md)'s.
 1. **Cut every crossed face along the line.** A face counts as crossed only if its
    clip is longer than a [hair](../docs/glossary.md#origami) and its midpoint is
    strictly inside
-   ([`ThroughLayers.hs:285-290`](../src/Senbazuru/Origami/ThroughLayers.hs#L285-L290)).
+   ([`ThroughLayers.hs:286-291`](../src/Senbazuru/Origami/ThroughLayers.hs#L286-L291)).
 2. **Pick the selection.**
    - `flap containing` / `moving`: the seed's component.
    - `top N`: depth at each point along the line, from the reader's side, using the
@@ -1107,8 +1107,8 @@ as in the bird-base source of [decisions §7](decisions.md#7-examples).
 `pose { crease [P, Q] at -90°; … }` sets each named crease's angle, and every other
 crease keeps its own. The result is refolded, so a pose that does not close is
 refused with folding's own `TornAt` or `AngleNotAchieved`
-([`Folding.hs:154`](../src/Senbazuru/Origami/Folding.hs#L154),
-[`:170`](../src/Senbazuru/Origami/Folding.hs#L170)).
+([`Folding.hs:155`](../src/Senbazuru/Origami/Folding.hs#L155),
+[`:171`](../src/Senbazuru/Origami/Folding.hs#L171)).
 
 - **Sign.** A pose angle is a FOLD angle, converted once for the whole model by
   §5.3's rule: negated exactly when presentation `after` anchor placement sends ẑ to
@@ -1239,7 +1239,7 @@ which value.
 
 | Value | Claims |
 | --- | --- |
-| `SweptHinge CheckedFlap` | one hinge turn checked over its whole path; `CheckedFlap` is opaque ([`Flap.hs:98-99`](../src/Senbazuru/Origami/Flap.hs#L98-L99)) |
+| `SweptHinge CheckedFlap` | one hinge turn checked over its whole path; `CheckedFlap` is opaque ([`Flap.hs:125-126`](../src/Senbazuru/Origami/Flap.hs#L125-L126)) |
 | `Sampled CheckedMacro SampleReport` | a coupled route checked at sample poses; `CheckedMacro` is opaque |
 | `StateOnly` | end state checked, route not |
 | `Presented` | only presentation changed |
@@ -1258,8 +1258,8 @@ which value.
   `RoutePose` lives in `Origami.Route`, and `Sequence.Record` re-exports it.
 - **Records derive `Eq`.** No record field holds a function. `Flap`'s `FlapMotion`
   and `CheckedFlap` derive only `Show` today
-  ([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
-  [`:99`](../src/Senbazuru/Origami/Flap.hs#L99)), so 05 adds `Eq` to both.
+  ([`Flap.hs:123`](../src/Senbazuru/Origami/Flap.hs#L123),
+  [`:126`](../src/Senbazuru/Origami/Flap.hs#L126)), so 05 adds `Eq` to both.
 - **`expect refused` has no evidence**, because it produces no record (§9).
 - **Certificates**, exact proofs of one fixture's route, attach after the run in the
   study. They are keyed by macro name and fixture fingerprint, and never downgraded
@@ -1321,7 +1321,7 @@ the writer and the page call it, so the page draws exactly the states the file h
 - *`--frame`.* Every verb counts the key frame as frame 0: `allFrames` puts it first
   ([`Types.hs:209-210`](../src/Senbazuru/Fold/Types.hs#L209-L210)), and `--frame`'s
   help says "default: 0, the key frame"
-  ([`Cli.hs:484-493`](../app/Senbazuru/Cli.hs#L484-L493)). So state k is
+  ([`Cli.hs:515-524`](../app/Senbazuru/Cli.hs#L515-L524)). So state k is
   `--frame k+1`. **That looks off by one and is not:** the written key frame holds
   no state. `bird-base-sequence.fold` is laid out the same way, with a key frame of
   no vertices and 16 states [jq], which `docs/usage.md` calls frames 1–16
@@ -1436,11 +1436,11 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `RelationOnOneFace`, `RelationNotOverlapping`, `RelationsContradict` | the library's `StackingError` ([05](05-prd-library-additions.md)), wrapped by `StackingChoiceError` | §7: a relation's two points in one face; a relation's faces do not overlap; relations leave none | the relations |
 | `StillAmbiguous`, `SeveralStackings` | `StackingChoiceError` | §7: relations leave two or more; no relations and several stackings, including a macro landing flat (§8.1) | count; open pairs as `layers … above …` |
 | `GaveUpStacking` | `FoldError` ([`Query.hs:139`](../src/Senbazuru/Fold/Query.hs#L139)), wrapped as `StackingRefused` in `StackingError` ([`Stacking.hs:448`](../src/Senbazuru/Origami/Stacking.hs#L448)) | budget exhausted | the budget |
-| `FlapCoupled`, `FlapNotHinge`, `FlapNotBoundary`, `FlapUnalignedCrease`, `FlapEndpointOrder`, `FlapStackOrder`, `FlapStartMismatch` | `FlapError` ([`Flap.hs:107-124`](../src/Senbazuru/Origami/Flap.hs#L107-L124)) in `MoveFailure` | the hinge turn is refused | the library's words; ids as internal |
+| `FlapCoupled`, `FlapNotHinge`, `FlapNotBoundary`, `FlapUnalignedCrease`, `FlapEndpointOrder`, `FlapStackOrder`, `FlapStartMismatch` | `FlapError` ([`Flap.hs:142-162`](../src/Senbazuru/Origami/Flap.hs#L142-L162)) in `MoveFailure` | the hinge turn is refused | the library's words; ids as internal |
 | `FlapMovingNotFlat` | `FlapError`, with `prepareFlapToward` ([05](05-prd-library-additions.md) L14), in `MoveFailure` | a moving face beside the hinge does not lie flat by `hasRelief` (§5.3) | the face, internal |
 | `FlapMovesBothWays` | `FlapError`, with `prepareFlapToward` ([05](05-prd-library-additions.md) L14), in `MoveFailure` | moving faces beside the hinge lie on both sides of its line, whatever the size of the turn (§5.3) | two faces, internal |
-| `TornAt`, `AngleNotAchieved` | `FoldingError` ([`Folding.hs:154`](../src/Senbazuru/Origami/Folding.hs#L154), [`:170`](../src/Senbazuru/Origami/Folding.hs#L170)) in `MoveFailure` | a pose, checkpoint or macro pose fails to close | the vertex or crease, internal |
-| `LineStopsOnTheModel` | `ThroughError` ([`ThroughLayers.hs:154`](../src/Senbazuru/Origami/ThroughLayers.hs#L154)) in `MoveFailure` | a line end inside a face while creasing through layers | the point given, after the flag-leak fix ([05](05-prd-library-additions.md)) |
+| `TornAt`, `AngleNotAchieved` | `FoldingError` ([`Folding.hs:155`](../src/Senbazuru/Origami/Folding.hs#L155), [`:171`](../src/Senbazuru/Origami/Folding.hs#L171)) in `MoveFailure` | a pose, checkpoint or macro pose fails to close | the vertex or crease, internal |
+| `LineStopsOnTheModel` | `ThroughError` ([`ThroughLayers.hs:155`](../src/Senbazuru/Origami/ThroughLayers.hs#L155)) in `MoveFailure` | a line end inside a face while creasing through layers | the point given, after the flag-leak fix ([05](05-prd-library-additions.md)) |
 | `ReanchorNotFlat` | `MoveFailure` | §2.3 | the face, as a material point |
 | `JoinBroken` | `MoveFailure` | invariant 6 | which quantity differed, and by how much |
 | `MoveLeavesFigure` | `MoveFailure` | §6.5 | the move; a material point; "start a new step" |

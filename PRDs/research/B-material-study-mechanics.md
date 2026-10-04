@@ -37,27 +37,27 @@ ids or owners.
 
 | Capability (entry point) | Inputs | Outputs | General vs fixture | What the measurements say | Recorded cost |
 | --- | --- | --- | --- | --- | --- |
-| Length restoration `FoldRelaxation.relaxLengths` (FoldRelaxation.hs:219-220) | `Settings`, `MaterialMesh` | `Relaxation` (checkpoints, `converged`) | General | Lengths alone leave neighbours free to rotate and produced a 2.9e-4 layer crossing (restoring-material-lengths.md:19-25) | not recorded |
-| Packet contact `relaxPacket` + `FoldContact` (FoldRelaxation.hs:224-225; FoldContact.hs:143-148) | `FoldCase` (`Single`/`Double`) | as above | **Fixture**: layer order hard-coded from `u`,`v` of the unit square | Double fold 2,048 triangles reached 0.000852% edge error at iteration 69 with no order violations (restoring-material-lengths.md:87-97) | not recorded |
-| Crease and panel springs `FoldBending.buildSurfaceHinges` / `buildSelectedSurfaceHinges` / `buildPanelHinges` (FoldBending.hs:146-191) | `Bending{creaseStiffness,panelStiffness}`, refinement level, `Surface V2`, `Map EdgeId Double` rest angles | `RefinedSurface`, `[Hinge]` | General; `buildHinges` (121-136) is fixture (`u = 0.5` test) | Stiffer panels bend less but miss crease targets more: at B=5, creases reach 179.30-179.71° for a 170° target (crease-and-panel-energy.md:71-78) | not recorded |
-| Staged elastic solve `relaxBending` / `relaxHinges` (FoldRelaxation.hs:227-242) | `Settings`, `[Hinge]`, mesh | `Relaxation` + `EquilibriumCheck` | `relaxHinges` general, no contact force; `relaxBending` uses packet contact | Penalty stages 1e2..1e8, contact weight 100x, damping 1e-3, full-step movement <= 1e-7 required (FoldRelaxation.hs:491, 584-586, 645) | - |
-| Exact grips `relaxPinnedHinges` (FoldRelaxation.hs:244-251) | `IntMap V3` pins keyed by **refined mesh vertex id** | `Relaxation` | General | Held wing at 8/16/24 divisions all converge; 16->24 changes positions 0.000418, energy 1.7% (held-wing-bending.md:30-42); known strip recovered within 1.3e-7 (44-50) | - |
-| Held contact `relaxPinnedContact` + `SurfaceContact.prepareContact` + `SparseSolve` factor (FoldRelaxation.hs:253-261, 609) | pins, hinges, `OrderedContact` (clearance, direction, lower/upper `FaceId` pairs, owner per triangle) | `Relaxation` | General in type; **one fixed direction** and **supplied orders** | Two layers 8/16/24 divisions converge (coupled-touching-layer-solve.md:47-59). Crane wing with body held passes at 392 and 1,192 triangles (spreading-connected-wing.md:63-73). Releasing four body panels: unconverged after 118 iterations, edge error 3.75e-5, angle error 0.0187 rad, 49 crossing pairs (body-angle-preferences.md:70-75; wing-root-holds.md:73-79) | 0.83/6.75/35.71 CPU s (two layers); 0.47/5.76/64.30 s (crane wing); ~9 CPU min each failed body trial (body-angle-preferences.md:79); 549 and 468 s internal diagnostics (internal-crease-diagnostic.md:107-108) |
-| Audit and continuation `diagnosePinnedContact` / `continuePinnedContact` (FoldRelaxation.hs:263-278) | same | + `TrialDiagnostics` | General | 80 more final-stage iterations: edge error 3.75e-5 -> 2.07e-5 but angle error 0.0187 -> 0.0194; still invalid (internal-crease-diagnostic.md:42-48) | +452 CPU s |
-| Declared / discovered panel order `relaxSurfaceContact`, `relaxDiscoveredContact` (FoldRelaxation.hs:280-289; ContactDiscovery.hs:1-24) | orders, or a **separated reference pose** | `Relaxation` | General, but discovery refuses any pair not ordered in the reference (ContactDiscovery.hs:208-216) | Small controls only | - |
-| Local triangle contact and growing history `relaxLocalContact`, `relaxLocalHistory` (FoldRelaxation.hs:291-306; LocalContactDiscovery.hs:1-32) | `LocalReference` (clearance, search distance, axis) | `Relaxation`, learned reference | General; history only from accepted steps | Small curl fixtures | - |
-| Path-checked corrections `relaxSweptLocalHistory` + `CorrectionSweep` (FoldRelaxation.hs:408-412; CorrectionSweep.hs:1-21) | + `CorrectionSettings` (default depth 16, budget 1024; CorrectionSweep.hs:58-59) | `SweptRelaxation` with accepted paths | General, exact rational Bernstein bounds | Closing strip stalls at 1.13% edge error because the penalty jumps discontinuously when shadows first overlap (rejected-bending-trials.md:3-5, 29-40) | not recorded |
-| Distance barrier `relaxBarrierLocalHistory` + `DirectionalDistance` (FoldRelaxation.hs:414-417; SurfaceContact.hs:203-238) | + activation distance `h` | as above | General for disjoint triangle pairs | Same closing strip settles in 99 corrections at 1.18e-8; also at h = 0.0005 and 0.002 (directional-contact-distance.md:52-61) | not recorded |
-| Exact nonnegative contact `ContactQuadratic` + `CreaseInequality` (ContactQuadratic.hs:1-16; CreaseInequality.hs:96-120) | material rows, linear gap inequalities | step + `QuadraticReport` | **Fixture**: dense working set "deliberately limited to the small fixture" (ContactQuadratic.hs:16); whole lower panel must be held (CreaseInequality.hs:102) | 32/64 triangles: exact minimum gap 0 where the penalty leaves -5.9e-11/-8.4e-11 (nonnegative-crease-contact.md:69-77) | recorded in gallery JSON, not in note |
-| Both panels moving `CreasePairContact` + `CoupledCrease` / `UnequalCrease` | owners must be `FaceId 0`/`1` (CreasePairContact.hs:62), facing preserved (76), all shared crease vertices held (CoupledCrease.hs:75), repair only along z | `InequalityResult` | **Fixture** | Symmetric: gap 0, edge error 7.39e-7/3.22e-6 (coupled-crease-contact.md:63-71). Unequal preference: max gap 7.271e-7 at 32 triangles becomes 0.007009 at 64 (unequal-crease-controls.md:56-61, 87-93) | - |
+| Length restoration `FoldRelaxation.relaxLengths` (FoldRelaxation.hs:226-227) | `Settings`, `MaterialMesh` | `Relaxation` (checkpoints, `converged`) | General | Lengths alone leave neighbours free to rotate and produced a 2.9e-4 layer crossing (restoring-material-lengths.md:19-25) | not recorded |
+| Packet contact `relaxPacket` + `FoldContact` (FoldRelaxation.hs:231-232; FoldContact.hs:143-148) | `FoldCase` (`Single`/`Double`) | as above | **Fixture**: layer order hard-coded from `u`,`v` of the unit square | Double fold 2,048 triangles reached 0.000852% edge error at iteration 69 with no order violations (restoring-material-lengths.md:87-97) | not recorded |
+| Crease and panel springs `FoldBending.buildSurfaceHinges` / `buildSelectedSurfaceHinges` / `buildPanelHinges` (FoldBending.hs:149-194) | `Bending{creaseStiffness,panelStiffness}`, refinement level, `Surface V2`, `Map EdgeId Double` rest angles | `RefinedSurface`, `[Hinge]` | General; `buildHinges` (121-136) is fixture (`u = 0.5` test) | Stiffer panels bend less but miss crease targets more: at B=5, creases reach 179.30-179.71° for a 170° target (crease-and-panel-energy.md:71-78) | not recorded |
+| Staged elastic solve `relaxBending` / `relaxHinges` (FoldRelaxation.hs:234-249) | `Settings`, `[Hinge]`, mesh | `Relaxation` + `EquilibriumCheck` | `relaxHinges` general, no contact force; `relaxBending` uses packet contact | Penalty stages 1e2..1e8, contact weight 100x, damping 1e-3, full-step movement <= 1e-7 required (FoldRelaxation.hs:543, 636-638, 702) | - |
+| Exact grips `relaxPinnedHinges` (FoldRelaxation.hs:251-258) | `IntMap V3` pins keyed by **refined mesh vertex id** | `Relaxation` | General | Held wing at 8/16/24 divisions all converge; 16->24 changes positions 0.000418, energy 1.7% (held-wing-bending.md:30-42); known strip recovered within 1.3e-7 (44-50) | - |
+| Held contact `relaxPinnedContact` + `SurfaceContact.prepareContact` + `SparseSolve` factor (FoldRelaxation.hs:260-268, 661) | pins, hinges, `OrderedContact` (clearance, direction, lower/upper `FaceId` pairs, owner per triangle) | `Relaxation` | General in type; **one fixed direction** and **supplied orders** | Two layers 8/16/24 divisions converge (coupled-touching-layer-solve.md:47-59). Crane wing with body held passes at 392 and 1,192 triangles (spreading-connected-wing.md:63-73). Releasing four body panels: unconverged after 118 iterations, edge error 3.75e-5, angle error 0.0187 rad, 49 crossing pairs (body-angle-preferences.md:70-75; wing-root-holds.md:73-79) | 0.83/6.75/35.71 CPU s (two layers); 0.47/5.76/64.30 s (crane wing); ~9 CPU min each failed body trial (body-angle-preferences.md:79); 549 and 468 s internal diagnostics (internal-crease-diagnostic.md:107-108) |
+| Audit and continuation `diagnosePinnedContact` / `continuePinnedContact` (FoldRelaxation.hs:270-285) | same | + `TrialDiagnostics` | General | 80 more final-stage iterations: edge error 3.75e-5 -> 2.07e-5 but angle error 0.0187 -> 0.0194; still invalid (internal-crease-diagnostic.md:42-48) | +452 CPU s |
+| Declared / discovered panel order `relaxSurfaceContact`, `relaxDiscoveredContact` (FoldRelaxation.hs:310-319; ContactDiscovery.hs:1-24) | orders, or a **separated reference pose** | `Relaxation` | General, but discovery refuses any pair not ordered in the reference (ContactDiscovery.hs:208-216) | Small controls only | - |
+| Local triangle contact and growing history `relaxLocalContact`, `relaxLocalHistory` (FoldRelaxation.hs:321-336; LocalContactDiscovery.hs:1-32) | `LocalReference` (clearance, search distance, axis) | `Relaxation`, learned reference | General; history only from accepted steps | Small curl fixtures | - |
+| Path-checked corrections `relaxSweptLocalHistory` + `CorrectionSweep` (FoldRelaxation.hs:459-463; CorrectionSweep.hs:1-21) | + `CorrectionSettings` (default depth 16, budget 1024; CorrectionSweep.hs:58-59) | `SweptRelaxation` with accepted paths | General, exact rational Bernstein bounds | Closing strip stalls at 1.13% edge error because the penalty jumps discontinuously when shadows first overlap (rejected-bending-trials.md:3-5, 29-40) | not recorded |
+| Distance barrier `relaxBarrierLocalHistory` + `DirectionalDistance` (FoldRelaxation.hs:465-468; SurfaceContact.hs:242-277) | + activation distance `h` | as above | General for disjoint triangle pairs | Same closing strip settles in 99 corrections at 1.18e-8; also at h = 0.0005 and 0.002 (directional-contact-distance.md:52-61) | not recorded |
+| Exact nonnegative contact `ContactQuadratic` + `CreaseInequality` (ContactQuadratic.hs:1-22; CreaseInequality.hs:96-120) | material rows, linear gap inequalities | step + `QuadraticReport` | **Fixture**: dense working set "deliberately limited to the small fixture" (ContactQuadratic.hs:22); whole lower panel must be held (CreaseInequality.hs:102) | 32/64 triangles: exact minimum gap 0 where the penalty leaves -5.9e-11/-8.4e-11 (nonnegative-crease-contact.md:69-77) | recorded in gallery JSON, not in note |
+| Both panels moving `CreasePairContact` + `CoupledCrease` / `UnequalCrease` | owners must be `FaceId 0`/`1` (CreasePairContact.hs:87), facing preserved (76), all shared crease vertices held (CoupledCrease.hs:83), repair only along z | `InequalityResult` | **Fixture** | Symmetric: gap 0, edge error 7.39e-7/3.22e-6 (coupled-crease-contact.md:63-71). Unequal preference: max gap 7.271e-7 at 32 triangles becomes 0.007009 at 64 (unequal-crease-controls.md:56-61, 87-93) | - |
 | Exact prescribed references `ClosedCrease`, `FoldMaterial` rounded bends | subdivision / `FoldCase` | meshes | **Fixture**, "not equilibria or folding paths" (ClosedCrease.hs:12; FoldMaterial.hs:18-19) | Rounded double fold stretches 200% in the upper band, +4.71% area (two-bends-need-more-than-radii.md:53-60) | - |
-| Measures `principalStrains`, `maxLengthError` (FoldRelaxation.hs:189-217); `meshEdges`, `edgeStrains`, `componentCount` (FoldMaterial.hs:179-217) | mesh | numbers | General (but live in a fixture module) | - | - |
-| Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:218-265); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:109) | - |
-| Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:212-216; CraneRoot.hs:143-147; CraneBody.hs:111-116) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
+| Measures `principalStrains`, `maxLengthError` (FoldRelaxation.hs:196-224); `meshEdges`, `edgeStrains`, `componentCount` (FoldMaterial.hs:179-217) | mesh | numbers | General (but live in a fixture module) | - | - |
+| Surface export adapters `UncreasedSurface`, `WingLayers.layersSurface`, `ClosedCrease.closedSurface`, `CraneSpread.spreadSurface` | solved mesh + ids | `Surface V2` (triangle faces, J joins, source metadata) | Four near-copies; `spreadSurface` is the general one (CraneSpread.hs:219-264); `UncreasedSurface` is one panel only (UncreasedSurface.hs:7-10) | Feeds `renderSurfaceGlb` (CraneSpreadGallery.hs:119) | - |
+| Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:213-217; CraneRoot.hs:143-147; CraneBody.hs:111-116) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
 
 **2. CI already pays for these solves.** The test suite compiles
-`study/fold-material` (senbazuru.cabal:190-193) and runs short crane solves
-(e.g. `Settings 20 1e-5` at refinement 3, test/CraneSpreadSpec.hs:28). #208
+`study/fold-material` (senbazuru.cabal:253-258) and runs short crane solves
+(e.g. `Settings 20 1e-5` at refinement 3, test/CraneSpreadSpec.hs:33). #208
 records a 10m48s `stack test` step, with the `CraneRoot` group ~164.87 s and
 `CraneSpread` ~97.48 s (approximate wall times, different runners).
 
@@ -65,7 +65,7 @@ records a 10m48s `stack test` step, with the `CraneRoot` group ~164.87 s and
 
 **3. What a solve needs from its caller.** Reconstructed from the one
 end-to-end path that starts at a rigid fold, `CraneSpread.craneSpreadWith`
-(CraneSpread.hs:84-139) and `solveSpread` (136-139):
+(CraneSpread.hs:85-140) and `solveSpread` (136-139):
 
 1. **A `Surface V2`**, i.e. known original-sheet coordinates. Only
    `surfaceFromFolded` guarantees them, and it requires the pattern to lie at
@@ -79,31 +79,31 @@ end-to-end path that starts at a rigid fold, `CraneSpread.craneSpreadWith`
 3. **Rest angles for every active interior crease**, radians, in the **cut
    pattern's** edge numbering, sign matching mountain/valley; the current
    `edges_foldAngle` is deliberately never used as a default
-   (FoldBending.hs:138-145, 177-182). `CraneSpread` supplies ±π for existing
+   (FoldBending.hs:141-148, 180-185). `CraneSpread` supplies ±π for existing
    folds and converts the reference state's degrees for the new hinge
-   (CraneSpread.hs:111-116).
+   (CraneSpread.hs:112-117).
 4. **Stiffness** `Bending 1 0.2` in every crane/wing fixture (e.g.
-   CraneSpread.hs:120), explicitly illustrative (crease-and-panel-energy.md:26-35).
+   CraneSpread.hs:121), explicitly illustrative (crease-and-panel-energy.md:26-35).
 5. **Holds**: an `IntMap V3` keyed by refined mesh vertex id, installed before
-   the first measurement (FoldRelaxation.hs:244-247). Every fixture chooses
+   the first measurement (FoldRelaxation.hs:251-254). Every fixture chooses
    them by coordinate tests on its own geometry: body = vertices of unselected
-   panels, root/grip = y-fraction bands (CraneSpread.hs:123-131).
+   panels, root/grip = y-fraction bands (CraneSpread.hs:124-132).
 6. **Target geometry for moved grips**: a prescribed curve (`bentPoint`,
-   CraneSpread.hs:148-167). The "load" is a displacement, not a force.
+   CraneSpread.hs:149-168). The "load" is a displacement, not a force.
 7. **Contact**: `prepareContact clearance direction pairs owners mesh`
-   (SurfaceContact.hs:131-144), with clearance 0, direction `V3 0 0 1`, owners
+   (SurfaceContact.hs:133-146), with clearance 0, direction `V3 0 0 1`, owners
    = `refinedPanels`, and pairs converted from the flat state's `faceOrders`
-   by the sign of each reference face normal (CraneSpread.hs:132-138), then
+   by the sign of each reference face normal (CraneSpread.hs:133-139), then
    transitively closed **before** dropping pairs with no free vertex
-   (CraneSpread.hs:174-181).
+   (CraneSpread.hs:175-182).
 8. **`Settings`**: iteration limit **per stage** (four stages) and length
-   tolerance (FoldRelaxation.hs:113-121, 491). Everything else is a hidden
+   tolerance (FoldRelaxation.hs:118-126, 543). Everything else is a hidden
    constant: contact weight, damping, CG limit 3000 and floor 1e-6, movement
-   1e-7, 30 halvings, `contactTolerance` 1e-7 (FoldRelaxation.hs:584-611, 643;
+   1e-7, 30 halvings, `contactTolerance` 1e-7 (FoldRelaxation.hs:636-663, 697;
    FoldContact.hs:43-44).
 
 **4. What it returns.** `Either RelaxError Relaxation`: sparse checkpoints (at
-iterations 0,1,2,5,10,20,50 and the end; FoldRelaxation.hs:567), `converged`
+iterations 0,1,2,5,10,20,50 and the end; FoldRelaxation.hs:619), `converged`
 (from the final stage only), and `EquilibriumCheck` (linear report, full
 proposed movement, whether factored; 176-184). Non-convergence is a `Right`,
 not a `Left`. Validity is decided **afterwards** by the caller: independent
@@ -125,8 +125,8 @@ error, then an adapter to `Surface V2` for the renderers.
 - Coincident is not shared: only real crease vertices are shared ids
   (WingLayers.hs:1-4).
 - `hingesWith` refuses material triangles that are not counterclockwise
-  (FoldBending.hs:202-206). `Folding` re-winds every face counterclockwise as
-  it lay in the pattern (Folding.hs:244-252), so the `Folded` path satisfies
+  (FoldBending.hs:205-209). `Folding` re-winds every face counterclockwise as
+  it lay in the pattern (Folding.hs:245-253), so the `Folded` path satisfies
   this; a frame read from a file does not get that guarantee.
 
 **6. A rigid state is already a settled state.** The rigid 30° crane control
@@ -152,10 +152,10 @@ on a unit square. No module in `src` produces a crease radius. Current solved
 
 **8. Thickness is metadata only.** `Surface` stores `Maybe Double`;
 `withPhysicalThickness` states no renderer or contact check interprets it
-(Surface.hs:21-24, 297-304). glTF copies it into `extras` (Gltf.hs:243). Every
+(Surface.hs:21-24, 297-304). glTF copies it into `extras` (Gltf.hs:277). Every
 distance in the contact code disclaims being thickness: clearance
 (SurfaceContact.hs:19-22), search distance (LocalContactDiscovery.hs:17-19),
-barrier activation (SurfaceContact.hs:204), repairs (CoupledCrease.hs:10-11).
+barrier activation (SurfaceContact.hs:243), repairs (CoupledCrease.hs:10-11).
 Uniform positive clearance cannot be added naively: it would contradict a
 shared crease (two-held-paper-layers.md:21-23; SurfaceContact.hs:19-21 uses 0
 for joined panels). #114's comment notes a roll fold has three valid
@@ -164,7 +164,7 @@ display-spacing option was removed on purpose (paper-thickness.md:3-17).
 
 **9. Bending energy is a plausible discrete model, uncalibrated and
 mesh-dependent.** E = k(θ-θ₀)²/2; crease weight κ·l, panel weight B·2l²/(sum
-of twice triangle areas) (FoldBending.hs:18-23, 218). The note says this is not
+of twice triangle areas) (FoldBending.hs:18-23, 221). The note says this is not
 Filipov et al.'s calibrated panel law (crease-and-panel-energy.md:31-35).
 Liu and Paulino (fetched, https://pmc.ncbi.nlm.nih.gov/articles/PMC5666233/)
 also expose separate fold and panel stiffness parameters, with their ratio
@@ -178,7 +178,7 @@ to 0.007 separation (unequal-crease-controls.md:87-93).
 **10. The rest angle is where realism would come from, and that zone is where
 the solver fails.** Real creases spring back to a nonzero rest angle; the note
 reports Mylar settling 30-40° open (a-crease-is-a-hinge.md:28-33). The study's
-170° packet default (FoldBending.hs:77-78) produced achieved 173.8-177.2° on
+170° packet default (FoldBending.hs:80-81) produced achieved 173.8-177.2° on
 the double fold (crease-and-panel-energy.md:71-74). On the crane, a 170°
 preference left the selected folds at essentially 180° inside a failed solve
 (body-angle-preferences.md:75-87).
@@ -198,7 +198,7 @@ scalar barrier and is "not an implementation of that paper's full method"
 **12. Readiness for an arbitrary DSL-authored model.**
 
 - *Ready (in `src`)*: material identity through refinement, `Surface V2`
-  export to both renderers (`renderSurfaceGlb`, Gltf.hs:219;
+  export to both renderers (`renderSurfaceGlb`, Gltf.hs:246;
   `surfaceDiagram`, CreasePattern.hs:156-157), independent static contact
   checks (`Origami.Contact`, tolerance 1e-7, Contact.hs:83-84).
 - *Demonstrated but fixture-driven*: held bending of a small free region with
@@ -222,7 +222,7 @@ only energies (internal-crease-diagnostic.md:92-106; #208). `SparseSolve` is
 "not a bounded-memory solver for arbitrary meshes" (SparseSolve.hs:15-18;
 coupled-touching-layer-solve.md:76-77). From reading the code (not measured):
 `prepareContact` expands each ordered panel pair to all triangle pairs
-(SurfaceContact.hs:141), `localOverlapCandidates` scans all i<j pairs (262-268),
+(SurfaceContact.hs:143), `localOverlapCandidates` scans all i<j pairs (262-268),
 and `CorrectionSweep` checks all triangle pairs in rationals
 (CorrectionSweep.hs:132). Cost grows at least quadratically in triangles,
 multiplied by steps in a sequence. All recorded timings are single runs on one
@@ -257,8 +257,8 @@ wing-root-holds.md:81-88; WingLayers.hs:99-101).
 **17. Layering is already respected.** No `src` or `app` module imports a
 study module (grep; architecture.md:908-912 says the same). The mechanics
 modules import only `Explain`, `Geometry.*`, `Fold.Types/Query`,
-`Origami.Surface/Contact/HingeSweep` (import headers of FoldRelaxation.hs:94-111,
-FoldBending.hs:43-55, SurfaceContact.hs:53-64). None mentions `Render` or
+`Origami.Surface/Contact/HingeSweep` (import headers of FoldRelaxation.hs:98-116,
+FoldBending.hs:46-58, SurfaceContact.hs:55-66). None mentions `Render` or
 `Diagram`, so they would satisfy the `Origami.*` rule (architecture.md:176-179).
 
 **18. But the general core is entangled with fixtures.** Study-internal
@@ -274,12 +274,12 @@ SparseSolve, DirectionalDistance, CorrectionSweep, CreasePairContact <- (nothing
 ```
 
 `FoldRelaxation`'s `ContactMode` includes `PacketContact FoldCase`
-(FoldRelaxation.hs:297, 470-472), so the solver cannot move without dragging
+(FoldRelaxation.hs:327, 522-524), so the solver cannot move without dragging
 the unit-square packet along. Generic measures (`meshEdges`, `edgeStrains`,
 `componentCount`) live in the fixture module `FoldMaterial`.
 
 **19. Error types would need work.** Several study errors are `newtype ... Text`
-built by `explain`ing a lower error (`SpreadError`, CraneSpread.hs:74, 253-254;
+built by `explain`ing a lower error (`SpreadError`, CraneSpread.hs:75, 297-298;
 `InequalityError`, CreaseInequality.hs:46). AGENTS.md:160-162 requires error
 types that point at the offending element; a Text wrapper loses that
 structure. `RelaxError`, `BendingError` and `ContactError` are already
@@ -319,14 +319,14 @@ data Verdict = Accepted | Diagnostic [Reason]
 
 Why this shape: holds in panel ids or material coordinates survive refinement
 (finding 3.5); `FromFaceOrders` encodes the transitive-closure-before-filter
-rule once (CraneSpread.hs:174-181) instead of per fixture; the verdict makes
+rule once (CraneSpread.hs:175-182) instead of per fixture; the verdict makes
 "converged but invalid" unrepresentable as success (finding 14); returning a
 `Surface V2` means both renderers work unchanged (finding 12).
 
 **Not yet general, and the PRD should say so rather than hide it:**
 
 - Contact direction: one fixed axis, and a pair where both triangles stand
-  parallel to it is an error (SurfaceContact.hs:190-191). A step with a flap
+  parallel to it is an error (SurfaceContact.hs:227-228). A step with a flap
   raised to 90° is not supported by the crane solver's contact mode.
 - Contact order source: `faceOrders` exist for coplanar flat states;
   otherwise orders must come from a separated reference pose
@@ -407,7 +407,7 @@ and whether settle is opt-in per step.
 6. Is `SparseSolve` paper knowledge (`Origami.*`) or numerics (a new layer
    that the architecture doc does not yet name)?
 7. How should an unheld (free-floating) settle fix rigid-body motion? Only
-   damping does today (FoldRelaxation.hs:579-584), and the sparse factor is
+   damping does today (FoldRelaxation.hs:631-636), and the sparse factor is
    used only when pins are non-empty (609). No unheld crane solve is recorded.
 8. What CPU budget per step is acceptable for the CLI, given 5-64 s for the
    accepted crane wing and ~9 min for failed body trials?
@@ -432,7 +432,7 @@ and whether settle is opt-in per step.
 - **All runtimes** are the repository's single recorded runs on one machine
   (dates 2026-09-12 to 2026-09-14); none was repeated here.
 - **Clockwise faces from a file-read `Surface`** failing `hingesWith` is
-  inferred from FoldBending.hs:202-206 plus `fan` preserving ring order; not
+  inferred from FoldBending.hs:205-209 plus `fan` preserving ring order; not
   tested.
 - **Whether DSL-authored rigid states commonly produce non-convex panels**
   that `refineSurface` refuses is not known; the roadmap only expects some

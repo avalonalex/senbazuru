@@ -384,7 +384,7 @@ layer's −180 on edge 11 is the M/V alternation through layers.
   `[-180, 180, -180, -180]`.
 
 `Origami/Folding.hs:46-47` ("a valley — positive, in FOLD — lifts the child
-towards the viewer"), `:643`; `Render/Camera.hs:107` (`topDown` looks along
+towards the viewer"), `:657`; `Render/Camera.hs:107` (`topDown` looks along
 −z); spine D3 lines 194-197, §5 lines 735-737 and 752-759.
 
 **Proposal.** Replace the example with:
@@ -620,7 +620,7 @@ new edge ids) is the same gap at the flat level.
 
 **Evidence.** `AGENTS.md:218-225`; `Fold/Creasing.hs:138` (`creaseAllAlong ::
 [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame`);
-`Origami/ThroughLayers.hs:227` (`creaseThroughLayers :: V2 -> V2 -> Assignment
+`Origami/ThroughLayers.hs:228` (`creaseThroughLayers :: V2 -> V2 -> Assignment
 -> Frame -> Either ThroughError Frame`); spine D8 lines 335-339, §6 item 21.
 
 **Proposal.** In D8:
@@ -769,7 +769,7 @@ lines 768-777 and 819-830, M0 line 615; `docs/glossary.md:51`, `:61`;
 **Evidence.** `senbazuru.cabal` library `build-depends`: aeson, base,
 bytestring, containers, filepath, tagsoup, text. #58 item 4. `grep -n
 "readFile\|withFoldFile ::" app/Senbazuru/Cli.hs` shows input only via
-`withFoldFile` (`:800`). `Fold/Load.hs:103-106` (`_ -> decodedAsFold`). spine
+`withFoldFile` (`:909`). `Fold/Load.hs:132-136` (`_ -> decodedAsFold`). spine
 D12 lines 431-433, D13 lines 459-461, M2 line 617.
 
 **Proposal.**
@@ -882,14 +882,14 @@ I did not check whether any multi-frame file in `examples/` (for instance
   sites".
 - **GLB extras keep exactly three `senbazuru:` keys.** They are
   `material_coords`, `source_panels` and `source_edges`
-  (`Render/Gltf.hs:241-242`), so D10's "gains that key only when present" is a
+  (`Render/Gltf.hs:274-275`), so D10's "gains that key only when present" is a
   real whitelist change.
 - **33 goldens.** `git ls-files test/golden | wc -l` = 33, with no `.actual`
   files tracked (D16).
 - **`Fold.Faces.tolerance` is `1e-9 × diagonal`** (`Fold/Faces.hs:248-251`,
   D2).
 - **`creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either
-  ThroughError Frame`** (`ThroughLayers.hs:227`), and **`creaseAllAlong ::
+  ThroughError Frame`** (`ThroughLayers.hs:228`), and **`creaseAllAlong ::
   [(V2, V2, Assignment)] -> Frame -> …`** (`Creasing.hs:138`).
 - **`motionsBetween :: Frame -> Frame -> Either FoldError [Motion]`**
   (`Step.hs:88`), refusing differing graphs with `FramesDiffer`/`FramesDisagree`

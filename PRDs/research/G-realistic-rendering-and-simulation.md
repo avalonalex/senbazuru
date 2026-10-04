@@ -43,13 +43,13 @@ thickness before starting from a flat stack.
    unmoved positions (`src/Senbazuru/Render/Gltf.hs:13-19`). The two colours
    come from writing each face twice with reversed winding into two materials
    (`Gltf.hs:33-42`). Those material objects set only base colour, metallic 0
-   and roughness 1, and no `doubleSided` (`Gltf.hs:384`). glTF therefore culls
+   and roughness 1, and no `doubleSided` (`Gltf.hs:418`). glTF therefore culls
    back faces (spec `Specification.adoc:2468-2470`), so each copy shows from
    one side. No normals are written (`Gltf.hs:49-50`), so the spec obliges
    viewers to compute flat normals (`Specification.adoc:1684`). three.js does
    so by switching to flat shading (`GLTFLoader.js:3554`). No animation is
    written, pending #56 (`Gltf.hs:52-55`). Physical thickness is metadata only
-   (`Gltf.hs:29`, `:243`; `src/Senbazuru/Origami/Surface.hs:21-24`, `:298-304`;
+   (`Gltf.hs:29`, `:277`; `src/Senbazuru/Origami/Surface.hs:21-24`, `:298-304`;
    `docs/usage.md:211-212`).
 
 2. **Issue #114's premises are out of date; do not build to them.**
@@ -63,7 +63,7 @@ thickness before starting from a flat stack.
      That is still true of *graphics indices*: `completePaper` gives each piece
      its own corners (`src/Senbazuru/Render/PaperMesh.hs:74-77`), and
      `assemble` concatenates corners per piece into `POSITION`
-     (`Gltf.hs:369-371`). But there is no gap. Positions coincide, and material
+     (`Gltf.hs:403-405`). But there is no gap. Positions coincide, and material
      connectivity is stored in extras (`docs/notes/visible-paper-mesh.md:69-72`).
      A "mesh is connected" acceptance test must count components through the
      `materialWeights` extras or the source topology, not through glTF index
@@ -74,10 +74,10 @@ thickness before starting from a flat stack.
 3. **Bent panels already reach glTF, but only as faceted triangles.**
    - **Planar and convex only.** The visible scene refuses non-planar panels
      (`PaperMesh.hs:69`, `:99-105`), and export refuses non-convex faces
-     (`Gltf.hs:276-284`).
+     (`Gltf.hs:310-318`).
    - **Study exports.** The study writes bent endpoints with `CompletePaper`
      (`study/fold-material/CoupledCreaseGallery.hs:80`) or `VisiblePaper`
-     (`CraneSpreadGallery.hs:109`). With no `NORMAL` attribute, those shade
+     (`CraneSpreadGallery.hs:119`). With no `NORMAL` attribute, those shade
      faceted in any viewer (finding 1).
    - **The study's own viewer.** Its WebGL viewer does compute normals. It sums
      them per group, so lighting splits at sharp creases while material indices
@@ -130,7 +130,7 @@ thickness before starting from a flat stack.
      `SurfaceContact.hs:33-38`). Its scope limits are in `:75-81` of that note.
    - **(d) Routes.**
      - Checked rigid flap turns with whole-interval contact checks
-       (`Origami/Flap.hs:1-24`; `HingeSweep.hs:1-11`).
+       (`Origami/Flap.hs:1-48`; `HingeSweep.hs:1-11`).
      - Composed recipes such as the blintz (`BlintzSequence.hs:1-15`).
      - The bird petals, with 23 exported states
        (`study/fold-material/README.md:48-57`).
@@ -150,8 +150,8 @@ thickness before starting from a flat stack.
      Interpolating positions, or scaling all angles by t, leaves the set of
      angles that close every loop (`docs/notes/fold-angles-are-the-state.md:11-31`).
    - **The transforms.** `foldFrameWith` returns one `Rigid` per face,
-     `foldedPlacements`, keyed against the *cut* pattern (`Origami/Folding.hs:283-323`).
-     They are computed by `spanningWalk` (`:572`).
+     `foldedPlacements`, keyed against the *cut* pattern (`Origami/Folding.hs:284-324`).
+     They are computed by `spanningWalk` (`:586`).
    - **Inputs.** A DSL has these natively.
    - **Output, cost, maturity.** Faceted, with exact lengths; cheap; production.
      Licence MIT.
@@ -522,7 +522,7 @@ thickness before starting from a flat stack.
     | Level | Data a sequence must supply | glTF output | SVG output | Coverage today |
     | --- | --- | --- | --- | --- |
     | **G0** rigid, faceted, zero thickness, static states | Crease pattern; a complete angle list per state (`StudyCase.hs:5-10`) or folded frames; face orders for coplanar overlap; anchor face (`BlintzSequence.hs:5-8`) | Two scenes, flat normals, two sides by winding | Visible/Projected, book notation | **Production** (findings 1, 4); study checked states (5d) |
-    | **G1** G0 animated along a checked route | G0 plus an ordered list of checked states, dense enough for loop closure; per-face `Rigid` | Spanning-tree node hierarchy, TRS keys under 180° per crease; STEP visibility switching or the complete scene | Step pages, or one figure per key | States exist (`README.md:48-57`; `Flap.hs:19-24`); **no animation** (#56; grep) |
+    | **G1** G0 animated along a checked route | G0 plus an ordered list of checked states, dense enough for loop closure; per-face `Rigid` | Spanning-tree node hierarchy, TRS keys under 180° per crease; STEP visibility switching or the complete scene | Step pages, or one figure per key | States exist (`README.md:48-57`; `Flap.hs:43-48`); **no animation** (#56; grep) |
     | **G2** rounded creases plus thickness offsets | G0 plus physical thickness, display exaggeration, per-crease wrap count from face orders, a vertex rule | Connected fillet strips, offset front/back surfaces, `NORMAL` on fillets | Spine bands in offset or side view (#114, #50) | **Study prototype and counterexample** (5a); thickness as metadata (`Surface.hs:298-304`) |
     | **G3** bent panels with contact, static endpoints | G2 plus crease rest angles and stiffness, panel stiffness, held/grip regions and targets (`WingBending.hs:1-10`), directional layer requirements (`Surface.hs:118-121`), a checked G0 start | Smooth-normal bent panels, provenance kept in extras | Provenance lines, silhouettes (#104), visibility | **Study only** (5b, 5c; `README.md:64-95`); constants illustrative; thickness absent; rendering gap (`roadmap.md:251`) |
     | **G4** animated flexible route | G3 plus time-parameterised controls; a checked mesh per key | Morph crossfade of dense keys, or per-key meshes | Frames | **None** (`README.md:311-318`) |

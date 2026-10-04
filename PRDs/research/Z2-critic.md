@@ -502,7 +502,7 @@ Both are minor, but the glossary should hold one definition of the wrap count.
 - I confirmed H2's central claim in the code. More tucked is
   `pillowCraneAtSpread 0`, which calls `pillowCraneWith 0.5`; the body map is
   the flat material rotated, plus a dome, with one axis scaled by 0.5
-  (`WholeCrane.hs:157-160`, `:177` [code]). That is a 50% compression written
+  (`WholeCrane.hs:299-307`, `:363` [code]). That is a 50% compression written
   into the target.
 - Licences were checked with `gh api` throughout. GPL material was read for
   ideas only; H7 declined to read SuiteSparse's LGPL `LDL` code.

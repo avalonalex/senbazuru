@@ -85,13 +85,13 @@ the cheap check.
 5. **A flap is currently named by a hinge (edge ids) plus one face on the
    moving side, and the library works out the rest.** `prepareFlap :: EdgeId ->
    FaceId -> Double -> Folded` and `prepareFlapAlong :: [EdgeId] -> FaceId -> …`
-   (`src/Senbazuru/Origami/Flap.hs:155-165`). The flap is the connected set of
+   (`src/Senbazuru/Origami/Flap.hs:196-206`). The flap is the connected set of
    faces left after removing the hinge creases from the face graph
-   (`Flap.hs:2-6`, computed at `:199-202`). The call is refused if the
+   (`Flap.hs:2-6`, computed at `:271-274`). The call is refused if the
    stationary face is reachable (`FlapCoupled`), if a hinge segment does not
-   separate moving from still paper (`FlapNotBoundary`, `:212`), or if the
+   separate moving from still paper (`FlapNotBoundary`, `:288`), or if the
    segments are not collinear in the *current* folded shape
-   (`FlapUnalignedCrease`, `:210-219`). Ids must come from the cut pattern
+   (`FlapUnalignedCrease`, `:283-296`). Ids must come from the cut pattern
    (`Flap.hs:9-10`). **The line a newcomer will think is wrong:** a stationary
    face on an upside-down layer turns the same physical way with the opposite
    sign of FOLD angle (`Flap.hs:14-17`). The helmet recipe relies on this
@@ -102,14 +102,14 @@ the cheap check.
 
 6. **Lines are named by coordinates, in one of two frames.** `creaseAlong ::
    V2 -> V2 -> Assignment -> Frame` (`src/Senbazuru/Fold/Creasing.hs:90`),
-   exposed as `--from X,Y --to X,Y` (`app/Senbazuru/Cli.hs:266-277`). Each end
+   exposed as `--from X,Y --to X,Y` (`app/Senbazuru/Cli.hs:282-293`). Each end
    must *meet something the drawing already has* (`Creasing.hs:40-47`), or
    it is refused as `CreaseEndMeetsNothing` (`:186-188`). With `--folded` the
    same two points are read on the folded model and every layer under the line
-   is creased (`Cli.hs:278-284`; `creaseThroughLayers`,
-   `src/Senbazuru/Origami/ThroughLayers.hs:227`). There, each face's piece of the
+   is creased (`Cli.hs:294-300`; `creaseThroughLayers`,
+   `src/Senbazuru/Origami/ThroughLayers.hs:228`). There, each face's piece of the
    line is mapped back to the sheet through that face's inverse placement
-   (`ThroughLayers.hs:285-297`). The flat pattern stays authoritative
+   (`ThroughLayers.hs:286-298`). The flat pattern stays authoritative
    (`ThroughLayers.hs:26-34`). About half the pieces come back as the *other*
    assignment because alternate layers lie face down (`:36-45`). Two limits are
    stated: it always creases **all** layers, and "only the near ones" is left to
@@ -134,7 +134,7 @@ the cheap check.
    and typed as `0.333` is about `3.3e-4` away, far outside a `1e-9` hair. It
    is refused as meeting nothing, or it is snapped to the wrong feature. The
    CLI help text shows the parser already had to handle negative
-   coordinates (`Cli.hs:291-297`). Exact references are a correctness need,
+   coordinates (`Cli.hs:307-313`). Exact references are a correctness need,
    not sugar.
 
 ### B. Huzita–Justin–Hatori: the vocabulary of fold lines
@@ -421,7 +421,7 @@ the step label, the reference text, and the candidates found.
      or if it is off the sheet.
    - *As a flap seed:* resolve the face, then grow the flap as `Flap.hs`
      does: the component on the moving side once the hinge is removed.
-     **Refuse** with `FlapCoupled`/`FlapNotBoundary` (`Flap.hs:199-219`).
+     **Refuse** with `FlapCoupled`/`FlapNotBoundary` (`Flap.hs:271-296`).
      **Flap names survive later splits; panel names do not.** If a later
      crease splits the kite's `lower-right` panel, `@(0.8, 0.1)` still grows to
      the same flap, but as a panel name it now means only one piece. Anything
@@ -454,7 +454,7 @@ the step label, the reference text, and the candidates found.
    points and lines from rules 1–3, or sheet features (edges, corners). The
    result is a line in the *frame of the state*. On the flat sheet it is
    material. On a flat-folded state it is in folded coordinates and handed to
-   `creaseThroughLayers` (`ThroughLayers.hs:227`), which already refuses
+   `creaseThroughLayers` (`ThroughLayers.hs:228`), which already refuses
    non-flat states (`:63-67`). **Resolution rule:** compute all real
    solutions. Discard any whose line does not cross paper, and *report* them
    as "off the paper" rather than silently dropping them, because Alperin &
@@ -505,7 +505,7 @@ the step label, the reference text, and the candidates found.
   should never expose ids.
 - **Keep a virtual machine and check every step** (Finding 23).
   `Folded` + `Surface` + the accepted layer order is that state. The checked
-  `Flap` path (`Flap.hs:19-24`) is already the pattern to copy, and the
+  `Flap` path (`Flap.hs:43-48`) is already the pattern to copy, and the
   sequence evaluator is a `foldM` over steps that refuses at the first bad
   one.
 - **Conservation is the cheapest validator** (Finding 24). KnitSpeak checks

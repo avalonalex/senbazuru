@@ -383,7 +383,7 @@ table in the next version of this record.
   after an `unfold`. That departs from `Fold.Creasing`'s "a valley with an angle of
   nought is not a valley" ([`Creasing.hs:281-286`](../src/Senbazuru/Fold/Creasing.hs#L281-L286)).
   It is needed because `Flap` turns only M, V or U
-  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)) [code] and a collapse
+  ([`Flap.hs:262`](../src/Senbazuru/Origami/Flap.hs#L262)) [code] and a collapse
   binds on direction; it is safe because folding reads explicit angles first and
   stacking reads an assignment only at angle 0, where a crease orders nothing.
   Written frames restore the FOLD rule ([D4](#d4-written-frames-follow-the-state-rule)).
@@ -415,7 +415,7 @@ table in the next version of this record.
      ([`BlintzSequence.hs:42`](../study/fold-material/BlintzSequence.hs#L42)) [code].
      `start folded { … }` keeps angles as `Folding.foldAnglesOf` reads them:
      explicit angles first, otherwise M −180, V +180, else 0
-     ([`Folding.hs:507-533`](../src/Senbazuru/Origami/Folding.hs#L507-L533)) [code],
+     ([`Folding.hs:521-547`](../src/Senbazuru/Origami/Folding.hs#L521-L547)) [code],
      then chooses a stacking by [D11](#d11-stacking-choices-are-relations).
      `sheet square` is the unit square.
 - **Default anchor** ([C20](#changes-since-draft-v2)): the *vertex mean* (the
@@ -706,7 +706,7 @@ table in the next version of this record.
 - **`StepError` is unchanged** ([C37](#changes-since-draft-v2)). It is a record of
   a frame index and a `FoldError`
   ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)) and the CLI takes
-  it apart by pattern ([`Cli.hs:855-863`](../app/Senbazuru/Cli.hs#L855-L863))
+  it apart by pattern ([`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977))
   [code]. Every note is drawable; the only new failures are `motionsAcross`'s and
   `creasesToCome`'s `FoldError`s, which fit.
 - **`StepNote`** (**SKETCH**): caption; arrows (`InferArrows`,
@@ -801,7 +801,7 @@ table in the next version of this record.
   `creaseAllAlong = fmap fst . creaseAllAlongWith FlatForAssignment`.
 - **Per-layer intent.** `creaseLayersThrough AtRest` still flips a requested
   valley to M on face-down layers
-  ([`ThroughLayers.hs:338-339`](../src/Senbazuru/Origami/ThroughLayers.hs#L338-L339))
+  ([`ThroughLayers.hs:330-331`](../src/Senbazuru/Origami/ThroughLayers.hs#L330-L331))
   [code]. `U` cannot encode "at rest", because flipping leaves `U` as `U`. In a
   batch of two or more requests, a refusal is `RequestRefused i err`; a single
   request's refusal stays bare, so `ThroughLayersSpec`'s cases hold
@@ -821,7 +821,7 @@ table in the next version of this record.
   note's own count line says 7; its table rows marked "existing" are six
   ([review L3](research/spine-reviews/review-L3-author-ergonomics.md) L3-16).
 - **An existing `F` crease cannot be a hinge.** `Flap` turns only M, V or U
-  ([`Flap.hs:190`](../src/Senbazuru/Origami/Flap.hs#L190)) [code], so such a fold
+  ([`Flap.hs:262`](../src/Senbazuru/Origami/Flap.hs#L262)) [code], so such a fold
   is refused as `ExistingHingeFlat`.
 - **Unselected layers get no crease.**
 - **Evidence status.** The rule reproduces `CraneWing`'s faces `[2,3,6,7]` on
@@ -930,9 +930,9 @@ table in the next version of this record.
   unfold that retraces the route ([D12](#d12-the-text-syntax)).
 - **Records derive `Eq`, which needs a library change** ([C4](#changes-since-draft-v2)).
   `FlapMotion` and `CheckedFlap` derive only `Show`
-  ([`Flap.hs:96`](../src/Senbazuru/Origami/Flap.hs#L96),
-  [`:99`](../src/Senbazuru/Origami/Flap.hs#L99)), although every field type derives
-  `Eq`: `Folded` ([`Folding.hs:324`](../src/Senbazuru/Origami/Folding.hs#L324)),
+  ([`Flap.hs:123`](../src/Senbazuru/Origami/Flap.hs#L123),
+  [`:126`](../src/Senbazuru/Origami/Flap.hs#L126)), although every field type derives
+  `Eq`: `Folded` ([`Folding.hs:325`](../src/Senbazuru/Origami/Folding.hs#L325)),
   `HingeSweep` and `SweepCheck`
   ([`HingeSweep.hs:89`](../src/Senbazuru/Origami/HingeSweep.hs#L89),
   [`:101`](../src/Senbazuru/Origami/HingeSweep.hs#L101)), `Surface`
@@ -1099,7 +1099,7 @@ The decisions:
   `allFrames f = keyFrame f : otherFrames f`
   ([`Types.hs:209-210`](../src/Senbazuru/Fold/Types.hs#L209-L210)) and `--frame`'s
   help says "default: 0, the key frame"
-  ([`Cli.hs:484-493`](../app/Senbazuru/Cli.hs#L484-L493)) [code]. A written
+  ([`Cli.hs:515-524`](../app/Senbazuru/Cli.hs#L515-L524)) [code]. A written
   sequence file's key frame has no vertices, so state k is `--frame k+1`, as
   `bird-base-sequence.fold`'s "frames 1–16 are the folding states"
   ([`usage.md:1813-1814`](../docs/usage.md)) [code]. `run -o x.glb --frame N`
@@ -1113,7 +1113,7 @@ The decisions:
   `Map FilePath Frame` keyed by the path as written.
 - **`decodeFile` refuses a `.foldseq` path, and the library's words name no command**
   ([C25](#changes-since-draft-v2)). Today every unrecognised extension decodes as
-  FOLD ([`Load.hs:102-106`](../src/Senbazuru/Fold/Load.hs#L102-L106)) [code], so a
+  FOLD ([`Load.hs:131-136`](../src/Senbazuru/Fold/Load.hs#L131-L136)) [code], so a
   source handed to `render` fails as bad JSON. A new `LoadError` constructor carries
   the path, and its `explain` says the file is a sequence source, not FOLD.
   `app/`'s `withFoldFile` appends "use `senbazuru run PATH`" when it sees that
@@ -1129,7 +1129,7 @@ The decisions:
   `refusalLines :: Text -> SequenceError -> [Text]`. Its plan holds a view *name*,
   a column count and a `GlbScenes` enumeration, not `Render.Camera.View`
   ([`Camera.hs:188`](../src/Senbazuru/Render/Camera.hs#L188)) or
-  `Render.Gltf.ExportMode` ([`Gltf.hs:147`](../src/Senbazuru/Render/Gltf.hs#L147))
+  `Render.Gltf.ExportMode` ([`Gltf.hs:160`](../src/Senbazuru/Render/Gltf.hs#L160))
   [code], which live in row 7 where a row-6 module cannot reach; `app/` maps them.
   The `Command` constructor is `RunSource`, since `Run` names the runner's result.
 - **A `not modelled` move ends the run successfully**, with the states before it,
@@ -1213,7 +1213,7 @@ The decisions:
 - **Rest angles.** `RestAngles = RestAtPose PoseRef | RestAtPoseExcept PoseRef [(CreaseLine, Rational)]`, where a `CreaseLine` is written `crease [P, Q]`, `hinge of NAME` or `crease of NAME` inside `except { … }` ([04 grammar](04-prd-sequence-source-and-cli.md#grammar));
   every active crease rests at its angle in that pose; never derived from an
   assignment, so `CraneSpread`'s rule, −π for a mountain and +π otherwise
-  ([`CraneSpread.hs:111-115`](../study/fold-material/CraneSpread.hs#L111-L115)) [code],
+  ([`CraneSpread.hs:112-116`](../study/fold-material/CraneSpread.hs#L112-L116)) [code],
   is deleted when the crane is re-expressed. Rest comes from the settle, else the
   material block; neither is `SettleNoRest` (R-07-19).
 - **`NoDifference` is computable** ([C39](#changes-since-draft-v2)): refused when the
@@ -1225,7 +1225,7 @@ The decisions:
   "no released hold"; releasing a hold cannot move anything from an equilibrium
   start, so that clause tests nothing.
 - **Stiffness.** A named preset; v1's `illustrative` is `Bending 1 0.2`, as
-  `CraneSpread` builds its hinges ([`CraneSpread.hs:120`](../study/fold-material/CraneSpread.hs#L120))
+  `CraneSpread` builds its hinges ([`CraneSpread.hs:121`](../study/fold-material/CraneSpread.hs#L121))
   [code], and outputs say so. Precrease stiffness is owner decision 4.
 - **Two contracts, two error types** ([C6](#changes-since-draft-v2)).
   `Sequence.Material` holds `SettleSpec` and
@@ -1382,7 +1382,7 @@ accepted and rejected controls stay unchanged at each
   move turns about existing creases, so no trigonometry reaches GLB JSON. E10
   replaces the reopening with a turn carrying the corner on through the centre and
   expects `FlapEndpointOrder`, the refusal the recipe's equivalent already gets
-  ([`BlintzSequenceSpec.hs:110-115`](../test/BlintzSequenceSpec.hs#L110-L115)) [code].
+  ([`BlintzSequenceSpec.hs:111-116`](../test/BlintzSequenceSpec.hs#L111-L116)) [code].
 - **Budgets are counted work**: sweep intervals (4096 cap), refolds, triangles,
   pairs, stacking guesses, settle triangles. Measured: a `stack test` run matching
   nothing took 19.03, 19.59 and 20.95 s of wall time building fixtures in `runIO`
@@ -1532,9 +1532,9 @@ accepted and rejected controls stay unchanged at each
     crease at the angle of their crease containing it, or 0 before it exists.
   - **The tree comes from the library's own walk** ([C45](#changes-since-draft-v2)).
     `spanningWalk` returns placements, not its tree
-    ([`Folding.hs:572-577`](../src/Senbazuru/Origami/Folding.hs#L572-L577)), and
+    ([`Folding.hs:586-591`](../src/Senbazuru/Origami/Folding.hs#L586-L591)), and
     `Folding` insists on "one spanning walk and not two implementations of it that
-    can drift" ([`:328-330`](../src/Senbazuru/Origami/Folding.hs#L328-L330)) [code].
+    can drift" ([`:342-344`](../src/Senbazuru/Origami/Folding.hs#L342-L344)) [code].
     So `Origami.Folding` exports each face's parent and crossing edge from that walk
     (05 L15, M7b).
   - **Presentation** is a pivot node per presentation move at the D5 axis point,
@@ -1608,7 +1608,7 @@ accepted and rejected controls stay unchanged at each
   `FoldError.CreaseEndMeetsNothing` does; `creaseEndFlag` is deleted, its only uses
   being `Query` and `ThroughLayers`
   ([`ThroughLayers.hs:96`](../src/Senbazuru/Origami/ThroughLayers.hs#L96),
-  [`:195`](../src/Senbazuru/Origami/ThroughLayers.hs#L195)) [code]. That PR changes
+  [`:196`](../src/Senbazuru/Origami/ThroughLayers.hs#L196)) [code]. That PR changes
   the sentence at `ThroughLayersSpec.hs:271-275` and the example at
   `docs/usage.md:1624-1630` ([§3](#3-recorded-text-this-design-changes) row 17), and
   lands before M4. `decodeFile`'s `.foldseq` refusal follows the same rule
@@ -2260,7 +2260,7 @@ means the text is a research note, a snapshot that is not edited.
 | 2 | #36's done-when 1 (a reflection is a turn-over) cannot be met, and one motion can change a V and an M crease together | [prd] quarter-fold step 2 | row 7 |
 | 3 | #94's "nothing reads `frame_title`" is half stale (the CLI reads it for `info`, page and glTF titles); captions drawn by `render` would move goldens | [code] | row 7 |
 | 4 | #114's premises are stale: `--thickness` and face lifting were removed, and a second rounded bend stretches 200% | [code] `docs/notes/paper-thickness.md`, `two-bends-need-more-than-radii.md:55` | row 7 |
-| 5 | #56's "per-face transforms are discarded" is stale: `foldFrameWith` returns `foldedPlacements` | [code] [`Folding.hs:318-322`](../src/Senbazuru/Origami/Folding.hs#L318-L322) | row 7 |
+| 5 | #56's "per-face transforms are discarded" is stale: `foldFrameWith` returns `foldedPlacements` | [code] [`Folding.hs:319-323`](../src/Senbazuru/Origami/Folding.hs#L319-L323) | row 7 |
 | 6 | #104 cites `docs/notes/inflate-outside-draw-inside.md`, which does not exist, and its done-when lets two goldens change | [ls], issue text | row 7 |
 | 7 | #60's done-when tests folding, not authoring; coordinates need a tolerance; "macro-moves are compositions" is false | [code] issue text read with `gh issue view 60` | row 3 |
 | 8 | #96 says three papers and lists four | [web] [E1](research/E1-prior-art-sequence-languages.md) "D. The 2026 papers" | amend #96 with row 9 |
@@ -2277,7 +2277,7 @@ means the text is a research note, a snapshot that is not edited.
 | 19 | `Rigid(..)` and `Mat3(..)` are exported and nothing checks a proper rotation | [code] [`Rigid.hs:24-26`](../src/Senbazuru/Geometry/Rigid.hs#L24-L26) | issue, M2 |
 | 20 | Any filtered `stack test` run pays 19–21 s of `runIO` fixture setup | [research] 3 runs | issue, before M1's specs |
 | 21 | `creaseAllAlong` returns no new edge ids | [code] [`Creasing.hs:138`](../src/Senbazuru/Fold/Creasing.hs#L138) | 05 L2 |
-| 22 | GLB `extras.senbazuru.frame` stores fold angles and material coordinates unrounded | [code] `Gltf.hs:241-242` | issue, M7a |
+| 22 | GLB `extras.senbazuru.frame` stores fold angles and material coordinates unrounded | [code] `Gltf.hs:274-275` | issue, M7a |
 | 23 | #64's "inflating a body is outside the model" is overtaken by #106 and the README | [docs] | row 7 |
 | 24 | `Origami.Step`'s header says a turn-over is a motion | [code] [`Step.hs:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34) | row 13 |
 | 25 | The study viewer's paper colours disagree with `Diagram.Style`'s | [code] `viewer.html:168` | issue, M7a |
@@ -2286,7 +2286,7 @@ means the text is a research note, a snapshot that is not edited.
 | 28 | `docs/roadmap.md` records the old order: #97 before #95 and #54, and #93, #96, #97 "only then" #95, #94, #36 | [code] `docs/roadmap.md:271-276`, `:1004-1009` | row 16 |
 | 29 | `AGENTS.md:390` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code]; `ci.yml` has `test`, `format`, `lint` | row 15, owner decision 12 |
 | 30 | `README.md:213` and `docs/roadmap.md` item 2 call the vocabulary missing | [ran] `grep -n` | row 18 |
-| 31 | A library message names CLI flags: `LineStopsOnTheModel` starts with `creaseEndFlag`'s `--from`/`--to` | [code] [`ThroughLayers.hs:195`](../src/Senbazuru/Origami/ThroughLayers.hs#L195), [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71) | issue, before M4; row 17 |
+| 31 | A library message names CLI flags: `LineStopsOnTheModel` starts with `creaseEndFlag`'s `--from`/`--to` | [code] [`ThroughLayers.hs:196`](../src/Senbazuru/Origami/ThroughLayers.hs#L196), [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71) | issue, before M4; row 17 |
 | 32 | The research note's count line says 7 of the crane's 12 some-layer steps hinge on existing creases; its own table marks 6 | [research] [gap-layer-selective-folds](research/gap-layer-selective-folds.md) "(e) The traditional crane, step by step" | recorded here; the note is a snapshot and is not edited |
 | 33 | E1 says Eos only picks a half-plane, and that no prior art folds only the top flap or the near layers; Eos takes a face set (2007) and face lists with `InsertFace` (2021) | [web] [E3](research/E3-formal-fold-semantics.md) A | recorded here; the note is a snapshot and is not edited |
 | 34 | E1's Unverified list names Eos's functions `BeginOrigami` and `ProveByGroebner`; they are `NewOrigami` and `Prove`, and Eos is closed source | [web] [E3](research/E3-formal-fold-semantics.md) A | recorded here; the note is a snapshot and is not edited |
@@ -2400,11 +2400,11 @@ lists edits for.
 | C1 | Three new pieces, two of them contracts (the `Sequence` value is shared, not a contract) | 00 "What connecting them means"; 01 §2 | v2 §1 says three contracts, its picture labels two | adopted-modified | README, 00, 01 |
 | C2 | Sequences today come in four recipe forms, not "every sequence is a recipe naming ids"; two multi-frame FOLD examples exist | 00 "The two halves today" | A2 "Summary" [research]; `file_frames` counts [jq] | adopted | 00 |
 | C3 | `Run` defined in `Sequence.Record` without `FoldState`; `Sequence.*` levels; `writtenStates` shared by writer and page; row 7 may import `Sequence.Error` | 01 §1.2 rule 4 note; 06 R-06-20 | v2 DAG row 7 and §5 sketch; no `Internal` module in `src` [ran] | adopted-modified | 01, 02, 03, 04, 06 |
-| C4 | `FlapMotion` and `CheckedFlap` derive `Eq` (05 L14) | 01 §2.2 note | `Flap.hs:96`, `:99`; field types' derivings at `Folding.hs:324`, `HingeSweep.hs:89`, `:101`, `Surface.hs:123`, `Rigid.hs:80` [code] | adopted | 01, 05 |
-| C5 | The hinge turn takes a raw side; `Flap` sets the first segment's sign from its stationary face (`prepareFlapToward`, `FlapStationaryNotFlat`); superseded in part by [D5](#d5-presentation-and-the-readers-side)'s amendment, which reads the moving face | 02 §5.3 note; 01 §5.5 note | `Flap.hs:10-16`, `:204-219` [code]; edge 9 +180, edge 11 −180 [prd] | adopted-modified | 01, 02, 05 |
+| C4 | `FlapMotion` and `CheckedFlap` derive `Eq` (05 L14) | 01 §2.2 note | `Flap.hs:123`, `:126`; field types' derivings at `Folding.hs:325`, `HingeSweep.hs:89`, `:101`, `Surface.hs:123`, `Rigid.hs:80` [code] | adopted | 01, 05 |
+| C5 | The hinge turn takes a raw side; `Flap` sets the first segment's sign from its stationary face (`prepareFlapToward`, `FlapStationaryNotFlat`); superseded in part by [D5](#d5-presentation-and-the-readers-side)'s amendment, which reads the moving face | 02 §5.3 note; 01 §5.5 note | `Flap.hs:10-16`, `:276-301` [code]; edge 9 +180, edge 11 −180 [prd] | adopted-modified | 01, 02, 05 |
 | C6 | Two settle error types: `SettleStepError` wraps `Material.Settle`'s `SettleError` | 07 "SettleSpec and SettleInput" note | layer rule: `Material.*` knows no moves (§2) | adopted | 01, 02, 07 |
 | C7 | `closing` is written after the last step, stored as `hClosing` | 04 ambiguity table | 04 grammar `source` production | adopted | 02, 03, 04 |
-| C8 | `expect refused` is a move inside a step, produces no record and no state, and is kept in the `Run` | 02 §6.1, §9; 04 ambiguity table; 06 §2; 09 E10; 02 G12 | v2 D10 has no refusal constructor; `BlintzSequenceSpec.hs:110-115` [code] | adopted-modified | 02, 04, 06, 09 |
+| C8 | `expect refused` is a move inside a step, produces no record and no state, and is kept in the `Run` | 02 §6.1, §9; 04 ambiguity table; 06 §2; 09 E10; 02 G12 | v2 D10 has no refusal constructor; `BlintzSequenceSpec.hs:111-116` [code] | adopted-modified | 02, 04, 06, 09 |
 | C9 | The crane example expects `FlapCovered`, **UNVERIFIED** | 02 §9 | selection rule order (D8); finding 14 is inferred [research] | adopted | 04, 07 |
 | C10 | A `not modelled` stop returns `Right` a `Run` with `runStop`; `runRefusal` gives the CLI its error | 04 R-04-28, A18; 09 M2 (g) | v2 D21 text against its `Either SequenceError Run` type | adopted-modified | 02, 04, 09 |
 | C11 | `SequenceError` gains `SheetRefused` and `WriteRefused`; `StaticRefused` carries a `Place` | 02 §14 G14; 03 "Refusals from a built sequence" | v2 §5 errors sketch | adopted | 02, 03, 04 |
@@ -2413,27 +2413,27 @@ lists edits for.
 | C14 | No move outside a step; the diamond start is a first step | here | v2 §7 crane opening and crane wing examples against v2 §6 grammar | adopted | 04, 09 |
 | C15 | Optional captions; `fold and unfold` takes no angle; string escapes; `n/0` a parse error; reserved words never names | 04 lexical and ambiguity tables; 03 note | v2 grammar allowed a precrease angle | adopted | 02, 03, 04 |
 | C16 | Batching stays inside one step; corrected example | here (02 §6.5) | v2 D22 lines 939-940 contradict themselves | adopted-modified | 02, 05 |
-| C17 | Intent at start: F beyond τ becomes M or V; U stays U | 02 §2.2 note | `StudyCase.hs:208`, `Flap.hs:190` [code] | adopted | 02, glossary-additions |
-| C18 | `checkpoint` reads angles by `foldAnglesOf`, as `start folded` does | here | `Folding.hs:507-533` [code]; v2 D21 | adopted-modified | 02 |
+| C17 | Intent at start: F beyond τ becomes M or V; U stays U | 02 §2.2 note | `StudyCase.hs:208`, `Flap.hs:262` [code] | adopted | 02, glossary-additions |
+| C18 | `checkpoint` reads angles by `foldAnglesOf`, as `start folded` does | here | `Folding.hs:521-547` [code]; v2 D21 | adopted-modified | 02 |
 | C19 | An anchor a new crease passes through moves to the largest unturned piece; 02's claim that the authoring test hits it is removed | 02 §14 G1 | 09 §2.3 writes `anchor (3/4, 1/4)` [prd] | adopted-modified | 02, 09 |
 | C20 | The default anchor is a vertex mean, not a centroid | 02 §2.3 note | `StudyCase.hs:242-248` [code] | adopted | 02, glossary-additions |
 | C21 | G2–G13 decided: moving side of O5–O7 (G2); `turned` direction and `white side up` axis (G3); repeat compares hinge turns (G4); `UnfoldChangedSince` (G5); lockstep (G6); weakest order and `NoMotion` for `anchor`, `mark` (G7); folded positions in material slots (G8); macro landing with several stackings refused (G9); sample range (G10); compass names need a square outline (G11); `expect refused`-only steps (G12); default anchor outside its face (G13) | 02 §14 | blintz quarter-turn image [py]; `crane.fold` corners 5.8e-15 off [prd] | adopted (G4, G7, G11 modified) | 02 |
 | C22 | A step's body has its own type, `Moves` | 03 note; owner question 4 | v2 `step :: … -> Build () -> …` | adopted | 03 |
 | C23 | Syntax constructors renamed `ValleyFold`, `MountainFold`, `LayerAbove`; lowercase builders; `SettleRegion` | 03 note; owner question 5 | `Types.hs:302-305`, `:334-336`; `Visible.hs:103` [code] | adopted-modified | 02, 03, 04, 07 |
 | C24 | `canonical` normaliser in the round-trip property | 04 "Canonical form" | 04's four-row table | adopted | 03, 04 |
-| C25 | `decodeFile`'s message names no command; `app/` adds the `run` hint | 04 §"Reading a source" note | `Load.hs:102-106`, `Query.hs:68-71` [code] | adopted-modified | 04 |
+| C25 | `decodeFile`'s message names no command; `app/` adds the `run` hint | 04 §"Reading a source" note | `Load.hs:131-136`, `Query.hs:68-71` [code] | adopted-modified | 04 |
 | C26 | Presentation change: *some* vertex moves (R-05-12′) | 05 L3 note; 01 §4.13 note | 3 of 9, 3 of 9, 5 of 13, 2 of 8 axis vertices; 0 of 15 and 0 of 2 rigid pairs [py] | adopted | 01, 05 |
 | C27 | `creaseAllAlongWith` at M2 | 05 L2; 10 §2 note | `Creasing.hs:138`, `:290-292`, `:316-320`; `CraneWing.hs:114` [code] | adopted | 05, 10 |
 | C28 | `RoutePose` in `Origami.Route`, re-exported by `Sequence.Record` | 05 L4 note | layer rows 4 and 6 | adopted | 05 |
 | C29 | τ = 1e-10 degrees | 05 L1 | `Surface.hs:278`, `StudyCase.hs:208` [code] | adopted | 05 |
-| C30 | `AtRest` writes the whole angle array when a frame has none | 05 R-05-8 | `Folding.hs:507-533` [code] | adopted | 05 |
+| C30 | `AtRest` writes the whole angle array when a frame has none | 05 R-05-8 | `Folding.hs:521-547` [code] | adopted | 05 |
 | C31 | `RequestRefused` wraps refusals only in batches of two or more | 05 R-05-30 | 05's `ThroughLayersSpec` cases [prd] | adopted | 05 |
 | C32 | Library `StackingError` holds face-id relation errors; `StackingChoiceError` holds the counting policy | here (05 L12 against 02 §12) | `Stacking.hs:386-400` [code] | adopted-modified | 02, 05 |
 | C33 | `StepNote` carries marks | 06 §1 | v2 D7 field list lacks marks while M3 includes them | adopted | 06 |
 | C34 | A turn-over axis projecting to a point draws its loop as if page-vertical | 06 §5 | `withArrows`' 1e-6 cut-off [prd] | adopted | 06 |
 | C35 | `render --steps` never draws `frame_title`; #94 closes at M3 through `run -o .svg` | 06 §9 | #94 done-when read with `gh issue view 94` [ran] | adopted | 01, 06, 10 |
 | C36 | `GivenArrows` per connected moving group | 06 R-06-16 | `Step.hs:175-192` [code] | adopted | 06 |
-| C37 | `StepError` unchanged | 06 R-06-3 | `Steps.hs:58-62`, `Cli.hs:855-863` [code] | adopted | 06 |
+| C37 | `StepError` unchanged | 06 R-06-3 | `Steps.hs:58-62`, `Cli.hs:969-977` [code] | adopted | 06 |
 | C38 | Authored samples are states and figures without caption or arrows; checking adds `RunSettings.macroChecks` interior poses | 06 §2; 03 A-6 | v2 D9 ties evidence to illustration | adopted-modified | 02, 05, 06 |
 | C39 | `NoDifference` without the "released hold" clause | 07 note | rigid control 1.39e-11 / 1.44e-27 [research] | adopted | 07 |
 | C40 | Controls the vocabulary cannot name stay fixtures | 07 control table | `CraneRoot.hs:88`, `CraneBody.hs:80` [code] | adopted | 07 |
@@ -2441,31 +2441,31 @@ lists edits for.
 | C42 | 07's proposed rules R-07-10, -13, -16, -17, -19, -22, -29 | 07 "Points this file adds" | each against v2 D14 | adopted | 07 |
 | C43 | Silhouettes from edges of any assignment; #104's done-when names `--view front` | 08 R-08-17, "#104, amended" | 27 silhouettes front, 0 iso [py]; 40 `B`, 280 `F` [jq]; #104 text [ran] | adopted | 01, 08 |
 | C44 | One animation hierarchy per checkpoint interval; `StateOnly` transitions switch sub-hierarchies; complete scene | 08 R-08-24, -27, -30 | `checkpoint` breaks the prefix rule (D6) | adopted | 08 |
-| C45 | `Origami.Folding` exports its walk's tree (05 L15) | 08 Dependencies | `Folding.hs:572-577`, `:328-330` [code] | adopted | 05, 08 |
+| C45 | `Origami.Folding` exports its walk's tree (05 L15) | 08 Dependencies | `Folding.hs:586-591`, `:342-344` [code] | adopted | 05, 08 |
 | C46 | Records keep presentation and anchor placement, before and after | 06 Dependencies | v2 single `recordDisplay` | adopted-modified | 01, 02, 06, 08 |
 | C47 | Geometry level "as read"; W1's edge-on threshold 1e-9 | 08 Design | `Projected.hs:172` [code] | adopted | 08 |
 | C48 | Test 2 matching rules T1–T5 | 09 §2.3 note | hand-built frames: v2 clauses false, T1–T2 true [py] | adopted | 01, 09 |
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |
 | C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:390`; `ci.yml` jobs [code] | adopted-modified (owner decision with default) | 09, 10 |
-| C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:355` [code] | adopted | 09 |
+| C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:469` [code] | adopted | 09 |
 | C53 | Golden check with `--diff-filter` and three dots | 09 §1.2 | both commands print nothing [ran] | adopted | 06, 08, 09 |
 | C54 | #60 closes at M4 | here (10 §4 note said M3) | 09 §2.3's milestone | adopted-modified | 10 |
 | C55 | #54 advanced, not closed; #96 amended at M0 | 10 §4 | issue checklists per 10 [prd] | adopted | 10 |
 | C56 | `docs/roadmap.md` order passages as row 16 | 10 §3 | `docs/roadmap.md:271-276`, `:1004-1009` [code] | adopted | 01, 10 |
 | C57 | Caption overlap: recommended gutter ≥ 42/340 on captioned pages | 06 open question 7; 10 §6 | 06 §8 arithmetic [prd] | adopted-modified (owner decision 7 with default) | 06, 10 |
 | C58 | The petal literal is three ulps from the code's `atan2` form | 10 §7.2 item 16 | `CheckedPetal.hs:107` [code]; [py] | adopted | 10 |
-| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:484-493`, `usage.md:1813-1814` [code] | adopted-modified | 01, 02, 04, 06, 09 |
+| C59 | States numbered from 0 as `file_frames` index; `--frame k+1` | here (01/06/09 against 02) | `Types.hs:209-210`, `Cli.hs:515-524`, `usage.md:1813-1814` [code] | adopted-modified | 01, 02, 04, 06, 09 |
 | C60 | "Anchor placement", "move record"; "step record" retired | glossary-additions; v2 D3 | `grep` of "step record" [ran] | adopted | glossary-additions |
 | C61 | Pose angles converted once for the whole model | 02 §8.6 note | quarter-fold half-way pose [prd] | adopted | 02 |
-| C62 | `Sequence.RunPlan` holds its own option types | here (04 `Plan`) | `Camera.hs:188`, `Gltf.hs:147` [code] | adopted-modified | 04 |
+| C62 | `Sequence.RunPlan` holds its own option types | here (04 `Plan`) | `Camera.hs:188`, `Gltf.hs:160` [code] | adopted-modified | 04 |
 | C63 | Glossary *Sequence file* counts state 0 | 03 A-6 note | 02 §11 layout | adopted | glossary-additions |
 | C64 | Row 14's range is `docs/architecture.md:287-296` | 01 §4.14 | `grep -n` [ran] | adopted | 10 |
 | C65 | Row 12 lands in two PRs (`runSequence` at M2, `stepPageWith` at M3) | 01 §4.12; 10 §3 | `stepPageWith` takes a `Budget` | adopted | 01, 10 |
-| C66 | The `LineStopsOnTheModel` sentence as row 17 | 10 §3 | `ThroughLayers.hs:195` [code] | adopted | 01, 10 |
+| C66 | The `LineStopsOnTheModel` sentence as row 17 | 10 §3 | `ThroughLayers.hs:196` [code] | adopted | 01, 10 |
 | C67 | Existing library messages keep bare ids in v1 | 05 open question | pinned sentences in specs and docs [prd] | adopted-modified (decided, follow-up issue) | 05 |
 | C68 | A record's seed for `L1 to L2` is the vertex mean of the face beside L1's longest segment | here (01 §5.8 left it to 02) | (1/4, 3/4) on quarter-fold step 2 [py] | adopted-modified | 01, 02 |
-| C69 | An existing `F` hinge is refused as `ExistingHingeFlat`, with residue | 02 §6.2 | `Flap.hs:190` [code] | adopted | 02 |
+| C69 | An existing `F` hinge is refused as `ExistingHingeFlat`, with residue | 02 §6.2 | `Flap.hs:262` [code] | adopted | 02 |
 | C70 | `bird-base-sequence-arrows.svg` pinned before 05 L3 | 09 §1.3; open question 7 | no golden draws that file with arrows (`BirdSequenceSpec.hs:79` passes `False`) [prd] | adopted | 09 |
 | C71 | Existing `runIO` specs unchanged until their deletion PRs | 09 open question 6 | 14 spec files use `runIO` [prd] | adopted | 09 |
 | C72 | The crane's existing-crease count is 6 (the research note's count line says 7) | 02 §6.2 | the note's table [research] | adopted | 02 |
@@ -2561,7 +2561,7 @@ what this record cites.
 11. **Lines and files.** `grep -n` for the blintz and `HingeSweep` sentences in
     `docs/architecture.md` gives lines 287, 296 and 297; `grep -n "vocabulary\|#60" README.md`
     gives line 213; `grep -n creaseEndFlag src/Senbazuru/Origami/ThroughLayers.hs`
-    gives lines 96 and 195; `find src -path '*Internal*'` prints nothing;
+    gives lines 96 and 196; `find src -path '*Internal*'` prints nothing;
     `grep -rn "step record" PRDs/*.md` finds four rows of `glossary-additions.md`.
 12. **Issues.** `gh issue view N --json title,state,body` for #60, #94 and #104; all
     open.

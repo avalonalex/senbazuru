@@ -94,7 +94,7 @@ Each entry gives the rule, where it is recorded, and whether the request
 - *For the PRDs:* either inference stays authoritative and the move only labels
   or cross-checks it, or the move kind is carried forward. Whichever is chosen,
   a FOLD file exported from a scheme must still render without the scheme:
-  `--steps` "draws the frames a file already has" (`app/Senbazuru/Cli.hs:844`).
+  `--steps` "draws the frames a file already has" (`app/Senbazuru/Cli.hs:958`).
   If kinds travel with the file, they go under a vendor key and meet A6.
 
 **A4. Captions come from the standard `frame_title`.**
@@ -202,11 +202,11 @@ reproducible.**
     units.
 
 **A12. `--layer-budget` reaches every entry point.**
-- *Source:* `AGENTS.md:229-234`; `app/Senbazuru/Cli.hs:385-400`; `stepPage`
+- *Source:* `AGENTS.md:229-234`; `app/Senbazuru/Cli.hs:401-416`; `stepPage`
   takes a `Budget` (`Steps.hs`).
 - *Verdict: reinforces.* The interpreter and any `run` verb take a `Budget`.
 - *Related strain:* `--steps` refuses `--stacking`, because one list of stacking
-  indices means nothing across a page of frames (`Cli.hs:845-851`;
+  indices means nothing across a page of frames (`Cli.hs:959-965`;
   `docs/usage.md:146-148`). A sequence does need per-step layer choices:
   - the crane-wing recipe needs the order with the tail tucked between the body
     layers (#193 result; `docs/notes/several-stackings.md:9-15`);
@@ -229,7 +229,7 @@ reproducible.**
 **A14. Ids belong to the *cut* pattern and are renumbered — the naming problem.**
 - *Source:*
   - `AGENTS.md:320-323`;
-  - `src/Senbazuru/Origami/Folding.hs:283-313`: `foldedPattern` is not the input
+  - `src/Senbazuru/Origami/Folding.hs:284-314`: `foldedPattern` is not the input
     frame, and `unit-square.fold` goes in with 8 vertices and comes out with 9;
   - `src/Senbazuru/Origami/Flap.hs:9-10`: select ids from `foldedPattern`;
   - `study/fold-material/BlintzSequence.hs:4-8`: the recipe's edge ids refer to
@@ -247,7 +247,7 @@ reproducible.**
 **A15. The folding walk holds one face still, and today the recipes choose it by
 hand.**
 - *Source:* `BlintzSequence.hs:5-8`; `study/fold-material/HelmetSequence.hs:8-10`;
-  `architecture.md:289-290`; `Flap.hs:19-24` (poses are aligned so the
+  `architecture.md:289-290`; `Flap.hs:43-48` (poses are aligned so the
   stationary side stays still).
 - *Verdict: strains.* A scheme has to say what stays still. Otherwise the anchor
   is whichever face happens to be listed first, the whole model can turn between
@@ -280,7 +280,7 @@ only.**
 **A18. The library checks a turn about one hinge line; coupled moves are not
 general.**
 - *Source:*
-  - `Flap.hs:1-6` (it does not discover coupled motions) and `:34` (it does not
+  - `Flap.hs:1-6` (it does not discover coupled motions) and `:58` (it does not
     infer a stack from coincident positions);
   - #54, remaining checkbox: compatible changes where creases meet;
   - #55 is open;
@@ -302,17 +302,17 @@ language.**
 - The recipes supply the move shape to generalise from: title, crease selection,
   moving side, signed travel, and angles and orders carried forward. #60 said to
   wait for three examples. Four now exist: blintz, helmet, the quarter fold
-  (`test/Senbazuru/Origami/FlapSpec.hs:36-47`) and the crane wing (#193).
+  (`test/Senbazuru/Origami/FlapSpec.hs:37-48`) and the crane wing (#193).
 
 **A20. The library imports no study code; the study is its own executable and is
 compiled into the tests.**
 - *Source:*
   - `architecture.md:286`, `:371-373` and `:912-913`;
-  - `senbazuru.cabal:175-189`: the study executable depends on the library plus
+  - `senbazuru.cabal:238-252`: the study executable depends on the library plus
     `directory`;
-  - `senbazuru.cabal:193`: the test suite's source directories include
+  - `senbazuru.cabal:258`: the test suite's source directories include
     `study/fold-material`;
-  - `senbazuru.cabal:152-159`: the library does not depend on `directory`;
+  - `senbazuru.cabal:213-222`: the library does not depend on `directory`;
   - #208: the build/test job took 14m36s, 10m48s of it in `stack test`.
 - *Verdict: strains PRD 3.* "The study consumes what (1)/(2) define" fits the
   current direction of dependency. "The CLI produces realistic renderings" needs
@@ -387,8 +387,8 @@ questions.**
 
 **A28. The FOLD writer's loose ends.**
 - *Source:* #58 items 3-4;
-  `src/Senbazuru/Fold/Load.hs:182` (`encodeFoldFile :: FoldFile -> ByteString`,
-  so it cannot refuse a non-finite number); `Load.hs:192` (`BS.writeFile`, not
+  `src/Senbazuru/Fold/Load.hs:234` (`encodeFoldFile :: FoldFile -> ByteString`,
+  so it cannot refuse a non-finite number); `Load.hs:244` (`BS.writeFile`, not
   atomic); `round-trips.md:128-143` (the refusal is not done).
 - *Verdict: newly reachable.* #58 waited on "an authoring toolset" to reach
   these. A `run scheme -o model.fold` edit loop, writing over the file it read,
@@ -472,7 +472,7 @@ them.
 - `examples/quarter-fold.fold` has the same vertices, edges, faces and
   assignment as the steps fixture's key frame, and exactly the final frame's
   angles (`jq`).
-- `FlapSpec.hs:36-47` folds that file in two checked turns:
+- `FlapSpec.hs:37-48` folds that file in two checked turns:
   `prepareFlapAlong [8,10] (FaceId 3) (-180)`, re-fold, then
   `prepareFlapAlong [9,11] (FaceId 1) 180`. It asserts the final angles equal
   the source's.
@@ -480,7 +480,7 @@ them.
   Reproducing this fixture tests folding, not a vocabulary.
 - "Coordinates match" still needs a tolerance and a 2D/3D decision.
   `foldedAttributes` writes `2D` or `3D` according to relief
-  (`Folding.hs:408-413`).
+  (`Folding.hs:422-427`).
 
 **C3. A convention is hidden in the fixture.**
 - Step 2 has `V` on edge 9 and `M` on edge 11, both at angle 0. The key frame
@@ -518,8 +518,8 @@ collides with #94 (C6).
   other than a positional diff.
 
 **C6. #94's premises are stale.**
-- It says `frame_title` is decoded and nothing reads it. In fact `Cli.hs:779`
-  and `:879` read it for the GLB and SVG titles, and `fold-reference.md:54`
+- It says `frame_title` is decoded and nothing reads it. In fact `Cli.hs:888`
+  and `:993` read it for the GLB and SVG titles, and `fold-reference.md:54`
   marks it "used (SVG `<title>`)".
 - Its done-when "quarter-fold-steps, given titles" is already true: all three
   frames have titles (`jq`).
@@ -549,7 +549,7 @@ matches 58 M + 41 V + 20 F.
 
 **C9. #55 done-when 1 is met for its two fixtures, but by prescribed routes, not
 by the solver it describes.**
-- `Flap` poses are re-folded from angles and checked (`Flap.hs:19-24`).
+- `Flap` poses are re-folded from angles and checked (`Flap.hs:43-48`).
 - The bird route is four certified paths composed together
   (`CheckedBird.hs:8-14`; #189 closed).
 - "Every intermediate frame accepted" holds for the checked poses. The Newton
@@ -572,21 +572,21 @@ Checked with `grep` for `| **Term` rows in `docs/glossary.md`.
 - **Flap** (`:29`) does not say how a flap is identified. The code's working
   definition is the faces reached after removing the selected creases from the
   face graph (`Flap.hs:2-6`).
-- **Step** (`:48`) says steps are stored as consecutive frames of `file_frames`.
+- **Step** (`:51`) says steps are stored as consecutive frames of `file_frames`.
   But the key frame is also a step (quarter-fold-steps' "Step 1: the flat sheet"
   is the top-level object), and a key frame holding only metadata is not one
   (`Steps.hs:85-89`).
-- **Squash fold**, **Rabbit-ear fold** and **Petal fold** (`:32-34`) describe the
+- **Squash fold**, **Rabbit-ear fold** and **Petal fold** (`:35-37`) describe the
   hand motion. None says which creases change, or that each is a coupled
   multi-axis move.
 - **Rest angle** is defined twice, differently:
   - at `:19`, as set by the material's yield stress, independent of thickness,
     and not zero;
-  - at `:83`, as a spring's preference that the solve need not reach.
+  - at `:86`, as a spring's preference that the solve need not reach.
 
   That breaks the glossary's own claim to be the one place a definition lives
   (the `AGENTS.md` docs table).
-- **Collapse** (`:37`) and **Through all layers** (`:38`) are adequate.
+- **Collapse** (`:40`) and **Through all layers** (`:41`) are adequate.
 
 **Missing, and needed by the PRDs:**
 - *Language:* scheme, move, macro-move, reference (point or line), landmark,

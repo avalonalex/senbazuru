@@ -69,7 +69,7 @@ claiming otherwise. A half turn about model y or x keeps every axis span, so
   `creasePattern`, as `examples/quarter-fold-steps.fold` writes its key frame:
   - its coordinates are the sheet mirrored in x, with z still 0;
   - `foldFrameWith` re-winds every ring counter-clockwise and lifts a valley's
-    child towards +z (`Folding.hs:39-54, 436-447, 650-653`);
+    child towards +z (`Folding.hs:39-54, 450-461, 664-667`);
   - but on the turned sheet the top side faces −z.
   
   So `render --fold`, `export --fold` or `crease` on that frame folds the
@@ -77,7 +77,7 @@ claiming otherwise. A half turn about model y or x keeps every axis span, so
   AGENTS.md warns about exactly this: "A wrong flip folds perfectly well and is
   the mirror model."
 - **If** instead every frame comes out `foldedForm`, as `surfaceFromFolded`
-  topology does (`Folding.hs:386, 398-400`; `Surface.hs:201-210`), two things
+  topology does (`Folding.hs:400, 412-414`; `Surface.hs:201-210`), two things
   change:
   - the step-1 figure is drawn in `FoldedFormNotation`, not crease-pattern
     notation (`CreasePattern.hs:546-548`);
@@ -89,7 +89,7 @@ claiming otherwise. A half turn about model y or x keeps every axis span, so
 
 - `jq` on `examples/quarter-fold-steps.fold`: top level `["creasePattern"]`,
   file frames `["foldedForm"]` twice.
-- `src/Senbazuru/Origami/Folding.hs:39-54, 386`.
+- `src/Senbazuru/Origami/Folding.hs:39-54, 400`.
 - `src/Senbazuru/Render/CreasePattern.hs:546-548`.
 
 **Proposal.** Add to D4's "Every frame `Sequence.Write` emits":
@@ -108,7 +108,7 @@ claiming otherwise. A half turn about model y or x keeps every axis span, so
 **Claim.**
 
 - **Why a hold jumps.** `foldFrameWith` always places the first face at
-  `identity`, i.e. at its flat material position (`Folding.hs:577-585`). After
+  `identity`, i.e. at its flat material position (`Folding.hs:591-599`). After
   `hold P` puts a moved face first, the refold puts that face back flat, and
   the whole model jumps by that face's old placement. Being jump-free needs a
   stored *alignment* motion, applied to every later refold.
@@ -118,14 +118,14 @@ claiming otherwise. A half turn about model y or x keeps every axis span, so
   175° petal is built with `rotationAbout`, from `cos` and `sin`
   (`Rigid.hs:114-129`).
 - **Flap refuses an aligned start.** Flap rejects any start whose positions are
-  not an untouched `foldFrameWith` within 1e-9 × span (`Flap.hs:174-184`,
+  not an untouched `foldFrameWith` within 1e-9 × span (`Flap.hs:246-256`,
   `FlapStartMismatch`). So the alignment must be applied *outside* Flap, to its
   output surfaces. `transformSurface` then drops `frameExtras`
   (`Surface.hs:287-296`), so material coordinates must be put back afterwards.
 - **The join check.** Invariant 6 has to compare positions *after* alignment.
 
-**Evidence.** `src/Senbazuru/Origami/Folding.hs:577-585`;
-`src/Senbazuru/Origami/Flap.hs:174-184, 339-352`;
+**Evidence.** `src/Senbazuru/Origami/Folding.hs:591-599`;
+`src/Senbazuru/Origami/Flap.hs:246-256, 465-478`;
 `src/Senbazuru/Geometry/Rigid.hs:114-129`;
 `study/fold-material/BlintzSequence.hs:5-8` ("anchoring a corner would turn the
 whole model").
@@ -149,24 +149,24 @@ whole model").
 ### L1-4 (major) · D3 invariant 3: "never patch a `Folded`" forbids the only way to hand Flap its mandatory stack orders
 
 **Claim.** Flap reads the orders it needs from the `foldedFrame` it is given
-(`Flap.hs:226`: `suppliedOrders = faceOrders suppliedFrame`). It refuses a
+(`Flap.hs:315`: `suppliedOrders = faceOrders suppliedFrame`). It refuses a
 touching stack without them (A2 F18: the helmet test strips orders and expects
 refusal). Its start check compares angle count, face rings and positions
-(`Flap.hs:176-184`), never orders. The only precedent sets them by patching:
+(`Flap.hs:248-256`), never orders. The only precedent sets them by patching:
 `folded {foldedFrame = frame {faceOrders = orders}}` (`CraneWing.hs:139`). Read
 literally, invariant 3 makes every fold on a stacked model unbuildable.
 
-**Evidence.** `src/Senbazuru/Origami/Flap.hs:174-184, 223-235`;
+**Evidence.** `src/Senbazuru/Origami/Flap.hs:246-256, 315-327`;
 `study/fold-material/CraneWing.hs:139`; A2 F15, F18.
 
 **Proposal.** Replace invariant 3 with:
 
 > 3. Re-fold after every handoff. Never change a `Folded`'s coordinates, faces,
->    angles or placements (`FlapStartMismatch`, `Flap.hs:176-184`). Hand
+>    angles or placements (`FlapStartMismatch`, `Flap.hs:248-256`). Hand
 >    accepted orders to Flap only by setting `foldedFrame.faceOrders` on an
 >    untouched `foldFrameWith` result (`CraneWing.hs:139`). Write them against
 >    `foldedFrame`'s counter-clockwise rings, never `foldedPattern`'s
->    (`Folding.hs:303-308`).
+>    (`Folding.hs:304-309`).
 
 ---
 
@@ -178,23 +178,23 @@ intent M/V on every crease, precreases included. But `creaseAllAlong` writes
 array exists (`Creasing.hs:290-292, 316-320`). It also documents this as
 deliberate: "A valley with an angle of nought is not a valley"
 (`Creasing.hs:281-286`). ThroughLayers passes a real M/V per layer
-(`ThroughLayers.hs:296`).
+(`ThroughLayers.hs:297`).
 
 So a `creaseLayersThrough … Valley` on the working pattern would fold every new
 crease flat at once. D8's "exact, since a crease at angle 0 moves no paper" is
 false for that output. The precedent dodges the problem by creasing `Unassigned`
-and finding the hinge as "every U edge" (`CraneWing.hs:114, 101`), which is
+and finding the hinge as "every U edge" (`CraneWing.hs:114, 165`), which is
 correction 14. Changing new creases to 0 inside the shared function would in
-turn change `crease --folded` (`Cli.hs:761`) and the ThroughLayers tests, which
+turn change `crease --folded` (`Cli.hs:870`) and the ThroughLayers tests, which
 say "The creases are written at plus or minus 180" (`ThroughLayersSpec.hs:135`).
 That breaks D8's "goldens unchanged".
 
 **Evidence.**
 
 - `src/Senbazuru/Fold/Creasing.hs:281-292, 316-320`;
-  `src/Senbazuru/Origami/ThroughLayers.hs:261-264, 296`.
+  `src/Senbazuru/Origami/ThroughLayers.hs:262-265, 297`.
 - `test/Senbazuru/Origami/ThroughLayersSpec.hs:135`.
-- `study/fold-material/CraneWing.hs:114, 101`.
+- `study/fold-material/CraneWing.hs:114, 165`.
 - gap-layer-selective-folds finding 4 ("through this API an unselected layer's
   crease 'at angle 0' can only be U or F").
 
@@ -219,7 +219,7 @@ That breaks D8's "goldens unchanged".
 ### L1-6 (major) · D5 + D8: "senses as seen by the reader" has two possible implementations and the spine allows both, so a turned model gets a double flip or none
 
 **Claim.** `ThroughLayers.facesUp` reads the placement's image of +z
-(`ThroughLayers.hs:321-328`) and flips the caller's assignment on face-down
+(`Folding.hs:327-338`) and flips the caller's assignment on face-down
 layers.
 
 - **Case A.** Hand it a *presented* `Folded`, where a turn over sends +z to −z.
@@ -230,11 +230,11 @@ layers.
   neither with a raw `Folded` flips never.
 
 D8's signature takes a `Folded` without saying which. The constructor is public,
-so nothing checks (`Flap.hs:172-173`). L1-3 already requires the raw fold for
+so nothing checks (`Flap.hs:244-245`). L1-3 already requires the raw fold for
 Flap, so the two moves would disagree unless this is pinned.
 
-**Evidence.** `src/Senbazuru/Origami/ThroughLayers.hs:227-229, 285-296,
-321-328`; `src/Senbazuru/Origami/Flap.hs:172-184`; spine D5 bullet 3, D8
+**Evidence.** `src/Senbazuru/Origami/ThroughLayers.hs:228-230, 286-297,
+321-328`; `src/Senbazuru/Origami/Flap.hs:244-256`; spine D5 bullet 3, D8
 signature, §4 `Sense`.
 
 **Proposal.** In D8:
@@ -269,7 +269,7 @@ three things: it creases, it re-traces, and it turns.
     kind of move.
   - Holds like `band S d0..d1`, "distance from the hinge in the start pose",
     need the hinge in the numbering of the pose they measure.
-- **Record equality.** `CheckedFlap` derives only `Show` (`Flap.hs:98-99`), so a
+- **Record equality.** `CheckedFlap` derives only `Show` (`Flap.hs:125-126`), so a
   `StepRecord` holding it cannot derive `Eq`. The blintz/helmet equivalence PRs
   (D16) will need a comparison projection.
 - **Duplicated state.** `recordOrders` and `recordRequirements` repeat what
@@ -278,7 +278,7 @@ three things: it creases, it re-traces, and it turns.
 
 **Evidence.** `study/fold-material/CraneWing.hs:105-140`;
 `src/Senbazuru/Fold/Crossings.hs:304-315, 343-358`;
-`src/Senbazuru/Origami/Flap.hs:98-99`; gap-study-consumption-contract finding 7
+`src/Senbazuru/Origami/Flap.hs:125-126`; gap-study-consumption-contract finding 7
 and open question 4.
 
 **Proposal.** In D14 and §4:
@@ -316,11 +316,11 @@ a finished blintz.
 
 Also unspecified: which frame of a multi-frame file is the sheet
 (`quarter-fold-steps.fold` has 2 `file_frames`; `Fold.Load.loadFile` returns a
-whole `FoldFile`, `Load.hs:127`), and what to do with a file already classed
+whole `FoldFile`, `Load.hs:159`), and what to do with a file already classed
 `foldedForm`.
 
 **Evidence.** `jq` summaries above; `study/fold-material/BlintzSequence.hs:43`;
-`src/Senbazuru/Fold/Load.hs:127`; `src/Senbazuru/Origami/Folding.hs:507-532`.
+`src/Senbazuru/Fold/Load.hs:159`; `src/Senbazuru/Origami/Folding.hs:521-546`.
 
 **Proposal.** Add to D3:
 
@@ -547,9 +547,9 @@ output.
 **Claim.** Nested messages speak the CLI's words, not the sequence's.
 
 - **Flag names.** `ThroughError.LineStopsOnTheModel` prints `--from`/`--to` via
-  `creaseEndFlag` (`ThroughLayers.hs:194-201`, `Query.hs:68-71`).
+  `creaseEndFlag` (`ThroughLayers.hs:195-202`, `Query.hs:68-71`).
 - **Internal ids.** Flap and Folding messages name edge and face ids of the
-  step-local cut pattern (`Flap.hs:133-151`; `Folding.hs:180-218`). D2 says
+  step-local cut pattern (`Flap.hs:171-192`; `Folding.hs:181-219`). D2 says
   those ids "never appear in the language".
 
 So `instance Explain SequenceError` must pattern-match through `FoldError`,
@@ -557,9 +557,9 @@ So `instance Explain SequenceError` must pattern-match through `FoldError`,
 `CannotCrease (CreaseEndMeetsNothing …)`). It cannot just call `explain`, and
 the spine's single sentence underestimates that work.
 
-**Evidence.** `src/Senbazuru/Origami/ThroughLayers.hs:194-209`;
+**Evidence.** `src/Senbazuru/Origami/ThroughLayers.hs:195-210`;
 `src/Senbazuru/Fold/Query.hs:68-71, 173, 312-316`;
-`src/Senbazuru/Origami/Flap.hs:127-153`.
+`src/Senbazuru/Origami/Flap.hs:165-194`.
 
 **Proposal.** In D12:
 
@@ -584,7 +584,7 @@ the spine's single sentence underestimates that work.
   (gap-step-annotation-channel (b)). The spine does not carry that warning.
 - **Caption height.** Gutter height on the page at the defaults:
   - the inputs: page 400 wide, margin 16, `--columns 3`, `gridGutter 0.1`
-    (`Svg.hs:98-106`, `Cli.hs:587-590`, `Layout.hs:95, 121`);
+    (`Svg.hs:99-107`, `Cli.hs:686-689`, `Layout.hs:95, 121`);
   - the page is 3.2 figure widths across 368 pt of content, so one figure is
     about 115 pt wide;
   - the gutter is 0.1 of that, about 11.5 pt, against `themeLabelSize = 14`
@@ -668,11 +668,11 @@ return the proper rotation.
   also needs `start folded` with relations. `StartFolded [Relation]` is a
   `Step`, so the start state is split between header and first step.
 - **No stationary face.** `recordStationary :: Maybe (MaterialPoint, FaceId)`
-  needs Flap's stationary face, which is not exported (`Flap.hs:49-59`: no
+  needs Flap's stationary face, which is not exported (`Flap.hs:76-89`: no
   accessor for `stationaryFace`). The runner must recompute it the way
-  `Flap.hs:196-198` does.
+  `Flap.hs:268-270` does.
 
-**Evidence.** Spine D1 line 95, §4 lines 673-680; `src/Senbazuru/Origami/Flap.hs:49-59,
+**Evidence.** Spine D1 line 95, §4 lines 673-680; `src/Senbazuru/Origami/Flap.hs:76-89,
 193-195`.
 
 **Proposal.**
@@ -697,7 +697,7 @@ return the proper rotation.
   crossings (`Crossings.hs:309, 334-341`). `mergedCrossings` drops a crossing
   near an existing vertex rather than moving it (`:180-185`). Across a flap turn
   or macro the graph is unchanged: Flap refolds the same pattern with only
-  angles changed (`Flap.hs:355-357`). Across presentation, vertex ids are
+  angles changed (`Flap.hs:469-471`). Across presentation, vertex ids are
   untouched and `transformSurface` moves positions only (`Surface.hs:287-296`).
   Re-anchoring reorders faces, not vertices (`CraneWing.hs:110-112`).
 - **The new-crease pieces really are an edge-list suffix.** Old edge ids shift
@@ -709,13 +709,13 @@ return the proper rotation.
 - **`Fold.Faces.tolerance` is `1e-9 ×` the diagonal of the sheet's bounding box**
   (`Faces.hs:248-251`).
 - **Flap derives per-segment travel signs from the stationary face's ring
-  direction** (`Flap.hs:211-219`), as D5 cites.
+  direction** (`Flap.hs:284-301`), as D5 cites.
 - **`rotationAbout` uses `cos`/`sin`, and `Rigid(..)` and `Mat3(..)` are
   exported unchecked** (`Rigid.hs:28-40, 51, 76-79, 114-129`), so exact ±1
   quarter turns are constructible and nothing refuses a reflection.
 - **`foldFrameWith` roots the walk at the first listed face**
-  (`Folding.hs:577-585`) and re-signs orders whose second face was re-wound
-  (`Folding.hs:482-486`). Putting the anchor face first before orders exist is
+  (`Folding.hs:591-599`) and re-signs orders whose second face was re-wound
+  (`Folding.hs:496-500`). Putting the anchor face first before orders exist is
   the precedent's mechanism (`CraneWing.hs:110-112`, `BlintzSequence.hs:44-47`).
 - **Stacking does not disagree between intent-M-at-0 and state-rule-F-at-0.**
   Direction comes from a nonzero angle first, else the assignment
@@ -728,12 +728,12 @@ return the proper rotation.
   real addition, not a re-export.
 - **ArrowPath defaults can emit today's bytes.** `ArrowPath` is only ever built
   in `Style.arrowFor` (`Style.hs:364-372`), and the head is drawn in one place
-  (`Svg.hs:197-238`). A default head shape that selects the existing `head'`
+  (`Svg.hs:207-244`). A default head shape that selects the existing `head'`
   code leaves goldens unchanged.
 - **`stepPage` has the signature D7 extends** (`Steps.hs:90-100`), and
   `withArrows` reads only `motionFrom`/`motionTo` (`CreasePattern.hs:592-604`).
 - **The GLB copies exactly three `senbazuru:` extras keys**
-  (`Gltf.hs:241`), as D7/D10 say. `transformSurface` and `withFaceOrders` drop
+  (`Gltf.hs:274`), as D7/D10 say. `transformSurface` and `withFaceOrders` drop
   `frameExtras` (`Surface.hs:263, 292`), so writing material coordinates and
   assurance after the last transform (D10) is necessary.
 - **Goldens and budgets.** 33 tracked goldens (`git ls-files test/golden | wc
@@ -741,5 +741,5 @@ return the proper rotation.
   (`HingeSweep.hs:95`), the 4096 D16 budgets against.
 - **megaparsec 9.5.0 and parser-combinators 1.3.0 are in the pinned snapshot**
   (research `lts-22.44.cabal.config:1917, 2214`).
-- **Every existing CLI verb goes through `withFoldFile`** (`Cli.hs:693-697`), so
+- **Every existing CLI verb goes through `withFoldFile`** (`Cli.hs:784-788`), so
   a separate `run` path is needed as D13 says.

@@ -197,12 +197,12 @@ architecture decides which of them may live in the repository.
 4. **The library and the study depend on no numeric package today.** [code]
    The library needs only `aeson`, `base`, `bytestring`, `containers`,
    `filepath`, `megaparsec`, `tagsoup`, `text` and `transformers`
-   (`senbazuru.cabal:210-219`). The study executable adds only `directory`
-   (`:240-248`). All of the study's linear algebra is `Data.IntMap`, hand-written
+   (`senbazuru.cabal:213-222`). The study executable adds only `directory`
+   (`:243-251`). All of the study's linear algebra is `Data.IntMap`, hand-written
    (`study/fold-material/SparseSolve.hs:23-26`). Its derivatives are
    hand-derived gradient rows: `FoldBending.bendingRows` returns
    `[([(Int, V3)], Double)]` from `hingeAngle`'s own gradient
-   (`FoldBending.hs:261-268`). Its energies are Gauss–Newton residuals with
+   (`FoldBending.hs:300-307`). Its energies are Gauss–Newton residuals with
    penalty weights 1e8 (lengths) and 1e10 (contact)
    (`BodyFreshGallery.hs:136`; `whole-crane-candidate.md` "One bounded
    adjustment").
@@ -591,7 +591,7 @@ architecture decides which of them may live in the repository.
     - **The read side.** `surfaceFromFrame` reads the key back and refuses a
       wrong count (`Surface.hs:179-195`).
     - **GLB.** `Render.Gltf` keeps exactly those three keys in its stored frame
-      (`Gltf.hs:241-242`).
+      (`Gltf.hs:274-275`).
     - **For an external tool,** this means the round trip is: write FOLD with
       material coordinates, have the tool read positions and faces, move
       vertices only, and write positions back under the same ids. The existing

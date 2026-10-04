@@ -49,7 +49,7 @@ Milestone M3 (`run -o x.svg`, the book-style page;
 `examples/quarter-fold-steps.fold` holds three states of a unit square: flat,
 folded in half, folded in quarters (the test fixture is identical, `cmp`).
 `test/golden/quarter-fold-steps.svg` pins its step page with arrows
-([`SvgSpec.hs:379-380`](../test/Senbazuru/Render/SvgSpec.hs#L379-L380), through
+([`SvgSpec.hs:391-392`](../test/Senbazuru/Render/SvgSpec.hs#L391-L392), through
 `stepPage` at [`:133`](../test/Senbazuru/Render/SvgSpec.hs#L133)).
 
 The page has three *figures* (one drawing on a page of several,
@@ -123,7 +123,7 @@ imports, signature, definition and comments, leaves 23 call lines in 15 files:
 
 | Arrows on (`True`) | Arrows off (`False`) |
 | --- | --- |
-| `Cli.hs:854` (the flag) · `FlapSpec.hs:292`, `:312`, `:322` · `SvgSpec.hs:133` · `CraneGallery.hs:38` · `FlapGallery.hs:92` · `PetalGallery.hs:45` · `BlintzGallery.hs:39` · `HelmetGallery.hs:38` | `BirdSequenceSpec.hs:79` · `BasicBaseSpec.hs:216` · `StepsSpec.hs:46`, `:56`, `:57`, `:61`, `:62`, `:68`, `:69` · `CraneSpreadGallery.hs:135` · `WingBendingGallery.hs:42` · `BasicBaseGallery.hs:145` · `study/fold-material/Main.hs:171` |
+| `Cli.hs:968` (the flag) · `FlapSpec.hs:293`, `:313`, `:323` · `SvgSpec.hs:133` · `CraneGallery.hs:38` · `FlapGallery.hs:92` · `PetalGallery.hs:45` · `BlintzGallery.hs:39` · `HelmetGallery.hs:38` | `BirdSequenceSpec.hs:79` · `BasicBaseSpec.hs:216` · `StepsSpec.hs:46`, `:56`, `:57`, `:61`, `:62`, `:68`, `:69` · `CraneSpreadGallery.hs:158` · `WingBendingGallery.hs:56` · `BasicBaseGallery.hs:145` · `study/fold-material/Main.hs:277` |
 
 (The research note's list omits `FlapGallery.hs:92`.)
 
@@ -173,7 +173,7 @@ imports, signature, definition and comments, leaves 23 call lines in 15 files:
   implementation; none of the 23 call lines is edited.
 - **R-06-3.** `StepError` is unchanged
   ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)), so the CLI's match
-  at [`Cli.hs:855-863`](../app/Senbazuru/Cli.hs#L855-L863) compiles
+  at [`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977) compiles
   ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). Every note is
   drawable; the only new failures are `motionsAcross`'s and `creasesToCome`'s
   `FoldError` constructors ([05](05-prd-library-additions.md)).
@@ -327,7 +327,7 @@ data SeenFrom = FromReadersSide | FromOppositeSide | EdgeOn
 Positions are in the *written frame*'s coordinates, already presented
 ([glossary](glossary-additions.md#the-fold-format)), and the page projects them
 through its one basis as `withArrows` projects a motion
-([`CreasePattern.hs:592-605`](../src/Senbazuru/Render/CreasePattern.hs#L592-L605)).
+([`CreasePattern.hs:592-604`](../src/Senbazuru/Render/CreasePattern.hs#L592-L604)).
 `inferNote` carries `NoFoldLines`: equal graphs have no creases to come, and a
 default that could draw them is one more thing to leak into today's bytes.
 `noteMarks` holds each mark's label and position, because M3 includes marks and
@@ -378,11 +378,11 @@ holds by construction, and `stepNotes` returns `Either WriteProblem` because
 The heads follow Robert Lang's diagramming conventions as summarised in research
 finding 20: solid head = valley (today's), hollow one-sided head = mountain, hollow
 two-sided head = unfold, cleft tail = push. Emission, **SKETCH**, with
-`headLength` clamped as at [`Svg.hs:215`](../src/Senbazuru/Render/Svg.hs#L215):
+`headLength` clamped as at [`Svg.hs:225`](../src/Senbazuru/Render/Svg.hs#L225):
 `SolidHead` is today's filled triangle path byte for byte; `HollowHalfHead` is a
 single barb, one stroked open line from the tip back to a point one head-length
 back and 0.4 of it to one side of the shaft (in `Svg.hs`'s names, `tip` to
-`base + half·across`, [`:207-217`](../src/Senbazuru/Render/Svg.hs#L207-L217));
+`base + half·across`, [`:217-227`](../src/Senbazuru/Render/Svg.hs#L217-L227));
 `HollowDoubleHead` is a stroked closed triangle. Neither hollow head sets `fill`,
 so the group's `fill="none"` holds.
 
@@ -554,7 +554,7 @@ a row make a page box 3.2 figure-widths wide:
 
 | Page | Content | Scale | Gutter on page | Type ([`Style.hs:227`](../src/Senbazuru/Diagram/Style.hs#L227)) |
 | --- | --- | --- | --- | --- |
-| CLI default, 400 × 400, margin 16 ([`Svg.hs:96-105`](../src/Senbazuru/Render/Svg.hs#L96-L105)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
+| CLI default, 400 × 400, margin 16 ([`Svg.hs:97-106`](../src/Senbazuru/Render/Svg.hs#L97-L106)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
 | `renderSteps` test page, 400 × 200, margin 10 | 380 × 180 | 380 / 3.2 = 118.75 | 11.875 | 14 |
 
 The second scale is the golden's 118.75 above, so captions overlap their figure on
@@ -575,7 +575,7 @@ stated. It is still the owner's to decide before M3.
 at about 236.5 units of ink against a stride (one figure plus one gutter,
 [`Layout.hs:119-121`](../src/Senbazuru/Diagram/Layout.hs#L119-L121)) of
 1.1 × 115 = 126.5, so it spills across the next figure; the backend has no font
-metrics ([`Svg.hs:177-180`](../src/Senbazuru/Render/Svg.hs#L177-L180)) to wrap or
+metrics ([`Svg.hs:187-190`](../src/Senbazuru/Render/Svg.hs#L187-L190)) to wrap or
 truncate by, which is why the default accepts overflow rather than guessing widths.
 
 **Why the trailing gutter is conditional.** It makes a one-row page box 1.1 tall;
@@ -620,7 +620,7 @@ with `gh issue view 94`) is amended at M0
 | --- | --- |
 | A `Bool` beside the notes | Two switches answer one question, arrows or not, and they can disagree ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)) |
 | Changing `stepPage`'s arity | 23 lines in 15 files for no drawing change |
-| A sum-type `StepError` (research sketch) | Breaks `Cli.hs:855-863`; unnecessary once every note is drawable |
+| A sum-type `StepError` (research sketch) | Breaks `Cli.hs:969-977`; unnecessary once every note is drawable |
 | Presentation applied inside the page, about page axes | The runner would need a camera, written files would depend on `--view`, and frames that arrive presented would be presented twice ([D5](decisions.md#d5-presentation-and-the-readers-side)) |
 | #95's axis at x = 0 | Doubles the union, halves the scale |
 | Kind from the changed assignment (#36) | Ambiguous per motion |
@@ -641,7 +641,7 @@ with `gh issue view 94`) is amended at M0
 | A1 | `stepPage t b g v x fs == stepPageWith t b g v (map (\f -> (f, noteFor x)) fs)` for both `x` on the quarter fixture, `bird-base-sequence.fold` and `StepsSpec`'s sheets | a default in `inferNote`/`silentNote` leaks, e.g. `InferFoldLines` |
 | A2 | On the committed branch, `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing and the same command with `--diff-filter=A` lists exactly the new goldens below ([D16](decisions.md#d16-testing-and-acceptance); [09 §1.2](09-testing-and-acceptance.md#12-tracked-goldens-stay-byte-identical)). Both print nothing today (run 2026-09-15) | `SolidHead` emission reorders an attribute; a gutter appears without a caption; a golden is added that this table does not list |
 | A3 | `quarter-fold-steps.svg` and the pinned `bird-base-sequence-arrows.svg` stay byte-identical, with the by-hand `cmp` of `render --steps --arrows` on both multi-frame files in `examples/`, as [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages) sets out | presentation classification ([05](05-prd-library-additions.md)) fires on a real fold |
-| A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:251-256`](../test/Senbazuru/Render/SvgSpec.hs#L251-L256) | a hollow head or loop is sized in model units |
+| A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268) | a hollow head or loop is sized in model units |
 | A5 | `seenFrom` gives §4's table for the five named views and two gallery bases, and a roll of 1 radian changes nothing | `z > 0` is read as the reader's side |
 | A6 | Under `View (Just bottomUp) 0` the same notes draw `HollowHalfHead` where `top` draws `SolidHead`, with dashes swapped too | inversion reaches heads but not dashes |
 | A7 | With and without a turn-over, figure extents and page box agree within 1e-12 × span on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0 or the corner mean |
@@ -664,10 +664,10 @@ with `gh issue view 94`) is amended at M0
 
 | Group | Goldens (producer) | What here could move them |
 | --- | --- | --- |
-| Step pages with arrows (12) | `quarter-fold-steps.svg` (`SvgSpec.hs:380`); `quarter-fold-step-1.svg` (`:372`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:294`, `:314`, `:324`); `checked-blintz.svg` (`BlintzSequenceSpec.hs:127`); `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
-| Step pages without arrows (4) | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` (`BirdSequenceSpec.hs:84`); `frog-sequence.svg` (`BasicBaseSpec.hs:220`); `bent-strip.svg` (`WingBendingSpec.hs:100`) | `silentNote`; the trailing gutter and the captioned gutter; basis choice |
-| Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:334-495`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill` |
-| GLB (3) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:648`, `:653`, `:658`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
+| Step pages with arrows (12) | `quarter-fold-steps.svg` (`SvgSpec.hs:392`); `quarter-fold-step-1.svg` (`:384`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:295`, `:315`, `:325`); `checked-blintz.svg` (`BlintzSequenceSpec.hs:139`); `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
+| Step pages without arrows (4) | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` (`BirdSequenceSpec.hs:84`); `frog-sequence.svg` (`BasicBaseSpec.hs:220`); `bent-strip.svg` (`WingBendingSpec.hs:102`) | `silentNote`; the trailing gutter and the captioned gutter; basis choice |
+| Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:346-507`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill` |
+| GLB (3) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:617`, `:622`, `:627`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
 
 ### New goldens
 

@@ -24,37 +24,37 @@ exact landmarks, measured cost, and the study's input contract.
 
 | # | Claim (file) | Verdict | Evidence |
 | --- | --- | --- | --- |
-| 1 | `Folded` has exactly `foldedFrame`, `foldedPattern`, `foldedPlacements :: IntMap Rigid`; `foldFrameWith :: Frame -> Either FoldingError Folded` (A1, C, G) | confirmed | `Origami/Folding.hs:283-331` |
-| 2 | With no `edges_foldAngle`, every M/V edge folds to ∓180 at once (A1) | confirmed | `foldAnglesOf`, `Folding.hs:507-532` (`fromAssignment`) |
-| 3 | The walk holds the first face still, "`faces !! 0`" (A1) | confirmed (wording) | Root is the first face, but the code is a total pattern match `(f : _)`, not `!!` (`Folding.hs:577-588`). The claim is right and the quote is a paraphrase. |
+| 1 | `Folded` has exactly `foldedFrame`, `foldedPattern`, `foldedPlacements :: IntMap Rigid`; `foldFrameWith :: Frame -> Either FoldingError Folded` (A1, C, G) | confirmed | `Origami/Folding.hs:284-345` |
+| 2 | With no `edges_foldAngle`, every M/V edge folds to ∓180 at once (A1) | confirmed | `foldAnglesOf`, `Folding.hs:521-546` (`fromAssignment`) |
+| 3 | The walk holds the first face still, "`faces !! 0`" (A1) | confirmed (wording) | Root is the first face, but the code is a total pattern match `(f : _)`, not `!!` (`Folding.hs:591-602`). The claim is right and the quote is a paraphrase. |
 | 4 | `creaseAllAlong` clears `facesVertices`, `faceOrders`, `frameExtras`; new M/V creases get ±180 when an angle array exists (A1, E2) | confirmed | `Fold/Creasing.hs:252-268`, `280-320` (`flatAngleFor`) |
 | 5 | `motionsBetween` refuses frames whose `edges_vertices` or `faces_vertices` differ (A1, C, D) | confirmed | `Origami/Step.hs:88-96`, `118-126` |
-| 6 | `prepareFlapAlong` rebuilds the start and refuses `FlapStartMismatch`; travel ≤ 360; hinge must be M/V/U, so an `F` edge is `FlapNotHinge` (A1, A2) | confirmed | `Origami/Flap.hs:164-198` |
-| 7 | `creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame`, points read in folded coordinates, assignment named from +z, returns a pattern (A1, E2) | confirmed | `Origami/ThroughLayers.hs:216-227` |
-| 8 | GLB `extras.senbazuru.frame` keeps only `senbazuru:material_coords`, `source_panels`, `source_edges`; any other vendor key is dropped (C) | confirmed | `Render/Gltf.hs:237-242` |
+| 6 | `prepareFlapAlong` rebuilds the start and refuses `FlapStartMismatch`; travel ≤ 360; hinge must be M/V/U, so an `F` edge is `FlapNotHinge` (A1, A2) | confirmed | `Origami/Flap.hs:235-270` |
+| 7 | `creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame`, points read in folded coordinates, assignment named from +z, returns a pattern (A1, E2) | confirmed | `Origami/ThroughLayers.hs:217-228` |
+| 8 | GLB `extras.senbazuru.frame` keeps only `senbazuru:material_coords`, `source_panels`, `source_edges`; any other vendor key is dropped (C) | confirmed | `Render/Gltf.hs:270-275` |
 | 9 | `surfaceDiagram = creasePatternAuto theme budget view . surfaceFrame` (C, B) | confirmed | `Render/CreasePattern.hs:152-157` |
 | 10 | `stepPage :: Theme -> Budget -> Grid -> View -> Bool -> [Frame] -> Either StepError (Maybe Diagram)`; skips frames with no vertices; arrows from `motionsBetween` (A1, C) | confirmed | `Render/Steps.hs:90-129` |
 | 11 | Blintz recipe rows `(EdgeId 8..11, FaceId 2/3/4/1, -180)` plus reopen `(EdgeId 8, FaceId 2, 180)`; handoff writes angles and orders onto `foldedPattern start` (A1, A2, E2, F) | confirmed | `study/fold-material/BlintzSequence.hs:50-63` |
 | 12 | Helmet moves `([8,9],5,180)`, `([10,12],1,180)`, `([13,11],2,180)` after moving the quad to the front (A2) | confirmed | `HelmetSequence.hs:41-51` |
 | 13 | The manifest's blintz folds the corners to +90/+175, and the flap recipe folds them to −180 (A2 F3) | confirmed | `cases.json:61-71` vs `BlintzSequence.hs:51-54`. The manifest's orders put the centre below each corner along +z. |
-| 14 | `--steps` refuses `--frame`, `--fold`, `--stacking` (C, D) | confirmed | `app/Senbazuru/Cli.hs:843-851` |
-| 15 | `decodeFile` decodes any unrecognised extension as FOLD, so a scheme passed to an existing verb fails as JSON (C) | confirmed | `Fold/Load.hs:102-106` |
+| 14 | `--steps` refuses `--frame`, `--fold`, `--stacking` (C, D) | confirmed | `app/Senbazuru/Cli.hs:957-965` |
+| 15 | `decodeFile` decodes any unrecognised extension as FOLD, so a scheme passed to an existing verb fails as JSON (C) | confirmed | `Fold/Load.hs:131-136` |
 | 16 | `StudyCase` resolves panels and `fixedPanel` by a material point strictly inside exactly one face, tolerance `1e-10` (A2, E2, F) | confirmed | `StudyCase.hs:139-143`, `165-170` |
 | 17 | `Surface` constructor is hidden; `transformSurface` and `withFaceOrders` drop `frameExtras`; `materialFrame` adds `senbazuru:material_coords`; thickness not serialised there (A1, B) | confirmed | `Origami/Surface.hs:26-27`, `242-263`, `284-296` |
 | 18 | `Rigid (..)` is exported and nothing checks it is a rotation (A1) | confirmed | `Geometry/Rigid.hs:24-36` |
 | 19 | `ContactError` is a `newtype` over `Text` (A1) | confirmed | `Origami/Contact.hs:77` |
 | 20 | `quarter-fold-steps.fold`: three frames, all `BBBBBBBBMVMM`, 12 edges, 4 faces, no `faceOrders`; angles on edges 8-11 go 0 → `[-180,0,-180,0]` → `[-180,180,-180,-180]` (C, D C1/C3) | confirmed | `jq` on `examples/quarter-fold-steps.fold` |
 | 21 | lts-22.44 pins megaparsec 9.5.0, parser-combinators 1.3.0, prettyprinter 1.7.1 (C, F) | confirmed | `lts-22.44.cabal.config:1917`, `2214`, `2345` |
-| 22 | The solver's `ContactMode` includes `PacketContact FoldCase`; `relaxPinnedHinges` pins are keyed by refined mesh vertex id (B) | confirmed | `FoldRelaxation.hs:297`, `244-252` |
-| 23 | Rest angles are never defaulted from `edges_foldAngle` (B) | confirmed | `FoldBending.hs:138-145` |
+| 22 | The solver's `ContactMode` includes `PacketContact FoldCase`; `relaxPinnedHinges` pins are keyed by refined mesh vertex id (B) | confirmed | `FoldRelaxation.hs:327`, `251-259` |
+| 23 | Rest angles are never defaulted from `edges_foldAngle` (B) | confirmed | `FoldBending.hs:141-148` |
 | 24 | No library module reads `frameTitle` (C) | confirmed | `grep frameTitle src` outside `Fold/Types.hs` finds nothing |
-| 25 | Library errors carry CLI flag names (`creaseEndFlag` → `--from`) (F) | confirmed | `Fold/Query.hs:68-70`; used at `ThroughLayers.hs:195` |
+| 25 | Library errors carry CLI flag names (`creaseEndFlag` → `--from`) (F) | confirmed | `Fold/Query.hs:68-70`; used at `ThroughLayers.hs:196` |
 | 26 | #104 cites `docs/notes/inflate-outside-draw-inside.md`, which does not exist (G) | confirmed | #104 body, paragraph 2; no such file in `docs/notes/` |
 | 27 | Manifest rabbit-ear literal at m = 30 is not bit-reproducible from the documented formula; `175*(90/175)` is `89.99999999999999` (A2 F8, F32) | confirmed (in Python) | `docs/notes/rabbit-ear-motion.md:39-41` formula gives `97.58514830800294`, manifest has `…293`; m = 15, 60, 175 match. GHC not run. |
 | 28 | The glossary defines rest angle twice, differently (D) | confirmed | `docs/glossary.md:19` and `:86` |
 | 29 | The crane-wing recipe finds its hinge as "every `Unassigned` edge" after `creaseAllAlong`, and picks stacking index `[2]` (A2 F5) | confirmed | `CraneWing.hs:109-139`. Consequence no file draws out: the new hinge is **U at angle 0**, a third convention for an unbent crease (see contradiction 3). |
-| 30 | Test suite compiles the study (D A20, B) | confirmed | `senbazuru.cabal:193` `hs-source-dirs: test, study/fold-material` |
-| 31 | "A resolved per-state full angle list is what … the CLI's `render --steps` already consume" (A2 implication 12, citing `docs/architecture.md:943-948`) | **wrong** | Those lines say `buildCaseSequence` writes folded frames with coplanar `faceOrders`. `stepPage` draws positions, and `--steps` refuses `--fold` (`Cli.hs:844`). An angle table can be an internal intermediate form, but the CLI does not read one. |
+| 30 | Test suite compiles the study (D A20, B) | confirmed | `senbazuru.cabal:258` `hs-source-dirs: test, study/fold-material` |
+| 31 | "A resolved per-state full angle list is what … the CLI's `render --steps` already consume" (A2 implication 12, citing `docs/architecture.md:943-948`) | **wrong** | Those lines say `buildCaseSequence` writes folded frames with coplanar `faceOrders`. `stepPage` draws positions, and `--steps` refuses `--fold` (`Cli.hs:958`). An angle table can be an internal intermediate form, but the CLI does not read one. |
 | 32 | "#95's proposed half-turn keeps the centre fixed too", so no arrow (C finding 27) | **wrong** | #95 specifies `(x, y, z) ↦ (−x, y, −z)`, a half turn about the page axis at x = 0. The quarter fold's final frame spans x ∈ [0.5, 1] (`jq`), so its centre moves to x ≈ −0.75 and `Step` would report a translation. D C5 has this right. |
 
 Not checked: external-source claims (papers, Khronos READMEs, licences on
@@ -204,7 +204,7 @@ library cannot import. No file specifies:
   that relies on either should cite E1/E2's URLs, not the repo table.
 - #56's claim that per-face transforms are discarded is stale, because
   `foldedPlacements` exists (C, confirmed via spot check 1). #94's "nothing
-  reads `frame_title`" is half stale: the CLI reads it (`Cli.hs:779, 879`)
+  reads `frame_title`" is half stale: the CLI reads it (`Cli.hs:888, 993`)
   and the library does not (spot check 24).
 - G's animation analysis (nested nodes along `spanningWalk`, slerp exact under
   180° per key) is derived, not measured. Loop-closing creases between keys

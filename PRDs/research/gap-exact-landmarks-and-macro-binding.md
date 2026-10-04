@@ -72,7 +72,7 @@ step ends at.
    | `Fold.Faces.tolerance` (`Faces.hs:248-251`) | 1e-9 × bounding-box **diagonal**, no floor | creasing: length, "meets something", interning (`Creasing.hs:150`, `:176-177`, `:186-190`, `:231`, `:243`) |
    | `Import.Segments.mergeTolerance` (`Segments.hs:194-196`) | 1e-9 × diagonal, no floor | merging `.cp`/`.opx` endpoints |
    | `Origami.Flat.sheetHair` (`Flat.hs:218-221`) | 1e-9 × max(1, larger x/y **span**) | the glossary's **Hair** (`docs/glossary.md:49`) |
-   | `Origami.Folding.sheetTolerance` (`Folding.hs:847-854`) | 1e-9 × max(1, larger span) | `TornAt`, `loopsClose` (`:368`, `:376-377`, `:810-811`) |
+   | `Origami.Folding.sheetTolerance` (`Folding.hs:861-868`) | 1e-9 × max(1, larger span) | `TornAt`, `loopsClose` (`:382`, `:390-391`, `:824-825`) |
    | `StudyCase` strictly-inside (`StudyCase.hs:141`, `:168`) | absolute 1e-10 | naming panels and the fixed panel by material point |
    | `CheckedPetal`/`CheckedBird` `samePoints` (`CheckedPetal.hs:96`, `CheckedBird.hs:148-149`) | absolute 1e-12 | pose vs certified ideal path |
    | `Contact.panelTolerance` (`Contact.hs:84`) | absolute 1e-7 | planarity and contact |
@@ -156,7 +156,7 @@ step ends at.
    - For FOLD output, one test checks `eitherDecode (encode file) == Right file`
      on the bird sequence (`test/BirdSequenceSpec.hs:51`). That is evidence for
      those `Double`s, not a proof for all.
-   - SVG rounds to three decimals (`Render/Svg.hs:332-337`).
+   - SVG rounds to three decimals (`Render/Svg.hs:342-347`).
    - F's syntax-tree sketch types fractions as `Rational` (`Along Name Rational`,
      `ArgNumber Rational`, F lines 473-489). E2 proposes refusing a point near
      but not within a hair of a vertex (E2 lines 431-437).
@@ -417,8 +417,8 @@ step ends at.
 
 16. **What any sampled pose gets on any pattern.**
     - `foldFrameWith` refuses torn vertices (`TornAt`) and unachieved crease
-      angles (`loopsClose`) at `sheetTolerance` (`Folding.hs:368-377`,
-      `:783-811`, `:847-854`).
+      angles (`loopsClose`) at `sheetTolerance` (`Folding.hs:382-391`,
+      `:797-825`, `:861-868`).
     - The study adds static contact.
       - Every panel must be named exactly once (`StudyCase.hs:130-138`).
       - `checkPanelContact` reports crossings, unordered contacts, reversed
@@ -472,7 +472,7 @@ step ends at.
       - Copied literals are compared exactly (`BirdSequenceSpec.hs:41`, `:59`).
       - Coordinates use 1e-12, because "the same trigonometry on macOS and
         Linux differs in the last few bits" (`BirdSequenceSpec.hs:43-50`).
-      - CI runs on `ubuntu-latest` (`.github/workflows/ci.yml:13`, `:38`, `:73`).
+      - CI runs on `ubuntu-latest` (`.github/workflows/ci.yml:50`, `:85`, `:125`).
     - **Endpoints are pinned.** The code writes `if degrees == 180 then 180`
       (`CheckedPetal.hs:107`; `CheckedBird.hs:113`). In Python on this Mac, all
       three unguarded formulas already return exactly `180.0` there, so the

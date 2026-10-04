@@ -230,13 +230,13 @@ crane.
   copies those 49 vertices exactly, but carries the body's movement into the
   remaining paper by `continueDisplacements`. That is a linear graph
   calculation in which neighbouring vertices prefer equal displacement
-  (`WholeCrane.hs:232-250`). The module's own comment calls it an "INITIAL
+  (`WholeCrane.hs:416-434`). The module's own comment calls it an "INITIAL
   GUESS" that "can strain paper" (`WholeCrane.hs:7-9`). The result is 5.26%
   edge error.
 - **The pillow targets abandon the solved body altogether.** They prescribe a
   cushion and wing arches, then continue displacements with weight
-  1/restDistance (`WholeCrane.hs:171-201`). The comment says this "still cannot
-  enforce paper lengths or contact" (`:198-200`).
+  1/restDistance (`WholeCrane.hs:357-387`). The comment says this "still cannot
+  enforce paper lengths or contact" (`:384-386`).
 - **The notes say the same.** The linear graph calculation "does not preserve"
   edge length (`crane-pillow-target.md:58-63`).
 
@@ -248,7 +248,7 @@ because the body was narrowed.
 shape** [code, ran, fetched].
 
 The cushion height is a product of two parabolas,
-`max 0 (1-(x/r)^2) * max 0 (1-(z/r)^2)` (`WholeCrane.hs:171-177`). That is a
+`max 0 (1-(x/r)^2) * max 0 (1-(z/r)^2)` (`WholeCrane.hs:357-363`). That is a
 dome: curved along both x and z. A developable surface has zero Gaussian
 curvature; a dome's is positive [fetched: Wikipedia, "Developable surface"].
 
@@ -285,7 +285,7 @@ sheet unit [ran].
 The authored curves turn much less than these joins do [reasoned]:
 
 - The wing arch has radius 0.5/(π/6) ≈ 0.955 sheet units, 573 px
-  (`WholeCrane.hs:184-190`). A 34 px chord turns about 3.4° and bulges
+  (`WholeCrane.hs:370-376`). A 34 px chord turns about 3.4° and bulges
   0.25 px.
 - The cushion across its narrowed axis turns at most about 27° per edge.
 
@@ -308,7 +308,7 @@ More tucked has 345 crossing pairs and 1,982 reversed orders (finding 4).
   turns face orders into lower/upper pairs by the z-sign of each face normal
   and solves contact along +z (`PRDs/decisions.md` D14, "Records are
   unpresented"). `solveSpread` calls `relaxPinnedContact`
-  (`CraneSpread.hs:169-172`).
+  (`CraneSpread.hs:170-173`).
 - **The whole-crane correction reuses that policy,** and the note already
   doubts it (`whole-crane-candidate.md:53-55` [note]).
 - **An opened body turns its walls upright**, where a z-order means nothing.
@@ -349,7 +349,7 @@ The study is in exactly this regime:
 - the final length penalty weight is 1e8 (`FoldRelaxation.hs:543`);
 - contact is 100× that (`:638`);
 - panel bending weights are Bl/h with B = 0.2 in every crane fixture
-  (`WholeCrane.hs:60`; `FoldBending.hs:218`);
+  (`WholeCrane.hs:334`; `FoldBending.hs:221`);
 - acceptance needs 1e-5 relative length error
   (`FoldRelaxation.hs:125-126`).
 
@@ -513,7 +513,7 @@ style.
 | Term | Form | Where |
 | --- | --- | --- |
 | Length | lengthWeight · Σ(|pⱼ−pᵢ| − L)², absolute error, staged 1e2 → 1e8 | `FoldRelaxation.hs:674`, `:543` |
-| Bending | Σ k(θ−θ₀)²; crease k = κl, panel k = Bl/h (Discrete-Shells form, G finding 11) | `FoldBending.hs:18-23`, `:218`, `:261-270` |
+| Bending | Σ k(θ−θ₀)²; crease k = κl, panel k = Bl/h (Discrete-Shells form, G finding 11) | `FoldBending.hs:18-23`, `:221`, `:300-309` |
 | Contact | 100 · lengthWeight · Σ min(0, gap)², along a fixed axis; or, on strips only, a directional barrier | `FoldRelaxation.hs:638`, `:668`, `:675`; `SurfaceContact.hs:28-38` |
 | Holds | Vertices removed from the unknowns (exact) | `FoldRelaxation.hs:47-53` (header), `:631-634` |
 

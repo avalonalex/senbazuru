@@ -40,38 +40,38 @@ A DSL must name paper by material geometry and resolve ids afresh each step.
 ### (a) What "the state of a folded model" is today
 
 **1. Angles are the state; positions are derived.** `foldFrameWith` reads one
-angle per edge (`Folding.hs:362`, `foldAnglesOf` at `Folding.hs:507-532`),
+angle per edge (`Folding.hs:376`, `foldAnglesOf` at `Folding.hs:521-546`),
 walks a spanning tree of faces composing one rotation per crease
-(`Folding.hs:572-638`), and places vertices from the per-face motions
-(`Folding.hs:776-817`). The folded frame it writes carries the angles it used
-even where the input had none (`Folding.hs:228-237`, `383`). The project note
+(`Folding.hs:586-652`), and places vertices from the per-face motions
+(`Folding.hs:790-831`). The folded frame it writes carries the angles it used
+even where the input had none (`Folding.hs:229-238`, `397`). The project note
 `docs/notes/fold-angles-are-the-state.md` states the consequence: interpolating
 positions tears paper, and interpolating all angles linearly usually leaves
 the loop-closure surface. Newcomer trap: if `edges_foldAngle` is absent, every
-`M`/`V` edge folds to -180/+180 at once (`Folding.hs:529-532`). A state that
+`M`/`V` edge folds to -180/+180 at once (`Folding.hs:543-546`). A state that
 means "precreased but open" must therefore carry **explicit** angles; the
 checked recipes start by writing all zeros (`study/fold-material/BlintzSequence.hs:42`,
 `HelmetSequence.hs:41`).
 
 **2. `Folded` has three fields and two frames that disagree on purpose.**
 `data Folded = Folded { foldedFrame :: !Frame, foldedPattern :: !Frame,
-foldedPlacements :: !(IM.IntMap Rigid) }` (`Folding.hs:283-324`).
+foldedPlacements :: !(IM.IntMap Rigid) }` (`Folding.hs:284-325`).
 
 - `foldedPattern` is the input *after* `withPlanarFaces` cut crossings and
-  traced faces (`Folding.hs:351`, `390`). Face, edge and placement ids refer
-  to it, not to the frame the caller passed in (`Folding.hs:286-301`).
+  traced faces (`Folding.hs:365`, `404`). Face, edge and placement ids refer
+  to it, not to the frame the caller passed in (`Folding.hs:287-302`).
 - `foldedFrame` has the same vertex/edge ids but moved coordinates, explicit
   `edgesFoldAngle`, rings rewritten counterclockwise, `faceOrders` re-signed
   for every rewound second face, `foldedForm` in its classes, and
-  `frameExtras = mempty` (`Folding.hs:380-389`, `reorient` at `482-486`,
-  `foldedClasses` at `398-400`).
+  `frameExtras = mempty` (`Folding.hs:394-403`, `reorient` at `496-500`,
+  `foldedClasses` at `412-414`).
 - The doc comment warns that the two frames can carry opposite `faceOrders`
   signs and different ring start/direction, and says to take both faces and
-  orders from `foldedFrame` (`Folding.hs:303-315`).
+  orders from `foldedFrame` (`Folding.hs:304-316`).
 - `foldedPattern`'s `edgesFoldAngle` is the file's (possibly empty) array;
-  only `foldedFrame`'s is guaranteed explicit (`Folding.hs:383` vs `390`).
+  only `foldedFrame`'s is guaranteed explicit (`Folding.hs:397` vs `404`).
 - The `Folded` constructor is exported (`Folding.hs:80`), so a caller can forge
-  one; `Flap` defends by re-folding and comparing (`Flap.hs:172-184`,
+  one; `Flap` defends by re-folding and comparing (`Flap.hs:244-256`,
   `FlapStartMismatch`).
 
 **3. `Surface material` is the renderer hand-off, with a hidden constructor.**
@@ -109,7 +109,7 @@ contact (`Surface.hs:21-24`). Its `topology` keeps `edgesFoldAngle`,
   returns the frame's own orders, or solves them only for flat-folded models
   with convex faces, returning `Nothing` otherwise (`Stacking.hs:386-400`;
   header `Stacking.hs:18-29`). A state with paper in the air gets its orders
-  only from a checked flap's endpoint contacts (`Flap.hs:294-313`) or from a
+  only from a checked flap's endpoint contacts (`Flap.hs:416-427`) or from a
   study declaration (`StudyCase.hs:121-147`).
 
 **5. What the checked recipes thread from one move to the next.** Blintz and
@@ -125,11 +125,11 @@ helmet do the same thing (`BlintzSequence.hs:58-75`, `HelmetSequence.hs:55-72`):
 
 So the threaded state is: **the cut pattern (material coordinates, graph,
 assignments) + explicit angles + faceOrders**, with the anchor fixed by face
-order. Dropped: `frameExtras` (every transform drops them: `Folding.hs:388`,
+order. Dropped: `frameExtras` (every transform drops them: `Folding.hs:402`,
 `Surface.hs:263`, `292`, `Creasing.hs:267`, `Crossings.hs:314`), the folded
 coordinates (derived), and the `foldedForm` class. The reason for not
 re-using the folded frame is concrete: its class makes `foldFrameWith` refuse
-it with `AlreadyFolded` (`Folding.hs:338-339`), and its coordinates are not
+it with `AlreadyFolded` (`Folding.hs:352-353`), and its coordinates are not
 material (`docs/notes/chaining-checked-folds.md`). `CheckedBird` also checks
 material coordinates and resolved layer requirements at joins
 (`CheckedBird.hs:139-146`).
@@ -137,7 +137,7 @@ material coordinates and resolved layer requirements at joins
 **6. A latent winding hazard in step 2 above.** Orders are copied from the
 folded frame (counterclockwise rings) onto `foldedPattern` (the file's rings).
 If the file wound a face clockwise, the next `foldFrameWith` re-winds it and
-flips its orders again (`Folding.hs:353-357`, `385`), which would invert those
+flips its orders again (`Folding.hs:367-371`, `399`), which would invert those
 layers. `StudyCase.buildPoseAt` avoids this by first copying the folded
 frame's rings into the pattern (`StudyCase.hs:155`), after which re-winding is
 a no-op. Measured with `jq`: `blintz-base`, `bird-base` have no
@@ -150,38 +150,38 @@ normalise rings once at initialisation.
 
 | Operation | Exact signature | Preconditions / behaviour | Errors |
 | --- | --- | --- | --- |
-| Fold to angles | `foldFrameWith :: Frame -> Either FoldingError Folded` (`Folding.hs:331`); `foldFrame :: Frame -> Either FoldingError Frame` (`272`) | Input must be a crease pattern (`338`); cuts and traces first (`351`); faces non-degenerate; angles finite; loops close | `FoldingError` (`Folding.hs:123-171`), wraps `FoldError` |
+| Fold to angles | `foldFrameWith :: Frame -> Either FoldingError Folded` (`Folding.hs:345`); `foldFrame :: Frame -> Either FoldingError Frame` (`272`) | Input must be a crease pattern (`338`); cuts and traces first (`351`); faces non-degenerate; angles finite; loops close | `FoldingError` (`Folding.hs:124-172`), wraps `FoldError` |
 | Crease a flat sheet | `creaseAlong :: V2 -> V2 -> Assignment -> Frame -> Either FoldError Frame` (`Creasing.hs:90`); `creaseAllAlong :: [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame` (`138`) | Not a folded form (`148`); each end meets an existing edge or corner (`186-190`); nonzero length; no repeated pair; batch refusals are order-independent (`116-120`); ends to new points are interned to one vertex (`109-114`) | `FoldError`: `SheetIsFolded`, `CreaseEndMeetsNothing`, `CreaseWithoutLength`, `CreaseRepeated`, `ArrayLengthMismatch`, plus anything `withPlanarFaces` refuses |
-| Crease through layers | `creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame` (`ThroughLayers.hs:227`) | Input is a pattern **with angles**; folds it internally (`229`); result must be flat (`234`); ends not strictly inside any face (`241-247`); every face creased; assignment flipped per face-down layer (`296`, `327-340`); returns a **pattern**, never a folded form | `ThroughError` (`ThroughLayers.hs:111-176`) |
+| Crease through layers | `creaseThroughLayers :: V2 -> V2 -> Assignment -> Frame -> Either ThroughError Frame` (`ThroughLayers.hs:228`) | Input is a pattern **with angles**; folds it internally (`229`); result must be flat (`234`); ends not strictly inside any face (`241-247`); every face creased; assignment flipped per face-down layer (`296`, `327-340`); returns a **pattern**, never a folded form | `ThroughError` (`ThroughLayers.hs:112-177`) |
 | Cut + trace | `withPlanarFaces :: Frame -> Either FoldError Frame` (`Crossings.hs:150`) | A frame that records faces is returned untouched (`Crossings.hs:128`; `Faces.hs:136-149`) | `FoldError` (`EdgesCross`, `EdgesOverlap`, `CreaseBridge`, `SheetInPieces`, ...) |
-| Prepare a flap turn | `prepareFlap :: EdgeId -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`Flap.hs:157`); `prepareFlapAlong :: [EdgeId] -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`162`) | `Folded` must be exactly what `foldFrameWith` returns (`169-181`); ids from `foldedPattern`; travel finite, at most 360 degrees (`165`); each segment an `M`/`V`/`U` edge with two faces (`187-191`); removing the segments must separate the moving side (`199`); all segments on one line in the folded shape (`215`); orders retained only within one motion group and plane (`223-233`) | `FlapError` (`Flap.hs:101-125`) |
-| Check it | `checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap` (`Flap.hs:252`) | Interval check over the whole turn; endpoint orders checked (`273-280`, `303-312`) | `FlapCollision`, `FlapUnresolved`, `FlapEndpointOrder`, `FlapSweep` |
-| Pose it | `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)` (`Flap.hs:294`); `flapCheck :: CheckedFlap -> SweepCheck`; `flapMovingFaces :: CheckedFlap -> [FaceId]` | Progress in [0, 1]; each pose re-folded from angles, aligned to the stationary face, compared with the swept path (`338-352`) | `FlapInvalidProgress`, `FlapPathMismatch`, nested |
+| Prepare a flap turn | `prepareFlap :: EdgeId -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`Flap.hs:198`); `prepareFlapAlong :: [EdgeId] -> FaceId -> Double -> Folded -> Either FlapError FlapMotion` (`162`) | `Folded` must be exactly what `foldFrameWith` returns (`169-181`); ids from `foldedPattern`; travel finite, at most 360 degrees (`165`); each segment an `M`/`V`/`U` edge with two faces (`187-191`); removing the segments must separate the moving side (`199`); all segments on one line in the folded shape (`215`); orders retained only within one motion group and plane (`223-233`) | `FlapError` (`Flap.hs:136-163`) |
+| Check it | `checkFlap :: SweepSettings -> FlapMotion -> Either FlapError CheckedFlap` (`Flap.hs:368`) | Interval check over the whole turn; endpoint orders checked (`273-280`, `303-312`) | `FlapCollision`, `FlapUnresolved`, `FlapEndpointOrder`, `FlapSweep` |
+| Pose it | `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)` (`Flap.hs:416`); `flapCheck :: CheckedFlap -> SweepCheck`; `flapMovingFaces :: CheckedFlap -> [FaceId]` | Progress in [0, 1]; each pose re-folded from angles, aligned to the stationary face, compared with the swept path (`338-352`) | `FlapInvalidProgress`, `FlapPathMismatch`, nested |
 | Lower-level hinge | `prepareSweep :: V3 -> V3 -> Double -> [Int] -> MaterialMesh -> Either SweepError HingeSweep` (`HingeSweep.hs:146`); `checkSweep`, `checkSweepWithFlatEndpoints`, `checkSweepWithRigidContacts`, `checkSweepWithLayerContacts` (`215-241`) | One fixed axis, radians, at most one full turn (`149`); no triangle mixes moving and fixed vertices off-axis (`173`) | `SweepError` (`HingeSweep.hs:114-127`) |
 | Move the whole model | `transformSurface :: Rigid -> Surface material -> Either SurfaceError (Surface material)` (`Surface.hs:287`); build with `rotationAbout :: V3 -> V3 -> Double -> Rigid`, `after`, `inverse` (`Rigid.hs:95`, `114`, `159`) | Rotates requirement direction; keeps material and thickness; drops `frameExtras` (`Surface.hs:284-296`) | `SurfaceError` |
 | Attach layer data | `withFaceOrders :: [FaceOrder] -> Surface m -> Either SurfaceError (Surface m)`; `withLayerRequirements :: V3 -> [(FaceId, FaceId)] -> Surface m -> Either SurfaceError (Surface m)`; `withPhysicalThickness :: Maybe Double -> Surface m -> Either SurfaceError (Surface m)` (`Surface.hs:260`, `306`, `301`) | Range checks only | `SurfaceError` (`Surface.hs:125-144`) |
 | Solve layers | `layerOrderFor :: Budget -> Frame -> Either FoldError (Maybe [FaceOrder])`; `solveStackingAs :: Budget -> [Int] -> Frame -> Either StackingError [FaceOrder]` (`Stacking.hs:386`, `402`) | Flat, convex models only | `FoldError` / `StackingError` |
 | Diff two states | `motionsBetween :: Frame -> Frame -> Either FoldError [Motion]` (`Step.hs:88`) | Both frames must have identical `edges_vertices` and `faces_vertices` (`Step.hs:94-96`) | `FramesDiffer`, `FramesDisagree` |
 | Static contact | `checkPanelContact :: V3 -> [(Text, Text)] -> [Panel] -> Either ContactError ContactCheck`; `checkTriangleContact :: V3 -> [(FaceId, FaceId)] -> [FaceId] -> MaterialMesh -> Either ContactError ContactCheck` (`Contact.hs:123`, `98`) | One state, zero thickness, tolerance `1e-7` in input units (`Contact.hs:20-25`, `83-84`) | `ContactError` is a `newtype` over `Text` (`Contact.hs:77`) |
-| Export | `materialFrame :: Surface V2 -> Frame` (`Surface.hs:248`); `renderSurfaceGlb :: Budget -> ExportMode -> Maybe Text -> Surface material -> Either GltfError ByteString` (`Gltf.hs:219`); `surfaceDiagram :: Theme -> Budget -> View -> Surface material -> Either FoldError Diagram` (`CreasePattern.hs:156`); `stepPage :: Theme -> Budget -> Grid -> View -> Bool -> [Frame] -> Either StepError (Maybe Diagram)` (`Steps.hs:90-99`) | `stepPage` with arrows calls `motionsBetween` on consecutive frames (`Steps.hs:122-127`) | as named |
+| Export | `materialFrame :: Surface V2 -> Frame` (`Surface.hs:248`); `renderSurfaceGlb :: Budget -> ExportMode -> Maybe Text -> Surface material -> Either GltfError ByteString` (`Gltf.hs:246`); `surfaceDiagram :: Theme -> Budget -> View -> Surface material -> Either FoldError Diagram` (`CreasePattern.hs:156`); `stepPage :: Theme -> Budget -> Grid -> View -> Bool -> [Frame] -> Either StepError (Maybe Diagram)` (`Steps.hs:90-99`) | `stepPage` with arrows calls `motionsBetween` on consecutive frames (`Steps.hs:122-127`) | as named |
 
 Things a newcomer would get wrong about these:
 
 - **`creaseAllAlong` is not a precrease.** New `M`/`V` creases get angle -180/+180
   when the pattern has an angle array (`Creasing.hs:290-292`, `316-320`), and
-  all creases fold flat when it does not (`Folding.hs:529-532`). So
+  all creases fold flat when it does not (`Folding.hs:543-546`). So
   `creaseThroughLayers` followed by `foldFrame` is "fold flat along this line
   through every layer", instantly, with no motion check; its own test says the
   creases are written at plus or minus 180 so the result is the next state
   (`test/Senbazuru/Origami/ThroughLayersSpec.hs:134-146`). A `Flat` assignment
-  gives angle 0 but then `Flap` refuses that edge as a hinge (`Flap.hs:190`).
+  gives angle 0 but then `Flap` refuses that edge as a hinge (`Flap.hs:262`).
   A precrease-then-fold move needs a caller to set the new edges' angles to 0
   while keeping `M`/`V`, and the new edge ids are not returned.
 - **Flap travel is a change in FOLD angle, signed relative to the stationary
   face's winding.** The first segment fixes the sign; others are derived
-  (`Flap.hs:10-18`, `208-216`). The helmet recipe gives +180 for a hinge whose
+  (`Flap.hs:10-18`, `284-301`). The helmet recipe gives +180 for a hinge whose
   second segment actually closes to -180 (`docs/notes/aligned-crease-hinges.md`).
-  A flat endpoint needs a half-turn or less (`HingeSweep.hs:313`; `Flap.hs:29-30`).
+  A flat endpoint needs a half-turn or less (`HingeSweep.hs:313`; `Flap.hs:53-54`).
 - **Turning over is a rotation, not a reflection.** `Rigid` will hold any 3x3
   matrix and nothing checks (`Rigid.hs:24-26`), and `Rigid (..)` is exported
   (`Rigid.hs:35`), so `transformSurface` would accept a mirror. The study
@@ -191,7 +191,7 @@ Things a newcomer would get wrong about these:
   camera/glTF comments).
 - **`creaseThroughLayers` reads its points in the coordinates `foldFrameWith`
   produces**, anchored on the first face, and names mountain/valley as seen
-  from +z (`ThroughLayers.hs:216-226`). After a presentation turn-over, the
+  from +z (`ThroughLayers.hs:217-227`). After a presentation turn-over, the
   viewer's valley is +z's mountain.
 
 ### (c) Identifiers that do not survive, and the ones that do
@@ -210,15 +210,15 @@ Things a newcomer would get wrong about these:
 - **`faceOrders` are dropped** by creasing (`Creasing.hs:266`), and layer
   requirement pairs are `FaceId`s (`Surface.hs:121`), so both go stale.
 - **The first face is the anchor.** `spanningWalk` holds `faces !! 0` still
-  (`Folding.hs:583-585`). After re-tracing, a different face may be first, so
+  (`Folding.hs:597-599`). After re-tracing, a different face may be first, so
   two individually correct states can differ by a whole-model rigid motion.
   The recipes put a stationary face first once, before any orders exist
   (`BlintzSequence.hs:5-8`, `44-48`; `HelmetSequence.hs:8-10`, `45-48`);
-  `Flap` realigns poses to its stationary face (`Flap.hs:358-360`); `StudyCase`
+  `Flap` realigns poses to its stationary face (`Flap.hs:472-474`); `StudyCase`
   picks the held face by a material point (`StudyCase.hs:165-172`). Reordering
   faces renumbers them, so it is safe only while `faceOrders` is empty.
-- **Placements are keyed by the cut pattern's face ids** (`Folding.hs:317-322`),
-  and `Flap` ids must come from `foldedPattern` (`Flap.hs:9-10`, `152-153`).
+- **Placements are keyed by the cut pattern's face ids** (`Folding.hs:318-323`),
+  and `Flap` ids must come from `foldedPattern` (`Flap.hs:9-10`, `196-197`).
 - **`motionsBetween` refuses frames with different graphs** (`Step.hs:94-96`),
   so `render --steps` arrows cannot span a crease-adding step.
 
@@ -231,27 +231,27 @@ Things a newcomer would get wrong about these:
 - **Re-folding a pattern that records faces is id-stable.** `splitCrossings`
   and `withTracedFaces` both return such a frame unchanged
   (`Crossings.hs:128`, `Faces.hs:138`), so `foldFrameWith (pattern { angles })`
-  keeps vertex, edge and face ids. `Flap` relies on this (`Flap.hs:178-184`).
+  keeps vertex, edge and face ids. `Flap` relies on this (`Flap.hs:250-256`).
 - **Material coordinates.** The glossary defines them as identity through
   folding (`docs/glossary.md:84`). `creaseThroughLayers` maps folded points
-  back to the sheet with `inverse` placements (`ThroughLayers.hs:291-305`).
+  back to the sheet with `inverse` placements (`ThroughLayers.hs:292-306`).
   `StudyCase` names panels by a material point strictly inside exactly one face,
   "so face renumbering during crease cutting cannot silently change an order's
   meaning" (`StudyCase.hs:117-120`, `141`).
 - **Crease identity through mesh refinement** (not through creasing):
   `refineSurfaceWithEdges` carries source `EdgeId`s through midpoint
   subdivision (`Surface.hs:96-106`, `322-348`; `docs/notes/crease-identity-through-refinement.md`),
-  and glTF keeps `senbazuru:source_panels` / `senbazuru:source_edges` (`Gltf.hs:25-26`, `241`).
+  and glTF keeps `senbazuru:source_panels` / `senbazuru:source_edges` (`Gltf.hs:25-26`, `274`).
 
 ### (d) Checks that exist, and what is refused
 
 - **Fold closure (every `foldFrameWith`).** `TornAt` when faces place a shared
-  vertex apart (`Folding.hs:798-811`); `AngleNotAchieved` when a crease that
-  closes a loop does not have its angle (`Folding.hs:688-750`, the case from
-  #84 at `670-674`); `AngleWithoutPaper` for a nonzero angle on a one-sided
-  edge (`712`); `NonFiniteAngle`, `DisconnectedFace`, `DegenerateFace`,
+  vertex apart (`Folding.hs:812-825`); `AngleNotAchieved` when a crease that
+  closes a loop does not have its angle (`Folding.hs:702-764`, the case from
+  #84 at `684-688`); `AngleWithoutPaper` for a nonzero angle on a one-sided
+  edge (`726`); `NonFiniteAngle`, `DisconnectedFace`, `DegenerateFace`,
   `DuplicateEdge`. Tolerance is `1e-9 * max 1 sheetSize`, deliberately
-  arithmetic-noise only (`Folding.hs:823-854`). Both checks are needed because
+  arithmetic-noise only (`Folding.hs:837-868`). Both checks are needed because
   a loop closed by turning nothing leaves shared vertices agreeing
   (`Folding.hs:56-77`).
 - **Drawing validity** on every crease and fold: `Faces.checkDrawing` and
@@ -259,7 +259,7 @@ Things a newcomer would get wrong about these:
 - **Hinge sweep** (`HingeSweep.hs:1-51`): interval subdivision with sinusoid
   bounds; running out of budget returns `SweepUnresolved`, never clear
   (`HingeSweep.hs:11`, `454-474`; defaults depth 20, budget 4096 at `94-95`); a
-  collision is a witness, not the first impact (`Flap.hs:40-43`). Flat
+  collision is a witness, not the first impact (`Flap.hs:64-67`). Flat
   endpoints must be one-sided within a half-turn (`HingeSweep.hs:21-29`,
   `301-318`). Touching layers may move together only with the same rigid
   motion and a supplied order (`HingeSweep.hs:31-42`, `280-285`); a hinge may
@@ -272,14 +272,14 @@ Things a newcomer would get wrong about these:
   `WindingClash` (`Stacking.hs:18-29`, `386-400`; `Query.hs:124-139`).
 - **Endpoint orders** in a flap: supplied starting orders must agree with
   departure; contradictions are `FlapEndpointOrder` / `FlapStackOrder`
-  (`Flap.hs:315-341`).
+  (`Flap.hs:429-455`).
 
 **Refused, by design:**
 
 - Coupled creases: `FlapCoupled` when removing the selected creases leaves
-  another path between the sides (`Flap.hs:202`). Tested on every interior
-  crease of the quarter fold (`test/Senbazuru/Origami/FlapSpec.hs:327-343`).
-- Creases on different axes: `FlapUnalignedCrease` (`Flap.hs:218`).
+  another path between the sides (`Flap.hs:274`). Tested on every interior
+  crease of the quarter fold (`test/Senbazuru/Origami/FlapSpec.hs:328-344`).
+- Creases on different axes: `FlapUnalignedCrease` (`Flap.hs:295`).
 - Sliding contact and unsupported seams: a declared contact pair with
   different motions is `InvalidRigidContact` (`HingeSweep.hs:280-285`); an
   unjoined stack edge on the hinge needs a declared partner with real shared
@@ -290,7 +290,7 @@ Things a newcomer would get wrong about these:
   (`Surface.hs:342`), paper in the air for through-layer creasing and the
   layer solver (`ThroughLayers.hs:63-67`).
 - Thickness: stored as metadata; no renderer or contact check reads it
-  (`Surface.hs:298-300`; `Gltf.hs:215-218`).
+  (`Surface.hs:298-300`; `Gltf.hs:242-245`).
 - A refusal refuses a route, not an endpoint
   (`docs/notes/endpoints-and-routes.md`).
 
@@ -419,7 +419,7 @@ How existing operations fill it:
    a precrease flag) would remove the geometry-based rediscovery. That is a
    library PRD item, not a DSL workaround.
 5. **Keep presentation outside `Folded`.** `Flap` refuses anything but raw
-   `foldFrameWith` output (`Flap.hs:172-184`). Turn-over and page rotation
+   `foldFrameWith` output (`Flap.hs:244-256`). Turn-over and page rotation
    should be a `Rigid` applied at export via `transformSurface`, built only
    from `rotationAbout`.
 
@@ -441,7 +441,7 @@ How existing operations fill it:
    plus the move record.**
    - `materialFrame` keeps material coordinates (`Surface.hs:248-252`).
    - Thickness and requirements are not serialised by `materialFrame`
-     (`Surface.hs:245-247`) but are by the glTF metadata (`Gltf.hs:243`).
+     (`Surface.hs:245-247`) but are by the glTF metadata (`Gltf.hs:277`).
    - Refinement preserves crease and panel identity for bending solvers
      (`Surface.hs:96-106`).
 
@@ -475,7 +475,7 @@ How existing operations fill it:
   issue text only, not measured or read in code.
 - The literature cited by the notes (Tachi 2009; Foschi, Hull and Ku 2022;
   He and Guest; Chen et al. 2016): not fetched in this slice.
-- Finding 6's inversion is reasoned from `Folding.hs:353-357`, `385` and the
+- Finding 6's inversion is reasoned from `Folding.hs:367-371`, `399` and the
   recipe code; no test or fixture exercises a clockwise-wound file through a
   chained recipe.
 - That reordering `facesVertices` while `faceOrders` are non-empty corrupts the

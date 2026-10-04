@@ -3,7 +3,7 @@
 > **Erratum (from [Z-critic](Z-critic.md), spot check 31).** Implication 12
 > says `render --steps` consumes per-state angle tables. It does not: `stepPage`
 > draws folded frames, and `--steps` refuses `--fold`
-> (`app/Senbazuru/Cli.hs:843-851`). An angle table can still be an internal
+> (`app/Senbazuru/Cli.hs:957-965`). An angle table can still be an internal
 > intermediate form; the CLI does not read one.
 
 Researcher slice: the de facto sequence "language" already written by hand in
@@ -54,7 +54,7 @@ There are also two surprises that bear on acceptance tests:
   is refused (`StudyCase.hs:152-153`).
 - **Flap moves.** The library entry point takes "Crease id, incident face on
   the moving side, signed travel in degrees, and a folding result". Its ids
-  belong to the returned cut pattern (`src/Senbazuru/Origami/Flap.hs:155-158`,
+  belong to the returned cut pattern (`src/Senbazuru/Origami/Flap.hs:196-199`,
   `:9-13`).
 - **Certified stages.** `data BirdStage = SquareCollapse | FrontPetal |
   BackPetal | PressPetals` (`CheckedBird.hs:48`). Progress becomes hinge
@@ -88,7 +88,7 @@ How the recipe sets up and runs:
   `(EdgeId 8..11, FaceId 2/3/4/1, -180)` and a reopening row
   `(EdgeId 8, FaceId 2, 180)`.
 - Which face goes with which edge exists only in that table. The test
-  re-encodes the same pairing by hand (`test/BlintzSequenceSpec.hs:73`).
+  re-encodes the same pairing by hand (`test/BlintzSequenceSpec.hs:74`).
   The only guard on the ids is the ring-length pattern.
 - Illustrations are "Eleven poses": the start, then progress 0.5 and the
   endpoint of each move (`BlintzSequence.hs:75-87`).
@@ -115,8 +115,8 @@ How the recipe sets up and runs:
 - Moves (`HelmetSequence.hs:47-51`): `([8,9], FaceId 5, 180)`,
   `([10,12], FaceId 1, 180)`, `([13,11], FaceId 2, 180)`.
 - The first id in each list sets the sign. The operation derives the other
-  segments' signs from their stationary faces (`Flap.hs:160-164`,
-  `Flap.hs:211-219`).
+  segments' signs from their stationary faces (`Flap.hs:201-205`,
+  `Flap.hs:284-301`).
 - In the fixture, 10 and 13 are `V` while 12 and 11 are `M` (jq). So
   `[13, 11]` deliberately lists the valley first.
 - The note explains that edge 10 closes to +180 while edge 12 closes to −180
@@ -157,7 +157,7 @@ How the recipe sets up and runs:
   faces and have no crossings (`FlapExample.hs:1-16`).
 - The blintz and helmet recipes write onto `foldedPattern start` instead
   (`BlintzSequence.hs:63`, `HelmetSequence.hs:58`), as the Folding docs
-  require (`Folding.hs:286-292`).
+  require (`Folding.hs:287-293`).
 - The recipes are therefore not consistent about which frame receives the
   handoff.
 
@@ -262,33 +262,33 @@ coordinates.**
   silently choose a different stack" (`docs/notes/chaining-checked-folds.md`,
   second paragraph).
 - Library backstop: `foldFrameWith` refuses a frame classified as folded
-  (`Folding.hs:338-339`).
+  (`Folding.hs:352-353`).
 
 **F12. Drop what the move invalidates.**
 
 - The recipes clear `frameExtras` (`BlintzSequence.hs:42`, `:63`).
 - The flap operation itself rebuilds from angles with `faceOrders = []` and
-  `frameExtras = mempty` (`Flap.hs:175`, `Flap.hs:356`).
+  `frameExtras = mempty` (`Flap.hs:247`, `Flap.hs:470`).
 - This matches the repo rule that a move "must drop what it invalidates"
   (AGENTS.md, Conventions).
 
 **F13. Anchor once, before any motion, and never let the anchor move.**
 
 - `spanningWalk` starts from the root face, the first face
-  (`Folding.hs:571-578`), and "The root face is held still"
-  (`Folding.hs:239-240`).
+  (`Folding.hs:585-592`), and "The root face is held still"
+  (`Folding.hs:240-241`).
 - Each recipe therefore reorders faces once:
   - blintz: `BlintzSequence.hs:6-8`, `:44-47`;
   - helmet: `HelmetSequence.hs:8-9`, `:41-44`;
   - crane: keeps the original face zero first, `CraneWing.hs:29-30`, `:110-112`.
 - Why it matters (`docs/notes/chaining-checked-folds.md`, third paragraph):
-  - `flapAt` holds the flap's stationary face still (`Flap.hs:358-360`).
+  - `flapAt` holds the flap's stationary face still (`Flap.hs:472-474`).
   - An independent refold holds face 0 still.
   - If those differ, joining the two inserts a whole-sheet rotation.
 - The invariant, which the recipes enforce only indirectly through F14:
   **the anchor face must be stationary in every move**. Evidence it holds:
   the helmet's moving sets never include face 0 (F4), and the blintz test
-  checks face 0 against material positions (`BlintzSequenceSpec.hs:64-68`).
+  checks face 0 against material positions (`BlintzSequenceSpec.hs:65-69`).
 - A second anchoring mechanism exists: `fixedPanel`, "A point strictly inside
   the panel held in its original position" (`StudyCase.hs:69-70`). It is
   resolved against material faces and applied by inverse placement
@@ -314,38 +314,38 @@ coordinates.**
   It runs at three joins (`CheckedBird.hs:68-76`).
 - **Tests.** Join tests assert matching orders (`shouldMatchList`), exact
   angles, exact material ids, and positions within 1e-12
-  (`BlintzSequenceSpec.hs:89-96`, `HelmetSequenceSpec.hs:143-150`).
+  (`BlintzSequenceSpec.hs:90-97`, `HelmetSequenceSpec.hs:143-150`).
 
 **F15. The flap start must be an untouched `foldFrameWith` result.**
 
 - `prepareFlapAlong` rebuilds the angle state and returns
-  `FlapStartMismatch` in any of these cases (`Flap.hs:172-184`):
+  `FlapStartMismatch` in any of these cases (`Flap.hs:244-256`):
   - the angle count differs;
   - the face rings differ;
   - any position differs by more than 1e-9 of the span.
-- Why: "Folded's constructor is public" (`Flap.hs:172-173`).
+- Why: "Folded's constructor is public" (`Flap.hs:244-245`).
 - An interpreter must therefore re-fold after every handoff rather than patch
   a `Folded` value.
 
 **F16. Endpoint angles are exact sums, and endpoint orders are computed.**
 
-- Pose angles are `angle + progress * travel` (`Flap.hs:355`), so endpoints
+- Pose angles are `angle + progress * travel` (`Flap.hs:469`), so endpoints
   are exactly representable here: −180 + 180 = 0.
 - The tests pin exact lists, e.g. `[-180, 0, 0, 0]` …
-  `[0, -180, -180, -180]` (`BlintzSequenceSpec.hs:37-38`;
+  `[0, -180, -180, -180]` (`BlintzSequenceSpec.hs:38-39`;
   `HelmetSequenceSpec.hs:82-83`).
 - Orders at a pose are retained stack orders plus endpoint contacts
-  (`Flap.hs:294-298`). Starting orders are checked against departure
-  (`Flap.hs:315-324`).
+  (`Flap.hs:416-420`). Starting orders are checked against departure
+  (`Flap.hs:429-438`).
 - Order counts per endpoint: blintz `[1,2,3,4,3]`
-  (`BlintzSequenceSpec.hs:39`); helmet `[3,7,11]`
+  (`BlintzSequenceSpec.hs:40`); helmet `[3,7,11]`
   (`HelmetSequenceSpec.hs:84`).
 
 **F17. Resolve ids after every topology change.**
 
 - The rule appears three times:
   - cutting "can renumber the input" (`Flap.hs:9-10`);
-  - transforms are keyed by the *cut* pattern (`Folding.hs:286-292`);
+  - transforms are keyed by the *cut* pattern (`Folding.hs:287-293`);
   - crane ids are re-selected after creasing (`CraneWing.hs:20-22`,
     `:110-134`).
 - Material rings or points survive renumbering, and the tests use them for
@@ -355,7 +355,7 @@ coordinates.**
 metadata.**
 
 - The operation "does not infer a stack from coincident positions"
-  (`Flap.hs:33-34`).
+  (`Flap.hs:57-58`).
 - The helmet test strips the carried orders and expects refusal
   (`HelmetSequenceSpec.hs:47-51`).
 - So an interpreter that forgets to carry orders fails loudly. That is good,
@@ -372,7 +372,7 @@ fragile.**
 **F20. Expected refusals are part of the recipes.**
 
 - Blintz: reopening through the centre is refused
-  (`BlintzSequenceSpec.hs:110-115`).
+  (`BlintzSequenceSpec.hs:111-116`).
 - Crane: −90 must be refused (`CraneWing.hs:141-144`).
 - Helmet: the body-side reopening is refused
   (`HelmetSequenceSpec.hs:164-175`).
@@ -475,7 +475,7 @@ format" (`docs/architecture.md:916-920`).
 - A flap is "the set of faces reached after removing the selected creases";
   the segments must "lie on one line in the CURRENT folded shape"
   (`Flap.hs:1-6`).
-- Anything else is refused as `FlapCoupled` (`Flap.hs:199-202`). The helmet
+- Anything else is refused as `FlapCoupled` (`Flap.hs:271-274`). The helmet
   test covers this: a single diagonal segment `[8]` is refused
   (`HelmetSequenceSpec.hs:40`).
 - In the recipes this covers blintz, helmet, the crane wing and the flap
@@ -552,7 +552,7 @@ Still missing from the sketch:
   only after `foldFrameWith` (F2, F17). The face numbering (FaceId 2 for the
   lower-right corner) cannot be read from the fixture file.
 - **Illustration arithmetic.** `Halfway` must be `flapAt 0.5`, so that angles
-  come out as `angle + 0.5 * travel` (`Flap.hs:355`).
+  come out as `angle + 0.5 * travel` (`Flap.hs:469`).
 - **Anchor rule.** Either reorder faces as the recipe does, or anchor by
   material point as `StudyCase` does (F13). The two are different code paths.
 
@@ -616,7 +616,7 @@ Still missing from this sketch:
 - `goldenText` passes only if `expected == actual`
   (`test/Test/Golden.hs:38-60`).
 - Every coordinate is printed through `formatNumber` with 3 decimals and
-  signed zero normalised (`src/Senbazuru/Render/Svg.hs:332-345`).
+  signed zero normalised (`src/Senbazuru/Render/Svg.hs:342-355`).
 - So Doubles that differ in the last bits usually print identically, unless
   a value sits on a 0.0005 rounding boundary.
 - The page title comes from `fileTitle`, so titles must match too
@@ -624,18 +624,18 @@ Still missing from this sketch:
 
 | Recipe | Golden | Test |
 | --- | --- | --- |
-| Blintz | `test/golden/checked-blintz.svg` | `BlintzSequenceSpec.hs:125-127` |
+| Blintz | `test/golden/checked-blintz.svg` | `BlintzSequenceSpec.hs:137-139` |
 | Helmet | `test/golden/checked-helmet.svg` | `HelmetSequenceSpec.hs:185-187` |
 | Crane wing | `test/golden/checked-crane.svg` | `CraneWingSpec.hs:172-173` |
 | Bird (certified) | `checked-bird-above.svg`, `checked-bird-below.svg` | `CheckedBirdSpec.hs:169-173` |
 | First petal | `checked-petal.svg` | `CheckedPetalSpec.hs:135-138` |
 | Manifest bird | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` | `BirdSequenceSpec.hs:78-84` |
-| Flap examples | `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` | `test/Senbazuru/Origami/FlapSpec.hs:294-316` |
-| Quarter fold | `quarter-fold-steps.svg`, rendered from `test/fixtures/quarter-fold-steps.fold` (byte-identical to the `examples/` copy by `cmp`) | `test/Senbazuru/Render/SvgSpec.hs:379-380` |
+| Flap examples | `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` | `test/Senbazuru/Origami/FlapSpec.hs:295-317` |
+| Quarter fold | `quarter-fold-steps.svg`, rendered from `test/fixtures/quarter-fold-steps.fold` (byte-identical to the `examples/` copy by `cmp`) | `test/Senbazuru/Render/SvgSpec.hs:391-392` |
 
 **F28. Exact, non-golden assertions a re-expression must reproduce.**
 
-- End angle lists and order counts (`BlintzSequenceSpec.hs:37-39`,
+- End angle lists and order counts (`BlintzSequenceSpec.hs:38-40`,
   `HelmetSequenceSpec.hs:81-84`).
 - Moving faces, which depend on face numbering, so on the anchor reorder
   (`HelmetSequenceSpec.hs:81`).
@@ -651,7 +651,7 @@ Still missing from this sketch:
 
 These checks use tolerances, not exact values: 1e-12 material error, per-face
 vertex placement, achieved angles within 1e-9 or 1e-8, and contact passing.
-Examples: `BlintzSequenceSpec.hs:41-87`, `CraneWingSpec.hs:111-162` (1e-10 and
+Examples: `BlintzSequenceSpec.hs:42-88`, `CraneWingSpec.hs:111-162` (1e-10 and
 1e-11 because the fixture starts at 1.4e-11), and `CheckedBirdSpec.hs:127-143`.
 They would pass for any correct re-expression.
 
@@ -661,7 +661,7 @@ They would pass for any correct re-expression.
   under `build/` by the galleries (`BlintzGallery.hs:45-51`, and similar).
   No `build/fold-material` directory exists in this checkout.
 - The recipe tests round-trip in memory only
-  (`BlintzSequenceSpec.hs:117-123`).
+  (`BlintzSequenceSpec.hs:129-135`).
 - Frog: the checkpoints are exported to a temporary directory and compared
   with coordinates cleared exactly and positions within 1e-12
   (`test/BasicBaseSpec.hs:181-205`).
@@ -674,7 +674,7 @@ coordinates.**
   metadata exactly. Coordinates allow 1e-12, because trigonometry "on macOS
   and Linux differs in the last few bits" (`:43-45`).
 - `GltfSpec` only checks that its 16 frames export
-  (`test/Senbazuru/Render/GltfSpec.hs:479-485`).
+  (`test/Senbazuru/Render/GltfSpec.hs:448-454`).
 - Consequence: a re-expression that computes petal angles by formula instead
   of pasting the literals would, going by F8's Python evaluation, change the
   175° state's side angles. That fails this exact comparison unless the
@@ -816,5 +816,5 @@ coordinates.**
   (`StudyCase.hs:75-76`, `ContactSpec.hs:28-33`). No test was run to confirm.
 - **Traced face order.** The mapping from traced blintz face indices to
   manifest panel names ("lower-right" and so on) was inferred from the edge
-  table and the spec's pairing (`BlintzSequenceSpec.hs:73`). The tracer was
+  table and the spec's pairing (`BlintzSequenceSpec.hs:74`). The tracer was
   not run.

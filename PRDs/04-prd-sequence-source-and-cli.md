@@ -46,12 +46,12 @@ Origami words link to [the glossary](../docs/glossary.md).
 
 | Today | Evidence |
 | --- | --- |
-| Nothing can write a sequence down. The one authoring verb takes one crease per call, as coordinates. | `crease --from X,Y --to X,Y` ([Cli.hs:258-283](../app/Senbazuru/Cli.hs#L258-L283)). [#97](https://github.com/avalonalex/senbazuru/issues/97) asks for a syntax "a person can write without a calculator". |
-| Every verb reads its input as a crease pattern. A source given to `render` would be decoded as FOLD and fail as bad JSON (not run). | Every verb goes through `withFoldFile` ([Cli.hs:691-698](../app/Senbazuru/Cli.hs#L691-L698), [:800-804](../app/Senbazuru/Cli.hs#L800-L804)). Any unrecognised extension decodes as FOLD ([Load.hs:102-106](../src/Senbazuru/Fold/Load.hs#L102-L106)), pinned by [LoadSpec.hs:167-171](../test/Senbazuru/Fold/LoadSpec.hs#L167-L171). |
-| The library has no parser. | [senbazuru.cabal:152-159](../senbazuru.cabal#L152-L159); the `.cp` reader splits words by hand ([C](research/C-renderers-cli-formats.md) "(e) Dependencies", finding 22). |
-| The CLI is untested by design. The test suite's source directories are `test` and `study/fold-material`, not `app`, so nothing in `Cli.hs` can be tested, and the parser, path rules, flag rules and messages must live in the library. | [Cli.hs:5-8](../app/Senbazuru/Cli.hs#L5-L8); [senbazuru.cabal:193](../senbazuru.cabal#L193). |
+| Nothing can write a sequence down. The one authoring verb takes one crease per call, as coordinates. | `crease --from X,Y --to X,Y` ([Cli.hs:274-299](../app/Senbazuru/Cli.hs#L274-L299)). [#97](https://github.com/avalonalex/senbazuru/issues/97) asks for a syntax "a person can write without a calculator". |
+| Every verb reads its input as a crease pattern. A source given to `render` would be decoded as FOLD and fail as bad JSON (not run). | Every verb goes through `withFoldFile` ([Cli.hs:782-789](../app/Senbazuru/Cli.hs#L782-L789), [:800-804](../app/Senbazuru/Cli.hs#L800-L804)). Any unrecognised extension decodes as FOLD ([Load.hs:131-136](../src/Senbazuru/Fold/Load.hs#L131-L136)), pinned by [LoadSpec.hs:167-171](../test/Senbazuru/Fold/LoadSpec.hs#L167-L171). |
+| The library has no parser. | [senbazuru.cabal:213-222](../senbazuru.cabal#L213-L222); the `.cp` reader splits words by hand ([C](research/C-renderers-cli-formats.md) "(e) Dependencies", finding 22). |
+| The CLI is untested by design. The test suite's source directories are `test` and `study/fold-material`, not `app`, so nothing in `Cli.hs` can be tested, and the parser, path rules, flag rules and messages must live in the library. | [Cli.hs:5-8](../app/Senbazuru/Cli.hs#L5-L8); [senbazuru.cabal:258](../senbazuru.cabal#L258). |
 | An error message is a lower-case fragment for after a colon. megaparsec's rendered errors span several lines. | [Explain.hs:62-69](../src/Senbazuru/Explain.hs#L62-L69); `errorBundlePretty` prints source context ([F](research/F-haskell-edsl-techniques.md) "D. Parsing the text syntax", finding 18). |
-| One refusal already needs a path and a number around one message, and gets two wordings. `render --steps` takes `StepError` apart in `Cli.hs` to build "cannot render frame N of PATH: …", so the same failure reads one way there and another through `explain`. | [Steps.hs:64-78](../src/Senbazuru/Render/Steps.hs#L64-L78), [Cli.hs:855-863](../app/Senbazuru/Cli.hs#L855-L863). |
+| One refusal already needs a path and a number around one message, and gets two wordings. `render --steps` takes `StepError` apart in `Cli.hs` to build "cannot render frame N of PATH: …", so the same failure reads one way there and another through `explain`. | [Steps.hs:64-78](../src/Senbazuru/Render/Steps.hs#L64-L78), [Cli.hs:969-977](../app/Senbazuru/Cli.hs#L969-L977). |
 | Only `Fold.Load` does I/O, and a sequence names a second file: its sheet. | [architecture.md:181-184](../docs/architecture.md). |
 
 ## Goals
@@ -119,7 +119,7 @@ Each requirement points at the design section that details it.
 | R-04-21 | `Command` gains `RunSource RunOptions`. `run` never uses `withFoldFile`. Other verbs' `--help` text and outputs are unchanged. |
 | R-04-22 | Output follows the lowercased `-o` extension: `.fold`, `.svg` or `.glb`. With no `-o`, the sequence file goes to stdout. Any other extension is refused before reading any file. |
 | R-04-23 | `--check` parses and checks, opens no sheet, prints one summary line and runs no geometry. It refuses `-o`, `--report`, `--layer-budget`, `--frame` and the page flags. |
-| R-04-24 | `--report` writes `Sequence.Record.renderRunReport :: Run -> [Text]` to stderr under a heading naming the source, as `check` formats its report ([Cli.hs:962-966](../app/Senbazuru/Cli.hs#L962-L966)). It prints each `expect refused` outcome too, which has no record and is kept on its step in the `Run` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). |
+| R-04-24 | `--report` writes `Sequence.Record.renderRunReport :: Run -> [Text]` to stderr under a heading naming the source, as `check` formats its report ([Cli.hs:1076-1080](../app/Senbazuru/Cli.hs#L1076-L1080)). It prints each `expect refused` outcome too, which has no record and is kept on its step in the `Run` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). |
 | R-04-25 | `--layer-budget N` reaches `runSequence` and the renderer for every geometric output. |
 | R-04-26 | `--frame N` goes only with `.glb`. It counts as every verb does, frame 0 being the key frame, so `--frame N` selects state N − 1, which is `file_frames[N − 1]` ([D13](decisions.md#d13-the-run-verb-and-io), [D24](decisions.md#d24-states-figures-and-their-numbers)); `bird-base-sequence.fold`'s states are read the same way ([usage.md:1813-1814](../docs/usage.md)). With no `--frame` it selects the last state. `0` and values past the state count are refused, naming the count. |
 | R-04-27 | `--columns`, `--view`, `--width` and `--height` go only with `.svg`, with `render`'s defaults. `--all-layers` goes only with `.glb`. `--author` and `--description` go only with `.fold`, because they fill `file_author` and `file_description`, which only the sequence file has ([D4](decisions.md#d4-written-frames-follow-the-state-rule)). |
@@ -622,7 +622,7 @@ Makefile, a test and a shell.
 
 **A source handed to another verb is refused, and the library's words name no
 command.** Today `decodeFile` decodes every unrecognised extension as FOLD
-([Load.hs:102-106](../src/Senbazuru/Fold/Load.hs#L102-L106)), so
+([Load.hs:131-136](../src/Senbazuru/Fold/Load.hs#L131-L136)), so
 `render blintz.foldseq` fails as bad JSON. R-04-18's new `LoadError` says instead
 that the file is a sequence source. The advice "use `senbazuru run PATH`" is
 appended by `app/`'s `withFoldFile`, not written by `explain`, because a library
@@ -631,7 +631,7 @@ message is also read from GHCi and by the study, where a command is no help
 today, and [D20](decisions.md#d20-errors) removes it: `Fold.Query.creaseEndFlag`
 returns `--from` or `--to` ([Query.hs:68-71](../src/Senbazuru/Fold/Query.hs#L68-L71)),
 and `ThroughLayers`' message starts with it
-([ThroughLayers.hs:194-195](../src/Senbazuru/Origami/ThroughLayers.hs#L194-L195)).
+([ThroughLayers.hs:195-196](../src/Senbazuru/Origami/ThroughLayers.hs#L195-L196)).
 Input starting with `{` is split the same way: `LooksLikeFold`'s message says the
 text looks like FOLD, and `refusalLines` adds which verbs read it.
 
@@ -646,9 +646,9 @@ senbazuru run SOURCE --check
 
 | Output | Library path |
 | --- | --- |
-| none, or `.fold` | `writeSequence header run`, then `encodeFoldFile` through `writeDocument` ([Cli.hs:788-794](../app/Senbazuru/Cli.hs#L788-L794)). The frames are laid out as [D4](decisions.md#d4-written-frames-follow-the-state-rule) decides and [02 §11](02-language-semantics.md#11-written-frames) walks through: a key frame holding only metadata, then state k as `file_frames[k]` ([D24](decisions.md#d24-states-figures-and-their-numbers)). For the quarter fold, `file_frames` holds state 0, the flat start; state 1, after `half`; and state 2, after `quarter`. So `--frame 2` selects state 1, the state after `half`. |
-| `.svg` | `stepNotes run`, which returns `Either WriteProblem [(Frame, StepNote)]`, then `stepPageWith theme budget grid view` ([06](06-prd-step-diagrams.md)), then `renderSvg`; `app/` turns the plan's view name into a `View`. `stepNotes` and `writeSequence` both read `Sequence.Record.writtenStates`, so the page draws exactly the states the `.fold` holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). The page is titled with the file title, as `render --steps` does ([Cli.hs:866](../app/Senbazuru/Cli.hs#L866)). |
-| `.glb` | The chosen state, through `renderGlb budget mode title frame` ([Gltf.hs:200](../src/Senbazuru/Render/Gltf.hs#L200)) with `export`'s title rule ([Cli.hs:779](../app/Senbazuru/Cli.hs#L779)). `app/` maps the plan's `GlbScenes` to `VisiblePaper`, or to `CompletePaper` with `--all-layers`, as `export` chooses its mode ([Cli.hs:776](../app/Senbazuru/Cli.hs#L776)). 08's modes add flags later. |
+| none, or `.fold` | `writeSequence header run`, then `encodeFoldFile` through `writeDocument` ([Cli.hs:897-903](../app/Senbazuru/Cli.hs#L897-L903)). The frames are laid out as [D4](decisions.md#d4-written-frames-follow-the-state-rule) decides and [02 §11](02-language-semantics.md#11-written-frames) walks through: a key frame holding only metadata, then state k as `file_frames[k]` ([D24](decisions.md#d24-states-figures-and-their-numbers)). For the quarter fold, `file_frames` holds state 0, the flat start; state 1, after `half`; and state 2, after `quarter`. So `--frame 2` selects state 1, the state after `half`. |
+| `.svg` | `stepNotes run`, which returns `Either WriteProblem [(Frame, StepNote)]`, then `stepPageWith theme budget grid view` ([06](06-prd-step-diagrams.md)), then `renderSvg`; `app/` turns the plan's view name into a `View`. `stepNotes` and `writeSequence` both read `Sequence.Record.writtenStates`, so the page draws exactly the states the `.fold` holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). The page is titled with the file title, as `render --steps` does ([Cli.hs:980](../app/Senbazuru/Cli.hs#L980)). |
+| `.glb` | The chosen state, through `renderGlb budget mode title frame` ([Gltf.hs:227](../src/Senbazuru/Render/Gltf.hs#L227)) with `export`'s title rule ([Cli.hs:888](../app/Senbazuru/Cli.hs#L888)). `app/` maps the plan's `GlbScenes` to `VisiblePaper`, or to `CompletePaper` with `--all-layers`, as `export` chooses its mode ([Cli.hs:885](../app/Senbazuru/Cli.hs#L885)). 08's modes add flags later. |
 
 **Flag rules are library functions with their own types.** The CLI is untested, so
 what `run` accepts and how it prints a refusal live in `Sequence.RunPlan`, at level
@@ -671,12 +671,12 @@ refusalLines :: Text -> SequenceError -> [Text]           -- R-04-16, without "s
 
 - **The plan holds a view *name* and a scene enumeration**, not `Render.Camera.View`
   ([Camera.hs:188](../src/Senbazuru/Render/Camera.hs#L188)) or
-  `Render.Gltf.ExportMode` ([Gltf.hs:147](../src/Senbazuru/Render/Gltf.hs#L147)).
+  `Render.Gltf.ExportMode` ([Gltf.hs:160](../src/Senbazuru/Render/Gltf.hs#L160)).
   Those live in row 7, which a row-6 module cannot import, so `app/` maps them.
   `Budget` is `Origami.Stacking`'s
   ([Stacking.hs:165](../src/Senbazuru/Origami/Stacking.hs#L165)), which row 6 may
   import. The field names are not `pageWidth` and `pageHeight`, which `app/`
-  already uses for the page it draws ([Cli.hs:911-912](../app/Senbazuru/Cli.hs#L911-L912)).
+  already uses for the page it draws ([Cli.hs:1025-1026](../app/Senbazuru/Cli.hs#L1025-L1026)).
 - **`RunOptionError` names flags, and that is not the leak
   [D20](decisions.md#d20-errors) forbids.** That rule keeps command-line words out
   of messages that GHCi and the study read. `Sequence.RunPlan` exists only for the
@@ -685,20 +685,20 @@ refusalLines :: Text -> SequenceError -> [Text]           -- R-04-16, without "s
 
 The CLI calls `planRun` before it reads any file, and passes the plan's `Budget` to
 both `runSequence` and the renderer. `die` adds `senbazuru: `
-([Cli.hs:1085-1086](../app/Senbazuru/Cli.hs#L1085-L1086)).
+([Cli.hs:1199-1200](../app/Senbazuru/Cli.hs#L1199-L1200)).
 
 Choices that could look arbitrary:
 
 - **Flags are parsed with `optional`.** So `run` can tell a typed `--columns 3` from
   the default 3, and refuse it when `-o` is `.glb`. The defaults are `render`'s:
   400 × 400, 3 columns, and the view chosen from the geometry
-  ([Cli.hs:546-607](../app/Senbazuru/Cli.hs#L546-L607)). The budget's default and
+  ([Cli.hs:645-699](../app/Senbazuru/Cli.hs#L645-L699)). The budget's default and
   its refusal of anything below 1 are
-  [Cli.hs:385-406](../app/Senbazuru/Cli.hs#L385-L406)'s.
+  [Cli.hs:401-423](../app/Senbazuru/Cli.hs#L401-L423)'s.
 - **`--frame` is refused with `.fold` and `.svg`.** Both hold every state, which is
-  why `render --steps` refuses `--frame` ([Cli.hs:843](../app/Senbazuru/Cli.hs#L843)).
+  why `render --steps` refuses `--frame` ([Cli.hs:957](../app/Senbazuru/Cli.hs#L957)).
   `run` also gets its own `--frame` parser, because the shared one says "default: 0,
-  the key frame" ([Cli.hs:484-493](../app/Senbazuru/Cli.hs#L484-L493)).
+  the key frame" ([Cli.hs:515-524](../app/Senbazuru/Cli.hs#L515-L524)).
 - **`--frame 2` is a different state on the fixture and on `run`'s file, and both
   are right.** On `quarter-fold-steps.fold` it is the state after `quarter`,
   because that file keeps its flat start in its key frame. On the sequence file
@@ -766,8 +766,8 @@ Choices that could look arbitrary:
 - **Library, not executable.** The builder and parser must work without the CLI
   ([Cli.hs:5-8](../app/Senbazuru/Cli.hs#L5-L8)), and the study reads sources too.
 - **Executable and tests.** The executable adds `containers` and `filepath`
-  ([senbazuru.cabal:167-172](../senbazuru.cabal#L167-L172)). The tests need nothing
-  new, since QuickCheck is there ([senbazuru.cabal:321](../senbazuru.cabal#L321)).
+  ([senbazuru.cabal:230-235](../senbazuru.cabal#L230-L235)). The tests need nothing
+  new, since QuickCheck is there ([senbazuru.cabal:496](../senbazuru.cabal#L496)).
 
 ### Rejected alternatives
 
@@ -782,7 +782,7 @@ Choices that could look arbitrary:
 | `--check` opening sheets | `--check` would stop being `checkSequence . parseSequence`, the function the tests call. `run` reports a missing sheet before any geometry. |
 | Reading `.foldseq` through `loadFile` | `Fold.Load` would depend on `Origami.*` ([C](research/C-renderers-cli-formats.md) finding 21). |
 | Location in `explain`, or `errorBundlePretty` as the message | A Haskell-built sequence has no location, and that text runs to several lines. |
-| Lenient UTF-8, as `.cp` uses ([Load.hs:108-121](../src/Senbazuru/Fold/Load.hs#L108-L121)) | A Latin-1 `°` would become U+FFFD, the replacement character, reported as an unexpected character nobody can see. |
+| Lenient UTF-8, as `.cp` uses ([Load.hs:138-153](../src/Senbazuru/Fold/Load.hs#L138-L153)) | A Latin-1 `°` would become U+FFFD, the replacement character, reported as an unexpected character nobody can see. |
 | `--format` instead of the extension | Two ways to say one thing. |
 | Flag rules in `Cli.hs` | Untestable, which is how `--layer-budget` did nothing on `render` for as long as it was not a parameter ([AGENTS.md](../AGENTS.md) "Conventions"). |
 | `decodeFile`'s `explain` naming `run` | A library message is read from GHCi and by the study too, where a command is no help; `app/` appends the hint ([D13](decisions.md#d13-the-run-verb-and-io), [D20](decisions.md#d20-errors)). |
@@ -964,7 +964,7 @@ is the short strip of wing beside the hinge that the study holds at a fixed angl
   ([D8](decisions.md#d8-folding-some-layers)).
 - **The `material` and `settle` lines.** `stiffness illustrative` is
   `Bending 1 0.2`, the stiffness `CraneSpread` builds its hinges with
-  ([CraneSpread.hs:120](../study/fold-material/CraneSpread.hs#L120)).
+  ([CraneSpread.hs:121](../study/fold-material/CraneSpread.hs#L121)).
   `refine side moving 3` refines the wing at level 3, one of the two levels
   `craneSpreadWith` accepts ([:99-100](../study/fold-material/CraneSpread.hs#L99-L100)).
   `rest at rigid-pose 1/3` rests every active crease at its angle a third of the way
@@ -976,7 +976,7 @@ is the short strip of wing beside the hinge that the study holds at a fixed angl
   turns towards, and it runs before `Flap`'s sweep
   ([D8](decisions.md#d8-folding-some-layers),
   [02 §6.3](02-language-semantics.md#63-which-layers) step 4). `CraneWing` gets
-  `FlapEndpointOrder` ([Flap.hs:123](../src/Senbazuru/Origami/Flap.hs#L123)) only
+  `FlapEndpointOrder` ([Flap.hs:161](../src/Senbazuru/Origami/Flap.hs#L161)) only
   because it calls `Flap` with no selection step
   ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)).
 - **UNVERIFIED:** that the two relations leave exactly one stacking
@@ -1047,7 +1047,7 @@ What other files carry from this one, as the decision record settles it:
 | megaparsec names were read in 9.4.1, not 9.5.0 | M1 compiles against 9.5.0 before any message golden is accepted. |
 | megaparsec reports the furthest failure, so expected lists get long | Labels (`<?>`), hints for known traps, A3. |
 | The EBNF in `Sequence.Parse`'s header drifts from the parser | Kept in step by review only. A1 and A12 catch printer–parser drift, not a stale header (R-04-11). |
-| `run` passes the plan's budget to `runSequence` but not to the renderer | By review only; A15 covers `planRun`, not the call sites. `Cli.hs` already imports `defaultBudget` for `budgetOption` ([Cli.hs:395](../app/Senbazuru/Cli.hs#L395)), so the type system does not stop a call site using it. |
+| `run` passes the plan's budget to `runSequence` but not to the renderer | By review only; A15 covers `planRun`, not the call sites. `Cli.hs` already imports `defaultBudget` for `budgetOption` ([Cli.hs:411](../app/Senbazuru/Cli.hs#L411)), so the type system does not stop a call site using it. |
 | A later keyword breaks old sources | Future move words are reserved now; `foldseq` carries a version. |
 | `°` is awkward to type | `deg`, and hints for `º` and `˚`. |
 | Carets misalign under wide characters in captions | Stated. Columns count code points; only tabs are copied. |

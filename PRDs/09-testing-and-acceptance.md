@@ -70,7 +70,7 @@ changed files, compares with the working tree (where a new golden not yet
 
 | A golden change that is… | Caught by |
 | --- | --- |
-| not accepted | `stack test`: `goldenText`/`goldenBytes` ([`Golden.hs:38`](../test/Test/Golden.hs#L38), [`:81`](../test/Test/Golden.hs#L81)) write `X.actual.svg`/`.glb`, which git ignores ([`.gitignore:10-11`](../.gitignore#L10-L11)), and name the first difference |
+| not accepted | `stack test`: `goldenText`/`goldenBytes` ([`Golden.hs:38`](../test/Test/Golden.hs#L38), [`:83`](../test/Test/Golden.hs#L83)) write `X.actual.svg`/`.glb`, which git ignores ([`.gitignore:10-11`](../.gitignore#L10-L11)), and name the first difference |
 | accepted by `mv X.actual.svg X.svg` | only the first command above |
 
 **Red when** a tracked golden changes a byte or is deleted. The one foreseen
@@ -78,8 +78,8 @@ exception is owner decision 9: migrating the quarter-fold fixture to the
 [state rule](glossary-additions.md#the-fold-format) would move
 `quarter-fold-steps.svg` and `quarter-fold-step-1.svg` in that PR alone. Both
 goldens read `test/fixtures/quarter-fold-steps.fold`
-([`SvgSpec.hs:371`](../test/Senbazuru/Render/SvgSpec.hs#L371),
-[`:380`](../test/Senbazuru/Render/SvgSpec.hs#L380)), a byte-identical copy of
+([`SvgSpec.hs:383`](../test/Senbazuru/Render/SvgSpec.hs#L383),
+[`:392`](../test/Senbazuru/Render/SvgSpec.hs#L392)), a byte-identical copy of
 `examples/quarter-fold-steps.fold`, so they move only if that copy migrates too.
 
 ### 1.3 Multi-frame examples draw the same step pages
@@ -94,7 +94,7 @@ file in `examples/`. There are two (§11 command 1):
 | File | `file_frames` | States | Drawn with arrows by a golden today? |
 | --- | ---: | ---: | --- |
 | `bird-base-sequence.fold` | 16 | 16: its key frame has no vertices | no: its goldens pass `False` ([`BirdSequenceSpec.hs:79`](../test/BirdSequenceSpec.hs#L79)) |
-| `quarter-fold-steps.fold` | 2 | 3: its key frame is the first state | yes: `quarter-fold-steps.svg` ([`SvgSpec.hs:380`](../test/Senbazuru/Render/SvgSpec.hs#L380)), from `test/fixtures/quarter-fold-steps.fold`, identical to the `examples/` copy by `cmp` |
+| `quarter-fold-steps.fold` | 2 | 3: its key frame is the first state | yes: `quarter-fold-steps.svg` ([`SvgSpec.hs:392`](../test/Senbazuru/Render/SvgSpec.hs#L392)), from `test/fixtures/quarter-fold-steps.fold`, identical to the `examples/` copy by `cmp` |
 
 So the check has three parts:
 
@@ -188,7 +188,7 @@ its key frame holds metadata only
 in the key frame. So written `file_frames[k]` is fixture state *k*, which is
 fixture `file_frames[k-1]` for *k* ≥ 1. The command line counts frames with the
 key frame at 0 ("default: 0, the key frame",
-[`Cli.hs:491`](../app/Senbazuru/Cli.hs#L491)), so state *k* is `--frame k` on the
+[`Cli.hs:522`](../app/Senbazuru/Cli.hs#L522)), so state *k* is `--frame k` on the
 fixture and `--frame k+1` on the written file
 ([D13](decisions.md#d13-the-run-verb-and-io),
 [C59](decisions.md#changes-since-draft-v2)).
@@ -198,7 +198,7 @@ fixture and `--frame k+1` on the written file
 | States | 3 written `file_frames`; key frame without vertices | the sheet goes in the key frame |
 | `edges_vertices`, `faces_vertices` | exact: same ids, same ring order | `sheetState` re-cuts a frame that records faces (today [`Crossings.hs:128`](../src/Senbazuru/Fold/Crossings.hs#L128) keeps it); rings re-wound (already anticlockwise, signed area +¼ each); anchor face moved off index 0 |
 | `vertices_coords` | fixture `[x, y]` padded to `[x, y, 0]`, each within 1e-12 × `modelSpan` ([`V3.hs:72`](../src/Senbazuru/Geometry/V3.hs#L72)) of the material coordinates, as [`BlintzSequence.hs:67-69`](../study/fold-material/BlintzSequence.hs#L67-L69) takes it; here 1 | a different face held still; a rotation's sign flipped (the mirror model) |
-| `edges_foldAngle` | exact (§7): flap endpoints are `angle + progress * travel` on the author's ±180 ([`Flap.hs:355`](../src/Senbazuru/Origami/Flap.hs#L355)) | "in front" read from a camera (edge 9 −180); a layer's way up applied twice (edge 11 +180) |
+| `edges_foldAngle` | exact (§7): flap endpoints are `angle + progress * travel` on the author's ±180 ([`Flap.hs:469`](../src/Senbazuru/Origami/Flap.hs#L469)) | "in front" read from a camera (edge 9 −180); a layer's way up applied twice (edge 11 +180) |
 | `edges_assignment` | `assignmentAtRest` of the fixture's assignment and angle ([state rule](glossary-additions.md#the-fold-format)): `F F F F`, `M F M F`, `M V M M` after `B`×8 | an [intent assignment](glossary-additions.md#the-fold-format) `M`/`V` written at angle 0; `U` written |
 | `frame_classes` | `creasePattern`, `foldedForm`, `foldedForm` ([D4](decisions.md#d4-written-frames-follow-the-state-rule): written frames follow the state rule) | a state with nonzero angles written `creasePattern` |
 | Not compared | `frame_title` (a caption describes the move *leaving* its figure); `faceOrders` (the fixture has none; E3 checks orders); `frame_attributes` (whether `hasRelief` uses a tolerance is unverified: [gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md) "Unverified" 5) | — |
@@ -312,8 +312,8 @@ the same text. Saved inside `examples/`, the line would have to read
 | E5 | Coordinates: equal counts, each within absolute 1e-12 ([`BirdSequenceSpec.hs:48-50`](../test/BirdSequenceSpec.hs#L48-L50)) | wrong face held still; rotation sign flipped |
 | E6 | `eitherDecode (encode file) == Right file` | a field written but not read; doubles encoded through `toEncoding`, which writes `-0.0` ([`Types.hs:583-596`](../src/Senbazuru/Fold/Types.hs#L583-L596)) |
 | E7 (M3) | `stepPageWith` over `stepNotes run`, then `renderSvg`, byte-exact | stroke width; camera basis; default arrow head; `formatNumber` decimals; a crease drawn before its step |
-| E8 | `renderGlb` ([`Gltf.hs:200`](../src/Senbazuru/Render/Gltf.hs#L200)) on the run's final state, as `run -o x.glb` calls it ([04](04-prd-sequence-source-and-cli.md#the-run-verb)), byte-exact against `blintz-sequence-final.glb` | `toGltfAxes` becomes `(x, z, y)`; `quantumFor` changed; `faceOrders` leave the extras |
-| E9 | The GLB's `extras.senbazuru.frame` equals the sequence file's last state: exact in topology, angles, orders; positions within one rounding step, 1e-6 × span ([`Gltf.hs:261-264`](../src/Senbazuru/Render/Gltf.hs#L261-L264)); extras only for the keys the GLB keeps ([`:241-242`](../src/Senbazuru/Render/Gltf.hs#L241-L242)) | GLB drops or reorders `faceOrders`; the writers disagree on the final state or its presentation |
+| E8 | `renderGlb` ([`Gltf.hs:227`](../src/Senbazuru/Render/Gltf.hs#L227)) on the run's final state, as `run -o x.glb` calls it ([04](04-prd-sequence-source-and-cli.md#the-run-verb)), byte-exact against `blintz-sequence-final.glb` | `toGltfAxes` becomes `(x, z, y)`; `quantumFor` changed; `faceOrders` leave the extras |
+| E9 | The GLB's `extras.senbazuru.frame` equals the sequence file's last state: exact in topology, angles, orders; positions within one rounding step, 1e-6 × span ([`Gltf.hs:295-298`](../src/Senbazuru/Render/Gltf.hs#L295-L298)); extras only for the keys the GLB keeps ([`:274-275`](../src/Senbazuru/Render/Gltf.hs#L274-L275)) | GLB drops or reorders `faceOrders`; the writers disagree on the final state or its presentation |
 | E10 | Negative control. Move 5, `unfold c1`, is replaced by `fold in front 180° hinge of c1 moving corner south-east`, carrying the corner on through the centre (`c1` is the name 00's source gives the first corner step). The corner lies under the square after c1, so that turn sets it off towards the reader: `in front` since owner decision 13 ([D5](decisions.md#d5-presentation-and-the-readers-side)'s amendment), where the held-face rule had `behind`. Once 05 L11's covering check lands (M4), the kind below becomes `FlapCovered`, here and in 04's A19. The run gives `Left (StepRefused 5 Nothing span failure)` with `FlapEndpointOrder` inside, `Nothing` because step 5 has no name; `explain` starts "step 5"; `sourceLocation` names its line; no frame is written, since a refusal other than `not modelled` returns no partial run. Written instead inside step 5's braces as `expect refused FlapEndpointOrder { … }` ([glossary-additions](glossary-additions.md#the-sequence-language)), a move inside a step and never at top level, the run succeeds because the inner move is refused as expected. That move produces no [move record](glossary-additions.md#running-a-sequence) and no state, and changes nothing; its outcome is kept on step 5's outcome in the `Run` and printed by `--report` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [C8](decisions.md#changes-since-draft-v2)). Step 5's only move is that wrapper, so it writes nothing and is not a figure: the file holds five states, not six ([D24](decisions.md#d24-states-figures-and-their-numbers)) | the runner catches `Left` and continues; spans dropped; a wrapper rewords the nested error; `expect refused` writes a frame, adds a record or a figure, or is missing from `renderRunReport` |
 
 E10's spelling follows [04's grammar](04-prd-sequence-source-and-cli.md#grammar):
@@ -322,7 +322,7 @@ line. No runner exists yet, so the runner's refusal is **UNVERIFIED** until M2.
 What is evidence today is the recipe's equivalent:
 `prepareFlap (EdgeId 8) (FaceId 2) (-180)` on the reopening's start is refused as
 `FlapEndpointOrder`
-([`BlintzSequenceSpec.hs:110-115`](../test/BlintzSequenceSpec.hs#L110-L115)).
+([`BlintzSequenceSpec.hs:111-116`](../test/BlintzSequenceSpec.hs#L111-L116)).
 
 ## 4. Acceptance by milestone
 
@@ -496,7 +496,7 @@ Fourteen spec files build fixtures in `runIO` (`grep -rl runIO test | wc -l`),
 such as [`BlintzSequenceSpec.hs:31`](../test/BlintzSequenceSpec.hs#L31) and
 [`CraneWingSpec.hs:33`](../test/CraneWingSpec.hs#L33). `beforeAll` runs only when
 an item under it runs, as the crane-material specs rely on
-([`WingBendingSpec.hs:54`](../test/WingBendingSpec.hs#L54)); that is inferred, not
+([`WingBendingSpec.hs:56`](../test/WingBendingSpec.hs#L56)); that is inferred, not
 documented ("Unverified" 7), so the first sequence spec's PR confirms it once
 with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
 
@@ -515,8 +515,8 @@ with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
 
 **The slow job changes a recorded sentence.** It is a fourth CI job beside
 today's `test`, `format` and `lint`
-([`ci.yml:11`](../.github/workflows/ci.yml#L11), [`:36`](../.github/workflows/ci.yml#L36),
-[`:71`](../.github/workflows/ci.yml#L71)), and
+([`ci.yml:43`](../.github/workflows/ci.yml#L43), [`:78`](../.github/workflows/ci.yml#L78),
+[`:118`](../.github/workflows/ci.yml#L118)), and
 [`AGENTS.md:390-391`](../AGENTS.md#workflow) requires "all three CI checks" green
 before merge. The M4 PR adding the slow job changes that sentence
 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 15,
@@ -534,7 +534,7 @@ After [gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-m
 | [Driving parameter](glossary-additions.md#macro-moves) (`until 175°`) | exactly | a stored `Rational` |
 | Literal copied through (`pose` angles, manifest values) | exactly | untouched |
 | Endpoint pinned by an explicit guard to 0 or ±180: the writer's `F` at exactly 0 | exactly | the guard writes the literal |
-| Flap endpoint: `angle + progress * travel` on the author's ±180 ([`Flap.hs:355`](../src/Senbazuru/Origami/Flap.hs#L355)), no guard | exactly | IEEE sums and products of whole-number `Double`s are exact ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md) finding 16) |
+| Flap endpoint: `angle + progress * travel` on the author's ±180 ([`Flap.hs:469`](../src/Senbazuru/Origami/Flap.hs#L469)), no guard | exactly | IEEE sums and products of whole-number `Double`s are exact ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md) finding 16) |
 | Two outputs of one binary on one platform (EDSL against text; a repeated run) | exactly | deterministic |
 | Formula-derived (collapse, rabbit ear, petal) | within 1e-12°, as [`RabbitEarSpec.hs:49`](../test/RabbitEarSpec.hs#L49) and [`CheckedPetalSpec.hs:146`](../test/CheckedPetalSpec.hs#L146), until the tolerance-unification issue names one | the rabbit-ear literal is one [ulp](glossary-additions.md#geometry) from its formula |
 
@@ -553,10 +553,10 @@ findings 12–17, lines re-read here:
 | Output | What can move | Policy |
 | --- | --- | --- |
 | Any folded position | last bits: `cos`/`sin` in the rotation ([`Rigid.hs:117-129`](../src/Senbazuru/Geometry/Rigid.hs#L117-L129)), recorded as differing on macOS and Linux ([`BirdSequenceSpec.hs:43-45`](../test/BirdSequenceSpec.hs#L43-L45)). `bird-base-sequence.fold` holds `-6.123233995736766e-17` where exact arithmetic gives 0 (its magnitude is `cos (pi/2)` in `Double`), and 175 nonzero numbers below 1e-15 in magnitude (§11 command 6) | tolerance, never exact |
-| SVG | a coordinate crossing a 0.0005 rounding boundary ([`Svg.hs:332-345`](../src/Senbazuru/Render/Svg.hs#L332-L345)); a ring's first corner is chosen on formatted strings ([`:280-294`](../src/Senbazuru/Render/Svg.hs#L280-L294)) | goldens exact; a Linux-only diff is fixed in serialisation (`docs/notes/closed-path-starts.md`) |
-| GLB positions | a coordinate within float noise of half a rounding step ([`Gltf.hs:259-264`](../src/Senbazuru/Render/Gltf.hs#L259-L264), [`:309-314`](../src/Senbazuru/Render/Gltf.hs#L309-L314)); equal packed corners keep input order ([`:386-399`](../src/Senbazuru/Render/Gltf.hs#L386-L399)) | goldens exact |
-| GLB JSON | raw `edges_foldAngle`, `senbazuru:material_coords`, `layerRequirements` direction ([`Gltf.hs:236-242`](../src/Senbazuru/Render/Gltf.hs#L236-L242)); material coordinates carry trig bits once a crease is mapped back through a face's rotation (finding 15) | default-CI fixtures crease no layers; rounding these numbers moves goldens, so its own issue |
-| FOLD | every coordinate; trig-derived angles and material coordinates ([`Load.hs:182-183`](../src/Senbazuru/Fold/Load.hs#L182-L183); `-0` dropped, [`Types.hs:583-596`](../src/Senbazuru/Fold/Types.hs#L583-L596)) | E4 exact without coordinates, E5 within 1e-12; material coordinates within 1e-12 for moves creasing through layers |
+| SVG | a coordinate crossing a 0.0005 rounding boundary ([`Svg.hs:342-355`](../src/Senbazuru/Render/Svg.hs#L342-L355)); a ring's first corner is chosen on formatted strings ([`:290-304`](../src/Senbazuru/Render/Svg.hs#L290-L304)) | goldens exact; a Linux-only diff is fixed in serialisation (`docs/notes/closed-path-starts.md`) |
+| GLB positions | a coordinate within float noise of half a rounding step ([`Gltf.hs:293-298`](../src/Senbazuru/Render/Gltf.hs#L293-L298), [`:343-348`](../src/Senbazuru/Render/Gltf.hs#L343-L348)); equal packed corners keep input order ([`:420-433`](../src/Senbazuru/Render/Gltf.hs#L420-L433)) | goldens exact |
+| GLB JSON | raw `edges_foldAngle`, `senbazuru:material_coords`, `layerRequirements` direction ([`Gltf.hs:269-275`](../src/Senbazuru/Render/Gltf.hs#L269-L275)); material coordinates carry trig bits once a crease is mapped back through a face's rotation (finding 15) | default-CI fixtures crease no layers; rounding these numbers moves goldens, so its own issue |
+| FOLD | every coordinate; trig-derived angles and material coordinates ([`Load.hs:234-235`](../src/Senbazuru/Fold/Load.hs#L234-L235); `-0` dropped, [`Types.hs:583-596`](../src/Senbazuru/Fold/Types.hs#L583-L596)) | E4 exact without coordinates, E5 within 1e-12; material coordinates within 1e-12 for moves creasing through layers |
 | Eighth turns | written coordinates (`rotationAbout`, [D5](decisions.md#d5-presentation-and-the-readers-side)) | owner decision 10 |
 
 When a golden differs on Linux only, decode E9's frame first: it shows whether the
@@ -574,14 +574,14 @@ After [gap-study-consumption-contract](research/gap-study-consumption-contract.m
    (1e-12 material error, per-face placement, contact); orders compared with
    `shouldMatchList`; goldens byte-identical.
 2. **Deletion.** The recipe leaves the `other-modules` lists of the study
-   executable ([`senbazuru.cabal:179`](../senbazuru.cabal#L179)) and the test
-   suite ([`:195`](../senbazuru.cabal#L195)); gallery and spec point at the
+   executable ([`senbazuru.cabal:242`](../senbazuru.cabal#L242)) and the test
+   suite ([`:260`](../senbazuru.cabal#L260)); gallery and spec point at the
    sequence.
 
 **Reusing recipe goldens.** `checked-blintz.svg` is an eleven-figure page: the
 open square, then each move's halfway pose and endpoint
 ([`BlintzSequence.hs:75-87`](../study/fold-material/BlintzSequence.hs#L75-L87),
-[`BlintzSequenceSpec.hs:125-127`](../test/BlintzSequenceSpec.hs#L125-L127)).
+[`BlintzSequenceSpec.hs:137-139`](../test/BlintzSequenceSpec.hs#L137-L139)).
 `checked-helmet.svg` has seven, the first intermediate at 120° because "at this
 camera's 45-degree elevation the first 90-degree pose has the open sheet's
 silhouette" ([`HelmetSequence.hs:70-86`](../study/fold-material/HelmetSequence.hs#L70-L86)).
@@ -596,7 +596,7 @@ five steps write six states, so `stepNotes` gives six figures
 from it. The equivalence PR rebuilds each
 page through the recipe's own page function, from each record's `SweptHinge c`:
 `flapAt c 0`, `flapAt c 0.5` (or `120/180`) and `recordAfter` (`flapAt` is
-exported, [`Flap.hs:49-59`](../src/Senbazuru/Origami/Flap.hs#L49-L59)). **Red
+exported, [`Flap.hs:76-89`](../src/Senbazuru/Origami/Flap.hs#L76-L89)). **Red
 when** the record's [working pattern](glossary-additions.md#running-a-sequence)
 differs from the recipe's start in face numbering, ring order or orders, which
 moves the halfway poses and so the bytes.

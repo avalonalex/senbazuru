@@ -94,7 +94,7 @@ coincident layers sit at the same depth, draws the closed crane 95.2% in the
 back colour. The repository's default export already avoids this without
 moving any vertex: its *visible-paper* scene drops buried coplanar sides, and
 with it the closed crane is 100% front. The whole-crane gallery writes the
-complete scene (`WholeCraneGallery.hs:164`). So layer offsets are not needed
+complete scene (`WholeCraneGallery.hs:192`). So layer offsets are not needed
 for a viewer; using the visible scene is.
 
 | Render (1200 × 1000, M1 Max) | Times, s | Median |

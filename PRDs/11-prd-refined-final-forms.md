@@ -1069,7 +1069,7 @@ Found while researching this file, outside `PRDs/`, so not edited here:
    "panel 8 needs a planar surface". Face 8 is out of plane by about 1e-6;
    `--all-layers` works ([X1](research/X1-paper-look-renders.md)).
 6. **The whole-crane gallery writes the complete-paper scene** for its viewers
-   (`WholeCraneGallery.hs:164`); R-11-10.
+   (`WholeCraneGallery.hs:192`); R-11-10.
 
 ## Research links
 

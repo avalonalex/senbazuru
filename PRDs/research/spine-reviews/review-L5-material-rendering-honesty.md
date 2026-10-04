@@ -28,8 +28,8 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
 - **The study already draws these meshes through the same path.** The crane
   spread and crane root SVGs go through
   `stepPage` → `creasePatternFrom` → `layerOrderFor` → `visibleForm` → (`PaperInTheAir`)
-  → `projectedForm`. The call is at `CraneSpreadGallery.hs:132-141`, and
-  `CraneRootGallery.hs:104` reuses `spreadSvg`. The dispatch is
+  → `projectedForm`. The call is at `CraneSpreadGallery.hs:155-160`, and
+  `CraneRootGallery.hs:109` reuses `spreadSvg`. The dispatch is
   `CreasePattern.hs:215-240`.
 - **`Projected` declined on them.** When `projectedForm` returns `Nothing`, the
   fallbacks draw every crease, buried or not (`CreasePattern.hs:222-224`, `:249-254`).
@@ -139,7 +139,7 @@ What a user actually gets for an arbitrary sequence at M7 is animation, UVs
   all is unverified.
 
 **Evidence.**
-- `senbazuru.cabal:152-159`: the library depends on aeson, base, bytestring,
+- `senbazuru.cabal:213-222`: the library depends on aeson, base, bytestring,
   containers, filepath, tagsoup and text only.
 - G finding 10: Origami Simulator pushes the paper behind its lines with
   `polygonOffset` (`model.js:83-111`).
@@ -183,7 +183,7 @@ rest angles by `EdgeId`).
   `start = folded {…orders}`).
 - The hinge is taken from that frame (`:114-119`).
 - `CraneSpread.hs:108` refines `surfaceFromFolded (craneStart wing)`.
-- `:113` looks hinge ids up in that same numbering.
+- `:114` looks hinge ids up in that same numbering.
 - Gap-study F7: a crease-adding step's before and after states number the same
   paper differently.
 
@@ -221,8 +221,8 @@ positions, not per-face `Rigid`s. G1's node transforms need placements, so each
 animation key means re-folding the angle list, which is a counted cost.
 
 **Evidence.**
-- `Flap.hs:289-298`: `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)`.
-- `foldedPlacements` exists only on `Folded` (`Folding.hs:283-322`).
+- `Flap.hs:414-420`: `flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)`.
+- `foldedPlacements` exists only on `Folded` (`Folding.hs:284-323`).
 - Gap-study (a) sketch: `SweepChecked CheckedFlap -- gives flapAt`.
 - Gap-sequence-cost F6: about 7 folds per checked step, read from code.
 
@@ -265,10 +265,10 @@ It also never says which assignments the record's `Surface`s carry:
 Either choice silently changes the physics.
 
 **Evidence.**
-- `CraneSpread.hs:112-116` is the rest rule.
+- `CraneSpread.hs:113-117` is the rest rule.
 - `Surface.hs` `surfaceFeatures`: a crease is active if it is B/M/V/U/C or its
   angle exceeds 1e-10.
-- `FoldBending.hs` `hingesForSurface` (read at `:189-216`): a rest angle is
+- `FoldBending.hs` `hingesForSurface` (read at `:161-185`): a rest angle is
   required for every active non-border crease, the sign must match M/V, and a
   segment with no control is classified `PanelBend, 0`.
 - Spine D4 says the consumer takes rest intent "from the StepRecord" but gives
@@ -291,7 +291,7 @@ Also:
   for the owner, marked open.
 
 Acceptance: the crane spread's `RestAtPose (1/3)` produces the same `targets`
-map as `CraneSpread.hs:116`. The change that turns it red is a
+map as `CraneSpread.hs:117`. The change that turns it red is a
 `Mountain → +π` sign slip.
 
 ---
@@ -317,8 +317,8 @@ state"; §5 crane example; §4 `StepHeader.stepSettle`.
    `rigid-pose 1/3`, but a step with no move has no moving side and no route.
 
 **Evidence.**
-- `CraneSpread.hs:108`, `:132-138`, `:171`.
-- `SurfaceContact.hs:189-191`: `if max lowerAlignment upperAlignment <= 1e-8 then Left (UncheckableContactPair i j)`.
+- `CraneSpread.hs:108-109`, `:133-139`, `:172`.
+- `SurfaceContact.hs:226-228`: `if max lowerAlignment upperAlignment <= 1e-8 then Left (UncheckableContactPair i j)`.
 - B "Not yet general" bullet 1.
 - Spine §4, lines 659-673 (no settle constructor); §5, lines 811-816.
 
@@ -398,8 +398,8 @@ re-cuts the pattern, so step k+1's faces do not exist in step k's hierarchy.
 The spine does not say what an animation across such a step is.
 
 **Evidence.**
-- Placements are keyed by the cut pattern (`Folding.hs:283-322`), and the walk
-  roots at the first face (`:581-584`).
+- Placements are keyed by the cut pattern (`Folding.hs:284-323`), and the walk
+  roots at the first face (`:595-598`).
 - A1 (c) and gap-study F7: creasing renumbers faces.
 - G finding 18d: glTF can switch pieces only through TRS, for example a
   STEP-keyed scale of 0/1. `KHR_node_visibility` is unsupported in three.js and
@@ -444,7 +444,7 @@ kinds.
    checked routes" gives nothing between those keys.
 
 **Evidence.**
-- `Folding.hs:581-584` (root = first face).
+- `Folding.hs:595-598` (root = first face).
 - G finding 18a, conditions 1-2.
 - G open question "Hierarchy re-rooting".
 - Spine D3.5 and D5.
@@ -531,7 +531,7 @@ travel with a screenshot.
 - Spine §3 table and "Order constraints" (lines 626-627).
 - §5 crane example.
 - D16 migration bullet.
-- `CraneSpreadGallery.hs:108-110` (accepted spread GLB exported today).
+- `CraneSpreadGallery.hs:118-120` (accepted spread GLB exported today).
 - L5-2 (A1 is invisible on rigid panels).
 
 **Proposal.** Order constraints become:
@@ -590,8 +590,8 @@ extras. That removes `senbazuru:source_panels` and `source_edges`, which A1's
 per-panel averaging and the GLB provenance rely on for settled meshes.
 
 **Evidence.**
-- `CraneSpread.hs:132-138` (`above = (orderStacking pair == Above) == (z > 0)`)
-  and `:171` (`V3 0 0 1`).
+- `CraneSpread.hs:133-139` (`above = (orderStacking pair == Above) == (z > 0)`)
+  and `:172` (`V3 0 0 1`).
 - `Surface.hs` `transformSurface`: `frameExtras = mempty`.
 - `Gltf.hs` `renderSurfaceGlb`: the extras whitelist keeps exactly those keys.
 
@@ -618,7 +618,7 @@ metadata field. glTF's `extras.senbazuru` holds a fixed set of keys. Both
 records need a new, optional field that is absent by default.
 
 **Evidence.**
-- `Render/Svg.hs:91-92`, `:143-145` (`pageTitle` → `<title>`; nothing else).
+- `Render/Svg.hs:92-93`, `:153-155` (`pageTitle` → `<title>`; nothing else).
 - `Gltf.hs` `renderSurfaceGlb`: `metadata` keys are version, frame,
   physicalThickness and layerRequirements.
 
@@ -646,7 +646,7 @@ change was not checked.
 - `gh issue view 104`, "Done when" bullet 3.
 - `git ls-files test/golden`: 33 files, including `simple-iso.svg`,
   `squaretwist-iso.svg` and `bent-strip.svg`.
-- `test/WingBendingSpec.hs:94-100`, and `WingBendingGallery.hs:42` rendering it
+- `test/WingBendingSpec.hs:96-102`, and `WingBendingGallery.hs:56` rendering it
   through `stepPage`.
 
 **Proposal.** M7 *advances* #104 rather than closing it. Silhouettes appear only
@@ -702,7 +702,7 @@ barrier rows in stage 4 therefore puts unused numerics into the library. The
 **Evidence.**
 - B finding 11: the barrier is "wired only into the local-history mode, not into
   `relaxPinnedContact`".
-- `FoldRelaxation.hs:257-261`: `relaxPinnedContact` uses `SurfaceOrder contact`.
+- `FoldRelaxation.hs:264-268`: `relaxPinnedContact` uses `SurfaceOrder contact`.
 - Accepted sizes and single-run CPU times: 392 triangles 5.76 s, 1,192 triangles
   64.30 s (`docs/notes/spreading-connected-wing.md` table).
 
@@ -726,7 +726,7 @@ root strip towards negative z by a hard-coded 30°. Whether that matches the sig
 of `flapAt` for a +90 fold was not checked.
 
 **Evidence.**
-- `CraneSpread.hs:125-130`, `:153-167`.
+- `CraneSpread.hs:128-131`, `:154-168`.
 - Gap-study "Unverified", bullets 1-2 and 3.
 
 **Proposal.**
@@ -768,10 +768,10 @@ weight, with the same visibility test as L5-1. `features` is the default.
   differs" is correct.
 - **Gap-study F1 is exact.** `CraneSpread` consumes the start `Folded`,
   `flapAt (craneOpening wing) (30/90)`, `flapMovingFaces`, `craneHinge` ids and
-  the start state's `faceOrders` (`CraneSpread.hs:107-138`).
+  the start state's `faceOrders` (`CraneSpread.hs:108-139`).
 - **F2 holds.** `Flap` exports no stationary-side accessor: the export list has
-  `flapAt`, `flapCheck`, `flapMovingFaces` (`Flap.hs:49-59`), while
-  `stationaryFace` is a record field at `:88`. The spine's
+  `flapAt`, `flapCheck`, `flapMovingFaces` (`Flap.hs:76-89`), while
+  `stationaryFace` is a record field at `:115`. The spine's
   `recordStationary :: Maybe (MaterialPoint, FaceId)` therefore needs the
   runner to keep what it resolved.
 - **F4 holds.** `FoldBending` never defaults rest angles from `edges_foldAngle`,
@@ -786,7 +786,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
 - **Refined triangles are fine for glTF.** `PaperNotPlanar` is judged per face
   (`PaperMesh.hs:99-105`), so refined triangles always pass. The visible glTF
   scene of the 392-triangle crane spread is exported today
-  (`CraneSpreadGallery.hs:108-110`). Its failure mode is #206's
+  (`CraneSpreadGallery.hs:118-120`). Its failure mode is #206's
   `ImpossibleStacking` on 4,312 triangles, not planarity.
 - **Triangulation edges already vanish from SVG.** `strokeFor` returns `Nothing`
   for `Join` (`Style.hs:280-281`), and `surfaceFeatures` never lists mesh
@@ -794,11 +794,11 @@ weight, with the same visibility test as L5-1. `features` is the default.
   therefore needs no dihedral threshold.
 - **`Projected` behaves as described.** It compares every pair of panels
   (`Projected.hs:83`) and declines non-planar or non-convex faces
-  (`:157-158`) and mixed-sign gaps (`:186-191`). The spine's "measure before
+  (`:169-170`) and mixed-sign gaps (`:198-203`). The spine's "measure before
   promising sizes" is warranted.
 - **G1's starting point is correct.** `spanningWalk` roots at the first face and
-  placements are keyed against the cut pattern (`Folding.hs:283-322`,
-  `:572-584`), so nested nodes along that walk are available without new
+  placements are keyed against the cut pattern (`Folding.hs:284-323`,
+  `:586-598`), so nested nodes along that walk are available without new
   folding code.
 - **The D17 facts check out.** Origami Simulator is MIT with no documented
   headless mode, ipc-toolkit is a library rather than a solver, and Codim-IPC's
@@ -807,6 +807,6 @@ weight, with the same visibility test as L5-1. `features` is the default.
   AGENTS.md now.
 - **The failure policy matches practice.** Keeping diagnostics out of the SVG
   painter matches `docs/architecture.md:909-911` and the study
-  (`CraneRootGallery.hs:105-117` writes SVG and GLB only for accepted meshes).
+  (`CraneRootGallery.hs:163-170` writes SVG and GLB only for accepted meshes).
 - **D15 matches B.** The graduation order and the stays-in-study list agree with
   B's "Graduation order", and #208 is open with the timings quoted.
