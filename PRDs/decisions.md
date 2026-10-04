@@ -181,7 +181,7 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | # | Where | Change (summary) | Lands |
 | --- | --- | --- | --- |
 | 1 | `docs/architecture.md:81-103` | `Fold.Creasing` is frame in, frame out; a sequence's moves are not: `Sequence.Run` returns records, and what reaches the pipeline as a file is the written `FoldFile` | M0 |
-| 2 | `AGENTS.md:193-196`, `docs/architecture.md:196-201` | stated exception: a sequence source is a program, not an input format | M0, no later than M1's `Sequence.Parse` PR |
+| 2 | `AGENTS.md:193-196`, `docs/architecture.md:197-202` | stated exception: a sequence source is a program, not an input format | M0, no later than M1's `Sequence.Parse` PR |
 | 3 | [#60](https://github.com/avalonalex/senbazuru/issues/60) | `runSequence` returning a run of records; "one interpreter" superseded; done-when split into folding equivalence and authoring ([D16](#d16-testing-and-acceptance)) | M0 |
 | 4 | [#95](https://github.com/avalonalex/senbazuru/issues/95) | turn over is presentation about a model-intrinsic axis ([D5](#d5-presentation-and-the-readers-side)) | M0 |
 | 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0 |
@@ -193,15 +193,15 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2 |
 | 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation |
-| 14 | `docs/architecture.md:287-296`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
+| 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
 | 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
 | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists | the PR closing #60 (M4) |
 
-Row 14's range was `287-298` in v2. `grep -n` puts the blintz sentence at
-`docs/architecture.md:287` and the end of the helmet sentence at `:296`, with
-`HingeSweep`'s paragraph starting at `:297` [code], so `287-296` is right.
+Row 14's range was `288-299` in v2. `grep -n` puts the blintz sentence at
+`docs/architecture.md:288` and the end of the helmet sentence at `:297`, with
+`HingeSweep`'s paragraph starting at `:298` [code], so `288-297` is right.
 
 ---
 
@@ -1509,7 +1509,7 @@ accepted and rejected controls stay unchanged at each
   silhouette candidates from `--view front` are shared edges, so `F`, and a rule
   limited to `J` finds none [py]. A face is away when n̂ · forward > 1e-9, edge-on within ±1e-9, the threshold
   `Render.Projected` already uses
-  ([`Projected.hs:172`](../src/Senbazuru/Render/Projected.hs#L172)) [code]; a band
+  ([`Shadows.hs:92`](../src/Senbazuru/Render/Shadows.hs#L92)) [code]; a band
   of edge-on faces gives one outline, not two (46 edges separate differing classes
   from the front, 27 separate away from not-away [py]). Visibility is exact per
   segment interval: project, clip against each face's projected outline, compare the
@@ -2443,7 +2443,7 @@ lists edits for.
 | C44 | One animation hierarchy per checkpoint interval; `StateOnly` transitions switch sub-hierarchies; complete scene | 08 R-08-24, -27, -30 | `checkpoint` breaks the prefix rule (D6) | adopted | 08 |
 | C45 | `Origami.Folding` exports its walk's tree (05 L15) | 08 Dependencies | `Folding.hs:586-591`, `:342-344` [code] | adopted | 05, 08 |
 | C46 | Records keep presentation and anchor placement, before and after | 06 Dependencies | v2 single `recordDisplay` | adopted-modified | 01, 02, 06, 08 |
-| C47 | Geometry level "as read"; W1's edge-on threshold 1e-9 | 08 Design | `Projected.hs:172` [code] | adopted | 08 |
+| C47 | Geometry level "as read"; W1's edge-on threshold 1e-9 | 08 Design | `Shadows.hs:92` [code] | adopted | 08 |
 | C48 | Test 2 matching rules T1–T5 | 09 §2.3 note | hand-built frames: v2 clauses false, T1–T2 true [py] | adopted | 01, 09 |
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |
@@ -2460,7 +2460,7 @@ lists edits for.
 | C61 | Pose angles converted once for the whole model | 02 §8.6 note | quarter-fold half-way pose [prd] | adopted | 02 |
 | C62 | `Sequence.RunPlan` holds its own option types | here (04 `Plan`) | `Camera.hs:188`, `Gltf.hs:160` [code] | adopted-modified | 04 |
 | C63 | Glossary *Sequence file* counts state 0 | 03 A-6 note | 02 §11 layout | adopted | glossary-additions |
-| C64 | Row 14's range is `docs/architecture.md:287-296` | 01 §4.14 | `grep -n` [ran] | adopted | 10 |
+| C64 | Row 14's range is `docs/architecture.md:288-297` | 01 §4.14 | `grep -n` [ran] | adopted | 10 |
 | C65 | Row 12 lands in two PRs (`runSequence` at M2, `stepPageWith` at M3) | 01 §4.12; 10 §3 | `stepPageWith` takes a `Budget` | adopted | 01, 10 |
 | C66 | The `LineStopsOnTheModel` sentence as row 17 | 10 §3 | `ThroughLayers.hs:196` [code] | adopted | 01, 10 |
 | C67 | Existing library messages keep bare ids in v1 | 05 open question | pinned sentences in specs and docs [prd] | adopted-modified (decided, follow-up issue) | 05 |
@@ -2559,7 +2559,7 @@ what this record cites.
 10. **`crane.fold`.** `jq '[.edges_assignment[] | select(.=="U")] | length' examples/crane.fold`
     prints `0`.
 11. **Lines and files.** `grep -n` for the blintz and `HingeSweep` sentences in
-    `docs/architecture.md` gives lines 287, 296 and 297; `grep -n "vocabulary\|#60" README.md`
+    `docs/architecture.md` gives lines 288, 297 and 298; `grep -n "vocabulary\|#60" README.md`
     gives line 213; `grep -n creaseEndFlag src/Senbazuru/Origami/ThroughLayers.hs`
     gives lines 96 and 196; `find src -path '*Internal*'` prints nothing;
     `grep -rn "step record" PRDs/*.md` finds four rows of `glossary-additions.md`.

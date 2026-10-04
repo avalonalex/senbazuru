@@ -78,9 +78,9 @@ module imports a `study/` module is a `grep` of `src/` for each
 
 1. **Paper and drawing meet only in `Render`.** `Diagram.*` does not know FOLD,
    except as §3.3 says. Of `Origami.*`: "Nothing in it may mention a diagram, a
-   page or a colour" ([architecture.md:175-179](../docs/architecture.md)).
+   page or a colour" ([architecture.md:176-180](../docs/architecture.md)).
    `Geometry` and `Explain` import nothing
-   ([architecture.md:168-174](../docs/architecture.md)).
+   ([architecture.md:169-175](../docs/architecture.md)).
 2. **`Numeric.*` knows no paper; `Material.*` knows no move.** `Material.*` takes a
    resolved input and a `Surface V2` (a surface whose material coordinates are 2D
    points) and imports no `Sequence.*` module, which is why contract 2 is split
@@ -100,7 +100,7 @@ module imports a `study/` module is a `grep` of `src/` for each
    [`FoldState`](glossary-additions.md#running-a-sequence): nothing that reads a
    run needs the working pattern, and a renderer able to reach it could come to
    depend on it.
-5. **I/O stays in `Fold.Load`** ([architecture.md:181-184](../docs/architecture.md)).
+5. **I/O stays in `Fold.Load`** ([architecture.md:182-185](../docs/architecture.md)).
    `readSequenceText :: FilePath -> IO (Either LoadError Text)` imports no
    `Sequence` module. `app/` loads the source and every `sheet` and `checkpoint`
    file and hands the pure runner a `Map FilePath Frame`.
@@ -108,7 +108,7 @@ module imports a `study/` module is a `grep` of `src/` for each
    `study/fold-material/` module importing `Senbazuru.Sequence.Record`, as the
    study imports `Origami.Flap` today.
 7. **Unchanged:** `Render.Gltf` does not import `Render.CreasePattern`; they share
-   `Origami.Stacking.layerOrderFor` ([architecture.md:261-267](../docs/architecture.md)).
+   `Origami.Stacking.layerOrderFor` ([architecture.md:262-268](../docs/architecture.md)).
 
 ### 1.3 Levels inside `Sequence.*`
 
@@ -211,7 +211,7 @@ belongs to `SettleStepError`, which wraps `SettleError`
 ### 3.1 A sequence source is a program, not an input format
 
 The rule is "a new input format becomes a `Frame` and stops there"
-([AGENTS.md:193-196](../AGENTS.md), [architecture.md:196-201](../docs/architecture.md)).
+([AGENTS.md:193-196](../AGENTS.md), [architecture.md:197-202](../docs/architecture.md)).
 A *sequence source*, the text an author writes
 ([glossary-additions](glossary-additions.md#the-sequence-language)), cannot follow it:
 
@@ -247,7 +247,7 @@ the two frames says which way the paper went or about which line.
 
 [`Style.hs:91`](../src/Senbazuru/Diagram/Style.hs#L91) imports `Assignment` to choose
 line styles. That goes against "`Senbazuru.Diagram` must not know what FOLD is"
-([architecture.md:175](../docs/architecture.md)), and it is the existing, named
+([architecture.md:176](../docs/architecture.md)), and it is the existing, named
 exception. The new arrows do not widen it:
 
 - `ArrowPath` gains head and body shapes that know no assignment.
@@ -258,7 +258,7 @@ exception. The new arrows do not widen it:
   [06](06-prd-step-diagrams.md)).
 
 `Render.Gltf` still consumes `Origami.Surface`
-([architecture.md:261-267](../docs/architecture.md)).
+([architecture.md:262-268](../docs/architecture.md)).
 
 ## 4. Recorded text this design changes
 
@@ -272,7 +272,7 @@ schedules it.
 | # | Where | Lands |
 | --- | --- | --- |
 | 1 | `docs/architecture.md:81-103` | M0 |
-| 2 | `AGENTS.md:193-196`, `docs/architecture.md:196-201` | M0, no later than M1's `Sequence.Parse` PR |
+| 2 | `AGENTS.md:193-196`, `docs/architecture.md:197-202` | M0, no later than M1's `Sequence.Parse` PR |
 | 3 | [#60](https://github.com/avalonalex/senbazuru/issues/60) | M0 |
 | 4 | [#95](https://github.com/avalonalex/senbazuru/issues/95) | M0 |
 | 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | M0 |
@@ -284,7 +284,7 @@ schedules it.
 | 11 | `AGENTS.md:173-177` | with M2 |
 | 12 | `AGENTS.md:229-233` | two PRs: `runSequence` at M2, `stepPageWith` at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | the M2 PR classifying presentation changes |
-| 14 | `docs/architecture.md:287-296`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
+| 14 | `docs/architecture.md:288-297`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
 | 15 | `AGENTS.md:390-391`, "all three CI checks" | the M4 PR adding the slow job |
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | M0 |
 | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the follow-up PR fixing `LineStopsOnTheModel`, before M4 |
@@ -309,7 +309,7 @@ Replacement for the paragraph:
 > somebody wrote by hand. `Render.Sequence` and the material consumer read the
 > records, by design.
 
-### 4.2 `AGENTS.md:193-196` and `docs/architecture.md:196-201`
+### 4.2 `AGENTS.md:193-196` and `docs/architecture.md:197-202`
 
 Current (AGENTS.md): "`Senbazuru.Import.*` hands back a frame that says only what
 the file said; nothing downstream may know a frame came from anywhere but a
@@ -468,7 +468,7 @@ Current: a four-row table (`resolveAssignments`, `foldAnglesOf`,
 | [#36](https://github.com/avalonalex/senbazuru/issues/36) | Done-when 1: a pair "reflecting every vertex through the sheet's plane produces a turn-over arrow". Approach: arrow kind "from the assignment that changed". | "A pair related by one whole-model proper rigid motion is a presentation change: no inferred arrow, and a sequence's `turn over` places a `Symbol`. A reflection is the mirror model." Approach: "Arrow kind comes from the move record; one motion can change a `V` and an `M` crease together (quarter-fold step 2 sets edge 9 to +180 and edge 11 to −180)." |
 | [#94](https://github.com/avalonalex/senbazuru/issues/94) | "`frame_title` and `frame_description` are decoded into `Frame` and nothing reads them"; done-when: the quarter fold "given titles, draws them under the figures", and the single-frame `render --arrows` page "draws the title too". | "The CLI reads `frame_title` for `info`, the page title and the glTF title (`Cli.hs:1095`, `:993`, `:888`), but nothing draws it under a figure. A file cannot say whether its titles name states, as the fixture's "Step 2: folded in half" does, or give instructions, as a written sequence file's do: there a state's `frame_title` is the caption of the step leaving it. So `render --steps` never draws `frame_title`, and every page it draws stays byte-identical, `quarter-fold-steps.svg` included. Captions come from step notes." Done when: "`run -o x.svg` draws each step's caption under the figure of the state the step starts from, and the `closing` caption under the last figure, pinned by a new golden; every tracked golden stays byte-identical. Closes at M3." ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page), [C35](decisions.md#changes-since-draft-v2)) |
 | [#104](https://github.com/avalonalex/senbazuru/issues/104) | Cites `docs/notes/inflate-outside-draw-inside.md`; done-when 1 asks `render examples/puffed-square.fold --view iso --hide-flat` to draw "the dome's outline"; done-when 3 lets two examples change "except for any edge that is a silhouette". | "Default `render` output is byte-identical; `render examples/puffed-square.fold --view front --hide-flat --lines features` draws the visible boundary and silhouette, as a new golden." A *silhouette* is an edge between a face turned towards the reader and one turned away, of any assignment: the file's 320 edges are 40 `B` and 280 `F` (`jq`), so a rule limited to `J` edges finds none of its 27 candidates from the front. From `--view iso` no face of the file turns away, so done-when 1 cannot be met; from `--view front`, the view of done-when 2, 90 of 200 faces do ([08](08-prd-realistic-rendering.md#104-amended), [D19](decisions.md#d19-realistic-rendering)). The cited note does not exist (`ls`). M7b advances the issue without closing it. |
-| [#114](https://github.com/avalonalex/senbazuru/issues/114) | "Both numbers already exist: `Origami.Layers.layerDepths` and `--thickness`"; the export "lifts each face by its layer number". | "`--thickness` and face lifting were removed (`docs/notes/paper-thickness.md:8`, `docs/architecture.md:143`), and a second bend rounded over a first stretches 200% (`docs/notes/two-bends-need-more-than-radii.md:55`): thickness as geometry is research." Full rewrite at M6. |
+| [#114](https://github.com/avalonalex/senbazuru/issues/114) | "Both numbers already exist: `Origami.Layers.layerDepths` and `--thickness`"; the export "lifts each face by its layer number". | "`--thickness` and face lifting were removed (`docs/notes/paper-thickness.md:8`, `docs/architecture.md:144`), and a second bend rounded over a first stretches 200% (`docs/notes/two-bends-need-more-than-radii.md:55`): thickness as geometry is research." Full rewrite at M6. |
 | [#56](https://github.com/avalonalex/senbazuru/issues/56) | Transforms are what `spanningWalk` "computes and currently discards"; step 1, "Expose the per-face `Rigid`s". | "`foldFrameWith` returns them as `foldedPlacements` (`Folding.hs:323`), used by `Flap` and `ThroughLayers`. Keys come from checked routes via `recordPoseAt`, over one node hierarchy per checkpoint interval, on that interval's final cut pattern, with each face's parent and crossing edge taken from `Origami.Folding`'s own walk. Closes at M7b." ([D19](decisions.md#d19-realistic-rendering)) |
 | [#64](https://github.com/avalonalex/senbazuru/issues/64) | "**Inflate the body** is *outside the model*, not merely hard." | "Opening a body is a stated future goal (`README.md:158-164`, #106); what lies outside the rigid model is bending and pressure, not opening." |
 
@@ -573,7 +573,7 @@ A flap turn still cannot qualify: its stationary face keeps three vertices that 
 not on one line where they were, so the only rigid motion fitting every vertex is
 the identity, which the moved vertices contradict.
 
-### 4.14 `docs/architecture.md:287-296` and the recipe headers
+### 4.14 `docs/architecture.md:288-297` and the recipe headers
 
 Current: "`BlintzSequence` composes five accepted turns … neither module introduces
 a second contact checker or a general instruction format. `HelmetSequence` chains

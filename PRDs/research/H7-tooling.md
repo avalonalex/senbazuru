@@ -197,8 +197,8 @@ architecture decides which of them may live in the repository.
 4. **The library and the study depend on no numeric package today.** [code]
    The library needs only `aeson`, `base`, `bytestring`, `containers`,
    `filepath`, `megaparsec`, `tagsoup`, `text` and `transformers`
-   (`senbazuru.cabal:213-222`). The study executable adds only `directory`
-   (`:243-251`). All of the study's linear algebra is `Data.IntMap`, hand-written
+   (`senbazuru.cabal:214-223`). The study executable adds only `directory`
+   (`:244-252`). All of the study's linear algebra is `Data.IntMap`, hand-written
    (`study/fold-material/SparseSolve.hs:23-26`). Its derivatives are
    hand-derived gradient rows: `FoldBending.bendingRows` returns
    `[([(Int, V3)], Double)]` from `hingeAngle`'s own gradient

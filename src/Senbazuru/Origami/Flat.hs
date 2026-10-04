@@ -210,10 +210,10 @@ flatSheet fr = do
 -- model is flat and its z extent is rounding noise. Bounded below by 1 so that
 -- a model smaller than a unit does not shrink its own tolerance to nothing.
 --
--- Exported for "Senbazuru.Render.Projected", which flattens a view of an open
--- fold into a frame for "Senbazuru.Origami.Visible" and has to judge the
--- shadows it puts there by the speck they will be cut with. A copy of this rule
--- there would agree with this one only by hand.
+-- Exported for "Senbazuru.Render.Shadows", which flattens a view of an open
+-- fold for "Senbazuru.Origami.Visible" and has to judge the view's shadows by
+-- the speck they will be cut with. A copy of this rule there would agree with
+-- this one only by hand.
 yardsticks :: [V3] -> (Double, Double)
 yardsticks verts = (hair, hair * scale)
   where

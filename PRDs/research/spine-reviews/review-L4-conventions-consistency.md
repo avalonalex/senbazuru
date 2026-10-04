@@ -84,12 +84,12 @@ Sequence → Render → app` has four problems:
 
 1. **It omits `Diagram`.** `Diagram.Style` imports `Fold.Types`, and
    `Render.Gltf` and `Render.Steps` import `Diagram.*`. The architecture rule
-   "Origami must not mention a diagram" (`architecture.md:176-179`) is a
+   "Origami must not mention a diagram" (`architecture.md:177-180`) is a
    sibling constraint, and a chain cannot express it.
 2. **It places `Numeric` after `Origami`,** which licenses `Numeric.Sparse` to
    import paper. D15 describes that module as "knows no paper". The study
    sources it graduates from import only `Geometry.V3`/`VectorSpace`.
-3. **It reads as `Explain` may import `Geometry`.** `architecture.md:169-174`
+3. **It reads as `Explain` may import `Geometry`.** `architecture.md:170-175`
    says `Explain` "depends on nothing in the project either".
 4. **It invites a cycle at graduation.** §4 line 721 labels
    `settleStep :: SettleSpec -> StepRecord -> …` "study first,
@@ -98,7 +98,7 @@ Sequence → Render → app` has four problems:
    `Sequence.Record`, which the order places to its right.
 
 **Evidence.** The import graph above; spine line 80, D15 lines 545-554, §4
-lines 721-726; `architecture.md:168-179`; gap-study-consumption-contract line
+lines 721-726; `architecture.md:169-180`; gap-study-consumption-contract line
 435 puts `settleStep` "study-side". `SparseSolve <- Geometry.V3
 Geometry.VectorSpace`; `DirectionalDistance <- Geometry.V3
 Geometry.VectorSpace`.
@@ -136,7 +136,7 @@ D1 supersedes only #60's *reason* ("one interpreter"). It also silently drops
 two more #60 decisions: `apply :: Move -> Frame -> Either MoveError Frame`, and
 `scanl` giving `[Frame]`. #95's `apply TurnOver` goes the same way. The runner
 threads `FoldState`, not `Frame`. The study's recorded "not an instruction
-language" (`architecture.md:291-292`; D research A19) is also overturned
+language" (`architecture.md:292-293`; D research A19) is also overturned
 without a note.
 
 Where these land is inconsistent:
@@ -147,7 +147,7 @@ Where these land is inconsistent:
 - §7: "no file under PRDs/ … proposes edits except as listed follow-ups", and
   there is no list.
 
-**Evidence.** `architecture.md:81-103`, `:196-201`, `:291-292`;
+**Evidence.** `architecture.md:81-103`, `:197-202`, `:292-293`;
 `AGENTS.md:193-197`, `:388` ("Record lasting decisions in the repository");
 #60 body, Approach and first code block; #95 Approach ("`apply :: Move -> Frame
 -> Either MoveError Frame`"); spine D1 lines 108-109, D13 lines 465-469, D17
@@ -168,7 +168,7 @@ or issue it lands in, and the milestone.
 3. #60 Approach (`apply`, `scanl`, "one interpreter") → superseded by D1/D3,
    with the reason.
 4. #95 Approach → superseded by D5.
-5. `architecture.md:291-292` and the `BlintzSequence.hs:4` header → superseded
+5. `architecture.md:292-293` and the `BlintzSequence.hs:4` header → superseded
    once blintz migrates (D16).
 6. `docs/notes/no-sequence-solver.md`, first reason → D18.
 

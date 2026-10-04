@@ -95,7 +95,7 @@ Every PRD's "follow-ups" point here. Nothing under `PRDs/` edits these files.
 | # | Current text | Replacement (summary; the PRD writes it out in full) | Lands |
 | --- | --- | --- | --- |
 | 1 | `docs/architecture.md:81-103`: #60's moves reach the pipeline as a Frame, "a frame in, a frame out" | `Fold.Creasing` is frame in/frame out; a sequence's moves are not: `Sequence.Run` threads `FoldState` and returns records. What reaches the pipeline as a file is the written `FoldFile`, which `Fold.Query` cannot tell from a hand-written one. `Render.Sequence` and the material consumer read records by design. | M0 |
-| 2 | `AGENTS.md` "A new input format becomes a Frame" + `architecture.md:196-201` | Stated exception: a sequence source is a program, not an input format; it becomes a `Sequence` at the boundary and a `FoldFile` + `[MoveRecord]` when run; both record consumers named. | M0, no later than the M1 PR adding `Sequence.Parse` |
+| 2 | `AGENTS.md` "A new input format becomes a Frame" + `architecture.md:197-202` | Stated exception: a sequence source is a program, not an input format; it becomes a `Sequence` at the boundary and a `FoldFile` + `[MoveRecord]` when run; both record consumers named. | M0, no later than the M1 PR adding `Sequence.Parse` |
 | 3 | #60 "What and why"/"Approach": `apply :: Move -> Frame -> Either MoveError Frame`, `[Move]`, `scanl`, "not a free monad: one interpreter" | `runSequence` over `FoldState` returning records; why (presentation, material references, move kinds must reach page and material consumer); plain first-order ADT kept, supersession of the one-interpreter reason stated; `Move` now names a move inside a figure. Done-when amended per D16. | M0 |
 | 4 | #95 Approach: half turn `(−x, y, −z)` about x = 0; turn-over as a frame move | Point to D5: presentation, model-intrinsic axis through the current bounding-box centre. | M0 |
 | 5 | #97 Done-when: `docs/notes/schemes.md`; quarter-fold reproduction | Note name `docs/notes/sequences.md`; done-when 2 split per D16; #97 closes at M2, not M0. | M0 |
@@ -107,7 +107,7 @@ Every PRD's "follow-ups" point here. Nothing under `PRDs/` edits these files.
 | 11 | `AGENTS.md` "Two unit systems" | One sentence: sequences add sheet lengths and physical lengths, converted to model units in exactly two named places (D2, D14). | with M2 |
 | 12 | `AGENTS.md` `--layer-budget` entry-point list | Add `runSequence`. | with M2 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` header (turn-over is a motion) | Rewritten with D5's whole-model classification. | with the D5 Step PR |
-| 14 | `architecture.md:287-298`, `BlintzSequence`/`HelmetSequence` headers | Updated when the recipes are deleted (D16 deletion PRs), not in M0. | M2+ |
+| 14 | `architecture.md:288-299`, `BlintzSequence`/`HelmetSequence` headers | Updated when the recipes are deleted (D16 deletion PRs), not in M0. | M2+ |
 
 ---
 

@@ -574,8 +574,8 @@ After [gap-study-consumption-contract](research/gap-study-consumption-contract.m
    (1e-12 material error, per-face placement, contact); orders compared with
    `shouldMatchList`; goldens byte-identical.
 2. **Deletion.** The recipe leaves the `other-modules` lists of the study
-   executable ([`senbazuru.cabal:242`](../senbazuru.cabal#L242)) and the test
-   suite ([`:260`](../senbazuru.cabal#L260)); gallery and spec point at the
+   executable ([`senbazuru.cabal:243`](../senbazuru.cabal#L243)) and the test
+   suite ([`:261`](../senbazuru.cabal#L261)); gallery and spec point at the
    sequence.
 
 **Reusing recipe goldens.** `checked-blintz.svg` is an eleven-figure page: the

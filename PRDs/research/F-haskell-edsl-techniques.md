@@ -137,9 +137,9 @@ folded state and a material pattern from step to step, not a `Frame`.
 10. **Purity boundary and test infrastructure.**
     - `Fold.Load` is the only I/O module (Load.hs:5-9), so a parser should
       take `Text`, not a path.
-    - The project already depends on aeson (senbazuru.cabal:214),
-      optparse-applicative in the executable only (:170), and QuickCheck 2.14
-      (:321), on snapshot `lts-22.44` (stack.yaml:4).
+    - The project already depends on aeson (senbazuru.cabal:215),
+      optparse-applicative in the executable only (:234), and QuickCheck 2.14
+      (:497), on snapshot `lts-22.44` (stack.yaml:4).
     - Hand-written `Arbitrary` instances already exist
       (test/Senbazuru/Geometry/PolygonSpec.hs:40,46;
       test/Senbazuru/Fold/FacesSpec.hs:98).

@@ -53,8 +53,8 @@ exact landmarks, measured cost, and the study's input contract.
 | 27 | Manifest rabbit-ear literal at m = 30 is not bit-reproducible from the documented formula; `175*(90/175)` is `89.99999999999999` (A2 F8, F32) | confirmed (in Python) | `docs/notes/rabbit-ear-motion.md:39-41` formula gives `97.58514830800294`, manifest has `…293`; m = 15, 60, 175 match. GHC not run. |
 | 28 | The glossary defines rest angle twice, differently (D) | confirmed | `docs/glossary.md:19` and `:86` |
 | 29 | The crane-wing recipe finds its hinge as "every `Unassigned` edge" after `creaseAllAlong`, and picks stacking index `[2]` (A2 F5) | confirmed | `CraneWing.hs:109-139`. Consequence no file draws out: the new hinge is **U at angle 0**, a third convention for an unbent crease (see contradiction 3). |
-| 30 | Test suite compiles the study (D A20, B) | confirmed | `senbazuru.cabal:258` `hs-source-dirs: test, study/fold-material` |
-| 31 | "A resolved per-state full angle list is what … the CLI's `render --steps` already consume" (A2 implication 12, citing `docs/architecture.md:943-948`) | **wrong** | Those lines say `buildCaseSequence` writes folded frames with coplanar `faceOrders`. `stepPage` draws positions, and `--steps` refuses `--fold` (`Cli.hs:958`). An angle table can be an internal intermediate form, but the CLI does not read one. |
+| 30 | Test suite compiles the study (D A20, B) | confirmed | `senbazuru.cabal:259` `hs-source-dirs: test, study/fold-material` |
+| 31 | "A resolved per-state full angle list is what … the CLI's `render --steps` already consume" (A2 implication 12, citing `docs/architecture.md:944-949`) | **wrong** | Those lines say `buildCaseSequence` writes folded frames with coplanar `faceOrders`. `stepPage` draws positions, and `--steps` refuses `--fold` (`Cli.hs:958`). An angle table can be an internal intermediate form, but the CLI does not read one. |
 | 32 | "#95's proposed half-turn keeps the centre fixed too", so no arrow (C finding 27) | **wrong** | #95 specifies `(x, y, z) ↦ (−x, y, −z)`, a half turn about the page axis at x = 0. The quarter fold's final frame spans x ∈ [0.5, 1] (`jq`), so its centre moves to x ≈ −0.75 and `Step` would report a translation. D C5 has this right. |
 
 Not checked: external-source claims (papers, Khronos READMEs, licences on
@@ -95,7 +95,7 @@ and G. Each file already lists these as unverified.
    crease-adding step then breaks arrows, unless later creases are backfilled
    into earlier frames. Backfilling draws future creases at step 1.
 6. **Whether an SVG wireframe of relaxed paper is feasible.** B (finding 12)
-   and `docs/architecture.md:909-914` say relaxed meshes stay out of SVG
+   and `docs/architecture.md:910-915` say relaxed meshes stay out of SVG
    deliberately, because the painter assumes a layer order they can violate.
    G (finding 22, implication 7) treats a refined bent panel as a set of
    convex planar faces that `Visible`/`Projected` already handle. C (finding

@@ -50,9 +50,9 @@ is `--no-fill`, which strokes every crease, buried ones included.
    - `Render.Svg.renderSvg :: Page -> Diagram -> Text` (`src/Senbazuru/Render/Svg.hs:128`) is the only consumer of `Diagram`.
 
 2. **The layering rule for backends.**
-   - New 2D backends must consume `Diagram` and must never traverse `Frame` a second time. The one stated exception is a 3D backend, because `Diagram` is `V2` with no depth (`docs/architecture.md:261-267`; `Gltf.hs:71-79`).
-   - `Render.Gltf` must not import `Render.CreasePattern`. The two share only `Origami.Stacking.layerOrderFor` (`architecture.md:265-267`). `Gltf.hs:138-155` confirms it imports only `Diagram`'s `Colour`, the two paper colours from `Diagram.Style`, and `Render.Camera` / `Render.PaperMesh`.
-   - `Diagram` must not know FOLD, and `Render.Svg` must not know what a mountain fold is (`architecture.md:175, 180`).
+   - New 2D backends must consume `Diagram` and must never traverse `Frame` a second time. The one stated exception is a 3D backend, because `Diagram` is `V2` with no depth (`docs/architecture.md:262-268`; `Gltf.hs:71-79`).
+   - `Render.Gltf` must not import `Render.CreasePattern`. The two share only `Origami.Stacking.layerOrderFor` (`architecture.md:266-268`). `Gltf.hs:138-155` confirms it imports only `Diagram`'s `Colour`, the two paper colours from `Diagram.Style`, and `Render.Camera` / `Render.PaperMesh`.
+   - `Diagram` must not know FOLD, and `Render.Svg` must not know what a mountain fold is (`architecture.md:176, 181`).
    - The two-unit rule is a hard constraint on anything a sequence page adds (captions, arrow kinds): model-unit coordinates, page-unit widths and sizes (`src/Senbazuru/Diagram.hs:21-47`). `Arrow`, `Label` and `Offset` are the three shapes that are finished by the backend (`Diagram.hs:186-222`).
 
 3. **What "wireframe" means today: stroked creases, not mesh edges.**
@@ -72,9 +72,9 @@ is `--no-fill`, which strokes every crease, buried ones included.
    - `docs/tour.md:602-603` says the SVG outlines of those relaxed meshes still retain some buried crease lines, and points readers to the 3D views.
 
 5. **The SVG visibility machinery has limits a realistic wireframe would hit.**
-   - `Render.Projected` handles only convex, planar, non-intersecting open panels. It returns `Nothing`, and so falls back, for non-planar, non-convex, intersecting or depth-tied panels (`src/Senbazuru/Render/Projected.hs:30-36, 169-174, 197-203`).
-   - It compares every pair of panels (`Projected.hs:83`, `tails` over panels).
-   - `docs/architecture.md:909-914` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
+   - `Render.Projected` handles only convex, planar, non-intersecting open panels. It returns `Nothing`, and so falls back, for non-planar, non-convex, intersecting or depth-tied panels (`src/Senbazuru/Render/Projected.hs:24-30, 90-96`; `src/Senbazuru/Render/Shadows.hs:89-94`).
+   - It compares every pair of panels (`Projected.hs:66`, `tails` over panels).
+   - `docs/architecture.md:910-915` records that corrected (relaxed) meshes are shown in the depth-buffered viewer "because the SVG painter assumes the very layer order those meshes can violate".
 
 ### (b) glTF today
 
@@ -116,7 +116,7 @@ is `--no-fill`, which strokes every crease, buried ones included.
 
 12. **What is missing for "realistic", by component.**
     - *Curved panels.* The visible scene requires planar panels (`PaperNotPlanar`, `PaperMesh.hs:99-105`). Shared refinement requires convex planar panels (`usage.md:222-224`). A curved sheet must arrive as many planar triangles joined by `J` edges (finding 4), and each triangle then becomes its own coplanarity group (`PaperMesh.hs:106-112`).
-    - *Rounded creases.* Exist only as study constructions (`FoldMaterial` rounded variants, `docs/architecture.md:374`), with the material-budget caveat in `docs/notes/two-bends-need-more-than-radii.md`.
+    - *Rounded creases.* Exist only as study constructions (`FoldMaterial` rounded variants, `docs/architecture.md:375`), with the material-budget caveat in `docs/notes/two-bends-need-more-than-radii.md`.
     - *Thickness.* Metadata only (finding 9).
     - *PBR paper.* One factor per side. The extensions index lists `KHR_materials_sheen`, `KHR_materials_transmission`, `KHR_materials_volume` and `KHR_materials_specular` as ratified, and `KHR_materials_diffuse_transmission` as a release candidate (extensions README URL above).
     - *Crease lines.* None. Primitive `mode` 1 is `LINES`; the default is 4, `TRIANGLES` (https://raw.githubusercontent.com/KhronosGroup/glTF/main/specification/2.0/schema/mesh.primitive.schema.json).
@@ -149,18 +149,18 @@ is `--no-fill`, which strokes every crease, buried ones included.
 
 17. **The CLI is untested by design.**
     - Its header says it "contains no logic worth testing" (`Cli.hs:5-8`).
-    - The test suite's `hs-source-dirs` are `test` and `study/fold-material` (`senbazuru.cabal:253-259`), and no test imports `Senbazuru.Cli` (grep over `test/`).
+    - The test suite's `hs-source-dirs` are `test` and `study/fold-material` (`senbazuru.cabal:254-260`), and no test imports `Senbazuru.Cli` (grep over `test/`).
     - `Render.Steps` is in the library because a copy in the test suite hid a bug (`Steps.hs:9-11`).
     - A scheme interpreter must therefore live in the library, with the CLI as plumbing only.
 
 18. **I/O rule.**
-    - "Only `Senbazuru.Fold.Load` does I/O, reading and writing alike". `Import.*` takes `Text` and returns values (`architecture.md:181-184`; `Load.hs:5-10`).
+    - "Only `Senbazuru.Fold.Load` does I/O, reading and writing alike". `Import.*` takes `Text` and returns values (`architecture.md:182-185`; `Load.hs:5-10`).
     - No library module other than the CLI imports `Fold.Load`. Only the study executable and the CLI do (grep `import Senbazuru.Fold.Load` over `src app study test`).
-    - Precedent for a sequence description naming a source file: the study's `cases.json` has a `source` path (`study/fold-material/StudyCase.hs:63-76`). `Main` resolves it with `loadFoldFile` inside the *executable* (`study/fold-material/Main.hs:201, 284-286`). Architecture calls that manifest "not a new library input format" (`architecture.md:919-920`).
+    - Precedent for a sequence description naming a source file: the study's `cases.json` has a `source` path (`study/fold-material/StudyCase.hs:63-76`). `Main` resolves it with `loadFoldFile` inside the *executable* (`study/fold-material/Main.hs:201, 284-286`). Architecture calls that manifest "not a new library input format" (`architecture.md:920-921`).
 
 ### (d) "A new input format becomes a Frame and stops there"
 
-19. **What the rule says and protects.** `Import.*` may know FOLD because producing a `Frame` is its whole job. Nothing downstream may know where a frame came from. What a format cannot say, the frame does not say (`architecture.md:196-201`; AGENTS.md "Conventions").
+19. **What the rule says and protects.** `Import.*` may know FOLD because producing a `Frame` is its whole job. Nothing downstream may know where a frame came from. What a format cannot say, the frame does not say (`architecture.md:197-202`; AGENTS.md "Conventions").
 
 20. **The existing pattern for a text reader is small and pure.**
     - `parseCp :: Text -> Either ImportError [Segment]` (`src/Senbazuru/Import/Cp.hs:76-79`) and `parseOpx` on tagsoup tags (`src/Senbazuru/Import/Opx.hs:81, 87-88`).
@@ -180,10 +180,10 @@ is `--no-fill`, which strokes every crease, buried ones included.
 ### (e) Dependencies
 
 22. **Current `build-depends`, per stanza** (`senbazuru.cabal`):
-    - `library` (`:213-222`): aeson ≥2.1 <2.3, base ≥4.17 <4.20, bytestring ≥0.11 <0.13, containers ≥0.6 <0.8, filepath ≥1.4 <1.5, tagsoup ≥0.14 <0.15, text ≥2.0 <2.2.
-    - `executable senbazuru` (`:230-235`): base, bytestring, optparse-applicative ≥0.17 <0.19, senbazuru, text.
-    - `executable senbazuru-material-study` (`:243-251`): base, aeson, bytestring, containers, directory, filepath, senbazuru, text.
-    - `test-suite senbazuru-test` (`:490-501`): base, bytestring, directory ≥1.3 <1.4, filepath ≥1.4 <1.5, hspec ≥2.10 <2.12, QuickCheck ≥2.14 <2.16, aeson, containers, senbazuru, text. Also `build-tool-depends: hspec-discover` (`:489`).
+    - `library` (`:214-223`): aeson ≥2.1 <2.3, base ≥4.17 <4.20, bytestring ≥0.11 <0.13, containers ≥0.6 <0.8, filepath ≥1.4 <1.5, tagsoup ≥0.14 <0.15, text ≥2.0 <2.2.
+    - `executable senbazuru` (`:231-236`): base, bytestring, optparse-applicative ≥0.17 <0.19, senbazuru, text.
+    - `executable senbazuru-material-study` (`:244-252`): base, aeson, bytestring, containers, directory, filepath, senbazuru, text.
+    - `test-suite senbazuru-test` (`:491-502`): base, bytestring, directory ≥1.3 <1.4, filepath ≥1.4 <1.5, hspec ≥2.10 <2.12, QuickCheck ≥2.14 <2.16, aeson, containers, senbazuru, text. Also `build-tool-depends: hspec-discover` (`:490`).
     - The library has no parser-combinator dependency today. Cp is hand-split with `T.words` and `Data.Text.Read` (`Cp.hs:82-108`).
 
 23. **megaparsec and parser-combinators are in the locked snapshot.**

@@ -62,7 +62,7 @@ equals the blintz parsed from text once source positions are stripped.
   steps depend on computed results ([F] "B. Embedding styles", finding 14).
 - **The library has no `State` dependency.** Its `build-depends` has no
   `transformers` or `mtl`
-  ([`senbazuru.cabal:213-222`](../senbazuru.cabal#L213-L222)).
+  ([`senbazuru.cabal:214-223`](../senbazuru.cabal#L214-L223)).
 
 ## Goals
 
@@ -638,7 +638,7 @@ All run in default CI; only A-6 folds paper. `stripSpans` sets every span to
   need the parser and printer. `transformers` joins the library stanza with
   megaparsec and parser-combinators ([04](04-prd-sequence-source-and-cli.md)).
   QuickCheck is already a test dependency
-  ([`senbazuru.cabal:496`](../senbazuru.cabal#L496)).
+  ([`senbazuru.cabal:497`](../senbazuru.cabal#L497)).
 - **M2.** `Sequence.Record` with `Run` and `writtenStates`, the runner and the
   writer ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)), for
   A-6 and GHCi.

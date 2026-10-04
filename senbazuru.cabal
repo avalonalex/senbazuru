@@ -191,6 +191,7 @@ library
     Senbazuru.Render.Gltf
     Senbazuru.Render.PaperMesh
     Senbazuru.Render.Projected
+    Senbazuru.Render.Shadows
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg
     Senbazuru.Sequence.Build

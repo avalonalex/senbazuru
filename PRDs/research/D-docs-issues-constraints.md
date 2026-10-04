@@ -165,8 +165,8 @@ names the offending element.**
   change every folded-form golden.
 
 **A9. A new input format becomes a `Frame` and stops there.**
-- *Source:* `AGENTS.md:193-197`; `docs/architecture.md:181-184` (only
-  `Fold.Load` does I/O, and `Import.*` takes `Text`) and `:196-201`.
+- *Source:* `AGENTS.md:193-197`; `docs/architecture.md:182-185` (only
+  `Fold.Load` does I/O, and `Import.*` takes `Text`) and `:197-202`.
 - *Verdict: needs an explicit revisit.* A scheme is not a crease-pattern format.
   It is a program over a starting sheet that yields a `FoldFile` of many frames.
 - Read strictly, nothing downstream may know that a frame came from a scheme.
@@ -241,13 +241,13 @@ reproducible.**
   `BlintzSequence.hs:50-56` — and they are valid for one fixture only.
 - *Precedent for an alternative:* `StudyCase.buildCasePose` resolves panel names
   from points on the original sheet, so declarations survive renumbering
-  (`architecture.md:924-926`). `Surface` carries material coordinates
-  (`architecture.md:969-974`).
+  (`architecture.md:925-927`). `Surface` carries material coordinates
+  (`architecture.md:970-975`).
 
 **A15. The folding walk holds one face still, and today the recipes choose it by
 hand.**
 - *Source:* `BlintzSequence.hs:5-8`; `study/fold-material/HelmetSequence.hs:8-10`;
-  `architecture.md:289-290`; `Flap.hs:43-48` (poses are aligned so the
+  `architecture.md:290-291`; `Flap.hs:43-48` (poses are aligned so the
   stationary side stays still).
 - *Verdict: strains.* A scheme has to say what stays still. Otherwise the anchor
   is whichever face happens to be listed first, the whole model can turn between
@@ -294,8 +294,8 @@ general.**
 **A19. The study's recipes and manifests are deliberately not an instruction
 language.**
 - *Source:* `BlintzSequence.hs:4` ("a recipe … not an instruction language");
-  `architecture.md:291-292` (neither module adds a general instruction format);
-  `architecture.md:919-920` (the study manifest is not a new library input
+  `architecture.md:292-293` (neither module adds a general instruction format);
+  `architecture.md:920-921` (the study manifest is not a new library input
   format); `study/fold-material/StudyCase.hs:212-214`.
 - *Verdict: overturned by the request, deliberately.* PRDs 1 and 2 build the
   general format these modules disclaim.
@@ -307,12 +307,12 @@ language.**
 **A20. The library imports no study code; the study is its own executable and is
 compiled into the tests.**
 - *Source:*
-  - `architecture.md:286`, `:371-373` and `:912-913`;
-  - `senbazuru.cabal:238-252`: the study executable depends on the library plus
+  - `architecture.md:287`, `:372-374` and `:913-914`;
+  - `senbazuru.cabal:239-253`: the study executable depends on the library plus
     `directory`;
-  - `senbazuru.cabal:258`: the test suite's source directories include
+  - `senbazuru.cabal:259`: the test suite's source directories include
     `study/fold-material`;
-  - `senbazuru.cabal:213-222`: the library does not depend on `directory`;
+  - `senbazuru.cabal:214-223`: the library does not depend on `directory`;
   - #208: the build/test job took 14m36s, 10m48s of it in `stack test`.
 - *Verdict: strains PRD 3.* "The study consumes what (1)/(2) define" fits the
   current direction of dependency. "The CLI produces realistic renderings" needs
@@ -322,11 +322,11 @@ compiled into the tests.**
 
 **A21. Backends consume `Diagram`; the 3D exception consumes `Surface`.**
 - *Source:*
-  - `AGENTS.md:226-234`; `architecture.md:261-267` and `:977-980`;
-  - `architecture.md:909-912`: the study's corrected meshes use a depth-buffered
+  - `AGENTS.md:226-234`; `architecture.md:262-268` and `:978-981`;
+  - `architecture.md:910-913`: the study's corrected meshes use a depth-buffered
     viewer, because the SVG painter assumes a layer order those meshes can
     violate;
-  - `architecture.md:140`: `Render.Projected` handles convex open panels;
+  - `architecture.md:141`: `Render.Projected` handles convex open panels;
   - `roadmap.md:250-251`: rendering general bent panels remains a
     study-to-production gap.
 - *Verdict: reinforces the route* — glTF from `Surface`, SVG via

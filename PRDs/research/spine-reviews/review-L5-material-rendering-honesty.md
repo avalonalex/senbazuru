@@ -39,7 +39,7 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
   does not apply. The fallback was reached because `Projected` declined.
 - **The tolerances disagree by a factor of 100.** `Projected` treats any pair
   whose depth gaps change sign by more than `hair = 1e-9 × scale` as
-  intersecting and declines (`Projected.hs:69`, `:198-203`). Contact acceptance
+  intersecting and declines (`Shadows.hs:132`, `Projected.hs:91-96`). Contact acceptance
   uses `panelTolerance = 1e-7` (`Origami/Contact.hs:83-84`). B finding 15
   records a real crossing of −6.21e-9 that passes acceptance, which is beyond
   `Projected`'s hair.
@@ -53,7 +53,7 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
   works" is not evidence that the SVG will.
 - **The architecture already says this.** "Corrected meshes use the
   depth-buffered viewer because the SVG painter assumes the very layer order
-  those meshes can violate" (`docs/architecture.md:909-911`). Z-critic §6
+  those meshes can violate" (`docs/architecture.md:910-912`). Z-critic §6
   raised the same risk, and the spine did not answer it.
 
 **Proposal.** Replace the W1 bullet in D14 with:
@@ -139,7 +139,7 @@ What a user actually gets for an arbitrary sequence at M7 is animation, UVs
   all is unverified.
 
 **Evidence.**
-- `senbazuru.cabal:213-222`: the library depends on aeson, base, bytestring,
+- `senbazuru.cabal:214-223`: the library depends on aeson, base, bytestring,
   containers, filepath, tagsoup and text only.
 - G finding 10: Origami Simulator pushes the paper behind its lines with
   `polygonOffset` (`model.js:83-111`).
@@ -793,9 +793,9 @@ weight, with the same visibility test as L5-1. `features` is the default.
   diagonals (`Surface.hs` `surfaceFeatures`). "Feature edges by provenance"
   therefore needs no dihedral threshold.
 - **`Projected` behaves as described.** It compares every pair of panels
-  (`Projected.hs:83`) and declines non-planar or non-convex faces
-  (`:169-170`) and mixed-sign gaps (`:198-203`). The spine's "measure before
-  promising sizes" is warranted.
+  (`Projected.hs:66`) and declines non-planar or non-convex faces
+  (`Shadows.hs:89-90`) and mixed-sign gaps (`Projected.hs:91-96`). The
+  spine's "measure before promising sizes" is warranted.
 - **G1's starting point is correct.** `spanningWalk` roots at the first face and
   placements are keyed against the cut pattern (`Folding.hs:284-323`,
   `:586-598`), so nested nodes along that walk are available without new
@@ -806,7 +806,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
   findings 22-24. Spine and gap note agree that nothing is to be edited in
   AGENTS.md now.
 - **The failure policy matches practice.** Keeping diagnostics out of the SVG
-  painter matches `docs/architecture.md:909-911` and the study
+  painter matches `docs/architecture.md:910-912` and the study
   (`CraneRootGallery.hs:163-170` writes SVG and GLB only for accepted meshes).
 - **D15 matches B.** The graduation order and the stays-in-study list agree with
   B's "Graduation order", and #208 is open with the timings quoted.
