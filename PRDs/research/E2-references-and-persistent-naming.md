@@ -43,7 +43,7 @@ the cheap check.
 
 2. **Angle lists in `cases.json` are a whole state named by edge position.**
    Each step is a complete `angles` list in the source file's `edges_vertices`
-   order, boundary edges included (`study/fold-material/README.md:756-765`,
+   order, boundary edges included (`study/fold-material/README.md:765-774`,
    checked by length at `StudyCase.hs:152-154`). The bird case has 28 numbers
    per state (`study/fold-material/cases.json:219`), and `CheckedBird` builds
    the same thing as a positional Haskell list (`CheckedBird.hs:110-114`). Any
@@ -61,13 +61,13 @@ the cheap check.
    motive: face renumbering during crease cutting cannot change what an order
    means (`StudyCase.hs:117-120`). The README adds that neither face
    numbering nor the camera can change which panel a rule names
-   (`README.md:797-800`). Two stricter rules come with it. Every panel must be
+   (`README.md:806-809`). Two stricter rules come with it. Every panel must be
    named exactly once (`StudyCase.hs:133-134`), and equal-area ties for the
    default anchor are broken lowest, then leftmost (`StudyCase.hs:242-248`).
    `docs/notes/crane-pocket-map.md` uses the same idea for regions: material
    quadrants, which it says survive face renumbering. The README's compass
    names (`south-west` = western triangle along the south edge,
-   `README.md:853-855`) are human labels. The point is what the code resolves.
+   `README.md:862-864`) are human labels. The point is what the code resolves.
 
 4. **The shared surface keys everything by material, not by where paper sits
    now.** `Origami.Surface` stores each vertex's original `V2` beside its current

@@ -18,7 +18,9 @@
 --
 -- Given the FOLD endpoints of the research galleries' released controls, it
 -- also measures how far its own endpoint lies from each, in pixels at the
--- scale it draws at: the comparison decision 39 keeps, and #474's check.
+-- scale it draws at: the comparison decision 39 keeps, and #474's check. Only
+-- an endpoint its gallery accepted means anything here, and a FOLD cannot say
+-- whether it was: a diagnostic one compares just as readily.
 module CraneQuick (writeCraneQuick) where
 
 import Control.Exception (evaluate)
@@ -28,6 +30,7 @@ import CraneSpread
 import CraneSpreadGallery (screenKeys, spreadFigure)
 import CraneWing (wingRoot)
 import Data.Aeson (Value, encode, object, (.=))
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (isJust)
@@ -54,7 +57,7 @@ import System.FilePath ((</>))
 import System.IO (hFlush, stdout)
 
 -- | Solve the quick tier into @destination@ @/crane-quick@, and compare it
--- with each FOLD endpoint in @references@, which must share its mesh.
+-- with each FOLD endpoint in @references@: accepted ones, on its mesh.
 writeCraneQuick :: FilePath -> [FilePath] -> IO ()
 writeCraneQuick destination references = do
   let output = destination </> "crane-quick"
@@ -83,7 +86,11 @@ writeCraneQuick destination references = do
   let drawing = spreadFigure [sheet]
       own = if accepted then either (const Nothing) Just drawing else Nothing
   (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (isJust own) mesh)
-  comparisons <- forM references (compareWith (figureScale <$> own) sheet)
+  -- The solve's own outputs go first: it took minutes, and a reference that
+  -- will not compare must not cost them. The GLB, which can be refused, goes
+  -- last.
+  BL.writeFile (output </> "quick.fold") (encode (FoldFile (Just 1.2) (Just "senbazuru quick tier") Nothing (Just title) Nothing [] (materialFrame sheet) []))
+  forM_ own $ \figure' -> TIO.writeFile (output </> "quick.svg") (figureSvg figure')
   let measured =
         [ "hingeY" .= hinge,
           "startingTurnDegrees" .= centre,
@@ -97,13 +104,11 @@ writeCraneQuick destination references = do
           "heldPositionError" .= spreadHeldError fixture mesh,
           "contact" .= contact,
           "triangles" .= length (triangles mesh),
-          "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double),
-          "comparisons" .= comparisons
+          "solveCpuSeconds" .= (fromIntegral (settled - start) / 1e12 :: Double)
         ]
           ++ maybe [] (\figure' -> ("screenThresholds" .= thresholdsJson (figureScale figure')) : screened (figureScale figure')) own
-  BL.writeFile (output </> "quick.fold") (encode (FoldFile (Just 1.2) (Just "senbazuru quick tier") Nothing (Just title) Nothing [] (materialFrame sheet) []))
-  BL.writeFile (output </> "checks.json") (encode (object measured))
-  forM_ own $ \figure' -> TIO.writeFile (output </> "quick.svg") (figureSvg figure')
+  comparisons <- forM references (compareWith (figureScale <$> own) sheet)
+  BL.writeFile (output </> "checks.json") (encode (object (measured ++ ["comparisons" .= comparisons])))
   -- The record names what was held (owner decision 39). The stable view can
   -- be refused, as a solved body's can be; the complete scene still carries
   -- the record.
@@ -119,18 +124,27 @@ writeCraneQuick destination references = do
 
 -- | How far the quick endpoint lies from a reference endpoint on the same
 -- mesh: the largest distance between matching vertices, in sheet units and in
--- pixels at the quick tier's drawing scale and at the screen's 600.
+-- pixels at the quick tier's drawing scale and at the screen's 600. A
+-- reference that cannot be read, or lies on another mesh, is recorded as not
+-- compared rather than ending the run: by then the solve has taken minutes.
 compareWith :: Maybe PageScale -> Surface V2 -> FilePath -> IO Value
 compareWith scale sheet path = do
-  frame <- keyFrame <$> (loadFoldFile path >>= checked)
-  reference <- checked (surfaceFromFrame frame >>= requireMaterialCoordinates)
+  loaded <- loadFoldFile path
   let ours = surfaceSamples sheet
-      theirs = surfaceSamples reference
-  unless (facesVertices (surfaceFrame reference) == facesVertices (surfaceFrame sheet) && map sampleMaterial theirs == map sampleMaterial ours) $
-    die (path ++ " is not on the quick tier's mesh, so its vertices cannot be compared")
-  let largest = maximum (0 : zipWith (\p q -> norm (position p ^-^ position q)) ours theirs)
-  putStrLn (path ++ ": largest displacement " ++ show largest ++ " sheet units, " ++ maybe "no drawing scale" (\s -> show (pixelsPerSheet s * largest) ++ " px at this tier's scale") scale ++ ", " ++ show (600 * largest) ++ " px at 600")
-  pure (object ["reference" .= path, "largestDisplacement" .= largest, "pixelsAtThisScale" .= fmap ((* largest) . pixelsPerSheet) scale, "pixelsAt600" .= (600 * largest)])
+      compared = do
+        file <- first explain loaded
+        reference <- first explain (surfaceFromFrame (keyFrame file) >>= requireMaterialCoordinates)
+        let theirs = surfaceSamples reference
+        unless (facesVertices (surfaceFrame reference) == facesVertices (surfaceFrame sheet) && map sampleMaterial theirs == map sampleMaterial ours) $
+          Left "it is not on the quick tier's mesh, so its vertices cannot be compared"
+        pure (maximum (0 : zipWith (\p q -> norm (position p ^-^ position q)) ours theirs))
+  case compared of
+    Left err -> do
+      putStrLn (path ++ ": not compared: " ++ T.unpack err)
+      pure (object ["reference" .= path, "error" .= err])
+    Right largest -> do
+      putStrLn (path ++ ": largest displacement " ++ show largest ++ " sheet units, " ++ maybe "no drawing scale" (\s -> show (pixelsPerSheet s * largest) ++ " px at this tier's scale") scale ++ ", " ++ show (600 * largest) ++ " px at 600")
+      pure (object ["reference" .= path, "largestDisplacement" .= largest, "pixelsAtThisScale" .= fmap ((* largest) . pixelsPerSheet) scale, "pixelsAt600" .= (600 * largest)])
 
 checked :: (Explain e) => Either e a -> IO a
 checked = either (die . T.unpack . explain) pure

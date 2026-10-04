@@ -662,13 +662,13 @@ record gives the geometry as `bent zero-thickness` and lists what was held:
 the body, and the base at its angle. A stable view that cannot be built
 falls back to `quick-complete.glb`.
 
-Given the galleries' FOLD endpoints on the same mesh, it also records how
-far its own endpoint lies from each, in pixels at its drawing scale and at
-600 px per sheet unit:
+Given FOLD endpoints that the galleries accepted, on the same mesh, it also
+records how far its own lies from each, in pixels at its scale and at 600 per
+sheet unit; a diagnostic FOLD would compare as readily, so pass accepted ones:
 
 ```bash
 stack run senbazuru-material-study -- --crane-quick build/fold-material \
-  build/fold-material/crane-body/original.fold build/fold-material/crane-internal/held.fold
+  build/fold-material/crane-body/original.fold build/fold-material/crane-internal/original.fold
 ```
 
 See [the quick tier](notes/quick-tier.md).

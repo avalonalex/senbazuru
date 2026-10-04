@@ -41,13 +41,17 @@ sheet unit the quick tier draws at:
 | crane-body, selected springs × 0.1 | 0.0084 px |
 | crane-body, 170° preference | 0.0084 px |
 | crane-internal, original | 0.0084 px |
-| crane-internal, crease lines held | 0.0084 px |
 | crane-internal, continued | 0.0084 px |
 
+crane-internal's crease-lines-held control is left out: at the root it misses
+the original-angle limit and is not accepted
+([internal-crease-diagnostic.md](internal-crease-diagnostic.md)).
+
 The 1 px a quick result may differ by is more than a hundred times larger.
-Released, the crane's body moves at most 5.5e-7 sheet units: the body
-barely moves when the wing opens, so holding it changes nothing a drawing can
-show. That is one model. A model whose shape comes from its body moving, such
+Little of the difference is the body. Released, the crane's body moves at
+most 5.5e-7 sheet units, 0.0004 px here: the body barely moves when the wing
+opens, so holding it changes nothing a drawing can show. The base angle is
+the other difference, 28.394° here against the galleries' 28.383°. That is one model. A model whose shape comes from its body moving, such
 as an inflated water bomb, cannot be made quick this way
 ([#428](https://github.com/avalonalex/senbazuru/issues/428)).
 
@@ -85,4 +89,9 @@ single held solve at a known angle takes 7.5.
 
 Given the research galleries' FOLD endpoints, the quick tier writes the
 comparison above into its `checks.json` (`--crane-quick DIR FOLD...`), so it
-can be repeated after the galleries change.
+can be repeated after the galleries change. Pass only endpoints their gallery
+accepted: `selectedAccepted` in a crane-body control's `-check.json`,
+`accepted` in a crane-internal one's. A FOLD does not say whether it was
+accepted, and a diagnostic endpoint compares as readily as an accepted one.
+A reference that cannot be read, or lies on another mesh, is recorded with
+the reason and not compared; the quick tier's own files are written first.
