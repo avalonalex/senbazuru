@@ -87,7 +87,13 @@ For scale: one released control in the research galleries costs 3,902 CPU
 seconds for its three solves, and the whole crane-internal gallery 7,965. A
 single held solve at a known angle takes 7.5.
 
-Given the research galleries' FOLD endpoints, the quick tier writes the
+The body galleries keep the comparison that matters most on every run: how
+far their own held control's paper lies from each released control's
+(`heldComparison` in crane-body's and crane-internal's `checks.json`, and the
+last column of each page's comparison table). Where that stays under a pixel,
+holding the body is a label and not a change of shape.
+
+Given the research galleries' FOLD endpoints, the quick tier also writes the
 comparison above into its `checks.json` (`--crane-quick DIR FOLD...`), so it
 can be repeated after the galleries change. Pass only endpoints their gallery
 accepted: `selectedAccepted` in a crane-body control's `-check.json`,
