@@ -691,7 +691,7 @@ that accepted it.
 | `J`, `--lines mesh` only | `themeBuriedWidth` 0.35 | [`Style.hs:233`](../src/Senbazuru/Diagram/Style.hs#L233) |
 
 `Render.LineDrawing` produces a `Diagram` for `Render.Svg`, the rule for 2D
-backends ([`architecture.md:261-267`](../docs/architecture.md)), and imports
+backends ([`architecture.md:262-268`](../docs/architecture.md)), and imports
 `Style`, not `Render.CreasePattern`.
 
 **SKETCH.**

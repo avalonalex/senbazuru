@@ -53,7 +53,7 @@ therefore refuse the M6 fixture, which is the one G3 output that exists.
   works" is not evidence that the SVG will.
 - **The architecture already says this.** "Corrected meshes use the
   depth-buffered viewer because the SVG painter assumes the very layer order
-  those meshes can violate" (`docs/architecture.md:909-911`). Z-critic §6
+  those meshes can violate" (`docs/architecture.md:910-912`). Z-critic §6
   raised the same risk, and the spine did not answer it.
 
 **Proposal.** Replace the W1 bullet in D14 with:
@@ -139,7 +139,7 @@ What a user actually gets for an arbitrary sequence at M7 is animation, UVs
   all is unverified.
 
 **Evidence.**
-- `senbazuru.cabal:213-222`: the library depends on aeson, base, bytestring,
+- `senbazuru.cabal:214-223`: the library depends on aeson, base, bytestring,
   containers, filepath, tagsoup and text only.
 - G finding 10: Origami Simulator pushes the paper behind its lines with
   `polygonOffset` (`model.js:83-111`).
@@ -806,7 +806,7 @@ weight, with the same visibility test as L5-1. `features` is the default.
   findings 22-24. Spine and gap note agree that nothing is to be edited in
   AGENTS.md now.
 - **The failure policy matches practice.** Keeping diagnostics out of the SVG
-  painter matches `docs/architecture.md:909-911` and the study
+  painter matches `docs/architecture.md:910-912` and the study
   (`CraneRootGallery.hs:163-170` writes SVG and GLB only for accepted meshes).
 - **D15 matches B.** The graduation order and the stays-in-study list agree with
   B's "Graduation order", and #208 is open with the timings quoted.

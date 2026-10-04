@@ -425,13 +425,13 @@ Validation beyond parsing:
   (`docs/notes/symmetric-base-collapse.md`, last paragraph).
 
 The manifest "is read by the study executable; it is not a new library input
-format" (`docs/architecture.md:916-920`).
+format" (`docs/architecture.md:917-921`).
 
 **F22. What the manifest cannot express.** Each item has evidence.
 
 1. **Motion between states.** There is no path and no certificate; "they do
    not change the prescribed pose or certify motion between states"
-   (`docs/architecture.md:928-929`).
+   (`docs/architecture.md:929-930`).
 2. **Contact orders that change during a sequence.** Orders are per case.
    - Rabbit ear: its moving panels swap order mid-turn, so the case declares
      only the stable relations and leaves overlaps at closure to a separate
@@ -602,7 +602,7 @@ Still missing from this sketch:
   arithmetic, because literals drift (F8).
 - **Certificates.** The names `bird.*` refer to Haskell values in the study
   (`PetalCertificate.hs:262-291`). The library imports no study code
-  (`docs/architecture.md:286`), so a CLI file cannot reach them.
+  (`docs/architecture.md:287`), so a CLI file cannot reach them.
 - **Orders.** The 20 declared lower/upper pairs are still hand-written. The
   collapse note says flat landing orders come from the approach, not from
   geometry at the endpoint (`docs/notes/checked-square-collapse.md:44-50`).
@@ -736,7 +736,7 @@ coordinates.**
      `TornAt` and `loopsClose` plus pose contact), **not** certified.
    - The file format can name only registered macros. Certificates currently
      live in the study, and the library may not import it
-     (`docs/architecture.md:286`), so the PRD must either register
+     (`docs/architecture.md:287`), so the PRD must either register
      certificates from the study side or scope certified routes out of the
      CLI language.
 7. **State carries holds.** A stage changes only the roles it names;
@@ -762,7 +762,7 @@ coordinates.**
       formula route changes at least one state.
 12. **Keep the angle-table level as a compilation target.** A resolved,
     per-state full angle list is what `StudyCase`, `buildCaseSequence` and
-    the CLI's `render --steps` already consume (`docs/architecture.md:943-948`).
+    the CLI's `render --steps` already consume (`docs/architecture.md:944-949`).
     The DSL could compile down to it, which gives a debuggable intermediate
     form.
 

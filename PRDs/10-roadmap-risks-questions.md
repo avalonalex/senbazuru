@@ -186,7 +186,7 @@ gives the current text and the full replacement under the same row number. Row
 | --- | --- | --- | --- |
 | M0, first PR | 10 | `docs/glossary.md` | move [glossary-additions](glossary-additions.md) in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) |
 | M0 | 1 | `docs/architecture.md:81-103` | a sequence's moves are not "a frame in, a frame out" |
-| M0, no later than M1's `Sequence.Parse` PR | 2 | `AGENTS.md:193-196`, `docs/architecture.md:196-201` | a sequence source is a program: the stated exception |
+| M0, no later than M1's `Sequence.Parse` PR | 2 | `AGENTS.md:193-196`, `docs/architecture.md:197-202` | a sequence source is a program: the stated exception |
 | M0 | 3 | #60 | `runSequence` returning records; "one interpreter" superseded; done-when split into folding equivalence and authoring |
 | M0 | 4 | #95 | turn over is presentation about a model-intrinsic axis |
 | M0 | 5 | #97 | note renamed `sequences.md`; "scheme" retired; closes at M2 |
@@ -199,7 +199,7 @@ gives the current text and the full replacement under the same row number. Row
 | M2 | 12 | `AGENTS.md:229-233` | add `runSequence` to the `--layer-budget` list |
 | M2, the presentation-classification PR | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change |
 | M3 | 12 | `AGENTS.md:229-233` | `stepPageWith` joins that list |
-| M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:287-296`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
+| M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
 | before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1624-1630` | the `LineStopsOnTheModel` sentence names the end by its point |
 | M4, the PR adding the slow job | 15 | `AGENTS.md:390-391` | "all three CI checks" names the slow job and whether it is required (owner decision 12) |
 | M4, the PR closing #60 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists |
@@ -211,8 +211,8 @@ M3, and #60's close at M4 ([C56](decisions.md#changes-since-draft-v2)).
 [D](research/D-docs-issues-constraints.md), "B. How the relevant open issues
 depend on each other — question (b)", reads the same chain from those lines.
 
-Row 14's range ends at `docs/architecture.md:296`, the last line of the helmet
-sentence; `HingeSweep`'s paragraph starts at `:297` (`sed -n 285,298p
+Row 14's range ends at `docs/architecture.md:297`, the last line of the helmet
+sentence; `HingeSweep`'s paragraph starts at `:298` (`sed -n 286,299p
 docs/architecture.md`; [C64](decisions.md#changes-since-draft-v2)). Row 17's
 sentence is the one `ThroughLayersSpec` pins and `docs/usage.md` quotes
 ([C66](decisions.md#changes-since-draft-v2)); row 18 is

@@ -453,7 +453,7 @@ step ends at.
     - Certificates exist for the collapse, the two petals and the press
       (`PetalCertificate.hs:17-27`). There is none for the rabbit ear, and
       finding 5 shows the `Q` field cannot reach one.
-    - The library imports no study code (`docs/architecture.md:286`).
+    - The library imports no study code (`docs/architecture.md:287`).
 
 18. **Formula angles differ from stored literals in the last bit.**
     - At rabbit ear m = 30 the manifest stores `97.58514830800293`. The

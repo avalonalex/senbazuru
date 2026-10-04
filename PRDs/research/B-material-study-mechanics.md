@@ -56,7 +56,7 @@ ids or owners.
 | Acceptance predicates `spreadAccepted`, `rootAccepted`, `bodyAccepted` (CraneSpread.hs:213-217; CraneRoot.hs:143-147; CraneBody.hs:111-116) | fixture, `Relaxation`, mesh | `Bool` | Fixture-bound, general pattern | converged and edge error <= 1e-5 and held error == 0 and crease error < 1e-5 and `contactPassed` | - |
 
 **2. CI already pays for these solves.** The test suite compiles
-`study/fold-material` (senbazuru.cabal:253-258) and runs short crane solves
+`study/fold-material` (senbazuru.cabal:254-259) and runs short crane solves
 (e.g. `Settings 20 1e-5` at refinement 3, test/CraneSpreadSpec.hs:33). #208
 records a 10m48s `stack test` step, with the `CraneRoot` group ~164.87 s and
 `CraneSpread` ~97.48 s (approximate wall times, different runners).
@@ -255,11 +255,11 @@ wing-root-holds.md:81-88; WingLayers.hs:99-101).
 ### Graduation (question e)
 
 **17. Layering is already respected.** No `src` or `app` module imports a
-study module (grep; architecture.md:908-912 says the same). The mechanics
+study module (grep; architecture.md:909-913 says the same). The mechanics
 modules import only `Explain`, `Geometry.*`, `Fold.Types/Query`,
 `Origami.Surface/Contact/HingeSweep` (import headers of FoldRelaxation.hs:98-116,
 FoldBending.hs:46-58, SurfaceContact.hs:55-66). None mentions `Render` or
-`Diagram`, so they would satisfy the `Origami.*` rule (architecture.md:176-179).
+`Diagram`, so they would satisfy the `Origami.*` rule (architecture.md:177-180).
 
 **18. But the general core is entangled with fixtures.** Study-internal
 imports (grep of import lines):

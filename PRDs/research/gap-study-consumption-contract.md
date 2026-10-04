@@ -99,7 +99,7 @@ states.** A single Boolean would erase the difference between them.
 
 | Evidence | Where | What it establishes |
 | --- | --- | --- |
-| None: state only | `StudyCase` angle tables (`docs/architecture.md:928-929`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
+| None: state only | `StudyCase` angle tables (`docs/architecture.md:929-930`); frog milestones "no motion is implied between checkpoints" (`BasicBases.hs:144`) | endpoints pass contact; nothing between |
 | Interval sweep | `checkFlap` returns an opaque `CheckedFlap`; every pose is re-folded and compared with the checked hinge path (`Flap.hs:43-49`, `:368-399`) | the whole single-hinge turn, up to HingeSweep's conservative refusals |
 | Exact ideal-path certificate | `PetalCertificate` bounds the ideal sheet; `CheckedBird` compares Double poses within 1e-12 (`PetalCertificate.hs:1-15`, `CheckedBird.hs:120-129`) | the ideal path of one fixture |
 | Not a motion at all | a static boundary-value solve whose iterates "are allowed to stretch and cross paper" (`CraneSpread.hs:12-13`) | an endpoint only |
@@ -114,11 +114,11 @@ therefore number the same paper differently.
 **8. The dependency already runs one way, and a file cannot carry a record.**
 
 - **Direction.** The study executable `build-depends` on `senbazuru`
-  (`senbazuru.cabal:242-252`). "The library imports no study code"
-  (`docs/architecture.md:286`, again `:912`). The study already calls library
+  (`senbazuru.cabal:243-253`). "The library imports no study code"
+  (`docs/architecture.md:287`, again `:913`). The study already calls library
   moves directly (`BlintzSequence.hs:27-30`, `CraneWing.hs:46-58`).
 - **The existing handoff runs study → CLI**, through ordinary FOLD
-  (`study/fold-material/Main.hs:248-258`; `docs/architecture.md:943-948`).
+  (`study/fold-material/Main.hs:248-258`; `docs/architecture.md:944-949`).
 - **What a file loses.** `materialFrame` does not serialise thickness or
   directional requirements (`Surface.hs:242-247`). The GLB keeps only three
   `senbazuru:` extras keys (`Render/Gltf.hs:271-275`). A `CheckedFlap` is
@@ -246,8 +246,8 @@ The study's `main` is a flag dispatch over galleries (`Main.hs:63-90`). The
 manifest.**
 
 - **Compiling.** `hs-source-dirs: test, study/fold-material`
-  (`senbazuru.cabal:258`), with recipe and gallery modules listed among the
-  test's `other-modules` (`:371-417`).
+  (`senbazuru.cabal:259`), with recipe and gallery modules listed among the
+  test's `other-modules` (`:372-418`).
 - **Reading the manifest.** `cases.json` is read by `StudyCaseSpec:25`,
   `BaseCollapseSpec:30`, `RabbitEarSpec:40`, `PetalFoldSpec:38`,
   `CheckedPetalSpec:35`, `CheckedBirdSpec:37` and `BirdSequenceSpec:33`. It is
@@ -377,7 +377,7 @@ label is not the licence of the binary its default build produces.
 ### (a) The per-step record, and who imports what
 
 Define the record **in the library** (an `Origami.*` module, since it knows
-paper and not drawing; `docs/architecture.md:176-179`). The study imports the
+paper and not drawing; `docs/architecture.md:177-180`). The study imports the
 library runner, as it already imports `Origami.Flap`. The study consumes the
 **sequence source** (an EDSL value, or a file parsed by the library) and runs
 it itself. It must never parse rendered FOLD or GLB back, because those drop
@@ -552,7 +552,7 @@ two PRs:
    once in `beforeAll` (finding 20). Goldens must stay byte-identical, and any
    diff must be read before accepting it.
 2. **Deletion.** Delete the recipe module from both cabal stanzas
-   (`senbazuru.cabal:242`, `:260-417`), and point the gallery at the sequence.
+   (`senbazuru.cabal:243`, `:261-418`), and point the gallery at the sequence.
 
 | Recipe | Fate | Blocking work | Guards |
 | --- | --- | --- | --- |

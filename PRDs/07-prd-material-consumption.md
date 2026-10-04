@@ -718,7 +718,7 @@ The unsettled record goes in the file's key frame under a new key,
 allows it until [#73](https://github.com/avalonalex/senbazuru/issues/73)), GLB
 `extras.senbazuru`, and SVG `<desc>` (08). Unaccepted meshes never go to SVG,
 whose painter assumes the layer order they can violate
-([`docs/architecture.md:909-911`](../docs/architecture.md)); the study keeps
+([`docs/architecture.md:910-912`](../docs/architecture.md)); the study keeps
 a failed endpoint as a diagnostic that "never appears as an accepted model"
 ([spreading-connected-wing.md:90-96](../docs/notes/spreading-connected-wing.md)).
 

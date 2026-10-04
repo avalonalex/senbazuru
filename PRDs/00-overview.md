@@ -260,8 +260,8 @@ metadata and its first frame
 ### The material study
 
 `study/fold-material/` builds `senbazuru-material-study`
-([`senbazuru.cabal:238`](../senbazuru.cabal#L238)), and the test suite also
-compiles it ([`:258`](../senbazuru.cabal#L258)). Its solver has three defining
+([`senbazuru.cabal:239`](../senbazuru.cabal#L239)), and the test suite also
+compiles it ([`:259`](../senbazuru.cabal#L259)). Its solver has three defining
 properties
 ([B-material-study-mechanics](research/B-material-study-mechanics.md)
 "Summary"):

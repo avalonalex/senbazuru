@@ -48,11 +48,11 @@ Origami words link to [the glossary](../docs/glossary.md).
 | --- | --- |
 | Nothing can write a sequence down. The one authoring verb takes one crease per call, as coordinates. | `crease --from X,Y --to X,Y` ([Cli.hs:274-299](../app/Senbazuru/Cli.hs#L274-L299)). [#97](https://github.com/avalonalex/senbazuru/issues/97) asks for a syntax "a person can write without a calculator". |
 | Every verb reads its input as a crease pattern. A source given to `render` would be decoded as FOLD and fail as bad JSON (not run). | Every verb goes through `withFoldFile` ([Cli.hs:782-789](../app/Senbazuru/Cli.hs#L782-L789), [:800-804](../app/Senbazuru/Cli.hs#L800-L804)). Any unrecognised extension decodes as FOLD ([Load.hs:131-136](../src/Senbazuru/Fold/Load.hs#L131-L136)), pinned by [LoadSpec.hs:167-171](../test/Senbazuru/Fold/LoadSpec.hs#L167-L171). |
-| The library has no parser. | [senbazuru.cabal:213-222](../senbazuru.cabal#L213-L222); the `.cp` reader splits words by hand ([C](research/C-renderers-cli-formats.md) "(e) Dependencies", finding 22). |
-| The CLI is untested by design. The test suite's source directories are `test` and `study/fold-material`, not `app`, so nothing in `Cli.hs` can be tested, and the parser, path rules, flag rules and messages must live in the library. | [Cli.hs:5-8](../app/Senbazuru/Cli.hs#L5-L8); [senbazuru.cabal:258](../senbazuru.cabal#L258). |
+| The library has no parser. | [senbazuru.cabal:214-223](../senbazuru.cabal#L214-L223); the `.cp` reader splits words by hand ([C](research/C-renderers-cli-formats.md) "(e) Dependencies", finding 22). |
+| The CLI is untested by design. The test suite's source directories are `test` and `study/fold-material`, not `app`, so nothing in `Cli.hs` can be tested, and the parser, path rules, flag rules and messages must live in the library. | [Cli.hs:5-8](../app/Senbazuru/Cli.hs#L5-L8); [senbazuru.cabal:259](../senbazuru.cabal#L259). |
 | An error message is a lower-case fragment for after a colon. megaparsec's rendered errors span several lines. | [Explain.hs:62-69](../src/Senbazuru/Explain.hs#L62-L69); `errorBundlePretty` prints source context ([F](research/F-haskell-edsl-techniques.md) "D. Parsing the text syntax", finding 18). |
 | One refusal already needs a path and a number around one message, and gets two wordings. `render --steps` takes `StepError` apart in `Cli.hs` to build "cannot render frame N of PATH: …", so the same failure reads one way there and another through `explain`. | [Steps.hs:64-78](../src/Senbazuru/Render/Steps.hs#L64-L78), [Cli.hs:969-977](../app/Senbazuru/Cli.hs#L969-L977). |
-| Only `Fold.Load` does I/O, and a sequence names a second file: its sheet. | [architecture.md:181-184](../docs/architecture.md). |
+| Only `Fold.Load` does I/O, and a sequence names a second file: its sheet. | [architecture.md:182-185](../docs/architecture.md). |
 
 ## Goals
 
@@ -766,8 +766,8 @@ Choices that could look arbitrary:
 - **Library, not executable.** The builder and parser must work without the CLI
   ([Cli.hs:5-8](../app/Senbazuru/Cli.hs#L5-L8)), and the study reads sources too.
 - **Executable and tests.** The executable adds `containers` and `filepath`
-  ([senbazuru.cabal:230-235](../senbazuru.cabal#L230-L235)). The tests need nothing
-  new, since QuickCheck is there ([senbazuru.cabal:496](../senbazuru.cabal#L496)).
+  ([senbazuru.cabal:231-236](../senbazuru.cabal#L231-L236)). The tests need nothing
+  new, since QuickCheck is there ([senbazuru.cabal:497](../senbazuru.cabal#L497)).
 
 ### Rejected alternatives
 
