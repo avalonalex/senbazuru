@@ -474,6 +474,7 @@ test-suite senbazuru-test
     Senbazuru.Render.ProjectedSpec
     Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
+    Senbazuru.Sequence.BlintzRunSpec
     Senbazuru.Sequence.BuildSpec
     Senbazuru.Sequence.CheckSpec
     Senbazuru.Sequence.ElaborateSpec

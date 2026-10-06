@@ -12,8 +12,16 @@
 -- 'sheetState' turns a sheet, a file's key frame, into the state a run begins
 -- from, and 'runSequence' runs a checked, elaborated sequence from there. So
 -- far it makes the moves the blintz needs: @fold@ along creases the paper
--- already has, and @unfold@. Every other move is refused as not run yet,
--- naming itself, rather than skipped.
+-- already has, its line given by points or as @hinge of NAME@, @unfold@, and
+-- @expect refused@. Every other move is refused as not run yet, naming
+-- itself, rather than skipped.
+--
+-- An @expect refused K { move }@ runs its move against the current state and
+-- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
+-- leaves the state as it was and no record, since it moved no paper; the run
+-- keeps the outcome. A move that is made instead, or refused as another kind,
+-- refuses the run. A move not run yet says nothing about the paper, so its
+-- refusal is passed on as itself.
 --
 -- == A fold, move by move
 --
@@ -133,7 +141,7 @@ import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep (SweepSettings, defaultSweepSettings)
 import Senbazuru.Origami.Surface (surfaceFrame)
 import Senbazuru.Sequence.Elaborate (Core (..), CoreMove (..), Elaborated (..), ElaboratedStep (..), Origin (..))
-import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem, SelectionError (..), SequenceError (..), SheetProblem (..))
+import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
 import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Resolve
@@ -274,8 +282,13 @@ defaultRunSettings = RunSettings defaultSweepSettings 1e-3
 runSequence :: RunSettings -> Map FilePath FoldFile -> Elaborated -> Either SequenceError Run
 runSequence settings sheets elaborated = do
   start <- startOf sheets (elaboratedHeader elaborated)
-  (_, made, _) <- foldM (runStep settings) (start, [], M.empty) (zip [1 ..] (elaboratedSteps elaborated))
-  pure (Run (reverse made))
+  Progress _ made _ expected <- foldM (runStep settings) (Progress start [] M.empty []) (zip [1 ..] (elaboratedSteps elaborated))
+  pure (Run (reverse made) (reverse expected))
+
+-- | A run so far: the state, the records made (latest first), each named
+-- step's records for a later @unfold@ or @hinge of@, and the refusals
+-- expected and got (latest first).
+data Progress = Progress !FoldState ![MoveRecord] !(Map Name [MoveRecord]) ![ExpectedRefusal]
 
 -- | The state the header describes: its sheet, laid flat, anchored at its
 -- @anchor@ point or by default, with its side up.
@@ -306,14 +319,18 @@ startOf sheets header = do
 
 -- | One step: its moves in order, each from the state the last one left. The
 -- records it made are kept under its name, for a later @unfold@.
-runStep :: RunSettings -> (FoldState, [MoveRecord], Map Name [MoveRecord]) -> (Int, ElaboratedStep) -> Either SequenceError (FoldState, [MoveRecord], Map Name [MoveRecord])
-runStep settings (state, done, named) (n, step) = do
-  (after, made) <- foldM move (state, []) (zip [1 ..] (elaboratedMoves step))
-  pure (after, reverse made ++ done, maybe named (\name -> M.insert name made named) (elaboratedName step))
+runStep :: RunSettings -> Progress -> (Int, ElaboratedStep) -> Either SequenceError Progress
+runStep settings (Progress state done named expected) (n, step) = do
+  (after, made, got) <- foldM move (state, [], []) (zip [1 ..] (elaboratedMoves step))
+  pure (Progress after (reverse made ++ done) (maybe named (\name -> M.insert name made named) (elaboratedName step)) (reverse got ++ expected))
   where
-    move (st, made) (i, CoreMove origin core) = do
-      (st', records) <- runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st core
-      pure (st', made ++ records)
+    move (st, made, got) (i, CoreMove origin core) = do
+      Made st' records refused <- runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st core
+      pure (st', made ++ records, got ++ refused)
+
+-- | What one move made: the state after it, its records, and the refusal it
+-- expected and got, for an @expect refused@.
+data Made = Made !FoldState ![MoveRecord] ![ExpectedRefusal]
 
 -- | Where a move is, for its records and its refusals.
 data Here = Here
@@ -324,18 +341,40 @@ data Here = Here
     placeOrigin :: !Origin
   }
 
-runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Core -> Either SequenceError (FoldState, [MoveRecord])
+runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Core -> Either SequenceError Made
 runMove settings place named state = \case
-  CoreFold sense amount line layers seed -> foldMove settings place state sense amount line layers seed
-  CoreUnfold names -> foldM (undoOne settings place) (state, []) (reverse (concat [M.findWithDefault [] name named | name <- names]))
+  CoreFold sense amount line layers seed -> moved <$> foldMove settings place named state sense amount line layers seed
+  CoreUnfold names -> moved <$> foldM (undoOne settings place) (state, []) (reverse (concat [M.findWithDefault [] name named | name <- names]))
+  -- The inner move runs against this state, and must be refused as the kind
+  -- given; it leaves the state as it was and no record, since it moved no
+  -- paper. A move not run yet says nothing about the paper, so its refusal
+  -- is passed on as itself.
+  CoreExpectRefused kind inner -> case inner of
+    Nothing -> Left (refusedAt place (RefusalNotRaised kind))
+    Just (CoreMove origin core) -> case runMove settings place {placeOrigin = origin} named state core of
+      Right _ -> Left (refusedAt place (RefusalNotRaised kind))
+      Left err -> case refusalKindOf err of
+        Just raised
+          | raised == kind -> Right (Made state [] [ExpectedRefusal (placeStep place) (placeMove place) kind])
+          | otherwise -> Left (refusedAt place (RefusedDifferently kind raised))
+        Nothing -> Left err
   other -> Left (refusedAt place (MoveNotRunYet (moveWords other)))
+  where
+    moved (st, records) = Made st records []
 
 -- | A fold along creases the paper has, as the header lays out.
-foldMove :: RunSettings -> Here -> FoldState -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
-foldMove settings place state sense amount line layers seed = do
+foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
+foldMove settings place named state sense amount line layers seed = do
   folded <- first (refusedAt place . FoldingRefused) (foldNow state)
   flat <- first (resolvingAt place (prettyLine line)) (flatState folded)
-  foldAt <- first (resolvingAt place (prettyLine line)) (foldLine (runNearMissBand settings) flat line)
+  -- @hinge of NAME@ is the line the named step's one move turned about: the
+  -- recorded crease, where the paper now lies, numbered as now since no move
+  -- yet cuts the paper.
+  foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
+    HingeOf name -> case M.findWithDefault [] name named of
+      [earlier] | e : _ <- concatMap snd (recordHinge earlier) -> lineAlong flat e
+      records -> Left (HingeOfNotOneMove name (length records))
+    _ -> foldLine (runNearMissBand settings) flat line
   candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat foldAt)
   seedPoint <- case (layers, seed, line) of
     (FlapOfFirstArgument, Just p, _) -> Right p

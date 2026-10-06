@@ -125,6 +125,7 @@ module Senbazuru.Sequence.Record
 
     -- * A run
     Run (..),
+    ExpectedRefusal (..),
   )
 where
 
@@ -134,7 +135,7 @@ import Senbazuru.Geometry (V2)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, surfaceFrame)
 import Senbazuru.Sequence.Elaborate (Origin)
-import Senbazuru.Sequence.Syntax (Name)
+import Senbazuru.Sequence.Syntax (Name, RefusalKind)
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
 newtype MaterialPoint = MaterialPoint V2
@@ -284,8 +285,24 @@ hingeTurn step move name caption origin hinge seed turn = do
         theStationary = flapStationaryFace turn
       }
 
--- | What a run hands back: one record for each move it made, in order. More
--- arrives with the moves that need it: each step's outcome, the run's start
--- and closing caption, and where a @not modelled@ move stopped it.
-newtype Run = Run {runRecords :: [MoveRecord]}
+-- | What a run hands back: one record for each move it made, in order, and
+-- each refusal a sequence expected and got. More arrives with the moves that
+-- need it: the run's start and closing caption, and where a @not modelled@
+-- move stopped it.
+data Run = Run
+  { runRecords :: [MoveRecord],
+    -- | Each @expect refused@ whose move was refused as expected. It leaves
+    -- no record, because it moved no paper, and this is where a reader such
+    -- as @run --report@ finds it.
+    runExpected :: [ExpectedRefusal]
+  }
+  deriving stock (Eq, Show)
+
+-- | An @expect refused@ that was refused as expected: its step and move,
+-- counted from 1, and the kind.
+data ExpectedRefusal = ExpectedRefusal
+  { expectedStep :: !Int,
+    expectedMove :: !Int,
+    expectedKind :: !RefusalKind
+  }
   deriving stock (Eq, Show)
