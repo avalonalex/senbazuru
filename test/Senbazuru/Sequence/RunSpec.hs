@@ -123,6 +123,18 @@ spec = describe "the state a run starts from" $ do
       case sheetState (withKey (const frame) squareSheet) of
         Left (DefaultAnchorOutside (V2 x y)) -> (x, y) `shouldSatisfy` (\(a, b) -> abs (a - 2.2 / 6) < 1e-12 && abs (b - 2.2 / 6) < 1e-12)
         other -> expectationFailure ("expected the anchor refused, got " <> show other)
+
+    -- The same question on a face that is not convex but whose mean is on
+    -- paper: a thick arm three long and a short one, the mean (7/6, 2/5) in
+    -- the long arm. Turns red if a convex-only test were used, which calls the
+    -- mean outside because it lies beyond the line of the short arm's inner
+    -- side.
+    it "but not a mean that lies on paper in a face that is not convex" $ do
+      let l = [[0, 0], [3, 0], [3, 0.5], [0.5, 0.5], [0.5, 0.7], [0, 0.7]]
+          frame = emptyFrame {verticesCoords = l, edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 6)) | i <- [0 .. 5]], edgesAssignment = replicate 6 Border, facesVertices = [map VertexId [0 .. 5]]}
+      state <- right (sheetState (withKey (const frame) squareSheet))
+      case stateAnchor state of
+        MaterialPoint (V2 x y) -> (x, y) `shouldSatisfy` (\(a, b) -> abs (a - 7 / 6) < 1e-12 && abs (b - 0.4) < 1e-12)
   where
     load path = loadFoldFile path >>= right
     start path = load path >>= right . sheetState
