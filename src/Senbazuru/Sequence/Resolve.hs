@@ -65,6 +65,12 @@ module Senbazuru.Sequence.Resolve
 
     -- * Regions
     regionFace,
+
+    -- * The paper a fold turns
+    seedFaces,
+    Selection (..),
+    flapOf,
+    hingeStretches,
   )
 where
 
@@ -73,7 +79,8 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (minimumBy)
+import Data.List (minimumBy, nub)
+import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
@@ -83,7 +90,8 @@ import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
-import Senbazuru.Sequence.Error (ResolveProblem (..))
+import Senbazuru.Sequence.Error (ResolveProblem (..), SelectionError (..))
+import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
 
 -- | A flat state, measured once for naming paper on it: where each vertex was
@@ -288,3 +296,82 @@ regionFace st m = case [f | (f, ring) <- flatFaces st, insideRing (flatRoom st) 
 -- | A face's corners on the sheet.
 ringOf :: FlatState -> [Int] -> [V2]
 ringOf st ring = [p | v <- ring, Just p <- [IM.lookup v (flatMaterial st)]]
+
+-- | The faces a fold's seed picks: the one face it lies strictly inside, or,
+-- for a seed at a corner where faces meet, every face there. A corner of the
+-- sheet is a vertex, and a fold such as @corner south-east to centre@ names
+-- its moving paper by one.
+seedFaces :: FlatState -> V2 -> Either ResolveProblem [FaceId]
+seedFaces st m = case [f | (f, ring) <- flatFaces st, insideRing room (ringOf st ring) m] of
+  [f] -> Right [f]
+  inside
+    | any ((<= room) . norm . (^-^ m)) (IM.elems (flatMaterial st)) -> Right holding
+    | null holding -> Left (OffThePaper (toSheetLengths st m))
+    | otherwise -> Left (NotInOneFace (toSheetLengths st m) (length inside))
+  where
+    room = flatRoom st
+    holding = [f | (f, ring) <- flatFaces st, holdsPoint st (ringOf st ring) m]
+
+-- | The paper a fold turns, as "Senbazuru.Origami.Flap" takes it: the faces
+-- that move, the creases of the hinge, and a moving face beside the first of
+-- them, which the library measures the turn against.
+data Selection = Selection
+  { selectionMoving :: ![FaceId],
+    selectionHinge :: ![EdgeId],
+    selectionSide :: !FaceId
+  }
+  deriving stock (Eq, Show)
+
+-- | The flap containing the seed: the faces still joined to the seed's faces
+-- once every candidate crease along the line is cut. The hinge is the
+-- candidates that border it, which leaves alone the creases of layers the
+-- fold does not move. Refused if the seed lies on the line, if a corner seed
+-- picks paper on both sides, if no candidate borders the flap, or if one that
+-- does is F.
+flapOf :: FlatState -> FoldLine -> [EdgeId] -> V2 -> [FaceId] -> Either SelectionError Selection
+flapOf st (FoldLine origin direction) candidates seed picked = do
+  let room = flatRoom st
+      side p = cross2 direction (p ^-^ origin)
+  case placedAt st seed of
+    Right at | abs (side at) <= room -> Left (SeedOnTheLine (toSheetLengths st seed))
+    _ -> Right ()
+  let owners = M.fromListWith (++) [(key a b, [f]) | (f, ring) <- flatFaces st, (a, b) <- edges ring]
+      facesOf a b = M.findWithDefault [] (key a b) owners
+      cut = IS.fromList [e | EdgeId e <- candidates]
+      joined = M.fromListWith (++) [(f, [g]) | (EdgeId e, a, b, _) <- flatEdges st, not (IS.member e cut), f <- facesOf a b, g <- facesOf a b, f /= g]
+      reach seen [] = seen
+      reach seen (f : rest)
+        | f `elem` seen = reach seen rest
+        | otherwise = reach (f : seen) (M.findWithDefault [] f joined ++ rest)
+  first' <- case picked of
+    f : _ -> Right f
+    [] -> Left NothingSelected
+  let moving = reach [] [first']
+  if all (`elem` moving) picked then Right () else Left (SeedSplit (toSheetLengths st seed))
+  let beside = [(e, letter, fs) | (e, a, b, letter) <- flatEdges st, e `elem` candidates, let fs = facesOf a b, any (`elem` moving) fs, any (`notElem` moving) fs]
+  case [e | (e, Flat, _) <- beside] of
+    e : _ -> Left (ExistingHingeFlat e)
+    [] -> Right ()
+  case beside of
+    (_, _, fs) : _ | f : _ <- filter (`elem` moving) fs -> Right (Selection (nub moving) [h | (h, _, _) <- beside] f)
+    _ -> Left NothingSelected
+  where
+    key a b = (min a b, max a b)
+
+-- | The hinge as stretches of crease on the sheet, each with its edges: every
+-- run of hinge edges joined end to end becomes one stretch, from end to end.
+-- A fold through several layers has a stretch for each layer it turns.
+hingeStretches :: FlatState -> [EdgeId] -> [(MaterialSegment, [EdgeId])]
+hingeStretches st hinge = [found | group <- groups hinge, Just found <- [stretch group]]
+  where
+    ends e = [(a, b) | (e', a, b, _) <- flatEdges st, e' == e]
+    touches g e = or [x == y | e' <- g, (a, b) <- ends e', (c, d) <- ends e, x <- [a, b], y <- [c, d]]
+    groups = foldr place []
+    place e gs = case [g | g <- gs, touches g e] of
+      [] -> [e] : gs
+      meeting -> (e : concat meeting) : filter (`notElem` meeting) gs
+    stretch group = case [p | e <- group, (a, b) <- ends e, Just p <- [IM.lookup a (flatMaterial st), IM.lookup b (flatMaterial st)]] of
+      points@(p : q : _) ->
+        let along x = dot x (q ^-^ p)
+         in Just (MaterialSegment (MaterialPoint (minimumBy (comparing along) points)) (MaterialPoint (minimumBy (comparing (negate . along)) points)), [e | e <- hinge, e `elem` group])
+      _ -> Nothing

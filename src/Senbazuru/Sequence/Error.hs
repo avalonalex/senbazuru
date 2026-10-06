@@ -78,6 +78,10 @@ module Senbazuru.Sequence.Error
     -- * A reference no paper answers
     ResolveProblem (..),
 
+    -- * A move that cannot be made
+    MoveFailure (..),
+    SelectionError (..),
+
     -- * The kinds a sequence may expect
     refusalKinds,
 
@@ -95,10 +99,14 @@ import Data.Text qualified as T
 import Numeric (showHex)
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (FoldError)
+import Senbazuru.Fold.Types (EdgeId (..))
 import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Origami.Flap (FlapError)
+import Senbazuru.Origami.Folding (FoldingError)
 import Senbazuru.Sequence.Syntax (Corner (..), Name (..), RefusalKind (..), Span (..), exactNumber)
 
--- | Every way a sequence can be refused before any paper is folded.
+-- | Every way a sequence can be refused: as text, as a sequence before any
+-- paper is folded, or when it is run against paper.
 data SequenceError
   = -- | The text is not a sequence source.
     ParseFailed ParseProblem
@@ -109,6 +117,12 @@ data SequenceError
     -- @sheet@ line's, or 'NoSpan' for a sequence built in Haskell, and the
     -- path is as the author wrote it.
     SheetRefused Span FilePath SheetProblem
+  | -- | A reference names no paper, or no one place on it: where, the span of
+    -- the move or header line, the reference as written, and why.
+    ResolveRefused Place Span Text ResolveProblem
+  | -- | A move cannot be made: the step's number and name, the move's span,
+    -- and why.
+    StepRefused Int (Maybe Name) Span MoveFailure
   deriving stock (Eq, Show)
 
 -- | Where in a sequence a static problem is, in words an author can use
@@ -282,6 +296,8 @@ instance Explain SequenceError where
     ParseFailed problem -> explain problem
     StaticRefused place _ problem -> placeWords place <> ": " <> explain problem
     SheetRefused _ path problem -> "sheet " <> quote (T.pack path) <> ": " <> explain problem
+    ResolveRefused place _ written problem -> placeWords place <> ": " <> written <> ": " <> explain problem
+    StepRefused n name _ failure -> placeWords (InStep n name) <> ": " <> explain failure
     where
       placeWords = \case
         InHeader -> "header"
@@ -409,6 +425,13 @@ data SheetProblem
     SheetNotAPattern FoldError
   | -- | The key frame's creases bound no face: there is no paper to hold.
     SheetHasNoFaces
+  | -- | The run was not handed the file the header names.
+    SheetNotLoaded
+  | -- | The sheet, laid flat, will not fold.
+    SheetDoesNotFold FoldingError
+  | -- | @start folded@, which keeps the file's angles and chooses a stacking,
+    -- is not run yet.
+    StartFoldedNotRunYet
   | -- | The default anchor, the vertex mean of the sheet's largest face, is
     -- not strictly inside that face, which happens only when the face is not
     -- convex.
@@ -432,6 +455,9 @@ instance Explain SheetProblem where
       "its key frame calls itself a folded form (frame_classes foldedForm); a sheet has to be the paper before any folding"
     SheetNotAPattern err -> "its key frame cannot be read as a crease pattern: " <> explain err
     SheetHasNoFaces -> "its creases bound no face, so there is no paper to fold"
+    SheetNotLoaded -> "the run was not given this file"
+    SheetDoesNotFold err -> "laid flat, it will not fold: " <> explain err
+    StartFoldedNotRunYet -> "\"start folded\", which starts from the file's own angles, cannot be run yet"
     DefaultAnchorOutside (V2 x y) ->
       "the default anchor, ("
         <> num x
@@ -502,6 +528,61 @@ instance Explain ResolveProblem where
         NorthEast -> "north-east"
         NorthWest -> "north-west"
 
+-- | Why a move cannot be made, once its references name paper.
+data MoveFailure
+  = -- | The paper the move would turn cannot be chosen.
+    Selecting SelectionError
+  | -- | The library refused the turn: its flap, its path or its end.
+    FlapRefused FlapError
+  | -- | The paper would not fold from its angles.
+    FoldingRefused FoldingError
+  | -- | Folding the paper afresh from what the move accepted put it somewhere
+    -- else: what differs.
+    JoinBroken Text
+  | -- | @unfold@ of a step whose crease a later move changed, so turning it
+    -- back would undo that move too: the crease.
+    UnfoldChangedSince EdgeId
+  | -- | A move, or a part of one, this runner does not make yet.
+    MoveNotRunYet Text
+  deriving stock (Eq, Show)
+
+-- | Why the paper a fold moves cannot be chosen.
+data SelectionError
+  = -- | A line that is not an alignment fold, such as @[P, Q]@, says nothing
+    -- about which side moves, and no @moving P@ said it.
+    SeedMissing
+  | -- | The seed, in sheet lengths, lies on the fold line, so it is on both
+    -- sides.
+    SeedOnTheLine V2
+  | -- | The seed, a corner where faces meet, picks paper on both sides of the
+    -- line.
+    SeedSplit V2
+  | -- | No crease along the line borders the paper the seed picks.
+    NothingSelected
+  | -- | A crease of the hinge is F, which lies flat with no direction and
+    -- cannot be turned: the crease.
+    ExistingHingeFlat EdgeId
+  deriving stock (Eq, Show)
+
+instance Explain MoveFailure where
+  explain = \case
+    Selecting err -> explain err
+    FlapRefused err -> explain err
+    FoldingRefused err -> explain err
+    JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
+    UnfoldChangedSince (EdgeId e) -> "(internal edge " <> tshow e <> ") has been folded again since, so turning it back would undo that fold too"
+    MoveNotRunYet what -> what <> " cannot be run yet"
+
+instance Explain SelectionError where
+  explain = \case
+    SeedMissing -> "this line does not say which side moves; add moving P, a point on the paper that moves"
+    SeedOnTheLine at -> "the paper that moves is named by " <> point at <> ", which lies on the fold line and so on both sides of it"
+    SeedSplit at -> point at <> " is a corner where paper on both sides of the fold line meets, so it does not say which side moves"
+    NothingSelected -> "no crease along the line borders the paper that moves"
+    ExistingHingeFlat (EdgeId e) -> "(internal edge " <> tshow e <> ") lies flat as an F crease, which has no direction to fold"
+    where
+      point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
+
 -- | The names @expect refused@ may use, from the design's catalogue of
 -- refusals (@PRDs\/02-language-semantics.md@, §12). Only refusals that
 -- /running a move/ can raise are here. A parse or static problem inside the
@@ -545,6 +626,8 @@ errorSpan = \case
   ParseFailed problem -> problemSpan problem
   StaticRefused _ sp _ -> sp
   SheetRefused sp _ _ -> sp
+  ResolveRefused _ sp _ _ -> sp
+  StepRefused _ _ sp _ -> sp
 
 -- | @path:line:col@ of where the error starts, counted from 1, with a column
 -- counting characters and a tab counting as one. 'Nothing' for 'NoSpan'.
