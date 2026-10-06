@@ -22,15 +22,15 @@ import Senbazuru.Sequence.Elaborate
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Syntax (Move (..), Name (..))
 import Test.Hspec
-import Test.SequenceExamples (blintz)
+import Test.SequenceExamples (blintz, blintzCaptions)
 
 spec :: Spec
 spec = describe "a move record" $ do
   source <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
   turns <- runIO (right (buildBlintzSequence (keyFrame source)))
   elaborated <- runIO (right (elaborate <$> checkSequence blintz))
-  let places = [(step, elaboratedName s, coreOrigin m) | (step, s) <- zip [1 ..] (elaboratedSteps elaborated), m <- elaboratedMoves s]
-  records <- runIO . right $ sequence [hingeTurn step 1 name origin [(hinge, [EdgeId e])] (MaterialPoint corner) (blintzMotion turn) | ((step, name, origin), turn, corner, hinge, e) <- zip5 places turns corners hinges edges]
+  let places = [(step, elaboratedName s, elaboratedCaption s, coreOrigin m) | (step, s) <- zip [1 ..] (elaboratedSteps elaborated), m <- elaboratedMoves s]
+  records <- runIO . right $ sequence [hingeTurn step 1 name caption origin [(hinge, [EdgeId e])] (MaterialPoint corner) (blintzMotion turn) | ((step, name, caption, origin), turn, corner, hinge, e) <- zip5 places turns corners hinges edges]
 
   -- If the language's blintz or the recipe changed order, every test below
   -- would be about the wrong pairs.
@@ -40,11 +40,12 @@ spec = describe "a move record" $ do
     map (originWritten . recordOrigin) (drop 4 records) `shouldBe` [Unfold [Name "c1"]]
 
   -- Turns red if 'hingeTurn' swapped the step and the move, or dropped a
-  -- step's name.
+  -- step's name or caption.
   it "says which step and move it is" $ do
     map recordStep records `shouldBe` [1 .. 5]
     map recordMoveIndex records `shouldBe` replicate 5 1
     map recordStepName records `shouldBe` Just (Name "c1") : replicate 4 Nothing
+    map recordCaption records `shouldBe` map Just blintzCaptions
 
   -- Turns red if a surface came from anywhere but the record's own turn,
   -- or the two were swapped.
