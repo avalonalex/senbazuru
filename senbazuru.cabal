@@ -201,6 +201,7 @@ library
     Senbazuru.Sequence.Parse
     Senbazuru.Sequence.Pretty
     Senbazuru.Sequence.Record
+    Senbazuru.Sequence.Run
     Senbazuru.Sequence.RunPlan
     Senbazuru.Sequence.Syntax
 
@@ -479,6 +480,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
     Senbazuru.Sequence.RecordSpec
+    Senbazuru.Sequence.RunSpec
     Senbazuru.Sequence.RunPlanSpec
     Senbazuru.Sequence.SyntaxSpec
     Senbazuru.Sequence.TraditionalCraneSpec

@@ -71,6 +71,10 @@ module Senbazuru.Sequence.Error
     Bound (..),
     RepeatObstacle (..),
 
+    -- * A sheet no run can start from
+    SheetProblem (..),
+    FoldedBy (..),
+
     -- * The kinds a sequence may expect
     refusalKinds,
 
@@ -86,7 +90,9 @@ import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showHex)
-import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Explain (Explain (..), num, tshow)
+import Senbazuru.Fold.Query (FoldError)
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Sequence.Syntax (Name (..), RefusalKind (..), Span (..), exactNumber)
 
 -- | Every way a sequence can be refused before any paper is folded.
@@ -96,6 +102,10 @@ data SequenceError
   | -- | The sequence cannot mean anything, whatever the paper. The 'Span' is
     -- 'NoSpan' for a sequence built in Haskell; the 'Place' is always there.
     StaticRefused Place Span StaticProblem
+  | -- | The sheet the header names cannot start a run. The 'Span' is the
+    -- @sheet@ line's, or 'NoSpan' for a sequence built in Haskell, and the
+    -- path is as the author wrote it.
+    SheetRefused Span FilePath SheetProblem
   deriving stock (Eq, Show)
 
 -- | Where in a sequence a static problem is, in words an author can use
@@ -268,6 +278,7 @@ instance Explain SequenceError where
   explain = \case
     ParseFailed problem -> explain problem
     StaticRefused place _ problem -> placeWords place <> ": " <> explain problem
+    SheetRefused _ path problem -> "sheet " <> quote (T.pack path) <> ": " <> explain problem
     where
       placeWords = \case
         InHeader -> "header"
@@ -382,6 +393,48 @@ oneOf = \case
   [first, second] -> first <> " or " <> second
   first : rest -> first <> ", " <> oneOf rest
 
+-- | Why a sheet cannot start a run. A sheet is the paper before any folding,
+-- and a run takes it from a file's key frame, never from its @file_frames@.
+data SheetProblem
+  = -- | The key frame has no vertices. The count is the file's @file_frames@,
+    -- which hold its paper instead: a file of folded states, not a sheet.
+    SheetHasNoVertices Int
+  | -- | The key frame is folded already.
+    SheetAlreadyFolded FoldedBy
+  | -- | The key frame's creases cannot be cut and traced into faces.
+    SheetNotAPattern FoldError
+  | -- | The key frame's creases bound no face: there is no paper to hold.
+    SheetHasNoFaces
+  | -- | The default anchor, the vertex mean of the sheet's largest face, is
+    -- not strictly inside that face, which happens only when the face is not
+    -- convex.
+    DefaultAnchorOutside V2
+  deriving stock (Eq, Show)
+
+-- | How a key frame shows it is folded: by leaving the plane, with how far,
+-- or by calling itself a folded form.
+data FoldedBy = ByRelief Double | ByClass
+  deriving stock (Eq, Show)
+
+instance Explain SheetProblem where
+  explain = \case
+    SheetHasNoVertices frames ->
+      "its key frame has no vertices; the file keeps its paper in "
+        <> tshow frames
+        <> " file_frames, as a file of folded states does, and a sheet has to be the paper before any folding"
+    SheetAlreadyFolded (ByRelief span') ->
+      "its key frame is folded already, leaving the plane by " <> num span' <> "; a sheet has to be the paper before any folding"
+    SheetAlreadyFolded ByClass ->
+      "its key frame calls itself a folded form (frame_classes foldedForm); a sheet has to be the paper before any folding"
+    SheetNotAPattern err -> "its creases cannot be traced into faces: " <> explain err
+    SheetHasNoFaces -> "its creases bound no face, so there is no paper to fold"
+    DefaultAnchorOutside (V2 x y) ->
+      "the default anchor, ("
+        <> num x
+        <> ", "
+        <> num y
+        <> "), the vertex mean of the largest face, is not inside that face, which is not convex; name the anchor with anchor P"
+
 -- | The names @expect refused@ may use, from the design's catalogue of
 -- refusals (@PRDs\/02-language-semantics.md@, §12). Only refusals that
 -- /running a move/ can raise are here. A parse or static problem inside the
@@ -424,6 +477,7 @@ errorSpan :: SequenceError -> Span
 errorSpan = \case
   ParseFailed problem -> problemSpan problem
   StaticRefused _ sp _ -> sp
+  SheetRefused sp _ _ -> sp
 
 -- | @path:line:col@ of where the error starts, counted from 1, with a column
 -- counting characters and a tab counting as one. 'Nothing' for 'NoSpan'.

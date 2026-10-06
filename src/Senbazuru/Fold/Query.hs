@@ -24,6 +24,7 @@ module Senbazuru.Fold.Query
     Face (..),
     FrameKind (..),
     frameKind,
+    atRest,
     frameVertices,
     frameCreases,
     frameFaces,
@@ -436,6 +437,14 @@ data FrameKind
   | -- | The paper as it is after folding, flat or not.
     FoldedForm
   deriving stock (Eq, Show)
+
+-- | How far from 0, in degrees, a crease's fold angle may be and still count
+-- as lying flat. One number, so that every reader asking \"is this crease
+-- folded?\" gets the same answer: 'Senbazuru.Origami.Surface' when it decides
+-- which creases a bent surface keeps, and a fold sequence when it reads the
+-- letter a sheet's crease was drawn with.
+atRest :: Double
+atRest = 1e-10
 
 -- | Decide which kind of picture a frame is, from its geometry and then, only
 -- if it has to, from its classes.
