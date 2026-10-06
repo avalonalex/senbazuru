@@ -307,9 +307,9 @@ anchor placement with h cancels it.
 - The sheet is flat before the move, so h is the identity and nothing on the page
   moves.
 
-Re-anchoring is the recommended default of
-[owner decision 3](10-roadmap-risks-questions.md#6-owner-decisions); refusing is its
-alternative.
+Re-anchoring is what
+[owner decision 3](10-roadmap-risks-questions.md#6-owner-decisions) chose on
+2026-10-06; refusing was its alternative.
 
 **An anchor that a new crease passes through**
 ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs),
@@ -1514,17 +1514,18 @@ The owner decisions this file depends on, numbered as in
 [10 §6](10-roadmap-risks-questions.md#6-owner-decisions). Each has a recommended
 default, which this file follows:
 
-- **2.** The `nearMissBand` default. Recommended: 1e-3 sheet lengths.
+- **2.** The `nearMissBand` default. Decided 2026-10-06 as recommended: 1e-3
+  sheet lengths.
 - **3.** Re-anchor automatically, or refuse, when a move carries the anchor.
-  Recommended: re-anchor, printed by `--report`.
+  Decided 2026-10-06 as recommended: re-anchor, printed by `--report`.
 - **8.** The blintz direction. The *manifest*, the study's table of cases and their
   angles (`study/fold-material/cases.json`), folds corners up; the recipe folds them
   down
-  ([A2](research/A2-study-recipes-as-proto-dsl.md) F3). Recommended: the recipe's
-  `fold behind`, which §6.2 follows.
+  ([A2](research/A2-study-recipes-as-proto-dsl.md) F3). Decided 2026-10-06 as
+  recommended: the recipe's `fold behind`, which §6.2 follows.
 - **9.** Whether `quarter-fold-steps.fold` migrates to the state rule (§11's
   "Fixture" and "Written" columns differ in states 0 and 1), or stays as the
-  regression. Recommended: it stays.
+  regression. Decided 2026-10-06 as recommended: it stays.
 - **10.** Eighth turns with trigonometry, or a `sheet square as diamond` start.
   Recommended: trigonometry, with platform bits in written coordinates stated.
 

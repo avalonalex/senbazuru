@@ -667,7 +667,7 @@ with a recommended default there;
 
 1. **File extension and "sequence source"** (decision 1; default `.foldseq`, first
    line `foldseq 1`). These fix the file names in A-2 and the module header.
-2. **Blintz direction** (decision 8; default the recipe's `fold behind`). Both
+2. **Blintz direction** (decision 8, decided 2026-10-06: the recipe's `fold behind`). Both
    blintzes fold `mountain`, as the recipe does. The study's angle manifest
    (`study/fold-material/cases.json`) folds the corners up instead (+90°, then
    +175°). If the manifest is chosen, both switch to `fold in front` in one PR, and
