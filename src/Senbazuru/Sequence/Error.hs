@@ -75,6 +75,9 @@ module Senbazuru.Sequence.Error
     SheetProblem (..),
     FoldedBy (..),
 
+    -- * A reference no paper answers
+    ResolveProblem (..),
+
     -- * The kinds a sequence may expect
     refusalKinds,
 
@@ -93,7 +96,7 @@ import Numeric (showHex)
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (FoldError)
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Sequence.Syntax (Name (..), RefusalKind (..), Span (..), exactNumber)
+import Senbazuru.Sequence.Syntax (Corner (..), Name (..), RefusalKind (..), Span (..), exactNumber)
 
 -- | Every way a sequence can be refused before any paper is folded.
 data SequenceError
@@ -436,6 +439,69 @@ instance Explain SheetProblem where
         <> num y
         <> "), the vertex mean of the largest face, is not inside that face, which is not convex; name the anchor with anchor P"
 
+-- | Why a reference names no paper, or no one place on it. Points are in
+-- /sheet lengths/, the author's units: the sheet's bounding box has its
+-- south-west corner at (0, 0) and its longer side 1.
+data ResolveProblem
+  = -- | A typed point near a vertex and not on it: the point as written, the
+    -- vertex's internal id and where it is, and how far apart they are. The
+    -- author almost certainly meant the vertex, and should name it by a
+    -- construction rather than a rounded number.
+    NearMiss (Rational, Rational) Int V2 Double
+  | -- | A point that had to lie strictly inside one face, and lies inside this
+    -- many, or on an edge or a corner between faces.
+    NotInOneFace V2 Int
+  | -- | A point on no paper.
+    OffThePaper V2
+  | -- | A point that the faces sharing it fold to places this far apart.
+    PlacementsDisagree V2 Double
+  | -- | A corner of the sheet's box where the sheet has no corner, because its
+    -- outline is not a square or a rectangle.
+    NoCornerThere Corner
+  | -- | A construction on paper that does not lie flat: the relief, the
+    -- height the folded paper spans.
+    ConstructionInTheAir Double
+  | -- | A construction whose two points coincide, which pins down no line.
+    DegenerateConstruction
+  | -- | A fold line that runs along no crease on the paper.
+    NoSolution
+  | -- | A form of reference this runner does not resolve yet.
+    NotRunYet Text
+  deriving stock (Eq, Show)
+
+instance Explain ResolveProblem where
+  explain = \case
+    NearMiss (u, v) vertex at distance ->
+      "("
+        <> exactNumber u
+        <> ", "
+        <> exactNumber v
+        <> ") is "
+        <> num distance
+        <> " sheet lengths from (internal vertex "
+        <> tshow vertex
+        <> ") at "
+        <> point at
+        <> ", too near to be another point; name the vertex by a construction instead"
+    NotInOneFace at faces -> point at <> " has to lie inside one face, and lies " <> placed faces
+    OffThePaper at -> point at <> " is not on the paper"
+    PlacementsDisagree at distance -> "the faces sharing " <> point at <> " fold it to places " <> num distance <> " sheet lengths apart"
+    NoCornerThere corner -> "the sheet has no " <> cornerWords corner <> " corner; its outline is not a rectangle, so name the point another way"
+    ConstructionInTheAir relief -> "a construction needs the paper lying flat, and it stands " <> num relief <> " out of the plane"
+    DegenerateConstruction -> "the construction's two points are the same point, which fixes no line"
+    NoSolution -> "the fold line runs along no crease on the paper"
+    NotRunYet what -> what <> " cannot be run yet"
+    where
+      point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
+      placed = \case
+        0 -> "on an edge or a corner between faces"
+        n -> "inside " <> tshow n <> " faces"
+      cornerWords = \case
+        SouthWest -> "south-west"
+        SouthEast -> "south-east"
+        NorthEast -> "north-east"
+        NorthWest -> "north-west"
+
 -- | The names @expect refused@ may use, from the design's catalogue of
 -- refusals (@PRDs\/02-language-semantics.md@, §12). Only refusals that
 -- /running a move/ can raise are here. A parse or static problem inside the
@@ -450,7 +516,7 @@ refusalKinds :: [RefusalKind]
 refusalKinds =
   map RefusalKind . concat $
     [ -- naming paper against a state
-      ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree"],
+      ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree", "NoCornerThere"],
       ["EdgeNotStraight", "CreaseNotStraight", "EmptyCrease", "ConstructionInTheAir"],
       ["NoSolution", "NeedsNearest", "NearestAmbiguous", "DegenerateConstruction", "NoCreaseThere"],
       ["MarkOnSeveralLayers", "EndTie", "LandmarkAmbiguous"],

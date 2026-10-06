@@ -75,6 +75,7 @@ module Senbazuru.Fold.Faces
     pointAt,
     endsOf,
     tolerance,
+    toleranceOf,
   )
 where
 
@@ -246,9 +247,14 @@ endsOf sheet (a, b) = (pointAt sheet a, pointAt sheet b)
 -- ever wanted again it should be a second function, not a second component
 -- nobody can tell apart at the call site.
 tolerance :: Sheet -> Double
-tolerance sheet = 1e-9 * diagonal
-  where
-    diagonal = maybe 0 (norm . boxSize) (boxFromPoints (IM.elems (sheetPoints sheet)))
+tolerance sheet = toleranceOf (IM.elems (sheetPoints sheet))
+
+-- | 'tolerance' for points already in hand: a billionth of their bounding
+-- box's diagonal. For a caller holding a folded pattern's points rather than a
+-- 'Sheet', such as a fold sequence naming paper on its sheet, so that the two
+-- cannot come to measure \"the same point\" differently.
+toleranceOf :: [V2] -> Double
+toleranceOf points = 1e-9 * maybe 0 (norm . boxSize) (boxFromPoints points)
 
 -- | Refuse every drawing whose regions are not what tracing would report.
 --

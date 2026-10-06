@@ -49,6 +49,7 @@ module Senbazuru.Geometry.Polygon
     segmentsCross,
 
     -- * Whole polygons
+    edges,
     signedArea,
     centroid,
     isConvex,
@@ -59,6 +60,7 @@ module Senbazuru.Geometry.Polygon
     subtractConvex,
     clipSegment,
     strictlyInside,
+    insideRing,
     distanceOutside,
 
     -- * Segments on one line
@@ -356,6 +358,21 @@ clipSegment poly (p, q) = go 0 1 (edges poly)
 -- segment that runs along an edge of a face from one that runs through it.
 strictlyInside :: Double -> [V2] -> V2 -> Bool
 strictlyInside clearance poly x = distanceOutside poly x < negate clearance
+
+-- | Is the point inside the ring, and clear of every edge by more than the
+-- given distance? For any simple ring, convex or not, wound either way.
+--
+-- 'strictlyInside' asks the same question of a convex ring by half-planes,
+-- which is cheaper and is all a convex ring needs. On a ring that is not
+-- convex it is wrong in a way that matters: every point beyond the line of an
+-- edge that turns inward is called outside, including points well inside the
+-- other arm of an L. So this counts how many edges a ray from the point to
+-- the right crosses, odd meaning inside, and measures the distance to each
+-- edge as a segment rather than as a line.
+insideRing :: Double -> [V2] -> V2 -> Bool
+insideRing clearance ring x@(V2 px py) = odd crossings && all ((> clearance) . (`distanceToSegment` x)) (edges ring)
+  where
+    crossings = length [() | (V2 ax ay, V2 bx by) <- edges ring, (ay > py) /= (by > py), px < ax + (py - ay) * (bx - ax) / (by - ay)]
 
 -- | How far outside the convex, anticlockwise polygon the point is: positive
 -- outside, zero on the boundary, negative inside, and in either case the

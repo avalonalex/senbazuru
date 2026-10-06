@@ -82,7 +82,7 @@ import Senbazuru.Fold.Faces (sheetOf, tolerance)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, frameKind, frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (centroid, signedArea, strictlyInside)
+import Senbazuru.Geometry.Polygon (centroid, insideRing, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Sequence.Error (FoldedBy (..), SheetProblem (..))
 import Senbazuru.Sequence.Record (MaterialPoint (..))
@@ -124,7 +124,7 @@ sheetState file = do
       measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 :: Int ..] faces]
   (index, anchorFace, anchor) <- case defaultAnchor room measured of
     Just (i, face, _, mean)
-      | strictlyInside room (ring face) mean -> Right (i, face, mean)
+      | insideRing room (ring face) mean -> Right (i, face, mean)
       | otherwise -> Left (DefaultAnchorOutside mean)
     Nothing -> Left SheetHasNoFaces
   let angles = edgesFoldAngle planar
