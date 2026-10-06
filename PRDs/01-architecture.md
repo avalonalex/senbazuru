@@ -121,7 +121,7 @@ imports one on a higher level.
 | 1 | `Sequence.Syntax` | the tree, spans, `canonical`, `stripSpans`, `sourceFiles` |
 | 2 | `Sequence.Error` | `SequenceError` and every sequence-level problem type with its `Explain` instance; `RefusalKind`; `sourceLocation`, `excerpt` |
 | 3 | `Sequence.Build`, `Sequence.Parse`, `Sequence.Pretty`, `Sequence.Check`, `Sequence.Elaborate` | the two front ends and the static passes |
-| 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord`, `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose` |
+| 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord` with `hingeTurn` and `recordAngles`, `MaterialPoint` and `MaterialSegment` (until an error at level 2 needs them, [C75](decisions.md#changes-since-draft-v2)), `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose` |
 | 5 | `Sequence.Run` | `FoldState`, `sheetState`, `RunSettings`, `runSequence` |
 | 6 | `Sequence.Write`, `Sequence.RunPlan`, `Sequence.Material` | the file writer; the `run` verb's flag rules; the settle consumer, in the study until M8 |
 

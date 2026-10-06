@@ -1740,7 +1740,7 @@ starts from; that is the figure the heading means.
   | 1 | `Sequence.Syntax` | the tree (including `RefusalKind`, which `ExpectRefused` holds), spans, `canonical`, `stripSpans`, `sourceFiles` |
   | 2 | `Sequence.Error` | `SequenceError` and every sequence-level problem type with its `Explain` instance; the catalogue of kinds a `RefusalKind` may name; `sourceLocation`, `excerpt` |
   | 3 | `Sequence.Build`, `Sequence.Parse`, `Sequence.Pretty`, `Sequence.Check`, `Sequence.Elaborate` | the front ends and the static passes |
-  | 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord`, `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose` |
+  | 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord` with `hingeTurn` and `recordAngles`, `MaterialPoint` and `MaterialSegment` (until an error at level 2 needs them, [C75](#changes-since-draft-v2)), `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose` |
   | 5 | `Sequence.Run` | `FoldState`, `sheetState`, `RunSettings`, `runSequence` |
   | 6 | `Sequence.Write`, `Sequence.RunPlan`, `Sequence.Material` | the file writer, the flag rules, the settle consumer |
 
@@ -1915,8 +1915,8 @@ data RouteEvidence = NoMotion | Presented | StateOnly | Sampled CheckedMacro Sam
 data PoseRef = PoseBefore | PoseAfter | PoseOnRoute Rational
 data PoseError = NoRoute RouteEvidence | PoseFlap FlapError | PoseMacro MacroError
 recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose   -- RoutePose from Origami.Route
-newtype MaterialPoint = MaterialPoint V2                          -- built (#486), as is
-data MaterialSegment = MaterialSegment MaterialPoint MaterialPoint
+newtype MaterialPoint = MaterialPoint V2                          -- built (#486); moves below Sequence.Error with the first
+data MaterialSegment = MaterialSegment MaterialPoint MaterialPoint -- MoveFailure that names one, since level 2 cannot import level 4
 data MoveRecord = MoveRecord                                     -- opaque: constructor hidden, each field read through a function of its name (C75)
   -- built at M2 for a turn about a hinge (#486, #487):
   { recordStep :: Int, recordMoveIndex :: Int, recordStepName :: Maybe Name, recordCaption :: Maybe Text
@@ -2480,7 +2480,7 @@ lists edits for.
 | C72 | The crane's existing-crease count is 6 (the research note's count line says 7) | 02 §6.2 | the note's table [research] | adopted | 02 |
 | C73 | A step with no move other than `let` is refused as `EmptyStep` | here | 04 grammar allows an empty block | adopted | 02, 04 |
 | C74 | `README.md` and `docs/roadmap.md` roadmap item 2 as row 18 | 10 §4 note | `README.md:213` [ran] | adopted | 01, 10 |
-| C75 | `MoveRecord` as built at M2 (#486, #487): opaque, made only by `hingeTurn` from a `CheckedFlap` and read through functions, so record update cannot pair one turn's paper with another's; `recordSpan` → `recordOrigin`, which keeps the move as written; `recordLabel`, the step's caption, → `recordCaption`; `recordPath` → `recordStepName`, one name while a step's is the only one a move sits under; `recordStationary` a bare `FaceId`; `recordAngles` read from the surfaces; every other field arrives with the first move that fills it | here; #282 | `Sequence.Record` [code] | adopted-modified | 01, 07 |
+| C75 | `MoveRecord` as built at M2 (#486, #487): opaque, made only by `hingeTurn` from a `CheckedFlap` and read through functions, so record update cannot pair one turn's paper with another's; `recordSpan` → `recordOrigin`, which keeps the move as written; `recordLabel`, the step's caption, → `recordCaption`; `recordPath` → `recordStepName`, one name while a step's is the only one a move sits under; `recordStationary` a bare `FaceId`; `recordAngles` read from the surfaces; every other field arrives with the first move that fills it. `MaterialPoint` and `MaterialSegment` were built in `Sequence.Record`, where the record first needed them; `MoveFailure`'s constructors that name them sit at level 2, so both move below `Sequence.Error` with the first such error | here; #282 | `Sequence.Record` [code] | adopted-modified | 01, 07 |
 
 ## Proposals not adopted
 
