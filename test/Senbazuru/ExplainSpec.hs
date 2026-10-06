@@ -31,7 +31,7 @@ import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (LoadError (..), SaveError (..))
 import Senbazuru.Fold.Query (FoldError (..))
-import Senbazuru.Fold.Types (FaceId (..), VertexId (..))
+import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Import.Segments (ImportError (..))
 import Senbazuru.Origami.Flat (FlatError (..))
@@ -46,7 +46,7 @@ import Senbazuru.Origami.Stacking qualified as Stack
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
-import Senbazuru.Sequence.Error (FoldedBy (..), Found (..), ParseProblem (..), Place (..), ResolveProblem (..), SequenceError (..), SheetProblem (..), StaticProblem (..))
+import Senbazuru.Sequence.Error (FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
@@ -75,6 +75,10 @@ everyType =
     ("SequenceError, a sheet", explain (SheetRefused NoSpan "a.fold" (SheetHasNoVertices 16))),
     ("SheetProblem", explain (SheetAlreadyFolded (ByRelief 0.25))),
     ("ResolveProblem", explain (NotInOneFace (V2 0.75 0.25) 0)),
+    ("SequenceError, a reference", explain (ResolveRefused (InStep 2 Nothing) NoSpan "corner north-east" (OffThePaper (V2 2 2)))),
+    ("SequenceError, a move", explain (StepRefused 5 Nothing NoSpan (UnfoldChangedSince (EdgeId 8)))),
+    ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
+    ("SelectionError", explain SeedMissing),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
     ("StaticProblem", explain EmptyStep),
     ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),

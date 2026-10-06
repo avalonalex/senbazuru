@@ -36,7 +36,9 @@
 -- An @unfold@ reuses each named move's recorded hinge and seed, last move
 -- first, and turns its hinge back by that move's change of angle. It is
 -- refused if a later move changed one of those creases, and skips a move
--- whose creases all lie flat already.
+-- whose creases all lie flat already. One that turns back several moves makes
+-- a record for each, all at the unfold's own step and move, in the order it
+-- turned them.
 --
 -- == Not yet
 --
@@ -127,7 +129,7 @@ import Senbazuru.Geometry.Polygon (centroid, insideRing, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, prepareFlapAlong, prepareFlapToward)
-import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
+import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep (SweepSettings, defaultSweepSettings)
 import Senbazuru.Origami.Surface (surfaceFrame)
 import Senbazuru.Sequence.Elaborate (Core (..), CoreMove (..), Elaborated (..), ElaboratedStep (..), Origin (..))
@@ -144,7 +146,11 @@ data FoldState = FoldState
     theAnchor :: !MaterialPoint,
     -- | Which way the reader's side faces: in front, where a valley fold
     -- sends its paper.
-    theFront :: !Toward
+    theFront :: !Toward,
+    -- | The working pattern folded, when the last move's join check has
+    -- folded it already: the next move starts from that fold rather than
+    -- folding the same pattern again.
+    theFold :: !(Maybe Folded)
   }
   deriving stock (Eq, Show)
 
@@ -175,9 +181,9 @@ sheetState file = do
   let ring face = [p | VertexId i <- face, Just p <- [IM.lookup i material]]
       faces = [if signedArea (ring face) < 0 then reverse face else face | face <- facesVertices planar]
       measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 :: Int ..] faces]
-  (index, anchorFace, anchor) <- case defaultAnchor room measured of
+  (index, anchor) <- case defaultAnchor room measured of
     Just (i, face, _, mean)
-      | insideRing room (ring face) mean -> Right (i, face, mean)
+      | insideRing room (ring face) mean -> Right (i, mean)
       | otherwise -> Left (DefaultAnchorOutside mean)
     Nothing -> Left SheetHasNoFaces
   let angles = edgesFoldAngle planar
@@ -188,10 +194,11 @@ sheetState file = do
           planar
             { edgesAssignment = letters,
               edgesFoldAngle = map (const 0) letters,
-              facesVertices = anchorFace : [face | (j, face) <- zip [0 ..] faces, j /= index]
+              facesVertices = firstOf index faces
             },
         theAnchor = MaterialPoint anchor,
-        theFront = TowardPlusZ
+        theFront = TowardPlusZ,
+        theFold = Nothing
       }
   where
     flat (V3 x y _) = V2 x y
@@ -219,6 +226,11 @@ defaultAnchor room measured = case measured of
         low = [m | m@(_, _, _, V2 _ y) <- largest, y <= lowest + room]
         leftmost = minimum [x | (_, _, _, V2 x _) <- low]
      in find (\(_, _, _, V2 x _) -> x <= leftmost + room) low
+
+-- | The list with its @i@th item moved to the front: the anchor's face put
+-- first, since folding holds its first face still.
+firstOf :: Int -> [a] -> [a]
+firstOf i xs = [x | (j, x) <- zip [0 ..] xs, j == i] ++ [x | (j, x) <- zip [0 ..] xs, j /= i]
 
 -- | The sheet @sheet square@ names: the unit square, its four corners
 -- anticlockwise from the origin, four border edges and one face.
@@ -289,9 +301,7 @@ startOf sheets header = do
       flat <- first refuseAnchor (flatState folded)
       m <- first refuseAnchor (materialPoint flat point)
       FaceId face <- first refuseAnchor (regionFace flat m)
-      let faces = facesVertices (theWorking laid)
-          moved = [ring | (i, ring) <- zip [0 ..] faces, i == face] ++ [ring | (i, ring) <- zip [0 ..] faces, i /= face]
-      Right laid {theWorking = (theWorking laid) {facesVertices = moved}, theAnchor = MaterialPoint m}
+      Right laid {theWorking = (theWorking laid) {facesVertices = firstOf face (facesVertices (theWorking laid))}, theAnchor = MaterialPoint m, theFold = Nothing}
   Right anchored {theFront = if hSide header == WhiteUp then TowardMinusZ else TowardPlusZ}
 
 -- | One step: its moves in order, each from the state the last one left. The
@@ -323,7 +333,7 @@ runMove settings place named state = \case
 -- | A fold along creases the paper has, as the header lays out.
 foldMove :: RunSettings -> Here -> FoldState -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
 foldMove settings place state sense amount line layers seed = do
-  folded <- first (refusedAt place . FoldingRefused) (foldFrameWith (theWorking state))
+  folded <- first (refusedAt place . FoldingRefused) (foldNow state)
   flat <- first (resolvingAt place (prettyLine line)) (flatState folded)
   foldAt <- first (resolvingAt place (prettyLine line)) (foldLine (runNearMissBand settings) flat line)
   candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat foldAt)
@@ -335,10 +345,10 @@ foldMove settings place state sense amount line layers seed = do
   m <- first (resolvingAt place (prettyPoint seedPoint)) (materialPoint flat seedPoint)
   picked <- first (resolvingAt place (prettyPoint seedPoint)) (seedFaces flat m)
   selection <- first (refusedAt place . Selecting) (flapOf flat foldAt candidates m picked)
-  let MaterialPoint anchor = theAnchor state
-  case regionFace flat anchor of
-    Right face | face `elem` selectionMoving selection -> Left (refusedAt place (MoveNotRunYet "a fold that moves the anchor's paper, which re-anchors,"))
-    _ -> Right ()
+  -- The anchor's face is the working pattern's first, which folding holds
+  -- still: asking where the anchor point lies could fail once a crease runs
+  -- through it, and must not let such a fold through.
+  when (FaceId 0 `elem` selectionMoving selection) (Left (refusedAt place (MoveNotRunYet "a fold that moves the anchor's paper, which re-anchors,")))
   let toward = case sense of
         ValleyFold -> theFront state
         MountainFold -> opposite (theFront state)
@@ -375,7 +385,7 @@ undoOne settings place (state, made) earlier = do
               (seed, moving) = case recordMoving earlier of
                 (p, faces) : _ -> (p, faces)
                 [] -> (MaterialPoint (V2 0 0), [])
-          folded <- first (refusedAt place . FoldingRefused) (foldFrameWith (theWorking state))
+          folded <- first (refusedAt place . FoldingRefused) (foldNow state)
           side <- case [f | f <- moving, f `elem` besideEdge (theWorking state) first'] of
             f : _ -> Right f
             [] -> Left (refusedAt place (Selecting NothingSelected))
@@ -415,9 +425,13 @@ handOn place state folded record = do
   unless (map sort (facesVertices landed) == map sort (facesVertices accepted)) (broken "its faces differ")
   unless (sortOn orderKey (faceOrders landed) == sortOn orderKey (faceOrders accepted)) (broken "its layer orders differ")
   unless (verticesCoords (foldedPattern refolded) == verticesCoords (foldedPattern folded)) (broken "its material coordinates differ")
-  pure state {theWorking = next}
+  pure state {theWorking = next, theFold = Just refolded}
   where
     orderKey o = (orderFace o, orderRelativeTo o)
+
+-- | The working pattern folded: the last join check's fold if there is one.
+foldNow :: FoldState -> Either FoldingError Folded
+foldNow state = maybe (foldFrameWith (theWorking state)) Right (theFold state)
 
 refusedAt :: Here -> MoveFailure -> SequenceError
 refusedAt place = StepRefused (placeStep place) (placeName place) (originSpan (placeOrigin place))
