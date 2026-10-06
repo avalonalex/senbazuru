@@ -2,8 +2,11 @@
 -- Module      : Senbazuru.Sequence.Record
 -- Description : What a run hands back for each move: the paper before and after, and the evidence that the move could be made.
 --
--- A run folds a sheet one move at a time, and each move that turns paper
--- leaves one /move record/ (see docs/glossary.md, "Fold sequences"). Three
+-- A run folds a sheet one move at a time, and each move leaves one /move
+-- record/ (see docs/glossary.md, "Fold sequences"); only @let@, @not
+-- modelled@ and @expect refused@ leave none. So far the only move a record
+-- can hold is a turn about a hinge; the header's last sections say what the
+-- other moves will bring. Three
 -- readers take records rather than the folded frames a run also writes: the
 -- page of steps, which draws one arrow for each move; the material study,
 -- which settles a move's paper as a sheet that bends; and the animated export.
@@ -45,12 +48,18 @@
 --
 -- == Made only from a checked turn
 --
--- The constructor is not exported. 'hingeTurn' makes a record from a
--- 'CheckedFlap', the library's proof that one turn about a hinge passes
--- through no paper, and takes both surfaces from that one turn. So no record
--- can pair the paper before one fold with the paper after another, and every
--- record's evidence describes the record's own move. The same reasoning made
+-- The constructor and its fields are not exported. 'hingeTurn' makes a
+-- record from a 'CheckedFlap', the library's proof that one turn about a
+-- hinge passes through no paper, and takes both surfaces, the moving faces
+-- and the face held still from that one turn. So no record can pair the paper
+-- before one fold with the paper after another, and every record's evidence
+-- describes the record's own move. The same reasoning made
 -- 'Senbazuru.Sequence.Check.Checked' opaque.
+--
+-- Two parts are the runner's word, not the turn's: the hinge as stretches on
+-- the sheet, and the seed. A turn does not say how its hinge edges group into
+-- the author's fold line, layer by layer, nor which point the author named
+-- the paper by; the runner, which resolved both, does.
 --
 -- == What is not here yet
 --
@@ -70,10 +79,14 @@
 -- * the evidence for moves that are not turns about a hinge: no motion, a
 --   change of presentation, a state with no route, or a sampled macro move.
 --
--- Two of the sketch's names change. Its @recordLabel@ is 'recordStepName',
+-- Three of the sketch's fields change. Its @recordLabel@ is 'recordStepName',
 -- since what it holds is the step's name. Its @recordSpan@ is 'recordOrigin',
 -- which keeps the move as the author wrote it beside the span, so that a
--- reader can quote the move and not only point at it.
+-- reader can quote the move and not only point at it. Its @recordStationary@,
+-- a @Maybe@ pairing a face with a material point, is the face alone: every
+-- turn about a hinge holds one face still, and the face's material
+-- coordinates are in 'recordBefore'. It becomes a @Maybe@ again with the
+-- first move that holds nothing still.
 --
 -- == The mistake to avoid
 --
@@ -135,36 +148,70 @@ newtype RouteEvidence
 
 -- | One move of a run, as its readers take it. Made by 'hingeTurn'; the
 -- header says what each part is for and what is still to come.
+--
+-- Its parts are read through the functions below, not through exported field
+-- names: an exported field can be set by record update outside this module,
+-- which would let anyone pair one turn's paper with another's.
 data MoveRecord = MoveRecord
-  { -- | The step's number, counted from 1, as a refusal names it.
-    recordStep :: !Int,
-    -- | The move's place in its step, counted from 1. A step such as \"fold
-    -- and unfold both diagonals\" holds more than one move.
-    recordMoveIndex :: !Int,
-    -- | The step's name, if the author gave it one: what @unfold c1@ refers
-    -- to.
-    recordStepName :: !(Maybe Name),
-    -- | The move as the author wrote it, and where.
-    recordOrigin :: !Origin,
-    -- | The folded surface just before the move. Unpresented; the material
-    -- study starts here.
-    recordBefore :: !(Surface V2),
-    -- | The folded surface just after the move, numbered as 'recordBefore'.
-    recordAfter :: !(Surface V2),
-    -- | How the move is known to be possible.
-    recordEvidence :: !RouteEvidence,
-    -- | The hinge: each stretch of fold line on the sheet, with the edges of
-    -- 'recordBefore' that lie along it. A fold through several layers has one
-    -- stretch for each layer it creases.
-    recordHinge :: ![(MaterialSegment, [EdgeId])],
-    -- | The paper that moved: each seed the author named it by, with the
-    -- faces that seed picked out.
-    recordMoving :: ![(MaterialPoint, [FaceId])],
-    -- | The face beside the hinge that was held still, which lies where it
-    -- lay in both surfaces.
-    recordStationary :: !FaceId
+  { theStep :: !Int,
+    theMoveIndex :: !Int,
+    theStepName :: !(Maybe Name),
+    theOrigin :: !Origin,
+    theBefore :: !(Surface V2),
+    theAfter :: !(Surface V2),
+    theEvidence :: !RouteEvidence,
+    theHinge :: ![(MaterialSegment, [EdgeId])],
+    theMoving :: ![(MaterialPoint, [FaceId])],
+    theStationary :: !FaceId
   }
   deriving stock (Eq, Show)
+
+-- | The step's number, counted from 1, as a refusal names it.
+recordStep :: MoveRecord -> Int
+recordStep = theStep
+
+-- | The move's place in its step, counted from 1. A step such as \"fold and
+-- unfold both diagonals\" holds more than one move.
+recordMoveIndex :: MoveRecord -> Int
+recordMoveIndex = theMoveIndex
+
+-- | The step's name, if the author gave it one: what @unfold c1@ refers to.
+recordStepName :: MoveRecord -> Maybe Name
+recordStepName = theStepName
+
+-- | The move as the author wrote it, and where.
+recordOrigin :: MoveRecord -> Origin
+recordOrigin = theOrigin
+
+-- | The folded surface just before the move. Unpresented; the material study
+-- starts here.
+recordBefore :: MoveRecord -> Surface V2
+recordBefore = theBefore
+
+-- | The folded surface just after the move, numbered as 'recordBefore'. The
+-- next record's 'recordBefore' is this surface again.
+recordAfter :: MoveRecord -> Surface V2
+recordAfter = theAfter
+
+-- | How the move is known to be possible.
+recordEvidence :: MoveRecord -> RouteEvidence
+recordEvidence = theEvidence
+
+-- | The hinge: each stretch of fold line on the sheet, with the edges of
+-- 'recordBefore' that lie along it. A fold through several layers has one
+-- stretch for each layer it creases. The runner's word: see 'hingeTurn'.
+recordHinge :: MoveRecord -> [(MaterialSegment, [EdgeId])]
+recordHinge = theHinge
+
+-- | The paper that moved: each seed the author named it by, with the faces
+-- that seed picked out. The faces are the turn's; the seed is the runner's.
+recordMoving :: MoveRecord -> [(MaterialPoint, [FaceId])]
+recordMoving = theMoving
+
+-- | The face beside the hinge that was held still, which lies where it lay in
+-- both surfaces.
+recordStationary :: MoveRecord -> FaceId
+recordStationary = theStationary
 
 -- | Every crease's angle before the move and after it, in degrees as FOLD
 -- writes them, one for each edge of 'recordBefore'. Read from the two
@@ -180,6 +227,10 @@ recordAngles record = (angles (recordBefore record), angles (recordAfter record)
 -- as written, the hinge the author's line resolved to, and the seed the
 -- moving paper was picked out by. The paper comes from the turn: the surfaces
 -- at its start and end, the faces it moves, and the face it holds still.
+--
+-- A runner takes its next state from 'recordAfter' rather than asking the
+-- turn for its end again: each surface costs one refold of the whole
+-- pattern.
 --
 -- Fails only as 'flapAt' does, building one of the two surfaces.
 hingeTurn ::
@@ -202,14 +253,14 @@ hingeTurn step move name origin hinge seed turn = do
   after <- flapAt turn 1
   pure
     MoveRecord
-      { recordStep = step,
-        recordMoveIndex = move,
-        recordStepName = name,
-        recordOrigin = origin,
-        recordBefore = before,
-        recordAfter = after,
-        recordEvidence = SweptHinge turn,
-        recordHinge = hinge,
-        recordMoving = [(seed, flapMovingFaces turn)],
-        recordStationary = flapStationaryFace turn
+      { theStep = step,
+        theMoveIndex = move,
+        theStepName = name,
+        theOrigin = origin,
+        theBefore = before,
+        theAfter = after,
+        theEvidence = SweptHinge turn,
+        theHinge = hinge,
+        theMoving = [(seed, flapMovingFaces turn)],
+        theStationary = flapStationaryFace turn
       }

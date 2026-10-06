@@ -8,7 +8,7 @@ module Senbazuru.Sequence.RecordSpec (spec) where
 
 import BlintzSequence (BlintzMove (..), buildBlintzSequence)
 import Control.Monad (forM_)
-import Data.List (sort, zip5)
+import Data.List (sort, sortOn, zip5)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
@@ -88,6 +88,25 @@ spec = describe "a move record" $ do
           changed = [i | (i, a, b) <- zip3 [0 :: Int ..] anglesBefore anglesAfter, a /= b]
       changed `shouldBe` [e]
       (anglesAfter !! e) - (anglesBefore !! e) `shouldSatisfy` (\d -> abs (d - travel) < 1e-9)
+
+  -- The paper a move ends with is the paper the next move starts from:
+  -- layer orders and angles exactly, positions within the recipe's join
+  -- bound. The material study reads its contact pairs from a record's
+  -- before, and a turn works out the orders across its hinge afresh from
+  -- where its paper touches, so an order lost at a join would be a contact
+  -- missing from a settle.
+  it "hands its after to the next record as that record's before" $
+    forM_ (zip records (drop 1 records)) $ \(record, next) -> do
+      let ends = surfaceFrame (recordAfter record)
+          starts = surfaceFrame (recordBefore next)
+          key o = (orderFace o, orderRelativeTo o)
+      sortOn key (faceOrders starts) `shouldBe` sortOn key (faceOrders ends)
+      edgesFoldAngle starts `shouldBe` edgesFoldAngle ends
+      endPoints <- right (frameVertices ends)
+      startPoints <- right (frameVertices starts)
+      length startPoints `shouldBe` length endPoints
+      let scale = modelSpan endPoints
+      and (zipWith (\p q -> norm (p ^-^ q) <= 1e-12 * scale) endPoints startPoints) `shouldBe` True
 
   -- Turns red if the moving faces came from the side held still, or the
   -- seed were dropped.
