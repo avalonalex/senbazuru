@@ -401,7 +401,8 @@ data SheetProblem
     SheetHasNoVertices Int
   | -- | The key frame is folded already.
     SheetAlreadyFolded FoldedBy
-  | -- | The key frame's creases cannot be cut and traced into faces.
+  | -- | The key frame cannot be read as a crease pattern: its vertices are
+    -- malformed, or its creases cannot be cut and traced into faces.
     SheetNotAPattern FoldError
   | -- | The key frame's creases bound no face: there is no paper to hold.
     SheetHasNoFaces
@@ -426,7 +427,7 @@ instance Explain SheetProblem where
       "its key frame is folded already, leaving the plane by " <> num span' <> "; a sheet has to be the paper before any folding"
     SheetAlreadyFolded ByClass ->
       "its key frame calls itself a folded form (frame_classes foldedForm); a sheet has to be the paper before any folding"
-    SheetNotAPattern err -> "its creases cannot be traced into faces: " <> explain err
+    SheetNotAPattern err -> "its key frame cannot be read as a crease pattern: " <> explain err
     SheetHasNoFaces -> "its creases bound no face, so there is no paper to fold"
     DefaultAnchorOutside (V2 x y) ->
       "the default anchor, ("

@@ -50,7 +50,8 @@
 --   has none, and every face's ring runs anticlockwise on the sheet, so that a
 --   face's normal points the way the file's +z does.
 -- * __The anchor, by default.__ The vertex mean, the average of the corners,
---   of the largest face, ties to the lowest and then the leftmost vertex mean.
+--   of the largest face, ties to the lowest and then the leftmost vertex mean,
+--   a tie being close enough that rounding could have made the difference.
 --   That face is put first, because folding holds its first face still. A
 --   vertex mean of a face that is not convex can lie outside it, and is
 --   refused: the author names the anchor instead.
@@ -72,16 +73,16 @@ module Senbazuru.Sequence.Run
   )
 where
 
+import Control.Monad (when)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.List (sortOn)
-import Data.Ord (Down (..))
+import Data.List (find)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, frameKind, frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (signedArea, strictlyInside)
+import Senbazuru.Geometry.Polygon (centroid, signedArea, strictlyInside)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Sequence.Error (FoldedBy (..), SheetProblem (..))
 import Senbazuru.Sequence.Record (MaterialPoint (..))
@@ -111,9 +112,7 @@ sheetState :: FoldFile -> Either SheetProblem FoldState
 sheetState file = do
   let key = keyFrame file
   points <- first SheetNotAPattern (frameVertices key)
-  case points of
-    [] -> Left (SheetHasNoVertices (length (otherFrames file)))
-    _ -> pure ()
+  when (null points) (Left (SheetHasNoVertices (length (otherFrames file))))
   case frameKind (frameClasses key) points of
     FoldedForm -> Left (SheetAlreadyFolded (if hasRelief points then ByRelief (zSpan points) else ByClass))
     CreasePattern -> pure ()
@@ -122,14 +121,12 @@ sheetState file = do
   room <- first SheetNotAPattern (tolerance <$> sheetOf planar)
   let ring face = [p | VertexId i <- face, Just p <- [IM.lookup i material]]
       faces = [if signedArea (ring face) < 0 then reverse face else face | face <- facesVertices planar]
-      -- Largest first; among equals, the lowest and then the leftmost vertex
-      -- mean, as the header says.
-      ranked = sortOn (\(_, area, V2 x y) -> (Down area, y, x)) [(face, abs (signedArea (ring face)), vertexMean (ring face)) | face <- faces]
-  (anchorFace, anchor) <- case ranked of
-    (face, _, mean) : _
-      | strictlyInside room (ring face) mean -> Right (face, mean)
+      measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 :: Int ..] faces]
+  (index, anchorFace, anchor) <- case defaultAnchor room measured of
+    Just (i, face, _, mean)
+      | strictlyInside room (ring face) mean -> Right (i, face, mean)
       | otherwise -> Left (DefaultAnchorOutside mean)
-    [] -> Left SheetHasNoFaces
+    Nothing -> Left SheetHasNoFaces
   let angles = edgesFoldAngle planar
       letters = zipWith intent (edgesAssignment planar) (angles ++ repeat 0)
   pure
@@ -138,17 +135,12 @@ sheetState file = do
           planar
             { edgesAssignment = letters,
               edgesFoldAngle = map (const 0) letters,
-              facesVertices = anchorFace : filter (/= anchorFace) faces
+              facesVertices = anchorFace : [face | (j, face) <- zip [0 ..] faces, j /= index]
             },
         theAnchor = MaterialPoint anchor
       }
   where
     flat (V3 x y _) = V2 x y
-    vertexMean ps = case ps of
-      [] -> V2 0 0
-      _ -> V2 (sum [x | V2 x _ <- ps] / count) (sum [y | V2 _ y <- ps] / count)
-      where
-        count = fromIntegral (length ps)
     -- An F crease at an angle has its angle believed; every other letter is
     -- kept as drawn, U included.
     intent letter angle = case letter of
@@ -156,6 +148,23 @@ sheetState file = do
         | angle < negate atRest -> Mountain
         | angle > atRest -> Valley
       _ -> letter
+
+-- | The face whose vertex mean is the default anchor, numbered, with its area
+-- and vertex mean: the largest face, and among faces of one area the lowest
+-- vertex mean and then the leftmost. A tie is a billionth of the largest area,
+-- or the sheet's own tolerance in a height or a distance across, so that a
+-- rounding error in an area or a mean cannot decide one. 'Nothing' for a
+-- sheet with no faces.
+defaultAnchor :: Double -> [(Int, [VertexId], Double, V2)] -> Maybe (Int, [VertexId], Double, V2)
+defaultAnchor room measured = case measured of
+  [] -> Nothing
+  _ ->
+    let biggest = maximum [area | (_, _, area, _) <- measured]
+        largest = [m | m@(_, _, area, _) <- measured, area >= biggest - 1e-9 * biggest]
+        lowest = minimum [y | (_, _, _, V2 _ y) <- largest]
+        low = [m | m@(_, _, _, V2 _ y) <- largest, y <= lowest + room]
+        leftmost = minimum [x | (_, _, _, V2 x _) <- low]
+     in find (\(_, _, _, V2 x _) -> x <= leftmost + room) low
 
 -- | The sheet @sheet square@ names: the unit square, its four corners
 -- anticlockwise from the origin, four border edges and one face.

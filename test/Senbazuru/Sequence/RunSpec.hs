@@ -48,6 +48,22 @@ spec = describe "the state a run starts from" $ do
     firstMean <- faceMean (workingPattern state) 0
     firstMean `shouldBe` V2 0.25 0.25
 
+  -- A sheet halved at x = 1/2 - 1e-13: the right half is larger by 2e-13, a
+  -- difference rounding could make, so the halves tie on area and on height,
+  -- and the left half wins as the leftmost. Turns red if areas were compared
+  -- exactly, when the right half would win.
+  it "treats areas that differ only by rounding as tied" $ do
+    let x = 0.5 - 1e-13
+        halves =
+          emptyFrame
+            { verticesCoords = [[0, 0], [x, 0], [1, 0], [1, 1], [x, 1], [0, 1]],
+              edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0), (1, 4)]],
+              edgesAssignment = replicate 6 Border ++ [Mountain]
+            }
+    state <- right (sheetState (withKey (const halves) squareSheet))
+    case stateAnchor state of
+      MaterialPoint (V2 ax _) -> ax `shouldSatisfy` (< 0.5)
+
   -- crane.fold writes no angles: 58 M, 41 V, 20 F and 10 B. Turns red if any
   -- letter is rewritten, F at 0 included.
   it "keeps every crease's letter as drawn when nothing contradicts it" $ do
