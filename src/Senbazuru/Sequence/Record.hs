@@ -15,8 +15,8 @@
 --
 -- == What a record holds
 --
--- Where the move sits: its step's number and name, its place in the step, and
--- the move as the author wrote it ('recordOrigin'). Then the paper itself:
+-- Where the move sits: its step's number, name and caption, its place in the
+-- step, and the move as the author wrote it ('recordOrigin'). Then the paper itself:
 -- the folded surface just before the move and just after it, the creases it
 -- turned about (its /hinge/), the paper that moved, named by the point the
 -- author picked it out with (its /seed/) and by the faces that point picked,
@@ -79,8 +79,11 @@
 -- * the evidence for moves that are not turns about a hinge: no motion, a
 --   change of presentation, a state with no route, or a sampled macro move.
 --
--- Three of the sketch's fields change. Its @recordLabel@ is 'recordStepName',
--- since what it holds is the step's name. Its @recordSpan@ is 'recordOrigin',
+-- Four of the sketch's fields change. Its @recordLabel@, the step's caption
+-- (@PRDs\/01-architecture.md@, §5.8), is 'recordCaption', the language's own
+-- word for it. Its @recordPath@, the names a move sits under, is
+-- 'recordStepName', a single name, since a step's own name is so far the only
+-- one a move can sit under. Its @recordSpan@ is 'recordOrigin',
 -- which keeps the move as the author wrote it beside the span, so that a
 -- reader can quote the move and not only point at it. Its @recordStationary@,
 -- a @Maybe@ pairing a face with a material point, is the face alone: every
@@ -105,6 +108,7 @@ module Senbazuru.Sequence.Record
     recordStep,
     recordMoveIndex,
     recordStepName,
+    recordCaption,
     recordOrigin,
     recordBefore,
     recordAfter,
@@ -120,6 +124,7 @@ module Senbazuru.Sequence.Record
   )
 where
 
+import Data.Text (Text)
 import Senbazuru.Fold.Types (EdgeId, FaceId, Frame (..))
 import Senbazuru.Geometry (V2)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
@@ -156,6 +161,7 @@ data MoveRecord = MoveRecord
   { theStep :: !Int,
     theMoveIndex :: !Int,
     theStepName :: !(Maybe Name),
+    theCaption :: !(Maybe Text),
     theOrigin :: !Origin,
     theBefore :: !(Surface V2),
     theAfter :: !(Surface V2),
@@ -178,6 +184,11 @@ recordMoveIndex = theMoveIndex
 -- | The step's name, if the author gave it one: what @unfold c1@ refers to.
 recordStepName :: MoveRecord -> Maybe Name
 recordStepName = theStepName
+
+-- | The step's caption, if the author gave it one: what a page prints under
+-- the step's picture.
+recordCaption :: MoveRecord -> Maybe Text
+recordCaption = theCaption
 
 -- | The move as the author wrote it, and where.
 recordOrigin :: MoveRecord -> Origin
@@ -223,8 +234,8 @@ recordAngles record = (angles (recordBefore record), angles (recordAfter record)
 
 -- | The record of a turn about a hinge, made from the checked turn itself.
 --
--- The arguments are what only the runner knows: which move this is, the move
--- as written, the hinge the author's line resolved to, and the seed the
+-- The arguments are what only the runner knows: which move this is, its
+-- step's name and caption, the move as written, the hinge the author's line resolved to, and the seed the
 -- moving paper was picked out by. The paper comes from the turn: the surfaces
 -- at its start and end, the faces it moves, and the face it holds still.
 --
@@ -240,6 +251,8 @@ hingeTurn ::
   Int ->
   -- | The step's name, if it has one.
   Maybe Name ->
+  -- | The step's caption, if it has one.
+  Maybe Text ->
   -- | The move as written.
   Origin ->
   -- | The hinge, as stretches on the sheet with the edges along each.
@@ -248,7 +261,7 @@ hingeTurn ::
   MaterialPoint ->
   CheckedFlap ->
   Either FlapError MoveRecord
-hingeTurn step move name origin hinge seed turn = do
+hingeTurn step move name caption origin hinge seed turn = do
   before <- flapAt turn 0
   after <- flapAt turn 1
   pure
@@ -256,6 +269,7 @@ hingeTurn step move name origin hinge seed turn = do
       { theStep = step,
         theMoveIndex = move,
         theStepName = name,
+        theCaption = caption,
         theOrigin = origin,
         theBefore = before,
         theAfter = after,
