@@ -16,13 +16,14 @@
 -- == What a record holds
 --
 -- Where the move sits: its step's number, name and caption, its place in the
--- step, and the move as the author wrote it ('recordOrigin'). Then the paper itself:
--- the folded surface just before the move and just after it, the creases it
--- turned about (its /hinge/), the paper that moved, named by the point the
--- author picked it out with (its /seed/) and by the faces that point picked,
--- and the one face beside the hinge that was held still. Last, the evidence
--- that the move was possible: for a turn about a hinge, the library's check
--- that the moving paper passes through no other paper on its way.
+-- step, and the move as the author wrote it ('recordOrigin'). Then the paper
+-- itself: the folded surface just before the move and just after it, the
+-- creases it turned about (its /hinge/), the paper that moved, named by the
+-- point the author picked it out with (its /seed/) and by the faces that
+-- point picked, and the one face beside the hinge that was held still. Last,
+-- the evidence that the move was possible: for a turn about a hinge, the
+-- library's check that the moving paper passes through no other paper on its
+-- way.
 --
 -- Points and segments a record names on the paper are in /material
 -- coordinates/, where the paper lay on the flat sheet before any folding (see
@@ -235,9 +236,10 @@ recordAngles record = (angles (recordBefore record), angles (recordAfter record)
 -- | The record of a turn about a hinge, made from the checked turn itself.
 --
 -- The arguments are what only the runner knows: which move this is, its
--- step's name and caption, the move as written, the hinge the author's line resolved to, and the seed the
--- moving paper was picked out by. The paper comes from the turn: the surfaces
--- at its start and end, the faces it moves, and the face it holds still.
+-- step's name and caption, the move as written, the hinge the author's line
+-- resolved to, and the seed the moving paper was picked out by. The paper
+-- comes from the turn: the surfaces at its start and end, the faces it moves,
+-- and the face it holds still.
 --
 -- A runner takes its next state from 'recordAfter' rather than asking the
 -- turn for its end again: each surface costs one refold of the whole
