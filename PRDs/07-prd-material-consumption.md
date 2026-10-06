@@ -362,7 +362,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 
 | Field ([02](02-language-semantics.md); [decisions §5](decisions.md#5-type-sketch)) | Consumer's use |
 | --- | --- |
-| `recordStep`, `recordMoveIndex`, `recordLabel`, `recordSpan` | file names and the message prefix; `recordStep` and `recordMoveIndex` also bind a settle to its step's last moving record ([D14](decisions.md#d14-material-consumption)) |
+| `recordStep`, `recordMoveIndex`, `recordCaption`, `recordOrigin` | file names and the message prefix; `recordStep` and `recordMoveIndex` also bind a settle to its step's last moving record ([D14](decisions.md#d14-material-consumption)) |
 | `recordKind`, `recordEvidence` | refusing non-moving kinds; `recordPoseAt`; settled extras |
 | `recordBefore`, `recordAfter` | the start; contact orders; `rigid-pose before/after` |
 | `recordHinge` (segments, ids) | `hinge of`, `across-hinge`, the line `band` measures from |

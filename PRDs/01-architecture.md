@@ -984,14 +984,14 @@ The record this move produces (**SKETCH** values):
 
 | Field | Value |
 | --- | --- |
-| `recordStep`, `recordMoveIndex`, `recordSpan` | step 2, `quarter` (steps count from 1 in source order); its only move; line 10, columns 3–40 |
-| `recordLabel`, `recordPath` | "Fold the top half down in front, onto the bottom."; `[quarter]` |
+| `recordStep`, `recordMoveIndex`, `recordOrigin` | step 2 (steps count from 1 in source order); its only move; the move as written, at line 10, columns 3–40 |
+| `recordCaption`, `recordStepName` | "Fold the top half down in front, onto the bottom."; `quarter` ([C75](decisions.md#changes-since-draft-v2): these were `recordLabel` and `recordPath`) |
 | `recordKind`, `recordEvidence` | fold on existing creases; `SweptHinge` with its `CheckedFlap`, meaning the whole turn was checked ([route evidence](glossary-additions.md#assurance)) |
 | `recordBefore`, `recordAfter` | states 1 and 2, unpresented, both with the fixture's ids |
 | `recordPresentation`, `recordPlacement` | (identity, identity) each: no turn-over, no re-anchor |
 | `recordHinge` | material (½,½)–(1,½) with `[9]`; (½,½)–(0,½) with `[11]` |
 | `recordMoving` | the seed (1/4, 3/4), with `[F1, F2]` |
-| `recordStationary` | F0, from `flapStationaryFace` ([05](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose), R-05-14), with a material point in it |
+| `recordStationary` | F0, from `flapStationaryFace` ([05](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose), R-05-14); its material coordinates are in `recordBefore` |
 | `recordNewCreases`, `recordMacros` | `[]`; `[]` |
 | `recordAngles` | edges 8–11 go from −180, 0, −180, 0 to −180, 180, −180, −180 |
 | `recordStacking` | `Nothing`: the orders came from the checked endpoint, not from a stacking choice |

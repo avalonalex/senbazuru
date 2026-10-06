@@ -1911,22 +1911,31 @@ elaborate :: Checked -> Elaborated
 
 -- Senbazuru.Sequence.Record
 data RouteEvidence = NoMotion | Presented | StateOnly | Sampled CheckedMacro SampleReport | SweptHinge CheckedFlap
+                                                                 -- built: SweptHinge only, a newtype until a second (#486)
 data PoseRef = PoseBefore | PoseAfter | PoseOnRoute Rational
 data PoseError = NoRoute RouteEvidence | PoseFlap FlapError | PoseMacro MacroError
 recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose   -- RoutePose from Origami.Route
-data MoveRecord = MoveRecord
-  { recordStep :: !Int, recordMoveIndex :: !Int, recordSpan :: !Span, recordLabel :: !(Maybe Text)
-  , recordPath :: ![Name], recordKind :: !MoveKind
-  , recordBefore, recordAfter :: !(Surface V2)                   -- unpresented; one numbering
-  , recordPresentation, recordPlacement :: !(Rigid, Rigid)       -- before, after
-  , recordEvidence :: !RouteEvidence
-  , recordHinge :: ![(MaterialSegment, [EdgeId])], recordMoving :: ![(MaterialPoint, [FaceId])]
-  , recordStationary :: !(Maybe (MaterialPoint, FaceId))
-  , recordNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)] -- U for a pre-crease's
-  , recordAngles :: !([Double], [Double]), recordStacking :: !(Maybe StackingChoice)
-  , recordAnchor :: !(MaterialPoint, MaterialPoint)               -- before, after
-  , recordResolved :: ![ResolvedReference], recordMacros :: ![MacroBinding], recordCost :: !StepCost }
+newtype MaterialPoint = MaterialPoint V2                          -- built (#486), as is
+data MaterialSegment = MaterialSegment MaterialPoint MaterialPoint
+data MoveRecord = MoveRecord                                     -- opaque: constructor hidden, each field read through a function of its name (C75)
+  -- built at M2 for a turn about a hinge (#486, #487):
+  { recordStep :: Int, recordMoveIndex :: Int, recordStepName :: Maybe Name, recordCaption :: Maybe Text
+  , recordOrigin :: Origin                                        -- the move as written, and its span
+  , recordBefore, recordAfter :: Surface V2                      -- unpresented; one numbering
+  , recordEvidence :: RouteEvidence
+  , recordHinge :: [(MaterialSegment, [EdgeId])], recordMoving :: [(MaterialPoint, [FaceId])]
+  , recordStationary :: FaceId                                    -- a Maybe once a move holds nothing still
+  -- each with the first move that fills it:
+  , recordKind :: MoveKind
+  , recordPresentation, recordPlacement :: (Rigid, Rigid)        -- before, after
+  , recordNewCreases :: [(MaterialSegment, [EdgeId], Assignment)] -- U for a pre-crease's
+  , recordStacking :: Maybe StackingChoice
+  , recordAnchor :: (MaterialPoint, MaterialPoint)                -- before, after
+  , recordResolved :: [ResolvedReference], recordMacros :: [MacroBinding], recordCost :: StepCost }
   deriving stock (Eq, Show)
+recordAngles :: MoveRecord -> ([Double], [Double])               -- read from the two surfaces, not stored
+hingeTurn :: Int -> Int -> Maybe Name -> Maybe Text -> Origin
+          -> [(MaterialSegment, [EdgeId])] -> MaterialPoint -> CheckedFlap -> Either FlapError MoveRecord
 data MoveKind = Precrease | …                                     -- owner decision 14; no sense, since its crease has none; the rest with the MoveRecord agreement
 displayBefore, displayAfter :: MoveRecord -> Rigid                -- presentation `after` placement
 data MacroBinding = MacroBinding { bindLine :: Name, bindMacro :: MacroName, bindRoles :: [(Role, MaterialSegment)]
@@ -2471,6 +2480,7 @@ lists edits for.
 | C72 | The crane's existing-crease count is 6 (the research note's count line says 7) | 02 §6.2 | the note's table [research] | adopted | 02 |
 | C73 | A step with no move other than `let` is refused as `EmptyStep` | here | 04 grammar allows an empty block | adopted | 02, 04 |
 | C74 | `README.md` and `docs/roadmap.md` roadmap item 2 as row 18 | 10 §4 note | `README.md:213` [ran] | adopted | 01, 10 |
+| C75 | `MoveRecord` as built at M2 (#486, #487): opaque, made only by `hingeTurn` from a `CheckedFlap` and read through functions, so record update cannot pair one turn's paper with another's; `recordSpan` → `recordOrigin`, which keeps the move as written; `recordLabel`, the step's caption, → `recordCaption`; `recordPath` → `recordStepName`, one name while a step's is the only one a move sits under; `recordStationary` a bare `FaceId`; `recordAngles` read from the surfaces; every other field arrives with the first move that fills it | here; #282 | `Sequence.Record` [code] | adopted-modified | 01, 07 |
 
 ## Proposals not adopted
 
