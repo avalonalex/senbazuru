@@ -144,8 +144,8 @@ materialPoint st = \case
   MidpointOf p q -> along 0.5 p q
   FractionAlong r p q -> along (fromRational r) p q
   MidpointOfEdge side -> Right (edgeMidpoint side)
-  Meet {} -> Left (NotRunYet "meet, which is measured where the paper is now,")
-  EndOfCreaseOf {} -> Left (NotRunYet "end of crease of")
+  Meet {} -> Left (NotRunYet "\"meet L1 L2\", which is measured where the paper is now,")
+  EndOfCreaseOf {} -> Left (NotRunYet "\"end of crease of NAME nearest P\"")
   PointNamed (Name name) -> Left (NotRunYet ("the mark " <> name))
   where
     box = flatBox st
@@ -208,7 +208,12 @@ placedAt st m = case [flat (applyRigid placement (V3 x y 0)) | (FaceId f, ring) 
   where
     V2 x y = m
     flat (V3 a b _) = V2 a b
-    holds ring = insideRing 0 ring m || any ((<= flatRoom st) . (`distanceToSegment` m)) (edges ring)
+    holds ring = holdsPoint st ring m
+
+-- | Whether a face's outline holds the point, edges and corners included,
+-- within the sheet's tolerance.
+holdsPoint :: FlatState -> [V2] -> V2 -> Bool
+holdsPoint st ring m = insideRing 0 ring m || any ((<= flatRoom st) . (`distanceToSegment` m)) (edges ring)
 
 -- | A fold line where the paper now lies: a point on it and its direction, of
 -- length 1.
@@ -227,17 +232,17 @@ foldLine band st = \case
   Onto p q -> do
     (a, b) <- two p q
     pure (FoldLine (0.5 *^ (a ^+^ b)) (perpendicular (unit (b ^-^ a))))
-  EdgeOf _ -> notYet "edge S as a fold line"
-  LineOnto {} -> notYet "L1 to L2"
-  PerpendicularThrough {} -> notYet "perpendicular to L through P"
-  PointToLineThrough {} -> notYet "P to L through Q"
-  TwoToTwo {} -> notYet "P to L1 and Q to L2"
-  PointToLinePerpendicular {} -> notYet "P to L1 perpendicular to L2"
-  PointToLine {} -> notYet "P to L"
-  ExistingCrease {} -> notYet "crease [P, Q]"
-  HingeOf _ -> notYet "hinge of"
-  CreaseOf _ -> notYet "crease of"
-  ModelSegment {} -> notYet "model [...]"
+  EdgeOf _ -> notYet "\"edge S\" as a fold line"
+  LineOnto {} -> notYet "\"L1 to L2\""
+  PerpendicularThrough {} -> notYet "\"perpendicular to L through P\""
+  PointToLineThrough {} -> notYet "\"P to L through Q\""
+  TwoToTwo {} -> notYet "\"P to L1 and Q to L2\""
+  PointToLinePerpendicular {} -> notYet "\"P to L1 perpendicular to L2\""
+  PointToLine {} -> notYet "\"P to L\""
+  ExistingCrease {} -> notYet "\"crease [P, Q]\""
+  HingeOf _ -> notYet "\"hinge of NAME\""
+  CreaseOf _ -> notYet "\"crease of NAME\""
+  ModelSegment {} -> notYet "\"model [...]\""
   LineNamed (Name name) -> notYet ("the line " <> name)
   where
     notYet = Left . NotRunYet
@@ -247,9 +252,14 @@ foldLine band st = \case
       if norm (b ^-^ a) <= flatRoom st then Left DegenerateConstruction else Right (a, b)
     unit v = (1 / norm v) *^ v
 
--- | The creases lying along the fold line, which a fold turns about. Refused
--- if the line runs along no crease, and, until creasing is run, if it crosses
--- a face where no crease runs.
+-- | The creases lying along the fold line: the candidates a fold turns
+-- about. Refused if the line runs along no crease, and, until creasing is
+-- run, if it crosses a face where no crease runs.
+--
+-- Every crease along the line is a candidate, on every layer and whatever its
+-- letter. A fold turns only those beside the paper it moves, and an F crease
+-- cannot hinge at all, so the runner keeps the creases beside its moving
+-- flap, and refuses an F among them, when it chooses that flap.
 --
 -- A face counts as crossed when it has corners strictly on both sides of the
 -- line. On a face that is not convex, a line can pass through the notch
@@ -271,7 +281,9 @@ hingeAlong st (FoldLine origin direction) = do
 regionFace :: FlatState -> V2 -> Either ResolveProblem FaceId
 regionFace st m = case [f | (f, ring) <- flatFaces st, insideRing (flatRoom st) (ringOf st ring) m] of
   [f] -> Right f
-  faces -> Left (NotInOneFace (toSheetLengths st m) (length faces))
+  faces
+    | any (\(_, ring) -> holdsPoint st (ringOf st ring) m) (flatFaces st) -> Left (NotInOneFace (toSheetLengths st m) (length faces))
+    | otherwise -> Left (OffThePaper (toSheetLengths st m))
 
 -- | A face's corners on the sheet.
 ringOf :: FlatState -> [Int] -> [V2]

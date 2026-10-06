@@ -96,13 +96,15 @@ spec = describe "naming paper on a flat state" $ do
       foldLine 1e-3 start (Onto Centre Centre) `shouldBe` Left DegenerateConstruction
 
     it "of a form not run yet" $
-      foldLine 1e-3 start (HingeOf (Name "c1")) `shouldBe` Left (NotRunYet "hinge of")
+      foldLine 1e-3 start (HingeOf (Name "c1")) `shouldBe` Left (NotRunYet "\"hinge of NAME\"")
 
   -- The anchor's slot: strictly inside one face. A point on edge 8 is
   -- between the square and the corner.
   it "puts a region point in the one face it lies inside" $ do
     regionFace start (V2 0.5 0.5) `shouldBe` Right (FaceId 0)
     regionFace start (V2 0.75 0.25) `shouldBe` Left (NotInOneFace (V2 0.75 0.25) 0)
+    -- Off the paper altogether is said as that, not as lying between faces.
+    regionFace start (V2 2 2) `shouldBe` Left (OffThePaper (V2 2 2))
 
   -- Corner south-east turned to -90 stands out of the plane.
   it "refuses paper that does not lie flat" $ do
