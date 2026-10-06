@@ -64,7 +64,7 @@ import Data.List (sort)
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Senbazuru.Explain (Explain (..), tshow)
-import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError, FrameKind (..), edgeKey, frameCreases, frameFaceOrders, frameFaces, frameKind, frameVertices, ringEdges)
+import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError, FrameKind (..), atRest, edgeKey, frameCreases, frameFaceOrders, frameFaces, frameKind, frameVertices, ringEdges)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder, Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (isConvex)
@@ -275,7 +275,7 @@ surfaceFeatures :: Surface material -> Either SurfaceError [(Crease, [FaceId])]
 surfaceFeatures sheet = do
   let fr = surfaceFrame sheet
       angles = IM.fromList (zip [0 ..] (edgesFoldAngle fr))
-      active c = creaseAssignment c `elem` [Border, Mountain, Valley, Unassigned, Cut] || abs (IM.findWithDefault 0 (unEdgeId (creaseId c)) angles) > 1e-10
+      active c = creaseAssignment c `elem` [Border, Mountain, Valley, Unassigned, Cut] || abs (IM.findWithDefault 0 (unEdgeId (creaseId c)) angles) > atRest
   creases <- first SurfaceFrameError (frameCreases fr)
   faces <- surfaceFaces sheet
   let owners = M.fromListWith (++) [(edgeKey a b, [faceId face]) | face <- faces, (a, b) <- ringEdges (faceVertexIds face)]

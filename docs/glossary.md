@@ -122,14 +122,17 @@ needs each word exists.
 
 | Term | Meaning |
 | --- | --- |
+| **Anchor** | In a fold sequence, the point of paper that stays still while the rest moves, so that a model does not wander across the page from one picture to the next. A material point, not a face, because faces are renumbered when a crease cuts them. By default the vertex mean (the average of the corners) of the sheet's largest face. See `Senbazuru.Sequence.Run`. |
 | **Core move** | A move as a run performs it, with no shorthand left: no `let` and no line known only by a name. A *pre-crease* is one core move. *Elaboration* makes them; each remembers the move the author wrote. See `Senbazuru.Sequence.Elaborate`. |
 | **Elaboration** | The pass between checking a fold sequence and running it, which rewrites its shorthand as *core moves*. It needs no paper and cannot fail. |
 | **Fold sequence** | The list of instructions that takes a sheet of paper to a model, as a `Sequence` value. It can be written two ways, as Haskell or as a *sequence source*, and both make the same value. Not the same thing as a **step** sequence in a FOLD file, which is the *output*: consecutive frames, one per picture. See `Senbazuru.Sequence.Syntax`. |
+| **Fold state** | The paper between two moves of a run: the *working pattern* and the *anchor*, so far. The runner keeps it to itself; a reader of a run gets *move records*. See `Senbazuru.Sequence.Run`. |
 | **Let** | `let NAME = …` in a fold sequence: a name for a point or a line, standing for it wherever it is used and worked out afresh each time. It pins nothing to the paper; a `mark` does that, naming the paper that is at a point when the mark is made. |
 | **Move** | One thing done to the paper, or to how it is shown: a fold, an unfold, turning the model over. A **step**, the instruction for one picture, holds one or more moves, because "fold and unfold both diagonals" is one picture of two moves. |
 | **Move record** | What a run hands back for each move, every move but `let`, `not modelled` and `expect refused`: the folded surface just before the move and just after it and the check that the move could be made, and for a turn about a hinge, the creases it turned about, the paper that moved and the face held still. The material study, the page of steps and the animated export read records rather than the frames a run writes. Its surfaces are *unpresented*: as folding computed them, never turned over or spun for a page. See `Senbazuru.Sequence.Record`. |
 | **Sequence source** | The text file, `.foldseq`, in which an author writes a fold sequence. A program, not an input format: it becomes FOLD only when it is run. See [architecture.md](architecture.md#layering-rules). |
 | **Sheet** | The paper a fold sequence starts from: a plain unit square, or the first frame of a FOLD file the source names. It is a second file, which is one of the two reasons a sequence source cannot be read the way a crease pattern is. |
+| **Working pattern** | The crease pattern a run folds: the sheet's creases cut at every crossing, vertices in material coordinates, each crease's angle and the layer orders written on it. A move changes only the angles and orders, and the pattern is folded afresh from them; folded coordinates never come back as material. A crease lying flat keeps the M or V it was made with, its *intent*. |
 
 ## This project
 

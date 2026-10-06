@@ -151,6 +151,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Sequence.Parse` | A sequence source, the text an author writes → a `Sequence`, with a span on every piece a run could later refuse. A failure is a `ParseProblem`: what was found, read as a whole word, what could have been there, and often a hint naming a well-known mistake. Its header is the record of the grammar and of the reserved words. |
 | `Senbazuru.Sequence.Pretty` | A `Sequence` → the text an author would write, in the one canonical spelling: canonical words, exact numbers, defaults left out, parentheses only round a fold line named inside another. Total: it prints even a value no source could spell, so that the checker's complaint can show it. |
 | `Senbazuru.Sequence.Record` | A *move record*, what a run hands back for each move: the surfaces just before and just after it, unpresented and numbered alike, the hinge, the paper that moved with the seed that named it, the face held still, and the checked turn as evidence. Opaque, made only from a checked turn by `hingeTurn`, so its two surfaces always come from one turn. The material study, the page of steps and the animated export read records rather than written frames. So far the only move it holds is a turn about a hinge, and only what that fills is here; the header lists the rest of the design's fields and the moves that will bring them. |
+| `Senbazuru.Sequence.Run` | Running a sequence. So far its start: `sheetState` turns a sheet, a file's key frame, into the opaque `FoldState` a run begins from, its *working pattern* laid flat with each crease's letter kept, faces traced and wound anticlockwise, and the largest face's vertex mean as the *anchor*, that face first. Refuses a key frame that is empty or folded already, as a `SheetProblem`. The moves come next. |
 | `Senbazuru.Sequence.RunPlan` | What the `run` verb accepts and prints, as pure functions the command line only calls: which flags go together, the line `--check` prints, and the lines a refusal prints, with its location and excerpt. Its messages name flags, as no other library message does, because it exists for the one verb. |
 | `Senbazuru.Cli` (in `app/`) | Flag parsing. Not part of the library. |
 
@@ -262,8 +263,13 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   checked turn that made them, so it imports `Origami.Flap` and
   `Origami.Surface`, and `Sequence.Elaborate` for the move a record came from.
   Nothing below it may import it, which keeps the front ends and the checker
-  free of paper. `Fold.Load` reads a source as text for the command line and
-  imports nothing of `Sequence.*`. Not yet built: the runner and the writer.
+  free of paper. `Sequence.Run`, level 5, is the runner: it imports the record
+  and folds paper, and so far it holds the state a run threads and the start.
+  `Sequence.Error` names the paper modules' error types where a refusal
+  carries one, such as a sheet whose creases cannot be traced, and that is
+  all it takes from them: the front ends that import it still fold nothing.
+  `Fold.Load` reads a source as text for the command line and imports nothing
+  of `Sequence.*`. Not yet built: the runner's moves and the writer.
 - New output backends (PDF, PNG) become new consumers of `Diagram`, never a
   second traversal of `Frame`. **The one exception is a 3D backend.** `Diagram`
   is two-dimensional — `V2`, no depth — so `Senbazuru.Render.Gltf` consumes

@@ -45,7 +45,7 @@ import Senbazuru.Origami.Stacking qualified as Stack
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
-import Senbazuru.Sequence.Error (Found (..), ParseProblem (..), Place (..), SequenceError (..), StaticProblem (..))
+import Senbazuru.Sequence.Error (FoldedBy (..), Found (..), ParseProblem (..), Place (..), SequenceError (..), SheetProblem (..), StaticProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
@@ -71,6 +71,8 @@ everyType =
     ("GltfError", explain (GltfConcaveFace (FaceId 2))),
     ("StepError", explain (StepError 2 NoVertices)),
     ("SequenceError", explain (StaticRefused (InStep 2 Nothing) NoSpan EmptyStep)),
+    ("SequenceError, a sheet", explain (SheetRefused NoSpan "a.fold" (SheetHasNoVertices 16))),
+    ("SheetProblem", explain (SheetAlreadyFolded (ByRelief 0.25))),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
     ("StaticProblem", explain EmptyStep),
     ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),

@@ -285,7 +285,9 @@ coverPlanted planted inner =
     )
 
 -- | What a test sees of a check.
-data Outcome = Accepted | Refused Place StaticProblem | DidNotParse Text
+-- | 'OtherRefusal' is a refusal the checker never gives, such as a sheet's:
+-- no paper is read here, so a test that sees one has found a bug.
+data Outcome = Accepted | Refused Place StaticProblem | DidNotParse Text | OtherRefusal Text
   deriving stock (Eq, Show)
 
 -- | A fold that is fine anywhere, for the steps that need one.
@@ -308,6 +310,7 @@ builtOutcome s = case checkSequence s of
   Right _ -> Accepted
   Left (StaticRefused place _ problem) -> Refused place problem
   Left err@(ParseFailed _) -> DidNotParse (explain err)
+  Left err -> OtherRefusal (explain err)
 
 movesOf :: Checked -> [Move]
 movesOf = concatMap (map locValue . stepMoves . locValue) . seqSteps . stripSpans . checkedSequence
