@@ -307,9 +307,9 @@ anchor placement with h cancels it.
 - The sheet is flat before the move, so h is the identity and nothing on the page
   moves.
 
-Re-anchoring is the recommended default of
-[owner decision 3](10-roadmap-risks-questions.md#6-owner-decisions); refusing is its
-alternative.
+Re-anchoring is what
+[owner decision 3](10-roadmap-risks-questions.md#6-owner-decisions) chose on
+2026-10-06; refusing was its alternative.
 
 **An anchor that a new crease passes through**
 ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs),

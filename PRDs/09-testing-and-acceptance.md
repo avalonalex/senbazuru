@@ -74,9 +74,10 @@ changed files, compares with the working tree (where a new golden not yet
 | accepted by `mv X.actual.svg X.svg` | only the first command above |
 
 **Red when** a tracked golden changes a byte or is deleted. The one foreseen
-exception is owner decision 9: migrating the quarter-fold fixture to the
-[state rule](glossary-additions.md#the-fold-format) would move
-`quarter-fold-steps.svg` and `quarter-fold-step-1.svg` in that PR alone. Both
+exception was owner decision 9: migrating the quarter-fold fixture to the
+[state rule](glossary-additions.md#the-fold-format) would have moved
+`quarter-fold-steps.svg` and `quarter-fold-step-1.svg` in that PR alone. The
+decision, on 2026-10-06, keeps the fixture, so none is foreseen. Both
 goldens read `test/fixtures/quarter-fold-steps.fold`
 ([`SvgSpec.hs:383`](../test/Senbazuru/Render/SvgSpec.hs#L383),
 [`:392`](../test/Senbazuru/Render/SvgSpec.hs#L392)), a byte-identical copy of
@@ -176,7 +177,7 @@ face stays still. Without the line the default anchor is F3, which step 1 moves,
 so the run would [re-anchor](glossary-additions.md#running-a-sequence) onto F0;
 [02 §2.3](02-language-semantics.md#23-the-anchor) works this case, and nothing on
 the page moves. Writing the anchor keeps test 1 about folding alone, because
-re-anchoring is owner decision 3 and may become a refusal. (3/4, 1/4) is inside
+re-anchoring is a rule of its own (owner decision 3). (3/4, 1/4) is inside
 F0, which neither step moves (§11 command 3).
 
 **The line that looks like an off-by-one.** The written

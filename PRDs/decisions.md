@@ -426,7 +426,7 @@ table in the next version of this record.
   v2 and the glossary said "centroid", which differs on a general quadrilateral.
   The header's `anchor P` overrides. A vertex mean not strictly inside its own
   non-convex face is refused, asking for `anchor P` (G13).
-- **Re-anchoring** (owner decision 3, default re-anchor). When a move's moving
+- **Re-anchoring** (owner decision 3, decided 2026-10-06: re-anchor). When a move's moving
   side contains the anchor's face, the new anchor face is the stationary face
   beside the hinge with the largest material area, ties by lowest then leftmost
   material vertex mean, never by face id; its vertex mean becomes the anchor.
