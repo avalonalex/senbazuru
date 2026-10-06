@@ -4,6 +4,7 @@
 module Senbazuru.Sequence.RunSpec (spec) where
 
 import Control.Monad (forM_)
+import Data.Map.Strict qualified as M
 import Data.Text qualified as T
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -12,14 +13,123 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
-import Senbazuru.Sequence.Error (FoldedBy (..), SequenceError (..), SheetProblem (..))
-import Senbazuru.Sequence.Record (MaterialPoint (..))
+import Senbazuru.Origami.Flap (flapCheck)
+import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..))
+import Senbazuru.Origami.Surface (surfaceFrame)
+import Senbazuru.Sequence.Build
+import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Elaborate (elaborate)
+import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..))
+import Senbazuru.Sequence.Record (MaterialPoint (..), RouteEvidence (..), Run (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordStationary, recordStep)
 import Senbazuru.Sequence.Run
-import Senbazuru.Sequence.Syntax (Span (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), Sense (..), Sequence (..), Side (..), Span (..))
 import Test.Hspec
+import Test.SequenceExamples (blintz)
 
 spec :: Spec
-spec = describe "the state a run starts from" $ do
+spec = do
+  starting
+  running
+
+running :: Spec
+running = describe "running a sequence" $ do
+  blintzFile <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
+  let sheets = M.singleton "examples/blintz-base.fold" blintzFile
+      runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
+      oneStep moves = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just centre)) (step_ "s" moves)
+  records <- runIO (right (runRecords <$> runOn blintz))
+
+  it "runs the blintz to five records, one a step, its corners about edges 8 to 11" $ do
+    map recordStep records `shouldBe` [1 .. 5]
+    map (concatMap snd . recordHinge) records `shouldBe` [[EdgeId 8], [EdgeId 9], [EdgeId 10], [EdgeId 11], [EdgeId 8]]
+
+  -- E2: every record's evidence is a turn checked over its whole path, and
+  -- the check found it clear.
+  it "checks every turn over its whole path, and finds each clear" $
+    forM_ records $ \record -> case recordEvidence record of
+      SweptHinge turn -> sweepOutcome (flapCheck turn) `shouldBe` SweepClear
+
+  -- Behind is away from the reader: with the coloured side up, -180, the
+  -- recipe's travel; the unfold takes edge 8 back to 0. Turns red if the
+  -- reader's side were read backwards, or a move changed another crease.
+  it "turns each corner behind by 180, and the unfold back to flat" $
+    forM_ (zip3 records [8, 9, 10, 11, 8] [-180, -180, -180, -180, 180]) $ \(record, e, travel) -> do
+      let (anglesBefore, anglesAfter) = recordAngles record
+      [i | (i, a, b) <- zip3 [0 :: Int ..] anglesBefore anglesAfter, a /= b] `shouldBe` [e]
+      (anglesAfter !! e) - (anglesBefore !! e) `shouldBe` travel
+
+  -- E3, as the records show it: each move starts where the last one ended,
+  -- and the centre square, the anchor's face, never moves.
+  it "hands each move's paper to the next, the anchor's face held still" $ do
+    forM_ (zip records (drop 1 records)) $ \(record, next) -> do
+      endPoints <- right (frameVertices (surfaceFrame (recordAfter record)))
+      startPoints <- right (frameVertices (surfaceFrame (recordBefore next)))
+      and (zipWith (\p q -> p == q || maximum (map abs (zipWith (-) (coords p) (coords q))) < 1e-12) endPoints startPoints) `shouldBe` True
+    map recordStationary records `shouldBe` replicate 5 (FaceId 0)
+
+  -- The white side up puts the reader's side at -z, so behind is +z: the
+  -- same mountain turns the crease the other way.
+  it "reads valley and mountain from the reader's side" $ do
+    let coloured = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just centre)) (step_ "s" (fold mountain (cornerOf SouthEast `onto` centre)))
+        whiteUp = coloured {seqHeader = (seqHeader coloured) {hSide = WhiteUp}}
+    run <- right (runOn whiteUp)
+    case runRecords run of
+      [record] -> (snd (recordAngles record) !! 8) `shouldBe` 180
+      other -> expectationFailure ("expected one record, got " <> show (length other))
+
+  -- moving P picks the paper for a line that does not say which side moves.
+  it "folds the side named by moving P, and refuses a line with none" $ do
+    let alongEdge8 = Segment (MidpointOfEdge South) (MidpointOfEdge East)
+    run <- right (runOn (oneStep (move (Fold MountainFold ToFlat alongEdge8 FlapOfFirstArgument (Just (CornerOf SouthEast))))))
+    map (concatMap snd . recordHinge) (runRecords run) `shouldBe` [[EdgeId 8]]
+    refusal (runOn (oneStep (fold mountain alongEdge8))) `shouldBe` Just (Selecting SeedMissing)
+
+  describe "refuses" $ do
+    it "a sheet it was not given" $
+      case checkSequence blintz >>= runSequence defaultRunSettings M.empty . elaborate of
+        Left (SheetRefused _ "examples/blintz-base.fold" SheetNotLoaded) -> pure ()
+        other -> expectationFailure ("expected the sheet refused, got " <> show (fmap (length . runRecords) other))
+
+    -- The diagonal crosses the central square, where no crease runs.
+    it "a fold that would need a new crease, until creasing is run" $
+      case runOn (oneStep (move (Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast))))) of
+        Left (ResolveRefused (InStep 1 _) _ _ (NotRunYet _)) -> pure ()
+        other -> expectationFailure ("expected creasing to be not run yet, got " <> show (fmap (length . runRecords) other))
+
+    -- An anchor inside corner south-east's triangle moves with it.
+    it "a fold that would carry the anchor's paper, until re-anchoring is run" $ do
+      let carried = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just (at (19 / 20) (1 / 50)))) (step_ "s" (fold mountain (cornerOf SouthEast `onto` centre)))
+      case refusal (runOn carried) of
+        Just (MoveNotRunYet _) -> pure ()
+        other -> expectationFailure ("expected re-anchoring to be not run yet, got " <> show other)
+
+    -- c1 folds the corner behind, is unfolded, and the corner is then folded
+    -- in front: edge 8 is no longer where c1 left it, so unfolding c1 again
+    -- would undo the later fold. A second unfold of a flat crease is skipped.
+    it "an unfold of a crease folded again since, and skips one lying flat" $ do
+      let later = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just centre)) $ do
+            c1 <- step "c1" "a" (fold mountain (cornerOf SouthEast `onto` centre))
+            step_ "b" (unfold [c1])
+            step_ "c" (unfold [c1])
+            step_ "d" (fold valley (cornerOf SouthEast `onto` centre))
+            step_ "e" (unfold [c1])
+      refusal (runOn later) `shouldBe` Just (UnfoldChangedSince (EdgeId 8))
+      let twice = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just centre)) $ do
+            c1 <- step "c1" "a" (fold mountain (cornerOf SouthEast `onto` centre))
+            step_ "b" (unfold [c1])
+            step_ "c" (unfold [c1])
+      fmap (length . runRecords) (runOn twice) `shouldBe` Right 2
+
+    it "a move it does not make yet, by name" $
+      refusal (runOn (oneStep (turnOver LeftRight))) `shouldBe` Just (MoveNotRunYet "\"turn over\"")
+  where
+    coords (V3 x y z) = [x, y, z]
+    refusal = \case
+      Left (StepRefused _ _ _ failure) -> Just failure
+      _ -> Nothing
+
+starting :: Spec
+starting = describe "the state a run starts from" $ do
   -- The fixture records its four corners folded in, at -180. Turns red if a
   -- file angle survives, or if a crease lying flat loses the M it was drawn
   -- with.

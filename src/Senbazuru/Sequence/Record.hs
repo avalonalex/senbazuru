@@ -122,6 +122,9 @@ module Senbazuru.Sequence.Record
 
     -- * Making one
     hingeTurn,
+
+    -- * A run
+    Run (..),
   )
 where
 
@@ -280,3 +283,9 @@ hingeTurn step move name caption origin hinge seed turn = do
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn
       }
+
+-- | What a run hands back: one record for each move it made, in order. More
+-- arrives with the moves that need it: each step's outcome, the run's start
+-- and closing caption, and where a @not modelled@ move stopped it.
+newtype Run = Run {runRecords :: [MoveRecord]}
+  deriving stock (Eq, Show)
