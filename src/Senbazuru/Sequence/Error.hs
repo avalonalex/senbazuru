@@ -606,12 +606,14 @@ instance Explain SelectionError where
 -- "Senbazuru.Origami.Folding", "Senbazuru.Origami.ThroughLayers" and
 -- "Senbazuru.Fold.Query", and a test holds this list to their spelling.
 --
--- A turn the sweep finds blocked part-way, 'FlapCollision', or cannot decide
--- within its budget, 'FlapUnresolved', is a refusal of the paper too, and an
--- author may expect either (owner decision 40). Today only an unfold is
--- blocked part-way: a fold starts from paper lying flat, and flat paper meets
--- a turning flap only at the turn's two ends, which the checks of its ends
--- judge first.
+-- A turn's /sweep/ checks its whole path, from start to end, for paper in
+-- the way ("Senbazuru.Origami.HingeSweep"). A turn it finds blocked
+-- part-way, 'FlapCollision', or cannot decide within its budget,
+-- 'FlapUnresolved', is a refusal of the paper too, and an author may expect
+-- either (owner decision 40). Today only an unfold is blocked part-way: a
+-- fold starts from paper lying flat, and flat paper meets a turning flap only
+-- at the turn's two ends, where the sweep allows contact between ordered
+-- layers and the layer order at each end decides.
 refusalKinds :: [RefusalKind]
 refusalKinds =
   map RefusalKind . concat $

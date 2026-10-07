@@ -133,9 +133,9 @@ running = describe "running a sequence" $ do
 -- unfold can turn paper with something standing in its way. On the
 -- accordion, c1 lays the last strip on the third; the left half is then
 -- turned 135 degrees in front, so it leans over them in the air; and
--- unfolding c1 lifts the last strip back up into it. The library accepts
--- both ends of that turn and refuses its path, with a witness a quarter of
--- the way along: only the sweep, which checks the whole path, sees it.
+-- unfolding c1 lifts the last strip back up into it. The sweep, which checks
+-- the whole path before the turn's ends are judged, refuses it, with a
+-- witness a quarter of the way along: a point of contact, not the first.
 blocked :: Spec
 blocked = describe "a turn blocked part-way" $ do
   accordion <- runIO (loadFoldFile "examples/accordion.fold" >>= right)
@@ -163,8 +163,8 @@ blocked = describe "a turn blocked part-way" $ do
   it "is unresolved by a sweep with no depth, and that can be expected too" $ do
     let shallow = defaultRunSettings {runSweep = SweepSettings 0 1}
     case runWith shallow (unfoldInto id) of
-      Left err -> refusalKindOf err `shouldBe` Just (RefusalKind "FlapUnresolved")
-      Right run -> expectationFailure ("expected the turn unresolved, and it made " <> show (length (runRecords run)) <> " records")
+      Left err@(StepRefused 3 _ _ (FlapRefused FlapUnresolved {})) -> refusalKindOf err `shouldBe` Just (RefusalKind "FlapUnresolved")
+      other -> expectationFailure ("expected the unfold at step 3 unresolved, got " <> either (show . explain) (show . length . runRecords) other)
     run <- right (runWith shallow (unfoldInto (ExpectRefused (RefusalKind "FlapUnresolved"))))
     runExpected run `shouldBe` [ExpectedRefusal 3 1 (RefusalKind "FlapUnresolved")]
 
