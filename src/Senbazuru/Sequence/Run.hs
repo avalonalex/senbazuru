@@ -282,8 +282,14 @@ defaultRunSettings = RunSettings defaultSweepSettings 1e-3
 runSequence :: RunSettings -> Map FilePath FoldFile -> Elaborated -> Either SequenceError Run
 runSequence settings sheets elaborated = do
   start <- startOf sheets (elaboratedHeader elaborated)
-  Progress _ made _ expected <- foldM (runStep settings) (Progress start [] M.empty []) (zip [1 ..] (elaboratedSteps elaborated))
-  pure (Run (reverse made) (reverse expected))
+  let go progress = \case
+        [] -> Right (progress, Nothing)
+        step : rest ->
+          runStep settings progress step >>= \case
+            Going next -> go next rest
+            Stopped at stop -> Right (at, Just stop)
+  (Progress _ made _ expected, stop) <- go (Progress start [] M.empty []) (zip [1 ..] (elaboratedSteps elaborated))
+  pure (Run (reverse made) (reverse expected) stop)
 
 -- | A run so far: the state, the records made (latest first), each named
 -- step's records for a later @unfold@ or @hinge of@, and the refusals
@@ -317,16 +323,26 @@ startOf sheets header = do
       Right laid {theWorking = (theWorking laid) {facesVertices = firstOf face (facesVertices (theWorking laid))}, theAnchor = MaterialPoint m, theFold = Nothing}
   Right anchored {theFront = if hSide header == WhiteUp then TowardMinusZ else TowardPlusZ}
 
+-- | Where a step leaves a run: going on, or stopped at a @not modelled@
+-- move with everything made before it, the step's own earlier moves included.
+data Outcome = Going Progress | Stopped Progress RunStop
+
 -- | One step: its moves in order, each from the state the last one left. The
 -- records it made are kept under its name, for a later @unfold@.
-runStep :: RunSettings -> Progress -> (Int, ElaboratedStep) -> Either SequenceError Progress
-runStep settings (Progress state done named expected) (n, step) = do
-  (after, made, got) <- foldM move (state, [], []) (zip [1 ..] (elaboratedMoves step))
-  pure (Progress after (reverse made ++ done) (maybe named (\name -> M.insert name made named) (elaboratedName step)) (reverse got ++ expected))
+--
+-- A @not modelled@ move comes back from 'runMove' as the refusal it will be
+-- printed as, and is the one refusal that ends a run without failing it: an
+-- @expect refused@ around it passes it on, since it names no paper.
+runStep :: RunSettings -> Progress -> (Int, ElaboratedStep) -> Either SequenceError Outcome
+runStep settings (Progress state done named expected) (n, step) = go state [] [] (zip [1 ..] (elaboratedMoves step))
   where
-    move (st, made, got) (i, CoreMove origin core) = do
-      Made st' records refused <- runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st core
-      pure (st', made ++ records, got ++ refused)
+    go st made got = \case
+      [] -> Right (Going (progress st made got))
+      (i, CoreMove origin core) : rest -> case runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st core of
+        Left (StepRefused _ _ at (NotModelledStop what)) -> Right (Stopped (progress st made got) (RunStop n (elaboratedName step) at what))
+        Left err -> Left err
+        Right (Made st' records refused) -> go st' (made ++ records) (got ++ refused) rest
+    progress st made got = Progress st (reverse made ++ done) (maybe named (\name -> M.insert name made named) (elaboratedName step)) (reverse got ++ expected)
 
 -- | What one move made: the state after it, its records, and the refusal it
 -- expected and got, for an @expect refused@.
@@ -358,6 +374,7 @@ runMove settings place named state = \case
           | raised == kind -> Right (Made state [] [ExpectedRefusal (placeStep place) (placeMove place) kind])
           | otherwise -> Left (refusedAt place (RefusedDifferently kind raised))
         Nothing -> Left err
+  CoreNotModelled what -> Left (refusedAt place (NotModelledStop what))
   other -> Left (refusedAt place (MoveNotRunYet (moveWords other)))
   where
     moved (st, records) = Made st records []

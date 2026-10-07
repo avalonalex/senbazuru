@@ -597,6 +597,11 @@ data MoveFailure
     UnfoldChangedSince EdgeId
   | -- | A move, or a part of one, this runner does not make yet.
     MoveNotRunYet Text
+  | -- | @not modelled \"…\"@: a step the author says senbazuru cannot fold,
+    -- and its text. Not a refusal of the paper but where the run stops: the
+    -- run keeps every state before it, and this is what it says on stopping
+    -- (see 'Senbazuru.Sequence.Record.runRefusal').
+    NotModelledStop Text
   | -- | @expect refused K { move }@, and the move was made: the kind expected.
     RefusalNotRaised RefusalKind
   | -- | @expect refused K { move }@, and the move was refused as another kind:
@@ -632,6 +637,7 @@ instance Explain MoveFailure where
     FlapRefused err -> explain err
     FoldingRefused err -> explain err
     JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
+    NotModelledStop what -> "\"" <> what <> "\" is not modelled, so the run stops here and keeps every state before it"
     UnfoldChangedSince (EdgeId e) -> "(internal edge " <> tshow e <> ") has been folded again since, so turning it back would undo that fold too"
     MoveNotRunYet what -> what <> " cannot be run yet"
     RefusalNotRaised (RefusalKind kind) -> "the move was expected to be refused as " <> kind <> ", and was made"
@@ -730,6 +736,9 @@ refusalKindOf =
       JoinBroken {} -> Just "JoinBroken"
       UnfoldChangedSince {} -> Just "UnfoldChangedSince"
       MoveNotRunYet {} -> Nothing
+      -- A stop, not a refusal of the paper: no expect refused can name it,
+      -- so one wrapped round it passes it on and the run stops there.
+      NotModelledStop {} -> Nothing
       RefusalNotRaised {} -> Just "RefusalNotRaised"
       RefusedDifferently {} -> Just "RefusedDifferently"
     _ -> Nothing
