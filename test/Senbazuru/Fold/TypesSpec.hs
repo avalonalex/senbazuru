@@ -20,6 +20,7 @@ module Senbazuru.Fold.TypesSpec (spec) where
 import Data.Aeson (Object, Value (..), eitherDecodeStrict', toJSON)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
+import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Either (isLeft)
@@ -469,7 +470,7 @@ spec = do
       -- The whole of the "absent stays absent" rule in one line: {} decodes to
       -- a FoldFile of empty lists and Nothings, and none of them get written.
       f <- decodeOrFail "{}"
-      encodeFoldFile f `shouldBe` "{}\n"
+      encodeFoldFile f `shouldBe` Right "{}\n"
 
     it "writes the keys in the order the specification lists them" $ do
       -- Not cosmetic. It is what makes the output reproducible and a diff
@@ -479,30 +480,31 @@ spec = do
           "{\"faceOrders\": [[1, 0, -1]], \"frame_title\": \"f\",\
           \ \"vertices_coords\": [[0, 0]], \"file_title\": \"t\"}"
       encodeFoldFile f
-        `shouldBe` "{\"file_title\":\"t\",\"frame_title\":\"f\",\
-                   \\"vertices_coords\":[[0,0]],\"faceOrders\":[[1,0,-1]]}\n"
+        `shouldBe` Right
+          "{\"file_title\":\"t\",\"frame_title\":\"f\",\
+          \\"vertices_coords\":[[0,0]],\"faceOrders\":[[1,0,-1]]}\n"
 
     it "leaves out an array the file did not have" $ do
       -- edges_assignment is absent, and the decoder reports it as []. Writing
       -- [] back would tell a reader this file records no assignments, which is
       -- a different claim from not mentioning them.
       f <- decodeOrFail "{\"edges_vertices\": [[0, 1]]}"
-      encodeFoldFile f `shouldBe` "{\"edges_vertices\":[[0,1]]}\n"
+      encodeFoldFile f `shouldBe` Right "{\"edges_vertices\":[[0,1]]}\n"
 
     it "leaves out frame_inherit when it is false, which absence already means" $ do
       f <- decodeOrFail "{\"frame_inherit\": false}"
-      encodeFoldFile f `shouldBe` "{}\n"
+      encodeFoldFile f `shouldBe` Right "{}\n"
 
     it "writes an assignment as its uppercase code, whatever case it arrived in" $ do
       -- One of the two places the round trip is deliberately not the identity
       -- on bytes. A lowercase "m" is a tool being loose; the spec says M.
       f <- decodeOrFail "{\"edges_assignment\": [\"m\", \"v\"]}"
-      encodeFoldFile f `shouldBe` "{\"edges_assignment\":[\"M\",\"V\"]}\n"
+      encodeFoldFile f `shouldBe` Right "{\"edges_assignment\":[\"M\",\"V\"]}\n"
 
     it "writes a stacking back as the sign it was read from" $ do
       f <- decodeOrFail "{\"faceOrders\": [[2, 0, 1], [3, 0, -1], [4, 0, 0]]}"
       encodeFoldFile f
-        `shouldBe` "{\"faceOrders\":[[2,0,1],[3,0,-1],[4,0,0]]}\n"
+        `shouldBe` Right "{\"faceOrders\":[[2,0,1],[3,0,-1],[4,0,0]]}\n"
 
     it "keeps a key it does not understand, after the ones it does" $ do
       -- Both kinds: a vendor extension, and a part of the specification that
@@ -512,8 +514,9 @@ spec = do
           "{\"cpedit:page\": {\"xMin\": 0}, \"vertices_edges\": [[0, 1]],\
           \ \"file_title\": \"t\"}"
       encodeFoldFile f
-        `shouldBe` "{\"file_title\":\"t\",\"cpedit:page\":{\"xMin\":0},\
-                   \\"vertices_edges\":[[0,1]]}\n"
+        `shouldBe` Right
+          "{\"file_title\":\"t\",\"cpedit:page\":{\"xMin\":0},\
+          \\"vertices_edges\":[[0,1]]}\n"
 
     it "puts an unknown top-level key back at the top level, not into a frame" $ do
       -- The top-level object is both the file and the key frame, so an unknown
@@ -524,7 +527,7 @@ spec = do
         decodeOrFail
           "{\"x:a\": 1, \"file_frames\": [{\"x:b\": 2}]}"
       encodeFoldFile f
-        `shouldBe` "{\"x:a\":1,\"file_frames\":[{\"x:b\":2}]}\n"
+        `shouldBe` Right "{\"x:a\":1,\"file_frames\":[{\"x:b\":2}]}\n"
 
     it "writes a key once when an extra shadows a field, preferring the field" $ do
       -- The decoder cannot build such a frame -- it subtracts the same keys --
@@ -538,7 +541,7 @@ spec = do
                 frameExtras = KM.fromList [("frame_title", String "extra")]
               }
       encodeFoldFile (emptyFile {keyFrame = shadowed})
-        `shouldBe` "{\"frame_title\":\"field\"}\n"
+        `shouldBe` Right "{\"frame_title\":\"field\"}\n"
 
     it "writes a file-level key once when the key frame carries it as an extra" $ do
       -- The same hazard one level up, and the reason framePairs takes the
@@ -548,7 +551,7 @@ spec = do
       lone <- decodeFrameOrFail "{\"file_spec\": 1.1}"
       KM.keys (frameExtras lone) `shouldBe` ["file_spec"]
       encodeFoldFile (emptyFile {fileSpec = Just 1.1, keyFrame = lone})
-        `shouldBe` "{\"file_spec\":1.1}\n"
+        `shouldBe` Right "{\"file_spec\":1.1}\n"
 
     it "writes a negative zero as zero, the way the SVG backend does" $ do
       -- Folding produces negative zeros, and -0.0 == 0.0 is True while the two
@@ -558,7 +561,7 @@ spec = do
       -- encode (-0.0 :: Double) on its own is "-0.0", so building the Series
       -- straight from toEncoding would undo this. That is what this pins.
       encodeFoldFile (emptyFile {keyFrame = emptyFrame {verticesCoords = [[-0.0, 0]]}})
-        `shouldBe` "{\"vertices_coords\":[[0,0]]}\n"
+        `shouldBe` Right "{\"vertices_coords\":[[0,0]]}\n"
 
     it "does not mistake a file-level key for something it does not understand" $ do
       -- fileKeys is what stops the key frame collecting file_spec as an extra
@@ -575,7 +578,7 @@ spec = do
         -- so the first pass is a normalisation and not an oscillation.
         original <- decodeOrFail =<< BS.readFile (fixtureDir </> name)
         -- Not `again`: QuickCheck exports one.
-        reread <- decodeOrFail (encodeFoldFile original)
+        reread <- decodeOrFail =<< either (fail . show) pure (encodeFoldFile original)
         reread `shouldBe` original
         encodeFoldFile reread `shouldBe` encodeFoldFile original
 
@@ -585,10 +588,10 @@ spec = do
       -- of that is this layer's business to object to, and all of it has to
       -- come back unchanged.
       forAll genFile $ \f ->
-        decodeFoldFile (encodeFoldFile f) === Right f
+        (first show (encodeFoldFile f) >>= decodeFoldFile) === Right f
 
     it "writes every key it claims to know, and no others" $ do
       -- The other half. Encoding a document with every field set has to
       -- produce exactly the keys the two lists name.
-      o <- decodeObjectOrFail (encodeFoldFile saturated)
+      o <- decodeObjectOrFail =<< either (fail . show) pure (encodeFoldFile saturated)
       sort (KM.keys o) `shouldBe` sort (fileKeys <> frameKeys)

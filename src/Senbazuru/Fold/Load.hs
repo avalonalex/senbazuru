@@ -65,12 +65,12 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (toLower)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8', decodeUtf8Lenient)
-import Senbazuru.Explain (Explain (..))
-import Senbazuru.Fold.Types (FoldFile)
+import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
 import Senbazuru.Import.Cp (parseCp)
 import Senbazuru.Import.Opx (parseOpx)
 import Senbazuru.Import.Segments (ImportError, foldFileFromSegments)
@@ -214,25 +214,52 @@ withBytes path decode = do
 -- constructor: nothing that writes a file can produce a decode failure, and a
 -- caller that has to pattern-match on cases it can never see learns nothing
 -- from the type.
-data SaveError = WriteFailed FilePath Text
+data SaveError
+  = WriteFailed FilePath Text
+  | -- | A number FOLD cannot hold, @NaN@ or an infinity: where it is, as a
+    -- path through the file's keys, and the number.
+    NotFinite Text Double
   deriving stock (Eq, Show)
 
 instance Explain SaveError where
-  explain (WriteFailed path msg) = "cannot write " <> T.pack path <> ": " <> msg
+  explain = \case
+    WriteFailed path msg -> "cannot write " <> T.pack path <> ": " <> msg
+    NotFinite at x -> "cannot write a FOLD file with " <> at <> " " <> T.pack (show x) <> ": a FOLD number must be finite"
 
 -- | 'explain' for a 'SaveError', under the name the test suite already uses.
 renderSaveError :: SaveError -> Text
 renderSaveError = explain
 
--- | Encode FOLD to bytes.
+-- | Encode FOLD to bytes, or refuse a number FOLD cannot hold.
 --
 -- What goes in and what stays out is decided by the 'Data.Aeson.ToJSON'
 -- instances in "Senbazuru.Fold.Types"; this only flattens the result. The
 -- output is compact — one line — because a @.fold@ file is interchange between
 -- tools rather than something to read, and it ends in a newline because a file
 -- on disk should.
-encodeFoldFile :: FoldFile -> ByteString
-encodeFoldFile f = BL.toStrict (encode f) <> "\n"
+--
+-- A @NaN@ or an infinity is refused, naming where it is, because aeson would
+-- write it anyway: an infinity as the string @\"+inf\"@ and @NaN@ as @null@,
+-- neither of them a FOLD number, so the file would be one no other reader
+-- takes. Only three fields hold a 'Double', and they are checked before
+-- anything is encoded; 'frameExtras' is JSON already, which has no @NaN@.
+encodeFoldFile :: FoldFile -> Either SaveError ByteString
+encodeFoldFile f = case notFinite f of
+  Just refusal -> Left refusal
+  Nothing -> Right (BL.toStrict (encode f) <> "\n")
+
+-- | The first number in the file that is not finite, where it is: @file_spec@,
+-- then each frame in order, counted as every verb counts them, the key frame
+-- first as frame 0.
+notFinite :: FoldFile -> Maybe SaveError
+notFinite f = listToMaybe (spec ++ concat (zipWith inFrame [0 :: Int ..] (keyFrame f : otherFrames f)))
+  where
+    spec = [NotFinite "file_spec" x | Just x <- [fileSpec f], bad x]
+    inFrame n fr =
+      [NotFinite (at n ("vertices_coords[" <> tshow v <> "][" <> tshow c <> "]")) x | (v, point) <- zip [0 :: Int ..] (verticesCoords fr), (c, x) <- zip [0 :: Int ..] point, bad x]
+        ++ [NotFinite (at n ("edges_foldAngle[" <> tshow e <> "]")) x | (e, x) <- zip [0 :: Int ..] (edgesFoldAngle fr), bad x]
+    at n key = key <> " of frame " <> tshow n
+    bad x = isNaN x || isInfinite x
 
 -- | Encode a @.fold@ file and write it.
 --
@@ -240,8 +267,10 @@ encodeFoldFile f = BL.toStrict (encode f) <> "\n"
 -- disk or an unwritable directory is an expected outcome for a command-line
 -- tool, and the caller decides how loudly to complain.
 saveFoldFile :: FilePath -> FoldFile -> IO (Either SaveError ())
-saveFoldFile path f = do
-  writeResult <- try (BS.writeFile path (encodeFoldFile f))
-  pure $ case writeResult of
-    Left e -> Left (WriteFailed path (T.pack (show (e :: IOException))))
-    Right () -> Right ()
+saveFoldFile path f = case encodeFoldFile f of
+  Left refusal -> pure (Left refusal)
+  Right bytes -> do
+    writeResult <- try (BS.writeFile path bytes)
+    pure $ case writeResult of
+      Left e -> Left (WriteFailed path (T.pack (show (e :: IOException))))
+      Right () -> Right ()

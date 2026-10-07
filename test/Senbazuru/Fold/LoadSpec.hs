@@ -32,6 +32,7 @@ import Senbazuru.Fold.Types
 import Senbazuru.Import.Segments (ImportError (..))
 import System.Directory
   ( createDirectoryIfMissing,
+    doesFileExist,
     getTemporaryDirectory,
     removeDirectoryRecursive,
   )
@@ -144,7 +145,7 @@ spec = do
         let path = dir </> "square.fold"
         _ <- saveFoldFile path sample
         written <- BS.readFile path
-        written `shouldBe` encodeFoldFile sample
+        Right written `shouldBe` encodeFoldFile sample
 
     it "reports a directory that does not exist rather than throwing" $
       withScratch $ \dir -> do
@@ -153,6 +154,32 @@ spec = do
         case result of
           Right () -> expectationFailure "expected the write to fail"
           Left e -> renderSaveError e `shouldSatisfy` T.isPrefixOf "cannot write "
+
+  -- aeson writes an infinity as the string "+inf" and NaN as null, and
+  -- neither is a FOLD number, so no other reader would take the file. Turns
+  -- red if either were written, or if the refusal said less than where.
+  describe "encoding a number FOLD cannot hold" $ do
+    it "refuses NaN, naming the element in the key frame, frame 0" $
+      case encodeFoldFile sample {keyFrame = (keyFrame sample) {verticesCoords = [[0, 0], [1, 0 / 0]]}} of
+        Left (NotFinite at x) -> (at, isNaN x) `shouldBe` ("vertices_coords[1][1] of frame 0", True)
+        other -> expectationFailure ("expected NaN refused, got " <> show other)
+
+    it "refuses an infinity in a later frame, counting frames as every verb does" $
+      case encodeFoldFile sample {otherFrames = [emptyFrame, emptyFrame {edgesFoldAngle = [0, 0, 1 / 0]}]} of
+        Left (NotFinite at x) -> (at, x) `shouldBe` ("edges_foldAngle[2] of frame 2", 1 / 0)
+        other -> expectationFailure ("expected the infinity refused, got " <> show other)
+
+    it "refuses a file_spec that is not finite" $
+      case encodeFoldFile sample {fileSpec = Just (-1 / 0)} of
+        Left (NotFinite at _) -> at `shouldBe` "file_spec"
+        other -> expectationFailure ("expected file_spec refused, got " <> show other)
+
+    it "and saveFoldFile writes nothing at all" $
+      withScratch $ \dir -> do
+        let path = dir </> "nan.fold"
+        result <- saveFoldFile path sample {keyFrame = (keyFrame sample) {edgesFoldAngle = [0 / 0]}}
+        result `shouldSatisfy` either (T.isPrefixOf "cannot write a FOLD file with edges_foldAngle[0] of frame 0 NaN" . renderSaveError) (const False)
+        doesFileExist path `shouldReturn` False
 
   describe "decodeFile" $ do
     it "reads a .cp by its extension" $
@@ -165,7 +192,7 @@ spec = do
       decodeFile "PATTERN.CP" quarterFoldCp `shouldBe` decodeFile "pattern.cp" quarterFoldCp
 
     it "decodes anything else as FOLD, as it did before there was a choice" $ do
-      let bytes = encodeFoldFile sample
+      bytes <- either (fail . show) pure (encodeFoldFile sample)
       decodeFile "square.fold" bytes `shouldBe` Right sample
       decodeFile "square.json" bytes `shouldBe` Right sample
       decodeFile "square" bytes `shouldBe` Right sample
