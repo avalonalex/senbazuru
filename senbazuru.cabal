@@ -235,6 +235,7 @@ executable senbazuru
   build-depends:
     , base
     , bytestring
+    , containers
     , optparse-applicative  >=0.17 && <0.19
     , senbazuru
     , text

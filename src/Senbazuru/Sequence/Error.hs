@@ -103,6 +103,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showHex)
 import Senbazuru.Explain (Explain (..), num, tshow)
+import Senbazuru.Fold.Load (LoadError)
 import Senbazuru.Fold.Query (FoldError)
 import Senbazuru.Fold.Types (EdgeId (..))
 import Senbazuru.Geometry (V2 (..))
@@ -437,6 +438,9 @@ data SheetProblem
     SheetHasNoFaces
   | -- | The run was not handed the file the header names.
     SheetNotLoaded
+  | -- | The sheet's file could not be read: why, with the path that was
+    -- opened. The 'Span' around it points at the line that named it.
+    SheetUnreadable LoadError
   | -- | The sheet, laid flat, will not fold.
     SheetDoesNotFold FoldingError
   | -- | The sheet, laid flat, makes no surface to write as the run's first
@@ -469,6 +473,7 @@ instance Explain SheetProblem where
     SheetNotAPattern err -> "its key frame cannot be read as a crease pattern: " <> explain err
     SheetHasNoFaces -> "its creases bound no face, so there is no paper to fold"
     SheetNotLoaded -> "the run was not given this file"
+    SheetUnreadable err -> explain err
     SheetDoesNotFold err -> "laid flat, it will not fold: " <> explain err
     SheetNoSurface err -> "laid flat, it makes no surface: " <> explain err
     StartFoldedNotRunYet -> "\"start folded\", which starts from the file's own angles, cannot be run yet"

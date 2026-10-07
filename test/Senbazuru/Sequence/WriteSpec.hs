@@ -4,10 +4,12 @@
 -- rules every written frame keeps.
 module Senbazuru.Sequence.WriteSpec (spec) where
 
+import Control.Applicative ((<|>))
 import Control.Monad (forM_)
-import Data.Aeson (Value (..), object, toJSON, (.=))
+import Data.Aeson (Result (..), Value (..), fromJSON, object, toJSON, (.=))
 import Data.Aeson.KeyMap qualified as KM
 import Data.Map.Strict qualified as M
+import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Senbazuru.Diagram.Layout (defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
@@ -20,6 +22,7 @@ import Senbazuru.Origami.Folding (foldFrameWith)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Surface (surfaceFromFolded, transformSurface)
 import Senbazuru.Render.Camera (defaultView)
+import Senbazuru.Render.Gltf (ExportMode (..), renderGlb)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import Senbazuru.Sequence.Build
@@ -31,7 +34,9 @@ import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, work
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), Point (..), RefusalKind (..), Sense (..), Sequence)
 import Senbazuru.Sequence.Write
 import Test.FoldFiles (goldenFoldFile)
-import Test.Golden (goldenText)
+import Test.Glb (Glb (..), parseGlb)
+import Test.Glb qualified as Glb
+import Test.Golden (goldenBytes, goldenText)
 import Test.Hspec
 import Test.SequenceExamples (blintz, quarterFold)
 
@@ -183,6 +188,28 @@ spec = describe "writing a run as a sequence file" $ do
       states <- right (writtenStates (startingAt turned))
       map (frameClasses . stateFrame) states `shouldBe` [["foldedForm"]]
 
+  -- PRD 09's E8 and E9: the last state as a 3D model, as `run -o x.glb`
+  -- writes it, through renderGlb with export's title rule. E8 pins its bytes;
+  -- E9 reads back the frame the model carries and finds the written state:
+  -- exact in topology, angles and orders, and positions within the model's
+  -- rounding, 1e-6 of its span.
+  describe "the last state as a model (E8, E9)" $ do
+    final <- runIO (maybe (fail "no states") pure (lastOf (otherFrames blintzFile)))
+    bytes <- runIO (either (fail . show) pure (renderGlb defaultBudget VisiblePaper (frameTitle final <|> fileTitle blintzFile) final))
+
+    it "is the checked-in blintz-sequence-final.glb (E8)" $
+      goldenBytes "test/golden/blintz-sequence-final.glb" bytes
+
+    it "carries the state it was made from (E9)" $ do
+      glb <- parseGlb bytes
+      stored <- case fromJSON (Glb.at "frame" (Glb.at "senbazuru" (Glb.at "extras" (glbJson glb)))) of
+        Success frame -> pure frame
+        Error why -> fail why
+      (edgesVertices stored, facesVertices stored, edgesFoldAngle stored, faceOrders stored)
+        `shouldBe` (edgesVertices final, facesVertices final, edgesFoldAngle final, faceOrders final)
+      and (zipWith (\a b -> abs (a - b) <= 1e-6) (concat (verticesCoords stored)) (concat (verticesCoords final))) `shouldBe` True
+      map length (verticesCoords stored) `shouldBe` map length (verticesCoords final)
+
   -- PRD 09's E6.
   it "reads back as the file it wrote (E6)" $ do
     bytes <- either (fail . show) pure (encodeFoldFile blintzFile)
@@ -198,6 +225,7 @@ spec = describe "writing a run as a sequence file" $ do
       other -> other
     near a b = length a == length b && and (zipWith (\x y -> abs (x - y) <= 1e-12) a b)
     startingAt start = Run Nothing start [] [] [] Nothing Nothing
+    lastOf = listToMaybe . reverse
     isArray = \case
       Array _ -> True
       _ -> False
