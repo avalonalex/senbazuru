@@ -4,6 +4,7 @@
 module Senbazuru.Sequence.RunSpec (spec) where
 
 import Control.Monad (forM_)
+import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
 import Senbazuru.Explain (explain)
@@ -20,16 +21,17 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), RouteEvidence (..), Run (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordStationary, recordStep)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), RouteEvidence (..), Run (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordStationary, recordStep)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
 import Test.Hspec
-import Test.SequenceExamples (blintz)
+import Test.SequenceExamples (blintz, quarterFold)
 
 spec :: Spec
 spec = do
   starting
   running
+  quartered
   blocked
 
 running :: Spec
@@ -121,13 +123,48 @@ running = describe "running a sequence" $ do
             step_ "c" (unfold [c1])
       fmap (length . runRecords) (runOn twice) `shouldBe` Right 2
 
+    -- Edge south onto the line up the middle: the lines cross at (1/2, 0),
+    -- the middle of edge south, so whichever crease is chosen, edge south
+    -- lies across it and does not say which side moves.
+    it "a line laid onto a line, when the first lies across the fold" $
+      case refusal (runOn (oneStep (fold behind (LineOnto (edge South) (Segment (MidpointOfEdge South) (MidpointOfEdge North)) (Just (MidpointOfEdge East)))))) of
+        Just (Selecting (SegmentStraddles a b)) -> sortOn coords2 [a, b] `shouldSatisfy` (\ends -> and (zipWith close ends [V2 0 0, V2 1 0]) && length ends == 2)
+        other -> expectationFailure ("expected edge south refused as lying across the fold, got " <> show other)
+
     it "a move it does not make yet, by name" $
       refusal (runOn (oneStep (turnOver LeftRight))) `shouldBe` Just (MoveNotRunYet "\"turn over\"")
   where
     coords (V3 x y z) = [x, y, z]
+    coords2 (V2 x y) = [x, y]
+    close (V2 x y) (V2 x' y') = abs (x - x') < 1e-12 && abs (y - y') < 1e-12
     refusal = \case
       Left (StepRefused _ _ _ failure) -> Just failure
       _ -> Nothing
+
+-- The quarter fold, PRD 09's test 1: each fold lays one side of the sheet
+-- onto the opposite side, L1 to L2, about creases the sheet has. The fixture
+-- holds the states its author folded by hand, so the run's angles have
+-- something independent to equal.
+quartered :: Spec
+quartered = describe "the quarter fold" $ do
+  sheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
+  records <- runIO (right (runRecords <$> (checkSequence quarterFold >>= runSequence defaultRunSettings (M.singleton "examples/quarter-fold-steps.fold" sheet) . elaborate)))
+
+  it "folds in half about edges 8 and 10, then in quarters about 9 and 11" $
+    map (sort . concatMap snd . recordHinge) records `shouldBe` [[EdgeId 8, EdgeId 10], [EdgeId 9, EdgeId 11]]
+
+  -- The second fold, one valley fold, writes edge 9 at +180 and edge 11 at
+  -- -180: both faces beside edge 11 were turned over by the first (PRD
+  -- decisions D5, "the line that looks like a typo").
+  it "ends each fold at the angles the fixture's author wrote" $
+    map (snd . recordAngles) records `shouldBe` map edgesFoldAngle (otherFrames sheet)
+
+  -- PRD 02 §6.3: the seed is the vertex mean of the face beside the first
+  -- line's longest piece, ties to the lowest, then the leftmost. Edge west's
+  -- lower half for the first fold; edge north's west half, (1/4, 3/4), for
+  -- the second, as §6.3 works it.
+  it "keeps as each seed the face beside the first side's lowest, then leftmost, piece" $
+    map (map fst . recordMoving) records `shouldBe` [[MaterialPoint (V2 0.25 0.25)], [MaterialPoint (V2 0.25 0.75)]]
 
 -- A turn blocked part-way. Folding needs paper lying flat, so only an
 -- unfold can turn paper with something standing in its way. On the

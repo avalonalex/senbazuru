@@ -8,9 +8,10 @@ import BlintzSequence (BlintzMove (..), buildBlintzSequence)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.Polygon (cross2)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (foldFrameWith)
-import Senbazuru.Sequence.Error (ResolveProblem (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..))
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.Run (sheetState, squareSheet, workingPattern)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
@@ -98,6 +99,82 @@ spec = describe "naming paper on a flat state" $ do
     it "of a form not run yet" $
       foldLine 1e-3 start (HingeOf (Name "c1")) `shouldBe` Left (NotRunYet "\"hinge of NAME\"")
 
+  -- edge S is the line the sheet's side lies along now. PRD 02 §4.6's
+  -- worked case: once corner south-east is folded to the centre, edge
+  -- south's east half runs from (1/2, 0) to (1/2, 1/2), at right angles to
+  -- its west half, and the side names no line. Edge north is untouched.
+  describe "names an edge as a line" $ do
+    it "along the side, while the side lies straight" $ do
+      FoldLine p d <- right (foldLine 1e-3 start (EdgeOf South))
+      onLine p d (V2 0 0) `shouldBe` True
+      onLine p d (V2 1 0) `shouldBe` True
+      FoldLine q e <- right (foldLine 1e-3 afterFirst (EdgeOf North))
+      onLine q e (V2 0 1) `shouldBe` True
+      onLine q e (V2 1 1) `shouldBe` True
+
+    it "and refuses one a fold has bent, naming its pieces" $
+      case foldLine 1e-3 afterFirst (EdgeOf South) of
+        Left (EdgeNotStraight South pieces) -> do
+          length pieces `shouldBe` 2
+          any (samePiece (V2 0.5 0, V2 0.5 0.5)) pieces `shouldBe` True
+          any (samePiece (V2 0 0, V2 0.5 0)) pieces `shouldBe` True
+        other -> expectationFailure ("expected edge south refused as bent, got " <> show other)
+
+  -- L1 to L2 lays one line onto another (Huzita-Hatori's third
+  -- construction). On the flat blintz, where the paper is where it lay.
+  describe "lays a line onto a line" $ do
+    -- Edges west and east are parallel: one answer, midway, at x = 1/2.
+    it "midway between two parallel lines" $ do
+      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
+      onLine p d (V2 0.5 0) `shouldBe` True
+      onLine p d (V2 0.5 1) `shouldBe` True
+
+    -- Edges south and east cross at corner south-east. Of the two lines
+    -- halving the angles there, one runs off the paper from the corner and is
+    -- never taken; the other is the diagonal to corner north-west.
+    it "on the line halving their angle that crosses paper" $ do
+      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (EdgeOf South) (EdgeOf East) Nothing))
+      onLine p d (V2 0 1) `shouldBe` True
+      onLine p d (V2 1 0) `shouldBe` True
+
+    -- Near corner south-east, a stretch of edge south onto the far half of
+    -- edge east. Laid onto edge east's line, the stretch lands on its near
+    -- half, so neither answer lays stretch onto stretch; the one off the paper
+    -- is set aside, and the diagonal is the only answer left. Turns red if
+    -- answers crossing no paper were kept, which would ask for nearest.
+    it "never on an answer that crosses no paper" $ do
+      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (Segment (AtSheet (3 / 4) 0) (CornerOf SouthEast)) (Segment (MidpointOfEdge East) (CornerOf NorthEast)) Nothing))
+      onLine p d (V2 0 1) `shouldBe` True
+      onLine p d (V2 1 0) `shouldBe` True
+
+    -- From the centre, one stretch runs west and the other north. Both
+    -- diagonals cross the paper, but only x + y = 1 lays the first onto the
+    -- second; y = x lays it onto the line south of the centre, where the
+    -- second stretch is not. Turns red if the preference were dropped, which
+    -- would ask for nearest.
+    it "on the answer that lays one stretch onto the other, when both cross paper" $ do
+      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (Segment (MidpointOfEdge West) Centre) (Segment Centre (MidpointOfEdge North)) Nothing))
+      onLine p d (V2 0 1) `shouldBe` True
+      onLine p d (V2 1 0) `shouldBe` True
+
+    -- The midlines cross at the centre, and each diagonal lays one onto the
+    -- other: two answers, so nearest P chooses, and the centre, on both,
+    -- cannot.
+    it "asks nearest P to choose between two answers, and refuses a point as near to both" $ do
+      let midlines = LineOnto (Segment (MidpointOfEdge West) (MidpointOfEdge East)) (Segment (MidpointOfEdge South) (MidpointOfEdge North))
+      case foldLine 1e-3 start (midlines Nothing) of
+        Left (NeedsNearest answers) -> map candidateOnPaper answers `shouldBe` [True, True]
+        other -> expectationFailure ("expected nearest asked for, got " <> show other)
+      FoldLine p d <- right (foldLine 1e-3 start (midlines (Just (CornerOf NorthEast))))
+      onLine p d (V2 0 0) `shouldBe` True
+      onLine p d (V2 1 1) `shouldBe` True
+      case foldLine 1e-3 start (midlines (Just Centre)) of
+        Left (NearestAmbiguous at answers) -> (at, length answers) `shouldBe` (V2 0.5 0.5, 2)
+        other -> expectationFailure ("expected the centre refused as near to both, got " <> show other)
+
+    it "and refuses two lines that are one" $
+      foldLine 1e-3 start (LineOnto (EdgeOf South) (Segment (CornerOf SouthWest) (CornerOf SouthEast)) Nothing) `shouldBe` Left DegenerateConstruction
+
   -- The anchor's slot: strictly inside one face. A point on edge 8 is
   -- between the square and the corner.
   it "puts a region point in the one face it lies inside" $ do
@@ -117,6 +194,8 @@ spec = describe "naming paper on a flat state" $ do
   where
     flatOf frame = right (foldFrameWith frame) >>= right . flatState
     near p q = norm (p ^-^ q) < 1e-12
+    onLine p d x = abs (cross2 d (x ^-^ p)) < 1e-12
+    samePiece (a, b) (c, e) = (near a c && near b e) || (near a e && near b c)
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure

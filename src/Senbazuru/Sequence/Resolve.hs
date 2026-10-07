@@ -63,6 +63,8 @@ module Senbazuru.Sequence.Resolve
     foldLine,
     lineAlong,
     hingeAlong,
+    firstLineSeed,
+    straddles,
 
     -- * Regions
     regionFace,
@@ -80,7 +82,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (minimumBy, nub)
+import Data.List (minimumBy, nub, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
@@ -91,7 +93,7 @@ import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
-import Senbazuru.Sequence.Error (ResolveProblem (..), SelectionError (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..))
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
 
@@ -229,10 +231,15 @@ holdsPoint st ring m = insideRing 0 ring m || any ((<= flatRoom st) . (`distance
 data FoldLine = FoldLine {linePoint :: !V2, lineDirection :: !V2}
   deriving stock (Eq, Show)
 
--- | The fold line the reference names, where the paper now lies. So far the
--- two forms the blintz needs and the one beside them: @[P, Q]@, through two
--- points, and @P to Q@, laying P onto Q, whose line is the perpendicular
--- bisector of where P and Q now are.
+-- | The fold line the reference names, where the paper now lies:
+--
+-- * @[P, Q]@, through two points;
+-- * @P to Q@, laying P onto Q, whose line is the perpendicular bisector of
+--   where P and Q now are;
+-- * @edge S@, the line the sheet's side S lies along now, if it lies along
+--   one;
+-- * @L1 to L2@, laying one line onto another, where L1 and L2 are each an
+--   edge or @[P, Q]@ ('lineOnto').
 foldLine :: Double -> FlatState -> Line -> Either ResolveProblem FoldLine
 foldLine band st = \case
   Segment p q -> do
@@ -241,8 +248,13 @@ foldLine band st = \case
   Onto p q -> do
     (a, b) <- two p q
     pure (FoldLine (0.5 *^ (a ^+^ b)) (perpendicular (unit (b ^-^ a))))
-  EdgeOf _ -> notYet "\"edge S\" as a fold line"
-  LineOnto {} -> notYet "\"L1 to L2\""
+  EdgeOf side -> do
+    (a, b) <- edgeNow st side
+    pure (FoldLine a (unit (b ^-^ a)))
+  LineOnto l1 l2 nearest -> do
+    s1 <- operand l1
+    s2 <- operand l2
+    lineOnto band st s1 s2 nearest
   PerpendicularThrough {} -> notYet "\"perpendicular to L through P\""
   PointToLineThrough {} -> notYet "\"P to L through Q\""
   TwoToTwo {} -> notYet "\"P to L1 and Q to L2\""
@@ -260,6 +272,148 @@ foldLine band st = \case
       b <- positionOf band st q
       if norm (b ^-^ a) <= flatRoom st then Left DegenerateConstruction else Right (a, b)
     unit v = (1 / norm v) *^ v
+    -- A line that L1 to L2 lays onto another needs a stretch, not just a
+    -- direction: which way round it maps decides between two answers.
+    operand = \case
+      EdgeOf side -> edgeNow st side
+      Segment p q -> two p q
+      _ -> notYet "\"L1 to L2\" between lines other than an edge and [P, Q]"
+
+-- | The pieces of the sheet's outline along side S, as the working pattern
+-- numbers its edges, each with its ends: every edge with both ends on that
+-- side of the sheet's box.
+edgePieces :: FlatState -> Compass -> [(EdgeId, Int, Int)]
+edgePieces st side = [(e, a, b) | (e, a, b, _) <- flatEdges st, onSide a, onSide b]
+  where
+    Box (V2 x0 y0) (V2 x1 y1) = flatBox st
+    onSide v = case IM.lookup v (flatMaterial st) of
+      Just (V2 x y) -> abs (along x y) <= flatRoom st
+      Nothing -> False
+    along x y = case side of
+      North -> y - y1
+      South -> y - y0
+      East -> x - x1
+      West -> x - x0
+
+-- | Side S of the sheet where it lies now, from one end to the other: its
+-- pieces must lie on one line, within the sheet's tolerance. On a fold that
+-- has turned part of the side away, they do not, and the side names no line.
+edgeNow :: FlatState -> Compass -> Either ResolveProblem (V2, V2)
+edgeNow st side = case [(p, q) | (_, a, b) <- edgePieces st side, Just p <- [IM.lookup a (flatPlaced st)], Just q <- [IM.lookup b (flatPlaced st)]] of
+  [] -> Left (EdgeNotStraight side [])
+  pieces -> do
+    let (p, q) = minimumBy (comparing (\(a, b) -> negate (norm (b ^-^ a)))) pieces
+        direction = (1 / norm (q ^-^ p)) *^ (q ^-^ p)
+        ends = concat [[a, b] | (a, b) <- pieces]
+        off x = abs (cross2 direction (x ^-^ p))
+        at x = dot direction (x ^-^ p)
+    unless (all ((<= flatRoom st) . off) ends) (Left (EdgeNotStraight side [(toSheetLengths st a, toSheetLengths st b) | (a, b) <- pieces]))
+    pure (p ^+^ (minimum (map at ends) *^ direction), p ^+^ (maximum (map at ends) *^ direction))
+
+-- | @L1 to L2@: the fold that lays one stretch of line onto another, the
+-- third Huzita–Hatori construction (docs/notes/huzita-hatori.md). Lines that
+-- are parallel have one answer, the line midway between them. Lines that
+-- cross have two, the lines halving the angles where they cross, at right
+-- angles to each other.
+--
+-- Of the answers, one that crosses no paper is never taken. If more than one
+-- is left, the one that lays the first stretch onto the second, rather than
+-- onto the line beyond it, is preferred; only if that leaves no single answer
+-- does the author have to say @nearest P@.
+--
+-- With both stretches lying on the paper, which is one piece, some answer
+-- always crosses it. Two parallel stretches lie either side of their
+-- midline. Two crossing lines' halving lines cut the plane into four
+-- quarters, each holding one ray of one line, so one halving line has paper
+-- on each side: a stretch on either side, or one running through the
+-- crossing.
+lineOnto :: Double -> FlatState -> (V2, V2) -> (V2, V2) -> Maybe Point -> Either ResolveProblem FoldLine
+lineOnto band st (a1, b1) (a2, b2) nearest = do
+  let room = flatRoom st
+      d1 = unit (b1 ^-^ a1)
+      d2 = unit (b2 ^-^ a2)
+      apart = cross2 d1 (a2 ^-^ a1)
+  answers <-
+    if abs (cross2 d1 d2) * sheetLength st <= room
+      then
+        if abs apart <= room
+          then Left DegenerateConstruction
+          else Right [FoldLine (a1 ^+^ ((0.5 * apart) *^ perpendicular d1)) d1]
+      else
+        let crossing = a1 ^+^ ((cross2 (a2 ^-^ a1) d2 / cross2 d1 d2) *^ d1)
+         in Right [FoldLine crossing (unit (d1 ^+^ d2)), FoldLine crossing (unit (d1 ^-^ d2))]
+  let onPaper = filter (crossesPaper st) answers
+      preferred = filter laysOnto onPaper
+      laysOnto line =
+        let image = map (reflectIn line) [a1, b1]
+            at x = dot d2 (x ^-^ a2)
+         in min (norm (b2 ^-^ a2)) (maximum (map at image)) - max 0 (minimum (map at image)) > room
+      listed = map (candidateOf st) answers
+  case (onPaper, preferred) of
+    ([], _) -> Left NoSolution
+    ([only], _) -> Right only
+    (_, [only]) -> Right only
+    (several, _) -> case nearest of
+      Nothing -> Left (NeedsNearest listed)
+      Just point -> do
+        near <- positionOf band st point
+        let pool = if null preferred then several else preferred
+            distanceTo (FoldLine o d) = abs (cross2 d (near ^-^ o))
+        case sortOn fst [(distanceTo line, line) | line <- pool] of
+          (d, line) : rest | all ((> d + room) . fst) rest -> Right line
+          _ -> Left (NearestAmbiguous (toSheetLengths st near) listed)
+  where
+    unit v = (1 / norm v) *^ v
+
+-- | Whether a line crosses the paper: has paper strictly on both sides. The
+-- paper is one piece, so paper on both sides means the line passes through
+-- it somewhere.
+crossesPaper :: FlatState -> FoldLine -> Bool
+crossesPaper st (FoldLine origin direction) =
+  let sides = [cross2 direction (p ^-^ origin) | p <- IM.elems (flatPlaced st)]
+   in any (> flatRoom st) sides && any (< negate (flatRoom st)) sides
+
+-- | A point's mirror image in a line.
+reflectIn :: FoldLine -> V2 -> V2
+reflectIn (FoldLine origin direction) p =
+  let offset = p ^-^ origin
+   in origin ^+^ ((2 * dot offset direction) *^ direction) ^-^ offset
+
+-- | An answer as an author can read it: in sheet lengths, through the point
+-- of the line nearest the middle of the paper, and pointing east or north.
+candidateOf :: FlatState -> FoldLine -> CandidateLine
+candidateOf st line@(FoldLine origin direction) =
+  let middle = maybe origin boxCentre (boxFromPoints (IM.elems (flatPlaced st)))
+      through = origin ^+^ (dot (middle ^-^ origin) direction *^ direction)
+      V2 dx dy = direction
+      along = if dx < 0 || (dx == 0 && dy < 0) then (-1) *^ direction else direction
+   in CandidateLine (toSheetLengths st through) along (crossesPaper st line)
+
+-- | The seed of @L1 to L2@ with no @moving@ point, and L1's stretch where it
+-- lies now. The moving side is the one holding L1, and a run keeps a seed it
+-- can name again in a region slot, which a point on L1 is not: so the seed
+-- is the vertex mean of the face beside L1's longest piece, ties going to the
+-- lowest piece, then the leftmost (PRDs\/02-language-semantics.md, §6.3). So
+-- far L1 has pieces only when it is an edge of the sheet.
+firstLineSeed :: FlatState -> Line -> Either ResolveProblem (V2, (V2, V2))
+firstLineSeed st = \case
+  EdgeOf side -> do
+    stretch <- edgeNow st side
+    let pieces = [(a, b, p, q) | (_, a, b) <- edgePieces st side, Just p <- [IM.lookup a (flatMaterial st)], Just q <- [IM.lookup b (flatMaterial st)]]
+        rank (_, _, p, q) = let V2 x y = 0.5 *^ (p ^+^ q) in (negate (norm (q ^-^ p)), y, x)
+    case sortOn rank pieces of
+      (a, b, _, _) : _
+        | ring : _ <- [ring | (_, ring) <- flatFaces st, (x, y) <- zip ring (drop 1 ring ++ take 1 ring), (x, y) `elem` [(a, b), (b, a)]] ->
+            Right ((1 / fromIntegral (length ring)) *^ foldr (^+^) (V2 0 0) (ringOf st ring), stretch)
+      _ -> Left (EdgeNotStraight side [])
+  _ -> Left (NotRunYet "which side of \"L1 to L2\" moves, when L1 is not an edge of the sheet, without moving P,")
+
+-- | Whether a stretch lies on both sides of a fold line, beyond the sheet's
+-- tolerance.
+straddles :: FlatState -> FoldLine -> (V2, V2) -> Bool
+straddles st (FoldLine origin direction) (a, b) =
+  let side p = cross2 direction (p ^-^ origin)
+   in (side a > flatRoom st && side b < negate (flatRoom st)) || (side a < negate (flatRoom st) && side b > flatRoom st)
 
 -- | The fold line along an edge, where the paper now lies: how @hinge of
 -- NAME@ names a line, by a crease the named move turned about.
