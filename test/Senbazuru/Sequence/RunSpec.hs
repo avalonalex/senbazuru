@@ -174,21 +174,27 @@ stopping :: Spec
 stopping = describe "a run that reaches not modelled" $ do
   sheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
   let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings (M.singleton "examples/quarter-fold-steps.fold" sheet) . elaborate
-      -- The quarter fold, its second step's moves given.
+      -- The quarter fold, its second step's moves given, and then its second
+      -- fold, which would leave a record of step 3 if a run went on past a
+      -- stop at step 2.
       quarterWith second = sequenceOf (header "A square folded into quarters" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) $ do
         _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
         _ <- step "quarter" "Fold the top half down in front, onto the bottom." second
-        step_ "Turn it over." (turnOver LeftRight)
+        step_ "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
       quarterStop = RunStop 2 (Just (Name "quarter")) NoSpan "fold in quarters"
 
-  -- The step after the stop is a turn-over, which this runner refuses: it is
-  -- never reached.
   it "stops at its step, keeping the moves before it and running none after (A18)" $ do
     run <- right (runOn (quarterWith (notModelled "fold in quarters")))
     map recordStep (runRecords run) `shouldBe` [1]
     runStop run `shouldBe` Just quarterStop
     runRefusal run `shouldBe` Just (StepRefused 2 (Just (Name "quarter")) NoSpan (NotModelledStop "fold in quarters"))
     fmap explain (runRefusal run) `shouldSatisfy` maybe False (T.isPrefixOf "step 2 (quarter): \"fold in quarters\" is not modelled")
+
+  -- Stopped before any move, the run has no record, and still succeeds.
+  it "stops at the first step with no record made" $ do
+    run <- right (runOn (sequenceOf (header "Not yet" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) (step_ "Squash it." (notModelled "squash fold"))))
+    runRecords run `shouldBe` []
+    runStop run `shouldBe` Just (RunStop 1 Nothing NoSpan "squash fold")
 
   it "keeps a move its own step made before the stop" $ do
     run <- right (runOn (quarterWith (fold inFront (LineOnto (edge North) (edge South) Nothing) >> notModelled "squash the corner")))
