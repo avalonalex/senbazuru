@@ -435,15 +435,15 @@ foldMove settings place named state sense amount line layers seed = do
   let pointSeed p = do
         m <- first (resolvingAt place (prettyPoint p)) (materialPoint flat p)
         picked <- first (resolvingAt place (prettyPoint p)) (seedFaces flat m)
-        pure (m, picked)
-  (m, picked) <- case (layers, seed, line) of
+        pure (m, picked, prettyPoint p)
+  (m, picked, seedWords) <- case (layers, seed, line) of
     (FlapOfFirstArgument, Just p, _) -> pointSeed p
     (FlapOfFirstArgument, Nothing, Onto p _) -> pointSeed p
     (FlapOfFirstArgument, Nothing, LineOnto l1 _ _) -> do
       (m, (a, b)) <- first (resolvingAt place (prettyLine l1)) (firstLineSeed flat l1)
       when (straddles flat foldAt (a, b)) (Left (refusedAt place (Selecting (SegmentStraddles (toSheetLengths flat a) (toSheetLengths flat b)))))
       picked <- first (resolvingAt place (prettyLine l1)) (seedFaces flat m)
-      pure (m, picked)
+      pure (m, picked, prettyLine l1)
     (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting SeedMissing))
     (_, _, _) -> Left (refusedAt place (MoveNotRunYet "choosing which layers to fold"))
   selection <- first (refusedAt place . Selecting) (flapOf flat foldAt candidates m picked)
@@ -459,7 +459,8 @@ foldMove settings place named state sense amount line layers seed = do
         Degrees r -> fromRational r
   motion <- first (refusedAt place . FlapRefused) (prepareFlapToward (selectionHinge selection) (selectionSide selection) magnitude toward folded)
   turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) (MaterialPoint m) turn)
+  let resolved = [ResolvedLine (prettyLine line) (toSheetLengths flat (linePoint foldAt)) (eastOrNorth (lineDirection foldAt)), ResolvedSeed seedWords (toSheetLengths flat m)]
+  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) (MaterialPoint m) resolved turn)
   next <- handOn place state folded record
   pure (next, [record])
   where
@@ -493,7 +494,7 @@ undoOne settings place (state, made) earlier = do
             [] -> Left (refusedAt place (Selecting NothingSelected))
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) seed turn)
+          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) seed [] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
     _ -> Right (state, made)
@@ -505,7 +506,7 @@ besideEdge frame (EdgeId e) = case drop e (edgesVertices frame) of
   _ -> []
 
 -- | The record of a checked turn, at this place.
-recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> MaterialPoint -> CheckedFlap -> Either FlapError MoveRecord
+recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
 recordOf place = hingeTurn (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place)
 
 -- | Hand the state on: write the accepted angles and orders onto the working

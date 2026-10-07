@@ -117,7 +117,9 @@ module Senbazuru.Sequence.Record
     recordHinge,
     recordMoving,
     recordStationary,
+    recordResolved,
     recordAngles,
+    ResolvedReference (..),
     RouteEvidence (..),
 
     -- * Making one
@@ -133,24 +135,32 @@ module Senbazuru.Sequence.Record
     -- * Its states, as written
     WrittenState (..),
     writtenStates,
+
+    -- * Its report
+    renderRunReport,
   )
 where
 
-import Control.Monad (unless)
+import Control.Monad (join, unless)
 import Data.Aeson (Value, object, toJSON, (.=))
 import Data.Aeson.KeyMap qualified as KM
 import Data.IntMap.Strict qualified as IM
+import Data.List (sortOn)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Senbazuru.Explain (tshow)
+import Data.Text qualified as T
+import Numeric (showFFloat)
+import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
-import Senbazuru.Fold.Types (Assignment (..), EdgeId, FaceId, Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
-import Senbazuru.Sequence.Elaborate (Origin)
+import Senbazuru.Sequence.Elaborate (Origin (..))
 import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..), WriteProblem (..))
-import Senbazuru.Sequence.Syntax (Name, RefusalKind, Span)
+import Senbazuru.Sequence.Pretty (prettyMove)
+import Senbazuru.Sequence.Syntax (Name (..), RefusalKind (..), Span)
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
 newtype MaterialPoint = MaterialPoint V2
@@ -188,8 +198,23 @@ data MoveRecord = MoveRecord
     theEvidence :: !RouteEvidence,
     theHinge :: ![(MaterialSegment, [EdgeId])],
     theMoving :: ![(MaterialPoint, [FaceId])],
-    theStationary :: !FaceId
+    theStationary :: !FaceId,
+    theResolved :: ![ResolvedReference]
   }
+  deriving stock (Eq, Show)
+
+-- | A reference as the run resolved it, for the report: the words the author
+-- wrote, and what they named, in sheet lengths. A fold resolves two: its
+-- line, and the point that names the paper it moves.
+data ResolvedReference
+  = -- | The fold line as written, a point on it where the paper lay when the
+    -- move was made, and its direction, pointing east, or north for a line
+    -- running north-south.
+    ResolvedLine Text V2 V2
+  | -- | The words naming the moving paper, and the point of paper they named:
+    -- a @moving@ point, an alignment fold's first argument, or for
+    -- @L1 to L2@, the first line, which names its paper by a face beside it.
+    ResolvedSeed Text V2
   deriving stock (Eq, Show)
 
 -- | The step's number, counted from 1, as a refusal names it.
@@ -244,6 +269,11 @@ recordMoving = theMoving
 recordStationary :: MoveRecord -> FaceId
 recordStationary = theStationary
 
+-- | The references the move resolved, in the order it resolved them; none
+-- for an @unfold@, which turns back a move by its record.
+recordResolved :: MoveRecord -> [ResolvedReference]
+recordResolved = theResolved
+
 -- | Every crease's angle before the move and after it, in degrees as FOLD
 -- writes them, one for each edge of 'recordBefore'. Read from the two
 -- surfaces, which hold them already.
@@ -280,9 +310,11 @@ hingeTurn ::
   [(MaterialSegment, [EdgeId])] ->
   -- | The seed the moving paper was picked out by.
   MaterialPoint ->
+  -- | The references the move resolved, for the report.
+  [ResolvedReference] ->
   CheckedFlap ->
   Either FlapError MoveRecord
-hingeTurn step move name caption origin hinge seed turn = do
+hingeTurn step move name caption origin hinge seed resolved turn = do
   before <- flapAt turn 0
   after <- flapAt turn 1
   pure
@@ -297,7 +329,8 @@ hingeTurn step move name caption origin hinge seed turn = do
         theEvidence = SweptHinge turn,
         theHinge = hinge,
         theMoving = [(seed, flapMovingFaces turn)],
-        theStationary = flapStationaryFace turn
+        theStationary = flapStationaryFace turn,
+        theResolved = resolved
       }
 
 -- | What a run hands back: the state it started from, what each step did,
@@ -447,3 +480,47 @@ writtenFrame surface title assurance = do
         edgesFoldAngle = writtenAngles,
         frameExtras = KM.fromList ([(key, value) | key <- ["senbazuru:material_coords"], Just value <- [KM.lookup key (frameExtras base)]] ++ [("senbazuru:assurance", value) | Just value <- [assurance]])
       }
+
+-- | What a run did, one fact to a line, for a person to read: each move
+-- under a heading of where it is and the move as the printer spells it,
+-- canonical words and all, then what checked
+-- it, what its references named, the paper it moved, its hinge and the face
+-- it held still; each refusal a sequence expected, which has no record and is
+-- found only here; and where the run stopped, if it did. In step order, a
+-- step's moves in theirs.
+--
+-- Ids are the run's own, written @(internal edge 8)@, so an author knows they
+-- did not write them (PRDs\/decisions.md, D20). Numbers are rounded to six
+-- places, which keeps the report the same on every platform where a
+-- coordinate's last bits are not.
+renderRunReport :: Run -> [Text]
+renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
+  where
+    entries = [(recordStep r, recordMoveIndex r, Left r) | r <- runRecords run] ++ [(expectedStep e, expectedMove e, Right e) | e <- runExpected run]
+    place (n, i, _) = (n, i)
+    names = [(outcomeStep o, outcomeName o) | o <- runSteps run]
+    heading n name i written = "step " <> tshow n <> maybe "" (\(Name x) -> " (" <> x <> ")") name <> ", move " <> tshow i <> ": " <> written
+    entry (_, _, Left r) = heading (recordStep r) (recordStepName r) (recordMoveIndex r) (prettyMove (originWritten (recordOrigin r))) : map ("  " <>) (facts r)
+    entry (n, i, Right e) =
+      let RefusalKind kind = expectedKind e
+       in [heading n (join (lookup n names)) i ("expect refused " <> kind), "  refused as " <> kind <> ", as expected; nothing moved"]
+    facts r =
+      [checked (recordEvidence r)]
+        ++ map resolvedFact (recordResolved r)
+        ++ ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
+    checked = \case
+      SweptHinge _ -> "checked: the whole turn, swept, with no paper in its way"
+    resolvedFact = \case
+      ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
+      ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p
+    internal noun ids = "(internal " <> noun <> (if length ids == 1 then "" else "s") <> " " <> T.intercalate ", " (map tshow ids) <> ")"
+    point (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
+    stopped = ["stopped: " <> explain refusal | Just refusal <- [runRefusal run]]
+
+-- | A number rounded to six places, with no trailing zeros and no negative
+-- zero: the same text on every platform.
+decimal :: Double -> Text
+decimal x =
+  let rounded = fromIntegral (round (x * 1e6) :: Integer) / 1e6 :: Double
+      shown = T.pack (showFFloat Nothing (if rounded == 0 then 0 else rounded) "")
+   in fromMaybe shown (T.stripSuffix ".0" shown)

@@ -11,6 +11,7 @@ dist-newstyle/
 *.actual.glb
 *.actual.foldseq
 *.actual.fold
+*.actual.txt
 
 # Editor / OS
 .DS_Store
