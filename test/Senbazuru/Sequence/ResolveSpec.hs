@@ -112,6 +112,13 @@ spec = describe "naming paper on a flat state" $ do
       onLine q e (V2 0 1) `shouldBe` True
       onLine q e (V2 1 1) `shouldBe` True
 
+    -- A square set as a diamond: each side of its box touches the outline
+    -- at a corner only, so no edge of the sheet lies along it.
+    it "and refuses a side of the box no edge of the sheet lies along" $ do
+      let diamond = squareSheet {keyFrame = (keyFrame squareSheet) {verticesCoords = [[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]}}
+      st <- right (sheetState diamond) >>= flatOf . workingPattern
+      foldLine 1e-3 st (EdgeOf North) `shouldBe` Left (EdgeNotStraight North [])
+
     it "and refuses one a fold has bent, naming its pieces" $
       case foldLine 1e-3 afterFirst (EdgeOf South) of
         Left (EdgeNotStraight South pieces) -> do

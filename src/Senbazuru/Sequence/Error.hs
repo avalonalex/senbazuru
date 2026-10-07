@@ -530,7 +530,7 @@ instance Explain ResolveProblem where
     PlacementsDisagree at distance -> "the faces sharing " <> point at <> " fold it to places " <> num distance <> " sheet lengths apart"
     NoCornerThere corner -> "the sheet has no " <> cornerWords corner <> " corner; its outline is not a rectangle, so name the point another way"
     ConstructionInTheAir relief -> "a construction needs the paper lying flat, and it stands " <> num relief <> " out of the plane"
-    DegenerateConstruction -> "the construction's two points are the same point, which fixes no line"
+    DegenerateConstruction -> "the construction's two points are one point, or its two lines one line, which fixes no fold line"
     NoSolution -> "the fold line runs along no crease on the paper"
     HingeOfNotOneMove (Name name) made -> "\"hinge of " <> name <> "\" needs a step that made one move, and " <> name <> " made " <> tshow made
     EdgeNotStraight side [] -> "no piece of the sheet's outline lies along edge " <> compassWords side <> "; name the line by two points, such as " <> cornersOf side
@@ -541,8 +541,8 @@ instance Explain ResolveProblem where
         <> T.intercalate ", " [point a <> " to " <> point b | (a, b) <- pieces]
         <> "; name the line by two points, such as "
         <> cornersOf side
-    NeedsNearest answers -> "the construction has " <> tshow (length (filter candidateOnPaper answers)) <> " answers on the paper; add nearest P to choose one. They are " <> listed answers
-    NearestAmbiguous at answers -> point at <> " lies as near to more than one answer; choose a point nearer one of them. They are " <> listed answers
+    NeedsNearest answers -> "the construction has " <> tshow (length (filter candidateOnPaper answers)) <> " answers on the paper; add nearest P to choose one of them: " <> listed answers
+    NearestAmbiguous at answers -> point at <> " lies as near to more than one answer; choose a point nearer one of them: " <> listed answers
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"

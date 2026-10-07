@@ -88,7 +88,7 @@ import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, boxSize, perpendicular)
-import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, insideRing)
+import Senbazuru.Geometry.Polygon (centroid, cross2, distanceToSegment, edges, insideRing)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -231,6 +231,10 @@ holdsPoint st ring m = insideRing 0 ring m || any ((<= flatRoom st) . (`distance
 data FoldLine = FoldLine {linePoint :: !V2, lineDirection :: !V2}
   deriving stock (Eq, Show)
 
+-- | A direction of length 1.
+unit :: V2 -> V2
+unit v = (1 / norm v) *^ v
+
 -- | The fold line the reference names, where the paper now lies:
 --
 -- * @[P, Q]@, through two points;
@@ -271,7 +275,6 @@ foldLine band st = \case
       a <- positionOf band st p
       b <- positionOf band st q
       if norm (b ^-^ a) <= flatRoom st then Left DegenerateConstruction else Right (a, b)
-    unit v = (1 / norm v) *^ v
     -- A line that L1 to L2 lays onto another needs a stretch, not just a
     -- direction: which way round it maps decides between two answers.
     operand = \case
@@ -303,7 +306,7 @@ edgeNow st side = case [(p, q) | (_, a, b) <- edgePieces st side, Just p <- [IM.
   [] -> Left (EdgeNotStraight side [])
   pieces -> do
     let (p, q) = minimumBy (comparing (\(a, b) -> negate (norm (b ^-^ a)))) pieces
-        direction = (1 / norm (q ^-^ p)) *^ (q ^-^ p)
+        direction = unit (q ^-^ p)
         ends = concat [[a, b] | (a, b) <- pieces]
         off x = abs (cross2 direction (x ^-^ p))
         at x = dot direction (x ^-^ p)
@@ -362,8 +365,6 @@ lineOnto band st (a1, b1) (a2, b2) nearest = do
         case sortOn fst [(distanceTo line, line) | line <- pool] of
           (d, line) : rest | all ((> d + room) . fst) rest -> Right line
           _ -> Left (NearestAmbiguous (toSheetLengths st near) listed)
-  where
-    unit v = (1 / norm v) *^ v
 
 -- | Whether a line crosses the paper: has paper strictly on both sides. The
 -- paper is one piece, so paper on both sides means the line passes through
@@ -381,12 +382,15 @@ reflectIn (FoldLine origin direction) p =
 
 -- | An answer as an author can read it: in sheet lengths, through the point
 -- of the line nearest the middle of the paper, and pointing east or north.
+-- A line within a hair of north-south points north, whatever the sign of the
+-- rounding in its east-west part.
 candidateOf :: FlatState -> FoldLine -> CandidateLine
 candidateOf st line@(FoldLine origin direction) =
   let middle = maybe origin boxCentre (boxFromPoints (IM.elems (flatPlaced st)))
       through = origin ^+^ (dot (middle ^-^ origin) direction *^ direction)
       V2 dx dy = direction
-      along = if dx < 0 || (dx == 0 && dy < 0) then (-1) *^ direction else direction
+      southOrWest = if abs dx <= 1e-12 then dy < 0 else dx < 0
+      along = if southOrWest then (-1) *^ direction else direction
    in CandidateLine (toSheetLengths st through) along (crossesPaper st line)
 
 -- | The seed of @L1 to L2@ with no @moving@ point, and L1's stretch where it
@@ -395,16 +399,29 @@ candidateOf st line@(FoldLine origin direction) =
 -- is the vertex mean of the face beside L1's longest piece, ties going to the
 -- lowest piece, then the leftmost (PRDs\/02-language-semantics.md, §6.3). So
 -- far L1 has pieces only when it is an edge of the sheet.
+--
+-- A tie is within the sheet's tolerance, in a length, a height or a distance
+-- across, so that rounding cannot decide one: the rule 'Run.defaultAnchor'
+-- follows for the anchor.
 firstLineSeed :: FlatState -> Line -> Either ResolveProblem (V2, (V2, V2))
 firstLineSeed st = \case
   EdgeOf side -> do
     stretch <- edgeNow st side
-    let pieces = [(a, b, p, q) | (_, a, b) <- edgePieces st side, Just p <- [IM.lookup a (flatMaterial st)], Just q <- [IM.lookup b (flatMaterial st)]]
-        rank (_, _, p, q) = let V2 x y = 0.5 *^ (p ^+^ q) in (negate (norm (q ^-^ p)), y, x)
-    case sortOn rank pieces of
-      (a, b, _, _) : _
+    let room = flatRoom st
+        pieces = [(a, b, norm (q ^-^ p), 0.5 *^ (p ^+^ q)) | (_, a, b) <- edgePieces st side, Just p <- [IM.lookup a (flatMaterial st)], Just q <- [IM.lookup b (flatMaterial st)]]
+        chosen = case pieces of
+          [] -> []
+          _ ->
+            let longest = maximum [l | (_, _, l, _) <- pieces]
+                long = [piece | piece@(_, _, l, _) <- pieces, l >= longest - room]
+                lowest = minimum [y | (_, _, _, V2 _ y) <- long]
+                low = [piece | piece@(_, _, _, V2 _ y) <- long, y <= lowest + room]
+                leftmost = minimum [x | (_, _, _, V2 x _) <- low]
+             in [(a, b) | (a, b, _, V2 x _) <- low, x <= leftmost + room]
+    case chosen of
+      (a, b) : _
         | ring : _ <- [ring | (_, ring) <- flatFaces st, (x, y) <- zip ring (drop 1 ring ++ take 1 ring), (x, y) `elem` [(a, b), (b, a)]] ->
-            Right ((1 / fromIntegral (length ring)) *^ foldr (^+^) (V2 0 0) (ringOf st ring), stretch)
+            Right (centroid (ringOf st ring), stretch)
       _ -> Left (EdgeNotStraight side [])
   _ -> Left (NotRunYet "which side of \"L1 to L2\" moves, when L1 is not an edge of the sheet, without moving P,")
 
