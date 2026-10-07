@@ -25,6 +25,7 @@ import Senbazuru.Render.Projected
 import Senbazuru.Render.Steps
 import Senbazuru.Render.Svg
 import StudyCase
+import Test.FoldFiles (goldenFoldFile)
 import Test.Golden (goldenText)
 import Test.Hspec
 
@@ -37,17 +38,9 @@ spec = describe "bird sequence through production SVG" $ do
   source <- runIO $ loadFoldFile (caseSource entry) >>= right
   file <- runIO $ right (buildCaseSequence entry source)
   it "matches the checked-in ordinary FOLD fixture and round-trips it" $ do
-    fixture <- loadFoldFile "examples/bird-base-sequence.fold" >>= right
-    withoutCoordinates fixture `shouldBe` withoutCoordinates file
-    forM_ (zip (keyFrame fixture : otherFrames fixture) (keyFrame file : otherFrames file)) $ \(expected, actual) -> do
-      -- The same trigonometry on macOS and Linux differs in the last few
-      -- bits. Use the study's 1e-12 unit-sheet tolerance only for coordinates;
-      -- frame counts, topology, angles, orders and metadata stay exact above.
-      let expectedPoints = verticesCoords expected
-          actualPoints = verticesCoords actual
-      map length actualPoints `shouldBe` map length expectedPoints
-      let differences = zipWith (\a b -> abs (a - b)) (concat actualPoints) (concat expectedPoints)
-      differences `shouldSatisfy` all (< 1e-12)
+    -- The same trigonometry on macOS and Linux differs in the last few bits:
+    -- the study's 1e-12 unit-sheet tolerance for coordinates only.
+    goldenFoldFile 1e-12 "examples/bird-base-sequence.fold" file
     eitherDecode (encode file) `shouldBe` Right file
   it "requires contact checks and refuses a reversed moving state at export" $ do
     buildCaseSequence entry {caseContact = Nothing} source `shouldSatisfy` isLeft
@@ -82,15 +75,6 @@ spec = describe "bird sequence through production SVG" $ do
       Just diagram -> do
         length [() | Label {} <- diagramShapes diagram] `shouldBe` 16
         goldenText ("test/golden/bird-sequence-" ++ name ++ ".svg") (renderSvg defaultPage {pageWidth = 1000, pageHeight = 1000} diagram)
-
-withoutCoordinates :: FoldFile -> FoldFile
-withoutCoordinates file =
-  file
-    { keyFrame = clear (keyFrame file),
-      otherFrames = map clear (otherFrames file)
-    }
-  where
-    clear fr = fr {verticesCoords = []}
 
 right :: (Show e) => Either e a -> IO a
 right (Right value) = pure value

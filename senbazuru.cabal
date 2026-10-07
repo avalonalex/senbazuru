@@ -492,6 +492,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.WriteSpec
     Test.CheckedSequenceGen
     Test.Glb
+    Test.FoldFiles
     Test.Golden
     Test.SequenceExamples
     Test.SequenceGen
