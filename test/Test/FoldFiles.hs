@@ -14,12 +14,10 @@
 -- "Test.Golden" does, so that accepting an intended change is reading a diff
 -- and moving a file.
 module Test.FoldFiles
-  ( withoutCoordinates,
-    goldenFoldFile,
+  ( goldenFoldFile,
   )
 where
 
-import Control.Monad (unless)
 import Data.ByteString qualified as BS
 import Senbazuru.Fold.Load (encodeFoldFile, loadFoldFile)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
@@ -51,12 +49,18 @@ goldenFoldFile tolerance path actual = do
       expected <- loadFoldFile path >>= either (fail . show) pure
       if withoutCoordinates expected /= withoutCoordinates actual
         then refuse ("output does not match " <> path <> " apart from coordinates")
-        else
-          unless (and (zipWith close (frames expected) (frames actual))) $
-            refuse ("coordinates differ from " <> path <> " by more than " <> show tolerance)
+        else case mismatches expected of
+          [] -> pure ()
+          (n, v, want, got) : _ -> refuse ("frame " <> show n <> ", vertex " <> show v <> " is " <> show got <> " where " <> path <> " has " <> show want <> ", more than " <> show tolerance <> " apart")
   where
     actualPath = replaceExtension path (".actual" <> takeExtension path)
     frames file = keyFrame file : otherFrames file
-    close a b =
-      map length (verticesCoords a) == map length (verticesCoords b)
-        && and (zipWith (\x y -> abs (x - y) <= tolerance) (concat (verticesCoords a)) (concat (verticesCoords b)))
+    -- Where the coordinates differ, frame by frame, the key frame as frame
+    -- 0 as every verb counts it: a vertex with a different number of
+    -- coordinates, or one beyond the tolerance.
+    mismatches expected =
+      [ (n, v, want, got)
+        | (n, a, b) <- zip3 [0 :: Int ..] (frames expected) (frames actual),
+          (v, want, got) <- zip3 [0 :: Int ..] (verticesCoords a) (verticesCoords b),
+          length want /= length got || or (zipWith (\x y -> abs (x - y) > tolerance) want got)
+      ]

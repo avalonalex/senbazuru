@@ -491,8 +491,8 @@ test-suite senbazuru-test
     Senbazuru.Sequence.TraditionalCraneSpec
     Senbazuru.Sequence.WriteSpec
     Test.CheckedSequenceGen
-    Test.Glb
     Test.FoldFiles
+    Test.Glb
     Test.Golden
     Test.SequenceExamples
     Test.SequenceGen
