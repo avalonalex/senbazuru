@@ -146,7 +146,7 @@ for how it is computed when a flat-folded frame arrives without it.
 
 senbazuru can write FOLD as well as read it: `Senbazuru.Fold.Load` has
 `encodeFoldFile` and `saveFoldFile` against its `decodeFoldFile` and
-`loadFoldFile`. Three decisions are worth stating, because each of them could
+`loadFoldFile`. Four decisions are worth stating, because each of them could
 plausibly have gone the other way.
 
 **Nothing is dropped.** Every key above comes back out, including the ones
@@ -168,6 +168,14 @@ of `false` are simply not written. `{}` in gives `{}` out.
 keys sorted after its known ones, and the output is compact. That makes the
 bytes reproducible and a diff between two files readable.
 
+**A number FOLD cannot hold is refused, not written.** A `NaN` or an infinity
+in `file_spec`, `vertices_coords` or `edges_foldAngle` has no JSON spelling, and
+`aeson` would write `null` or the string `"+inf"`, which no other reader takes.
+`encodeFoldFile` refuses it instead, naming the element and its frame. A
+number written into a vendor key goes through `toJSON` first and is beyond
+this check, so the code writing it must check it
+([notes/round-trips.md](notes/round-trips.md)).
+
 The one thing that *does* drop a key is folding. `foldFrame` rewrites every
 coordinate and reverses the winding of any face that ends up turned over, so a
 carried `faces_edges` — which lists a face's edges in the order of its corners
@@ -178,7 +186,7 @@ A round trip is therefore a fixed point on the decoded document — tested on
 every `.fold` file in `test/fixtures/`, which are copies of the ones in
 `examples/` — but not on the bytes: whitespace goes, `"m"` becomes `"M"`, and
 numbers are reformatted. [notes/round-trips.md](notes/round-trips.md) has the
-full list, the reasoning, and the one case the writer still gets wrong.
+full list, the reasoning, and the one leniency left on the reading side.
 
 ## What FOLD does **not** contain
 

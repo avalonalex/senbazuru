@@ -125,22 +125,32 @@ So the obvious optimisation — build the `Series` straight from `toEncoding` an
 skip the intermediate `Value` — would quietly put negative zeros back into
 written files. There is a test pinning it for that reason.
 
-## One thing that is still wrong
+## A number with no JSON spelling
 
-A `Double` that is not finite has no JSON number to be written as, and the
-encoder does not notice. `aeson` writes infinities as *strings* and `NaN` as
-`null`:
+A `Double` that is not finite has no JSON number to be written as. Left to
+itself, `aeson` writes infinities as *strings* and `NaN` as `null`:
 
 ```json
 {"vertices_coords": [["+inf", null, "-inf"]]}
 ```
 
-which is not FOLD, and no other reader will take it. It is hard to reach —
-nothing in senbazuru produces a non-finite coordinate today — but the decoder
-will happily read a `null` coordinate back as `NaN`, so the two halves agree
-with each other and with nobody else. The honest fix is for the encoder to
-refuse, which means `encodeFoldFile` returning `Either` the way every other
-fallible thing in this codebase does. It has not been done yet.
+which is not FOLD, and no other reader will take it. So `encodeFoldFile`
+returns `Either` the way every other fallible thing in this codebase does, and
+refuses such a number before encoding anything, naming where it is:
+`vertices_coords[1][1] of frame 0`, counting frames as every verb does. Only
+three fields hold a `Double` (`file_spec`, `vertices_coords`,
+`edges_foldAngle`), so the check walks those.
+
+`frameExtras` it cannot check. It is JSON already, so a number some code put
+there through `toJSON` became `null` or a string on the way in, before the
+encoder sees it. Whoever writes a number into it has to check it first: the
+sequence writer, for the material coordinates `Surface.materialFrame` puts
+under `senbazuru:material_coords`.
+
+The other half is still lenient: the decoder reads a `null` coordinate back as
+`NaN`. It no longer matters for a round trip, since such a file can no longer
+be written back out, but it means a file from elsewhere with a `null` in it is
+taken rather than refused.
 
 ## References
 

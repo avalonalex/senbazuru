@@ -450,7 +450,8 @@ spec = do
         either (fail . ("stacking failed: " <>) . T.unpack . renderFoldError) pure $
           layerOrderFor defaultBudget folded
       let saved = soleFrame (folded {faceOrders = fromMaybe [] orders}) f
-      reread <- case decodeFoldFile (encodeFoldFile saved) of
+      bytes <- either (fail . show) pure (encodeFoldFile saved)
+      reread <- case decodeFoldFile bytes of
         Left err -> fail ("decode failed: " <> err)
         Right g -> pure (keyFrame g)
       viaFile <- drawFrame defaultTheme FoldedFormNotation topDown reread

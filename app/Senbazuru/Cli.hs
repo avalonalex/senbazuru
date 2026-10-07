@@ -896,7 +896,7 @@ exportFile o f = do
 -- one-liner instead: it writes a @.glb@, which is bytes and not a document.
 writeDocument :: Maybe FilePath -> FoldFile -> IO ()
 writeDocument output document = case output of
-  Nothing -> BS.putStr (encodeFoldFile document)
+  Nothing -> either (die . explain) BS.putStr (encodeFoldFile document)
   Just path ->
     saveFoldFile path document >>= \case
       Left err -> die (explain err)
