@@ -171,7 +171,9 @@ bytes reproducible and a diff between two files readable.
 **A number FOLD cannot hold is refused, not written.** A `NaN` or an infinity
 in `file_spec`, `vertices_coords` or `edges_foldAngle` has no JSON spelling, and
 `aeson` would write `null` or the string `"+inf"`, which no other reader takes.
-`encodeFoldFile` refuses it instead, naming the element and its frame
+`encodeFoldFile` refuses it instead, naming the element and its frame. A
+number written into a vendor key goes through `toJSON` first and is beyond
+this check, so the code writing it must check it
 ([notes/round-trips.md](notes/round-trips.md)).
 
 The one thing that *does* drop a key is folding. `foldFrame` rewrites every

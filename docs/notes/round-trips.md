@@ -139,8 +139,13 @@ returns `Either` the way every other fallible thing in this codebase does, and
 refuses such a number before encoding anything, naming where it is:
 `vertices_coords[1][1] of frame 0`, counting frames as every verb does. Only
 three fields hold a `Double` (`file_spec`, `vertices_coords`,
-`edges_foldAngle`), so the check walks those; `frameExtras` is JSON already,
-and JSON has no `NaN`.
+`edges_foldAngle`), so the check walks those.
+
+`frameExtras` it cannot check. It is JSON already, so a number some code put
+there through `toJSON` became `null` or a string on the way in, before the
+encoder sees it. Whoever writes a number into it has to check it first: the
+sequence writer, for the material coordinates `Surface.materialFrame` puts
+under `senbazuru:material_coords`.
 
 The other half is still lenient: the decoder reads a `null` coordinate back as
 `NaN`. It no longer matters for a round trip, since such a file can no longer

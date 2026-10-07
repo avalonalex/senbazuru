@@ -178,7 +178,7 @@ spec = do
       withScratch $ \dir -> do
         let path = dir </> "nan.fold"
         result <- saveFoldFile path sample {keyFrame = (keyFrame sample) {edgesFoldAngle = [0 / 0]}}
-        result `shouldSatisfy` either (T.isPrefixOf "cannot write a FOLD file with edges_foldAngle[0] of frame 0 NaN" . renderSaveError) (const False)
+        result `shouldSatisfy` either (T.isPrefixOf "cannot write a FOLD file: edges_foldAngle[0] of frame 0 is NaN" . renderSaveError) (const False)
         doesFileExist path `shouldReturn` False
 
   describe "decodeFile" $ do

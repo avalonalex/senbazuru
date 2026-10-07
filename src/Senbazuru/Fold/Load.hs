@@ -224,7 +224,7 @@ data SaveError
 instance Explain SaveError where
   explain = \case
     WriteFailed path msg -> "cannot write " <> T.pack path <> ": " <> msg
-    NotFinite at x -> "cannot write a FOLD file with " <> at <> " " <> T.pack (show x) <> ": a FOLD number must be finite"
+    NotFinite at x -> "cannot write a FOLD file: " <> at <> " is " <> T.pack (show x) <> ", and a FOLD number must be finite"
 
 -- | 'explain' for a 'SaveError', under the name the test suite already uses.
 renderSaveError :: SaveError -> Text
@@ -242,7 +242,13 @@ renderSaveError = explain
 -- write it anyway: an infinity as the string @\"+inf\"@ and @NaN@ as @null@,
 -- neither of them a FOLD number, so the file would be one no other reader
 -- takes. Only three fields hold a 'Double', and they are checked before
--- anything is encoded; 'frameExtras' is JSON already, which has no @NaN@.
+-- anything is encoded.
+--
+-- 'frameExtras' is not checked, and cannot be: it is JSON already, so a
+-- number some code put there through 'Data.Aeson.toJSON' was turned into
+-- @null@ or a string on the way in. Whoever writes a number into it has to
+-- check that number first, as "Senbazuru.Origami.Surface.materialFrame"'s
+-- material coordinates will need to be once the sequence writer writes them.
 encodeFoldFile :: FoldFile -> Either SaveError ByteString
 encodeFoldFile f = case notFinite f of
   Just refusal -> Left refusal
