@@ -1942,8 +1942,9 @@ data MacroBinding = MacroBinding { bindLine :: Name, bindMacro :: MacroName, bin
                                  , bindBranch :: Branch, bindDisambiguator :: Maybe ResolvedReference, bindReached :: Rational }
 data Run = Run { runStart :: StateView, runSteps :: [StepOutcome], runRecords :: [MoveRecord]
                , runClosing :: Maybe Text, runStop :: Maybe (Int, Maybe Name, Text) }
-                                                                 -- built: runRecords, runExpected, runStop :: Maybe RunStop (C76)
-writtenStates :: Run -> Either WriteProblem [WrittenState]
+                                                                 -- built: runTitle, runStart :: Surface V2, runSteps :: [StepOutcome], runRecords,
+                                                                 -- runExpected, runClosing, runStop :: Maybe RunStop (C76, C77)
+writtenStates :: Run -> Either WriteProblem [WrittenState]       -- built: Either SequenceError, WriteRefused k (C77)
 runRefusal :: Run -> Maybe SequenceError
 renderRunReport :: Run -> [Text]
 
@@ -2485,6 +2486,7 @@ lists edits for.
 | C74 | `README.md` and `docs/roadmap.md` roadmap item 2 as row 18 | 10 §4 note | `README.md:213` [ran] | adopted | 01, 10 |
 | C75 | `MoveRecord` as built at M2 (#486, #487): opaque, made only by `hingeTurn` from a `CheckedFlap` and read through functions, so record update cannot pair one turn's paper with another's; `recordSpan` → `recordOrigin`, which keeps the move as written; `recordLabel`, the step's caption, → `recordCaption`; `recordPath` → `recordStepName`, one name while a step's is the only one a move sits under; `recordStationary` a bare `FaceId`; `recordAngles` read from the surfaces; every other field arrives with the first move that fills it. `MaterialPoint` and `MaterialSegment` were built in `Sequence.Record`, where the record first needed them; `MoveFailure`'s constructors that name them sit at level 2, so both move below `Sequence.Error` with the first such error | here; #282 | `Sequence.Record` [code] | adopted-modified | 01, 07 |
 | C76 | The `not modelled` stop as built at M2 (#498): `MoveFailure`'s `NotModelled` is `NotModelledStop`, because `Sequence.Syntax.NotModelled` is the move and four modules import both whole (C23 renamed clashing constructors the same way); `runStop` is `Maybe RunStop`, the step, its name, the move's span and the text, since `runRefusal`'s `StepRefused` needs the span for `path:line:col`; the stop has no refusal kind, so `expect refused` around a `not modelled` passes it on and the run stops there | D21, C10 | `Sequence.Run.runStep`, `Sequence.Record.runRefusal` [code] | adopted-modified | 02, 04, 09 |
+| C77 | The writer as built at M2 (#499): `writtenStates :: Run -> Either SequenceError [WrittenState]`, refusing as `WriteRefused` with the state's number, which a bare `WriteProblem` could not carry; `WrittenState` holds the step that produced it and its frame. `Run` gains `runTitle`, `runStart :: Surface V2` (the sketch's `StateView`), `runSteps :: [StepOutcome]` (step, name, caption, and the state it ends at, `Nothing` for a step of only `expect refused`) and `runClosing`; `RunStop` gains the stopped step's caption, which titles the last state written. `senbazuru:assurance`, whose shape no PRD gave, is a list of `{"move": i, "evidence": "SweptHinge"}`, one per record of the producing step, `[]` for a step that made none, absent on state 0. No display is applied until `turn over` lands. An anchor the header names now reorders the sheet's faces from the sheet's own order, not from the default anchor's, which had moved a second face: test 1's face ids match the fixture's only so | 02 §11, D24, 09 §2.2 | `Sequence.Record.writtenStates`, `Sequence.Write`, `Sequence.Run.startOf` [code] | adopted-modified | 01, 02, 09 |
 
 ## Proposals not adopted
 

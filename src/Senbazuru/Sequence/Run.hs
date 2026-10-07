@@ -139,7 +139,7 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, prepareFlapAlong, prepareFlapToward)
 import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep (SweepSettings, defaultSweepSettings)
-import Senbazuru.Origami.Surface (surfaceFrame)
+import Senbazuru.Origami.Surface (Surface, surfaceFrame, surfaceFromFolded)
 import Senbazuru.Sequence.Elaborate (Core (..), CoreMove (..), Elaborated (..), ElaboratedStep (..), Origin (..))
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
 import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
@@ -158,7 +158,11 @@ data FoldState = FoldState
     -- | The working pattern folded, when the last move's join check has
     -- folded it already: the next move starts from that fold rather than
     -- folding the same pattern again.
-    theFold :: !(Maybe Folded)
+    theFold :: !(Maybe Folded),
+    -- | The sheet's faces in its own order, wound anticlockwise: the order
+    -- an anchor named in the header reorders from, once, so that every face
+    -- but the anchor's keeps the sheet's numbering.
+    theSheetFaces :: ![[VertexId]]
   }
   deriving stock (Eq, Show)
 
@@ -206,7 +210,8 @@ sheetState file = do
             },
         theAnchor = MaterialPoint anchor,
         theFront = TowardPlusZ,
-        theFold = Nothing
+        theFold = Nothing,
+        theSheetFaces = faces
       }
   where
     flat (V3 x y _) = V2 x y
@@ -281,24 +286,36 @@ defaultRunSettings = RunSettings defaultSweepSettings 1e-3
 -- part of a refused run comes back.
 runSequence :: RunSettings -> Map FilePath FoldFile -> Elaborated -> Either SequenceError Run
 runSequence settings sheets elaborated = do
-  start <- startOf sheets (elaboratedHeader elaborated)
+  let header = elaboratedHeader elaborated
+  (start, startSurface) <- startOf sheets header
   let go progress = \case
         [] -> Right (progress, Nothing)
         step : rest ->
           runStep settings progress step >>= \case
             Going next -> go next rest
             Stopped at stop -> Right (at, Just stop)
-  (Progress _ made _ expected, stop) <- go (Progress start [] M.empty []) (zip [1 ..] (elaboratedSteps elaborated))
-  pure (Run (reverse made) (reverse expected) stop)
+  (Progress _ made _ expected _ outcomes, stop) <- go (Progress start [] M.empty [] startSurface []) (zip [1 ..] (elaboratedSteps elaborated))
+  pure
+    Run
+      { runTitle = hTitle header,
+        runStart = startSurface,
+        runSteps = reverse outcomes,
+        runRecords = reverse made,
+        runExpected = reverse expected,
+        runClosing = hClosing header,
+        runStop = stop
+      }
 
 -- | A run so far: the state, the records made (latest first), each named
--- step's records for a later @unfold@ or @hinge of@, and the refusals
--- expected and got (latest first).
-data Progress = Progress !FoldState ![MoveRecord] !(Map Name [MoveRecord]) ![ExpectedRefusal]
+-- step's records for a later @unfold@ or @hinge of@, the refusals expected
+-- and got (latest first), the surface the paper is at, and each finished
+-- step's outcome (latest first).
+data Progress = Progress !FoldState ![MoveRecord] !(Map Name [MoveRecord]) ![ExpectedRefusal] !(Surface V2) ![StepOutcome]
 
 -- | The state the header describes: its sheet, laid flat, anchored at its
--- @anchor@ point or by default, with its side up.
-startOf :: Map FilePath FoldFile -> Header -> Either SequenceError FoldState
+-- @anchor@ point or by default, with its side up; and that state as a
+-- surface, state 0 of what the run writes.
+startOf :: Map FilePath FoldFile -> Header -> Either SequenceError (FoldState, Surface V2)
 startOf sheets header = do
   let Located at source = hSheet header
       path = case source of
@@ -320,8 +337,14 @@ startOf sheets header = do
       flat <- first refuseAnchor (flatState folded)
       m <- first refuseAnchor (materialPoint flat point)
       FaceId face <- first refuseAnchor (regionFace flat m)
-      Right laid {theWorking = (theWorking laid) {facesVertices = firstOf face (facesVertices (theWorking laid))}, theAnchor = MaterialPoint m, theFold = Nothing}
-  Right anchored {theFront = if hSide header == WhiteUp then TowardMinusZ else TowardPlusZ}
+      -- The face is found in the default anchor's order; it goes first, and
+      -- the rest follow in the sheet's own order, so that the default's
+      -- reordering does not linger in them.
+      let chosen = take 1 (drop face (facesVertices (theWorking laid)))
+      Right laid {theWorking = (theWorking laid) {facesVertices = chosen ++ filter (`notElem` chosen) (theSheetFaces laid)}, theAnchor = MaterialPoint m, theFold = Nothing}
+  folded <- first (SheetRefused at path . SheetDoesNotFold) (foldNow anchored)
+  surface <- first (SheetRefused at path . SheetNoSurface) (surfaceFromFolded folded)
+  Right (anchored {theFront = if hSide header == WhiteUp then TowardMinusZ else TowardPlusZ, theFold = Just folded}, surface)
 
 -- | Where a step leaves a run: going on, or stopped at a @not modelled@
 -- move with everything made before it, the step's own earlier moves included.
@@ -334,15 +357,26 @@ data Outcome = Going Progress | Stopped Progress RunStop
 -- printed as, and is the one refusal that ends a run without failing it: an
 -- @expect refused@ around it passes it on, since it names no paper.
 runStep :: RunSettings -> Progress -> (Int, ElaboratedStep) -> Either SequenceError Outcome
-runStep settings (Progress state done named expected) (n, step) = go state [] [] (zip [1 ..] (elaboratedMoves step))
+runStep settings (Progress state done named expected surface outcomes) (n, step) = go state [] [] (zip [1 ..] (elaboratedMoves step))
   where
     go st made got = \case
-      [] -> Right (Going (progress st made got))
+      [] -> Right (Going (progress st made got (outcome made : outcomes)))
       (i, CoreMove origin core) : rest -> case runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st core of
-        Left (StepRefused _ _ at (NotModelledStop what)) -> Right (Stopped (progress st made got) (RunStop n (elaboratedName step) at what))
+        Left (StepRefused _ _ at (NotModelledStop what)) -> Right (Stopped (progress st made got outcomes) (RunStop n (elaboratedName step) (elaboratedCaption step) at what))
         Left err -> Left err
         Right (Made st' records refused) -> go st' (made ++ records) (got ++ refused) rest
-    progress st made got = Progress st (reverse made ++ done) (maybe named (\name -> M.insert name made named) (elaboratedName step)) (reverse got ++ expected)
+    progress st made got = Progress st (reverse made ++ done) (maybe named (\name -> M.insert name made named) (elaboratedName step)) (reverse got ++ expected) (after made)
+    -- Where the paper is once the step is done: its last record's end, or
+    -- where it was, for a step that made none.
+    after made = case reverse made of
+      record : _ -> recordAfter record
+      [] -> surface
+    -- A step of nothing but expect refused moved no paper, and writes no
+    -- state (PRDs/decisions.md, D24).
+    outcome made = StepOutcome n (elaboratedName step) (elaboratedCaption step) (if all expectation (elaboratedMoves step) then Nothing else Just (after made))
+    expectation (CoreMove _ core) = case core of
+      CoreExpectRefused {} -> True
+      _ -> False
 
 -- | What one move made: the state after it, its records, and the refusal it
 -- expected and got, for an @expect refused@.
