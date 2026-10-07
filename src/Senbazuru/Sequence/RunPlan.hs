@@ -44,7 +44,7 @@ module Senbazuru.Sequence.RunPlan
 where
 
 import Data.Char (toLower)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..), tshow)
@@ -130,6 +130,10 @@ data RunOptionError
   | -- | A @--frame@ the file has no state for: the number given, and how
     -- many states there are.
     NoSuchFrame Int Int
+  | -- | A run that wrote no state, so has none to export. No run does that
+    -- today, since state 0 is the sheet; this is here so that the rule
+    -- choosing the last state never has to answer -1.
+    NoStates
   deriving stock (Eq, Show)
 
 instance Explain RunOptionError where
@@ -144,6 +148,7 @@ instance Explain RunOptionError where
       output <> " takes no " <> T.intercalate ", " flags
     NoSuchFrame n count ->
       "--frame " <> tshow n <> ": the file has " <> tshow count <> " states, frames 1 to " <> tshow count <> " (frame 0 is the key frame, which holds none)"
+    NoStates -> "the run wrote no states, so there is none to export"
 
 -- | Decide what to do before any file is opened, so that a refused flag costs
 -- nothing and is refused whatever the source holds.
@@ -158,14 +163,15 @@ planRun options
   | runCheck options = case flagsGiven allFlags of
       [] -> Right PlanCheck
       flags -> Left (NotWithCheck flags)
-  | otherwise = case map toLower . takeExtension <$> runOutput options of
+  | otherwise = case runOutput options of
       Nothing -> fold Nothing
-      Just ".fold" -> fold (runOutput options)
-      Just ".glb" -> case flagsGiven (pageFlags ++ foldFlags) of
-        [] -> Right (PlanGlb (fromMaybe "" (runOutput options)) budget (runFrame options) (if runAllLayers options then GlbCompleteOnly else GlbVisibleAndComplete))
-        flags -> Left (NotWithOutput "-o .glb" flags)
-      Just ".svg" -> Left PageNotYet
-      Just _ -> Left (UnknownOutput (fromMaybe "" (runOutput options)))
+      Just path -> case map toLower (takeExtension path) of
+        ".fold" -> fold (Just path)
+        ".glb" -> case flagsGiven (pageFlags ++ foldFlags) of
+          [] -> Right (PlanGlb path budget (runFrame options) (if runAllLayers options then GlbCompleteOnly else GlbVisibleAndComplete))
+          flags -> Left (NotWithOutput "-o .glb" flags)
+        ".svg" -> Left PageNotYet
+        _ -> Left (UnknownOutput path)
   where
     budget = maybe defaultBudget Budget (runLayerBudget options)
     fold output = case flagsGiven (glbFlags ++ pageFlags) of
@@ -198,7 +204,9 @@ planRun options
 -- count.
 chooseState :: Maybe Int -> Int -> Either RunOptionError Int
 chooseState frame count = case frame of
-  Nothing -> Right (count - 1)
+  Nothing
+    | count >= 1 -> Right (count - 1)
+    | otherwise -> Left NoStates
   Just n
     | n >= 1 && n <= count -> Right (n - 1)
     | otherwise -> Left (NoSuchFrame n count)

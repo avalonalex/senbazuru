@@ -20,6 +20,7 @@ where
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
+import Data.List (nubBy)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
@@ -69,11 +70,12 @@ import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Origami.ThroughLayers (creaseThroughLayers)
 import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
-import Senbazuru.Render.Gltf (ExportMode (..), renderGlb)
+import Senbazuru.Render.Gltf (ExportMode (..), GltfError, renderGlb)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import Senbazuru.Sequence.Check (checkSequence, checkedSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
+import Senbazuru.Sequence.Error (SequenceError (..), SheetProblem (..))
 import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.Record (renderRunReport, runRefusal)
 import Senbazuru.Sequence.Run (RunSettings (..), defaultRunSettings, runSequence)
@@ -599,7 +601,7 @@ runOptions =
           <> help "Parse and check the source and print one line; fold no paper and open no sheet"
       )
     <*> outputOption "OUT.fold|OUT.svg|OUT.glb"
-    <*> switch (long "report" <> help "Describe each move on stderr as it runs")
+    <*> switch (long "report" <> help "Describe what each move did, on stderr, once the run is done")
     <*> optional
       ( option
           (positiveBudget =<< auto)
@@ -828,24 +830,26 @@ runSequenceSource options = case planRun options of
             let mode = case scenes of
                   GlbVisibleAndComplete -> VisiblePaper
                   GlbCompleteOnly -> CompletePaper
-            case renderGlb budget mode (frameTitle chosen <|> fileTitle file) chosen of
+            case glbOf budget mode file chosen of
               Left err -> die ("cannot export " <> T.pack path <> ": " <> explain err)
               Right bytes -> BS.writeFile output bytes
             finish source done
   where
     path = runSource options
     -- The sheet, and any other file the source names, by the path as the
-    -- author wrote it, read from the source's own directory.
+    -- author wrote it, read from the source's own directory, once however
+    -- often it is named.
     runChecked source budget checked = do
-      sheets <- M.fromList <$> mapM loadNamed (sourceFiles path (checkedSequence checked))
+      sheets <- M.fromList <$> mapM (loadNamed source) (nubBy (\a b -> sourceWritten a == sourceWritten b) (sourceFiles path (checkedSequence checked)))
       case runSequence defaultRunSettings {runBudget = budget} sheets (elaborate checked) of
         Left err -> dieLines (refusalLines source err)
         Right done -> do
           when (runReport options) (TIO.hPutStr stderr (T.unlines (T.pack path : map ("  " <>) (renderRunReport done))))
           pure done
-    loadNamed named =
+    -- A file that will not load is refused at the line that named it.
+    loadNamed source named =
       loadFile (sourceToOpen named) >>= \case
-        Left err -> die (explain err)
+        Left err -> dieLines (refusalLines source (SheetRefused (sourceSpan named) (sourceWritten named) (SheetUnreadable err)))
         Right file -> pure (sourceWritten named, file)
     written source about done = either (dieLines . refusalLines source) pure (writeSequence about done)
     finish source done = maybe (pure ()) (dieLines . refusalLines source) (runRefusal done)
@@ -927,11 +931,16 @@ exportFile :: ExportOptions -> FoldFile -> IO ()
 exportFile o f = do
   frame <- paperFor (eoInput o) (eoFrame o) (eoFold o) (eoBudget o) (eoStacking o) f
   let mode = if eoAllLayers o then CompletePaper else VisiblePaper
-  -- Named the way render titles its page: the frame's title, else the file's,
-  -- since a file's title very often lives on the file and not the frame.
-  case renderGlb (eoBudget o) mode (frameTitle frame <|> fileTitle f) frame of
+  case glbOf (eoBudget o) mode f frame of
     Left err -> die ("cannot export " <> T.pack (eoInput o) <> ": " <> explain err)
     Right bytes -> maybe BS.putStr BS.writeFile (eoOutput o) bytes
+
+-- | One frame of a file as a @.glb@, as @export@ writes it and @run -o .glb@
+-- does too: titled with the frame's title, else the file's, since a file's
+-- title very often lives on the file and not the frame. One function, so
+-- that the two verbs give the same bytes for the same frame.
+glbOf :: Budget -> ExportMode -> FoldFile -> Frame -> Either GltfError BS.ByteString
+glbOf budget mode f frame = renderGlb budget mode (frameTitle frame <|> fileTitle f) frame
 
 -- | Write a FOLD document where the reader asked for it, or abort.
 --

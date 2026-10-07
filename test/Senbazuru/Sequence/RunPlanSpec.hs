@@ -17,12 +17,14 @@ import Data.Foldable (for_)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Senbazuru.Fold.Load (LoadError (..))
 import Senbazuru.Origami.Stacking (Budget (..), defaultBudget)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Error (SequenceError (..), SheetProblem (..))
 import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.RunPlan
-import Senbazuru.Sequence.Syntax (Corner (..), Sequence)
+import Senbazuru.Sequence.Syntax (Corner (..), Sequence, SourceFile (..), sourceFiles)
 import Senbazuru.Sequence.Write (FileHeader (..), noFileHeader)
 import Test.Golden (goldenText)
 import Test.Hspec
@@ -89,6 +91,11 @@ spec = do
       chooseState (Just 0) 3 `shouldBe` Left (NoSuchFrame 0 3)
       chooseState (Just 4) 3 `shouldBe` Left (NoSuchFrame 4 3)
 
+    -- No run writes no state, since state 0 is the sheet; but the rule
+    -- should not lean on that and answer -1.
+    it "refuses a run with no states rather than choose state -1" $
+      chooseState Nothing 0 `shouldBe` Left NoStates
+
   describe "checkSummary" $ do
     it "counts the blintz's steps and moves" $
       fmap (checkSummary "blintz.foldseq") (checkSequence blintz)
@@ -117,6 +124,22 @@ spec = do
                      "  | ^",
                      "render, info, check, export, crease and fold read FOLD files"
                    ]
+
+    -- The command line reads each file the source names and, for one that
+    -- will not load, prints this: the line that named it, not just the path.
+    it "points a sheet that will not load at the line that names it" $ do
+      source <- blintzWith "examples/blintz-base.fold" "examples/no-such.fold"
+      case parseSequence "blintz.foldseq" source of
+        Left err -> expectationFailure (show err)
+        Right sq -> case sourceFiles "blintz.foldseq" sq of
+          [named] ->
+            take 4 (refusalLines source (SheetRefused (sourceSpan named) (sourceWritten named) (SheetUnreadable (ReadFailed (sourceToOpen named) "does not exist"))))
+              `shouldBe` [ "blintz.foldseq:3:1: sheet \"examples/no-such.fold\": cannot read examples/no-such.fold: does not exist",
+                           "  |",
+                           "3 | sheet \"examples/no-such.fold\"",
+                           "  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+                         ]
+          other -> expectationFailure ("expected one file, got " <> show other)
 
     -- A built sequence has no place to point at, so the message stands alone.
     it "prints a refusal with no place as its message alone" $

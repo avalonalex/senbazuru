@@ -86,7 +86,8 @@ everyType =
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
     ("StaticProblem", explain EmptyStep),
     ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),
-    ("RunOptionError, a frame", explain (NoSuchFrame 0 3))
+    ("RunOptionError, a frame", explain (NoSuchFrame 0 3)),
+    ("RunOptionError, no states", explain NoStates)
   ]
 
 spec :: Spec

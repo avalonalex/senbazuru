@@ -1860,8 +1860,10 @@ blintz.foldseq
 ```
 
 An `expect refused` move has no record, and the report is where its outcome
-shows. `--layer-budget N` is passed to the run and to the model's layer
-solver, as for `render` and `export`.
+shows. `--layer-budget N` bounds the layer solver, as it does for `render`
+and `export`. With `-o .glb` it bounds the solve that stacks the chosen state.
+With `.fold` it changes nothing yet: it is handed to the run, but no move
+chooses among layer orders until milestone M4.
 
 The `sheet` path is read relative to the source's own directory, so a
 sequence reads the same sheet wherever `run` is started from. A run that
