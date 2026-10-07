@@ -13,16 +13,16 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
-import Senbazuru.Origami.Flap (flapCheck)
-import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..))
+import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
+import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..), SweepSettings (..))
 import Senbazuru.Origami.Surface (surfaceFrame)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
-import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..))
-import Senbazuru.Sequence.Record (MaterialPoint (..), RouteEvidence (..), Run (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordStationary, recordStep)
+import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), RouteEvidence (..), Run (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordStationary, recordStep)
 import Senbazuru.Sequence.Run
-import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), Sense (..), Sequence (..), Side (..), Span (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
 import Test.Hspec
 import Test.SequenceExamples (blintz)
 
@@ -30,6 +30,7 @@ spec :: Spec
 spec = do
   starting
   running
+  blocked
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -127,6 +128,45 @@ running = describe "running a sequence" $ do
     refusal = \case
       Left (StepRefused _ _ _ failure) -> Just failure
       _ -> Nothing
+
+-- A turn blocked part-way. Folding needs paper lying flat, so only an
+-- unfold can turn paper with something standing in its way. On the
+-- accordion, c1 lays the last strip on the third; the left half is then
+-- turned 135 degrees in front, so it leans over them in the air; and
+-- unfolding c1 lifts the last strip back up into it. The sweep, which checks
+-- the whole path before the turn's ends are judged, refuses it, with a
+-- witness a quarter of the way along: a point of contact, not the first.
+blocked :: Spec
+blocked = describe "a turn blocked part-way" $ do
+  accordion <- runIO (loadFoldFile "examples/accordion.fold" >>= right)
+  let runWith settings sequence' = checkSequence sequence' >>= runSequence settings (M.singleton "examples/accordion.fold" accordion) . elaborate
+      along x seed amount = Fold ValleyFold amount (Segment (at x 0) (at x 1)) FlapOfFirstArgument (Just (CornerOf seed))
+      unfoldInto wrap = sequenceOf (header "Into a leaning flap" (sheetFile "examples/accordion.fold") (Just (at (5 / 8) (1 / 2)))) $ do
+        c1 <- step "c1" "Lay the last strip on the third, in front." (move (along (3 / 4) SouthEast ToFlat))
+        step_ "Lean the left half over them." (move (along (1 / 2) SouthWest (Degrees 135)))
+        step_ "Open the last strip again." (move (wrap (Unfold [refName c1])))
+
+  it "is refused as FlapCollision part-way through, at step 3" $
+    case runWith defaultRunSettings (unfoldInto id) of
+      Left err@(StepRefused 3 _ _ (FlapRefused (FlapCollision t _))) -> do
+        t `shouldSatisfy` (\progress -> progress > 0 && progress < 1)
+        refusalKindOf err `shouldBe` Just (RefusalKind "FlapCollision")
+      other -> expectationFailure ("expected a collision at step 3, got " <> either (show . explain) (show . length . runRecords) other)
+
+  it "and runs, with the outcome kept, when the sequence expects it" $ do
+    run <- right (runWith defaultRunSettings (unfoldInto (ExpectRefused (RefusalKind "FlapCollision"))))
+    length (runRecords run) `shouldBe` 2
+    runExpected run `shouldBe` [ExpectedRefusal 3 1 (RefusalKind "FlapCollision")]
+
+  -- With no depth to subdivide, the sweep can neither clear the turn nor find
+  -- the flap in the way: it gives up, and that is a refusal of its own.
+  it "is unresolved by a sweep with no depth, and that can be expected too" $ do
+    let shallow = defaultRunSettings {runSweep = SweepSettings 0 1}
+    case runWith shallow (unfoldInto id) of
+      Left err@(StepRefused 3 _ _ (FlapRefused FlapUnresolved {})) -> refusalKindOf err `shouldBe` Just (RefusalKind "FlapUnresolved")
+      other -> expectationFailure ("expected the unfold at step 3 unresolved, got " <> either (show . explain) (show . length . runRecords) other)
+    run <- right (runWith shallow (unfoldInto (ExpectRefused (RefusalKind "FlapUnresolved"))))
+    runExpected run `shouldBe` [ExpectedRefusal 3 1 (RefusalKind "FlapUnresolved")]
 
 starting :: Spec
 starting = describe "the state a run starts from" $ do
