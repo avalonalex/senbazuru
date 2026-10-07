@@ -378,13 +378,23 @@ foldMove settings place named state sense amount line layers seed = do
       records -> Left (HingeOfNotOneMove name (length records))
     _ -> foldLine (runNearMissBand settings) flat line
   candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat foldAt)
-  seedPoint <- case (layers, seed, line) of
-    (FlapOfFirstArgument, Just p, _) -> Right p
-    (FlapOfFirstArgument, Nothing, Onto p _) -> Right p
+  -- The seed names the paper that moves: a moving point, or an alignment
+  -- fold's first argument. For L1 to L2 that is a line, and the side holding
+  -- it moves, so it must not lie across the fold.
+  let pointSeed p = do
+        m <- first (resolvingAt place (prettyPoint p)) (materialPoint flat p)
+        picked <- first (resolvingAt place (prettyPoint p)) (seedFaces flat m)
+        pure (m, picked)
+  (m, picked) <- case (layers, seed, line) of
+    (FlapOfFirstArgument, Just p, _) -> pointSeed p
+    (FlapOfFirstArgument, Nothing, Onto p _) -> pointSeed p
+    (FlapOfFirstArgument, Nothing, LineOnto l1 _ _) -> do
+      (m, (a, b)) <- first (resolvingAt place (prettyLine l1)) (firstLineSeed flat l1)
+      when (straddles flat foldAt (a, b)) (Left (refusedAt place (Selecting (SegmentStraddles (toSheetLengths flat a) (toSheetLengths flat b)))))
+      picked <- first (resolvingAt place (prettyLine l1)) (seedFaces flat m)
+      pure (m, picked)
     (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting SeedMissing))
     (_, _, _) -> Left (refusedAt place (MoveNotRunYet "choosing which layers to fold"))
-  m <- first (resolvingAt place (prettyPoint seedPoint)) (materialPoint flat seedPoint)
-  picked <- first (resolvingAt place (prettyPoint seedPoint)) (seedFaces flat m)
   selection <- first (refusedAt place . Selecting) (flapOf flat foldAt candidates m picked)
   -- The anchor's face is the working pattern's first, which folding holds
   -- still: asking where the anchor point lies could fail once a crease runs

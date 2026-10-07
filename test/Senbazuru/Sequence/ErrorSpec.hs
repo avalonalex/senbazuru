@@ -40,7 +40,7 @@ import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Sequence.Error
-import Senbazuru.Sequence.Syntax (Corner (..), RefusalKind (..), Span (..))
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), RefusalKind (..), Span (..))
 import Test.Hspec
 
 spec :: Spec
@@ -195,9 +195,13 @@ spec = do
               resolve DegenerateConstruction,
               resolve NoSolution,
               resolve (HingeOfNotOneMove "c1" 0),
+              resolve (EdgeNotStraight South []),
+              resolve (NeedsNearest []),
+              resolve (NearestAmbiguous (V2 0 0) []),
               step (Selecting SeedMissing),
               step (Selecting (SeedOnTheLine (V2 0 0))),
               step (Selecting (SeedSplit (V2 0 0))),
+              step (Selecting (SegmentStraddles (V2 0 0) (V2 1 0))),
               step (Selecting NothingSelected),
               step (Selecting (ExistingHingeFlat (EdgeId 0))),
               step (FlapRefused (FlapCoupled (EdgeId 0) [])),

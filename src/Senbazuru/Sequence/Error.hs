@@ -77,6 +77,7 @@ module Senbazuru.Sequence.Error
 
     -- * A reference no paper answers
     ResolveProblem (..),
+    CandidateLine (..),
 
     -- * A move that cannot be made
     MoveFailure (..),
@@ -104,7 +105,7 @@ import Senbazuru.Fold.Types (EdgeId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
-import Senbazuru.Sequence.Syntax (Corner (..), Name (..), RefusalKind (..), Span (..), exactNumber)
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Name (..), RefusalKind (..), Span (..), exactNumber)
 
 -- | Every way a sequence can be refused: as text, as a sequence before any
 -- paper is folded, or when it is run against paper.
@@ -488,10 +489,21 @@ data ResolveProblem
   | -- | A construction on paper that does not lie flat: the relief, the
     -- height the folded paper spans.
     ConstructionInTheAir Double
-  | -- | A construction whose two points coincide, which pins down no line.
+  | -- | A construction whose two points coincide, which pins down no line,
+    -- or whose two lines do.
     DegenerateConstruction
   | -- | A fold line that runs along no crease on the paper.
     NoSolution
+  | -- | @edge S@ as a line, where its pieces do not lie on one line now, or
+    -- where no piece of the sheet's outline lies along that side: each
+    -- piece's ends where they lie, in sheet lengths.
+    EdgeNotStraight Compass [(V2, V2)]
+  | -- | A construction with more than one answer on the paper, and no
+    -- @nearest P@ to choose: every answer, those on no paper included.
+    NeedsNearest [CandidateLine]
+  | -- | @nearest P@ lies as near to more than one answer: the point, in
+    -- sheet lengths, and every answer.
+    NearestAmbiguous V2 [CandidateLine]
   | -- | @hinge of NAME@ names the hinge of the named step's one move; that
     -- step made this many.
     HingeOfNotOneMove Name Int
@@ -518,12 +530,33 @@ instance Explain ResolveProblem where
     PlacementsDisagree at distance -> "the faces sharing " <> point at <> " fold it to places " <> num distance <> " sheet lengths apart"
     NoCornerThere corner -> "the sheet has no " <> cornerWords corner <> " corner; its outline is not a rectangle, so name the point another way"
     ConstructionInTheAir relief -> "a construction needs the paper lying flat, and it stands " <> num relief <> " out of the plane"
-    DegenerateConstruction -> "the construction's two points are the same point, which fixes no line"
+    DegenerateConstruction -> "the construction's two points are one point, or its two lines one line, which fixes no fold line"
     NoSolution -> "the fold line runs along no crease on the paper"
     HingeOfNotOneMove (Name name) made -> "\"hinge of " <> name <> "\" needs a step that made one move, and " <> name <> " made " <> tshow made
+    EdgeNotStraight side [] -> "no piece of the sheet's outline lies along edge " <> compassWords side <> "; name the line by two points, such as " <> cornersOf side
+    EdgeNotStraight side pieces ->
+      "edge "
+        <> compassWords side
+        <> " does not lie on one line now: its pieces run "
+        <> T.intercalate ", " [point a <> " to " <> point b | (a, b) <- pieces]
+        <> "; name the line by two points, such as "
+        <> cornersOf side
+    NeedsNearest answers -> "the construction has " <> tshow (length (filter candidateOnPaper answers)) <> " answers on the paper; add nearest P to choose one of them: " <> listed answers
+    NearestAmbiguous at answers -> point at <> " lies as near to more than one answer; choose a point nearer one of them: " <> listed answers
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
+      listed = T.intercalate "; " . map explain
+      compassWords = \case
+        North -> "north"
+        South -> "south"
+        East -> "east"
+        West -> "west"
+      cornersOf = \case
+        North -> "[corner north-west, corner north-east]"
+        South -> "[corner south-west, corner south-east]"
+        East -> "[corner south-east, corner north-east]"
+        West -> "[corner south-west, corner north-west]"
       placed = \case
         0 -> "on an edge or a corner between faces"
         n -> "inside " <> tshow n <> " faces"
@@ -532,6 +565,21 @@ instance Explain ResolveProblem where
         SouthEast -> "south-east"
         NorthEast -> "north-east"
         NorthWest -> "north-west"
+
+-- | One answer of a construction that has several, where the paper lies now,
+-- in sheet lengths: a point on the line, the line's direction, and whether it
+-- crosses paper. An answer that crosses none is never taken, and is listed so
+-- that an author who expected it sees why.
+data CandidateLine = CandidateLine
+  { candidateThrough :: !V2,
+    candidateAlong :: !V2,
+    candidateOnPaper :: !Bool
+  }
+  deriving stock (Eq, Show)
+
+instance Explain CandidateLine where
+  explain (CandidateLine (V2 x y) (V2 dx dy) onPaper) =
+    "the line through (" <> num x <> ", " <> num y <> ") along (" <> num dx <> ", " <> num dy <> ")" <> if onPaper then "" else ", which crosses no paper"
 
 -- | Why a move cannot be made, once its references name paper.
 data MoveFailure
@@ -567,6 +615,10 @@ data SelectionError
   | -- | The seed, a corner where faces meet, picks paper on both sides of the
     -- line.
     SeedSplit V2
+  | -- | The first line of @L1 to L2@, which names the side that moves, lies
+    -- on both sides of the fold line: its ends where they lie now, in sheet
+    -- lengths.
+    SegmentStraddles V2 V2
   | -- | No crease along the line borders the paper the seed picks.
     NothingSelected
   | -- | A crease of the hinge is F, which lies flat with no direction and
@@ -590,6 +642,7 @@ instance Explain SelectionError where
     SeedMissing -> "this line does not say which side moves; add moving P, a point on the paper that moves"
     SeedOnTheLine at -> "the paper that moves is named by " <> point at <> ", which lies on the fold line and so on both sides of it"
     SeedSplit at -> point at <> " is a corner where paper on both sides of the fold line meets, so it does not say which side moves"
+    SegmentStraddles a b -> "the first line runs from " <> point a <> " to " <> point b <> ", across the fold line, so it does not say which side moves; add moving P, a point on the paper that moves"
     NothingSelected -> "no crease along the line borders the paper that moves"
     ExistingHingeFlat (EdgeId e) -> "(internal edge " <> tshow e <> ") lies flat as an F crease, which has no direction to fold"
     where
@@ -660,12 +713,16 @@ refusalKindOf =
       DegenerateConstruction -> Just "DegenerateConstruction"
       NoSolution -> Just "NoSolution"
       HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
+      EdgeNotStraight {} -> Just "EdgeNotStraight"
+      NeedsNearest {} -> Just "NeedsNearest"
+      NearestAmbiguous {} -> Just "NearestAmbiguous"
       NotRunYet {} -> Nothing
     StepRefused _ _ _ failure -> case failure of
       Selecting err -> Just $ case err of
         SeedMissing -> "SeedMissing"
         SeedOnTheLine {} -> "SeedOnTheLine"
         SeedSplit {} -> "SeedSplit"
+        SegmentStraddles {} -> "SegmentStraddles"
         NothingSelected -> "NothingSelected"
         ExistingHingeFlat {} -> "ExistingHingeFlat"
       FlapRefused err -> Just (flapKind err)
