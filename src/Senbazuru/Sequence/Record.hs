@@ -126,6 +126,8 @@ module Senbazuru.Sequence.Record
     -- * A run
     Run (..),
     ExpectedRefusal (..),
+    RunStop (..),
+    runRefusal,
   )
 where
 
@@ -135,7 +137,8 @@ import Senbazuru.Geometry (V2)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, surfaceFrame)
 import Senbazuru.Sequence.Elaborate (Origin)
-import Senbazuru.Sequence.Syntax (Name, RefusalKind)
+import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..))
+import Senbazuru.Sequence.Syntax (Name, RefusalKind, Span)
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
 newtype MaterialPoint = MaterialPoint V2
@@ -294,9 +297,30 @@ data Run = Run
     -- | Each @expect refused@ whose move was refused as expected. It leaves
     -- no record, because it moved no paper, and this is where a reader such
     -- as @run --report@ finds it.
-    runExpected :: [ExpectedRefusal]
+    runExpected :: [ExpectedRefusal],
+    -- | Where the run stopped at @not modelled@, if it did. The records
+    -- above are every move made before it.
+    runStop :: Maybe RunStop
   }
   deriving stock (Eq, Show)
+
+-- | A @not modelled@ move: its step, counted from 1, and the step's name, the
+-- move's span, and its text. A run stops there and still succeeds, since a
+-- failure could carry none of the states the author folded up to the gap
+-- (PRDs\/decisions.md, D21).
+data RunStop = RunStop
+  { stopStep :: !Int,
+    stopName :: !(Maybe Name),
+    stopSpan :: !Span,
+    stopText :: !Text
+  }
+  deriving stock (Eq, Show)
+
+-- | What a run that stopped says on stopping, as a refusal: the message and
+-- the place a caller prints, and the reason it exits nonzero, after writing
+-- the states the run did make. 'Nothing' for a run that went to the end.
+runRefusal :: Run -> Maybe SequenceError
+runRefusal = fmap (\(RunStop n name at what) -> StepRefused n name at (NotModelledStop what)) . runStop
 
 -- | An @expect refused@ that was refused as expected: its step and move,
 -- counted from 1, and the kind.

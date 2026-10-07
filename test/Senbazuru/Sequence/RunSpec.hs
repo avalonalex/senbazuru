@@ -21,9 +21,9 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), RouteEvidence (..), Run (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordStationary, recordStep)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordStationary, recordStep, runRefusal)
 import Senbazuru.Sequence.Run
-import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
 import Test.Hspec
 import Test.SequenceExamples (blintz, quarterFold)
 
@@ -32,6 +32,7 @@ spec = do
   starting
   running
   quartered
+  stopping
   blocked
 
 running :: Spec
@@ -165,6 +166,51 @@ quartered = describe "the quarter fold" $ do
   -- the second, as §6.3 works it.
   it "keeps as each seed the face beside the first side's lowest, then leftmost, piece" $
     map (map fst . recordMoving) records `shouldBe` [[MaterialPoint (V2 0.25 0.25)], [MaterialPoint (V2 0.25 0.75)]]
+
+-- A run that reaches not modelled stops there and still succeeds, keeping
+-- every move made before it, so that the states up to the gap can be
+-- written and drawn (PRDs/decisions.md, D21; PRD 04's A18).
+stopping :: Spec
+stopping = describe "a run that reaches not modelled" $ do
+  sheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
+  let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings (M.singleton "examples/quarter-fold-steps.fold" sheet) . elaborate
+      -- The quarter fold, its second step's moves given, and then its second
+      -- fold, which would leave a record of step 3 if a run went on past a
+      -- stop at step 2.
+      quarterWith second = sequenceOf (header "A square folded into quarters" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) $ do
+        _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+        _ <- step "quarter" "Fold the top half down in front, onto the bottom." second
+        step_ "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
+      quarterStop = RunStop 2 (Just (Name "quarter")) NoSpan "fold in quarters"
+
+  it "stops at its step, keeping the moves before it and running none after (A18)" $ do
+    run <- right (runOn (quarterWith (notModelled "fold in quarters")))
+    map recordStep (runRecords run) `shouldBe` [1]
+    runStop run `shouldBe` Just quarterStop
+    runRefusal run `shouldBe` Just (StepRefused 2 (Just (Name "quarter")) NoSpan (NotModelledStop "fold in quarters"))
+    fmap explain (runRefusal run) `shouldSatisfy` maybe False (T.isPrefixOf "step 2 (quarter): \"fold in quarters\" is not modelled")
+
+  -- Stopped before any move, the run has no record, and still succeeds.
+  it "stops at the first step with no record made" $ do
+    run <- right (runOn (sequenceOf (header "Not yet" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) (step_ "Squash it." (notModelled "squash fold"))))
+    runRecords run `shouldBe` []
+    runStop run `shouldBe` Just (RunStop 1 Nothing NoSpan "squash fold")
+
+  it "keeps a move its own step made before the stop" $ do
+    run <- right (runOn (quarterWith (fold inFront (LineOnto (edge North) (edge South) Nothing) >> notModelled "squash the corner")))
+    map recordStep (runRecords run) `shouldBe` [1, 2]
+    fmap stopText (runStop run) `shouldBe` Just "squash the corner"
+
+  -- not modelled names no paper, so no kind matches it, and the expectation
+  -- passes it on: the run stops there just the same.
+  it "stops inside expect refused too, which cannot name it" $ do
+    run <- right (runOn (quarterWith (expectRefused (RefusalKind "FlapCollision") (NotModelled "fold in quarters"))))
+    runStop run `shouldBe` Just quarterStop
+    runExpected run `shouldBe` []
+
+  it "has no stop and nothing to refuse when it runs to the end" $ do
+    run <- right (runOn quarterFold)
+    (runStop run, runRefusal run) `shouldBe` (Nothing, Nothing)
 
 -- A turn blocked part-way. Folding needs paper lying flat, so only an
 -- unfold can turn paper with something standing in its way. On the
