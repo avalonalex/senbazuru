@@ -450,6 +450,7 @@ test-suite senbazuru-test
     Senbazuru.Fold.CrossingsSpec
     Senbazuru.Fold.FacesSpec
     Senbazuru.Fold.LoadSpec
+    Senbazuru.Fold.QuerySpec
     Senbazuru.Fold.TypesSpec
     Senbazuru.Geometry.PolygonSpec
     Senbazuru.Geometry.RigidSpec

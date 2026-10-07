@@ -49,7 +49,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import FoldMaterial
 import Senbazuru.Explain (Explain (..), tshow)
-import Senbazuru.Fold.Query (Crease (..), Face (..), frameFaces, frameVertices)
+import Senbazuru.Fold.Query (Crease (..), Face (..), atRest, frameFaces, frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, signedArea, strictlyInside)
@@ -205,7 +205,7 @@ buildCaseFrame spec source step = do
             coplanarContact lower upper
         ]
       active assignment angle
-        | assignment == Flat && abs angle > 1e-10 = if angle < 0 then Mountain else Valley
+        | assignment == Flat && abs angle > atRest = if angle < 0 then Mountain else Valley
         | otherwise = assignment
   pure frame {faceOrders = relations, edgesAssignment = zipWith active (edgesAssignment frame) (edgesFoldAngle frame)}
 
