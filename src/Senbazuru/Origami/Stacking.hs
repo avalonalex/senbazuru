@@ -705,9 +705,11 @@ collinearRule hair h1 h2 = case collinearOverlap hair (hingeSegment h1) (hingeSe
 -- direction here mirrors the whole stack in silence.
 --
 -- The test on the angle is exact, @d > 0@, with no tolerance. That agrees with
--- the state rule ('Senbazuru.Fold.Query.assignmentAtRest') only because a
--- frame written by it carries an @F@ crease's angle as exactly 0, never as
--- 5e-11: this then reads 0, falls back to @F@, and names no direction.
+-- the state rule ('Senbazuru.Fold.Query.assignmentAtRest') only if a frame
+-- lettered by it also carries each @F@ crease's angle as exactly 0, never as
+-- 5e-11, as the fold-sequence writer is required to
+-- (PRDs\/02-language-semantics.md, §11): this then reads 0, falls back to
+-- @F@, and names no direction.
 creaseDirections :: Frame -> [Crease] -> Either FoldError (M.Map EdgeKey (Maybe Bool))
 creaseDirections fr creases = do
   angles <- case edgesFoldAngle fr of

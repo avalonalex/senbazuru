@@ -448,7 +448,8 @@ atRest :: Double
 atRest = 1e-10
 
 -- | The letter a crease's angle says it has: the /state rule/ (see
--- docs/glossary.md), which every frame a fold sequence writes follows. A
+-- docs/glossary.md), which the frames a fold sequence writes are to follow
+-- (PRDs\/02-language-semantics.md, §11). A
 -- border, a cut and a join keep their letters, which no angle changes; any
 -- other crease is a mountain below @-'atRest'@, a valley above it, and flat
 -- between.
