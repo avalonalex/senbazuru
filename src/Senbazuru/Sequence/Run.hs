@@ -372,7 +372,9 @@ foldMove settings place named state sense amount line layers seed = do
   -- yet cuts the paper.
   foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
     HingeOf name -> case M.findWithDefault [] name named of
-      [earlier] | e : _ <- concatMap snd (recordHinge earlier) -> lineAlong flat e
+      [earlier] -> case concatMap snd (recordHinge earlier) of
+        e : _ -> lineAlong flat e
+        [] -> Left NoSolution
       records -> Left (HingeOfNotOneMove name (length records))
     _ -> foldLine (runNearMissBand settings) flat line
   candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat foldAt)
