@@ -10,6 +10,7 @@ dist-newstyle/
 *.actual.svg
 *.actual.glb
 *.actual.foldseq
+*.actual.fold
 
 # Editor / OS
 .DS_Store
