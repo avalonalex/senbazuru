@@ -181,7 +181,7 @@ stopping = describe "a run that reaches not modelled" $ do
         _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
         _ <- step "quarter" "Fold the top half down in front, onto the bottom." second
         step_ "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
-      quarterStop = RunStop 2 (Just (Name "quarter")) NoSpan "fold in quarters"
+      quarterStop = RunStop 2 (Just (Name "quarter")) (Just "Fold the top half down in front, onto the bottom.") NoSpan "fold in quarters"
 
   it "stops at its step, keeping the moves before it and running none after (A18)" $ do
     run <- right (runOn (quarterWith (notModelled "fold in quarters")))
@@ -194,7 +194,7 @@ stopping = describe "a run that reaches not modelled" $ do
   it "stops at the first step with no record made" $ do
     run <- right (runOn (sequenceOf (header "Not yet" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) (step_ "Squash it." (notModelled "squash fold"))))
     runRecords run `shouldBe` []
-    runStop run `shouldBe` Just (RunStop 1 Nothing NoSpan "squash fold")
+    runStop run `shouldBe` Just (RunStop 1 Nothing (Just "Squash it.") NoSpan "squash fold")
 
   it "keeps a move its own step made before the stop" $ do
     run <- right (runOn (quarterWith (fold inFront (LineOnto (edge North) (edge South) Nothing) >> notModelled "squash the corner")))

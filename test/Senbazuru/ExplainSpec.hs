@@ -46,7 +46,7 @@ import Senbazuru.Origami.Stacking qualified as Stack
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
-import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..), WriteProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
@@ -79,6 +79,8 @@ everyType =
     ("CandidateLine", explain (CandidateLine (V2 1 0) (V2 0.7071067811865476 0.7071067811865476) False)),
     ("SequenceError, a reference", explain (ResolveRefused (InStep 2 Nothing) NoSpan "corner north-east" (OffThePaper (V2 2 2)))),
     ("SequenceError, a move", explain (StepRefused 5 Nothing NoSpan (UnfoldChangedSince (EdgeId 8)))),
+    ("SequenceError, a state", explain (WriteRefused 2 (WriteNonFinite "senbazuru:material_coords[3]" (0 / 0)))),
+    ("WriteProblem", explain (WriteMissingAngles 12 11)),
     ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
     ("SelectionError", explain SeedMissing),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),

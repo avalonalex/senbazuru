@@ -125,19 +125,30 @@ module Senbazuru.Sequence.Record
 
     -- * A run
     Run (..),
+    StepOutcome (..),
     ExpectedRefusal (..),
     RunStop (..),
     runRefusal,
+
+    -- * Its states, as written
+    WrittenState (..),
+    writtenStates,
   )
 where
 
+import Control.Monad (unless)
+import Data.Aeson (Value, object, toJSON, (.=))
+import Data.Aeson.KeyMap qualified as KM
 import Data.Text (Text)
-import Senbazuru.Fold.Types (EdgeId, FaceId, Frame (..))
-import Senbazuru.Geometry (V2)
+import Senbazuru.Explain (tshow)
+import Senbazuru.Fold.Query (assignmentAtRest)
+import Senbazuru.Fold.Types (Assignment (..), EdgeId, FaceId, Frame (..), VertexId (..))
+import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
-import Senbazuru.Origami.Surface (Surface, surfaceFrame)
+import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
 import Senbazuru.Sequence.Elaborate (Origin)
-import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..))
+import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..), WriteProblem (..))
 import Senbazuru.Sequence.Syntax (Name, RefusalKind, Span)
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
@@ -288,19 +299,40 @@ hingeTurn step move name caption origin hinge seed turn = do
         theStationary = flapStationaryFace turn
       }
 
--- | What a run hands back: one record for each move it made, in order, and
--- each refusal a sequence expected and got. More arrives with the moves that
--- need it: the run's start and closing caption, and where a @not modelled@
--- move stopped it.
+-- | What a run hands back: the state it started from, what each step did,
+-- one record for each move it made, in order, each refusal a sequence
+-- expected and got, and where a @not modelled@ move stopped it. With the
+-- sequence's title and closing caption, this is all a written file needs.
 data Run = Run
-  { runRecords :: [MoveRecord],
+  { runTitle :: Maybe Text,
+    -- | The sheet laid flat, before any move: state 0.
+    runStart :: Surface V2,
+    -- | Each step the run finished, in order.
+    runSteps :: [StepOutcome],
+    runRecords :: [MoveRecord],
     -- | Each @expect refused@ whose move was refused as expected. It leaves
     -- no record, because it moved no paper, and this is where a reader such
     -- as @run --report@ finds it.
     runExpected :: [ExpectedRefusal],
+    -- | The caption after the last step, for the state it ends at.
+    runClosing :: Maybe Text,
     -- | Where the run stopped at @not modelled@, if it did. The records
     -- above are every move made before it.
     runStop :: Maybe RunStop
+  }
+  deriving stock (Eq, Show)
+
+-- | What one step did: its number, counted from 1, its name and caption, and
+-- the state it ends at, which it writes. A step whose moves were all
+-- @expect refused@ moved no paper and writes no state, so it has none
+-- (PRDs\/decisions.md, D24). Every other step writes one, even a step that
+-- made no record, such as an @unfold@ of paper already flat: its state is
+-- the one before it.
+data StepOutcome = StepOutcome
+  { outcomeStep :: !Int,
+    outcomeName :: !(Maybe Name),
+    outcomeCaption :: !(Maybe Text),
+    outcomeEnd :: !(Maybe (Surface V2))
   }
   deriving stock (Eq, Show)
 
@@ -311,6 +343,9 @@ data Run = Run
 data RunStop = RunStop
   { stopStep :: !Int,
     stopName :: !(Maybe Name),
+    -- | The step's caption, which the last state written carries: it names
+    -- the step that would have left that state.
+    stopCaption :: !(Maybe Text),
     stopSpan :: !Span,
     stopText :: !Text
   }
@@ -320,7 +355,7 @@ data RunStop = RunStop
 -- the place a caller prints, and the reason it exits nonzero, after writing
 -- the states the run did make. 'Nothing' for a run that went to the end.
 runRefusal :: Run -> Maybe SequenceError
-runRefusal = fmap (\(RunStop n name at what) -> StepRefused n name at (NotModelledStop what)) . runStop
+runRefusal = fmap (\(RunStop n name _ at what) -> StepRefused n name at (NotModelledStop what)) . runStop
 
 -- | An @expect refused@ that was refused as expected: its step and move,
 -- counted from 1, and the kind.
@@ -330,3 +365,77 @@ data ExpectedRefusal = ExpectedRefusal
     expectedKind :: !RefusalKind
   }
   deriving stock (Eq, Show)
+
+-- | One state as a fold sequence's file writes it, and the step that
+-- produced it: 'Nothing' for state 0, the sheet laid flat.
+data WrittenState = WrittenState
+  { stateStep :: !(Maybe Int),
+    stateFrame :: !Frame
+  }
+  deriving stock (Eq, Show)
+
+-- | Every state a run reached, as written frames, in order: state 0, the
+-- start, then the end of each step that writes one. The writer writes these
+-- and the page of steps will draw them, so the page shows exactly what the
+-- file holds (PRDs\/02-language-semantics.md, §11).
+--
+-- Each frame follows the /state rule/ ('assignmentAtRest'): its creases are
+-- lettered by the angle they are at, and an @F@ crease's angle is written as
+-- exactly 0, so a reader testing for folded by @angle /= 0@ agrees with the
+-- letter. It is @creasePattern@ only when every angle is 0 and every face
+-- shows its top: its ring, in the sheet's winding, turning anticlockwise
+-- where the face now lies. Any face turned over, or any fold, makes it a
+-- @foldedForm@.
+--
+-- A state's @frame_title@ is the caption of the step that /leaves/ it, which
+-- is where a book prints an instruction: next to the picture it starts from.
+-- The last state's is the closing caption, or, for a run that stopped at
+-- @not modelled@, the caption of the step it stopped at. Its
+-- @senbazuru:assurance@ looks the other way, at the step that /produced/
+-- it: each of that step's moves, and what checked it. State 0 has none,
+-- which is not the same as having an empty one.
+--
+-- Positions are written as the run computed them, with no presentation
+-- applied: turning the model over for the page arrives with @turn over@.
+writtenStates :: Run -> Either SequenceError [WrittenState]
+writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
+  where
+    writing = [(outcome, end) | outcome <- runSteps run, Just end <- [outcomeEnd outcome]]
+    produced = (Nothing, runStart run) : [(Just outcome, end) | (outcome, end) <- writing]
+    titles = map (outcomeCaption . fst) writing ++ [maybe (runClosing run) stopCaption (runStop run)]
+    write k (producer, surface) title = case writtenFrame surface title (fmap (assurance . outcomeStep) producer) of
+      Left problem -> Left (WriteRefused k problem)
+      Right frame -> Right (WrittenState (fmap outcomeStep producer) frame)
+    assurance n = toJSON [object ["move" .= recordMoveIndex record, "evidence" .= evidenceName (recordEvidence record)] | record <- runRecords run, recordStep record == n]
+    evidenceName = \case
+      SweptHinge _ -> "SweptHinge" :: Text
+
+-- | One surface as a written frame: the state rule, the class, the caption
+-- and the two vendor keys, and nothing of the working pattern's own extras.
+writtenFrame :: Surface V2 -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
+writtenFrame surface title assurance = do
+  let base = materialFrame surface
+      angles = edgesFoldAngle base
+      edgeCount = length (edgesVertices base)
+      letters = case edgesAssignment base of
+        [] -> replicate edgeCount Unassigned
+        given -> given
+      written = zipWith assignmentAtRest letters angles
+      writtenAngles = zipWith (\letter angle -> if letter == Flat then 0 else angle) written angles
+      placed = [V2 x y | x : y : _ <- verticesCoords base]
+      showsTop ring = signedArea [p | VertexId v <- ring, p <- take 1 (drop v placed)] > 0
+      flat = all (== 0) writtenAngles && all showsTop (facesVertices base)
+  unless (length angles == edgeCount) (Left (WriteMissingAngles edgeCount (length angles)))
+  -- The material coordinates go into a vendor key through toJSON, where a
+  -- NaN would become null before the encoder could refuse it.
+  case [(v, x) | (v, sample) <- zip [0 :: Int ..] (surfaceSamples surface), x <- [materialU sample, materialV sample], isNaN x || isInfinite x] of
+    (v, x) : _ -> Left (WriteNonFinite ("senbazuru:material_coords[" <> tshow v <> "]") x)
+    [] -> Right ()
+  pure
+    base
+      { frameTitle = title,
+        frameClasses = [if flat then "creasePattern" else "foldedForm"],
+        edgesAssignment = written,
+        edgesFoldAngle = writtenAngles,
+        frameExtras = KM.fromList ([(key, value) | key <- ["senbazuru:material_coords"], Just value <- [KM.lookup key (frameExtras base)]] ++ [("senbazuru:assurance", value) | Just value <- [assurance]])
+      }

@@ -79,6 +79,9 @@ module Senbazuru.Sequence.Error
     ResolveProblem (..),
     CandidateLine (..),
 
+    -- * A state that cannot be written
+    WriteProblem (..),
+
     -- * A move that cannot be made
     MoveFailure (..),
     SelectionError (..),
@@ -105,6 +108,7 @@ import Senbazuru.Fold.Types (EdgeId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
+import Senbazuru.Origami.Surface (SurfaceError)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Name (..), RefusalKind (..), Span (..), exactNumber)
 
 -- | Every way a sequence can be refused: as text, as a sequence before any
@@ -125,6 +129,9 @@ data SequenceError
   | -- | A move cannot be made: the step's number and name, the move's span,
     -- and why.
     StepRefused Int (Maybe Name) Span MoveFailure
+  | -- | A state a run reached cannot be written: its number, counted from 0,
+    -- as @file_frames@ numbers it, and why.
+    WriteRefused Int WriteProblem
   deriving stock (Eq, Show)
 
 -- | Where in a sequence a static problem is, in words an author can use
@@ -300,6 +307,7 @@ instance Explain SequenceError where
     SheetRefused _ path problem -> "sheet " <> quote (T.pack path) <> ": " <> explain problem
     ResolveRefused place _ written problem -> placeWords place <> ": " <> written <> ": " <> explain problem
     StepRefused n name _ failure -> placeWords (InStep n name) <> ": " <> explain failure
+    WriteRefused k problem -> "state " <> tshow k <> ": " <> explain problem
     where
       placeWords = \case
         InHeader -> "header"
@@ -431,6 +439,9 @@ data SheetProblem
     SheetNotLoaded
   | -- | The sheet, laid flat, will not fold.
     SheetDoesNotFold FoldingError
+  | -- | The sheet, laid flat, makes no surface to write as the run's first
+    -- state.
+    SheetNoSurface SurfaceError
   | -- | @start folded@, which keeps the file's angles and chooses a stacking,
     -- is not run yet.
     StartFoldedNotRunYet
@@ -459,6 +470,7 @@ instance Explain SheetProblem where
     SheetHasNoFaces -> "its creases bound no face, so there is no paper to fold"
     SheetNotLoaded -> "the run was not given this file"
     SheetDoesNotFold err -> "laid flat, it will not fold: " <> explain err
+    SheetNoSurface err -> "laid flat, it makes no surface: " <> explain err
     StartFoldedNotRunYet -> "\"start folded\", which starts from the file's own angles, cannot be run yet"
     DefaultAnchorOutside (V2 x y) ->
       "the default anchor, ("
@@ -580,6 +592,25 @@ data CandidateLine = CandidateLine
 instance Explain CandidateLine where
   explain (CandidateLine (V2 x y) (V2 dx dy) onPaper) =
     "the line through (" <> num x <> ", " <> num y <> ") along (" <> num dx <> ", " <> num dy <> ")" <> if onPaper then "" else ", which crosses no paper"
+
+-- | Why a state cannot be written as a frame. Each is a fault of the run,
+-- not of the paper an author named: a run's states come from surfaces that
+-- always have their angles and finite numbers, so these guard the writer's
+-- promises (PRDs\/02-language-semantics.md, §11) rather than an author's
+-- mistakes.
+data WriteProblem
+  = -- | Fewer or more fold angles than edges: how many edges, how many angles.
+    WriteMissingAngles Int Int
+  | -- | A number that is not finite, where it is in the written frame, and
+    -- the number. The encoder refuses the same in the frame's own fields;
+    -- this catches the ones it cannot see, put into a vendor key on the way.
+    WriteNonFinite Text Double
+  deriving stock (Eq, Show)
+
+instance Explain WriteProblem where
+  explain = \case
+    WriteMissingAngles edges angles -> "it has " <> tshow edges <> " edges and " <> tshow angles <> " fold angles, and a written state gives every edge its angle"
+    WriteNonFinite at x -> at <> " is " <> T.pack (show x) <> ", and a written number must be finite"
 
 -- | Why a move cannot be made, once its references name paper.
 data MoveFailure
@@ -791,6 +822,7 @@ errorSpan = \case
   SheetRefused sp _ _ -> sp
   ResolveRefused _ sp _ _ -> sp
   StepRefused _ _ sp _ -> sp
+  WriteRefused {} -> NoSpan
 
 -- | @path:line:col@ of where the error starts, counted from 1, with a column
 -- counting characters and a tab counting as one. 'Nothing' for 'NoSpan'.
