@@ -17,11 +17,13 @@ import Data.Foldable (for_)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Senbazuru.Origami.Stacking (Budget (..), defaultBudget)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.RunPlan
 import Senbazuru.Sequence.Syntax (Corner (..), Sequence)
+import Senbazuru.Sequence.Write (FileHeader (..), noFileHeader)
 import Test.Golden (goldenText)
 import Test.Hspec
 import Test.SequenceExamples (blintz)
@@ -39,11 +41,53 @@ spec = do
     it "names every such flag at once, in the order the help lists them" $
       planRun (foldr snd checking eachFlag) `shouldBe` Left (NotWithCheck (map (T.pack . fst) eachFlag))
 
-    -- Running needs the runner; until there is one, run says so rather than
-    -- doing something else in its name.
-    it "refuses to run a sequence, with or without flags, until the runner exists" $ do
-      planRun (noRunOptions "blintz.foldseq") `shouldBe` Left NoRunnerYet
-      planRun ((noRunOptions "blintz.foldseq") {runOutput = Just "out.fold"}) `shouldBe` Left NoRunnerYet
+    -- PRD 04's A15: the output is chosen by -o's extension, in any case, and
+    -- each flag that shapes another output is refused by name.
+    describe "chooses the output by -o's extension" $ do
+      it "writes the sequence file to standard output with no -o, and to a .fold" $ do
+        planRun running `shouldBe` Right (PlanFold Nothing defaultBudget noFileHeader)
+        planRun running {runOutput = Just "out.fold", runAuthor = Just "A. Folder", runDescription = Just "Two folds."}
+          `shouldBe` Right (PlanFold (Just "out.fold") defaultBudget (FileHeader (Just "A. Folder") (Just "Two folds.")))
+
+      it "writes one state as a model to a .glb, the complete paper alone with --all-layers" $ do
+        planRun running {runOutput = Just "out.glb", runFrame = Just 2} `shouldBe` Right (PlanGlb "out.glb" defaultBudget (Just 2) GlbVisibleAndComplete)
+        planRun running {runOutput = Just "out.glb", runAllLayers = True} `shouldBe` Right (PlanGlb "out.glb" defaultBudget Nothing GlbCompleteOnly)
+
+      it "reads the extension in any case" $ do
+        planRun running {runOutput = Just "OUT.FOLD"} `shouldBe` Right (PlanFold (Just "OUT.FOLD") defaultBudget noFileHeader)
+        planRun running {runOutput = Just "Out.Glb"} `shouldBe` Right (PlanGlb "Out.Glb" defaultBudget Nothing GlbVisibleAndComplete)
+
+      it "refuses an extension it does not write, and a page of steps until step notes exist" $ do
+        planRun running {runOutput = Just "out.png"} `shouldBe` Left (UnknownOutput "out.png")
+        planRun running {runOutput = Just "out"} `shouldBe` Left (UnknownOutput "out")
+        planRun running {runOutput = Just "OUT.SVG"} `shouldBe` Left PageNotYet
+
+      it "holds the --layer-budget given, whichever it writes" $ do
+        planRun running {runLayerBudget = Just 7} `shouldBe` Right (PlanFold Nothing (Budget 7) noFileHeader)
+        planRun running {runOutput = Just "out.glb", runLayerBudget = Just 7} `shouldBe` Right (PlanGlb "out.glb" (Budget 7) Nothing GlbVisibleAndComplete)
+
+    describe "refuses a flag that shapes another output (A15)" $ do
+      it "--frame and --all-layers, except with .glb" $ do
+        planRun running {runFrame = Just 2} `shouldBe` Left (NotWithOutput "a sequence file" ["--frame"])
+        planRun running {runOutput = Just "out.fold", runFrame = Just 2, runAllLayers = True} `shouldBe` Left (NotWithOutput "-o .fold" ["--frame", "--all-layers"])
+
+      it "--author and --description, except with .fold" $
+        planRun running {runOutput = Just "out.glb", runAuthor = Just "A.", runDescription = Just "D."} `shouldBe` Left (NotWithOutput "-o .glb" ["--author", "--description"])
+
+      it "the page's flags, which no output takes until the page" $ do
+        planRun running {runColumns = Just 3, runView = Just "iso"} `shouldBe` Left (NotWithOutput "a sequence file" ["--columns", "--view"])
+        planRun running {runOutput = Just "out.glb", runWidth = Just 400, runHeight = Just 400} `shouldBe` Left (NotWithOutput "-o .glb" ["--width", "--height"])
+
+  -- PRD 04's A16: --frame N is state N - 1, frame 0 being the key frame.
+  describe "chooseState" $ do
+    it "takes --frame N as state N - 1, and the last state with no --frame" $ do
+      chooseState (Just 1) 3 `shouldBe` Right 0
+      chooseState (Just 3) 3 `shouldBe` Right 2
+      chooseState Nothing 3 `shouldBe` Right 2
+
+    it "refuses frame 0, the key frame, and a frame past the last, naming the count" $ do
+      chooseState (Just 0) 3 `shouldBe` Left (NoSuchFrame 0 3)
+      chooseState (Just 4) 3 `shouldBe` Left (NoSuchFrame 4 3)
 
   describe "checkSummary" $ do
     it "counts the blintz's steps and moves" $
@@ -82,6 +126,10 @@ spec = do
 -- | Only @--check@ given.
 checking :: RunOptions
 checking = (noRunOptions "blintz.foldseq") {runCheck = True}
+
+-- | Running the blintz, with no flag given; a test sets the flags it needs.
+running :: RunOptions
+running = noRunOptions "blintz.foldseq"
 
 -- | Each flag, as the help names it, and a way to give it.
 eachFlag :: [(String, RunOptions -> RunOptions)]

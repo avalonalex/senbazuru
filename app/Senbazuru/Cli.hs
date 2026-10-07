@@ -20,6 +20,7 @@ where
 import Control.Monad (unless, when)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -71,9 +72,14 @@ import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Gltf (ExportMode (..), renderGlb)
 import Senbazuru.Render.Steps (StepError (..), stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
-import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Check (checkSequence, checkedSequence)
+import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Parse (parseSequence)
-import Senbazuru.Sequence.RunPlan (Plan (..), RunOptions (..), checkSummary, planRun, refusalLines)
+import Senbazuru.Sequence.Record (renderRunReport, runRefusal)
+import Senbazuru.Sequence.Run (RunSettings (..), defaultRunSettings, runSequence)
+import Senbazuru.Sequence.RunPlan (GlbScenes (..), Plan (..), RunOptions (..), checkSummary, chooseState, planRun, refusalLines)
+import Senbazuru.Sequence.Syntax (SourceFile (..), sourceFiles)
+import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 
@@ -790,21 +796,59 @@ run = \case
   -- Never through 'withFoldFile': a source is not a crease pattern.
   RunSource o -> runSequenceSource o
 
--- | Read, parse and check a sequence source, as far as the plan asks.
+-- | Read, parse and check a sequence source, and run it as far as the plan
+-- asks.
 --
 -- The plan comes first, before any file is read, so that a refused flag is
--- refused whatever the source holds.
+-- refused whatever the source holds. A run that stops at @not modelled@ still
+-- writes the states before the stop, and only then prints why it stopped and
+-- exits nonzero, so the work up to the gap is kept.
 runSequenceSource :: RunOptions -> IO ()
 runSequenceSource options = case planRun options of
   Left err -> die (explain err)
-  Right PlanCheck ->
+  Right plan ->
     readSequenceText path >>= \case
       Left err -> die (explain err)
       Right source -> case parseSequence path source >>= checkSequence of
         Left err -> dieLines (refusalLines source err)
-        Right checked -> TIO.putStrLn (checkSummary path checked)
+        Right checked -> case plan of
+          PlanCheck -> TIO.putStrLn (checkSummary path checked)
+          PlanFold output budget about -> do
+            done <- runChecked source budget checked
+            file <- written source about done
+            writeDocument output file
+            finish source done
+          PlanGlb output budget frame scenes -> do
+            done <- runChecked source budget checked
+            file <- written source noFileHeader done
+            state <- either (die . explain) pure (chooseState frame (length (otherFrames file)))
+            -- Through export's own path, so that this and export of the
+            -- written file at the same --frame give the same bytes.
+            chosen <- paperFor path (Just (state + 1)) False budget [] file
+            let mode = case scenes of
+                  GlbVisibleAndComplete -> VisiblePaper
+                  GlbCompleteOnly -> CompletePaper
+            case renderGlb budget mode (frameTitle chosen <|> fileTitle file) chosen of
+              Left err -> die ("cannot export " <> T.pack path <> ": " <> explain err)
+              Right bytes -> BS.writeFile output bytes
+            finish source done
   where
     path = runSource options
+    -- The sheet, and any other file the source names, by the path as the
+    -- author wrote it, read from the source's own directory.
+    runChecked source budget checked = do
+      sheets <- M.fromList <$> mapM loadNamed (sourceFiles path (checkedSequence checked))
+      case runSequence defaultRunSettings {runBudget = budget} sheets (elaborate checked) of
+        Left err -> dieLines (refusalLines source err)
+        Right done -> do
+          when (runReport options) (TIO.hPutStr stderr (T.unlines (T.pack path : map ("  " <>) (renderRunReport done))))
+          pure done
+    loadNamed named =
+      loadFile (sourceToOpen named) >>= \case
+        Left err -> die (explain err)
+        Right file -> pure (sourceWritten named, file)
+    written source about done = either (dieLines . refusalLines source) pure (writeSequence about done)
+    finish source done = maybe (pure ()) (dieLines . refusalLines source) (runRefusal done)
 
 -- | Fold one frame and write the folded shape out as a FOLD file.
 --

@@ -9,15 +9,15 @@
 -- ('checkSummary'), and the lines it prints for a refused one
 -- ('refusalLines'). The command line only calls them.
 --
--- == Only @--check@ runs yet
+-- == What @run@ writes
 --
 -- @run SOURCE --check@ reads a source, parses it and checks it, and prints
--- one line. It opens no sheet and folds no paper, which is milestone M1: the
--- language without geometry. Running the sequence, with @-o@ for a FOLD file,
--- a page of steps or a 3D model, needs the runner, and 'planRun' refuses it
--- by saying so rather than pretending. The flags that running will take are
--- parsed already, so that @--check@ can refuse each one by name: none of them
--- has anything to do when nothing is written.
+-- one line, folding no paper. Without @--check@ it runs the sequence and
+-- writes what @-o@ names, by its extension: a sequence file, @.fold@, or to
+-- standard output with no @-o@; or one state as a 3D model, @.glb@. A page of
+-- steps, @.svg@, waits for the step notes it is drawn from (milestone M3), and
+-- is refused by saying so. Each flag goes only with the output it shapes,
+-- and is refused with any other, so that a flag never silently does nothing.
 --
 -- == Why these messages may name flags
 --
@@ -32,8 +32,10 @@ module Senbazuru.Sequence.RunPlan
 
     -- * What to do
     Plan (..),
+    GlbScenes (..),
     RunOptionError (..),
     planRun,
+    chooseState,
 
     -- * What to print
     checkSummary,
@@ -41,13 +43,17 @@ module Senbazuru.Sequence.RunPlan
   )
 where
 
-import Data.Maybe (catMaybes, isJust)
+import Data.Char (toLower)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Origami.Stacking (Budget (..), defaultBudget)
 import Senbazuru.Sequence.Check (Checked, checkedSequence)
 import Senbazuru.Sequence.Error (Hint (..), ParseProblem (..), SequenceError (..), excerpt, sourceLocation)
 import Senbazuru.Sequence.Syntax (Located (..), Sequence (..), Step (..))
+import Senbazuru.Sequence.Write (FileHeader (..))
+import System.FilePath (takeExtension)
 
 -- | Every flag of @run@, as given. Each is a 'Maybe' or a 'Bool', so that a
 -- flag typed with its default value can be told from one not typed at all:
@@ -89,11 +95,24 @@ noRunOptions source =
       runDescription = Nothing
     }
 
--- | What @run@ will do. One plan so far; writing a FOLD file, a page and a
--- 3D model join it with the runner.
+-- | What @run@ will do.
 data Plan
   = -- | Parse and check the source, and print 'checkSummary'.
     PlanCheck
+  | -- | Run the sequence and write its sequence file, to the path or to
+    -- standard output, with the layer budget and what the file says about
+    -- itself.
+    PlanFold (Maybe FilePath) Budget FileHeader
+  | -- | Run the sequence and write one state as a 3D model: the path, the
+    -- layer budget, the @--frame@ given, if any, and which scenes.
+    PlanGlb FilePath Budget (Maybe Int) GlbScenes
+  deriving stock (Eq, Show)
+
+-- | Which scenes a @.glb@ holds, as @export@ chooses them: the paper as seen
+-- and the whole sheet, or, with @--all-layers@, the whole sheet alone. The
+-- command line maps it to "Senbazuru.Render.Gltf"'s mode, which this module,
+-- a level below rendering, cannot name.
+data GlbScenes = GlbVisibleAndComplete | GlbCompleteOnly
   deriving stock (Eq, Show)
 
 -- | Why @run@ will not do what its flags ask.
@@ -101,41 +120,88 @@ data RunOptionError
   = -- | Flags given with @--check@, which writes nothing for them to shape.
     -- Named as typed, in the order @run --help@ lists them.
     NotWithCheck [Text]
-  | -- | Running a sequence, which needs the runner, not yet built.
-    NoRunnerYet
+  | -- | An @-o@ whose extension names nothing @run@ writes: the path.
+    UnknownOutput FilePath
+  | -- | @-o@ a page of steps, which waits for step notes.
+    PageNotYet
+  | -- | Flags that shape another output than the one @-o@ names: the
+    -- output, then the flags, in the order @run --help@ lists them.
+    NotWithOutput Text [Text]
+  | -- | A @--frame@ the file has no state for: the number given, and how
+    -- many states there are.
+    NoSuchFrame Int Int
   deriving stock (Eq, Show)
 
 instance Explain RunOptionError where
   explain = \case
     NotWithCheck flags ->
       "--check writes nothing, so it takes no " <> T.intercalate ", " flags
-    NoRunnerYet ->
-      "running a sequence needs the runner, which is not built yet; --check parses and checks one"
+    UnknownOutput path ->
+      "-o " <> T.pack path <> ": run writes .fold, a sequence file, or .glb, one state as a model"
+    PageNotYet ->
+      "-o .svg, a page of steps, cannot be written by run yet; write .fold and draw it with render --steps"
+    NotWithOutput output flags ->
+      output <> " takes no " <> T.intercalate ", " flags
+    NoSuchFrame n count ->
+      "--frame " <> tshow n <> ": the file has " <> tshow count <> " states, frames 1 to " <> tshow count <> " (frame 0 is the key frame, which holds none)"
 
 -- | Decide what to do before any file is opened, so that a refused flag costs
 -- nothing and is refused whatever the source holds.
+--
+-- The output is chosen by @-o@'s extension, compared in lower case so that
+-- @OUT.FOLD@ is a FOLD file too. Then each flag that shapes some other
+-- output is refused by name: @--frame@ and @--all-layers@ go only with
+-- @.glb@, @--author@ and @--description@ only with @.fold@, and the page's
+-- flags only with the page, which no output takes yet.
 planRun :: RunOptions -> Either RunOptionError Plan
 planRun options
-  | runCheck options = case flagsGiven of
+  | runCheck options = case flagsGiven allFlags of
       [] -> Right PlanCheck
       flags -> Left (NotWithCheck flags)
-  | otherwise = Left NoRunnerYet
+  | otherwise = case map toLower . takeExtension <$> runOutput options of
+      Nothing -> fold Nothing
+      Just ".fold" -> fold (runOutput options)
+      Just ".glb" -> case flagsGiven (pageFlags ++ foldFlags) of
+        [] -> Right (PlanGlb (fromMaybe "" (runOutput options)) budget (runFrame options) (if runAllLayers options then GlbCompleteOnly else GlbVisibleAndComplete))
+        flags -> Left (NotWithOutput "-o .glb" flags)
+      Just ".svg" -> Left PageNotYet
+      Just _ -> Left (UnknownOutput (fromMaybe "" (runOutput options)))
   where
-    flagsGiven =
-      catMaybes
-        [ given (isJust (runOutput options)) "-o",
-          given (runReport options) "--report",
-          given (isJust (runLayerBudget options)) "--layer-budget",
-          given (isJust (runFrame options)) "--frame",
-          given (runAllLayers options) "--all-layers",
-          given (isJust (runColumns options)) "--columns",
-          given (isJust (runView options)) "--view",
-          given (isJust (runWidth options)) "--width",
-          given (isJust (runHeight options)) "--height",
-          given (isJust (runAuthor options)) "--author",
-          given (isJust (runDescription options)) "--description"
-        ]
-    given present flag = if present then Just flag else Nothing
+    budget = maybe defaultBudget Budget (runLayerBudget options)
+    fold output = case flagsGiven (glbFlags ++ pageFlags) of
+      [] -> Right (PlanFold output budget (FileHeader (runAuthor options) (runDescription options)))
+      flags -> Left (NotWithOutput (maybe "a sequence file" (const "-o .fold") output) flags)
+    -- Every flag, in the order @run --help@ lists them, with whether it was
+    -- given.
+    allFlags =
+      [ (isJust (runOutput options), "-o"),
+        (runReport options, "--report"),
+        (isJust (runLayerBudget options), "--layer-budget")
+      ]
+        ++ glbFlags
+        ++ pageFlags
+        ++ foldFlags
+    glbFlags = [(isJust (runFrame options), "--frame"), (runAllLayers options, "--all-layers")]
+    pageFlags =
+      [ (isJust (runColumns options), "--columns"),
+        (isJust (runView options), "--view"),
+        (isJust (runWidth options), "--width"),
+        (isJust (runHeight options), "--height")
+      ]
+    foldFlags = [(isJust (runAuthor options), "--author"), (isJust (runDescription options), "--description")]
+    flagsGiven flags = [flag | (True, flag) <- flags]
+
+-- | Which state @--frame N@ names in a file of this many states: state N − 1,
+-- because every verb counts the key frame as frame 0 and a sequence file's
+-- key frame holds no state. With no @--frame@, the last state, the model the
+-- sequence ends at. Frame 0 and frames past the last are refused, naming the
+-- count.
+chooseState :: Maybe Int -> Int -> Either RunOptionError Int
+chooseState frame count = case frame of
+  Nothing -> Right (count - 1)
+  Just n
+    | n >= 1 && n <= count -> Right (n - 1)
+    | otherwise -> Left (NoSuchFrame n count)
 
 -- | The line @run --check@ prints for a source that checks:
 -- @blintz.foldseq: 5 steps, 5 moves, checked without geometry@.

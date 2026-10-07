@@ -1791,8 +1791,8 @@ stack run -- run blintz.foldseq --check
 blintz.foldseq: 5 steps, 5 moves, checked without geometry
 ```
 
-`run` reads a fold sequence source. With `--check`, which is all it does yet,
-it reads the source, parses it and checks it: that every name is defined
+`run` reads a fold sequence source. With `--check`, it reads the source,
+parses it and checks it: that every name is defined
 before it is used and used as the kind of thing it names, that no step is
 empty, and that every number is in range. It prints one line and folds no
 paper. It opens no sheet either, so a source whose `sheet` or `checkpoint`
@@ -1811,11 +1811,72 @@ senbazuru: blintz.foldseq:10:35: step 5: "c9" is not defined here; a name can be
 A sequence built in Haskell has no lines to point at, so its refusals name
 the step instead, as `step 5` does here.
 
-Running a sequence, with `-o` for a FOLD file, an `.svg` page of steps or a
-`.glb` model, needs the runner, which is not built yet. `run` without
-`--check` says so and exits nonzero. The flags that running will take are
-already in `run --help`, so that `--check` can refuse each by name: none has
-anything to shape when nothing is written.
+Without `--check`, `run` runs the sequence: it opens the sheet the source
+names, folds the paper move by move, and writes what `-o` names, by its
+extension.
+
+```bash
+stack run -- run blintz.foldseq -o blintz.fold --report
+stack run -- run blintz.foldseq -o blintz.glb --frame 6
+stack run -- run blintz.foldseq > blintz.fold
+```
+
+- **`.fold`, or no `-o`**: the *sequence file*, a FOLD file holding every state
+  the run reached, written to standard output when there is no `-o`. Its key
+  frame holds only the file's metadata, and state k is `file_frames[k]`: the
+  sheet laid flat, then the state after each step. `render --steps` draws it
+  and `export --frame` takes a state from it. Every verb counts the key frame
+  as frame 0, so state k is `--frame k+1`. `--author` and `--description` fill
+  `file_author` and `file_description`.
+- **`.glb`**: one state as a 3D model, the last unless `--frame N` names
+  another, counted the same way, so `--frame 1` is the sheet laid flat. It
+  is the same file `export --frame N` makes from the written `.fold`, byte for
+  byte. `--all-layers` writes only the complete paper, as for `export`.
+- **`.svg`**, a page of steps, is not written yet: it waits for the step
+  notes it is drawn from. Write `.fold` and draw it with `render --steps`.
+
+Each flag goes only with the output it shapes, and is refused with any other,
+so that a flag never silently does nothing:
+
+```text
+senbazuru: -o .fold takes no --frame
+senbazuru: --frame 0: the file has 6 states, frames 1 to 6 (frame 0 is the key frame, which holds none)
+```
+
+`--report` prints what each move did to standard error, under the source's
+name, so it composes with a sequence file on standard output: what checked
+the move, the fold line and the paper its references named, the faces it
+moved, its hinge and the face it held still, with the ids the run gave them.
+
+```text
+blintz.foldseq
+  step 1 (c1), move 1: fold mountain corner south-east to centre
+    checked: the whole turn, swept, with no paper in its way
+    line corner south-east to centre: through (0.75, 0.25), along (0.707107, 0.707107)
+    named by corner south-east: the paper at (1, 0)
+    moving: (internal face 2)
+    hinge: (internal edge 8)
+    held still: (internal face 0)
+```
+
+An `expect refused` move has no record, and the report is where its outcome
+shows. `--layer-budget N` is passed to the run and to the model's layer
+solver, as for `render` and `export`.
+
+The `sheet` path is read relative to the source's own directory, so a
+sequence reads the same sheet wherever `run` is started from. A run that
+reaches `not modelled` still writes the states before it, then says where it
+stopped and exits nonzero, so the work up to the gap is kept:
+
+```text
+senbazuru: quarter-stop.foldseq:10:3: step 2 (quarter): "fold in quarters" is not modelled, so the run stops here and keeps the moves before it
+   |
+10 |   not modelled "fold in quarters"
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
+
+Any other refusal writes nothing. What a run can fold so far, and what it
+refuses as not run yet, is in `Senbazuru.Sequence.Run`'s header.
 
 The flag rules and every line `run` prints are functions of
 `Senbazuru.Sequence.RunPlan`, tested there, since the command line is not.

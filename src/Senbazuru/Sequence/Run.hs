@@ -139,6 +139,7 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, prepareFlapAlong, prepareFlapToward)
 import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep (SweepSettings, defaultSweepSettings)
+import Senbazuru.Origami.Stacking (Budget, defaultBudget)
 import Senbazuru.Origami.Surface (Surface, surfaceFrame, surfaceFromFolded)
 import Senbazuru.Sequence.Elaborate (Core (..), CoreMove (..), Elaborated (..), ElaboratedStep (..), Origin (..))
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
@@ -273,12 +274,17 @@ data RunSettings = RunSettings
     runSweep :: !SweepSettings,
     -- | How near a vertex, in sheet lengths, a typed point is refused as a
     -- near miss: 1e-3 by owner decision 2.
-    runNearMissBand :: !Double
+    runNearMissBand :: !Double,
+    -- | How hard the layer solver may look before giving up, @--layer-budget@.
+    -- Every entry point that can reach the solver takes it (AGENTS.md); no
+    -- move solves a stacking yet, so it waits here for the first that does,
+    -- choosing among layer orders at milestone M4.
+    runBudget :: !Budget
   }
 
 -- | The settings a run uses unless told otherwise.
 defaultRunSettings :: RunSettings
-defaultRunSettings = RunSettings defaultSweepSettings 1e-3
+defaultRunSettings = RunSettings defaultSweepSettings 1e-3 defaultBudget
 
 -- | Run a checked, elaborated sequence against its sheet, handed over keyed by
 -- the path the header writes, and give back a record for each move. Pure:
