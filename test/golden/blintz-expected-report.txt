@@ -1,0 +1,30 @@
+step 1 (c1), move 1: fold mountain corner south-east to centre
+  checked: the whole turn, swept, with no paper in its way
+  line corner south-east to centre: through (0.75, 0.25), along (0.707107, 0.707107)
+  named by corner south-east: the paper at (1, 0)
+  moving: (internal face 2)
+  hinge: (internal edge 8)
+  held still: (internal face 0)
+step 2, move 1: fold mountain corner north-east to centre
+  checked: the whole turn, swept, with no paper in its way
+  line corner north-east to centre: through (0.75, 0.75), along (0.707107, -0.707107)
+  named by corner north-east: the paper at (1, 1)
+  moving: (internal face 3)
+  hinge: (internal edge 9)
+  held still: (internal face 0)
+step 3, move 1: fold mountain corner north-west to centre
+  checked: the whole turn, swept, with no paper in its way
+  line corner north-west to centre: through (0.25, 0.75), along (0.707107, 0.707107)
+  named by corner north-west: the paper at (0, 1)
+  moving: (internal face 4)
+  hinge: (internal edge 10)
+  held still: (internal face 0)
+step 4, move 1: fold mountain corner south-west to centre
+  checked: the whole turn, swept, with no paper in its way
+  line corner south-west to centre: through (0.25, 0.25), along (0.707107, -0.707107)
+  named by corner south-west: the paper at (0, 0)
+  moving: (internal face 1)
+  hinge: (internal edge 11)
+  held still: (internal face 0)
+step 5, move 1: expect refused FlapEndpointOrder
+  refused as FlapEndpointOrder, as expected; nothing moved

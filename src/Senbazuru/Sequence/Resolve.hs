@@ -65,6 +65,8 @@ module Senbazuru.Sequence.Resolve
     hingeAlong,
     firstLineSeed,
     straddles,
+    eastOrNorth,
+    lineAsSeen,
 
     -- * Regions
     regionFace,
@@ -382,16 +384,25 @@ reflectIn (FoldLine origin direction) p =
 
 -- | An answer as an author can read it: in sheet lengths, through the point
 -- of the line nearest the middle of the paper, and pointing east or north.
--- A line within a hair of north-south points north, whatever the sign of the
--- rounding in its east-west part.
 candidateOf :: FlatState -> FoldLine -> CandidateLine
-candidateOf st line@(FoldLine origin direction) =
+candidateOf st line = let (through, along) = lineAsSeen st line in CandidateLine through along (crossesPaper st line)
+
+-- | A line as a person is shown it, the same however it was found: in sheet
+-- lengths, through its point nearest the middle of the paper, and pointing
+-- east, or north for a line running north-south.
+lineAsSeen :: FlatState -> FoldLine -> (V2, V2)
+lineAsSeen st (FoldLine origin direction) =
   let middle = maybe origin boxCentre (boxFromPoints (IM.elems (flatPlaced st)))
-      through = origin ^+^ (dot (middle ^-^ origin) direction *^ direction)
-      V2 dx dy = direction
-      southOrWest = if abs dx <= 1e-12 then dy < 0 else dx < 0
-      along = if southOrWest then (-1) *^ direction else direction
-   in CandidateLine (toSheetLengths st through) along (crossesPaper st line)
+   in (toSheetLengths st (origin ^+^ (dot (middle ^-^ origin) direction *^ direction)), eastOrNorth direction)
+
+-- | A line's direction turned to point east, or north for a line running
+-- north-south, so that one line always reads one way. A line within a hair of
+-- north-south points north, whatever the sign of the rounding in its
+-- east-west part.
+eastOrNorth :: V2 -> V2
+eastOrNorth direction@(V2 dx dy) =
+  let southOrWest = if abs dx <= 1e-12 then dy < 0 else dx < 0
+   in if southOrWest then (-1) *^ direction else direction
 
 -- | The seed of @L1 to L2@ with no @moving@ point, and L1's stretch where it
 -- lies now. The moving side is the one holding L1, and a run keeps a seed it
