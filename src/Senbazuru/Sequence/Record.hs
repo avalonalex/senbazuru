@@ -139,6 +139,7 @@ where
 import Control.Monad (unless)
 import Data.Aeson (Value, object, toJSON, (.=))
 import Data.Aeson.KeyMap qualified as KM
+import Data.IntMap.Strict qualified as IM
 import Data.Text (Text)
 import Senbazuru.Explain (tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
@@ -411,7 +412,9 @@ writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
       SweptHinge _ -> "SweptHinge" :: Text
 
 -- | One surface as a written frame: the state rule, the class, the caption
--- and the two vendor keys, and nothing of the working pattern's own extras.
+-- and the two vendor keys. Nothing of the sheet's own frame is kept but its
+-- unit: its extras, attributes, author and description described the sheet,
+-- and would be stale on a state folded from it.
 writtenFrame :: Surface V2 -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
 writtenFrame surface title assurance = do
   let base = materialFrame surface
@@ -422,8 +425,8 @@ writtenFrame surface title assurance = do
         given -> given
       written = zipWith assignmentAtRest letters angles
       writtenAngles = zipWith (\letter angle -> if letter == Flat then 0 else angle) written angles
-      placed = [V2 x y | x : y : _ <- verticesCoords base]
-      showsTop ring = signedArea [p | VertexId v <- ring, p <- take 1 (drop v placed)] > 0
+      placed = IM.fromList (zip [0 ..] [V2 x y | x : y : _ <- verticesCoords base])
+      showsTop ring = signedArea [p | VertexId v <- ring, Just p <- [IM.lookup v placed]] > 0
       flat = all (== 0) writtenAngles && all showsTop (facesVertices base)
   unless (length angles == edgeCount) (Left (WriteMissingAngles edgeCount (length angles)))
   -- The material coordinates go into a vendor key through toJSON, where a
@@ -434,6 +437,11 @@ writtenFrame surface title assurance = do
   pure
     base
       { frameTitle = title,
+        frameAuthor = Nothing,
+        frameDescription = Nothing,
+        frameAttributes = [],
+        frameParent = Nothing,
+        frameInherit = False,
         frameClasses = [if flat then "creasePattern" else "foldedForm"],
         edgesAssignment = written,
         edgesFoldAngle = writtenAngles,

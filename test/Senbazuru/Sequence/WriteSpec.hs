@@ -71,6 +71,11 @@ spec = describe "writing a run as a sequence file" $ do
       forM_ (zip states fixture) $ \(ours, theirs) ->
         edgesAssignment ours `shouldBe` zipWith assignmentAtRest (edgesAssignment theirs) (edgesFoldAngle theirs)
 
+    -- The fixture's key frame says frame_attributes ["2D"]; a state folded
+    -- from it is no longer that sheet, and carries none of its frame keys.
+    it "keeps none of the sheet's own frame metadata" $
+      map (\frame -> (frameAttributes frame, frameAuthor frame, frameDescription frame)) states `shouldBe` replicate 3 ([], Nothing, Nothing)
+
     it "calls the flat sheet a crease pattern and the folded states folded forms" $
       map frameClasses states `shouldBe` [["creasePattern"], ["foldedForm"], ["foldedForm"]]
 

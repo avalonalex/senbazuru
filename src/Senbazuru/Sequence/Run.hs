@@ -126,7 +126,7 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (find, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance)
@@ -337,12 +337,11 @@ startOf sheets header = do
       flat <- first refuseAnchor (flatState folded)
       m <- first refuseAnchor (materialPoint flat point)
       FaceId face <- first refuseAnchor (regionFace flat m)
-      -- The face is found in the default anchor's order; it goes first in
-      -- the sheet's own order, so that the default's reordering does not
-      -- linger in the rest.
-      let original = theSheetFaces laid
-          index = fromMaybe 0 (listToMaybe [i | ring <- take 1 (drop face (facesVertices (theWorking laid))), (i, ring') <- zip [0 ..] original, ring' == ring])
-      Right laid {theWorking = (theWorking laid) {facesVertices = firstOf index original}, theAnchor = MaterialPoint m, theFold = Nothing}
+      -- The face is found in the default anchor's order; it goes first, and
+      -- the rest follow in the sheet's own order, so that the default's
+      -- reordering does not linger in them.
+      let chosen = take 1 (drop face (facesVertices (theWorking laid)))
+      Right laid {theWorking = (theWorking laid) {facesVertices = chosen ++ filter (`notElem` chosen) (theSheetFaces laid)}, theAnchor = MaterialPoint m, theFold = Nothing}
   folded <- first (SheetRefused at path . SheetDoesNotFold) (foldNow anchored)
   surface <- first (SheetRefused at path . SheetNoSurface) (surfaceFromFolded folded)
   Right (anchored {theFront = if hSide header == WhiteUp then TowardMinusZ else TowardPlusZ, theFold = Just folded}, surface)
