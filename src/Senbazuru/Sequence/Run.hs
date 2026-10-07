@@ -459,7 +459,7 @@ foldMove settings place named state sense amount line layers seed = do
         Degrees r -> fromRational r
   motion <- first (refusedAt place . FlapRefused) (prepareFlapToward (selectionHinge selection) (selectionSide selection) magnitude toward folded)
   turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-  let resolved = [ResolvedLine (prettyLine line) (toSheetLengths flat (linePoint foldAt)) (eastOrNorth (lineDirection foldAt)), ResolvedSeed seedWords (toSheetLengths flat m)]
+  let resolved = [uncurry (ResolvedLine (prettyLine line)) (lineAsSeen flat foldAt), ResolvedSeed seedWords (toSheetLengths flat m)]
   record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) (MaterialPoint m) resolved turn)
   next <- handOn place state folded record
   pure (next, [record])
@@ -494,7 +494,7 @@ undoOne settings place (state, made) earlier = do
             [] -> Left (refusedAt place (Selecting NothingSelected))
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) seed [] turn)
+          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
     _ -> Right (state, made)

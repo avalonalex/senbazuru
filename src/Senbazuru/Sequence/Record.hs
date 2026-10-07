@@ -207,14 +207,17 @@ data MoveRecord = MoveRecord
 -- wrote, and what they named, in sheet lengths. A fold resolves two: its
 -- line, and the point that names the paper it moves.
 data ResolvedReference
-  = -- | The fold line as written, a point on it where the paper lay when the
-    -- move was made, and its direction, pointing east, or north for a line
-    -- running north-south.
+  = -- | The fold line as written, where the paper lay when the move was
+    -- made: through its point nearest the middle of the paper, pointing east,
+    -- or north for a line running north-south, as a refusal shows a line.
     ResolvedLine Text V2 V2
   | -- | The words naming the moving paper, and the point of paper they named:
     -- a @moving@ point, an alignment fold's first argument, or for
     -- @L1 to L2@, the first line, which names its paper by a face beside it.
     ResolvedSeed Text V2
+  | -- | For an @unfold@, the step whose move it turns back, and the step's
+    -- name: an unfold of several steps makes a record for each.
+    ResolvedTurnedBack Int (Maybe Name)
   deriving stock (Eq, Show)
 
 -- | The step's number, counted from 1, as a refusal names it.
@@ -269,8 +272,8 @@ recordMoving = theMoving
 recordStationary :: MoveRecord -> FaceId
 recordStationary = theStationary
 
--- | The references the move resolved, in the order it resolved them; none
--- for an @unfold@, which turns back a move by its record.
+-- | The references the move resolved, in the order it resolved them: a
+-- fold's line and moving paper, or the step an @unfold@ turns back.
 recordResolved :: MoveRecord -> [ResolvedReference]
 recordResolved = theResolved
 
@@ -483,22 +486,21 @@ writtenFrame surface title assurance = do
 
 -- | What a run did, one fact to a line, for a person to read: each move
 -- under a heading of where it is and the move as the printer spells it,
--- canonical words and all, then what checked
--- it, what its references named, the paper it moved, its hinge and the face
--- it held still; each refusal a sequence expected, which has no record and is
--- found only here; and where the run stopped, if it did. In step order, a
--- step's moves in theirs.
+-- canonical words and all, then what checked it, what its references named,
+-- the paper it moved, its hinge and the face it held still; each refusal a
+-- sequence expected, which has no record and is found only here; and where
+-- the run stopped, if it did. In step order, a step's moves in theirs.
 --
 -- Ids are the run's own, written @(internal edge 8)@, so an author knows they
 -- did not write them (PRDs\/decisions.md, D20). Numbers are rounded to six
--- places, which keeps the report the same on every platform where a
--- coordinate's last bits are not.
+-- places, which rounds away the last bits in which platforms differ; only a
+-- value lying on a rounding boundary could still print differently.
 renderRunReport :: Run -> [Text]
 renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
   where
     entries = [(recordStep r, recordMoveIndex r, Left r) | r <- runRecords run] ++ [(expectedStep e, expectedMove e, Right e) | e <- runExpected run]
     place (n, i, _) = (n, i)
-    names = [(outcomeStep o, outcomeName o) | o <- runSteps run]
+    names = [(outcomeStep o, outcomeName o) | o <- runSteps run] ++ [(stopStep s, stopName s) | Just s <- [runStop run]]
     heading n name i written = "step " <> tshow n <> maybe "" (\(Name x) -> " (" <> x <> ")") name <> ", move " <> tshow i <> ": " <> written
     entry (_, _, Left r) = heading (recordStep r) (recordStepName r) (recordMoveIndex r) (prettyMove (originWritten (recordOrigin r))) : map ("  " <>) (facts r)
     entry (n, i, Right e) =
@@ -513,6 +515,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
     resolvedFact = \case
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
       ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p
+      ResolvedTurnedBack n name -> "turns back: step " <> tshow n <> maybe "" (\(Name x) -> " (" <> x <> ")") name
     internal noun ids = "(internal " <> noun <> (if length ids == 1 then "" else "s") <> " " <> T.intercalate ", " (map tshow ids) <> ")"
     point (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
     stopped = ["stopped: " <> explain refusal | Just refusal <- [runRefusal run]]

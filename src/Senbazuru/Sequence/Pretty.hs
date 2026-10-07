@@ -189,13 +189,13 @@ macroWords = \case
   Petal (TipAt p) end -> ["petal tip", prettyPoint p, "until", angle end]
   Petal TopFlapTip end -> ["petal top flap until", angle end]
 
--- | A point, as a source spells it. Exported for a message that has to quote
--- what the author wrote.
 -- | One move as an author writes it, on one line: a block's lines joined, for
 -- a report or a message to quote.
 prettyMove :: Move -> Text
 prettyMove = T.unwords . map T.strip . moveLines
 
+-- | A point, as a source spells it. Exported for a message that has to quote
+-- what the author wrote.
 prettyPoint :: Point -> Text
 prettyPoint = \case
   CornerOf corner -> "corner " <> cornerWord corner

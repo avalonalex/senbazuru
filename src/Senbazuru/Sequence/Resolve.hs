@@ -66,6 +66,7 @@ module Senbazuru.Sequence.Resolve
     firstLineSeed,
     straddles,
     eastOrNorth,
+    lineAsSeen,
 
     -- * Regions
     regionFace,
@@ -384,10 +385,15 @@ reflectIn (FoldLine origin direction) p =
 -- | An answer as an author can read it: in sheet lengths, through the point
 -- of the line nearest the middle of the paper, and pointing east or north.
 candidateOf :: FlatState -> FoldLine -> CandidateLine
-candidateOf st line@(FoldLine origin direction) =
+candidateOf st line = let (through, along) = lineAsSeen st line in CandidateLine through along (crossesPaper st line)
+
+-- | A line as a person is shown it, the same however it was found: in sheet
+-- lengths, through its point nearest the middle of the paper, and pointing
+-- east, or north for a line running north-south.
+lineAsSeen :: FlatState -> FoldLine -> (V2, V2)
+lineAsSeen st (FoldLine origin direction) =
   let middle = maybe origin boxCentre (boxFromPoints (IM.elems (flatPlaced st)))
-      through = origin ^+^ (dot (middle ^-^ origin) direction *^ direction)
-   in CandidateLine (toSheetLengths st through) (eastOrNorth direction) (crossesPaper st line)
+   in (toSheetLengths st (origin ^+^ (dot (middle ^-^ origin) direction *^ direction)), eastOrNorth direction)
 
 -- | A line's direction turned to point east, or north for a line running
 -- north-south, so that one line always reads one way. A line within a hair of

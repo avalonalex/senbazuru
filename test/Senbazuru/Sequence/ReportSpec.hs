@@ -13,10 +13,10 @@ import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (SequenceError)
 import Senbazuru.Sequence.Record (Run, renderRunReport)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
-import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), RefusalKind (..), Sense (..), Sequence)
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), Point (..), RefusalKind (..), Sense (..), Sequence)
 import Test.Golden (goldenText)
 import Test.Hspec
-import Test.SequenceExamples (quarterFold)
+import Test.SequenceExamples (blintz, quarterFold)
 
 spec :: Spec
 spec = describe "a run's report" $ do
@@ -46,6 +46,19 @@ spec = describe "a run's report" $ do
     goldenText "test/golden/blintz-expected-report.txt" (T.unlines report)
     filter (T.isPrefixOf "step 5") report `shouldBe` ["step 5, move 1: expect refused FlapEndpointOrder"]
 
+  -- The blintz's own last step reopens c1: an unfold, whose record names the
+  -- step it turns back, since one unfold of several steps makes a record for
+  -- each under the same heading.
+  it "names the step an unfold turns back" $ do
+    report <- right (renderRunReport <$> runOn blintz)
+    filter (T.isPrefixOf "  turns back: ") report `shouldBe` ["  turns back: step 1 (c1)"]
+
+  -- An expected refusal in a step the run then stops in: the step finished
+  -- no outcome, and its name comes from the stop.
+  it "names the step of an expected refusal the run stopped in" $ do
+    report <- right (renderRunReport <$> runOn (stoppedQuarterWith (expectRefused (RefusalKind "SeedMissing") (Fold ValleyFold ToFlat (Segment (MidpointOfEdge South) (MidpointOfEdge North)) FlapOfFirstArgument Nothing) >> notModelled "fold in quarters")))
+    filter (T.isPrefixOf "step 2") report `shouldBe` ["step 2 (quarter), move 1: expect refused SeedMissing"]
+
   it "ends with where a run stopped, if it did" $ do
     report <- right (renderRunReport <$> runOn stoppedQuarter)
     last report `shouldBe` "stopped: step 2 (quarter): \"fold in quarters\" is not modelled, so the run stops here and keeps the moves before it"
@@ -54,9 +67,10 @@ spec = describe "a run's report" $ do
       c1 <- step "c1" "Fold the south-east corner behind, to the centre." (fold mountain (cornerOf SouthEast `onto` centre))
       forM_ [NorthEast, NorthWest, SouthWest] $ \c -> step_ "Fold the next corner behind, to the centre." (fold mountain (cornerOf c `onto` centre))
       step_ "Carry the first corner on, in front." (expectRefused (RefusalKind "FlapEndpointOrder") (Fold ValleyFold (Degrees 180) (hingeOf c1) FlapOfFirstArgument (Just (cornerOf SouthEast))))
-    stoppedQuarter = sequenceOf (header "A square folded into quarters" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) $ do
+    stoppedQuarter = stoppedQuarterWith (notModelled "fold in quarters")
+    stoppedQuarterWith second = sequenceOf (header "A square folded into quarters" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4)))) $ do
       _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
-      _ <- step "quarter" "Fold the top half down in front, onto the bottom." (notModelled "fold in quarters")
+      _ <- step "quarter" "Fold the top half down in front, onto the bottom." second
       pure ()
 
 right :: (Show e) => Either e a -> IO a
