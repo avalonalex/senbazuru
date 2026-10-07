@@ -25,6 +25,7 @@ module Senbazuru.Fold.Query
     FrameKind (..),
     frameKind,
     atRest,
+    assignmentAtRest,
     frameVertices,
     frameCreases,
     frameFaces,
@@ -445,6 +446,28 @@ data FrameKind
 -- letter a sheet's crease was drawn with.
 atRest :: Double
 atRest = 1e-10
+
+-- | The letter a crease's angle says it has: the /state rule/ (see
+-- docs/glossary.md), which the frames a fold sequence writes are to follow
+-- (PRDs\/02-language-semantics.md, §11). A
+-- border, a cut and a join keep their letters, which no angle changes; any
+-- other crease is a mountain below @-'atRest'@, a valley above it, and flat
+-- between.
+--
+-- So a crease made as a valley and laid flat again reads @F@, though it was
+-- drawn @V@: the letter says what the paper is now, not what the author meant,
+-- which a run keeps elsewhere. And @U@ never comes out, because an angle
+-- always says one of the three. Total: a @NaN@ angle compares false both
+-- ways and reads @F@, so a writer must refuse non-finite angles before this.
+assignmentAtRest :: Assignment -> Double -> Assignment
+assignmentAtRest letter angle = case letter of
+  Border -> Border
+  Cut -> Cut
+  Join -> Join
+  _
+    | angle < negate atRest -> Mountain
+    | angle > atRest -> Valley
+    | otherwise -> Flat
 
 -- | Decide which kind of picture a frame is, from its geometry and then, only
 -- if it has to, from its classes.

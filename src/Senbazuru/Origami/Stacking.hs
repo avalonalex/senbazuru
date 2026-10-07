@@ -123,6 +123,7 @@ module Senbazuru.Origami.Stacking
     -- * The constraints
     Rule (..),
     stackingRules,
+    creaseDirections,
   )
 where
 
@@ -702,6 +703,13 @@ collinearRule hair h1 h2 = case collinearOverlap hair (hingeSegment h1) (hingeSe
 -- an amount, which is all this needs. A file whose @edges_foldAngle@ is the
 -- wrong length is refused, as "Senbazuru.Origami.Folding" refuses it: a wrong
 -- direction here mirrors the whole stack in silence.
+--
+-- The test on the angle is exact, @d > 0@, with no tolerance. That agrees with
+-- the state rule ('Senbazuru.Fold.Query.assignmentAtRest') only if a frame
+-- lettered by it also carries each @F@ crease's angle as exactly 0, never as
+-- 5e-11, as the fold-sequence writer is required to
+-- (PRDs\/02-language-semantics.md, §11): this then reads 0, falls back to
+-- @F@, and names no direction.
 creaseDirections :: Frame -> [Crease] -> Either FoldError (M.Map EdgeKey (Maybe Bool))
 creaseDirections fr creases = do
   angles <- case edgesFoldAngle fr of

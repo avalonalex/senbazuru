@@ -63,6 +63,7 @@ For the ideas rather than the definitions, start with
 | **Flat** (`F`) | A crease line that exists but is not folded. |
 | **Unassigned** (`U`) | A crease whose direction is not yet decided. |
 | **Cut** (`C`) / **Join** (`J`) | A slit in the paper / two faces that are really one piece. |
+| **State rule** | How every frame a fold sequence writes letters its creases: by the angle the crease is at now, not the direction it was made in. A mountain below −10⁻¹⁰ degrees, a valley above +10⁻¹⁰, and `F` between, with the angle then written as exactly 0; `B`, `C` and `J` keep their letters, and `U` is never written. So a valley folded and laid flat again is written `F`. See `Fold.Query.assignmentAtRest`. |
 | **Face ordering** | Which sheet of paper is on top where, stored in `faceOrders` as `[f, g, s]`. The sign is read against *`g`'s normal*, so it describes the paper and not the picture: turning it into a drawing order needs a viewing direction too. See [notes/layer-ordering.md](notes/layer-ordering.md). |
 
 Every key with its type and our support status: [fold-reference.md](fold-reference.md).
