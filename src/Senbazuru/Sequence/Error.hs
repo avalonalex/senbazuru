@@ -84,6 +84,7 @@ module Senbazuru.Sequence.Error
 
     -- * The kinds a sequence may expect
     refusalKinds,
+    refusalKindOf,
 
     -- * Where, for a person
     errorSpan,
@@ -101,8 +102,8 @@ import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (FoldError)
 import Senbazuru.Fold.Types (EdgeId (..))
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Origami.Flap (FlapError)
-import Senbazuru.Origami.Folding (FoldingError)
+import Senbazuru.Origami.Flap (FlapError (..))
+import Senbazuru.Origami.Folding (FoldingError (..))
 import Senbazuru.Sequence.Syntax (Corner (..), Name (..), RefusalKind (..), Span (..), exactNumber)
 
 -- | Every way a sequence can be refused: as text, as a sequence before any
@@ -491,6 +492,9 @@ data ResolveProblem
     DegenerateConstruction
   | -- | A fold line that runs along no crease on the paper.
     NoSolution
+  | -- | @hinge of NAME@ names the hinge of the named step's one move; that
+    -- step made this many.
+    HingeOfNotOneMove Name Int
   | -- | A form of reference this runner does not resolve yet.
     NotRunYet Text
   deriving stock (Eq, Show)
@@ -516,6 +520,7 @@ instance Explain ResolveProblem where
     ConstructionInTheAir relief -> "a construction needs the paper lying flat, and it stands " <> num relief <> " out of the plane"
     DegenerateConstruction -> "the construction's two points are the same point, which fixes no line"
     NoSolution -> "the fold line runs along no crease on the paper"
+    HingeOfNotOneMove (Name name) made -> "\"hinge of " <> name <> "\" needs a step that made one move, and " <> name <> " made " <> tshow made
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
@@ -544,6 +549,11 @@ data MoveFailure
     UnfoldChangedSince EdgeId
   | -- | A move, or a part of one, this runner does not make yet.
     MoveNotRunYet Text
+  | -- | @expect refused K { move }@, and the move was made: the kind expected.
+    RefusalNotRaised RefusalKind
+  | -- | @expect refused K { move }@, and the move was refused as another kind:
+    -- the kind expected, then the kind raised.
+    RefusedDifferently RefusalKind RefusalKind
   deriving stock (Eq, Show)
 
 -- | Why the paper a fold moves cannot be chosen.
@@ -572,6 +582,8 @@ instance Explain MoveFailure where
     JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
     UnfoldChangedSince (EdgeId e) -> "(internal edge " <> tshow e <> ") has been folded again since, so turning it back would undo that fold too"
     MoveNotRunYet what -> what <> " cannot be run yet"
+    RefusalNotRaised (RefusalKind kind) -> "the move was expected to be refused as " <> kind <> ", and was made"
+    RefusedDifferently (RefusalKind expected) (RefusalKind raised) -> "the move was expected to be refused as " <> expected <> ", and was refused as " <> raised
 
 instance Explain SelectionError where
   explain = \case
@@ -597,7 +609,7 @@ refusalKinds :: [RefusalKind]
 refusalKinds =
   map RefusalKind . concat $
     [ -- naming paper against a state
-      ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree", "NoCornerThere"],
+      ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree", "NoCornerThere", "HingeOfNotOneMove"],
       ["EdgeNotStraight", "CreaseNotStraight", "EmptyCrease", "ConstructionInTheAir"],
       ["NoSolution", "NeedsNearest", "NearestAmbiguous", "DegenerateConstruction", "NoCreaseThere"],
       ["MarkOnSeveralLayers", "EndTie", "LandmarkAmbiguous"],
@@ -619,6 +631,81 @@ refusalKinds =
       ["ReanchorNotFlat", "JoinBroken", "MoveLeavesFigure", "RepeatNotSymmetric", "CheckpointOutlineDiffers"],
       ["UnfoldChangedSince"]
     ]
+
+-- | The kind of refusal an error is, by the name @expect refused@ matches it
+-- by: a reference that names no paper, a selection, or the library's own
+-- refusal of a turn or a fold. A refusal of the text, the sequence or the
+-- sheet has none, since no move is made, and neither does a move not run yet,
+-- which says nothing about the paper.
+refusalKindOf :: SequenceError -> Maybe RefusalKind
+refusalKindOf =
+  fmap RefusalKind . \case
+    ResolveRefused _ _ _ problem -> case problem of
+      NearMiss {} -> Just "NearMiss"
+      NotInOneFace {} -> Just "NotInOneFace"
+      OffThePaper {} -> Just "OffThePaper"
+      PlacementsDisagree {} -> Just "PlacementsDisagree"
+      NoCornerThere {} -> Just "NoCornerThere"
+      ConstructionInTheAir {} -> Just "ConstructionInTheAir"
+      DegenerateConstruction -> Just "DegenerateConstruction"
+      NoSolution -> Just "NoSolution"
+      HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
+      NotRunYet {} -> Nothing
+    StepRefused _ _ _ failure -> case failure of
+      Selecting err -> Just $ case err of
+        SeedMissing -> "SeedMissing"
+        SeedOnTheLine {} -> "SeedOnTheLine"
+        SeedSplit {} -> "SeedSplit"
+        NothingSelected -> "NothingSelected"
+        ExistingHingeFlat {} -> "ExistingHingeFlat"
+      FlapRefused err -> Just (flapKind err)
+      FoldingRefused err -> Just (foldingKind err)
+      JoinBroken {} -> Just "JoinBroken"
+      UnfoldChangedSince {} -> Just "UnfoldChangedSince"
+      MoveNotRunYet {} -> Nothing
+      RefusalNotRaised {} -> Just "RefusalNotRaised"
+      RefusedDifferently {} -> Just "RefusedDifferently"
+    _ -> Nothing
+  where
+    flapKind = \case
+      FlapFolding err -> foldingKind err
+      FlapGeometry {} -> "FlapGeometry"
+      FlapSurface {} -> "FlapSurface"
+      FlapSweep {} -> "FlapSweep"
+      FlapMissingCrease {} -> "FlapMissingCrease"
+      FlapNotHinge {} -> "FlapNotHinge"
+      FlapWrongSide {} -> "FlapWrongSide"
+      FlapCoupled {} -> "FlapCoupled"
+      FlapMovingNotFlat {} -> "FlapMovingNotFlat"
+      FlapMovesBothWays {} -> "FlapMovesBothWays"
+      FlapEmptyHinge -> "FlapEmptyHinge"
+      FlapDuplicateCrease {} -> "FlapDuplicateCrease"
+      FlapNotBoundary {} -> "FlapNotBoundary"
+      FlapUnalignedCrease {} -> "FlapUnalignedCrease"
+      FlapMissingFace {} -> "FlapMissingFace"
+      FlapMissingOwner {} -> "FlapMissingOwner"
+      FlapMissingVertex {} -> "FlapMissingVertex"
+      FlapStartMismatch -> "FlapStartMismatch"
+      FlapInvalidTravel {} -> "FlapInvalidTravel"
+      FlapInvalidTurn {} -> "FlapInvalidTurn"
+      FlapInvalidProgress {} -> "FlapInvalidProgress"
+      FlapPathMismatch {} -> "FlapPathMismatch"
+      FlapCollision {} -> "FlapCollision"
+      FlapUnresolved {} -> "FlapUnresolved"
+      FlapEndpointOrder {} -> "FlapEndpointOrder"
+      FlapStackOrder {} -> "FlapStackOrder"
+    foldingKind = \case
+      FrameGeometry {} -> "FrameGeometry"
+      AlreadyFolded {} -> "AlreadyFolded"
+      NoFaces -> "NoFaces"
+      DegenerateFace {} -> "DegenerateFace"
+      FaceEdgeMissing {} -> "FaceEdgeMissing"
+      DuplicateEdge {} -> "DuplicateEdge"
+      DisconnectedFace {} -> "DisconnectedFace"
+      NonFiniteAngle {} -> "NonFiniteAngle"
+      TornAt {} -> "TornAt"
+      AngleWithoutPaper {} -> "AngleWithoutPaper"
+      AngleNotAchieved {} -> "AngleNotAchieved"
 
 -- | Where the error is, or 'NoSpan' for a sequence that was never text.
 errorSpan :: SequenceError -> Span

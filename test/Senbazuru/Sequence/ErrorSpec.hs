@@ -35,11 +35,12 @@ import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..))
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Sequence.Error
-import Senbazuru.Sequence.Syntax (RefusalKind (..), Span (..))
+import Senbazuru.Sequence.Syntax (Corner (..), RefusalKind (..), Span (..))
 import Test.Hspec
 
 spec :: Spec
@@ -177,6 +178,43 @@ spec = do
     -- named.
     it "spells today's constructors as the library does" $
       filter (`notElem` refusalKinds) (map RefusalKind constructorsOfToday) `shouldBe` []
+
+    -- What the runner raises, by refusalKindOf, has to be spelled as this list
+    -- spells it, or expect refused could name a kind that never matches. One
+    -- refusal of each kind on the list the runner can raise today.
+    it "is how the runner names each refusal it can raise" $ do
+      let resolve = ResolveRefused InHeader NoSpan ""
+          step = StepRefused 1 Nothing NoSpan
+          raised =
+            [ resolve (NearMiss (0, 0) 0 (V2 0 0) 0),
+              resolve (NotInOneFace (V2 0 0) 0),
+              resolve (OffThePaper (V2 0 0)),
+              resolve (PlacementsDisagree (V2 0 0) 0),
+              resolve (NoCornerThere SouthWest),
+              resolve (ConstructionInTheAir 0),
+              resolve DegenerateConstruction,
+              resolve NoSolution,
+              resolve (HingeOfNotOneMove "c1" 0),
+              step (Selecting SeedMissing),
+              step (Selecting (SeedOnTheLine (V2 0 0))),
+              step (Selecting (SeedSplit (V2 0 0))),
+              step (Selecting NothingSelected),
+              step (Selecting (ExistingHingeFlat (EdgeId 0))),
+              step (FlapRefused (FlapCoupled (EdgeId 0) [])),
+              step (FlapRefused (FlapNotHinge (EdgeId 0))),
+              step (FlapRefused (FlapNotBoundary (EdgeId 0))),
+              step (FlapRefused (FlapUnalignedCrease (EdgeId 0))),
+              step (FlapRefused (FlapEndpointOrder 0 (ImpossibleStacking (FaceId 0)))),
+              step (FlapRefused (FlapStackOrder (ImpossibleStacking (FaceId 0)))),
+              step (FlapRefused FlapStartMismatch),
+              step (FlapRefused (FlapMovingNotFlat (FaceId 0) 0)),
+              step (FlapRefused (FlapMovesBothWays (FaceId 0) (FaceId 1))),
+              step (FoldingRefused (TornAt (VertexId 0) 0)),
+              step (FoldingRefused (AngleNotAchieved (EdgeId 0) 0)),
+              step (JoinBroken ""),
+              step (UnfoldChangedSince (EdgeId 0))
+            ]
+      [show err | err <- raised, maybe True (`notElem` refusalKinds) (refusalKindOf err)] `shouldBe` []
 
 -- | The constructor name of each refusal in 'refusalKinds' that already
 -- exists in the library, read from a real value.

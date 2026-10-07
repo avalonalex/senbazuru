@@ -61,6 +61,7 @@ module Senbazuru.Sequence.Resolve
     -- * Fold lines and hinges
     FoldLine (..),
     foldLine,
+    lineAlong,
     hingeAlong,
 
     -- * Regions
@@ -259,6 +260,16 @@ foldLine band st = \case
       b <- positionOf band st q
       if norm (b ^-^ a) <= flatRoom st then Left DegenerateConstruction else Right (a, b)
     unit v = (1 / norm v) *^ v
+
+-- | The fold line along an edge, where the paper now lies: how @hinge of
+-- NAME@ names a line, by a crease the named move turned about.
+lineAlong :: FlatState -> EdgeId -> Either ResolveProblem FoldLine
+lineAlong st edge = case [(a, b) | (e, a, b, _) <- flatEdges st, e == edge] of
+  (a, b) : _
+    | Just p <- IM.lookup a (flatPlaced st),
+      Just q <- IM.lookup b (flatPlaced st) ->
+        if norm (q ^-^ p) <= flatRoom st then Left DegenerateConstruction else Right (FoldLine p ((1 / norm (q ^-^ p)) *^ (q ^-^ p)))
+  _ -> Left NoSolution
 
 -- | The creases lying along the fold line: the candidates a fold turns
 -- about. Refused if the line runs along no crease, and, until creasing is
