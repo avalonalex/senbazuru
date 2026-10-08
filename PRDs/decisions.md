@@ -2283,7 +2283,7 @@ means the text is a research note, a snapshot that is not edited.
 | 10 | `docs/notes/huzita-hatori.md`'s dates disagree with Alperin and Lang | [web] [E2](research/E2-references-and-persistent-naming.md) finding 11 | issue |
 | 11 | `docs/glossary.md` defines rest angle twice, differently (`:19`, `:86`) | [code] | row 10 |
 | 12 | `check` silently skips Maekawa at a vertex touching a `U` edge | [code] `FlatFold.hs:503-506`; [bin] | issue |
-| 13 | `Creasing.existingAt` takes the first vertex within tolerance, not the nearest | [code] [`Creasing.hs:323-327`](../src/Senbazuru/Fold/Creasing.hs#L323-L327) | issue, before M2's resolver |
+| 13 | `Creasing.existingAt` takes the first vertex within tolerance, not the nearest | [code] [`Creasing.hs:323-327`](../src/Senbazuru/Fold/Creasing.hs#L323-L327) | issue, before M2's resolver: filed as #495, and fixed there on 2026-10-08, the nearest taken |
 | 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:114`](../study/fold-material/CraneWing.hs#L114); [jq] 0 `U` edges | issue |
 | 15 | The blintz manifest and recipe fold corners in opposite directions | [jq, code] | owner decision 8 |
 | 16 | Manifest angle literals are not the documented formulas' `Double`s. Rabbit ear at m = 30: the stored `97.58514830800293` is one ulp from the `atan2` form. Petal at t = 175: the stored `-166.98236060695527` is **three** ulps from the code's own `atan2` expression ([`CheckedPetal.hs:107`](../study/fold-material/CheckedPetal.hs#L107)), which gives `…518`. v2 said one ulp for both ([C58](#changes-since-draft-v2)) | [py] appendix command 7 | issue, M5 |

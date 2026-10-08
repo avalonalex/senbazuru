@@ -319,9 +319,14 @@ flatAngleFor = \case
   Valley -> 180
   _ -> 0
 
--- | The id of a corner the paper already has at this point, if there is one.
+-- | The id of a corner the paper already has at this point, if there is one:
+-- the /nearest/ within the tolerance, as for the ends a batch adds, and the
+-- lowest id of those equally near. Two corners can both lie within the
+-- tolerance of one end, where a file's rounding has left them a hair apart,
+-- and which one the end joins should follow the geometry rather than the
+-- order the file listed them in.
 existingAt :: Sheet -> Double -> V2 -> Maybe Int
 existingAt sheet near p =
-  case [v | (v, q) <- IM.toList (sheetPoints sheet), norm (q ^-^ p) <= near] of
-    (v : _) -> Just v
+  case sortOn snd [(v, d) | (v, q) <- IM.toList (sheetPoints sheet), let d = norm (q ^-^ p), d <= near] of
+    ((v, _) : _) -> Just v
     [] -> Nothing
