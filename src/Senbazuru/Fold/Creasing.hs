@@ -192,11 +192,13 @@ creaseAllAlong segments fr = do
     -- Every crease's two ends resolved to vertex ids, with the coordinates of
     -- the ones that had to be added.
     --
-    -- An end is matched against the paper's own corners first and then against
-    -- the ends this batch has already added, so two creases that meet at a new
-    -- point meet at one vertex. An end that lands in the /middle/ of a crease
-    -- needs no special case: it becomes a vertex, and cutting that crease at it
-    -- is exactly what "Senbazuru.Fold.Crossings" is for.
+    -- An end is matched against the paper's own corners and the ends this
+    -- batch has already added, together, so two creases that meet at a new
+    -- point meet at one vertex, and an end within the tolerance of a corner
+    -- and of a nearer added end joins the nearer. An end that lands in the
+    -- /middle/ of a crease needs no special case: it becomes a vertex, and
+    -- cutting that crease at it is exactly what "Senbazuru.Fold.Crossings" is
+    -- for.
     --
     -- Resolved a crease at a time rather than over a flattened list of points,
     -- so the ids come back attached to the crease they belong to and there is
@@ -224,25 +226,19 @@ creaseAllAlong segments fr = do
         -- The /nearest/ candidate, not the first. Being within a tolerance is
         -- not transitive, so a run of points a tolerance apart can be merged
         -- more than one way and something has to choose; taking whichever was
-        -- added most recently makes the choice depend on the order the batch
-        -- was listed in for no reason at all. Nearest still depends on it at
-        -- the margin -- nothing can avoid that -- but it depends on the
-        -- geometry first.
-        resolve acc p = case existingAt sheet near p of
+        -- listed first, or added most recently, makes the choice depend on the
+        -- order of the file or the batch for no reason at all. Nearest still
+        -- depends on it at the margin -- nothing can avoid that -- but it
+        -- depends on the geometry first.
+        resolve acc p = case nearestWithin near p (IM.toList (sheetPoints sheet) <> reverse (internAdded acc)) of
           Just v -> (acc, v)
-          Nothing -> case nearestAdded acc p of
-            Just v -> (acc, v)
-            Nothing ->
-              ( acc
-                  { internNext = internNext acc + 1,
-                    internAdded = (internNext acc, p) : internAdded acc
-                  },
-                internNext acc
-              )
-
-        nearestAdded acc p = case sortOn snd [(v, norm (q ^-^ p)) | (v, q) <- internAdded acc, norm (q ^-^ p) <= near] of
-          ((v, _) : _) -> Just v
-          [] -> Nothing
+          Nothing ->
+            ( acc
+                { internNext = internNext acc + 1,
+                  internAdded = (internNext acc, p) : internAdded acc
+                },
+              internNext acc
+            )
 
         finish acc =
           ( [coordsFor fr p | (_, p) <- reverse (internAdded acc)],
@@ -319,14 +315,13 @@ flatAngleFor = \case
   Valley -> 180
   _ -> 0
 
--- | The id of a corner the paper already has at this point, if there is one:
--- the /nearest/ within the tolerance, as for the ends a batch adds, and the
--- lowest id of those equally near. Two corners can both lie within the
--- tolerance of one end, where a file's rounding has left them a hair apart,
--- and which one the end joins should follow the geometry rather than the
--- order the file listed them in.
-existingAt :: Sheet -> Double -> V2 -> Maybe Int
-existingAt sheet near p =
-  case sortOn snd [(v, d) | (v, q) <- IM.toList (sheetPoints sheet), let d = norm (q ^-^ p), d <= near] of
+-- | The id of the point nearest @p@ within the tolerance, if there is one,
+-- and of those equally near, the first listed. Two corners can both lie
+-- within the tolerance of one end, where a file's rounding has left them a
+-- hair apart, and which one the end joins should follow the geometry rather
+-- than the order they were listed in.
+nearestWithin :: Double -> V2 -> [(Int, V2)] -> Maybe Int
+nearestWithin near p candidates =
+  case sortOn snd [(v, d) | (v, q) <- candidates, let d = norm (q ^-^ p), d <= near] of
     ((v, _) : _) -> Just v
     [] -> Nothing
