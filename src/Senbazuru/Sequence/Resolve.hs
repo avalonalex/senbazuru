@@ -331,7 +331,9 @@ edgeNow st side = case [(p, q) | (_, a, b) <- edgePieces st side, Just p <- [IM.
 -- ignored (owner decision 41). Any answer counts as another, one crossing no
 -- paper included, since an author pointing at it expected it. A P as near to
 -- both, such as the point where the two answers cross, points at neither,
--- and does not disagree.
+-- and does not disagree. Being read, P has to name a place on the paper
+-- whether or not it is needed: @nearest (2, 2)@ is refused as off the paper
+-- even where one answer is all there is.
 --
 -- With both stretches lying on the paper, which is one piece, some answer
 -- always crosses it. Two parallel stretches lie either side of their
@@ -354,6 +356,7 @@ lineOnto band st (a1, b1) (a2, b2) nearest = do
       else
         let crossing = a1 ^+^ ((cross2 (a2 ^-^ a1) d2 / cross2 d1 d2) *^ d1)
          in Right [FoldLine crossing (unit (d1 ^+^ d2)), FoldLine crossing (unit (d1 ^-^ d2))]
+  near <- traverse (positionOf band st) nearest
   let onPaper = filter (crossesPaper st) answers
       preferred = filter laysOnto onPaper
       laysOnto line =
@@ -361,28 +364,26 @@ lineOnto band st (a1, b1) (a2, b2) nearest = do
             at x = dot d2 (x ^-^ a2)
          in min (norm (b2 ^-^ a2)) (maximum (map at image)) - max 0 (minimum (map at image)) > room
       listed = map (candidateOf st) answers
-      distanceFrom near (FoldLine o d) = abs (cross2 d (near ^-^ o))
+      distanceFrom p (FoldLine o d) = abs (cross2 d (p ^-^ o))
       -- The answer the rules took, held to a nearest P they did not need.
-      agreeing because taken = case nearest of
+      agreeing because taken = case near of
         Nothing -> Right taken
-        Just point -> do
-          near <- positionOf band st point
-          let from = distanceFrom near
-          case sortOn fst [(from line, line) | line <- answers, from line + room < from taken] of
-            (_, pointed) : _ -> Left (NearestDisagrees (toSheetLengths st near) (candidateOf st taken) because (candidateOf st pointed))
-            [] -> Right taken
+        Just p ->
+          let from = distanceFrom p
+           in case sortOn fst [(from line, line) | line <- answers, from line + room < from taken] of
+                (_, pointed) : _ -> Left (NearestDisagrees (toSheetLengths st p) (candidateOf st taken) because (candidateOf st pointed))
+                [] -> Right taken
   case (onPaper, preferred) of
     ([], _) -> Left NoSolution
     ([only], _) -> agreeing OnlyOnPaper only
     (_, [only]) -> agreeing LaysStretchOntoStretch only
-    (several, _) -> case nearest of
+    (several, _) -> case near of
       Nothing -> Left (NeedsNearest listed)
-      Just point -> do
-        near <- positionOf band st point
+      Just p -> do
         let pool = if null preferred then several else preferred
-        case sortOn fst [(distanceFrom near line, line) | line <- pool] of
+        case sortOn fst [(distanceFrom p line, line) | line <- pool] of
           (d, line) : rest | all ((> d + room) . fst) rest -> Right line
-          _ -> Left (NearestAmbiguous (toSheetLengths st near) listed)
+          _ -> Left (NearestAmbiguous (toSheetLengths st p) listed)
 
 -- | Whether a line crosses the paper: has paper strictly on both sides. The
 -- paper is one piece, so paper on both sides means the line passes through

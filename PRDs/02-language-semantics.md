@@ -494,7 +494,8 @@ through layers has the same restriction
    `nearest P` written where the rules already leave one, by the paper or by
    O3's preference, must agree with them: a P lying nearer another solution,
    one crossing no paper included, is refused as `NearestDisagrees` rather
-   than ignored ([decision 41](decisions.md#9-owner-decisions)).
+   than ignored, and P must name a place on the paper even where it is not
+   needed ([decision 41](decisions.md#9-owner-decisions)).
 4. Accept exactly one.
 
 ### 4.4 Resolution by slot

@@ -575,7 +575,11 @@ instance Explain ResolveProblem where
         <> explain because
         <> "; the answer it lies nearer is "
         <> explain pointed
-        <> "; nearest P only chooses between answers the rules leave equal, so remove it, or name the line you mean another way"
+        <> "; nearest P only chooses between answers the rules leave equal, so remove it"
+        <> case because of
+          -- The other crosses no paper, and no wording can fold along it.
+          OnlyOnPaper -> ""
+          LaysStretchOntoStretch -> ", or write the second line as the stretch the first should land on"
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"

@@ -202,6 +202,13 @@ spec = describe "naming paper on a flat state" $ do
           candidateThrough pointed `shouldSatisfy` near (V2 0.5 (-0.25))
         other -> expectationFailure ("expected nearest refused as pointing off the paper, got " <> show other)
 
+    -- Read although one answer is all there is, nearest P has to name a
+    -- place on the paper: two lines meeting at corner south-east leave only
+    -- the diagonal, and a P off the paper is refused, not passed over. Turns
+    -- red if nearest were resolved only when the rules needed it.
+    it "refuses a nearest P off the paper even where it is not needed" $
+      foldLine 1e-3 start (LineOnto (EdgeOf South) (EdgeOf East) (Just (AtSheet 2 2))) `shouldBe` Left (OffThePaper (V2 2 2))
+
     -- The midlines cross at the centre, and each diagonal lays one onto the
     -- other: two answers, so nearest P chooses, and the centre, on both,
     -- cannot.
