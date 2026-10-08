@@ -34,6 +34,7 @@ spec = do
   quartered
   stopping
   blocked
+  pointingElsewhere
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -211,6 +212,35 @@ stopping = describe "a run that reaches not modelled" $ do
   it "has no stop and nothing to refuse when it runs to the end" $ do
     run <- right (runOn quarterFold)
     (runStop run, runRefusal run) `shouldBe` (Nothing, Nothing)
+
+-- A nearest P the rules did not need, pointing at the other answer (owner
+-- decision 41). On the blintz sheet, the stretch of edge south west of its
+-- midpoint, laid onto the vertical midline's lower half, has two answers,
+-- both creases the sheet has: x + y = 1/2 lays the stretch onto that half,
+-- and x - y = 1/2 onto the line below the paper, so the first is taken.
+-- Midpoint of edge east lies on the second. A run resolves the fold line
+-- before it chooses the paper that moves, so the refusal reaches the run,
+-- and an author can expect it.
+pointingElsewhere :: Spec
+pointingElsewhere = describe "a nearest P pointing away from the answer taken" $ do
+  sheet <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
+  let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" sheet) . elaborate
+      stretchOntoHalf = LineOnto (Segment (CornerOf SouthWest) (MidpointOfEdge South)) (Segment (MidpointOfEdge South) Centre) (Just (MidpointOfEdge East))
+      foldOnto wrap =
+        sequenceOf (header "Onto the midline" (sheetFile "examples/blintz-base.fold") (Just Centre)) $
+          step_ "Lay the stretch on the midline." (move (wrap (Fold MountainFold ToFlat stretchOntoHalf FlapOfFirstArgument Nothing)))
+
+  it "is refused as NearestDisagrees at step 1" $
+    case runOn (foldOnto id) of
+      Left err@(ResolveRefused (InStep 1 Nothing) _ _ (NearestDisagrees pointAt _ _ _)) -> do
+        pointAt `shouldBe` V2 1 0.5
+        refusalKindOf err `shouldBe` Just (RefusalKind "NearestDisagrees")
+      other -> expectationFailure ("expected nearest refused at step 1, got " <> either (show . explain) (show . length . runRecords) other)
+
+  it "and runs, with the outcome kept, when the sequence expects it" $ do
+    run <- right (runOn (foldOnto (ExpectRefused (RefusalKind "NearestDisagrees"))))
+    runRecords run `shouldBe` []
+    runExpected run `shouldBe` [ExpectedRefusal 1 1 (RefusalKind "NearestDisagrees")]
 
 -- A turn blocked part-way. Folding needs paper lying flat, so only an
 -- unfold can turn paper with something standing in its way. On the
