@@ -2291,7 +2291,7 @@ means the text is a research note, a snapshot that is not edited.
 | 18 | `quarter-fold-steps.fold` writes M and V at angle 0 (4 creases on its key frame, 2 on its first state) | [jq] [10 §7.3](10-roadmap-risks-questions.md#73-settled-without-a-new-issue) | owner decision 9 |
 | 19 | `Rigid(..)` and `Mat3(..)` are exported and nothing checks a proper rotation | [code] [`Rigid.hs:24-26`](../src/Senbazuru/Geometry/Rigid.hs#L24-L26) | issue, M2 |
 | 20 | Any filtered `stack test` run pays 19–21 s of `runIO` fixture setup | [research] 3 runs | issue, before M1's specs |
-| 21 | `creaseAllAlong` returns no new edge ids | [code] [`Creasing.hs:138`](../src/Senbazuru/Fold/Creasing.hs#L138) | 05 L2 |
+| 21 | `creaseAllAlong` returns no new edge ids | [code] [`Creasing.hs:138`](../src/Senbazuru/Fold/Creasing.hs#L138) | 05 L2: `creaseAllAlongWith` hands them back, built 2026-10-08 (#495) |
 | 22 | GLB `extras.senbazuru.frame` stores fold angles and material coordinates unrounded | [code] `Gltf.hs:274-275` | issue, M7a |
 | 23 | #64's "inflating a body is outside the model" is overtaken by #106 and the README | [docs] | row 7 |
 | 24 | `Origami.Step`'s header says a turn-over is a motion | [code] [`Step.hs:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34) | row 13 |

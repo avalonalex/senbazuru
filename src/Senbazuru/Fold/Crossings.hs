@@ -88,10 +88,12 @@
 module Senbazuru.Fold.Crossings
   ( splitCrossings,
     withPlanarFaces,
+    withPlanarFacesTracked,
   )
 where
 
 import Control.Monad (when)
+import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', partition, sortOn, tails)
 import Data.Maybe (mapMaybe)
@@ -111,7 +113,17 @@ import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, segmentsCross)
 --
 -- Idempotent: splitting a split drawing finds nothing left to cut.
 splitCrossings :: Frame -> Either FoldError Frame
-splitCrossings fr
+splitCrossings fr = fst <$> splitCrossingsTracked fr
+
+-- | 'splitCrossings', and where every crease went: each edge id to the
+-- pieces it was cut into, in order from its first end. An edge nothing cut is
+-- its own one piece.
+--
+-- The pieces come from the cutting's own chains, because nothing after the
+-- cutting can say which piece belongs to which crease: the counts of pieces
+-- say how many there are, not whose.
+splitCrossingsTracked :: Frame -> Either FoldError (Frame, IntMap [EdgeId])
+splitCrossingsTracked fr
   -- A frame that records its own faces is left exactly as it is. Cutting
   -- exists to answer "where do these creases divide the paper?", and such a
   -- frame has already answered it: a crease stopping part-way along another is
@@ -125,20 +137,22 @@ splitCrossings fr
   -- is what keeps @faceOrders@ meaningful: those are read against the winding
   -- of the faces the file recorded, so a frame whose faces are replaced
   -- underneath them is a frame turned inside out.
-  | not (null (facesVertices fr)) = Right fr
+  | not (null (facesVertices fr)) = Right (fr, uncut)
   | otherwise = do
       sheet <- sheetOf fr
       if null (sheetEdges sheet)
-        then pure fr
+        then pure (fr, uncut)
         else do
           let points = IM.elems (sheetPoints sheet) <> mergedCrossings sheet
               indexed = IM.fromList (zip [0 ..] points)
               cuts = cutsAlong indexed sheet
           if all (null . snd) cuts
-            then pure fr
+            then pure (fr, uncut)
             else do
               arraysLineUp fr
               rebuilt fr points cuts
+  where
+    uncut = IM.fromList [(e, [EdgeId e]) | e <- [0 .. length (edgesVertices fr) - 1]]
 
 -- | Cut the creases and then work out the faces, which is the pair every
 -- caller wants and neither half of which is any use alone.
@@ -148,7 +162,16 @@ splitCrossings fr
 -- happened to @--layer-budget@, and is written down in AGENTS.md so that it
 -- does not happen twice.
 withPlanarFaces :: Frame -> Either FoldError Frame
-withPlanarFaces fr = withTracedFaces =<< splitCrossings fr
+withPlanarFaces fr = fst <$> withPlanarFacesTracked fr
+
+-- | 'withPlanarFaces', and each edge id to the pieces cutting made of it, in
+-- order from its first end ('splitCrossingsTracked'). Tracing faces adds
+-- @faces_vertices@ and renumbers no edge, so the pieces are the final ids.
+withPlanarFacesTracked :: Frame -> Either FoldError (Frame, IntMap [EdgeId])
+withPlanarFacesTracked fr = do
+  (split, pieces) <- splitCrossingsTracked fr
+  traced <- withTracedFaces split
+  pure (traced, pieces)
 
 -- | Refuse an assignment or angle array that does not line up with the creases.
 --
@@ -296,23 +319,33 @@ cutsAlong points sheet =
             && y >= min fy ty - near
             && y <= max fy ty + near
 
--- | The frame with its creases cut into the pieces the cuts make.
+-- | The frame with its creases cut into the pieces the cuts make, and each
+-- crease's pieces by id.
 --
 -- Every piece keeps its parent's assignment and fold angle, which is the only
 -- answer that can be right: cutting a valley in two does not make either half
 -- something other than a valley.
-rebuilt :: Frame -> [V2] -> [((EdgeId, (Int, Int)), [Int])] -> Either FoldError Frame
+--
+-- The pieces are numbered in the order the chains are listed, crease by
+-- crease, so a crease's pieces are a run of consecutive ids starting where the
+-- creases before it left off.
+rebuilt :: Frame -> [V2] -> [((EdgeId, (Int, Int)), [Int])] -> Either FoldError (Frame, IntMap [EdgeId])
 rebuilt fr points cuts = do
   noDoubledPiece
   pure
-    fr
-      { verticesCoords = kept <> map added (drop (length kept) points),
-        edgesVertices = [(VertexId a, VertexId b) | (a, b) <- concatMap snd chains],
-        edgesAssignment = inherited (edgesAssignment fr),
-        edgesFoldAngle = inherited (edgesFoldAngle fr),
-        facesVertices = [],
-        frameExtras = mempty
-      }
+    ( fr
+        { verticesCoords = kept <> map added (drop (length kept) points),
+          edgesVertices = [(VertexId a, VertexId b) | (a, b) <- concatMap snd chains],
+          edgesAssignment = inherited (edgesAssignment fr),
+          edgesFoldAngle = inherited (edgesFoldAngle fr),
+          facesVertices = [],
+          frameExtras = mempty
+        },
+      IM.fromList
+        [ (i, map EdgeId [start .. start + length ps - 1])
+          | ((EdgeId i, ps), start) <- zip chains (scanl (+) 0 (map (length . snd) chains))
+        ]
+    )
   where
     -- Two creases lying along one line with a stretch in common do not cross,
     -- so nothing above cuts them at a point -- but cutting them where each
