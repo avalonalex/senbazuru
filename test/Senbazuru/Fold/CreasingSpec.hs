@@ -82,6 +82,34 @@ spec = do
           drop 4 (verticesCoords s) `shouldBe` [[1, 0.5]]
           creasesOf s `shouldBe` [(0, 1), (1, 4), (4, 2), (2, 3), (3, 0), (0, 4)]
 
+    -- Two corners within the tolerance of one end, a billionth of the
+    -- square's diagonal, 1.414e-9: the square's own corner at the origin, and
+    -- one 2.5e-9 along its south side, where an imported file's rounding might
+    -- leave a second. The end lies 1.4e-9 from the first, just inside the
+    -- tolerance, and 1.1e-9 from the second, and joins the second. Turns red
+    -- if the first corner within the tolerance were taken, by id, rather than
+    -- the nearest.
+    it "joins the nearer of two corners within the tolerance, not the first" $ do
+      let split = sheet [[0, 0], [1, 0], [1, 1], [0, 1], [2.5e-9, 0]] [(0, 4), (4, 1), (1, 2), (2, 3), (3, 0)]
+      case creaseAlong (V2 1.4e-9 0) (V2 1 1) Valley split of
+        Left err -> expectationFailure (show err)
+        Right s -> do
+          verticesCoords s `shouldBe` verticesCoords split
+          drop 5 (creasesOf s) `shouldBe` [(4, 2)]
+
+    -- The same choice between a corner the paper has and an end the batch
+    -- added. The first crease adds a corner 1.6e-9 along the south side,
+    -- beyond the tolerance from the origin; the second starts 1.0e-9 from the
+    -- origin and 0.6e-9 from that new corner, and joins the new corner.
+    -- Joined to the origin instead, it would pass within the tolerance of the
+    -- new corner, be cut there, and lay a piece along the south side's: the
+    -- batch was refused. Turns red if the paper's corners were looked at
+    -- before, rather than with, the batch's own.
+    it "joins an end the batch added when it is nearer than a corner the paper has" $
+      case creaseAllAlong [(V2 1.6e-9 0, V2 1 1, Valley), (V2 1.0e-9 0, V2 1 0.5, Valley)] square of
+        Left err -> expectationFailure (show err)
+        Right s -> drop 6 (creasesOf s) `shouldBe` [(4, 2), (4, 5)]
+
     it "is cut wherever it crosses a crease already there" $ do
       -- The diagonal of the quarter fold passes through its centre, which is
       -- already a vertex, so the new crease arrives as two pieces.
