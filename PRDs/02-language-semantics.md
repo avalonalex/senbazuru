@@ -461,7 +461,7 @@ text, never by the anchor
 | --- | --- | --- | --- | --- |
 | `[P, Q]` | O1 | passes through P and Q | 1; P = Q refused | needs a `moving` seed |
 | `P to Q` | O2 | puts P on Q | 1; P = Q refused | the side containing P |
-| `L1 to L2` | O3 | puts L1 on L2 | 1 if parallel, 2 if crossing. The one mapping segment onto segment is preferred, and `nearest` is needed only if two remain | the side containing L1's interior; refused if L1 straddles the fold line |
+| `L1 to L2` | O3 | puts L1 on L2 | 1 if parallel, 2 if crossing. The one mapping segment onto segment is preferred, and `nearest` is needed only if two remain; one written anyway must not lie nearer the other (decision 41) | the side containing L1's interior; refused if L1 straddles the fold line |
 | `perpendicular to L through P` | O4 | is perpendicular to L through P | 1 | needs a `moving` seed |
 | `P to L through Q` | O5 | puts P on L, through Q | 0–2 | the side containing P |
 | `P to L1 and Q to L2` | O6 | puts P on L1 and Q on L2 | 0–3 | the side containing P; refused if Q lies on the other side |
@@ -490,7 +490,11 @@ through layers has the same restriction
 2. Set aside any whose line crosses no paper. It is listed in the message and the
    record but never chosen, so an author who expected that answer sees why it was
    not taken ([E2](research/E2-references-and-persistent-naming.md) finding 10).
-3. If more than one solution on the paper remains, require `nearest P`.
+3. If more than one solution on the paper remains, require `nearest P`. A
+   `nearest P` written where the rules already leave one, by the paper or by
+   O3's preference, must agree with them: a P lying nearer another solution,
+   one crossing no paper included, is refused as `NearestDisagrees` rather
+   than ignored ([decision 41](decisions.md#9-owner-decisions)).
 4. Accept exactly one.
 
 ### 4.4 Resolution by slot
@@ -1422,6 +1426,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `EdgeNotStraight`, `CreaseNotStraight`, `EmptyCrease` | `ResolveProblem` | `edge S` or `crease of NAME` not collinear now; `crease of` a step that made none | the segments' current ends |
 | `ConstructionInTheAir` | `ResolveProblem` | a construction or `model` on a state that is not flat | the construction |
 | `NoSolution`, `NeedsNearest`, `NearestAmbiguous`, `DegenerateConstruction` | `ResolveProblem` | 0 solutions; ≥2 without `nearest`; `nearest` leaving 0 or ≥2; coincident inputs | every candidate line, off-paper ones included |
+| `NearestDisagrees` | `ResolveProblem` | `nearest P` where the rules already took one answer, and P lies nearer another, one crossing no paper included (decision 41) | P; the answer taken and why; the answer P lies nearer |
 | `NoCreaseThere` | `ResolveProblem` | `crease [P, Q]` with no existing edges along it, or a gap | the uncovered stretch |
 | `MarkOnSeveralLayers`, `EndTie`, `LandmarkAmbiguous` | `ResolveProblem` | §4.5; `EndTie` §4.2 | the candidate material points |
 | `SeedMissing` | `SelectionError` | a non-alignment line with no `moving P` | both sides, each with a working seed |

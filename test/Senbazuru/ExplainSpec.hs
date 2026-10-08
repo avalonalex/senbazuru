@@ -46,7 +46,7 @@ import Senbazuru.Origami.Stacking qualified as Stack
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.Steps (StepError (..))
-import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..), WriteProblem (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..), TakenBecause (..), WriteProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
 import Test.Hspec
@@ -76,6 +76,8 @@ everyType =
     ("SheetProblem", explain (SheetAlreadyFolded (ByRelief 0.25))),
     ("ResolveProblem", explain (NotInOneFace (V2 0.75 0.25) 0)),
     ("ResolveProblem, two answers", explain (NeedsNearest [CandidateLine (V2 0.5 0.5) (V2 1 1) True, CandidateLine (V2 0.5 0.5) (V2 1 (-1)) True])),
+    ("ResolveProblem, a nearest that disagrees", explain (NearestDisagrees (V2 0 0) (CandidateLine (V2 0.5 0.5) (V2 0.7071067811865476 (-0.7071067811865476)) True) LaysStretchOntoStretch (CandidateLine (V2 0.5 0.5) (V2 0.7071067811865476 0.7071067811865476) True))),
+    ("TakenBecause", explain OnlyOnPaper),
     ("CandidateLine", explain (CandidateLine (V2 1 0) (V2 0.7071067811865476 0.7071067811865476) False)),
     ("SequenceError, a reference", explain (ResolveRefused (InStep 2 Nothing) NoSpan "corner north-east" (OffThePaper (V2 2 2)))),
     ("SequenceError, a move", explain (StepRefused 5 Nothing NoSpan (UnfoldChangedSince (EdgeId 8)))),

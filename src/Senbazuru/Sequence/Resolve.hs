@@ -95,7 +95,7 @@ import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
-import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..))
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
 
@@ -326,6 +326,13 @@ edgeNow st side = case [(p, q) | (_, a, b) <- edgePieces st side, Just p <- [IM.
 -- onto the line beyond it, is preferred; only if that leaves no single answer
 -- does the author have to say @nearest P@.
 --
+-- A @nearest P@ the rules did not need is still read, and has to agree with
+-- them: a P lying nearer another answer than the one taken is refused, not
+-- ignored (owner decision 41). Any answer counts as another, one crossing no
+-- paper included, since an author pointing at it expected it. A P as near to
+-- both, such as the point where the two answers cross, points at neither,
+-- and does not disagree.
+--
 -- With both stretches lying on the paper, which is one piece, some answer
 -- always crosses it. Two parallel stretches lie either side of their
 -- midline. Two crossing lines' halving lines cut the plane into four
@@ -354,17 +361,26 @@ lineOnto band st (a1, b1) (a2, b2) nearest = do
             at x = dot d2 (x ^-^ a2)
          in min (norm (b2 ^-^ a2)) (maximum (map at image)) - max 0 (minimum (map at image)) > room
       listed = map (candidateOf st) answers
+      distanceFrom near (FoldLine o d) = abs (cross2 d (near ^-^ o))
+      -- The answer the rules took, held to a nearest P they did not need.
+      agreeing because taken = case nearest of
+        Nothing -> Right taken
+        Just point -> do
+          near <- positionOf band st point
+          let from = distanceFrom near
+          case sortOn fst [(from line, line) | line <- answers, from line + room < from taken] of
+            (_, pointed) : _ -> Left (NearestDisagrees (toSheetLengths st near) (candidateOf st taken) because (candidateOf st pointed))
+            [] -> Right taken
   case (onPaper, preferred) of
     ([], _) -> Left NoSolution
-    ([only], _) -> Right only
-    (_, [only]) -> Right only
+    ([only], _) -> agreeing OnlyOnPaper only
+    (_, [only]) -> agreeing LaysStretchOntoStretch only
     (several, _) -> case nearest of
       Nothing -> Left (NeedsNearest listed)
       Just point -> do
         near <- positionOf band st point
         let pool = if null preferred then several else preferred
-            distanceTo (FoldLine o d) = abs (cross2 d (near ^-^ o))
-        case sortOn fst [(distanceTo line, line) | line <- pool] of
+        case sortOn fst [(distanceFrom near line, line) | line <- pool] of
           (d, line) : rest | all ((> d + room) . fst) rest -> Right line
           _ -> Left (NearestAmbiguous (toSheetLengths st near) listed)
 

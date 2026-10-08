@@ -78,6 +78,7 @@ module Senbazuru.Sequence.Error
     -- * A reference no paper answers
     ResolveProblem (..),
     CandidateLine (..),
+    TakenBecause (..),
 
     -- * A state that cannot be written
     WriteProblem (..),
@@ -521,6 +522,12 @@ data ResolveProblem
   | -- | @nearest P@ lies as near to more than one answer: the point, in
     -- sheet lengths, and every answer.
     NearestAmbiguous V2 [CandidateLine]
+  | -- | @nearest P@ written where the construction had already taken one
+    -- answer, and P lies nearer another: the point, in sheet lengths, the
+    -- answer taken and why, and the answer P lies nearer. A @nearest@ the
+    -- rules did not need is still the author's word, and is refused rather
+    -- than ignored when it points elsewhere (owner decision 41).
+    NearestDisagrees V2 CandidateLine TakenBecause CandidateLine
   | -- | @hinge of NAME@ names the hinge of the named step's one move; that
     -- step made this many.
     HingeOfNotOneMove Name Int
@@ -560,6 +567,15 @@ instance Explain ResolveProblem where
         <> cornersOf side
     NeedsNearest answers -> "the construction has " <> tshow (length (filter candidateOnPaper answers)) <> " answers on the paper; add nearest P to choose one of them: " <> listed answers
     NearestAmbiguous at answers -> point at <> " lies as near to more than one answer; choose a point nearer one of them: " <> listed answers
+    NearestDisagrees at taken because pointed ->
+      point at
+        <> " lies nearer another answer than the one taken, which is "
+        <> explain taken
+        <> ", "
+        <> explain because
+        <> "; the answer it lies nearer is "
+        <> explain pointed
+        <> "; nearest P only chooses between answers the rules leave equal, so remove it, or name the line you mean another way"
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
@@ -597,6 +613,20 @@ data CandidateLine = CandidateLine
 instance Explain CandidateLine where
   explain (CandidateLine (V2 x y) (V2 dx dy) onPaper) =
     "the line through (" <> num x <> ", " <> num y <> ") along (" <> num dx <> ", " <> num dy <> ")" <> if onPaper then "" else ", which crosses no paper"
+
+-- | Why a construction took an answer before reading any @nearest P@.
+data TakenBecause
+  = -- | It is the only answer whose line crosses the paper.
+    OnlyOnPaper
+  | -- | Of @L1 to L2@'s answers on the paper, it is the only one laying L1's
+    -- stretch onto L2's stretch, rather than onto the line beyond it.
+    LaysStretchOntoStretch
+  deriving stock (Eq, Show)
+
+instance Explain TakenBecause where
+  explain = \case
+    OnlyOnPaper -> "the only one crossing the paper"
+    LaysStretchOntoStretch -> "the only one laying the first stretch onto the second, rather than onto the line beyond it"
 
 -- | Why a state cannot be written as a frame. Each is a fault of the run,
 -- not of the paper an author named: a run's states come from surfaces that
@@ -715,7 +745,7 @@ refusalKinds =
     [ -- naming paper against a state
       ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree", "NoCornerThere", "HingeOfNotOneMove"],
       ["EdgeNotStraight", "CreaseNotStraight", "EmptyCrease", "ConstructionInTheAir"],
-      ["NoSolution", "NeedsNearest", "NearestAmbiguous", "DegenerateConstruction", "NoCreaseThere"],
+      ["NoSolution", "NeedsNearest", "NearestAmbiguous", "NearestDisagrees", "DegenerateConstruction", "NoCreaseThere"],
       ["MarkOnSeveralLayers", "EndTie", "LandmarkAmbiguous"],
       -- choosing which paper moves
       ["SeedMissing", "SeedOnTheLine", "SegmentStraddles", "SeedSplit", "UnorderedOverlap", "DepthChangesAlong"],
@@ -758,6 +788,7 @@ refusalKindOf =
       EdgeNotStraight {} -> Just "EdgeNotStraight"
       NeedsNearest {} -> Just "NeedsNearest"
       NearestAmbiguous {} -> Just "NearestAmbiguous"
+      NearestDisagrees {} -> Just "NearestDisagrees"
       NotRunYet {} -> Nothing
     StepRefused _ _ _ failure -> case failure of
       Selecting err -> Just $ case err of

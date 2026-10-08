@@ -198,6 +198,7 @@ spec = do
               resolve (EdgeNotStraight South []),
               resolve (NeedsNearest []),
               resolve (NearestAmbiguous (V2 0 0) []),
+              resolve (NearestDisagrees (V2 0 0) (CandidateLine (V2 0 0) (V2 0 1) True) OnlyOnPaper (CandidateLine (V2 0 0) (V2 1 0) False)),
               step (Selecting SeedMissing),
               step (Selecting (SeedOnTheLine (V2 0 0))),
               step (Selecting (SeedSplit (V2 0 0))),

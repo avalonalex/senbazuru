@@ -11,7 +11,7 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (cross2)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (foldFrameWith)
-import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), TakenBecause (..))
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.Run (sheetState, squareSheet, workingPattern)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
@@ -163,6 +163,44 @@ spec = describe "naming paper on a flat state" $ do
       FoldLine p d <- right (foldLine 1e-3 start (LineOnto (Segment (MidpointOfEdge West) Centre) (Segment Centre (MidpointOfEdge North)) Nothing))
       onLine p d (V2 0 1) `shouldBe` True
       onLine p d (V2 1 0) `shouldBe` True
+
+    -- The same stretches, with a nearest P the preference did not need. It
+    -- has to agree (owner decision 41): corner north-west lies on x + y = 1,
+    -- the answer taken, and is accepted; midpoint of edge south lies as near
+    -- to both diagonals and points at neither; corner south-west lies on
+    -- y = x, the other, and is refused rather than ignored. Turns red if
+    -- nearest were ignored again, or a point as near to both refused.
+    it "refuses a nearest P lying nearer another answer than the one the preference takes" $ do
+      let halves = LineOnto (Segment (MidpointOfEdge West) Centre) (Segment Centre (MidpointOfEdge North)) . Just
+      mapM_
+        ( \p -> do
+            FoldLine o d <- right (foldLine 1e-3 start (halves p))
+            onLine o d (V2 0 1) `shouldBe` True
+            onLine o d (V2 1 0) `shouldBe` True
+        )
+        [CornerOf NorthWest, MidpointOfEdge South]
+      case foldLine 1e-3 start (halves (CornerOf SouthWest)) of
+        Left (NearestDisagrees at taken LaysStretchOntoStretch pointed) -> do
+          at `shouldBe` V2 0 0
+          (candidateOnPaper taken, candidateOnPaper pointed) `shouldBe` (True, True)
+          candidateAlong taken `shouldSatisfy` near (V2 (sqrt 0.5) (-(sqrt 0.5)))
+          candidateAlong pointed `shouldSatisfy` near (V2 (sqrt 0.5) (sqrt 0.5))
+        other -> expectationFailure ("expected nearest refused as pointing elsewhere, got " <> show other)
+
+    -- Two stretches whose lines cross a quarter below the paper, under its
+    -- middle. Of the lines halving them, x = 1/2 crosses the paper and
+    -- y = -1/4 does not, so the first is taken before nearest is read.
+    -- Corner south-west lies a quarter from the second and a half from the
+    -- first: it points at an answer that can never be taken, and is refused
+    -- with that answer marked as crossing no paper. Turns red if answers off
+    -- the paper were left out of the comparison.
+    it "refuses a nearest P lying nearer an answer that crosses no paper" $
+      case foldLine 1e-3 start (LineOnto (Segment (AtSheet (5 / 8) 0) (AtSheet 1 (3 / 4))) (Segment (AtSheet (3 / 8) 0) (AtSheet 0 (3 / 4))) (Just (CornerOf SouthWest))) of
+        Left (NearestDisagrees _ taken OnlyOnPaper pointed) -> do
+          (candidateOnPaper taken, candidateOnPaper pointed) `shouldBe` (True, False)
+          candidateAlong taken `shouldSatisfy` near (V2 0 1)
+          candidateThrough pointed `shouldSatisfy` near (V2 0.5 (-0.25))
+        other -> expectationFailure ("expected nearest refused as pointing off the paper, got " <> show other)
 
     -- The midlines cross at the centre, and each diagonal lays one onto the
     -- other: two answers, so nearest P chooses, and the centre, on both,
