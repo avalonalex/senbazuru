@@ -81,6 +81,10 @@ foldsAlike input output = do
         face : _ -> ring paper face
         [] -> []
       (lying, others) = partition (insideRing 0 first' . centroid . ring output) (facesVertices output)
+  -- Without a face to hold still where the input held its first, the two
+  -- folds could differ by a rigid motion and the comparison would say so for
+  -- the wrong reason.
+  lying `shouldNotBe` []
   foldedOut <- either (fail . show) pure (foldFrameWith output {facesVertices = lying <> others})
   placedBefore <- either (fail . show) pure (frameVertices (foldedFrame foldedIn))
   placedAfter <- either (fail . show) pure (frameVertices (foldedFrame foldedOut))

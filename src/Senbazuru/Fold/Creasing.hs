@@ -154,17 +154,17 @@ data NewCreaseAngle = AtRest | FlatForAssignment
 
 -- | 'creaseAllAlong', drawing its creases at the given angle, and handing
 -- back where each one went: list @i@ holds the pieces request @i@ became, in
--- order from its first end. A request that crosses other creases is cut at
--- each, and every crease after it in the pattern is renumbered, so its id on
--- the way in names nothing on the way out; the pieces are read from the
--- cutting itself ('withPlanarFacesTracked').
+-- order from its first end. A request is appended to the end of the edge
+-- list, and cutting then renumbers every crease after the first one it cuts,
+-- so where a request was appended says nothing about where its pieces end
+-- up; they are read from the cutting itself ('withPlanarFacesTracked').
 --
 -- Under 'AtRest', the pieces of an old crease the new ones cut keep their
 -- parent's angle, as always. A frame with no @edges_foldAngle@ gains the
 -- whole array, its old creases at the angle folding reads for them when the
 -- array is absent, -180 for a mountain and +180 for a valley: left absent,
--- the new creases would be read the same way and fold to 180 rather than
--- lying flat.
+-- the new creases would be read the same way and fold to -180 or +180 rather
+-- than lie at 0.
 creaseAllAlongWith :: NewCreaseAngle -> [(V2, V2, Assignment)] -> Frame -> Either FoldError (Frame, [[EdgeId]])
 creaseAllAlongWith how segments fr = do
   -- Read the sheet only to refuse the frames that are not one to draw on: a
@@ -318,16 +318,17 @@ creaseAllAlongWith how segments fr = do
     -- crease's angle and folding will derive them all the same way.
     --
     -- At rest the new creases are written at 0, and so the array cannot stay
-    -- absent: folding would read their letters and fold them flat. The old
-    -- creases are written at exactly the angle folding reads for them from
-    -- their letters, so the file folds as it did.
-    angles = case how of
-      FlatForAssignment
-        | null (edgesFoldAngle fr) -> []
-        | otherwise -> edgesFoldAngle fr <> map flatAngleFor asked
-      AtRest
-        | null (edgesFoldAngle fr) -> map flatAngleFor (take edges assignments) <> map (const 0) asked
-        | otherwise -> edgesFoldAngle fr <> map (const 0) asked
+    -- absent: folding would read their letters and fold them to -180 or
+    -- +180. The old creases are written at exactly the angle folding reads
+    -- for them from their letters, so the file folds as it did.
+    angles
+      | not (null (edgesFoldAngle fr)) = edgesFoldAngle fr <> map drawnAt asked
+      | how == AtRest = map flatAngleFor (take edges assignments) <> map drawnAt asked
+      | otherwise = []
+
+    drawnAt = case how of
+      FlatForAssignment -> flatAngleFor
+      AtRest -> const 0
 
 -- | The ends resolved so far, while a batch is being interned.
 --
