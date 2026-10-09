@@ -659,6 +659,10 @@ data MoveFailure
     FlapRefused FlapError
   | -- | The paper would not fold from its angles.
     FoldingRefused FoldingError
+  | -- | Creasing the paper where the fold line crosses it was refused. The
+    -- runner draws those creases itself, across faces it found the line
+    -- crossing, so this is a fault of the runner and not of the paper.
+    CreasingRefused FoldError
   | -- | Folding the paper afresh from what the move accepted put it somewhere
     -- else: what differs.
     JoinBroken Text
@@ -706,6 +710,7 @@ instance Explain MoveFailure where
     Selecting err -> explain err
     FlapRefused err -> explain err
     FoldingRefused err -> explain err
+    CreasingRefused err -> "creasing the paper along the fold line was refused: " <> explain err
     JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
     NotModelledStop what -> "\"" <> what <> "\" is not modelled, so the run stops here and keeps the moves before it"
     UnfoldChangedSince (EdgeId e) -> "(internal edge " <> tshow e <> ") has been folded again since, so turning it back would undo that fold too"
@@ -804,6 +809,9 @@ refusalKindOf =
         ExistingHingeFlat {} -> "ExistingHingeFlat"
       FlapRefused err -> Just (flapKind err)
       FoldingRefused err -> Just (foldingKind err)
+      -- The runner's own fault, not the paper's: nothing an author could
+      -- expect.
+      CreasingRefused {} -> Nothing
       JoinBroken {} -> Just "JoinBroken"
       UnfoldChangedSince {} -> Just "UnfoldChangedSince"
       MoveNotRunYet {} -> Nothing

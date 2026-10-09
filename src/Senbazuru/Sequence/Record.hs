@@ -115,6 +115,7 @@ module Senbazuru.Sequence.Record
     recordAfter,
     recordEvidence,
     recordHinge,
+    recordNewCreases,
     recordMoving,
     recordStationary,
     recordResolved,
@@ -153,7 +154,7 @@ import Numeric (showFFloat)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (Box (..), V2 (..), boxFromPoints, boxSize)
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
@@ -197,6 +198,7 @@ data MoveRecord = MoveRecord
     theAfter :: !(Surface V2),
     theEvidence :: !RouteEvidence,
     theHinge :: ![(MaterialSegment, [EdgeId])],
+    theNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)],
     theMoving :: ![(MaterialPoint, [FaceId])],
     theStationary :: !FaceId,
     theResolved :: ![ResolvedReference]
@@ -248,7 +250,9 @@ recordBefore :: MoveRecord -> Surface V2
 recordBefore = theBefore
 
 -- | The folded surface just after the move, numbered as 'recordBefore'. The
--- next record's 'recordBefore' is this surface again.
+-- next record's 'recordBefore' is this surface again, unless the next move
+-- creased the paper before it turned it: then its 'recordBefore' is this
+-- paper with the new creases, lying at rest, and numbered afresh.
 recordAfter :: MoveRecord -> Surface V2
 recordAfter = theAfter
 
@@ -261,6 +265,14 @@ recordEvidence = theEvidence
 -- stretch for each layer it creases. The runner's word: see 'hingeTurn'.
 recordHinge :: MoveRecord -> [(MaterialSegment, [EdgeId])]
 recordHinge = theHinge
+
+-- | The creases the move drew before it turned, where its line crossed paper
+-- with no crease: each as a stretch on the sheet, the edges of 'recordBefore'
+-- it became, and its letter, the move's sense from the coloured side. They
+-- are already in 'recordBefore', at rest; the hinge lists them again with
+-- any creases the line found already there.
+recordNewCreases :: MoveRecord -> [(MaterialSegment, [EdgeId], Assignment)]
+recordNewCreases = theNewCreases
 
 -- | The paper that moved: each seed the author named it by, with the faces
 -- that seed picked out. The faces are the turn's; the seed is the runner's.
@@ -311,13 +323,16 @@ hingeTurn ::
   Origin ->
   -- | The hinge, as stretches on the sheet with the edges along each.
   [(MaterialSegment, [EdgeId])] ->
+  -- | The creases the move drew before it turned, with their edges and
+  -- letters; none for a fold along creases the paper had.
+  [(MaterialSegment, [EdgeId], Assignment)] ->
   -- | The seed the moving paper was picked out by.
   MaterialPoint ->
   -- | The references the move resolved, for the report.
   [ResolvedReference] ->
   CheckedFlap ->
   Either FlapError MoveRecord
-hingeTurn step move name caption origin hinge seed resolved turn = do
+hingeTurn step move name caption origin hinge newCreases seed resolved turn = do
   before <- flapAt turn 0
   after <- flapAt turn 1
   pure
@@ -331,6 +346,7 @@ hingeTurn step move name caption origin hinge seed resolved turn = do
         theAfter = after,
         theEvidence = SweptHinge turn,
         theHinge = hinge,
+        theNewCreases = newCreases,
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn,
         theResolved = resolved
@@ -509,6 +525,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
     facts r =
       [checked (recordEvidence r)]
         ++ map resolvedFact (recordResolved r)
+        ++ map newCrease (recordNewCreases r)
         ++ ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
     checked = \case
       SweptHinge _ -> "checked: the whole turn, swept, with no paper in its way"
@@ -516,6 +533,26 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
       ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p
       ResolvedTurnedBack n name -> "turns back: step " <> tshow n <> maybe "" (\(Name x) -> " (" <> x <> ")") name
+    -- A new crease is kept on the sheet in the file's own coordinates, as
+    -- the hinge is; the report gives every point in sheet lengths, the
+    -- author's units, as the line and the seed already are.
+    newCrease (MaterialSegment (MaterialPoint a) (MaterialPoint b), edges, letter) =
+      "new crease: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", " <> letterWord letter <> " " <> internal "edge" [e | EdgeId e <- edges]
+    -- Measured on the sheet the run started from: from its box's lower
+    -- corner, in its longer side, as "Senbazuru.Sequence.Resolve" measures.
+    sheetLengths p = case boxFromPoints [V2 (materialU s) (materialV s) | s <- surfaceSamples (runStart run)] of
+      Just box ->
+        let V2 w h = boxSize box
+            V2 x0 y0 = boxMin box
+            V2 x y = p
+            side = max w h
+         in if side > 0 then V2 ((x - x0) / side) ((y - y0) / side) else p
+      Nothing -> p
+    letterWord = \case
+      Mountain -> "mountain"
+      Valley -> "valley"
+      Unassigned -> "unassigned"
+      other -> tshow other
     internal noun ids = "(internal " <> noun <> (if length ids == 1 then "" else "s") <> " " <> T.intercalate ", " (map tshow ids) <> ")"
     point (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
     stopped = ["stopped: " <> explain refusal | Just refusal <- [runRefusal run]]

@@ -82,12 +82,16 @@ spec = describe "naming paper on a flat state" $ do
     hingeAlong afterFirst line `shouldBe` Right [EdgeId 9]
 
   describe "refuses a fold line" $ do
-    -- The diagonal crosses the central square, where no crease runs.
-    it "that crosses paper where no crease runs, until creasing is run" $ do
+    -- The diagonal crosses the central square, face 0, and the two corner
+    -- triangles at its ends, where no crease runs. A runner creases such
+    -- paper first (chordsAcross), so the hinge is asked for only once nothing
+    -- is crossed.
+    it "that crosses paper where no crease runs" $ do
       line <- right (foldLine 1e-3 start (Segment (CornerOf SouthWest) (CornerOf NorthEast)))
+      crossedFaces start line `shouldBe` [FaceId 0, FaceId 1, FaceId 3]
       case hingeAlong start line of
         Left (NotRunYet _) -> pure ()
-        other -> expectationFailure ("expected creasing to be not run yet, got " <> show other)
+        other -> expectationFailure ("expected the crossed paper refused, got " <> show other)
 
     it "that runs along no crease" $ do
       line <- right (foldLine 1e-3 start (Segment (CornerOf SouthWest) (CornerOf SouthEast)))
@@ -226,6 +230,23 @@ spec = describe "naming paper on a flat state" $ do
 
     it "and refuses two lines that are one" $
       foldLine 1e-3 start (LineOnto (EdgeOf South) (Segment (CornerOf SouthWest) (CornerOf SouthEast)) Nothing) `shouldBe` Left DegenerateConstruction
+
+  -- An L is one face that is not convex. A line from its east edge rising
+  -- westward leaves the long arm through its top, passes over the notch,
+  -- and crosses the short arm's corner: two stretches of one face, which do
+  -- not meet and stay two creases. Turns red if the stretch over the notch
+  -- were kept, or the two were joined across it.
+  describe "the stretches a line crosses with no crease" $
+    it "takes each stretch inside a face that is not convex, and joins none across a gap" $ do
+      let l = [[0, 0], [3, 0], [3, 0.5], [0.5, 0.5], [0.5, 0.7], [0, 0.7]]
+          sheet = squareSheet {keyFrame = emptyFrame {verticesCoords = l, edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 6)) | i <- [0 .. 5]], edgesAssignment = replicate 6 Border, facesVertices = [map VertexId [0 .. 5]]}}
+          direction = V2 (-1.75) 0.35
+          line = FoldLine (V2 3 0.15) ((1 / norm direction) *^ direction)
+      st <- right (sheetState sheet) >>= flatOf . workingPattern
+      crossedFaces st line `shouldBe` [FaceId 0]
+      case chordsAcross st line [FaceId 0] of
+        [(a, b), (c, d)] -> all (uncurry near) [(a, V2 3 0.15), (b, V2 1.25 0.5), (c, V2 0.5 0.65), (d, V2 0.25 0.7)] `shouldBe` True
+        other -> expectationFailure ("expected two stretches, got " <> show other)
 
   -- The anchor's slot: strictly inside one face. A point on edge 8 is
   -- between the square and the corner.

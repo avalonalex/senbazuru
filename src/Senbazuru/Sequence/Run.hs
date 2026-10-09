@@ -11,9 +11,10 @@
 --
 -- 'sheetState' turns a sheet, a file's key frame, into the state a run begins
 -- from, and 'runSequence' runs a checked, elaborated sequence from there. So
--- far it makes the moves the blintz needs: @fold@ along creases the paper
--- already has, its line given by points or as @hinge of NAME@, @unfold@, and
--- @expect refused@. Every other move is refused as not run yet, naming
+-- far it makes @fold@, along creases the paper already has or, on the flat
+-- sheet, along a line where none runs yet, its line given by points, by an
+-- edge, by laying one line onto another or as @hinge of NAME@; @unfold@;
+-- and @expect refused@. Every other move is refused as not run yet, naming
 -- itself, rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
@@ -28,7 +29,9 @@
 -- 1. Fold the working pattern from its angles, and name paper on the result
 --    ("Senbazuru.Sequence.Resolve"): the fold line where the paper now lies,
 --    the creases along it, and the seed, which is @moving P@ or, for an
---    alignment fold such as @P to Q@, its first point.
+--    alignment fold such as @P to Q@, its first point. Where the line crosses
+--    paper with no crease, and the paper is the flat sheet, crease it there
+--    first, at rest, and name paper again ('creaseAcross').
 -- 2. Take the flap containing the seed, and the creases along the line that
 --    border it, as the hinge.
 -- 3. Turn @valley@ or @mountain@ into a direction from the reader's side:
@@ -51,8 +54,12 @@
 -- == Not yet
 --
 -- A fold that would carry the anchor's paper re-anchors (owner decision 3);
--- until that is built it is refused as not run yet, as are new creases,
--- layer words and every move but @fold@ and @unfold@.
+-- until that is built it is refused as not run yet, as are a new crease on
+-- folded paper, which creases through its layers (milestone M4), a new
+-- crease through the anchor, which moves the anchor (decisions C19), layer
+-- words and every move but @fold@ and @unfold@. So are @unfold@ and
+-- @hinge of@ a move made before the paper was creased again: its record's
+-- edge ids name the edges of a pattern since renumbered.
 --
 -- == What a fold state holds
 --
@@ -128,6 +135,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, frameKind, frameVertices)
@@ -421,19 +429,26 @@ runMove settings place named state = \case
 
 -- | A fold along creases the paper has, as the header lays out.
 foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
-foldMove settings place named state sense amount line layers seed = do
-  folded <- first (refusedAt place . FoldingRefused) (foldNow state)
-  flat <- first (resolvingAt place (prettyLine line)) (flatState folded)
+foldMove settings place named given sense amount line layers seed = do
+  found <- first (refusedAt place . FoldingRefused) (foldNow given)
+  seen <- first (resolvingAt place (prettyLine line)) (flatState found)
   -- @hinge of NAME@ is the line the named step's one move turned about: the
-  -- recorded crease, where the paper now lies, numbered as now since no move
-  -- yet cuts the paper.
+  -- recorded crease, where the paper now lies. The record numbers its edges
+  -- as the paper was then, so once a later move has creased the paper they
+  -- name other edges, and that is not run yet.
   foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
     HingeOf name -> case M.findWithDefault [] name named of
-      [earlier] -> case concatMap snd (recordHinge earlier) of
-        e : _ -> lineAlong flat e
-        [] -> Left NoSolution
+      [earlier]
+        | creasedSince given earlier -> Left (NotRunYet "\"hinge of\" a move made before the paper was creased again,")
+        | otherwise -> case concatMap snd (recordHinge earlier) of
+            e : _ -> lineAlong seen e
+            [] -> Left NoSolution
       records -> Left (HingeOfNotOneMove name (length records))
-    _ -> foldLine (runNearMissBand settings) flat line
+    _ -> foldLine (runNearMissBand settings) seen line
+  let toward = case sense of
+        ValleyFold -> theFront given
+        MountainFold -> opposite (theFront given)
+  (state, folded, flat, fresh) <- creaseAcross place line given found seen foldAt toward
   candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat foldAt)
   -- The seed names the paper that moves: a moving point, or an alignment
   -- fold's first argument. For L1 to L2 that is a line, and the side holding
@@ -457,16 +472,13 @@ foldMove settings place named state sense amount line layers seed = do
   -- still: asking where the anchor point lies could fail once a crease runs
   -- through it, and must not let such a fold through.
   when (FaceId 0 `elem` selectionMoving selection) (Left (refusedAt place (MoveNotRunYet "a fold that moves the anchor's paper, which re-anchors,")))
-  let toward = case sense of
-        ValleyFold -> theFront state
-        MountainFold -> opposite (theFront state)
-      magnitude = case amount of
+  let magnitude = case amount of
         ToFlat -> 180
         Degrees r -> fromRational r
   motion <- first (refusedAt place . FlapRefused) (prepareFlapToward (selectionHinge selection) (selectionSide selection) magnitude toward folded)
   turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
   let resolved = [uncurry (ResolvedLine (prettyLine line)) (lineAsSeen flat foldAt), ResolvedSeed seedWords (toSheetLengths flat m)]
-  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) (MaterialPoint m) resolved turn)
+  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (MaterialPoint m) resolved turn)
   next <- handOn place state folded record
   pure (next, [record])
   where
@@ -474,11 +486,61 @@ foldMove settings place named state sense amount line layers seed = do
       TowardPlusZ -> TowardMinusZ
       TowardMinusZ -> TowardPlusZ
 
+-- | Crease the paper where the fold line crosses it with no crease, before
+-- the fold turns it: the state, folded and named afresh, and the creases
+-- drawn, each with the edges it became and its letter. A line along creases
+-- the paper has crosses no face, and changes nothing.
+--
+-- Only the flat sheet is creased here, every crease at rest: the paper is one
+-- layer, and the line crosses each face once. On folded paper the line
+-- crosses layers, and creasing through them is milestone M4's.
+--
+-- The letter is the move's sense seen from the coloured side, the "raw
+-- sense" of decisions D5: a valley towards the reader is a valley with the
+-- coloured side up and a mountain with the white side up.
+--
+-- Creasing moves no paper. On the flat sheet every face lies where it lies
+-- on the sheet, so the fold line found before creasing is still the line
+-- after it. The anchor's face, cut in two where the line crosses it, is put
+-- first again, the face folding holds still. A line through the anchor
+-- itself would move the anchor (decisions C19), which is not run yet.
+creaseAcross :: Here -> Line -> FoldState -> Folded -> FlatState -> FoldLine -> Toward -> Either SequenceError (FoldState, Folded, FlatState, [(MaterialSegment, [EdgeId], Assignment)])
+creaseAcross place line state folded flat foldAt toward = case crossedFaces flat foldAt of
+  [] -> Right (state, folded, flat, [])
+  crossed -> do
+    unless (all ((<= atRest) . abs) (edgesFoldAngle (theWorking state))) $
+      Left (resolvingAt place (prettyLine line) (NotRunYet "a fold whose line crosses folded paper where no crease runs, which creases through its layers,"))
+    let letter = case toward of
+          TowardPlusZ -> Valley
+          TowardMinusZ -> Mountain
+        chords = chordsAcross flat foldAt crossed
+    (creased, pieces) <- first (refusedAt place . CreasingRefused) (creaseAllAlongWith AtRest [(a, b, letter) | (a, b) <- chords] (theWorking state))
+    room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf creased)
+    let material = IM.fromList (zip [0 ..] [V2 x y | x : y : _ <- verticesCoords creased])
+        ring face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
+        faces = facesVertices creased
+    first' <- case [i | (i, face) <- zip [0 ..] faces, insideRing room (ring face) anchor] of
+      [i] -> Right i
+      _ -> Left (refusedAt place (MoveNotRunYet "a fold whose new crease runs through the anchor, which moves the anchor,"))
+    let next = state {theWorking = creased {facesVertices = firstOf first' faces}, theFold = Nothing}
+    refolded <- first (refusedAt place . FoldingRefused) (foldNow next)
+    named <- first (resolvingAt place (prettyLine line)) (flatState refolded)
+    pure (next, refolded, named, [(MaterialSegment (MaterialPoint a) (MaterialPoint b), ids, letter) | ((a, b), ids) <- zip chords pieces])
+  where
+    MaterialPoint anchor = theAnchor state
+
+-- | Whether the paper has been creased since a move was made: the edges its
+-- record numbers are not the working pattern's any more. Creasing numbers the
+-- edges afresh, so the record's ids would name other edges now.
+creasedSince :: FoldState -> MoveRecord -> Bool
+creasedSince state record = edgesVertices (surfaceFrame (recordBefore record)) /= edgesVertices (theWorking state)
+
 -- | Turn one recorded move back: its own hinge and seed, by the change of
 -- angle it made. Skipped if its creases all lie flat already; refused if a
--- later move changed one of them.
+-- later move changed one of them, or creased the paper since.
 undoOne :: RunSettings -> Here -> (FoldState, [MoveRecord]) -> MoveRecord -> Either SequenceError (FoldState, [MoveRecord])
 undoOne settings place (state, made) earlier = do
+  when (creasedSince state earlier) (Left (refusedAt place (MoveNotRunYet "an unfold of a move made before the paper was creased again,")))
   let hinge = concatMap snd (recordHinge earlier)
       (before, after) = recordAngles earlier
       now = edgesFoldAngle (theWorking state)
@@ -500,7 +562,7 @@ undoOne settings place (state, made) earlier = do
             [] -> Left (refusedAt place (Selecting NothingSelected))
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
+          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) [] seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
     _ -> Right (state, made)
@@ -512,7 +574,7 @@ besideEdge frame (EdgeId e) = case drop e (edgesVertices frame) of
   _ -> []
 
 -- | The record of a checked turn, at this place.
-recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
+recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
 recordOf place = hingeTurn (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place)
 
 -- | Hand the state on: write the accepted angles and orders onto the working
