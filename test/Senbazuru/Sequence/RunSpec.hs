@@ -286,6 +286,15 @@ creasing = describe "a fold along a line where no crease runs" $ do
     renderRunReport run `shouldContain` ["  new crease: (0, 0) to (1, 1), valley (internal edge 4)"]
     void (writeSequence noFileHeader run) `shouldBe` Right ()
 
+  -- On a sheet two units across, the report gives the new crease in sheet
+  -- lengths, as it gives the line: (0, 0) to (1, 1), not to (2, 2). Turns
+  -- red if the crease were printed in the file's own units.
+  it "reports the new crease in sheet lengths, as it reports the line" $ do
+    let double = squareSheet {keyFrame = (keyFrame squareSheet) {verticesCoords = [[0, 0], [2, 0], [2, 2], [0, 2]]}}
+    run <- right (runOn (M.singleton "double.fold" double) (sequenceOf (header "A larger square" (sheetFile "double.fold") (Just (at (3 / 4) (1 / 4)))) (step_ "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast))))))
+    renderRunReport run `shouldContain` ["  line corner north-west to corner south-east: through (0.5, 0.5), along (0.707107, 0.707107)"]
+    renderRunReport run `shouldContain` ["  new crease: (0, 0) to (1, 1), valley (internal edge 4)"]
+
   -- White side up, a valley towards the reader is a mountain from the
   -- coloured side, which is the side FOLD's letters are read from. Turns red
   -- if the letter were the author's sense as written.

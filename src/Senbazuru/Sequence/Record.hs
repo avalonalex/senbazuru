@@ -154,7 +154,7 @@ import Numeric (showFFloat)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (Box (..), V2 (..), boxFromPoints, boxSize)
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
@@ -533,8 +533,21 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
       ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p
       ResolvedTurnedBack n name -> "turns back: step " <> tshow n <> maybe "" (\(Name x) -> " (" <> x <> ")") name
+    -- A new crease is kept on the sheet in the file's own coordinates, as
+    -- the hinge is; the report gives every point in sheet lengths, the
+    -- author's units, as the line and the seed already are.
     newCrease (MaterialSegment (MaterialPoint a) (MaterialPoint b), edges, letter) =
-      "new crease: " <> point a <> " to " <> point b <> ", " <> letterWord letter <> " " <> internal "edge" [e | EdgeId e <- edges]
+      "new crease: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", " <> letterWord letter <> " " <> internal "edge" [e | EdgeId e <- edges]
+    -- Measured on the sheet the run started from: from its box's lower
+    -- corner, in its longer side, as "Senbazuru.Sequence.Resolve" measures.
+    sheetLengths p = case boxFromPoints [V2 (materialU s) (materialV s) | s <- surfaceSamples (runStart run)] of
+      Just box ->
+        let V2 w h = boxSize box
+            V2 x0 y0 = boxMin box
+            V2 x y = p
+            side = max w h
+         in if side > 0 then V2 ((x - x0) / side) ((y - y0) / side) else p
+      Nothing -> p
     letterWord = \case
       Mountain -> "mountain"
       Valley -> "valley"
