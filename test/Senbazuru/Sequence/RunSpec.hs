@@ -315,7 +315,7 @@ precreasing = describe "a pre-crease" $ do
     case runRecords run of
       [made, folded] -> do
         sort (concatMap snd (recordHinge folded)) `shouldBe` sort (concatMap snd (recordHinge made))
-        [a | EdgeId e <- concatMap snd (recordHinge folded), a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== 180)
+        [a | EdgeId e <- concatMap snd (recordHinge folded), a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` (\angles -> not (null angles) && all (== 180) angles)
       other -> expectationFailure ("expected two records, got " <> show (length other))
 
 -- A turn-over (#95, decisions D5): the whole model shown from its other side,
@@ -375,7 +375,7 @@ turningOver = describe "a turn-over" $ do
     case [r | r <- runRecords run, recordStep r == 2] of
       [folded] -> do
         [letter | (_, _, letter) <- recordNewCreases folded] `shouldBe` [Mountain]
-        [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== -180)
+        [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` (\angles -> not (null angles) && all (== -180) angles)
       other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
 
   -- The crane's first three steps, its diagonals, a turn-over and its
@@ -515,7 +515,7 @@ rotating = describe "a rotate" $ do
     case [r | r <- runRecords run, recordStep r == 2] of
       [folded] -> do
         [letter | (_, _, letter) <- recordNewCreases folded] `shouldBe` [Valley]
-        [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== 180)
+        [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` (\angles -> not (null angles) && all (== 180) angles)
       other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
 
   -- After a turn-over the model is shown from behind, and a rotate turns it

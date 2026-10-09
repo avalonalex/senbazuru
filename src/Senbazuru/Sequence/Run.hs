@@ -229,8 +229,10 @@ quarterTurnsAbout quarters = aboutMiddle $ case quarters `mod` 4 of
 -- centre of their xy box and cz the middle of their z range. About the
 -- middle, so the model stays where it is on the page; about the origin it
 -- would be carried off it. Every turn made here has entries 0 and 1 and -1,
--- so it adds no rounding of its own: a turn by an eighth would need cos 45°,
--- which no 'Double' holds (owner decision 10).
+-- which a 'Double' holds exactly, so applying one multiplies nothing
+-- inexactly; only the additions round, as they do anywhere. A turn by an
+-- eighth would need cos 45°, which no 'Double' holds, and whose last bits
+-- come from the platform's trigonometry (owner decision 10).
 aboutMiddle :: Mat3 -> [V3] -> Rigid
 aboutMiddle turn points = Rigid turn (middle ^-^ matApply turn middle)
   where

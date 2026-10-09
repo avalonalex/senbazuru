@@ -7,7 +7,7 @@
 -- modelled@ and @expect refused@ leave none. So far a record holds a turn
 -- about a hinge, a pre-crease, which is such a turn checked and laid flat
 -- again, or a change of presentation, which moves no paper ('MoveKind'); the
--- header's last section says what the other moves will bring. Three
+-- section \"What is not here yet\" says what the other moves will bring. Three
 -- readers take records rather than the folded frames a run also writes: the
 -- page of steps, which draws one arrow for each move; the material study,
 -- which settles a move's paper as a sheet that bends; and the animated export.
