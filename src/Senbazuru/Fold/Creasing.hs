@@ -60,6 +60,8 @@
 module Senbazuru.Fold.Creasing
   ( creaseAlong,
     creaseAllAlong,
+    NewCreaseAngle (..),
+    creaseAllAlongWith,
   )
 where
 
@@ -67,10 +69,10 @@ import Control.Monad (foldM, when)
 import Data.Foldable (traverse_)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sortOn)
-import Senbazuru.Fold.Crossings (withPlanarFaces)
+import Senbazuru.Fold.Crossings (withPlanarFacesTracked)
 import Senbazuru.Fold.Faces (Sheet (..), coordsFor, endsOf, sheetOf, tolerance)
 import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..))
-import Senbazuru.Fold.Types (Assignment (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (distanceToSegment)
 
@@ -136,7 +138,35 @@ creaseAlong from to assignment = creaseAllAlong [(from, to, assignment)]
 -- thing is true of "Senbazuru.Import.Segments", which reaches for a grid rather
 -- than a scan and still has to say which nine cells it looks at.
 creaseAllAlong :: [(V2, V2, Assignment)] -> Frame -> Either FoldError Frame
-creaseAllAlong segments fr = do
+creaseAllAlong segments fr = fst <$> creaseAllAlongWith FlatForAssignment segments fr
+
+-- | The angle a new crease is drawn at.
+--
+-- 'FlatForAssignment' is what 'creaseAllAlong' has always written, and what
+-- the @crease@ verb wants: a mountain at -180 and a valley at +180, so that a
+-- crease drawn on a pattern is a crease the model is folded along. 'AtRest'
+-- draws every new crease at 0, lying flat, with the assignment it was asked
+-- for. That is what a fold sequence wants: a crease made by a fold that has
+-- not happened yet, which the fold will then turn (decisions D3, "Intent at
+-- angle 0 is kept on purpose").
+data NewCreaseAngle = AtRest | FlatForAssignment
+  deriving stock (Eq, Show)
+
+-- | 'creaseAllAlong', drawing its creases at the given angle, and handing
+-- back where each one went: list @i@ holds the pieces request @i@ became, in
+-- order from its first end. A request is appended to the end of the edge
+-- list, and cutting then renumbers every crease after the first one it cuts,
+-- so where a request was appended says nothing about where its pieces end
+-- up; they are read from the cutting itself ('withPlanarFacesTracked').
+--
+-- Under 'AtRest', the pieces of an old crease the new ones cut keep their
+-- parent's angle, as always. A frame with no @edges_foldAngle@ gains the
+-- whole array, its old creases at the angle folding reads for them when the
+-- array is absent, -180 for a mountain and +180 for a valley: left absent,
+-- the new creases would be read the same way and fold to -180 or +180 rather
+-- than lie at 0.
+creaseAllAlongWith :: NewCreaseAngle -> [(V2, V2, Assignment)] -> Frame -> Either FoldError (Frame, [[EdgeId]])
+creaseAllAlongWith how segments fr = do
   -- Read the sheet only to refuse the frames that are not one to draw on: a
   -- folded form, and an edge naming a vertex that is not there. Its tolerance
   -- is the sheet's own, so a crease counts as having length by the same
@@ -153,10 +183,13 @@ creaseAllAlong segments fr = do
     then -- Nothing to draw leaves the pattern exactly as it was, rather than
     -- putting it through the cutting and getting it back with its faces
     -- dropped for no reason.
-      Right fr
+      Right (fr, [])
     else do
       (added, pairs) <- intern sheet near
-      withPlanarFaces (creased added pairs)
+      (out, pieces) <- withPlanarFacesTracked (creased added pairs)
+      -- Request i was appended as edge (edges + i), so its pieces are that
+      -- edge's.
+      pure (out, [IM.findWithDefault [] (edges + i) pieces | i <- [0 .. length segments - 1]])
   where
     edges = length (edgesVertices fr)
 
@@ -283,9 +316,19 @@ creaseAllAlong segments fr = do
     --
     -- Absent stays absent, because there the file made no claim about any
     -- crease's angle and folding will derive them all the same way.
+    --
+    -- At rest the new creases are written at 0, and so the array cannot stay
+    -- absent: folding would read their letters and fold them to -180 or
+    -- +180. The old creases are written at exactly the angle folding reads
+    -- for them from their letters, so the file folds as it did.
     angles
-      | null (edgesFoldAngle fr) = []
-      | otherwise = edgesFoldAngle fr <> map flatAngleFor asked
+      | not (null (edgesFoldAngle fr)) = edgesFoldAngle fr <> map drawnAt asked
+      | how == AtRest = map flatAngleFor (take edges assignments) <> map drawnAt asked
+      | otherwise = []
+
+    drawnAt = case how of
+      FlatForAssignment -> flatAngleFor
+      AtRest -> const 0
 
 -- | The ends resolved so far, while a batch is being interned.
 --

@@ -269,7 +269,8 @@ edges".
 The valley is `[8, 9]`, the mountain `[10, 11, 12]`: 13 edges, 5 new pieces,
 and nothing in the counts says 2 + 3 rather than 3 + 2. Evidence:
 derived from the cited lines and reproduced by a Python re-implementation of
-them (not senbazuru); **UNVERIFIED in Haskell** until the first test runs.
+them (not senbazuru); **verified in Haskell** on 2026-10-08, when the first test
+ran (`CreasingSpec`, "hands back each request's pieces", #495).
 
 **Semantics.**
 

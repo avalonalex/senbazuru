@@ -15,11 +15,15 @@ module Senbazuru.Fold.CreasingSpec (spec) where
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
+import Data.List (partition)
 import Senbazuru.Fold.Creasing
 import Senbazuru.Fold.Load (decodeFile, renderLoadError)
-import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), renderFoldError)
+import Senbazuru.Fold.Query (CreaseEnd (..), FoldError (..), frameVertices, renderFoldError)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (V2 (..), norm, (^-^))
+import Senbazuru.Geometry.Polygon (centroid, insideRing)
+import Senbazuru.Geometry.V3 (modelSpan)
+import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
 import Test.Hspec
 
 -- | Load a fixture's key frame, in whatever format it is in.
@@ -43,6 +47,50 @@ sheet points es =
 -- | The unit square, as four corners and four sides.
 square :: Frame
 square = sheet [[0, 0], [1, 0], [1, 1], [0, 1]] [(0, 1), (1, 2), (2, 3), (3, 0)]
+
+-- | A file in @examples\/@, its key frame.
+fromExamples :: FilePath -> IO Frame
+fromExamples name = do
+  let path = "examples/" <> name
+  bytes <- BS.readFile path
+  either (fail . show . renderLoadError) (pure . keyFrame) (decodeFile path bytes)
+
+-- | The batch PRD 05's L2 works through on @diagonal-cp.fold@: a valley from
+-- (0, 1/2) to (1/2, 0), and a mountain along the other diagonal, from (0, 0)
+-- to (1, 1), which crosses the valley and the file's own diagonal.
+diagonalBatch :: [(V2, V2, Assignment)]
+diagonalBatch = [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)]
+
+-- | The unit square with a valley along one diagonal, and no angles recorded:
+-- folding reads its letters, and folds the valley to +180.
+lettered :: Frame
+lettered = (sheet [[0, 0], [1, 0], [1, 1], [0, 1]] [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)]) {edgesAssignment = [Border, Border, Border, Border, Valley]}
+
+-- | Fold two patterns and require that every vertex of the first lands where
+-- the second's vertex of that id does, within a billionth of the model's
+-- size. The second pattern's faces are reordered first, so that a face lying
+-- in the first's face 0 comes first: folding holds its first face still, and
+-- creasing re-traces faces in edge order, so without it two folds of one
+-- paper differ by a rigid motion of the whole model.
+foldsAlike :: Frame -> Frame -> Expectation
+foldsAlike input output = do
+  foldedIn <- either (fail . show) pure (foldFrameWith input)
+  let ring fr face = [V2 x y | VertexId v <- face, x : y : _ <- take 1 (drop v (verticesCoords fr))]
+      paper = foldedPattern foldedIn
+      first' = case facesVertices paper of
+        face : _ -> ring paper face
+        [] -> []
+      (lying, others) = partition (insideRing 0 first' . centroid . ring output) (facesVertices output)
+  -- Without a face to hold still where the input held its first, the two
+  -- folds could differ by a rigid motion and the comparison would say so for
+  -- the wrong reason.
+  lying `shouldNotBe` []
+  foldedOut <- either (fail . show) pure (foldFrameWith output {facesVertices = lying <> others})
+  placedBefore <- either (fail . show) pure (frameVertices (foldedFrame foldedIn))
+  placedAfter <- either (fail . show) pure (frameVertices (foldedFrame foldedOut))
+  let span' = max 1 (modelSpan placedBefore)
+      kept = length (verticesCoords input)
+  [i | (i, p, q) <- zip3 [0 :: Int ..] (take kept placedBefore) placedAfter, norm (q ^-^ p) > 1e-9 * span'] `shouldBe` []
 
 -- | A frame's creases as plain pairs.
 creasesOf :: Frame -> [(Int, Int)]
@@ -170,6 +218,68 @@ spec = do
       let raised = sheet [[0, 0, 5], [1, 0, 5], [1, 1, 5], [0, 1, 5]] [(0, 1), (1, 2), (2, 3), (3, 0)]
       fmap verticesCoords (creaseAlong (V2 0.5 0) (V2 0.5 1) Valley raised)
         `shouldBe` Right (verticesCoords raised <> [[0.5, 0, 5], [0.5, 1, 5]])
+
+  -- PRD 05's L2: the angle new creases are drawn at, and where each request
+  -- went. Its four rules, R-05-6 to R-05-9, are the four tests here, apart
+  -- from R-05-6's own sentence, that creaseAllAlong is creaseAllAlongWith
+  -- FlatForAssignment: it is defined so, which no test of it could turn red.
+  -- The tests above, run through creaseAllAlong, are what hold its output
+  -- where it was.
+  describe "drawing at rest, and where each crease went" $ do
+    -- 05 L2's table, until now worked by hand and in Python: the file's
+    -- diagonal, edge 4, comes out as edges 6 and 7, because each edge cut
+    -- before it pushes its pieces along, and nothing in the counts says the
+    -- five new pieces split 2 + 3 rather than 3 + 2. Turns red if ids came
+    -- from counts, or the chains were regrouped.
+    it "hands back each request's pieces, in order from its first end (R-05-9)" $ do
+      cp <- fromExamples "diagonal-cp.fold"
+      fmap snd (creaseAllAlongWith AtRest diagonalBatch cp) `shouldBe` Right [[EdgeId 8, EdgeId 9], [EdgeId 10, EdgeId 11, EdgeId 12]]
+      fmap snd (creaseAllAlongWith FlatForAssignment diagonalBatch cp) `shouldBe` Right [[EdgeId 8, EdgeId 9], [EdgeId 10, EdgeId 11, EdgeId 12]]
+      fmap snd (creaseAllAlongWith AtRest [(V2 0 0, V2 1 1, Valley)] square) `shouldBe` Right [[EdgeId 4]]
+      creaseAllAlongWith AtRest [] cp `shouldBe` Right (cp, [])
+
+    -- The new pieces at 0 with their letters; the old diagonal's two pieces
+    -- at its 180, the four sides' pieces at 0. Turns red if a cut old crease
+    -- were zeroed, or a new one given its letter's angle.
+    it "draws every new piece at 0 with its letter, and keeps the old pieces' angles (R-05-7)" $ do
+      cp <- fromExamples "diagonal-cp.fold"
+      case creaseAllAlongWith AtRest diagonalBatch cp of
+        Left err -> expectationFailure (show err)
+        Right (s, _) -> do
+          edgesFoldAngle s `shouldBe` [0, 0, 0, 0, 0, 0, 180, 180, 0, 0, 0, 0, 0]
+          edgesAssignment s `shouldBe` replicate 6 Border <> [Valley, Valley, Valley, Valley, Mountain, Mountain, Mountain]
+      -- Drawn flat for their letters, the same requests come out at +180 and
+      -- -180, as the crease verb has always written them.
+      fmap (drop 8 . edgesFoldAngle . fst) (creaseAllAlongWith FlatForAssignment diagonalBatch cp)
+        `shouldBe` Right [180, 180, -180, -180, -180]
+
+    -- With no angles recorded, the old valley's two pieces are written at
+    -- the +180 folding read off its letter, and the new mountain's at 0. Left
+    -- absent, folding would read the mountain's letter too and fold it to
+    -- -180. Turns red if the array stayed absent.
+    it "writes the whole angle array for a file that had none (R-05-8)" $
+      case creaseAllAlongWith AtRest [(V2 0 1, V2 1 0, Mountain)] lettered of
+        Left err -> expectationFailure (show err)
+        Right (s, pieces) -> do
+          pieces `shouldBe` [[EdgeId 6, EdgeId 7]]
+          edgesFoldAngle s `shouldBe` [0, 0, 0, 0, 180, 180, 0, 0]
+
+    -- What drawing at rest is for: the paper folds exactly as it did, every
+    -- old vertex landing where it was. On the diagonal pattern, folded along
+    -- its own valley; on the lettered square, whose angles come from its
+    -- letters; on the quarter fold, folded in quarters; and on the bare
+    -- square. Turns red if a new crease were given its letter's angle, or an
+    -- absent array left absent.
+    it "leaves the folded paper where it was (05 L2's last row)" $ do
+      cp <- fromExamples "diagonal-cp.fold"
+      quarter <- fixture "quarter-fold.fold"
+      let cases =
+            [ (cp, diagonalBatch),
+              (lettered, [(V2 0 1, V2 1 0, Mountain)]),
+              (quarter, [(V2 0 0, V2 1 1, Valley)]),
+              (square, [(V2 0.5 0, V2 0.5 1, Mountain), (V2 0 0.5, V2 1 0.5, Valley)])
+            ]
+      mapM_ (\(input, batch) -> either (expectationFailure . show) (foldsAlike input . fst) (creaseAllAlongWith AtRest batch input)) cases
 
   describe "what drawing a crease invalidates" $
     it "re-derives the faces and drops the keys it cannot vouch for" $ do
