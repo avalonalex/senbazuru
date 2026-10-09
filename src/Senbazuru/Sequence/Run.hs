@@ -13,9 +13,10 @@
 -- from, and 'runSequence' runs a checked, elaborated sequence from there. So
 -- far it makes @fold@, along creases the paper already has or, on the flat
 -- sheet, along a line where none runs yet, its line given by points, by an
--- edge, by laying one line onto another or as @hinge of NAME@; @unfold@;
--- and @expect refused@. Every other move is refused as not run yet, naming
--- itself, rather than skipped.
+-- edge, by laying one line onto another or as @hinge of NAME@; @pre-crease@,
+-- the same fold checked and laid flat again, which leaves its crease and one
+-- record; @unfold@; and @expect refused@. Every other move is refused as not
+-- run yet, naming itself, rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
 -- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
@@ -61,7 +62,7 @@
 -- A fold that would carry the anchor's paper re-anchors (owner decision 3);
 -- until that is built it is refused as not run yet, as are a new crease on
 -- folded paper, which creases through its layers (milestone M4), layer words
--- and every move but @fold@ and @unfold@. A new crease through the anchor
+-- and every move but @fold@, @pre-crease@ and @unfold@. A new crease through the anchor
 -- moves the anchor off it, to a face the fold holds still (decisions C19,
 -- 'reanchor'), which is not a re-anchoring: no paper moves.
 --
@@ -411,7 +412,10 @@ data Here = Here
 
 runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Core -> Either SequenceError Made
 runMove settings place named state = \case
-  CoreFold sense amount line layers seed -> moved <$> foldMove settings place named state sense amount line layers seed
+  CoreFold sense amount line layers seed -> moved <$> foldMove settings place named state Turn sense amount line layers seed
+  -- A pre-crease is the fold, checked over its whole path, laid flat again:
+  -- one move and one record, its crease left without a direction.
+  CorePrecrease sense line layers seed -> moved <$> foldMove settings place named state Precrease sense ToFlat line layers seed
   CoreUnfold names -> moved <$> foldM (undoOne settings place) (state, []) (reverse (concat [M.findWithDefault [] name named | name <- names]))
   -- The inner move runs against this state, and must be refused as the kind
   -- given; it leaves the state as it was and no record, since it moved no
@@ -432,8 +436,8 @@ runMove settings place named state = \case
     moved (st, records) = Made st records []
 
 -- | A fold along creases the paper has, as the header lays out.
-foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
-foldMove settings place named given sense amount line layers seed = do
+foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> MoveKind -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
+foldMove settings place named given kind sense amount line layers seed = do
   found <- first (refusedAt place . FoldingRefused) (foldNow given)
   seen <- first (resolvingAt place (prettyLine line)) (flatState found)
   -- @hinge of NAME@ is the line the named step's one move turned about: the
@@ -449,7 +453,15 @@ foldMove settings place named given sense amount line layers seed = do
   let toward = case sense of
         ValleyFold -> theFront given
         MountainFold -> opposite (theFront given)
-  (creased, foldedCreased, flatCreased, fresh, around) <- creaseAcross place line given found seen foldAt toward
+  -- A fold's new crease is lettered by its sense, seen from the coloured
+  -- side; a pre-crease's has no direction, since a later move may fold it
+  -- either way (owner decision 14).
+  let letter = case kind of
+        Precrease -> Unassigned
+        Turn -> case toward of
+          TowardPlusZ -> Valley
+          TowardMinusZ -> Mountain
+  (creased, foldedCreased, flatCreased, fresh, around) <- creaseAcross place line given found seen foldAt letter
   -- The paper that moves: the seed, which is a moving point or an alignment
   -- fold's first argument, and the flap holding it. For L1 to L2 the seed is
   -- a line, and the side holding it moves, so it must not lie across the
@@ -497,7 +509,10 @@ foldMove settings place named given sense amount line layers seed = do
   motion <- first (refusedAt place . FlapRefused) (prepareFlapToward (selectionHinge selection) (selectionSide selection) magnitude toward folded)
   turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
   let resolved = [uncurry (ResolvedLine (prettyLine line)) (lineAsSeen flat foldAt), ResolvedSeed seedWords (toSheetLengths flat m)]
-  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (theAnchor given, theAnchor state) (MaterialPoint m) resolved turn)
+  turned <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (theAnchor given, theAnchor state) (MaterialPoint m) resolved turn)
+  let record = case kind of
+        Turn -> turned
+        Precrease -> asPrecrease turned
   next <- handOn place state folded record
   pure (next, [record])
   where
@@ -514,9 +529,9 @@ foldMove settings place named given sense amount line layers seed = do
 -- layer, and the line crosses each face once. On folded paper the line
 -- crosses layers, and creasing through them is milestone M4's.
 --
--- The letter is the move's sense seen from the coloured side, the "raw
--- sense" of decisions D5: a valley towards the reader is a valley with the
--- coloured side up and a mountain with the white side up.
+-- The new creases take the letter they are given: a fold's sense seen from
+-- the coloured side, the "raw sense" of decisions D5, or U for a
+-- pre-crease's.
 --
 -- Creasing moves no paper. On the flat sheet every face lies where it lies
 -- on the sheet, so the fold line found before creasing is still the line
@@ -525,16 +540,13 @@ foldMove settings place named given sense amount line layers seed = do
 -- itself leaves it in no one face: then the faces are left as traced, and
 -- the last of the answer is the faces around the anchor, from which the
 -- caller moves it ('reanchor') once it knows which of them the move turns.
-creaseAcross :: Here -> Line -> FoldState -> Folded -> FlatState -> FoldLine -> Toward -> Either SequenceError (FoldState, Folded, FlatState, [(MaterialSegment, [EdgeId], Assignment)], [Int])
-creaseAcross place line state folded flat foldAt toward = case crossedFaces flat foldAt of
+creaseAcross :: Here -> Line -> FoldState -> Folded -> FlatState -> FoldLine -> Assignment -> Either SequenceError (FoldState, Folded, FlatState, [(MaterialSegment, [EdgeId], Assignment)], [Int])
+creaseAcross place line state folded flat foldAt letter = case crossedFaces flat foldAt of
   [] -> Right (state, folded, flat, [], [])
   crossed -> do
     unless (all ((<= atRest) . abs) (edgesFoldAngle (theWorking state))) $
       Left (resolvingAt place (prettyLine line) (NotRunYet "a fold whose line crosses folded paper where no crease runs, which creases through its layers,"))
-    let letter = case toward of
-          TowardPlusZ -> Valley
-          TowardMinusZ -> Mountain
-        chords = chordsAcross flat foldAt crossed
+    let chords = chordsAcross flat foldAt crossed
     (creased, pieces) <- first (refusedAt place . CreasingRefused) (creaseAllAlongWith AtRest [(a, b, letter) | (a, b) <- chords] (theWorking state))
     room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf creased)
     let material = materialPoints creased
@@ -732,7 +744,7 @@ resolvingAt place = ResolveRefused (InStep (placeStep place) (placeName place)) 
 moveWords :: Core -> Text
 moveWords = \case
   CoreFold {} -> "\"fold\""
-  CorePrecrease {} -> "\"pre-crease\", which makes a new crease,"
+  CorePrecrease {} -> "\"pre-crease\""
   CoreUnfold {} -> "\"unfold\""
   CoreTurnOver {} -> "\"turn over\""
   CoreRotate {} -> "\"rotate\""

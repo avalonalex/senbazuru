@@ -106,6 +106,8 @@ module Senbazuru.Sequence.Record
 
     -- * The record
     MoveRecord,
+    MoveKind (..),
+    recordKind,
     recordStep,
     recordMoveIndex,
     recordStepName,
@@ -126,6 +128,7 @@ module Senbazuru.Sequence.Record
 
     -- * Making one
     hingeTurn,
+    asPrecrease,
 
     -- * A run
     Run (..),
@@ -201,10 +204,24 @@ data MoveRecord = MoveRecord
     theHinge :: ![(MaterialSegment, [EdgeId])],
     theNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)],
     theAnchor :: !(MaterialPoint, MaterialPoint),
+    theKind :: !MoveKind,
     theMoving :: ![(MaterialPoint, [FaceId])],
     theStationary :: !FaceId,
     theResolved :: ![ResolvedReference]
   }
+  deriving stock (Eq, Show)
+
+-- | What kind of move a record is of: what a reader may take from its two
+-- surfaces.
+data MoveKind
+  = -- | A turn about a hinge, a fold or the unfold of one: the paper ends
+    -- where the turn left it.
+    Turn
+  | -- | A pre-crease (owner decision 14): the paper is folded along a line
+    -- and laid flat again, so it ends where it began, creased along the
+    -- line. Its record keeps the fold's evidence, which was checked over its
+    -- whole path, and carries no sense, since a crease it draws has none.
+    Precrease
   deriving stock (Eq, Show)
 
 -- | A reference as the run resolved it, for the report: the words the author
@@ -241,6 +258,11 @@ recordStepName = theStepName
 -- the step's picture.
 recordCaption :: MoveRecord -> Maybe Text
 recordCaption = theCaption
+
+-- | What kind of move this is: a turn, or a pre-crease that ends where it
+-- began.
+recordKind :: MoveRecord -> MoveKind
+recordKind = theKind
 
 -- | The move as the author wrote it, and where.
 recordOrigin :: MoveRecord -> Origin
@@ -360,10 +382,18 @@ hingeTurn step move name caption origin hinge newCreases anchor seed resolved tu
         theHinge = hinge,
         theNewCreases = newCreases,
         theAnchor = anchor,
+        theKind = Turn,
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn,
         theResolved = resolved
       }
+
+-- | A pre-crease's record from its fold's (owner decision 14): the fold was
+-- checked over its whole path, and the paper is laid flat again, so the
+-- record ends where it began and keeps the fold's evidence. Its new creases
+-- were drawn without a direction, as the runner draws a pre-crease's.
+asPrecrease :: MoveRecord -> MoveRecord
+asPrecrease record = record {theKind = Precrease, theAfter = theBefore record}
 
 -- | What a run hands back: the state it started from, what each step did,
 -- one record for each move it made, in order, each refusal a sequence
@@ -539,6 +569,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       [checked (recordEvidence r)]
         ++ map resolvedFact (recordResolved r)
         ++ map newCrease (recordNewCreases r)
+        ++ ["laid flat again: the paper ends where it began" | recordKind r == Precrease]
         ++ [ "anchor moved: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", off the new crease"
              | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
                a /= b
