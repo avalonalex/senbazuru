@@ -7,6 +7,10 @@
 -- breaks it immediately.
 module Senbazuru.Geometry.RigidSpec (spec) where
 
+import Data.Maybe (isJust)
+import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Query (frameVertices)
+import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry.Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
@@ -34,6 +38,11 @@ near a b = abs (a - b) < 1e-9
 
 nearV3 :: V3 -> V3 -> Bool
 nearV3 a b = norm (a ^-^ b) < 1e-9
+
+-- | quarter-fold-steps.fold's key frame, as points: the unit square's
+-- corners, then its edge midpoints, then its centre, all at z = 0.
+flatSheet :: [V3]
+flatSheet = [V3 x y 0 | (x, y) <- [(0, 0), (1, 0), (1, 1), (0, 1), (0.5, 0), (1, 0.5), (0.5, 1), (0, 0.5), (0.5, 0.5)]]
 
 spec :: Spec
 spec = do
@@ -139,6 +148,58 @@ spec = do
     it "leaves a point exactly alone" $
       forAll genPoint $
         \p -> applyRigid identity p == p
+
+  describe "isProperRotation" $ do
+    it "accepts every rotation rotationAbout makes" $
+      forAll genRotation $
+        \r -> isProperRotation (rigidLinear r)
+
+    -- The determinant alone would pass the stretch, whose determinant is 1;
+    -- orthonormal rows alone would pass the mirror. Turns red if either check
+    -- were dropped.
+    it "refuses a stretch whose determinant is 1, and a mirror" $ do
+      isProperRotation (Mat3 (V3 2 0 0) (V3 0 0.5 0) (V3 0 0 1)) `shouldBe` False
+      isProperRotation (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 1)) `shouldBe` False
+
+  describe "fitRigid" $ do
+    -- quarter-fold-steps.fold's key frame: the unit square's corners, edge
+    -- midpoints and centre, flat at z = 0. Every turn about +z keeps it at
+    -- z = 0, so the mirror through that plane fits every pair too, and only
+    -- the cross product's third axis, with the check that the turn is proper,
+    -- refuses it. Turns red if the third axis were flipped.
+    it "recovers a quarter turn, a half turn and an eighth turn of a flat sheet" $
+      mapM_
+        ( \theta -> do
+            let turn = rotationAbout (V3 0.5 0.5 0) (V3 0 0 1) theta
+            case fitRigid [(p, applyRigid turn p) | p <- flatSheet] of
+              Nothing -> expectationFailure ("no fit for a turn of " <> show theta)
+              Just found -> all (\p -> nearV3 (applyRigid found p) (applyRigid turn p)) (V3 0 0 1 : flatSheet) `shouldBe` True
+        )
+        [pi / 2, pi, pi / 4]
+
+    -- The line that looks like a typo, at work: the flat sheet turned over
+    -- left-right, (x, y, z) to (1 - x, y, -z), puts every vertex where the
+    -- mirror (1 - x, y, z) does. The fit is the half turn, which sends the
+    -- paper's up to its down; paper cannot make the mirror.
+    it "takes a flat sheet turned over for a half turn, never the mirror" $
+      case fitRigid [(p, V3 (1 - x) y 0) | p@(V3 x y _) <- flatSheet] of
+        Nothing -> expectationFailure "no fit for the turn-over"
+        Just found -> matApply (rigidLinear found) (V3 0 0 1) `shouldSatisfy` nearV3 (V3 0 0 (-1))
+
+    -- A state of the bird base with paper in the air, reflected x to -x: no
+    -- rigid motion makes a mirror of paper that is not flat. Turns red if
+    -- only three points were checked and not every pair.
+    it "finds no fit for a mirrored model with paper in the air" $ do
+      file <- loadFoldFile "examples/bird-base-sequence.fold" >>= either (fail . show) pure
+      points <- case drop 1 (otherFrames file) of
+        frame : _ -> either (fail . show) pure (frameVertices frame)
+        [] -> fail "the bird sequence has no second state"
+      maximum [z | V3 _ _ z <- points] `shouldSatisfy` (> 0.1)
+      fitRigid [(p, V3 (-x) y z) | p@(V3 x y z) <- points] `shouldBe` Nothing
+      fitRigid [(p, p) | p <- points] `shouldSatisfy` isJust
+
+    it "finds no fit for points that do not span a plane" $
+      fitRigid [(p, p ^+^ V3 1 0 0) | p <- [V3 0 0 0, V3 1 1 1, V3 2 2 2]] `shouldBe` Nothing
 
   describe "matApply" $
     it "reads a matrix as three rows" $

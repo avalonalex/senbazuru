@@ -22,8 +22,17 @@
 -- removes the one row that could turn a motion into a projection.
 --
 -- It does not make a non-rigid value unwriteable — 'Rigid' will hold any 3×3
--- matrix, including one that scales — and nothing here checks. What keeps the
--- type honest is that 'rotationAbout' is the only way anything constructs one.
+-- matrix, including one that scales — and the constructor does not check.
+-- What keeps the type honest is that 'rotationAbout' and 'fitRigid' are the
+-- ways anything constructs one, and 'isProperRotation' is the check for a
+-- matrix built any other way.
+--
+-- == Proper, not merely orthogonal
+--
+-- A /proper/ rotation turns without mirroring: its determinant is +1. A
+-- mirror is orthogonal too, and folds perfectly well — into the mirror model,
+-- the one whose mountains and valleys are swapped. Paper cannot make it, so a
+-- motion fitted to a model's vertices is accepted only if it is proper.
 module Senbazuru.Geometry.Rigid
   ( -- * Matrices
     Mat3 (..),
@@ -38,10 +47,17 @@ module Senbazuru.Geometry.Rigid
     applyRigid,
     rotationAbout,
     inverse,
+
+    -- * Checking and fitting
+    isProperRotation,
+    fitRigid,
   )
 where
 
-import Senbazuru.Geometry.V3 (V3 (..))
+import Data.List (maximumBy)
+import Data.Maybe (fromMaybe)
+import Data.Ord (comparing)
+import Senbazuru.Geometry.V3 (V3 (..), cross, modelSpan)
 import Senbazuru.Geometry.VectorSpace
 
 -- | A 3×3 matrix, stored as its three __rows__.
@@ -160,3 +176,74 @@ inverse :: Rigid -> Rigid
 inverse (Rigid m t) = Rigid mi (V3 0 0 0 ^-^ matApply mi t)
   where
     mi = transpose m
+
+-- | Whether a matrix turns without scaling or mirroring: its rows are unit
+-- vectors at right angles to each other, and its determinant is +1, each
+-- within 1e-12. The determinant alone would accept @diag(2, 1\/2, 1)@, which
+-- stretches; orthonormal rows alone would accept a mirror.
+isProperRotation :: Mat3 -> Bool
+isProperRotation (Mat3 r0 r1 r2) =
+  all
+    near
+    [ (dot r0 r0, 1),
+      (dot r1 r1, 1),
+      (dot r2 r2, 1),
+      (dot r0 r1, 0),
+      (dot r0 r2, 0),
+      (dot r1 r2, 0),
+      (dot r0 (cross r1 r2), 1)
+    ]
+  where
+    near (a, b) = abs (a - b) <= 1e-12
+
+-- | The one rigid motion carrying each first point onto its second, if there
+-- is one: every pair within @1e-9 × max 1 (modelSpan sources)@, the tolerance
+-- "Senbazuru.Origami.Step" judges a moved vertex by, and the turn a proper
+-- rotation. 'Nothing' if the points do not span a plane, since then no single
+-- turn is pinned down, or if no rigid motion fits.
+--
+-- Three points fix it: @a@, the first; @b@, the one farthest from @a@; and
+-- @c@, the one farthest from the line through them. Each side builds an
+-- orthonormal frame from its three, its third axis the cross product of its
+-- first two, and the turn takes one frame onto the other. Every pair is then
+-- checked, not only those three.
+--
+-- __The line that looks like a typo__ is the third axis being a cross product
+-- rather than the third point's own direction. On a model lying flat at
+-- @z = 0@, the mirror @(x, y, z) ↦ (−x, y, z)@ and the half turn
+-- @(x, y, z) ↦ (−x, y, −z)@ put every vertex in the same place, and both fit
+-- every pair. The cross product picks the half turn, which is right: paper
+-- cannot make the mirror. Built that way on both sides, the turn always has
+-- determinant +1, so 'isProperRotation' here only catches a construction bug.
+fitRigid :: [(V3, V3)] -> Maybe Rigid
+fitRigid pairs = case pairs of
+  [] -> Nothing
+  (a, a') : _ -> do
+    let sources = map fst pairs
+        tol = 1e-9 * max 1 (modelSpan sources)
+        (b, b') = maximumBy (comparing (\(p, _) -> norm (p ^-^ a))) pairs
+    if norm (b ^-^ a) <= tol
+      then Nothing
+      else do
+        let offLine p = norm (cross (unitOrZero (b ^-^ a)) (p ^-^ a))
+            (c, c') = maximumBy (comparing (offLine . fst)) pairs
+        if offLine c <= tol
+          then Nothing
+          else do
+            let turn = matMul (columns (frame a' b' c')) (rows (frame a b c))
+                motion = Rigid turn (a' ^-^ matApply turn a)
+            if isProperRotation turn && all (\(p, q) -> norm (applyRigid motion p ^-^ q) <= tol) pairs
+              then Just motion
+              else Nothing
+  where
+    -- An orthonormal frame from three points: towards the second, then
+    -- towards the third with the first direction taken out, then the cross
+    -- product of the two.
+    frame p q r =
+      let e1 = unitOrZero (q ^-^ p)
+          toward = r ^-^ p
+          e2 = unitOrZero (toward ^-^ (dot toward e1 *^ e1))
+       in (e1, e2, cross e1 e2)
+    rows (e1, e2, e3) = Mat3 e1 e2 e3
+    columns (e1, e2, e3) = transpose (Mat3 e1 e2 e3)
+    unitOrZero v = fromMaybe (V3 0 0 0) (normalize v)

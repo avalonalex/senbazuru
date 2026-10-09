@@ -28,10 +28,19 @@
 -- crease it turns about.
 --
 -- Comparing positions rather than reading fold angles is deliberate, and it is
--- the more robust of the two. A frame may record no angles at all; it may
--- record angles that disagree with its own coordinates; and a step may move
--- paper without changing any angle, by turning the whole model over. The
--- coordinates are what the reader is looking at.
+-- the more robust of the two: a frame may record no angles, or angles that
+-- disagree with its coordinates. The coordinates are what the reader is
+-- looking at, with one exception. When some vertex moves and one proper rigid
+-- motion ('Senbazuru.Geometry.Rigid.fitRigid') maps every vertex onto the
+-- next frame, nothing was folded: the reader turned the model over or round.
+-- A turn-over leaves the vertices on its axis where they were, so the test
+-- cannot ask that every vertex move. That pair is a presentation change, and
+-- has no motion to draw an arrow for ('wholeModelMotion' says which). An
+-- identical pair is not one: nothing moved.
+--
+-- A fold cannot pass for one. Its paper held still keeps at least three
+-- corners that are not in a line where they were, so the only motion that
+-- fits them is no motion at all, and the vertices that did move refuse it.
 --
 -- == Why several motions, and not one
 --
@@ -43,6 +52,7 @@
 module Senbazuru.Origami.Step
   ( Motion (..),
     motionsBetween,
+    wholeModelMotion,
   )
 where
 
@@ -59,6 +69,7 @@ import Senbazuru.Fold.Query
     ringEdges,
   )
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), Frame (..), VertexId (..))
+import Senbazuru.Geometry.Rigid (Rigid, fitRigid)
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
 
@@ -85,20 +96,79 @@ data Motion = Motion
 -- faces, differing only in where they are. That is what consecutive frames of a
 -- diagram are, and a pair that disagrees about the graph is not a step but two
 -- different models.
+--
+-- A pair that differs only by a turn of the whole model, a presentation
+-- change, has no motion: the paper did not fold ('wholeModelMotion').
 motionsBetween :: Frame -> Frame -> Either FoldError [Motion]
 motionsBetween before after = do
-  -- Compared for equality and not merely for length. Two frames with the same
-  -- number of faces joined up differently are two models, and matching face i
-  -- to face i across them would take the centre of one flap and the centre of
-  -- an unrelated one as the two ends of a motion.
+  sameModel before after
+  from <- frameVertices before
+  to <- frameVertices after
+  case wholeTurn from to of
+    Just _ -> pure []
+    Nothing -> foldedBetween before after from to
+
+-- | The turn of the whole model between two frames of one paper, when that is
+-- all that happened: some vertex moved, and one proper rigid motion carries
+-- every vertex onto its place in the second frame. That is a turn-over or a
+-- turn of the page, a change of presentation, which a page marks rather than
+-- drawing an arrow for. 'Nothing' when paper folded, and when nothing moved.
+wholeModelMotion :: Frame -> Frame -> Either FoldError (Maybe Rigid)
+wholeModelMotion before after = do
+  sameModel before after
+  from <- frameVertices before
+  to <- frameVertices after
+  pure (wholeTurn from to)
+
+-- | The two frames describe the same paper: the same vertices, edges and
+-- faces.
+--
+-- Compared for equality and not merely for length. Two frames with the same
+-- number of faces joined up differently are two models, and matching face i to
+-- face i across them would take the centre of one flap and the centre of an
+-- unrelated one as the two ends of a motion.
+sameModel :: Frame -> Frame -> Either FoldError ()
+sameModel before after = do
   sameLength "vertices_coords" (length (verticesCoords before)) (length (verticesCoords after))
   sameContent "edges_vertices" (edgesVertices before) (edgesVertices after)
   sameContent "faces_vertices" (facesVertices before) (facesVertices after)
-  from <- frameVertices before
-  to <- frameVertices after
+  where
+    sameLength what a b
+      | a == b = Right ()
+      | otherwise = Left (FramesDiffer what a b)
+
+    sameContent what a b
+      | length a /= length b = Left (FramesDiffer what (length a) (length b))
+      | otherwise = case [i | (i, x, y) <- zip3 [0 ..] a b, x /= y] of
+          (i : _) -> Left (FramesDisagree what i)
+          [] -> Right ()
+
+-- | The vertices that moved between two placements of one paper: further from
+-- where they were than rounding can explain, judged against the size of the
+-- model. A millimetre is a fold in something a centimetre across and noise in
+-- something the size of a room. 'modelSpan' is shared with the other places
+-- that ask how big a thing is, so they cannot drift apart, and 'fitRigid'
+-- judges its fit by the same tolerance.
+movedBetween :: [V3] -> [V3] -> S.Set Int
+movedBetween from to =
+  S.fromList
+    [ v
+      | (v, a, b) <- zip3 [0 ..] from to,
+        norm (a ^-^ b) > 1e-9 * max 1 (modelSpan from)
+    ]
+
+-- | A turn of the whole model, if that is what moved some vertices.
+wholeTurn :: [V3] -> [V3] -> Maybe Rigid
+wholeTurn from to
+  | S.null (movedBetween from to) = Nothing
+  | otherwise = fitRigid (zip from to)
+
+-- | The motions of a pair in which paper folded.
+foldedBetween :: Frame -> Frame -> [V3] -> [V3] -> Either FoldError [Motion]
+foldedBetween before after from to = do
   facesBefore <- frameFaces before
   facesAfter <- frameFaces after
-  let moved = movedVertices from to
+  let moved = movedBetween from to
       cornersAfter = M.fromList [(faceId f, faceCorners f) | f <- facesAfter]
       movedFaces =
         [ (f, ringKeys (faceVertexIds f))
@@ -115,31 +185,9 @@ motionsBetween before after = do
       | group <- connectedGroups movedFaces
     ]
   where
-    sameLength what a b
-      | a == b = Right ()
-      | otherwise = Left (FramesDiffer what a b)
-
-    sameContent what a b
-      | length a /= length b = Left (FramesDiffer what (length a) (length b))
-      | otherwise = case [i | (i, x, y) <- zip3 [0 ..] a b, x /= y] of
-          (i : _) -> Left (FramesDisagree what i)
-          [] -> Right ()
-
     -- Guaranteed present by the faces_vertices check above; the fallback keeps
     -- the function total rather than standing for a case that can happen.
     laterCorners byId f = M.findWithDefault (faceCorners f) (faceId f) byId
-
-    -- A vertex counts as having moved when it is further from where it was than
-    -- rounding can explain, judged against the size of the model: a millimetre
-    -- is a fold in something a centimetre across and noise in something the
-    -- size of a room. 'modelSpan' is shared with the other places that ask how
-    -- big a thing is, so they cannot drift apart.
-    movedVertices from to =
-      S.fromList
-        [ v
-          | (v, a, b) <- zip3 [0 ..] from to,
-            norm (a ^-^ b) > 1e-9 * max 1 (modelSpan from)
-        ]
 
     centre [] = V3 0 0 0
     centre ps = (1 / fromIntegral (length ps)) *^ foldl' (^+^) (V3 0 0 0) ps

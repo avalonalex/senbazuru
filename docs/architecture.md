@@ -108,7 +108,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
-| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform, and the inverses that undo them. |
+| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform, and the inverses that undo them. `isProperRotation` checks that a matrix turns without stretching or mirroring; `fitRigid` finds the one such motion carrying a set of points onto another, if there is one. |
 | `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. Also picks a reader from a file's extension, and refuses a `.foldseq` as a sequence source. Reads a sequence source as text and nothing more, knowing nothing of the language. |
@@ -132,7 +132,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Origami.Surface` | Shared material surface with original-sheet coordinates when known, current positions, crease/panel identities, coplanar orders, directional layer requirements and optional physical thickness. Owns the study's mesh types and shared midpoint refinement. |
 | `Senbazuru.Origami.Layers` | `faceOrders` + a viewing direction → an order to draw in, how deep in the stack each face is, and which side of the paper it shows. Reads orders; never computes them. |
 | `Senbazuru.Origami.Stacking` | A flat-folded frame → its `faceOrders`, solved from taco and tortilla constraints, one independent component at a time. Also `layerOrderFor`, the one policy for *which* orders a frame gets — its own, or solved, or none — shared by the SVG and 3D backends. |
-| `Senbazuru.Origami.Step` | Two frames → what moved between them. |
+| `Senbazuru.Origami.Step` | Two frames → what moved between them. Nothing, for a pair that differs by a turn of the whole model (`wholeModelMotion`): a turn-over or rotation, a change of presentation, not a fold. |
 | `Senbazuru.Origami.ThroughLayers` | A line drawn on the model a pattern folds into → the creases it makes on the pattern, one per face it crosses, each of the kind that layer's own way up asks for. |
 | `Senbazuru.Origami.Visible` | A flat-folded frame + `faceOrders` + which side it is seen from → the paper that shows and the edges that are not hidden. |
 | `Senbazuru.Render.Camera` | Orthographic projection: 3D → the page. |

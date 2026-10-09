@@ -192,7 +192,7 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR |
 | 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2 |
 | 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3 |
-| 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation |
+| 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation: landed with 05 L3 (#95), 2026-10-09 |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs |
 | 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
