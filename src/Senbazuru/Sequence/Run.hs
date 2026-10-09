@@ -45,7 +45,12 @@
 --    two individually checked moves would otherwise pass unseen.
 --
 -- An @unfold@ reuses each named move's recorded hinge and seed, last move
--- first, and turns its hinge back by that move's change of angle. It is
+-- first, and turns its hinge back by that move's change of angle. A record
+-- numbers its edges and faces as the paper was then, and a later move may
+-- have creased the paper since, which renumbers them; so the hinge is found
+-- again by its vertices, which creasing never renumbers, and the moving side
+-- by which way the faces run along it ('piecesNow', 'movingSideNow'), as is
+-- the crease @hinge of NAME@ names. It is
 -- refused if a later move changed one of those creases, and skips a move
 -- whose creases all lie flat already. One that turns back several moves makes
 -- a record for each, all at the unfold's own step and move, in the order it
@@ -57,9 +62,7 @@
 -- until that is built it is refused as not run yet, as are a new crease on
 -- folded paper, which creases through its layers (milestone M4), a new
 -- crease through the anchor, which moves the anchor (decisions C19), layer
--- words and every move but @fold@ and @unfold@. So are @unfold@ and
--- @hinge of@ a move made before the paper was creased again: its record's
--- edge ids name the edges of a pattern since renumbered.
+-- words and every move but @fold@ and @unfold@.
 --
 -- == What a fold state holds
 --
@@ -133,15 +136,15 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (find, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
-import Senbazuru.Fold.Faces (sheetOf, tolerance)
+import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, frameKind, frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (centroid, insideRing, signedArea)
+import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, insideRing, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, prepareFlapAlong, prepareFlapToward)
@@ -433,16 +436,13 @@ foldMove settings place named given sense amount line layers seed = do
   found <- first (refusedAt place . FoldingRefused) (foldNow given)
   seen <- first (resolvingAt place (prettyLine line)) (flatState found)
   -- @hinge of NAME@ is the line the named step's one move turned about: the
-  -- recorded crease, where the paper now lies. The record numbers its edges
-  -- as the paper was then, so once a later move has creased the paper they
-  -- name other edges, and that is not run yet.
+  -- recorded crease, where the paper now lies, found on the paper as it is
+  -- now, since a later move may have creased it ('piecesNow').
   foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
     HingeOf name -> case M.findWithDefault [] name named of
-      [earlier]
-        | creasedSince given earlier -> Left (NotRunYet "\"hinge of\" a move made before the paper was creased again,")
-        | otherwise -> case concatMap snd (recordHinge earlier) of
-            e : _ -> lineAlong seen e
-            [] -> Left NoSolution
+      [earlier] -> case concatMap (piecesNow (theWorking given) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)) of
+        e : _ -> lineAlong seen e
+        [] -> Left NoSolution
       records -> Left (HingeOfNotOneMove name (length records))
     _ -> foldLine (runNearMissBand settings) seen line
   let toward = case sense of
@@ -529,49 +529,103 @@ creaseAcross place line state folded flat foldAt toward = case crossedFaces flat
   where
     MaterialPoint anchor = theAnchor state
 
--- | Whether the paper has been creased since a move was made: the edges its
--- record numbers are not the working pattern's any more. Creasing numbers the
--- edges afresh, so the record's ids would name other edges now.
-creasedSince :: FoldState -> MoveRecord -> Bool
-creasedSince state record = edgesVertices (surfaceFrame (recordBefore record)) /= edgesVertices (theWorking state)
+-- | A record's edge, numbered as the paper was when the move was made, found
+-- on the working pattern now: the edge itself, if nothing has cut it since,
+-- or the pieces a later crease cut it into, in order from its first end.
+--
+-- Creasing appends vertices and never renumbers one, so the edge's two ends
+-- are the same vertices now; its pieces are the edges lying between them on
+-- the sheet. Edges are renumbered, which is why the record's edge id alone
+-- would name some other crease.
+piecesNow :: Frame -> Frame -> EdgeId -> [EdgeId]
+piecesNow now thenFrame (EdgeId e) = case drop e (edgesVertices thenFrame) of
+  (a, b) : _
+    | e >= 0 -> case drop e (edgesVertices now) of
+        (u, v) : _ | (u, v) == (a, b) -> [EdgeId e]
+        _ -> between a b
+  _ -> []
+  where
+    material = IM.fromList (zip [0 ..] [V2 x y | x : y : _ <- verticesCoords now])
+    at (VertexId v) = IM.lookup v material
+    room = toleranceOf (IM.elems material)
+    between a b = case (at a, at b) of
+      (Just p, Just q) ->
+        let on x = distanceToSegment (p, q) x <= room
+         in map snd . sortOn fst $
+              [ (dot (0.5 *^ (x ^+^ y) ^-^ p) (q ^-^ p), EdgeId i)
+                | (i, (u, v)) <- zip [0 ..] (edgesVertices now),
+                  Just x <- [at u],
+                  on x,
+                  Just y <- [at v],
+                  on y
+              ]
+      _ -> []
+
+-- | Which side of a record's hinge crease its moving paper lay, found on the
+-- working pattern now: the face beside a piece of that crease that lies the
+-- same way round it as one of the record's moving faces did.
+--
+-- Face ids do not survive the re-tracing a new crease makes, so the side is
+-- read from the rings. Every ring of the working pattern runs anticlockwise
+-- on the sheet, as 'sheetState' winds them and as tracing does, so a face
+-- lies to the left of an edge it runs along forwards and to the right of one
+-- it runs along backwards. A piece runs the way its crease ran, since
+-- cutting keeps every crease's direction from its first end, so "left of the
+-- piece" and "left of the crease" are one side.
+movingSideNow :: Frame -> Frame -> [FaceId] -> EdgeId -> EdgeId -> Maybe FaceId
+movingSideNow now thenFrame moving (EdgeId thenEdge) (EdgeId piece) = do
+  (a, b) <- listToMaybe (drop thenEdge (edgesVertices thenFrame))
+  (u, v) <- listToMaybe (drop piece (edgesVertices now))
+  wanted <- listToMaybe [s | FaceId g <- moving, ring <- take 1 (drop g (facesVertices thenFrame)), let s = sideOf ring a b, s /= 0]
+  listToMaybe [FaceId f | (f, ring) <- zip [0 ..] (facesVertices now), sideOf ring u v == wanted]
+  where
+    -- +1 if the face lies left of a -> b, -1 if right, 0 if it does not run
+    -- along that edge.
+    sideOf ring a b
+      | (a, b) `elem` pairs = 1 :: Int
+      | (b, a) `elem` pairs = -1
+      | otherwise = 0
+      where
+        pairs = zip ring (drop 1 ring ++ take 1 ring)
 
 -- | Turn one recorded move back: its own hinge and seed, by the change of
 -- angle it made. Skipped if its creases all lie flat already; refused if a
--- later move changed one of them, or creased the paper since.
+-- later move changed one of them.
+--
+-- The record numbers its edges and faces as the paper was then; a later
+-- move may have creased the paper since, so each is found on the paper as it
+-- is now ('piecesNow', 'movingSideNow'), and the new record numbers them as
+-- now.
 undoOne :: RunSettings -> Here -> (FoldState, [MoveRecord]) -> MoveRecord -> Either SequenceError (FoldState, [MoveRecord])
 undoOne settings place (state, made) earlier = do
-  when (creasedSince state earlier) (Left (refusedAt place (MoveNotRunYet "an unfold of a move made before the paper was creased again,")))
-  let hinge = concatMap snd (recordHinge earlier)
+  let working = theWorking state
+      thenFrame = surfaceFrame (recordBefore earlier)
+      -- Each recorded hinge edge with each of its pieces now.
+      pairs = [(e, p) | e <- concatMap snd (recordHinge earlier), p <- piecesNow working thenFrame e]
+      hinge = map snd pairs
       (before, after) = recordAngles earlier
-      now = edgesFoldAngle (theWorking state)
+      now = edgesFoldAngle working
       angle angles (EdgeId e) = IM.lookup e (IM.fromList (zip [0 ..] angles))
       flat e = maybe True ((<= atRest) . abs) (angle now e)
-  case hinge of
-    first' : _
+  case pairs of
+    (firstThen, first') : _
       | not (all flat hinge) -> do
-          case [e | e <- hinge, angle now e /= angle after e] of
-            e : _ -> Left (refusedAt place (UnfoldChangedSince e))
+          case [p | (e, p) <- pairs, angle now p /= angle after e] of
+            p : _ -> Left (refusedAt place (UnfoldChangedSince p))
             [] -> Right ()
-          let travel = fromMaybe 0 ((-) <$> angle before first' <*> angle now first')
+          let travel = fromMaybe 0 ((-) <$> angle before firstThen <*> angle now first')
               (seed, moving) = case recordMoving earlier of
-                (p, faces) : _ -> (p, faces)
+                (m, faces) : _ -> (m, faces)
                 [] -> (MaterialPoint (V2 0 0), [])
           folded <- first (refusedAt place . FoldingRefused) (foldNow state)
-          side <- case [f | f <- moving, f `elem` besideEdge (theWorking state) first'] of
-            f : _ -> Right f
-            [] -> Left (refusedAt place (Selecting NothingSelected))
+          side <- maybe (Left (refusedAt place (Selecting NothingSelected))) Right (movingSideNow working thenFrame moving firstThen first')
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-          record <- first (refusedAt place . FlapRefused) (recordOf place (recordHinge earlier) [] seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
+          let stretches = [(segment, concatMap (piecesNow working thenFrame) edges) | (segment, edges) <- recordHinge earlier]
+          record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
     _ -> Right (state, made)
-
--- | The faces of the pattern either side of an edge.
-besideEdge :: Frame -> EdgeId -> [FaceId]
-besideEdge frame (EdgeId e) = case drop e (edgesVertices frame) of
-  (VertexId a, VertexId b) : _ | e >= 0 -> [FaceId f | (f, ring) <- zip [0 ..] (facesVertices frame), (x, y) <- zip ring (drop 1 ring ++ take 1 ring), (unVertexId x, unVertexId y) `elem` [(a, b), (b, a)]]
-  _ -> []
 
 -- | The record of a checked turn, at this place.
 recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
