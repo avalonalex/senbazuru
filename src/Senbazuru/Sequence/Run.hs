@@ -203,7 +203,7 @@ sheetState file = do
   planar <- first SheetNotAPattern (withPlanarFaces key {faceOrders = [], frameExtras = mempty})
   material <- first SheetNotAPattern (IM.fromList . zip [0 ..] . map flat <$> frameVertices planar)
   room <- first SheetNotAPattern (tolerance <$> sheetOf planar)
-  let ring face = [p | VertexId i <- face, Just p <- [IM.lookup i material]]
+  let ring = ringOn material
       faces = [if signedArea (ring face) < 0 then reverse face else face | face <- facesVertices planar]
       measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 :: Int ..] faces]
   (index, anchor) <- case defaultAnchor room measured of
@@ -538,14 +538,19 @@ creaseAcross place line state folded flat foldAt toward = case crossedFaces flat
     (creased, pieces) <- first (refusedAt place . CreasingRefused) (creaseAllAlongWith AtRest [(a, b, letter) | (a, b) <- chords] (theWorking state))
     room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf creased)
     let material = materialPoints creased
-        ring face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
+        ring = ringOn material
         faces = facesVertices creased
         -- A face holds a point on its outline too, as a closed polygon does.
         holds face = insideRing room (ring face) anchor || any ((<= room) . (`distanceToSegment` anchor)) (edges (ring face))
-        (ordered, around) = case [i | (i, face) <- zip [0 ..] faces, insideRing room (ring face) anchor] of
-          [i] -> (firstOf i faces, [])
-          _ -> (faces, [i | (i, face) <- zip [0 ..] faces, holds face])
-        next = state {theWorking = creased {facesVertices = ordered}, theFold = Nothing}
+    -- Strictly inside one face, the anchor stays, and that face goes first;
+    -- on a crease, it is held by the faces around it, and the caller moves
+    -- it. On none at all, nothing could say which face to hold still.
+    (ordered, around) <- case [i | (i, face) <- zip [0 ..] faces, insideRing room (ring face) anchor] of
+      [i] -> Right (firstOf i faces, [])
+      _ -> case [i | (i, face) <- zip [0 ..] faces, holds face] of
+        [] -> Left (refusedAt place (MoveNotRunYet "a new crease that leaves the anchor on no face,"))
+        held -> Right (faces, held)
+    let next = state {theWorking = creased {facesVertices = ordered}, theFold = Nothing}
     refolded <- first (refusedAt place . FoldingRefused) (foldNow next)
     named <- first (resolvingAt place (prettyLine line)) (flatState refolded)
     pure (next, refolded, named, [(MaterialSegment (MaterialPoint a) (MaterialPoint b), ids, letter) | ((a, b), ids) <- zip chords pieces], around)
@@ -562,7 +567,7 @@ reanchor :: Here -> FoldState -> [Int] -> Either SequenceError FoldState
 reanchor place state still = do
   let working = theWorking state
       material = materialPoints working
-      ring face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
+      ring = ringOn material
       faces = facesVertices working
       measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 ..] faces, i `elem` still]
   room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf working)
@@ -603,6 +608,10 @@ piecesNow now thenFrame (EdgeId e) = case drop e (edgesVertices thenFrame) of
                   on y
               ]
       _ -> []
+
+-- | A face's corners on the sheet, from a pattern's points.
+ringOn :: IM.IntMap V2 -> [VertexId] -> [V2]
+ringOn material face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
 
 -- | Each vertex of a working pattern where it lies on the sheet: the pattern's
 -- own coordinates, since a working pattern is never folded in place.
