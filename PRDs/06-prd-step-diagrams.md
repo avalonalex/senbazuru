@@ -713,15 +713,12 @@ to 7 in either direction ([02 §12](02-language-semantics.md#12-refusal-catalogu
 motion as 8 − k anticlockwise, and a 4/8 turn has no direction at all. Both results
 come from a `python3` check on the rotation matrices, run 2026-09-15.
 
-> **Open for the next version of decisions.** `recordKind :: MoveKind` must carry a
-> rotate's written k and direction.
-> [decisions §5](decisions.md#5-type-sketch) names the field and lists one
-> constructor, `Precrease`, which carries nothing. The one sketch that lists the
-> others has a bare `Present`
-> ([gap-study-consumption-contract](research/gap-study-consumption-contract.md),
-> "(a) The per-step record, and who imports what"), which carries neither. The
-> alternative is to decide that a rotate mark draws the same motion as a turn of at
-> most four eighths, with a chosen direction for a half turn.
+**Settled at M2** ([decisions C82](decisions.md#changes-since-draft-v2)): the record
+carries the turn as written. `recordKind` is `Presentation` for both moves, holding
+`TurnedOver PageAxis` or `Rotated Int Turning`, so a page reads a rotate's k and
+direction from the record and never from the motion. The alternative, drawing a
+rotate as the same motion turned at most four eighths with a chosen direction for a
+half turn, would have drawn a mark the author did not write.
 
 ## Risks
 

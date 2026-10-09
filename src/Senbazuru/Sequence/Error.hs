@@ -659,8 +659,8 @@ data MoveFailure
     FlapRefused FlapError
   | -- | The paper would not fold from its angles.
     FoldingRefused FoldingError
-  | -- | A turn-over would show the model mirrored or stretched, which no
-    -- turn of paper can do (decisions D5). The runner builds every
+  | -- | A turn-over or a rotate would show the model mirrored or stretched,
+    -- which no turn of paper can do (decisions D5). The runner builds every
     -- presentation from turns, so this is a fault of the runner.
     PresentationImproper
   | -- | Creasing the paper where the fold line crosses it was refused. The
@@ -715,7 +715,7 @@ instance Explain MoveFailure where
     FlapRefused err -> explain err
     FoldingRefused err -> explain err
     CreasingRefused err -> "creasing the paper along the fold line was refused: " <> explain err
-    PresentationImproper -> "turning the model over would show it mirrored or stretched, which no turn of paper can do"
+    PresentationImproper -> "turning the model would show it mirrored or stretched, which no turn of paper can do"
     JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
     NotModelledStop what -> "\"" <> what <> "\" is not modelled, so the run stops here and keeps the moves before it"
     UnfoldChangedSince (EdgeId e) -> "(internal edge " <> tshow e <> ") has been folded again since, so turning it back would undo that fold too"

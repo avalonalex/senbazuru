@@ -15,6 +15,7 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.Rigid (Rigid (..), matApply)
+import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
 import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..), SweepSettings (..))
@@ -24,7 +25,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -42,6 +43,7 @@ spec = do
   creasing
   precreasing
   turningOver
+  rotating
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -136,7 +138,7 @@ running = describe "running a sequence" $ do
         other -> expectationFailure ("expected edge south refused as lying across the fold, got " <> show other)
 
     it "a move it does not make yet, by name" $
-      refusal (runOn (oneStep (rotate 2 Clockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate\"")
+      refusal (runOn (oneStep (anchor centre))) `shouldBe` Just (MoveNotRunYet "\"anchor\"")
   where
     coords (V3 x y z) = [x, y, z]
     coords2 (V2 x y) = [x, y]
@@ -338,7 +340,7 @@ turningOver = describe "a turn-over" $ do
     record <- case runRecords run of
       [r] -> pure r
       other -> fail ("expected one record, got " <> show (length other))
-    (recordKind record, recordEvidence record) `shouldBe` (Presentation, Presented)
+    (recordKind record, recordEvidence record) `shouldBe` (Presentation (TurnedOver LeftRight), Presented)
     recordAfter record `shouldBe` recordBefore record
     states <- right (writtenStates run)
     (laid, turned) <- case map stateFrame states of
@@ -387,7 +389,7 @@ turningOver = describe "a turn-over" $ do
       step_ "Crease both midlines." $ do
         move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf South) (EdgeOf North) Nothing) FlapOfFirstArgument Nothing)
         move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf West) (EdgeOf East) Nothing) FlapOfFirstArgument Nothing)
-    map recordKind (runRecords run) `shouldBe` [Precrease, Precrease, Presentation, Precrease, Precrease]
+    map recordKind (runRecords run) `shouldBe` [Precrease, Precrease, Presentation (TurnedOver LeftRight), Precrease, Precrease]
 
   -- White side up starts with a turn-over left-right (G3): state 0 is
   -- written turned over, showing its back. Turns red if the start were not
@@ -417,6 +419,130 @@ turningOver = describe "a turn-over" $ do
       [start, _, back] -> zipWith near (corners back) (corners start) `shouldBe` replicate 4 True
       other -> expectationFailure ("expected three states, got " <> show (length other))
     fmap (snd . recordPresentation) (take 1 (drop 1 (runRecords run))) `shouldSatisfy` all (\p -> matApply (rigidLinear p) (V3 0 0 1) `near` V3 0 0 1)
+
+-- A rotate (#95): the whole model turned on the page about its own middle,
+-- the same side up, by whole quarter turns. On the square, a quarter turn
+-- anticlockwise about (1/2, 1/2) takes (x, y) to (1 - y, x).
+rotating :: Spec
+rotating = describe "a rotate" $ do
+  let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings M.empty . elaborate
+      onSquare = runOn . sequenceOf (header "A square" sheetSquare Nothing)
+      positions frame = [V3 x y z | x : y : rest <- verticesCoords frame, let z = case rest of c : _ -> c; [] -> 0]
+      corners = take 4 . positions
+      near (V3 a b c) (V3 x y z) = maximum (map abs [a - x, b - y, c - z]) < 1e-12
+      anticlockwise = [V3 1 0 0, V3 1 1 0, V3 0 1 0, V3 0 0 0]
+      clockwise = [V3 0 1 0, V3 0 0 0, V3 1 0 0, V3 1 1 0]
+      halfTurned = [V3 1 1 0, V3 0 1 0, V3 0 0 0, V3 1 0 0]
+      -- The square after one step, as written.
+      turnedBy moves = do
+        run <- right (onSquare (step_ "Turn the paper." moves))
+        states <- right (writtenStates run)
+        case map stateFrame states of
+          [_, turned] -> pure turned
+          other -> fail ("expected two states, got " <> show (length other))
+      refusal = \case
+        Left (StepRefused _ _ _ failure) -> Just failure
+        _ -> Nothing
+
+  -- One record, presented, its two surfaces one, written turned and still
+  -- showing its front, so classed a crease pattern; and the page finds no
+  -- fold between the two written states. Turns red if the turn went the
+  -- other way, were about the origin, turned the paper over, or drew an
+  -- arrow.
+  it "turns the model a quarter turn about its middle, the same side up, and moves no paper" $ do
+    run <- right (onSquare (step_ "Turn the paper a quarter turn." (rotate 2 Anticlockwise)))
+    record <- case runRecords run of
+      [r] -> pure r
+      other -> fail ("expected one record, got " <> show (length other))
+    (recordKind record, recordEvidence record) `shouldBe` (Presentation (Rotated 2 Anticlockwise), Presented)
+    recordAfter record `shouldBe` recordBefore record
+    states <- right (writtenStates run)
+    (laid, turned) <- case map stateFrame states of
+      [a, b] -> pure (a, b)
+      other -> fail ("expected two states, got " <> show (length other))
+    zipWith near (corners turned) anticlockwise `shouldBe` replicate 4 True
+    frameClasses turned `shouldBe` ["creasePattern"]
+    motionsBetween laid turned `shouldBe` Right []
+    fmap isJust (wholeModelMotion laid turned) `shouldBe` Right True
+    renderRunReport run `shouldContain` ["  presented: the whole model turned on the page, the same side up; no paper moved"]
+    [l | l <- renderRunReport run, "  moving:" `T.isPrefixOf` l] `shouldBe` []
+
+  -- Clockwise is the other way, and k eighths one way are 8 - k the other:
+  -- the same motion, though each record keeps the turn as written. Turns red
+  -- if a direction were ignored or a negative count of quarters lost.
+  it "turns clockwise the other way, and six eighths one way as two the other" $ do
+    two <- turnedBy (rotate 2 Clockwise)
+    zipWith near (corners two) clockwise `shouldBe` replicate 4 True
+    six <- turnedBy (rotate 6 Anticlockwise)
+    zipWith near (corners six) clockwise `shouldBe` replicate 4 True
+    sixBack <- turnedBy (rotate 6 Clockwise)
+    zipWith near (corners sixBack) anticlockwise `shouldBe` replicate 4 True
+    run <- right (onSquare (step_ "Turn the paper." (rotate 6 Anticlockwise)))
+    map recordKind (runRecords run) `shouldBe` [Presentation (Rotated 6 Anticlockwise)]
+
+  -- A half turn has no direction: both are the same motion, and only the
+  -- record says which the author wrote, which a page draws (PRD 06).
+  it "makes a half turn either way alike, and keeps the way written" $ do
+    either' <- mapM (turnedBy . rotate 4) [Clockwise, Anticlockwise]
+    [zipWith near (corners f) halfTurned | f <- either'] `shouldBe` replicate 2 (replicate 4 True)
+    runs <- mapM (right . onSquare . step_ "Turn the paper." . rotate 4) [Clockwise, Anticlockwise]
+    map (map recordKind . runRecords) runs `shouldBe` [[Presentation (Rotated 4 Clockwise)], [Presentation (Rotated 4 Anticlockwise)]]
+
+  -- Folded in half, the model is the top half, centred on (1/2, 3/4), one
+  -- wide and a half tall; turned a quarter, it is a half wide and one tall
+  -- about the same centre. Turns red if the turn were about the sheet's
+  -- middle, where the model was not, or about the origin.
+  it "turns about the middle of the model as it is, not of the sheet" $ do
+    run <- right . onSquare $ do
+      step_ "Fold the bottom half up." (fold valley (LineOnto (edge South) (edge North) Nothing))
+      step_ "Turn the model a quarter turn." (rotate 2 Anticlockwise)
+    states <- right (writtenStates run)
+    let box frame = let ps = positions frame in [minimum (map v3x ps), maximum (map v3x ps), minimum (map v3y ps), maximum (map v3y ps)]
+        close a b = abs (a - b) < 1e-12
+    case map stateFrame states of
+      [_, folded, turned] -> do
+        zipWith close (box folded) [0, 1, 1 / 2, 1] `shouldBe` replicate 4 True
+        zipWith close (box turned) [1 / 4, 3 / 4, 1 / 4, 5 / 4] `shouldBe` replicate 4 True
+      other -> expectationFailure ("expected three states, got " <> show (length other))
+
+  -- A rotate keeps the reader's side, so in front is still +z: a valley the
+  -- reader folds is a valley from the coloured side, +180. Turns red if a
+  -- rotate turned the paper over, as a turn-over does.
+  it "leaves a later in front reading from the same side" $ do
+    run <- right . onSquare $ do
+      step_ "Turn the paper a quarter turn." (rotate 2 Anticlockwise)
+      step_ "Fold the bottom half up in front." (fold inFront (LineOnto (edge South) (edge North) Nothing))
+    case [r | r <- runRecords run, recordStep r == 2] of
+      [folded] -> do
+        [letter | (_, _, letter) <- recordNewCreases folded] `shouldBe` [Valley]
+        [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== 180)
+      other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+
+  -- After a turn-over the model is shown from behind, and a rotate turns it
+  -- as shown: anticlockwise as the reader now sees it. The record's turn,
+  -- its presentation after with the one before undone, is the quarter turn
+  -- about +z the author wrote, which is how a page reads it (PRD 06). Turns
+  -- red if the rotate were made on the paper before its presentation, which
+  -- turns it clockwise as the reader sees it.
+  it "turns the model as it is shown, after a turn-over" $ do
+    run <- right . onSquare $ do
+      step_ "Turn the paper over." (turnOver LeftRight)
+      step_ "Turn it a quarter turn." (rotate 2 Anticlockwise)
+    states <- right (writtenStates run)
+    case map stateFrame states of
+      [_, _, turned] -> do
+        zipWith near (corners turned) [V3 1 1 0, V3 1 0 0, V3 0 0 0, V3 0 1 0] `shouldBe` replicate 4 True
+        frameClasses turned `shouldBe` ["foldedForm"]
+      other -> expectationFailure ("expected three states, got " <> show (length other))
+    case [recordPresentation r | r <- runRecords run, recordStep r == 2] of
+      [(shownBefore, shownAfter)] -> matApply (rigidLinear (shownAfter `Rigid.after` Rigid.inverse shownBefore)) (V3 1 0 0) `shouldSatisfy` near (V3 0 1 0)
+      other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+
+  -- An eighth turn needs cos 45°, which no Double holds, and waits on owner
+  -- decision 10: refused as not run yet, saying what is.
+  it "refuses an odd number of eighths as not run yet" $ do
+    refusal (onSquare (step_ "Turn the paper to a diamond." (rotate 1 Anticlockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate 1/8 turn\", which is not a whole number of quarter turns,")
+    refusal (onSquare (step_ "Turn the paper." (rotate 3 Clockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate 3/8 turn\", which is not a whole number of quarter turns,")
 
 -- A fold along a line where no crease runs (#495). On the flat sheet, every
 -- crease at rest, the runner creases each face the line crosses and then
