@@ -269,7 +269,7 @@ precreasing = describe "a pre-crease" $ do
       ended `shouldBe` began
       snd (recordAngles record) `shouldSatisfy` all (== 0)
       [letter | (_, _, letter) <- recordNewCreases record] `shouldBe` [Unassigned]
-    renderRunReport run `shouldContain` ["  laid flat again: a pre-crease leaves its crease and no paper anywhere new"]
+    renderRunReport run `shouldContain` ["  laid flat again: the paper ends where it began"]
 
   -- On the blintz, corner south-east's crease is one the sheet has, a
   -- mountain. Pre-creasing along it draws nothing new and leaves it a

@@ -218,9 +218,9 @@ data MoveKind
     -- where the turn left it.
     Turn
   | -- | A pre-crease (owner decision 14): the paper is folded along a line
-    -- and laid flat again, so it ends where it began, with the crease left
-    -- behind. Its record keeps the fold's evidence, which was checked over
-    -- its whole path, and carries no sense, since its crease has none.
+    -- and laid flat again, so it ends where it began, creased along the
+    -- line. Its record keeps the fold's evidence, which was checked over its
+    -- whole path, and carries no sense, since a crease it draws has none.
     Precrease
   deriving stock (Eq, Show)
 
@@ -569,7 +569,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       [checked (recordEvidence r)]
         ++ map resolvedFact (recordResolved r)
         ++ map newCrease (recordNewCreases r)
-        ++ ["laid flat again: a pre-crease leaves its crease and no paper anywhere new" | recordKind r == Precrease]
+        ++ ["laid flat again: the paper ends where it began" | recordKind r == Precrease]
         ++ [ "anchor moved: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", off the new crease"
              | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
                a /= b
