@@ -16,7 +16,7 @@ import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Load (decodeFoldFile, encodeFoldFile, loadFoldFile)
 import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry.Rigid (rotationAbout)
+import Senbazuru.Geometry.Rigid (identity, rotationAbout)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Folding (foldFrameWith)
 import Senbazuru.Origami.Stacking (defaultBudget)
@@ -224,7 +224,7 @@ spec = describe "writing a run as a sequence file" $ do
       [x, y] -> [x, y, 0]
       other -> other
     near a b = length a == length b && and (zipWith (\x y -> abs (x - y) <= 1e-12) a b)
-    startingAt start = Run Nothing start [] [] [] Nothing Nothing
+    startingAt start = Run Nothing start identity [] [] [] Nothing Nothing
     lastOf = listToMaybe . reverse
     isArray = \case
       Array _ -> True
