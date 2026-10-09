@@ -116,6 +116,7 @@ module Senbazuru.Sequence.Record
     recordEvidence,
     recordHinge,
     recordNewCreases,
+    recordAnchor,
     recordMoving,
     recordStationary,
     recordResolved,
@@ -199,6 +200,7 @@ data MoveRecord = MoveRecord
     theEvidence :: !RouteEvidence,
     theHinge :: ![(MaterialSegment, [EdgeId])],
     theNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)],
+    theAnchor :: !(MaterialPoint, MaterialPoint),
     theMoving :: ![(MaterialPoint, [FaceId])],
     theStationary :: !FaceId,
     theResolved :: ![ResolvedReference]
@@ -274,6 +276,13 @@ recordHinge = theHinge
 recordNewCreases :: MoveRecord -> [(MaterialSegment, [EdgeId], Assignment)]
 recordNewCreases = theNewCreases
 
+-- | The anchor, the point of paper held still, before the move and after
+-- it. The two differ when the move's new crease ran through the anchor,
+-- which moved it off the crease to a face the move held still (decisions
+-- C19); creasing moves no paper, so nothing is placed differently.
+recordAnchor :: MoveRecord -> (MaterialPoint, MaterialPoint)
+recordAnchor = theAnchor
+
 -- | The paper that moved: each seed the author named it by, with the faces
 -- that seed picked out. The faces are the turn's; the seed is the runner's.
 recordMoving :: MoveRecord -> [(MaterialPoint, [FaceId])]
@@ -326,13 +335,16 @@ hingeTurn ::
   -- | The creases the move drew before it turned, with their edges and
   -- letters; none for a fold along creases the paper had.
   [(MaterialSegment, [EdgeId], Assignment)] ->
+  -- | The anchor before the move and after it, the same unless the move's
+  -- new crease ran through it.
+  (MaterialPoint, MaterialPoint) ->
   -- | The seed the moving paper was picked out by.
   MaterialPoint ->
   -- | The references the move resolved, for the report.
   [ResolvedReference] ->
   CheckedFlap ->
   Either FlapError MoveRecord
-hingeTurn step move name caption origin hinge newCreases seed resolved turn = do
+hingeTurn step move name caption origin hinge newCreases anchor seed resolved turn = do
   before <- flapAt turn 0
   after <- flapAt turn 1
   pure
@@ -347,6 +359,7 @@ hingeTurn step move name caption origin hinge newCreases seed resolved turn = do
         theEvidence = SweptHinge turn,
         theHinge = hinge,
         theNewCreases = newCreases,
+        theAnchor = anchor,
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn,
         theResolved = resolved
@@ -526,6 +539,10 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       [checked (recordEvidence r)]
         ++ map resolvedFact (recordResolved r)
         ++ map newCrease (recordNewCreases r)
+        ++ [ "anchor moved: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", off the new crease"
+             | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
+               a /= b
+           ]
         ++ ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
     checked = \case
       SweptHinge _ -> "checked: the whole turn, swept, with no paper in its way"
