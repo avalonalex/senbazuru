@@ -516,7 +516,7 @@ creaseAcross place line state folded flat foldAt toward = case crossedFaces flat
         chords = chordsAcross flat foldAt crossed
     (creased, pieces) <- first (refusedAt place . CreasingRefused) (creaseAllAlongWith AtRest [(a, b, letter) | (a, b) <- chords] (theWorking state))
     room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf creased)
-    let material = IM.fromList (zip [0 ..] [V2 x y | x : y : _ <- verticesCoords creased])
+    let material = materialPoints creased
         ring face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
         faces = facesVertices creased
     first' <- case [i | (i, face) <- zip [0 ..] faces, insideRing room (ring face) anchor] of
@@ -545,7 +545,7 @@ piecesNow now thenFrame (EdgeId e) = case drop e (edgesVertices thenFrame) of
         _ -> between a b
   _ -> []
   where
-    material = IM.fromList (zip [0 ..] [V2 x y | x : y : _ <- verticesCoords now])
+    material = materialPoints now
     at (VertexId v) = IM.lookup v material
     room = toleranceOf (IM.elems material)
     between a b = case (at a, at b) of
@@ -560,6 +560,11 @@ piecesNow now thenFrame (EdgeId e) = case drop e (edgesVertices thenFrame) of
                   on y
               ]
       _ -> []
+
+-- | Each vertex of a working pattern where it lies on the sheet: the pattern's
+-- own coordinates, since a working pattern is never folded in place.
+materialPoints :: Frame -> IM.IntMap V2
+materialPoints frame = IM.fromList (zip [0 ..] [V2 x y | x : y : _ <- verticesCoords frame])
 
 -- | Which side of a record's hinge crease its moving paper lay, found on the
 -- working pattern now: the face beside a piece of that crease that lies the
@@ -600,13 +605,20 @@ undoOne :: RunSettings -> Here -> (FoldState, [MoveRecord]) -> MoveRecord -> Eit
 undoOne settings place (state, made) earlier = do
   let working = theWorking state
       thenFrame = surfaceFrame (recordBefore earlier)
-      -- Each recorded hinge edge with each of its pieces now.
-      pairs = [(e, p) | e <- concatMap snd (recordHinge earlier), p <- piecesNow working thenFrame e]
+      -- Each recorded hinge edge with its pieces now, and then each pair.
+      found = [(e, piecesNow working thenFrame e) | e <- concatMap snd (recordHinge earlier)]
+      pairs = [(e, p) | (e, ps) <- found, p <- ps]
       hinge = map snd pairs
       (before, after) = recordAngles earlier
       now = edgesFoldAngle working
       angle angles (EdgeId e) = IM.lookup e (IM.fromList (zip [0 ..] angles))
       flat e = maybe True ((<= atRest) . abs) (angle now e)
+  -- Creasing only adds, so every recorded crease is on the paper still. One
+  -- that is not cannot be judged flat or folded, and is refused rather than
+  -- passed over as though it lay flat.
+  case [e | (e, []) <- found] of
+    e : _ -> Left (refusedAt place (UnfoldChangedSince e))
+    [] -> Right ()
   case pairs of
     (firstThen, first') : _
       | not (all flat hinge) -> do
@@ -621,7 +633,7 @@ undoOne settings place (state, made) earlier = do
           side <- maybe (Left (refusedAt place (Selecting NothingSelected))) Right (movingSideNow working thenFrame moving firstThen first')
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-          let stretches = [(segment, concatMap (piecesNow working thenFrame) edges) | (segment, edges) <- recordHinge earlier]
+          let stretches = [(segment, [p | (e, ps) <- found, e `elem` edges, p <- ps]) | (segment, edges) <- recordHinge earlier]
           record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
