@@ -351,6 +351,18 @@ turningOver = describe "a turn-over" $ do
     renderRunReport run `shouldContain` ["  presented: the whole model shown from its other side; no paper moved"]
     [l | l <- renderRunReport run, "  moving:" `T.isPrefixOf` l] `shouldBe` []
 
+  -- Top-bottom turns about the horizontal line through the middle: corner
+  -- (0, 0) goes to (0, 1). Turns red if top-bottom turned about the vertical
+  -- line, as left-right does.
+  it "turns over top-bottom about the line across the middle" $ do
+    run <- right (onSquare ColouredUp (step_ "Turn the paper over top to bottom." (turnOver TopBottom)))
+    states <- right (writtenStates run)
+    case map stateFrame states of
+      [_, turned] -> do
+        zipWith near (corners turned) [V3 0 1 0, V3 1 1 0, V3 1 0 0, V3 0 0 0] `shouldBe` replicate 4 True
+        frameClasses turned `shouldBe` ["foldedForm"]
+      other -> expectationFailure ("expected two states, got " <> show (length other))
+
   -- After a turn-over the reader sees the white side, so in front is -z on
   -- the paper: a valley the reader folds is a mountain from the coloured
   -- side, -180. Turns red if the reader's side ignored the presentation.
