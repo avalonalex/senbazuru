@@ -266,6 +266,16 @@ creasing = describe "a fold along a line where no crease runs" $ do
         c2 <- step "c2" "Fold the top-right corner onto the bottom-left." (fold valley (Onto (corner NorthEast) (corner SouthWest)))
         step_ "Unfold it." (unfold [c2])
         after' c1
+      -- The square folded along its diagonal and unfolded, then along its
+      -- vertical midline, which cuts the south and north sides and so
+      -- renumbers the diagonal: its crease, edge 4 when it was made, is
+      -- edges 6 and 7 after. Then whatever comes after.
+      diagonalThenMidline after' = onSquare (Just (at (3 / 4) (1 / 8))) ColouredUp $ do
+        c1 <- step "c1" "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast)))
+        step_ "Unfold it." (unfold [c1])
+        c2 <- step "c2" "Fold the left half onto the right." (fold valley (LineOnto (edge West) (edge East) Nothing))
+        step_ "Unfold it." (unfold [c2])
+        after' c1
 
   -- The issue's own test: a plain square folded along a diagonal runs to one
   -- record, whose hinge is the new crease, a valley at 180 once turned, with
@@ -355,16 +365,46 @@ creasing = describe "a fold along a line where no crease runs" $ do
       other -> expectationFailure ("expected a new crease on folded paper refused, got " <> either (show . explain) (const "a run") other)
 
   -- Once a later move has creased the paper, an earlier record's edge ids
-  -- name other edges. Until they are found again by where they lie, both
-  -- uses of them are refused rather than read wrongly. Turns red if either
-  -- went ahead with the stale ids.
-  it "refuses unfold and hinge of a move made before the paper was creased again" $ do
-    case bothDiagonals (\c1 -> step_ "Unfold the first again." (unfold [c1])) of
-      Left (StepRefused 5 _ _ (MoveNotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "creased again"
-      other -> expectationFailure ("expected the unfold refused, got " <> either (show . explain) (const "a run") other)
-    case bothDiagonals (\c1 -> step_ "Fold the first again." (move (Fold ValleyFold ToFlat (hingeOf c1) FlapOfFirstArgument (Just (corner NorthWest))))) of
-      Left (ResolveRefused (InStep 5 Nothing) _ _ (NotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "creased again"
-      other -> expectationFailure ("expected hinge of refused, got " <> either (show . explain) (const "a run") other)
+  -- name other edges: the midline cut the diagonal's crease in two at the
+  -- centre, and cut two sides before it, so edge 4 then is edges 6 and 7
+  -- now. Folding along "hinge of c1" finds both pieces by where they lie,
+  -- and folds corner north-west onto corner south-east again. Turns red if
+  -- the record's ids were read as they stand.
+  it "finds a move's crease again on paper creased since, for hinge of" $ do
+    run <- right (diagonalThenMidline (\c1 -> step_ "Fold the first again." (move (Fold ValleyFold ToFlat (hingeOf c1) FlapOfFirstArgument (Just (corner NorthWest))))))
+    case [r | r <- runRecords run, recordStep r == 5] of
+      [record] -> do
+        sort (concatMap snd (recordHinge record)) `shouldBe` [EdgeId 6, EdgeId 7]
+        [a | e <- [6, 7], a <- take 1 (drop e (snd (recordAngles record)))] `shouldBe` [180, 180]
+        landed <- right (frameVertices (surfaceFrame (recordAfter record)))
+        case drop 3 landed of
+          V3 x y z : _ -> maximum (map abs [x - 1, y, z]) `shouldSatisfy` (< 1e-12)
+          [] -> expectationFailure "the square has no corner north-west"
+      other -> expectationFailure ("expected one record at step 5, got " <> show (length other))
+
+  -- And unfold c1, once that fold has turned its pieces again, turns them
+  -- back on the side c1's paper moved: the moving side is read from which
+  -- way the faces run along the crease, since the faces were traced afresh.
+  -- Turns red if the side were looked up by c1's face ids, or the paper
+  -- landed anywhere but where it began.
+  it "turns a move's crease back on paper creased since, for unfold" $ do
+    run <- right (diagonalThenMidline (\c1 -> step_ "Fold the first again." (move (Fold ValleyFold ToFlat (hingeOf c1) FlapOfFirstArgument (Just (corner NorthWest)))) >> step_ "Unfold the first." (unfold [c1])))
+    case [r | r <- runRecords run, recordStep r == 6] of
+      [record] -> do
+        sort (concatMap snd (recordHinge record)) `shouldBe` [EdgeId 6, EdgeId 7]
+        [a | e <- [6, 7], a <- take 1 (drop e (snd (recordAngles record)))] `shouldBe` [0, 0]
+        landed <- right (frameVertices (surfaceFrame (recordAfter record)))
+        take 4 landed `shouldSatisfy` all (\(V3 x y z, (u, v)) -> maximum (map abs [x - u, y - v, z]) < 1e-12) . (`zip` [(0, 0), (1, 0), (1, 1), (0, 1)])
+      other -> expectationFailure ("expected one record at step 6, got " <> show (length other))
+
+  -- Folded again only to 90, c1's crease is not where c1 left it, and
+  -- unfolding c1 would undo that fold too: each piece is compared with the
+  -- record's own edge it came from. Turns red if the pieces' angles were
+  -- read against the record's numbering.
+  it "refuses to unfold a move whose crease changed since, on paper creased since" $
+    case diagonalThenMidline (\c1 -> step_ "Fold the first part way." (move (Fold ValleyFold (Degrees 90) (hingeOf c1) FlapOfFirstArgument (Just (corner NorthWest)))) >> step_ "Unfold the first." (unfold [c1])) of
+      Left (StepRefused 6 _ _ (UnfoldChangedSince e)) -> e `shouldSatisfy` (`elem` [EdgeId 6, EdgeId 7])
+      other -> expectationFailure ("expected the unfold refused as changed since, got " <> either (show . explain) (const "a run") other)
   where
     one = \case
       [record] -> pure record
