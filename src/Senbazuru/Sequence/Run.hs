@@ -16,8 +16,9 @@
 -- edge, by laying one line onto another or as @hinge of NAME@; @pre-crease@,
 -- the same fold checked and laid flat again, which leaves its crease and one
 -- record; @unfold@; @turn over@, which moves no paper and shows the model
--- from its other side; and @expect refused@. Every other move is refused as
--- not run yet, naming itself, rather than skipped.
+-- from its other side; @rotate@ by whole quarter turns, which turns the model
+-- on the page, the same side up; and @expect refused@. Every other move is
+-- refused as not run yet, naming itself, rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
 -- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
@@ -62,9 +63,10 @@
 --
 -- A fold that would carry the anchor's paper re-anchors (owner decision 3);
 -- until that is built it is refused as not run yet, as are a new crease on
--- folded paper, which creases through its layers (milestone M4), layer words
--- and every move but @fold@, @pre-crease@, @unfold@ and @turn over@, @rotate@
--- among them. A new crease through the anchor
+-- folded paper, which creases through its layers (milestone M4), layer words,
+-- a @rotate@ by an odd number of eighths, whose cos 45° no 'Double' holds
+-- (owner decision 10), and every move but @fold@, @pre-crease@, @unfold@,
+-- @turn over@ and @rotate@. A new crease through the anchor
 -- moves the anchor off it, to a face the fold holds still (decisions C19,
 -- 'reanchor'), which is not a re-anchoring: no paper moves.
 --
@@ -84,9 +86,13 @@
 --
 -- And the /presentation/: how the model is shown to the reader, a rigid
 -- motion from where the paper is folded to where the reader sees it. A
--- turn-over changes it and nothing else; no paper moves, and every record's
--- surfaces stay as folded. It decides the /reader's side/, which @valley@ and
--- @mountain@ are read from, and the states a run writes are presented.
+-- turn-over or a rotate changes it and nothing else; no paper moves, and
+-- every record's surfaces stay as folded. Each turns the model as shown,
+-- about its middle as shown, so it is composed after the presentation it
+-- changes: after a turn-over, @anticlockwise@ is anticlockwise as the reader
+-- now sees the model, which seen from the coloured side is clockwise. The
+-- presentation decides the /reader's side/, which @valley@ and @mountain@
+-- are read from, and the states a run writes are presented.
 --
 -- == How a sheet becomes a starting state
 --
@@ -148,6 +154,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
+import Senbazuru.Explain (tshow)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
@@ -169,7 +176,7 @@ import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), Re
 import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Resolve
-import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
 
 -- | The paper between two moves of a run: the working pattern and the anchor.
 -- Opaque; the header says what each is and why.
@@ -177,9 +184,9 @@ data FoldState = FoldState
   { theWorking :: !Frame,
     theAnchor :: !MaterialPoint,
     -- | How the model is shown to the reader: the rigid motion from where the
-    -- paper is folded to where the reader sees it, changed by a turn-over and
-    -- by nothing that folds (decisions D5). The reader's side follows from it
-    -- ('frontOf').
+    -- paper is folded to where the reader sees it, changed by a turn-over or
+    -- a rotate and by nothing that folds (decisions D5). The reader's side
+    -- follows from it ('frontOf').
     thePresentation :: !Rigid,
     -- | The working pattern folded, when the last move's join check has
     -- folded it already: the next move starts from that fold rather than
@@ -201,16 +208,35 @@ frontOf state = case matApply (rigidLinear (thePresentation state)) (V3 0 0 1) o
   _ -> TowardPlusZ
 
 -- | A turn-over about the model's own middle (decisions D5): left-right maps
--- (x, y, z) to (2cx - x, y, 2cz - z), top-bottom to (x, 2cy - y, 2cz - z),
--- with (cx, cy) the centre of the points' xy box and cz the middle of their z
--- range. About the middle, so the model stays where it is on the page; about
--- the origin it would be carried off it. Its entries are 0 and 1 and -1, so it
--- adds no rounding of its own.
+-- (x, y, z) to (2cx - x, y, 2cz - z), top-bottom to (x, 2cy - y, 2cz - z).
 turnOverAbout :: PageAxis -> [V3] -> Rigid
-turnOverAbout axis points = case axis of
-  LeftRight -> Rigid (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 (-1))) (V3 (2 * mid v3x) 0 (2 * mid v3z))
-  TopBottom -> Rigid (Mat3 (V3 1 0 0) (V3 0 (-1) 0) (V3 0 0 (-1))) (V3 0 (2 * mid v3y) (2 * mid v3z))
+turnOverAbout = \case
+  LeftRight -> aboutMiddle (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 (-1)))
+  TopBottom -> aboutMiddle (Mat3 (V3 1 0 0) (V3 0 (-1) 0) (V3 0 0 (-1)))
+
+-- | A turn on the page about the model's own middle (decisions D5), by
+-- quarter turns, anticlockwise as the reader sees it when positive: about
+-- the line parallel to +z through (cx, cy), so the side shown stays the side
+-- shown. One quarter anticlockwise maps (x, y) to (cx + cy - y, cy - cx + x).
+quarterTurnsAbout :: Int -> [V3] -> Rigid
+quarterTurnsAbout quarters = aboutMiddle $ case quarters `mod` 4 of
+  1 -> Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
+  2 -> Mat3 (V3 (-1) 0 0) (V3 0 (-1) 0) (V3 0 0 1)
+  3 -> Mat3 (V3 0 1 0) (V3 (-1) 0 0) (V3 0 0 1)
+  _ -> rigidLinear identity
+
+-- | A turn that keeps the middle of the points where it is: (cx, cy) the
+-- centre of their xy box and cz the middle of their z range. About the
+-- middle, so the model stays where it is on the page; about the origin it
+-- would be carried off it. Every turn made here has entries 0 and 1 and -1,
+-- which a 'Double' holds exactly, so applying one multiplies nothing
+-- inexactly; only the additions round, as they do anywhere. A turn by an
+-- eighth would need cos 45°, which no 'Double' holds, and whose last bits
+-- come from the platform's trigonometry (owner decision 10).
+aboutMiddle :: Mat3 -> [V3] -> Rigid
+aboutMiddle turn points = Rigid turn (middle ^-^ matApply turn middle)
   where
+    middle = V3 (mid v3x) (mid v3y) (mid v3z)
     mid along = case map along points of
       [] -> 0
       values -> (minimum values + maximum values) / 2
@@ -480,14 +506,23 @@ runMove settings place named state surface = \case
   -- axis through the middle of the model as shown (decisions D5). The state
   -- keeps its paper and changes its presentation, and with it the reader's
   -- side.
-  CoreTurnOver axis -> do
-    let shown = thePresentation state
-        shown' = turnOverAbout axis [applyRigid shown p | p <- surfacePositions surface] `Rigid.after` shown
-    unless (isProperRotation (rigidLinear shown')) (Left (refusedAt place PresentationImproper))
-    Right (Made state {thePresentation = shown'} [presented (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state) surface (shown, shown')] [])
+  CoreTurnOver axis -> present (TurnedOver axis) (turnOverAbout axis)
+  -- A rotate turns the model on the page, the same side up, so the reader's
+  -- side stays. Only whole quarter turns are made: an odd number of eighths
+  -- would need cos 45° (owner decision 10).
+  CoreRotate eighths turning
+    | odd eighths -> Left (refusedAt place (MoveNotRunYet ("\"rotate " <> tshow eighths <> "/8 turn\", which is not a whole number of quarter turns,")))
+    | otherwise -> present (Rotated eighths turning) (quarterTurnsAbout ((case turning of Anticlockwise -> 1; Clockwise -> -1) * (eighths `div` 2)))
   other -> Left (refusedAt place (MoveNotRunYet (moveWords other)))
   where
     moved (st, records) = Made st records []
+    -- A change of presentation turns the model as shown, about its middle as
+    -- shown, so the turn goes after the presentation it changes.
+    present turn about = do
+      let shown = thePresentation state
+          shown' = about [applyRigid shown p | p <- surfacePositions surface] `Rigid.after` shown
+      unless (isProperRotation (rigidLinear shown')) (Left (refusedAt place PresentationImproper))
+      Right (Made state {thePresentation = shown'} [presented (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) turn (theAnchor state) surface (shown, shown')] [])
 
 -- | A fold along creases the paper has, as the header lays out.
 foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> MoveKind -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])

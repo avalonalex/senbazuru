@@ -4,9 +4,10 @@
 --
 -- A run folds a sheet one move at a time, and each move leaves one /move
 -- record/ (see docs/glossary.md, "Fold sequences"); only @let@, @not
--- modelled@ and @expect refused@ leave none. So far the only move a record
--- can hold is a turn about a hinge; the header's last sections say what the
--- other moves will bring. Three
+-- modelled@ and @expect refused@ leave none. So far a record holds a turn
+-- about a hinge, a pre-crease, which is such a turn checked and laid flat
+-- again, or a change of presentation, which moves no paper ('MoveKind'); the
+-- section \"What is not here yet\" says what the other moves will bring. Three
 -- readers take records rather than the folded frames a run also writes: the
 -- page of steps, which draws one arrow for each move; the material study,
 -- which settles a move's paper as a sheet that bends; and the animated export.
@@ -55,7 +56,9 @@
 -- and the face held still from that one turn. So no record can pair the paper
 -- before one fold with the paper after another, and every record's evidence
 -- describes the record's own move. The same reasoning made
--- 'Senbazuru.Sequence.Check.Checked' opaque.
+-- 'Senbazuru.Sequence.Check.Checked' opaque. The one other maker,
+-- 'presented', takes a single surface for both, so it pairs nothing, and its
+-- evidence says that no paper moved.
 --
 -- Two parts are the runner's word, not the turn's: the hinge as stretches on
 -- the sheet, and the seed. A turn does not say how its hinge edges group into
@@ -68,17 +71,15 @@
 -- (@PRDs\/decisions.md@, §5). Each arrives with the first move that fills it,
 -- because a field nothing fills is a promise no test can check:
 --
--- * the move's kind, once there is a second kind, the pre-crease;
--- * the creases a move adds, with the creasing that adds them;
--- * how the model is presented and where its anchor lies, before and after,
---   with @turn over@, @rotate@ and re-anchoring (owner decision 3);
+-- * where the anchor's paper is placed, before and after (@recordPlacement@
+--   in the design), with re-anchoring (owner decision 3);
 -- * the stacking chosen, with layer-selective folds; the macro bindings, with
---   macro moves; and the references resolved and the cost, with the report
---   that prints them;
+--   macro moves; and the cost;
 -- * a pose part-way along the move (@recordPoseAt@ in the design), with its
 --   first reader, the material study's grips or the animated export;
--- * the evidence for moves that are not turns about a hinge: no motion, a
---   change of presentation, a state with no route, or a sampled macro move.
+-- * the evidence for moves that are neither a turn about a hinge nor a change
+--   of presentation: no motion, a state with no route, or a sampled macro
+--   move.
 --
 -- Four of the sketch's fields change. Its @recordLabel@, the step's caption
 -- (@PRDs\/01-architecture.md@, §5.8), is 'recordCaption', the language's own
@@ -107,6 +108,7 @@ module Senbazuru.Sequence.Record
     -- * The record
     MoveRecord,
     MoveKind (..),
+    Presenting (..),
     recordKind,
     recordStep,
     recordMoveIndex,
@@ -169,7 +171,7 @@ import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, 
 import Senbazuru.Sequence.Elaborate (Origin (..))
 import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..), WriteProblem (..))
 import Senbazuru.Sequence.Pretty (prettyMove)
-import Senbazuru.Sequence.Syntax (Name (..), RefusalKind (..), Span)
+import Senbazuru.Sequence.Syntax (Name (..), PageAxis, RefusalKind (..), Span, Turning)
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
 newtype MaterialPoint = MaterialPoint V2
@@ -182,14 +184,14 @@ data MaterialSegment = MaterialSegment !MaterialPoint !MaterialPoint
 
 -- | How a move is known to be possible. A value rather than a flag, because a
 -- reader can do things with it: the page draws a turn part-way through from
--- the checked turn. A @newtype@ while a turn about a hinge is the only move;
--- the evidence for the others joins it as constructors (see the header).
+-- the checked turn. The evidence for the moves still to come joins these as
+-- constructors (see the header).
 data RouteEvidence
   = -- | A turn about a hinge, checked over its whole path: the moving paper
     -- passes through no other paper from start to end.
     SweptHinge CheckedFlap
-  | -- | A change of how the model is shown, a turn-over: no paper moved, so
-    -- there was no path to check.
+  | -- | A change of how the model is shown, a turn-over or a rotate: no
+    -- paper moved, so there was no path to check.
     Presented
   deriving stock (Eq, Show)
 
@@ -230,10 +232,24 @@ data MoveKind
     -- line. Its record keeps the fold's evidence, which was checked over its
     -- whole path, and carries no sense, since a crease it draws has none.
     Precrease
-  | -- | A turn-over (decisions D5): the whole model is shown from its other
-    -- side, and no paper moves. Its two surfaces are one; its presentation
-    -- changes.
-    Presentation
+  | -- | A change of presentation (decisions D5): the whole model is shown
+    -- turned, and no paper moves. Its two surfaces are one; its presentation
+    -- changes, and 'Presenting' says which turn the author wrote.
+    Presentation Presenting
+  deriving stock (Eq, Show)
+
+-- | Which turn a change of presentation was, as written. Kept because the
+-- two presentations a record holds cannot always say it: @k/8 turn
+-- clockwise@ is the same motion as @(8 - k)/8 turn anticlockwise@, and a
+-- half turn has no direction at all, yet a page draws the turn the author
+-- wrote (PRDs\/06-prd-step-diagrams.md, \"Which turn a turn over or rotate
+-- record was\").
+data Presenting
+  = -- | @turn over left-right@ or @top-bottom@: shown from the other side.
+    TurnedOver PageAxis
+  | -- | @rotate k/8 turn@: turned on the page by k eighths, the same side
+    -- up.
+    Rotated Int Turning
   deriving stock (Eq, Show)
 
 -- | A reference as the run resolved it, for the report: the words the author
@@ -319,8 +335,8 @@ recordAnchor = theAnchor
 
 -- | How the model was shown before the move and after it: the rigid motion
 -- taking where the paper is folded to where the reader sees it (decisions
--- D5). The surfaces are never presented; a turn-over changes this and
--- nothing else.
+-- D5). The surfaces are never presented; a turn-over or a rotate changes
+-- this and nothing else.
 recordPresentation :: MoveRecord -> (Rigid, Rigid)
 recordPresentation = thePresentation
 
@@ -417,10 +433,11 @@ hingeTurn step move name caption origin hinge newCreases anchor shown seed resol
 asPrecrease :: MoveRecord -> MoveRecord
 asPrecrease record = record {theKind = Precrease, theAfter = theBefore record}
 
--- | The record of a turn-over: the paper as it lies, held still in both
--- surfaces, shown one way before and another after. No paper moved, so its
--- evidence is that it was 'Presented', it has no hinge and no moving paper,
--- and the face it holds still is the anchor's.
+-- | The record of a change of presentation, a turn-over or a rotate: the
+-- paper as it lies, held still in both surfaces, shown one way before and
+-- another after. No paper moved, so its evidence is that it was
+-- 'Presented', it has no hinge and no moving paper, and the face it holds
+-- still is the anchor's.
 presented ::
   -- | The step's number, from 1.
   Int ->
@@ -432,14 +449,16 @@ presented ::
   Maybe Text ->
   -- | The move as written.
   Origin ->
-  -- | The anchor, which a turn-over does not move.
+  -- | Which turn it was.
+  Presenting ->
+  -- | The anchor, which a change of presentation does not move.
   MaterialPoint ->
   -- | The paper as it lies.
   Surface V2 ->
   -- | How it was shown before, and after.
   (Rigid, Rigid) ->
   MoveRecord
-presented step move name caption origin anchor surface shown =
+presented step move name caption origin turn anchor surface shown =
   MoveRecord
     { theStep = step,
       theMoveIndex = move,
@@ -453,7 +472,7 @@ presented step move name caption origin anchor surface shown =
       theNewCreases = [],
       theAnchor = (anchor, anchor),
       thePresentation = shown,
-      theKind = Presentation,
+      theKind = Presentation turn,
       theMoving = [],
       theStationary = FaceId 0,
       theResolved = []
@@ -560,8 +579,8 @@ data WrittenState = WrittenState
 -- it: each of that step's moves, and what checked it. State 0 has none,
 -- which is not the same as having an empty one.
 --
--- Positions are written as the run computed them, with no presentation
--- applied: turning the model over for the page arrives with @turn over@.
+-- Positions are presented, each state's by the presentation it ended with
+-- ('writtenFrame').
 writtenStates :: Run -> Either SequenceError [WrittenState]
 writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
   where
@@ -585,8 +604,8 @@ writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
 -- Written frames are presented (decisions D5): each vertex where the
 -- presentation puts it, so a state after a turn-over is written turned over,
 -- its faces showing their backs. A presentation that is the identity leaves
--- the coordinates exactly as folded, so a run with no turn-over writes what
--- it always wrote.
+-- the coordinates exactly as folded, so a run with no turn-over or rotate
+-- writes what it always wrote.
 writtenFrame :: Surface V2 -> Rigid -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
 writtenFrame surface shown title assurance = do
   let folded = materialFrame surface
@@ -646,7 +665,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       let RefusalKind kind = expectedKind e
        in [heading n (join (lookup n names)) i ("expect refused " <> kind), "  refused as " <> kind <> ", as expected; nothing moved"]
     facts r =
-      [checked (recordEvidence r)]
+      [checked r]
         ++ map resolvedFact (recordResolved r)
         ++ map newCrease (recordNewCreases r)
         ++ ["laid flat again: the paper ends where it began" | recordKind r == Precrease]
@@ -655,12 +674,16 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
                a /= b
            ]
         ++ [ line
-             | recordKind r /= Presentation,
+             | not (presentation (recordKind r)),
                line <- ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
            ]
-    checked = \case
-      SweptHinge _ -> "checked: the whole turn, swept, with no paper in its way"
-      Presented -> "presented: the whole model shown from its other side; no paper moved"
+    checked r = case (recordEvidence r, recordKind r) of
+      (SweptHinge _, _) -> "checked: the whole turn, swept, with no paper in its way"
+      (Presented, Presentation (Rotated _ _)) -> "presented: the whole model turned on the page, the same side up; no paper moved"
+      (Presented, _) -> "presented: the whole model shown from its other side; no paper moved"
+    presentation = \case
+      Presentation _ -> True
+      _ -> False
     resolvedFact = \case
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
       ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p
