@@ -11,7 +11,7 @@ import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
@@ -21,7 +21,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordNewCreases, recordStationary, recordStep, renderRunReport, runRefusal)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordNewCreases, recordStationary, recordStep, renderRunReport, runRefusal)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -96,14 +96,6 @@ running = describe "running a sequence" $ do
       case checkSequence blintz >>= runSequence defaultRunSettings M.empty . elaborate of
         Left (SheetRefused _ "examples/blintz-base.fold" SheetNotLoaded) -> pure ()
         other -> expectationFailure ("expected the sheet refused, got " <> show (fmap (length . runRecords) other))
-
-    -- The diagonal crosses the central square, where no crease runs, through
-    -- its centre, the anchor. Creasing it would leave the anchor on a crease,
-    -- in no one face, and the anchor would have to move (decisions C19).
-    it "a fold whose new crease runs through the anchor, until the anchor can move" $
-      case runOn (oneStep (move (Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast))))) of
-        Left (StepRefused 1 _ _ (MoveNotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "anchor"
-        other -> expectationFailure ("expected a crease through the anchor refused, got " <> either (show . explain) (show . length . runRecords) other)
 
     -- An anchor inside corner south-east's triangle moves with it.
     it "a fold that would carry the anchor's paper, until re-anchoring is run" $ do
@@ -304,6 +296,39 @@ creasing = describe "a fold along a line where no crease runs" $ do
     run <- right (runOn (M.singleton "double.fold" double) (sequenceOf (header "A larger square" (sheetFile "double.fold") (Just (at (3 / 4) (1 / 4)))) (step_ "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast))))))
     renderRunReport run `shouldContain` ["  line corner north-west to corner south-east: through (0.5, 0.5), along (0.707107, 0.707107)"]
     renderRunReport run `shouldContain` ["  new crease: (0, 0) to (1, 1), valley (internal edge 4)"]
+
+  -- The square's default anchor is its centre, on the diagonal. Folding
+  -- corner south-east up onto corner north-west turns the lower triangle,
+  -- so the anchor moves to the upper one's vertex mean, (1/3, 2/3), and the
+  -- record says so (decisions C19). The upper triangle is the higher of the
+  -- two, so the rule that breaks ties, lowest first, would pick the turning
+  -- one: turns red if the anchor's new face ignored what the move turns, or
+  -- the anchor stayed on the crease.
+  it "moves an anchor the new crease runs through to the face the fold holds still" $ do
+    run <- right (onSquare Nothing ColouredUp (step_ "Fold the bottom-right corner onto the top-left." (fold valley (Onto (corner SouthEast) (corner NorthWest)))))
+    record <- one (runRecords run)
+    case recordAnchor record of
+      (MaterialPoint was, MaterialPoint now) -> do
+        was `shouldBe` V2 0.5 0.5
+        norm (now ^-^ V2 (1 / 3) (2 / 3)) `shouldSatisfy` (< 1e-12)
+    landed <- right (frameVertices (surfaceFrame (recordAfter record)))
+    case drop 1 landed of
+      V3 x y z : _ -> maximum (map abs [x, y - 1, z]) `shouldSatisfy` (< 1e-12)
+      [] -> expectationFailure "the square has no corner south-east"
+    renderRunReport run `shouldContain` ["  anchor moved: (0.5, 0.5) to (0.333333, 0.666667), off the new crease"]
+
+  -- On the blintz, anchored at its centre, the diagonal crosses the central
+  -- square through the anchor. Folding the south-east corner over turns the
+  -- square's south-east half, so the anchor moves to the vertex mean of its
+  -- north-west half, (0, 1/2), (1/4, 1/4), (3/4, 3/4), (1/2, 1).
+  it "moves the blintz's anchor off a diagonal through its centre" $ do
+    blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
+    run <- right (runOn (M.singleton "examples/blintz-base.fold" blintzSheet) (sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just Centre)) (step_ "Fold the bottom-right corner over." (move (Fold ValleyFold ToFlat (Segment (corner SouthWest) (corner NorthEast)) FlapOfFirstArgument (Just (corner SouthEast)))))))
+    record <- one (runRecords run)
+    case recordAnchor record of
+      (MaterialPoint was, MaterialPoint now) -> do
+        was `shouldBe` V2 0.5 0.5
+        norm (now ^-^ V2 0.375 0.625) `shouldSatisfy` (< 1e-12)
 
   -- White side up, a valley towards the reader is a mountain from the
   -- coloured side, which is the side FOLD's letters are read from. Turns red

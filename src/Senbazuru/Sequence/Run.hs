@@ -60,9 +60,10 @@
 --
 -- A fold that would carry the anchor's paper re-anchors (owner decision 3);
 -- until that is built it is refused as not run yet, as are a new crease on
--- folded paper, which creases through its layers (milestone M4), a new
--- crease through the anchor, which moves the anchor (decisions C19), layer
--- words and every move but @fold@ and @unfold@.
+-- folded paper, which creases through its layers (milestone M4), layer words
+-- and every move but @fold@ and @unfold@. A new crease through the anchor
+-- moves the anchor off it, to a face the fold holds still (decisions C19,
+-- 'reanchor'), which is not a re-anchoring: no paper moves.
 --
 -- == What a fold state holds
 --
@@ -144,7 +145,7 @@ import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, frameKind, frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, insideRing, signedArea)
+import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, edges, insideRing, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, prepareFlapAlong, prepareFlapToward)
@@ -448,26 +449,44 @@ foldMove settings place named given sense amount line layers seed = do
   let toward = case sense of
         ValleyFold -> theFront given
         MountainFold -> opposite (theFront given)
-  (state, folded, flat, fresh) <- creaseAcross place line given found seen foldAt toward
-  candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat foldAt)
-  -- The seed names the paper that moves: a moving point, or an alignment
-  -- fold's first argument. For L1 to L2 that is a line, and the side holding
-  -- it moves, so it must not lie across the fold.
-  let pointSeed p = do
-        m <- first (resolvingAt place (prettyPoint p)) (materialPoint flat p)
-        picked <- first (resolvingAt place (prettyPoint p)) (seedFaces flat m)
-        pure (m, picked, prettyPoint p)
-  (m, picked, seedWords) <- case (layers, seed, line) of
-    (FlapOfFirstArgument, Just p, _) -> pointSeed p
-    (FlapOfFirstArgument, Nothing, Onto p _) -> pointSeed p
-    (FlapOfFirstArgument, Nothing, LineOnto l1 _ _) -> do
-      (m, (a, b)) <- first (resolvingAt place (prettyLine l1)) (firstLineSeed flat l1)
-      when (straddles flat foldAt (a, b)) (Left (refusedAt place (Selecting (SegmentStraddles (toSheetLengths flat a) (toSheetLengths flat b)))))
-      picked <- first (resolvingAt place (prettyLine l1)) (seedFaces flat m)
-      pure (m, picked, prettyLine l1)
-    (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting SeedMissing))
-    (_, _, _) -> Left (refusedAt place (MoveNotRunYet "choosing which layers to fold"))
-  selection <- first (refusedAt place . Selecting) (flapOf flat foldAt candidates m picked)
+  (creased, foldedCreased, flatCreased, fresh, around) <- creaseAcross place line given found seen foldAt toward
+  -- The paper that moves: the seed, which is a moving point or an alignment
+  -- fold's first argument, and the flap holding it. For L1 to L2 the seed is
+  -- a line, and the side holding it moves, so it must not lie across the
+  -- fold. Chosen on a state named afresh, so asked twice when the anchor
+  -- moves.
+  let choose flat' = do
+        candidates <- first (resolvingAt place (prettyLine line)) (hingeAlong flat' foldAt)
+        let pointSeed p = do
+              m <- first (resolvingAt place (prettyPoint p)) (materialPoint flat' p)
+              picked <- first (resolvingAt place (prettyPoint p)) (seedFaces flat' m)
+              pure (m, picked, prettyPoint p)
+        (m, picked, seedWords) <- case (layers, seed, line) of
+          (FlapOfFirstArgument, Just p, _) -> pointSeed p
+          (FlapOfFirstArgument, Nothing, Onto p _) -> pointSeed p
+          (FlapOfFirstArgument, Nothing, LineOnto l1 _ _) -> do
+            (m, (a, b)) <- first (resolvingAt place (prettyLine l1)) (firstLineSeed flat' l1)
+            when (straddles flat' foldAt (a, b)) (Left (refusedAt place (Selecting (SegmentStraddles (toSheetLengths flat' a) (toSheetLengths flat' b)))))
+            picked <- first (resolvingAt place (prettyLine l1)) (seedFaces flat' m)
+            pure (m, picked, prettyLine l1)
+          (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting SeedMissing))
+          (_, _, _) -> Left (refusedAt place (MoveNotRunYet "choosing which layers to fold"))
+        selection <- first (refusedAt place . Selecting) (flapOf flat' foldAt candidates m picked)
+        pure (m, seedWords, selection)
+  -- A new crease through the anchor leaves it on a crease, in no one face,
+  -- and it moves off it (decisions C19): to a face the move holds still,
+  -- which the paper the move turns says. On the flat sheet every face lies
+  -- where it lies, whichever is held still, so that paper is chosen on the
+  -- creased state as traced, and then again once the anchor's face is first.
+  (state, folded, flat) <- case around of
+    [] -> Right (creased, foldedCreased, flatCreased)
+    _ -> do
+      (_, _, turning) <- choose flatCreased
+      moved <- reanchor place creased [i | i <- around, FaceId i `notElem` selectionMoving turning]
+      refolded <- first (refusedAt place . FoldingRefused) (foldNow moved)
+      renamed <- first (resolvingAt place (prettyLine line)) (flatState refolded)
+      Right (moved, refolded, renamed)
+  (m, seedWords, selection) <- choose flat
   -- The anchor's face is the working pattern's first, which folding holds
   -- still: asking where the anchor point lies could fail once a crease runs
   -- through it, and must not let such a fold through.
@@ -478,7 +497,7 @@ foldMove settings place named given sense amount line layers seed = do
   motion <- first (refusedAt place . FlapRefused) (prepareFlapToward (selectionHinge selection) (selectionSide selection) magnitude toward folded)
   turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
   let resolved = [uncurry (ResolvedLine (prettyLine line)) (lineAsSeen flat foldAt), ResolvedSeed seedWords (toSheetLengths flat m)]
-  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (MaterialPoint m) resolved turn)
+  record <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (theAnchor given, theAnchor state) (MaterialPoint m) resolved turn)
   next <- handOn place state folded record
   pure (next, [record])
   where
@@ -503,10 +522,12 @@ foldMove settings place named given sense amount line layers seed = do
 -- on the sheet, so the fold line found before creasing is still the line
 -- after it. The anchor's face, cut in two where the line crosses it, is put
 -- first again, the face folding holds still. A line through the anchor
--- itself would move the anchor (decisions C19), which is not run yet.
-creaseAcross :: Here -> Line -> FoldState -> Folded -> FlatState -> FoldLine -> Toward -> Either SequenceError (FoldState, Folded, FlatState, [(MaterialSegment, [EdgeId], Assignment)])
+-- itself leaves it in no one face: then the faces are left as traced, and
+-- the last of the answer is the faces around the anchor, from which the
+-- caller moves it ('reanchor') once it knows which of them the move turns.
+creaseAcross :: Here -> Line -> FoldState -> Folded -> FlatState -> FoldLine -> Toward -> Either SequenceError (FoldState, Folded, FlatState, [(MaterialSegment, [EdgeId], Assignment)], [Int])
 creaseAcross place line state folded flat foldAt toward = case crossedFaces flat foldAt of
-  [] -> Right (state, folded, flat, [])
+  [] -> Right (state, folded, flat, [], [])
   crossed -> do
     unless (all ((<= atRest) . abs) (edgesFoldAngle (theWorking state))) $
       Left (resolvingAt place (prettyLine line) (NotRunYet "a fold whose line crosses folded paper where no crease runs, which creases through its layers,"))
@@ -519,15 +540,37 @@ creaseAcross place line state folded flat foldAt toward = case crossedFaces flat
     let material = materialPoints creased
         ring face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
         faces = facesVertices creased
-    first' <- case [i | (i, face) <- zip [0 ..] faces, insideRing room (ring face) anchor] of
-      [i] -> Right i
-      _ -> Left (refusedAt place (MoveNotRunYet "a fold whose new crease runs through the anchor, which moves the anchor,"))
-    let next = state {theWorking = creased {facesVertices = firstOf first' faces}, theFold = Nothing}
+        -- A face holds a point on its outline too, as a closed polygon does.
+        holds face = insideRing room (ring face) anchor || any ((<= room) . (`distanceToSegment` anchor)) (edges (ring face))
+        (ordered, around) = case [i | (i, face) <- zip [0 ..] faces, insideRing room (ring face) anchor] of
+          [i] -> (firstOf i faces, [])
+          _ -> (faces, [i | (i, face) <- zip [0 ..] faces, holds face])
+        next = state {theWorking = creased {facesVertices = ordered}, theFold = Nothing}
     refolded <- first (refusedAt place . FoldingRefused) (foldNow next)
     named <- first (resolvingAt place (prettyLine line)) (flatState refolded)
-    pure (next, refolded, named, [(MaterialSegment (MaterialPoint a) (MaterialPoint b), ids, letter) | ((a, b), ids) <- zip chords pieces])
+    pure (next, refolded, named, [(MaterialSegment (MaterialPoint a) (MaterialPoint b), ids, letter) | ((a, b), ids) <- zip chords pieces], around)
   where
     MaterialPoint anchor = theAnchor state
+
+-- | Move the anchor off a new crease (decisions C19): to the vertex mean of
+-- the largest face around it that the move does not turn, ties to the lowest
+-- vertex mean and then the leftmost, as 'sheetState' picks the default
+-- anchor, and that face first. Creasing moved no paper, so nothing else
+-- changes. With no face around the anchor held still, the fold would carry
+-- the anchor's paper, which re-anchors (owner decision 3) and is not run yet.
+reanchor :: Here -> FoldState -> [Int] -> Either SequenceError FoldState
+reanchor place state still = do
+  let working = theWorking state
+      material = materialPoints working
+      ring face = [p | VertexId v <- face, Just p <- [IM.lookup v material]]
+      faces = facesVertices working
+      measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 ..] faces, i `elem` still]
+  room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf working)
+  case defaultAnchor room measured of
+    Just (i, face, _, mean)
+      | insideRing room (ring face) mean -> Right state {theWorking = working {facesVertices = firstOf i faces}, theAnchor = MaterialPoint mean, theFold = Nothing}
+      | otherwise -> Left (refusedAt place (MoveNotRunYet "an anchor moved off a new crease to a face that does not hold its own vertex mean,"))
+    Nothing -> Left (refusedAt place (MoveNotRunYet "a fold that moves the anchor's paper, which re-anchors,"))
 
 -- | A record's edge, numbered as the paper was when the move was made, found
 -- on the working pattern now: the edge itself, if nothing has cut it since,
@@ -633,14 +676,14 @@ undoOne settings place (state, made) earlier = do
           side <- maybe (Left (refusedAt place (Selecting NothingSelected))) Right (movingSideNow working thenFrame moving firstThen first')
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
-          let stretches = [(segment, [p | (e, ps) <- found, e `elem` edges, p <- ps]) | (segment, edges) <- recordHinge earlier]
-          record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
+          let stretches = [(segment, [p | (e, ps) <- found, e `elem` recorded, p <- ps]) | (segment, recorded) <- recordHinge earlier]
+          record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] (theAnchor state, theAnchor state) seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
     _ -> Right (state, made)
 
 -- | The record of a checked turn, at this place.
-recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
+recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> (MaterialPoint, MaterialPoint) -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
 recordOf place = hingeTurn (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place)
 
 -- | Hand the state on: write the accepted angles and orders onto the working
