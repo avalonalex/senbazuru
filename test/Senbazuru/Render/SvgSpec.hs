@@ -391,6 +391,16 @@ spec = do
       renderSteps "test/fixtures/quarter-fold-steps.fold"
         >>= goldenText "test/golden/quarter-fold-steps.svg"
 
+    -- The bird base's sixteen states, with the arrow inferred between each
+    -- pair. No other golden draws this file with arrows, and 05 L3 is about to
+    -- teach 'Origami.Step' that a pair moved by one rigid motion of the whole
+    -- model is a change of presentation, which gets no arrow. None of these
+    -- pairs is one, so this page must come through that change byte for byte
+    -- (PRD 09 section 1.3): it turns red if a fold is taken for a turn-over.
+    it "renders the bird base's sequence with every inferred arrow" $
+      renderSteps "examples/bird-base-sequence.fold"
+        >>= goldenText "test/golden/bird-base-sequence-arrows.svg"
+
     -- These two are 3D folded forms. Before the camera existed they rendered as
     -- flattened top-down projections; these goldens pin the isometric view that
     -- replaced that. They also pin the folded-form notation: every edge solid,
