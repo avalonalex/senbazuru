@@ -15,10 +15,11 @@
 --
 -- A pre-crease, @pre-crease valley mid@, which may also be written
 -- @fold and unfold valley mid@, looks like shorthand for a fold and its
--- unfold, and is not. What it leaves behind is a crease, lying flat, with its
--- direction, so it is one move (owner decision 14, under D12 in
--- @PRDs\/decisions.md@): 'CorePrecrease'. The run checks the fold's path and
--- never performs the unfold, which only retraces it.
+-- unfold, and is not. What it leaves behind is a crease, lying flat, with no
+-- direction of its own, since a later move may fold it either way, so it is
+-- one move (owner decision 14, under D12 in @PRDs\/decisions.md@, refined
+-- 2026-09-24): 'CorePrecrease'. The run checks the fold's path and never
+-- performs the unfold, which only retraces it.
 --
 -- == Core moves are a type of their own
 --

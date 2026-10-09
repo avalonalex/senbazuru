@@ -21,7 +21,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordNewCreases, recordStationary, recordStep, renderRunReport, runRefusal)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordStationary, recordStep, renderRunReport, runRefusal)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -37,6 +37,7 @@ spec = do
   blocked
   pointingElsewhere
   creasing
+  precreasing
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -237,6 +238,78 @@ pointingElsewhere = describe "a nearest P pointing away from the answer taken" $
     run <- right (runOn (foldOnto (ExpectRefused (RefusalKind "NearestDisagrees"))))
     runRecords run `shouldBe` []
     runExpected run `shouldBe` [ExpectedRefusal 1 1 (RefusalKind "NearestDisagrees")]
+
+-- A pre-crease (#496, owner decision 14): the paper folded along a line,
+-- checked over the whole path, and laid flat again, in one move and one
+-- record of kind Precrease. The crease it leaves has no direction, U, since a
+-- later move may fold it either way; a crease the paper had keeps its letter,
+-- since a pre-crease changes nothing but its new crease (PRD 02 §6.4).
+precreasing :: Spec
+precreasing = describe "a pre-crease" $ do
+  blintzSheet <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
+  let runOn sheets sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
+      onSquare = runOn M.empty . sequenceOf (header "A square" sheetSquare Nothing)
+      onBlintz = runOn (M.singleton "examples/blintz-base.fold" blintzSheet) . sequenceOf (header "A blintz" (sheetFile "examples/blintz-base.fold") (Just Centre))
+      diagonals =
+        step "diagonals" "Crease both diagonals." $ do
+          move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast)))
+          move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthEast) (CornerOf NorthWest)) FlapOfFirstArgument (Just (CornerOf SouthWest)))
+
+  -- The crane's first step, on a plain square: two records, each a
+  -- pre-crease ending where it began, each leaving its crease U at 0. Turns
+  -- red if the paper were left folded, the crease lettered by the sense, or
+  -- the record kept the fold's end.
+  it "creases the crane's diagonals on a plain square, in two records that end where they began" $ do
+    run <- right (onSquare (void diagonals))
+    let records = runRecords run
+    map recordKind records `shouldBe` [Precrease, Precrease]
+    forM_ records $ \record -> do
+      began <- right (frameVertices (surfaceFrame (recordBefore record)))
+      ended <- right (frameVertices (surfaceFrame (recordAfter record)))
+      ended `shouldBe` began
+      snd (recordAngles record) `shouldSatisfy` all (== 0)
+      [letter | (_, _, letter) <- recordNewCreases record] `shouldBe` [Unassigned]
+    renderRunReport run `shouldContain` ["  laid flat again: a pre-crease leaves its crease and no paper anywhere new"]
+
+  -- On the blintz, corner south-east's crease is one the sheet has, a
+  -- mountain. Pre-creasing along it draws nothing new and leaves it a
+  -- mountain at 0. Turns red if a pre-crease made an existing crease U.
+  it "draws no crease along one the paper has, and leaves that crease's letter" $ do
+    run <- right (onBlintz (step_ "Pre-crease the corner." (move (FoldAndUnfold ValleyFold (Onto (CornerOf SouthEast) Centre) FlapOfFirstArgument Nothing))))
+    record <- case runRecords run of
+      [r] -> pure r
+      other -> fail ("expected one record, got " <> show (length other))
+    recordKind record `shouldBe` Precrease
+    recordNewCreases record `shouldBe` []
+    let edges' = concatMap snd (recordHinge record)
+        letters = edgesAssignment (surfaceFrame (recordAfter record))
+    [l | EdgeId e <- edges', l <- take 1 (drop e letters)] `shouldBe` [Mountain]
+    snd (recordAngles record) `shouldSatisfy` all (== 0)
+
+  -- A pre-crease is checked as its fold is, so what refuses the fold
+  -- refuses it, as the same kind. Moving the centre along the diagonal
+  -- through it names paper on the new crease, in no one face. Turns red if a
+  -- pre-crease skipped the fold's checks, or were refused another way.
+  it "is refused by the same kind as its fold" $ do
+    let onTheLine moveOf = onBlintz (step_ "Fold along the diagonal." (move (moveOf (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just Centre))))
+        kindOf = either refusalKindOf (const Nothing)
+    kindOf (onTheLine (FoldAndUnfold ValleyFold)) `shouldBe` Just (RefusalKind "NotInOneFace")
+    kindOf (onTheLine (FoldAndUnfold ValleyFold)) `shouldBe` kindOf (onTheLine (Fold ValleyFold ToFlat))
+
+  -- Its crease is one to fold along later, and its unfold has nothing to
+  -- turn while the crease lies flat. Turns red if hinge of could not find
+  -- a pre-crease's crease, or an unfold of one made a record.
+  it "leaves a crease to fold along later, and an unfold with nothing to do" $ do
+    run <- right . onSquare $ do
+      p1 <- step "p1" "Crease the horizontal midline." (move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf South) (EdgeOf North) Nothing) FlapOfFirstArgument Nothing))
+      step_ "Unfold it, which does nothing." (unfold [p1])
+      step_ "Fold the bottom half up along it." (move (Fold ValleyFold ToFlat (hingeOf p1) FlapOfFirstArgument (Just (CornerOf SouthEast))))
+    map recordKind (runRecords run) `shouldBe` [Precrease, Turn]
+    case runRecords run of
+      [made, folded] -> do
+        sort (concatMap snd (recordHinge folded)) `shouldBe` sort (concatMap snd (recordHinge made))
+        [a | EdgeId e <- concatMap snd (recordHinge folded), a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== 180)
+      other -> expectationFailure ("expected two records, got " <> show (length other))
 
 -- A fold along a line where no crease runs (#495). On the flat sheet, every
 -- crease at rest, the runner creases each face the line crosses and then
