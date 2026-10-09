@@ -392,11 +392,11 @@ spec = do
         >>= goldenText "test/golden/quarter-fold-steps.svg"
 
     -- The bird base's sixteen states, with the arrow inferred between each
-    -- pair. No other golden draws this file with arrows, and 05 L3 is about to
-    -- teach 'Origami.Step' that a pair moved by one rigid motion of the whole
-    -- model is a change of presentation, which gets no arrow. None of these
-    -- pairs is one, so this page must come through that change byte for byte
-    -- (PRD 09 section 1.3): it turns red if a fold is taken for a turn-over.
+    -- pair. No other golden draws this file with arrows. A pair moved by one
+    -- rigid motion of the whole model is a change of presentation, a
+    -- turn-over or a rotation, and gets no arrow (PRD 05, L3); none of these
+    -- pairs is one, so every arrow here stays (PRD 09 section 1.3). Turns red
+    -- if a fold is taken for a turn-over.
     it "renders the bird base's sequence with every inferred arrow" $
       renderSteps "examples/bird-base-sequence.fold"
         >>= goldenText "test/golden/bird-base-sequence-arrows.svg"
