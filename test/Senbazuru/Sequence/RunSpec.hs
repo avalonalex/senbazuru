@@ -6,6 +6,7 @@ module Senbazuru.Sequence.RunSpec (spec) where
 import Control.Monad (forM_, void)
 import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
+import Data.Maybe (isJust)
 import Data.Text qualified as T
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Load (loadFoldFile)
@@ -13,17 +14,19 @@ import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
+import Senbazuru.Geometry.Rigid (Rigid (..), matApply)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
 import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..), SweepSettings (..))
+import Senbazuru.Origami.Step (motionsBetween, wholeModelMotion)
 import Senbazuru.Origami.Surface (surfaceFrame)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordStationary, recordStep, renderRunReport, runRefusal)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
-import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
 import Test.Hspec
 import Test.SequenceExamples (blintz, quarterFold)
@@ -38,6 +41,7 @@ spec = do
   pointingElsewhere
   creasing
   precreasing
+  turningOver
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -56,6 +60,7 @@ running = describe "running a sequence" $ do
   it "checks every turn over its whole path, and finds each clear" $
     forM_ records $ \record -> case recordEvidence record of
       SweptHinge turn -> sweepOutcome (flapCheck turn) `shouldBe` SweepClear
+      Presented -> expectationFailure "the blintz turns nothing over"
 
   -- Behind is away from the reader: with the coloured side up, -180, the
   -- recipe's travel; the unfold takes edge 8 back to 0. Turns red if the
@@ -131,7 +136,7 @@ running = describe "running a sequence" $ do
         other -> expectationFailure ("expected edge south refused as lying across the fold, got " <> show other)
 
     it "a move it does not make yet, by name" $
-      refusal (runOn (oneStep (turnOver LeftRight))) `shouldBe` Just (MoveNotRunYet "\"turn over\"")
+      refusal (runOn (oneStep (rotate 2 Clockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate\"")
   where
     coords (V3 x y z) = [x, y, z]
     coords2 (V2 x y) = [x, y]
@@ -310,6 +315,108 @@ precreasing = describe "a pre-crease" $ do
         sort (concatMap snd (recordHinge folded)) `shouldBe` sort (concatMap snd (recordHinge made))
         [a | EdgeId e <- concatMap snd (recordHinge folded), a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== 180)
       other -> expectationFailure ("expected two records, got " <> show (length other))
+
+-- A turn-over (#95, decisions D5): the whole model shown from its other side,
+-- about an axis through its own middle. No paper moves; the state's
+-- presentation changes, and with it the reader's side and the states a run
+-- writes.
+turningOver :: Spec
+turningOver = describe "a turn-over" $ do
+  let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings M.empty . elaborate
+      onSquare side = runOn . sequenceOf ((header "A square" sheetSquare Nothing) {hSide = side})
+      corners frame = [V3 x y z | x : y : rest <- take 4 (verticesCoords frame), let z = case rest of c : _ -> c; [] -> 0]
+      near (V3 a b c) (V3 x y z) = maximum (map abs [a - x, b - y, c - z]) < 1e-12
+
+  -- The square turned over left-right: one record, presented, its two
+  -- surfaces one, written with corner (0, 0) at (1, 0) and its face showing
+  -- its back, so classed a folded form; and the page finds no fold between
+  -- the two written states, only a turn of the whole model. Turns red if the
+  -- written state were not presented, the turn were about the origin, or a
+  -- turn-over drew an arrow.
+  it "shows the model from its other side in one record, and moves no paper" $ do
+    run <- right (onSquare ColouredUp (step_ "Turn the paper over." (turnOver LeftRight)))
+    record <- case runRecords run of
+      [r] -> pure r
+      other -> fail ("expected one record, got " <> show (length other))
+    (recordKind record, recordEvidence record) `shouldBe` (Presentation, Presented)
+    recordAfter record `shouldBe` recordBefore record
+    states <- right (writtenStates run)
+    (laid, turned) <- case map stateFrame states of
+      [a, b] -> pure (a, b)
+      other -> fail ("expected two states, got " <> show (length other))
+    zipWith near (corners turned) [V3 1 0 0, V3 0 0 0, V3 0 1 0, V3 1 1 0] `shouldBe` replicate 4 True
+    frameClasses turned `shouldBe` ["foldedForm"]
+    motionsBetween laid turned `shouldBe` Right []
+    fmap isJust (wholeModelMotion laid turned) `shouldBe` Right True
+    renderRunReport run `shouldContain` ["  presented: the whole model shown from its other side; no paper moved"]
+    [l | l <- renderRunReport run, "  moving:" `T.isPrefixOf` l] `shouldBe` []
+
+  -- Top-bottom turns about the horizontal line through the middle: corner
+  -- (0, 0) goes to (0, 1). Turns red if top-bottom turned about the vertical
+  -- line, as left-right does.
+  it "turns over top-bottom about the line across the middle" $ do
+    run <- right (onSquare ColouredUp (step_ "Turn the paper over top to bottom." (turnOver TopBottom)))
+    states <- right (writtenStates run)
+    case map stateFrame states of
+      [_, turned] -> do
+        zipWith near (corners turned) [V3 0 1 0, V3 1 1 0, V3 1 0 0, V3 0 0 0] `shouldBe` replicate 4 True
+        frameClasses turned `shouldBe` ["foldedForm"]
+      other -> expectationFailure ("expected two states, got " <> show (length other))
+
+  -- After a turn-over the reader sees the white side, so in front is -z on
+  -- the paper: a valley the reader folds is a mountain from the coloured
+  -- side, -180. Turns red if the reader's side ignored the presentation.
+  it "reads a later in front from the side turned up" $ do
+    run <- right . onSquare ColouredUp $ do
+      step_ "Turn the paper over." (turnOver LeftRight)
+      step_ "Fold the bottom half up in front." (fold inFront (LineOnto (edge South) (edge North) Nothing))
+    case [r | r <- runRecords run, recordStep r == 2] of
+      [folded] -> do
+        [letter | (_, _, letter) <- recordNewCreases folded] `shouldBe` [Mountain]
+        [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` all (== -180)
+      other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+
+  -- The crane's first three steps, its diagonals, a turn-over and its
+  -- midlines, on a plain square: two pre-creases, the turn, two more.
+  it "runs the crane's opening on a plain square" $ do
+    run <- right . onSquare ColouredUp $ do
+      step_ "Crease both diagonals." $ do
+        move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast)))
+        move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthEast) (CornerOf NorthWest)) FlapOfFirstArgument (Just (CornerOf SouthWest)))
+      step_ "Turn the paper over." (turnOver LeftRight)
+      step_ "Crease both midlines." $ do
+        move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf South) (EdgeOf North) Nothing) FlapOfFirstArgument Nothing)
+        move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf West) (EdgeOf East) Nothing) FlapOfFirstArgument Nothing)
+    map recordKind (runRecords run) `shouldBe` [Precrease, Precrease, Presentation, Precrease, Precrease]
+
+  -- White side up starts with a turn-over left-right (G3): state 0 is
+  -- written turned over, showing its back. Turns red if the start were not
+  -- presented.
+  it "starts turned over when the sequence starts white side up" $ do
+    run <- right (onSquare WhiteUp (step_ "Turn the paper over." (turnOver LeftRight)))
+    states <- right (writtenStates run)
+    case map stateFrame states of
+      start : back : _ -> do
+        zipWith near (corners start) [V3 1 0 0, V3 0 0 0, V3 0 1 0, V3 1 1 0] `shouldBe` replicate 4 True
+        frameClasses start `shouldBe` ["foldedForm"]
+        -- Turned over again, the coloured side is up and the sheet lies as
+        -- drawn.
+        zipWith near (corners back) [V3 0 0 0, V3 1 0 0, V3 1 1 0, V3 0 1 0] `shouldBe` replicate 4 True
+        frameClasses back `shouldBe` ["creasePattern"]
+      other -> expectationFailure ("expected two states, got " <> show (length other))
+
+  -- Two turn-overs about the same axis put the model back as it began, each
+  -- composed onto the presentation before it. Turns red if a turn-over
+  -- replaced the presentation rather than composing with it.
+  it "turned over twice, shows the model as it began" $ do
+    run <- right . onSquare ColouredUp $ do
+      step_ "Turn the paper over." (turnOver LeftRight)
+      step_ "Turn it back." (turnOver LeftRight)
+    states <- right (writtenStates run)
+    case map stateFrame states of
+      [start, _, back] -> zipWith near (corners back) (corners start) `shouldBe` replicate 4 True
+      other -> expectationFailure ("expected three states, got " <> show (length other))
+    fmap (snd . recordPresentation) (take 1 (drop 1 (runRecords run))) `shouldSatisfy` all (\p -> matApply (rigidLinear p) (V3 0 0 1) `near` V3 0 0 1)
 
 -- A fold along a line where no crease runs (#495). On the flat sheet, every
 -- crease at rest, the runner creases each face the line crosses and then

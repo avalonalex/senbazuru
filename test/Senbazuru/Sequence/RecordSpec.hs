@@ -13,6 +13,7 @@ import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
+import Senbazuru.Geometry.Rigid (identity)
 import Senbazuru.Geometry.V3 (modelSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (flapAt)
@@ -30,7 +31,7 @@ spec = describe "a move record" $ do
   turns <- runIO (right (buildBlintzSequence (keyFrame source)))
   elaborated <- runIO (right (elaborate <$> checkSequence blintz))
   let places = [(step, elaboratedName s, elaboratedCaption s, coreOrigin m) | (step, s) <- zip [1 ..] (elaboratedSteps elaborated), m <- elaboratedMoves s]
-  records <- runIO . right $ sequence [hingeTurn step 1 name caption origin [(hinge, [EdgeId e])] [] (MaterialPoint (V2 0.5 0.5), MaterialPoint (V2 0.5 0.5)) (MaterialPoint corner) [] (blintzMotion turn) | ((step, name, caption, origin), turn, corner, hinge, e) <- zip5 places turns corners hinges edges]
+  records <- runIO . right $ sequence [hingeTurn step 1 name caption origin [(hinge, [EdgeId e])] [] (MaterialPoint (V2 0.5 0.5), MaterialPoint (V2 0.5 0.5)) identity (MaterialPoint corner) [] (blintzMotion turn) | ((step, name, caption, origin), turn, corner, hinge, e) <- zip5 places turns corners hinges edges]
 
   -- If the language's blintz or the recipe changed order, every test below
   -- would be about the wrong pairs.

@@ -15,8 +15,9 @@
 -- sheet, along a line where none runs yet, its line given by points, by an
 -- edge, by laying one line onto another or as @hinge of NAME@; @pre-crease@,
 -- the same fold checked and laid flat again, which leaves its crease and one
--- record; @unfold@; and @expect refused@. Every other move is refused as not
--- run yet, naming itself, rather than skipped.
+-- record; @unfold@; @turn over@, which moves no paper and shows the model
+-- from its other side; and @expect refused@. Every other move is refused as
+-- not run yet, naming itself, rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
 -- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
@@ -62,7 +63,8 @@
 -- A fold that would carry the anchor's paper re-anchors (owner decision 3);
 -- until that is built it is refused as not run yet, as are a new crease on
 -- folded paper, which creases through its layers (milestone M4), layer words
--- and every move but @fold@, @pre-crease@ and @unfold@. A new crease through the anchor
+-- and every move but @fold@, @pre-crease@, @unfold@ and @turn over@, @rotate@
+-- among them. A new crease through the anchor
 -- moves the anchor off it, to a face the fold holds still (decisions C19,
 -- 'reanchor'), which is not a re-anchoring: no paper moves.
 --
@@ -79,6 +81,12 @@
 -- paper moves, so that a model does not wander across the page from one
 -- picture to the next. It is a material point, not a face id, because ids do
 -- not survive the cutting a new crease makes.
+--
+-- And the /presentation/: how the model is shown to the reader, a rigid
+-- motion from where the paper is folded to where the reader sees it. A
+-- turn-over changes it and nothing else; no paper moves, and every record's
+-- surfaces stay as folded. It decides the /reader's side/, which @valley@ and
+-- @mountain@ are read from, and the states a run writes are presented.
 --
 -- == How a sheet becomes a starting state
 --
@@ -147,6 +155,8 @@ import Senbazuru.Fold.Query (FrameKind (..), atRest, frameKind, frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, edges, insideRing, signedArea)
+import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, isProperRotation, matApply)
+import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, prepareFlapAlong, prepareFlapToward)
@@ -159,16 +169,18 @@ import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), Re
 import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Resolve
-import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, Point, Sense (..), SheetSource (..), Side (..), Start (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..))
 
 -- | The paper between two moves of a run: the working pattern and the anchor.
 -- Opaque; the header says what each is and why.
 data FoldState = FoldState
   { theWorking :: !Frame,
     theAnchor :: !MaterialPoint,
-    -- | Which way the reader's side faces: in front, where a valley fold
-    -- sends its paper.
-    theFront :: !Toward,
+    -- | How the model is shown to the reader: the rigid motion from where the
+    -- paper is folded to where the reader sees it, changed by a turn-over and
+    -- by nothing that folds (decisions D5). The reader's side follows from it
+    -- ('frontOf').
+    thePresentation :: !Rigid,
     -- | The working pattern folded, when the last move's join check has
     -- folded it already: the next move starts from that fold rather than
     -- folding the same pattern again.
@@ -179,6 +191,33 @@ data FoldState = FoldState
     theSheetFaces :: ![[VertexId]]
   }
   deriving stock (Eq, Show)
+
+-- | The reader's side: model +z of the model as shown (decisions D5). It is
+-- the coloured side until a turn-over sends +z to -z, and a valley fold sends
+-- its paper towards it.
+frontOf :: FoldState -> Toward
+frontOf state = case matApply (rigidLinear (thePresentation state)) (V3 0 0 1) of
+  V3 _ _ z | z < 0 -> TowardMinusZ
+  _ -> TowardPlusZ
+
+-- | A turn-over about the model's own middle (decisions D5): left-right maps
+-- (x, y, z) to (2cx - x, y, 2cz - z), top-bottom to (x, 2cy - y, 2cz - z),
+-- with (cx, cy) the centre of the points' xy box and cz the middle of their z
+-- range. About the middle, so the model stays where it is on the page; about
+-- the origin it would be carried off it. Its entries are 0 and 1 and -1, so it
+-- adds no rounding of its own.
+turnOverAbout :: PageAxis -> [V3] -> Rigid
+turnOverAbout axis points = case axis of
+  LeftRight -> Rigid (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 (-1))) (V3 (2 * mid v3x) 0 (2 * mid v3z))
+  TopBottom -> Rigid (Mat3 (V3 1 0 0) (V3 0 (-1) 0) (V3 0 0 (-1))) (V3 0 (2 * mid v3y) (2 * mid v3z))
+  where
+    mid along = case map along points of
+      [] -> 0
+      values -> (minimum values + maximum values) / 2
+
+-- | Where a surface's vertices are, as folded.
+surfacePositions :: Surface V2 -> [V3]
+surfacePositions surface = [V3 x y (case rest of z : _ -> z; [] -> 0) | x : y : rest <- verticesCoords (surfaceFrame surface)]
 
 -- | The working pattern: the sheet's creases cut at every crossing, its
 -- vertices in material coordinates, the anchor's face first.
@@ -223,7 +262,7 @@ sheetState file = do
               facesVertices = firstOf index faces
             },
         theAnchor = MaterialPoint anchor,
-        theFront = TowardPlusZ,
+        thePresentation = identity,
         theFold = Nothing,
         theSheetFaces = faces
       }
@@ -318,6 +357,7 @@ runSequence settings sheets elaborated = do
     Run
       { runTitle = hTitle header,
         runStart = startSurface,
+        runStartPresentation = thePresentation start,
         runSteps = reverse outcomes,
         runRecords = reverse made,
         runExpected = reverse expected,
@@ -363,7 +403,12 @@ startOf sheets header = do
       Right laid {theWorking = (theWorking laid) {facesVertices = chosen ++ filter (`notElem` chosen) (theSheetFaces laid)}, theAnchor = MaterialPoint m, theFold = Nothing}
   folded <- first (SheetRefused at path . SheetDoesNotFold) (foldNow anchored)
   surface <- first (SheetRefused at path . SheetNoSurface) (surfaceFromFolded folded)
-  Right (anchored {theFront = if hSide header == WhiteUp then TowardMinusZ else TowardPlusZ, theFold = Just folded}, surface)
+  -- White side up starts with a turn-over left-right (G3), about the sheet's
+  -- own middle as every turn-over is.
+  let shown = case hSide header of
+        WhiteUp -> turnOverAbout LeftRight (surfacePositions surface)
+        ColouredUp -> identity
+  Right (anchored {thePresentation = shown, theFold = Just folded}, surface)
 
 -- | Where a step leaves a run: going on, or stopped at a @not modelled@
 -- move with everything made before it, the step's own earlier moves included.
@@ -379,8 +424,8 @@ runStep :: RunSettings -> Progress -> (Int, ElaboratedStep) -> Either SequenceEr
 runStep settings (Progress state done named expected surface outcomes) (n, step) = go state [] [] (zip [1 ..] (elaboratedMoves step))
   where
     go st made got = \case
-      [] -> Right (Going (progress st made got (outcome made : outcomes)))
-      (i, CoreMove origin core) : rest -> case runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st core of
+      [] -> Right (Going (progress st made got (outcome st made : outcomes)))
+      (i, CoreMove origin core) : rest -> case runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st (after made) core of
         Left (StepRefused _ _ at (NotModelledStop what)) -> Right (Stopped (progress st made got outcomes) (RunStop n (elaboratedName step) (elaboratedCaption step) at what))
         Left err -> Left err
         Right (Made st' records refused) -> go st' (made ++ records) (got ++ refused) rest
@@ -392,7 +437,7 @@ runStep settings (Progress state done named expected surface outcomes) (n, step)
       [] -> surface
     -- A step of nothing but expect refused moved no paper, and writes no
     -- state (PRDs/decisions.md, D24).
-    outcome made = StepOutcome n (elaboratedName step) (elaboratedCaption step) (if all expectation (elaboratedMoves step) then Nothing else Just (after made))
+    outcome st made = StepOutcome n (elaboratedName step) (elaboratedCaption step) (if all expectation (elaboratedMoves step) then Nothing else Just (after made)) (thePresentation st)
     expectation (CoreMove _ core) = case core of
       CoreExpectRefused {} -> True
       _ -> False
@@ -410,8 +455,8 @@ data Here = Here
     placeOrigin :: !Origin
   }
 
-runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Core -> Either SequenceError Made
-runMove settings place named state = \case
+runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Surface V2 -> Core -> Either SequenceError Made
+runMove settings place named state surface = \case
   CoreFold sense amount line layers seed -> moved <$> foldMove settings place named state Turn sense amount line layers seed
   -- A pre-crease is the fold, checked over its whole path, laid flat again:
   -- one move and one record, its crease left without a direction.
@@ -423,7 +468,7 @@ runMove settings place named state = \case
   -- is passed on as itself.
   CoreExpectRefused kind inner -> case inner of
     Nothing -> Left (refusedAt place (RefusalNotRaised kind))
-    Just (CoreMove origin core) -> case runMove settings place {placeOrigin = origin} named state core of
+    Just (CoreMove origin core) -> case runMove settings place {placeOrigin = origin} named state surface core of
       Right _ -> Left (refusedAt place (RefusalNotRaised kind))
       Left err -> case refusalKindOf err of
         Just raised
@@ -431,6 +476,15 @@ runMove settings place named state = \case
           | otherwise -> Left (refusedAt place (RefusedDifferently kind raised))
         Nothing -> Left err
   CoreNotModelled what -> Left (refusedAt place (NotModelledStop what))
+  -- A turn-over moves no paper: the model is shown from its other side, its
+  -- axis through the middle of the model as shown (decisions D5). The state
+  -- keeps its paper and changes its presentation, and with it the reader's
+  -- side.
+  CoreTurnOver axis -> do
+    let shown = thePresentation state
+        shown' = turnOverAbout axis [applyRigid shown p | p <- surfacePositions surface] `Rigid.after` shown
+    unless (isProperRotation (rigidLinear shown')) (Left (refusedAt place PresentationImproper))
+    Right (Made state {thePresentation = shown'} [presented (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state) surface (shown, shown')] [])
   other -> Left (refusedAt place (MoveNotRunYet (moveWords other)))
   where
     moved (st, records) = Made st records []
@@ -451,14 +505,15 @@ foldMove settings place named given kind sense amount line layers seed = do
       records -> Left (HingeOfNotOneMove name (length records))
     _ -> foldLine (runNearMissBand settings) seen line
   let toward = case sense of
-        ValleyFold -> theFront given
-        MountainFold -> opposite (theFront given)
+        ValleyFold -> frontOf given
+        MountainFold -> opposite (frontOf given)
   -- A fold's new crease is lettered by its sense, seen from the coloured
   -- side; a pre-crease's has no direction, since a later move may fold it
   -- either way (owner decision 14).
+  -- A fold is run as a Turn or a Precrease, never as a Presentation.
   let letter = case kind of
         Precrease -> Unassigned
-        Turn -> case toward of
+        _ -> case toward of
           TowardPlusZ -> Valley
           TowardMinusZ -> Mountain
   (creased, foldedCreased, flatCreased, fresh, around) <- creaseAcross place line given found seen foldAt letter
@@ -509,10 +564,10 @@ foldMove settings place named given kind sense amount line layers seed = do
   motion <- first (refusedAt place . FlapRefused) (prepareFlapToward (selectionHinge selection) (selectionSide selection) magnitude toward folded)
   turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
   let resolved = [uncurry (ResolvedLine (prettyLine line)) (lineAsSeen flat foldAt), ResolvedSeed seedWords (toSheetLengths flat m)]
-  turned <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (theAnchor given, theAnchor state) (MaterialPoint m) resolved turn)
+  turned <- first (refusedAt place . FlapRefused) (recordOf place (hingeStretches flat (selectionHinge selection)) fresh (theAnchor given, theAnchor state) (thePresentation state) (MaterialPoint m) resolved turn)
   let record = case kind of
-        Turn -> turned
         Precrease -> asPrecrease turned
+        _ -> turned
   next <- handOn place state folded record
   pure (next, [record])
   where
@@ -698,13 +753,13 @@ undoOne settings place (state, made) earlier = do
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
           let stretches = [(segment, [p | (e, ps) <- found, e `elem` recorded, p <- ps]) | (segment, recorded) <- recordHinge earlier]
-          record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] (theAnchor state, theAnchor state) seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
+          record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] (theAnchor state, theAnchor state) (thePresentation state) seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place state folded record
           pure (next, made ++ [record])
     _ -> Right (state, made)
 
 -- | The record of a checked turn, at this place.
-recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> (MaterialPoint, MaterialPoint) -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
+recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> (MaterialPoint, MaterialPoint) -> Rigid -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
 recordOf place = hingeTurn (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place)
 
 -- | Hand the state on: write the accepted angles and orders onto the working

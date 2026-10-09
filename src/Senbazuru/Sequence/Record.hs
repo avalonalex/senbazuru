@@ -119,6 +119,7 @@ module Senbazuru.Sequence.Record
     recordHinge,
     recordNewCreases,
     recordAnchor,
+    recordPresentation,
     recordMoving,
     recordStationary,
     recordResolved,
@@ -129,6 +130,7 @@ module Senbazuru.Sequence.Record
     -- * Making one
     hingeTurn,
     asPrecrease,
+    presented,
 
     -- * A run
     Run (..),
@@ -160,6 +162,8 @@ import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (Box (..), V2 (..), boxFromPoints, boxSize)
 import Senbazuru.Geometry.Polygon (signedArea)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity)
+import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
 import Senbazuru.Sequence.Elaborate (Origin (..))
@@ -180,10 +184,13 @@ data MaterialSegment = MaterialSegment !MaterialPoint !MaterialPoint
 -- reader can do things with it: the page draws a turn part-way through from
 -- the checked turn. A @newtype@ while a turn about a hinge is the only move;
 -- the evidence for the others joins it as constructors (see the header).
-newtype RouteEvidence
+data RouteEvidence
   = -- | A turn about a hinge, checked over its whole path: the moving paper
     -- passes through no other paper from start to end.
     SweptHinge CheckedFlap
+  | -- | A change of how the model is shown, a turn-over: no paper moved, so
+    -- there was no path to check.
+    Presented
   deriving stock (Eq, Show)
 
 -- | One move of a run, as its readers take it. Made by 'hingeTurn'; the
@@ -204,6 +211,7 @@ data MoveRecord = MoveRecord
     theHinge :: ![(MaterialSegment, [EdgeId])],
     theNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)],
     theAnchor :: !(MaterialPoint, MaterialPoint),
+    thePresentation :: !(Rigid, Rigid),
     theKind :: !MoveKind,
     theMoving :: ![(MaterialPoint, [FaceId])],
     theStationary :: !FaceId,
@@ -222,6 +230,10 @@ data MoveKind
     -- line. Its record keeps the fold's evidence, which was checked over its
     -- whole path, and carries no sense, since a crease it draws has none.
     Precrease
+  | -- | A turn-over (decisions D5): the whole model is shown from its other
+    -- side, and no paper moves. Its two surfaces are one; its presentation
+    -- changes.
+    Presentation
   deriving stock (Eq, Show)
 
 -- | A reference as the run resolved it, for the report: the words the author
@@ -305,6 +317,13 @@ recordNewCreases = theNewCreases
 recordAnchor :: MoveRecord -> (MaterialPoint, MaterialPoint)
 recordAnchor = theAnchor
 
+-- | How the model was shown before the move and after it: the rigid motion
+-- taking where the paper is folded to where the reader sees it (decisions
+-- D5). The surfaces are never presented; a turn-over changes this and
+-- nothing else.
+recordPresentation :: MoveRecord -> (Rigid, Rigid)
+recordPresentation = thePresentation
+
 -- | The paper that moved: each seed the author named it by, with the faces
 -- that seed picked out. The faces are the turn's; the seed is the runner's.
 recordMoving :: MoveRecord -> [(MaterialPoint, [FaceId])]
@@ -360,13 +379,15 @@ hingeTurn ::
   -- | The anchor before the move and after it, the same unless the move's
   -- new crease ran through it.
   (MaterialPoint, MaterialPoint) ->
+  -- | How the model is shown, which a turn about a hinge does not change.
+  Rigid ->
   -- | The seed the moving paper was picked out by.
   MaterialPoint ->
   -- | The references the move resolved, for the report.
   [ResolvedReference] ->
   CheckedFlap ->
   Either FlapError MoveRecord
-hingeTurn step move name caption origin hinge newCreases anchor seed resolved turn = do
+hingeTurn step move name caption origin hinge newCreases anchor shown seed resolved turn = do
   before <- flapAt turn 0
   after <- flapAt turn 1
   pure
@@ -382,6 +403,7 @@ hingeTurn step move name caption origin hinge newCreases anchor seed resolved tu
         theHinge = hinge,
         theNewCreases = newCreases,
         theAnchor = anchor,
+        thePresentation = (shown, shown),
         theKind = Turn,
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn,
@@ -395,6 +417,48 @@ hingeTurn step move name caption origin hinge newCreases anchor seed resolved tu
 asPrecrease :: MoveRecord -> MoveRecord
 asPrecrease record = record {theKind = Precrease, theAfter = theBefore record}
 
+-- | The record of a turn-over: the paper as it lies, held still in both
+-- surfaces, shown one way before and another after. No paper moved, so its
+-- evidence is that it was 'Presented', it has no hinge and no moving paper,
+-- and the face it holds still is the anchor's.
+presented ::
+  -- | The step's number, from 1.
+  Int ->
+  -- | The move's place in its step, from 1.
+  Int ->
+  -- | The step's name, if it has one.
+  Maybe Name ->
+  -- | The step's caption, if it has one.
+  Maybe Text ->
+  -- | The move as written.
+  Origin ->
+  -- | The anchor, which a turn-over does not move.
+  MaterialPoint ->
+  -- | The paper as it lies.
+  Surface V2 ->
+  -- | How it was shown before, and after.
+  (Rigid, Rigid) ->
+  MoveRecord
+presented step move name caption origin anchor surface shown =
+  MoveRecord
+    { theStep = step,
+      theMoveIndex = move,
+      theStepName = name,
+      theCaption = caption,
+      theOrigin = origin,
+      theBefore = surface,
+      theAfter = surface,
+      theEvidence = Presented,
+      theHinge = [],
+      theNewCreases = [],
+      theAnchor = (anchor, anchor),
+      thePresentation = shown,
+      theKind = Presentation,
+      theMoving = [],
+      theStationary = FaceId 0,
+      theResolved = []
+    }
+
 -- | What a run hands back: the state it started from, what each step did,
 -- one record for each move it made, in order, each refusal a sequence
 -- expected and got, and where a @not modelled@ move stopped it. With the
@@ -403,6 +467,9 @@ data Run = Run
   { runTitle :: Maybe Text,
     -- | The sheet laid flat, before any move: state 0.
     runStart :: Surface V2,
+    -- | How state 0 is shown: as it lies, or turned over for a sequence
+    -- that starts white side up.
+    runStartPresentation :: Rigid,
     -- | Each step the run finished, in order.
     runSteps :: [StepOutcome],
     runRecords :: [MoveRecord],
@@ -428,7 +495,9 @@ data StepOutcome = StepOutcome
   { outcomeStep :: !Int,
     outcomeName :: !(Maybe Name),
     outcomeCaption :: !(Maybe Text),
-    outcomeEnd :: !(Maybe (Surface V2))
+    outcomeEnd :: !(Maybe (Surface V2)),
+    -- | How the state it ends at is shown.
+    outcomePresentation :: !Rigid
   }
   deriving stock (Eq, Show)
 
@@ -497,22 +566,33 @@ writtenStates :: Run -> Either SequenceError [WrittenState]
 writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
   where
     writing = [(outcome, end) | outcome <- runSteps run, Just end <- [outcomeEnd outcome]]
-    produced = (Nothing, runStart run) : [(Just outcome, end) | (outcome, end) <- writing]
+    produced = (Nothing, runStart run, runStartPresentation run) : [(Just outcome, end, outcomePresentation outcome) | (outcome, end) <- writing]
     titles = map (outcomeCaption . fst) writing ++ [maybe (runClosing run) stopCaption (runStop run)]
-    write k (producer, surface) title = case writtenFrame surface title (fmap (assurance . outcomeStep) producer) of
+    write k (producer, surface, shown) title = case writtenFrame surface shown title (fmap (assurance . outcomeStep) producer) of
       Left problem -> Left (WriteRefused k problem)
       Right frame -> Right (WrittenState (fmap outcomeStep producer) frame)
     assurance n = toJSON [object ["move" .= recordMoveIndex record, "evidence" .= evidenceName (recordEvidence record)] | record <- runRecords run, recordStep record == n]
     evidenceName = \case
       SweptHinge _ -> "SweptHinge" :: Text
+      Presented -> "Presented"
 
--- | One surface as a written frame: the state rule, the class, the caption
--- and the two vendor keys. Nothing of the sheet's own frame is kept but its
--- unit: its extras, attributes, author and description described the sheet,
--- and would be stale on a state folded from it.
-writtenFrame :: Surface V2 -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
-writtenFrame surface title assurance = do
-  let base = materialFrame surface
+-- | One surface as a written frame, shown as the reader sees it: the state
+-- rule, the class, the caption and the two vendor keys. Nothing of the
+-- sheet's own frame is kept but its unit: its extras, attributes, author and
+-- description described the sheet, and would be stale on a state folded from
+-- it.
+--
+-- Written frames are presented (decisions D5): each vertex where the
+-- presentation puts it, so a state after a turn-over is written turned over,
+-- its faces showing their backs. A presentation that is the identity leaves
+-- the coordinates exactly as folded, so a run with no turn-over writes what
+-- it always wrote.
+writtenFrame :: Surface V2 -> Rigid -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
+writtenFrame surface shown title assurance = do
+  let folded = materialFrame surface
+      base
+        | shown == identity = folded
+        | otherwise = folded {verticesCoords = [let V3 x y z = applyRigid shown (V3 a b c) in [x, y, z] | a : b : rest <- verticesCoords folded, let c = case rest of z : _ -> z; [] -> 0]}
       angles = edgesFoldAngle base
       edgeCount = length (edgesVertices base)
       letters = case edgesAssignment base of
@@ -574,9 +654,13 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
              | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
                a /= b
            ]
-        ++ ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
+        ++ [ line
+             | recordKind r /= Presentation,
+               line <- ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
+           ]
     checked = \case
       SweptHinge _ -> "checked: the whole turn, swept, with no paper in its way"
+      Presented -> "presented: the whole model shown from its other side; no paper moved"
     resolvedFact = \case
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
       ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p
