@@ -3,7 +3,7 @@
 -- an angle or a face wound clockwise.
 module Senbazuru.Sequence.RunSpec (spec) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, void)
 import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
@@ -21,9 +21,10 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordStationary, recordStep, runRefusal)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), RouteEvidence (..), Run (..), RunStop (..), recordAfter, recordAngles, recordBefore, recordEvidence, recordHinge, recordMoving, recordNewCreases, recordStationary, recordStep, renderRunReport, runRefusal)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..))
+import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
 import Test.Hspec
 import Test.SequenceExamples (blintz, quarterFold)
 
@@ -35,6 +36,7 @@ spec = do
   stopping
   blocked
   pointingElsewhere
+  creasing
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -95,11 +97,13 @@ running = describe "running a sequence" $ do
         Left (SheetRefused _ "examples/blintz-base.fold" SheetNotLoaded) -> pure ()
         other -> expectationFailure ("expected the sheet refused, got " <> show (fmap (length . runRecords) other))
 
-    -- The diagonal crosses the central square, where no crease runs.
-    it "a fold that would need a new crease, until creasing is run" $
+    -- The diagonal crosses the central square, where no crease runs, through
+    -- its centre, the anchor. Creasing it would leave the anchor on a crease,
+    -- in no one face, and the anchor would have to move (decisions C19).
+    it "a fold whose new crease runs through the anchor, until the anchor can move" $
       case runOn (oneStep (move (Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast))))) of
-        Left (ResolveRefused (InStep 1 _) _ _ (NotRunYet _)) -> pure ()
-        other -> expectationFailure ("expected creasing to be not run yet, got " <> show (fmap (length . runRecords) other))
+        Left (StepRefused 1 _ _ (MoveNotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "anchor"
+        other -> expectationFailure ("expected a crease through the anchor refused, got " <> either (show . explain) (show . length . runRecords) other)
 
     -- An anchor inside corner south-east's triangle moves with it.
     it "a fold that would carry the anchor's paper, until re-anchoring is run" $ do
@@ -241,6 +245,122 @@ pointingElsewhere = describe "a nearest P pointing away from the answer taken" $
     run <- right (runOn (foldOnto (ExpectRefused (RefusalKind "NearestDisagrees"))))
     runRecords run `shouldBe` []
     runExpected run `shouldBe` [ExpectedRefusal 1 1 (RefusalKind "NearestDisagrees")]
+
+-- A fold along a line where no crease runs (#495). On the flat sheet, every
+-- crease at rest, the runner creases each face the line crosses and then
+-- turns about the new crease, with any the line found already there. The
+-- crease's letter is the fold's sense seen from the coloured side.
+creasing :: Spec
+creasing = describe "a fold along a line where no crease runs" $ do
+  let runOn sheets sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
+      onSquare anchorAt side = runOn M.empty . sequenceOf ((header "A square" sheetSquare anchorAt) {hSide = side})
+      corner = CornerOf
+      ends (MaterialSegment (MaterialPoint a) (MaterialPoint b), edges, letter) = ([a, b], edges, letter)
+      unordered (pair, edges, letter) = (sort' pair, edges, letter)
+      sort' = sortOn (\(V2 x y) -> (x, y))
+      -- The square folded along one diagonal, unfolded, then along the
+      -- other, unfolded again; then whatever comes after.
+      bothDiagonals after' = onSquare (Just (at (3 / 4) (1 / 8))) ColouredUp $ do
+        c1 <- step "c1" "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast)))
+        step_ "Unfold it." (unfold [c1])
+        c2 <- step "c2" "Fold the top-right corner onto the bottom-left." (fold valley (Onto (corner NorthEast) (corner SouthWest)))
+        step_ "Unfold it." (unfold [c2])
+        after' c1
+
+  -- The issue's own test: a plain square folded along a diagonal runs to one
+  -- record, whose hinge is the new crease, a valley at 180 once turned, with
+  -- the corner on the moving side landed on the opposite corner. Turns red if
+  -- the line were refused as needing a crease, or the crease drawn already
+  -- folded.
+  it "creases a plain square along a diagonal and turns about it, in one record" $ do
+    run <- right (onSquare (Just (at (3 / 4) (1 / 4))) ColouredUp (step_ "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast)))))
+    record <- one (runRecords run)
+    map ends (recordNewCreases record) `shouldBe` [([V2 0 0, V2 1 1], [EdgeId 4], Valley)]
+    concatMap snd (recordHinge record) `shouldBe` [EdgeId 4]
+    drop 4 (fst (recordAngles record)) `shouldBe` [0]
+    drop 4 (snd (recordAngles record)) `shouldBe` [180]
+    landed <- right (frameVertices (surfaceFrame (recordAfter record)))
+    case drop 3 landed of
+      V3 x y z : _ -> maximum (map abs [x - 1, y, z]) `shouldSatisfy` (< 1e-12)
+      [] -> expectationFailure "the square has no corner north-west"
+    renderRunReport run `shouldContain` ["  new crease: (0, 0) to (1, 1), valley (internal edge 4)"]
+    void (writeSequence noFileHeader run) `shouldBe` Right ()
+
+  -- White side up, a valley towards the reader is a mountain from the
+  -- coloured side, which is the side FOLD's letters are read from. Turns red
+  -- if the letter were the author's sense as written.
+  it "letters the crease from the coloured side, a mountain with the white side up" $ do
+    run <- right (onSquare (Just (at (3 / 4) (1 / 4))) WhiteUp (step_ "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast)))))
+    record <- one (runRecords run)
+    [letter | (_, _, letter) <- recordNewCreases record] `shouldBe` [Mountain]
+    drop 4 (snd (recordAngles record)) `shouldBe` [-180]
+
+  -- The second diagonal crosses the first's crease at the centre: two faces
+  -- crossed, two stretches meeting there, one new crease cut in two by the
+  -- old. Turns red if the stretches were kept apart, or the old crease were
+  -- creased again.
+  it "makes one crease of the stretches that meet across an old crease" $ do
+    run <- right (bothDiagonals (const (pure ())))
+    case [r | r <- runRecords run, recordStep r == 3] of
+      [record] -> do
+        map (unordered . ends) (recordNewCreases record) `shouldBe` [([V2 0 1, V2 1 0], [EdgeId 6, EdgeId 7], Valley)]
+        sort (concatMap snd (recordHinge record)) `shouldBe` [EdgeId 6, EdgeId 7]
+      other -> expectationFailure ("expected one record at step 3, got " <> show (length other))
+
+  -- A sheet with a crease up the middle and one from the west edge to it,
+  -- folded along the line through both halves: the west half runs along the
+  -- crease the sheet has, the east half crosses paper with none. Only the
+  -- east half is creased, and the fold turns about both. Turns red if the
+  -- whole line were creased again, or the old half left out of the hinge.
+  it "creases only where the line has no crease, and turns about both" $ do
+    let sheet =
+          squareSheet
+            { keyFrame =
+                (keyFrame squareSheet)
+                  { verticesCoords = verticesCoords (keyFrame squareSheet) ++ [[0.5, 0], [0.5, 1], [0, 0.5], [0.5, 0.5]],
+                    edgesVertices = edgesVertices (keyFrame squareSheet) ++ [(VertexId 4, VertexId 5), (VertexId 6, VertexId 7)],
+                    edgesAssignment = edgesAssignment (keyFrame squareSheet) ++ [Valley, Valley],
+                    edgesFoldAngle = replicate 6 0,
+                    facesVertices = []
+                  }
+            }
+    run <- right (runOn (M.singleton "half.fold" sheet) (sequenceOf (header "Half creased" (sheetFile "half.fold") (Just (at (3 / 4) (3 / 4)))) (step_ "Fold the bottom half up." (fold valley (LineOnto (edge South) (edge North) Nothing)))))
+    record <- one (runRecords run)
+    case recordNewCreases record of
+      [made@(_, ids, Valley)] -> do
+        fst3 (unordered (ends made)) `shouldBe` [V2 0.5 0.5, V2 1 0.5]
+        let hinge = concatMap snd (recordHinge record)
+            (_, after') = recordAngles record
+        length hinge `shouldSatisfy` (> length ids)
+        all (`elem` hinge) ids `shouldBe` True
+        [take 1 (drop e after') | EdgeId e <- hinge] `shouldBe` replicate (length hinge) [180]
+      other -> expectationFailure ("expected one new valley, got " <> show other)
+
+  -- Creasing through the layers of folded paper is M4's. Turns red if the
+  -- runner creased one layer of a folded model as though it were the sheet.
+  it "refuses a new crease on folded paper" $
+    case onSquare (Just (at (3 / 4) (1 / 8))) ColouredUp $ do
+      step_ "Fold the top-left corner onto the bottom-right." (fold valley (Onto (corner NorthWest) (corner SouthEast)))
+      step_ "Fold the top-right corner to the centre." (fold valley (Onto (corner NorthEast) Centre)) of
+      Left (ResolveRefused (InStep 2 Nothing) _ _ (NotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "folded paper"
+      other -> expectationFailure ("expected a new crease on folded paper refused, got " <> either (show . explain) (const "a run") other)
+
+  -- Once a later move has creased the paper, an earlier record's edge ids
+  -- name other edges. Until they are found again by where they lie, both
+  -- uses of them are refused rather than read wrongly. Turns red if either
+  -- went ahead with the stale ids.
+  it "refuses unfold and hinge of a move made before the paper was creased again" $ do
+    case bothDiagonals (\c1 -> step_ "Unfold the first again." (unfold [c1])) of
+      Left (StepRefused 5 _ _ (MoveNotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "creased again"
+      other -> expectationFailure ("expected the unfold refused, got " <> either (show . explain) (const "a run") other)
+    case bothDiagonals (\c1 -> step_ "Fold the first again." (move (Fold ValleyFold ToFlat (hingeOf c1) FlapOfFirstArgument (Just (corner NorthWest))))) of
+      Left (ResolveRefused (InStep 5 Nothing) _ _ (NotRunYet what)) -> what `shouldSatisfy` T.isInfixOf "creased again"
+      other -> expectationFailure ("expected hinge of refused, got " <> either (show . explain) (const "a run") other)
+  where
+    one = \case
+      [record] -> pure record
+      records -> fail ("expected one record, got " <> show (length records))
+    fst3 (a, _, _) = a
 
 -- A turn blocked part-way. Folding needs paper lying flat, so only an
 -- unfold can turn paper with something standing in its way. On the

@@ -36,12 +36,12 @@
 -- * __A region__, such as the anchor, must lie strictly inside one face: a
 --   point on a crease belongs to two.
 --
--- == The hinge is creases the paper already has
+-- == The hinge is creases the paper has
 --
--- 'hingeAlong' finds the creases lying along a fold line. So far a run folds
--- only along creases the paper has: a line that crosses a face where no crease
--- runs would need a new crease, and creasing is a later change, so it is
--- refused as not run yet rather than folded wrong.
+-- 'hingeAlong' finds the creases lying along a fold line, and refuses a line
+-- that crosses a face where no crease runs. A runner creases such paper
+-- first: 'crossedFaces' says where the line crosses it, and 'chordsAcross'
+-- where on the sheet the new creases go.
 --
 -- == Only flat states
 --
@@ -63,6 +63,8 @@ module Senbazuru.Sequence.Resolve
     foldLine,
     lineAlong,
     hingeAlong,
+    crossedFaces,
+    chordsAcross,
     firstLineSeed,
     straddles,
     eastOrNorth,
@@ -471,8 +473,8 @@ lineAlong st edge = case [(a, b) | (e, a, b, _) <- flatEdges st, e == edge] of
   _ -> Left NoSolution
 
 -- | The creases lying along the fold line: the candidates a fold turns
--- about. Refused if the line runs along no crease, and, until creasing is
--- run, if it crosses a face where no crease runs.
+-- about. Refused if the line runs along no crease, or if it crosses a face
+-- where no crease runs: a runner creases those first ('chordsAcross').
 --
 -- Every crease along the line is a candidate, on every layer and whatever its
 -- letter. A fold turns only those beside the paper it moves, and an F crease
@@ -485,14 +487,81 @@ lineAlong st edge = case [(a, b) | (e, a, b, _) <- flatEdges st, e == edge] of
 -- refused too, which costs a fold that would have been possible and never
 -- folds one that is not.
 hingeAlong :: FlatState -> FoldLine -> Either ResolveProblem [EdgeId]
-hingeAlong st (FoldLine origin direction) = do
+hingeAlong st line@(FoldLine origin direction) = do
   let side v = maybe 0 (\p -> cross2 direction (p ^-^ origin)) (IM.lookup v (flatPlaced st))
       room = flatRoom st
-      crossed = [f | (f, ring) <- flatFaces st, any ((> room) . side) ring, any ((< negate room) . side) ring]
-  unless (null crossed) (Left (NotRunYet "a fold whose line crosses paper where no crease runs, which needs a new crease,"))
+  unless (null (crossedFaces st line)) (Left (NotRunYet "a fold whose line crosses paper where no crease runs, which needs a new crease,"))
   case [e | (e, a, b, letter) <- flatEdges st, letter `notElem` [Border, Cut, Join], abs (side a) <= room, abs (side b) <= room] of
     [] -> Left NoSolution
     hinge -> Right hinge
+
+-- | The faces a line crosses: those with corners strictly on both sides of
+-- it. Where a fold line crosses one, no crease runs, and the paper has to be
+-- creased before it can turn.
+crossedFaces :: FlatState -> FoldLine -> [FaceId]
+crossedFaces st (FoldLine origin direction) =
+  let side v = maybe 0 (\p -> cross2 direction (p ^-^ origin)) (IM.lookup v (flatPlaced st))
+      room = flatRoom st
+   in [f | (f, ring) <- flatFaces st, any ((> room) . side) ring, any ((< negate room) . side) ring]
+
+-- | Where a line crosses each of these faces, as stretches on the sheet: the
+-- creases a fold along it needs and the paper does not have. Stretches that
+-- meet end to end, across the edge between two faces, are one crease, so the
+-- answer is the line's uncreased runs, in order along it.
+--
+-- The line is found where the paper lies, and its stretch across a face is
+-- carried to the sheet without inverting the face's placement. A placement
+-- is a rigid motion, and a rigid motion keeps the fraction of the way along
+-- every segment: where the line cuts a face's edge a fraction t of the way
+-- from one corner to the next, it cuts the edge's material segment the same
+-- fraction along. A corner the line passes through is its own point on the
+-- sheet.
+--
+-- A face that is not convex can hold the line more than once, so the points
+-- where it meets the face's outline are taken in order along the line, and
+-- each stretch between two of them is kept only if its middle lies inside the
+-- face. A stretch along the outline is not inside it, and is not a crease to
+-- make: it is one the face already has.
+chordsAcross :: FlatState -> FoldLine -> [FaceId] -> [(V2, V2)]
+chordsAcross st (FoldLine origin direction) faces =
+  joined (sortOn (\(t, _, _) -> t) (concat [chords ring | (f, ring) <- flatFaces st, f `elem` faces]))
+  where
+    room = flatRoom st
+    side p = cross2 direction (p ^-^ origin)
+    along p = dot direction (p ^-^ origin)
+    placed v = IM.lookup v (flatPlaced st)
+    material v = IM.lookup v (flatMaterial st)
+    -- Each stretch across a face: where it starts along the line, and its two
+    -- ends on the sheet, in the line's direction.
+    chords ring =
+      let corners = [(p, m) | v <- ring, Just p <- [placed v], Just m <- [material v]]
+          onLine = [(along p, p, m) | (p, m) <- corners, abs (side p) <= room]
+          through =
+            [ (along x, x, m ^+^ (t *^ (n ^-^ m)))
+              | ((p, m), (q, n)) <- zip corners (drop 1 corners ++ take 1 corners),
+                (side p > room && side q < negate room) || (side p < negate room && side q > room),
+                let t = side p / (side p - side q)
+                    x = p ^+^ (t *^ (q ^-^ p))
+            ]
+          meets = distinct (sortOn (\(a, _, _) -> a) (onLine ++ through))
+          outline = map fst corners
+       in [ (ta, m, n)
+            | ((ta, x, m), (_, y, n)) <- zip meets (drop 1 meets),
+              insideRing room outline (0.5 *^ (x ^+^ y))
+          ]
+    -- Two meetings closer than the tolerance along the line are one: the line
+    -- through a corner meets it once and not again on either edge there.
+    distinct = \case
+      a@(ta, _, _) : b@(tb, _, _) : rest
+        | tb - ta <= room -> distinct (a : rest)
+        | otherwise -> a : distinct (b : rest)
+      short -> short
+    -- A stretch that starts where the last one ended continues it.
+    joined = \case
+      (ta, a, b) : (_, c, d) : rest
+        | norm (c ^-^ b) <= room -> joined ((ta, a, d) : rest)
+      (_, a, b) : rest -> (a, b) : joined rest
+      [] -> []
 
 -- | The face a material point lies strictly inside: the region slot, such as
 -- the anchor's. A point on a crease or a corner lies in no one face.
