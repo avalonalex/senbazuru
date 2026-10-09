@@ -16,6 +16,7 @@ module Senbazuru.Geometry.V3
     zSpan,
     spanAlong,
     modelSpan,
+    modelHair,
     hasRelief,
     polygonNormal,
   )
@@ -71,6 +72,13 @@ zSpan = spanAlong v3z
 -- significant, since \"small\" only means anything next to something else.
 modelSpan :: [V3] -> Double
 modelSpan verts = maximum [0, spanAlong v3x verts, spanAlong v3y verts, spanAlong v3z verts]
+
+-- | The hair every length in a model is judged by: a billionth of its largest
+-- extent ('modelSpan'), or of a unit if that is larger. One function, so that
+-- the places asking whether a vertex moved, whether a motion fits, and whether
+-- two edges meet in a picture cannot come to mean different hairs.
+modelHair :: [V3] -> Double
+modelHair verts = 1e-9 * max 1 (modelSpan verts)
 
 -- | Does the geometry leave the plane?
 --

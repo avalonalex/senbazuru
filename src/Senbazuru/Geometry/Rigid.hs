@@ -57,7 +57,7 @@ where
 import Data.List (maximumBy)
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
-import Senbazuru.Geometry.V3 (V3 (..), cross, modelSpan)
+import Senbazuru.Geometry.V3 (V3 (..), cross, modelHair)
 import Senbazuru.Geometry.VectorSpace
 
 -- | A 3×3 matrix, stored as its three __rows__.
@@ -197,7 +197,7 @@ isProperRotation (Mat3 r0 r1 r2) =
     near (a, b) = abs (a - b) <= 1e-12
 
 -- | The one rigid motion carrying each first point onto its second, if there
--- is one: every pair within @1e-9 × max 1 (modelSpan sources)@, the tolerance
+-- is one: every pair within the sources' 'modelHair', the tolerance
 -- "Senbazuru.Origami.Step" judges a moved vertex by, and the turn a proper
 -- rotation. 'Nothing' if the points do not span a plane, since then no single
 -- turn is pinned down, or if no rigid motion fits.
@@ -220,7 +220,7 @@ fitRigid pairs = case pairs of
   [] -> Nothing
   (a, a') : _ -> do
     let sources = map fst pairs
-        tol = 1e-9 * max 1 (modelSpan sources)
+        tol = modelHair sources
         (b, b') = maximumBy (comparing (\(p, _) -> norm (p ^-^ a))) pairs
     if norm (b ^-^ a) <= tol
       then Nothing

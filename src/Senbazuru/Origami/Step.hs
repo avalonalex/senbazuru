@@ -70,7 +70,7 @@ import Senbazuru.Fold.Query
   )
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry.Rigid (Rigid, fitRigid)
-import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
+import Senbazuru.Geometry.V3 (V3 (..), modelHair)
 import Senbazuru.Geometry.VectorSpace
 
 -- | One connected piece of paper moving, and where it ends up.
@@ -111,8 +111,9 @@ motionsBetween before after = do
 -- | The turn of the whole model between two frames of one paper, when that is
 -- all that happened: some vertex moved, and one proper rigid motion carries
 -- every vertex onto its place in the second frame. That is a turn-over or a
--- turn of the page, a change of presentation, which a page marks rather than
--- drawing an arrow for. 'Nothing' when paper folded, and when nothing moved.
+-- turn of the page, a change of presentation, which gets no arrow; a page
+-- will mark it with a symbol of its own (#36). 'Nothing' when paper folded,
+-- and when nothing moved.
 wholeModelMotion :: Frame -> Frame -> Either FoldError (Maybe Rigid)
 wholeModelMotion before after = do
   sameModel before after
@@ -146,15 +147,14 @@ sameModel before after = do
 -- | The vertices that moved between two placements of one paper: further from
 -- where they were than rounding can explain, judged against the size of the
 -- model. A millimetre is a fold in something a centimetre across and noise in
--- something the size of a room. 'modelSpan' is shared with the other places
--- that ask how big a thing is, so they cannot drift apart, and 'fitRigid'
--- judges its fit by the same tolerance.
+-- something the size of a room. 'modelHair' is the one measure of that, so
+-- 'fitRigid' judges its fit by the same hair this judges a move by.
 movedBetween :: [V3] -> [V3] -> S.Set Int
 movedBetween from to =
   S.fromList
     [ v
       | (v, a, b) <- zip3 [0 ..] from to,
-        norm (a ^-^ b) > 1e-9 * max 1 (modelSpan from)
+        norm (a ^-^ b) > modelHair from
     ]
 
 -- | A turn of the whole model, if that is what moved some vertices.
