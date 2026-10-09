@@ -52,7 +52,7 @@ import Senbazuru.Fold.Query (Face (..), FoldError (..), edgeKey, ringEdges)
 import Senbazuru.Fold.Types (FaceId, FaceOrder (..), Stacking (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea, subtractConvex)
-import Senbazuru.Geometry.V3 (V3 (..), modelSpan, polygonNormal)
+import Senbazuru.Geometry.V3 (V3 (..), modelHair, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flat (yardsticks)
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..))
@@ -124,12 +124,6 @@ suppliedNearness panels orders = foldM record M.empty (concatMap entries orders)
     record known (pair@(f, g), near) = case M.lookup pair known of
       Just previous | previous /= near -> Left (ContradictoryStacking f g)
       _ -> Right (M.insert pair near known)
-
--- | The hair every length in the model is judged by: a billionth of the
--- model's largest extent in 3D ('modelSpan'), or of a unit if that is larger
--- (see the header).
-modelHair :: [V3] -> Double
-modelHair vertices = 1e-9 * max 1 (modelSpan vertices)
 
 -- | A view's vertices as its temporary frame holds them, flat in the picture,
 -- and the speck "Senbazuru.Origami.Flat" gives that frame, which every area in

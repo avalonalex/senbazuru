@@ -7,8 +7,9 @@
 module Senbazuru.Origami.StepSpec (spec) where
 
 import Data.ByteString qualified as BS
+import Data.Maybe (isJust)
 import Senbazuru.Fold.Load (decodeFoldFile)
-import Senbazuru.Fold.Query (FoldError (..))
+import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
@@ -19,6 +20,7 @@ import Senbazuru.Fold.Types
     emptyFrame,
   )
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.VectorSpace (norm, (^-^))
 import Senbazuru.Origami.Step
 import Test.Hspec
 
@@ -60,6 +62,7 @@ flapsFolded =
 
 spec :: Spec
 spec = do
+  presentation
   describe "the folding sequence fixture" $ do
     it "sees the left half swing onto the right" $ do
       fs <- steps
@@ -128,3 +131,45 @@ spec = do
       -- angles at all, and the paper has still moved.
       fmap (map motionCreases) (motionsBetween flapsApart flapsFolded)
         `shouldBe` Right [[], []]
+
+-- | A turn of the whole model is not a fold (PRD 05, L3). Asked of the
+-- quarter fold's states, each turned over left-right about its own middle as
+-- decisions D5 turns it: (x, y, z) to (2cx - x, y, 2cz - z), with (cx, cz) the
+-- middle of its x and z ranges.
+presentation :: Spec
+presentation = describe "a turn of the whole model" $ do
+  -- On the flat sheet the axis runs up x = 1/2, through two edge midpoints
+  -- and the centre, which stay where they were; the folded state, x from 1/2
+  -- to 1, has no vertex on its axis at x = 3/4. Turns red if a turn-over had
+  -- to move every vertex, or if either turn were not found.
+  it "gives no motion, and one turn of the whole model, when the model is turned over" $ do
+    frames <- steps
+    (flat, folded) <- case frames of
+      first' : rest@(_ : _) -> pure (first', last rest)
+      _ -> fail "the sequence has fewer than two states"
+    let turnOver frame = do
+          points <- either (fail . show) pure (frameVertices frame)
+          let xs = [x | V3 x _ _ <- points]
+              zs = [z | V3 _ _ z <- points]
+              cx = (minimum xs + maximum xs) / 2
+              cz = (minimum zs + maximum zs) / 2
+              turned = [V3 (2 * cx - x) y (2 * cz - z) | V3 x y z <- points]
+          pure (length [() | (p, q) <- zip points turned, norm (p ^-^ q) < 1e-12], frame {verticesCoords = [[x, y, z] | V3 x y z <- turned]})
+    (stillOnFlat, flatTurned) <- turnOver flat
+    (stillOnFolded, foldedTurned) <- turnOver folded
+    (stillOnFlat, stillOnFolded) `shouldBe` (3, 0)
+    motionsBetween flat flatTurned `shouldBe` Right []
+    motionsBetween folded foldedTurned `shouldBe` Right []
+    fmap isJust (wholeModelMotion flat flatTurned) `shouldBe` Right True
+    fmap isJust (wholeModelMotion folded foldedTurned) `shouldBe` Right True
+
+  -- A fold holds a face still, so no one motion fits the whole model; and a
+  -- pair where nothing moved is no turn either. Turns red if a fold were
+  -- taken for a turn-over, or the identity counted as one.
+  it "finds none for a fold, or for a state and itself" $ do
+    frames <- steps
+    case frames of
+      first' : second : _ -> do
+        wholeModelMotion first' second `shouldBe` Right Nothing
+        wholeModelMotion first' first' `shouldBe` Right Nothing
+      _ -> expectationFailure "the sequence has fewer than two states"
