@@ -660,17 +660,19 @@ hingeStretches st hinge = [found | group <- groups hinge, Just found <- [stretch
     at v = IM.lookup v (flatMaterial st)
     touches g e = or [meet e' e && inLine e' e | e' <- g]
     meet e' e = or [x == y | (a, b) <- ends e', (c, d) <- ends e, x <- [a, b], y <- [c, d]]
-    -- Both ends of one edge within the sheet's tolerance of the other's line.
+    -- Both ends of one edge within the sheet's tolerance of the other's
+    -- line. An end that cannot be found says nothing, and does not join.
     inLine e' e =
-      and
-        [ abs (cross2 (q ^-^ p) (x ^-^ p)) <= flatRoom st * norm (q ^-^ p)
-          | (a, b) <- ends e',
-            Just p <- [at a],
-            Just q <- [at b],
-            (c, d) <- ends e,
-            v <- [c, d],
-            Just x <- [at v]
-        ]
+      let offs =
+            [ abs (cross2 (q ^-^ p) (x ^-^ p)) <= flatRoom st * norm (q ^-^ p)
+              | (a, b) <- ends e',
+                Just p <- [at a],
+                Just q <- [at b],
+                (c, d) <- ends e,
+                v <- [c, d],
+                Just x <- [at v]
+            ]
+       in length offs == 2 && and offs
     groups = foldr place []
     place e gs = case [g | g <- gs, touches g e] of
       [] -> [e] : gs
