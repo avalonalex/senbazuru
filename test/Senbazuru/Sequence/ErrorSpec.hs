@@ -295,7 +295,7 @@ staticSamples =
     UnknownRefusalKind (RefusalKind "FlapCoverd"),
     NotASingleMacro "base",
     NotAFigure "names",
-    TurnsNoPaper "over",
+    TurnsNoPaper "flipped",
     HingeOfSeveralMoves "folds",
     RepeatUnmappable "folds" UsesModelCoordinates,
     RepeatUnmappable "folds" CountsLayers,
