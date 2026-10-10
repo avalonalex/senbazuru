@@ -157,6 +157,12 @@ quartered = describe "the quarter fold" $ do
   it "folds in half about edges 8 and 10, then in quarters about 9 and 11" $
     map (sort . concatMap snd . recordHinge) records `shouldBe` [[EdgeId 8, EdgeId 10], [EdgeId 9, EdgeId 11]]
 
+  -- Each fold's two creases lie on two layers and continue one line on the
+  -- sheet, the vertical and then the horizontal midline, so each hinge is one
+  -- stretch, unlike the helmet base's, whose creases meet at an angle.
+  it "makes each hinge one stretch, its creases continuing one line on the sheet" $
+    map (map (sort . snd) . recordHinge) records `shouldBe` [[[EdgeId 8, EdgeId 10]], [[EdgeId 9, EdgeId 11]]]
+
   -- The second fold, one valley fold, writes edge 9 at +180 and edge 11 at
   -- -180: both faces beside edge 11 were turned over by the first (PRD
   -- decisions D5, "the line that looks like a typo").

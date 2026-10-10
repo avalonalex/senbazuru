@@ -645,13 +645,34 @@ flapOf st (FoldLine origin direction) candidates seed picked = do
     key a b = (min a b, max a b)
 
 -- | The hinge as stretches of crease on the sheet, each with its edges: every
--- run of hinge edges joined end to end becomes one stretch, from end to end.
--- A fold through several layers has a stretch for each layer it turns.
+-- run of hinge edges joined end to end along one line on the sheet becomes
+-- one stretch, from end to end, whatever layers its edges lie on.
+--
+-- Joined end to end is not enough. Creases of different layers that lie on
+-- one line in the folded paper can meet on the sheet at an angle: the helmet
+-- base's corner folds turn two creases at right angles to each other, meeting
+-- at the sheet's centre, and those are two stretches, not one running along
+-- the first of them.
 hingeStretches :: FlatState -> [EdgeId] -> [(MaterialSegment, [EdgeId])]
 hingeStretches st hinge = [found | group <- groups hinge, Just found <- [stretch group]]
   where
     ends e = [(a, b) | (e', a, b, _) <- flatEdges st, e' == e]
-    touches g e = or [x == y | e' <- g, (a, b) <- ends e', (c, d) <- ends e, x <- [a, b], y <- [c, d]]
+    at v = IM.lookup v (flatMaterial st)
+    touches g e = or [meet e' e && inLine e' e | e' <- g]
+    meet e' e = or [x == y | (a, b) <- ends e', (c, d) <- ends e, x <- [a, b], y <- [c, d]]
+    -- Both ends of one edge within the sheet's tolerance of the other's
+    -- line. An end that cannot be found says nothing, and does not join.
+    inLine e' e =
+      let offs =
+            [ abs (cross2 (q ^-^ p) (x ^-^ p)) <= flatRoom st * norm (q ^-^ p)
+              | (a, b) <- ends e',
+                Just p <- [at a],
+                Just q <- [at b],
+                (c, d) <- ends e,
+                v <- [c, d],
+                Just x <- [at v]
+            ]
+       in length offs == 2 && and offs
     groups = foldr place []
     place e gs = case [g | g <- gs, touches g e] of
       [] -> [e] : gs

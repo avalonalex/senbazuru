@@ -248,6 +248,27 @@ spec = describe "naming paper on a flat state" $ do
         [(a, b), (c, d)] -> all (uncurry near) [(a, V2 3 0.15), (b, V2 1.25 0.5), (c, V2 0.5 0.65), (d, V2 0.25 0.7)] `shouldBe` True
         other -> expectationFailure ("expected two stretches, got " <> show other)
 
+  -- A hinge's edges join into one stretch only where they meet end to end
+  -- along one line on the sheet. On the accordion's bottom side: two
+  -- quarters that meet join; two with a gap between stay apart; and a
+  -- quarter and the crease standing on its end meet at a right angle and
+  -- stay apart. Turns red if joining asked only that edges meet, or only
+  -- that they lie on one line.
+  it "joins a hinge's edges into stretches only where they meet along one line" $ do
+    accordion <- loadFoldFile "examples/accordion.fold" >>= right
+    paper <- workingPattern <$> right (sheetState accordion)
+    st <- flatOf paper
+    let at v = case drop v (verticesCoords paper) of
+          (x : y : _) : _ -> V2 x y
+          _ -> V2 (-1) (-1)
+        edgeFrom p q = [EdgeId e | (e, (VertexId a, VertexId b)) <- zip [0 ..] (edgesVertices paper), (near (at a) p && near (at b) q) || (near (at a) q && near (at b) p)]
+        stretchesOf pieces = length (hingeStretches st (concat pieces))
+        first' = edgeFrom (V2 0 0) (V2 0.25 0)
+    map length [first', edgeFrom (V2 0.25 0) (V2 0.5 0), edgeFrom (V2 0.5 0) (V2 0.75 0), edgeFrom (V2 0.25 0) (V2 0.25 1)] `shouldBe` [1, 1, 1, 1]
+    stretchesOf [first', edgeFrom (V2 0.25 0) (V2 0.5 0)] `shouldBe` 1
+    stretchesOf [first', edgeFrom (V2 0.5 0) (V2 0.75 0)] `shouldBe` 2
+    stretchesOf [first', edgeFrom (V2 0.25 0) (V2 0.25 1)] `shouldBe` 2
+
   -- The anchor's slot: strictly inside one face. A point on edge 8 is
   -- between the square and the corner.
   it "puts a region point in the one face it lies inside" $ do
