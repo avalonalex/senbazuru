@@ -14,7 +14,7 @@ import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
-import Senbazuru.Geometry.Rigid (Rigid (..), matApply)
+import Senbazuru.Geometry.Rigid (Rigid (..), applyRigid, identity, matApply)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
@@ -25,9 +25,9 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
-import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
 import Test.Hspec
 import Test.SequenceExamples (blintz, quarterFold)
@@ -44,6 +44,8 @@ spec = do
   precreasing
   turningOver
   rotating
+  reanchoring
+  reanchoringOntoStandingPaper
 
 running :: Spec
 running = describe "running a sequence" $ do
@@ -104,13 +106,6 @@ running = describe "running a sequence" $ do
       case checkSequence blintz >>= runSequence defaultRunSettings M.empty . elaborate of
         Left (SheetRefused _ "examples/blintz-base.fold" SheetNotLoaded) -> pure ()
         other -> expectationFailure ("expected the sheet refused, got " <> show (fmap (length . runRecords) other))
-
-    -- An anchor inside corner south-east's triangle moves with it.
-    it "a fold that would carry the anchor's paper, until re-anchoring is run" $ do
-      let carried = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just (at (19 / 20) (1 / 50)))) (step_ "s" (fold mountain (cornerOf SouthEast `onto` centre)))
-      case refusal (runOn carried) of
-        Just (MoveNotRunYet _) -> pure ()
-        other -> expectationFailure ("expected re-anchoring to be not run yet, got " <> show other)
 
     -- c1 folds the corner behind, is unfolded, and the corner is then folded
     -- in front: edge 8 is no longer where c1 left it, so unfolding c1 again
@@ -543,6 +538,172 @@ rotating = describe "a rotate" $ do
   it "refuses an odd number of eighths as not run yet" $ do
     refusal (onSquare (step_ "Turn the paper to a diamond." (rotate 1 Anticlockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate 1/8 turn\", which is not a whole number of quarter turns,")
     refusal (onSquare (step_ "Turn the paper." (rotate 3 Clockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate 3/8 turn\", which is not a whole number of quarter turns,")
+
+-- Re-anchoring (#497, owner decision 3): a move that turns the anchor's
+-- paper holds still instead the paper beside its hinge that it does not
+-- turn, the largest face there, ties to the lowest vertex mean and then the
+-- leftmost (PRD 02 §2.3), and the model stays where it stood on the page.
+-- The quarter fold is run three ways: anchored where PRD 09's test 1 anchors
+-- it, in the quarter neither fold turns; with no anchor; and anchored in the
+-- quarter the second fold turns. It is one folding, so each writes one model.
+reanchoring :: Spec
+reanchoring = describe "re-anchoring" $ do
+  sheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
+  let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings (M.singleton "examples/quarter-fold-steps.fold" sheet) . elaborate
+      anchoredAt p = quarterFold {seqHeader = (seqHeader quarterFold) {hAnchor = Located NoSpan <$> p}}
+      framesOf run = map stateFrame <$> writtenStates run
+      positions frame = [V3 x y (case rest of z : _ -> z; [] -> 0) | x : y : rest <- verticesCoords frame]
+      near (V3 a b c) (V3 x y z) = maximum (map abs [a - x, b - y, c - z]) < 1e-12
+      -- Layer orders by the faces they relate, each named by its corners, so
+      -- that two numberings of one model compare equal.
+      ordersOf frame = sortOn show [(sort (cornersOf f), sort (cornersOf g), orderStacking o) | o <- faceOrders frame, let FaceId f = orderFace o, let FaceId g = orderRelativeTo o]
+        where
+          cornersOf i = concat (take 1 (drop i (facesVertices frame)))
+      sameModel a b = length (positions a) == length (positions b) && and (zipWith near (positions a) (positions b)) && ordersOf a == ordersOf b
+      corner x y = MaterialPoint (V2 x y)
+  anchoredFrames <- runIO (right (runOn quarterFold >>= framesOf))
+
+  -- An anchor inside corner south-east's triangle of the blintz sheet moves
+  -- with it; the one face beside that corner's crease is the middle square,
+  -- whose vertex mean is (1/2, 1/2). Turns red if the run refused the fold.
+  it "moves an anchor the fold carries onto the face beside the hinge" $ do
+    blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
+    let carried = sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just (at (19 / 20) (1 / 50)))) (step_ "s" (fold mountain (cornerOf SouthEast `onto` centre)))
+    run <- right (checkSequence carried >>= runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" blintzSheet) . elaborate)
+    map recordAnchor (runRecords run) `shouldBe` [(corner 0.95 0.02, corner 0.5 0.5)]
+
+  -- With no anchor line the default is the south-west quarter's vertex mean,
+  -- (1/4, 1/4), and the first fold turns that quarter. The run re-anchors
+  -- onto the south-east quarter, which lies where it lay on the sheet, so
+  -- nothing is placed differently (PRD 02 §2.3's worked example). Turns red
+  -- if the run refused, re-anchored onto the north-east quarter, or wrote
+  -- each state's faces numbered as the runner holds them.
+  it "folds the quarter fold with no anchor, holding still the quarter the fold does not turn" $ do
+    run <- right (runOn (anchoredAt Nothing))
+    map recordAnchor (runRecords run) `shouldBe` [(corner 0.25 0.25, corner 0.75 0.25), (corner 0.75 0.25, corner 0.75 0.25)]
+    map recordPlacement (runRecords run) `shouldBe` replicate 2 (identity, identity)
+    map (snd . recordAngles) (runRecords run) `shouldBe` map edgesFoldAngle (otherFrames sheet)
+    frames <- right (framesOf run)
+    zipWith sameModel frames anchoredFrames `shouldBe` [True, True, True]
+    case frames of
+      start : rest -> map facesVertices rest `shouldBe` replicate (length rest) (facesVertices start)
+      [] -> expectationFailure "expected written states"
+    renderRunReport run `shouldContain` ["  anchor moved: (0.25, 0.25) to (0.75, 0.25), off the paper the move turns"]
+
+  -- Anchored at (3/4, 3/4), in the quarter the second fold turns. The first
+  -- fold has laid the south-west quarter face down on the south-east one;
+  -- the second holds both still, they tie on area and height, and the
+  -- leftmost is the south-west, face down. Its placement, a half turn about
+  -- the line x = 1/2, is taken on, so the model stands where the anchored
+  -- run's does, and in front is still towards the reader, which on the paper
+  -- folded from that face is -z. Turns red if the placement were dropped,
+  -- the reader's side ignored it, or the fold line were not named afresh.
+  it "re-anchors onto paper lying face down, and the model stands where it stood" $ do
+    run <- right (runOn (anchoredAt (Just (at (3 / 4) (3 / 4)))))
+    map (snd . recordAngles) (runRecords run) `shouldBe` map edgesFoldAngle (otherFrames sheet)
+    frames <- right (framesOf run)
+    zipWith sameModel frames anchoredFrames `shouldBe` [True, True, True]
+    case (runRecords run, frames) of
+      ([halved, quartered'], [_, halfway, _]) -> do
+        map recordAnchor [halved, quartered'] `shouldBe` [(corner 0.75 0.75, corner 0.75 0.75), (corner 0.75 0.75, corner 0.25 0.25)]
+        recordPlacement halved `shouldBe` (identity, identity)
+        let (placedBefore, placedAfter) = recordPlacement quartered'
+        placedBefore `shouldBe` placedAfter
+        matApply (rigidLinear placedAfter) (V3 0 0 1) `shouldSatisfy` near (V3 0 0 (-1))
+        -- The second fold's paper before it, shown as its record says, is
+        -- where the state before it stands.
+        let shown = [applyRigid (displayBefore quartered') p | p <- positions (surfaceFrame (recordBefore quartered'))]
+        (length shown, and (zipWith near shown (positions halfway))) `shouldBe` (length (positions halfway), True)
+      _ -> expectationFailure ("expected two records and three states, got " <> show (length (runRecords run), length frames))
+
+  -- Turned on the page first, by a quarter turn, which does not commute with
+  -- the placement's half turn: the model is placed, then presented, in that
+  -- order, in the written states and in a record's display. Turns red if
+  -- either composed them the other way round.
+  it "places the model, then presents it, when a turn on the page came first" $ do
+    let turnedFirst p = sequenceOf (seqHeader (anchoredAt (Just p))) $ do
+          step_ "Turn the paper a quarter turn." (rotate 2 Anticlockwise)
+          step_ "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+          step_ "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
+    held <- right (runOn (turnedFirst (at (3 / 4) (1 / 4))))
+    moved <- right (runOn (turnedFirst (at (3 / 4) (3 / 4))))
+    heldFrames <- right (framesOf held)
+    movedFrames <- right (framesOf moved)
+    zipWith sameModel movedFrames heldFrames `shouldBe` replicate 4 True
+    case ([r | r <- runRecords moved, recordStep r == 3], movedFrames) of
+      ([refolded], [_, _, halfway, _]) -> do
+        let shown = [applyRigid (displayBefore refolded) p | p <- positions (surfaceFrame (recordBefore refolded))]
+        (length shown, and (zipWith near shown (positions halfway))) `shouldBe` (length (positions halfway), True)
+      _ -> expectationFailure "expected one record at step 3 and four states"
+
+  -- Re-anchoring twice, onto paper turned about axes 45° apart, on the
+  -- square base. The diagonal fold lays the lower right half behind; the
+  -- fold along the middle carries the anchor and re-anchors onto a triangle
+  -- the diagonal fold turned, so the placement is a half turn about the
+  -- diagonal; swinging the bottom layers back re-anchors again, onto a
+  -- triangle turned about the vertical middle from the first. Two half turns
+  -- about axes 45° apart compose to a quarter turn on the page, and to the
+  -- opposite quarter turn in the other order, so the run refuses unless each
+  -- re-anchoring takes on its h after the placement it had. Turns red then.
+  it "re-anchors twice, taking each turn on after the placement before it" $ do
+    squareBase <- loadFoldFile "examples/square-base.fold" >>= right
+    let twice = sequenceOf (header "t" (sheetFile "examples/square-base.fold") (Just (at (1 / 3) (5 / 6)))) $ do
+          _ <- step "a" "Fold the lower right half behind along the diagonal." (move (Fold MountainFold ToFlat (Segment (at 0 0) (at 1 1)) FlapOfFirstArgument (Just (at (2 / 3) (1 / 6)))))
+          b <- step "b" "Fold the top down in front along the middle." (move (Fold ValleyFold ToFlat (Segment (at 0 (1 / 2)) (at (1 / 2) (1 / 2))) FlapOfFirstArgument (Just (at (1 / 3) (5 / 6)))))
+          step_ "Swing the bottom layers back behind." (move (Fold MountainFold ToFlat (hingeOf b) FlapOfFirstArgument (Just (at (1 / 3) (1 / 6)))))
+    run <- right (checkSequence twice >>= runSequence defaultRunSettings (M.singleton "examples/square-base.fold" squareBase) . elaborate)
+    map (snd . recordAnchor) (runRecords run) `shouldBe` [corner (1 / 3) (5 / 6), corner (1 / 3) (1 / 6), corner (2 / 3) (1 / 6)]
+    frames <- right (framesOf run)
+    case (runRecords run, frames) of
+      ([_, _, swung], [_, _, folded, _]) -> do
+        let placed = snd (recordPlacement swung)
+        (matApply (rigidLinear placed) (V3 0 0 1), abs (v3z (matApply (rigidLinear placed) (V3 1 0 0)))) `shouldSatisfy` (\(z, tilt) -> near z (V3 0 0 1) && tilt < 1e-12)
+        abs (v3x (matApply (rigidLinear placed) (V3 1 0 0))) `shouldSatisfy` (< 1e-12)
+        let shown = [applyRigid (displayBefore swung) p | p <- positions (surfaceFrame (recordBefore swung))]
+        (length shown, and (zipWith near shown (positions folded))) `shouldBe` (length (positions folded), True)
+      _ -> expectationFailure "expected three records and four states"
+
+  -- Turned back, the second fold first and then the first, across that
+  -- re-anchoring. The first fold's paper holds the anchor by then, so
+  -- turning it back re-anchors again, onto the south-east quarter, and the
+  -- sheet ends where it began. Turns red if an unfold carried the anchor's
+  -- face, which moves the model on the page and fails the join check.
+  it "turns back across a re-anchoring, and re-anchors again when a turn back carries the anchor" $ do
+    let opened = sequenceOf (seqHeader (anchoredAt (Just (at (3 / 4) (3 / 4))))) $ do
+          half <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+          quarter <- step "quarter" "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
+          step_ "Unfold the top half." (unfold [quarter])
+          step_ "Unfold the left half." (unfold [half])
+    run <- right (runOn opened)
+    map recordAnchor (runRecords run) `shouldBe` [(corner 0.75 0.75, corner 0.75 0.75), (corner 0.75 0.75, corner 0.25 0.25), (corner 0.25 0.25, corner 0.25 0.25), (corner 0.25 0.25, corner 0.75 0.25)]
+    frames <- right (framesOf run)
+    case frames of
+      [start, _, _, _, end] -> (length (positions end), and (zipWith near (positions end) (positions start))) `shouldBe` (length (positions start), True)
+      other -> expectationFailure ("expected five states, got " <> show (length other))
+
+-- A re-anchoring that would hold still a face standing up is refused (PRD 02
+-- §2.3): no side of the model would face the reader. On the accordion, four
+-- panels in a row: fold the left half behind, which re-anchors onto the
+-- third panel; fold the third and second panels over to the right in front,
+-- which re-anchors onto the first, lying face down; stand them up again at
+-- 90°. Turning the first fold back now carries the anchor, and the face it
+-- would hold still, the third panel, stands at 90°. Turns red if the check
+-- were dropped: the turn back is then refused for its path instead.
+reanchoringOntoStandingPaper :: Spec
+reanchoringOntoStandingPaper = describe "re-anchoring onto paper standing up" $ do
+  sheet <- runIO (loadFoldFile "examples/accordion.fold" >>= right)
+  it "is refused, saying where the face stands" $ do
+    let standing = sequenceOf (header "t" (sheetFile "examples/accordion.fold") Nothing) $ do
+          a <- step "a" "Fold the left half behind." (move (Fold MountainFold ToFlat (Segment (at (1 / 2) 0) (at (1 / 2) 1)) FlapOfFirstArgument (Just (at (1 / 8) (1 / 2)))))
+          b <- step "b" "Fold the middle panel over to the right, in front." (move (Fold ValleyFold ToFlat (Segment (at (3 / 4) 0) (at (3 / 4) 1)) FlapOfFirstArgument (Just (at (5 / 8) (1 / 2)))))
+          step_ "Stand it up again." (move (Fold ValleyFold (Degrees 90) (hingeOf b) FlapOfFirstArgument (Just (at (5 / 8) (1 / 2)))))
+          step_ "Unfold the left half." (unfold [a])
+    case checkSequence standing >>= runSequence defaultRunSettings (M.singleton "examples/accordion.fold" sheet) . elaborate of
+      Left err@(StepRefused 4 _ _ (ReanchorNotFlat (V2 x y) tilt)) -> do
+        (x, y) `shouldBe` (0.625, 0.5)
+        abs (tilt - 90) `shouldSatisfy` (< 1e-9)
+        refusalKindOf err `shouldBe` Just (RefusalKind "ReanchorNotFlat")
+      other -> expectationFailure ("expected step 4 refused as ReanchorNotFlat, got " <> either show (const "a run") other)
 
 -- A fold along a line where no crease runs (#495). On the flat sheet, every
 -- crease at rest, the runner creases each face the line crosses and then
