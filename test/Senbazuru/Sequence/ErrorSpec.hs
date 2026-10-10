@@ -295,6 +295,7 @@ staticSamples =
     UnknownRefusalKind (RefusalKind "FlapCoverd"),
     NotASingleMacro "base",
     NotAFigure "names",
+    TurnsNoPaper "over",
     HingeOfSeveralMoves "folds",
     RepeatUnmappable "folds" UsesModelCoordinates,
     RepeatUnmappable "folds" CountsLayers,
@@ -346,6 +347,7 @@ sampledStatic = \case
   UnknownRefusalKind {} -> "UnknownRefusalKind"
   NotASingleMacro {} -> "NotASingleMacro"
   NotAFigure {} -> "NotAFigure"
+  TurnsNoPaper {} -> "TurnsNoPaper"
   HingeOfSeveralMoves {} -> "HingeOfSeveralMoves"
   RepeatUnmappable {} -> "RepeatUnmappable"
   RangeRunsBackwards {} -> "RangeRunsBackwards"

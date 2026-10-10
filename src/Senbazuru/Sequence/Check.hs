@@ -219,6 +219,17 @@ figureNamed name = do
   unless (factFigure facts) (refuse (NotAFigure name))
   pure number
 
+-- | A step that turned paper, which is what @unfold@ turns back. A step that
+-- only turns the model over, names an anchor or a mark, or checks a state
+-- changed no crease's angle, so an unfold of it would do nothing, silently.
+-- A pre-crease turns paper and returns it, and its unfold is skipped when
+-- run (PRDs\/02-language-semantics.md, §6.4); it is not refused here.
+turnedNamed :: Name -> Check ()
+turnedNamed name = do
+  (_, facts) <- stepNamed name
+  unless (factFigure facts) (refuse (NotAFigure name))
+  unless (factTurns facts > 0) (refuse (TurnsNoPaper name))
+
 -- ---------------------------------------------------------------------------
 -- The header and the steps
 
@@ -323,7 +334,7 @@ checkMove = \case
     FoldAndUnfold sense <$> checkLine line <*> checkLayers layers <*> traverse checkPoint seed
   Unfold names -> do
     when (null names) (refuse UnfoldNamesNothing)
-    traverse_ figureNamed names
+    traverse_ turnedNamed names
     pure (Unfold names)
   TurnOver axis -> pure (TurnOver axis)
   Rotate eighths turning -> do
