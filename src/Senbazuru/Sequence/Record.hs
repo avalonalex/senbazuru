@@ -719,9 +719,12 @@ writtenFrame surface shown title assurance = do
 -- the run stopped, if it did. In step order, a step's moves in theirs.
 --
 -- Ids are the run's own, written @(internal edge 8)@, so an author knows they
--- did not write them (PRDs\/decisions.md, D20). Numbers are rounded to six
--- places, which rounds away the last bits in which platforms differ; only a
--- value lying on a rounding boundary could still print differently.
+-- did not write them (PRDs\/decisions.md, D20). They number the paper as the
+-- run held it for that move; after a re-anchoring that is not how the
+-- written states number their faces ('numberedAsBefore'). Numbers are
+-- rounded to six places, which rounds away the last bits in which platforms
+-- differ; only a value lying on a rounding boundary could still print
+-- differently.
 renderRunReport :: Run -> [Text]
 renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
   where

@@ -738,7 +738,7 @@ reanchor place state folded still = do
       faces = facesVertices working
       measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 ..] faces, FaceId i `elem` still]
       broken = Left . refusedAt place . JoinBroken
-  room <- first (refusedAt place . CreasingRefused) (tolerance <$> sheetOf working)
+  let room = toleranceOf (IM.elems material)
   (i, mean) <- case defaultAnchor room measured of
     Just (i, face, _, mean)
       | insideRing room (ring face) mean -> Right (i, mean)
@@ -904,7 +904,7 @@ undoOne settings place (state, made) earlier = do
               (seed, moving) = case recordMoving earlier of
                 (m, faces) : _ -> (m, faces)
                 [] -> (MaterialPoint (V2 0 0), [])
-          found' <- first (refusedAt place . FoldingRefused) (foldNow state)
+          foldedNow <- first (refusedAt place . FoldingRefused) (foldNow state)
           let sideIn st = maybe (Left (refusedAt place (Selecting NothingSelected))) Right (movingSideNow (theWorking st) thenFrame moving firstThen first')
           side' <- sideIn state
           -- Turning back paper that holds the anchor's face re-anchors, as a
@@ -914,10 +914,10 @@ undoOne settings place (state, made) earlier = do
           (turning, folded, side) <-
             if FaceId 0 `elem` carried
               then do
-                (moved, refolded) <- reanchor place state found' (stillBeside working hinge carried)
+                (moved, refolded) <- reanchor place state foldedNow (stillBeside working hinge carried)
                 side <- sideIn moved
                 Right (moved, refolded, side)
-              else Right (state, found', side')
+              else Right (state, foldedNow, side')
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
           let stretches = [(segment, [p | (e, ps) <- found, e `elem` recorded, p <- ps]) | (segment, recorded) <- recordHinge earlier]

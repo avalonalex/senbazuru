@@ -636,6 +636,19 @@ reanchoring = describe "re-anchoring" $ do
         (length shown, and (zipWith near shown (positions halfway))) `shouldBe` (length (positions halfway), True)
       _ -> expectationFailure "expected one record at step 3 and four states"
 
+  -- Turned over after re-anchoring onto the quarter lying face down: the
+  -- axis goes through the middle of the model as shown, where it stands,
+  -- not as folded from the new anchor's face, which lies half a sheet away.
+  -- Turns red if a turn-over found the middle on the paper as folded.
+  it "turns the model over about its middle as it stands, after re-anchoring" $ do
+    let turnedAfter p = sequenceOf (seqHeader (anchoredAt (Just p))) $ do
+          step_ "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+          step_ "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
+          step_ "Turn the paper over." (turnOver LeftRight)
+    held <- right (runOn (turnedAfter (at (3 / 4) (1 / 4))) >>= framesOf)
+    moved <- right (runOn (turnedAfter (at (3 / 4) (3 / 4))) >>= framesOf)
+    zipWith sameModel moved held `shouldBe` replicate 4 True
+
   -- Re-anchoring twice, onto paper turned about axes 45° apart, on the
   -- square base. The diagonal fold lays the lower right half behind; the
   -- fold along the middle carries the anchor and re-anchors onto a triangle
