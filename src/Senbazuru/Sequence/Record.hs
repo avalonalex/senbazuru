@@ -34,9 +34,11 @@
 --
 -- == Three rules a reader relies on
 --
--- * __Unpresented.__ The surfaces are as folding computed them, with the face
---   the move held still lying where it lay before the move. Nothing about how
---   the model is shown on a page, turned over or spun, is applied to them.
+-- * __Unpresented.__ The surfaces are as folding computed them, with the
+--   anchor's face lying where it lay on the sheet. Nothing about how the
+--   model stands or is shown on a page, re-anchored, turned over or spun, is
+--   applied to them; 'recordPlacement' and 'recordPresentation' say that,
+--   and 'displayBefore' and 'displayAfter' put the two together.
 --   This matters most to the material study. It reads which of two touching
 --   faces lies on top by whether each face's normal points up, along +z, and
 --   it solves for contact along +z; a model turned over for the page flips
@@ -71,8 +73,6 @@
 -- (@PRDs\/decisions.md@, §5). Each arrives with the first move that fills it,
 -- because a field nothing fills is a promise no test can check:
 --
--- * where the anchor's paper is placed, before and after (@recordPlacement@
---   in the design), with re-anchoring (owner decision 3);
 -- * the stacking chosen, with layer-selective folds; the macro bindings, with
 --   macro moves; and the cost;
 -- * a pose part-way along the move (@recordPoseAt@ in the design), with its
@@ -122,6 +122,9 @@ module Senbazuru.Sequence.Record
     recordNewCreases,
     recordAnchor,
     recordPresentation,
+    recordPlacement,
+    displayBefore,
+    displayAfter,
     recordMoving,
     recordStationary,
     recordResolved,
@@ -154,17 +157,19 @@ import Control.Monad (join, unless)
 import Data.Aeson (Value, object, toJSON, (.=))
 import Data.Aeson.KeyMap qualified as KM
 import Data.IntMap.Strict qualified as IM
-import Data.List (sortOn)
+import Data.List (sort, sortOn)
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showFFloat)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
-import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (Box (..), V2 (..), boxFromPoints, boxSize)
-import Senbazuru.Geometry.Polygon (signedArea)
+import Senbazuru.Geometry.Polygon (distanceToSegment, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity)
+import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
 import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
@@ -214,6 +219,7 @@ data MoveRecord = MoveRecord
     theNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)],
     theAnchor :: !(MaterialPoint, MaterialPoint),
     thePresentation :: !(Rigid, Rigid),
+    thePlacement :: !(Rigid, Rigid),
     theKind :: !MoveKind,
     theMoving :: ![(MaterialPoint, [FaceId])],
     theStationary :: !FaceId,
@@ -329,7 +335,9 @@ recordNewCreases = theNewCreases
 -- | The anchor, the point of paper held still, before the move and after
 -- it. The two differ when the move's new crease ran through the anchor,
 -- which moved it off the crease to a face the move held still (decisions
--- C19); creasing moves no paper, so nothing is placed differently.
+-- C19), or when the move turned the anchor's paper, which moved it to the
+-- paper the move holds still (owner decision 3). Neither moves any paper on
+-- the page.
 recordAnchor :: MoveRecord -> (MaterialPoint, MaterialPoint)
 recordAnchor = theAnchor
 
@@ -339,6 +347,27 @@ recordAnchor = theAnchor
 -- this and nothing else.
 recordPresentation :: MoveRecord -> (Rigid, Rigid)
 recordPresentation = thePresentation
+
+-- | Where the anchor's face is placed for each surface, before and after:
+-- the rigid motion from the surface, which folding computed with the
+-- anchor's face lying where it lay on the sheet, to the model as it stands
+-- before it is presented (decisions D14). It is the identity until a move
+-- turns the anchor's paper. That move re-anchors before it turns, so both
+-- its surfaces are computed from the new anchor's face and both halves are
+-- the new placement; the change shows between the record before it and this
+-- one, as the anchor's own change does ('recordAnchor').
+recordPlacement :: MoveRecord -> (Rigid, Rigid)
+recordPlacement = thePlacement
+
+-- | How 'recordBefore' is shown: its placement, then its presentation. In
+-- that order, because the presentation turns the model as it stands, and
+-- the placement is what makes it stand there.
+displayBefore :: MoveRecord -> Rigid
+displayBefore r = fst (thePresentation r) `Rigid.after` fst (thePlacement r)
+
+-- | How 'recordAfter' is shown, as 'displayBefore' is for 'recordBefore'.
+displayAfter :: MoveRecord -> Rigid
+displayAfter r = snd (thePresentation r) `Rigid.after` snd (thePlacement r)
 
 -- | The paper that moved: each seed the author named it by, with the faces
 -- that seed picked out. The faces are the turn's; the seed is the runner's.
@@ -397,13 +426,16 @@ hingeTurn ::
   (MaterialPoint, MaterialPoint) ->
   -- | How the model is shown, which a turn about a hinge does not change.
   Rigid ->
+  -- | Where the anchor's face is placed, which the turn does not change
+  -- either: a move that turns the anchor's paper re-anchors before it turns.
+  Rigid ->
   -- | The seed the moving paper was picked out by.
   MaterialPoint ->
   -- | The references the move resolved, for the report.
   [ResolvedReference] ->
   CheckedFlap ->
   Either FlapError MoveRecord
-hingeTurn step move name caption origin hinge newCreases anchor shown seed resolved turn = do
+hingeTurn step move name caption origin hinge newCreases anchor shown placed seed resolved turn = do
   before <- flapAt turn 0
   after <- flapAt turn 1
   pure
@@ -420,6 +452,7 @@ hingeTurn step move name caption origin hinge newCreases anchor shown seed resol
         theNewCreases = newCreases,
         theAnchor = anchor,
         thePresentation = (shown, shown),
+        thePlacement = (placed, placed),
         theKind = Turn,
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn,
@@ -457,8 +490,11 @@ presented ::
   Surface V2 ->
   -- | How it was shown before, and after.
   (Rigid, Rigid) ->
+  -- | Where the anchor's face is placed, which a change of presentation does
+  -- not change.
+  Rigid ->
   MoveRecord
-presented step move name caption origin turn anchor surface shown =
+presented step move name caption origin turn anchor surface shown placed =
   MoveRecord
     { theStep = step,
       theMoveIndex = move,
@@ -472,6 +508,7 @@ presented step move name caption origin turn anchor surface shown =
       theNewCreases = [],
       theAnchor = (anchor, anchor),
       thePresentation = shown,
+      thePlacement = (placed, placed),
       theKind = Presentation turn,
       theMoving = [],
       theStationary = FaceId 0,
@@ -516,7 +553,9 @@ data StepOutcome = StepOutcome
     outcomeCaption :: !(Maybe Text),
     outcomeEnd :: !(Maybe (Surface V2)),
     -- | How the state it ends at is shown.
-    outcomePresentation :: !Rigid
+    outcomePresentation :: !Rigid,
+    -- | Where the anchor's face of the state it ends at is placed.
+    outcomePlacement :: !Rigid
   }
   deriving stock (Eq, Show)
 
@@ -579,13 +618,19 @@ data WrittenState = WrittenState
 -- it: each of that step's moves, and what checked it. State 0 has none,
 -- which is not the same as having an empty one.
 --
--- Positions are presented, each state's by the presentation it ended with
--- ('writtenFrame').
+-- Positions are displayed, each state's by the placement and presentation
+-- it ended with ('writtenFrame'). A state with the same faces as the state
+-- before it numbers them as that state did ('numberedAsBefore').
 writtenStates :: Run -> Either SequenceError [WrittenState]
-writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
+writtenStates run = alike <$> sequence (zipWith3 write [0 ..] produced titles)
   where
+    alike = \case
+      [] -> []
+      start : rest -> scanl (\previous st -> st {stateFrame = numberedAsBefore (stateFrame previous) (stateFrame st)}) start rest
     writing = [(outcome, end) | outcome <- runSteps run, Just end <- [outcomeEnd outcome]]
-    produced = (Nothing, runStart run, runStartPresentation run) : [(Just outcome, end, outcomePresentation outcome) | (outcome, end) <- writing]
+    -- State 0's anchor's face lies where it lay on the sheet: placed by the
+    -- identity.
+    produced = (Nothing, runStart run, runStartPresentation run) : [(Just outcome, end, outcomePresentation outcome `Rigid.after` outcomePlacement outcome) | (outcome, end) <- writing]
     titles = map (outcomeCaption . fst) writing ++ [maybe (runClosing run) stopCaption (runStop run)]
     write k (producer, surface, shown) title = case writtenFrame surface shown title (fmap (assurance . outcomeStep) producer) of
       Left problem -> Left (WriteRefused k problem)
@@ -595,17 +640,41 @@ writtenStates run = sequence (zipWith3 write [0 ..] produced titles)
       SweptHinge _ -> "SweptHinge" :: Text
       Presented -> "Presented"
 
+-- | A frame's faces numbered as the frame before it numbered them, when the
+-- two have the same faces, each the same ring; otherwise the frame as it is.
+-- Its layer orders are renumbered with them.
+--
+-- Re-anchoring puts the new anchor's face first, because folding holds the
+-- first face still (owner decision 3), and so renumbers faces the paper did
+-- not change. A reader pairing two states, as the page of steps does to find
+-- what moved, needs one face to keep one number, as a vertex does
+-- (PRDs\/decisions.md, D6). Creasing changes the faces themselves, and
+-- leaves the frame as it is. A frame numbered as before already is left
+-- exactly as it is, so a run that never re-anchors writes what it wrote.
+numberedAsBefore :: Frame -> Frame -> Frame
+numberedAsBefore previous frame
+  | sort now == sort before, M.size there == length before = frame {facesVertices = before, faceOrders = map renumbered (faceOrders frame)}
+  | otherwise = frame
+  where
+    now = facesVertices frame
+    before = facesVertices previous
+    there = M.fromList (zip before [0 :: Int ..])
+    moved = IM.fromList [(i, j) | (i, ring) <- zip [0 ..] now, Just j <- [M.lookup ring there]]
+    renumbered o = o {orderFace = to (orderFace o), orderRelativeTo = to (orderRelativeTo o)}
+    to (FaceId f) = FaceId (IM.findWithDefault f f moved)
+
 -- | One surface as a written frame, shown as the reader sees it: the state
 -- rule, the class, the caption and the two vendor keys. Nothing of the
 -- sheet's own frame is kept but its unit: its extras, attributes, author and
 -- description described the sheet, and would be stale on a state folded from
 -- it.
 --
--- Written frames are presented (decisions D5): each vertex where the
--- presentation puts it, so a state after a turn-over is written turned over,
--- its faces showing their backs. A presentation that is the identity leaves
--- the coordinates exactly as folded, so a run with no turn-over or rotate
--- writes what it always wrote.
+-- Written frames are displayed (decisions D5, D14): each vertex placed, then
+-- presented, so a state after a turn-over is written turned over, its faces
+-- showing their backs, and one after a re-anchoring stands where the model
+-- stood before it. A display that is the identity leaves the coordinates
+-- exactly as folded, so a run with no turn-over, rotate or re-anchoring
+-- onto moved paper writes what it always wrote.
 writtenFrame :: Surface V2 -> Rigid -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
 writtenFrame surface shown title assurance = do
   let folded = materialFrame surface
@@ -650,9 +719,12 @@ writtenFrame surface shown title assurance = do
 -- the run stopped, if it did. In step order, a step's moves in theirs.
 --
 -- Ids are the run's own, written @(internal edge 8)@, so an author knows they
--- did not write them (PRDs\/decisions.md, D20). Numbers are rounded to six
--- places, which rounds away the last bits in which platforms differ; only a
--- value lying on a rounding boundary could still print differently.
+-- did not write them (PRDs\/decisions.md, D20). They number the paper as the
+-- run held it for that move; after a re-anchoring that is not how the
+-- written states number their faces ('numberedAsBefore'). Numbers are
+-- rounded to six places, which rounds away the last bits in which platforms
+-- differ; only a value lying on a rounding boundary could still print
+-- differently.
 renderRunReport :: Run -> [Text]
 renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
   where
@@ -669,9 +741,12 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
         ++ map resolvedFact (recordResolved r)
         ++ map newCrease (recordNewCreases r)
         ++ ["laid flat again: the paper ends where it began" | recordKind r == Precrease]
-        ++ [ "anchor moved: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", off the new crease"
+        ++ [ "anchor moved: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> why
              | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
-               a /= b
+               a /= b,
+               let why
+                     | any (\(MaterialSegment (MaterialPoint p) (MaterialPoint q), _, _) -> distanceToSegment (sheetLengths p, sheetLengths q) (sheetLengths a) <= 1e-9) (recordNewCreases r) = ", off the new crease"
+                     | otherwise = ", off the paper the move turns"
            ]
         ++ [ line
              | not (presentation (recordKind r)),

@@ -57,6 +57,7 @@ module Senbazuru.Sequence.Resolve
     materialPoint,
     positionOf,
     toSheetLengths,
+    sheetLengthsIn,
 
     -- * Fold lines and hinges
     FoldLine (..),
@@ -146,7 +147,13 @@ sheetLength st = let V2 w h = boxSize (flatBox st) in max w h
 
 -- | A material point in sheet lengths, the author's units.
 toSheetLengths :: FlatState -> V2 -> V2
-toSheetLengths st p = (1 / sheetLength st) *^ (p ^-^ boxMin (flatBox st))
+toSheetLengths st = sheetLengthsIn (flatBox st)
+
+-- | A material point in sheet lengths, on a sheet whose box is given: what
+-- 'toSheetLengths' does, for a caller holding the pattern and no flat
+-- state, such as a turn back of paper standing in the air.
+sheetLengthsIn :: Box -> V2 -> V2
+sheetLengthsIn box p = let V2 w h = boxSize box in (1 / max w h) *^ (p ^-^ boxMin box)
 
 -- | Where the point lay on the flat sheet, in material coordinates. Every form
 -- but @meet@ is worked out here, on the sheet; @meet@ needs positions, and is
