@@ -17,7 +17,8 @@
 -- the same fold checked and laid flat again, which leaves its crease and one
 -- record; @unfold@; @turn over@, which moves no paper and shows the model
 -- from its other side; @rotate@ by whole quarter turns, which turns the model
--- on the page, the same side up; and @expect refused@. Every other move is
+-- on the page, the same side up; @anchor P@, which holds other paper still
+-- from then on and moves none; and @expect refused@. Every other move is
 -- refused as not run yet, naming itself, rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
@@ -70,8 +71,8 @@
 -- Refused as not run yet: a new crease on folded paper, which creases
 -- through its layers (milestone M4), layer words, a @rotate@ by an odd
 -- number of eighths, whose cos 45° no 'Double' holds (owner decision 10),
--- and every move but @fold@, @pre-crease@, @unfold@, @turn over@ and
--- @rotate@, @anchor P@ among them.
+-- and every move but @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@
+-- and @anchor@, @mark@ among them.
 --
 -- A re-anchoring onto a face that does not lie flat is refused as
 -- @ReanchorNotFlat@ (PRDs\/02-language-semantics.md, §2.3), since then no
@@ -96,7 +97,8 @@
 -- crease through the anchor moves it off the crease to a face the move holds
 -- still (decisions C19), and a move that turns the anchor's paper moves it
 -- to the paper beside the hinge that the move holds still (owner decision
--- 3): both are 'reanchor'.
+-- 3): both are 'reanchor'. @anchor P@ moves it on demand, to P and the face
+-- P lies strictly inside ('reanchorAt').
 --
 -- And the /placement/: where the model stands, a rigid motion from the paper
 -- as folded. Re-anchoring changes which face folding holds still, which
@@ -176,7 +178,7 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
-import Senbazuru.Explain (tshow)
+import Senbazuru.Explain (explain, tshow)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
@@ -541,6 +543,19 @@ runMove settings place named state surface = \case
   -- keeps its paper and changes its presentation, and with it the reader's
   -- side.
   CoreTurnOver axis -> present (TurnedOver axis) (turnOverAbout axis)
+  -- @anchor P@ re-anchors on demand (PRDs\/02-language-semantics.md, §2.3):
+  -- the face P lies strictly inside is held still from now on, with the
+  -- anchor at P, as the header's anchor is. No paper moves, and the model
+  -- stays where it stood on the page.
+  CoreAnchor point -> do
+    folded <- first (refusedAt place . FoldingRefused) (foldNow state)
+    let naming = resolvingAt place (prettyPoint point)
+    flat <- first naming (flatState folded)
+    m <- first naming (materialPoint flat point)
+    FaceId face <- first naming (regionFace flat m)
+    (anchored, refolded) <- reanchorAt place state folded face m
+    held <- first (refusedAt place . JoinBroken . ("the re-anchored paper makes no surface: " <>) . explain) (surfaceFromFolded refolded)
+    Right (Made anchored [anchoring (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state, theAnchor anchored) held (thePresentation anchored) (thePlacement anchored)] [])
   -- A rotate turns the model on the page, the same side up, so the reader's
   -- side stays. Only whole quarter turns are made: an odd number of eighths
   -- would need cos 45° (owner decision 10).
@@ -716,8 +731,24 @@ creaseAcross place line state folded flat foldAt letter = case crossedFaces flat
 -- (PRDs\/02-language-semantics.md, §2.3). Two moves ask for it: a new crease
 -- through the anchor, from the faces around it that the move does not turn
 -- (decisions C19), and a move that turns the anchor's paper, from the faces
--- beside its hinge that it holds still (owner decision 3). The fold handed
--- back is the new one.
+-- beside its hinge that it holds still (owner decision 3). 'reanchorAt' does
+-- the rest.
+reanchor :: Here -> FoldState -> Folded -> [FaceId] -> Either SequenceError (FoldState, Folded)
+reanchor place state folded still = do
+  let working = theWorking state
+      material = materialPoints working
+      ring = ringOn material
+      measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 ..] (facesVertices working), FaceId i `elem` still]
+      room = toleranceOf (IM.elems material)
+  case defaultAnchor room measured of
+    Just (i, face, _, mean)
+      | insideRing room (ring face) mean -> reanchorAt place state folded i mean
+      | otherwise -> Left (refusedAt place (MoveNotRunYet "an anchor moved to a face that does not hold its own vertex mean,"))
+    Nothing -> Left (refusedAt place (JoinBroken "no face was left to hold still"))
+
+-- | Hold face @i@ of the working pattern still from now on, with the anchor
+-- at the material point given, which lies in it. The fold handed back is the
+-- new one.
 --
 -- Folding holds the working pattern's first face where it lay on the sheet.
 -- Put another face first, and the whole fold moves by the inverse of h,
@@ -730,20 +761,12 @@ creaseAcross place line state folded flat foldAt letter = case crossedFaces flat
 -- Putting a face first renumbers the faces, so the layer orders are
 -- renumbered with them. Their signs stand: each is read against its faces'
 -- windings, which are not touched.
-reanchor :: Here -> FoldState -> Folded -> [FaceId] -> Either SequenceError (FoldState, Folded)
-reanchor place state folded still = do
+reanchorAt :: Here -> FoldState -> Folded -> Int -> V2 -> Either SequenceError (FoldState, Folded)
+reanchorAt place state folded i anchorAt = do
   let working = theWorking state
       material = materialPoints working
-      ring = ringOn material
       faces = facesVertices working
-      measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 ..] faces, FaceId i `elem` still]
       broken = Left . refusedAt place . JoinBroken
-  let room = toleranceOf (IM.elems material)
-  (i, mean) <- case defaultAnchor room measured of
-    Just (i, face, _, mean)
-      | insideRing room (ring face) mean -> Right (i, mean)
-      | otherwise -> Left (refusedAt place (MoveNotRunYet "an anchor moved to a face that does not hold its own vertex mean,"))
-    Nothing -> broken "no face was left to hold still"
   h <- maybe (broken "the new anchor's face has no place in the fold") Right (IM.lookup i (foldedPlacements folded))
   -- The new face is held where it lay on the sheet, so its normal on the page
   -- is where the display sends +z. It must face the reader or away, or no
@@ -751,7 +774,7 @@ reanchor place state folded still = do
   let shown = thePresentation state `Rigid.after` (thePlacement state `Rigid.after` h)
       V3 _ _ facing = matApply (rigidLinear shown) (V3 0 0 1)
   box <- maybe (broken "the sheet has no extent") Right (boxFromPoints (IM.elems material))
-  when (abs facing < 1 - 1e-9) (Left (refusedAt place (ReanchorNotFlat (sheetLengthsIn box mean) (acos (min 1 (abs facing)) * 180 / pi))))
+  when (abs facing < 1 - 1e-9) (Left (refusedAt place (ReanchorNotFlat (sheetLengthsIn box anchorAt) (acos (min 1 (abs facing)) * 180 / pi))))
   let renumber (FaceId f)
         | f == i = FaceId 0
         | f < i = FaceId (f + 1)
@@ -760,7 +783,7 @@ reanchor place state folded still = do
       moved =
         state
           { theWorking = working {facesVertices = firstOf i faces, faceOrders = orders},
-            theAnchor = MaterialPoint mean,
+            theAnchor = MaterialPoint anchorAt,
             thePlacement = thePlacement state `Rigid.after` h,
             theFold = Nothing
           }

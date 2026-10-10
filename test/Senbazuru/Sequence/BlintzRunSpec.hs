@@ -101,6 +101,7 @@ spec = describe "the blintz, run as a sequence" $ do
     turnOf record = case recordEvidence record of
       SweptHinge turn -> pure turn
       Presented -> fail "the blintz turns nothing over"
+      NoMotion -> fail "the blintz names no anchor"
     -- The blintz's four corners, then a fifth move made from the step c1.
     carriedOn wrap = sequenceOf (header "Blintz, then carry a corner on" (sheetFile "examples/blintz-base.fold") (Just centre)) $ do
       c1 <- step "c1" "Fold the south-east corner behind, to the centre." (fold mountain (cornerOf SouthEast `onto` centre))

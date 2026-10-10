@@ -6,7 +6,8 @@
 -- record/ (see docs/glossary.md, "Fold sequences"); only @let@, @not
 -- modelled@ and @expect refused@ leave none. So far a record holds a turn
 -- about a hinge, a pre-crease, which is such a turn checked and laid flat
--- again, or a change of presentation, which moves no paper ('MoveKind'); the
+-- again, a change of presentation, which moves no paper, or an @anchor P@,
+-- which moves none either and holds other paper still ('MoveKind'); the
 -- section \"What is not here yet\" says what the other moves will bring. Three
 -- readers take records rather than the folded frames a run also writes: the
 -- page of steps, which draws one arrow for each move; the material study,
@@ -58,9 +59,9 @@
 -- and the face held still from that one turn. So no record can pair the paper
 -- before one fold with the paper after another, and every record's evidence
 -- describes the record's own move. The same reasoning made
--- 'Senbazuru.Sequence.Check.Checked' opaque. The one other maker,
--- 'presented', takes a single surface for both, so it pairs nothing, and its
--- evidence says that no paper moved.
+-- 'Senbazuru.Sequence.Check.Checked' opaque. The two other makers,
+-- 'presented' and 'anchoring', take a single surface for both, so they pair
+-- nothing, and their evidence says that no paper moved.
 --
 -- Two parts are the runner's word, not the turn's: the hinge as stretches on
 -- the sheet, and the seed. A turn does not say how its hinge edges group into
@@ -77,9 +78,7 @@
 --   macro moves; and the cost;
 -- * a pose part-way along the move (@recordPoseAt@ in the design), with its
 --   first reader, the material study's grips or the animated export;
--- * the evidence for moves that are neither a turn about a hinge nor a change
---   of presentation: no motion, a state with no route, or a sampled macro
---   move.
+-- * the evidence for a state with no route, or a sampled macro move.
 --
 -- Four of the sketch's fields change. Its @recordLabel@, the step's caption
 -- (@PRDs\/01-architecture.md@, §5.8), is 'recordCaption', the language's own
@@ -136,6 +135,7 @@ module Senbazuru.Sequence.Record
     hingeTurn,
     asPrecrease,
     presented,
+    anchoring,
 
     -- * A run
     Run (..),
@@ -198,6 +198,9 @@ data RouteEvidence
   | -- | A change of how the model is shown, a turn-over or a rotate: no
     -- paper moved, so there was no path to check.
     Presented
+  | -- | No paper moved and nothing was shown differently: @anchor P@, which
+    -- changes only which paper is held still. There was no path to check.
+    NoMotion
   deriving stock (Eq, Show)
 
 -- | One move of a run, as its readers take it. Made by 'hingeTurn'; the
@@ -242,6 +245,11 @@ data MoveKind
     -- turned, and no paper moves. Its two surfaces are one; its presentation
     -- changes, and 'Presenting' says which turn the author wrote.
     Presentation Presenting
+  | -- | @anchor P@ (PRDs\/02-language-semantics.md, §2.3): from now on the
+    -- paper at P is held still, and no paper moves. Its two surfaces are
+    -- one, held from the new anchor's face as a re-anchoring move's are
+    -- ('recordPlacement').
+    Anchoring
   deriving stock (Eq, Show)
 
 -- | Which turn a change of presentation was, as written. Kept because the
@@ -355,7 +363,8 @@ recordPresentation = thePresentation
 -- turns the anchor's paper. That move re-anchors before it turns, so both
 -- its surfaces are computed from the new anchor's face and both halves are
 -- the new placement; the change shows between the record before it and this
--- one, as the anchor's own change does ('recordAnchor').
+-- one. 'recordAnchor' is paired the other way: its first half is the anchor
+-- before the move.
 recordPlacement :: MoveRecord -> (Rigid, Rigid)
 recordPlacement = thePlacement
 
@@ -494,7 +503,44 @@ presented ::
   -- not change.
   Rigid ->
   MoveRecord
-presented step move name caption origin turn anchor surface shown placed =
+presented step move name caption origin turn anchor =
+  unturned step move name caption origin Presented (Presentation turn) (anchor, anchor)
+
+-- | The record of @anchor P@: the paper as it lies, held from the new
+-- anchor's face in both surfaces, as a re-anchoring move's are, so its
+-- placement is the new one on both sides and the change shows against the
+-- record before it, while 'recordAnchor' gives the anchor before the move
+-- and P. No paper moved, so its evidence is 'NoMotion', it has no hinge and
+-- no moving paper, and the face it holds still is the anchor's.
+anchoring ::
+  -- | The step's number, from 1.
+  Int ->
+  -- | The move's place in its step, from 1.
+  Int ->
+  -- | The step's name, if it has one.
+  Maybe Name ->
+  -- | The step's caption, if it has one.
+  Maybe Text ->
+  -- | The move as written.
+  Origin ->
+  -- | The anchor before the move, and the point it names.
+  (MaterialPoint, MaterialPoint) ->
+  -- | The paper as it lies, held from the new anchor's face.
+  Surface V2 ->
+  -- | How it is shown.
+  Rigid ->
+  -- | Where the new anchor's face is placed.
+  Rigid ->
+  MoveRecord
+anchoring step move name caption origin anchor surface shown =
+  unturned step move name caption origin NoMotion Anchoring anchor surface (shown, shown)
+
+-- | A record of a move that turns no paper: one surface before and after, no
+-- hinge, no moving paper, and the anchor's face held still. 'presented' and
+-- 'anchoring' are this, each with its own evidence and kind, and each
+-- changing only its own pair.
+unturned :: Int -> Int -> Maybe Name -> Maybe Text -> Origin -> RouteEvidence -> MoveKind -> (MaterialPoint, MaterialPoint) -> Surface V2 -> (Rigid, Rigid) -> Rigid -> MoveRecord
+unturned step move name caption origin evidence kind anchor surface shown placed =
   MoveRecord
     { theStep = step,
       theMoveIndex = move,
@@ -503,13 +549,13 @@ presented step move name caption origin turn anchor surface shown placed =
       theOrigin = origin,
       theBefore = surface,
       theAfter = surface,
-      theEvidence = Presented,
+      theEvidence = evidence,
       theHinge = [],
       theNewCreases = [],
-      theAnchor = (anchor, anchor),
+      theAnchor = anchor,
       thePresentation = shown,
       thePlacement = (placed, placed),
-      theKind = Presentation turn,
+      theKind = kind,
       theMoving = [],
       theStationary = FaceId 0,
       theResolved = []
@@ -639,6 +685,7 @@ writtenStates run = alike <$> sequence (zipWith3 write [0 ..] produced titles)
     evidenceName = \case
       SweptHinge _ -> "SweptHinge" :: Text
       Presented -> "Presented"
+      NoMotion -> "NoMotion"
 
 -- | A frame's faces numbered as the frame before it numbered them, when the
 -- two have the same faces, each the same ring; otherwise the frame as it is.
@@ -745,19 +792,21 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
              | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
                a /= b,
                let why
+                     | recordKind r == Anchoring = ", where the move names it"
                      | any (\(MaterialSegment (MaterialPoint p) (MaterialPoint q), _, _) -> distanceToSegment (sheetLengths p, sheetLengths q) (sheetLengths a) <= 1e-9) (recordNewCreases r) = ", off the new crease"
                      | otherwise = ", off the paper the move turns"
            ]
         ++ [ line
-             | not (presentation (recordKind r)),
+             | turned (recordEvidence r),
                line <- ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
            ]
     checked r = case (recordEvidence r, recordKind r) of
       (SweptHinge _, _) -> "checked: the whole turn, swept, with no paper in its way"
       (Presented, Presentation (Rotated _ _)) -> "presented: the whole model turned on the page, the same side up; no paper moved"
       (Presented, _) -> "presented: the whole model shown from its other side; no paper moved"
-    presentation = \case
-      Presentation _ -> True
+      (NoMotion, _) -> "nothing turned: no paper moved"
+    turned = \case
+      SweptHinge _ -> True
       _ -> False
     resolvedFact = \case
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d

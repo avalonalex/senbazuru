@@ -4,6 +4,8 @@
 module Senbazuru.Sequence.RunSpec (spec) where
 
 import Control.Monad (forM_, void)
+import Data.Aeson (object, toJSON, (.=))
+import Data.Aeson.KeyMap qualified as KM
 import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
@@ -65,6 +67,7 @@ running = describe "running a sequence" $ do
     forM_ records $ \record -> case recordEvidence record of
       SweptHinge turn -> sweepOutcome (flapCheck turn) `shouldBe` SweepClear
       Presented -> expectationFailure "the blintz turns nothing over"
+      NoMotion -> expectationFailure "the blintz names no anchor"
 
   -- Behind is away from the reader: with the coloured side up, -180, the
   -- recipe's travel; the unfold takes edge 8 back to 0. Turns red if the
@@ -133,7 +136,7 @@ running = describe "running a sequence" $ do
         other -> expectationFailure ("expected edge south refused as lying across the fold, got " <> show other)
 
     it "a move it does not make yet, by name" $
-      refusal (runOn (oneStep (anchor centre))) `shouldBe` Just (MoveNotRunYet "\"anchor\"")
+      refusal (runOn (oneStep (void (mark "m" centre Nothing)))) `shouldBe` Just (MoveNotRunYet "\"mark\"")
   where
     coords (V3 x y z) = [x, y, z]
     coords2 (V2 x y) = [x, y]
@@ -675,6 +678,76 @@ reanchoring = describe "re-anchoring" $ do
         let shown = [applyRigid (displayBefore swung) p | p <- positions (surfaceFrame (recordBefore swung))]
         (length shown, and (zipWith near shown (positions folded))) `shouldBe` (length (positions folded), True)
       _ -> expectationFailure "expected three records and four states"
+
+  -- `anchor P` re-anchors on demand onto the face P lies strictly inside,
+  -- with the anchor at P, and moves no paper (PRD 02 §2.3). After the first
+  -- fold the south-west quarter lies face down behind the south-east one;
+  -- holding it still from then on and folding again writes the model the
+  -- anchored quarter fold writes, the state after the anchor being the state
+  -- before it. Turns red if the move moved the model on the page, made no
+  -- record, or the record's placement were not the new one.
+  describe "anchor P" $ do
+    let holding p = sequenceOf (seqHeader quarterFold) $ do
+          step_ "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+          step_ "Hold that paper still from now on." (anchor p)
+          step_ "Fold the top half down in front, onto the bottom." (fold inFront (LineOnto (edge North) (edge South) Nothing))
+        refusalOf = \case
+          Left (ResolveRefused _ _ _ problem) -> Just problem
+          _ -> Nothing
+
+    it "holds the paper it names still from then on, and moves no paper" $ do
+      run <- right (runOn (holding (at (1 / 4) (1 / 4))))
+      case [r | r <- runRecords run, recordStep r == 2] of
+        [r] -> do
+          (recordKind r, recordEvidence r) `shouldBe` (Anchoring, NoMotion)
+          recordAnchor r `shouldBe` (corner 0.75 0.25, corner 0.25 0.25)
+          recordAfter r `shouldBe` recordBefore r
+          let (placedBefore, placedAfter) = recordPlacement r
+          placedBefore `shouldBe` placedAfter
+          matApply (rigidLinear placedAfter) (V3 0 0 1) `shouldSatisfy` near (V3 0 0 (-1))
+        other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+      frames <- right (framesOf run)
+      case anchoredFrames of
+        [start, halved, quartered'] -> zipWith sameModel frames [start, halved, halved, quartered'] `shouldBe` replicate 4 True
+        other -> expectationFailure ("expected three anchored states, got " <> show (length other))
+      case frames of
+        start : rest -> map facesVertices rest `shouldBe` replicate (length rest) (facesVertices start)
+        [] -> expectationFailure "expected written states"
+      map (KM.lookup "senbazuru:assurance" . frameExtras) (take 1 (drop 2 frames)) `shouldBe` [Just (toJSON [object ["move" .= (1 :: Int), "evidence" .= ("NoMotion" :: T.Text)]])]
+      renderRunReport run `shouldContain` ["  nothing turned: no paper moved", "  anchor moved: (0.75, 0.25) to (0.25, 0.25), where the move names it"]
+      length [l | l <- renderRunReport run, "  moving:" `T.isPrefixOf` l] `shouldBe` 2
+
+    -- Paper in the face already held still: the anchor moves to it, and
+    -- nothing else does. Turns red if re-anchoring onto the first face
+    -- renumbered or moved anything.
+    it "moves only the anchor when P is in the face already held still" $ do
+      run <- right (runOn (holding (at (4 / 5) (1 / 5))))
+      case [r | r <- runRecords run, recordStep r == 2] of
+        [r] -> (recordAnchor r, recordPlacement r) `shouldBe` ((corner 0.75 0.25, corner 0.8 0.2), (identity, identity))
+        other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+      frames <- right (framesOf run)
+      case anchoredFrames of
+        [start, halved, quartered'] -> zipWith sameModel frames [start, halved, halved, quartered'] `shouldBe` replicate 4 True
+        other -> expectationFailure ("expected three anchored states, got " <> show (length other))
+
+    -- A region names paper strictly inside one face; the vertical midline
+    -- is a crease, strictly inside none.
+    it "refuses a point on a crease, which is in no one face" $ do
+      let refused = runOn (holding (at (1 / 2) (1 / 4)))
+      case refusalOf refused of
+        Just (NotInOneFace _ 0) -> pure ()
+        other -> expectationFailure ("expected NotInOneFace, got " <> show other)
+      either refusalKindOf (const Nothing) refused `shouldBe` Just (RefusalKind "NotInOneFace")
+
+    -- Paper is named only on paper lying flat, so a half folded up to 90°
+    -- leaves nothing an anchor can be named on.
+    it "refuses on paper standing in the air, where no paper is named" $ do
+      let standing = sequenceOf (seqHeader quarterFold) $ do
+            step_ "Fold the left half up." (move (Fold MountainFold (Degrees 90) (LineOnto (edge West) (edge East) Nothing) FlapOfFirstArgument Nothing))
+            step_ "Hold the left half still." (anchor (at (1 / 4) (1 / 4)))
+      case refusalOf (runOn standing) of
+        Just (ConstructionInTheAir _) -> pure ()
+        other -> expectationFailure ("expected ConstructionInTheAir, got " <> show other)
 
   -- Turned back, the second fold first and then the first, across that
   -- re-anchoring. The first fold's paper holds the anchor by then, so
