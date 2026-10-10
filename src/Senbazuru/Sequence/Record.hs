@@ -327,8 +327,11 @@ recordEvidence :: MoveRecord -> RouteEvidence
 recordEvidence = theEvidence
 
 -- | The hinge: each stretch of fold line on the sheet, with the edges of
--- 'recordBefore' that lie along it. A fold through several layers has one
--- stretch for each layer it creases. The runner's word: see 'hingeTurn'.
+-- 'recordBefore' that lie along it. Creases joined end to end along one line
+-- on the sheet are one stretch, whatever layers they lie on, as the quarter
+-- fold's second hinge is; a fold through several layers whose creases lie
+-- apart on the sheet, or meet there at an angle, as the helmet base's do,
+-- has one for each. The runner's word: see 'hingeTurn'.
 recordHinge :: MoveRecord -> [(MaterialSegment, [EdgeId])]
 recordHinge = theHinge
 

@@ -482,6 +482,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.CheckSpec
     Senbazuru.Sequence.ElaborateSpec
     Senbazuru.Sequence.ErrorSpec
+    Senbazuru.Sequence.HelmetRunSpec
     Senbazuru.Sequence.ParseSpec
     Senbazuru.Sequence.PrettySpec
     Senbazuru.Sequence.RecordSpec
