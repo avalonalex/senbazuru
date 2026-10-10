@@ -277,6 +277,12 @@ data StaticProblem
   | -- | @unfold NAME@ or @repeat NAME@, where the named step draws no picture
     -- of its own and so has nothing to undo or do again.
     NotAFigure Name
+  | -- | @unfold NAME@, where the named step turns no paper: it only turns the
+    -- model over or on the page, names an anchor or a mark, or checks a
+    -- state. It changed no crease's angle, so there is nothing to turn back,
+    -- and an unfold of it would do nothing (PRDs\/02-language-semantics.md,
+    -- §6.4). Caught here, since it needs no paper to see.
+    TurnsNoPaper Name
   | -- | @hinge of NAME@, where the named step made several moves and so has no
     -- one line it turned paper about.
     HingeOfSeveralMoves Name
@@ -347,6 +353,8 @@ instance Explain StaticProblem where
       quote name <> " cannot be continued: a step can be continued only if it is exactly one macro-move"
     NotAFigure (Name name) ->
       quote name <> " draws no picture of its own, so there is nothing to unfold or repeat"
+    TurnsNoPaper (Name name) ->
+      quote name <> " turns no paper, so there is nothing to unfold"
     HingeOfSeveralMoves (Name name) ->
       quote name <> " makes several moves, so it has no one hinge; name the line another way"
     RepeatUnmappable (Name name) obstacle ->

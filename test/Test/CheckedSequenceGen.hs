@@ -15,9 +15,9 @@
 -- * a point's name only where a point may stand, a line's where a line may,
 --   and only after the @mark@ or @let@ that gives it;
 -- * a step's name only once the step has closed, and only a step of the right
---   kind: one that draws a picture for @unfold@ and @repeat@, one of exactly
---   one macro-move for @continue@, one that turned paper at most once for
---   @hinge of@;
+--   kind: one that draws a picture for @repeat@, one that turned paper for
+--   @unfold@, one of exactly one macro-move for @continue@, one that turned
+--   paper at most once for @hinge of@;
 -- * every name new, from a pool of ordinary words with a number added when a
 --   word is taken;
 -- * a step never made of @let@s alone; numbers inside their ranges.
@@ -256,7 +256,7 @@ turnsPaper = \case
 -- | A move. The depth bounds how far @together@ and @expect refused@ nest.
 moveG :: Int -> G Move
 moveG depth = do
-  figures <- namedSteps finishedFigure
+  turned <- namedSteps (\step -> finishedFigure step && finishedTurns step > 0)
   singleMacros <- namedSteps ((== 1) . finishedMacros)
   ranges <- repeatRanges
   choice $
@@ -274,7 +274,7 @@ moveG depth = do
       (1, Checkpoint <$> lift genPath <*> specG),
       (1, NotModelled <$> lift genCaption)
     ]
-      <> [(2, Unfold <$> someOf (pick figures)) | not (null figures)]
+      <> [(2, Unfold <$> someOf (pick turned)) | not (null turned)]
       <> [(2, Continue <$> pick singleMacros <*> lift untilAngle) | not (null singleMacros)]
       <> [(3, repeatG ranges) | not (null ranges)]
       <> if depth <= 0 then [] else [(2, togetherG depth), (2, expectG depth)]

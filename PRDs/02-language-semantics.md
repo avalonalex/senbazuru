@@ -858,7 +858,10 @@ a square base is two sheets, and that a quarter-fold seed near (1, 0) is covered
    hinge turn.
 
 A move whose hinge creases are all at 0 now is skipped, and that covers every
-pre-crease. If a later move changed one of those creases, the unfold is
+pre-crease. A step that turns no paper at all, only turning the model over or on
+the page, naming an anchor or a mark, or checking a state, has no angle change to
+reverse; the checker refuses an `unfold` naming it as `TurnsNoPaper`, since it
+needs no paper to see ([decisions C85](decisions.md#changes-since-draft-v2)). If a later move changed one of those creases, the unfold is
 refused as `UnfoldChangedSince`, naming the crease. *Blintz example:* `unfold c1`
 takes edge 8 from −180 to 0, the recipe's last tuple.
 
@@ -1416,6 +1419,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `NotANameToken`, `ReservedWordAsName`, `LayerCountNotPositive`, `SignNotAllowed` | `StaticProblem` | values only a Haskell builder can make ([03](03-prd-embedded-dsl.md#refusals-from-a-built-sequence)): a `Name` that is not a name token, such as `Name "two words"`; a reserved word as a name, compared ignoring case, such as `Name "north-west"`; `TopLayers 0`; a signed angle such as `Degrees (-90)` in a `Fold`, where the text allows a sign only in coordinates, pose angles and settle `except` angles | the step; the name or value |
 | `EmptyStep` | `StaticProblem` | a step with no move other than `let` ([D12](decisions.md#d12-the-text-syntax)) | the step |
 | `NotASingleMacro`, `NotAFigure`, `HingeOfSeveralMoves` | `StaticProblem` | `continue`, `unfold`/`repeat`, or `hinge of` naming the wrong kind of step | the name |
+| `TurnsNoPaper` | `StaticProblem` | `unfold` naming a step that turns no paper, so has no angle change to reverse (§6.4) | the name |
 | `RepeatUnmappable` | `StaticProblem` | `repeat` over a step containing `model` or `top N`, or an isometry point that is a construction | the move |
 | `UnknownRefusalKind` | `StaticProblem` | an `expect refused` KIND not in this table | KIND |
 | `SheetHasNoVertices`, `SheetAlreadyFolded` | `SheetProblem`, in `SheetRefused` | key frame empty; `frameKind` `FoldedForm`, meaning z relief or the `foldedForm` class ([`Query.hs:459-463`](../src/Senbazuru/Fold/Query.hs#L459-L463)) | path; `file_frames` count, or the z span or class |

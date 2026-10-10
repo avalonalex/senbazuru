@@ -212,12 +212,28 @@ stepNamed name =
       maybe (refuse (UnknownName name)) (pure . (number,)) facts
     other -> refuse (WrongKind name StepName (kindOf other))
 
--- | A step that draws a picture, which is what @unfold@ and @repeat@ need.
-figureNamed :: Name -> Check Int
+-- | A step that draws a picture, which is what @unfold@ and @repeat@ need:
+-- its number and what is known of it.
+figureNamed :: Name -> Check (Int, StepFacts)
 figureNamed name = do
   (number, facts) <- stepNamed name
   unless (factFigure facts) (refuse (NotAFigure name))
-  pure number
+  pure (number, facts)
+
+-- | A step that turned paper, which is what @unfold@ turns back. A step that
+-- only turns the model over, names an anchor or a mark, or checks a state
+-- changed no crease's angle, so an unfold of it would do nothing, silently.
+-- A pre-crease turns paper and returns it, and its unfold is skipped when
+-- run (PRDs\/02-language-semantics.md, §6.4); it is not refused here.
+--
+-- A @together@ or a @repeat@ counts as turning paper whatever it holds, as
+-- it does for @hinge of@. Neither runs yet (milestones M4 and M5); when they
+-- do, a @together@ of turn-overs alone, or a @repeat@ of a step that turns
+-- no paper, will want looking into here.
+turnedNamed :: Name -> Check ()
+turnedNamed name = do
+  (_, facts) <- figureNamed name
+  unless (factTurns facts > 0) (refuse (TurnsNoPaper name))
 
 -- ---------------------------------------------------------------------------
 -- The header and the steps
@@ -323,7 +339,7 @@ checkMove = \case
     FoldAndUnfold sense <$> checkLine line <*> checkLayers layers <*> traverse checkPoint seed
   Unfold names -> do
     when (null names) (refuse UnfoldNamesNothing)
-    traverse_ figureNamed names
+    traverse_ turnedNamed names
     pure (Unfold names)
   TurnOver axis -> pure (TurnOver axis)
   Rotate eighths turning -> do
@@ -362,8 +378,8 @@ checkMove = \case
   Together members -> Together <$> traverse (located checkMove) members
   Pose creases -> Pose <$> traverse (\(p, q, angle) -> (,,angle) <$> checkPoint p <*> checkPoint q) creases
   Repeat from to isometry -> do
-    firstStep <- figureNamed from
-    lastStep <- maybe (pure firstStep) figureNamed to
+    firstStep <- fst <$> figureNamed from
+    lastStep <- maybe (pure firstStep) (fmap fst . figureNamed) to
     when (lastStep < firstStep) (refuse (RangeRunsBackwards from (fromMaybe from to)))
     Repeat from to <$> traverse (checkIsometry from to) isometry
   Checkpoint path spec -> Checkpoint path <$> checkSpec spec

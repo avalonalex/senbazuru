@@ -158,6 +158,18 @@ spec = do
     it "lets hinge of name a step that marks a point and turns paper once" $
       outcomeOf ["step one { mark p = centre; " <> aFold <> " }", "step { fold valley hinge of one moving centre }"] `shouldBe` Accepted
 
+    -- A step that turns paper and also turns the model over is unfolded:
+    -- the fold is turned back, and the turn-over, which changed no angle, is
+    -- not. A pre-crease turns paper too, and its unfold is skipped when run.
+    it "lets unfold name a step that turns paper as well as turning it over, and a pre-crease" $ do
+      outcomeOf ["step both { " <> aFold <> "; turn over left-right }", "step { unfold both }"] `shouldBe` Accepted
+      outcomeOf ["step p { pre-crease valley corner south-east to centre }", "step { unfold p }"] `shouldBe` Accepted
+
+    -- repeat does a step again, and a turn-over done again turns the model
+    -- back; only unfold needs paper to have turned.
+    it "lets repeat name a step that only turns the paper over" $
+      outcomeOf ["step flipped { turn over left-right }", "step { repeat flipped }"] `shouldBe` Accepted
+
     it "lets a range name one step twice" $
       outcomeOf ["step a { " <> aFold <> " }", "step { repeat a..a }"] `shouldBe` Accepted
 
@@ -368,6 +380,9 @@ refusals =
     ("a step with nothing but lets", ["step only { let a = centre; let b = edge north }"], InStep 1 (Just "only"), EmptyStep),
     ("unfolding a step that draws nothing", ["step e { expect refused FlapCovered { " <> aFold <> " } }", "step { unfold e }"], InStep 2 Nothing, NotAFigure "e"),
     ("repeating a step that draws nothing", ["step e { expect refused FlapCovered { " <> aFold <> " } }", "step { repeat e }"], InStep 2 Nothing, NotAFigure "e"),
+    ("unfolding a step that only turns the paper over", ["step flipped { turn over left-right }", "step { unfold flipped }"], InStep 2 Nothing, TurnsNoPaper "flipped"),
+    ("unfolding a step that only names an anchor", ["step pinned { anchor centre }", "step { unfold pinned }"], InStep 2 Nothing, TurnsNoPaper "pinned"),
+    ("unfolding a turn on the page, among folds that turn paper", ["step a { " <> aFold <> " }", "step spin { rotate 2/8 turn clockwise }", "step { unfold a spin }"], InStep 3 Nothing, TurnsNoPaper "spin"),
     ("no eighths", ["step { rotate 0/8 turn clockwise }"], InStep 1 Nothing, NotEighths 0),
     ("a whole turn of eighths", ["step { rotate 8/8 turn clockwise }"], InStep 1 Nothing, NotEighths 8),
     ("a whole turn of quarters", ["step a { " <> aFold <> " }", "step { repeat a turned 4/4 about centre }"], InStep 2 Nothing, NotQuarters 4),
