@@ -363,7 +363,8 @@ recordPresentation = thePresentation
 -- turns the anchor's paper. That move re-anchors before it turns, so both
 -- its surfaces are computed from the new anchor's face and both halves are
 -- the new placement; the change shows between the record before it and this
--- one, as the anchor's own change does ('recordAnchor').
+-- one. 'recordAnchor' is paired the other way: its first half is the anchor
+-- before the move.
 recordPlacement :: MoveRecord -> (Rigid, Rigid)
 recordPlacement = thePlacement
 
@@ -502,33 +503,15 @@ presented ::
   -- not change.
   Rigid ->
   MoveRecord
-presented step move name caption origin turn anchor surface shown placed =
-  MoveRecord
-    { theStep = step,
-      theMoveIndex = move,
-      theStepName = name,
-      theCaption = caption,
-      theOrigin = origin,
-      theBefore = surface,
-      theAfter = surface,
-      theEvidence = Presented,
-      theHinge = [],
-      theNewCreases = [],
-      theAnchor = (anchor, anchor),
-      thePresentation = shown,
-      thePlacement = (placed, placed),
-      theKind = Presentation turn,
-      theMoving = [],
-      theStationary = FaceId 0,
-      theResolved = []
-    }
+presented step move name caption origin turn anchor =
+  unturned step move name caption origin Presented (Presentation turn) (anchor, anchor)
 
 -- | The record of @anchor P@: the paper as it lies, held from the new
 -- anchor's face in both surfaces, as a re-anchoring move's are, so its
 -- placement is the new one on both sides and the change shows against the
--- record before it, as the anchor's does. No paper moved, so its evidence is
--- 'NoMotion', it has no hinge and no moving paper, and the face it holds
--- still is the anchor's.
+-- record before it, while 'recordAnchor' gives the anchor before the move
+-- and P. No paper moved, so its evidence is 'NoMotion', it has no hinge and
+-- no moving paper, and the face it holds still is the anchor's.
 anchoring ::
   -- | The step's number, from 1.
   Int ->
@@ -549,7 +532,15 @@ anchoring ::
   -- | Where the new anchor's face is placed.
   Rigid ->
   MoveRecord
-anchoring step move name caption origin anchor surface shown placed =
+anchoring step move name caption origin anchor surface shown =
+  unturned step move name caption origin NoMotion Anchoring anchor surface (shown, shown)
+
+-- | A record of a move that turns no paper: one surface before and after, no
+-- hinge, no moving paper, and the anchor's face held still. 'presented' and
+-- 'anchoring' are this, each with its own evidence and kind, and each
+-- changing only its own pair.
+unturned :: Int -> Int -> Maybe Name -> Maybe Text -> Origin -> RouteEvidence -> MoveKind -> (MaterialPoint, MaterialPoint) -> Surface V2 -> (Rigid, Rigid) -> Rigid -> MoveRecord
+unturned step move name caption origin evidence kind anchor surface shown placed =
   MoveRecord
     { theStep = step,
       theMoveIndex = move,
@@ -558,13 +549,13 @@ anchoring step move name caption origin anchor surface shown placed =
       theOrigin = origin,
       theBefore = surface,
       theAfter = surface,
-      theEvidence = NoMotion,
+      theEvidence = evidence,
       theHinge = [],
       theNewCreases = [],
       theAnchor = anchor,
-      thePresentation = (shown, shown),
+      thePresentation = shown,
       thePlacement = (placed, placed),
-      theKind = Anchoring,
+      theKind = kind,
       theMoving = [],
       theStationary = FaceId 0,
       theResolved = []

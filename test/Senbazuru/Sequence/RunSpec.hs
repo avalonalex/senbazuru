@@ -717,6 +717,19 @@ reanchoring = describe "re-anchoring" $ do
       renderRunReport run `shouldContain` ["  nothing turned: no paper moved", "  anchor moved: (0.75, 0.25) to (0.25, 0.25), where the move names it"]
       length [l | l <- renderRunReport run, "  moving:" `T.isPrefixOf` l] `shouldBe` 2
 
+    -- Paper in the face already held still: the anchor moves to it, and
+    -- nothing else does. Turns red if re-anchoring onto the first face
+    -- renumbered or moved anything.
+    it "moves only the anchor when P is in the face already held still" $ do
+      run <- right (runOn (holding (at (4 / 5) (1 / 5))))
+      case [r | r <- runRecords run, recordStep r == 2] of
+        [r] -> (recordAnchor r, recordPlacement r) `shouldBe` ((corner 0.75 0.25, corner 0.8 0.2), (identity, identity))
+        other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+      frames <- right (framesOf run)
+      case anchoredFrames of
+        [start, halved, quartered'] -> zipWith sameModel frames [start, halved, halved, quartered'] `shouldBe` replicate 4 True
+        other -> expectationFailure ("expected three anchored states, got " <> show (length other))
+
     -- A region names paper strictly inside one face; the vertical midline
     -- is a crease, strictly inside none.
     it "refuses a point on a crease, which is in no one face" $ do
