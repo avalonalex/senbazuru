@@ -62,15 +62,15 @@ blintzCaptions =
 
 -- | The helmet base: a square folded diagonally in half, then each corner of
 -- the doubled triangle brought to its tip, the right-angled corner at south
--- east. The study's second recipe (@study\/fold-material\/HelmetSequence.hs@),
--- written by naming paper rather than by edge ids: the corners are folded by
--- laying one corner on another, whose fold line is the line halfway between
--- them where they lie.
+-- east. The study's second recipe once folded it by edge ids; this names
+-- paper instead: the corners are folded by laying one corner on another, whose
+-- fold line is the line halfway between them where they lie. Its text is
+-- saved at the root, as @helmet.foldseq@, which the study's gallery runs.
 --
 -- The diagonal names its paper by @moving corner north-west@, since a line of
 -- two points does not say which side moves; there is no builder for that, so
 -- it is written with the tree's own constructor. The anchor, @(3\/4, 1\/4)@,
--- is the middle of the south-east square face, which the recipe holds still.
+-- is the middle of the south-east square face, which no fold turns.
 helmet :: Sequence
 helmet = sequenceOf (header "The helmet base" (sheetFile "examples/helmet-base.fold") (Just (at (3 / 4) (1 / 4)))) $ do
   step_ "Fold the square diagonally in half." $ move (Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf NorthWest)))

@@ -11,12 +11,13 @@
 -- for. The design's own form, for sequences the checker accepts, is in the
 -- checker's spec, stated more strongly there and with the reason.
 --
--- __Built equals parsed__, on the two examples the design works through. The
--- blintz is read from @blintz.foldseq@ at the repository root, typed as an
--- author would type it, with @behind@ for @mountain@ and a comment, and has to
--- equal the Haskell blintz, loop and all. Then every row of the builder's
--- vocabulary is compared with the parse of its own text, so that a builder's
--- default cannot drift from the parser's.
+-- __Built equals parsed__, on the two examples the design works through, and
+-- on the helmet. The blintz is read from @blintz.foldseq@ at the repository
+-- root, typed as an author would type it, with @behind@ for @mountain@ and a
+-- comment, and has to equal the Haskell blintz, loop and all. The helmet is
+-- read the same way from @helmet.foldseq@, the text its study gallery runs.
+-- Then every row of the builder's vocabulary is compared with the parse of its
+-- own text, so that a builder's default cannot drift from the parser's.
 --
 -- __Mistakes__ are matched on the 'Hint' and the place, never on the words. A
 -- hint is data so that this is possible: the sentence can be improved without
@@ -37,7 +38,7 @@ import Senbazuru.Sequence.Syntax
 import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
-import Test.SequenceExamples (blintz, quarterFold)
+import Test.SequenceExamples (blintz, helmet, quarterFold)
 import Test.SequenceGen (genSequence, kindPool, namePool)
 import Test.SequenceHelpers (built, plainHeader)
 
@@ -72,6 +73,13 @@ spec = do
     it "reads the blintz at the repository root as the Haskell blintz" $ do
       text <- TIO.readFile "blintz.foldseq"
       fmap stripSpans (parseSequence "blintz.foldseq" text) `shouldBe` Right blintz
+
+    -- The text the helmet's study gallery runs, typed with @in front@ for
+    -- @valley@. Turns red if the file and the Haskell helmet drift apart, so
+    -- that the gallery would run a sequence no test runs.
+    it "reads the helmet at the repository root as the Haskell helmet" $ do
+      text <- TIO.readFile "helmet.foldseq"
+      fmap stripSpans (parseSequence "helmet.foldseq" text) `shouldBe` Right helmet
 
     it "reads the quarter fold as typed, aliases and comment and all" $ do
       text <- TIO.readFile "test/fixtures/quarter-fold.foldseq"

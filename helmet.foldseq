@@ -1,0 +1,8 @@
+foldseq 1
+title "The helmet base"
+sheet "examples/helmet-base.fold"
+anchor (3/4, 1/4)          # the middle of the south-east square, which no fold turns
+
+step "Fold the square diagonally in half." { fold in front [corner south-west, corner north-east] moving corner north-west }
+step "Bring the first doubled corner to the tip." { fold in front corner south-west to corner south-east }
+step "Bring the other doubled corner to the tip: helmet base." { fold in front corner north-east to corner south-east }
