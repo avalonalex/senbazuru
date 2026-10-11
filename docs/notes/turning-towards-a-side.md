@@ -54,7 +54,7 @@ completes that fold by moving down. So a moving face that does not lie flat is
 refused as `FlapMovingNotFlat`, judged by the library's usual `hasRelief`.
 
 The cases are pinned in `test/Senbazuru/Origami/FlapSpec.hs` ("turning a
-page") and `test/BlintzSequenceSpec.hs`. The decision is owner decision 13,
+page") and `test/Senbazuru/Sequence/BlintzRunSpec.hs`. The decision is owner decision 13,
 recorded under D5 in `PRDs/decisions.md`, and
 `PRDs/research/E3-formal-fold-semantics.md`, section G, has the argument and
 its sources.

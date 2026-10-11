@@ -1,29 +1,41 @@
 -- | Naming paper on a flat state, on the blintz: at its start, after its
--- first corner is folded (the study's recipe supplies that state), and on
+-- first corner is folded (a run of the language's blintz supplies that
+-- state), and on
 -- sheets made here for what the blintz cannot show, a sheet that is not a
 -- square and one that is not the unit square.
 module Senbazuru.Sequence.ResolveSpec (spec) where
 
-import BlintzSequence (BlintzMove (..), buildBlintzSequence)
+import Data.Map.Strict qualified as M
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (cross2)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (foldFrameWith)
+import Senbazuru.Origami.Surface (surfaceFrame)
+import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), TakenBecause (..))
+import Senbazuru.Sequence.Record (Run (..), recordAfter, recordAngles)
 import Senbazuru.Sequence.Resolve
-import Senbazuru.Sequence.Run (sheetState, squareSheet, workingPattern)
+import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, squareSheet, workingPattern)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
 import Test.Hspec
+import Test.SequenceExamples qualified as Examples
 
 spec :: Spec
 spec = describe "naming paper on a flat state" $ do
   blintz <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
   start <- runIO (right (sheetState blintz) >>= flatOf . workingPattern)
-  -- The recipe's state after its first move: corner south-east folded behind
-  -- onto the centre.
-  afterFirst <- runIO (right (buildBlintzSequence (keyFrame blintz)) >>= \turns -> right (flatState (blintzStart (turns !! 1))))
+  -- The state after the blintz's first move, corner south-east folded behind
+  -- onto the centre: the sheet's working pattern with the angles and orders
+  -- the run's first record ends at.
+  afterFirst <- runIO $ do
+    run <- right (checkSequence Examples.blintz >>= runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" blintz) . elaborate)
+    paper <- workingPattern <$> right (sheetState blintz)
+    case runRecords run of
+      first' : _ -> right (foldFrameWith paper {edgesFoldAngle = snd (recordAngles first'), faceOrders = faceOrders (surfaceFrame (recordAfter first'))}) >>= right . flatState
+      [] -> fail "the blintz made no record"
 
   it "names the sheet's corners, centre and midpoints where they lay" $ do
     materialPoint start (CornerOf SouthEast) `shouldBe` Right (V2 1 0)

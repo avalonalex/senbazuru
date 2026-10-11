@@ -316,8 +316,8 @@ each illustrated pose is independently rebuilt from angles. See
 [initial collapse](../../docs/notes/checked-square-collapse.md) has the same
 continuous check and a verified join to the first petal.
 
-`stack run senbazuru-material-study -- --blintz build/fold-material` composes
-four complete corner folds and a reopening into the [blintz sequence](../../docs/usage.md#checked-blintz-sequence).
+`stack run senbazuru-material-study -- --blintz build/fold-material` runs
+`blintz.foldseq`, four complete corner folds and a reopening, and draws the [blintz sequence](../../docs/usage.md#checked-blintz-sequence).
 It writes `blintz.html` and `checked-blintz/`, sharing the checked-flap viewer's
 local Three.js installation.
 

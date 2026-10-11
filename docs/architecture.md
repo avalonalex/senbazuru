@@ -303,13 +303,13 @@ on a normalized mesh and returns an opaque accepted motion. `flapAt` re-folds
 the requested angle state, aligns its stationary face and checks that the
 result agrees with the hinge path before handing it to the renderers.
 `FlapGallery` is only an executable driver; the library imports no study code.
-`BlintzSequence` composes five accepted turns on the existing blintz fixture,
-carrying angles and endpoint orders onto its material pattern and checking
-position continuity at each join. It puts the stationary central face first
-before folding, because the folding walk anchors that face. `BlintzGallery`
-exports the resulting sequence through the ordinary renderers; neither module
-introduces a second contact checker or a general instruction format.
-`HelmetSequence` chains three turns with the same handoff policy, using
+`BlintzGallery` runs `blintz.foldseq` through the sequence runner and exports
+its eleven-figure page through the ordinary renderers, drawing each turn
+halfway from the turn its record carries. The study's hand-written blintz
+recipe was deleted once the run was shown equal to it.
+`HelmetSequence` chains three turns of its own, carrying angles and endpoint
+orders onto its material pattern and checking position continuity at each
+join, using
 `prepareFlapAlong` to select the two segments of its diagonal and the paired
 material creases of its doubled corners. `HelmetGallery` exports seven
 illustrations through those same renderers; see [aligned hinges](notes/aligned-crease-hinges.md).

@@ -17,10 +17,12 @@ disagree about where the whole model sits. `foldFrameWith` anchors its first
 face. In the original blintz fixture that is a corner, so folding that corner
 with `flapAt` holds the centre still, while independently refolding the same
 angles holds the corner still. Both shapes satisfy the angles, but joining
-them would insert a rotation of the whole sheet. The recipe puts the central
-face first before any folding and keeps that material numbering throughout.
-It still compares each accepted endpoint with the next start, refusing a
-position change beyond `1e-12` of the sheet's span.
+them would insert a rotation of the whole sheet. The sequence runner puts the
+anchor's face, here the central square, first before any folding and keeps
+that material numbering throughout. It still compares each accepted endpoint
+with the paper folded afresh, refusing a position change beyond `1e-12` of the
+model's span. (A hand-written recipe did this for the blintz until the run was
+shown equal to it.)
 
 In this route the four corners rest on different regions of the centre face,
 so no order between the corners is needed. Their tips meet at one position

@@ -287,12 +287,12 @@ time. There is no general flap CLI verb or route planning yet. See
 
 ### Checked blintz sequence
 
-A blintz base folds the square's four corners to its centre. This recipe uses
-five successive `CheckedFlap` operations: four complete folds, then reopening
-the first corner. Each move inherits the accepted endpoint's angles and layer
-orders. The central face is first in the recipe's material pattern, so the
-folding algorithm anchors it throughout; the recipe also checks every join
-for an unintended change of position. See [the handoff note](notes/chaining-checked-folds.md).
+A blintz base folds the square's four corners to its centre. The gallery runs
+`blintz.foldseq`, the blintz as a [fold sequence](glossary.md#fold-sequences):
+four complete folds, then reopening the first corner, five checked turns. Each
+move inherits the accepted endpoint's angles and layer orders, and the anchor,
+the central square, stays still throughout; the run checks every join for an
+unintended change of position. See [the handoff note](notes/chaining-checked-folds.md).
 
 ```bash
 stack run senbazuru-material-study -- --blintz build/fold-material
@@ -309,9 +309,10 @@ scale. It looks from below the source fixture's xy plane, at 45°, so its
 mountain folds come towards the viewer and the resting flaps remain visible.
 Figure 9 completes the base; figures 10–11 reopen its first corner.
 
-This is a recipe for the existing fixture, with explicit ids in its reordered
-material pattern. It is not yet a general instruction format. The same numerical scope and refusals
-as the single-flap operation apply to each complete turn.
+Each figure between two states is a turn halfway, drawn from the checked turn
+its move's record carries, since a run writes only each step's end. The same
+numerical scope and refusals as the single-flap operation apply to each
+complete turn.
 
 ### Checked helmet sequence
 
