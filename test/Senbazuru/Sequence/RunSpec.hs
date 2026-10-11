@@ -578,12 +578,18 @@ rotating = describe "a rotate" $ do
     zipWith near (corners turned) [V3 0.5 (0.5 - half) 0, V3 (0.5 + half) 0.5 0, V3 0.5 (0.5 + half) 0, V3 (0.5 - half) 0.5 0] `shouldBe` replicate 4 True
     frameClasses turned `shouldBe` ["creasePattern"]
     motionsBetween laid turned `shouldBe` Right []
+    -- The page finds the whole model turned, though by a rounded √½: what
+    -- a presentation's arrow is drawn from.
+    fmap isJust (wholeModelMotion laid turned) `shouldBe` Right True
+    void (writeSequence noFileHeader run) `shouldBe` Right ()
 
   -- cos 45° and sin 45° are both √½, which no Double holds; the turn takes
   -- both from sqrt, which IEEE 754 rounds correctly everywhere, so its
   -- entries are exactly ±sqrt 0.5 on every platform (owner decision 10).
-  -- Turns red if it were built from cos and sin, whose values at π/4 differ
-  -- in the last bit, or with an entry's sign wrong.
+  -- Each odd eighth is its own entry in the table, so each is turned once:
+  -- 3/8 clockwise is 5/8 anticlockwise, and 7/8 is 1/8 clockwise. Turns red
+  -- if it were built from cos and sin, whose values at π/4 differ in the
+  -- last bit, or with an entry's sign wrong.
   it "turns an odd eighth by exactly sqrt 0.5, the same bits on every platform" $ do
     let turnOf eighths turning = do
           run <- right (onSquare (step_ "Turn the paper." (rotate eighths turning)))
@@ -596,6 +602,10 @@ rotating = describe "a rotate" $ do
     three `shouldBe` Mat3 (V3 (-half) half 0) (V3 (-half) (-half) 0) (V3 0 0 1)
     five <- turnOf 5 Anticlockwise
     five `shouldBe` three
+    threeAnticlockwise <- turnOf 3 Anticlockwise
+    threeAnticlockwise `shouldBe` Mat3 (V3 (-half) (-half) 0) (V3 half (-half) 0) (V3 0 0 1)
+    sevenAnticlockwise <- turnOf 7 Anticlockwise
+    sevenAnticlockwise `shouldBe` Mat3 (V3 half half 0) (V3 (-half) half 0) (V3 0 0 1)
 
   -- An eighth there and back: √½ rounds, so the corners come back within
   -- rounding of where they were, which need not be exactly, as decision 10

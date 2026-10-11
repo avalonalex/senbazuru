@@ -272,18 +272,20 @@ turnOverAbout = \case
 -- symmetric. @sqrt 0.5@ is 0.7071067811865476, the 'Double' nearest √½.
 eighthTurnsAbout :: Int -> [V3] -> Rigid
 eighthTurnsAbout eighths = aboutMiddle $ case eighths `mod` 8 of
-  1 -> diagonal half half
+  1 -> oddEighth half half
   2 -> Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
-  3 -> diagonal (-half) half
+  3 -> oddEighth (-half) half
   4 -> Mat3 (V3 (-1) 0 0) (V3 0 (-1) 0) (V3 0 0 1)
-  5 -> diagonal (-half) (-half)
+  5 -> oddEighth (-half) (-half)
   6 -> Mat3 (V3 0 1 0) (V3 (-1) 0 0) (V3 0 0 1)
-  7 -> diagonal half (-half)
+  7 -> oddEighth half (-half)
   _ -> rigidLinear identity
   where
     half = sqrt 0.5
-    -- A turn by an odd number of eighths, from its cosine and sine.
-    diagonal c s = Mat3 (V3 c (-s) 0) (V3 s c 0) (V3 0 0 1)
+    -- A turn by an odd number of eighths, from its cosine and sine. The
+    -- quarter turns are written out rather than made here from 0 and 1,
+    -- since @-s@ of a zero sine is a negative zero.
+    oddEighth c s = Mat3 (V3 c (-s) 0) (V3 s c 0) (V3 0 0 1)
 
 -- | A turn that keeps the middle of the points where it is: (cx, cy) the
 -- centre of their xy box and cz the middle of their z range. About the
@@ -292,8 +294,8 @@ eighthTurnsAbout eighths = aboutMiddle $ case eighths `mod` 8 of
 -- has entries 0 and 1 and -1, which a 'Double' holds exactly, so applying
 -- one multiplies nothing inexactly; only the additions round, as they do
 -- anywhere. An odd eighth's √½ is rounded, so its products are too, and a
--- turn there and back lands within rounding of where it began, not exactly
--- ('eighthTurnsAbout').
+-- turn there and back lands within rounding of where it began, which need
+-- not be exactly ('eighthTurnsAbout').
 aboutMiddle :: Mat3 -> [V3] -> Rigid
 aboutMiddle turn points = Rigid turn (middle ^-^ matApply turn middle)
   where
