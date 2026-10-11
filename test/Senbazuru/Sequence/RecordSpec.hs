@@ -1,14 +1,15 @@
--- | A move record's rules, checked on real turns: the five of the study's
--- blintz recipe, each paired with the move of the language's blintz that asks
--- for it. The two fold the same corners in the same order (south-east,
--- north-east, north-west, south-west, then south-east again to reopen it), so
--- each record's origin is the move that really asks for its turn. The runner
--- will make this pairing itself; until then the test makes it by hand.
+-- | A move record's rules, checked on real turns: the five a run of the
+-- language's blintz makes, each made into a record again here by 'hingeTurn'
+-- and paired by hand with the move that asks for it (south-east, north-east,
+-- north-west, south-west, then south-east again to reopen it). Where a turn
+-- came from does not matter to these rules; what 'hingeTurn' makes of it
+-- does, and so the records here are made by this test, not taken from the
+-- run.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
-import BlintzSequence (BlintzMove (..), buildBlintzSequence)
 import Control.Monad (forM_)
 import Data.List (sort, sortOn, zip5)
+import Data.Map.Strict qualified as M
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
@@ -16,11 +17,12 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Rigid (identity)
 import Senbazuru.Geometry.V3 (modelSpan)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Flap (flapAt)
+import Senbazuru.Origami.Flap (CheckedFlap, flapAt)
 import Senbazuru.Origami.Surface
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate
 import Senbazuru.Sequence.Record
+import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
 import Senbazuru.Sequence.Syntax (Move (..), Name (..))
 import Test.Hspec
 import Test.SequenceExamples (blintz, blintzCaptions)
@@ -28,14 +30,14 @@ import Test.SequenceExamples (blintz, blintzCaptions)
 spec :: Spec
 spec = describe "a move record" $ do
   source <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
-  turns <- runIO (right (buildBlintzSequence (keyFrame source)))
   elaborated <- runIO (right (elaborate <$> checkSequence blintz))
+  turns <- runIO (right (runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" source) elaborated) >>= mapM turnOf . runRecords)
   let places = [(step, elaboratedName s, elaboratedCaption s, coreOrigin m) | (step, s) <- zip [1 ..] (elaboratedSteps elaborated), m <- elaboratedMoves s]
-  records <- runIO . right $ sequence [hingeTurn step 1 name caption origin [(hinge, [EdgeId e])] [] (MaterialPoint (V2 0.5 0.5), MaterialPoint (V2 0.5 0.5)) identity identity (MaterialPoint corner) [] (blintzMotion turn) | ((step, name, caption, origin), turn, corner, hinge, e) <- zip5 places turns corners hinges edges]
+  records <- runIO . right $ sequence [hingeTurn step 1 name caption origin [(hinge, [EdgeId e])] [] (MaterialPoint (V2 0.5 0.5), MaterialPoint (V2 0.5 0.5)) identity identity (MaterialPoint corner) [] turn | ((step, name, caption, origin), turn, corner, hinge, e) <- zip5 places turns corners hinges edges]
 
-  -- If the language's blintz or the recipe changed order, every test below
-  -- would be about the wrong pairs.
-  it "pairs each of the recipe's five turns with the move that asks for it" $ do
+  -- If the language's blintz changed order, every test below would be about
+  -- the wrong pairs.
+  it "pairs each of the run's five turns with the move that asks for it" $ do
     length records `shouldBe` 5
     [isFold (originWritten (recordOrigin r)) | r <- records] `shouldBe` [True, True, True, True, False]
     map (originWritten . recordOrigin) (drop 4 records) `shouldBe` [Unfold [Name "c1"]]
@@ -52,9 +54,9 @@ spec = describe "a move record" $ do
   -- or the two were swapped.
   it "takes both surfaces and its evidence from the turn it records" $
     forM_ (zip records turns) $ \(record, turn) -> do
-      Right (recordBefore record) `shouldBe` flapAt (blintzMotion turn) 0
-      recordAfter record `shouldBe` blintzEnd turn
-      recordEvidence record `shouldBe` SweptHinge (blintzMotion turn)
+      Right (recordBefore record) `shouldBe` flapAt turn 0
+      Right (recordAfter record) `shouldBe` flapAt turn 1
+      recordEvidence record `shouldBe` SweptHinge turn
 
   -- One numbering: a turn that cut the paper would renumber it, and the ids
   -- in the record would then mean different paper in the two surfaces.
@@ -128,6 +130,12 @@ spec = describe "a move record" $ do
     isFold move = case move of
       Fold {} -> True
       _ -> False
+
+-- | A run's record's turn, which this test makes into a record again.
+turnOf :: MoveRecord -> IO CheckedFlap
+turnOf record = case recordEvidence record of
+  SweptHinge turn -> pure turn
+  _ -> fail "a blintz move that is not a turn about a hinge"
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
