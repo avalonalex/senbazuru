@@ -1,14 +1,18 @@
 -- | Present the helmet base, run as a sequence from @helmet.foldseq@, through
--- the ordinary SVG/FOLD/glTF boundaries. The runner owns motion and state
--- handoff; this module only chooses illustrations and a camera, looking at
--- the moving flaps from above.
+-- the ordinary SVG/FOLD/glTF boundaries. A /base/ is a standard shape many
+-- models start from (see docs/glossary.md, "Origami"); the helmet base is a
+-- square folded diagonally in half, with both corners of the doubled triangle
+-- then brought to its tip. The runner owns motion and state handoff; this
+-- module only chooses illustrations and a camera, looking at the moving flaps
+-- from above.
 --
--- The page is seven poses a run does not write: a step writes one state, its
--- end, and the page also shows each turn part-way, drawn from the turn each
--- record carries ('helmetStates'). The study's hand-written recipe drew the
--- same page from its own turns until the run was shown equal to it (#529);
--- @test/golden/checked-helmet.svg@ is the guard that comparison was.
-module HelmetGallery (writeHelmetGallery, helmetStates, helmetFile, helmetSvg) where
+-- The page is seven poses: the open square and each step's end, which are
+-- the states a run writes, and each turn part-way, which a run does not
+-- write, drawn from the turn each record carries ('helmetStates'). The
+-- study's hand-written recipe drew this page until #534 deleted it; #529 had
+-- shown the run draws it byte for byte, and @test/golden/checked-helmet.svg@
+-- is the guard that comparison was.
+module HelmetGallery (writeHelmetGallery, helmetStates, helmetFile, helmetSvg, turnOf) where
 
 import Control.Monad (forM)
 import Data.Aeson (Value, encode, object, (.=))
@@ -36,11 +40,12 @@ import Senbazuru.Render.Camera (View (..), basisFrom)
 import Senbazuru.Render.Gltf (ExportMode (..), renderSurfaceGlb)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, escapeXml, renderSvg)
-import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Check (checkSequence, checkedSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Parse (parseSequence)
-import Senbazuru.Sequence.Record (MoveRecord, RouteEvidence (..), Run (..), recordAfter, recordCaption, recordEvidence)
+import Senbazuru.Sequence.Record (MoveRecord, RouteEvidence (..), Run (..), recordAfter, recordBefore, recordCaption, recordEvidence)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
+import Senbazuru.Sequence.Syntax (SourceFile (..), sourceFiles)
 import System.Directory (copyFile, createDirectoryIfMissing)
 import System.Exit (die)
 import System.FilePath ((</>))
@@ -56,21 +61,23 @@ helmetStates run = do
   turns <- traverse turnOf (runRecords run)
   case zip3 [1 :: Int ..] (runRecords run) turns of
     [] -> Left "the helmet run made no turns"
-    moves@((_, _, opening) : _) -> do
-      start <- first explain (flapAt opening 0)
+    moves@((_, opening, _) : _) -> do
       states <- traverse statesFor moves
-      pure (("Start with the open square", start) : concat states)
+      pure (("Start with the open square", recordBefore opening) : concat states)
   where
     statesFor (i, record, turn) = do
       let degrees = if i == 1 then 120 else 90 :: Double
       midway <- first explain (flapAt turn (degrees / 180))
       pure [("Move " <> tshow i <> " · " <> tshow (round degrees :: Int) <> "°", midway), (fromMaybe ("Move " <> tshow i) (recordCaption record), recordAfter record)]
 
--- | Each record's turn, which the page draws part-way through.
+-- | Each record's turn, which the page draws part-way through. Every kind of
+-- evidence is named, so that one added to 'RouteEvidence' is a warning here
+-- rather than a turn this page silently cannot draw.
 turnOf :: MoveRecord -> Either Text CheckedFlap
 turnOf record = case recordEvidence record of
   SweptHinge turn -> Right turn
-  _ -> Left "a helmet move that is not a turn about a hinge"
+  Presented -> Left "a helmet move that turns the model over or round, which this page does not draw"
+  NoMotion -> Left "a helmet move that names an anchor, which this page does not draw"
 
 helmetFile :: [(Text, Surface V2)] -> FoldFile
 helmetFile states =
@@ -95,9 +102,15 @@ writeHelmetGallery :: FilePath -> IO ()
 writeHelmetGallery destination = do
   let output = destination </> "checked-helmet"
   createDirectoryIfMissing True output
-  sheet <- loadFoldFile "examples/helmet-base.fold" >>= checked . first explain
   source <- readSequenceText "helmet.foldseq" >>= checked . first explain
-  run <- checked (first explain (parseSequence "helmet.foldseq" source >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "examples/helmet-base.fold" sheet) . elaborate))
+  sequence' <- checked (first explain (parseSequence "helmet.foldseq" source >>= checkSequence))
+  -- The sheet the source names, read from where the source says and keyed as
+  -- it is written there, as the run command reads it, so that the path is
+  -- written once.
+  sheets <- forM (sourceFiles "helmet.foldseq" (checkedSequence sequence')) $ \named -> do
+    sheet <- loadFoldFile (sourceToOpen named) >>= checked . first explain
+    pure (sourceWritten named, sheet)
+  run <- checked (first explain (runSequence defaultRunSettings (M.fromList sheets) (elaborate sequence')))
   states <- checked (helmetStates run)
   moves <- checked (traverse (\record -> (,) record <$> turnOf record) (runRecords run))
   let file = helmetFile states

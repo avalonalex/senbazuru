@@ -110,6 +110,7 @@ extra-source-files:
   examples/diamond-base.fold
   examples/traditional-crane.foldseq
   blintz.foldseq
+  helmet.foldseq
   test/fixtures/*.cp
   test/fixtures/*.fold
   test/fixtures/*.foldseq

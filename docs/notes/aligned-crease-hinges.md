@@ -26,14 +26,16 @@ stationary face's directed edge to derive the sign, then checks both a
 midpoint and the endpoint against the one rigid hinge motion. Every requested
 pose is re-folded and compared in the same way.
 
-The three-move recipe runs with:
+The helmet base runs as a fold sequence, `helmet.foldseq`, with:
 
 ```bash
 stack run senbazuru-material-study -- --helmet build/fold-material
 ```
 
 The generated `checked-helmet/checks.json` records moving faces `[3,4,5]`,
-then `[1,5]`, then `[2,3]`, using the recipe's reordered material pattern.
+then `[1,5]`, then `[2,3]`, numbered as the run numbers its working pattern,
+the anchor's face first. The runner finds each corner's two crease segments
+from the one fold line the source names, one segment on each layer.
 Each complete turn is resolved in one interval by the existing
 [hinge-sweep checker](hinge-sweep-contact.md). Accepted contact orders pass
 between moves alongside the angles. Distinct material vertices remain
@@ -43,8 +45,10 @@ This extends selection along one fixed axis. It does not find a route or
 coordinate creases on different axes. The checker still uses zero-thickness
 geometry and floating-point interval bounds with numerical guards. Reversed
 departure orders, unknown touching stacks and exhausted checks still refuse
-the motion. The recipe's sampled length, shared-vertex, achieved-angle and
-contact diagnostics supplement that whole-turn check; they do not replace it.
+the motion. The sampled length, shared-vertex, achieved-angle and contact
+diagnostics of `HelmetRunSpec` supplement that whole-turn check; they do not
+replace it. (A hand-written recipe folded the helmet by edge ids until the run
+was shown equal to it.)
 
 The sign rule also limits what a caller can ask for. Knowing only the
 direction of a turn, towards +z or −z, does not give its travel, the change in

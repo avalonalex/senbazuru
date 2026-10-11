@@ -320,10 +320,11 @@ A helmet base folds a square diagonally in half, then brings both corners
 of the doubled triangle to its opposite tip. The gallery runs
 `helmet.foldseq`, the helmet base as a
 [fold sequence](glossary.md#fold-sequences). Each corner turns two touching
-layers together. `prepareFlapAlong` explicitly selects all crease segments
-on the physical hinge; they must separate the moving faces from the fixed
-ones and lie on one line in the current folded shape. The first segment
-defines the signed travel. Other segments receive the angle signs required
+layers together. The runner finds every crease segment on the physical hinge
+from the one fold line the source names, and turns them together with
+`prepareFlapToward`. The segments must separate the moving faces from the
+fixed ones and lie on one line in the current folded shape. The first segment
+defines the signed travel, and other segments receive the angle signs required
 by their stationary faces' orientation. `prepareFlapToward` takes a size of
 turn and `TowardPlusZ` or `TowardMinusZ` in place of that sign: the way the
 moving paper beside the hinge sets off, whether it lies flat beyond the hinge
@@ -331,6 +332,8 @@ or is already folded over. It reads the sign from which way up the moving face
 beside each segment lies. Those faces must lie flat and all on one side of the
 hinge line, or the turn is refused rather than guessed;
 [the direction note](notes/turning-towards-a-side.md) gives the reasons.
+`prepareFlapAlong` is the same turn given a signed travel, which the runner
+uses to turn a move back for `unfold`.
 
 ```bash
 stack run senbazuru-material-study -- --helmet build/fold-material
