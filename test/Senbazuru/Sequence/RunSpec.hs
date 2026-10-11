@@ -27,7 +27,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -68,6 +68,16 @@ running = describe "running a sequence" $ do
       SweptHinge turn -> sweepOutcome (flapCheck turn) `shouldBe` SweepClear
       Presented -> expectationFailure "the blintz turns nothing over"
       NoMotion -> expectationFailure "the blintz names no anchor"
+
+  -- E2's second half: what each move cost, as counted work, set from a
+  -- reviewed run (decisions C89). Each corner, and the reopening, sweeps its
+  -- turn clear as one interval, and folds the pattern afresh 8 times: 3
+  -- preparing the turn, 2 checking the layer order at its ends, 2 for the
+  -- record's surfaces and 1 for the join check; the fold each move starts
+  -- from is the last join check's, kept. Turns red if a refold is added or a
+  -- kept fold dropped, or if the sweep needs other intervals.
+  it "costs each move the work a reviewed run counted" $
+    map ((\cost -> (costSweepIntervals cost, costRefolds cost)) . recordCost) records `shouldBe` [(1, 8), (1, 8), (1, 8), (1, 8), (1, 8)]
 
   -- Behind is away from the reader: with the coloured side up, -180, the
   -- recipe's travel; the unfold takes edge 8 back to 0. Turns red if the

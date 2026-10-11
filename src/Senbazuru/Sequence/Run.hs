@@ -219,10 +219,14 @@ data FoldState = FoldState
     -- D14). The identity until a move turns the anchor's paper and the run
     -- re-anchors onto paper that had moved ('reanchor').
     thePlacement :: !Rigid,
-    -- | The working pattern folded, when the last move's join check has
-    -- folded it already: the next move starts from that fold rather than
-    -- folding the same pattern again.
+    -- | The working pattern folded, once anything has folded it: the next
+    -- move starts from that fold rather than folding the same pattern again.
+    -- The last move's join check has always folded it.
     theFold :: !(Maybe Folded),
+    -- | How many times the run has folded its working pattern afresh so
+    -- far. 'foldNow' makes every such fold and counts it here, so a move's
+    -- own refolds are the difference across it, and go in its record's cost.
+    theRefolds :: !Int,
     -- | The sheet's faces in its own order, wound anticlockwise: the order
     -- an anchor named in the header reorders from, once, so that every face
     -- but the anchor's keeps the sheet's numbering.
@@ -327,6 +331,7 @@ sheetState file = do
         thePresentation = identity,
         thePlacement = identity,
         theFold = Nothing,
+        theRefolds = 0,
         theSheetFaces = faces
       }
   where
@@ -454,7 +459,7 @@ startOf sheets header = do
   anchored <- case hAnchor header of
     Nothing -> Right laid
     Just (Located anchorAt point) -> do
-      folded <- first (SheetRefused at path . SheetDoesNotFold) (foldFrameWith (theWorking laid))
+      (folding, folded) <- first (SheetRefused at path . SheetDoesNotFold) (foldNow laid)
       let refuseAnchor = ResolveRefused InHeader anchorAt (prettyPoint point)
       flat <- first refuseAnchor (flatState folded)
       m <- first refuseAnchor (materialPoint flat point)
@@ -463,15 +468,15 @@ startOf sheets header = do
       -- the rest follow in the sheet's own order, so that the default's
       -- reordering does not linger in them.
       let chosen = take 1 (drop face (facesVertices (theWorking laid)))
-      Right laid {theWorking = (theWorking laid) {facesVertices = chosen ++ filter (`notElem` chosen) (theSheetFaces laid)}, theAnchor = MaterialPoint m, theFold = Nothing}
-  folded <- first (SheetRefused at path . SheetDoesNotFold) (foldNow anchored)
+      Right folding {theWorking = (theWorking laid) {facesVertices = chosen ++ filter (`notElem` chosen) (theSheetFaces laid)}, theAnchor = MaterialPoint m, theFold = Nothing}
+  (started, folded) <- first (SheetRefused at path . SheetDoesNotFold) (foldNow anchored)
   surface <- first (SheetRefused at path . SheetNoSurface) (surfaceFromFolded folded)
   -- White side up starts with a turn-over left-right (G3), about the sheet's
   -- own middle as every turn-over is.
   let shown = case hSide header of
         WhiteUp -> turnOverAbout LeftRight (surfacePositions surface)
         ColouredUp -> identity
-  Right (anchored {thePresentation = shown, theFold = Just folded}, surface)
+  Right (started {thePresentation = shown}, surface)
 
 -- | Where a step leaves a run: going on, or stopped at a @not modelled@
 -- move with everything made before it, the step's own earlier moves included.
@@ -549,14 +554,14 @@ runMove settings place named state surface = \case
   -- anchor at P, as the header's anchor is. No paper moves, and the model
   -- stays where it stood on the page.
   CoreAnchor point -> do
-    folded <- first (refusedAt place . FoldingRefused) (foldNow state)
+    (folding, folded) <- first (refusedAt place . FoldingRefused) (foldNow state)
     let naming = resolvingAt place (prettyPoint point)
     flat <- first naming (flatState folded)
     m <- first naming (materialPoint flat point)
     FaceId face <- first naming (regionFace flat m)
-    (anchored, refolded) <- reanchorAt place state folded face m
+    (anchored, refolded) <- reanchorAt place folding folded face m
     held <- first (refusedAt place . JoinBroken . ("the re-anchored paper makes no surface: " <>) . explain) (surfaceFromFolded refolded)
-    Right (Made anchored [anchoring (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state, theAnchor anchored) held (thePresentation anchored) (thePlacement anchored)] [])
+    Right (Made anchored [refoldsSince state anchored (anchoring (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state, theAnchor anchored) held (thePresentation anchored) (thePlacement anchored))] [])
   -- A rotate turns the model on the page, the same side up, so the reader's
   -- side stays. Only whole quarter turns are made: an odd number of eighths
   -- would need cos 45° (owner decision 10).
@@ -576,8 +581,8 @@ runMove settings place named state surface = \case
 
 -- | A fold along creases the paper has, as the header lays out.
 foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> MoveKind -> Sense -> Amount -> Line -> Layers -> Maybe Point -> Either SequenceError (FoldState, [MoveRecord])
-foldMove settings place named given kind sense amount line layers seed = do
-  found <- first (refusedAt place . FoldingRefused) (foldNow given)
+foldMove settings place named arriving kind sense amount line layers seed = do
+  (given, found) <- first (refusedAt place . FoldingRefused) (foldNow arriving)
   seen <- first (resolvingAt place (prettyLine line)) (flatState found)
   -- @hinge of NAME@ is the line the named step's one move turned about: the
   -- recorded crease, where the paper now lies, found on the paper as it is
@@ -671,7 +676,7 @@ foldMove settings place named given kind sense amount line layers seed = do
         Precrease -> asPrecrease turned
         _ -> turned
   next <- handOn place state folded record
-  pure (next, [record])
+  pure (next, [refoldsSince arriving next record])
   where
     opposite = \case
       TowardPlusZ -> TowardMinusZ
@@ -719,8 +724,7 @@ creaseAcross place line state folded flat foldAt letter = case crossedFaces flat
       _ -> case [i | (i, face) <- zip [0 ..] faces, holds face] of
         [] -> Left (refusedAt place (MoveNotRunYet "a new crease that leaves the anchor on no face,"))
         held -> Right (faces, held)
-    let next = state {theWorking = creased {facesVertices = ordered}, theFold = Nothing}
-    refolded <- first (refusedAt place . FoldingRefused) (foldNow next)
+    (next, refolded) <- first (refusedAt place . FoldingRefused) (foldNow state {theWorking = creased {facesVertices = ordered}, theFold = Nothing})
     named <- first (resolvingAt place (prettyLine line)) (flatState refolded)
     pure (next, refolded, named, [(MaterialSegment (MaterialPoint a) (MaterialPoint b), ids, letter) | ((a, b), ids) <- zip chords pieces], around)
   where
@@ -788,12 +792,12 @@ reanchorAt place state folded i anchorAt = do
             thePlacement = thePlacement state `Rigid.after` h,
             theFold = Nothing
           }
-  refolded <- first (refusedAt place . FoldingRefused) (foldNow moved)
+  (held, refolded) <- first (refusedAt place . FoldingRefused) (foldNow moved)
   stood <- either (const (broken "the paper's vertices cannot be read")) (Right . map (applyRigid (thePlacement state))) (frameVertices (foldedFrame folded))
   stands <- either (const (broken "the refolded paper's vertices cannot be read")) (Right . map (applyRigid (thePlacement moved))) (frameVertices (foldedFrame refolded))
   let scale = modelSpan stood
   unless (length stood == length stands && and (zipWith (\p q -> norm (p ^-^ q) <= 1e-12 * scale) stood stands)) (broken "re-anchoring moved the model on the page")
-  pure (moved {theFold = Just refolded}, refolded)
+  pure (held, refolded)
 
 -- | A record's edge, numbered as the paper was when the move was made, found
 -- on the working pattern now: the edge itself, if nothing has cut it since,
@@ -928,9 +932,9 @@ undoOne settings place (state, made) earlier = do
               (seed, moving) = case recordMoving earlier of
                 (m, faces) : _ -> (m, faces)
                 [] -> (MaterialPoint (V2 0 0), [])
-          foldedNow <- first (refusedAt place . FoldingRefused) (foldNow state)
+          (current, foldedNow) <- first (refusedAt place . FoldingRefused) (foldNow state)
           let sideIn st = maybe (Left (refusedAt place (Selecting NothingSelected))) Right (movingSideNow (theWorking st) thenFrame moving firstThen first')
-          side' <- sideIn state
+          side' <- sideIn current
           -- Turning back paper that holds the anchor's face re-anchors, as a
           -- fold does (owner decision 3): a later move may have re-anchored
           -- onto the paper this one moved.
@@ -938,16 +942,16 @@ undoOne settings place (state, made) earlier = do
           (turning, folded, side) <-
             if FaceId 0 `elem` carried
               then do
-                (moved, refolded) <- reanchor place state foldedNow (stillBeside working hinge carried)
+                (moved, refolded) <- reanchor place current foldedNow (stillBeside working hinge carried)
                 side <- sideIn moved
                 Right (moved, refolded, side)
-              else Right (state, foldedNow, side')
+              else Right (current, foldedNow, side')
           motion <- first (refusedAt place . FlapRefused) (prepareFlapAlong hinge side travel folded)
           turn <- first (refusedAt place . FlapRefused) (checkFlap (runSweep settings) motion)
           let stretches = [(segment, [p | (e, ps) <- found, e `elem` recorded, p <- ps]) | (segment, recorded) <- recordHinge earlier]
           record <- first (refusedAt place . FlapRefused) (recordOf place stretches [] (theAnchor state, theAnchor turning) (thePresentation turning) (thePlacement turning) seed [ResolvedTurnedBack (recordStep earlier) (recordStepName earlier)] turn)
           next <- handOn place turning folded record
-          pure (next, made ++ [record])
+          pure (next, made ++ [refoldsSince state next record])
     _ -> Right (state, made)
 
 -- | The record of a checked turn, at this place.
@@ -962,7 +966,7 @@ handOn place state folded record = do
   let accepted = surfaceFrame (recordAfter record)
       next = (foldedPattern folded) {edgesFoldAngle = edgesFoldAngle accepted, faceOrders = faceOrders accepted, frameExtras = mempty}
       broken = Left . refusedAt place . JoinBroken
-  refolded <- first (refusedAt place . FoldingRefused) (foldFrameWith next)
+  (handed, refolded) <- first (refusedAt place . FoldingRefused) (foldNow state {theWorking = next, theFold = Nothing})
   let landed = foldedFrame refolded
   expected <- either (const (broken "the accepted surface's vertices cannot be read")) Right (frameVertices accepted)
   actual <- either (const (broken "the refolded paper's vertices cannot be read")) Right (frameVertices landed)
@@ -973,13 +977,25 @@ handOn place state folded record = do
   unless (map sort (facesVertices landed) == map sort (facesVertices accepted)) (broken "its faces differ")
   unless (sortOn orderKey (faceOrders landed) == sortOn orderKey (faceOrders accepted)) (broken "its layer orders differ")
   unless (verticesCoords (foldedPattern refolded) == verticesCoords (foldedPattern folded)) (broken "its material coordinates differ")
-  pure state {theWorking = next, theFold = Just refolded}
+  pure handed
   where
     orderKey o = (orderFace o, orderRelativeTo o)
 
--- | The working pattern folded: the last join check's fold if there is one.
-foldNow :: FoldState -> Either FoldingError Folded
-foldNow state = maybe (foldFrameWith (theWorking state)) Right (theFold state)
+-- | The working pattern folded, and the state keeping that fold: the fold
+-- it keeps already, if any, else the pattern folded afresh, which is one
+-- refold, counted ('theRefolds'). This is the one place the runner folds,
+-- so that no refold goes uncounted.
+foldNow :: FoldState -> Either FoldingError (FoldState, Folded)
+foldNow state = case theFold state of
+  Just folded -> Right (state, folded)
+  Nothing -> do
+    folded <- foldFrameWith (theWorking state)
+    Right (state {theFold = Just folded, theRefolds = theRefolds state + 1}, folded)
+
+-- | A move's record, with the refolds the runner made for it since the
+-- state it started from added to its cost.
+refoldsSince :: FoldState -> FoldState -> MoveRecord -> MoveRecord
+refoldsSince from to = addRefolds (theRefolds to - theRefolds from)
 
 refusedAt :: Here -> MoveFailure -> SequenceError
 refusedAt place = StepRefused (placeStep place) (placeName place) (originSpan (placeOrigin place))

@@ -1847,7 +1847,11 @@ senbazuru: --frame 0: the file has 6 states, frames 1 to 6 (frame 0 is the key f
 `--report` prints what each move did to standard error, under the source's
 name, so it composes with a sequence file on standard output: what checked
 the move, the fold line and the paper its references named, the faces it
-moved, its hinge and the face it held still, with the ids the run gave them.
+moved, its hinge and the face it held still, with the ids the run gave them,
+and its work. The work is counted, not timed, so it is the same on every
+machine: the intervals the sweep examined, and the refolds, each a fold of
+the whole pattern afresh from its angles. A change that makes a run do more
+work shows as a larger count.
 
 ```text
 blintz.foldseq
@@ -1858,6 +1862,7 @@ blintz.foldseq
     moving: (internal face 2)
     hinge: (internal edge 8)
     held still: (internal face 0)
+    work: 1 sweep interval, 8 refolds
 ```
 
 An `expect refused` move has no record, and the report is where its outcome
