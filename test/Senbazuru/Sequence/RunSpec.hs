@@ -27,7 +27,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -68,6 +68,16 @@ running = describe "running a sequence" $ do
       SweptHinge turn -> sweepOutcome (flapCheck turn) `shouldBe` SweepClear
       Presented -> expectationFailure "the blintz turns nothing over"
       NoMotion -> expectationFailure "the blintz names no anchor"
+
+  -- E2's second half: what each move cost, as counted work, set from a
+  -- reviewed run (decisions C89). Each corner, and the reopening, sweeps its
+  -- turn clear as one interval, and folds the pattern afresh 8 times: 3
+  -- preparing the turn, 2 checking the layer order at its ends, 2 for the
+  -- record's surfaces and 1 for the join check; the fold each move starts
+  -- from is the last join check's, kept. Turns red if a refold is added or a
+  -- kept fold dropped, or if the sweep needs other intervals.
+  it "costs each move the work a reviewed run counted" $
+    map ((\cost -> (costSweepIntervals cost, costRefolds cost)) . recordCost) records `shouldBe` [(1, 8), (1, 8), (1, 8), (1, 8), (1, 8)]
 
   -- Behind is away from the reader: with the coloured side up, -180, the
   -- recipe's travel; the unfold takes edge 8 back to 0. Turns red if the
@@ -281,6 +291,13 @@ precreasing = describe "a pre-crease" $ do
       snd (recordAngles record) `shouldSatisfy` all (== 0)
       [letter | (_, _, letter) <- recordNewCreases record] `shouldBe` [Unassigned]
     renderRunReport run `shouldContain` ["  laid flat again: the paper ends where it began"]
+    -- Each creases the square before it turns, and moves the anchor off its
+    -- new crease: the default anchor is the centre, on the first diagonal;
+    -- it moves to (1/3, 2/3), which is on the second, and then to (1/2, 5/6).
+    -- Each is one refold, two more than a blintz move's 8. Turns red if
+    -- either went uncounted.
+    map recordCost records `shouldBe` [StepCost 1 10, StepCost 1 10]
+    [norm (m ^-^ p) < 1e-12 | (record, p) <- zip records [V2 (1 / 3) (2 / 3), V2 0.5 (5 / 6)], let { (_, MaterialPoint m) = recordAnchor record }] `shouldBe` [True, True]
 
   -- On the blintz, corner south-east's crease is one the sheet has, a
   -- mountain. Pre-creasing along it draws nothing new and leaves it a
@@ -368,6 +385,8 @@ turningOver = describe "a turn-over" $ do
         zipWith near (corners turned) [V3 0 1 0, V3 1 1 0, V3 1 0 0, V3 0 0 0] `shouldBe` replicate 4 True
         frameClasses turned `shouldBe` ["foldedForm"]
       other -> expectationFailure ("expected two states, got " <> show (length other))
+    -- A turn-over moves no paper: it sweeps nothing and folds nothing.
+    map recordCost (runRecords run) `shouldBe` [StepCost 0 0]
 
   -- After a turn-over the reader sees the white side, so in front is -z on
   -- the paper: a valley the reader folds is a mountain from the coloured
@@ -592,6 +611,9 @@ reanchoring = describe "re-anchoring" $ do
     map recordAnchor (runRecords run) `shouldBe` [(corner 0.25 0.25, corner 0.75 0.25), (corner 0.75 0.25, corner 0.75 0.25)]
     map recordPlacement (runRecords run) `shouldBe` replicate 2 (identity, identity)
     map (snd . recordAngles) (runRecords run) `shouldBe` map edgesFoldAngle (otherFrames sheet)
+    -- Re-anchoring folds the pattern once more, so the first move costs one
+    -- refold more than the second. Turns red if that refold went uncounted.
+    map recordCost (runRecords run) `shouldBe` [StepCost 1 9, StepCost 1 8]
     frames <- right (framesOf run)
     zipWith sameModel frames anchoredFrames `shouldBe` [True, True, True]
     case frames of
@@ -707,6 +729,10 @@ reanchoring = describe "re-anchoring" $ do
         [r] -> do
           (recordKind r, recordEvidence r) `shouldBe` (Anchoring, NoMotion)
           recordAnchor r `shouldBe` (corner 0.75 0.25, corner 0.25 0.25)
+          -- No sweep, and one refold: re-anchoring's, from the fold the
+          -- move before kept. Turns red if the runner's refolds were not
+          -- added to this record.
+          recordCost r `shouldBe` StepCost 0 1
           recordAfter r `shouldBe` recordBefore r
           let (placedBefore, placedAfter) = recordPlacement r
           placedBefore `shouldBe` placedAfter
@@ -875,6 +901,9 @@ creasing = describe "a fold along a line where no crease runs" $ do
       V3 x y z : _ -> maximum (map abs [x, y - 1, z]) `shouldSatisfy` (< 1e-12)
       [] -> expectationFailure "the square has no corner south-east"
     renderRunReport run `shouldContain` ["  anchor moved: (0.5, 0.5) to (0.333333, 0.666667), off the new crease"]
+    -- One refold creasing the square and one moving the anchor, on top of a
+    -- blintz move's 8. Turns red if either went uncounted.
+    recordCost record `shouldBe` StepCost 1 10
 
   -- On the blintz, anchored at its centre, the diagonal crosses the central
   -- square through the anchor. Folding the south-east corner over turns the

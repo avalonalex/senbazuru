@@ -22,10 +22,15 @@
 -- itself: the folded surface just before the move and just after it, the
 -- creases it turned about (its /hinge/), the paper that moved, named by the
 -- point the author picked it out with (its /seed/) and by the faces that
--- point picked, and the one face beside the hinge that was held still. Last,
+-- point picked, and the one face beside the hinge that was held still. Then
 -- the evidence that the move was possible: for a turn about a hinge, the
 -- library's check that the moving paper passes through no other paper on its
--- way.
+-- way. Last, what the move cost ('recordCost'), as counted work, never time:
+-- the sweep intervals its check examined, and its /refolds/, each a fold of
+-- the whole pattern afresh from its angles (see docs/glossary.md, "Fold
+-- sequences" and "Geometry"). A change that makes a run do more
+-- work, or less, changes a count a test pins (PRDs\/09-testing-and-acceptance.md,
+-- E2), so caching a fold is a reviewed change rather than a silent one.
 --
 -- Points and segments a record names on the paper are in /material
 -- coordinates/, where the paper lay on the flat sheet before any folding (see
@@ -66,7 +71,10 @@
 -- Two parts are the runner's word, not the turn's: the hinge as stretches on
 -- the sheet, and the seed. A turn does not say how its hinge edges group into
 -- the author's fold line, layer by layer, nor which point the author named
--- the paper by; the runner, which resolved both, does.
+-- the paper by; the runner, which resolved both, does. The cost is shared: a
+-- record counts what the turn and its own two surfaces took, and the runner
+-- adds the refolds it made around them ('addRefolds'), such as the fold that
+-- checks where the paper landed, which needs the record made first.
 --
 -- == What is not here yet
 --
@@ -74,8 +82,8 @@
 -- (@PRDs\/decisions.md@, §5). Each arrives with the first move that fills it,
 -- because a field nothing fills is a promise no test can check:
 --
--- * the stacking chosen, with layer-selective folds; the macro bindings, with
---   macro moves; and the cost;
+-- * the stacking chosen, with layer-selective folds; and the macro bindings,
+--   with macro moves;
 -- * a pose part-way along the move (@recordPoseAt@ in the design), with its
 --   first reader, the material study's grips or the animated export;
 -- * the evidence for a state with no route, or a sampled macro move.
@@ -127,15 +135,18 @@ module Senbazuru.Sequence.Record
     recordMoving,
     recordStationary,
     recordResolved,
+    recordCost,
     recordAngles,
     ResolvedReference (..),
     RouteEvidence (..),
+    StepCost (..),
 
     -- * Making one
     hingeTurn,
     asPrecrease,
     presented,
     anchoring,
+    addRefolds,
 
     -- * A run
     Run (..),
@@ -171,7 +182,8 @@ import Senbazuru.Geometry.Polygon (distanceToSegment, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
-import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapMovingFaces, flapStationaryFace)
+import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapCheck, flapMovingFaces, flapRefolds, flapStationaryFace)
+import Senbazuru.Origami.HingeSweep (sweepIntervals)
 import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, surfaceFrame, surfaceSamples)
 import Senbazuru.Sequence.Elaborate (Origin (..))
 import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..), WriteProblem (..))
@@ -227,7 +239,21 @@ data MoveRecord = MoveRecord
     theKind :: !MoveKind,
     theMoving :: ![(MaterialPoint, [FaceId])],
     theStationary :: !FaceId,
-    theResolved :: ![ResolvedReference]
+    theResolved :: ![ResolvedReference],
+    theCost :: !StepCost
+  }
+  deriving stock (Eq, Show)
+
+-- | What a move cost, as counted work (PRDs\/09-testing-and-acceptance.md,
+-- §6.1): the same on every machine given the same bits, as a time is not.
+data StepCost = StepCost
+  { -- | The intervals of the turn the sweep examined, each one a stretch of
+    -- the turn it showed clear or split in two to look closer; none for a
+    -- move that turns no paper.
+    costSweepIntervals :: !Int,
+    -- | How many times the move folded the whole pattern afresh from its
+    -- angles, each one 'Senbazuru.Origami.Folding.foldFrameWith' call.
+    costRefolds :: !Int
   }
   deriving stock (Eq, Show)
 
@@ -343,6 +369,18 @@ recordHinge = theHinge
 -- any creases the line found already there.
 recordNewCreases :: MoveRecord -> [(MaterialSegment, [EdgeId], Assignment)]
 recordNewCreases = theNewCreases
+
+-- | What the move cost: the turn's sweep intervals, and every refold made for
+-- it, by the turn, by its record's two surfaces and by the runner around
+-- them.
+recordCost :: MoveRecord -> StepCost
+recordCost = theCost
+
+-- | The record with the refolds the runner made for the move added to its
+-- cost: those only the runner can count, such as re-anchoring and the fold
+-- that checks where the paper landed.
+addRefolds :: Int -> MoveRecord -> MoveRecord
+addRefolds n record = record {theCost = (theCost record) {costRefolds = costRefolds (theCost record) + n}}
 
 -- | The anchor, the point of paper held still, before the move and after
 -- it. The two differ when the move's new crease ran through the anchor,
@@ -469,7 +507,9 @@ hingeTurn step move name caption origin hinge newCreases anchor shown placed see
         theKind = Turn,
         theMoving = [(seed, flapMovingFaces turn)],
         theStationary = flapStationaryFace turn,
-        theResolved = resolved
+        theResolved = resolved,
+        -- The turn's own refolds, and one for each surface above.
+        theCost = StepCost (sweepIntervals (flapCheck turn)) (flapRefolds turn + 2)
       }
 
 -- | A pre-crease's record from its fold's (owner decision 14): the fold was
@@ -562,7 +602,8 @@ unturned step move name caption origin evidence kind anchor surface shown placed
       theKind = kind,
       theMoving = [],
       theStationary = FaceId 0,
-      theResolved = []
+      theResolved = [],
+      theCost = StepCost 0 0
     }
 
 -- | What a run hands back: the state it started from, what each step did,
@@ -804,6 +845,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
              | turned (recordEvidence r),
                line <- ["moving: " <> internal "face" [f | (_, faces) <- recordMoving r, FaceId f <- faces], "hinge: " <> internal "edge" [e | (_, edges) <- recordHinge r, EdgeId e <- edges], "held still: " <> internal "face" [let FaceId f = recordStationary r in f]]
            ]
+        ++ [work (recordCost r)]
     checked r = case (recordEvidence r, recordKind r) of
       (SweptHinge _, _) -> "checked: the whole turn, swept, with no paper in its way"
       (Presented, Presentation (Rotated _ _)) -> "presented: the whole model turned on the page, the same side up; no paper moved"
@@ -812,6 +854,9 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
     turned = \case
       SweptHinge _ -> True
       _ -> False
+    -- PRD 04's "work counts": what the move cost, counted, never timed.
+    work cost = "work: " <> counted (costSweepIntervals cost) "sweep interval" <> ", " <> counted (costRefolds cost) "refold"
+    counted n thing = tshow n <> " " <> thing <> (if n == 1 then "" else "s")
     resolvedFact = \case
       ResolvedLine written p d -> "line " <> written <> ": through " <> point p <> ", along " <> point d
       ResolvedSeed written p -> "named by " <> written <> ": the paper at " <> point p

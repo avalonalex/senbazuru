@@ -29,12 +29,12 @@ spec = describe "a run's report" $ do
 
   -- A19: the quarter fold, with every row the record has a field for so far:
   -- what checked the move, the line and the point its references named, the
-  -- paper it moved, its hinge and the face it held still.
+  -- paper it moved, its hinge, the face it held still, and its work counts.
   it "reports the quarter fold, one fact to a line (A19)" $
     goldenText "test/golden/quarter-fold-report.txt" (T.unlines quarter)
 
   it "has every row the record has a field for, under each move" $
-    forM_ ["checked: ", "line ", "named by ", "moving: ", "hinge: ", "held still: "] $ \row ->
+    forM_ ["checked: ", "line ", "named by ", "moving: ", "hinge: ", "held still: ", "work: "] $ \row ->
       length (filter (T.isPrefixOf ("  " <> row)) quarter) `shouldBe` 2
 
   -- A19's second golden: the blintz's four corners, then E10's move, which

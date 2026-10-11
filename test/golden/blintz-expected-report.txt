@@ -5,6 +5,7 @@ step 1 (c1), move 1: fold mountain corner south-east to centre
   moving: (internal face 2)
   hinge: (internal edge 8)
   held still: (internal face 0)
+  work: 1 sweep interval, 8 refolds
 step 2, move 1: fold mountain corner north-east to centre
   checked: the whole turn, swept, with no paper in its way
   line corner north-east to centre: through (0.75, 0.75), along (0.707107, -0.707107)
@@ -12,6 +13,7 @@ step 2, move 1: fold mountain corner north-east to centre
   moving: (internal face 3)
   hinge: (internal edge 9)
   held still: (internal face 0)
+  work: 1 sweep interval, 8 refolds
 step 3, move 1: fold mountain corner north-west to centre
   checked: the whole turn, swept, with no paper in its way
   line corner north-west to centre: through (0.25, 0.75), along (0.707107, 0.707107)
@@ -19,6 +21,7 @@ step 3, move 1: fold mountain corner north-west to centre
   moving: (internal face 4)
   hinge: (internal edge 10)
   held still: (internal face 0)
+  work: 1 sweep interval, 8 refolds
 step 4, move 1: fold mountain corner south-west to centre
   checked: the whole turn, swept, with no paper in its way
   line corner south-west to centre: through (0.25, 0.25), along (0.707107, -0.707107)
@@ -26,5 +29,6 @@ step 4, move 1: fold mountain corner south-west to centre
   moving: (internal face 1)
   hinge: (internal edge 11)
   held still: (internal face 0)
+  work: 1 sweep interval, 8 refolds
 step 5, move 1: expect refused FlapEndpointOrder
   refused as FlapEndpointOrder, as expected; nothing moved

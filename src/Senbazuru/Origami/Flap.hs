@@ -44,6 +44,10 @@
 -- only that value supplies public poses. Each pose is independently re-folded
 -- from angles, checking both shared vertices and achieved crease angles, then
 -- aligned to keep the stationary side still. No vertex interpolation is used.
+-- A checked turn also says how many times making it folded the pattern
+-- afresh ('flapRefolds'), for a caller that pins the work it does
+-- (PRDs\/09-testing-and-acceptance.md, §6.1): a count, not a time, the same
+-- on every machine.
 -- Comparing it with the specified hinge path prevents a camera-like change
 -- of anchoring from making the checked motion differ from the exported one.
 --
@@ -86,6 +90,7 @@ module Senbazuru.Origami.Flap
     flapCheck,
     flapMovingFaces,
     flapStationaryFace,
+    flapRefolds,
   )
 where
 
@@ -118,11 +123,15 @@ data FlapMotion = FlapMotion
     checkedPath :: !HingeSweep,
     triangleOwners :: ![FaceId],
     startingOrders :: ![FaceOrder],
-    rigidOrders :: ![FaceOrder]
+    rigidOrders :: ![FaceOrder],
+    -- | The refolds preparing the motion made: its start, and each pose it
+    -- tried.
+    preparingRefolds :: !Int
   }
   deriving stock (Eq, Show)
 
-data CheckedFlap = CheckedFlap !FlapMotion !SweepCheck
+-- | A motion, its check, and the refolds made preparing and checking it.
+data CheckedFlap = CheckedFlap !FlapMotion !SweepCheck !Int
   deriving stock (Eq, Show)
 
 -- | Which way the moving paper beside the hinge sets off, for
@@ -323,11 +332,12 @@ prepareHinge eids@(eid : _) side request supplied = do
             Just g <- [find ((== orderRelativeTo o) . faceId) faces],
             coplanarFaces scale f g
         ]
-      motion = FlapMotion start travels (S.toList selected) fixed origin scale sweep owners suppliedOrders retained
+      -- The same refolding/anchoring path supplies all subsequent public
+      -- poses, and these are tried now. Each refolds, as the start did.
+      tried = [1, 0.5]
+      motion = FlapMotion start travels (S.toList selected) fixed origin scale sweep owners suppliedOrders retained (1 + length tried)
   checkOrders FlapStackOrder scale faces retained
-  -- The same refolding/anchoring path supplies all subsequent public poses.
-  _ <- surfaceAt motion 1
-  _ <- surfaceAt motion 0.5
+  mapM_ (surfaceAt motion) tried
   pure motion
 
 -- | The travel of a turn towards +z or -z, read from the moving face beside
@@ -393,28 +403,37 @@ checkFlap settings motion = do
     SweepClear -> do
       -- Fan triangles retain their source face's winding, so each contact's
       -- side is already a FOLD order against the stationary face's normal.
-      mapM_ (checkEndpointOrder motion result) [0, 1]
-      Right (CheckedFlap motion result)
+      -- Each end checked refolds.
+      let ends = [0, 1]
+      mapM_ (checkEndpointOrder motion result) ends
+      Right (CheckedFlap motion result (preparingRefolds motion + length ends))
     SweepCollision t pairs -> Left (FlapCollision t (sourcePairs pairs))
     SweepUnresolved lo hi pairs -> Left (FlapUnresolved lo hi (sourcePairs pairs))
 
 flapCheck :: CheckedFlap -> SweepCheck
-flapCheck (CheckedFlap _ result) = result
+flapCheck (CheckedFlap _ result _) = result
 
 flapMovingFaces :: CheckedFlap -> [FaceId]
-flapMovingFaces (CheckedFlap motion _) = movingFaces motion
+flapMovingFaces (CheckedFlap motion _ _) = movingFaces motion
 
 -- | The face the turn is measured against: the one beside the first hinge
 -- crease, on the side that does not move, numbered like 'flapMovingFaces'.
 -- Every pose 'flapAt' gives is moved back so that this face lies where it lay
 -- at the start, which is what holding the paper still means here.
 flapStationaryFace :: CheckedFlap -> FaceId
-flapStationaryFace (CheckedFlap motion _) = stationaryFace motion
+flapStationaryFace (CheckedFlap motion _ _) = stationaryFace motion
+
+-- | How many times preparing and checking the turn folded the pattern
+-- afresh from angles, each one 'foldFrameWith' call: once for the start,
+-- once for each pose preparation tries, and once for each end whose layer
+-- order is checked. Each 'flapAt' is one more, made by its caller.
+flapRefolds :: CheckedFlap -> Int
+flapRefolds (CheckedFlap _ _ refolds) = refolds
 
 -- | A checked angle state at a fraction of the accepted motion. The returned
 -- surface supplies both renderers and its materialFrame supplies FOLD output.
 flapAt :: CheckedFlap -> Double -> Either FlapError (Surface V2)
-flapAt (CheckedFlap motion result) progress = do
+flapAt (CheckedFlap motion result _) progress = do
   surface <- surfaceAt motion progress
   orders <- endpointOrders motion result progress
   first FlapSurface (withFaceOrders (nub (rigidOrders motion ++ orders)) surface)

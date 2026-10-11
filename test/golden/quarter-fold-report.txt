@@ -5,6 +5,7 @@ step 1 (half), move 1: fold mountain edge west to edge east
   moving: (internal faces 2, 3)
   hinge: (internal edges 8, 10)
   held still: (internal face 0)
+  work: 1 sweep interval, 8 refolds
 step 2 (quarter), move 1: fold valley edge north to edge south
   checked: the whole turn, swept, with no paper in its way
   line edge north to edge south: through (0.75, 0.5), along (1, 0)
@@ -12,3 +13,4 @@ step 2 (quarter), move 1: fold valley edge north to edge south
   moving: (internal faces 1, 2)
   hinge: (internal edges 9, 11)
   held still: (internal face 0)
+  work: 1 sweep interval, 8 refolds
