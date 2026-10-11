@@ -3,11 +3,10 @@
 -- Description : The fold sequences that more than one spec needs, written once.
 --
 -- The same example has to mean the same thing in every test that uses it. The
--- blintz below is compared with its own constructors in the builder's spec and
--- printed in the printer's; it will be compared with the parse of its text,
--- and later run and compared with the study's hand-written recipe. Three
--- copies would be three chances for those tests to be about three slightly
--- different sequences.
+-- blintz below is compared with its own constructors in the builder's spec,
+-- printed in the printer's, compared with the parse of its text at the root,
+-- and run. Three copies would be three chances for those tests to be about
+-- three slightly different sequences.
 --
 -- Two sequences live here, both taken from the language's design so that a
 -- test's output can be laid beside it: the 'blintz', from
@@ -16,7 +15,6 @@
 module Test.SequenceExamples
   ( blintz,
     blintzCaptions,
-    helmet,
     quarterFold,
   )
 where
@@ -24,7 +22,7 @@ where
 import Control.Monad (forM_)
 import Data.Text (Text)
 import Senbazuru.Sequence.Build
-import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Point (..), Sense (..), Sequence)
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Header (..), Line (..), Sequence)
 
 -- | A /blintz/ folds the four corners of a square to its centre. This one then
 -- reopens the first corner, so that the sequence has a move that refers back
@@ -59,23 +57,6 @@ blintzCaptions =
     "Fold the south-west corner behind, to the centre.",
     "Reopen the first corner."
   ]
-
--- | The helmet base: a square folded diagonally in half, then each corner of
--- the doubled triangle brought to its tip, the right-angled corner at south
--- east. The study's second recipe (@study\/fold-material\/HelmetSequence.hs@),
--- written by naming paper rather than by edge ids: the corners are folded by
--- laying one corner on another, whose fold line is the line halfway between
--- them where they lie.
---
--- The diagonal names its paper by @moving corner north-west@, since a line of
--- two points does not say which side moves; there is no builder for that, so
--- it is written with the tree's own constructor. The anchor, @(3\/4, 1\/4)@,
--- is the middle of the south-east square face, which the recipe holds still.
-helmet :: Sequence
-helmet = sequenceOf (header "The helmet base" (sheetFile "examples/helmet-base.fold") (Just (at (3 / 4) (1 / 4)))) $ do
-  step_ "Fold the square diagonally in half." $ move (Fold ValleyFold ToFlat (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf NorthWest)))
-  step_ "Bring the first doubled corner to the tip." $ fold valley (cornerOf SouthWest `onto` cornerOf SouthEast)
-  step_ "Bring the other doubled corner to the tip: helmet base." $ fold valley (cornerOf NorthEast `onto` cornerOf SouthEast)
 
 -- | The quarter fold: a square folded in half, then in half again. It is the
 -- sequence the language's design reads line by line

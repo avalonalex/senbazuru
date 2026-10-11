@@ -1,0 +1,16 @@
+foldseq 1
+title "The helmet base"
+sheet "examples/helmet-base.fold"
+anchor (3/4, 1/4)          # the middle of the south-east square, which no fold turns
+
+# The helmet base: a square folded diagonally in half, then each corner of the
+# doubled triangle brought to its tip, the right-angled corner at south-east.
+# The study's gallery runs this file (--helmet), and HelmetRunSpec runs it too.
+#
+# A line through two points does not say which side of it moves, so the
+# diagonal names its paper: the half holding corner north-west. Each corner
+# fold lays one corner on another, and its line is the line halfway between
+# them where they lie, which names two creases of the sheet, one on each layer.
+step "Fold the square diagonally in half." { fold in front [corner south-west, corner north-east] moving corner north-west }
+step "Bring the first doubled corner to the tip." { fold in front corner south-west to corner south-east }
+step "Bring the other doubled corner to the tip: helmet base." { fold in front corner north-east to corner south-east }

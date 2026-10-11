@@ -604,8 +604,8 @@ installation as the checked-flap pages. See [the instructions](../../docs/usage.
 and [the measurements](../../docs/notes/held-wing-bending.md). These static
 shapes do not certify a flexible folding motion or realistic crane spreading.
 
-`stack run senbazuru-material-study -- --helmet build/fold-material` checks
-three turns to the [helmet base](../../docs/usage.md#checked-helmet-sequence),
+`stack run senbazuru-material-study -- --helmet build/fold-material` runs
+`helmet.foldseq`, three turns to the [helmet base](../../docs/usage.md#checked-helmet-sequence),
 including paired creases on touching layers. It writes seven SVG/FOLD/glTF
 states in `checked-helmet/` and the illustrated page `helmet.html`.
 

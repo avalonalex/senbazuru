@@ -317,11 +317,14 @@ complete turn.
 ### Checked helmet sequence
 
 A helmet base folds a square diagonally in half, then brings both corners
-of the doubled triangle to its opposite tip. Each corner turns two touching
-layers together. `prepareFlapAlong` explicitly selects all crease segments
-on the physical hinge; they must separate the moving faces from the fixed
-ones and lie on one line in the current folded shape. The first segment
-defines the signed travel. Other segments receive the angle signs required
+of the doubled triangle to its opposite tip. The gallery runs
+`helmet.foldseq`, the helmet base as a
+[fold sequence](glossary.md#fold-sequences). Each corner turns two touching
+layers together. The runner finds every crease segment on the physical hinge
+from the one fold line the source names, and turns them together with
+`prepareFlapToward`. The segments must separate the moving faces from the
+fixed ones and lie on one line in the current folded shape. The first segment
+defines the signed travel, and other segments receive the angle signs required
 by their stationary faces' orientation. `prepareFlapToward` takes a size of
 turn and `TowardPlusZ` or `TowardMinusZ` in place of that sign: the way the
 moving paper beside the hinge sets off, whether it lies flat beyond the hinge
@@ -329,6 +332,8 @@ or is already folded over. It reads the sign from which way up the moving face
 beside each segment lies. Those faces must lie flat and all on one side of the
 hinge line, or the turn is refused rather than guessed;
 [the direction note](notes/turning-towards-a-side.md) gives the reasons.
+`prepareFlapAlong` is the same turn given a signed travel, which the runner
+uses to turn a move back for `unfold`.
 
 ```bash
 stack run senbazuru-material-study -- --helmet build/fold-material
@@ -341,9 +346,10 @@ Open [the helmet instructions](http://127.0.0.1:8000/helmet.html).
 GLBs with visible/complete scenes, plus angles, layer orders and measurements
 in `checks.json`. The camera looks from the tip side at 45° above the paper.
 All three turns pass the continuous hinge-sweep check and carry their accepted
-poses and orders into the next move. This remains an explicit fixture recipe
-with floating-point numerical guards, not automatic route planning or a
-solver for creases on different axes. See [the hinge note](notes/aligned-crease-hinges.md).
+poses and orders into the next move. The moves are the sequence's, not
+planned, and the checks keep floating-point numerical guards. The runner finds
+both creases a corner fold's one line names, and a hinge whose creases lie on
+different axes is refused, not solved. See [the hinge note](notes/aligned-crease-hinges.md).
 
 ### Checked crane-wing movement
 
