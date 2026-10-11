@@ -219,9 +219,11 @@ data FoldState = FoldState
     -- D14). The identity until a move turns the anchor's paper and the run
     -- re-anchors onto paper that had moved ('reanchor').
     thePlacement :: !Rigid,
-    -- | The working pattern folded, once anything has folded it: the next
-    -- move starts from that fold rather than folding the same pattern again.
-    -- The last move's join check has always folded it.
+    -- | The working pattern folded. Between moves it is always there: the
+    -- start folds it, and every move leaves the fold of the pattern it hands
+    -- on, so the next move starts from that fold rather than folding the
+    -- same pattern again. Inside a move, a change to the working pattern
+    -- clears it until 'foldNow' folds it afresh.
     theFold :: !(Maybe Folded),
     -- | How many times the run has folded its working pattern afresh so
     -- far. 'foldNow' makes every such fold and counts it here, so a move's

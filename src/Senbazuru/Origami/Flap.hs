@@ -44,10 +44,10 @@
 -- only that value supplies public poses. Each pose is independently re-folded
 -- from angles, checking both shared vertices and achieved crease angles, then
 -- aligned to keep the stationary side still. No vertex interpolation is used.
--- Re-folding is the costly part, so a checked turn says how many times making
--- it folded the pattern afresh ('flapRefolds'), counted where each fold is
--- made, for a caller that pins its work (PRDs\/09-testing-and-acceptance.md,
--- §6.1). It is a count, not a time, and the same on every machine.
+-- A checked turn also says how many times making it folded the pattern
+-- afresh ('flapRefolds'), for a caller that pins the work it does
+-- (PRDs\/09-testing-and-acceptance.md, §6.1): a count, not a time, the same
+-- on every machine.
 -- Comparing it with the specified hinge path prevents a camera-like change
 -- of anchoring from making the checked motion differ from the exported one.
 --
