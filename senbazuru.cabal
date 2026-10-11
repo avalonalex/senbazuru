@@ -204,6 +204,7 @@ library
     Senbazuru.Sequence.Resolve
     Senbazuru.Sequence.Run
     Senbazuru.Sequence.RunPlan
+    Senbazuru.Sequence.SheetLengths
     Senbazuru.Sequence.Syntax
     Senbazuru.Sequence.Write
 
@@ -488,6 +489,7 @@ test-suite senbazuru-test
     Senbazuru.Sequence.ResolveSpec
     Senbazuru.Sequence.RunSpec
     Senbazuru.Sequence.RunPlanSpec
+    Senbazuru.Sequence.SheetLengthsSpec
     Senbazuru.Sequence.SyntaxSpec
     Senbazuru.Sequence.TraditionalCraneSpec
     Senbazuru.Sequence.WriteSpec

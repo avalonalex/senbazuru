@@ -174,7 +174,12 @@ gave us. The header of `Senbazuru.Explain` has the rest.
 stroke *widths, dash lengths and displacements* are in page units and are never
 scaled. `Arrow`, `Label` and `Offset` need both and are finished by the backend
 after projection. Header of `Senbazuru.Diagram`; #63 tracks making it a type
-error.
+error. Sequences add *sheet lengths*, the units an author names paper in (the
+sheet box's longer side is 1), and *physical lengths*, which arrive with the
+`material` block at M6. Each is converted to and from model units in exactly
+one place: sheet lengths in `Senbazuru.Sequence.SheetLengths`, which the
+resolver, the runner and the run report all call, and physical lengths in the
+one place the material block brings. Header of `Senbazuru.Sequence.SheetLengths`.
 
 **Types mirror the format; validation is separate.** `Senbazuru.Fold.Types` is
 permissive because FOLD is permissive; a decode failure must always mean "this
