@@ -16,7 +16,7 @@
 -- edge, by laying one line onto another or as @hinge of NAME@; @pre-crease@,
 -- the same fold checked and laid flat again, which leaves its crease and one
 -- record; @unfold@; @turn over@, which moves no paper and shows the model
--- from its other side; @rotate@ by whole quarter turns, which turns the model
+-- from its other side; @rotate@ by eighths of a turn, which turns the model
 -- on the page, the same side up; @anchor P@, which holds other paper still
 -- from then on and moves none; and @expect refused@. Every other move is
 -- refused as not run yet, naming itself, rather than skipped.
@@ -69,10 +69,9 @@
 -- == Not yet
 --
 -- Refused as not run yet: a new crease on folded paper, which creases
--- through its layers (milestone M4), layer words, a @rotate@ by an odd
--- number of eighths, whose cos 45° no 'Double' holds (owner decision 10),
--- and every move but @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@
--- and @anchor@, @mark@ among them.
+-- through its layers (milestone M4), layer words, and every move but
+-- @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@ and @anchor@, @mark@
+-- among them.
 --
 -- A re-anchoring onto a face that does not lie flat is refused as
 -- @ReanchorNotFlat@ (PRDs\/02-language-semantics.md, §2.3), since then no
@@ -178,7 +177,7 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
-import Senbazuru.Explain (explain, tshow)
+import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
@@ -257,24 +256,46 @@ turnOverAbout = \case
   TopBottom -> aboutMiddle (Mat3 (V3 1 0 0) (V3 0 (-1) 0) (V3 0 0 (-1)))
 
 -- | A turn on the page about the model's own middle (decisions D5), by
--- quarter turns, anticlockwise as the reader sees it when positive: about
--- the line parallel to +z through (cx, cy), so the side shown stays the side
--- shown. One quarter anticlockwise maps (x, y) to (cx + cy - y, cy - cx + x).
-quarterTurnsAbout :: Int -> [V3] -> Rigid
-quarterTurnsAbout quarters = aboutMiddle $ case quarters `mod` 4 of
-  1 -> Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
-  2 -> Mat3 (V3 (-1) 0 0) (V3 0 (-1) 0) (V3 0 0 1)
-  3 -> Mat3 (V3 0 1 0) (V3 (-1) 0 0) (V3 0 0 1)
+-- eighths of a turn, anticlockwise as the reader sees it when positive:
+-- about the line parallel to +z through (cx, cy), so the side shown stays
+-- the side shown. A quarter turn anticlockwise, two eighths, maps (x, y) to
+-- (cx + cy - y, cy - cx + x).
+--
+-- A whole number of quarter turns has entries 0, 1 and -1, which a 'Double'
+-- holds exactly. An odd number of eighths needs cos 45° and sin 45°, both
+-- √½, which no 'Double' holds. Both are taken from 'sqrt', which IEEE 754
+-- requires to round correctly, so the bits are the same on every platform,
+-- and never from 'cos' and 'sin', whose last bits are the platform's own
+-- (owner decision 10). Those disagree with each other at π/4 already: with
+-- GHC 9.6.7 on macOS, @cos (pi / 4)@ is 0.7071067811865476 and @sin (pi / 4)@
+-- is 0.7071067811865475, so a turn built from them would not even be
+-- symmetric. @sqrt 0.5@ is 0.7071067811865476, the 'Double' nearest √½.
+eighthTurnsAbout :: Int -> [V3] -> Rigid
+eighthTurnsAbout eighths = aboutMiddle $ case eighths `mod` 8 of
+  1 -> oddEighth half half
+  2 -> Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
+  3 -> oddEighth (-half) half
+  4 -> Mat3 (V3 (-1) 0 0) (V3 0 (-1) 0) (V3 0 0 1)
+  5 -> oddEighth (-half) (-half)
+  6 -> Mat3 (V3 0 1 0) (V3 (-1) 0 0) (V3 0 0 1)
+  7 -> oddEighth half (-half)
   _ -> rigidLinear identity
+  where
+    half = sqrt 0.5
+    -- A turn by an odd number of eighths, from its cosine and sine. The
+    -- quarter turns are written out rather than made here from 0 and 1,
+    -- since @-s@ of a zero sine is a negative zero.
+    oddEighth c s = Mat3 (V3 c (-s) 0) (V3 s c 0) (V3 0 0 1)
 
 -- | A turn that keeps the middle of the points where it is: (cx, cy) the
 -- centre of their xy box and cz the middle of their z range. About the
 -- middle, so the model stays where it is on the page; about the origin it
--- would be carried off it. Every turn made here has entries 0 and 1 and -1,
--- which a 'Double' holds exactly, so applying one multiplies nothing
--- inexactly; only the additions round, as they do anywhere. A turn by an
--- eighth would need cos 45°, which no 'Double' holds, and whose last bits
--- come from the platform's trigonometry (owner decision 10).
+-- would be carried off it. Every turn made here but an odd number of eighths
+-- has entries 0 and 1 and -1, which a 'Double' holds exactly, so applying
+-- one multiplies nothing inexactly; only the additions round, as they do
+-- anywhere. An odd eighth's √½ is rounded, so its products are too, and a
+-- turn there and back lands within rounding of where it began, which need
+-- not be exactly ('eighthTurnsAbout').
 aboutMiddle :: Mat3 -> [V3] -> Rigid
 aboutMiddle turn points = Rigid turn (middle ^-^ matApply turn middle)
   where
@@ -565,11 +586,8 @@ runMove settings place named state surface = \case
     held <- first (refusedAt place . JoinBroken . ("the re-anchored paper makes no surface: " <>) . explain) (surfaceFromFolded refolded)
     Right (Made anchored [refoldsSince state anchored (anchoring (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state, theAnchor anchored) held (thePresentation anchored) (thePlacement anchored))] [])
   -- A rotate turns the model on the page, the same side up, so the reader's
-  -- side stays. Only whole quarter turns are made: an odd number of eighths
-  -- would need cos 45° (owner decision 10).
-  CoreRotate eighths turning
-    | odd eighths -> Left (refusedAt place (MoveNotRunYet ("\"rotate " <> tshow eighths <> "/8 turn\", which is not a whole number of quarter turns,")))
-    | otherwise -> present (Rotated eighths turning) (quarterTurnsAbout ((case turning of Anticlockwise -> 1; Clockwise -> -1) * (eighths `div` 2)))
+  -- side stays, by eighths of a turn (owner decision 10).
+  CoreRotate eighths turning -> present (Rotated eighths turning) (eighthTurnsAbout ((case turning of Anticlockwise -> 1; Clockwise -> -1) * eighths))
   other -> Left (refusedAt place (MoveNotRunYet (moveWords other)))
   where
     moved (st, records) = Made st records []
