@@ -823,7 +823,8 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
       "new crease: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", " <> letterWord letter <> " " <> internal "edge" [e | EdgeId e <- edges]
     -- Measured on the sheet the run started from, laid flat, as every
     -- sheet length is ("Senbazuru.Sequence.SheetLengths").
-    sheetLengths p = maybe p (`inSheetLengths` p) (boxFromPoints [V2 (materialU s) (materialV s) | s <- surfaceSamples (runStart run)])
+    sheetLengths p = maybe p (`inSheetLengths` p) startBox
+    startBox = boxFromPoints [V2 (materialU s) (materialV s) | s <- surfaceSamples (runStart run)]
     letterWord = \case
       Mountain -> "mountain"
       Valley -> "valley"

@@ -23,6 +23,10 @@
 -- reciprocal, which can differ in the last bit; it could not import the
 -- resolver, which imports it. This module sits below both and knows no paper:
 -- it takes the sheet's box, which its caller measured on the sheet laid flat.
+-- The callers measure it on different things, the report on the run's start
+-- and the resolver and the runner on the pattern as it is now, and get one
+-- box, because a move adds vertices only on paper the sheet already had:
+-- where the vertices lay on the sheet spans the same box after any move.
 --
 -- Physical lengths, millimetres of real paper, arrive with the material study
 -- (milestone M6), and are to be converted in one place of their own.
@@ -30,6 +34,7 @@ module Senbazuru.Sequence.SheetLengths
   ( sheetLengthOf,
     inSheetLengths,
     fromSheetLengths,
+    lengthInSheetLengths,
   )
 where
 
@@ -37,7 +42,8 @@ import Senbazuru.Geometry (Box (..), V2 (..), boxSize)
 import Senbazuru.Geometry.VectorSpace
 
 -- | One sheet length, in the sheet's own units: the longer side of its box.
--- A sheet has extent, so it is never zero.
+-- Never zero: 'Senbazuru.Sequence.Run.sheetState' refuses a sheet with no
+-- area, since no face of it can hold the anchor.
 sheetLengthOf :: Box -> Double
 sheetLengthOf box = let V2 w h = boxSize box in max w h
 
@@ -49,3 +55,8 @@ inSheetLengths box p = (1 / sheetLengthOf box) *^ (p ^-^ boxMin box)
 -- 'inSheetLengths'.
 fromSheetLengths :: Box -> V2 -> V2
 fromSheetLengths box uv = boxMin box ^+^ (sheetLengthOf box *^ uv)
+
+-- | A length on the sheet, such as how far a point lies from a vertex, in
+-- sheet lengths: the same one scale as a point, without the corner.
+lengthInSheetLengths :: Box -> Double -> Double
+lengthInSheetLengths box d = d / sheetLengthOf box

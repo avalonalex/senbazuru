@@ -22,6 +22,17 @@ spec = describe "sheet lengths" $ do
     inSheetLengths wide (V2 5 5) `shouldBe` V2 1 0.5
     -- (1, 1) lies above the top edge: off the paper.
     fromSheetLengths wide (V2 1 1) `shouldBe` V2 5 7
+    lengthInSheetLengths wide 2 `shouldBe` 0.5
+
+  -- The same sheet stood on end, 2 wide and 4 tall: one sheet length is now
+  -- its height, so its far corner is (1/2, 1). Turns red if the scale were
+  -- always the width, which the wide sheet above cannot tell from the longer
+  -- side.
+  it "takes the height when the sheet is taller than it is wide" $ do
+    let tall = Box (V2 1 3) (V2 3 7)
+    sheetLengthOf tall `shouldBe` 4
+    inSheetLengths tall (V2 3 7) `shouldBe` V2 0.5 1
+    lengthInSheetLengths tall 2 `shouldBe` 0.5
 
   it "converts there and back to the same point, within rounding" $
     forAll genBox $ \box -> forAll genPoint $ \p ->

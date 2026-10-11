@@ -101,7 +101,7 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..))
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
-import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, sheetLengthOf)
+import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, lengthInSheetLengths, sheetLengthOf)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
 
 -- | A flat state, measured once for naming paper on it: where each vertex was
@@ -209,7 +209,7 @@ positionOf band st point = do
       [] -> Right m
       vertices ->
         let (distance, i, p) = minimumBy (comparing (\(d, _, _) -> d)) vertices
-            apart = distance / sheetLength st
+            apart = lengthInSheetLengths (flatBox st) distance
          in if distance <= flatRoom st
               then Right p
               else
@@ -224,7 +224,7 @@ placedAt st m = case [flat (applyRigid placement (V3 x y 0)) | (FaceId f, ring) 
   [] -> Left (OffThePaper (toSheetLengths st m))
   placements@(first' : _) ->
     let spread = maximum [norm (p ^-^ q) | p <- placements, q <- placements]
-     in if spread <= flatRoom st then Right first' else Left (PlacementsDisagree (toSheetLengths st m) (spread / sheetLength st))
+     in if spread <= flatRoom st then Right first' else Left (PlacementsDisagree (toSheetLengths st m) (lengthInSheetLengths (flatBox st) spread))
   where
     V2 x y = m
     flat (V3 a b _) = V2 a b
