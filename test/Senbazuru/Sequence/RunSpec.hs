@@ -16,7 +16,7 @@ import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
-import Senbazuru.Geometry.Rigid (Rigid (..), applyRigid, identity, matApply)
+import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, matApply)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
@@ -456,6 +456,7 @@ rotating = describe "a rotate" $ do
       anticlockwise = [V3 1 0 0, V3 1 1 0, V3 0 1 0, V3 0 0 0]
       clockwise = [V3 0 1 0, V3 0 0 0, V3 1 0 0, V3 1 1 0]
       halfTurned = [V3 1 1 0, V3 0 1 0, V3 0 0 0, V3 1 0 0]
+      half = sqrt 0.5
       -- The square after one step, as written.
       turnedBy moves = do
         run <- right (onSquare (step_ "Turn the paper." moves))
@@ -463,9 +464,6 @@ rotating = describe "a rotate" $ do
         case map stateFrame states of
           [_, turned] -> pure turned
           other -> fail ("expected two states, got " <> show (length other))
-      refusal = \case
-        Left (StepRefused _ _ _ failure) -> Just failure
-        _ -> Nothing
 
   -- One record, presented, its two surfaces one, written turned and still
   -- showing its front, so classed a crease pattern; and the page finds no
@@ -561,11 +559,57 @@ rotating = describe "a rotate" $ do
       [(shownBefore, shownAfter)] -> matApply (rigidLinear (shownAfter `Rigid.after` Rigid.inverse shownBefore)) (V3 1 0 0) `shouldSatisfy` near (V3 0 1 0)
       other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
 
-  -- An eighth turn needs cos 45°, which no Double holds, and waits on owner
-  -- decision 10: refused as not run yet, saying what is.
-  it "refuses an odd number of eighths as not run yet" $ do
-    refusal (onSquare (step_ "Turn the paper to a diamond." (rotate 1 Anticlockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate 1/8 turn\", which is not a whole number of quarter turns,")
-    refusal (onSquare (step_ "Turn the paper." (rotate 3 Clockwise))) `shouldBe` Just (MoveNotRunYet "\"rotate 3/8 turn\", which is not a whole number of quarter turns,")
+  -- A book's diamond view, the crane opening's first step: one eighth
+  -- anticlockwise about the middle carries corner south-west, (0, 0), down
+  -- to (1/2, 1/2 - √½), and each other corner round to the next point of
+  -- the diamond. Still flat and showing its front, so a crease pattern, and
+  -- no fold between the states. Turns red if an odd eighth were refused, or
+  -- turned the other way or about the origin.
+  it "turns the square to a diamond by one eighth about its middle, the same side up" $ do
+    run <- right (onSquare (step_ "Turn the paper to a diamond." (rotate 1 Anticlockwise)))
+    record <- case runRecords run of
+      [r] -> pure r
+      other -> fail ("expected one record, got " <> show (length other))
+    (recordKind record, recordEvidence record) `shouldBe` (Presentation (Rotated 1 Anticlockwise), Presented)
+    states <- right (writtenStates run)
+    (laid, turned) <- case map stateFrame states of
+      [a, b] -> pure (a, b)
+      other -> fail ("expected two states, got " <> show (length other))
+    zipWith near (corners turned) [V3 0.5 (0.5 - half) 0, V3 (0.5 + half) 0.5 0, V3 0.5 (0.5 + half) 0, V3 (0.5 - half) 0.5 0] `shouldBe` replicate 4 True
+    frameClasses turned `shouldBe` ["creasePattern"]
+    motionsBetween laid turned `shouldBe` Right []
+
+  -- cos 45° and sin 45° are both √½, which no Double holds; the turn takes
+  -- both from sqrt, which IEEE 754 rounds correctly everywhere, so its
+  -- entries are exactly ±sqrt 0.5 on every platform (owner decision 10).
+  -- Turns red if it were built from cos and sin, whose values at π/4 differ
+  -- in the last bit, or with an entry's sign wrong.
+  it "turns an odd eighth by exactly sqrt 0.5, the same bits on every platform" $ do
+    let turnOf eighths turning = do
+          run <- right (onSquare (step_ "Turn the paper." (rotate eighths turning)))
+          case map recordPresentation (runRecords run) of
+            [(_, shownAfter)] -> pure (rigidLinear shownAfter)
+            other -> fail ("expected one record, got " <> show (length other))
+    oneEighth <- turnOf 1 Anticlockwise
+    oneEighth `shouldBe` Mat3 (V3 half (-half) 0) (V3 half half 0) (V3 0 0 1)
+    three <- turnOf 3 Clockwise
+    three `shouldBe` Mat3 (V3 (-half) half 0) (V3 (-half) (-half) 0) (V3 0 0 1)
+    five <- turnOf 5 Anticlockwise
+    five `shouldBe` three
+
+  -- An eighth there and back: √½ rounds, so the corners come back within
+  -- rounding of where they were, which need not be exactly, as decision 10
+  -- accepted. Applied one after the other, the two turns bring corner
+  -- (0, 0) back to (0, -5.6e-17). Turns red if the clockwise eighth were not
+  -- the anticlockwise one undone.
+  it "comes back within rounding from an eighth there and back" $ do
+    run <- right . onSquare $ do
+      step_ "Turn the paper to a diamond." (rotate 1 Anticlockwise)
+      step_ "Turn it back." (rotate 1 Clockwise)
+    states <- right (writtenStates run)
+    case map stateFrame states of
+      [laid, _, back] -> zipWith near (corners back) (corners laid) `shouldBe` replicate 4 True
+      other -> expectationFailure ("expected three states, got " <> show (length other))
 
 -- Re-anchoring (#497, owner decision 3): a move that turns the anchor's
 -- paper holds still instead the paper beside its hinge that it does not
