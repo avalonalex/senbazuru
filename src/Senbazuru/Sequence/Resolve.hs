@@ -11,7 +11,9 @@
 --
 -- Every point is named where it lay on the flat sheet, in /sheet lengths/: the
 -- sheet's bounding box has its south-west corner at (0, 0) and its longer side
--- 1, whatever units the file uses. 'materialPoint' answers in material
+-- 1, whatever units the file uses. Every conversion to and from them is in
+-- "Senbazuru.Sequence.SheetLengths", whose header says why there is one
+-- place, and why one scale on both axes. 'materialPoint' answers in material
 -- coordinates, the file's own, and the answer never changes as the paper
 -- folds: the midpoint of two corners is the same paper after those corners
 -- are folded onto one spot.
@@ -57,7 +59,6 @@ module Senbazuru.Sequence.Resolve
     materialPoint,
     positionOf,
     toSheetLengths,
-    sheetLengthsIn,
 
     -- * Fold lines and hinges
     FoldLine (..),
@@ -92,7 +93,7 @@ import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
-import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, boxSize, perpendicular)
+import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, perpendicular)
 import Senbazuru.Geometry.Polygon (centroid, cross2, distanceToSegment, edges, insideRing)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
@@ -100,6 +101,7 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..))
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
+import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, lengthInSheetLengths, sheetLengthOf)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
 
 -- | A flat state, measured once for naming paper on it: where each vertex was
@@ -141,19 +143,15 @@ flatState folded = do
         flatRoom = toleranceOf (IM.elems material)
       }
 
--- | The sheet's longer side, in material units: one sheet length.
+-- | The sheet's longer side, in material units: one sheet length
+-- ("Senbazuru.Sequence.SheetLengths").
 sheetLength :: FlatState -> Double
-sheetLength st = let V2 w h = boxSize (flatBox st) in max w h
+sheetLength st = sheetLengthOf (flatBox st)
 
--- | A material point in sheet lengths, the author's units.
+-- | A material point in sheet lengths, the author's units, measured on this
+-- state's sheet ("Senbazuru.Sequence.SheetLengths").
 toSheetLengths :: FlatState -> V2 -> V2
-toSheetLengths st = sheetLengthsIn (flatBox st)
-
--- | A material point in sheet lengths, on a sheet whose box is given: what
--- 'toSheetLengths' does, for a caller holding the pattern and no flat
--- state, such as a turn back of paper standing in the air.
-sheetLengthsIn :: Box -> V2 -> V2
-sheetLengthsIn box p = let V2 w h = boxSize box in (1 / max w h) *^ (p ^-^ boxMin box)
+toSheetLengths st = inSheetLengths (flatBox st)
 
 -- | Where the point lay on the flat sheet, in material coordinates. Every form
 -- but @meet@ is worked out here, on the sheet; @meet@ needs positions, and is
@@ -162,7 +160,7 @@ materialPoint :: FlatState -> Point -> Either ResolveProblem V2
 materialPoint st = \case
   CornerOf corner -> cornerOf corner
   Centre -> Right (boxCentre box)
-  AtSheet u v -> Right (boxMin box ^+^ (sheetLength st *^ V2 (fromRational u) (fromRational v)))
+  AtSheet u v -> Right (fromSheetLengths box (V2 (fromRational u) (fromRational v)))
   MidpointOf p q -> along 0.5 p q
   FractionAlong r p q -> along (fromRational r) p q
   MidpointOfEdge side -> Right (edgeMidpoint side)
@@ -211,12 +209,12 @@ positionOf band st point = do
       [] -> Right m
       vertices ->
         let (distance, i, p) = minimumBy (comparing (\(d, _, _) -> d)) vertices
-            inSheetLengths = distance / sheetLength st
+            apart = lengthInSheetLengths (flatBox st) distance
          in if distance <= flatRoom st
               then Right p
               else
-                if inSheetLengths <= band
-                  then Left (NearMiss written i (toSheetLengths st p) inSheetLengths)
+                if apart <= band
+                  then Left (NearMiss written i (toSheetLengths st p) apart)
                   else Right m
 
 -- | A material point's place in the fold, through every face whose outline
@@ -226,7 +224,7 @@ placedAt st m = case [flat (applyRigid placement (V3 x y 0)) | (FaceId f, ring) 
   [] -> Left (OffThePaper (toSheetLengths st m))
   placements@(first' : _) ->
     let spread = maximum [norm (p ^-^ q) | p <- placements, q <- placements]
-     in if spread <= flatRoom st then Right first' else Left (PlacementsDisagree (toSheetLengths st m) (spread / sheetLength st))
+     in if spread <= flatRoom st then Right first' else Left (PlacementsDisagree (toSheetLengths st m) (lengthInSheetLengths (flatBox st) spread))
   where
     V2 x y = m
     flat (V3 a b _) = V2 a b

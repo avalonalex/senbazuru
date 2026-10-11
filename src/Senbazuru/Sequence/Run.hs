@@ -200,6 +200,7 @@ import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), Re
 import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Resolve
+import Senbazuru.Sequence.SheetLengths (inSheetLengths)
 import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
 
 -- | The paper between two moves of a run: the working pattern and the anchor.
@@ -774,7 +775,7 @@ reanchorAt place state folded i anchorAt = do
   let shown = thePresentation state `Rigid.after` (thePlacement state `Rigid.after` h)
       V3 _ _ facing = matApply (rigidLinear shown) (V3 0 0 1)
   box <- maybe (broken "the sheet has no extent") Right (boxFromPoints (IM.elems material))
-  when (abs facing < 1 - 1e-9) (Left (refusedAt place (ReanchorNotFlat (sheetLengthsIn box anchorAt) (acos (min 1 (abs facing)) * 180 / pi))))
+  when (abs facing < 1 - 1e-9) (Left (refusedAt place (ReanchorNotFlat (inSheetLengths box anchorAt) (acos (min 1 (abs facing)) * 180 / pi))))
   let renumber (FaceId f)
         | f == i = FaceId 0
         | f < i = FaceId (f + 1)

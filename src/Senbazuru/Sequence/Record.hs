@@ -166,7 +166,7 @@ import Numeric (showFFloat)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), Frame (..), VertexId (..))
-import Senbazuru.Geometry (Box (..), V2 (..), boxFromPoints, boxSize)
+import Senbazuru.Geometry (V2 (..), boxFromPoints)
 import Senbazuru.Geometry.Polygon (distanceToSegment, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity)
 import Senbazuru.Geometry.Rigid qualified as Rigid
@@ -176,6 +176,7 @@ import Senbazuru.Origami.Surface (Surface, materialFrame, materialU, materialV, 
 import Senbazuru.Sequence.Elaborate (Origin (..))
 import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..), WriteProblem (..))
 import Senbazuru.Sequence.Pretty (prettyMove)
+import Senbazuru.Sequence.SheetLengths (inSheetLengths)
 import Senbazuru.Sequence.Syntax (Name (..), PageAxis, RefusalKind (..), Span, Turning)
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
@@ -820,16 +821,10 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
     -- author's units, as the line and the seed already are.
     newCrease (MaterialSegment (MaterialPoint a) (MaterialPoint b), edges, letter) =
       "new crease: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> ", " <> letterWord letter <> " " <> internal "edge" [e | EdgeId e <- edges]
-    -- Measured on the sheet the run started from: from its box's lower
-    -- corner, in its longer side, as "Senbazuru.Sequence.Resolve" measures.
-    sheetLengths p = case boxFromPoints [V2 (materialU s) (materialV s) | s <- surfaceSamples (runStart run)] of
-      Just box ->
-        let V2 w h = boxSize box
-            V2 x0 y0 = boxMin box
-            V2 x y = p
-            side = max w h
-         in if side > 0 then V2 ((x - x0) / side) ((y - y0) / side) else p
-      Nothing -> p
+    -- Measured on the sheet the run started from, laid flat, as every
+    -- sheet length is ("Senbazuru.Sequence.SheetLengths").
+    sheetLengths p = maybe p (`inSheetLengths` p) startBox
+    startBox = boxFromPoints [V2 (materialU s) (materialV s) | s <- surfaceSamples (runStart run)]
     letterWord = \case
       Mountain -> "mountain"
       Valley -> "valley"
