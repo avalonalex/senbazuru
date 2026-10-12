@@ -177,6 +177,10 @@ parser, checker or runner ([D23](#d23-the-sequence-modules-and-where-run-lives))
 Nothing under `PRDs/` edits these files. [01 §4](01-architecture.md#4-recorded-text-this-design-changes)
 writes out every replacement; [10 §3](10-roadmap-risks-questions.md#3-recorded-text-changes-by-milestone)
 schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#changes-since-draft-v2), [C66](#changes-since-draft-v2), [C74](#changes-since-draft-v2)).
+A row is marked once its text reaches `main`. Its Lands cell then says what
+landed, with which issue, and the Pacific day the PR merged. A PR that marks its
+own row writes that day before it merges, so the date is checked after the
+merge: #531 marked row 11 one evening and merged the next morning.
 
 | # | Where | Change (summary) | Lands |
 | --- | --- | --- | --- |
@@ -190,8 +194,8 @@ schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#cha
 | 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0 |
 | 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
 | 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR |
-| 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2: landed with #505, 2026-10-10, the one place for sheet lengths being `Sequence.SheetLengths` (C88) |
-| 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3 |
+| 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2: landed with #505, 2026-10-11, the one place for sheet lengths being `Sequence.SheetLengths` (C88); the place for physical lengths is named when the `material` block brings it, at M6 |
+| 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3: the M2 half landed with #501, 2026-10-07; `stepPageWith` joins the list at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation: landed with 05 L3 (#95), 2026-10-09 |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs: the blintz's landed with #503, 2026-10-10 (the architecture paragraph rewritten, the recipe and its header gone; C87); the helmet's with #534, 2026-10-11, the same way (C92) |
 | 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
