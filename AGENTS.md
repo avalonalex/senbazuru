@@ -152,6 +152,14 @@ contain one does not clearly grant rights to the design. Prefer procedurally
 generated patterns (Miura-ori, pleats, box-pleat tessellations) and traditional
 bases, which have no single author.
 
+**Running an external program and reading its output is not vendoring.** It
+needs a row in `docs/related-projects.md` giving the licence of the program *as
+built*, since a permissive source can link GPL code by default. Any output kept
+needs provenance in `examples/README.md`. No CI job or test may depend on the
+program, the build, format and lint tools excepted. External solvers are
+comparison oracles, used to check our answers and never ahead of the in-repo
+path, and the design-licence rule applies to any pattern fed to one.
+
 ## Conventions
 
 Each of these has its argument written out somewhere else; the pointer says

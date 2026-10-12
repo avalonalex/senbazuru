@@ -22,7 +22,7 @@ Origami words link to [the glossary](../docs/glossary.md).
 ## Summary
 
 - A sequence source is a UTF-8 file whose first line is `foldseq 1`. The extension
-  `.foldseq` is a placeholder.
+  is `.foldseq` (owner decision 1).
 - Its *steps* are blocks in braces. A step is one figure on the page, holding one
   or more *moves* ([glossary-additions](glossary-additions.md#words-the-prds-narrow)).
   Every move sits inside a step.
@@ -1058,8 +1058,8 @@ What other files carry from this one, as the decision record settles it:
 From the owner decisions in [decisions §9](decisions.md#9-owner-decisions), which
 [10 §6](10-roadmap-risks-questions.md#6-owner-decisions) tracks:
 
-1. **The extension and the words "sequence source"** (decision 1). Every example here
-   uses `.foldseq`.
+1. **The extension and the words "sequence source"** (decision 1, decided 2026-10-12:
+   `.foldseq` and "sequence source"). Every example here uses `.foldseq`.
 2. **The near-miss band** (decision 2). It is the number quoted when a typed coordinate
    is refused for lying close to a vertex without being on it.
 3. **`rotate k/8 turn` or `sheet square as diamond`** (decision 10). The second adds

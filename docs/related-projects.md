@@ -10,8 +10,10 @@ expression does not: a published algorithm can be reimplemented from
 understanding, and a GPL implementation can be read to understand the domain
 and never copied, fixtures included. MIT projects can be vendored with
 attribution, but a repository licence is not a design licence, so another
-designer's crease pattern in an MIT repo is still theirs. When a licence below
-says *not checked*, check it before reading the code.
+designer's crease pattern in an MIT repo is still theirs. Running a program and
+reading its output is not vendoring, so a GPL tool may be run, and a program run
+for this repository has a row below giving its licence as built. When a licence
+below says *not checked*, check it before reading the code.
 
 ## Tools that read or write FOLD
 
@@ -72,6 +74,17 @@ regions, is the OrigamiSimulator (MATLAB) row in the table above.
 | Project | What it is | Licence | Why it matters here |
 | --- | --- | --- | --- |
 | [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) — Wenzel Jakob and others | A research path tracer, scriptable from Python, with two-sided materials | Three-clause BSD text plus a clause granting the author a licence to any improvements you share; GitHub cannot classify it | The permissive alternative to Blender for offline stills of paper ([H7](../PRDs/research/H7-tooling.md) finding 15). It reads OBJ and PLY, not glTF. |
+
+## Checkers run by hand
+
+Programs run outside the tree to check senbazuru's own output. As
+[AGENTS.md](../AGENTS.md#third-party-material) requires of any external program,
+no CI job or test depends on one. Blender, listed with the simulators above, has
+been run this way too, to import a `.glb` without its window and render it.
+
+| Project | What it is | Licence | Why it matters here |
+| --- | --- | --- | --- |
+| [glTF Validator](https://github.com/KhronosGroup/glTF-Validator) — Khronos Group | The reference validator for glTF 2.0 and `.glb` files, published to npm as `gltf-validator` | Apache-2.0, as is the npm package that was run | Run by hand on `.glb` output since the export was built ([#51](https://github.com/avalonalex/senbazuru/pull/51)), through its JavaScript API, since the npm package has no command-line program. |
 
 ## Two halves that never met
 

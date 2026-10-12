@@ -665,8 +665,8 @@ From the owner decisions in [decisions.md §9](decisions.md#9-owner-decisions), 
 with a recommended default there;
 [10](10-roadmap-risks-questions.md#6-owner-decisions) tracks them:
 
-1. **File extension and "sequence source"** (decision 1; default `.foldseq`, first
-   line `foldseq 1`). These fix the file names in A-2 and the module header.
+1. **File extension and "sequence source"** (decision 1, decided 2026-10-12:
+   `.foldseq`, first line `foldseq 1`). These fix the file names in A-2 and the module header.
 2. **Blintz direction** (decision 8, decided 2026-10-06: the recipe's `fold behind`). Both
    blintzes fold `mountain`, as the recipe does. The study's angle manifest
    (`study/fold-material/cases.json`) folds the corners up instead (+90°, then
