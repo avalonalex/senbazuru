@@ -336,6 +336,17 @@ spec = do
       map (map rounded) (verticesCoords folded)
         `shouldBe` [[0, 0, 0], [1, 0, 0], [0, 0, 0], [0, 1, 0]]
 
+    -- A fold of 180° is a half turn, whose cosine is -1 and sine 0 exactly
+    -- (Geometry.Rigid.cosSinDegrees). With the sine taken from sin pi,
+    -- 1.2e-16, the paper lay about 1e-16 off its plane. Every vertex of the
+    -- quarter fold now lies exactly in it, and the half sheet's far edge lands
+    -- exactly on its near one. Turns red if a flat fold took its sine from sin.
+    it "lays paper folded flat exactly in its plane" $ do
+      quarter <- loadFixture "test/fixtures/quarter-fold.fold" >>= foldOrFail
+      [z | V3 _ _ z <- vertices quarter] `shouldSatisfy` all (== 0)
+      half <- foldOrFail (halfSheet Valley 180)
+      verticesCoords half `shouldBe` [[0, 0, 0], [0.5, 0, 0], [0, 0, 0], [0, 1, 0], [0.5, 1, 0], [0, 1, 0]]
+
     it "keeps the fold angles, which are the state" $ do
       -- Positions are derived from angles and not the other way round, so a
       -- folded frame that dropped them could not be folded further or unfolded.

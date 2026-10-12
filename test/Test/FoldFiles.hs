@@ -4,11 +4,15 @@
 --
 -- Some fixtures in @examples\/@ are files senbazuru writes itself, such as
 -- @bird-base-sequence.fold@ and @blintz-sequence.fold@, and a test holds the
--- code to them. A byte comparison is too strict for them: coordinates come out
--- of trigonometry, which macOS and Linux compute differently in the last few
--- bits. So everything is compared exactly but the coordinates, and those to
--- within a tolerance; frame counts, topology, angles, orders, captions and
--- vendor keys stay exact.
+-- code to them. A byte comparison is too strict for a file whose coordinates
+-- come out of trigonometry, which macOS and Linux compute differently in the
+-- last few bits: the bird's, whose poses turn by angles such as -165°. So
+-- everything is compared exactly but the coordinates, and those to within a
+-- tolerance; frame counts, topology, angles, orders, captions and vendor keys
+-- stay exact. A file whose every turn is by a multiple of 45°, such as the
+-- blintz's, has coordinates that take no number from the platform's
+-- trigonometry ("Senbazuru.Geometry.Rigid"), and is held with a tolerance of
+-- 0.
 --
 -- On a mismatch it writes @x.actual.fold@ beside the fixture, as
 -- "Test.Golden" does, so that accepting an intended change is reading a diff

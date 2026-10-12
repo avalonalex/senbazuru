@@ -15,7 +15,7 @@
 -- face. Hold one face still, walk a spanning tree of the face-adjacency graph,
 -- and at each step across a crease compose one more turn:
 --
--- > M[child] = M[parent] `after` rotationAbout p axis angle
+-- > M[child] = M[parent] `after` rotationAboutDegrees p axis angle
 --
 -- Then every vertex is a lookup: apply the transform of any face it belongs to.
 -- The long version, with references, is in
@@ -116,7 +116,7 @@ import Senbazuru.Fold.Types
     VertexId (..),
     otherSide,
   )
-import Senbazuru.Geometry.Rigid (Rigid, after, applyRigid, identity, matApply, rigidLinear, rotationAbout)
+import Senbazuru.Geometry.Rigid (Rigid, after, applyRigid, identity, matApply, rigidLinear, rotationAboutDegrees)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 
@@ -201,7 +201,7 @@ instance Explain FoldingError where
       "crease "
         <> tshow e
         <> " has paper on one side only and records a fold angle of "
-        <> num d
+        <> tshow d
         <> " degrees, so there is no second face for it to move"
     AngleNotAchieved (EdgeId e) d ->
       "crease "
@@ -503,10 +503,13 @@ reorient rewound o
 --
 -- Degrees rather than radians, because degrees are what the file holds and what
 -- a folded frame has to write back: 'foldFrameWith' records the angles it
--- folded by, so the shape it produces carries its own state. Radians are one
--- multiplication away and only 'creaseIndex' wants them. Going the other way,
--- from radians back to degrees, would be a second rounding on a number that is
--- about to be written to a file, and files are compared byte for byte here.
+-- folded by, so the shape it produces carries its own state. They stay degrees
+-- all the way to the turn, 'rotationAboutDegrees', which needs no
+-- trigonometry at a multiple of 45°; only there, and only for other angles,
+-- do radians appear.
+-- Going the other way, from radians back to degrees, would be a second
+-- rounding on a number that is about to be written to a file, and files are
+-- compared byte for byte here.
 --
 -- When @edges_foldAngle@ is absent the angle comes from the assignment: a
 -- mountain folds to @-180°@ and a valley to @+180°@. That is what an assignment
@@ -546,13 +549,12 @@ foldAnglesOf fr = case (edgesFoldAngle fr, edgesAssignment fr) of
       _ -> 0
 
 -- | Every crease by the pair of vertices it joins, with its fold angle in
--- radians.
+-- degrees, as the file gives it.
 --
 -- The angles come in from 'foldAnglesOf' rather than being read here, so that
 -- one read of the frame serves both this and the folded form that records
--- them. The conversion to radians is exact where it has to be: @180 * pi / 180@
--- is @pi@ and @-180 * pi / 180@ is @-pi@, both measured, so keeping the angles
--- in degrees did not move a flat fold by a bit and no golden file changed.
+-- them. They stay in degrees so that a turn by a multiple of 45° takes no
+-- number from the platform's trigonometry ('rotationAboutDegrees').
 --
 -- At @±180°@ the two are the same rigid motion: turning half a turn either way
 -- about a line lands in the same place. So folding cannot tell a flat mountain
@@ -563,10 +565,8 @@ creaseIndex angles fr =
   foldr
     add
     (Right M.empty)
-    (zip3 (map EdgeId [0 ..]) (edgesVertices fr) (map toRadians angles))
+    (zip3 (map EdgeId [0 ..]) (edgesVertices fr) angles)
   where
-    toRadians d = d * pi / 180
-
     add (eid, (a, b), angle) acc = do
       m <- acc
       let key = edgeKey a b
@@ -651,7 +651,8 @@ spanningWalk faces creases neighbours = do
               other /= faceId f
           ]
 
--- | The turn that takes the face across one of @f@'s ring edges into place.
+-- | The turn that takes the face across one of @f@'s ring edges into place,
+-- by the crease's angle in degrees.
 --
 -- The crease runs @a -> b@ in this face's counterclockwise ring, so the
 -- neighbour is on its right, and a valley has to lift it towards @+z@. That is
@@ -663,7 +664,7 @@ spanningWalk faces creases neighbours = do
 -- stacking a face on top of its parent.
 turnAcross :: Face -> VertexId -> VertexId -> Double -> Either FoldingError Rigid
 turnAcross f a b angle = case (cornerAt f a, cornerAt f b) of
-  (Just pa, Just pb) -> Right (rotationAbout pa (pb ^-^ pa) (negate angle))
+  (Just pa, Just pb) -> Right (rotationAboutDegrees pa (pb ^-^ pa) (negate angle))
   _ -> Left (FaceEdgeMissing (faceId f) a b)
 
 cornerAt :: Face -> VertexId -> Maybe V3
@@ -723,7 +724,7 @@ loopsClose tolerance byId faces creases neighbours transforms =
         -- so an angle there is a fold that cannot happen -- and it would
         -- otherwise be ignored in exactly the silence this function exists to
         -- break. Zero is the only angle such a crease can honestly carry.
-        [] | angle /= 0 -> Left (AngleWithoutPaper eid (degrees angle))
+        [] | angle /= 0 -> Left (AngleWithoutPaper eid angle)
         [] -> Right ()
         os -> traverse_ (against f a b eid angle) (onceOnly f os)
 
@@ -829,10 +830,6 @@ placeVertices tolerance n flat faces transforms =
     -- against the first placement instead can understate the disagreement by
     -- half. There are only ever as many placements as faces at the vertex.
     diameter ps = maximum (0 : [norm (a ^-^ b) | a <- ps, b <- ps])
-
--- | Radians as the degrees a file would have written.
-degrees :: Double -> Double
-degrees r = r * 180 / pi
 
 -- | How far apart two answers about this sheet may be and still be one answer.
 --

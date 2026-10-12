@@ -18,6 +18,7 @@ read the Haddock module headers; for the domain, start with
 | [big-little-big.md](big-little-big.md) | A sector smaller than both its neighbours forces one mountain and one valley |
 | [flat-foldability-is-hard.md](flat-foldability-is-hard.md) | One vertex is linear time; the whole sheet is NP-hard |
 | [robust-predicates.md](robust-predicates.md) | Why `Double` gets the left-of-line test *wrong*, not just imprecise |
+| [exact-turns.md](exact-turns.md) | A turn by a multiple of 45° needs no trigonometry, and `sin pi` is not 0 |
 | [convex-hull.md](convex-hull.md) | Andrew's monotone chain, in four steps |
 | [half-edge.md](half-edge.md) | The structure FOLD's array format is already shaped for |
 | [folding-by-transforms.md](folding-by-transforms.md) | How angles become positions: one rigid matrix per face, over a spanning tree |
