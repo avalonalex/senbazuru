@@ -16,7 +16,7 @@ import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
-import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, matApply)
+import Senbazuru.Geometry.Rigid (Mat3 (..), applyRigid, identity, matApply, rigidLinear)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
@@ -387,6 +387,18 @@ turningOver = describe "a turn-over" $ do
       other -> expectationFailure ("expected two states, got " <> show (length other))
     -- A turn-over moves no paper: it sweeps nothing and folds nothing.
     map recordCost (runRecords run) `shouldBe` [StepCost 0 0]
+
+  -- A turn-over is a half turn, whose cosine and sine are -1 and 0 exactly
+  -- (decisions C95), so the square's corners land exactly, every zero
+  -- positive. Compared through show, which tells -0 from 0. Turns red if a
+  -- turn-over took its sine from sin pi, 1.2e-16, or made a negative zero.
+  it "turns over exactly, both ways" $
+    forM_ [(LeftRight, [V3 1 0 0, V3 0 0 0, V3 0 1 0, V3 1 1 0]), (TopBottom, [V3 0 1 0, V3 1 1 0, V3 1 0 0, V3 0 0 0])] $ \(axis, landed) -> do
+      run <- right (onSquare ColouredUp (step_ "Turn the paper over." (turnOver axis)))
+      states <- right (writtenStates run)
+      case map stateFrame states of
+        [_, turned] -> show (corners turned) `shouldBe` show landed
+        other -> expectationFailure ("expected two states, got " <> show (length other))
 
   -- After a turn-over the reader sees the white side, so in front is -z on
   -- the paper: a valley the reader folds is a mountain from the coloured

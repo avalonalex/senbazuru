@@ -13,7 +13,7 @@ import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry.Rigid
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
 -- hspec exports an `after` of its own, for running an action after each spec
 -- item. Hidden rather than qualifying every use, since none is wanted here.
@@ -36,6 +36,13 @@ genRotation = do
 
 near :: Double -> Double -> Bool
 near a b = abs (a - b) < 1e-9
+
+-- | How far a matrix is from a proper rotation: the most by which a row's
+-- squared length misses 1, two rows' dot product misses 0, or the
+-- determinant misses 1. 'isProperRotation' allows 1e-12 for each.
+deviation :: Mat3 -> Double
+deviation (Mat3 r0 r1 r2) =
+  maximum [abs (dot r0 r0 - 1), abs (dot r1 r1 - 1), abs (dot r2 r2 - 1), abs (dot r0 r1), abs (dot r0 r2), abs (dot r1 r2), abs (dot r0 (cross r1 r2) - 1)]
 
 nearV3 :: V3 -> V3 -> Bool
 nearV3 a b = norm (a ^-^ b) < 1e-9
@@ -214,6 +221,48 @@ spec = do
     it "refuses a stretch whose determinant is 1, and a mirror" $ do
       isProperRotation (Mat3 (V3 2 0 0) (V3 0 0.5 0) (V3 0 0 1)) `shouldBe` False
       isProperRotation (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 1)) `shouldBe` False
+
+  describe "rigidFrom" $ do
+    -- A turn's own matrix and offset come back as that turn. Turns red if
+    -- rigidFrom refused a proper rotation, or changed what it was handed.
+    it "gives back any turn from its matrix and offset" $
+      forAll genRotation $
+        \r -> rigidFrom (rigidLinear r) (rigidOffset r) === Just r
+
+    -- The stretch passes the determinant, the mirror passes the rows, and the
+    -- shear, determinant 1 with rows that lean, passes neither. Turns red if
+    -- rigidFrom took any matrix, or checked only the rows or only the
+    -- determinant.
+    it "refuses a stretch, a mirror and a shear"
+      $ forM_
+        [ Mat3 (V3 2 0 0) (V3 0 0.5 0) (V3 0 0 1),
+          Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 1),
+          Mat3 (V3 1 0.5 0) (V3 0 1 0) (V3 0 0 1)
+        ]
+      $ \m -> rigidFrom m (V3 1 2 3) `shouldBe` Nothing
+
+  describe "translation" $
+    -- Turns red if a translation turned anything, or moved a point by
+    -- anything but its offset.
+    it "moves every point by its offset and turns nothing" $
+      forAll ((,) <$> genPoint <*> genPoint) $
+        \(v, p) -> rigidLinear (translation v) == matIdentity && applyRigid (translation v) p == p ^+^ v
+
+  describe "composing turns" $
+    -- The runner shows a model by eighth turns about the vertical and
+    -- turn-overs about the two horizontal axes, each composed after the last,
+    -- and nothing checks the result (decisions C95). However many are
+    -- composed, it stays within 1e-15 of a proper rotation, 4.4e-16 as
+    -- measured, where isProperRotation allows 1e-12. Turns red if composing
+    -- drifted, as an `after` that scaled each product by 1 + 1e-14 would.
+    it "keeps the runner's turns proper over a hundred thousand of them" $ do
+      let middle = V3 0.37 0.61 0.003
+          eighth = rotationAboutDegrees middle (V3 0 0 1) 45
+          leftRight = rotationAboutDegrees middle (V3 0 1 0) 180
+          topBottom = rotationAboutDegrees middle (V3 1 0 0) 180
+          turns = take 100000 (cycle [eighth, leftRight, eighth, eighth, topBottom, eighth, leftRight, eighth, eighth, eighth, topBottom])
+          shown = scanl (flip after) identity turns
+      maximum [deviation (rigidLinear s) | s <- shown] `shouldSatisfy` (< 1e-15)
 
   describe "fitRigid" $ do
     -- quarter-fold-steps.fold's key frame: the unit square's corners, edge

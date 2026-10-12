@@ -15,7 +15,7 @@ import Senbazuru.Fold.Query (Crease (..), frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), FoldFile (..), Frame (..), Stacking (..), VertexId (..), emptyFrame)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
-import Senbazuru.Geometry.Rigid (Rigid (..), identity, matIdentity, rotationAbout)
+import Senbazuru.Geometry.Rigid (identity, rotationAbout, translation)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..), foldFrameWith)
@@ -90,7 +90,7 @@ spec = do
       source <- fixture "quarter-fold"
       folded <- requireRight (foldFrameWith source)
       sheet <- requireRight (surfaceFromFolded folded)
-      moved <- requireRight (transformSurface (Rigid matIdentity (V3 2 3 4)) sheet)
+      moved <- requireRight (transformSurface (translation (V3 2 3 4)) sheet)
       restored <- requireRight (surfaceFromFrame (materialFrame moved) >>= requireMaterialCoordinates)
       surfaceSamples restored `shouldBe` surfaceSamples moved
       facesVertices (surfaceFrame restored) `shouldBe` facesVertices (surfaceFrame moved)
@@ -232,7 +232,7 @@ spec = do
       withLayerRequirements (V3 0 0 0) [] sheet `shouldBe` Left (SurfaceBadDirection (V3 0 0 0))
       withLayerRequirements (V3 0 0 1) [(FaceId 0, FaceId 0)] sheet `shouldBe` Left (SurfaceBadLayerPair (FaceId 0) (FaceId 0))
       withLayerRequirements (V3 0 0 1) [(FaceId 0, FaceId 2)] sheet `shouldBe` Left (SurfaceBadLayerPair (FaceId 0) (FaceId 2))
-      transformSurface (Rigid matIdentity (V3 (0 / 0) 0 0)) sheet `shouldBe` Left (SurfaceNonFinite (VertexId 0))
+      transformSurface (translation (V3 (0 / 0) 0 0)) sheet `shouldBe` Left (SurfaceNonFinite (VertexId 0))
 
     it "updates a declared coordinate dimension when a sheet is tilted" $ do
       sheet <- requireRight (surfaceFromFrame twoPanels {frameAttributes = ["2D", "orientable"]})
@@ -243,7 +243,7 @@ spec = do
       let extras = KM.singleton "vendor:geometry" (String "belongs to the original positions")
       sheet <- requireRight (surfaceFromFrame twoPanels {frameExtras = extras})
       frameExtras (surfaceFrame sheet) `shouldBe` extras
-      moved <- requireRight (transformSurface (Rigid matIdentity (V3 1 2 3)) sheet)
+      moved <- requireRight (transformSurface (translation (V3 1 2 3)) sheet)
       frameExtras (surfaceFrame moved) `shouldBe` mempty
 
 fixture :: String -> IO Frame

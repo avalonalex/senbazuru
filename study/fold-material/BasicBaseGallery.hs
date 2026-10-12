@@ -20,7 +20,7 @@ import Senbazuru.Explain (Explain, explain)
 import Senbazuru.Fold.Query (Face (..), frameFaces)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..))
-import Senbazuru.Geometry.Rigid (Rigid (..), after, identity, matIdentity, rotationAbout)
+import Senbazuru.Geometry.Rigid (after, identity, rotationAbout, translation)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact
@@ -124,7 +124,7 @@ writeFrogGuide destination = do
         zero = V3 0 0 0
         upright = rotationAbout zero (V3 0 0 1) (pi / 2 - atan2 dy dx)
         turnover = if key `elem` ["square", "one-squash"] then identity else rotationAbout zero (V3 0 1 0) pi
-        placement = turnover `after` upright `after` Rigid matIdentity (zero ^-^ origin)
+        placement = turnover `after` upright `after` translation (zero ^-^ origin)
     presented <- checked (Paper.transformSurface placement paper)
     let frame = Paper.surfaceFrame presented
     drawing <- checked (surfaceDiagram defaultTheme defaultBudget (View (Just topDown) 0) presented)

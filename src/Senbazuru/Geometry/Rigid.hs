@@ -21,12 +21,26 @@
 -- offset separately makes 'after' four lines of visible arithmetic instead, and
 -- removes the one row that could turn a motion into a projection.
 --
--- It does not make a non-rigid value unwriteable — 'Rigid' will hold any 3×3
--- matrix, including one that scales — and the constructor does not check.
--- What keeps the type honest is that 'rotationAbout', 'rotationAboutDegrees'
--- and 'fitRigid' are how almost everything constructs one, and
--- 'isProperRotation' is the check for a matrix built any other way, as
--- "Senbazuru.Sequence.Run" builds its presentations from written-out turns.
+-- == A rotation by construction
+--
+-- Nothing outside this module can make a 'Rigid' that is not a turn and an
+-- offset, because the constructor is not exported. 'identity', 'translation',
+-- 'rotationAbout', 'rotationAboutDegrees' and 'fitRigid' make turns by their
+-- own arithmetic, and 'after' and 'inverse' keep them turns. 'rigidFrom', the
+-- one way in for a matrix built anywhere else, checks it with
+-- 'isProperRotation' and refuses a mirror or a stretch. So code holding a
+-- 'Rigid' never has to ask whether it is one, and 'inverse' can transpose
+-- rather than invert: /parse, don't validate/.
+--
+-- __The line that looks like an oversight__ is that 'rigidLinear' and
+-- 'rigidOffset' are plain functions, not record fields. A record field that
+-- is exported can be updated, @r { rigidLinear = m }@, which would make a
+-- 'Rigid' out of any matrix without passing the check.
+--
+-- A turn here is a turn to within rounding, since its entries are rounded,
+-- and composing keeps it there: the runner's turns, eighth turns and
+-- turn-overs, composed a hundred thousand times stay 4.4e-16 from a proper
+-- rotation, where 'isProperRotation' allows 1e-12.
 --
 -- == Turns at multiples of 45°
 --
@@ -48,7 +62,8 @@
 -- A /proper/ rotation turns without mirroring: its determinant is +1. A
 -- mirror is orthogonal too, and folds perfectly well — into the mirror model,
 -- the one whose mountains and valleys are swapped. Paper cannot make it, so a
--- motion fitted to a model's vertices is accepted only if it is proper.
+-- motion fitted to a model's vertices is accepted only if it is proper, and
+-- 'rigidFrom' refuses any matrix that is not.
 module Senbazuru.Geometry.Rigid
   ( -- * Matrices
     Mat3 (..),
@@ -57,8 +72,11 @@ module Senbazuru.Geometry.Rigid
     matIdentity,
 
     -- * Rigid motions
-    Rigid (..),
+    Rigid,
+    rigidLinear,
+    rigidOffset,
     identity,
+    translation,
     after,
     applyRigid,
     rotationAbout,
@@ -68,6 +86,7 @@ module Senbazuru.Geometry.Rigid
 
     -- * Checking and fitting
     isProperRotation,
+    rigidFrom,
     fitRigid,
   )
 where
@@ -106,16 +125,26 @@ transpose :: Mat3 -> Mat3
 transpose (Mat3 (V3 a b c) (V3 d e f) (V3 g h i)) =
   Mat3 (V3 a d g) (V3 b e h) (V3 c f i)
 
--- | A rotation (or any linear part) followed by a translation: @x ↦ M x + t@.
-data Rigid = Rigid
-  { rigidLinear :: !Mat3,
-    rigidOffset :: !V3
-  }
+-- | A turn followed by a translation: @x ↦ M x + t@. The constructor stays in
+-- this module, so that every 'Rigid' is a turn (see the module header).
+data Rigid = Rigid !Mat3 !V3
   deriving stock (Eq, Show)
+
+-- | The turn, @M@.
+rigidLinear :: Rigid -> Mat3
+rigidLinear (Rigid m _) = m
+
+-- | The offset, @t@: where the motion takes the origin.
+rigidOffset :: Rigid -> V3
+rigidOffset (Rigid _ t) = t
 
 -- | The motion that does nothing.
 identity :: Rigid
 identity = Rigid matIdentity (V3 0 0 0)
+
+-- | Move every point by the same offset, turning nothing.
+translation :: V3 -> Rigid
+translation = Rigid matIdentity
 
 -- | Move a point.
 applyRigid :: Rigid -> V3 -> V3
@@ -233,13 +262,10 @@ turnFrom diagonal c s p axis = case normalize axis of
 -- own transpose. No determinant, no division, and nothing that can be
 -- ill-conditioned.
 --
--- That holds because every 'Rigid' the program makes is a rotation and an
--- offset, made the ways the module header names or composed from ones that
--- were — the same argument the module header makes for the type being honest
--- at all. A 'Rigid' assembled by hand out of a
--- scaling matrix would come back from here with a plausible value that is not
--- an inverse, and nothing checks. If that ever becomes possible, this is the
--- function that breaks first.
+-- That holds because every 'Rigid' is a turn by construction (see the module
+-- header). A scaling matrix would come back from here as a plausible value
+-- that is not an inverse, with nothing to say so, which is why no 'Rigid' can
+-- hold one.
 --
 -- The offset is written as a subtraction from zero rather than as a
 -- multiplication by minus one, which would turn a zero component into a
@@ -269,6 +295,19 @@ isProperRotation (Mat3 r0 r1 r2) =
   where
     near (a, b) = abs (a - b) <= 1e-12
 
+-- | A rigid motion from a matrix built elsewhere and an offset: 'Just' if the
+-- matrix is a proper rotation ('isProperRotation'), and 'Nothing' if it
+-- mirrors, stretches or skews. The one way into 'Rigid' for a matrix this
+-- module did not make.
+--
+-- 'Maybe' rather than an error type, as for 'fitRigid': the geometry layer has
+-- no error type (@docs\/architecture.md@, "Layering rules"), and the caller
+-- knows better than this module why its matrix should have been a turn.
+rigidFrom :: Mat3 -> V3 -> Maybe Rigid
+rigidFrom m t
+  | isProperRotation m = Just (Rigid m t)
+  | otherwise = Nothing
+
 -- | The one rigid motion carrying each first point onto its second, if there
 -- is one: every pair within the sources' 'modelHair', the tolerance
 -- "Senbazuru.Origami.Step" judges a moved vertex by, and the turn a proper
@@ -287,7 +326,7 @@ isProperRotation (Mat3 r0 r1 r2) =
 -- @(x, y, z) ↦ (−x, y, −z)@ put every vertex in the same place, and both fit
 -- every pair. The cross product picks the half turn, which is right: paper
 -- cannot make the mirror. Built that way on both sides, the turn always has
--- determinant +1, so 'isProperRotation' here only catches a construction bug.
+-- determinant +1, so 'rigidFrom''s check here only catches a construction bug.
 fitRigid :: [(V3, V3)] -> Maybe Rigid
 fitRigid pairs = case pairs of
   [] -> Nothing
@@ -304,8 +343,8 @@ fitRigid pairs = case pairs of
           then Nothing
           else do
             let turn = matMul (columns (frame a' b' c')) (rows (frame a b c))
-                motion = Rigid turn (a' ^-^ matApply turn a)
-            if isProperRotation turn && all (\(p, q) -> norm (applyRigid motion p ^-^ q) <= tol) pairs
+            motion <- rigidFrom turn (a' ^-^ matApply turn a)
+            if all (\(p, q) -> norm (applyRigid motion p ^-^ q) <= tol) pairs
               then Just motion
               else Nothing
   where

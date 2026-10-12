@@ -108,7 +108,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Geometry` | `V2`, `Box`, `Transform`. No FOLD, no SVG. |
 | `Senbazuru.Geometry.VectorSpace` | The arithmetic 2D and 3D points share. |
 | `Senbazuru.Geometry.V3` | Points in space, the cross product, and whether a set of points is flat. |
-| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform, and the inverses that undo them. `isProperRotation` checks that a matrix turns without stretching or mirroring; `fitRigid` finds the one such motion carrying a set of points onto another, if there is one. |
+| `Senbazuru.Geometry.Rigid` | 3×3 matrices and motions that turn and slide but never deform, and the inverses that undo them. `isProperRotation` checks that a matrix turns without stretching or mirroring; `fitRigid` finds the one such motion carrying a set of points onto another, if there is one. The constructor is hidden and `rigidFrom` admits a matrix made elsewhere only if it turns, so every `Rigid` is a turn and an offset. |
 | `Senbazuru.Geometry.Polygon` | Convex polygons in the plane: area, clipping, and whether two overlap. |
 | `Senbazuru.Fold.Types` | The FOLD document model and its JSON instances. |
 | `Senbazuru.Fold.Load` | The only I/O in the library, in both directions. Also picks a reader from a file's extension, and refuses a `.foldseq` as a sequence source. Reads a sequence source as text and nothing more, knowing nothing of the language. |
