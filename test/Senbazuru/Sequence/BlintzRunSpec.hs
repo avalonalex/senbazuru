@@ -5,8 +5,8 @@
 -- byte. The recipe is gone (#503), and what it checked is checked here on the
 -- run's own turns. @test/golden/checked-blintz.svg@, drawn from the run, is
 -- the guard the comparison was, and @examples\/blintz-sequence.fold@
--- ("Senbazuru.Sequence.WriteSpec") holds every state the run writes, exactly
--- but for coordinates within 1e-12.
+-- ("Senbazuru.Sequence.WriteSpec") holds every state the run writes,
+-- exactly, coordinates and all.
 --
 -- A turn starts from the paper the run held then. A record keeps that paper's
 -- surface, not the fold it came from, so the fold is made again: the sheet's

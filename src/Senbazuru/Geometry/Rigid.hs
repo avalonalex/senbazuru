@@ -24,20 +24,24 @@
 -- It does not make a non-rigid value unwriteable — 'Rigid' will hold any 3×3
 -- matrix, including one that scales — and the constructor does not check.
 -- What keeps the type honest is that 'rotationAbout', 'rotationAboutDegrees'
--- and 'fitRigid' are the ways anything constructs one, and 'isProperRotation'
--- is the check for a matrix built any other way.
+-- and 'fitRigid' are how almost everything constructs one, and
+-- 'isProperRotation' is the check for a matrix built any other way, as
+-- "Senbazuru.Sequence.Run" builds its presentations from written-out turns.
 --
--- == Exact turns at multiples of 45°
+-- == Turns at multiples of 45°
 --
 -- A turn's cosine and sine usually come from 'cos' and 'sin', whose last bits
--- are the platform's own: IEEE 754 does not require them to round correctly,
--- and macOS and Linux differ. Even rounded correctly they are not exact where
--- they should be: @sin pi@ is 1.2e-16, not 0, because 'pi' is not π, so a
--- flat fold of 180° left paper about 1e-16 off its plane. 'rotationAboutDegrees'
--- takes an angle in degrees, the units a FOLD file holds, and at an exact
--- multiple of 45° uses the exact values instead: 0 and ±1, and ±√½ from
--- 'sqrt', which IEEE 754 does require to round correctly. A turn by one of
--- those angles then involves no platform trigonometry at all.
+-- are the platform's own: IEEE 754 does not require them to be /correctly
+-- rounded/, the exact result rounded to the nearest 'Double', and macOS and
+-- Linux differ. Nor are they exact where they could be: @sin pi@ is 1.2e-16,
+-- not 0, because 'pi' is not π, so a flat fold of 180° left paper about
+-- 1e-16 off its plane. 'rotationAboutDegrees' takes an angle in degrees, the
+-- units a FOLD file holds, and at an exact multiple of 45° uses 0 and ±1, and
+-- ±√½ as @sqrt 0.5@, which IEEE 754 does require to be correctly rounded. A
+-- turn by one of those angles then takes no number from the platform's
+-- trigonometry, and the matrix of one about a coordinate axis holds 0, 1,
+-- cos θ and ±sin θ and nothing else.
+-- @docs\/notes\/exact-turns.md@ has the measurements.
 --
 -- == Proper, not merely orthogonal
 --
@@ -142,27 +146,46 @@ after (Rigid ma ta) (Rigid mb tb) =
 -- origin, turn, translate back — which is where the offset comes from:
 -- @x ↦ p + R (x − p)@ is the same map as @x ↦ R x + (p − R p)@.
 rotationAbout :: V3 -> V3 -> Double -> Rigid
-rotationAbout p axis theta = turnFrom (cos theta) (sin theta) p axis
+rotationAbout p axis theta = turnFrom (\x -> (1 - c) * x * x + c) c s p axis
+  where
+    c = cos theta
+    s = sin theta
 
--- | 'rotationAbout' by an angle in degrees, exact at every multiple of 45°
--- ('cosSinDegrees'). Folding turns by this, since degrees are what a crease
--- carries. Any other angle turns exactly as 'rotationAbout' does by the same
--- angle in radians, @d * pi / 180@, bit for bit.
+-- | 'rotationAbout' by an angle in degrees, the units a crease carries, which
+-- is why folding turns by this. At an exact multiple of 45° it turns by the
+-- values 'cosSinDegrees' gives, and writes each diagonal entry as
+-- @x² + (1 − x²) cos θ@ rather than @(1 − cos θ) x² + cos θ@. The two are one
+-- number, but @1 − cos θ@ rounds when @cos θ@ is @-sqrt 0.5@, at 135°. In
+-- the first form the matrix of a turn about a coordinate axis holds 0, 1,
+-- cos θ and ±sin θ and nothing else, so the turn leaves its own axis exactly
+-- where it was. A point's position still rounds wherever √½ multiplies it. Any other angle turns
+-- exactly as 'rotationAbout' does by @d * pi / 180@, bit for bit.
 rotationAboutDegrees :: V3 -> V3 -> Double -> Rigid
-rotationAboutDegrees p axis d = let (c, s) = cosSinDegrees d in turnFrom c s p axis
+rotationAboutDegrees p axis d = case eighthTurn d of
+  Just (c, s) -> turnFrom (\x -> x * x + (1 - x * x) * c) c s p axis
+  Nothing -> rotationAbout p axis (d * pi / 180)
 
--- | The cosine and sine of an angle in degrees. At an exact multiple of 45°
--- they are exact: 0 and ±1, and ±√½ as @sqrt 0.5@, the 'Double' nearest √½,
--- the same on every platform. Any other angle, and any angle that is not a
--- number, is 'cos' and 'sin' of @d * pi / 180@.
---
--- The test is exact, in degrees: 90 is a multiple of 45 and 90.0000001 is
--- not, so no angle near a multiple is moved onto it. In radians the test
--- would need a tolerance, since @pi / 2@ is not π/2 either.
+-- | The cosine and sine of an angle in degrees: at an exact multiple of 45°,
+-- 0 and ±1, and ±√½ as @sqrt 0.5@, correctly rounded and so the same on every
+-- platform; for any other angle, and one that is not a number, 'cos' and
+-- 'sin' of @d * pi / 180@.
 cosSinDegrees :: Double -> (Double, Double)
-cosSinDegrees d
-  | isNaN d || isInfinite d || fromInteger eighths /= d / 45 = (cos r, sin r)
-  | otherwise = case eighths `mod` 8 of
+cosSinDegrees d = fromMaybe (cos r, sin r) (eighthTurn d)
+  where
+    r = d * pi / 180
+
+-- | The cosine and sine of an angle in degrees that is exactly a multiple of
+-- 45°, and nothing for any other. The test compares the angle with 45 times
+-- a whole number as exact rationals, so no angle that is not a multiple is
+-- moved onto one: not 90.00000000000001, not a subnormal angle that @d / 45@
+-- would round to 0, and not a huge one that @d / 45@ would round to a whole
+-- number. A multiple so huge that @d / 45@ itself rounds is not found, and
+-- turns by 'cos' and 'sin' as any other angle does. In radians the test would
+-- need a tolerance, since @pi / 2@ is not π/2 either.
+eighthTurn :: Double -> Maybe (Double, Double)
+eighthTurn d
+  | isNaN d || isInfinite d || toRational d /= fromInteger (45 * eighths) = Nothing
+  | otherwise = Just $ case eighths `mod` 8 of
       0 -> (1, 0)
       1 -> (half, half)
       2 -> (0, 1)
@@ -172,16 +195,16 @@ cosSinDegrees d
       6 -> (0, -1)
       _ -> (half, negate half)
   where
-    r = d * pi / 180
     eighths = round (d / 45) :: Integer
     half = sqrt 0.5
 
 -- | Rodrigues' formula from a turn's cosine and sine, about the line through a
--- point along an axis.
-turnFrom :: Double -> Double -> V3 -> V3 -> Rigid
-turnFrom c s p axis = case normalize axis of
+-- point along an axis, with each diagonal entry given by @diagonal@ of that
+-- component of the unit axis.
+turnFrom :: (Double -> Double) -> Double -> Double -> V3 -> V3 -> Rigid
+turnFrom diagonal c s p axis = case normalize axis of
   Nothing -> identity
-  Just u -> Rigid (rot u) (p ^-^ matApply (rot u) p)
+  Just u -> let m = rot u in Rigid m (p ^-^ matApply m p)
   where
     t = 1 - c
 
@@ -189,9 +212,9 @@ turnFrom c s p axis = case normalize axis of
     -- performs `cross u` and (u ⊗ u) the outer product.
     rot (V3 x y z) =
       Mat3
-        (V3 (t * x * x + c) (t * x * y - s * z) (t * x * z + s * y))
-        (V3 (t * x * y + s * z) (t * y * y + c) (t * y * z - s * x))
-        (V3 (t * x * z - s * y) (t * y * z + s * x) (t * z * z + c))
+        (V3 (diagonal x) (t * x * y - s * z) (t * x * z + s * y))
+        (V3 (t * x * y + s * z) (diagonal y) (t * y * z - s * x))
+        (V3 (t * x * z - s * y) (t * y * z + s * x) (diagonal z))
 
 -- | The motion that undoes this one: @inverse r \`after\` r@ is 'identity' to
 -- within rounding.
@@ -210,9 +233,10 @@ turnFrom c s p axis = case normalize axis of
 -- own transpose. No determinant, no division, and nothing that can be
 -- ill-conditioned.
 --
--- That holds because every 'Rigid' in the program is built by 'rotationAbout'
--- or composed from ones that were — the same argument the module header makes
--- for the type being honest at all. A 'Rigid' assembled by hand out of a
+-- That holds because every 'Rigid' the program makes is a rotation and an
+-- offset, made the ways the module header names or composed from ones that
+-- were — the same argument the module header makes for the type being honest
+-- at all. A 'Rigid' assembled by hand out of a
 -- scaling matrix would come back from here with a plausible value that is not
 -- an inverse, and nothing checks. If that ever becomes possible, this is the
 -- function that breaks first.

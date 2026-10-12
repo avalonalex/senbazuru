@@ -300,9 +300,10 @@ of the step that leaves it. Its vendor keys are `senbazuru:material_coords`,
 the sheet's own coordinates for each vertex, and `senbazuru:assurance`, what
 checked the step that made the state.
 
-`WriteSpec` holds the code to this file: exactly, but for coordinates, which
-are compared to within 1e-12, since trigonometry differs in the last bits
-between platforms. After an intended change, the test writes
+`WriteSpec` holds the code to this file exactly, coordinates and all: every
+crease of the blintz turns by 0° or ±180°, and folding computes those turns
+from arithmetic and square roots alone, which round the same on every
+platform. After an intended change, the test writes
 `blintz-sequence.actual.fold` beside it; read the diff and move it into place.
 
 ```bash

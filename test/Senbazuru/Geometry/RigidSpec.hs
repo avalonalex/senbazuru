@@ -89,33 +89,52 @@ spec = do
            in norm (applyRigid (back `after` there) x ^-^ x) < 1e-9 * max 1 (norm x)
 
   describe "rotationAboutDegrees" $ do
-    -- At every multiple of 45° the cosine and sine are exact: 0 and ±1, and
-    -- ±√½ from sqrt, the same bits on every platform. Turns red if any were
-    -- taken from cos and sin, whose sin pi is 1.2e-16 and whose values at π/4
+    -- At every multiple of 45° the cosine and sine are 0 and ±1, and ±√½ as
+    -- sqrt 0.5, the same bits on every platform. Turns red if any were taken
+    -- from cos and sin, whose sin pi is 1.2e-16 and whose values at π/4
     -- differ in the last bit.
-    it "turns by exact cosines and sines at every multiple of 45°" $ do
+    it "turns by 0, ±1 and ±sqrt 0.5 at every multiple of 45°" $ do
       let h = sqrt 0.5
           oneTurn = [(1, 0), (h, h), (0, 1), (negate h, h), (-1, 0), (negate h, negate h), (0, -1), (h, negate h)]
       [cosSinDegrees (45 * fromIntegral k) | k <- [-8 .. 8 :: Int]] `shouldBe` take 17 (cycle oneTurn)
       rigidLinear (rotationAboutDegrees (V3 0 0 0) (V3 0 0 1) 90) `shouldBe` Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
 
-    -- Exact where it can be and nowhere else: any other angle is the same
-    -- turn rotationAbout makes from its radians, to the last bit. Turns red
-    -- if the exact values reached an angle they are not.
+    -- At every multiple of 45°, the matrix of a turn about a coordinate axis
+    -- holds 0, 1, cos θ and ±sin θ and nothing else, so the turn leaves its
+    -- axis exactly where it was. Turns red if the diagonal were written
+    -- (1 - cos θ) x² + cos θ, whose 1 - cos θ rounds at 135°, leaving
+    -- 0.9999999999999999 where 1 belongs.
+    it "builds a turn about a coordinate axis from 0, 1, cos θ and ±sin θ alone at every multiple of 45°" $
+      forM_ [45 * fromIntegral k | k <- [-8 .. 8 :: Int]] $ \d -> do
+        let (c, s) = cosSinDegrees d
+        rigidLinear (rotationAboutDegrees (V3 0.5 0.25 0) (V3 1 0 0) d) `shouldBe` Mat3 (V3 1 0 0) (V3 0 c (negate s)) (V3 0 s c)
+        rigidLinear (rotationAboutDegrees (V3 0.5 0.25 0) (V3 0 1 0) d) `shouldBe` Mat3 (V3 c 0 s) (V3 0 1 0) (V3 (negate s) 0 c)
+        rigidLinear (rotationAboutDegrees (V3 0.5 0.25 0) (V3 0 0 1) d) `shouldBe` Mat3 (V3 c (negate s) 0) (V3 s c 0) (V3 0 0 1)
+
+    -- The table at the multiples and nowhere else: any other angle is the
+    -- same turn rotationAbout makes from its radians, compared through show,
+    -- which tells a negative zero from a positive one. Turns red if the
+    -- table's values reached an angle that is not a multiple.
     it "turns any other angle exactly as rotationAbout does, bit for bit" $
       forAll ((,,) <$> genPoint <*> (genPoint `suchThat` \v -> norm v > 0.1) <*> (choose (-720, 720) `suchThat` \d -> d / 45 /= fromInteger (round (d / 45)))) $
-        \(p, axis, d) -> rotationAboutDegrees p axis d === rotationAbout p axis (d * pi / 180)
+        \(p, axis, d) -> show (rotationAboutDegrees p axis d) === show (rotationAbout p axis (d * pi / 180))
 
-    -- The test is exact, in degrees, so an angle a hair from a multiple of
-    -- 45° is not moved onto it. Turns red if the test took a tolerance.
-    it "moves no angle near a multiple of 45° onto it" $ do
-      let d = 90 + 1e-9
-      cosSinDegrees d `shouldBe` (cos (d * pi / 180), sin (d * pi / 180))
-      fst (cosSinDegrees d) `shouldNotBe` 0
+    -- The test is exact: the Double just above 90°, a huge angle that is not a
+    -- multiple of 45° though d / 45 rounds to a whole number, and a subnormal
+    -- one that d / 45 rounds to 0 all turn by cos and sin. Compared through
+    -- show, which tells a negative zero from a positive one. Turns red if the
+    -- test took any tolerance, or compared the rounded quotient.
+    it "moves no angle onto a multiple of 45°, however near" $ do
+      let (m, e) = decodeFloat (90 :: Double)
+          justAbove90 = encodeFloat (m + 1) e
+      forM_ [justAbove90, 12666373951979566, negate (encodeFloat 1 (-1074))] $ \d ->
+        show (cosSinDegrees d) `shouldBe` show (cos (d * pi / 180), sin (d * pi / 180))
+      fst (cosSinDegrees justAbove90) `shouldNotBe` 0
 
-    -- The exact values are the ones cos and sin round towards: within
-    -- rounding of them at every multiple. Turns red if one were the wrong
-    -- value, such as a sine with its sign turned.
+    -- The table above is checked against a table typed out beside it, so a
+    -- slip made in both would pass it. This checks it against cos and sin
+    -- instead: within rounding of them at every multiple. Turns red if one
+    -- were the wrong value, such as a sine with its sign turned.
     it "agrees with cos and sin to within rounding at the multiples of 45°" $
       forM_ [45 * fromIntegral k | k <- [-8 .. 8 :: Int]] $ \d -> do
         let (c, s) = cosSinDegrees d

@@ -185,7 +185,7 @@ import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVe
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
 import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, edges, insideRing, signedArea)
-import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, isProperRotation, matApply)
+import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, isProperRotation, matApply, rotationAboutDegrees)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -261,45 +261,35 @@ turnOverAbout = \case
 -- the side shown. A quarter turn anticlockwise, two eighths, maps (x, y) to
 -- (cx + cy - y, cy - cx + x).
 --
--- A whole number of quarter turns has entries 0, 1 and -1, which a 'Double'
--- holds exactly. An odd number of eighths needs cos 45° and sin 45°, both
--- √½, which no 'Double' holds. Both are taken from 'sqrt', which IEEE 754
--- requires to round correctly, so the bits are the same on every platform,
--- and never from 'cos' and 'sin', whose last bits are the platform's own
--- (owner decision 10). Those disagree with each other at π/4 already: with
--- GHC 9.6.7 on macOS, @cos (pi / 4)@ is 0.7071067811865476 and @sin (pi / 4)@
+-- It is 'rotationAboutDegrees' about that line, by 45° for each eighth, so
+-- its cosine and sine take nothing from the platform's trigonometry: for a
+-- whole number of quarter turns 0, 1 and -1, which a 'Double' holds exactly,
+-- and for an odd number of eighths ±√½ as @sqrt 0.5@, which IEEE 754
+-- requires to be correctly rounded (owner decision 10). 'cos' and 'sin' are
+-- not used even there, since they disagree with each other at π/4: with GHC
+-- 9.6.7 on macOS, @cos (pi / 4)@ is 0.7071067811865476 and @sin (pi / 4)@
 -- is 0.7071067811865475, so a turn built from them would not even be
--- symmetric. @sqrt 0.5@ is 0.7071067811865476, the 'Double' nearest √½.
+-- symmetric. An odd eighth's √½ is rounded, so its products are too, and a
+-- turn there and back lands within rounding of where it began, which need not
+-- be exactly.
 eighthTurnsAbout :: Int -> [V3] -> Rigid
-eighthTurnsAbout eighths = aboutMiddle $ case eighths `mod` 8 of
-  1 -> oddEighth half half
-  2 -> Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
-  3 -> oddEighth (-half) half
-  4 -> Mat3 (V3 (-1) 0 0) (V3 0 (-1) 0) (V3 0 0 1)
-  5 -> oddEighth (-half) (-half)
-  6 -> Mat3 (V3 0 1 0) (V3 (-1) 0 0) (V3 0 0 1)
-  7 -> oddEighth half (-half)
-  _ -> rigidLinear identity
-  where
-    half = sqrt 0.5
-    -- A turn by an odd number of eighths, from its cosine and sine. The
-    -- quarter turns are written out rather than made here from 0 and 1,
-    -- since @-s@ of a zero sine is a negative zero.
-    oddEighth c s = Mat3 (V3 c (-s) 0) (V3 s c 0) (V3 0 0 1)
+eighthTurnsAbout eighths points = rotationAboutDegrees (middleOf points) (V3 0 0 1) (45 * fromIntegral eighths)
 
--- | A turn that keeps the middle of the points where it is: (cx, cy) the
--- centre of their xy box and cz the middle of their z range. About the
--- middle, so the model stays where it is on the page; about the origin it
--- would be carried off it. Every turn made here but an odd number of eighths
--- has entries 0 and 1 and -1, which a 'Double' holds exactly, so applying
--- one multiplies nothing inexactly; only the additions round, as they do
--- anywhere. An odd eighth's √½ is rounded, so its products are too, and a
--- turn there and back lands within rounding of where it began, which need
--- not be exactly ('eighthTurnsAbout').
+-- | A turn that keeps the middle of the points where it is ('middleOf').
+-- About the middle, so the model stays where it is on the page; about the
+-- origin it would be carried off it. Every turn made here has entries 0 and
+-- 1 and -1, which a 'Double' holds exactly, so applying one multiplies
+-- nothing inexactly; only the additions round, as they do anywhere.
 aboutMiddle :: Mat3 -> [V3] -> Rigid
 aboutMiddle turn points = Rigid turn (middle ^-^ matApply turn middle)
   where
-    middle = V3 (mid v3x) (mid v3y) (mid v3z)
+    middle = middleOf points
+
+-- | The middle of the points: (cx, cy) the centre of their xy box and cz the
+-- middle of their z range.
+middleOf :: [V3] -> V3
+middleOf points = V3 (mid v3x) (mid v3y) (mid v3z)
+  where
     mid along = case map along points of
       [] -> 0
       values -> (minimum values + maximum values) / 2

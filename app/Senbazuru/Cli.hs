@@ -447,8 +447,10 @@ columnCount n
 -- | Degrees in, radians out.
 --
 -- Every angle this module reads is in degrees, because that is the unit the
--- origami world states angles in and the unit the help text prints; everything
--- inside the library is in radians. One conversion rather than one per flag.
+-- origami world states angles in and the unit the help text prints; the
+-- library's camera and turns take radians, but for
+-- "Senbazuru.Geometry.Rigid"'s 'rotationAboutDegrees', which takes the degrees
+-- a FOLD file holds. One conversion rather than one per flag.
 toRadians :: Double -> Double
 toRadians d = d * pi / 180
 

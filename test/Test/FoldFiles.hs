@@ -10,8 +10,9 @@
 -- everything is compared exactly but the coordinates, and those to within a
 -- tolerance; frame counts, topology, angles, orders, captions and vendor keys
 -- stay exact. A file whose every turn is by a multiple of 45°, such as the
--- blintz's, involves no trigonometry ("Senbazuru.Geometry.Rigid") and is held
--- with a tolerance of 0.
+-- blintz's, has coordinates that take no number from the platform's
+-- trigonometry ("Senbazuru.Geometry.Rigid"), and is held with a tolerance of
+-- 0.
 --
 -- On a mismatch it writes @x.actual.fold@ beside the fixture, as
 -- "Test.Golden" does, so that accepting an intended change is reading a diff

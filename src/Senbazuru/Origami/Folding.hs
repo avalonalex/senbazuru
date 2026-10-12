@@ -201,7 +201,7 @@ instance Explain FoldingError where
       "crease "
         <> tshow e
         <> " has paper on one side only and records a fold angle of "
-        <> num d
+        <> tshow d
         <> " degrees, so there is no second face for it to move"
     AngleNotAchieved (EdgeId e) d ->
       "crease "
@@ -504,8 +504,9 @@ reorient rewound o
 -- Degrees rather than radians, because degrees are what the file holds and what
 -- a folded frame has to write back: 'foldFrameWith' records the angles it
 -- folded by, so the shape it produces carries its own state. They stay degrees
--- all the way to the turn, 'rotationAboutDegrees', which is exact at every
--- multiple of 45°; only there, and only for other angles, do radians appear.
+-- all the way to the turn, 'rotationAboutDegrees', which needs no
+-- trigonometry at a multiple of 45°; only there, and only for other angles,
+-- do radians appear.
 -- Going the other way, from radians back to degrees, would be a second
 -- rounding on a number that is about to be written to a file, and files are
 -- compared byte for byte here.
@@ -552,10 +553,8 @@ foldAnglesOf fr = case (edgesFoldAngle fr, edgesAssignment fr) of
 --
 -- The angles come in from 'foldAnglesOf' rather than being read here, so that
 -- one read of the frame serves both this and the folded form that records
--- them. They stay in degrees so that a turn by a multiple of 45° can be exact
--- ('rotationAboutDegrees'): converted to radians first, @180 * pi / 180@ is
--- @pi@, whose sine is 1.2e-16, and a flat fold's paper lay that far off its
--- plane.
+-- them. They stay in degrees so that a turn by a multiple of 45° takes no
+-- number from the platform's trigonometry ('rotationAboutDegrees').
 --
 -- At @±180°@ the two are the same rigid motion: turning half a turn either way
 -- about a line lands in the same place. So folding cannot tell a flat mountain
