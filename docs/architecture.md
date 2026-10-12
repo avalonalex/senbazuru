@@ -307,16 +307,16 @@ on a normalized mesh and returns an opaque accepted motion. `flapAt` re-folds
 the requested angle state, aligns its stationary face and checks that the
 result agrees with the hinge path before handing it to the renderers.
 `FlapGallery` is only an executable driver; the library imports no study code.
-`BlintzGallery` runs `blintz.foldseq` through the sequence runner and exports
-its eleven-figure page through the ordinary renderers, drawing each turn
-halfway from the turn its record carries. The study's hand-written blintz
-recipe was deleted once the run was shown equal to it.
-`HelmetGallery` runs `helmet.foldseq` the same way and exports seven
-illustrations, the first turn shown at 120° and each corner at 90°. Each
-corner fold's one line names two creases, one on each layer, which the runner
-turns together as one hinge; see [aligned hinges](notes/aligned-crease-hinges.md).
-The study's hand-written helmet recipe was deleted once the run was shown
-equal to it.
+`SequenceGallery` runs a sequence source through the sequence runner and
+exports its page through the ordinary renderers, drawing each turn part-way
+from the turn its record carries. `BlintzGallery` and `HelmetGallery` are each
+one configuration of it. The blintz's page has eleven figures, each turn
+shown halfway; the helmet's has seven, the first turn shown at 120° and each
+corner at 90°. Each helmet corner fold's one line names two creases, one on
+each layer, which the runner turns together as one hinge; see
+[aligned hinges](notes/aligned-crease-hinges.md). The study's hand-written
+blintz and helmet recipes were deleted once each run was shown equal to its
+recipe.
 `HingeSweep.checkSweepWithFlatEndpoints` returns one-sided endpoint contacts
 as triangle ids and signs against stationary normals. `Flap` maps them to
 source-face orders and checks supplied initial orders on each contact plane.

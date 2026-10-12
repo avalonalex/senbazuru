@@ -6,7 +6,7 @@ import BasicBaseGallery (writeBasicBases)
 import BendLocationsGallery (writeBendLocations)
 import BendRefinementGallery (writeBendRefinement)
 import BendingGallery (writeBendingStudy)
-import BlintzGallery (writeBlintzGallery)
+import BlintzGallery (blintzGallery)
 import BodyAngleAuditGallery (writeBodyAngleAudit)
 import BodyAngleContactGallery (writeBodyAngleContact)
 import BodyContactGallery (writeBodyContact)
@@ -68,7 +68,7 @@ import HeldCostsGallery (writeHeldCosts)
 import HeldEquilibriumGallery (writeHeldEquilibrium)
 import HeldLayoutCostsGallery (writeHeldLayoutCosts)
 import HeldRefinementGallery (writeHeldRefinement)
-import HelmetGallery (writeHelmetGallery)
+import HelmetGallery (helmetGallery)
 import IllustrationGallery (writeIllustrationComparison)
 import MatchedEnergyGallery (writeMatchedEnergy)
 import OuterContinuationGallery (writeOuterContinuation)
@@ -89,6 +89,7 @@ import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Render.Camera (View (..), basisFrom, bottomUp, depth, isometric, project)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, escapeXml, renderSvg)
+import SequenceGallery (writeSequenceGallery)
 import StudyCase
 import System.Directory (createDirectoryIfMissing)
 import System.Environment (getArgs)
@@ -192,8 +193,8 @@ main = do
     ["--wing-layers", destination] -> writeWingLayers destination
     ["--wing-bending", destination] -> writeWingBending destination
     ["--crane", destination] -> writeCraneGallery destination
-    ["--helmet", destination] -> writeHelmetGallery destination
-    ["--blintz", destination] -> writeBlintzGallery destination
+    ["--helmet", destination] -> writeSequenceGallery helmetGallery destination
+    ["--blintz", destination] -> writeSequenceGallery blintzGallery destination
     ["--flap", destination] -> writeFlapGallery destination
     _ -> die "usage: stack run senbazuru-material-study -- [--whole-crane-start BODY_FOLD | --whole-crane-correct | --whole-crane-view | --body-intersection-context SOURCE_DIRECTORY | --body-larger-opening SOURCE_DIRECTORY | --body-larger-opening-view | --body-visible-layers SOURCE_DIRECTORY | --body-visual-tolerances SOURCE_DIRECTORY | --body-angle-audit SOURCE_DIRECTORY | --body-angle-contact SOURCE_DIRECTORY | --body-crease-seed | --body-feasibility SOURCE_DIRECTORY | --body-initialization SOURCE_DIRECTORY | --body-overlap-restoration SOURCE_DIRECTORY | --body-contact-14-55 SOURCE_DIRECTORY | --body-fourth-pair SOURCE_DIRECTORY | --body-contact-55-93 SOURCE_DIRECTORY | --body-restoration-loop SOURCE_DIRECTORY | --body-fresh-restoration SOURCE_DIRECTORY | --body-fresh SOURCE_DIRECTORY | --body-restoration SOURCE_DIRECTORY | --body-plane-loss SOURCE_DIRECTORY | --body-plane SOURCE_DIRECTORY | --body-final SOURCE_DIRECTORY | --body-short SOURCE_DIRECTORY | --body-third SOURCE_DIRECTORY | --body-pairs SOURCE_DIRECTORY | --body-direction SOURCE_DIRECTORY | --body-geometry SOURCE_DIRECTORY | --body-replay SOURCE_DIRECTORY | --body-contact SOURCE_DIRECTORY | --body-subdivision SOURCE_DIRECTORY | --body-checkpoints SOURCE_DIRECTORY | --body-patch | --held-layout-costs SOURCE_DIRECTORY | --held-refinement SOURCE_DIRECTORY | --held-confirmation SOURCE_DIRECTORY | --held-costs SOURCE_DIRECTORY | --held-equilibrium | --whole-bend | --transition-refinement | --bend-refinement | --smooth-bend | --held-bend | --uneven-bends | --matched-energy SOURCE_DIRECTORY | --outer-continuation SOURCE_DIRECTORY | --outer-strip | --bend-locations SOURCE_DIRECTORY | --boundary-length | --boundary-solves | --prescribed-bend | --illustration-refinement SOURCE_DIRECTORY | --bending | --bird-svg | --basic-bases | --flap | --blintz | --helmet | --crane | --wing-bending | --wing-layers | --crane-spreading | --crane-root | --flap-root | --crane-pocket | --crane-body | --crane-internal [CONTROL] | --crane-quick OUTPUT_DIRECTORY [REFERENCE_FOLD...] | --band-contact | --band-length | --band-refinement-8 | --band-refinement-8x2 | --combined-band-refinement | --band-refinement | --combined-refinement | --fine-crease | --unequal-refinement | --unequal-crease | --coupled-crease | --crease-inequality | --crease-correction | --closed-crease [--recheck-crane SOURCE_DIRECTORY] | --petal] OUTPUT_DIRECTORY (from repository root)"
 
@@ -219,7 +220,7 @@ generate destination = do
   writeBasicBases destination
   writeBendingStudy destination
   writeFlapGallery destination
-  writeBlintzGallery destination
+  writeSequenceGallery blintzGallery destination
   writeCraneSpread destination
   writeCraneRoot destination
   writeCranePocket destination
@@ -233,7 +234,7 @@ generate destination = do
   writeWingLayers destination
   writeWingBending destination
   writeCraneGallery destination
-  writeHelmetGallery destination
+  writeSequenceGallery helmetGallery destination
   writePetalGallery destination
   BL.writeFile (destination </> "cases.json") (encode catalog)
   BL.writeFile (destination </> "measurements.json") (encode (object ([Key.fromString name .= metrics surface which mesh | (name, surface, which, mesh) <- models] ++ [Key.fromString key .= meshMetrics Nothing (poseContact pose) (poseMesh pose) | (_, poses) <- authored, (key, _, pose) <- poses])))
