@@ -185,7 +185,7 @@ import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVe
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
 import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, edges, insideRing, signedArea)
-import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, isProperRotation, matApply, rotationAboutDegrees)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear, rotationAboutDegrees)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -248,12 +248,20 @@ frontOf state = case matApply (rigidLinear (displayOf state)) (V3 0 0 1) of
 displayOf :: FoldState -> Rigid
 displayOf state = thePresentation state `Rigid.after` thePlacement state
 
--- | A turn-over about the model's own middle (decisions D5): left-right maps
--- (x, y, z) to (2cx - x, y, 2cz - z), top-bottom to (x, 2cy - y, 2cz - z).
+-- | A turn-over about the model's own middle (decisions D5): a half turn
+-- about the line through the middle ('middleOf') along y for left-right,
+-- which maps (x, y, z) to (2cx - x, y, 2cz - z), and along x for top-bottom,
+-- which maps it to (x, 2cy - y, 2cz - z). About the middle, so the model
+-- stays where it is on the page; about the origin it would be carried off
+-- it. At 180° 'rotationAboutDegrees' takes the cosine and sine as -1 and 0,
+-- so the turn's entries are 0, 1 and -1, which a 'Double' holds exactly:
+-- applying it multiplies nothing inexactly, and only the additions round.
 turnOverAbout :: PageAxis -> [V3] -> Rigid
-turnOverAbout = \case
-  LeftRight -> aboutMiddle (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 (-1)))
-  TopBottom -> aboutMiddle (Mat3 (V3 1 0 0) (V3 0 (-1) 0) (V3 0 0 (-1)))
+turnOverAbout axis points = rotationAboutDegrees (middleOf points) hinge 180
+  where
+    hinge = case axis of
+      LeftRight -> V3 0 1 0
+      TopBottom -> V3 1 0 0
 
 -- | A turn on the page about the model's own middle (decisions D5), by
 -- eighths of a turn, anticlockwise as the reader sees it when positive:
@@ -274,16 +282,6 @@ turnOverAbout = \case
 -- be exactly.
 eighthTurnsAbout :: Int -> [V3] -> Rigid
 eighthTurnsAbout eighths points = rotationAboutDegrees (middleOf points) (V3 0 0 1) (45 * fromIntegral eighths)
-
--- | A turn that keeps the middle of the points where it is ('middleOf').
--- About the middle, so the model stays where it is on the page; about the
--- origin it would be carried off it. Every turn made here has entries 0 and
--- 1 and -1, which a 'Double' holds exactly, so applying one multiplies
--- nothing inexactly; only the additions round, as they do anywhere.
-aboutMiddle :: Mat3 -> [V3] -> Rigid
-aboutMiddle turn points = Rigid turn (middle ^-^ matApply turn middle)
-  where
-    middle = middleOf points
 
 -- | The middle of the points: (cx, cy) the centre of their xy box and cz the
 -- middle of their z range.
@@ -586,7 +584,6 @@ runMove settings place named state surface = \case
     present turn about = do
       let shown = thePresentation state
           shown' = about [applyRigid (displayOf state) p | p <- surfacePositions surface] `Rigid.after` shown
-      unless (isProperRotation (rigidLinear shown')) (Left (refusedAt place PresentationImproper))
       Right (Made state {thePresentation = shown'} [presented (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) turn (theAnchor state) surface (shown, shown') (thePlacement state)] [])
 
 -- | A fold along creases the paper has, as the header lays out.

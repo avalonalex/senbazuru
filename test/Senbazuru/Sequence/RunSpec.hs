@@ -16,7 +16,7 @@ import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
 import Senbazuru.Geometry.Polygon (signedArea)
-import Senbazuru.Geometry.Rigid (Mat3 (..), Rigid (..), applyRigid, identity, matApply)
+import Senbazuru.Geometry.Rigid (Mat3 (..), applyRigid, identity, matApply, rigidLinear)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
@@ -353,9 +353,11 @@ turningOver = describe "a turn-over" $ do
   -- The square turned over left-right: one record, presented, its two
   -- surfaces one, written with corner (0, 0) at (1, 0) and its face showing
   -- its back, so classed a folded form; and the page finds no fold between
-  -- the two written states, only a turn of the whole model. Turns red if the
-  -- written state were not presented, the turn were about the origin, or a
-  -- turn-over drew an arrow.
+  -- the two written states, only a turn of the whole model. The corners land
+  -- exactly, since a half turn's cosine and sine are -1 and 0 (decisions
+  -- C95), and are compared through show. Turns red if the written state were
+  -- not presented, the turn were about the origin or took its sine from
+  -- sin pi, 1.2e-16, or a turn-over drew an arrow.
   it "shows the model from its other side in one record, and moves no paper" $ do
     run <- right (onSquare ColouredUp (step_ "Turn the paper over." (turnOver LeftRight)))
     record <- case runRecords run of
@@ -367,7 +369,7 @@ turningOver = describe "a turn-over" $ do
     (laid, turned) <- case map stateFrame states of
       [a, b] -> pure (a, b)
       other -> fail ("expected two states, got " <> show (length other))
-    zipWith near (corners turned) [V3 1 0 0, V3 0 0 0, V3 0 1 0, V3 1 1 0] `shouldBe` replicate 4 True
+    show (corners turned) `shouldBe` show [V3 1 0 0, V3 0 0 0, V3 0 1 0, V3 1 1 0]
     frameClasses turned `shouldBe` ["foldedForm"]
     motionsBetween laid turned `shouldBe` Right []
     fmap isJust (wholeModelMotion laid turned) `shouldBe` Right True
@@ -375,14 +377,15 @@ turningOver = describe "a turn-over" $ do
     [l | l <- renderRunReport run, "  moving:" `T.isPrefixOf` l] `shouldBe` []
 
   -- Top-bottom turns about the horizontal line through the middle: corner
-  -- (0, 0) goes to (0, 1). Turns red if top-bottom turned about the vertical
-  -- line, as left-right does.
+  -- (0, 0) goes to (0, 1), exactly, compared through show. Turns red if
+  -- top-bottom turned about the vertical line, as left-right does, or landed
+  -- a hair off, as a sine from sin pi would.
   it "turns over top-bottom about the line across the middle" $ do
     run <- right (onSquare ColouredUp (step_ "Turn the paper over top to bottom." (turnOver TopBottom)))
     states <- right (writtenStates run)
     case map stateFrame states of
       [_, turned] -> do
-        zipWith near (corners turned) [V3 0 1 0, V3 1 1 0, V3 1 0 0, V3 0 0 0] `shouldBe` replicate 4 True
+        show (corners turned) `shouldBe` show [V3 0 1 0, V3 1 1 0, V3 1 0 0, V3 0 0 0]
         frameClasses turned `shouldBe` ["foldedForm"]
       other -> expectationFailure ("expected two states, got " <> show (length other))
     -- A turn-over moves no paper: it sweeps nothing and folds nothing.

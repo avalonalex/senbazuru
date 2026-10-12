@@ -667,10 +667,6 @@ data MoveFailure
     FlapRefused FlapError
   | -- | The paper would not fold from its angles.
     FoldingRefused FoldingError
-  | -- | A turn-over or a rotate would show the model mirrored or stretched,
-    -- which no turn of paper can do (decisions D5). The runner builds every
-    -- presentation from turns, so this is a fault of the runner.
-    PresentationImproper
   | -- | Re-anchoring would hold still a face that does not lie flat, and then
     -- no side of the model would face the reader, so in front and behind
     -- would mean nothing (PRDs\/02-language-semantics.md, §2.3): the new
@@ -729,7 +725,6 @@ instance Explain MoveFailure where
     FlapRefused err -> explain err
     FoldingRefused err -> explain err
     CreasingRefused err -> "creasing the paper along the fold line was refused: " <> explain err
-    PresentationImproper -> "turning the model would show it mirrored or stretched, which no turn of paper can do"
     ReanchorNotFlat (V2 x y) tilt -> "re-anchoring onto the paper at (" <> num x <> ", " <> num y <> ") would hold still a face standing " <> num tilt <> "° from flat, and then no side of the model would face the reader"
     JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
     NotModelledStop what -> "\"" <> what <> "\" is not modelled, so the run stops here and keeps the moves before it"
@@ -832,7 +827,6 @@ refusalKindOf =
       -- The runner's own fault, not the paper's: nothing an author could
       -- expect.
       CreasingRefused {} -> Nothing
-      PresentationImproper -> Nothing
       ReanchorNotFlat {} -> Just "ReanchorNotFlat"
       JoinBroken {} -> Just "JoinBroken"
       UnfoldChangedSince {} -> Just "UnfoldChangedSince"

@@ -68,7 +68,7 @@ import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError, FrameKind (..), 
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder, Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (isConvex)
-import Senbazuru.Geometry.Rigid (Rigid (..), applyRigid, matApply)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, matApply, rigidLinear)
 import Senbazuru.Geometry.V3 (V3 (..), cross, hasRelief, modelSpan, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))

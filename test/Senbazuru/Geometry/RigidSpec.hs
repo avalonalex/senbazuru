@@ -8,12 +8,13 @@
 module Senbazuru.Geometry.RigidSpec (spec) where
 
 import Control.Monad (forM_)
+import Data.List (nubBy)
 import Data.Maybe (isJust)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types (FoldFile (..))
 import Senbazuru.Geometry.Rigid
-import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.V3 (V3 (..), cross)
 import Senbazuru.Geometry.VectorSpace
 -- hspec exports an `after` of its own, for running an action after each spec
 -- item. Hidden rather than qualifying every use, since none is wanted here.
@@ -36,6 +37,35 @@ genRotation = do
 
 near :: Double -> Double -> Bool
 near a b = abs (a - b) < 1e-9
+
+-- | Whether each of the seven quantities 'isProperRotation' tests is within
+-- 1e-15 of its target, where it allows 1e-12. A NaN compares false with
+-- everything, so a matrix holding one fails.
+nearProper :: Mat3 -> Bool
+nearProper (Mat3 r0 r1 r2) =
+  all (< 1e-15) [abs (dot r0 r0 - 1), abs (dot r1 r1 - 1), abs (dot r2 r2 - 1), abs (dot r0 r1), abs (dot r0 r2), abs (dot r1 r2), abs (dot r0 (cross r1 r2) - 1)]
+
+-- | The runner's turns, about the origin, since only their matrices matter:
+-- every eighth of a turn about the vertical, and a half turn about each
+-- horizontal axis.
+runnerTurns :: [Rigid]
+runnerTurns =
+  [rotationAboutDegrees (V3 0 0 0) (V3 0 0 1) (45 * fromIntegral k) | k <- [1 .. 7 :: Int]]
+    ++ [rotationAboutDegrees (V3 0 0 0) axis 180 | axis <- [V3 0 1 0, V3 1 0 0]]
+
+-- | Every product of the turns, each composed after a product already found,
+-- from 'identity' until composing finds no new matrix, or 'Nothing' past a
+-- thousand.
+productsOf :: [Rigid] -> Maybe [Rigid]
+productsOf turns = go [identity] [identity]
+  where
+    go found frontier
+      | null frontier = Just found
+      | length found > 1000 = Nothing
+      | otherwise =
+          let new = nubBy sameTurn [r | f <- frontier, t <- turns, let r = t `after` f, not (any (sameTurn r) found)]
+           in go (found ++ new) new
+    sameTurn a b = rigidLinear a == rigidLinear b
 
 nearV3 :: V3 -> V3 -> Bool
 nearV3 a b = norm (a ^-^ b) < 1e-9
@@ -214,6 +244,47 @@ spec = do
     it "refuses a stretch whose determinant is 1, and a mirror" $ do
       isProperRotation (Mat3 (V3 2 0 0) (V3 0 0.5 0) (V3 0 0 1)) `shouldBe` False
       isProperRotation (Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 1)) `shouldBe` False
+
+  describe "rigidFrom" $ do
+    -- A turn's own matrix and offset come back as that turn. Turns red if
+    -- rigidFrom refused a proper rotation, or changed what it was handed.
+    it "gives back any turn from its matrix and offset" $
+      forAll genRotation $
+        \r -> rigidFrom (rigidLinear r) (rigidOffset r) === Just r
+
+    -- The two matrices isProperRotation refuses above: the stretch passes the
+    -- determinant and the mirror passes the rows. Turns red if rigidFrom took
+    -- any matrix, or checked only the rows or only the determinant.
+    it "refuses a stretch and a mirror"
+      $ forM_
+        [ Mat3 (V3 2 0 0) (V3 0 0.5 0) (V3 0 0 1),
+          Mat3 (V3 (-1) 0 0) (V3 0 1 0) (V3 0 0 1)
+        ]
+      $ \m -> rigidFrom m (V3 1 2 3) `shouldBe` Nothing
+
+  describe "translation" $
+    -- Turns red if a translation turned anything, or moved a point by
+    -- anything but its offset.
+    it "moves every point by its offset and turns nothing" $
+      forAll ((,) <$> genPoint <*> genPoint) $
+        \(v, p) -> rigidLinear (translation v) == matIdentity && applyRigid (translation v) p == p ^+^ v
+
+  describe "composing turns" $
+    -- A run's presentation is a product of the runner's turns, by eighths
+    -- about the vertical and halves about the two horizontal axes, and
+    -- nothing checks it as the run goes (decisions C95). Composing each turn
+    -- after each product found stops at 32 products, so checking those checks
+    -- every presentation a run can build, in any order and number: each is
+    -- within 1e-15 of a proper rotation, where isProperRotation allows 1e-12,
+    -- and a NaN fails. Turns red if composing drifted, as an `after` that
+    -- scaled each product by 1 + 1e-14 would, since the products would then
+    -- never repeat.
+    it "keeps every product of the runner's turns proper" $
+      case productsOf runnerTurns of
+        Nothing -> expectationFailure "composing the runner's turns found more than a thousand products"
+        Just products -> do
+          length products `shouldBe` 32
+          [m | m <- map rigidLinear products, not (nearProper m)] `shouldBe` []
 
   describe "fitRigid" $ do
     -- quarter-fold-steps.fold's key frame: the unit square's corners, edge

@@ -74,7 +74,7 @@ bodySeedAlignment study = do
           V3 yx yy yz = y
           V3 zx zy zz = z
           matrix = Mat3 (xx *^ u ^+^ yx *^ v ^+^ zx *^ w) (xy *^ u ^+^ yy *^ v ^+^ zy *^ w) (xz *^ u ^+^ yz *^ v ^+^ zz *^ w)
-      pure (Rigid matrix (q ^-^ matApply matrix p))
+      maybe (bad "the reference panel's two frames do not give a turn") Right (rigidFrom matrix (q ^-^ matApply matrix p))
     axes a b = do
       u <- maybe (bad "invalid reference direction") Right (normalize a)
       w <- maybe (bad "invalid reference normal") Right (normalize (cross a b))
