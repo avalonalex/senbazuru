@@ -1,7 +1,8 @@
 # Decisions: connecting the fold solver and the material study
 
 **Status.** The current decision record, version 3. Dated 2026-09-15, against
-commit `568dcb6`. Nothing is implemented. Every PRD file in this directory is
+commit `568dcb6`, before anything was built; M1 and M2 have been built since, and the
+changes table (C75 onward) and §5's notes say where they were built otherwise. Every PRD file in this directory is
 written against this record, and where a file and this record disagree, this
 record wins and the file is to be corrected.
 
@@ -138,7 +139,7 @@ was right.
           Sequence.Check (names, kinds, arity, units; no geometry)
           Sequence.Elaborate (let; keeps provenance)
                          |
-          Sequence.Run  (Budget, RunSettings, sheets) over Fold.* / Origami.*
+          Sequence.Run  (RunSettings, sheets) over Fold.* / Origami.*
                          |
           Run = records + states   (Sequence.Record)          <- contract 1
              |              |               |                     |
@@ -177,31 +178,33 @@ parser, checker or runner ([D23](#d23-the-sequence-modules-and-where-run-lives))
 Nothing under `PRDs/` edits these files. [01 §4](01-architecture.md#4-recorded-text-this-design-changes)
 writes out every replacement; [10 §3](10-roadmap-risks-questions.md#3-recorded-text-changes-by-milestone)
 schedules them. Rows 15–18 are new ([C51](#changes-since-draft-v2), [C56](#changes-since-draft-v2), [C66](#changes-since-draft-v2), [C74](#changes-since-draft-v2)).
-A row is marked once its text lands: on `main`, or on the issue it changes.
-Its Lands cell then says what landed, with which issue, and the Pacific day the
-PR merged or the comment was posted. A PR that marks its own row writes that day
-before it merges, so the date is checked after the merge: #531 marked row 11 one
-evening and merged the next morning. An unmarked row has not landed.
+A row is marked once any of its text lands: on `main`, or on the issue it
+changes. Its Lands cell then says what landed, with which issue, and the Pacific
+day the PR merged or the comment was posted; a row that landed in part also says
+what has not. A PR that marks its own row writes that day before it merges, so
+the date is checked after the merge: #531 marked row 11 one evening and merged
+the next morning. A row with no mark has not landed, and may say what stands in
+its way.
 
 | # | Where | Change (summary) | Lands |
 | --- | --- | --- | --- |
-| 1 | `docs/architecture.md:81-103` | `Fold.Creasing` is frame in, frame out; a sequence's moves are not: `Sequence.Run` returns records, and what reaches the pipeline as a file is the written `FoldFile` | M0: landed with #278, 2026-09-19, naming no module not yet built |
-| 2 | `AGENTS.md:193-196`, `docs/architecture.md:197-202` | stated exception: a sequence source is a program, not an input format | M0, no later than M1's `Sequence.Parse` PR: landed with #278, 2026-09-19, before the parser's PR merged that evening; `AGENTS.md` holds a short form that points at `docs/architecture.md`'s |
-| 3 | [#60](https://github.com/avalonalex/senbazuru/issues/60) | `runSequence` returning a run of records; "one interpreter" superseded; done-when split into folding equivalence and authoring ([D16](#d16-testing-and-acceptance)) | M0 |
-| 4 | [#95](https://github.com/avalonalex/senbazuru/issues/95) | turn over is presentation about a model-intrinsic axis ([D5](#d5-presentation-and-the-readers-side)) | M0: landed as a comment on #95, 2026-10-06, the body left as it was, and without all of 01 §4.4: top-bottom's map and some of the done-when are missing; #95 closed with #533, 2026-10-11 |
-| 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0: in part, as a comment on #97, 2026-10-06, the decision and the close at M2, which came with #501 on 2026-10-07; `docs/notes/sequences.md` was never written, so "scheme" is not retired |
+| 1 | `docs/architecture.md:81-103` | `Fold.Creasing` is frame in, frame out; a sequence's moves are not: `Sequence.Run` returns records, and what reaches the pipeline as a file is the written `FoldFile` | M0: landed with #278, 2026-09-19, without naming the modules not yet built |
+| 2 | `AGENTS.md:193-196`, `docs/architecture.md:197-202` | stated exception: a sequence source is a program, not an input format | M0, no later than M1's `Sequence.Parse` PR: landed with #278, 2026-09-19, before the parser's PR merged that evening; `AGENTS.md` holds a short form that points at `docs/architecture.md`'s "Layering rules" |
+| 3 | [#60](https://github.com/avalonalex/senbazuru/issues/60) | `runSequence` returning a run of records; "one interpreter" superseded; done-when split into folding equivalence and authoring ([D16](#d16-testing-and-acceptance)) | M0; not landed, and 01 §4.3's text is stale: it gives the planned `runSequence` (C96) and cites `docs/notes/sequences.md`, which was never written |
+| 4 | [#95](https://github.com/avalonalex/senbazuru/issues/95) | turn over is presentation about a model-intrinsic axis ([D5](#d5-presentation-and-the-readers-side)) | M0: landed in part, as a comment on #95, 2026-10-06, the body left as it was; 01 §4.4's top-bottom map and some of its done-when have not landed, and #95 closed with #533 on 2026-10-11, so they cannot land there |
+| 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0: landed in part, as a comment on #97, 2026-10-06: the decision, and that #97 closes at M2, which it did with #501, 2026-10-07. `docs/notes/sequences.md`, which rows 3, 9 and 16 cite, was never written, so "scheme" is not retired, and with #97 closed the note has no issue |
 | 6 | [#111](https://github.com/avalonalex/senbazuru/issues/111) | add the writer's at-rest rule and the two `1e-10` thresholds ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278), [`StudyCase.hs:208`](../study/fold-material/StudyCase.hs#L208)) that should read `Fold.Query.atRest` | M0: landed as a comment on #111, 2026-10-07, the body's table left as it was |
 | 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§10](#10-corrections)); #104's done-when names `--view front` ([D19](#d19-realistic-rendering)) | M0 |
 | 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0 |
-| 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
-| 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR: in part, the rows moving in word by word with the code that uses each, from #278, 2026-09-19; the fixes to rest angle and flat-folded have not landed |
+| 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96); not landed, and 01 §4.9's text cites `docs/notes/sequences.md`, which was never written |
+| 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR: landed in part. Since #278, 2026-09-19, rows move in one term at a time with the code that uses it (C97), and many built terms have not moved, among them route evidence, seed and join check; the fixes to rest angle and flat-folded have not landed |
 | 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2: landed with #505, 2026-10-11, the one place for sheet lengths being `Sequence.SheetLengths` (C88); the place for physical lengths is named when the `material` block brings it, at M6 |
 | 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3: the M2 half landed with #501, 2026-10-07; `stepPageWith` joins the list at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation: landed with 05 L3 (#95), 2026-10-09 |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs: the blintz's landed with #503, 2026-10-10 (the architecture paragraph rewritten, the recipe and its header gone; C87); the helmet's with #534, 2026-10-11, the same way (C92) |
 | 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job, and whether it is required (owner decision 12) | the M4 PR adding the slow job |
-| 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0 |
-| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4 |
+| 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0; not landed, and 01 §4.16's text is stale: it cites `docs/notes/sequences.md`, which was never written, and was written before M2 closed #95 and #97 |
+| 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4; not landed, and its issue (10 §7.2 item 31) was never filed |
 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists | the PR closing #60 (M4) |
 
 Row 14's range was `288-299` in v2. `grep -n` puts the blintz sentence at
@@ -368,7 +371,10 @@ table in the next version of this record.
   ([gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md)
   "A. How exact a landmark is today", finding 2); until then every requirement
   names the existing tolerance it reuses, and the runner defines none of its own
-  beyond `nearMissBand`.
+  beyond `nearMissBand`. The issue was never filed, and M2's runner has three of
+  its own: an area tie within 1e-9 of the largest face when it re-anchors, a
+  face within 1e-9 of flat to re-anchor on, and 1e-12 to call a line north-south
+  ([C96](#changes-since-draft-v2)).
 
 ### D3. The runner owns the state, its start and the handoffs
 
@@ -400,7 +406,8 @@ table in the next version of this record.
   ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)) [code], and
   written frames show it as F at 0.
 - **Starting.** `Sequence.Run.sheetState :: SheetStart -> Frame -> Either SheetProblem FoldState`
-  is pure; the CLI only loads bytes. (Built as `FoldFile -> Either SheetProblem FoldState`, C96.)
+  is pure; the CLI only loads bytes. (Built as `FoldFile -> Either SheetProblem FoldState`,
+  [C96](#changes-since-draft-v2).)
   1. The sheet is the file's *key frame*, never a `file_frames` entry. A key frame
      with no vertices is refused as `SheetHasNoVertices`, naming the
      `file_frames` count; one whose `Query.frameKind` is `FoldedForm`
@@ -421,8 +428,9 @@ table in the next version of this record.
      `start folded { … }` keeps angles as `Folding.foldAnglesOf` reads them:
      explicit angles first, otherwise M −180, V +180, else 0
      ([`Folding.hs:521-547`](../src/Senbazuru/Origami/Folding.hs#L521-L547)) [code],
-     then chooses a stacking by [D11](#d11-stacking-choices-are-relations).
-     `sheet square` is the unit square.
+     then chooses a stacking by [D11](#d11-stacking-choices-are-relations). M2
+     refuses it before `sheetState`, as `StartFoldedNotRunYet`
+     ([C96](#changes-since-draft-v2)). `sheet square` is the unit square.
 - **Default anchor** ([C20](#changes-since-draft-v2)): the *vertex mean* (the
   average of the corner coordinates) of the initial pattern's largest face, ties
   to the lowest then leftmost vertex mean. That is `StudyCase`'s rule, which ranks
@@ -472,7 +480,8 @@ table in the next version of this record.
 - **Residue.** About seven `foldFrameWith` calls per checked step, counted from
   code, not timed
   ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)
-  "From reading the code (counts, not timings)"); measure before caching.
+  "From reading the code (counts, not timings)"); measure before caching. As built,
+  [C89](#changes-since-draft-v2) counted 8 per blintz move.
 
 ### D4. Written frames follow the state rule
 
@@ -486,7 +495,9 @@ table in the next version of this record.
   nonzero angle and `Stacking.creaseDirections`'s exact test agrees with the rule.
 - **Every emitted frame** has explicit `edges_foldAngle` (else `WriteMissingAngles`),
   no non-finite number (else `WriteNonFiniteAngle`, #58 item 3), never U, never M
-  or V at 0.
+  or V at 0. (Built otherwise: `encodeFoldFile` refuses any non-finite number as
+  `NotFinite`, #510, and the writer a non-finite material coordinate as
+  `WriteNonFinite`, [C96](#changes-since-draft-v2).)
 - **Layout.** A metadata-only key frame; then `file_frames` holding the states of
   [D24](#d24-states-figures-and-their-numbers): the starting state, then for each
   step that writes one its authored `sample` poses in parameter order and its end
@@ -981,7 +992,7 @@ table in the next version of this record.
   An M4 test must show they leave exactly today's index 2 of 5 and that dropping
   either leaves two or more.
 - **Budget.** `runSequence` takes a `Budget`; `run` passes `--layer-budget` for
-  every geometric output.
+  every geometric output. (Built: in its `RunSettings`, [C96](#changes-since-draft-v2).)
 - **Rejected.** Filtering an enumerated list, which meets the per-component cap;
   reporting an exhausted budget as ambiguity.
 
@@ -1115,7 +1126,8 @@ The decisions:
   no `Sequence` import. `sheet` and `checkpoint` paths are relative to the source's
   directory (`Sequence.Syntax.sourceFiles`); the CLI loads each distinct path with
   `loadFile`, so `.cp` and `.opx` sheets work, and passes the pure runner a
-  `Map FilePath Frame` keyed by the path as written.
+  `Map FilePath Frame` keyed by the path as written. (Built: `FoldFile`s,
+  [C96](#changes-since-draft-v2).)
 - **`decodeFile` refuses a `.foldseq` path, and the library's words name no command**
   ([C25](#changes-since-draft-v2)). Today every unrecognised extension decodes as
   FOLD ([`Load.hs:131-136`](../src/Senbazuru/Fold/Load.hs#L131-L136)) [code], so a
@@ -1596,7 +1608,10 @@ accepted and rejected controls stay unchanged at each
   `SheetAlreadyFolded`) · `ResolveRefused Int (Maybe Name) Span Text ResolveProblem`
   · `StepRefused Int (Maybe Name) Span MoveFailure` · `WriteRefused Int WriteProblem`
   (`WriteMissingAngles`, `WriteNonFiniteAngle`). v2's sketch had no constructor for
-  `sheetState`'s or the writer's refusals, and no step on `StaticRefused`.
+  `sheetState`'s or the writer's refusals, and no step on `StaticRefused`. As built
+  ([C96](#changes-since-draft-v2)): `SheetRefused` holds a `FilePath`, `ResolveRefused`
+  a `Place`, and the writer's non-finite refusal is `WriteNonFinite`, for a material
+  coordinate.
 - **Message shape.** A `SequenceError` message is "step N (name)", then the author's
   reference as the printer spells it, then the nested `explain` unchanged. It carries
   no location; `sourceLocation :: SequenceError -> Maybe Text` gives `path:line:col`
@@ -1751,11 +1766,17 @@ starts from; that is the figure the heading means.
   | 5 | `Sequence.Run` | `FoldState`, `sheetState`, `RunSettings`, `runSequence` |
   | 6 | `Sequence.Write`, `Sequence.RunPlan`, `Sequence.Material` | the file writer, the flag rules, the settle consumer |
 
+  Built besides at M2 ([C96](#changes-since-draft-v2)): `Sequence.Resolve` at level 5
+  beside `Sequence.Run`, and `Sequence.SheetLengths` below `Sequence.Record`;
+  `docs/architecture.md` keeps the module map.
+
 - **`Run` is defined in `Sequence.Record`**, and it holds what a reader of a run
   needs: the start state (surface and display), every record, each step's outcome
   (name, caption, which records, authored samples, expected refusals), the closing
-  caption and the stop, if any. **It does not hold `FoldState`.**
-- **`writtenStates :: Run -> Either WriteProblem [WrittenState]`** applies the state
+  caption and the stop, if any. **It does not hold `FoldState`.** (Built: expected
+  refusals are the run's, each with its step, [C96](#changes-since-draft-v2).)
+- **`writtenStates :: Run -> Either WriteProblem [WrittenState]`** (built: `Either SequenceError`,
+  [C77](#changes-since-draft-v2)) applies the state
   rule and the displays once, and both `Sequence.Write` and
   `Render.Sequence.stepNotes` call it, so "the page draws exactly the frames the file
   holds" (R-06-20) holds by construction rather than by a test.
@@ -1817,7 +1838,9 @@ state after `half`. The page has three figures; figure 1 draws the sheet with st
 ## 5. Type sketch
 
 **SKETCH.** Names every PRD uses. Fields and constructors changed since v2 are
-listed in [the changes table](#changes-since-draft-v2).
+listed in [the changes table](#changes-since-draft-v2). A line built otherwise
+carries a trailing `-- built:` note citing its changes row, and the PR that builds
+it adds the note; a line with no note is as sketched, built or not.
 
 ```haskell
 -- Senbazuru.Sequence.Syntax
@@ -1893,8 +1916,8 @@ above :: Point -> Point -> Relation
 data SequenceError
   = ParseFailed ParseProblem
   | StaticRefused Place Span StaticProblem
-  | SheetRefused Span Text SheetProblem                          -- the sheet path as written; built: a FilePath, "square" for `sheet square` (C96)
-  | ResolveRefused Int (Maybe Name) Span Text ResolveProblem    -- built: a Place, so a header's anchor is refused as the header's (C96)
+  | SheetRefused Span Text SheetProblem                          -- the sheet path as written; built: FilePath for Text, "square" for `sheet square`, and the CLI gives an unreadable checkpoint's path the same way (C96)
+  | ResolveRefused Int (Maybe Name) Span Text ResolveProblem    -- built: Place for Int (Maybe Name), as StaticRefused has, so a refused anchor in the header names the header (C96)
   | StepRefused Int (Maybe Name) Span MoveFailure
   | WriteRefused Int WriteProblem                                -- the state number
 data Place = InHeader | InStep Int (Maybe Name)
@@ -1907,9 +1930,9 @@ data MoveFailure
   | RepeatNotSymmetric MaterialSegment | CheckpointOutlineDiffers MaterialPoint | UnfoldChangedSince MaterialSegment
   | NotModelled Text | RefusalNotRaised RefusalKind | RefusedDifferently RefusalKind RefusalKind
   | NotAProperRotation Double                                     -- built: NotModelled as NotModelledStop (C76); NotAProperRotation as PresentationImproper (C81), dropped (C95)
-                                                                 -- built: ReanchorNotFlat V2 Double, the anchor in sheet lengths and the face's tilt in degrees; UnfoldChangedSince EdgeId;
-                                                                 -- and also CreasingRefused FoldError and MoveNotRunYet Text (C96). ThroughRefused will clash with Origami.ThroughLayers'
-                                                                 -- constructor of that name, as NotModelled did (C76)
+                                                                 -- built: ReanchorNotFlat V2 Double, the new anchor in sheet lengths and its face's tilt in degrees; UnfoldChangedSince
+                                                                 -- EdgeId; added: CreasingRefused FoldError, MoveNotRunYet Text (C96). Not built yet: ThroughRefused, which will clash
+                                                                 -- with Origami.ThroughLayers' constructor of that name, as NotModelled did (C76)
 sourceLocation :: SequenceError -> Maybe Text
 excerpt :: Text -> SequenceError -> Maybe Text
 
@@ -1927,7 +1950,7 @@ data PoseError = NoRoute RouteEvidence | PoseFlap FlapError | PoseMacro MacroErr
 recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose   -- RoutePose from Origami.Route
 newtype MaterialPoint = MaterialPoint V2                          -- built (#486); moves below Sequence.Error with the first
 data MaterialSegment = MaterialSegment MaterialPoint MaterialPoint -- MoveFailure that names one, since level 2 cannot import level 4;
-                                                                 -- none names one yet: ReanchorNotFlat holds a V2 (C96)
+                                                                 -- no built MoveFailure holds one yet: ReanchorNotFlat holds a V2 (C96)
 data MoveRecord = MoveRecord                                     -- opaque: constructor hidden, each field read through a function of its name (C75)
   -- built at M2 for a turn about a hinge (#486, #487):
   { recordStep :: Int, recordMoveIndex :: Int, recordStepName :: Maybe Name, recordCaption :: Maybe Text
@@ -1938,8 +1961,9 @@ data MoveRecord = MoveRecord                                     -- opaque: cons
   , recordStationary :: FaceId                                    -- a Maybe once a move holds nothing still
   -- each with the first move that fills it:
   , recordKind :: MoveKind                                        -- built (C80)
-  , recordPresentation, recordPlacement :: (Rigid, Rigid)        -- before, after; built (C81, C83), a record's two placements being one,
-                                                                 -- since a move re-anchors before it turns, so a re-anchoring shows between records
+  , recordPresentation, recordPlacement :: (Rigid, Rigid)        -- before, after; built (C81, C83). A record's two placements are equal:
+                                                                 -- a move re-anchors before it turns, so a new placement shows only between records,
+                                                                 -- though recordAnchor's pair does show the anchor moving
   , recordNewCreases :: [(MaterialSegment, [EdgeId], Assignment)] -- U for a pre-crease's; built (C79, C80)
   , recordStacking :: Maybe StackingChoice
   , recordAnchor :: (MaterialPoint, MaterialPoint)                -- before, after; built (C79, C83, C84)
@@ -1949,8 +1973,8 @@ data MoveRecord = MoveRecord                                     -- opaque: cons
 recordAngles :: MoveRecord -> ([Double], [Double])               -- read from the two surfaces, not stored
 hingeTurn :: Int -> Int -> Maybe Name -> Maybe Text -> Origin
           -> [(MaterialSegment, [EdgeId])] -> MaterialPoint -> CheckedFlap -> Either FlapError MoveRecord
-                                                                 -- built: 13 arguments, adding after the hinge the new creases (C79), the anchor before and after, the
-                                                                 -- presentation and the placement, and after the seed the resolved references (C96); built also:
+                                                                 -- built with more arguments: after the hinge, the new creases (C79), the anchor as one (before, after) pair,
+                                                                 -- the presentation and the placement; after the seed, the resolved references (C96). Built also:
                                                                  -- asPrecrease (C80), presented (C81), anchoring (C84) and addRefolds (C89)
 data MoveKind = Precrease | …                                     -- owner decision 14; no sense, since its crease has none; the rest with the MoveRecord agreement
                                                                  -- built: Turn | Precrease | Presentation Presenting | Anchoring (C80, C81, C82, C84)
@@ -1960,8 +1984,8 @@ data MacroBinding = MacroBinding { bindLine :: Name, bindMacro :: MacroName, bin
 data Run = Run { runStart :: StateView, runSteps :: [StepOutcome], runRecords :: [MoveRecord]
                , runClosing :: Maybe Text, runStop :: Maybe (Int, Maybe Name, Text) }
                                                                  -- built: runTitle, runStart :: Surface V2, runStartPresentation (C81), runSteps :: [StepOutcome], runRecords,
-                                                                 -- runExpected, runClosing, runStop :: Maybe RunStop (C76, C77); each StepOutcome also holds its presentation
-                                                                 -- (C81) and its placement (C96)
+                                                                 -- runExpected, the run's expected refusals, each with its step (D21, C96), runClosing, runStop :: Maybe RunStop
+                                                                 -- (C76, C77); each StepOutcome also holds its presentation (C81) and its placement (C96)
 writtenStates :: Run -> Either WriteProblem [WrittenState]       -- built: Either SequenceError, WriteRefused k (C77)
 runRefusal :: Run -> Maybe SequenceError
 renderRunReport :: Run -> [Text]
@@ -1969,8 +1993,8 @@ renderRunReport :: Run -> [Text]
 -- Senbazuru.Sequence.Run
 data RunSettings = RunSettings { sweep :: SweepSettings, nearMissBand :: Rational, keyDensity :: Int
                                , keySubdivisionBudget :: Int, macroChecks :: Int }
-                                                                 -- built: RunSettings { runSweep, runNearMissBand :: Double, runBudget :: Budget }; the key and macro settings
-                                                                 -- wait for the moves that use them (C96)
+                                                                 -- built: RunSettings { runSweep, runNearMissBand :: Double, runBudget :: Budget }; the key settings wait
+                                                                 -- for M7b's animated export, and macroChecks for M5's macros (C96)
 data FoldState                                                   -- abstract
 sheetState :: SheetStart -> Frame -> Either SheetProblem FoldState
                                                                  -- built: FoldFile -> Either SheetProblem FoldState (C96)
@@ -2216,7 +2240,9 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 ## 9. Owner decisions
 
 Numbered as every PRD's open questions cite them. Each has a recommended default,
-and each has to be decided before the milestone named. Decisions 15–25 come from
+and each has to be decided before the milestone named. This section and 10 §6 are
+the record of which are decided: PRDs 00, 02, 03, 04, 06, 08 and 09 still give some
+decided ones as open. Decisions 15–25 come from
 [PRD 11](11-prd-refined-final-forms.md#open-questions-for-the-owner), whose milestones are F0–F7.
 Decisions 26–28 were raised while scoping #410, PRD 11's paper screen, decision 29
 by its wing galleries (#447), decisions 30 and 31 by #446 and #449, decisions
@@ -2516,20 +2542,22 @@ lists edits for.
 | C80 | The pre-crease as built at M2 (#496): `MoveKind` is `Turn`, a fold or the unfold of one, and `Precrease`; `recordKind` reads it. A pre-crease runs as its fold does, resolved, creased, sweep-checked and refused by the same kinds, with its new creases drawn U; `asPrecrease` then makes the record of kind `Precrease` and its after the before, keeping the fold's evidence, and the working pattern takes nothing from the turn. A crease the paper already had keeps its letter: a pre-crease changes nothing but its new crease (02 §6.4), so one along an existing crease leaves the paper as it was. The report adds `laid flat again: the paper ends where it began` | owner decision 14, D3, D12, 02 §6.4 | `Sequence.Run.foldMove`, `Sequence.Record.asPrecrease` [code] | adopted-modified | 02, 04 |
 | C81 | Presentation as built at M2 (#95): `FoldState` holds a presentation `Rigid` in place of a stored reader's side, which `frontOf` reads from it, the coloured side until the presentation sends ẑ to −ẑ. `turn over left-right \| top-bottom` composes D5's exact turn about the displayed state's middle onto the presentation, checked by `isProperRotation`, and refused as `PresentationImproper` if that ever fails; `white side up` starts with the left-right one (G3). Its record is made by `presented`: one surface before and after, evidence `Presented`, kind `Presentation`, no hinge or moving paper, the anchor's face held; `recordPresentation` holds (before, after) on every record, a turn's two equal. `recordPlacement` waits for re-anchoring (#497). Written frames are presented, each state's vertices moved by the presentation it ended with (`StepOutcome`'s `outcomePresentation`, `Run`'s `runStartPresentation`); the identity leaves coordinates as folded, so a run with no turn-over writes the bytes it wrote before. The report says `presented: the whole model shown from its other side; no paper moved` and lists no moving paper for it. `rotate` comes next, and its eighth turns wait on owner decision 10 | D5, D10, 02 §5.2, G3 | `Sequence.Run.turnOverAbout`, `Sequence.Record.presented`, `Sequence.Record.writtenFrame` [code] | adopted-modified | 02, 04 |
 | C82 | `rotate` as built at M2 (#95), by whole quarter turns: `rotate k/8 turn` with k even composes D5's exact turn about the line parallel to +z through the displayed state's middle onto the presentation, so the reader's side stays and the turn is anticlockwise or clockwise as the reader sees the model, after a turn-over too. Its entries are 0 and ±1 (`quarterTurnsAbout`), built with the turn-over's by one function, `aboutMiddle`. An odd k is refused as not run yet until owner decision 10. `MoveKind`'s `Presentation` carries a `Presenting`, `TurnedOver PageAxis` or `Rotated Int Turning`, as written. That settles [06](06-prd-step-diagrams.md#dependencies)'s open question the first way it names: the record keeps a rotate's k and direction, because 14 written rotates make only 7 motions. The report says `presented: the whole model turned on the page, the same side up; no paper moved` | D5, owner decision 10, 02 §5.2, 06 "Dependencies" | `Sequence.Run.quarterTurnsAbout`, `Sequence.Record.Presenting` [code] | adopted-modified | 06 |
-| C83 | Re-anchoring as built at M2 (#497): a fold or an unfold whose moving paper holds the anchor's face re-anchors before it turns. The new anchor is the vertex mean of the largest face beside the hinge that the move holds still, ties to the lowest, then leftmost, vertex mean; C19's move off a new crease is the same `reanchor` over the faces around the anchor. That face goes first and the layer orders are renumbered with it. `FoldState` gains `thePlacement`, which takes on h, that face's placement in the fold, so the model stands where it stood, checked refolded within 1e-12 of the model's size, and the fold line and its paper are then named afresh. The reader's side is read from the display, presentation `after` placement, so after re-anchoring onto paper lying face down a valley still goes towards the reader. Each half of `recordPlacement` is the placement its surface is shown with: a re-anchoring move re-roots before it turns, so both halves are the new placement and the change shows between records, with `recordAnchor`'s pair; `displayBefore` and `displayAfter` compose them, placement first. Written states are displayed, and a state with the same faces as the one before it numbers them as that one did (`numberedAsBefore`), because re-anchoring renumbers faces the paper did not change and the page pairs states by id. `ReanchorNotFlat` refuses a new face whose displayed normal is not ±ẑ: a fold never meets it, since paper is named only on flat states, and an unfold does once a later fold has stood up the paper beside its hinge. The report says `anchor moved: … off the paper the move turns`; its fold line stays in the record's frame, as a refusal's candidate line does (C78), so after re-anchoring onto moved paper it is where the line lies as folded from the new face | owner decision 3, D3, D14, 02 §2.3 | `Sequence.Run.reanchor`, `Sequence.Record.numberedAsBefore` [code] | adopted-modified | — |
+| C83 | Re-anchoring as built at M2 (#497): a fold or an unfold whose moving paper holds the anchor's face re-anchors before it turns. The new anchor is the vertex mean of the largest face beside the hinge that the move holds still, ties to the lowest, then leftmost, vertex mean; C19's move off a new crease is the same `reanchor` over the faces around the anchor. That face goes first and the layer orders are renumbered with it. `FoldState` gains `thePlacement`, which takes on h, that face's placement in the fold, so the model stands where it stood, checked refolded within 1e-12 of the model's size, and the fold line and its paper are then named afresh. The reader's side is read from the display, presentation `after` placement, so after re-anchoring onto paper lying face down a valley still goes towards the reader. Each half of `recordPlacement` is the placement its surface is shown with: a re-anchoring move re-roots before it turns, so both halves are the new placement and the change shows between records, with `recordAnchor`'s pair; `displayBefore` and `displayAfter` compose them, placement first. Written states are displayed, and a state with the same faces as the one before it numbers them as that one did (`numberedAsBefore`), because re-anchoring renumbers faces the paper did not change and the page pairs states by id. `ReanchorNotFlat` refuses a new face whose displayed normal is not ±ẑ: a fold never meets it, since paper is named only on flat states, and an unfold does once a later fold has stood up the paper beside its hinge. The report says `anchor moved: … off the paper the move turns`; its fold line stays in the record's frame, as a refusal's candidate line does (C78), so after re-anchoring onto moved paper it is where the line lies as folded from the new face | owner decision 3, D3, D14, 02 §2.3 | `Sequence.Run.reanchor`, `Sequence.Record.numberedAsBefore` [code] | adopted-modified | 01, 02 |
 | C84 | `anchor P` as built at M2 (#497): P is named on the flat state as the header's anchor is, a region slot strictly inside one face (`NotInOneFace` otherwise, and `ConstructionInTheAir` on paper standing up, where no paper is named), and the run re-anchors onto that face with the anchor at P, through the same `reanchorAt` a re-anchoring fold uses, so its placement, layer-order renumbering, join check and `ReanchorNotFlat` are C83's. Its record is made by `anchoring`: one surface before and after, held from the new anchor's face as a re-anchoring move's are, so both halves of `recordPlacement` are the new placement; `recordAnchor` is (the anchor before, P); kind `Anchoring`; evidence `NoMotion`, the constructor D10 and G7 name for it, with no hinge and no moving paper. The written state after it is the state before it, faces numbered alike. The report says `nothing turned: no paper moved` and `anchor moved: … where the move names it` | D3, D10, G7, 02 §2.3 | `Sequence.Run.reanchorAt`, `Sequence.Record.anchoring` [code] | adopted-modified | — |
 | C85 | `unfold` naming a step that turns no paper is refused statically as `TurnsNoPaper` (#527's review). 02 §6.4 defines an unfold as reversing the named steps' net angle changes, so a step of only `turn over`, `rotate`, `anchor`, `mark` or `checkpoint` has none, and its unfold ran as nothing, silently: the step wrote the state before it again and the report printed nothing for it. Whether a step turns paper needs no paper to see, so the checker refuses it, after `NotAFigure`, as `continue` and `hinge of` refuse the wrong kind of step. A pre-crease turns paper and is still accepted, its unfold skipped when run as §6.4 says; `repeat` of such a step is accepted, since a turn-over done again means something | 02 §6.4, §12 | `Sequence.Check.turnedNamed` [code] | adopted-modified | 02 |
 | C86 | The helmet base runs as a sequence (#502), PRD 09 §9's second migration, as #493 did the blintz: three folds named by corners (the diagonal, then each corner of the doubled triangle laid on the tip), anchored at the south-east square face's middle, equal to `HelmetSequence`'s recipe in end angles exactly, layer orders by count and as sets, every point within 1e-12, and `checked-helmet.svg` byte for byte through the recipe's page function. Each corner fold resolves one line to two creases on different layers. That showed `hingeStretches` joining any two hinge edges that met on the sheet, so the record named one stretch along edge 10 carrying edge 12, which runs at right angles to it; stretches now join only along one line on the sheet. Edge ids, which `unfold` and `hinge of` read, were right throughout | 09 §9, D14 | `Test.SequenceExamples.helmet`, `Sequence.Resolve.hingeStretches` [code] | adopted | — |
 | C87 | `BlintzSequence` deleted (#503), PRD 09 §9's second PR for the blintz. The study's gallery runs `blintz.foldseq` and draws `checked-blintz.svg` from the run: the open square, each turn halfway from its record's `SweptHinge` turn, and each record's end (`BlintzGallery.blintzStates`), byte for byte the recipe's page, which is now the guard the recipe comparison was, with `examples/blintz-sequence.fold` for every written state. Each assertion of the recipe's spec moved to `BlintzRunSpec` on the run's turns, each turn's start folded again from the working pattern with the angles and orders of the record's surface before; `RecordSpec` and `ResolveSpec` take their turns and their state after the first fold from a run. `HelmetSequence` stays, its deletion not yet filed | 09 §9 | `BlintzGallery`, `Senbazuru.Sequence.BlintzRunSpec` [code] | adopted | — |
-| C88 | Sheet lengths converted in one module (#505), `Sequence.SheetLengths`: `sheetLengthOf`, `inSheetLengths` and `fromSheetLengths` for points and `lengthInSheetLengths` for distances, on the sheet's box. 01 §4.11 placed the conversion "when `Sequence.Run` resolves a reference", in the resolver; the run report (#500) had since kept its own copy, dividing where the resolver multiplied by a reciprocal, because it lives in `Sequence.Record`, which the resolver imports. The one place therefore sits below both, knowing no paper; the resolver, the runner's `ReanchorNotFlat` and the report call it, and AGENTS.md points at it. Physical lengths keep the plan: one place, with the `material` block at M6 | 01 §4.11, decisions §3 row 11 | `Sequence.SheetLengths` [code] | adopted-modified | — |
-| C89 | Each record's cost as built at M2 (#504), E2's second half: `StepCost`, `costSweepIntervals` and `costRefolds`, read by `recordCost`. Counted where the work is done, never timed. A `CheckedFlap` counts its own refolds (`flapRefolds`): one for its start, and one for each pose preparation tries and each end whose order is checked, those two taken from the lists that drive the folds, so a pose added to a list counts itself; the start, and the record's two surfaces below, are single calls counted beside them. `hingeTurn` adds one for each of the record's two surfaces. The runner adds its own (`addRefolds`): `FoldState` keeps a running count, `foldNow` is the runner's one call of `foldFrameWith` and now keeps the fold it makes, and a move's refolds are the difference across it, the join check's included, which can only be counted once the record exists. A turn-over, a rotate and `anchor P` count no sweep. Set from a reviewed run: each blintz move is 1 sweep interval and 8 refolds, 3 preparing, 2 checking, 2 surfaces and 1 join check; 09 §6.1's "about 7 per checked step" was the recipe's, which built only its end surface. `--report` prints a move's counts as `work:` (04's "Work counts"). An `expect refused` move makes no record, so the work of its refused attempt is not counted: 09 §6.1 sums a run's cost over its records. Which count takes the time is not measured here; these are counts | 09 E2, §6.1; 01 §5.8; 04 report table | `run --report` on `blintz.foldseq` [ran] | adopted | — |
+| C88 | Sheet lengths converted in one module (#505), `Sequence.SheetLengths`: `sheetLengthOf`, `inSheetLengths` and `fromSheetLengths` for points and `lengthInSheetLengths` for distances, on the sheet's box. 01 §4.11 placed the conversion "when `Sequence.Run` resolves a reference", in the resolver; the run report (#500) had since kept its own copy, dividing where the resolver multiplied by a reciprocal, because it lives in `Sequence.Record`, which the resolver imports. The one place therefore sits below both, knowing no paper; the resolver, the runner's `ReanchorNotFlat` and the report call it, and AGENTS.md points at it. Physical lengths keep the plan: one place, with the `material` block at M6 | 01 §4.11, decisions §3 row 11 | `Sequence.SheetLengths` [code] | adopted-modified | 01 |
+| C89 | Each record's cost as built at M2 (#504), E2's second half: `StepCost`, `costSweepIntervals` and `costRefolds`, read by `recordCost`. Counted where the work is done, never timed. A `CheckedFlap` counts its own refolds (`flapRefolds`): one for its start, and one for each pose preparation tries and each end whose order is checked, those two taken from the lists that drive the folds, so a pose added to a list counts itself; the start, and the record's two surfaces below, are single calls counted beside them. `hingeTurn` adds one for each of the record's two surfaces. The runner adds its own (`addRefolds`): `FoldState` keeps a running count, `foldNow` is the runner's one call of `foldFrameWith` and now keeps the fold it makes, and a move's refolds are the difference across it, the join check's included, which can only be counted once the record exists. A turn-over, a rotate and `anchor P` count no sweep. Set from a reviewed run: each blintz move is 1 sweep interval and 8 refolds, 3 preparing, 2 checking, 2 surfaces and 1 join check; 09 §6.1's "about 7 per checked step" was the recipe's, which built only its end surface. `--report` prints a move's counts as `work:` (04's "Work counts"). An `expect refused` move makes no record, so the work of its refused attempt is not counted: 09 §6.1 sums a run's cost over its records. Which count takes the time is not measured here; these are counts | 09 E2, §6.1; 01 §5.8; 04 report table | `run --report` on `blintz.foldseq` [ran] | adopted | 02, 09, 10, glossary-additions |
 | C90 | `Origami.Route` waits for its producer (#504). 05 L4 puts it at M2 "for records", but it holds `RoutePose`, which only `flapPoseAt` makes, at M6 or M7b; a module holding a type nothing makes is a promise no test can check, as #486 found for the record's unfilled fields. It lands with `flapPoseAt`; C28's placement stands | 05 L4, C28 | no `RoutePose` producer in `src` [code] | adopted-modified | 05, 10 |
-| C91 | Eighth turns as built at M2 (#95), owner decision 10: `rotate k/8 turn` with k odd turns by the matrix whose entries are ±`sqrt 0.5`, about the displayed state's middle as a quarter turn is, so `rotate` now takes 1 to 7 eighths. Not `rotationAbout`, which D5 named: it takes cos and sin from the platform's library, and they disagree at π/4, 0.7071067811865476 and 0.7071067811865475 with GHC 9.6.7 on macOS, so a turn built from them is not even symmetric. `sqrt` is one of the operations IEEE 754 requires to round correctly, so R9's platform bits do not arise and 09 §8's eighth-turn row does not apply; its first row, folded positions carrying folding's own cos and sin, still does. What remains is rounding: written coordinates after an odd eighth are not exact, and an eighth there and back lands within rounding of where it began. Quarter and half turns keep entries 0 and ±1 | owner decision 10; D5; 10 R9; 09 §8 | `sqrt 0.5` against `cos (pi / 4)` and `sin (pi / 4)` in GHC [ran] | adopted-modified | — |
+| C91 | Eighth turns as built at M2 (#95), owner decision 10: `rotate k/8 turn` with k odd turns by the matrix whose entries are ±`sqrt 0.5`, about the displayed state's middle as a quarter turn is, so `rotate` now takes 1 to 7 eighths. Not `rotationAbout`, which D5 named: it takes cos and sin from the platform's library, and they disagree at π/4, 0.7071067811865476 and 0.7071067811865475 with GHC 9.6.7 on macOS, so a turn built from them is not even symmetric. `sqrt` is one of the operations IEEE 754 requires to round correctly, so R9's platform bits do not arise and 09 §8's eighth-turn row does not apply; its first row, folded positions carrying folding's own cos and sin, still does. What remains is rounding: written coordinates after an odd eighth are not exact, and an eighth there and back lands within rounding of where it began. Quarter and half turns keep entries 0 and ±1 | owner decision 10; D5; 10 R9; 09 §8 | `sqrt 0.5` against `cos (pi / 4)` and `sin (pi / 4)` in GHC [ran] | adopted-modified | 02, 03, 04, 06, 08, 09, 10 |
 | C92 | `HelmetSequence` deleted (#534), PRD 09 §9's second PR for the helmet. Its sequence was Haskell only, `Test.SequenceExamples.helmet`, which the study executable cannot import. Its text is now `helmet.foldseq` at the root, and both the study's gallery and `HelmetRunSpec` run that file, so they cannot run different sequences; the Haskell copy, which nothing else used, is gone. The gallery loads the sheet the source names (`sourceFiles`), as the run command does, and draws `checked-helmet.svg` from the run (`HelmetGallery.helmetStates`): the open square, the first turn at 120° and each corner at 90° along its record's `SweptHinge` turn, and each record's end. That is byte for byte the recipe's page, which is now the guard the recipe comparison was. Each assertion of the recipe's spec moved to `HelmetRunSpec` on the run's turns, each turn's start folded again with the faces, angles and orders of the record's surface before. The scale cases now run the whole sequence and compare it with the unscaled run. The backwards-winding cases became one check that the runner reads a backwards sheet as the same state as the forwards one; `FlapSpec` and `FoldingSpec` keep the library's own re-winding. The run's comparisons with the recipe became literals: each move's end angles and layer orders | 09 §9 | `helmet.foldseq`, `HelmetGallery`, `Senbazuru.Sequence.HelmetRunSpec` [code] | adopted | — |
 | C93 | The blintz and helmet galleries share one pipeline (#537), `SequenceGallery`. It reads and checks a source, loads the sheet the source names from where the source says, keyed as the source writes it, as `run` does (`sourceFiles`), runs it, draws each turn part-way from its record's `SweptHinge` turn, and writes the page, its FOLD file, a GLB per figure, the checks, the viewer and the HTML page. `BlintzGallery` and `HelmetGallery` are one `Gallery` each, holding only what differs: the name, the source, the output directory, the title, the camera's view direction, the page size, one part-way pose per move, and the HTML template. A pose is a fraction of that record's own turn, with the words its figure's title takes, so the helmet's 120° is 120/180 of a half turn; a run of more or fewer moves than poses is refused. Two drifts between the copies are gone: the blintz loads its sheet as the helmet did, rather than naming `examples/blintz-base.fold` a second time, and takes its open square from the first record's surface before, as the helmet did, rather than its first turn at 0, the same paper. The closing message counts the figures it wrote | here; #535's review | `SequenceGallery` [code]; both galleries on main and here, every written file identical by `diff -r`, the figures' titles included, which the SVG goldens do not draw [ran] | adopted | — |
 | C94 | Folding turns without `cos` and `sin` at multiples of 45° (#536), as owner decision 10 did for `rotate`. `Geometry.Rigid.rotationAboutDegrees` takes a crease's angle in degrees, as files and `Folding` hold it. At an exact multiple of 45° it uses 0, ±1 and ±`sqrt 0.5`, correctly rounded and so the same on every platform; the test compares the angle with 45 k as exact rationals, so no other angle is moved onto a multiple. There it also writes each diagonal entry as x² + (1 − x²) cos θ, since (1 − cos θ) x² + cos θ rounds at 135°, where 1 + `sqrt 0.5` is not a `Double`; the matrix of a turn about a coordinate axis then holds 0, 1, cos θ and ±sin θ and nothing else, though a position still rounds wherever √½ multiplies it. Any other angle turns as `rotationAbout` of `d * pi / 180`, bit for bit. `Sequence.Run.eighthTurnsAbout` is now `rotationAboutDegrees` about the vertical through the model's middle, the same matrix as its written-out table, bit for bit. `sin pi` is 1.2e-16, so a flat fold's paper lay about 1e-16 off its plane: the blintz's written sequence had 13 of 144 coordinates at z = −4.33e-17. Coordinates folded only by multiples of 45° now take no number from the platform's trigonometry, though the sweep that checks a turn and the tracing of faces still use `cos`, `sin` and `atan2`. So 09 §8's first row holds only for other angles, such as the bird's poses, and `examples/blintz-sequence.fold` is held exactly, E5's tolerance 0, as CI checks on Linux; `examples/bird-base-sequence.fold` is regenerated, within its 1e-12. Rows that compare placements with `rotationAbout` of `degrees × π / 180` exactly (05 L15's R-05-48, 08's statement of `Folding`'s rule) hold only off the multiples, and 01 §5.9's "up to 1.2e-16 off, because sin π" no longer holds, since a flat fold's sine is now 0. Measured beforehand with a throwaway version: no test or golden changed. `docs/notes/exact-turns.md` | #536; 09 §8 | suite unchanged; the blintz file's only change 13 z values from −4.33e-17 to 0 [ran] | adopted | 01, 05, 08, 09 |
 | C95 | No `Rigid` can mirror or stretch (#542; §10 item 19, D5's residue), as the owner chose on 2026-10-11. `Geometry.Rigid` no longer exports the constructor, and `rigidLinear` and `rigidOffset` are plain functions, since an exported record field would let `r { rigidLinear = m }` past any check. `translation` makes the four pure translations that were built by hand, and `rigidFrom` admits a matrix made elsewhere only if `isProperRotation` does; `fitRigid` and the study's frame alignment call it, and it returns `Maybe`, as `fitRigid` does, since the geometry layer has no error type (`docs/architecture.md`). `Mat3 (..)`, the other half of item 19, stays exported: a `Mat3` is not a motion, and the only way from one to a `Rigid` is `rigidFrom`. The type does not promise a turn to the last bit: a long chain of general turns drifts, past 1e-12 after some 7,300, and an angle that is not finite or overflows in radians gives a matrix of NaN (the module header). The runner's turn-overs are `rotationAboutDegrees` half turns about the model's middle, the same bits as the matrices written out before. `PresentationImproper` (C81) is dropped. A presentation is a product of the runner's turns, by eighths about the vertical and halves about the horizontal, and those composed in any order make only 32 matrices, each within 4.4e-16 of a proper rotation, where the check allowed 1e-12; `RigidSpec` checks all 32 instead. D5's Exactness and Residue now say so. Superseded elsewhere: 02 §5.2's check, §2's 1e-12 among a run's tolerances and the `NotAProperRotation` row; 05 L3's "exported unchecked" and R-05-11; glossary-additions' "Proper rotation" row; and 10's item 19 | §10 item 19; D5; 10 §7.2 item 19 | turn-overs compared through `show` with the written-out matrices over five middles; the runner's turns composed in every order until no new matrix appears [ran] | adopted | 02, 05, 10, glossary-additions |
-| C96 | M2's interfaces as built, where §5 sketched them otherwise and no row said so (#544); §5 now notes each. `runSequence` takes `RunSettings` and the sheets as `FoldFile`s, the layer budget being the field `runBudget`: #501 planned it so without giving a reason, where review L4-4 had proposed `Budget` first, as `stepPage` takes it, and PRDs 01–04 pass a separate `Budget`. `RunSettings` holds `runSweep`, `runNearMissBand :: Double`, owner decision 2's 1e-3, and `runBudget`; the key and macro settings wait for the moves that use them. `sheetState` takes the `FoldFile` and reads its key frame, `start folded` being refused before it, in `startOf`, as `StartFoldedNotRunYet`; D3's "Starting." now says so. `hingeTurn` takes 13 arguments. `ResolveRefused` takes a `Place`, as `StaticRefused` does, so a header's anchor is refused as the header's. `ReanchorNotFlat` holds the new anchor as a `V2` in sheet lengths and the face's tilt in degrees, so no `MoveFailure` names a `MaterialPoint` yet, and it stays in `Sequence.Record` (C75). `UnfoldChangedSince` names an `EdgeId` and `SheetRefused` a `FilePath`, and `CreasingRefused` and `MoveNotRunYet` were added. Each `StepOutcome` holds its placement as well as its presentation | §5; D3; 01 §4.3; 02; 03; 04; review L4-4 | `Sequence.Run`, `Sequence.Record`, `Sequence.Error` [code]; #501's body [gh] | adopted-modified | 01, 02, 03, 04 |
+| C96 | M2's interfaces as built, where §5, D4, D11, D13, D20 and D23 planned them otherwise and no row said so (#544); each now carries a note. `runSequence` takes `RunSettings` and the sheets as `FoldFile`s, the layer budget being the field `runBudget`: #501 planned it so without giving a reason, where [review L4](research/spine-reviews/review-L4-conventions-consistency.md) L4-4 had proposed a separate `Budget` argument, and PRDs 00–04 pass one; §2's diagram now shows the budget inside `RunSettings`. `RunSettings` holds `runSweep`, `runNearMissBand :: Double` (owner decision 2's 1e-3) and `runBudget`; `keyDensity` and `keySubdivisionBudget` wait for M7b's animated export, and `macroChecks` for M5's macros. `sheetState` takes the `FoldFile` and reads its key frame, and `startOf` refuses `start folded` before calling it, as `StartFoldedNotRunYet`; D3 notes both. `hingeTurn` takes 13 arguments. `ResolveRefused` takes a `Place` instead of the step's number and name, as `StaticRefused` does, so a refused anchor in the header names the header. `ReanchorNotFlat` holds the new anchor as a `V2` in sheet lengths and its face's tilt in degrees, so no built `MoveFailure` names a `MaterialPoint`, and `MaterialPoint` stays in `Sequence.Record` (C75). `UnfoldChangedSince` names an `EdgeId`, and `SheetRefused` a `FilePath`, which the CLI also gives an unreadable checkpoint's path through; `CreasingRefused` and `MoveNotRunYet` were added. The writer's non-finite refusal is `WriteNonFinite`, for a material coordinate, where D4 planned `WriteNonFiniteAngle`; `encodeFoldFile` refuses any non-finite number as `NotFinite` (#510). Expected refusals are the run's own `runExpected`, each with its step, move and kind, not part of each step's outcome as D23 has it, and each `StepOutcome` holds its placement as well as its presentation. `Sequence.Resolve` sits at D23's level 5 beside `Sequence.Run`, and `Sequence.SheetLengths` below `Sequence.Record`. The runner has three tolerances of its own, which D2's residue now names; the issue they were to wait for (§10 item 17) was never filed | §5; D2; D3; D4; D11; D13; D20; D23; 01 §4.3; 02; 03; 04; [review L4](research/spine-reviews/review-L4-conventions-consistency.md) L4-4 | `Sequence.Run`, `Sequence.Record`, `Sequence.Error`, `Sequence.Resolve`, `Fold.Load` [code]; #501's body, read with `gh issue view 501` [ran] | adopted-modified | 00, 01, 02, 03, 04, glossary-additions |
+| C97 | Glossary rows move into `docs/glossary.md` one term at a time, with the code that uses each, not all in M0's first PR (§3 row 10): #278's PR, #299, left "the rest of the language's vocabulary" in glossary-additions "until the code that needs each word exists". So a term that has moved is defined in both files, and once it has, `docs/glossary.md` is its definition; the copies can disagree, as Refold's "about seven" here did with C89. Many built terms have not moved, among them route evidence, seed and join check | §3 row 10; 01 §4.10; §8's M0 row; README | `git show f3b1ea5` [ran] | adopted-modified | 01, 10, README, glossary-additions |
+| C98 | M2's sequence specs build their fixtures with `runIO`, not the `beforeAll` D16 asks of new sequence specs: the blintz, helmet, record, report, resolve, run and write specs, while M1's `TraditionalCraneSpec` uses `beforeAll`. C71 kept `runIO` only for existing specs until their deletion PRs, so these depart from D16, and a filtered `stack test --match` still pays their setup (R5); §10 item 20's issue was never filed. Moving them to `beforeAll` is open | D16; C71; 09 §3, §6.3; 10 R5 | `grep -c runIO` and `beforeAll` over `test/Senbazuru/Sequence` [ran] | adopted-modified | 09, 10 |
 
 ## Proposals not adopted
 

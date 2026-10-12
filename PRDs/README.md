@@ -1,7 +1,9 @@
 # Fold sequences: research and PRDs
 
-**Status.** Research and requirements only, dated 2026-09-14 against commit
-`568dcb6`. Nothing is implemented. The decision record,
+**Status.** Research and requirements, dated 2026-09-14 against commit
+`568dcb6`, before anything was built. M1 and M2 have been built since, and the
+decision record's changes table (C75 onward) and §5's notes say where they were
+built otherwise. The decision record,
 [decisions.md](decisions.md), and several files were written or re-checked on
 2026-09-15 at the same commit. Nothing under `PRDs/` edits any other file.
 
@@ -218,7 +220,7 @@ works it out in full.
 
 **What changed since the draft the files were first written from.**
 [Changes since draft v2](decisions.md#changes-since-draft-v2) lists every change
-the record adopted, C1–C74, with the evidence checked, and
+the record adopted, from C1 on, with the evidence checked, and
 [Proposals not adopted](decisions.md#proposals-not-adopted) lists what was turned
 down and why. The fourteen gaps 02 raised, G1–G14, are decided there too;
 [02 §14](02-language-semantics.md#14-gaps-this-file-raised-and-where-they-were-decided)
@@ -266,7 +268,7 @@ Each has a recommended default, decided with its consequences in
 | 7 | Captions overlapping or overflowing their figure | Captioned pages get a gutter of at least 42/340 ≈ 0.124 of a figure; uncaptioned pages keep their bytes; overflow across cells is stated | M3 |
 | 8 | Blintz (corners folded to the centre): behind, as the recipe does, or in front, as the study's `cases.json` does | **Decided 2026-10-06** as recommended: behind, as the recipe does | M2's blintz PR |
 | 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | **Decided 2026-10-06** as recommended: it stays as the regression; the state-rule page is a new golden | M2 |
-| 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | **Decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, so an eighth turn adds no platform bits of its own ([C91](decisions.md#changes-since-draft-v2)) | M2 |
+| 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | **Decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, so an eighth turn adds no platform bits of its own, while folded positions keep folding's (09 §8) ([C91](decisions.md#changes-since-draft-v2)) | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | Yes, at M0 | M0 |
 | 12 | Crane-sized sequences in default CI or a separate slow job, and whether that job is required; the largest mesh a settle may use | A separate slow job that is a required check; default CI settles at most 392 triangles; `run --settle` refuses above 1,192 | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **Decided 2026-09-23**: where the moving paper goes ([D5](decisions.md#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | M2's runner |
@@ -321,7 +323,8 @@ questions.
   as proposed issues, in
   [10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues).
 - **Glossary.** M0's first PR moves [glossary-additions](glossary-additions.md)
-  into `docs/glossary.md`.
+  into `docs/glossary.md`. Its rows move one term at a time instead, with the code
+  that uses each ([C97](decisions.md#changes-since-draft-v2)).
 - **Suggested, not done.** If the owner accepts the series, the Docs table in
   [AGENTS.md](../AGENTS.md#docs) (lines 99–113) could gain a `PRDs/` row: "The
   design for fold sequences and material rendering, with its decision record and
