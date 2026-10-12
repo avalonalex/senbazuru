@@ -10,8 +10,12 @@ expression does not: a published algorithm can be reimplemented from
 understanding, and a GPL implementation can be read to understand the domain
 and never copied, fixtures included. MIT projects can be vendored with
 attribution, but a repository licence is not a design licence, so another
-designer's crease pattern in an MIT repo is still theirs. When a licence below
-says *not checked*, check it before reading the code.
+designer's crease pattern in an MIT repo is still theirs. Running a program and
+reading its output is not vendoring, but [AGENTS.md](../AGENTS.md#third-party-material)
+asks that each one run for this repository have a row here giving its licence as
+built. The rows still owed for programs run before that rule landed are listed
+in [#552](https://github.com/avalonalex/senbazuru/issues/552). When a licence
+below says *not checked*, check it before reading the code.
 
 ## Tools that read or write FOLD
 
@@ -72,6 +76,19 @@ regions, is the OrigamiSimulator (MATLAB) row in the table above.
 | Project | What it is | Licence | Why it matters here |
 | --- | --- | --- | --- |
 | [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) — Wenzel Jakob and others | A research path tracer, scriptable from Python, with two-sided materials | Three-clause BSD text plus a clause granting the author a licence to any improvements you share; GitHub cannot classify it | The permissive alternative to Blender for offline stills of paper ([H7](../PRDs/research/H7-tooling.md) finding 15). It reads OBJ and PLY, not glTF. |
+
+## Checkers run by hand
+
+Programs run by hand to check senbazuru's own output. None is run by CI or a
+test, as [AGENTS.md](../AGENTS.md#third-party-material) requires. Two programs
+listed with the simulators above have been run this way too: Blender, to import a
+`.glb` without its window and render it, and the IPC Toolkit, to count crossings
+on the study's saved crane body
+([notes/crossing-counts-on-touching-paper.md](notes/crossing-counts-on-touching-paper.md)).
+
+| Project | What it is | Licence | Why it matters here |
+| --- | --- | --- | --- |
+| [glTF Validator](https://github.com/KhronosGroup/glTF-Validator) — Khronos Group | The reference validator for glTF 2.0 and `.glb` files, published to npm as `gltf-validator` | Apache-2.0, as is the npm package that was run | Run by hand on `.glb` output since the export was built ([#51](https://github.com/avalonalex/senbazuru/pull/51)), by `study/gltf/validate.cjs` through its JavaScript API, since the npm package has no command-line program; [study/gltf/README.md](../study/gltf/README.md) pins the version |
 
 ## Two halves that never met
 

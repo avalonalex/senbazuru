@@ -75,8 +75,8 @@ is folded flat ([glossary](../docs/glossary.md#origami);
 - **Why move 5 reuses move 1's ids.** Reopening turns the same hinge back, and
   no move in between added a crease, so no id changed.
 
-Here are the same moves as a *sequence source*, the text an author writes. The
-extension `.foldseq` is a placeholder
+Here are the same moves as a *sequence source*, the text an author writes. Its
+extension is `.foldseq`, owner decision 1, decided 2026-10-12
 ([glossary-additions](glossary-additions.md#the-sequence-language)).
 
 ```text

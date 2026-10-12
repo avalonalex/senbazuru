@@ -201,7 +201,7 @@ its way.
 | 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0: landed in part, as a comment on #97, 2026-10-06: the decision, and that #97 closes at M2, which it did with #501, 2026-10-07. `docs/notes/sequences.md`, which rows 3, 9 and 16 cite, was never written, so "scheme" is not retired, and with #97 closed the note has no issue |
 | 6 | [#111](https://github.com/avalonalex/senbazuru/issues/111) | add the writer's at-rest rule and the two `1e-10` thresholds ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278), [`StudyCase.hs:208`](../study/fold-material/StudyCase.hs#L208)) that should read `Fold.Query.atRest` | M0: landed as a comment on #111, 2026-10-07, the body's table left as it was |
 | 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§10](#10-corrections)); #104's done-when names `--view front` ([D19](#d19-realistic-rendering)) | M0 |
-| 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0 |
+| 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0: landed with #550, 2026-10-12, in 01 §4.8's words; #552 asks the owner to scope it and lists the rows owed for programs run before it |
 | 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96); not landed, and 01 §4.9's text cites `docs/notes/sequences.md`, which was never written |
 | 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR: landed in part. Since #278, 2026-09-19, rows move in one term at a time with the code that uses it (C97), and many built terms have not moved, among them route evidence, seed and join check; the fixes to rest angle and flat-folded have not landed |
 | 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2: landed with #505, 2026-10-11, the one place for sheet lengths being `Sequence.SheetLengths` (C88); the place for physical lengths is named when the `material` block brings it, at M6 |
@@ -1011,8 +1011,8 @@ The full EBNF, lexical table, reserved words and printer rules are owned by
 [04](04-prd-sequence-source-and-cli.md#grammar); [§6](#6-grammar) points there.
 The decisions:
 
-- **Extension** `.foldseq`, a placeholder (`.fseq` is the xLights and Falcon Player
-  format); first line `foldseq 1`, nothing before it (owner decision 1).
+- **Extension** `.foldseq` (`.fseq` is the xLights and Falcon Player format); first
+  line `foldseq 1`, nothing before it (owner decision 1, decided 2026-10-12).
 - **Words.** *Sequence source* (the text), *sequence file* (the written FOLD),
   *step* (the instruction for one picture), *move* (an instruction in a step),
   *figure* (one drawn state, [D24](#d24-states-figures-and-their-numbers)), *move record*. "Scheme" is
@@ -1463,10 +1463,12 @@ accepted and rejected controls stay unchanged at each
   `examples/README.md` for any output kept; and no CI job or test depending on it
   (the build, format and lint tools excepted). External solvers are comparison
   oracles, never ahead of the in-repo path, and the design-licence rule applies to
-  any pattern fed to one. The wording goes to `AGENTS.md` at M0 (owner decision 11;
-  [01 §4.8](01-architecture.md#48-agentsmd-third-party-material)).
+  any pattern fed to one. The wording goes to `AGENTS.md` (owner decision 11,
+  decided 2026-10-12; [01 §4.8](01-architecture.md#48-agentsmd-third-party-material)):
+  planned for M0, it landed with #550.
 - Origami Simulator (MIT): an oracle through #53, manual or browser-automated.
-  ipc-toolkit (MIT): a library, not a simulator; a driver is a toolchain decision.
+  ipc-toolkit (MIT source; its PyPI wheel statically links filib, LGPL-2.1): a
+  library, not a simulator; a driver is a toolchain decision.
   Codim-IPC: Apache-2.0 source whose default build links GPL CHOLMOD; user-installed
   only, with `WITH_GPL=OFF` or Eigen. IPC-family tools cannot start from a
   zero-thickness flat stack without a thickness offset
@@ -2266,7 +2268,7 @@ decision 40 by the code review of #493, and decision 41 by #507.
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
-| 1 | File extension; the name "sequence source" | `.foldseq`, first line `foldseq 1` (`.fseq` is the xLights and Falcon Player format) | the extension, the first-line keyword, `decodeFile`'s refusal, error goldens and glossary rows change | M1's parser PR |
+| 1 | File extension; the name "sequence source" | **decided 2026-10-12** as recommended, as M1's parser built it (#304): `.foldseq`, first line `foldseq 1` (`.fseq` is the xLights and Falcon Player format) | the extension, the first-line keyword, `decodeFile`'s refusal, error goldens and glossary rows change | M1's parser PR |
 | 2 | `nearMissBand` | **decided 2026-10-06** as recommended: 1e-3 sheet lengths | smaller: a decimal near a vertex becomes a separate point and a crease sliver; larger: legitimate points refused. A `RunSettings` field, so no syntax change | M2 |
 | 3 | A move carrying the anchor's face: re-anchor or refuse | **decided 2026-10-06** as recommended: re-anchor, printed by `--report` | refuse: authors write `anchor P` first, and animation needs no sub-hierarchy per re-anchor | M2 |
 | 4 | A precrease's stiffness in a settle | its crease, U at 0 ([D12](#d12-the-text-syntax)), settles as a crease spring resting at 0, as an M or V crease at 0 does, weighted by length; a sheet file's `F` edges stay panel bends, weighted also by the two triangles' areas | as panel bends: turning concentrates differently, and M6's numbers change | M6 |
@@ -2276,7 +2278,7 @@ decision 40 by the code review of #493, and decision 41 by #507.
 | 8 | Blintz direction: the recipe folds corners behind (−180), the study's manifest in front (+90 then +175) | **decided 2026-10-06** as recommended: the recipe's `fold behind`, so migration reuses `checked-blintz.svg` | both blintz sources switch to `fold in front` in one PR, and gallery output changes | M2's blintz PR |
 | 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | **decided 2026-10-06** as recommended: it stays as the regression; the state-rule page is a new golden | `quarter-fold-steps.svg` and `quarter-fold-step-1.svg` move in that PR, and their `test/fixtures` copy migrates too | M2 |
 | 10 | Eighth turns by trigonometry, or a `sheet square as diamond` start | **decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, which IEEE 754 rounds correctly, so an eighth turn adds no platform bits of its own; folded positions keep folding's (09 §8) (C91) | `rotate` takes even k only, so frames stay exact; the crane-opening example's first step becomes a header option | M2 |
-| 11 | The external-tools rule in `AGENTS.md` | yes, [§3](#3-recorded-text-this-design-changes) row 8 at M0 | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
+| 11 | The external-tools rule in `AGENTS.md` | **decided 2026-10-12** as recommended: yes, [§3](#3-recorded-text-this-design-changes) row 8, landed with #550 | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
 | 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four; default CI settles ≤ 392 triangles; `run --settle` refuses above 1,192 until 3–5 compiled runs justify another number | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR; a higher cap admits unmeasured settles | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
 | 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease; **refined 2026-09-24**: that crease has no direction, U, since a later move may fold it either way, a stretch at a time ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
