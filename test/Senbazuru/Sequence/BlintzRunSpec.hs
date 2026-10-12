@@ -17,7 +17,7 @@
 -- Built once, by 'runIO' at the top.
 module Senbazuru.Sequence.BlintzRunSpec (spec) where
 
-import BlintzGallery (blintzFile, blintzStates, blintzSvg)
+import BlintzGallery (blintzGallery)
 import Control.Monad (forM_)
 import Data.Aeson (eitherDecode, encode)
 import Data.IntMap.Strict qualified as IM
@@ -44,6 +44,7 @@ import Senbazuru.Sequence.Error (MoveFailure (..), ResolveProblem (..), Sequence
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
 import Senbazuru.Sequence.Syntax (Amount (..), Corner (..), Layers (..), Move (..), Name (..), RefusalKind (..), Sense (..), Sequence)
+import SequenceGallery (pageFile, pageStates, pageSvg)
 import Test.Golden (goldenText)
 import Test.Hspec
 import Test.SequenceExamples (blintz)
@@ -57,7 +58,7 @@ spec = describe "the blintz, run as a sequence" $ do
   turns <- runIO (mapM turnOf records)
   paper <- runIO (workingPattern <$> right (sheetState file))
   starts <- runIO (mapM (right . startOf paper) records)
-  states <- runIO (right (blintzStates blintzRun))
+  states <- runIO (right (pageStates blintzGallery blintzRun))
 
   -- From the recipe's spec: four half-turns and a reopening, each holding
   -- the central square still, and the angles and order counts it ends at.
@@ -163,7 +164,7 @@ spec = describe "the blintz, run as a sequence" $ do
   -- From the recipe's spec: the page's states survive a trip through FOLD
   -- with their material coordinates and orders.
   it "round-trips the illustrated states with their material coordinates and orders" $ do
-    let page = blintzFile states
+    let page = pageFile blintzGallery states
     eitherDecode (encode page) `shouldBe` Right page
     forM_ (zip (otherFrames page) states) $ \(fr, (_, original)) -> do
       reloaded <- right (surfaceFromFrame fr)
@@ -175,7 +176,7 @@ spec = describe "the blintz, run as a sequence" $ do
   -- page was, and now the guard that the run still folds the blintz the way
   -- it was shown equal to the recipe.
   it "draws the eleven-figure page, checked-blintz.svg, byte for byte" $ do
-    svg <- right (blintzSvg (blintzFile states))
+    svg <- right (pageSvg blintzGallery (pageFile blintzGallery states))
     goldenText "test/golden/checked-blintz.svg" svg
 
   -- E10: after the four corners, carrying corner south-east on in front about
