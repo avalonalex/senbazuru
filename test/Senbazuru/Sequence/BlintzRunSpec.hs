@@ -44,7 +44,7 @@ import Senbazuru.Sequence.Error (MoveFailure (..), ResolveProblem (..), Sequence
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
 import Senbazuru.Sequence.Syntax (Amount (..), Corner (..), Layers (..), Move (..), Name (..), RefusalKind (..), Sense (..), Sequence)
-import SequenceGallery (pageFile, pageStates, pageSvg)
+import SequenceGallery (pageFile, pageStates, pageSvg, turnOf)
 import Test.Golden (goldenText)
 import Test.Hspec
 import Test.SequenceExamples (blintz)
@@ -55,7 +55,7 @@ spec = describe "the blintz, run as a sequence" $ do
   let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" file) . elaborate
   blintzRun <- runIO (right (runOn blintz))
   let records = runRecords blintzRun
-  turns <- runIO (mapM turnOf records)
+  turns <- runIO (mapM (right . turnOf) records)
   paper <- runIO (workingPattern <$> right (sheetState file))
   starts <- runIO (mapM (right . startOf paper) records)
   states <- runIO (right (pageStates blintzGallery blintzRun))
@@ -226,12 +226,6 @@ spec = describe "the blintz, run as a sequence" $ do
       step_ "Open it." (unfold [c0])
       c1 <- step "c1" "Open it again, which does nothing." (unfold [c0])
       step_ "Fold about c1's hinge." (move (Fold ValleyFold ToFlat (hingeOf c1) FlapOfFirstArgument (Just (cornerOf SouthEast))))
-
-turnOf :: MoveRecord -> IO CheckedFlap
-turnOf record = case recordEvidence record of
-  SweptHinge turn -> pure turn
-  Presented -> fail "the blintz turns nothing over"
-  NoMotion -> fail "the blintz names no anchor"
 
 -- | The fold a turn started from: the sheet's working pattern with the angles
 -- and layer orders of the record's surface before the turn.

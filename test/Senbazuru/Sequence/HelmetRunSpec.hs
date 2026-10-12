@@ -18,8 +18,9 @@
 -- surface before the turn ('startOf'). It is the one fold the recipe started
 -- each turn from, since the run numbers its faces as the recipe did.
 --
--- The run is of @helmet.foldseq@, the file the study's gallery runs, so the
--- two cannot run different sequences. Built once, by 'runIO' at the top.
+-- The run is of @helmet.foldseq@, read through the gallery's own
+-- 'gallerySource', so the two cannot run different sequences. Built once, by
+-- 'runIO' at the top.
 module Senbazuru.Sequence.HelmetRunSpec (spec) where
 
 import Control.Monad (forM_, void)
@@ -47,15 +48,15 @@ import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
-import SequenceGallery (pageFile, pageStates, pageSvg, turnOf)
+import SequenceGallery (Gallery (..), pageFile, pageStates, pageSvg, turnOf)
 import Test.Golden (goldenText)
 import Test.Hspec
 
 spec :: Spec
 spec = describe "the helmet base, run as a sequence" $ do
   file <- runIO (loadFoldFile "examples/helmet-base.fold" >>= right)
-  source <- runIO (readSequenceText "helmet.foldseq" >>= right)
-  helmet <- runIO (right (parseSequence "helmet.foldseq" source))
+  source <- runIO (readSequenceText (gallerySource helmetGallery) >>= right)
+  helmet <- runIO (right (parseSequence (gallerySource helmetGallery) source))
   let runOn sheet = checkSequence helmet >>= runSequence defaultRunSettings (M.singleton "examples/helmet-base.fold" sheet) . elaborate
   helmetRun <- runIO (right (runOn file))
   let records = runRecords helmetRun

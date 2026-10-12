@@ -105,7 +105,7 @@ data PartWay = PartWay
 -- the figures is checked too.
 pageStates :: Gallery -> Run -> Either Text [(Text, Surface V2)]
 pageStates gallery run = do
-  turns <- traverse turnOf records
+  turns <- first (\problem -> "the " <> galleryName gallery <> " page: " <> problem) (traverse turnOf records)
   unless (length poses == length records) $
     Left ("the " <> galleryName gallery <> " page has " <> tshow (length poses) <> " part-way poses for the run's " <> tshow (length records) <> " moves")
   case zip4 [1 :: Int ..] records turns poses of
@@ -160,8 +160,8 @@ writeSequenceGallery gallery destination = do
   source <- readSequenceText sourcePath >>= checked . first explain
   sequence' <- checked (first explain (parseSequence sourcePath source >>= checkSequence))
   -- The sheet the source names, read from where the source says and keyed as
-  -- it is written there, as the run command reads it, so that the path is
-  -- written once.
+  -- it is written there, as the run command finds and keys it, so that the
+  -- path is written once.
   sheets <- forM (sourceFiles sourcePath (checkedSequence sequence')) $ \named -> do
     sheet <- loadFoldFile (sourceToOpen named) >>= checked . first explain
     pure (sourceWritten named, sheet)
