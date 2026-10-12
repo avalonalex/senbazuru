@@ -22,7 +22,7 @@ Origami words link to [the glossary](../docs/glossary.md).
 ## Summary
 
 - A sequence source is a UTF-8 file whose first line is `foldseq 1`. The extension
-  is `.foldseq` (owner decision 1).
+  is `.foldseq` (owner decision 1, decided 2026-10-12).
 - Its *steps* are blocks in braces. A step is one figure on the page, holding one
   or more *moves* ([glossary-additions](glossary-additions.md#words-the-prds-narrow)).
   Every move sits inside a step.
@@ -1060,17 +1060,19 @@ From the owner decisions in [decisions §9](decisions.md#9-owner-decisions), whi
 
 1. **The extension and the words "sequence source"** (decision 1, decided 2026-10-12:
    `.foldseq` and "sequence source"). Every example here uses `.foldseq`.
-2. **The near-miss band** (decision 2). It is the number quoted when a typed coordinate
-   is refused for lying close to a vertex without being on it.
-3. **`rotate k/8 turn` or `sheet square as diamond`** (decision 10). The second adds
-   `as diamond` to the `sheet` line. Until it is decided, a diamond start is a first
-   step, because a header holds no move.
-4. **The blintz direction** (decision 8). It decides whether the blintz example says
-   `behind`.
-5. **Whether `quarter-fold-steps.fold` moves to the state rule** (decision 9), the
-   rule for which assignment a written frame gives a crease
-   ([glossary-additions](glossary-additions.md#the-fold-format)). It decides which
-   fixture the first example is checked against.
+2. **The near-miss band** (decision 2, decided 2026-10-06: 1e-3 sheet lengths). It is
+   the number quoted when a typed coordinate is refused for lying close to a vertex
+   without being on it.
+3. **`rotate k/8 turn` or `sheet square as diamond`** (decision 10, decided 2026-10-11:
+   `rotate k/8 turn`, with cos 45° and sin 45° both `sqrt 0.5`). The second would have
+   added `as diamond` to the `sheet` line. A diamond start is a first step, because a
+   header holds no move.
+4. **The blintz direction** (decision 8, decided 2026-10-06: behind, as the recipe
+   folds). So the blintz example says `behind`.
+5. **Whether `quarter-fold-steps.fold` moves to the state rule** (decision 9, decided
+   2026-10-06: it stays as the regression), the rule for which assignment a written
+   frame gives a crease ([glossary-additions](glossary-additions.md#the-fold-format)).
+   It decided which fixture the first example is checked against.
 
 ## Research links
 

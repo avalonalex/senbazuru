@@ -90,7 +90,7 @@ not gain new meanings.
 
 | Term | Meaning |
 | --- | --- |
-| **Sequence source** | The text an author writes, first line `foldseq 1`, extension `.foldseq` (owner decision 1). A program, not an input format: it becomes FOLD only when run ([D12](decisions.md#d12-the-text-syntax)). See [04](04-prd-sequence-source-and-cli.md). |
+| **Sequence source** | The text an author writes, first line `foldseq 1`, extension `.foldseq` (owner decision 1, decided 2026-10-12). A program, not an input format: it becomes FOLD only when run ([D12](decisions.md#d12-the-text-syntax)). See [04](04-prd-sequence-source-and-cli.md). |
 | **Move** | One instruction in a step (fold, unfold, turn over, *macro-move*, `pose` …), checked alone. Each leaves one *move record* except three: `let`, which *elaboration* expands away; `not modelled`, which stops the run; and `expect refused`, which changes nothing ([02 §6.1](02-language-semantics.md#61-every-move)). [#60](https://github.com/avalonalex/senbazuru/issues/60)'s `Move` now means this. |
 | **Sheet** | The starting paper: `sheet square`, the unit square, or `sheet "path"`, a key frame read by `Fold.Load`. Plain `sheet` sets every angle to 0; `start folded { … }` keeps the file's angles and names the *stacking* ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)). See [02](02-language-semantics.md). |
 | **Let** | `let NAME = …` names a point or line, re-evaluated at each use; it pins nothing (compare *mark*). |

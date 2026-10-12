@@ -666,14 +666,15 @@ with a recommended default there;
 [10](10-roadmap-risks-questions.md#6-owner-decisions) tracks them:
 
 1. **File extension and "sequence source"** (decision 1, decided 2026-10-12:
-   `.foldseq`, first line `foldseq 1`). These fix the file names in A-2 and the module header.
+   `.foldseq`, first line `foldseq 1`). These fix the file names in A-2 and the
+   module header.
 2. **Blintz direction** (decision 8, decided 2026-10-06: the recipe's `fold behind`). Both
    blintzes fold `mountain`, as the recipe does. The study's angle manifest
    (`study/fold-material/cases.json`) folds the corners up instead (+90°, then
    +175°). If the manifest is chosen, both switch to `fold in front` in one PR, and
    A-2 keeps them equal.
-3. **Eighth turns** (decision 10; default trigonometry, with the platform bits in
-   written coordinates stated). Should eighth turns stay a move
+3. **Eighth turns** (decision 10, decided 2026-10-11: trigonometry, with cos 45° and
+   sin 45° both `sqrt 0.5`, so an eighth turn adds no platform bits of its own). Should eighth turns stay a move
    (`rotate 1 Anticlockwise`), whose frames need trigonometry and so write
    platform-dependent bits into coordinates? Or should a header option start the
    square turned 45° as a diamond, leaving `rotate` with even k only, so frames stay

@@ -812,7 +812,7 @@ Budgets count refined triangles before solving, never seconds.
 | Tool | Licence as built | What it is | Allowed use |
 | --- | --- | --- | --- |
 | Origami Simulator | MIT ([`docs/related-projects.md:22`](../docs/related-projects.md)) | WebGL browser app; FOLD in and out; its README shows no headless mode | [#53](https://github.com/avalonalex/senbazuru/issues/53)'s manual or browser-automated export; oracle |
-| ipc-toolkit | MIT | C++ library adding contact to an existing simulation, not a simulator itself; authors ask for citation | a driver is new non-Haskell code: a toolchain decision |
+| ipc-toolkit | MIT; the PyPI wheel statically links filib, LGPL-2.1 | C++ library adding contact to an existing simulation, not a simulator itself; authors ask for citation | a driver is new non-Haskell code: a toolchain decision |
 | Codim-IPC | Apache-2.0 source; default build links GPL CHOLMOD Supernodal (`LINEAR_SOLVER=CHOLMOD`, `WITH_GPL` on) | IPC shells, rods, particles | user-installed, `WITH_GPL=OFF` or Eigen; copying brings Apache-2.0 §4 obligations |
 | Doodle (GPLv2), Rabbit Ear (GPL-3.0), ReferenceFinder (GPL-2.0), Creasy (GPL-3.0), ORIPA (GPL-3.0) | GPL | reference implementations | ideas only ([`AGENTS.md:132-138`](../AGENTS.md)) |
 
@@ -832,10 +832,10 @@ decides that running an external program and reading its output is not
 vendoring. The program still needs a `docs/related-projects.md` row with its
 licence *as built*, and any output kept needs provenance in `examples/README.md`.
 No CI job or test may depend on it, and an external solver is a comparison
-oracle, never ahead of the in-repo path. The wording lands at M0 as
-[decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8;
-[01 §4.8](01-architecture.md#48-agentsmd-third-party-material) holds the exact
-text, so this file does not repeat it.
+oracle, never ahead of the in-repo path. The wording landed with #550 as
+[decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8, in
+[01 §4.8](01-architecture.md#48-agentsmd-third-party-material)'s exact text,
+so this file does not repeat it.
 
 ### Errors
 
@@ -935,8 +935,9 @@ and [10](10-roadmap-risks-questions.md#6-owner-decisions), each with the default
    ([wing-root-holds.md:90-95](../docs/notes/wing-root-holds.md))? Default: a
    crease spring at rest 0, and `F` edges stay panel bends.
 2. **(11)** Should the external-tools rule go into AGENTS.md or only
-   `docs/related-projects.md`? Default: AGENTS.md, as
-   [decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8 at M0.
+   `docs/related-projects.md`? Decided 2026-10-12 as recommended: AGENTS.md, as
+   [decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8, landed
+   with #550.
 3. **(12)** Are 392 triangles in default CI and 1,192 behind `run --settle`
    right, and which crane-sized sequences move to the slow job? Default: both
    numbers, until 3–5 compiled runs justify others; crane-sized sequences in a

@@ -201,7 +201,7 @@ its way.
 | 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0: landed in part, as a comment on #97, 2026-10-06: the decision, and that #97 closes at M2, which it did with #501, 2026-10-07. `docs/notes/sequences.md`, which rows 3, 9 and 16 cite, was never written, so "scheme" is not retired, and with #97 closed the note has no issue |
 | 6 | [#111](https://github.com/avalonalex/senbazuru/issues/111) | add the writer's at-rest rule and the two `1e-10` thresholds ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278), [`StudyCase.hs:208`](../study/fold-material/StudyCase.hs#L208)) that should read `Fold.Query.atRest` | M0: landed as a comment on #111, 2026-10-07, the body's table left as it was |
 | 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§10](#10-corrections)); #104's done-when names `--view front` ([D19](#d19-realistic-rendering)) | M0 |
-| 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0: landed with #550, 2026-10-12, in 01 §4.8's words, once owner decision 11 was decided that day |
+| 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0: landed with #550, 2026-10-12, in 01 §4.8's words; #552 asks the owner to scope it and lists the rows owed for programs run before it |
 | 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96); not landed, and 01 §4.9's text cites `docs/notes/sequences.md`, which was never written |
 | 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR: landed in part. Since #278, 2026-09-19, rows move in one term at a time with the code that uses it (C97), and many built terms have not moved, among them route evidence, seed and join check; the fixes to rest angle and flat-folded have not landed |
 | 11 | `AGENTS.md:173-177` "Two unit systems" | sheet lengths and physical lengths, each converted in one named place | with M2: landed with #505, 2026-10-11, the one place for sheet lengths being `Sequence.SheetLengths` (C88); the place for physical lengths is named when the `material` block brings it, at M6 |
@@ -1467,7 +1467,8 @@ accepted and rejected controls stay unchanged at each
   decided 2026-10-12; [01 §4.8](01-architecture.md#48-agentsmd-third-party-material)):
   planned for M0, it landed with #550.
 - Origami Simulator (MIT): an oracle through #53, manual or browser-automated.
-  ipc-toolkit (MIT): a library, not a simulator; a driver is a toolchain decision.
+  ipc-toolkit (MIT source; its PyPI wheel statically links filib, LGPL-2.1): a
+  library, not a simulator; a driver is a toolchain decision.
   Codim-IPC: Apache-2.0 source whose default build links GPL CHOLMOD; user-installed
   only, with `WITH_GPL=OFF` or Eigen. IPC-family tools cannot start from a
   zero-thickness flat stack without a thickness offset

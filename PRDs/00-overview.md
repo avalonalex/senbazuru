@@ -76,7 +76,7 @@ is folded flat ([glossary](../docs/glossary.md#origami);
   no move in between added a crease, so no id changed.
 
 Here are the same moves as a *sequence source*, the text an author writes. Its
-extension is `.foldseq`, owner decision 1
+extension is `.foldseq`, owner decision 1, decided 2026-10-12
 ([glossary-additions](glossary-additions.md#the-sequence-language)).
 
 ```text

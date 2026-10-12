@@ -157,8 +157,8 @@ needs a row in `docs/related-projects.md` giving the licence of the program *as
 built*, since a permissive source can link GPL code by default. Any output kept
 needs provenance in `examples/README.md`. No CI job or test may depend on the
 program, the build, format and lint tools excepted. External solvers are
-comparison oracles, used to check our answers and never ahead of the in-repo
-path, and the design-licence rule applies to any pattern fed to one.
+comparison oracles, never ahead of the in-repo path, and the design-licence
+rule applies to any pattern fed to one.
 
 ## Conventions
 
