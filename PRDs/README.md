@@ -299,7 +299,7 @@ questions.
   | [py re-impl] | the research's Python, not senbazuru |
   | [bin] | the prebuilt binary |
   | [measured] | timed runs, with the run count |
-  | [ran] | a `git`, `grep` or `sqlite3` command, given in the decision record's appendix |
+  | [ran] | a command, named beside it or in the decision record's appendix |
   | [prd] | a measurement a PRD file made, whose section holds the command |
   | [research] | a research note, cited by file and heading |
   | [reasoned] | worked out from cited code, not run |
