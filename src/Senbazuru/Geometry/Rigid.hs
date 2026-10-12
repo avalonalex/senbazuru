@@ -23,24 +23,32 @@
 --
 -- == A rotation by construction
 --
--- Nothing outside this module can make a 'Rigid' that is not a turn and an
--- offset, because the constructor is not exported. 'identity', 'translation',
--- 'rotationAbout', 'rotationAboutDegrees' and 'fitRigid' make turns by their
--- own arithmetic, and 'after' and 'inverse' keep them turns. 'rigidFrom', the
--- one way in for a matrix built anywhere else, checks it with
--- 'isProperRotation' and refuses a mirror or a stretch. So code holding a
--- 'Rigid' never has to ask whether it is one, and 'inverse' can transpose
--- rather than invert: /parse, don't validate/.
+-- The constructor is not exported, so nothing outside this module can put a
+-- mirror or a stretch into a 'Rigid'. 'identity' and 'translation' turn
+-- nothing. 'rotationAbout' and 'rotationAboutDegrees' build a turn from its
+-- cosine and sine, and 'fitRigid' from two frames. 'rigidFrom', the one way
+-- in for a matrix made anywhere else, admits it only if 'isProperRotation'
+-- does. So code holding a 'Rigid' need not ask whether it mirrors or
+-- stretches, and 'inverse' can transpose rather than invert: /parse, don't
+-- validate/.
 --
 -- __The line that looks like an oversight__ is that 'rigidLinear' and
 -- 'rigidOffset' are plain functions, not record fields. A record field that
 -- is exported can be updated, @r { rigidLinear = m }@, which would make a
 -- 'Rigid' out of any matrix without passing the check.
 --
--- A turn here is a turn to within rounding, since its entries are rounded,
--- and composing keeps it there: the runner's turns, eighth turns and
--- turn-overs, composed a hundred thousand times stay 4.4e-16 from a proper
--- rotation, where 'isProperRotation' allows 1e-12.
+-- What the type does not promise is a turn to the last bit. Rounding enters
+-- every entry, 'rigidFrom' admits a matrix within 1e-12, and 'after' and
+-- 'inverse' add rounding of their own, so a long chain drifts: turns about
+-- two axes in turn, by 1, 2, 3, … radians, are 1.4e-14 from a proper
+-- rotation after a hundred and fail 'isProperRotation' after some 7,300. The
+-- runner's turns, by eighths about the vertical and halves about the
+-- horizontal, are the exception: composed in any order they make only 32
+-- matrices, each within 4.4e-16. Nor do the rotations make a turn from every
+-- input. An angle that is not finite, or that overflows in radians, as
+-- degrees beyond about 5.7e307 do, gives a matrix of NaN, and an axis shorter
+-- than about 1e-155, whose length squared underflows, gives one that
+-- stretches.
 --
 -- == Turns at multiples of 45°
 --
@@ -62,8 +70,7 @@
 -- A /proper/ rotation turns without mirroring: its determinant is +1. A
 -- mirror is orthogonal too, and folds perfectly well — into the mirror model,
 -- the one whose mountains and valleys are swapped. Paper cannot make it, so a
--- motion fitted to a model's vertices is accepted only if it is proper, and
--- 'rigidFrom' refuses any matrix that is not.
+-- motion fitted to a model's vertices is accepted only if it is proper.
 module Senbazuru.Geometry.Rigid
   ( -- * Matrices
     Mat3 (..),
@@ -126,7 +133,8 @@ transpose (Mat3 (V3 a b c) (V3 d e f) (V3 g h i)) =
   Mat3 (V3 a d g) (V3 b e h) (V3 c f i)
 
 -- | A turn followed by a translation: @x ↦ M x + t@. The constructor stays in
--- this module, so that every 'Rigid' is a turn (see the module header).
+-- this module, so that no 'Rigid' mirrors or stretches (see the module
+-- header).
 data Rigid = Rigid !Mat3 !V3
   deriving stock (Eq, Show)
 
@@ -262,10 +270,11 @@ turnFrom diagonal c s p axis = case normalize axis of
 -- own transpose. No determinant, no division, and nothing that can be
 -- ill-conditioned.
 --
--- That holds because every 'Rigid' is a turn by construction (see the module
--- header). A scaling matrix would come back from here as a plausible value
--- that is not an inverse, with nothing to say so, which is why no 'Rigid' can
--- hold one.
+-- That holds because no 'Rigid' mirrors or stretches (see the module
+-- header): a scaling matrix would come back from here as a plausible value
+-- that is not an inverse, with nothing to say so. A turn a little off, by
+-- rounding or by up to the 1e-12 'rigidFrom' admits, comes back an inverse
+-- about as far off.
 --
 -- The offset is written as a subtraction from zero rather than as a
 -- multiplication by minus one, which would turn a zero component into a
@@ -326,7 +335,10 @@ rigidFrom m t
 -- @(x, y, z) ↦ (−x, y, −z)@ put every vertex in the same place, and both fit
 -- every pair. The cross product picks the half turn, which is right: paper
 -- cannot make the mirror. Built that way on both sides, the turn always has
--- determinant +1, so 'rigidFrom''s check here only catches a construction bug.
+-- determinant +1. 'rigidFrom''s check here refuses a construction bug, and
+-- also points so nearly in a line that one Gram–Schmidt step leaves the second
+-- axis off square: a third point 1e-5 off the line through the first two is
+-- refused, though a turn fits them.
 fitRigid :: [(V3, V3)] -> Maybe Rigid
 fitRigid pairs = case pairs of
   [] -> Nothing
