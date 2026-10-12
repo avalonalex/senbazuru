@@ -258,15 +258,15 @@ Each has a recommended default, decided with its consequences in
 | # | Decision | Recommended default | Before |
 | --- | --- | --- | --- |
 | 1 | The `.foldseq` extension and the name "sequence source" | `.foldseq`, first line `foldseq 1` | M1's parser |
-| 2 | `nearMissBand`: how near a typed coordinate may come to a vertex without lying on it before it is refused as a near miss | 1e-3 sheet lengths | M2 |
-| 3 | When a move carries the anchor, pick a new one or refuse | Pick a new one, printed by `--report` | M2 |
+| 2 | `nearMissBand`: how near a typed coordinate may come to a vertex without lying on it before it is refused as a near miss | **Decided 2026-10-06** as recommended: 1e-3 sheet lengths | M2 |
+| 3 | When a move carries the anchor, pick a new one or refuse | **Decided 2026-10-06** as recommended: pick a new one, printed by `--report` | M2 |
 | 4 | Stiffness of a *precrease* (a crease folded, unfolded, lying flat) in a settle | Its crease, `U` at 0, settles as a crease spring resting at 0 | M6 |
 | 5 | SVG "wireframe": feature lines only, or mesh triangles too | `--lines features`; `--lines mesh` adds triangle edges | M7b |
 | 6 | Textures: content and source | None; M7a ships normals and texture coordinates only | after M7a |
 | 7 | Captions overlapping or overflowing their figure | Captioned pages get a gutter of at least 42/340 ≈ 0.124 of a figure; uncaptioned pages keep their bytes; overflow across cells is stated | M3 |
-| 8 | Blintz (corners folded to the centre): behind, as the recipe does, or in front, as the study's `cases.json` does | Behind, as the recipe does | M2's blintz PR |
-| 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | It stays as the regression; the state-rule page is a new golden | M2 |
-| 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | Trigonometry, with platform bits in written coordinates stated | M2 |
+| 8 | Blintz (corners folded to the centre): behind, as the recipe does, or in front, as the study's `cases.json` does | **Decided 2026-10-06** as recommended: behind, as the recipe does | M2's blintz PR |
+| 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | **Decided 2026-10-06** as recommended: it stays as the regression; the state-rule page is a new golden | M2 |
+| 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | **Decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, so an eighth turn adds no platform bits of its own ([C91](decisions.md#changes-since-draft-v2)) | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | Yes, at M0 | M0 |
 | 12 | Crane-sized sequences in default CI or a separate slow job, and whether that job is required; the largest mesh a settle may use | A separate slow job that is a required check; default CI settles at most 392 triangles; `run --settle` refuses above 1,192 | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **Decided 2026-09-23**: where the moving paper goes ([D5](decisions.md#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | M2's runner |
