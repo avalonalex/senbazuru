@@ -23,9 +23,21 @@
 --
 -- It does not make a non-rigid value unwriteable — 'Rigid' will hold any 3×3
 -- matrix, including one that scales — and the constructor does not check.
--- What keeps the type honest is that 'rotationAbout' and 'fitRigid' are the
--- ways anything constructs one, and 'isProperRotation' is the check for a
--- matrix built any other way.
+-- What keeps the type honest is that 'rotationAbout', 'rotationAboutDegrees'
+-- and 'fitRigid' are the ways anything constructs one, and 'isProperRotation'
+-- is the check for a matrix built any other way.
+--
+-- == Exact turns at multiples of 45°
+--
+-- A turn's cosine and sine usually come from 'cos' and 'sin', whose last bits
+-- are the platform's own: IEEE 754 does not require them to round correctly,
+-- and macOS and Linux differ. Even rounded correctly they are not exact where
+-- they should be: @sin pi@ is 1.2e-16, not 0, because 'pi' is not π, so a
+-- flat fold of 180° left paper about 1e-16 off its plane. 'rotationAboutDegrees'
+-- takes an angle in degrees, the units a FOLD file holds, and at an exact
+-- multiple of 45° uses the exact values instead: 0 and ±1, and ±√½ from
+-- 'sqrt', which IEEE 754 does require to round correctly. A turn by one of
+-- those angles then involves no platform trigonometry at all.
 --
 -- == Proper, not merely orthogonal
 --
@@ -46,6 +58,8 @@ module Senbazuru.Geometry.Rigid
     after,
     applyRigid,
     rotationAbout,
+    rotationAboutDegrees,
+    cosSinDegrees,
     inverse,
 
     -- * Checking and fitting
@@ -128,12 +142,47 @@ after (Rigid ma ta) (Rigid mb tb) =
 -- origin, turn, translate back — which is where the offset comes from:
 -- @x ↦ p + R (x − p)@ is the same map as @x ↦ R x + (p − R p)@.
 rotationAbout :: V3 -> V3 -> Double -> Rigid
-rotationAbout p axis theta = case normalize axis of
+rotationAbout p axis theta = turnFrom (cos theta) (sin theta) p axis
+
+-- | 'rotationAbout' by an angle in degrees, exact at every multiple of 45°
+-- ('cosSinDegrees'). Folding turns by this, since degrees are what a crease
+-- carries. Any other angle turns exactly as 'rotationAbout' does by the same
+-- angle in radians, @d * pi / 180@, bit for bit.
+rotationAboutDegrees :: V3 -> V3 -> Double -> Rigid
+rotationAboutDegrees p axis d = let (c, s) = cosSinDegrees d in turnFrom c s p axis
+
+-- | The cosine and sine of an angle in degrees. At an exact multiple of 45°
+-- they are exact: 0 and ±1, and ±√½ as @sqrt 0.5@, the 'Double' nearest √½,
+-- the same on every platform. Any other angle, and any angle that is not a
+-- number, is 'cos' and 'sin' of @d * pi / 180@.
+--
+-- The test is exact, in degrees: 90 is a multiple of 45 and 90.0000001 is
+-- not, so no angle near a multiple is moved onto it. In radians the test
+-- would need a tolerance, since @pi / 2@ is not π/2 either.
+cosSinDegrees :: Double -> (Double, Double)
+cosSinDegrees d
+  | isNaN d || isInfinite d || fromInteger eighths /= d / 45 = (cos r, sin r)
+  | otherwise = case eighths `mod` 8 of
+      0 -> (1, 0)
+      1 -> (half, half)
+      2 -> (0, 1)
+      3 -> (negate half, half)
+      4 -> (-1, 0)
+      5 -> (negate half, negate half)
+      6 -> (0, -1)
+      _ -> (half, negate half)
+  where
+    r = d * pi / 180
+    eighths = round (d / 45) :: Integer
+    half = sqrt 0.5
+
+-- | Rodrigues' formula from a turn's cosine and sine, about the line through a
+-- point along an axis.
+turnFrom :: Double -> Double -> V3 -> V3 -> Rigid
+turnFrom c s p axis = case normalize axis of
   Nothing -> identity
   Just u -> Rigid (rot u) (p ^-^ matApply (rot u) p)
   where
-    c = cos theta
-    s = sin theta
     t = 1 - c
 
     -- R = I cos θ + [u]× sin θ + (u ⊗ u)(1 − cos θ), with [u]× the matrix that

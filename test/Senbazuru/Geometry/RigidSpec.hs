@@ -7,6 +7,7 @@
 -- breaks it immediately.
 module Senbazuru.Geometry.RigidSpec (spec) where
 
+import Control.Monad (forM_)
 import Data.Maybe (isJust)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
@@ -86,6 +87,40 @@ spec = do
           let there = rotationAbout p axis theta
               back = rotationAbout p axis (negate theta)
            in norm (applyRigid (back `after` there) x ^-^ x) < 1e-9 * max 1 (norm x)
+
+  describe "rotationAboutDegrees" $ do
+    -- At every multiple of 45° the cosine and sine are exact: 0 and ±1, and
+    -- ±√½ from sqrt, the same bits on every platform. Turns red if any were
+    -- taken from cos and sin, whose sin pi is 1.2e-16 and whose values at π/4
+    -- differ in the last bit.
+    it "turns by exact cosines and sines at every multiple of 45°" $ do
+      let h = sqrt 0.5
+          oneTurn = [(1, 0), (h, h), (0, 1), (negate h, h), (-1, 0), (negate h, negate h), (0, -1), (h, negate h)]
+      [cosSinDegrees (45 * fromIntegral k) | k <- [-8 .. 8 :: Int]] `shouldBe` take 17 (cycle oneTurn)
+      rigidLinear (rotationAboutDegrees (V3 0 0 0) (V3 0 0 1) 90) `shouldBe` Mat3 (V3 0 (-1) 0) (V3 1 0 0) (V3 0 0 1)
+
+    -- Exact where it can be and nowhere else: any other angle is the same
+    -- turn rotationAbout makes from its radians, to the last bit. Turns red
+    -- if the exact values reached an angle they are not.
+    it "turns any other angle exactly as rotationAbout does, bit for bit" $
+      forAll ((,,) <$> genPoint <*> (genPoint `suchThat` \v -> norm v > 0.1) <*> (choose (-720, 720) `suchThat` \d -> d / 45 /= fromInteger (round (d / 45)))) $
+        \(p, axis, d) -> rotationAboutDegrees p axis d === rotationAbout p axis (d * pi / 180)
+
+    -- The test is exact, in degrees, so an angle a hair from a multiple of
+    -- 45° is not moved onto it. Turns red if the test took a tolerance.
+    it "moves no angle near a multiple of 45° onto it" $ do
+      let d = 90 + 1e-9
+      cosSinDegrees d `shouldBe` (cos (d * pi / 180), sin (d * pi / 180))
+      fst (cosSinDegrees d) `shouldNotBe` 0
+
+    -- The exact values are the ones cos and sin round towards: within
+    -- rounding of them at every multiple. Turns red if one were the wrong
+    -- value, such as a sine with its sign turned.
+    it "agrees with cos and sin to within rounding at the multiples of 45°" $
+      forM_ [45 * fromIntegral k | k <- [-8 .. 8 :: Int]] $ \d -> do
+        let (c, s) = cosSinDegrees d
+        abs (c - cos (d * pi / 180)) `shouldSatisfy` (<= 1e-15)
+        abs (s - sin (d * pi / 180)) `shouldSatisfy` (<= 1e-15)
 
   describe "after" $ do
     it "applies its right argument first" $ do
