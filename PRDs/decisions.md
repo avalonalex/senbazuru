@@ -49,13 +49,19 @@ links; the numbering D1–D22 is unchanged, and D23 and D24 are new.
 **Reading it.** The reader knows intermediate Haskell and has never folded paper.
 Each term gets one clause here and a link to
 [glossary-additions.md](glossary-additions.md) or
-[the glossary](../docs/glossary.md). Evidence tags:
+[the glossary](../docs/glossary.md). A tag gives the evidence as of the text it
+supports: `568dcb6` for the record as written on 2026-09-15, and the PR or issue it
+names for text added since, such as the changes rows from C75 on, which cite code
+by module or function. §10 also uses
+[10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)'s
+tags [web], [bin], [ls] and [docs]. Evidence tags:
 
 | Tag | Meaning |
 | --- | --- |
-| [code] | lines read on 2026-09-15 at `568dcb6`, cited as `path:line` |
+| [code] | code read, cited as `path:line` or by module or function |
 | [jq], [py] | a fixture measurement by a command run for this record; the commands are in [the appendix](#appendix-commands-behind-the-numbers) |
-| [ran] | a `git`, `grep` or `sqlite3` command run for this record, also in the appendix |
+| [ran] | a command run for this record, named or described in its row or in the appendix |
+| [measured] | timed runs of a compiled build, with the run count; the commands are in the appendix |
 | [prd] | a measurement made by a PRD file, whose section holds the command |
 | [research] | a research note, by file and heading |
 | [reasoned] | worked out from cited code, not run |
@@ -371,10 +377,13 @@ table in the next version of this record.
   ([gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md)
   "A. How exact a landmark is today", finding 2); until then every requirement
   names the existing tolerance it reuses, and the runner defines none of its own
-  beyond `nearMissBand`. The issue was never filed, and M2's runner has three of
-  its own: an area tie within 1e-9 of the largest face when it re-anchors, a
-  face within 1e-9 of flat to re-anchor on, and 1e-12 to call a line north-south
-  ([C96](#changes-since-draft-v2)).
+  beyond `nearMissBand`. The issue was filed only after M2, as #546 on
+  2026-10-12, and M2 has four of its own. When the runner re-anchors, it counts
+  faces within a relative 1e-9 of the largest area as tied, and takes only a face
+  turned to the reader, or away, to within 4.5e-5 radians: its normal's cosine
+  within 1e-9 of 1. The resolver calls a line north-south when its east-west part
+  is within 1e-12 ([C96](#changes-since-draft-v2)), and the run report says an
+  anchor moved off the new crease within 1e-9 sheet lengths.
 
 ### D3. The runner owns the state, its start and the handoffs
 
@@ -1094,7 +1103,7 @@ The decisions:
 - **Parser.** megaparsec 9.5.0 and parser-combinators 1.3.0, both in the pinned
   lts-22.44 snapshot, plus `transformers`, all in the library stanza. The versions
   were read from the snapshot file in Stack's pantry cache (appendix command 6)
-  [py]; a stackage.org package page served LTS 24.59 and is not evidence.
+  [ran]; a stackage.org package page served LTS 24.59 and is not evidence.
 - **Rejected.** JSON or YAML authoring (errors are JSON paths); significant
   indentation; s-expressions; a hand-written reader; context-dependent keywords; a
   parser that tracks each name's kind. A JSON machine encoding of the tree may come
@@ -1406,22 +1415,28 @@ accepted and rejected controls stay unchanged at each
   pairs, stacking guesses, settle triangles. Measured: a `stack test` run matching
   nothing took 19.03, 19.59 and 20.95 s of wall time building fixtures in `runIO`
   (3 runs, loaded M1 Max); `CraneWingSpec` took 1.21–1.25 s and `CheckedBirdSpec`
-  12.50–12.52 s by hspec's own timer
+  12.50–12.52 s by hspec's own timer, which leaves out the `runIO` setup that
+  [C99](#changes-since-draft-v2) times
   ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)
   "Measured", "Addendum") [research]. No wall-clock guard is adopted.
-- **Where tests run.** New sequence specs build fixtures in `beforeAll`; crane-sized
-  fixtures sit under `describe "slow"`; the default job runs `--skip /slow/` and a
-  new slow job `--match /slow/` (hspec 2.11.12 in the snapshot, appendix command 6
-  [py]). Existing `runIO` specs stay as they are until their recipe's deletion PR
-  ([C71](#changes-since-draft-v2)). A slow job is a fourth CI job beside today's
+- **Where tests run.** New sequence specs build fixtures in `beforeAll` (M2's use
+  `runIO`: [C98](#changes-since-draft-v2)); crane-sized fixtures sit under
+  `describe "slow"`; the default job runs `--skip /slow/` and a new slow job
+  `--match /slow/` (hspec 2.11.12 in the snapshot, appendix command 6 [ran]).
+  Existing `runIO` specs stay as they are until their recipe's deletion PR
+  ([C71](#changes-since-draft-v2)). Three of them, `CheckedBirdSpec`,
+  `CraneWingSpec` and `CheckedPetalSpec`, build nearly all of the fixtures a
+  filtered run pays for; whether they may move to `beforeAll` sooner, as an
+  exception to C71, is the owner's question on #547 ([C99](#changes-since-draft-v2)).
+  A slow job is a fourth CI job beside today's
   `test`, `format` and `lint` ([`ci.yml`](../.github/workflows/ci.yml)) [code], and
   `AGENTS.md:390` requires "all three CI checks": owner decision 12 and
   [§3](#3-recorded-text-this-design-changes) row 15 ([C51](#changes-since-draft-v2)).
 - **Angle equality.** Exact for driving parameters, copied literals, endpoints
   pinned by a guard, flap endpoints on whole-number angles, and two outputs of one
   binary; formula-derived angles within 1e-12°, as `RabbitEarSpec.hs:49` and
-  `CheckedPetalSpec.hs:146` compare, until the tolerance issue names one. A sample
-  is written as a driving-parameter value, never as a fraction, because
+  `CheckedPetalSpec.hs:146` compare, until the tolerance issue, #546, names one. A
+  sample is written as a driving-parameter value, never as a fraction, because
   `175 * (90/175)` is `89.99999999999999`.
 - **Migration.** `BlintzSequence` then `HelmetSequence` become sequences, each as an
   equivalence PR then a deletion PR. Their pages are not step pages:
@@ -2311,8 +2326,9 @@ Findings about the repository's own text and code. Items 1–26 keep v2's number
 27–32 are new; 33–38 were added on 2026-09-23 from
 [E3](research/E3-formal-fold-semantics.md) and its review; 39 was added on
 2026-09-29 from #413. *Row* means a
-[§3](#3-recorded-text-this-design-changes) row carries it; *issue* means M0 files a
-new issue, and none is filed yet
+[§3](#3-recorded-text-this-design-changes) row carries it; *issue* means M0 was to
+file a new issue ([§8](#8-milestones)), which the cell names once it is filed, and a
+milestone in the cell is when the fix lands, as in 10 §7.2's *Lands* column
 ([10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
 writes each out); *fixed* names where the text was corrected; *recorded here*
 means the text is a research note, a snapshot that is not edited.
@@ -2335,10 +2351,10 @@ means the text is a research note, a snapshot that is not edited.
 | 14 | `CraneWing` takes every `U` edge as its hinge, which works only because `crane.fold` has no `U` edge; its clip lacks `ThroughLayers`' guards | [code] [`CraneWing.hs:114`](../study/fold-material/CraneWing.hs#L114); [jq] 0 `U` edges | issue |
 | 15 | The blintz manifest and recipe fold corners in opposite directions | [jq, code] | owner decision 8 |
 | 16 | Manifest angle literals are not the documented formulas' `Double`s. Rabbit ear at m = 30: the stored `97.58514830800293` is one ulp from the `atan2` form. Petal at t = 175: the stored `-166.98236060695527` is **three** ulps from the code's own `atan2` expression ([`CheckedPetal.hs:107`](../study/fold-material/CheckedPetal.hs#L107)), which gives `…518`. v2 said one ulp for both ([C58](#changes-since-draft-v2)) | [py] appendix command 7 | issue, M5 |
-| 17 | At least nine tolerance formulas act as "a hair" | [code] [gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md) finding 2 | issue, D2's prerequisite |
+| 17 | At least nine tolerance formulas act as "a hair" | [code] [gap-exact-landmarks-and-macro-binding](research/gap-exact-landmarks-and-macro-binding.md) finding 2 | issue, D2's prerequisite: filed as #546 on 2026-10-12, after M2 |
 | 18 | `quarter-fold-steps.fold` writes M and V at angle 0 (4 creases on its key frame, 2 on its first state) | [jq] [10 §7.3](10-roadmap-risks-questions.md#73-settled-without-a-new-issue) | owner decision 9 |
 | 19 | `Rigid(..)` and `Mat3(..)` are exported and nothing checks a proper rotation | [code] [`Rigid.hs:24-26`](../src/Senbazuru/Geometry/Rigid.hs#L24-L26) | issue, M2: filed as #542 and built there (C95) |
-| 20 | Any filtered `stack test` run pays 19–21 s of `runIO` fixture setup | [research] 3 runs | issue, before M1's specs |
+| 20 | Any filtered `stack test` run pays 19–21 s of `runIO` fixture setup | [research] 3 runs | issue, before M1's specs: filed as #547 on 2026-10-12, after M2; nearly all of the cost is in three study specs that C71 leaves in `runIO` ([C99](#changes-since-draft-v2)) |
 | 21 | `creaseAllAlong` returns no new edge ids | [code] [`Creasing.hs:138`](../src/Senbazuru/Fold/Creasing.hs#L138) | 05 L2: `creaseAllAlongWith` hands them back, built 2026-10-08 (#495) |
 | 22 | GLB `extras.senbazuru.frame` stores fold angles and material coordinates unrounded | [code] `Gltf.hs:274-275` | issue, M7a |
 | 23 | #64's "inflating a body is outside the model" is overtaken by #106 and the README | [docs] | row 7 |
@@ -2555,9 +2571,10 @@ lists edits for.
 | C93 | The blintz and helmet galleries share one pipeline (#537), `SequenceGallery`. It reads and checks a source, loads the sheet the source names from where the source says, keyed as the source writes it, as `run` does (`sourceFiles`), runs it, draws each turn part-way from its record's `SweptHinge` turn, and writes the page, its FOLD file, a GLB per figure, the checks, the viewer and the HTML page. `BlintzGallery` and `HelmetGallery` are one `Gallery` each, holding only what differs: the name, the source, the output directory, the title, the camera's view direction, the page size, one part-way pose per move, and the HTML template. A pose is a fraction of that record's own turn, with the words its figure's title takes, so the helmet's 120° is 120/180 of a half turn; a run of more or fewer moves than poses is refused. Two drifts between the copies are gone: the blintz loads its sheet as the helmet did, rather than naming `examples/blintz-base.fold` a second time, and takes its open square from the first record's surface before, as the helmet did, rather than its first turn at 0, the same paper. The closing message counts the figures it wrote | here; #535's review | `SequenceGallery` [code]; both galleries on main and here, every written file identical by `diff -r`, the figures' titles included, which the SVG goldens do not draw [ran] | adopted | — |
 | C94 | Folding turns without `cos` and `sin` at multiples of 45° (#536), as owner decision 10 did for `rotate`. `Geometry.Rigid.rotationAboutDegrees` takes a crease's angle in degrees, as files and `Folding` hold it. At an exact multiple of 45° it uses 0, ±1 and ±`sqrt 0.5`, correctly rounded and so the same on every platform; the test compares the angle with 45 k as exact rationals, so no other angle is moved onto a multiple. There it also writes each diagonal entry as x² + (1 − x²) cos θ, since (1 − cos θ) x² + cos θ rounds at 135°, where 1 + `sqrt 0.5` is not a `Double`; the matrix of a turn about a coordinate axis then holds 0, 1, cos θ and ±sin θ and nothing else, though a position still rounds wherever √½ multiplies it. Any other angle turns as `rotationAbout` of `d * pi / 180`, bit for bit. `Sequence.Run.eighthTurnsAbout` is now `rotationAboutDegrees` about the vertical through the model's middle, the same matrix as its written-out table, bit for bit. `sin pi` is 1.2e-16, so a flat fold's paper lay about 1e-16 off its plane: the blintz's written sequence had 13 of 144 coordinates at z = −4.33e-17. Coordinates folded only by multiples of 45° now take no number from the platform's trigonometry, though the sweep that checks a turn and the tracing of faces still use `cos`, `sin` and `atan2`. So 09 §8's first row holds only for other angles, such as the bird's poses, and `examples/blintz-sequence.fold` is held exactly, E5's tolerance 0, as CI checks on Linux; `examples/bird-base-sequence.fold` is regenerated, within its 1e-12. Rows that compare placements with `rotationAbout` of `degrees × π / 180` exactly (05 L15's R-05-48, 08's statement of `Folding`'s rule) hold only off the multiples, and 01 §5.9's "up to 1.2e-16 off, because sin π" no longer holds, since a flat fold's sine is now 0. Measured beforehand with a throwaway version: no test or golden changed. `docs/notes/exact-turns.md` | #536; 09 §8 | suite unchanged; the blintz file's only change 13 z values from −4.33e-17 to 0 [ran] | adopted | 01, 05, 08, 09 |
 | C95 | No `Rigid` can mirror or stretch (#542; §10 item 19, D5's residue), as the owner chose on 2026-10-11. `Geometry.Rigid` no longer exports the constructor, and `rigidLinear` and `rigidOffset` are plain functions, since an exported record field would let `r { rigidLinear = m }` past any check. `translation` makes the four pure translations that were built by hand, and `rigidFrom` admits a matrix made elsewhere only if `isProperRotation` does; `fitRigid` and the study's frame alignment call it, and it returns `Maybe`, as `fitRigid` does, since the geometry layer has no error type (`docs/architecture.md`). `Mat3 (..)`, the other half of item 19, stays exported: a `Mat3` is not a motion, and the only way from one to a `Rigid` is `rigidFrom`. The type does not promise a turn to the last bit: a long chain of general turns drifts, past 1e-12 after some 7,300, and an angle that is not finite or overflows in radians gives a matrix of NaN (the module header). The runner's turn-overs are `rotationAboutDegrees` half turns about the model's middle, the same bits as the matrices written out before. `PresentationImproper` (C81) is dropped. A presentation is a product of the runner's turns, by eighths about the vertical and halves about the horizontal, and those composed in any order make only 32 matrices, each within 4.4e-16 of a proper rotation, where the check allowed 1e-12; `RigidSpec` checks all 32 instead. D5's Exactness and Residue now say so. Superseded elsewhere: 02 §5.2's check, §2's 1e-12 among a run's tolerances and the `NotAProperRotation` row; 05 L3's "exported unchecked" and R-05-11; glossary-additions' "Proper rotation" row; and 10's item 19 | §10 item 19; D5; 10 §7.2 item 19 | turn-overs compared through `show` with the written-out matrices over five middles; the runner's turns composed in every order until no new matrix appears [ran] | adopted | 02, 05, 10, glossary-additions |
-| C96 | M2's interfaces as built, where §5, D4, D11, D13, D20 and D23 planned them otherwise and no row said so (#544); each now carries a note. `runSequence` takes `RunSettings` and the sheets as `FoldFile`s, the layer budget being the field `runBudget`: #501 planned it so without giving a reason, where [review L4](research/spine-reviews/review-L4-conventions-consistency.md) L4-4 had proposed a separate `Budget` argument, and PRDs 00–04 pass one; §2's diagram now shows the budget inside `RunSettings`. `RunSettings` holds `runSweep`, `runNearMissBand :: Double` (owner decision 2's 1e-3) and `runBudget`; `keyDensity` and `keySubdivisionBudget` wait for M7b's animated export, and `macroChecks` for M5's macros. `sheetState` takes the `FoldFile` and reads its key frame, and `startOf` refuses `start folded` before calling it, as `StartFoldedNotRunYet`; D3 notes both. `hingeTurn` takes 13 arguments. `ResolveRefused` takes a `Place` instead of the step's number and name, as `StaticRefused` does, so a refused anchor in the header names the header. `ReanchorNotFlat` holds the new anchor as a `V2` in sheet lengths and its face's tilt in degrees, so no built `MoveFailure` names a `MaterialPoint`, and `MaterialPoint` stays in `Sequence.Record` (C75). `UnfoldChangedSince` names an `EdgeId`, and `SheetRefused` a `FilePath`, which the CLI also gives an unreadable checkpoint's path through; `CreasingRefused` and `MoveNotRunYet` were added. The writer's non-finite refusal is `WriteNonFinite`, for a material coordinate, where D4 planned `WriteNonFiniteAngle`; `encodeFoldFile` refuses any non-finite number as `NotFinite` (#510). Expected refusals are the run's own `runExpected`, each with its step, move and kind, not part of each step's outcome as D23 has it, and each `StepOutcome` holds its placement as well as its presentation. `Sequence.Resolve` sits at D23's level 5 beside `Sequence.Run`, and `Sequence.SheetLengths` below `Sequence.Record`. The runner has three tolerances of its own, which D2's residue now names; the issue they were to wait for (§10 item 17) was never filed | §5; D2; D3; D4; D11; D13; D20; D23; 01 §4.3; 02; 03; 04; [review L4](research/spine-reviews/review-L4-conventions-consistency.md) L4-4 | `Sequence.Run`, `Sequence.Record`, `Sequence.Error`, `Sequence.Resolve`, `Fold.Load` [code]; #501's body, read with `gh issue view 501` [ran] | adopted-modified | 00, 01, 02, 03, 04, glossary-additions |
+| C96 | M2's interfaces as built, where §5, D4, D11, D13, D20 and D23 planned them otherwise and no row said so (#544); each now carries a note. `runSequence` takes `RunSettings` and the sheets as `FoldFile`s, the layer budget being the field `runBudget`: #501 planned it so without giving a reason, where [review L4](research/spine-reviews/review-L4-conventions-consistency.md) L4-4 had proposed a separate `Budget` argument, and PRDs 00–04 pass one; §2's diagram now shows the budget inside `RunSettings`. `RunSettings` holds `runSweep`, `runNearMissBand :: Double` (owner decision 2's 1e-3) and `runBudget`; `keyDensity` and `keySubdivisionBudget` wait for M7b's animated export, and `macroChecks` for M5's macros. `sheetState` takes the `FoldFile` and reads its key frame, and `startOf` refuses `start folded` before calling it, as `StartFoldedNotRunYet`; D3 notes both. `hingeTurn` takes 13 arguments. `ResolveRefused` takes a `Place` instead of the step's number and name, as `StaticRefused` does, so a refused anchor in the header names the header. `ReanchorNotFlat` holds the new anchor as a `V2` in sheet lengths and its face's tilt in degrees, so no built `MoveFailure` names a `MaterialPoint`, and `MaterialPoint` stays in `Sequence.Record` (C75). `UnfoldChangedSince` names an `EdgeId`, and `SheetRefused` a `FilePath`, which the CLI also gives an unreadable checkpoint's path through; `CreasingRefused` and `MoveNotRunYet` were added. The writer's non-finite refusal is `WriteNonFinite`, for a material coordinate, where D4 planned `WriteNonFiniteAngle`; `encodeFoldFile` refuses any non-finite number as `NotFinite` (#510). Expected refusals are the run's own `runExpected`, each with its step, move and kind, not part of each step's outcome as D23 has it, and each `StepOutcome` holds its placement as well as its presentation. `Sequence.Resolve` sits at D23's level 5 beside `Sequence.Run`, and `Sequence.SheetLengths` below `Sequence.Record`. The runner and resolver have three tolerances of their own, and the run report one, which D2's residue now names; the issue they were to wait for (§10 item 17) was filed only after M2, as #546 on 2026-10-12 | §5; D2; D3; D4; D11; D13; D20; D23; 01 §4.3; 02; 03; 04; [review L4](research/spine-reviews/review-L4-conventions-consistency.md) L4-4 | `Sequence.Run`, `Sequence.Record`, `Sequence.Error`, `Sequence.Resolve`, `Fold.Load` [code]; #501's body, read with `gh issue view 501` [ran] | adopted-modified | 00, 01, 02, 03, 04, glossary-additions |
 | C97 | Glossary rows move into `docs/glossary.md` one term at a time, with the code that uses each, not all in M0's first PR (§3 row 10): #278's PR, #299, left "the rest of the language's vocabulary" in glossary-additions "until the code that needs each word exists". So a term that has moved is defined in both files, and once it has, `docs/glossary.md` is its definition; the copies can disagree, as Refold's "about seven" here did with C89. Many built terms have not moved, among them route evidence, seed and join check | §3 row 10; 01 §4.10; §8's M0 row; README | `git show f3b1ea5` [ran] | adopted-modified | 01, 10, README, glossary-additions |
-| C98 | M2's sequence specs build their fixtures with `runIO`, not the `beforeAll` D16 asks of new sequence specs: the blintz, helmet, record, report, resolve, run and write specs, while M1's `TraditionalCraneSpec` uses `beforeAll`. C71 kept `runIO` only for existing specs until their deletion PRs, so these depart from D16, and a filtered `stack test --match` still pays their setup (R5); §10 item 20's issue was never filed. Moving them to `beforeAll` is open | D16; C71; 09 §3, §6.3; 10 R5 | `grep -c runIO` and `beforeAll` over `test/Senbazuru/Sequence` [ran] | adopted-modified | 09, 10 |
+| C98 | M2's sequence specs build their fixtures with `runIO`, not the `beforeAll` D16 asks of new sequence specs: the blintz, helmet, record, report, resolve, run and write specs, while M1's `TraditionalCraneSpec` uses `beforeAll`. C71 kept `runIO` only for existing specs until their deletion PRs, so these depart from D16. A filtered run (`stack test --ta '--match …'`) builds their fixtures as well, each adding at most 0.01 s of user CPU; the setup R5 describes is spent in three older specs ([C99](#changes-since-draft-v2)). §10 item 20 was filed only after M2, as #547 on 2026-10-12. Moving M2's seven to `beforeAll` would save no measurable time, so #547 leaves them out, and it is not mechanical: `BlintzRunSpec` and `HelmetRunSpec` make one example per move of the run, so their trees need the run while they are built. Whether to move them for D16's sake is open, and no issue holds it | D16; C71; 09 §3, §6.3; 10 R5 | `grep -c runIO` and `beforeAll` over `test/Senbazuru/Sequence` [ran] | adopted-modified | 09, 10, glossary-additions |
+| C99 | Nearly all of the fixture setup that §10 item 20 and [10's R5](10-roadmap-risks-questions.md#5-risks) describe is spent in three study specs, not in M2's specs (#547). On `a71ac04`, the compiled test binary, run directly rather than through `stack test`, with a `--match` that selects no example, takes 14.2–16.5 s of user CPU (14.7–18.1 s of wall time), and 0.02 s of user CPU (0.05–0.06 s of wall time) with every `runIO` spec stubbed out. With one `runIO` spec at a time left in, `CheckedBirdSpec` takes 7.0 s of user CPU, `CraneWingSpec` 6.1–6.2 s and `CheckedPetalSpec` 1.5 s; each of the other seventeen, M2's seven among them, takes 0.02–0.04 s. With only those three stubbed out, the run takes 0.07 s of user CPU (0.10–0.13 s of wall time). [gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)'s "Unverified" 7, which 09 §6.3 cites, holds on hspec 2.11.12: `beforeAll` runs its action only when an example under it runs, and not when only an example elsewhere does, while `runIO` runs its action whatever `--match` selects. C71 leaves existing `runIO` specs unchanged until their recipes' deletion PRs. 09 §9 shrinks `CheckedBird` and `CheckedPetal` to certificate-registry entries at M5, and it and D15 keep `CraneWing`. So, under C71, item 20 cannot be met before M5, nor ever for `CraneWingSpec`. Whether these three may move to `beforeAll` sooner, as an exception to C71, is the owner's question, open on #547 | #547; 09 §6.2, §6.3, §9; 10 R5, §7.2 item 20; C71; C98 | direct runs of the compiled test binary with a `--match` that selects no example, three per configuration and five with only the three stubbed out [measured]; a probe of `beforeAll` with three selections [ran]; appendix command 13 | adopted | 09, 10 |
 
 ## Proposals not adopted
 
@@ -2595,8 +2612,8 @@ lists edits for.
 
 ## Appendix: commands behind the numbers
 
-Run from the repository root on 2026-09-15 at `568dcb6`. Outputs are abbreviated to
-what this record cites.
+Run from the repository root on 2026-09-15 at `568dcb6`, unless an entry says
+otherwise. Outputs are abbreviated to what this record cites.
 
 1. **Goldens.** `git ls-files test/golden | wc -l` prints `33`.
    `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` and the
@@ -2650,5 +2667,26 @@ what this record cites.
     gives line 213; `grep -n creaseEndFlag src/Senbazuru/Origami/ThroughLayers.hs`
     gives lines 96 and 196; `find src -path '*Internal*'` prints nothing;
     `grep -rn "step record" PRDs/*.md` finds four rows of `glossary-additions.md`.
+    The `docs/architecture.md` and `ThroughLayers.hs` lines are as #478, #480 and
+    #482 renumbered them on 2026-10-03; at `568dcb6` they were 202, 211 and 212, and
+    96 and 195.
 12. **Issues.** `gh issue view N --json title,state,body` for #60, #94 and #104; all
     open.
+13. **Fixture setup** ([C99](#changes-since-draft-v2)), run on 2026-10-12 at
+    `a71ac04` on an M1 Max. After `stack build --test --no-run-tests`, three runs of
+    `/usr/bin/time -p "$(stack path --dist-dir)/build/senbazuru-test/senbazuru-test" --match no-such-example-anywhere`
+    print `0 examples` in 14.67, 18.07 and 15.22 s of wall time (`real`) and 14.22,
+    16.52 and 14.68 s of user CPU (`user`). The binary runs directly, so these leave
+    out what `stack test` adds. A spec is stubbed out by
+    `sed -i '' 's/^spec = /specOff = /'` on its file (macOS's `sed`; GNU's takes `-i`
+    alone) and appending `spec = pure ()`, then rebuilding, checking that the rebuild
+    succeeded, and restoring `test/` with `git checkout -- test/` between
+    configurations. C99's other figures stub out every spec
+    `git grep -l runIO -- test` lists, then all but one of them, then only
+    `CheckedBirdSpec`, `CraneWingSpec` and `CheckedPetalSpec`, with three runs each
+    and five for the last. A probe file, `BeforeAllProbe.hs`, has one example built
+    by `runIO` and one by `beforeAll`, each action printing a line to stderr. Run as
+    `stack runghc --package hspec -- BeforeAllProbe.hs --match <pattern>`, it prints
+    only the `runIO` line for a pattern selecting no example and for one selecting
+    only the `runIO` example, and both lines for one selecting the `beforeAll`
+    example.

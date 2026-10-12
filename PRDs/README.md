@@ -289,17 +289,17 @@ questions.
 - **Tags** mark each claim's evidence. Each file defines the tags it uses, for
   example [02](02-language-semantics.md),
   [10 §7](10-roadmap-risks-questions.md#7-corrections-as-proposed-follow-up-issues)
-  and [decisions.md](decisions.md), whose commands are in
+  and [decisions.md](decisions.md), whose commands are in its rows or in
   [its appendix](decisions.md#appendix-commands-behind-the-numbers).
 
   | Tag | Evidence |
   | --- | --- |
-  | [code] | lines read at `568dcb6` |
+  | [code] | lines read at `568dcb6`, or for text added since, at the PR or issue it names |
   | [jq], [py] | a fixture measured by a command given beside it |
   | [py re-impl] | the research's Python, not senbazuru |
   | [bin] | the prebuilt binary |
-  | [measured] | timed runs, with the run count |
-  | [ran] | a `git`, `grep` or `sqlite3` command, given in the decision record's appendix |
+  | [measured] | timed runs of a compiled build, with the run count |
+  | [ran] | a command, named or described beside it or in the decision record's appendix |
   | [prd] | a measurement a PRD file made, whose section holds the command |
   | [research] | a research note, cited by file and heading |
   | [reasoned] | worked out from cited code, not run |
