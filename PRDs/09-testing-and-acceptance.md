@@ -633,7 +633,7 @@ which moves none ([D5](decisions.md#d5-presentation-and-the-readers-side)).
 | --- | --- | --- |
 | `BlintzSequence` | becomes a sequence, first | M2 |
 | `HelmetSequence` | becomes a sequence, second; a [hinge](glossary-additions.md#origami) named by one material line resolves to several edges | M2 |
-| `CraneWing` | stays; its prefix becomes a sequence | M4 (folding some layers, stacking relations; `expect refused` lands at M2); slow job |
+| `CraneWing` | stays; its prefix becomes a sequence, at the wing's [root](../docs/glossary.md#origami), folded y = 0.37585 (owner decision 42, decided 2026-10-13) | M4 (folding some layers, stacking relations; `expect refused` lands at M2) and [#560](https://github.com/avalonalex/senbazuru/issues/560)'s fold at the root; slow job |
 | `CraneSpread`, `CraneRoot`, `CraneBody`, `CraneInternal` | stay; [holds](glossary-additions.md#material) re-expressed by name, 07 AC-1 first | M6, with no re-solve (R-07-40) |
 | `CheckedPetal`, `CheckedBird` | a study-authored sequence of macro-moves; modules shrink to entries in the [certificate](glossary-additions.md#assurance) registry | M5 and the registry (R-07-36); slow job |
 | `BasicBases` endpoints; frog guide | stay (squash and a frog petal are `not modelled`) | — |
