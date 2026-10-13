@@ -805,9 +805,10 @@ hinge, says what the runs must show for a size to be admitted, and records each
 run's solve CPU seconds with the binary and its RTS options: today's figures come
 from the study's executable, which is not built `-threaded`, and `senbazuru` is
 built `-threaded -with-rtsopts=-N`. The crane-wing sequence of
-[decisions §7](decisions.md#7-examples) still folds the wing hinged at y = 1/4;
-whether owner decision 34's hinge at the wing's root reaches it is owner decision
-42. This file first proposed a cap of 1,192 triangles, the largest accepted
+[decisions §7](decisions.md#7-examples) moves to the wing's root (owner decision
+42, decided 2026-10-13), so those runs settle root meshes: 1,188 triangles at
+eight strips, while the sixteen-strip mesh does not converge (#469). This file
+first proposed a cap of 1,192 triangles, the largest accepted
 crane-wing mesh with a recorded solve time (64.30 CPU s, one run), with the wing
 hinged at y = 1/4. Also at y = 1/4, crane-root's 4,312-triangle finer
 flat-preference mesh passed its checks
@@ -894,7 +895,7 @@ messages show format only; they were not taken from a run.
 
 | # | Check | Turns red when |
 | --- | --- | --- |
-| AC-1 | Wing record's resolved pins equal `spreadPins` of `craneSpread source 3 20` ([`CraneSpreadSpec.hs:32`](../test/CraneSpreadSpec.hs#L32)): same ids, positions within 1e-12, without solving; M6's first test (R-07-11–16) | band in material coordinates; `closed` dropping shared hinge vertices; `rigid-pose` read at 30 instead of 1/3 |
+| AC-1 | Wing record's resolved pins equal `spreadPins` of `craneSpread source 3 20` ([`CraneSpreadSpec.hs:32`](../test/CraneSpreadSpec.hs#L32)): same ids, positions within 1e-12, without solving; M6's first test (R-07-11–16); at the wing's root by owner decision 42 (decided 2026-10-13), which #560 re-derives | band in material coordinates; `closed` dropping shared hinge vertices; `rigid-pose` read at 30 instead of 1/3 |
 | AC-2 | Refined surface equals `spreadRefined` | `refine side moving` also refining across the hinge |
 | AC-3 | `RestAtPose (PoseOnRoute (1/3))` gives exactly `CraneSpread.hs:117`'s targets (R-07-18) | Mountain → +π slip; resting at `PoseAfter` |
 | AC-4 | Contact pairs equal `spreadContactOrders`; `CraneRootSpec.hs:122-124`'s case holds (R-07-8) | filtering before closing |
