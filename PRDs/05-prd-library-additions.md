@@ -1383,8 +1383,8 @@ The per-item tables are the criteria. Across all items:
 
 1. **[10 §6](10-roadmap-risks-questions.md#6-owner-decisions), decision 12:**
    crane-sized tests for L8, L10, L11, L12 in default CI or the slow job.
-   [decisions §9](decisions.md#9-owner-decisions) recommends a separate slow job
-   that is a required check.
+   Decided 2026-10-12 as recommended: the slow job, a required check
+   ([decisions §9](decisions.md#9-owner-decisions)).
 
 The questions this file raised earlier are decided: τ = 1e-10°
 ([C29](decisions.md#changes-since-draft-v2)), some-vertex classification

@@ -456,7 +456,7 @@ Seconds appear only as CI job timeouts. Each move record carries a `StepCost`
 | Refolds (`foldFrameWith` calls) | none | recorded: about 7 per checked step today, counted from code ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md) finding 6), plus one per creasing move for 05 L7–L8; E2 pins the blintz's, so caching is a reviewed change |
 | Triangles `checkFlap` inspects; triangle pairs at each endpoint (all pairs, finding 7) | none in v1 | recorded |
 | Stacking guesses per component | `--layer-budget` | `GaveUpStacking`, its own error (R-05-39) |
-| Settle triangles | 1,192 for `run --settle`; 392 in default CI (R-07-41) | `TriangleBudget` before solving (07 AC-13) |
+| Settle triangles | `run --settle`'s budget, set by the PR that builds it from 3–5 compiled runs; 392 in default CI (R-07-41) | `TriangleBudget` before solving (07 AC-13) |
 
 A sequence's cost is the sum of its records', plus a creasing-and-stacking entry
 for each move that adds a crease.
@@ -506,13 +506,18 @@ with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
 3. The default job runs `stack test --test-arguments '--skip /slow/'`; a new slow
    job runs `--match /slow/`. hspec 2.11.12 is pinned with both flags (finding 9);
    today CI runs one `stack test` ([`ci.yml`](../.github/workflows/ci.yml)).
-4. Existing `runIO` specs stay as they are; a recipe's spec changes only in that
-   recipe's deletion PR (§9) ([D16](decisions.md#d16-testing-and-acceptance),
+4. Existing `runIO` specs keep `runIO`, and a recipe's spec otherwise changes only
+   in that recipe's deletion PR (§9) ([D16](decisions.md#d16-testing-and-acceptance),
    [C71](decisions.md#changes-since-draft-v2)).
+5. The existing study specs that are slow move under `describe "slow"` in the PR
+   that adds the slow job (owner decision 12, decided 2026-10-12,
+   [C101](decisions.md#changes-since-draft-v2)). In a local run they took 1,806 of
+   the suite's 1,810 s of test time; the 44 tests of 10 s or more took 1,622 s, in
+   20 files.
 
 | Default job | Slow job |
 | --- | --- |
-| M1 syntax tests and §5; §2; §3; blintz and helmet equivalence; 05's unit tests on the quarter, blintz and bird fixtures; 06's goldens; settles ≤ 392 triangles | crane-wing sequence and equivalence; [D11](decisions.md#d11-stacking-choices-are-relations)'s crane relations; bird route equivalence; collapse on the crane; M6's crane solve; line drawing on 4,312 triangles |
+| M1 syntax tests and §5; §2; §3; blintz and helmet equivalence; 05's unit tests on the quarter, blintz and bird fixtures; 06's goldens; settles ≤ 392 triangles | crane-wing sequence and equivalence; [D11](decisions.md#d11-stacking-choices-are-relations)'s crane relations; bird route equivalence; collapse on the crane; M6's crane solve; line drawing on 4,312 triangles; the existing slow study specs |
 
 **The slow job changes a recorded sentence.** It is a fourth CI job beside
 today's `test`, `format` and `lint`
@@ -521,9 +526,8 @@ today's `test`, `format` and `lint`
 [`AGENTS.md:390-391`](../AGENTS.md#workflow) requires "all three CI checks" green
 before merge. The M4 PR adding the slow job changes that sentence
 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 15,
-[C51](decisions.md#changes-since-draft-v2)). Owner decision 12's default makes the
-slow job a required check, so the sentence counts four; an optional slow job would
-let slow regressions merge.
+[C51](decisions.md#changes-since-draft-v2)). Owner decision 12 made the slow job a
+required check on 2026-10-12, so the sentence counts four.
 
 ## 7. Angle equality
 
@@ -634,9 +638,10 @@ each with the default [decisions §9](decisions.md#9-owner-decisions) recommends
    and moves two goldens (§1.2).
 3. **(10) Eighth turns.** Default: trigonometry, which puts platform bits in
    written coordinates, stated (§8).
-4. **(12) CI placement and triangle budget.** Default: crane-sized sequences in a
-   slow job that is a required check, so row 15 changes AGENTS.md's "all three CI
-   checks" to four; default CI settles at most 392 triangles (§6.3).
+4. **(12) CI placement and triangle budget.** Decided 2026-10-12: crane-sized
+   sequences, and the existing slow study specs, in a slow job that is a required
+   check, so row 15 changes AGENTS.md's "all three CI checks" to four; default CI
+   settles at most 392 triangles (§6.3).
 
 The questions this file raised earlier are decided: test 2 lands with the later
 of M3 and M4 under rules T1–T5 (§2.3; [C48](decisions.md#changes-since-draft-v2),

@@ -606,21 +606,21 @@ The headers go with their modules.
 ### 4.15 `AGENTS.md:390-391`, "all three CI checks"
 
 Current: "`main` is protected. Changes reach it through pull requests, and all three
-CI checks must be green before merge. Do not push to `main` directly."
+CI checks must be green before merge. Do not push to `main` directly. A pull
+request that changes only `PRDs/` skips all three, which counts as green: nothing
+they check reads that directory."
 
 The three are the jobs of `.github/workflows/ci.yml`: `test` ("build and test"),
 `format` ("ormolu") and `lint` ("hlint"). M4 adds a fourth job for the crane-sized
 specs under `describe "slow"`, which the default job skips
-([D16](decisions.md#d16-testing-and-acceptance)). Replacement, under
-[owner decision 12](decisions.md#9-owner-decisions)'s recommended default that the
-slow job is a required check (the job's name is **SKETCH**, chosen in that PR):
+([D16](decisions.md#d16-testing-and-acceptance)). Replacement, since
+[owner decision 12](decisions.md#9-owner-decisions) made the slow job a required
+check on 2026-10-12 (the job's name is **SKETCH**, chosen in that PR):
 
 > `main` is protected. Changes reach it through pull requests, and all four CI
 > checks — build and test, ormolu, hlint, and the slow tests — must be green before
-> merge. Do not push to `main` directly.
-
-If the owner makes the slow job optional instead, the sentence keeps "three" and
-adds: "The slow tests run as a fourth job, which is not required."
+> merge. Do not push to `main` directly. A pull request that changes only `PRDs/`
+> skips all four, which counts as green: nothing they check reads that directory.
 
 ### 4.16 `docs/roadmap.md:271-276` and `:1004-1009`
 

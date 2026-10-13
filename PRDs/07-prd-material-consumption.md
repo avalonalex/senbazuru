@@ -350,7 +350,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 | --- | --- |
 | R-07-39 | Seven stages in order, one PR each; 33 goldens and the study's accepted/rejected controls unchanged. |
 | R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
-| R-07-41 | `run --settle` refuses more than 1,192 refined triangles, counted before solving, until 3–5 compiled runs justify another number; default CI settles ≤ 392. |
+| R-07-41 | `run --settle` refuses more refined triangles than its budget, counted before solving, which the PR building it sets from 3–5 compiled runs on the crane fixtures it must settle; default CI settles ≤ 392 (owner decision 12, decided 2026-10-12). |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
 | R-07-43 | No CI job or test depends on an external program, as [AGENTS.md](../AGENTS.md#third-party-material) defines one. Each one used gets a `docs/related-projects.md` row with its licence *as built*, and outputs kept as fixtures get provenance in `examples/README.md`. |
 | R-07-44 | External solvers are oracles only, never used in place of our own code; IPC-family tools apply to open states until a thickness offset exists ([External tools](#external-tools)). A policy recorded in [D17](decisions.md#d17-third-party-and-external-tools) and AGENTS.md, not a tested requirement, since R-07-43 keeps the tools out of CI. |
@@ -796,9 +796,16 @@ modes; barrier rows; `ClosedCrease`; `FoldMaterial`'s rounded bends; `Crane*` an
 `Wing*` recipes and galleries; `PetalCertificate` and the registry.
 
 **Gates.** M6's equivalence PR solves nothing in the default job, since solving
-old and new crane side by side would double the costliest groups. 1,192
-triangles is the largest accepted crane-wing mesh with a recorded solve time
-(64.30 CPU s, one run). The 4,312-triangle flat-preference crane-root mesh also
+old and new crane side by side would double the costliest groups. `run --settle`'s
+budget is set by the PR that builds it, from 3–5 compiled runs on the crane
+fixtures it must settle (owner decision 12, decided 2026-10-12). The 1,192 this
+file first proposed was the largest accepted crane-wing mesh with a recorded
+solve time (64.30 CPU s, one run), with the wing hinged at y = 1/4. At the wing's
+root, where the crane galleries hinge since owner decision 34, the spreading wing
+has 1,188 triangles (9.75 CPU s, one run) and the root controls 2,196 (7.53–7.58
+CPU s, three runs, #474), and its 4,324-triangle mesh does not converge
+([spreading-connected-wing.md](../docs/notes/spreading-connected-wing.md), #469).
+The 4,312-triangle flat-preference crane-root mesh also
 passed its checks ([wing-root-holds.md:18-20](../docs/notes/wing-root-holds.md),
 `:32`, `:40`) but has no recorded solve time. The crane-wing note calls
 two resolutions "a useful comparison, not evidence that the answer has stopped
@@ -851,7 +858,7 @@ nested `explain`; `num` for measured values, `tshow` for ids and counts.
 | `ConflictingTargets` | "`hold side moving` and `grip band moving 7/32.. arc-grip 30° 20°` both fix (internal vertex 118), at places 0.012 apart" |
 | `GripOutOfRange` | "`arc-grip 30° 25°`: this generator takes a 30° root and a further 0°–20°" |
 | `UnitMismatch` | "the sheet file is 100 mm across (frame_unit mm) but the material block says `size 15cm`" |
-| `TriangleBudget` | "4,312 triangles; settles accept at most 1,192 until measured otherwise" |
+| `TriangleBudget` | "4,312 triangles; settles accept at most *B*", *B* being the budget the PR building `run --settle` sets (R-07-41) |
 | `RefineRefused` etc. | nested `explain` unchanged, e.g. a non-convex panel ([`Surface.hs:343`](../src/Senbazuru/Origami/Surface.hs#L343)) |
 | `Reason` | "not converged after 118 iterations; relative edge error 3.75e-5; 49 crossing triangle pairs" ([body-angle-preferences.md:74-79](../docs/notes/body-angle-preferences.md)) |
 | `Refused` | "petal certificate refused: bird path contact unresolved for panels …" ([`PetalCertificate.hs:301`](../study/fold-material/PetalCertificate.hs#L301)) |
@@ -890,7 +897,7 @@ messages show format only; they were not taken from a run.
 | AC-10 | Rigid outputs byte-identical with settle blocks deleted (R-07-28, 29) | a settled surface reaching a page basis or later step |
 | AC-11 | One `GripOutOfRange` and one accepted settle: accepted files exist, refused absent, rigid written, exit nonzero naming the step; `--allow-unsettled` exits 0 and records it (R-07-33, 34) | aborting all settles at the first failure; writing rigid geometry in its place |
 | AC-12 | Bird records → `Certified` ×4; the same macros on `square-base.fold` → `NoCertificateFor`; a wrong-branch (`False`) call → `Refused`, never `Sampled`; each entry's sample poses equal `175 * fraction` exactly (R-07-36–38) | keying by macro name only; mapping `Refused` to `Sampled`; a pose written as an absolute angle |
-| AC-13 | More than 1,192 refined triangles → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
+| AC-13 | More refined triangles than the budget → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
 | AC-14 | `material { size 15cm; thickness 0.1mm }` stores exactly 1/1500 on `crane.fold` (s = 1 in `Double`, R-07-24); a built `mm` frame with s = 100 → `UnitMismatch` (R-07-24–26) | using the refined mesh's extent; ignoring `frame_unit` |
 | AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); the gallery's `[True, True, True, False]` ([`CraneSpreadGallery.hs:139`](../study/fold-material/CraneSpreadGallery.hs#L139)) unchanged (R-07-39) | a stage altering an energy or tolerance |
 | AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external program, as AGENTS.md defines one, or reads such a program's output (R-07-43) | a test shelling out to a simulator |
@@ -937,9 +944,10 @@ and [10](10-roadmap-risks-questions.md#6-owner-decisions), each with the default
    [decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8, landed
    with #550.
 3. **(12)** Are 392 triangles in default CI and 1,192 behind `run --settle`
-   right, and which crane-sized sequences move to the slow job? Default: both
-   numbers, until 3–5 compiled runs justify others; crane-sized sequences in a
-   slow job that is a required check.
+   right, and which crane-sized sequences move to the slow job? Decided
+   2026-10-12: 392 in default CI; `run --settle`'s budget set by the PR that
+   builds it from 3–5 compiled runs, 1,192 withdrawn; crane-sized sequences in a
+   slow job that is a required check, which the existing slow study specs join.
 
 ## Research links
 
