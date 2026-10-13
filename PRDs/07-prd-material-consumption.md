@@ -39,8 +39,9 @@ Four constraints, each backed below:
    start with no moved grip is refused as `NoDifference`.
 2. **Settled geometry is an illustration, never state.** It feeds no later step,
    page or animation; a failure refuses only its own files.
-3. **The solver is mature for one case family.** A crane wing bends with the body
-   held, accepted at 392 and 1,192 triangles; releasing body paper fails.
+3. **The solver is mature for one case family.** A crane wing hinged at y = 1/4
+   bends with the body held, accepted at 392 and 1,192 triangles; releasing body
+   paper fails.
 4. **The consumer lives in the study until graduation.** M6 delivers
    `senbazuru-material-study --sequence SOURCE DIR`; M8 delivers `run --settle`,
    behind a triangle budget.
@@ -350,7 +351,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 | --- | --- |
 | R-07-39 | Seven stages in order, one PR each; 33 goldens and the study's accepted/rejected controls unchanged. |
 | R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
-| R-07-41 | `run --settle` refuses more refined triangles than its budget, counted before solving, which the PR building it sets from 3–5 compiled runs on the crane fixtures it must settle; default CI settles ≤ 392 (owner decision 12, decided 2026-10-12). |
+| R-07-41 | `run --settle` counts a mesh's refined triangles before solving and refuses it above its budget. The PR that builds `run --settle` sets that budget from 3–5 compiled runs on the crane fixtures it must settle, and any later change is made the same way; default CI settles ≤ 392 triangles, never a crane fixture (owner decision 12, decided 2026-10-12). |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
 | R-07-43 | No CI job or test depends on an external program, as [AGENTS.md](../AGENTS.md#third-party-material) defines one. Each one used gets a `docs/related-projects.md` row with its licence *as built*, and outputs kept as fixtures get provenance in `examples/README.md`. |
 | R-07-44 | External solvers are oracles only, never used in place of our own code; IPC-family tools apply to open states until a thickness offset exists ([External tools](#external-tools)). A policy recorded in [D17](decisions.md#d17-third-party-and-external-tools) and AGENTS.md, not a tested requirement, since R-07-43 keeps the tools out of CI. |
@@ -796,22 +797,30 @@ modes; barrier rows; `ClosedCrease`; `FoldMaterial`'s rounded bends; `Crane*` an
 `Wing*` recipes and galleries; `PetalCertificate` and the registry.
 
 **Gates.** M6's equivalence PR solves nothing in the default job, since solving
-old and new crane side by side would double the costliest groups. `run --settle`'s
-budget is set by the PR that builds it, from 3–5 compiled runs on the crane
-fixtures it must settle (owner decision 12, decided 2026-10-12). The 1,192 this
-file first proposed was the largest accepted crane-wing mesh with a recorded
-solve time (64.30 CPU s, one run), with the wing hinged at y = 1/4. At the wing's
-root, where the crane galleries hinge since owner decision 34, the spreading wing
-has 1,188 triangles (9.75 CPU s, one run) and the root controls 2,196 (7.53–7.58
-CPU s, three runs, #474), and its 4,324-triangle mesh does not converge
-([spreading-connected-wing.md](../docs/notes/spreading-connected-wing.md), #469).
-The 4,312-triangle flat-preference crane-root mesh also
-passed its checks ([wing-root-holds.md:18-20](../docs/notes/wing-root-holds.md),
-`:32`, `:40`) but has no recorded solve time. The crane-wing note calls
-two resolutions "a useful comparison, not evidence that the answer has stopped
-depending on the mesh" ([spreading-connected-wing.md:73-74](../docs/notes/spreading-connected-wing.md)).
-392 (5.76 CPU s) is the default-CI ceiling; larger settles run in the slow job
-with fixtures in `beforeAll` ([glossary-additions](glossary-additions.md#code-and-tests)).
+old and new crane side by side would double the costliest groups. The PR that
+builds `run --settle` sets its budget from 3–5 compiled runs on the crane
+fixtures it must settle, and any later change is made the same way (R-07-41;
+owner decision 12, decided 2026-10-12). That PR names the fixtures and their
+hinge, says what the runs must show for a size to be admitted, and records each
+run's solve CPU seconds with the binary and its RTS options: today's figures come
+from the study's executable, which is not built `-threaded`, and `senbazuru` is
+built `-threaded -with-rtsopts=-N`. The crane-wing sequence of
+[decisions §7](decisions.md#7-examples) still folds the wing hinged at y = 1/4;
+whether owner decision 34's hinge at the wing's root reaches it is owner decision
+42. This file first proposed a cap of 1,192 triangles, the largest accepted
+crane-wing mesh with a recorded solve time (64.30 CPU s, one run), with the wing
+hinged at y = 1/4. Also at y = 1/4, crane-root's 4,312-triangle finer
+flat-preference mesh passed its checks
+([wing-root-holds.md:18-20](../docs/notes/wing-root-holds.md), `:32`, `:40`) but
+has no recorded solve time, and the crane-wing note calls the two resolutions it
+compared there, 392 and 1,192 triangles, "a useful comparison, not evidence that
+the answer has stopped depending on the mesh"
+([spreading-connected-wing.md:73-74](../docs/notes/spreading-connected-wing.md)).
+At the root the meshes and their costs differ ([C101](decisions.md#changes-since-draft-v2)).
+392 (5.76 CPU s, one run at y = 1/4) is the default-CI ceiling for settles on
+fixtures smaller than the crane; a settle on a crane fixture runs in the slow job
+whatever its size, and builds its fixtures in `beforeAll`
+([glossary-additions](glossary-additions.md#code-and-tests)).
 Budgets count refined triangles before solving, never seconds.
 
 ### External tools
@@ -858,7 +867,7 @@ nested `explain`; `num` for measured values, `tshow` for ids and counts.
 | `ConflictingTargets` | "`hold side moving` and `grip band moving 7/32.. arc-grip 30° 20°` both fix (internal vertex 118), at places 0.012 apart" |
 | `GripOutOfRange` | "`arc-grip 30° 25°`: this generator takes a 30° root and a further 0°–20°" |
 | `UnitMismatch` | "the sheet file is 100 mm across (frame_unit mm) but the material block says `size 15cm`" |
-| `TriangleBudget` | "4,312 triangles; settles accept at most *B*", *B* being the budget the PR building `run --settle` sets (R-07-41) |
+| `TriangleBudget` | "4312 triangles; settles accept at most *B*", where *B* is `run --settle`'s budget (R-07-41) |
 | `RefineRefused` etc. | nested `explain` unchanged, e.g. a non-convex panel ([`Surface.hs:343`](../src/Senbazuru/Origami/Surface.hs#L343)) |
 | `Reason` | "not converged after 118 iterations; relative edge error 3.75e-5; 49 crossing triangle pairs" ([body-angle-preferences.md:74-79](../docs/notes/body-angle-preferences.md)) |
 | `Refused` | "petal certificate refused: bird path contact unresolved for panels …" ([`PetalCertificate.hs:301`](../study/fold-material/PetalCertificate.hs#L301)) |
@@ -945,9 +954,11 @@ and [10](10-roadmap-risks-questions.md#6-owner-decisions), each with the default
    with #550.
 3. **(12)** Are 392 triangles in default CI and 1,192 behind `run --settle`
    right, and which crane-sized sequences move to the slow job? Decided
-   2026-10-12: 392 in default CI; `run --settle`'s budget set by the PR that
-   builds it from 3–5 compiled runs, 1,192 withdrawn; crane-sized sequences in a
-   slow job that is a required check, which the existing slow study specs join.
+   2026-10-12: 392 in default CI, never for a crane fixture; `run --settle`'s
+   budget set from 3–5 compiled runs on the crane fixtures it must settle, by the
+   PR that builds it and for any later change, the 1,192-triangle cap withdrawn;
+   crane-sized sequences in a slow job that is a required check, which the slow
+   study spec files join in the PR that adds it.
 
 ## Research links
 

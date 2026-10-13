@@ -870,12 +870,13 @@ single stiffness preset. Each is a row in
   1,792 and 7,168 triangles.
 - CCD dominates each contact iteration (R-11-18). A compiled or vectorised solver
   is needed before 5,000 triangles.
-- D15's gates, as owner decision 12 settled them on 2026-10-12, keep default CI
-  at 392 refined triangles and leave `run --settle`'s budget to the PR that
-  builds it, set from 3–5 compiled runs; the 1,192 they first proposed is
-  withdrawn. The shape track
-  needs 2,000–6,000. The study's galleries state their own budget; the library
-  caps stay until F4 measures.
+- D15's gates (owner decision 12, decided 2026-10-12): default CI settles at most
+  392 refined triangles, never a crane fixture, and the PR that builds
+  `run --settle` sets its budget from 3–5 compiled runs on the crane fixtures it
+  must settle, as any later change must be; D15's first proposal, a
+  1,192-triangle cap, is withdrawn. The shape track needs 2,000–6,000. The study's
+  galleries state their own budget; the library caps stay until F4 measures, by
+  the same rule.
 
 ### 9. Why not a general shell FEA code
 

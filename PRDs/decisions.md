@@ -208,7 +208,7 @@ its way.
 | 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3: the M2 half landed with #501, 2026-10-07; `stepPageWith` joins the list at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation: landed with 05 L3 (#95), 2026-10-09 |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs: the blintz's landed with #503, 2026-10-10 (the architecture paragraph rewritten, the recipe and its header gone; C87); the helmet's with #534, 2026-10-11, the same way (C92) |
-| 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job as a required check (owner decision 12, decided 2026-10-12) | the M4 PR adding the slow job |
+| 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job as a required check (owner decision 12, decided 2026-10-12) | the M4 PR adding the slow job, then the owner listing that job in `main`'s branch protection, which no pull request can change |
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | the recorded order (#93, #96, #97, "only then" #95, #94, #36) replaced by the milestones | M0; not landed, and 01 §4.16's text is stale: it cites `docs/notes/sequences.md`, which was never written, and was written before M2 closed #95 and #97 |
 | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point ([D20](#d20-errors)) | the follow-up PR, before M4; not landed, and its issue (10 §7.2 item 31) was never filed |
 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists | the PR closing #60 (M4) |
@@ -1339,18 +1339,15 @@ accepted and rejected controls stay unchanged at each
 
 - **Gates.** M6's crane equivalence PR compares resolved pin sets without solving
   and solves once in the slow job, so it does not double the costliest test groups.
-  `run --settle` refuses meshes above a triangle budget, counted before solving,
-  which the PR building it sets from 3–5 compiled runs on the crane fixtures it
-  must settle; default CI settles at most 392 (owner decision 12, decided
-  2026-10-12, [C101](#changes-since-draft-v2)). The accepted crane-wing meshes
-  solved in 5.76 CPU s at 392 triangles and 64.30 CPU s at 1,192, one recorded run
-  each, with the wing hinged at y = 1/4
-  ([07](07-prd-material-consumption.md#one-move-fed-by-hand)) [research]. At the
-  wing's root, where owner decision 34 moved the crane galleries, the spreading
-  wing has 1,188 triangles (9.75 CPU s, one run) and the root controls 2,196
-  (7.53–7.58 CPU s, three runs, #474)
-  ([spreading-connected-wing.md](../docs/notes/spreading-connected-wing.md))
-  [docs]. Until
+  `run --settle` counts a mesh's refined triangles before solving and refuses it
+  above its budget. The PR that builds `run --settle` sets that budget from 3–5
+  compiled runs on the crane fixtures it must settle, and any later change is made
+  the same way. Default CI settles at most 392 triangles, and never a crane
+  fixture, which runs in the slow job whatever its size (owner decision 12,
+  decided 2026-10-12, [C101](#changes-since-draft-v2)). Both numbers were first
+  timed once each, with the wing hinged at y = 1/4: 5.76 CPU s at 392 triangles
+  and 64.30 CPU s at 1,192, the cap this bullet first proposed
+  ([07](07-prd-material-consumption.md#one-move-fed-by-hand)) [research]. Until
   2026-09-29 this bullet also gated M6 and M8 on #208's value-only line search,
   which never landed; the owner withdrew that gate ([§10](#10-corrections) row
   39), and #441 carries the optimisation.
@@ -1431,17 +1428,21 @@ accepted and rejected controls stay unchanged at each
   `describe "slow"`; the default job runs `--skip /slow/` and a new slow job
   `--match /slow/` (hspec 2.11.12 in the snapshot, appendix command 6 [ran]).
   Existing `runIO` specs stay as they are until their recipe's deletion PR
-  ([C71](#changes-since-draft-v2)). Three of them, `CheckedBirdSpec`,
+  ([C71](#changes-since-draft-v2)), except that the slow study spec files move
+  into the slow job (below). Three of the `runIO` specs, `CheckedBirdSpec`,
   `CraneWingSpec` and `CheckedPetalSpec`, build nearly all of the fixtures a
   filtered run pays for; whether they may move to `beforeAll` sooner, as an
   exception to C71, is the owner's question on #547 ([C99](#changes-since-draft-v2)).
-  A slow job is a fourth CI job beside today's
-  `test`, `format` and `lint` ([`ci.yml`](../.github/workflows/ci.yml)) [code], and
-  `AGENTS.md:390` requires "all three CI checks". Owner decision 12 made the slow
-  job a required check on 2026-10-12, so [§3](#3-recorded-text-this-design-changes)
-  row 15 counts four, and the existing study specs that are slow move into it in
-  the PR that adds it ([C51](#changes-since-draft-v2),
-  [C101](#changes-since-draft-v2)).
+  A slow job is a fourth check beside today's `test`, `format` and `lint`
+  ([`ci.yml`](../.github/workflows/ci.yml), whose `changes` job only decides
+  whether they run) [code], and `AGENTS.md:390` requires "all three CI checks".
+  Owner decision 12 (decided 2026-10-12) makes the slow job a required check, so
+  [§3](#3-recorded-text-this-design-changes) row 15 counts four; the owner lists the
+  job in `main`'s branch protection once the PR adding it has merged, since no
+  pull request can. That PR also moves into the job, whole, the study spec files
+  that hold a test of 10 s or more, an exception to C71
+  ([09 §6.3](09-testing-and-acceptance.md#63-beforeall-not-runio-and-a-slow-job)
+  items 3 and 5; [C51](#changes-since-draft-v2), [C101](#changes-since-draft-v2)).
 - **Angle equality.** Exact for driving parameters, copied literals, endpoints
   pinned by a guard, flap endpoints on whole-number angles, and two outputs of one
   binary; formula-derived angles within 1e-12°, as `RabbitEarSpec.hs:49` and
@@ -2259,7 +2260,7 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 | M1 | Language without geometry | `Sequence.Syntax`, `Error`, `Build`, `Parse`, `Pretty`, `Check`, `Elaborate`; `Fold.Load.readSequenceText`; the `decodeFile` refusal; `Sequence.RunPlan` for `--check`; `run --check`; round-trip property; whole-crane parse-and-check test; row 2 | advances #60 |
 | M2 | Rigid runner on flat states and existing creases | `sheetState`; references on flat states; `fold`, `unfold`, `pre-crease` along constructions on the flat sheet and along existing creases of flat-folded states; 05 L1 (`atRest`), L2 (`creaseAllAlongWith`), L3 (`fitRigid`, some-vertex classification), L4's `flapStationaryFace` (`Origami.Route` with its producer instead, C90), L14 (`prepareFlapToward`, `Eq`); presentation; anchors; `Sequence.Record` with `writtenStates`; the writer; `run -o .fold`, `.glb`; `--report`; `expect refused`; `not modelled`; the bird arrows golden pinned before L3; blintz and helmet equivalence; quarter-fold test 1; E1–E6, E8–E10; rows 11, 12 (`runSequence`), 13 | closes #95, #97; advances #60; #58 item 3 |
 | M3 | Step pages that read like a book | `StepNote`, `stepPageWith`, arrow heads, `Symbol`, captions, 05 L5 (`motionsAcross`, `creasesToCome`), steps of several moves, marks; `run -o .svg`; E7; row 12 (`stepPageWith`) | closes #36, #94; advances #48 |
-| M4 | Folding some layers | 05 L6 (before the runner wraps `ThroughError`), L7–L12; selectors; `stackingWhere`; `start folded`, `checkpoint`, `repeat`; crane-wing prefix in the slow job; quarter-fold test 2 and its page; rows 15, 17, 18 | closes #60; advances #54; revisits #70; related #110 |
+| M4 | Folding some layers | 05 L6 (before the runner wraps `ThroughError`), L7–L12; selectors; `stackingWhere`; `start folded`, `checkpoint`, `repeat`; the slow job, with the slow study spec files moved into it, and the crane-wing prefix in it; quarter-fold test 2 and its page; rows 15, 17, 18 | closes #60; advances #54; revisits #70; related #110 |
 | M5 | Coupled macros | collapse with `keeping`, rabbit ear, petal, `continue`, `together`, `sample`, `pose`; 05 L13 (`CheckedMacro`, `macroPoseAt`); the study's certificate registry; bird route; crane opening | advances #54, #61; #55 unblocked, not required |
 | M6 | Study consumes records | `Sequence.Material` in the study; `settle` and `material` blocks; settled illustrations and failure scope; crane spreading re-expressed, pin-set equivalence first; `senbazuru-material-study --sequence SOURCE DIR`; 05 L4's `flapPoseAt` here or at M7b, with its first consumer | advances #195; #114 rewritten |
 | M7a | Realistic GLB mode on existing meshes | A1 normals, A2a texture coordinates, fidelity metadata, `Page.pageDescription`; shown on the crane-spread and wing-bending study meshes | first visible realism |
@@ -2288,7 +2289,8 @@ decided ones as open. Decisions 15–25 come from
 Decisions 26–28 were raised while scoping #410, PRD 11's paper screen, decision 29
 by its wing galleries (#447), decisions 30 and 31 by #446 and #449, decisions
 32, 33 and 38 by #453, decisions 34 to 37 by #455, decision 39 by #474,
-decision 40 by the code review of #493, and decision 41 by #507.
+decision 40 by the code review of #493, decision 41 by #507, and decision 42 by
+the code review of #557.
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
@@ -2303,7 +2305,7 @@ decision 40 by the code review of #493, and decision 41 by #507.
 | 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | **decided 2026-10-06** as recommended: it stays as the regression; the state-rule page is a new golden | `quarter-fold-steps.svg` and `quarter-fold-step-1.svg` move in that PR, and their `test/fixtures` copy migrates too | M2 |
 | 10 | Eighth turns by trigonometry, or a `sheet square as diamond` start | **decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, which IEEE 754 rounds correctly, so an eighth turn adds no platform bits of its own; folded positions keep folding's (09 §8) (C91) | `rotate` takes even k only, so frames stay exact; the crane-opening example's first step becomes a header option | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | **decided 2026-10-12** as recommended: yes, [§3](#3-recorded-text-this-design-changes) row 8, landed with #550; scoped by the owner the same day ([C100](#changes-since-draft-v2)) | only in `docs/related-projects.md`: agents reading `AGENTS.md` miss it | M0 |
-| 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | **decided 2026-10-12**: crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four, and the existing study specs that are slow move into it in the PR that adds it; default CI settles ≤ 392 triangles; `run --settle`'s budget is set by the PR that builds it, from 3–5 compiled runs on the crane fixtures it must settle, and 1,192 is withdrawn, having been timed once with the wing hinged at y = 1/4 ([C101](#changes-since-draft-v2)) | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR; a higher cap admits unmeasured settles | M4 |
+| 12 | CI placement of crane-sized sequences; the slow job's status; triangle budgets | **decided 2026-10-12**: crane-sized sequences in a separate slow job that is a **required** check, so row 15 changes "all three CI checks" to four, and the PR adding it moves into it, whole, the study spec files that hold a test of 10 s or more; default CI settles ≤ 392 triangles, never a crane fixture; `run --settle`'s budget, in refined triangles counted before solving, is set from 3–5 compiled runs on the crane fixtures it must settle, by the PR that builds it and for any later change; the 1,192-triangle cap is withdrawn ([C101](#changes-since-draft-v2)) | an optional slow job lets slow regressions merge; crane tests in default CI pay [D16](#d16-testing-and-acceptance)'s costs on every PR; a higher cap admits unmeasured settles | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **decided 2026-09-23**: where the moving paper goes ([D5](#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | reading the held face: lifting a flap off the face it lies on is `behind`, and a page turn depends on which crease is listed first | M2's runner |
 | 14 | A `fold and unfold`: one record or two, and its name | **decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, whose one record of kind `Precrease` changes nothing but the new crease; **refined 2026-09-24**: that crease has no direction, U, since a later move may fold it either way, a stretch at a time ([D12](#d12-the-text-syntax)) | two records, the fold and its unfold: a folded state no figure draws, and a pair every consumer has to match up | M2's runner (`Sequence.Record`) |
 | 15 | What "refined" requires, and the crane target ([11](11-prd-refined-final-forms.md#4-the-crane)) | **decided 2026-09-29**: both. More tucked stays in the gallery, labelled a schematic; the physical target is the pod; the pillow stays a target only if F2's core-lengthening test passes | picture only: F2–F5 are not needed, and the look track works on labelled sketches; paper only: More tucked leaves the gallery | F0 |
@@ -2333,6 +2335,7 @@ decision 40 by the code review of #493, and decision 41 by #507.
 | 39 | What a quick tier may hold that the model leaves free, so that a settled shape comes in seconds rather than the hours a research gallery takes (#474) | **decided 2026-10-03**: the paper the moving flap does not need, such as the crane's body, held and said so. The output's fidelity record names what was held, so it is a true solve of held paper and claims no more; this adds to D19's settled geometry the paper it held, which neither D19 nor `Senbazuru.Render.Fidelity` can say yet. The galleries keep a periodic comparison of the held solve against the released one, which shows where the label stops being a technicality: at the crane wing's root the two differ by 0.0003 px at 600 px per sheet unit, and the held solve costs 7.5 CPU seconds, in three runs, against 1,046 in one. A model whose shape comes from moving that paper, such as an inflated water bomb, cannot be quickened this way; that is research, with #427 and #428 | release the held paper only where a held solve fails its own checks; or solve each model both ways once, and hold only where the two agree within 1 px | the quick tier (#474) |
 | 40 | Whether `expect refused` may name a turn blocked part-way: `FlapCollision`, paper the sweep finds in the turn's path, and `FlapUnresolved`, a path the sweep cannot decide within its budget | **decided 2026-10-06**: yes, both. They are refusals of the paper, like the nine `FlapError` kinds [02 §12](02-language-semantics.md#12-refusal-catalogue) already listed, and without them a sequence could document only a turn refused before it starts or at one of its ends. Today only an unfold is blocked part-way, since a fold starts from paper lying flat: on the accordion, unfolding a strip into a flap leaning over it is refused as `FlapCollision`, with a witness a quarter of the way along, and as `FlapUnresolved` by a sweep of no depth (`RunSpec`, "a turn blocked part-way"). Expecting `FlapUnresolved` pins the sweep's budget as much as the paper: a deeper default can turn the same move into a collision or a clearance | leave them out: `expect refused` documents only a turn refused before it starts or at one of its ends, and a blocked unfold cannot be written down as the thing to avoid | M2's runner |
 | 41 | What a `nearest P` does where the rules have already taken one answer, so that it was not needed: in `L1 to L2`, the only answer crossing the paper, or the only one laying L1's stretch onto L2's | **decided 2026-10-08**: it must agree with them. A P lying nearer another answer than the one taken is refused as `NearestDisagrees`, which names the answer taken and why, and the answer P lies nearer. Any answer counts, one crossing no paper included, since an author pointing at it expected it. A P nearer the answer taken is accepted, and so is one as near to both, such as the point where the answers cross, since it points at neither. Being read, P must name a place on the paper even where it is not needed: `nearest (2, 2)` is refused as off the paper. Raised in #507, which ignored such a P: on the blintz sheet, `[midpoint of edge west, centre] to [centre, midpoint of edge north] nearest corner south-west` resolved to x + y = 1, though the corner lies on y = x. O5 and O6 take `nearest` too, and the rule holds for them when they run | ignore it, as #507 did: `nearest` is only a tie-break, and an author's word can be overruled without a word. Or let it override the preference, never the paper, which makes the preference a default | M2's runner |
+| 42 | Whether owner decision 34's hinge, the wing's root, reaches the crane-wing sequence. [§7](#7-examples) folds it at y = 1/4, and [D14](#d14-material-consumption)'s first M6 test and 07 AC-1 compare it with `craneSpread source 3 20`, the wing hinged at y = 1/4 (392 triangles), while the galleries hinge at the root, apart from crane-root, which keeps seven of its nine controls at y = 1/4 for comparison | open: until it is decided, the plan stays at y = 1/4 ([C101](#changes-since-draft-v2)) | the root: §7's fold line and settle bands, D14's first M6 test and AC-1 change, and so do the crane fixtures M8's budget runs settle | M6 |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that
@@ -2351,7 +2354,8 @@ the bird arrows golden ([C70](#changes-since-draft-v2)); `decodeFile`'s words
 Findings about the repository's own text and code. Items 1–26 keep v2's numbers;
 27–32 are new; 33–38 were added on 2026-09-23 from
 [E3](research/E3-formal-fold-semantics.md) and its review; 39 was added on
-2026-09-29 from #413. *Row* means a
+2026-09-29 from #413, and 40 and 41 on 2026-10-12 from #557's code review. *Row*
+means a
 [§3](#3-recorded-text-this-design-changes) row carries it; *issue* means M0 was to
 file a new issue ([§8](#8-milestones)), which the cell names once it is filed, and a
 milestone in the cell is when the fix lands, as in 10 §7.2's *Lands* column
@@ -2389,7 +2393,7 @@ means the text is a research note, a snapshot that is not edited.
 | 26 | `docs/notes/a-crease-is-a-hinge.md`'s "about 200 thicknesses" and 30–40° Mylar figures are not in the cited abstract | [web] [B](research/B-material-study-mechanics.md) "Unverified" | study-note issue, M0 |
 | 27 | #104's first done-when bullet cannot be met: from `--view iso` no face of `puffed-square.fold` turns away | [py] appendix command 4; issue text | row 7 |
 | 28 | `docs/roadmap.md` records the old order: #97 before #95 and #54, and #93, #96, #97 "only then" #95, #94, #36 | [code] `docs/roadmap.md:271-276`, `:1004-1009` | row 16 |
-| 29 | `AGENTS.md:390` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code]; `ci.yml` has `test`, `format`, `lint` | row 15; owner decision 12, decided 2026-10-12, makes the slow job required, so the sentence counts four |
+| 29 | `AGENTS.md:390` requires "all three CI checks"; a slow job makes that count wrong or leaves the job unrequired | [code]; `ci.yml`'s checks are `test`, `format`, `lint`, beside its `changes` job | row 15; owner decision 12, decided 2026-10-12, makes the slow job required, so the sentence counts four |
 | 30 | `README.md:213` and `docs/roadmap.md` item 2 call the vocabulary missing | [ran] `grep -n` | row 18 |
 | 31 | A library message names CLI flags: `LineStopsOnTheModel` starts with `creaseEndFlag`'s `--from`/`--to` | [code] [`ThroughLayers.hs:196`](../src/Senbazuru/Origami/ThroughLayers.hs#L196), [`Query.hs:68-71`](../src/Senbazuru/Fold/Query.hs#L68-L71) | issue, before M4; row 17 |
 | 32 | The research note's count line says 7 of the crane's 12 some-layer steps hinge on existing creases; its own table marks 6 | [research] [gap-layer-selective-folds](research/gap-layer-selective-folds.md) "(e) The traditional crane, step by step" | recorded here; the note is a snapshot and is not edited |
@@ -2400,6 +2404,8 @@ means the text is a research note, a snapshot that is not edited.
 | 37 | E2's construction rule 4 calls `along <line>`, a fold along a line already on the paper, "Lucero's eighth"; Lucero numbers it O3, as row 36 says | [web] [E3](research/E3-formal-fold-semantics.md) C | recorded here; the note is a snapshot and is not edited |
 | 38 | E2 writes `nearest @p` as "Beloch's `toward`"; Beloch's O3 reads `toward X` as a direction, and only its O5 and O6 pick the landing nearest X | [web] [E3](research/E3-formal-fold-semantics.md) finding 10 | recorded here; the note is a snapshot and is not edited |
 | 39 | [D15](#d15-graduation-from-study-to-library) gated M6's crane equivalence PR and M8 on #208's value-only line search, which never landed: #208 closed on 2026-09-23 with #331's parallel test workers, which did not add it | [code] no value-only evaluation in `study/` or `src/`; #208 and #331 read with `gh` | withdrawn by the owner on 2026-09-29 (#413); fixed in D15, §8, decision 12, 07, 09, 10, 11 and the glossary additions; the optimisation is [#441](https://github.com/avalonalex/senbazuru/issues/441) |
+| 40 | 08 (the problem statement, M7a's demonstration, A-10, A-11, A-13, A-15 and Dependencies), 10's R13a, D19's residue and 11 §4 give the crane-spread meshes as 392 and 1,192 triangles, the crane-spreading gallery's with the wing hinged at y = 1/4. Since #470 (2026-10-02) that gallery hinges at the wing's root, where its meshes have 1,188 and 4,324 triangles and the finer does not converge, so it gets no GLB (#469); nothing builds the 1,192-triangle mesh now. `study/fold-material/README.md` and `CraneSpreadScreen`'s header still give 1,192 | [code] [`CraneSpreadGallery.hs:61`](../study/fold-material/CraneSpreadGallery.hs#L61), `:118-120`; `CraneSpreadSpec` builds refinement 3 only; [docs] `docs/usage.md:487-493`; #469 and #470 read with `gh` | issue #558, before M7a; #425 copies 11 §4's sentence |
+| 41 | 08's A-11 makes #206's 4,312-triangle crane-root mesh A-13's failing case if the crane-spread meshes give none, since #206 recorded `ImpossibleStacking` on it. #459 fixed that refusal on 2026-10-01 and says the fallback "needs another mesh"; whether `projectedForm` declines on that mesh from A-13's two views is unrecorded. 07's capability table still says it "fails the visible glTF scene", and 08's risks and Dependencies rows (#557 dated one of them, for decision 12 alone), 10's R13b, 10 §7's #206 row and D19's residue keep the fallback | [docs] `docs/usage.md:537-539`; [research] [B](research/B-material-study-mechanics.md) finding 15; #206 and #459 read with `gh` | issue #558, before A-11 (M7b) |
 
 ## 11. File plan and writing rules
 
@@ -2427,8 +2433,8 @@ keeping their evidence where it explains a rule.
 
 - `README.md`: the decision table links anchors here and adds D23, D24; the
   departures table and "where the spine is silent" become a pointer to
-  [Changes since draft v2](#changes-since-draft-v2); owner decisions 7 and 12 take
-  §9's defaults.
+  [Changes since draft v2](#changes-since-draft-v2); owner decision 7 takes §9's
+  default, and 12 its decided text ([C101](#changes-since-draft-v2)).
 - `00`: M4 closes #60.
 - `01`: §1.2 rule 4 and its note follow D23; §2.2's `Eq` note points at 05 L14 and
   `recordDisplay` becomes the before/after fields of D14; rows 15–18 join §4;
@@ -2461,7 +2467,8 @@ keeping their evidence where it explains a rule.
 - `09`: the three "differs from spine" notes and owner questions 5–7 stated as
   decided; row 15 exists.
 - `10`: §2's note resolved (M2 in the table); §3 gains rows 15–18; §4's #60 closes
-  at M4; §6 takes §9's defaults for 7 and 12.
+  at M4; §6 takes §9's default for 7 and the decided text for 12
+  ([C101](#changes-since-draft-v2)).
 - `glossary-additions.md`: *Anchor* says vertex mean; *Sequence file* counts state
   0; every "step record" becomes "move record"; *Route evidence* says `NoMotion`
   means no paper moved; a *State* row (D24) is added.
@@ -2552,7 +2559,7 @@ lists edits for.
 | C48 | Test 2 matching rules T1–T5 | 09 §2.3 note | hand-built frames: v2 clauses false, T1–T2 true [py] | adopted | 01, 09 |
 | C49 | Test 2 lands with the later of M3 and M4 | 09 §2.3 note | step 2 creases two layers (L8, M4); page needs L5 (M3) | adopted | 09, 10 |
 | C50 | Recipe goldens rebuilt from records through `flapAt` | 09 §9 note | `BlintzSequence.hs:75-87`, `HelmetSequence.hs:70-86` [code] | adopted | 09 |
-| C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:390`; `ci.yml` jobs [code] | adopted-modified (owner decision with default) | 09, 10 |
+| C51 | A slow job and "all three CI checks": row 15 and owner decision 12 | 09 §6.3 note | `AGENTS.md:390`; `ci.yml` jobs [code] | adopted-modified (owner decision 12, decided 2026-10-12, [C101](#changes-since-draft-v2)) | 09, 10 |
 | C52 | Test 1 compares angles exactly | 09 §2.2 note | `Flap.hs:469` [code] | adopted | 09 |
 | C53 | Golden check with `--diff-filter` and three dots | 09 §1.2 | both commands print nothing [ran] | adopted | 06, 08, 09 |
 | C54 | #60 closes at M4 | here (10 §4 note said M3) | 09 §2.3's milestone | adopted-modified | 10 |
@@ -2572,7 +2579,7 @@ lists edits for.
 | C68 | A record's seed for `L1 to L2` is the vertex mean of the face beside L1's longest segment | here (01 §5.8 left it to 02) | (1/4, 3/4) on quarter-fold step 2 [py] | adopted-modified | 01, 02 |
 | C69 | An existing `F` hinge is refused as `ExistingHingeFlat`, with residue | 02 §6.2 | `Flap.hs:262` [code] | adopted | 02 |
 | C70 | `bird-base-sequence-arrows.svg` pinned before 05 L3 | 09 §1.3; open question 7 | no golden draws that file with arrows (`BirdSequenceSpec.hs:79` passes `False`) [prd] | adopted | 09 |
-| C71 | Existing `runIO` specs unchanged until their deletion PRs | 09 open question 6 | 14 spec files use `runIO` [prd] | adopted | 09 |
+| C71 | Existing `runIO` specs unchanged until their deletion PRs | 09 open question 6 | 14 spec files use `runIO` [prd] | adopted; excepted for the slow study spec files by [C101](#changes-since-draft-v2) | 09 |
 | C72 | The crane's existing-crease count is 6 (the research note's count line says 7) | 02 §6.2 | the note's table [research] | adopted | 02 |
 | C73 | A step with no move other than `let` is refused as `EmptyStep` | here | 04 grammar allows an empty block | adopted | 02, 04 |
 | C74 | `README.md` and `docs/roadmap.md` roadmap item 2 as row 18 | 10 §4 note | `README.md:213` [ran] | adopted | 01, 10 |
@@ -2602,7 +2609,7 @@ lists edits for.
 | C98 | M2's sequence specs build their fixtures with `runIO`, not the `beforeAll` D16 asks of new sequence specs: the blintz, helmet, record, report, resolve, run and write specs, while M1's `TraditionalCraneSpec` uses `beforeAll`. C71 kept `runIO` only for existing specs until their deletion PRs, so these depart from D16. A filtered run (`stack test --ta '--match …'`) builds their fixtures as well, each adding at most 0.01 s of user CPU; the setup R5 describes is spent in three older specs ([C99](#changes-since-draft-v2)). §10 item 20 was filed only after M2, as #547 on 2026-10-12. Moving M2's seven to `beforeAll` would save no measurable time, so #547 leaves them out, and it is not mechanical: `BlintzRunSpec` and `HelmetRunSpec` make one example per move of the run, so their trees need the run while they are built. Whether to move them for D16's sake is open, and no issue holds it | D16; C71; 09 §3, §6.3; 10 R5 | `grep -c runIO` and `beforeAll` over `test/Senbazuru/Sequence` [ran] | adopted-modified | 09, 10, glossary-additions |
 | C99 | Nearly all of the fixture setup that §10 item 20 and [10's R5](10-roadmap-risks-questions.md#5-risks) describe is spent in three study specs, not in M2's specs (#547). On `a71ac04`, the compiled test binary, run directly rather than through `stack test`, with a `--match` that selects no example, takes 14.2–16.5 s of user CPU (14.7–18.1 s of wall time), and 0.02 s of user CPU (0.05–0.06 s of wall time) with every `runIO` spec stubbed out. With one `runIO` spec at a time left in, `CheckedBirdSpec` takes 7.0 s of user CPU, `CraneWingSpec` 6.1–6.2 s and `CheckedPetalSpec` 1.5 s; each of the other seventeen, M2's seven among them, takes 0.02–0.04 s. With only those three stubbed out, the run takes 0.07 s of user CPU (0.10–0.13 s of wall time). [gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)'s "Unverified" 7, which 09 §6.3 cites, holds on hspec 2.11.12: `beforeAll` runs its action only when an example under it runs, and not when only an example elsewhere does, while `runIO` runs its action whatever `--match` selects. C71 leaves existing `runIO` specs unchanged until their recipes' deletion PRs. 09 §9 shrinks `CheckedBird` and `CheckedPetal` to certificate-registry entries at M5, and it and D15 keep `CraneWing`. So, under C71, item 20 cannot be met before M5, nor ever for `CraneWingSpec`. Whether these three may move to `beforeAll` sooner, as an exception to C71, is the owner's question, open on #547 | #547; 09 §6.2, §6.3, §9; 10 R5, §7.2 item 20; C71; C98 | direct runs of the compiled test binary with a `--match` that selects no example, three per configuration and five with only the three stubbed out [measured]; a probe of `beforeAll` with three selections [ran]; appendix command 13 | adopted | 09, 10 |
 | C100 | The external-tools rule is scoped (#552), as the owner decided on 2026-10-12 after #551's review found it read wider than the project's practice. An external program is someone else's code whose answer we rely on: a solver, simulator, renderer or validator, or a library that computes what we cite as evidence or keep. The tools that build, run, format, lint or manage our own code are not, and #553's review added the packages `senbazuru.cabal` lists, which the definition otherwise caught, so that CI no longer contradicts the rule. A user-installed GPL or GPL-linked build may be run as an oracle, as [H7](research/H7-tooling.md) finding 17 concluded, but nothing GPL enters the tree or the library, so no script here may use Blender's Python API, and D17's Codim-IPC condition "with `WITH_GPL=OFF` or Eigen" is dropped. Only output kept as a fixture needs provenance in `examples/README.md`, the research's own wording ([gap-study-consumption-contract](research/gap-study-consumption-contract.md) "(e) Licence position for PRD 3"), so #551's entry for the research contact sheets is withdrawn: they are research images, not fixtures. "Never ahead of the in-repo path" becomes "never used in place of our own code", as [PRD 11](11-prd-refined-final-forms.md) reads it: a prototype never becomes the product. `docs/related-projects.md` gains rows, each with its licence as built, for thirteen programs and libraries the repository relies on: rsvg-convert, three.js, ImageMagick, Apple's ImageIO, SciPy, scikit-sparse, Eigen, `ad`, `hmatrix`, NumPy, Shapely, matplotlib and Pillow; Mitsuba 3 and CalculiX gain the builds that ran | #552; the code reviews of #551 and #553 | the reviews' findings; licences as built from `brew info` and `otool -L` on the installed Homebrew builds and on Blender's bundled NumPy, `otool -L` on the research's wheels still in pip's cache and the licence files inside them, PyPI metadata, `npm view`, Hackage and Stackage metadata with the installed Stack package database, conda-forge's package files and feedstock, and the scripts that built each wheel, at its release tag or, for NumPy 2.x and SciPy 1.18.1, in numpy-release and scipy-release, which have no tags, at the commits matching the release dates [ran]; scikit-sparse's version from the first release with the `cho_factor` the scripts call [reasoned]; the contact sheets' encoder from their JPEG segment order, which `sips` reproduces and ImageMagick does not [ran] | adopted (owner decisions) | 01, 07, 11 |
-| C101 | Owner decision 12 is decided (2026-10-12, #556). Crane-sized sequence tests run in a separate slow job that is a required check, so [§3](#3-recorded-text-this-design-changes) row 15 counts four checks, and the existing study specs that are slow move into it in the PR that adds it, an exception to [C71](#changes-since-draft-v2) like #547's: in a local run, study specs took 1,806 of the suite's 1,810 s of test time, and the 44 tests of 10 s or more took 1,622 s, in 20 files. Default CI settles at most 392 triangles. `run --settle`'s budget of 1,192 is withdrawn: it was timed once, with the wing hinged at y = 1/4, and the crane galleries hinge at the wing's root since owner decision 34. There the spreading wing has 1,188 triangles (9.75 CPU s, one run), the root controls the quick tier uses 2,196 (7.53–7.58 CPU s, three runs, #474), and the 4,324-triangle mesh does not converge (#469). The PR that builds `run --settle` sets its budget from 3–5 compiled runs on the crane fixtures it must settle, still counted in triangles before solving. The question put to the owner said 1,192's mesh no longer exists; the y = 1/4 fixture does, in `CraneSpreadSpec` and as the studies' default hinge, and the decision does not depend on it | owner decision 12 (#556) | CI run 38321475359 on `a303ce8`: `stack test` 515 s wall, 2,238 examples, its 20 slowest items all study specs [ran]; `stack test --test-arguments="--jobs=4 --print-slow-items=100000 +RTS -N4 -RTS"` on `c17d317`: 417.3 s wall, 1,810 s of item time, summed by spec file [ran]; [spreading-connected-wing.md](../docs/notes/spreading-connected-wing.md) [docs]; #474's three runs | adopted (owner decision) | 01, 05, 07, 08, 09, 10, 11 |
+| C101 | Owner decision 12 is decided (2026-10-12, #556), with four answers the code review of #557 asked for the same day. Crane-sized sequence tests run in a separate slow job that is a required check, so [§3](#3-recorded-text-this-design-changes) row 15 counts four checks once the owner lists the job in `main`'s branch protection. The PR adding it also moves into it, whole, the study spec files that hold a test of 10 s or more in one full run at its base, never single tests, since tests share fixtures: an exception to [C71](#changes-since-draft-v2) like #547's. On `c17d317` those were 20 files, nine of them not crane fixtures, with 1,745 s of the run's 1,810 s of item time (each test's own time while four ran at once, summed; hspec timed the run at 417.3 s), leaving about 65 s in the default job. Default CI settles at most 392 triangles, and never a crane fixture, which runs in the slow job whatever its size: 392 is the owner's line between the two jobs, not a measured budget, since it was timed once at y = 1/4, as 1,192 was. `run --settle`'s budget of 1,192 triangles is withdrawn; the PR that builds `run --settle` sets its budget from 3–5 compiled runs on the crane fixtures it must settle, still counted in triangles before solving, and any later change is made the same way. Corrections to what the owner was first told: the question said 1,192's mesh no longer exists, and nothing builds it now, since `CraneSpreadSpec` builds the y = 1/4 fixture only at 392 triangles (the correction #556 first gave wrongly said otherwise); but the record's own crane settle, [§7](#7-examples)'s sequence and [D14](#d14-material-consumption)'s first M6 test, is still that fixture, where a crane-wing settle has 392 triangles, so "1,188 triangles and up" holds only at the root, and whether decision 34 reaches the sequence is owner decision 42. Crane-spreading, crane-body, crane-internal and the quick tier hinge at the root; crane-root keeps seven of its nine controls at y = 1/4 for comparison. At the root the spreading wing has 1,188 triangles (one solve 9.75 CPU s, one run), and the flat-preference control 2,196: one solve with the body held and its base at an angle already found took 7.53–7.58 CPU s (three runs), with the body released 1,046 (one run), and the quick tier's nine solves 183–200 (three runs) | owner decision 12 and the review's four answers (#556); #557's code review | one local run on `c17d317`, [appendix](#appendix-commands-behind-the-numbers) command 14 [measured]; CI run 38321475359 on `a303ce8`, its log read with `gh run view` [ran]: hspec's own time 515.3 s (the step 536.9 s), its 20 slowest items all study specs; `CraneSpreadSpec.hs:32`, `:143`, `craneSpread`'s default `studyHinge` and `CraneRootGallery.hs:65-73` [code]; [spreading-connected-wing.md](../docs/notes/spreading-connected-wing.md) [research]; #474's table, read with `gh issue view 474` [ran] | adopted (owner decision) | 01, 05, 07, 08, 09, 10, 11, README, glossary-additions |
 
 ## Proposals not adopted
 
@@ -2718,3 +2725,21 @@ otherwise. Outputs are abbreviated to what this record cites.
     only the `runIO` line for a pattern selecting no example and for one selecting
     only the `runIO` example, and both lines for one selecting the `beforeAll`
     example.
+14. **Test time by spec file** ([C101](#changes-since-draft-v2)), run on 2026-10-12
+    at `c17d317` on an M1 Max. After `stack build --test --no-run-tests`, one run of
+    `/usr/bin/time -l stack test --test-arguments="--jobs=4 --print-slow-items=100000 +RTS -N4 -RTS"`
+    prints `Finished in 417.3216 seconds` and `2238 examples, 0 failures`, in
+    439.74 s of wall time (`real`) and 900.83 s of user CPU (`user`). hspec's time
+    starts once the spec tree is built, so it leaves out the `runIO` setup C99
+    times. `--print-slow-items` lists the 699 examples of 1 ms or more, each with
+    its own wall time while four ran at once, so they add up to 1,810.2 s, over
+    four times hspec's; the 1,539 it leaves out add under 2 s. Summed by file with
+    `sed -nE 's/^  (test\/[^:]+):[0-9]+:[0-9]+: .*\(([0-9]+)ms\)$/\1 \2/p' | awk '{t[$1]+=$2} END {for (f in t) print t[f]/1000, f}'`,
+    they give 4.0 s for `test/Senbazuru/` and 1,806.2 s for the study spec files at
+    the top of `test/`; the 44 examples of 10 s or more take 1,621.9 s, in 20 files
+    that take 1,745.4 s. The CI figures are one run, `main`'s run 38321475359 on
+    `a303ce8`, read with `gh run view 38321475359 --log`: its
+    `stack test --test-arguments="--jobs=4 --print-slow-items=20 +RTS -N4 -RTS"`
+    step prints `Finished in 515.2860 seconds` and `2238 examples, 0 failures` and
+    lists 20 examples of 34.9–202.4 s, all study specs. By the log's timestamps the
+    step took 536.9 s, and its first example printed 20.6 s after the suite started.

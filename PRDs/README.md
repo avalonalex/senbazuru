@@ -270,14 +270,14 @@ Each has a recommended default, decided with its consequences in
 | 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | **Decided 2026-10-06** as recommended: it stays as the regression; the state-rule page is a new golden | M2 |
 | 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | **Decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, so an eighth turn adds no platform bits of its own, while folded positions keep folding's (09 §8) ([C91](decisions.md#changes-since-draft-v2)) | M2 |
 | 11 | The external-tools rule in `AGENTS.md` | **Decided 2026-10-12** as recommended: yes, landed with #550 | M0 |
-| 12 | Crane-sized sequences in default CI or a separate slow job, and whether that job is required; the largest mesh a settle may use | **Decided 2026-10-12**: a separate slow job that is a required check, which the existing slow study specs join; default CI settles at most 392 triangles; `run --settle`'s budget set by the PR that builds it from 3–5 compiled runs, 1,192 withdrawn | M4 |
+| 12 | Crane-sized sequences in default CI or a separate slow job, and whether that job is required; the largest mesh a settle may use | **Decided 2026-10-12**: a separate slow job that is a required check, which the slow study spec files join in the PR that adds it; default CI settles at most 392 triangles, never a crane fixture; `run --settle`'s budget set from 3–5 compiled runs on the crane fixtures it must settle, by the PR that builds it and for any later change, the 1,192-triangle cap withdrawn | M4 |
 | 13 | The sense of a hinge turn on paper already folded: read from the held face, or from where the moving paper goes | **Decided 2026-09-23**: where the moving paper goes ([D5](decisions.md#d5-presentation-and-the-readers-side), [E3](research/E3-formal-fold-semantics.md) G) | M2's runner |
 | 14 | A `fold and unfold`: one record or two, and its name | **Decided 2026-09-23**: one move, the *pre-crease*, printed `pre-crease`, with one record; **refined 2026-09-24**: its crease has no direction, `U` ([D12](decisions.md#d12-the-text-syntax)) | M2's runner |
 
-[03](03-prd-embedded-dsl.md#open-questions-for-the-owner),
-[05](05-prd-library-additions.md#open-questions-for-the-owner) and
-[07](07-prd-material-consumption.md#open-questions-for-the-owner) add narrower
-questions.
+[07](07-prd-material-consumption.md#open-questions-for-the-owner) adds a narrower
+form of decision 4, still open; the questions
+[03](03-prd-embedded-dsl.md#open-questions-for-the-owner) and
+[05](05-prd-library-additions.md#open-questions-for-the-owner) raised are decided.
 
 ## Reading the evidence
 
