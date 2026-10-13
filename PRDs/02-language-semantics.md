@@ -1218,6 +1218,8 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
 
   ```text
   step wing "Fold the underneath wing away from you until it stands straight out." {
+    # Folded y = 1/4. Owner decision 42 (decided 2026-10-13) moves the fold to the
+    # wing's root, and #560 re-derives it there before M4.
     expect refused FlapCovered { fold in front 90° corner north-west to midpoint of edge north }   # UNVERIFIED kind
     fold behind 90° corner north-west to midpoint of edge north
   }

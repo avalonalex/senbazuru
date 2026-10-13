@@ -909,6 +909,9 @@ start folded {
 material { stiffness illustrative }
 
 step wing "Fold the underneath wing away from you until it stands straight out." {
+  # Folded y = 1/4, with bands in eighths of a wing 1/4 long. Owner decision 42
+  # (decided 2026-10-13) moves the step to the wing's root, and #560 re-derives
+  # it there: the fold before M4, the settle before M6.
   expect refused FlapCovered { fold in front 90° corner north-west to midpoint of edge north }   # UNVERIFIED kind
   fold behind 90° corner north-west to midpoint of edge north
   settle {
@@ -933,7 +936,8 @@ python3 PRDs/research/scripts/layer-selection-analyse.py line examples/crane.fol
 ```
 
 The anchor's comment is checked by the command above; the comments marked
-**UNVERIFIED** are not. The *tail-tucked stacking* is the one of the fixture's five
+**UNVERIFIED** are not, and the step's first comment records owner decision 42. The
+*tail-tucked stacking* is the one of the fixture's five
 layer orders that puts all eight tail faces between the two sides of the body,
 index 2
 ([CraneWing.hs:135-138](../study/fold-material/CraneWing.hs#L135-L138);
