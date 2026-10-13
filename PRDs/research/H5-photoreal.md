@@ -753,7 +753,18 @@ All fetched 2026-09-28. Licences are given where code or assets might be used.
 
 - Blender licence page: <https://www.blender.org/about/license/>.
 - Cycles (Apache-2.0): `gh api repos/blender/cycles`.
-- Mitsuba 3 (BSD-3-Clause plus an enhancements clause): `LICENSE`, `src/bsdfs/twosided.cpp`, `src/bsdfs/principledthin.cpp` and the `src/shapes` listing.
+- Mitsuba 3 (BSD-3-Clause plus an enhancements clause), at commit `24bd20b` on
+  `master`, which is later than the 3.9.1 release [H7](H7-tooling.md) ran:
+  [`LICENSE`](https://github.com/mitsuba-renderer/mitsuba3/blob/24bd20b006dcc8779eabada2af1aa0cf92d452a8/LICENSE),
+  [`src/bsdfs/twosided.cpp`](https://github.com/mitsuba-renderer/mitsuba3/blob/24bd20b006dcc8779eabada2af1aa0cf92d452a8/src/bsdfs/twosided.cpp),
+  [`src/bsdfs/principledthin.cpp`](https://github.com/mitsuba-renderer/mitsuba3/blob/24bd20b006dcc8779eabada2af1aa0cf92d452a8/src/bsdfs/principledthin.cpp)
+  and the
+  [`src/shapes`](https://github.com/mitsuba-renderer/mitsuba3/tree/24bd20b006dcc8779eabada2af1aa0cf92d452a8/src/shapes)
+  listing. This note did not record a commit. It was found on 2026-10-12 from
+  the copies of the two `.cpp` files kept in `scripts/H5-photoreal/`, which
+  were byte-identical to that commit's; none of the four sources changed
+  between that commit and the fetch. The copies, which nothing used, were
+  removed (#554) because they did not carry Mitsuba's licence notice.
 - three-gpu-pathtracer (MIT): README and `package.json`.
 - N8AO (CC0-1.0), pmndrs/postprocessing (Zlib), realism-effects (MIT): `gh api` licence fields.
 - Khronos PBR Neutral: `gh api repos/KhronosGroup/ToneMapping/contents/PBR_Neutral/README.md` (CC-BY-4.0), and <https://modelviewer.dev/examples/tone-mapping>.
