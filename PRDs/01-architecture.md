@@ -474,15 +474,26 @@ Current: a four-row table (`resolveAssignments`, `foldAnglesOf`,
 
 ### 4.8 `AGENTS.md` "Third-party material"
 
-Append after "A repository licence is not a design licence":
+Append after "A repository licence is not a design licence". This is the text
+as it landed with #550, scoped by the owner on 2026-10-12 (#552,
+[C100](decisions.md#changes-since-draft-v2)):
 
-> **Running an external program and reading its output is not vendoring.** It
-> needs a row in `docs/related-projects.md` giving the licence of the program *as
-> built*, since a permissive source can link GPL code by default. Any output kept
-> needs provenance in `examples/README.md`. No CI job or test may depend on the
-> program, the build, format and lint tools excepted. External solvers are
-> comparison oracles, never ahead of the in-repo
-> path, and the design-licence rule applies to any pattern fed to one.
+> **Running an external program and reading its output is not vendoring.** An
+> external program here is someone else's code whose answer we rely on: a solver,
+> simulator, renderer or validator, or a library that computes what we cite as
+> evidence or keep. The tools that build, run, format, lint or manage our own code
+> are not, node and python running our own scripts among them, and neither are the
+> packages `senbazuru.cabal` lists. Such a program needs a row in
+> `docs/related-projects.md` giving its licence *as built*: the terms of the build
+> that ran, with everything it links or bundles, since a permissive source can
+> link GPL code by default. External solvers are [comparison
+> oracles](../docs/glossary.md#this-project), never used in place of our own code,
+> and the design-licence rule applies to any pattern fed to one. A user-installed
+> GPL or GPL-linked build may be run as an oracle, but nothing GPL enters the tree
+> or the library: no vendored GPL code, no GPL code linked into the library, and
+> no script here that uses a GPL program's own API, such as Blender's Python API.
+> Any output kept as a fixture needs provenance in `examples/README.md`. No CI job
+> or test may depend on such a program.
 
 ### 4.9 `docs/notes/no-sequence-solver.md`
 

@@ -240,7 +240,7 @@ double the costliest groups (gap-study finding 20).
 | G-07-5 | Failures scoped to their step; no rigid substitution | M6, M8 |
 | G-07-6 | Certificates attach after a run, never downgraded | M5, M6 |
 | G-07-7 | Staged, measured graduation | M8 |
-| G-07-8 | External solvers as *oracles* (programs whose output we compare ours against, never use) under a licence rule | M0 |
+| G-07-8 | External solvers as [*oracles*](../docs/glossary.md#this-project) under a licence rule | M0 |
 
 ## Non-goals
 
@@ -352,8 +352,8 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 | R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
 | R-07-41 | `run --settle` refuses more than 1,192 refined triangles, counted before solving, until 3–5 compiled runs justify another number; default CI settles ≤ 392. |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
-| R-07-43 | No CI job or test runs an external solver, simulator or other program whose output it reads (the build, format and lint tools excepted); each program used gets a `docs/related-projects.md` row with its licence *as built*; kept outputs get provenance in `examples/README.md`. |
-| R-07-44 | External solvers are oracles only; IPC-family tools apply to open states until a thickness offset exists ([External tools](#external-tools)). A policy recorded in `docs/related-projects.md`, not a tested requirement, since R-07-43 keeps the tools out of CI. |
+| R-07-43 | No CI job or test depends on an external program, as [AGENTS.md](../AGENTS.md#third-party-material) defines one. Each one used gets a `docs/related-projects.md` row with its licence *as built*, and outputs kept as fixtures get provenance in `examples/README.md`. |
+| R-07-44 | External solvers are oracles only, never used in place of our own code; IPC-family tools apply to open states until a thickness offset exists ([External tools](#external-tools)). A policy recorded in [D17](decisions.md#d17-third-party-and-external-tools) and AGENTS.md, not a tested requirement, since R-07-43 keeps the tools out of CI. |
 | R-07-45 | `SettleStepError`, `SettleError`, `Reason` and registry `Refused` each have an `Explain` instance in their own module; no locations in messages; ids as "(internal edge 37)". |
 
 ## Design
@@ -813,8 +813,8 @@ Budgets count refined triangles before solving, never seconds.
 | --- | --- | --- | --- |
 | Origami Simulator | MIT ([`docs/related-projects.md:22`](../docs/related-projects.md)) | WebGL browser app; FOLD in and out; its README shows no headless mode | [#53](https://github.com/avalonalex/senbazuru/issues/53)'s manual or browser-automated export; oracle |
 | ipc-toolkit | MIT; the PyPI wheel statically links filib, LGPL-2.1 | C++ library adding contact to an existing simulation, not a simulator itself; authors ask for citation | a driver is new non-Haskell code: a toolchain decision |
-| Codim-IPC | Apache-2.0 source; default build links GPL CHOLMOD Supernodal (`LINEAR_SOLVER=CHOLMOD`, `WITH_GPL` on) | IPC shells, rods, particles | user-installed, `WITH_GPL=OFF` or Eigen; copying brings Apache-2.0 §4 obligations |
-| Doodle (GPLv2), Rabbit Ear (GPL-3.0), ReferenceFinder (GPL-2.0), Creasy (GPL-3.0), ORIPA (GPL-3.0) | GPL | reference implementations | ideas only ([`AGENTS.md:132-138`](../AGENTS.md)) |
+| Codim-IPC | Apache-2.0 source; default build links GPL CHOLMOD Supernodal (`LINEAR_SOLVER=CHOLMOD`, `WITH_GPL` on) | IPC shells, rods, particles | user-installed, as an oracle; copying brings Apache-2.0 §4 obligations |
+| Doodle (GPLv2), Rabbit Ear (GPL-3.0), ReferenceFinder (GPL-2.0), Creasy (GPL-3.0), ORIPA (GPL-3.0) | GPL | reference implementations | ideas only: their code and fixtures are read, never copied ([`AGENTS.md:132-138`](../AGENTS.md)); a user-installed build may run as an oracle ([D17](decisions.md#d17-third-party-and-external-tools)) |
 
 Licence rows are from [gap-study-consumption-contract](research/gap-study-consumption-contract.md)
 "(e) Licences for driving external solvers" (fetched pages, `gh api`); a reading,
@@ -827,15 +827,13 @@ they need a *thickness offset*, the layers first moved apart by a small distance
 whether a sequence could feed them", finding 13, derived). IPC-family tools
 therefore apply to open states only.
 
-**The rule goes into AGENTS.md.** [D17](decisions.md#d17-third-party-and-external-tools)
-decides that running an external program and reading its output is not
-vendoring. The program still needs a `docs/related-projects.md` row with its
-licence *as built*, and any output kept needs provenance in `examples/README.md`.
-No CI job or test may depend on it, and an external solver is a comparison
-oracle, never ahead of the in-repo path. The wording landed with #550 as
-[decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8, in
-[01 §4.8](01-architecture.md#48-agentsmd-third-party-material)'s exact text,
-so this file does not repeat it.
+**The rule is in AGENTS.md.** [D17](decisions.md#d17-third-party-and-external-tools)
+decides which external programs may be run, on what terms, and what each one
+needs. The wording landed with #550 as
+[decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8 and was
+scoped by #552; [01 §4.8](01-architecture.md#48-agentsmd-third-party-material)
+holds its exact text, so this file does not repeat it, and R-07-43 and R-07-44
+only point there.
 
 ### Errors
 
@@ -895,7 +893,7 @@ messages show format only; they were not taken from a run.
 | AC-13 | More than 1,192 refined triangles → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
 | AC-14 | `material { size 15cm; thickness 0.1mm }` stores exactly 1/1500 on `crane.fold` (s = 1 in `Double`, R-07-24); a built `mm` frame with s = 100 → `UnitMismatch` (R-07-24–26) | using the refined mesh's extent; ignoring `frame_unit` |
 | AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); the gallery's `[True, True, True, False]` ([`CraneSpreadGallery.hs:139`](../study/fold-material/CraneSpreadGallery.hs#L139)) unchanged (R-07-39) | a stage altering an energy or tolerance |
-| AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external solver or simulator or reads such a program's output; `stack`, ormolu and hlint are excepted (R-07-43) | a test shelling out to a simulator |
+| AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external program, as AGENTS.md defines one, or reads such a program's output (R-07-43) | a test shelling out to a simulator |
 | AC-17 | One example value per constructor of `SettleStepError`, `SettleError`, `Reason` and `Refused`, produced by a function that matches each type with no wildcard, and an `explain` golden for each; a property over the examples checks that no message contains a Haskell constructor name or record syntax (R-07-45) | a constructor added without an example (an incomplete-pattern warning, which the cold `stack clean && stack build --test` shows; there is no `-Werror`); a message built with `show` |
 
 ## Dependencies

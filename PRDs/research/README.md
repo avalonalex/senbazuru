@@ -173,10 +173,14 @@ were not kept.
 
 **The 24 scripts that drive Blender through its Python API (`bpy`) are not
 here.** Blender's FAQ says published scripts that use that API must be licensed
-GPL, and this repository is MIT. Where they belong is owner decision 20 of
-[PRD 11](../11-prd-refined-final-forms.md#open-questions-for-the-owner); until it
-is decided, each note's reproduce section names the Blender script it ran, and
-the shell wrappers that call those scripts will not run as kept.
+GPL, and this repository is MIT, so
+[AGENTS.md](../../AGENTS.md#third-party-material) keeps them out of the tree.
+How offline stills are made is owner decision 20 of
+[PRD 11](../11-prd-refined-final-forms.md#open-questions-for-the-owner). Each
+note's reproduce section names the Blender script it ran, and the shell wrappers
+that call those scripts will not run as kept.
 
 [`img/`](img) holds one downscaled contact sheet per experiment, the evidence
-the notes and PRD 11 show. Commands to regenerate each are in its note.
+the notes and PRD 11 show. Eight of the nine notes name the script that
+assembles the full-size sheet, Y5's does not, and the step that downscaled the
+sheets to these JPEGs was not recorded.

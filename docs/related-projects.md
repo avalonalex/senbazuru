@@ -1,8 +1,9 @@
 # Related projects
 
 The other software in this space, what each one does, and what senbazuru has
-taken or could take from it. Kept as one list so that "has anyone done this?"
-has a place to look before an issue is written.
+taken or could take from it, together with every external program whose answer
+the repository relies on. Kept as one list so that "has anyone done this?" has
+a place to look before an issue is written.
 
 **The licence column comes first for a reason.** The rule in
 [AGENTS.md](../AGENTS.md#third-party-material) is that ideas travel and
@@ -10,12 +11,11 @@ expression does not: a published algorithm can be reimplemented from
 understanding, and a GPL implementation can be read to understand the domain
 and never copied, fixtures included. MIT projects can be vendored with
 attribution, but a repository licence is not a design licence, so another
-designer's crease pattern in an MIT repo is still theirs. Running a program and
-reading its output is not vendoring, but [AGENTS.md](../AGENTS.md#third-party-material)
-asks that each one run for this repository have a row here giving its licence as
-built. The rows still owed for programs run before that rule landed are listed
-in [#552](https://github.com/avalonalex/senbazuru/issues/552). When a licence
-below says *not checked*, check it before reading the code.
+designer's crease pattern in an MIT repo is still theirs. Running someone else's
+program and reading its output is not vendoring, but
+[AGENTS.md](../AGENTS.md#third-party-material) asks that each one whose answer we
+rely on have a row here giving its licence as built. When a licence below says
+*not checked*, check it before reading the code.
 
 ## Tools that read or write FOLD
 
@@ -62,9 +62,10 @@ used it.
 | --- | --- | --- | --- |
 | [LS-DYNA](https://lsdyna.ansys.com/) | Explicit finite element analysis. Simulates folded airbags inflating as a matter of routine, and lets the flat sheet be the stress-free state with the folded one as the start | Commercial | The reference answer, and out of reach. A week to set up the first model. |
 | [Abaqus](https://www.3ds.com/products/simulia/) | Implicit and explicit finite element analysis, with shells, pressure loads and contact | Commercial | Same as LS-DYNA. |
-| [CalculiX](http://www.calculix.de/), [Code_Aster](https://code-aster.org/), [Kratos](https://github.com/KratosMultiphysics/Kratos) | Open-source nonlinear shells with pressure loads and contact | CalculiX GPL-2.0-or-later; Code_Aster GPL-3.0; Kratos a four-clause BSD licence, with an advertising clause | Free, and none of them knows what a crease is: every hinge is a thin strip or a connector you build by hand. CalculiX installs on this Mac from conda-forge and agreed with our own solver on an inflated pillow; a fold built from shared nodes came out rigid ([Y6](../PRDs/research/Y6-fea-oracle.md)). Code_Aster's conda-forge package and Kratos's PyPI wheels have no macOS arm64 build. |
+| [CalculiX](http://www.calculix.de/) | Open-source nonlinear shells with pressure loads and contact | GPL-2.0: nearly all its source files grant version 2 only, though conda-forge's metadata says or-later. The conda-forge 2.23 build that ran links SPOOLES (public domain), ARPACK-ng and OpenBLAS (BSD-3-Clause), LLVM's OpenMP runtime and the GCC runtime | Free, and it does not know what a crease is: every hinge is a thin strip or a connector you build by hand. It installs on this Mac from conda-forge and agreed with our own solver on an inflated pillow; a fold built from shared nodes came out rigid ([Y6](../PRDs/research/Y6-fea-oracle.md)). |
+| [Code_Aster](https://code-aster.org/), [Kratos](https://github.com/KratosMultiphysics/Kratos) | Open-source nonlinear shells with pressure loads and contact | Code_Aster GPL-3.0; Kratos a four-clause BSD licence, with an advertising clause | Free, and neither knows what a crease is, as for CalculiX. Code_Aster's conda-forge package and Kratos's PyPI wheels have no macOS arm64 build. |
 | [MERLIN, MERLIN2](http://www.liukepku.com/downloads.html) — Liu and Paulino | The bar-and-hinge reduced-order model for origami: bars along edges, torsional springs at creases and across faces | None stated on the download page, which carries only a site copyright; the archives were not opened | Orders of magnitude cheaper than shells, and its nodes are a FOLD file's vertices. The closest thing to a drop-in. |
-| [Blender](https://www.blender.org/) | A cloth simulator with a pressure setting that inflates a closed mesh, and the Cycles path tracer | Source GPL-2.0-or-later; binaries GPL-3.0-or-later. Its FAQ adds that published Python scripts using its API must be licensed GPL as well | For a picture only, which is all a diagram needs. An afternoon rather than a week. Running it is not vendoring, but a published script that drives it is GPL, so none lives in this MIT tree. |
+| [Blender](https://www.blender.org/) | A cloth simulator with a pressure setting that inflates a closed mesh, and the Cycles path tracer | Source GPL-2.0-or-later; binaries GPL-3.0-or-later. Its FAQ adds that published Python scripts using its API must be licensed GPL as well | For a picture only, which is all a diagram needs. An afternoon rather than a week. Running it is not vendoring, but a published script that uses its Python API is GPL, so none lives in this MIT tree; the shell scripts here only start it from the command line. |
 | [ArcSim](http://graphics.berkeley.edu/resources/ARCSim/) | Adaptive cloth simulation written for folding and crumpling paper, with plastic creases | Non-profit use only, citing two papers | Same again: no number anyone would publish, and a puffed crane by the end of the day. |
 | [IPC Toolkit](https://github.com/ipc-sim/ipc-toolkit), Python binding [`ipctk`](https://ipctk.xyz/) | Contact for simulation, not a simulator: barrier potentials, continuous collision detection and a thickness offset, which keep surfaces from ever passing through each other | Source MIT. The PyPI wheel statically links filib, which is LGPL-2.1, as the toolkit's own documentation warns; checked in the 1.6.0 macOS wheel | PRD 11's prototype opened the crane with it ([X3](../PRDs/research/X3-crane-opening.md), [Y4](../PRDs/research/Y4-crane-v2.md)). Install and run it; never vendor the wheel. |
 
@@ -75,7 +76,7 @@ regions, is the OrigamiSimulator (MATLAB) row in the table above.
 
 | Project | What it is | Licence | Why it matters here |
 | --- | --- | --- | --- |
-| [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) — Wenzel Jakob and others | A research path tracer, scriptable from Python, with two-sided materials | Three-clause BSD text plus a clause granting the author a licence to any improvements you share; GitHub cannot classify it | The permissive alternative to Blender for offline stills of paper ([H7](../PRDs/research/H7-tooling.md) finding 15). It reads OBJ and PLY, not glTF. |
+| [Mitsuba 3](https://github.com/mitsuba-renderer/mitsuba3) — Wenzel Jakob and others | A research path tracer, scriptable from Python, with two-sided materials | Three-clause BSD text plus a clause granting the author a licence to any improvements you share; GitHub cannot classify it. The 3.9.1 macOS arm64 wheel that ran bundles Embree 3, OpenEXR 2, libpng, libjpeg-turbo and pugixml, all permissive, and links nothing else but its BSD-3-Clause Dr.Jit 1.5.0 wheel and macOS's own libraries | The permissive alternative to Blender for offline stills of paper ([H7](../PRDs/research/H7-tooling.md) finding 15). It reads OBJ and PLY, not glTF. |
 
 ## Checkers run by hand
 
@@ -89,6 +90,34 @@ on the study's saved crane body
 | Project | What it is | Licence | Why it matters here |
 | --- | --- | --- | --- |
 | [glTF Validator](https://github.com/KhronosGroup/glTF-Validator) — Khronos Group | The reference validator for glTF 2.0 and `.glb` files, published to npm as `gltf-validator` | Apache-2.0, as is the npm package that was run | Run by hand on `.glb` output since the export was built ([#51](https://github.com/avalonalex/senbazuru/pull/51)), by `study/gltf/validate.cjs` through its JavaScript API, since the npm package has no command-line program; [study/gltf/README.md](../study/gltf/README.md) pins the version |
+| [rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg) (librsvg) — GNOME | Renders SVG to PNG from the command line | LGPL-2.1-or-later, as is the Homebrew 2.62.3 build that was run; it loads GLib, Pango, cairo, FriBiDi, libthai, libdatrie and libintl under the LGPL, and nothing GPL | Rasterises senbazuru's SVG so a drawing can be checked by eye ([H1](../PRDs/research/H1-diagnosis.md)), and SVG for the research's contact sheets ([X1](../PRDs/research/X1-paper-look-renders.md), [Y1](../PRDs/research/Y1-valid-curved-looks.md), [Y5](../PRDs/research/Y5-waterbomb.md)); measured stroke ink for [H6](../PRDs/research/H6-illustration.md), which PRD 11 cites, and caption ink for [PRD 06](../PRDs/06-prd-step-diagrams.md) |
+| [three.js](https://github.com/mrdoob/three.js) — Ricardo Cabello and others | A WebGL library for 3D scenes in the browser | MIT, as is the npm package `three@0.186.0` that the study's pages pin, which has no dependencies. [X1](../PRDs/research/X1-paper-look-renders.md) records only release r186, which is 0.186.0 or 0.186.1, both MIT with no dependencies | The viewer [usage.md](usage.md) installs to look at senbazuru's `.glb` output, imported by the study's 3D pages and X1's render comparison |
+
+## Libraries and tools the research relied on
+
+Libraries and programs whose answers the research notes and the study's notes
+cite, or whose pictures they keep. The research's own scripts call them; none is
+run by CI or a test. Blender, CalculiX and the IPC Toolkit, listed with the
+simulators above, and Mitsuba 3, with the renderers, were run for the research
+too. Versions are those the notes record unless a row says otherwise. The
+Python environments the research ran in are gone, but the wheels it downloaded
+were still cached: what each ships and links was read from those files, and
+what it compiles in from the scripts that built it
+([C100](../PRDs/decisions.md#changes-since-draft-v2)).
+
+| Project | What it is | Licence | Why it matters here |
+| --- | --- | --- | --- |
+| [ImageMagick](https://imagemagick.org) | Command-line image processing | The ImageMagick licence, an Apache-2.0-style one, for the Homebrew 7.1.2-30 build that was run and is still installed; the notes record 7.1.2. Every run loads LGPL libltdl. Only its HEIC coder links LGPL libheif and libde265 and GPL-2.0-or-later x265, which no recorded use loaded; PostScript and PDF go to AGPL Ghostscript as a separate program | Assembled the full-size contact sheets of [X1](../PRDs/research/X1-paper-look-renders.md), [Y1](../PRDs/research/Y1-valid-curved-looks.md), [Y5](../PRDs/research/Y5-waterbomb.md) and [Y6](../PRDs/research/Y6-fea-oracle.md), which `PRDs/research/img/` keeps downscaled, and measured ink and seam pixels for [H6](../PRDs/research/H6-illustration.md) (findings 2, 20 and 25), which PRD 11 cites |
+| [ImageIO](https://developer.apple.com/documentation/imageio) — Apple | The image reading and writing built into macOS, behind `sips` and Preview | Proprietary, part of macOS | Wrote the nine downscaled JPEG contact sheets in `PRDs/research/img/`. No note records the step, but the files' JPEG segments come in the order ImageIO writes them, which `sips` reproduces and ImageMagick does not |
+| [SciPy](https://scipy.org) | Scientific computing for Python: sparse solvers, optimisation, interpolation | Source BSD-3-Clause. The macOS 14 arm64 wheels that ran, 1.17.1 and 1.18.1, use Apple's Accelerate but bundle the GCC runtime: libgfortran and libgcc_s, GPL-3.0-or-later with the GCC runtime exception, and LGPL-2.1-or-later libquadmath | The research's solvers and fits ([H7](../PRDs/research/H7-tooling.md), [X2](../PRDs/research/X2-inflating-paper.md), [X3](../PRDs/research/X3-crane-opening.md), [Y2](../PRDs/research/Y2-reachability.md) to [Y4](../PRDs/research/Y4-crane-v2.md)), and the KD-tree in [Y1](../PRDs/research/Y1-valid-curved-looks.md)'s crossing counter |
+| [scikit-sparse](https://github.com/scikit-sparse/scikit-sparse) | A Python wrapper for SuiteSparse's sparse Cholesky factorisation, CHOLMOD | Wrapper BSD-2-Clause. Built from the 0.5.0 sdist against Homebrew SuiteSparse 7.14.0, it links CHOLMOD with its GPL-2.0-or-later Supernodal, Modify and MatrixOps modules, and Supernodal ran ([H7](../PRDs/research/H7-tooling.md) finding 17). SuiteSparse's AMD loads the GCC runtime with LGPL libquadmath, and CHOLMOD loads LLVM's OpenMP runtime. The same build made GPL-2.0-or-later UMFPACK and SPQR wrappers, never imported. No note gives the version: 0.5.0 is the first release with the `cho_factor` the scripts call | H7's sparse-solver comparison and IPC prototype (`PRDs/research/scripts/H7-tooling/`). The scripts call the wrapper's BSD API, and the GPL code stays in the user-installed build, as [AGENTS.md](../AGENTS.md#third-party-material) allows |
+| [Eigen](https://eigen.tuxfamily.org) | A C++ template library for linear algebra, sparse factorisations included | Homebrew's header-only 5.0.1, declared `MPL-2.0 AND Apache-2.0 AND BSD-3-Clause AND Minpack`; nothing the benchmark included is GPL or LGPL. `SimplicialLDLT` and its AMD ordering, the code that ran, are MPL-2.0: they adapt Davis's LDL and CSparse, which SuiteSparse ships under the LGPL and which their author licensed for Eigen under MPL-2.0 | The third solver in H7's sparse-solver comparison ([H7](../PRDs/research/H7-tooling.md) finding 7, `eigen_ldlt.cpp`), whose time PRD 11 cites |
+| [`ad`](https://hackage.haskell.org/package/ad) | Automatic differentiation for Haskell | BSD-3-Clause, as is the 4.5.6 build from Stackage `lts-22.44` that ran; everything it pulls in is BSD-2-Clause, BSD-3-Clause, MIT or ISC, and its optional C tape was off | The correctness reference and speed baseline for H7's hand-written Hessian ([H7](../PRDs/research/H7-tooling.md) finding 8, `hsbench`), which PRD 11 cites |
+| [`hmatrix`](https://hackage.haskell.org/package/hmatrix) | Dense linear algebra for Haskell, over BLAS and LAPACK | BSD-3-Clause. The 0.20.2 build from `lts-22.44` that ran links BLAS and LAPACK from Apple's Accelerate, and its dependencies are BSD-3-Clause and MIT; its GSL bindings, `hmatrix-gsl`, are GPL-3.0 and were not used | H7's dense Cholesky timings ([H7](../PRDs/research/H7-tooling.md) finding 9, `hsbench`) |
+| [NumPy](https://numpy.org) | Arrays and linear algebra for Python | BSD-3-Clause, and the code its source vendors is permissive. Blender's own 1.26.4 build and the 2.4.6 and 2.5.3 macOS 14 wheels that ran link only Apple's Accelerate and ship no other library. The X2 environment's 1.26.4 was Blender's build or, more likely, PyPI's macOS 11 wheel, which ships OpenBLAS, the GCC runtime and LGPL libquadmath and which pip's cache holds from the day X2 ran; the environment is gone, so which one ran is not known | Independent checks of the study's output in the notes ([crane-pillow-target.md](notes/crane-pillow-target.md), [whole-crane-candidate.md](notes/whole-crane-candidate.md) and others, which record no version), and the research's scripts |
+| [Shapely](https://github.com/shapely/shapely) | Planar geometry for Python, over the GEOS library | BSD-3-Clause. The 2.1.2 wheel recorded for X3's environment ([Y4](../PRDs/research/Y4-crane-v2.md)) bundles GEOS 3.13.1 as shared libraries, LGPL-2.1 | The independent polygon engine behind the study's visible-region and coverage checks ([body-visible-layers.md](notes/body-visible-layers.md) and others, which record no version), and [X3](../PRDs/research/X3-crane-opening.md)'s and [Y4](../PRDs/research/Y4-crane-v2.md)'s scripts |
+| [matplotlib](https://matplotlib.org) | Plots for Python | Its own licence, modelled on the PSF's. The 3.11.2 wheel statically links FreeType under the FTL, HarfBuzz and libraqm (MIT), SheenBidi (Apache-2.0) and Qhull (its own permissive licence), and ships permissive fonts: nothing GPL or LGPL | The research's plots and several of its contact sheets |
+| [Pillow](https://python-pillow.org) | Image reading, writing and drawing for Python | MIT-CMU. The 12.3.0 macOS arm64 wheel recorded for X2's environment ([Y3](../PRDs/research/Y3-locking.md)) bundles only permissive libraries, leaves out GPL libimagequant, and loads LGPL FriBiDi only if it finds one installed | Assembled several research contact sheets |
 
 ## Two halves that never met
 
