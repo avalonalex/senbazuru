@@ -99,12 +99,16 @@ testing its own coordinates ([`:124-131`](../study/fold-material/CraneSpread.hs#
 and its hinge is "a bent chain on the OPEN sheet"
 ([`CraneWing.hs:13-20`](../study/fold-material/CraneWing.hs#L13-L20)), so a
 straight strip beside the hinge is several unrelated regions of the sheet. Its
-two 0.25s mean different things: the first is the hinge's folded y, the second
-the wing's length beyond the hinge. Both happen to be 1/4 on this fixture.
+two `hingeY`s mean different things: the first is the hinge's folded y, the
+second the wing's length beyond the hinge. They can be one number because the
+wing's tip folds to y = 0, as the check below shows; on this fixture, hinged at
+y = 1/4, both are 1/4. `rootLength` is the held root strip's length: an eighth of
+the wing here, and all of the base when the hinge is above the wing's widest
+point ([`:142-147`](../study/fold-material/CraneSpread.hs#L142-L147)).
 
 ```haskell
-fraction p = let V3 _ y _ = position p in (0.25 - y) / 0.25
-held i p = S.member i body || (S.member i selected && fraction p <= 0.125 + 1e-8) || S.member i grip
+fraction p = let V3 _ y _ = position p in (hingeY - y) / hingeY
+held i p = S.member i body || (S.member i selected && fraction p <= rootLength / hingeY + 1e-8) || S.member i grip
 ```
 
 A Python flat fold from face 0, reflecting across every mountain or valley
@@ -151,8 +155,9 @@ Haskell keeps the file's face numbering; face 0's guard
 ([`CraneWing.hs:106`](../study/fold-material/CraneWing.hs#L106)) agrees but does
 not prove it for faces 2, 3, 6, 7.
 
-So `fraction ≤ 0.125` means "within 1/32 of the hinge" and `≥ 0.875` means "at
-least 7/32 from it". `bentPoint` ([`:149-168`](../study/fold-material/CraneSpread.hs#L149-L168))
+So on this fixture `rootLength / hingeY` is 1/8, `fraction ≤ 0.125` means "within
+1/32 of the hinge", and the grip's `fraction ≥ 0.875` (`:129`) means "at least
+7/32 from it". `bentPoint` ([`:149-168`](../study/fold-material/CraneSpread.hs#L149-L168))
 holds the first strip rigidly at 30°, puts the grip on a circular arc a further
 angle on, and starts every free wing vertex on that arc (`:130`). One run on
 2026-09-13 ([spreading-connected-wing.md:63-67](../docs/notes/spreading-connected-wing.md)):
@@ -529,9 +534,11 @@ settle or the material block, R-07-19 refuses the settle as `SettleNoRest`.
   −1/4 sin 30°), the formula `CraneWingSpec.hs:126-127` checks `flapAt` against
   within 1e-12, but only at progress 0, 0.17, 0.51, 0.83, 1
   ([`:117`](../test/CraneWingSpec.hs#L117)). Equality at 1/3 is **UNVERIFIED**.
-- **Grip.** `bentPoint` hard-codes hinge y = 0.25, length 0.25 and root 30°
-  (`:150-153`); the registered `arc-grip` must read them from the record and
-  bands. **UNVERIFIED** until AC-1.
+- **Grip.** `bentPoint` takes the hinge's folded y and the root strip's length as
+  arguments (`:154-155`), and fixes the root's 30° and the grip's start at 7/8 of
+  the wing (`:158-159`). The registered `arc-grip` must read the hinge from the
+  record and the strip's length and the grip's start from the bands, and takes
+  the root's 30° as its first angle. **UNVERIFIED** until AC-1.
 
 ### Every existing crane control, re-expressed
 
