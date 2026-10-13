@@ -98,13 +98,16 @@ testing its own coordinates ([`:124-131`](../study/fold-material/CraneSpread.hs#
 *folded* start position, not a material coordinate: the wing lies in two layers
 and its hinge is "a bent chain on the OPEN sheet"
 ([`CraneWing.hs:13-20`](../study/fold-material/CraneWing.hs#L13-L20)), so a
-straight strip beside the hinge is several unrelated regions of the sheet. Its
-two `hingeY`s mean different things: the first is the hinge's folded y, the
-second the wing's length beyond the hinge. They can be one number because the
-wing's tip folds to y = 0, as the check below shows; on this fixture, hinged at
-y = 1/4, both are 1/4. `rootLength` is the held root strip's length: an eighth of
-the wing here, and all of the base when the hinge is above the wing's widest
-point ([`:142-147`](../study/fold-material/CraneSpread.hs#L142-L147)).
+straight strip beside the hinge is several unrelated regions of the sheet.
+`fraction p` is a point's distance from the hinge as a fraction of the length of
+the wing's *tip side*, the part that turns, between the hinge and the tip. So
+`fraction`'s two `hingeY`s mean different things: the first is the hinge's
+folded y, the second the tip side's length. They are one number because the tip
+folds to y = 0, as the check below shows. `rootLength` is the length of the
+*root strip*, the part of the tip side that the study holds at 30°, next to the
+hinge. The code calls this hinge the root
+([`CraneSpread.hs:149`](../study/fold-material/CraneSpread.hs#L149)); it is not
+the wing's [root](../docs/glossary.md#origami).
 
 ```haskell
 fraction p = let V3 _ y _ = position p in (hingeY - y) / hingeY
@@ -112,7 +115,7 @@ held i p = S.member i body || (S.member i selected && fraction p <= rootLength /
 ```
 
 A Python flat fold from face 0, reflecting across every mountain or valley
-crease, checks both numbers:
+crease, checks where the wing lands:
 
 ```bash
 python3 - <<'EOF'
@@ -155,11 +158,23 @@ Haskell keeps the file's face numbering; face 0's guard
 ([`CraneWing.hs:106`](../study/fold-material/CraneWing.hs#L106)) agrees but does
 not prove it for faces 2, 3, 6, 7.
 
-So on this fixture `rootLength / hingeY` is 1/8, `fraction ≤ 0.125` means "within
-1/32 of the hinge", and the grip's `fraction ≥ 0.875` (`:129`) means "at least
-7/32 from it". `bentPoint` ([`:149-168`](../study/fold-material/CraneSpread.hs#L149-L168))
-holds the first strip rigidly at 30°, puts the grip on a circular arc a further
-angle on, and starts every free wing vertex on that arc (`:130`). One run on
+`rootLength` is `rootStrip wing`
+([`CraneSpread.hs:127`](../study/fold-material/CraneSpread.hs#L127)): the larger
+of an eighth of the tip side and the hinge's y minus 0.324, the folded y where the
+wing is widest ([`CraneSpread.hs:146-147`](../study/fold-material/CraneSpread.hs#L146-L147),
+[`CraneWing.hs:13`](../study/fold-material/CraneWing.hs#L13)). At y = 1/4 the
+second is negative, so `rootLength` is 1/32
+([`CraneSpreadSpec.hs:69-70`](../test/CraneSpreadSpec.hs#L69-L70)) and
+`rootLength / hingeY` is 1/8: the root strip is the tip side's first 1/32. At the
+wing's root the second is the larger ([decisions §10](decisions.md#10-corrections)
+item 43). The *grip* ([glossary-additions](glossary-additions.md#material)) is the
+tip side's last 1/32, where `fraction` is at least 7/8
+([`CraneSpread.hs:129`](../study/fold-material/CraneSpread.hs#L129)). `bentPoint`
+([`CraneSpread.hs:149-168`](../study/fold-material/CraneSpread.hs#L149-L168))
+turns the root strip rigidly by 30° and the grip rigidly a further 0°–20°
+([`CraneSpread.hs:99`](../study/fold-material/CraneSpread.hs#L99)), joins the two
+with a circular arc, and starts every free wing vertex on that arc
+([`CraneSpread.hs:130`](../study/fold-material/CraneSpread.hs#L130)). One run on
 2026-09-13 ([spreading-connected-wing.md:63-67](../docs/notes/spreading-connected-wing.md)):
 
 | Control | Triangles | Max edge error | Panel bending energy | Solve CPU s |
@@ -534,11 +549,22 @@ settle or the material block, R-07-19 refuses the settle as `SettleNoRest`.
   −1/4 sin 30°), the formula `CraneWingSpec.hs:126-127` checks `flapAt` against
   within 1e-12, but only at progress 0, 0.17, 0.51, 0.83, 1
   ([`:117`](../test/CraneWingSpec.hs#L117)). Equality at 1/3 is **UNVERIFIED**.
-- **Grip.** `bentPoint` takes the hinge's folded y and the root strip's length as
-  arguments (`:154-155`), and fixes the root's 30° and the grip's start at 7/8 of
-  the wing (`:158-159`). The registered `arc-grip` must read the hinge from the
-  record and the strip's length and the grip's start from the bands, and takes
-  the root's 30° as its first angle. **UNVERIFIED** until AC-1.
+- **Grip.** `bentPoint` takes the hinge's folded y, the root strip's length and
+  the extra angle as arguments
+  ([`CraneSpread.hs:154-155`](../study/fold-material/CraneSpread.hs#L154-L155)), and
+  has two numbers written in: the root strip's 30° and the grip's start, 7/8 of
+  the way from the hinge to the tip, 7/32 at y = 1/4
+  ([`CraneSpread.hs:158-159`](../study/fold-material/CraneSpread.hs#L158-L159)). That
+  code calls the grip's start `stop`, where the arc stops; its `start` (`:157`) is
+  the root strip's end, where the arc starts. It also uses the hinge's y as the
+  tip side's length, and writes its frame in: the hinge along x and the turn
+  towards −z (`:150-151`, `:168`). The registered `arc-grip` must supply the same
+  numbers. Its own line gives the 30° and the extra angle (R-07-15) and the
+  grip's start in its band, `7/32..`, and the record gives the hinge and the
+  turn's direction. Where it gets the root strip's length is open: the source
+  writes 1/32 only on the hold line, nothing in R-07-15, R-07-16 or the sketch's
+  `grips` lets a generator read another line, and at any extra angle but 0 the
+  grip's pins depend on it (`:161-168`). **UNVERIFIED** until AC-1.
 
 ### Every existing crane control, re-expressed
 

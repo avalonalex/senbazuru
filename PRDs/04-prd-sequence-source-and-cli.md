@@ -942,7 +942,7 @@ layer orders that puts all eight tail faces between the two sides of the body,
 index 2
 ([CraneWing.hs:135-138](../study/fold-material/CraneWing.hs#L135-L138);
 [several stackings](../docs/notes/several-stackings.md)). *CraneSpread's root strip*
-is the short strip of wing beside the hinge that the study holds at a fixed angle
+is the strip of wing beside the hinge that the study holds at a fixed angle
 ([CraneSpread.hs:8](../study/fold-material/CraneSpread.hs#L8)).
 
 - **Every typed point is inside exactly one face.** The anchor is in face 0, 0.05
