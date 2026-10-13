@@ -152,13 +152,19 @@ contain one does not clearly grant rights to the design. Prefer procedurally
 generated patterns (Miura-ori, pleats, box-pleat tessellations) and traditional
 bases, which have no single author.
 
-**Running an external program and reading its output is not vendoring.** It
-needs a row in `docs/related-projects.md` giving the licence of the program *as
-built*, since a permissive source can link GPL code by default. Any output kept
-needs provenance in `examples/README.md`. No CI job or test may depend on the
-program, the build, format and lint tools excepted. External solvers are
-comparison oracles, never ahead of the in-repo path, and the design-licence
-rule applies to any pattern fed to one.
+**Running an external program and reading its output is not vendoring.** An
+external program here is someone else's code whose answer we rely on: a solver,
+simulator, renderer or validator, or a library that computes what we cite as
+evidence or keep. The tools that build, run, format, lint or manage our own code
+are not, node and python running our own scripts among them. Such a program
+needs a row in `docs/related-projects.md` giving its licence *as built*, since a
+permissive source can link GPL code by default. A user-installed GPL program, or
+a build that links GPL code, may be run this way, but nothing GPL enters the tree
+or the library: no vendored GPL code, no GPL code linked into the library, and no
+script here that uses a GPL program's own API. Any output kept as a fixture needs
+provenance in `examples/README.md`. No CI job or test may depend on such a
+program. External solvers are comparison oracles, never used in place of our own
+code, and the design-licence rule applies to any pattern fed to one.
 
 ## Conventions
 

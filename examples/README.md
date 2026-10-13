@@ -320,13 +320,3 @@ whole-crane candidate; no solver runs to recreate it in CI. It remains a
 strained/contact-failing study state, not a newly accepted example. Provenance,
 checksum and reconstruction are in
 [the study note](../docs/notes/whole-crane-candidate.md).
-
-## External programs' output kept elsewhere
-
-[AGENTS.md](../AGENTS.md#third-party-material) asks that any output of an
-external program kept in this repository have its provenance here. The nine
-contact sheets under [`PRDs/research/img/`](../PRDs/research/img), kept from PRD
-11's research ([#405](https://github.com/avalonalex/senbazuru/pull/405)), are
-such output, made with Blender, ImageMagick, CalculiX, matplotlib and Pillow.
-Each sheet's research note says how it was made and gives the commands that
-regenerate it ([PRDs/research/README.md](../PRDs/research/README.md)).

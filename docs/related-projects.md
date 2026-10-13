@@ -10,12 +10,11 @@ expression does not: a published algorithm can be reimplemented from
 understanding, and a GPL implementation can be read to understand the domain
 and never copied, fixtures included. MIT projects can be vendored with
 attribution, but a repository licence is not a design licence, so another
-designer's crease pattern in an MIT repo is still theirs. Running a program and
-reading its output is not vendoring, but [AGENTS.md](../AGENTS.md#third-party-material)
-asks that each one run for this repository have a row here giving its licence as
-built. The rows still owed for programs run before that rule landed are listed
-in [#552](https://github.com/avalonalex/senbazuru/issues/552). When a licence
-below says *not checked*, check it before reading the code.
+designer's crease pattern in an MIT repo is still theirs. Running someone else's
+program and reading its output is not vendoring, but
+[AGENTS.md](../AGENTS.md#third-party-material) asks that each one whose answer we
+rely on have a row here giving its licence as built. When a licence below says
+*not checked*, check it before reading the code.
 
 ## Tools that read or write FOLD
 
@@ -89,6 +88,26 @@ on the study's saved crane body
 | Project | What it is | Licence | Why it matters here |
 | --- | --- | --- | --- |
 | [glTF Validator](https://github.com/KhronosGroup/glTF-Validator) — Khronos Group | The reference validator for glTF 2.0 and `.glb` files, published to npm as `gltf-validator` | Apache-2.0, as is the npm package that was run | Run by hand on `.glb` output since the export was built ([#51](https://github.com/avalonalex/senbazuru/pull/51)), by `study/gltf/validate.cjs` through its JavaScript API, since the npm package has no command-line program; [study/gltf/README.md](../study/gltf/README.md) pins the version |
+| [rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg) (librsvg) — GNOME | Renders SVG to PNG from the command line | LGPL-2.1-or-later, as is the Homebrew 2.62.3 build that was run; it loads GLib, Pango, cairo, FriBiDi and libintl under the LGPL, and nothing GPL | Rasterises senbazuru's SVG so a drawing can be checked by eye ([H1](../PRDs/research/H1-diagnosis.md)), and measured caption ink for [PRD 06](../PRDs/06-prd-step-diagrams.md) |
+| [three.js](https://github.com/mrdoob/three.js) — Ricardo Cabello and others | A WebGL library for 3D scenes in the browser | MIT, as is the npm package `three@0.186.0` that was run, which has no dependencies | The viewer [usage.md](usage.md) installs to look at senbazuru's `.glb` output, imported by the study's 3D pages and X1's render comparison |
+
+## Libraries and tools the research relied on
+
+Libraries and programs whose answers the research notes and the study's notes
+cite, or whose pictures they keep. The research's own scripts call them; none is
+run by CI or a test. Versions are those the notes record. The environments they
+ran in are gone, so what a wheel bundles is read from its build scripts at the
+release tag rather than from the wheel.
+
+| Project | What it is | Licence | Why it matters here |
+| --- | --- | --- | --- |
+| [ImageMagick](https://imagemagick.org) | Command-line image processing | The ImageMagick licence, an Apache-2.0-style one, for the Homebrew 7.1.2-30 build that was run. Every run loads LGPL libltdl. Only its HEIC coder links LGPL libheif and libde265 and GPL-2.0-or-later x265, which the PNG-only contact sheets never loaded; PostScript and PDF go to AGPL Ghostscript as a separate program | Assembled research contact sheets in `PRDs/research/img/` (X1, Y1, Y5 and Y6) |
+| [SciPy](https://scipy.org) | Scientific computing for Python: sparse solvers, optimisation, interpolation | Source BSD-3-Clause. The macOS 14 arm64 wheels that ran, 1.17.1 and 1.18.1, use Apple's Accelerate but bundle the GCC runtime: libgfortran and libgcc_s, GPL-3.0-or-later with the GCC runtime exception, and LGPL-2.1-or-later libquadmath | The research's solvers and fits (H7, X2, X3, Y2 to Y4) |
+| [scikit-sparse](https://github.com/scikit-sparse/scikit-sparse) | A Python wrapper for SuiteSparse's sparse Cholesky factorisation, CHOLMOD | Wrapper BSD-2-Clause. Built from the 0.5.0 sdist against Homebrew SuiteSparse 7.14.0, it links CHOLMOD with its GPL-2.0-or-later Supernodal, Modify and MatrixOps modules, and Supernodal ran ([H7](../PRDs/research/H7-tooling.md) finding 17); the same build made GPL-2.0-or-later UMFPACK and SPQR wrappers, never imported | H7's sparse-solver comparison and IPC prototype (`PRDs/research/scripts/H7-tooling/`). The scripts call the wrapper's BSD API, and the GPL code stays in the user-installed build, as [AGENTS.md](../AGENTS.md#third-party-material) allows |
+| [NumPy](https://numpy.org) | Arrays and linear algebra for Python | BSD-3-Clause, its bundled code permissive. Blender's own 1.26.4 build and the 2.4.6 and 2.5.3 macOS 14 wheels that ran link only Apple's Accelerate and bundle nothing. The X2 environment's 1.26.4 was either Blender's build or a PyPI wheel that bundles OpenBLAS, the GCC runtime and LGPL libquadmath; with the environment gone, which is not known | Independent checks of the study's output in the notes ([crane-pillow-target.md](notes/crane-pillow-target.md), [whole-crane-candidate.md](notes/whole-crane-candidate.md) and others), and the research's scripts |
+| [Shapely](https://github.com/shapely/shapely) | Planar geometry for Python, over the GEOS library | BSD-3-Clause. The 2.1.2 wheel bundles GEOS 3.13.1 as shared libraries, LGPL-2.1 | The independent polygon engine behind the study's visible-region and coverage checks ([body-visible-layers.md](notes/body-visible-layers.md) and others) |
+| [matplotlib](https://matplotlib.org) | Plots for Python | Its own licence, modelled on the PSF's. The 3.11.2 wheel statically links FreeType under the FTL, HarfBuzz and libraqm (MIT), SheenBidi (Apache-2.0) and Qhull (its own permissive licence), and ships permissive fonts: nothing GPL or LGPL | The research's plots and several of its contact sheets |
+| [Pillow](https://python-pillow.org) | Image reading, writing and drawing for Python | MIT-CMU. The 12.3.0 macOS arm64 wheel bundles only permissive libraries, leaves out GPL libimagequant, and loads LGPL FriBiDi only if it finds one installed | Assembled several research contact sheets |
 
 ## Two halves that never met
 

@@ -352,7 +352,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 | R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
 | R-07-41 | `run --settle` refuses more than 1,192 refined triangles, counted before solving, until 3–5 compiled runs justify another number; default CI settles ≤ 392. |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
-| R-07-43 | No CI job or test runs an external solver, simulator or other program whose output it reads (the build, format and lint tools excepted); each program used gets a `docs/related-projects.md` row with its licence *as built*; kept outputs get provenance in `examples/README.md`. |
+| R-07-43 | No CI job or test runs an external program: someone else's solver, simulator, renderer or validator, or a library that computes what we cite or keep, the tools that build, run, format, lint or manage our own code excepted ([AGENTS.md](../AGENTS.md#third-party-material)). Each one used gets a `docs/related-projects.md` row with its licence *as built*, and outputs kept as fixtures get provenance in `examples/README.md`. |
 | R-07-44 | External solvers are oracles only; IPC-family tools apply to open states until a thickness offset exists ([External tools](#external-tools)). A policy recorded in `docs/related-projects.md`, not a tested requirement, since R-07-43 keeps the tools out of CI. |
 | R-07-45 | `SettleStepError`, `SettleError`, `Reason` and registry `Refused` each have an `Explain` instance in their own module; no locations in messages; ids as "(internal edge 37)". |
 
@@ -813,7 +813,7 @@ Budgets count refined triangles before solving, never seconds.
 | --- | --- | --- | --- |
 | Origami Simulator | MIT ([`docs/related-projects.md:22`](../docs/related-projects.md)) | WebGL browser app; FOLD in and out; its README shows no headless mode | [#53](https://github.com/avalonalex/senbazuru/issues/53)'s manual or browser-automated export; oracle |
 | ipc-toolkit | MIT; the PyPI wheel statically links filib, LGPL-2.1 | C++ library adding contact to an existing simulation, not a simulator itself; authors ask for citation | a driver is new non-Haskell code: a toolchain decision |
-| Codim-IPC | Apache-2.0 source; default build links GPL CHOLMOD Supernodal (`LINEAR_SOLVER=CHOLMOD`, `WITH_GPL` on) | IPC shells, rods, particles | user-installed, `WITH_GPL=OFF` or Eigen; copying brings Apache-2.0 §4 obligations |
+| Codim-IPC | Apache-2.0 source; default build links GPL CHOLMOD Supernodal (`LINEAR_SOLVER=CHOLMOD`, `WITH_GPL` on) | IPC shells, rods, particles | user-installed, as an oracle; copying brings Apache-2.0 §4 obligations |
 | Doodle (GPLv2), Rabbit Ear (GPL-3.0), ReferenceFinder (GPL-2.0), Creasy (GPL-3.0), ORIPA (GPL-3.0) | GPL | reference implementations | ideas only ([`AGENTS.md:132-138`](../AGENTS.md)) |
 
 Licence rows are from [gap-study-consumption-contract](research/gap-study-consumption-contract.md)
@@ -827,15 +827,17 @@ they need a *thickness offset*, the layers first moved apart by a small distance
 whether a sequence could feed them", finding 13, derived). IPC-family tools
 therefore apply to open states only.
 
-**The rule goes into AGENTS.md.** [D17](decisions.md#d17-third-party-and-external-tools)
-decides that running an external program and reading its output is not
-vendoring. The program still needs a `docs/related-projects.md` row with its
-licence *as built*, and any output kept needs provenance in `examples/README.md`.
-No CI job or test may depend on it, and an external solver is a comparison
-oracle, never ahead of the in-repo path. The wording landed with #550 as
-[decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8, in
-[01 §4.8](01-architecture.md#48-agentsmd-third-party-material)'s exact text,
-so this file does not repeat it.
+**The rule is in AGENTS.md.** [D17](decisions.md#d17-third-party-and-external-tools)
+decides that running someone else's solver, simulator, renderer, validator or
+computing library and reading its output is not vendoring. Such a program needs
+a `docs/related-projects.md` row with its licence *as built*. A GPL build may be
+run as an oracle, but nothing GPL enters the tree or the library. Output kept as
+a fixture needs provenance in `examples/README.md`, no CI job or test may depend
+on such a program, and an external solver is a comparison oracle, never used in
+place of our own code. The wording landed with #550 as
+[decisions §3](decisions.md#3-recorded-text-this-design-changes) row 8 and was
+scoped by #552; [01 §4.8](01-architecture.md#48-agentsmd-third-party-material)
+holds its exact text, so this file does not repeat it.
 
 ### Errors
 
