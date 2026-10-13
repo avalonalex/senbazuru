@@ -456,7 +456,7 @@ Seconds appear only as CI job timeouts. Each move record carries a `StepCost`
 | Refolds (`foldFrameWith` calls) | none | recorded: about 7 per checked step today, counted from code ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md) finding 6), plus one per creasing move for 05 L7–L8; E2 pins the blintz's, so caching is a reviewed change |
 | Triangles `checkFlap` inspects; triangle pairs at each endpoint (all pairs, finding 7) | none in v1 | recorded |
 | Stacking guesses per component | `--layer-budget` | `GaveUpStacking`, its own error (R-05-39) |
-| Settle triangles | 1,192 for `run --settle`; 392 in default CI (R-07-41) | `TriangleBudget` before solving (07 AC-13) |
+| Settle triangles | `run --settle`'s budget, set from 3–5 compiled runs on the crane fixtures it must settle; 392 in default CI, never a crane fixture (R-07-41) | `TriangleBudget` before solving (07 AC-13) |
 
 A sequence's cost is the sum of its records', plus a creasing-and-stacking entry
 for each move that adds a crease.
@@ -488,8 +488,8 @@ and a 20-step crane estimate were never run ("Unverified" 1–3), so **no
 wall-clock guard is adopted**. The first sequence spec's PR times the zero-match
 run before and after, compiled rather than in GHCi
 ([AGENTS.md "Testing"](../AGENTS.md#testing)), over 3–5 runs, the count
-[07 R-07-41](07-prd-material-consumption.md#requirements) asks for before raising
-the settle cap.
+[07 R-07-41](07-prd-material-consumption.md#requirements) asks for whenever
+`run --settle`'s budget is set or changed.
 
 ### 6.3 `beforeAll`, not `runIO`, and a slow job
 
@@ -503,27 +503,46 @@ with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
 
 1. Every new sequence spec builds its run in `beforeAll`.
 2. A crane-sized fixture (`crane.fold` has 72 faces) sits under `describe "slow"`.
-3. The default job runs `stack test --test-arguments '--skip /slow/'`; a new slow
-   job runs `--match /slow/`. hspec 2.11.12 is pinned with both flags (finding 9);
-   today CI runs one `stack test` ([`ci.yml`](../.github/workflows/ci.yml)).
-4. Existing `runIO` specs stay as they are; a recipe's spec changes only in that
-   recipe's deletion PR (§9) ([D16](decisions.md#d16-testing-and-acceptance),
-   [C71](decisions.md#changes-since-draft-v2)).
+3. The default job adds `--skip /slow/`, and a new slow job `--match /slow/`, to
+   the arguments CI passes `stack test` today, `--jobs=4 --print-slow-items=20
+   +RTS -N4 -RTS` ([`ci.yml`](../.github/workflows/ci.yml)); the suite is built
+   `-threaded` without `-N`, so without `+RTS -N4` the specs marked `parallel`
+   share one core. hspec 2.11.12 is pinned with both flags (finding 9). The slow
+   job runs beside the default job, not after it, and takes the same `changes`
+   gate; its PR sets `timeout-minutes` on both, since seconds appear only as CI
+   job timeouts, and updates `ci.yml`'s comment that counts the jobs.
+4. Existing `runIO` specs stay as they are until their recipe's deletion PR (§9)
+   ([D16](decisions.md#d16-testing-and-acceptance),
+   [C71](decisions.md#changes-since-draft-v2)), except as item 5 says.
+5. The PR that adds the slow job also moves into it, whole, every study spec file
+   holding a test of 10 s or more in one full `stack test` at its base, never
+   single tests, since tests share fixtures (owner decision 12, decided
+   2026-10-12, [C101](decisions.md#changes-since-draft-v2)). On `c17d317` that is
+   20 files, nine of them not crane fixtures, which took 1,745 s of the 1,810 s
+   that every test's own time adds up to while four run at once (hspec timed the
+   run at 417.3 s), leaving about 65 s in the default job. Their four goldens,
+   `checked-crane.svg`, `checked-bird-above.svg`, `checked-bird-below.svg` and
+   `bent-strip.svg`, move with them, and the required slow job still checks them
+   before merge. It lands after #547's PR, because `--skip /slow/` still runs
+   `runIO` ([C99](decisions.md#changes-since-draft-v2)).
 
 | Default job | Slow job |
 | --- | --- |
-| M1 syntax tests and §5; §2; §3; blintz and helmet equivalence; 05's unit tests on the quarter, blintz and bird fixtures; 06's goldens; settles ≤ 392 triangles | crane-wing sequence and equivalence; [D11](decisions.md#d11-stacking-choices-are-relations)'s crane relations; bird route equivalence; collapse on the crane; M6's crane solve; line drawing on 4,312 triangles |
+| M1 syntax tests and §5; §2; §3; blintz and helmet equivalence; 05's unit tests on the quarter, blintz and bird fixtures; 06's goldens but the four item 5 moves; settles ≤ 392 triangles, never a crane fixture | crane-wing sequence and equivalence; [D11](decisions.md#d11-stacking-choices-are-relations)'s crane relations; bird route equivalence; collapse on the crane; M6's crane solve; line drawing on 4,312 triangles; the slow study spec files (item 5) |
 
-**The slow job changes a recorded sentence.** It is a fourth CI job beside
+**The slow job changes a recorded sentence.** It is a fourth check beside
 today's `test`, `format` and `lint`
 ([`ci.yml:43`](../.github/workflows/ci.yml#L43), [`:78`](../.github/workflows/ci.yml#L78),
 [`:118`](../.github/workflows/ci.yml#L118)), and
 [`AGENTS.md:390-391`](../AGENTS.md#workflow) requires "all three CI checks" green
 before merge. The M4 PR adding the slow job changes that sentence
 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 15,
-[C51](decisions.md#changes-since-draft-v2)). Owner decision 12's default makes the
-slow job a required check, so the sentence counts four; an optional slow job would
-let slow regressions merge.
+[C51](decisions.md#changes-since-draft-v2)). Owner decision 12 (decided
+2026-10-12) makes the slow job a required check, so the sentence counts four.
+Required means listed in `main`'s branch protection, which today lists `build
+and test`, `ormolu` and `hlint` and which no pull request can change: once the
+PR adding the job has merged, the owner lists it under the `name:` that PR
+gives it, and row 15 is marked landed then.
 
 ## 7. Angle equality
 
@@ -634,14 +653,17 @@ each with the default [decisions §9](decisions.md#9-owner-decisions) recommends
    and moves two goldens (§1.2).
 3. **(10) Eighth turns.** Default: trigonometry, which puts platform bits in
    written coordinates, stated (§8).
-4. **(12) CI placement and triangle budget.** Default: crane-sized sequences in a
-   slow job that is a required check, so row 15 changes AGENTS.md's "all three CI
-   checks" to four; default CI settles at most 392 triangles (§6.3).
+4. **(12) CI placement and triangle budget.** Decided 2026-10-12: crane-sized
+   sequences, and the slow study spec files, in a slow job that is a required
+   check, so row 15 changes AGENTS.md's "all three CI checks" to four; default CI
+   settles at most 392 triangles, never a crane fixture (§6.3).
 
 The questions this file raised earlier are decided: test 2 lands with the later
 of M3 and M4 under rules T1–T5 (§2.3; [C48](decisions.md#changes-since-draft-v2),
 [C49](decisions.md#changes-since-draft-v2)); existing `runIO` specs stay until
-their recipe's deletion PR (§6.3; [C71](decisions.md#changes-since-draft-v2));
+their recipe's deletion PR (§6.3; [C71](decisions.md#changes-since-draft-v2)),
+but for the slow study spec files, which move with the slow job (§6.3 item 5;
+[C101](decisions.md#changes-since-draft-v2));
 and the bird page with arrows is pinned as a golden before 05 L3 (§1.3;
 [C70](decisions.md#changes-since-draft-v2)).
 

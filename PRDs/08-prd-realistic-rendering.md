@@ -946,7 +946,7 @@ leaves #49 and [#114](https://github.com/avalonalex/senbazuru/issues/114) open.
 | --- | --- |
 | The lines spike fails in a viewer | R-08-13's extras fallback |
 | W1 cost at 4,312 triangles is unknown | A-15 measures before any promise |
-| Crane-spread meshes never reach the painter | A-13's failing case moves to crane-root, in the slow job (owner decision 12) |
+| Crane-spread meshes never reach the painter | A-13's failing case moves to crane-root, in the slow job (owner decision 12, decided 2026-10-12) |
 | Animated files flicker where layers touch | Recorded; visible-piece switching measured later |
 | Animated and textured bytes carry platform trigonometry | No byte golden; tests read `Double` values and validator counts |
 | A per-edge silhouette test leaves outline gaps on coarse meshes | Measured on `puffed-square.fold` and a settled wing ([G](research/G-realistic-rendering-and-simulation.md) "D. SVG wireframe of a 3D paper surface", finding 19) |
@@ -963,8 +963,8 @@ recommended default, and [10 §6](10-roadmap-risks-questions.md#6-owner-decision
 - **10.** Eighth-turn presentation: animated eighth turns carry trigonometry in
   their keys, as written frames do. Default trigonometry, with platform bits
   stated.
-- **12.** Default CI or slow job for W1's 4,312-triangle acceptance. Default a
-  separate slow job that is a required check.
+- **12.** Default CI or slow job for W1's 4,312-triangle acceptance. Decided
+  2026-10-12: the slow job, a required check.
 
 ## Research links
 

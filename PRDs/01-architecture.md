@@ -285,7 +285,7 @@ schedules it.
 | 12 | `AGENTS.md:229-233` | two PRs: `runSequence` at M2, `stepPageWith` at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | the M2 PR classifying presentation changes |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
-| 15 | `AGENTS.md:390-391`, "all three CI checks" | the M4 PR adding the slow job |
+| 15 | `AGENTS.md:390-391`, "all three CI checks" | the M4 PR adding the slow job, then the owner listing that job in `main`'s branch protection |
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | M0 |
 | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the follow-up PR fixing `LineStopsOnTheModel`, before M4 |
 | 18 | `README.md:213-219` roadmap item 2, `docs/roadmap.md` item 2 | the PR closing #60 (M4) |
@@ -606,21 +606,24 @@ The headers go with their modules.
 ### 4.15 `AGENTS.md:390-391`, "all three CI checks"
 
 Current: "`main` is protected. Changes reach it through pull requests, and all three
-CI checks must be green before merge. Do not push to `main` directly."
+CI checks must be green before merge. Do not push to `main` directly. A pull
+request that changes only `PRDs/` skips all three, which counts as green: nothing
+they check reads that directory."
 
-The three are the jobs of `.github/workflows/ci.yml`: `test` ("build and test"),
-`format` ("ormolu") and `lint` ("hlint"). M4 adds a fourth job for the crane-sized
-specs under `describe "slow"`, which the default job skips
-([D16](decisions.md#d16-testing-and-acceptance)). Replacement, under
-[owner decision 12](decisions.md#9-owner-decisions)'s recommended default that the
-slow job is a required check (the job's name is **SKETCH**, chosen in that PR):
+The three checks are the jobs `test` ("build and test"), `format` ("ormolu") and
+`lint` ("hlint") of `.github/workflows/ci.yml`, whose fourth job, `changes`, only
+decides whether they run. M4 adds a job for the crane-sized specs and the slow
+study spec files under `describe "slow"`, which the default job skips
+([D16](decisions.md#d16-testing-and-acceptance)); it takes the same `changes`
+gate, so a pull request that changes only `PRDs/` skips it too. Owner decision 12
+(decided 2026-10-12) makes it a required check, which the owner sets in `main`'s
+branch protection once that PR has merged. The replacement calls the job "the
+slow tests", a **SKETCH**: the M4 PR adding it chooses its name.
 
 > `main` is protected. Changes reach it through pull requests, and all four CI
 > checks — build and test, ormolu, hlint, and the slow tests — must be green before
-> merge. Do not push to `main` directly.
-
-If the owner makes the slow job optional instead, the sentence keeps "three" and
-adds: "The slow tests run as a fourth job, which is not required."
+> merge. Do not push to `main` directly. A pull request that changes only `PRDs/`
+> skips all four, which counts as green: nothing they check reads that directory.
 
 ### 4.16 `docs/roadmap.md:271-276` and `:1004-1009`
 
