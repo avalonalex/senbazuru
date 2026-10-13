@@ -939,22 +939,28 @@ creasing = describe "a fold along a line where no crease runs" $ do
     renderRunReport run `shouldContain` ["  line corner north-west to corner south-east: through (0.5, 0.5), along (0.707107, 0.707107)"]
     renderRunReport run `shouldContain` ["  new crease: (0, 0) to (1, 1), valley (internal edge 4)"]
 
-  -- Perpendicular to edge south through the centre is the line up the
+  -- Through the centre at right angles to edge south is the line up the
   -- middle, so the fold is the one along [midpoint of edge south, midpoint
-  -- of edge north]: the same crease, hinge and angles. Neither line says
-  -- which side moves, so moving P must. Turns red if O4 were refused, or its
-  -- line drawn along L rather than across it.
-  it "folds perpendicular to a line through a point as along that line through two points" $ do
-    let upTheMiddle line seed = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp (step_ "Fold the right half behind." (move (Fold MountainFold ToFlat line FlapOfFirstArgument seed)))
+  -- of edge north]: the same crease, hinge and angles, whether the anchor
+  -- lies on the half held still or on the half that turns, where the move
+  -- re-anchors and works its line out again. Both lines run north, so their
+  -- creases' ends come in one order. Neither line says which side moves, so
+  -- the moving seed, corner south-east, must. Turns red if O4 were refused,
+  -- or its line drawn along L rather than across it.
+  it "folds through a point at right angles to a line as along the same line through two points" $ do
+    let upTheMiddle anchoredAt line seed = onSquare (Just anchoredAt) ColouredUp (step_ "Fold the right half behind." (move (Fold MountainFold ToFlat line FlapOfFirstArgument seed)))
         o4 = PerpendicularThrough (edge South) centre
-    perpendicularRun <- right (upTheMiddle o4 (Just (corner SouthEast)))
-    throughTwoRun <- right (upTheMiddle (Segment (MidpointOfEdge South) (MidpointOfEdge North)) (Just (corner SouthEast)))
-    perpendicular' <- one (runRecords perpendicularRun)
-    throughTwo <- one (runRecords throughTwoRun)
-    map ends (recordNewCreases perpendicular') `shouldBe` [([V2 0.5 0, V2 0.5 1], [EdgeId 6], Mountain)]
-    (recordNewCreases perpendicular', recordHinge perpendicular', recordAngles perpendicular') `shouldBe` (recordNewCreases throughTwo, recordHinge throughTwo, recordAngles throughTwo)
-    renderRunReport perpendicularRun `shouldContain` ["  line perpendicular to edge south through centre: through (0.5, 0.5), along (0, 1)"]
-    case upTheMiddle o4 Nothing of
+        throughTwo = Segment (MidpointOfEdge South) (MidpointOfEdge North)
+        facts r = (recordNewCreases r, recordHinge r, recordAngles r)
+    forM_ [at (1 / 4) (1 / 4), at (3 / 4) (1 / 4)] $ \anchoredAt -> do
+      o4Run <- right (upTheMiddle anchoredAt o4 (Just (corner SouthEast)))
+      twoRun <- right (upTheMiddle anchoredAt throughTwo (Just (corner SouthEast)))
+      o4Record <- one (runRecords o4Run)
+      twoRecord <- one (runRecords twoRun)
+      map ends (recordNewCreases o4Record) `shouldBe` [([V2 0.5 0, V2 0.5 1], [EdgeId 6], Mountain)]
+      facts o4Record `shouldBe` facts twoRecord
+      renderRunReport o4Run `shouldContain` ["  line perpendicular to edge south through centre: through (0.5, 0.5), along (0, 1)"]
+    case upTheMiddle (at (1 / 4) (1 / 4)) o4 Nothing of
       Left (StepRefused _ _ _ (Selecting SeedMissing)) -> pure ()
       other -> expectationFailure ("expected the line refused as saying no side moves, got " <> either (show . explain) (const "a run") other)
 

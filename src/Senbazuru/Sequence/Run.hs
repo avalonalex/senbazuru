@@ -13,7 +13,7 @@
 -- from, and 'runSequence' runs a checked, elaborated sequence from there. So
 -- far it makes @fold@, along creases the paper already has or, on the flat
 -- sheet, along a line where none runs yet, its line given by points, by an
--- edge, at right angles to a line through a point, by laying one line onto
+-- edge, through a point at right angles to a line, by laying one line onto
 -- another or as @hinge of NAME@; @pre-crease@, the same fold checked and laid
 -- flat again, which leaves its crease and one record; @unfold@; @turn over@,
 -- which moves no paper and shows the model from its other side; @rotate@ by
@@ -69,10 +69,11 @@
 --
 -- == Not yet
 --
--- Refused as not run yet: a new crease on folded paper, which creases
--- through its layers (milestone M4), layer words, and every move but
--- @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@ and @anchor@, @mark@
--- among them.
+-- Refused as not run yet: a new crease on folded paper, which creases through
+-- its layers (milestone M4); @hinge of NAME@ inside another line, and
+-- @L1 to L2@ between lines other than an edge and @[P, Q]@; layer words; and
+-- every move but @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@ and
+-- @anchor@, @mark@ among them.
 --
 -- A re-anchoring onto a face that does not lie flat is refused as
 -- @ReanchorNotFlat@ (PRDs\/02-language-semantics.md, §2.3), since then no

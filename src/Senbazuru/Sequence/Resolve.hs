@@ -254,10 +254,15 @@ unit v = (1 / norm v) *^ v
 -- * @L1 to L2@, laying one line onto another, where L1 and L2 are each an
 --   edge or @[P, Q]@ ('lineOnto');
 -- * @perpendicular to L through P@, through where P now is, at right angles
---   to L where L now lies. Only L's direction counts, so P may lie on L or
---   off it, and L may be any line named here but a hinge: finding a hinge
---   needs the run's earlier records, which only "Senbazuru.Sequence.Run"
---   has.
+--   to L where L now lies. Only L's direction counts, so P may lie on L. L
+--   is any line named here, worked out first: where it is an @L1 to L2@
+--   with two answers, the @nearest@ inside L's parentheses chooses L, and
+--   the fold runs at right angles to the answer it points at.
+--
+-- @hinge of NAME@ is not named here. Finding a hinge needs the run's earlier
+-- records, so "Senbazuru.Sequence.Run" finds one standing alone before it
+-- asks this function, which meets a hinge only inside another line and
+-- refuses it there as not run yet.
 foldLine :: Double -> FlatState -> Line -> Either ResolveProblem FoldLine
 foldLine band st = \case
   Segment p q -> do
@@ -274,9 +279,7 @@ foldLine band st = \case
     s2 <- operand l2
     lineOnto band st s1 s2 nearest
   PerpendicularThrough l p -> do
-    FoldLine _ d <- case l of
-      HingeOf _ -> notYet "\"perpendicular to L through P\" with L a hinge"
-      _ -> foldLine band st l
+    d <- lineDirection <$> foldLine band st l
     c <- positionOf band st p
     pure (FoldLine c (perpendicular d))
   PointToLineThrough {} -> notYet "\"P to L through Q\""
@@ -284,7 +287,7 @@ foldLine band st = \case
   PointToLinePerpendicular {} -> notYet "\"P to L1 perpendicular to L2\""
   PointToLine {} -> notYet "\"P to L\""
   ExistingCrease {} -> notYet "\"crease [P, Q]\""
-  HingeOf _ -> notYet "\"hinge of NAME\""
+  HingeOf _ -> notYet "\"hinge of NAME\" inside another line"
   CreaseOf _ -> notYet "\"crease of NAME\""
   ModelSegment {} -> notYet "\"model [...]\""
   LineNamed (Name name) -> notYet ("the line " <> name)

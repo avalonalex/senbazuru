@@ -2,7 +2,9 @@
 -- first corner is folded (a run of the language's blintz supplies that
 -- state), and on
 -- sheets made here for what the blintz cannot show, a sheet that is not a
--- square and one that is not the unit square.
+-- square and one that is not the unit square; and on two example files, the
+-- accordion, for a hinge's stretches, and the crane, folded by its file's own
+-- angles, for the line M4's crane sequence folds along.
 module Senbazuru.Sequence.ResolveSpec (spec) where
 
 import Data.Map.Strict qualified as M
@@ -113,7 +115,7 @@ spec = describe "naming paper on a flat state" $ do
       foldLine 1e-3 start (Onto Centre Centre) `shouldBe` Left DegenerateConstruction
 
     it "of a form not run yet" $
-      foldLine 1e-3 start (HingeOf (Name "c1")) `shouldBe` Left (NotRunYet "\"hinge of NAME\"")
+      foldLine 1e-3 start (CreaseOf (Name "c1")) `shouldBe` Left (NotRunYet "\"crease of NAME\"")
 
   -- edge S is the line the sheet's side lies along now. PRD 02 §4.6's
   -- worked case: once corner south-east is folded to the centre, edge
@@ -244,37 +246,52 @@ spec = describe "naming paper on a flat state" $ do
       foldLine 1e-3 start (LineOnto (EdgeOf South) (Segment (CornerOf SouthWest) (CornerOf SouthEast)) Nothing) `shouldBe` Left DegenerateConstruction
 
   -- perpendicular to L through P, Huzita-Hatori's fourth construction.
-  describe "draws a line perpendicular to a line through a point" $ do
-    -- After the first fold, corner south-east lies on the centre, and so
-    -- [corner south-east, corner north-east] runs diagonally from there to
-    -- (1, 1). Turns red if P were taken where it lay on the sheet, (1, 0),
-    -- giving x = 1, or L where it lay, along x = 1, giving y = 1/2.
-    it "through where the point is now, across the line where it lies now" $ do
+  describe "draws a line through a point at right angles to a line" $ do
+    -- After the first fold, corner south-east lies on the centre, and edge
+    -- north has not moved, so the line is x = 1/2. Turns red if P were taken
+    -- where it lay on the sheet, (1, 0), giving x = 1.
+    it "through where the point is now" $ do
       FoldLine p d <- right (foldLine 1e-3 afterFirst (PerpendicularThrough (EdgeOf North) (CornerOf SouthEast)))
       onLine p d (V2 0.5 0) `shouldBe` True
       onLine p d (V2 0.5 1) `shouldBe` True
-      FoldLine q e <- right (foldLine 1e-3 afterFirst (PerpendicularThrough (Segment (CornerOf SouthEast) (CornerOf NorthEast)) Centre))
-      onLine q e (V2 0 1) `shouldBe` True
-      onLine q e (V2 1 0) `shouldBe` True
 
-    -- The point may lie on the line, and the line may be any construction:
-    -- corner south-west to corner north-east folds along x + y = 1, and the
-    -- line at right angles to it through the centre is the other diagonal.
-    it "through a point on the line, and across any construction" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (PerpendicularThrough (EdgeOf South) (MidpointOfEdge South)))
+    -- After the first fold, [corner south-east, corner north-east] runs from
+    -- the centre, where corner south-east now lies, to (1, 1), so the line
+    -- across it through the centre is x + y = 1. Turns red if L were taken
+    -- where it lay, along x = 1, giving y = 1/2.
+    it "across the line where it lies now" $ do
+      FoldLine p d <- right (foldLine 1e-3 afterFirst (PerpendicularThrough (Segment (CornerOf SouthEast) (CornerOf NorthEast)) Centre))
+      onLine p d (V2 0 1) `shouldBe` True
+      onLine p d (V2 1 0) `shouldBe` True
+
+    -- L may be another construction, and P may lie on it: corner south-west
+    -- to corner north-east folds along x + y = 1, which runs through the
+    -- centre, and the line at right angles to it there is the diagonal y = x.
+    it "across a point laid onto a point, through a point on that line" $ do
+      FoldLine p d <- right (foldLine 1e-3 start (PerpendicularThrough (Onto (CornerOf SouthWest) (CornerOf NorthEast)) Centre))
+      onLine p d (V2 0 0) `shouldBe` True
+      onLine p d (V2 1 1) `shouldBe` True
+
+    -- The midlines cross at the centre, so laying one onto the other has two
+    -- answers, the diagonals, and needs a nearest. Written inside L, nearest
+    -- (3/4, 3/4) chooses y = x as L, and the line at right angles to it
+    -- through (1/4, 1/4) is x + y = 1/2: the nearest chooses L, not the fold.
+    it "across the answer a nearest inside L chooses" $ do
+      let midlines = LineOnto (Segment (MidpointOfEdge West) (MidpointOfEdge East)) (Segment (MidpointOfEdge South) (MidpointOfEdge North)) (Just (AtSheet (3 / 4) (3 / 4)))
+      FoldLine p d <- right (foldLine 1e-3 start (PerpendicularThrough midlines (AtSheet (1 / 4) (1 / 4))))
       onLine p d (V2 0.5 0) `shouldBe` True
-      onLine p d (V2 0.5 1) `shouldBe` True
-      FoldLine q e <- right (foldLine 1e-3 start (PerpendicularThrough (Onto (CornerOf SouthWest) (CornerOf NorthEast)) Centre))
-      onLine q e (V2 0 0) `shouldBe` True
-      onLine q e (V2 1 1) `shouldBe` True
+      onLine p d (V2 0 0.5) `shouldBe` True
 
     -- Owner decision 43's line on the folded crane, the root of the wing
-    -- that M4's sequence folds. Corner north-west and the midpoint of edge
-    -- north fold to (1, 0) and (1, 1/2), so L runs up x = 1, and corner
-    -- north-east, the tail's tip, folds to the root's height, exactly
-    -- 1 - (sqrt 2 / 4)(1 + 2 sin 22.5 degrees) (decisions C102). The root
-    -- runs from x = 0.87585 to 1.12415 (docs/notes/flap-roots.md).
-    it "names the crane wing's root from three corners of the sheet" $ do
+    -- that M4's sequence folds. The crane is folded by its file's own
+    -- angles, since a run cannot start folded yet. Corner north-west and the
+    -- midpoint of edge north fold to (1, 0) and (1, 1/2), so L runs up
+    -- x = 1, and corner north-east, the tail's tip, folds to the root's
+    -- height, which in exact arithmetic is 1 - (sqrt 2 / 4)(1 + 2 sin 22.5
+    -- degrees) (decisions C102); the file's coordinates put it within 2e-14
+    -- of that. The root runs from x = 0.87585 to 1.12415
+    -- (docs/notes/flap-roots.md).
+    it "names the crane wing's root from two corners and the midpoint of edge north" $ do
       crane <- loadFoldFile "examples/crane.fold" >>= right
       folded <- flatOf (keyFrame crane)
       FoldLine p d <- right (foldLine 1e-3 folded (PerpendicularThrough (Segment (CornerOf NorthWest) (MidpointOfEdge North)) (CornerOf NorthEast)))
@@ -282,8 +299,10 @@ spec = describe "naming paper on a flat state" $ do
       onLine p d (V2 0.87585 root) `shouldBe` True
       onLine p d (V2 1.12415 root) `shouldBe` True
 
-    it "and refuses a hinge for L, a point off the paper, and a line that is a point" $ do
-      foldLine 1e-3 start (PerpendicularThrough (HingeOf (Name "c1")) Centre) `shouldBe` Left (NotRunYet "\"perpendicular to L through P\" with L a hinge")
+    -- A run finds a hinge standing alone itself, from its earlier records,
+    -- so this function meets one only inside another line.
+    it "and refuses a hinge for L, a point off the paper, and an L whose two points are one" $ do
+      foldLine 1e-3 start (PerpendicularThrough (HingeOf (Name "c1")) Centre) `shouldBe` Left (NotRunYet "\"hinge of NAME\" inside another line")
       foldLine 1e-3 start (PerpendicularThrough (EdgeOf South) (AtSheet 2 2)) `shouldBe` Left (OffThePaper (V2 2 2))
       foldLine 1e-3 start (PerpendicularThrough (Onto Centre Centre) Centre) `shouldBe` Left DegenerateConstruction
 
