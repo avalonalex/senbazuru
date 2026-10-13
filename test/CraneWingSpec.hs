@@ -69,6 +69,36 @@ spec = describe "checked crane wing" $ do
       Left (FlapEndpointOrder 0 _) -> pure ()
       other -> expectationFailure (show other)
 
+  -- No fold makes the join along the widest point: a sequence that lowers
+  -- the wing creases only its hinge, and M4 compares its record with a build
+  -- that leaves the join out (owner decision 44). Leaving it out removes the
+  -- four faces it cut and the orders on them, and nothing else: the hinge is
+  -- the same, every other face keeps its layer orders, and the wing's eight
+  -- faces from tip to hinge turn where the joined build turns twelve. Below
+  -- the widest point there is no join to leave out. Turns red if the join
+  -- were drawn anyway, or if leaving it out changed the stacking chosen.
+  it "leaves out the join along the widest point, as a fold does" $ do
+    hinge <- right (wingRoot (keyFrame source))
+    joined <- right (buildCraneWingAt hinge (keyFrame source))
+    open <- right (buildCraneWingWith WithoutWidestJoin hinge (keyFrame source))
+    let start = foldedFrame (craneStart open)
+        joins frame = length (filter (== Join) (edgesAssignment frame))
+        shared = S.intersection (S.fromList (materialRings joined)) (S.fromList (materialRings open))
+        ordersAmong w = S.filter (\(a, b, _) -> S.member a shared && S.member b shared) (materialOrders w)
+    length (facesVertices start) `shouldBe` 72 + 8
+    joins start `shouldBe` joins (foldedFrame (craneStart wing))
+    materialHinge open `shouldBe` materialHinge joined
+    S.size shared `shouldBe` 76
+    ordersAmong open `shouldBe` ordersAmong joined
+    map (length . faceOrders . foldedFrame . craneStart) [open, joined] `shouldBe` [952, 978]
+    map (length . flapMovingFaces . craneOpening) [open, joined] `shouldBe` [8, 12]
+    sweepOutcome (flapCheck (craneOpening open)) `shouldBe` SweepClear
+    case prepareFlapAlong (craneHinge open) (craneSide open) (-90) (craneStart open) >>= checkFlap defaultSweepSettings of
+      Left (FlapEndpointOrder 0 _) -> pure ()
+      other -> expectationFailure (show other)
+    below <- right (buildCraneWingWith WithoutWidestJoin studyHinge (keyFrame source))
+    foldedFrame (craneStart below) `shouldBe` foldedFrame (craneStart wing)
+
   it "refuses a crease line that does not cross the wing" $
     forM_ [0, 0.5, 0 / 0] $
       \y -> buildCraneWingAt y (keyFrame source) `shouldSatisfy` isLeft
@@ -181,6 +211,26 @@ spec = describe "checked crane wing" $ do
     rooted <- right (craneStates root)
     map fst rooted `shouldBe` map fst states
     forM_ rooted $ \(_, sheet) -> materialError sheet `shouldSatisfy` (< 1e-9)
+
+-- Each face of a wing's start named by its corners on the sheet, so builds
+-- that number their faces differently can be compared.
+materialRings :: CraneWing -> [[[Double]]]
+materialRings w = [sort (map corner ring) | ring <- facesVertices (foldedFrame (craneStart w))]
+  where
+    corner (VertexId i) = concat (take 1 (drop i (verticesCoords (foldedPattern (craneStart w)))))
+
+-- Every layer order of a wing's start, its faces named by 'materialRings'.
+materialOrders :: CraneWing -> S.Set ([[Double]], [[Double]], Stacking)
+materialOrders w = S.fromList [(ring (orderFace o), ring (orderRelativeTo o), orderStacking o) | o <- faceOrders (foldedFrame (craneStart w))]
+  where
+    ring (FaceId i) = concat (take 1 (drop i (materialRings w)))
+
+-- The hinge's segments on the sheet, each with its ends in order.
+materialHinge :: CraneWing -> [[[Double]]]
+materialHinge w = sort [sort [corner u, corner v] | EdgeId i <- craneHinge w, (u, v) <- take 1 (drop i (edgesVertices paper))]
+  where
+    paper = foldedPattern (craneStart w)
+    corner (VertexId i) = concat (take 1 (drop i (verticesCoords paper)))
 
 materialError :: Surface V2 -> Double
 materialError sheet = maximum (0 : errors)

@@ -24,7 +24,11 @@
 -- A line above the widest point also gets a join along the widest point in
 -- each of the four faces, so the paper from the tip to the join is a triangle
 -- in every layer, as the turning part is about 1/4, and the base between the
--- join and the hinge, four layers deep, has panels of its own.
+-- join and the hinge, four layers deep, has panels of its own. No fold makes
+-- that join: a sequence that lowers the wing creases only its hinge. So
+-- 'buildCraneWingWith' can leave it out, for comparing the wing with a
+-- sequence's record (owner decision 44); the galleries keep it, since their
+-- settle starts from those panels.
 --
 -- Keep the original face zero first so adding the crease does not move the
 -- crane's anchor. Choose the starting order with the tail tucked between the
@@ -34,7 +38,7 @@
 -- traditional arrangement of a model with several possible stackings.
 -- This recipe does not construct the crane from a square, move its other wing,
 -- or expand its body. It exercises the production operation on a real fixture.
-module CraneWing (CraneWing (..), buildCraneWing, buildCraneWingAt, studyHinge, wingRoot, craneStates, craneFile) where
+module CraneWing (CraneWing (..), WidestJoin (..), buildCraneWing, buildCraneWingAt, buildCraneWingWith, studyHinge, wingRoot, craneStates, craneFile) where
 
 import Control.Monad (unless)
 import Data.Bifunctor (first)
@@ -91,13 +95,24 @@ wingRoot source = do
     Left ("the wing's root is not level: its ends are at folded y = " <> tshow low <> " and " <> tshow high)
   pure ((low + high) / 2)
 
+-- | Whether a wing creased above its widest point also gets the join along
+-- it. Below the widest point there is nothing to join, and neither changes
+-- the build.
+data WidestJoin = WithWidestJoin | WithoutWidestJoin
+  deriving stock (Eq, Show)
+
 buildCraneWing :: Frame -> Either Text CraneWing
 buildCraneWing = buildCraneWingAt studyHinge
 
 -- | Crease the wing along the folded line y = @hingeY@, which must cross it
--- between its tip and the body's underside.
+-- between its tip and the body's underside, with the join along its widest
+-- point wherever the line lies above it.
 buildCraneWingAt :: Double -> Frame -> Either Text CraneWing
-buildCraneWingAt hingeY source = do
+buildCraneWingAt = buildCraneWingWith WithWidestJoin
+
+-- | The same, saying whether a line above the widest point gets the join.
+buildCraneWingWith :: WidestJoin -> Double -> Frame -> Either Text CraneWing
+buildCraneWingWith widestJoin hingeY source = do
   unless (hingeY > 0 && hingeY < 0.5) $
     Left ("the wing crease must cross the wing between its tip at y = 0 and the body's underside at y = 1/2, not at y = " <> tshow hingeY)
   original <- first explain (foldFrameWith source)
@@ -105,7 +120,7 @@ buildCraneWingAt hingeY source = do
   anchor <- case facesVertices material of
     ring : _ | length (facesVertices material) == 72 && sort ring == map VertexId [46, 49, 54, 55] -> Right ring
     _ -> Left "expected the material topology of examples/crane.fold"
-  (segments, widest) <- wingSegments hingeY original
+  (segments, widest) <- wingSegments widestJoin hingeY original
   creased <- first explain (creaseAllAlong segments material)
   let (anchors, rest) = partition ((== sort anchor) . sort) (facesVertices creased)
   unless (length anchors == 1) (Left "adding the wing crease changed the fixed anchor")
@@ -153,8 +168,8 @@ buildCraneWingAt hingeY source = do
 -- each face it crosses before taking it back to material space, and return
 -- the segments with the widest point. This is a fixture recipe, not selection
 -- of visible layers from a mouse click.
-wingSegments :: Double -> Folded -> Either Text ([(V2, V2, Assignment)], Double)
-wingSegments hingeY folded = do
+wingSegments :: WidestJoin -> Double -> Folded -> Either Text ([(V2, V2, Assignment)], Double)
+wingSegments widestJoin hingeY folded = do
   sheet <- first explain (flatSheet (foldedFrame folded))
   faces <- traverse (panel sheet . FaceId) [2, 3, 6, 7]
   insides <- traverse (panel sheet . FaceId) [32, 34, 35, 38]
@@ -163,7 +178,7 @@ wingSegments hingeY folded = do
     ys -> Right (minimum ys)
   let crosses p = let ys = [y | V2 _ y <- panelRing p] in minimum ys < hingeY - 1e-9 && maximum ys > hingeY + 1e-9
   hinges <- traverse (share sheet hingeY Unassigned) (faces ++ filter crosses insides)
-  joins <- if hingeY > widest + 1e-9 then traverse (share sheet widest Join) faces else pure []
+  joins <- if widestJoin == WithWidestJoin && hingeY > widest + 1e-9 then traverse (share sheet widest Join) faces else pure []
   pure (hinges ++ joins, widest)
   where
     panel sheet fid = maybe (Left "missing crane wing face") Right (find ((== fid) . panelId) (sheetPanels sheet))
