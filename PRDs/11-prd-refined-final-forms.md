@@ -1001,7 +1001,7 @@ requires.
 | The start construction does not scale to a refined, thick crane | Y4 results 2–3 | R-11-22: refine first; the start bake-off in F2 |
 | Stitched starts hide crossings at the seams | 172–251 pairs in X3's states | A-11-9 checks the welded sheet |
 | CCD cost | R-11-18 | Broad phase and compiled code, measured before 5,000 triangles |
-| The prototype becomes the product | [H7](research/H7-tooling.md) Option B | D17 unchanged: oracles never ahead of the in-repo path |
+| The prototype becomes the product | [H7](research/H7-tooling.md) Option B | D17 unchanged: oracles never used in place of our own code |
 | Tension-field regions hide real stretch | a tension field reports only stretch | The screen reports squash separately and requires regions to be declared |
 | Look work polishes invalid shapes | [X1](research/X1-paper-look-renders.md): realism exposes defects | F1's acceptance uses valid shapes only; sketches are labelled |
 | Evidence from one run | Y1–Y6 were not independently verified | Each is cited as one run; F2 reproduces the ones it builds on |
@@ -1017,7 +1017,7 @@ Numbered to continue [decisions §9](decisions.md#9-owner-decisions).
 | 17 | D19's `as prescribed` value | Yes | Sketches stay unlabelled in their files | F0 |
 | 18 | Reopen four D18 non-goals for illustrations only | Yes | F2–F6 stay research notes | F2 |
 | 19 | Sim-FAST is CC BY 4.0, not unlicensed | Ideas only, as for GPL sources, to keep one rule | Adapted code carries CC BY attribution, not MIT | F2 |
-| 20 | Offline stills: a GPL Blender script in its own directory, a Mitsuba script under MIT, or stills outside the repository. This pull request keeps its 24 Blender scripts out of the tree meanwhile | Mitsuba, with Blender kept to one-off renders outside the tree | A GPL directory with its own licence file and a line in the research README | F1 |
+| 20 | Offline stills: a GPL Blender script in its own directory, a Mitsuba script under MIT, or stills outside the repository. This pull request keeps its 24 Blender scripts out of the tree meanwhile | Mitsuba, with Blender kept to one-off renders outside the tree | A GPL directory with its own licence file and a line in the research README; amends [D17](decisions.md#d17-third-party-and-external-tools) and the AGENTS.md external-tools rule, which since [C100](decisions.md#changes-since-draft-v2) lets no script here use Blender's API | F1 |
 | 21 | A Python prototype under `study/`, outside CI | Yes | The prototype lives outside the repository; only its FOLD outputs arrive, as fixtures with provenance | F2 |
 | 22 | May an external tool's shape be shown for review | Yes, labelled a prototype, never a golden or the published illustration | Review waits for F4 | F2 |
 | 23 | An inflate or spread step's settled figure as a page cell with its own three-quarter camera | No: a separate figure after the page (R-11-32) | Amends D14 (R-07-32) and the AGENTS.md one-camera rule | F7 |
