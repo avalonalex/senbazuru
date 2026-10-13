@@ -206,7 +206,7 @@ not gain new meanings.
 | **Springback** | A pressed crease reopening partway when released. Research only. |
 | **Triangle budget** | The largest mesh `run --settle` accepts, in refined triangles counted before solving. The PR that builds `run --settle` sets it from 3–5 compiled runs on the crane fixtures it must settle, and any later change is made the same way ([07](07-prd-material-consumption.md#requirements) R-07-41; owner decision 12, decided 2026-10-12). Default CI settles at most 392 triangles, and never a crane fixture. |
 | **Material block** | `material { … }`: sheet size, thickness, an illustrative stiffness preset and rest policy, with unit suffixes (`15cm`). Thickness is stored, unused in v1. |
-| **Crane spreading** | `CraneSpread`: bending the lowered *crane wing* with the rest of the sheet kept, the body fixed, a short root strip held at 30° and a tip grip turned a further 20° ([`CraneSpread.hs:1-9`](../study/fold-material/CraneSpread.hs#L1-L9)); the settle the crane-wing example sequence re-expresses at M6 ([D14](decisions.md#d14-material-consumption)). |
+| **Crane spreading** | `CraneSpread`: bending the lowered *crane wing* with the rest of the sheet kept, the body fixed, a root strip held at 30° and a tip grip turned a further 20° ([`CraneSpread.hs:1-9`](../study/fold-material/CraneSpread.hs#L1-L9)); the settle the crane-wing example sequence re-expresses at M6 ([D14](decisions.md#d14-material-consumption)). |
 
 ## Realistic rendering
 
