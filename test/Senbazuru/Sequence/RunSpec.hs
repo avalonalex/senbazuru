@@ -939,6 +939,25 @@ creasing = describe "a fold along a line where no crease runs" $ do
     renderRunReport run `shouldContain` ["  line corner north-west to corner south-east: through (0.5, 0.5), along (0.707107, 0.707107)"]
     renderRunReport run `shouldContain` ["  new crease: (0, 0) to (1, 1), valley (internal edge 4)"]
 
+  -- Perpendicular to edge south through the centre is the line up the
+  -- middle, so the fold is the one along [midpoint of edge south, midpoint
+  -- of edge north]: the same crease, hinge and angles. Neither line says
+  -- which side moves, so moving P must. Turns red if O4 were refused, or its
+  -- line drawn along L rather than across it.
+  it "folds perpendicular to a line through a point as along that line through two points" $ do
+    let upTheMiddle line seed = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp (step_ "Fold the right half behind." (move (Fold MountainFold ToFlat line FlapOfFirstArgument seed)))
+        o4 = PerpendicularThrough (edge South) centre
+    perpendicularRun <- right (upTheMiddle o4 (Just (corner SouthEast)))
+    throughTwoRun <- right (upTheMiddle (Segment (MidpointOfEdge South) (MidpointOfEdge North)) (Just (corner SouthEast)))
+    perpendicular' <- one (runRecords perpendicularRun)
+    throughTwo <- one (runRecords throughTwoRun)
+    map ends (recordNewCreases perpendicular') `shouldBe` [([V2 0.5 0, V2 0.5 1], [EdgeId 6], Mountain)]
+    (recordNewCreases perpendicular', recordHinge perpendicular', recordAngles perpendicular') `shouldBe` (recordNewCreases throughTwo, recordHinge throughTwo, recordAngles throughTwo)
+    renderRunReport perpendicularRun `shouldContain` ["  line perpendicular to edge south through centre: through (0.5, 0.5), along (0, 1)"]
+    case upTheMiddle o4 Nothing of
+      Left (StepRefused _ _ _ (Selecting SeedMissing)) -> pure ()
+      other -> expectationFailure ("expected the line refused as saying no side moves, got " <> either (show . explain) (const "a run") other)
+
   -- The square's default anchor is its centre, on the diagonal. Folding
   -- corner south-east up onto corner north-west turns the lower triangle,
   -- so the anchor moves to the upper one's vertex mean, (1/3, 2/3), and the

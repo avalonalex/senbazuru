@@ -252,7 +252,12 @@ unit v = (1 / norm v) *^ v
 -- * @edge S@, the line the sheet's side S lies along now, if it lies along
 --   one;
 -- * @L1 to L2@, laying one line onto another, where L1 and L2 are each an
---   edge or @[P, Q]@ ('lineOnto').
+--   edge or @[P, Q]@ ('lineOnto');
+-- * @perpendicular to L through P@, through where P now is, at right angles
+--   to L where L now lies. Only L's direction counts, so P may lie on L or
+--   off it, and L may be any line named here but a hinge: finding a hinge
+--   needs the run's earlier records, which only "Senbazuru.Sequence.Run"
+--   has.
 foldLine :: Double -> FlatState -> Line -> Either ResolveProblem FoldLine
 foldLine band st = \case
   Segment p q -> do
@@ -268,7 +273,12 @@ foldLine band st = \case
     s1 <- operand l1
     s2 <- operand l2
     lineOnto band st s1 s2 nearest
-  PerpendicularThrough {} -> notYet "\"perpendicular to L through P\""
+  PerpendicularThrough l p -> do
+    FoldLine _ d <- case l of
+      HingeOf _ -> notYet "\"perpendicular to L through P\" with L a hinge"
+      _ -> foldLine band st l
+    c <- positionOf band st p
+    pure (FoldLine c (perpendicular d))
   PointToLineThrough {} -> notYet "\"P to L through Q\""
   TwoToTwo {} -> notYet "\"P to L1 and Q to L2\""
   PointToLinePerpendicular {} -> notYet "\"P to L1 perpendicular to L2\""

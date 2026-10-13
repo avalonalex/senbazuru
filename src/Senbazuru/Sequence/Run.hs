@@ -13,13 +13,14 @@
 -- from, and 'runSequence' runs a checked, elaborated sequence from there. So
 -- far it makes @fold@, along creases the paper already has or, on the flat
 -- sheet, along a line where none runs yet, its line given by points, by an
--- edge, by laying one line onto another or as @hinge of NAME@; @pre-crease@,
--- the same fold checked and laid flat again, which leaves its crease and one
--- record; @unfold@; @turn over@, which moves no paper and shows the model
--- from its other side; @rotate@ by eighths of a turn, which turns the model
--- on the page, the same side up; @anchor P@, which holds other paper still
--- from then on and moves none; and @expect refused@. Every other move is
--- refused as not run yet, naming itself, rather than skipped.
+-- edge, at right angles to a line through a point, by laying one line onto
+-- another or as @hinge of NAME@; @pre-crease@, the same fold checked and laid
+-- flat again, which leaves its crease and one record; @unfold@; @turn over@,
+-- which moves no paper and shows the model from its other side; @rotate@ by
+-- eighths of a turn, which turns the model on the page, the same side up;
+-- @anchor P@, which holds other paper still from then on and moves none; and
+-- @expect refused@. Every other move is refused as not run yet, naming itself,
+-- rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
 -- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
