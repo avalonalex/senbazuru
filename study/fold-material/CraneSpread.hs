@@ -32,7 +32,7 @@ module CraneSpread
   )
 where
 
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import CraneWing
 import Data.Aeson (toJSON)
 import Data.Aeson.KeyMap qualified as KM
@@ -105,6 +105,11 @@ spreadControls level degrees =
 craneSpreadFromWing :: SpreadRefinement -> CraneWing -> Int -> Double -> Either SpreadError CraneSpread
 craneSpreadFromWing selection wing level degrees = do
   spreadControls level degrees
+  -- Above the widest point the held root strip is the base between the join
+  -- and the hinge ('rootStrip'). Without the join the base is no panel of its
+  -- own, and the start already has layers out of order.
+  when (craneHingeY wing > craneWidest wing + 1e-9 && not (craneJoined wing)) $
+    Left (SpreadError "a wing creased above its widest point needs the join along it to be spread; build it with buildCraneWingAt")
   sheet <- checked (surfaceFromFolded (craneStart wing))
   reference <- checked (flapAt (craneOpening wing) (30 / 90))
   features <- checked (surfaceFeatures sheet)

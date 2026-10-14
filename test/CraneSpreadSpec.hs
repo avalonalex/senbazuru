@@ -5,7 +5,7 @@ module CraneSpreadSpec (spec) where
 import Control.Monad (forM_)
 import CraneSpread
 import CraneSpreadScreen
-import CraneWing (buildCraneWing, buildCraneWingAt, craneHingeY, craneWidest)
+import CraneWing (WidestJoin (..), buildCraneWing, buildCraneWingAt, buildCraneWingWith, craneHingeY, craneWidest)
 import Data.Either (isLeft)
 import Data.IntMap.Strict qualified as IM
 import Data.Map.Strict qualified as M
@@ -87,6 +87,11 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
       abs (norm (q ^-^ V3 (v3x q) hingeY 0) - (hingeY - y)) `shouldSatisfy` (< 1e-12)
     -- As one piece: no two of its vertices move apart or together.
     maximum [abs (norm (q ^-^ q') - norm (p ^-^ p')) | (p, q) <- pinned, (p', q') <- pinned] `shouldSatisfy` (< 1e-12)
+    -- Without the join along the widest point the base is no panel of its
+    -- own, so a wing built to compare with a sequence's record cannot be
+    -- spread: its start would have layers out of order.
+    open <- right (buildCraneWingWith WithoutWidestJoin 0.376 source)
+    craneSpreadFromWing WingOnly open 3 20 `shouldSatisfy` isLeft
 
   it "recovers the rigid 30-degree baseline without adding curvature" $ \source -> do
     fixture <- right (craneSpread source 3 0)

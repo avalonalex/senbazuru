@@ -27,8 +27,9 @@
 -- join and the hinge, four layers deep, has panels of its own. No fold makes
 -- that join: a sequence that lowers the wing creases only its hinge. So
 -- 'buildCraneWingWith' can leave it out, for comparing the wing with a
--- sequence's record (owner decision 44); the galleries keep it, since their
--- settle starts from those panels.
+-- sequence's record (owner decision 44). Every gallery keeps it, and
+-- 'CraneSpread' refuses a wing without it, since the spread holds the base
+-- between the join and the hinge as one piece.
 --
 -- Keep the original face zero first so adding the crease does not move the
 -- crane's anchor. Choose the starting order with the tail tucked between the
@@ -71,7 +72,10 @@ data CraneWing = CraneWing
     craneHingeY :: !Double,
     -- | The folded y of the wing's widest point, where its sides are creased
     -- to the small triangles folded inside it.
-    craneWidest :: !Double
+    craneWidest :: !Double,
+    -- | Whether the join along the widest point was drawn: only for a line
+    -- above it, and not when 'buildCraneWingWith' was asked to leave it out.
+    craneJoined :: !Bool
   }
   deriving stock (Show)
 
@@ -96,8 +100,8 @@ wingRoot source = do
   pure ((low + high) / 2)
 
 -- | Whether a wing creased above its widest point also gets the join along
--- it. Below the widest point there is nothing to join, and neither changes
--- the build.
+-- it. Below the widest point no join is drawn, so the two builds are the
+-- same.
 data WidestJoin = WithWidestJoin | WithoutWidestJoin
   deriving stock (Eq, Show)
 
@@ -138,8 +142,8 @@ buildCraneWingWith widestJoin hingeY source = do
       [] -> Left "missing wing crease"
     [] -> Left "missing wing hinge"
   -- The face beside the hinge's first segment on the tip's side. It is found
-  -- by where it lies, not by the tip's corner: above the widest point the face
-  -- beside the hinge is the base, which the tip is not in.
+  -- by where it lies, not by the tip's corner: above the widest point, with
+  -- the join, the face beside the hinge is the base, which the tip is not in.
   points <- first explain (frameVertices frame)
   let foldedY (VertexId i) = case drop i points of
         V3 _ y _ : _ -> y
@@ -157,7 +161,7 @@ buildCraneWingWith widestJoin hingeY source = do
     Left err@(FlapEndpointOrder 0 _) -> Right (explain err)
     Left err -> Left ("unexpected wrong-direction refusal: " <> explain err)
     Right _ -> Left "the wing passed through its declared resting layer"
-  pure (CraneWing start hinge side motion refusal hingeY widest)
+  pure (CraneWing start hinge side motion refusal hingeY widest (any (\(_, _, assignment) -> assignment == Join) segments))
 
 -- The wing containing material corner (0,1) is faces 2, 3, 6 and 7 from its
 -- tip to the body's underside, and 32, 34, 35 and 38, the triangles folded
