@@ -172,15 +172,63 @@ spec = describe "checked crane wing" $ do
   it "renders four reviewed illustrations with one camera and scale" $
     right (craneSvg (craneFile states)) >>= goldenText "test/golden/checked-crane.svg"
 
-  -- The gallery lowers the wing about its root (owner decisions 34 and 35),
-  -- above the widest point, where the crease cuts eight faces four layers
-  -- deep. Its states must keep their paper unstretched as the 1/4 ones do.
-  it "lowers the wing about its root with every state keeping its lengths" $ do
-    hinge <- right (wingRoot (keyFrame source))
-    root <- right (buildCraneWingAt hinge (keyFrame source))
-    rooted <- right (craneStates root)
-    map fst rooted `shouldBe` map fst states
-    forM_ rooted $ \(_, sheet) -> materialError sheet `shouldSatisfy` (< 1e-9)
+  -- The wing lowered about its root (owner decisions 34 and 35), built once
+  -- for the tests below, and only when one of them runs.
+  beforeAll (rootWing (keyFrame source)) $ describe "about its root" $ do
+    -- The gallery lowers the wing about its root, above the widest point,
+    -- where the crease cuts eight faces four layers deep. Its states must
+    -- keep their paper unstretched as the 1/4 ones do.
+    it "lowers the wing about its root with every state keeping its lengths" $ \(_, root) -> do
+      rooted <- right (craneStates root)
+      map fst rooted `shouldBe` map fst states
+      forM_ rooted $ \(_, sheet) -> materialError sheet `shouldSatisfy` (< 1e-9)
+
+    -- M4 compares a sequence's record with a build that leaves out the join
+    -- along the widest point, since no fold writes it (owner decision 44).
+    -- Leaving it out leaves whole the four faces the join would cut in two, and
+    -- changes nothing else. The joined build's vertices begin with this one's,
+    -- in the same places, the hinge's among them, so faces named by their
+    -- vertex ids compare across the two builds. The 76 faces both have keep
+    -- all 910 layer orders between them, each read as which lies above which.
+    -- Below the widest point no join is drawn either way. Turns red if the
+    -- join were drawn anyway, below the widest point too, or if leaving it out
+    -- changed the stacking chosen.
+    it "leaves out the join along the widest point, as a fold does" $ \(hinge, joined) -> do
+      open <- right (buildCraneWingWith WithoutWidestJoin hinge (keyFrame source))
+      let coords w = verticesCoords (foldedPattern (craneStart w))
+          shared = S.intersection (S.fromList (faceNames joined)) (S.fromList (faceNames open))
+          among = S.filter (\(a, b) -> S.member a shared && S.member b shared)
+      length (facesVertices (foldedFrame (craneStart open))) `shouldBe` 72 + 8
+      map craneJoined [open, joined] `shouldBe` [False, True]
+      take (length (coords open)) (coords joined) `shouldBe` coords open
+      S.size shared `shouldBe` 76
+      openOrders <- among <$> namedOrders open
+      joinedOrders <- among <$> namedOrders joined
+      S.size openOrders `shouldBe` 910
+      openOrders `shouldBe` joinedOrders
+      map (length . faceOrders . foldedFrame . craneStart) [open, joined] `shouldBe` [952, 978]
+      map (length . flapMovingFaces . craneOpening) [open, joined] `shouldBe` [8, 12]
+      below <- right (buildCraneWingWith WithoutWidestJoin studyHinge (keyFrame source))
+      foldedFrame (craneStart below) `shouldBe` foldedFrame (craneStart wing)
+
+-- The wing's root and the wing built about it, with the join.
+rootWing :: Frame -> IO (Double, CraneWing)
+rootWing frame = do
+  hinge <- right (wingRoot frame)
+  wing <- right (buildCraneWingAt hinge frame)
+  pure (hinge, wing)
+
+-- Each face of a wing's start named by its vertex ids, in order.
+faceNames :: CraneWing -> [[VertexId]]
+faceNames w = map sort (facesVertices (foldedFrame (craneStart w)))
+
+-- The layer orders of a wing's start as which face lies above which in the
+-- world ('worldOrder'), each face named by 'faceNames'.
+namedOrders :: CraneWing -> IO (S.Set ([VertexId], [VertexId]))
+namedOrders w = do
+  pairs <- worldOrder (foldedFrame (craneStart w))
+  let named fid = require "named face" (lookup fid (zip (map FaceId [0 ..]) (faceNames w)))
+  S.fromList <$> traverse (\(a, b) -> (,) <$> named a <*> named b) (S.toList pairs)
 
 materialError :: Surface V2 -> Double
 materialError sheet = maximum (0 : errors)
