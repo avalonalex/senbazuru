@@ -39,8 +39,13 @@
 --    first, at rest, and name paper again ('creaseAcross').
 -- 2. Take the flap containing the seed, and the creases along the line that
 --    border it, as the hinge. If the flap holds the anchor's face, which
---    folding holds still, re-anchor first ('reanchor'), and name paper
---    afresh on the fold held from the new face.
+--    folding holds still, re-anchor first ('reanchor'), carry the fold line
+--    onto the fold held from the new face ('carryLine'), and take the flap
+--    afresh there. The line is named once, on the paper as it was before
+--    the move. Named again after the move's own crease, a typed point would
+--    be measured for a near miss against the vertices that crease added,
+--    which the author never saw, and whether a fold ran would depend on the
+--    anchor.
 -- 3. Turn @valley@ or @mountain@ into a direction from the reader's side:
 --    @valley@ is in front, towards the reader, which is +z on the paper as
 --    folded while the model is shown as it lies, and -z once the display
@@ -572,7 +577,7 @@ runMove settings place named state surface = \case
     flat <- first naming (flatState folded)
     m <- first naming (materialPoint flat point)
     FaceId face <- first naming (regionFace flat m)
-    (anchored, refolded) <- reanchorAt place folding folded face m
+    (anchored, refolded, _) <- reanchorAt place folding folded face m
     held <- first (refusedAt place . JoinBroken . ("the re-anchored paper makes no surface: " <>) . explain) (surfaceFromFolded refolded)
     Right (Made anchored [refoldsSince state anchored (anchoring (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state, theAnchor anchored) held (thePresentation anchored) (thePlacement anchored))] [])
   -- A rotate turns the model on the page, the same side up, so the reader's
@@ -596,17 +601,16 @@ foldMove settings place named arriving kind sense amount line layers seed = do
   -- @hinge of NAME@ is the line the named step's one move turned about: the
   -- recorded crease, where the paper now lies, found on the paper as it is
   -- now, since a later move may have creased it ('piecesNow').
-  let lineOn st flat' = first (resolvingAt place (prettyLine line)) $ case line of
-        HingeOf name -> case M.findWithDefault [] name named of
-          [earlier] -> case concatMap (piecesNow (theWorking st) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)) of
-            e : _ -> lineAlong flat' e
-            [] -> Left NoSolution
-          records -> Left (HingeOfNotOneMove name (length records))
-        _ -> foldLine (runNearMissBand settings) flat' line
-      towardIn st = case sense of
+  foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
+    HingeOf name -> case M.findWithDefault [] name named of
+      [earlier] -> case concatMap (piecesNow (theWorking given) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)) of
+        e : _ -> lineAlong seen e
+        [] -> Left NoSolution
+      records -> Left (HingeOfNotOneMove name (length records))
+    _ -> foldLine (runNearMissBand settings) seen line
+  let towardIn st = case sense of
         ValleyFold -> frontOf st
         MountainFold -> opposite (frontOf st)
-  foldAt <- lineOn given seen
   -- A fold's new crease is lettered by its sense, seen from the coloured
   -- side; a pre-crease's has no direction, since a later move may fold it
   -- either way (owner decision 14). Creasing is on the flat sheet, where
@@ -655,25 +659,26 @@ foldMove settings place named arriving kind sense amount line layers seed = do
       case [FaceId i | i <- around, FaceId i `notElem` selectionMoving turning] of
         [] -> Right (creased, foldedCreased, flatCreased, True)
         still -> do
-          (moved, refolded) <- reanchor place creased foldedCreased still
+          (moved, refolded, _) <- reanchor place creased foldedCreased still
           renamed <- first (resolvingAt place (prettyLine line)) (flatState refolded)
           Right (moved, refolded, renamed, False)
   chosen@(_, _, turning) <- choose flatAnchored foldAt
   -- A move that turns the anchor's face, the working pattern's first, which
   -- folding holds still, re-anchors (owner decision 3): onto the paper beside
   -- its hinge that it holds still, which then stays where it is on the page.
-  -- Rooted at another face, the fold is moved as a whole, so the fold line
-  -- and the paper it turns are named on it afresh.
+  -- Rooted at another face, the fold is moved as a whole, by the inverse of
+  -- h, so the fold line is carried with it and the paper it turns is taken
+  -- on it afresh. The line is not named again, as step 2 of the header says.
   (state, folded, flat, (m, seedWords, selection), lineNow) <-
     if carried || FaceId 0 `elem` selectionMoving turning
       then do
-        (moved, refolded) <- reanchor place anchored foldedAnchored (stillBeside (theWorking anchored) (selectionHinge turning) (selectionMoving turning))
+        (moved, refolded, h) <- reanchor place anchored foldedAnchored (stillBeside (theWorking anchored) (selectionHinge turning) (selectionMoving turning))
         renamed <- first (resolvingAt place (prettyLine line)) (flatState refolded)
-        at <- lineOn moved renamed
+        let at = carryLine (Rigid.inverse h) foldAt
         picked <- choose renamed at
         Right (moved, refolded, renamed, picked, at)
       else Right (anchored, foldedAnchored, flatAnchored, chosen, foldAt)
-  when (FaceId 0 `elem` selectionMoving selection) (Left (refusedAt place (JoinBroken "named afresh after re-anchoring, the fold still turns the anchor's paper")))
+  when (FaceId 0 `elem` selectionMoving selection) (Left (refusedAt place (JoinBroken "taken afresh after re-anchoring, the flap still turns the anchor's paper")))
   let magnitude = case amount of
         ToFlat -> 180
         Degrees r -> fromRational r
@@ -747,7 +752,7 @@ creaseAcross place line state folded flat foldAt letter = case crossedFaces flat
 -- (decisions C19), and a move that turns the anchor's paper, from the faces
 -- beside its hinge that it holds still (owner decision 3). 'reanchorAt' does
 -- the rest.
-reanchor :: Here -> FoldState -> Folded -> [FaceId] -> Either SequenceError (FoldState, Folded)
+reanchor :: Here -> FoldState -> Folded -> [FaceId] -> Either SequenceError (FoldState, Folded, Rigid)
 reanchor place state folded still = do
   let working = theWorking state
       material = materialPoints working
@@ -762,7 +767,8 @@ reanchor place state folded still = do
 
 -- | Hold face @i@ of the working pattern still from now on, with the anchor
 -- at the material point given, which lies in it. The fold handed back is the
--- new one.
+-- new one, and with it h, whose inverse carries a line found on the old fold
+-- onto the new ('carryLine').
 --
 -- Folding holds the working pattern's first face where it lay on the sheet.
 -- Put another face first, and the whole fold moves by the inverse of h,
@@ -775,7 +781,7 @@ reanchor place state folded still = do
 -- Putting a face first renumbers the faces, so the layer orders are
 -- renumbered with them. Their signs stand: each is read against its faces'
 -- windings, which are not touched.
-reanchorAt :: Here -> FoldState -> Folded -> Int -> V2 -> Either SequenceError (FoldState, Folded)
+reanchorAt :: Here -> FoldState -> Folded -> Int -> V2 -> Either SequenceError (FoldState, Folded, Rigid)
 reanchorAt place state folded i anchorAt = do
   let working = theWorking state
       material = materialPoints working
@@ -806,7 +812,7 @@ reanchorAt place state folded i anchorAt = do
   stands <- either (const (broken "the refolded paper's vertices cannot be read")) (Right . map (applyRigid (thePlacement moved))) (frameVertices (foldedFrame refolded))
   let scale = modelSpan stood
   unless (length stood == length stands && and (zipWith (\p q -> norm (p ^-^ q) <= 1e-12 * scale) stood stands)) (broken "re-anchoring moved the model on the page")
-  pure (held, refolded)
+  pure (held, refolded, h)
 
 -- | A record's edge, numbered as the paper was when the move was made, found
 -- on the working pattern now: the edge itself, if nothing has cut it since,
@@ -951,7 +957,7 @@ undoOne settings place (state, made) earlier = do
           (turning, folded, side) <-
             if FaceId 0 `elem` carried
               then do
-                (moved, refolded) <- reanchor place current foldedNow (stillBeside working hinge carried)
+                (moved, refolded, _) <- reanchor place current foldedNow (stillBeside working hinge carried)
                 side <- sideIn moved
                 Right (moved, refolded, side)
               else Right (current, foldedNow, side')

@@ -63,6 +63,7 @@ module Senbazuru.Sequence.Resolve
     -- * Fold lines and hinges
     FoldLine (..),
     foldLine,
+    carryLine,
     lineAlong,
     hingeAlong,
     crossedFaces,
@@ -243,6 +244,21 @@ data FoldLine = FoldLine {linePoint :: !V2, lineDirection :: !V2}
 -- | A direction of length 1.
 unit :: V2 -> V2
 unit v = (1 / norm v) *^ v
+
+-- | A fold line moved with the paper by a rigid motion of the whole fold, as
+-- re-rooting the fold at another face moves every face
+-- ("Senbazuru.Sequence.Run" says why a run carries its line). Two points of
+-- the line are moved, so its point and its direction cannot be moved by two
+-- different motions. The motion must keep the paper lying flat, as
+-- re-rooting does, since the fold before and the fold after each pass
+-- 'flatState'; z is dropped, as 'flatState' drops it, and the direction is
+-- made of length 1 again.
+carryLine :: Rigid -> FoldLine -> FoldLine
+carryLine motion (FoldLine origin direction) =
+  let moved (V2 x y) = case applyRigid motion (V3 x y 0) of
+        V3 x' y' _ -> V2 x' y'
+      from = moved origin
+   in FoldLine from (unit (moved (origin ^+^ direction) ^-^ from))
 
 -- | The fold line the reference names, where the paper now lies:
 --
