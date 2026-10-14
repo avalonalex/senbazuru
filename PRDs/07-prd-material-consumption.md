@@ -514,11 +514,11 @@ from §7 with the `expect refused` line left in, so what you copy is §7's step.
 material { stiffness illustrative }
 
 step wing "Fold the underneath wing away from you until it stands straight out." {
-  # Folded y = 1/4, with bands in eighths of a wing 1/4 long. Owner decision 42
-  # (decided 2026-10-13) moves the step to the wing's root, and #560 re-derives
-  # it there: the fold before M4, the settle before M6.
-  expect refused FlapCovered { fold in front 90° corner north-west to midpoint of edge north }   # UNVERIFIED kind
-  fold behind 90° corner north-west to midpoint of edge north
+  # At the wing's root. The settle is still written at folded y = 1/4, with
+  # bands in eighths of a wing 1/4 long, and #560 re-derives it before M6.
+  let wing-root = perpendicular to [corner north-west, midpoint of edge north] through corner north-east
+  expect refused FlapCovered { fold in front 90° wing-root moving corner north-west }   # UNVERIFIED kind
+  fold behind 90° wing-root moving corner north-west
   settle {
     refine side moving 3
     rest at rigid-pose 1/3
