@@ -44,8 +44,12 @@ and stop at the first that did. A continuous edge changes the end by less and
 less as the step narrows, and a jump does not.
 
 The root joins the two points just before the jumps. Its direction comes from
-those corners, not from the lines probed. For the wing, the tip-to-middle axis
-is about 5° off square to the wing, and both ends still land at y = 0.375849.
+those corners, not from the lines probed. Probing finds each point only to
+within a hair, so each is then moved to where the folded edges meeting there
+cross. Edges of several layers stacked along one line cross nowhere, so only
+edges of two directions count. Where none cross, the point found stands. For
+the wing, the tip-to-middle axis is about 5° off square to the wing, and both
+ends still land at y = 0.375849.
 The root is kept only if the flap then turns about it: crease it through
 every layer, take the paper joined to the tip, and turn it either way.
 
@@ -60,7 +64,12 @@ alone would not say which flap: both wings end at folded (1, 0).
 
 The wing's root is the line the owner chose by eye, y = 0.376, to three
 decimals. An independent union of the faces' shadows finds the same two
-reflex corners in the folded outline, to 1e-9. In two runs, searching the
+reflex corners in the folded outline, to 1e-9. They lie where the wing's
+edges meet the tail's line x − y = 1/2 and the neck's line x + y = 3/2, at
+the height corner north-east folds to, y* = 1 − (√2/4)(1 + 2 sin 22.5°) ≈
+0.3758485593. So the ends are (1/2 + y*, y*) and (3/2 − y*, y*). Crossing the
+folded edges finds them within 1e-13. Probing alone had them 1.1e-9 and
+1.4e-9 low, because it merges runs of paper across gaps of a hair. In two runs, searching the
 tail's edge in full, which finds nothing, took 0.35 and 0.36 CPU seconds, and
 finding a wing's root and checking the turn took 8.2 to 8.4, most of it
 folding and solving the layer order again.

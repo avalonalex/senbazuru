@@ -17,8 +17,11 @@
 -- flap's edge meets the paper beside it, and there the end jumps out into that
 -- paper. The two points just before the first jump on each side are the
 -- root's ends, so its direction comes from the corners, not from the lines
--- probed. 'turnAbout' then creases the root through every layer, takes the
--- paper still joined to the tip, and checks that it turns.
+-- probed. Probing finds each end only to within a hair, so 'exactEnd' moves it
+-- onto the point where the folded edges meeting there cross, if any do.
+-- 'turnAbout' then
+-- creases the root through every layer, takes the paper still joined to the
+-- tip, and checks that it turns.
 module FlapRoot (Prepared (..), prepare, Turn (..), turnAbout, Root (..), findRoot, writeFlapRoot) where
 
 import Control.Monad (when)
@@ -36,7 +39,7 @@ import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (clipSegment, distanceOutside)
+import Senbazuru.Geometry.Polygon (clipSegment, cross2, distanceOutside, distanceToSegment)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap
 import Senbazuru.Origami.Flat (Panel (..), Sheet (..), flatSheet)
@@ -233,9 +236,35 @@ findRoot prepared = do
         Nothing -> Left "lost the paper at a root's end"
   lowAt <- firstJump fst
   highAt <- firstJump snd
-  low <- corner fst lowAt
-  high <- corner snd highAt
+  low <- exactEnd sheet <$> corner fst lowAt
+  high <- exactEnd sheet <$> corner snd highAt
   pure (Root axis (low, high) (lowAt, highAt))
+
+-- | A root's end, made exact. Probing finds it only to within a hair, the
+-- gap across which 'runThrough' merges runs of paper: the crane wing's root
+-- came out 1.2e-9 low. But the end is where the flap's folded edge meets the
+-- edge of the paper beside it. So take every folded edge passing within ten
+-- hairs of the end found, cross each pair that is not parallel, and average
+-- the crossings that land as near. Edges of several layers along one line
+-- are parallel and cross nowhere, which is why a pair must not be.
+--
+-- Where no two edges cross, the end found stands: the run jumped there for
+-- some reason other than an edge meeting paper, as at the crane neck's
+-- second end, where only edges along one line pass. The turn check refuses
+-- that root.
+exactEnd :: Sheet -> V2 -> V2
+exactEnd sheet found = case crossings of
+  [] -> found
+  points -> scaled (1 / fromIntegral (length points)) (foldr plus (V2 0 0) points)
+  where
+    reach = 10 * sheetHair sheet
+    edges = [(a, b) | p <- sheetPanels sheet, let ring = panelRing p, (a, b) <- zip ring (drop 1 ring ++ take 1 ring), distanceToSegment (a, b) found <= reach]
+    crossings = [p | (i, e) <- zip [0 :: Int ..] edges, (j, f) <- zip [0 ..] edges, i < j, Just p <- [crossing e f], norm (p `minus` found) <= reach]
+    crossing (a, b) (c, d) =
+      let u = b `minus` a
+          v = d `minus` c
+          turn = cross2 u v
+       in if abs turn <= 1e-6 * norm u * norm v then Nothing else Just (a `plus` scaled (cross2 (c `minus` a) v / turn) u)
 
 -- | For each corner of the crane's sheet, find the flap's root and turn about
 -- it; then, for the wing, probe lines square to its axis from its tip inwards.

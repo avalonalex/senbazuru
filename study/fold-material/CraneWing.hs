@@ -87,8 +87,11 @@ studyHinge = 0.25
 -- | The folded line y = h the wing hinges at by owner decision 34: its root,
 -- the line from the base of the neck to the base of the tail, found by
 -- 'FlapRoot.findRoot' from the wing's tip at sheet corner (0, 1) rather than
--- typed in (decision 35). 'buildCraneWingAt' creases along a level line, so
--- a root whose ends are not level to a millionth of the sheet is refused. The
+-- typed in (decision 35). Its ends are where folded edges cross, so it lies
+-- within 1e-13 of the height corner north-east folds to, the line a sequence
+-- names by O4 (owner decision 43). 'buildCraneWingAt' creases along a level
+-- line, so a root whose ends are not level to a millionth of the sheet is
+-- refused. The
 -- rule keeps a root only if the flap turns about it; 'buildCraneWingAt' makes
 -- that check when it builds the wing, so this does not repeat it.
 wingRoot :: Frame -> Either Text Double
