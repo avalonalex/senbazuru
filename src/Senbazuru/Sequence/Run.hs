@@ -678,7 +678,7 @@ foldMove settings place named arriving kind sense amount line layers seed = do
         picked <- choose renamed at
         Right (moved, refolded, renamed, picked, at)
       else Right (anchored, foldedAnchored, flatAnchored, chosen, foldAt)
-  when (FaceId 0 `elem` selectionMoving selection) (Left (refusedAt place (JoinBroken "named afresh after re-anchoring, the fold still turns the anchor's paper")))
+  when (FaceId 0 `elem` selectionMoving selection) (Left (refusedAt place (JoinBroken "taken afresh after re-anchoring, the flap still turns the anchor's paper")))
   let magnitude = case amount of
         ToFlat -> 180
         Degrees r -> fromRational r
@@ -813,18 +813,6 @@ reanchorAt place state folded i anchorAt = do
   let scale = modelSpan stood
   unless (length stood == length stands && and (zipWith (\p q -> norm (p ^-^ q) <= 1e-12 * scale) stood stands)) (broken "re-anchoring moved the model on the page")
   pure (held, refolded, h)
-
--- | A fold line on paper lying flat, moved with the paper by a rigid motion,
--- as re-rooting a fold moves every face by the inverse of h. The motion
--- keeps the paper's plane only as nearly as 'reanchorAt' checks it, a
--- cosine within 1e-9 of 1, so the direction is made of length 1 again once
--- it is back in the plane.
-carryLine :: Rigid -> FoldLine -> FoldLine
-carryLine motion (FoldLine (V2 x y) (V2 dx dy)) =
-  let V3 px py _ = applyRigid motion (V3 x y 0)
-      V3 qx qy _ = matApply (rigidLinear motion) (V3 dx dy 0)
-      q = V2 qx qy
-   in FoldLine (V2 px py) ((1 / norm q) *^ q)
 
 -- | A record's edge, numbered as the paper was when the move was made, found
 -- on the working pattern now: the edge itself, if nothing has cut it since,

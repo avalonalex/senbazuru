@@ -3,7 +3,7 @@
 -- an angle or a face wound clockwise.
 module Senbazuru.Sequence.RunSpec (spec) where
 
-import Control.Monad (forM, forM_, void)
+import Control.Monad (forM_, void)
 import Data.Aeson (object, toJSON, (.=))
 import Data.Aeson.KeyMap qualified as KM
 import Data.List (sort, sortOn)
@@ -27,7 +27,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), ResolvedReference (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordResolved, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -685,7 +685,9 @@ reanchoring = describe "re-anchoring" $ do
   -- the line x = 1/2, is taken on, so the model stands where the anchored
   -- run's does, and in front is still towards the reader, which on the paper
   -- folded from that face is -z. Turns red if the placement were dropped,
-  -- the reader's side ignored it, or the fold line were not named afresh.
+  -- or the reader's side ignored it. The half turn leaves the second fold's
+  -- line, y = 1/2, where it lay, so this test cannot tell whether that line
+  -- is carried; the pleat's can.
   it "re-anchors onto paper lying face down, and the model stands where it stood" $ do
     run <- right (runOn (anchoredAt (Just (at (3 / 4) (3 / 4)))))
     map (snd . recordAngles) (runRecords run) `shouldBe` map edgesFoldAngle (otherFrames sheet)
@@ -737,25 +739,19 @@ reanchoring = describe "re-anchoring" $ do
     moved <- right (runOn (turnedAfter (at (3 / 4) (3 / 4))) >>= framesOf)
     zipWith sameModel moved held `shouldBe` replicate 4 True
 
-  -- Re-anchoring twice, onto paper turned about axes 45° apart, on the
-  -- square base. The diagonal fold lays the lower right half behind; the
-  -- fold along the middle carries the anchor and re-anchors onto a triangle
-  -- the diagonal fold turned, so the placement is a half turn about the
-  -- diagonal; swinging the bottom layers back re-anchors again, onto a
-  -- triangle turned about the vertical middle from the first. Two half turns
-  -- about axes 45° apart compose to a quarter turn on the page, and to the
-  -- opposite quarter turn in the other order, so the run refuses unless each
-  -- re-anchoring takes on its h after the placement it had. Turns red then.
   -- A pleat on the square: the left half folded over the right, then its
   -- outer quarter folded back, which lays that quarter two flips from the
   -- right half, about parallel creases, so moved half a sheet along. Folding
   -- the stack over at x = 7/8 turns the anchor's paper and re-anchors onto
   -- the strip beyond, whichever face held it. Anchored on the quarter, that
-  -- strip's h is a move half a sheet back, the one h in these tests that is
-  -- not a half turn and so not its own inverse. The fold line is found at
-  -- x = 3/8 as folded from the quarter, and carried by h's inverse to
-  -- x = 7/8 as folded from the strip. Turns red if it were carried by h, to
-  -- x = -1/8, or not at all, leaving it at 3/8: either is off the paper.
+  -- strip's h is a move half a sheet back: of the h a fold re-anchors by in
+  -- these tests, the only one that is neither the identity nor a half turn,
+  -- and so the only one that is not its own inverse. The fold line is found
+  -- at x = 3/8 as folded from the quarter, and carried by h's inverse to
+  -- x = 7/8 as folded from the strip, where the record says it is at either
+  -- anchor. Turns red if it were carried by h, to x = -1/8, or not at all,
+  -- leaving it at 3/8: either is off the paper, and the run is refused. And
+  -- red if the record kept the line where it was found.
   it "carries the fold line by the inverse of h when h is a move along, not a half turn" $ do
     let pleat holdingAt = sequenceOf (header "A pleat" sheetSquare (Just (at (5 / 8) (1 / 2)))) $ do
           step_ "Pre-crease the quarters and an eighth." $ do
@@ -770,13 +766,28 @@ reanchoring = describe "re-anchoring" $ do
     moved <- right (runOn (pleat (Just (at (1 / 8) (1 / 2)))))
     map (snd . recordAnchor) (drop 5 (runRecords held)) `shouldBe` [corner (15 / 16) (1 / 2)]
     map recordAnchor (drop 5 (runRecords moved)) `shouldBe` [(corner (5 / 8) (1 / 2), corner (1 / 8) (1 / 2)), (corner (1 / 8) (1 / 2), corner (15 / 16) (1 / 2))]
-    renderRunReport moved `shouldContain` ["  line [(7/8, 0), (7/8, 1)]: through (0.875, 0.5), along (0, 1)"]
+    let lastLine run = case reverse (runRecords run) of
+          stackFold : _ -> [(p, d) | ResolvedLine _ p d <- recordResolved stackFold]
+          [] -> []
+        close (V2 a b) (V2 x y) = all ((< 1e-12) . abs) [a - x, b - y]
+    case (lastLine held, lastLine moved) of
+      ([(p, d)], [(p', d')]) -> map (uncurry close) [(p, V2 0.875 0.5), (d, V2 0 1), (p', p), (d', d)] `shouldBe` replicate 4 True
+      other -> expectationFailure ("expected one resolved line in each last record, got " <> show other)
     heldFrames <- right (framesOf held)
     movedFrames <- right (framesOf moved)
     case (reverse heldFrames, reverse movedFrames) of
       (heldLast : _, movedLast : _) -> sameModel heldLast movedLast `shouldBe` True
       _ -> expectationFailure "expected written states"
 
+  -- Re-anchoring twice, onto paper turned about axes 45° apart, on the
+  -- square base. The diagonal fold lays the lower right half behind; the
+  -- fold along the middle carries the anchor and re-anchors onto a triangle
+  -- the diagonal fold turned, so the placement is a half turn about the
+  -- diagonal; swinging the bottom layers back re-anchors again, onto a
+  -- triangle turned about the vertical middle from the first. Two half turns
+  -- about axes 45° apart compose to a quarter turn on the page, and to the
+  -- opposite quarter turn in the other order, so the run refuses unless each
+  -- re-anchoring takes on its h after the placement it had. Turns red then.
   it "re-anchors twice, taking each turn on after the placement before it" $ do
     squareBase <- loadFoldFile "examples/square-base.fold" >>= right
     let twice = sequenceOf (header "t" (sheetFile "examples/square-base.fold") (Just (at (1 / 3) (5 / 6)))) $ do
@@ -923,6 +934,10 @@ creasing = describe "a fold along a line where no crease runs" $ do
       ends (MaterialSegment (MaterialPoint a) (MaterialPoint b), edges, letter) = ([a, b], edges, letter)
       unordered (pair, edges, letter) = (sort' pair, edges, letter)
       sort' = sortOn (\(V2 x y) -> (x, y))
+      -- One fold behind along a line up the square's middle, from an anchor
+      -- given, and what such a fold's record says about the paper.
+      upTheMiddle anchoredAt line seed = onSquare (Just anchoredAt) ColouredUp (step_ "Fold the right half behind." (move (Fold MountainFold ToFlat line FlapOfFirstArgument seed)))
+      facts r = (recordNewCreases r, recordHinge r, recordAngles r)
       -- The square folded along one diagonal, unfolded, then along the
       -- other, unfolded again; then whatever comes after.
       bothDiagonals after' = onSquare (Just (at (3 / 4) (1 / 8))) ColouredUp $ do
@@ -979,10 +994,8 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- moves, so the moving seed, corner south-east, must. Turns red if O4
   -- were refused, or its line drawn along L rather than across it.
   it "folds through a point at right angles to a line as along the same line through two points" $ do
-    let upTheMiddle anchoredAt line seed = onSquare (Just anchoredAt) ColouredUp (step_ "Fold the right half behind." (move (Fold MountainFold ToFlat line FlapOfFirstArgument seed)))
-        o4 = PerpendicularThrough (edge South) centre
+    let o4 = PerpendicularThrough (edge South) centre
         throughTwo = Segment (MidpointOfEdge South) (MidpointOfEdge North)
-        facts r = (recordNewCreases r, recordHinge r, recordAngles r)
     forM_ [at (1 / 4) (1 / 4), at (3 / 4) (1 / 4)] $ \anchoredAt -> do
       o4Run <- right (upTheMiddle anchoredAt o4 (Just (corner SouthEast)))
       twoRun <- right (upTheMiddle anchoredAt throughTwo (Just (corner SouthEast)))
@@ -997,33 +1010,36 @@ creasing = describe "a fold along a line where no crease runs" $ do
 
   -- A point typed 1/2000 above the middle of the south side is that far from
   -- (1/2, 0), the end of the crease each fold here makes, and is near no
-  -- vertex the paper had before. So each fold runs at either anchor, and
-  -- makes the same crease, hinge and angles at both. The two-point line and
+  -- vertex the paper had before. So each fold runs at every anchor, and
+  -- makes the same crease, hinge and angles at each. The two-point line and
   -- the one at right angles move the east half; laying one point onto
-  -- another moves the west, where its first point is, so the two anchors
-  -- swap roles. A point as near a corner the paper already has is a near
-  -- miss at either anchor. Turns red if a move that re-anchors measured near
-  -- misses against its own new crease, or if no move measured them.
-  it "decides a near miss on the paper as it was before the move, at either anchor" $ do
-    let folded anchoredAt line seed = onSquare (Just anchoredAt) ColouredUp (step_ "Fold along the middle." (move (Fold MountainFold ToFlat line FlapOfFirstArgument seed)))
-        nearSouth = at (1 / 2) (1 / 2000)
-        facts r = (recordNewCreases r, recordHinge r, recordAngles r)
-        near (V2 a b) (V2 x y) = max (abs (a - x)) (abs (b - y)) < 1e-12
-        anchors = [at (1 / 4) (1 / 4), at (3 / 4) (1 / 4)]
+  -- another moves the west, where its first point is, so the anchors west
+  -- and east of the middle swap roles. The third anchor is on the new
+  -- crease, and moves off it (decisions C19). A point as near a corner the
+  -- paper already has is a near miss at every anchor. Turns red if a move
+  -- that re-anchors measured near misses against its own new crease, or if
+  -- no move measured them.
+  it "decides a near miss on the paper as it was before the move, at every anchor" $ do
+    let nearSouth = at (1 / 2) (1 / 2000)
+        west = at (1 / 4) (1 / 4)
+        onCrease = at (1 / 2) (1 / 4)
+        east = at (3 / 4) (1 / 4)
+        close (V2 a b) (V2 x y) = all ((< 1e-12) . abs) [a - x, b - y]
     forM_
       [ (Segment nearSouth (at (1 / 2) 1), Just (corner SouthEast)),
         (PerpendicularThrough (edge South) nearSouth, Just (corner SouthEast)),
         (Onto (at (2498 / 5000) (1 / 5000)) (at (2502 / 5000) (1 / 5000)), Nothing)
       ]
       $ \(line, seed) -> do
-        records <- forM anchors $ \anchoredAt -> right (folded anchoredAt line seed) >>= one . runRecords
-        case map facts records of
-          [first', second'] -> first' `shouldBe` second'
-          _ -> expectationFailure "expected one run at each anchor"
-        forM_ records $ \record -> case map ends (recordNewCreases record) of
-          [([a, b], _, Mountain)] -> (near a (V2 0.5 0), near b (V2 0.5 1)) `shouldBe` (True, True)
+        let recordAt anchoredAt = right (upTheMiddle anchoredAt line seed) >>= one . runRecords
+        westward <- recordAt west
+        onIt <- recordAt onCrease
+        eastward <- recordAt east
+        (facts onIt, facts eastward) `shouldBe` (facts westward, facts westward)
+        case map ends (recordNewCreases westward) of
+          [([a, b], _, Mountain)] -> (close a (V2 0.5 0), close b (V2 0.5 1)) `shouldBe` (True, True)
           other -> expectationFailure ("expected one new mountain crease, got " <> show other)
-    forM_ anchors $ \anchoredAt -> case folded anchoredAt (Segment (at (1 / 2) 0) (at (1 / 2000) 1)) (Just (corner SouthEast)) of
+    forM_ [west, onCrease, east] $ \anchoredAt -> case upTheMiddle anchoredAt (Segment (at (1 / 2) 0) (at (1 / 2000) 1)) (Just (corner SouthEast)) of
       Left (ResolveRefused _ _ _ (NearMiss _ 3 _ _)) -> pure ()
       other -> expectationFailure ("expected a near miss of corner north-west, vertex 3, got " <> either (show . explain) (const "a run") other)
 
