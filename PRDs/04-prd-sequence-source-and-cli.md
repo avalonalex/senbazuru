@@ -532,16 +532,17 @@ megaparsec's error bundle is converted once, using its first error:
 
 Outputs (**SKETCH**; each line and column computed with `python3`). The first and
 third are the quarter fold above with a mistake typed in, the second is the
-[crane wing](#example-sources-checked-against-their-fixtures) with its `°` left off:
+[crane wing](#example-sources-checked-against-their-fixtures)'s fold as first planned,
+at folded y = 1/4, with its `°` left off:
 
 ```text
 senbazuru: quarter.foldseq:7:20: "left" names a direction on the page; a material edge is named by compass: edge north, east, south or west
   |
 7 |   fold behind edge left to edge east
   |                    ^^^^
-senbazuru: wing.foldseq:16:15: an angle needs its unit: write 90°
+senbazuru: wing.foldseq:13:15: an angle needs its unit: write 90°
    |
-16 |   fold behind 90 wing-root moving corner north-west
+13 |   fold behind 90 corner north-west to midpoint of edge north
    |               ^^
 senbazuru: quarter.foldseq:6:56: the "{" opening step half is never closed
   |
@@ -892,10 +893,11 @@ print([(i, e) for i, e in enumerate(E) if set(e) <= {8, 9, 10}], "faces_vertices
 
 **Crane wing** (M4, M6). `start folded` keeps the file's folded state and names its
 *stacking*, which layer lies over which
-([glossary-additions](glossary-additions.md#running-a-sequence)). `settle` asks the
-material study to bend the result
-([glossary-additions](glossary-additions.md#material)); 07 owns those words. This
-is the version [decisions §7](decisions.md#7-examples) records.
+([glossary-additions](glossary-additions.md#running-a-sequence)). This is the version
+[decisions §7](decisions.md#7-examples) records, which folds the wing about its
+[root](../docs/glossary.md#origami). Its `settle`, which asks the material study to bend
+the result ([glossary-additions](glossary-additions.md#material)), is in 07, written for
+the fold at folded y = 1/4 until #560 re-derives it at the root.
 
 ```text
 foldseq 1
@@ -906,21 +908,11 @@ start folded {
   layers (1/4, 1/5) above (3/8, 5/9)     # UNVERIFIED: must leave exactly the tail-tucked stacking
   layers (4/9, 3/8) above (1/4, 1/5)
 }
-material { stiffness illustrative }
 
 step wing "Fold the underneath wing away from you until it stands straight out." {
-  # At the wing's root. The settle is still written at folded y = 1/4, with
-  # bands in eighths of a wing 1/4 long, and #560 re-derives it before M6.
   let wing-root = perpendicular to [corner north-west, midpoint of edge north] through corner north-east
   expect refused FlapCovered { fold in front 90° wing-root moving corner north-west }   # UNVERIFIED kind
   fold behind 90° wing-root moving corner north-west
-  settle {
-    refine side moving 3
-    rest at rigid-pose 1/3
-    hold closed side stationary
-    hold band moving 0..1/32 at rigid-pose 1/3    # UNVERIFIED: equals CraneSpread's root-strip pins
-    grip band moving 7/32.. arc-grip 30° 20°      # UNVERIFIED: equals CraneSpread's grip pins
-  }
 }
 ```
 
@@ -936,16 +928,11 @@ python3 PRDs/research/scripts/layer-selection-analyse.py line examples/crane.fol
 ```
 
 The anchor's comment is checked by the command above; the comments marked
-**UNVERIFIED** are not, and the step's comment says the settle is still written at
-y = 1/4. 0.3758485593336277 is 1 − (√2/4)(1 + 2 sin 22.5°), the height the line is
-drawn at. The
-*tail-tucked stacking* is the one of the fixture's five
+**UNVERIFIED** are not. The *tail-tucked stacking* is the one of the fixture's five
 layer orders that puts all eight tail faces between the two sides of the body,
 index 2
 ([CraneWing.hs:135-138](../study/fold-material/CraneWing.hs#L135-L138);
-[several stackings](../docs/notes/several-stackings.md)). *CraneSpread's root strip*
-is the strip of wing beside the hinge that the study holds at a fixed angle
-([CraneSpread.hs:8](../study/fold-material/CraneSpread.hs#L8)).
+[several stackings](../docs/notes/several-stackings.md)).
 
 - **Every typed point is inside exactly one face.** The anchor is in face 0, 0.05
   from its boundary. The relation points are in tail face 10 (0.027), body face 27
@@ -960,27 +947,20 @@ is the strip of wing beside the hinge that the study holds at a fixed angle
   `start folded` folds it from its assignments, having no angles to keep
   ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)). The
   research script puts vertex 2 at (1, 4.6e-14), vertex 28 at (1, 0.5) and vertex 57,
-  the tail's tip, at (0.646447, 0.375849). Its *closure error*, the worst disagreement
-  between two faces about where a shared vertex lies, is 3.0e-13. The line through
-  vertices 2 and 28 is x = 1, and the line at right angles to it through vertex 57 is
-  y = 0.375849, the wing's root ([decisions C102](decisions.md#changes-since-draft-v2)).
+  the tip of the crane's head, at (0.646447, 0.375849). Its *closure error*, the worst
+  disagreement between two faces about where a shared vertex lies, is 3.0e-13. The
+  line through vertices 2 and 28 is x = 1, and the line at right angles to it through
+  vertex 57 is y = 0.375849, the wing's root, 1 − (√2/4)(1 + 2 sin 22.5°) =
+  0.3758485593336277, the height the command above draws it at
+  ([decisions C102](decisions.md#changes-since-draft-v2)).
 - **The flap, the paper that turns, is the wing.** Faces 2, 3, 6 and 7 hold vertex
   2. The script's [seed](glossary-additions.md#references) (0.02, 0.97), a point
   inside the wing rather than on a crease, selects the faces still joined to it once
   the paper is cut along the line: `[2, 3, 6, 7, 32, 34, 35, 38]`, the wing's four
-  faces and the four triangles folded inside it above its widest point
-  ([gap-layer-selective-folds](research/gap-layer-selective-folds.md) "Re-deriving
-  CraneWing by rule (script)"). That is Python evidence, not Haskell
+  faces and the four triangles folded inside it between its widest point, folded
+  y = 0.324, where its sides are creased to them, and its root
+  ([02's check P](02-language-semantics.md#check-p)). That is Python evidence, not Haskell
   ([D8](decisions.md#d8-folding-some-layers)).
-- **The `material` and `settle` lines.** `stiffness illustrative` is
-  `Bending 1 0.2`, the stiffness `CraneSpread` builds its hinges with
-  ([CraneSpread.hs:121](../study/fold-material/CraneSpread.hs#L121)).
-  `refine side moving 3` refines the wing at level 3, one of the two levels
-  `craneSpreadWith` accepts ([:99-100](../study/fold-material/CraneSpread.hs#L99-L100)).
-  `rest at rigid-pose 1/3` rests every active crease at its angle a third of the way
-  through this 90° fold, the wing at 30°; with no rest line here or in the
-  `material` block, the settle is refused as `SettleNoRest`
-  ([D14](decisions.md#d14-material-consumption)).
 - **The expected kind is `FlapCovered`, not `FlapEndpointOrder`.** The selection
   rule refuses a fold when a stationary face is nearer than the flap on the side it
   turns towards, and it runs before `Flap`'s sweep
@@ -994,8 +974,8 @@ is the strip of wing beside the hinge that the study holds at a fixed angle
   refused at all, and as `FlapCovered`, which rests on the inference that the other
   wing lies on this wing's reader side
   ([gap-layer-selective-folds](research/gap-layer-selective-folds.md) finding 14);
-  the sense as seen ([02](02-language-semantics.md)); and every `settle` equivalence,
-  07's first M6 test.
+  and that the runner turns the wing as the study's build does, which
+  [02 §6.3](02-language-semantics.md#63-which-layers) records.
 
 ## Acceptance criteria
 
@@ -1017,7 +997,7 @@ is the strip of wing beside the hinge that the study holds at a fixed angle
 | A14 | The 33 tracked goldens are byte-identical ([D16](decisions.md#d16-testing-and-acceptance)). | Any existing output changes. |
 | A15 | `planRun` refuses each flag outside its output: `--frame` with `.fold` or `.svg`, a page flag without `.svg`, `--all-layers` without `.glb`, `--author` or `--description` without `.fold`, and any of these or `-o` with `--check`. It refuses `-o x.png` and accepts `-o X.SVG`. Every geometric plan holds the `--layer-budget` given. | A refusal is dropped, the extension is compared before lowercasing, or a plan holds `defaultBudget` in place of the flag. |
 | A16 | `chooseState` on a 3-state file refuses `--frame 0` and `--frame 4`, both naming 3; gives state 0 for `--frame 1` and state 2 for `--frame 3`; and gives state 2 with no `--frame`. | `--frame N` selects state N rather than N − 1, so `run` and `export` disagree by one; or the default becomes the first state. |
-| A17 | `refusalLines` gives `wing.foldseq:16:15: an angle needs its unit: write 90°` followed by the three excerpt lines for the missing-unit error; exactly `[explain e]` for a `NoSpan` error; and, for input starting with `{`, one more line after the excerpt naming the verbs that read FOLD, which `explain` does not name. | A `NoSpan` error gets a location prefix, the excerpt is printed without one, or the verb line moves into `explain`. |
+| A17 | `refusalLines` gives `wing.foldseq:13:15: an angle needs its unit: write 90°` followed by the three excerpt lines for the missing-unit error; exactly `[explain e]` for a `NoSpan` error; and, for input starting with `{`, one more line after the excerpt naming the verbs that read FOLD, which `explain` does not name. | A `NoSpan` error gets a location prefix, the excerpt is printed without one, or the verb line moves into `explain`. |
 | A18 | The quarter fold with step `quarter`'s fold replaced by `not modelled "fold in quarters"`: `runSequence` gives `Right` a `Run` whose `runStop` names step 2, `quarter`; `runRefusal` gives `StepRefused 2 (Just "quarter") … (NotModelled "fold in quarters")`; and the writer writes a sequence file of 2 states, the flat start and the state after `half`. | The records before the move are discarded, the stop becomes a `Left`, `runRefusal` gives `Nothing`, or the writer refuses a run that stopped early. |
 | A19 | Goldens of `renderRunReport` on the quarter fold, with every record row of the report table present, and on 09's E10 blintz with move 5 wrapped in `expect refused FlapEndpointOrder` ([09 §3](09-testing-and-acceptance.md#3-end-to-end-e1e10-on-the-blintz)), whose report has the expected-refusal line. | A report line is dropped or reads a different field, or an expected refusal is left out of the report. |
 

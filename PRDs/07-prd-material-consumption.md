@@ -393,8 +393,8 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 | `recordStacking`, `recordResolved`, `recordMacros`, `recordCost` | report; certificate binding |
 | `recordAnchor`, `recordPresentation`, `recordPlacement` | display only, never before settling |
 
-**On the crane wing**, `fold behind 90° corner north-west to midpoint of edge
-north` has `recordBefore` = the creased, unturned crane: 76 faces
+**On the crane wing**, as first planned at folded y = 1/4,
+`fold behind 90° corner north-west to midpoint of edge north` has `recordBefore` = the creased, unturned crane: 76 faces
 ([`CraneWing.hs:118`](../study/fold-material/CraneWing.hs#L118)), 138 edges and 902
 orders ([spreading-connected-wing.md:69-70](../docs/notes/spreading-connected-wing.md)).
 `recordHinge` has four segments with `craneHinge`'s ids; `recordMoving` has seed
@@ -504,8 +504,11 @@ before `Flap`'s sweep runs ([D8](decisions.md#d8-folding-some-layers)), while
 `CraneWing` calls `prepareFlapAlong` with no selection step
 ([`CraneWing.hs:140-144`](../study/fold-material/CraneWing.hs#L140-L144)), so only
 the recipe reaches `Flap`'s refusal. This file adds the `material` line and the
-`settle` block. Below they are shown in the step they belong to, copied exactly
-from §7 with the `expect refused` line left in, so what you copy is §7's step.
+`settle` block. Below they are shown in the step they were written for, with the fold
+at folded y = 1/4 and its `expect refused` line, which is what the notes after it
+describe. §7 now folds the wing at its root and carries no settle: there a band's ends,
+measured from the hinge, would select other vertices, and #560 re-derives the settle
+at the root before M6 ([decisions §10](decisions.md#10-corrections) item 43).
 `stiffness illustrative` means `Bending 1 0.2`, the value
 [`CraneSpread.hs:121`](../study/fold-material/CraneSpread.hs#L121) passes
 (**Stiffness**, below).
@@ -514,11 +517,11 @@ from §7 with the `expect refused` line left in, so what you copy is §7's step.
 material { stiffness illustrative }
 
 step wing "Fold the underneath wing away from you until it stands straight out." {
-  # At the wing's root. The settle is still written at folded y = 1/4, with
-  # bands in eighths of a wing 1/4 long, and #560 re-derives it before M6.
-  let wing-root = perpendicular to [corner north-west, midpoint of edge north] through corner north-east
-  expect refused FlapCovered { fold in front 90° wing-root moving corner north-west }   # UNVERIFIED kind
-  fold behind 90° wing-root moving corner north-west
+  # Written for the fold at folded y = 1/4, the plan decisions §10 item 43
+  # replaces: the sequence now folds at the wing's root (decisions §7), and
+  # #560 re-derives this settle there before M6.
+  expect refused FlapCovered { fold in front 90° corner north-west to midpoint of edge north }   # UNVERIFIED kind
+  fold behind 90° corner north-west to midpoint of edge north
   settle {
     refine side moving 3
     rest at rigid-pose 1/3

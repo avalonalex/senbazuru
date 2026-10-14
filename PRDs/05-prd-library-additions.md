@@ -914,9 +914,9 @@ takes that note's "Refusal list".
 
 | Test | Turns red if |
 | --- | --- |
-| `crane.fold`, line (0, 1/4)–(2, 1/4): `FlapContaining (0.02, 0.97)` gives {2, 3, 6, 7}, `FlapContaining (0.97, 0.02)` gives {0, 1, 4, 5} (finding 12, Python; the Haskell reproduction [D8](decisions.md#d8-folding-some-layers) requires) | the rule and `CraneWing`'s hand list diverge |
-| `crane.fold`, line (0, y\*)–(2, y\*), at the wing's root, y\* = 1 − (√2/4)(1 + 2 sin 22.5°): `FlapContaining (0.02, 0.97)` gives {2, 3, 6, 7, 32, 34, 35, 38}, and `FlapContaining (0.97, 0.02)` gives {0, 1, 4, 5, 33, 36, 37, 39} (Python, [02's check P](02-language-semantics.md#check-p); the crane-wing sequence's line, owner decisions 42 and 43). The line grazes the tail's tip, so it is taken from the sequence's own line rather than typed: a line a few hairs lower adds the tail's faces | the rule and the faces `CraneWing` creases at the root diverge |
+| `crane.fold`, line (0, 1/4)–(2, 1/4): `FlapContaining (0.02, 0.97)` gives {2, 3, 6, 7}, `FlapContaining (0.97, 0.02)` gives {0, 1, 4, 5} (finding 12, Python) | the rule and `CraneWing`'s hand list diverge |
 | Same line: the coupling check (02 §6.3 step 3) on the restricted set {6, 7}, the set a one-layer selection of that wing gives, is refused as coupled, naming face 2 or 6 (finding 13). Which `Selector` and moving side yield {6, 7} is **UNVERIFIED** | the separation check is dropped |
+| `crane.fold`, line (0, y\*)–(2, y\*) at the wing's [root](../docs/glossary.md#origami), y\* = 1 − (√2/4)(1 + 2 sin 22.5°) = 0.3758485593336277: `FlapContaining (0.02, 0.97)` gives {2, 3, 6, 7, 32, 34, 35, 38}, and `FlapContaining (0.97, 0.02)` gives {0, 1, 4, 5, 33, 36, 37, 39} (Python, [02's check P](02-language-semantics.md#check-p); the Haskell reproduction [D8](decisions.md#d8-folding-some-layers) requires) | the rule selects other faces at the root |
 | `quarter-fold.fold`, line (0.5, 0)–(1, 0.5): `FlapContaining` with a seed near (1, 0) is refused as covered, since faces 1 and 2 cover it from above and face 3 from below (finding 15) | orders are ignored |
 
 **Milestone.** M4.
@@ -1169,7 +1169,7 @@ placements
   | `toward` | the moving face shows its top | the moving face shows its back |
   | --- | --- | --- |
   | `TowardPlusZ` (a raw valley) | travel = +magnitude (edge 9 in step 2) | travel = −magnitude (edge 11 in step 2) |
-  | `TowardMinusZ` (a raw mountain) | travel = −magnitude (edges 8, 10 in step 1) | travel = +magnitude (the crane wing's accepted `behind`, reasoned; the blintz's folded-under corner, reopened) |
+  | `TowardMinusZ` (a raw mountain) | travel = −magnitude (edges 8, 10 in step 1) | travel = +magnitude (the crane wing's accepted `behind`, run on the study's build, decisions' appendix command 16; the blintz's folded-under corner, reopened) |
 
   Every other segment's reading, turned into the first segment's by its
   direction along the hinge, must agree (R-05-46).

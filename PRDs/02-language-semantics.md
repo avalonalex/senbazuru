@@ -49,6 +49,7 @@ Terms are defined in one clause and linked to
 | **[py re-impl]** | the research's Python re-implementation of folding, not senbazuru |
 | **[prd]** | a measurement made by another PRD file, whose linked section holds the command |
 | **[reasoned]** | worked out from cited code, not run |
+| **[ran]** | run in senbazuru; the command is in [decisions' appendix](decisions.md#appendix-commands-behind-the-numbers) |
 
 ## 1. One run, walked through
 
@@ -645,7 +646,7 @@ places:
 | Raw sense | Moving face shows its top towards raw +z | Moving face shows its back |
 | --- | --- | --- |
 | valley | +A: edge 9 in §1's step `quarter` | −A: edge 11 in step `quarter` |
-| mountain | −A: edges 8 and 10 in step `half` | +A: the crane wing's accepted `behind` (§9) [ran, on the study's build] |
+| mountain | −A: edges 8 and 10 in step `half` | +A: the crane wing's accepted `behind` (§9) [ran] |
 
 **The runner hands `Flap` a side, not a signed travel**
 ([D5](decisions.md#d5-presentation-and-the-readers-side),
@@ -824,29 +825,36 @@ longest current material segment, ties to the lowest, then leftmost, segment.
   face's interior, so it fills no region slot and `unfold` could not re-resolve it.
 
 **Crane example** [py re-impl, [check P](#check-p)]. Take the crane-wing step of
-[decisions §7](decisions.md#7-examples), at the wing's root,
-`fold behind 90° perpendicular to [corner north-west, midpoint of edge north] through corner north-east moving corner north-west`.
+[decisions §7](decisions.md#7-examples), `fold behind 90° wing-root moving corner
+north-west`, where `wing-root` is `perpendicular to L through corner north-east` and L
+is `[corner north-west, midpoint of edge north]`. The step folds the wing about its
+[root](../docs/glossary.md#origami).
 
 - *Points.* Folded with face 0 as root, vertex 2 (corner north-west) is at
   (1, 4.6e-14), vertex 28 (the edge's midpoint, within 1.2e-14) is at (1, 0.5), and
-  vertex 57 (corner north-east, the tail's tip) is at (0.646447, 0.375849).
-- *Line.* L, through vertices 2 and 28, is x = 1. The line at right angles to it
-  through vertex 57 is folded y = 0.375849, the wing's root, where `CraneWing`
-  creases it ([`wingRoot`](../study/fold-material/CraneWing.hs)). It crosses 40
-  faces, and no end is strictly inside any.
-- *Seed.* O4 says no side, so the step names one, `moving corner north-west`
-  (§4.3). That is a vertex, so §4.4's vertex rule applies, and it lies in exactly
-  faces 2, 3, 6 and 7 [py, [check C](#check-c)]. The script needs an interior point,
-  so the component was computed from (0.02, 0.97), in face 7 on the corner's side of
-  the line. It is faces 2, 3, 6, 7, 32, 34, 35 and 38: the wing's four faces and the
-  four triangles folded inside it above its widest point, the faces `CraneWing`
-  creases at the root (`wingSegments`).
+  vertex 57 (corner north-east, the tip of the crane's head) is at
+  (0.646447, 0.375849).
+- *Line.* L is x = 1. The line at right angles to it through vertex 57 is folded
+  y = 0.375849, the height `CraneWing.wingRoot` finds, where the study's root builds
+  crease the wing. It crosses 40 faces.
+- *Seed.* O4 picks no moving side, so the step names a seed, `moving corner
+  north-west` (§4.3). That is a vertex, so §4.4's vertex rule applies: corner
+  north-west lies in exactly faces 2, 3, 6 and 7 [py, [check C](#check-c)]. The
+  script needs an interior point, so the component was computed from (0.02, 0.97), in
+  face 7 on the corner's side of the line. The component is faces 2, 3, 6, 7, 32, 34,
+  35 and 38: the wing's four faces, and the four triangles folded inside it between
+  its widest point, folded y = 0.324, where its sides are creased to them, and its
+  root, which cutting along the line leaves joined to them.
+  They are the faces `CraneWing` creases at the root (`wingSegments`,
+  [`CraneWing.hs`](../study/fold-material/CraneWing.hs)).
 - *Sense.* The accepted turn lowers the wing's tip from z = 0 to z = −0.376, away
-  from the reader, hence `behind` [ran, on the study's build at the root].
+  from the reader, hence `behind` (decisions' appendix command 16) [ran].
 
-The same research found that one layer of that wing is coupled, that "top flap" on
-a square base is two sheets, and that a quarter-fold seed near (1, 0) is covered.
-**All of this is Python evidence (§13).**
+At folded y = 1/4 the same research
+([gap-layer-selective-folds](research/gap-layer-selective-folds.md)) found that one
+layer of the wing is coupled, that "top flap" on a square base is two sheets, and that
+a quarter-fold seed near (1, 0) is covered. **All of this but the sense is Python
+evidence (§13).**
 
 ### 6.4 `unfold`, and `pre-crease`
 
@@ -1237,8 +1245,9 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
   - *A valley at −90 is not a typo.* By §5.3's table, the accepted `behind` is +90
     only because the moving face beside the first hinge segment shows its back (it
     and the face held beside it are the halves of one face the crease cuts), and on
-    that face `in front` is −90. On the study's build at the root that face, 44, lies
-    face down, +90 is accepted and −90 refused [ran].
+    that face `in front` is −90. On the study's wing built at its root without the
+    join, that face, 44, lies face down, +90 is accepted and −90 refused (decisions'
+    appendix command 16) [ran].
 - **Its refusals.** If the inner move is accepted: `RefusalNotRaised`. If it is
   refused by another name: `RefusedDifferently`, naming both.
 
@@ -1753,6 +1762,17 @@ ends strictly inside a face: []
 crossed faces: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
 component_faces [2, 3, 6, 7, 32, 34, 35, 38]
 [5.886846565772426e-15, 0.9999999999999996] [0.49999999999998834, 1] [0.9999999999999385, 0.9999999999999869]
+```
+
+The other wing, from a seed inside it:
+
+```bash
+python3 PRDs/research/scripts/layer-selection-analyse.py line examples/crane.fold 0,0.3758485593336277 2,0.3758485593336277 0.97,0.02 | grep -E "seed_faces|component_faces"
+```
+
+```text
+seed_faces [5]
+component_faces [0, 1, 4, 5, 33, 36, 37, 39]
 ```
 
 ### Check X
