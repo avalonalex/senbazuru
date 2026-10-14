@@ -34,24 +34,31 @@ flat crease, and costs nothing. So the rule has to say what "the body can no
 longer hold" means: the hinge creases only the flap's own paper.
 
 **The rule as computed.** Take the run of paper across the flap at some
-distance from its tip. Each end of the run moves continuously along the
-flap's edge until the line passes a corner where that edge meets the paper
-beside it. There the end jumps out into that paper: at the wing, from x
-1.1242 to 1.2002. So step lines inwards from the tip, square to the line from
-the tip to the middle of the model, every 1/400 of the model's span. On each
-side, bisect each step down to a hair to see whether the end jumped within it,
-and stop at the first that did. A continuous edge changes the end by less and
-less as the step narrows, and a jump does not.
+distance from its tip. Each end of the run moves continuously along the flap's
+edge until the line passes a corner where that edge meets the paper beside it.
+There the end jumps out into that paper: at the wing, from x 1.1242 to 1.2002.
+So step lines inwards from the tip, square to the line from the tip to the
+middle of the model, every 1/400 of the model's span. On each side, bisect
+each step as finely as the numbers allow to see whether the end jumped within
+it, and stop at the first that did. A continuous edge changes the end by less
+and less as the step narrows, and a jump does not.
 
 The root joins the two points just before the jumps. Its direction comes from
-those corners, not from the lines probed. Probing finds each point only to
-within a hair, so each is then moved to where the folded edges meeting there
-cross. Edges of several layers stacked along one line cross nowhere, so only
-edges of two directions count. Where none cross, the point found stands. For
-the wing, the tip-to-middle axis is about 5° off square to the wing, and both
-ends still land at y = 0.375849.
-The root is kept only if the flap then turns about it: crease it through
-every layer, take the paper joined to the tip, and turn it either way.
+those corners, not from the lines probed: for the wing, the tip-to-middle
+axis is about 5° off square to the wing, and both ends still land at
+y = 0.375849. The root is kept only if the flap then turns about it: crease
+it through every layer, take the paper joined to the tip, and turn it either
+way.
+
+Probing finds each point only to within a few hairs. It merges runs of paper
+across gaps of a hair, and near a corner the gap opens only as fast as the
+angle there allows. So each point is then moved to where the folded edges
+meeting there cross. Both edges pass within about a hair of the point found,
+and a pair counts only if its edges run in different directions: edges of
+several layers stacked along one line are parallel. Where none cross, the
+point found stands, and the root says so. The run jumped there because other
+paper ended, not because the flap's edge met new paper. `CraneWing.wingRoot`
+refuses a root that is not exact at both ends.
 
 Each flap is named by the corner of the flat sheet at its tip. The folded tip
 alone would not say which flap: both wings end at folded (1, 0).
@@ -59,35 +66,41 @@ alone would not say which flap: both wings end at folded (1, 0).
 | Sheet corner | Flap | Root | Turns about it |
 | --- | --- | --- | --- |
 | (0, 1) and (1, 0) | a wing | (0.87585, 0.375849) to (1.12415, 0.375849), the neck and tail bases | yes, 90°, the wing's 8 faces |
-| (0, 0) | the neck | (1.12415, 0.375849) to (0.72284, 0.26152) | no: 64 faces stay joined to the tip, and the sweep refuses |
+| (0, 0) | the neck | (1.12415, 0.375849) to (0.72284, 0.26152), the second end as probed | no: 64 faces stay joined to the tip, and the sweep refuses from the start of the turn |
 | (1, 1) | the tail | none: its edge never meets other paper | — |
 
 The wing's root is the line the owner chose by eye, y = 0.376, to three
-decimals. An independent union of the faces' shadows finds the same two
-reflex corners in the folded outline, to 1e-9. They lie where the wing's
-edges meet the tail's line x − y = 1/2 and the neck's line x + y = 3/2, at
-the height corner north-east folds to, y* = 1 − (√2/4)(1 + 2 sin 22.5°) ≈
-0.3758485593. So the ends are (1/2 + y*, y*) and (3/2 − y*, y*). Crossing the
-folded edges finds them within 1e-13. Probing alone had them 1.1e-9 and
-1.4e-9 low, because it merges runs of paper across gaps of a hair. In two runs, searching the
-tail's edge in full, which finds nothing, took 0.35 and 0.36 CPU seconds, and
-finding a wing's root and checking the turn took 8.2 to 8.4, most of it
-folding and solving the layer order again.
+decimals. An independent union of the faces' shadows finds the same two reflex
+corners in the folded outline, to 1e-9. They lie where the wing's edges meet
+the tail's line x − y = 1/2 and the neck's line x + y = 3/2, at the height the
+sheet's corner (1, 1), the tail's tip, folds to, y* = 1 − (√2/4)(1 + 2 sin
+22.5°) ≈ 0.3758485593. So the ends are (1/2 + y*, y*) and (3/2 − y*, y*).
+Crossing the folded edges finds them within 1.3e-13: at each end 16 edges
+pass, eight along each line, and their 64 crossings are averaged. Probing
+alone had them 1.1e-9 and 1.4e-9 low. In two runs, searching the tail's edge
+in full, which finds nothing, took 0.35 and 0.36 CPU seconds, and finding a
+wing's root and checking the turn took 8.2 to 8.4, most of it folding and
+solving the layer order again. Making the ends exact adds about 25
+microseconds.
 
 **Where it stops.** The neck and the tail are reverse-folded: they leave the
 body between its layers. On one side the neck's edge meets the same visible
 corner as the wing's. On the other it runs inside the body, where the outline
-shows nothing, so the rule's second end lands on the head and the turn check
-refuses it. The tail's edge never meets visible paper at all. So the rule finds
-roots that show in the outline, and refuses, rather than guesses, roots hidden
-between layers. Finding those needs the outline of the flap's own layers
-against their neighbours in the stack, not the model's outline.
+shows nothing, so the rule's second end lands on the head, where no edges
+cross, and the turn check refuses it. The tail's edge never meets visible
+paper at all. So the rule finds roots that show in the outline, and refuses,
+rather than guesses, roots hidden between layers. Finding those needs the
+outline of the flap's own layers against their neighbours in the stack, not
+the model's outline.
 
 The rule also reads every jump as the flap's edge meeting other paper. A
 flap whose own outline steps outward, or a sideways protrusion ending, makes
 the run's end jump too, and the rule would put the root at that step, nearer
 the tip than the real one. The turn check would not catch that, since the
-crease stays in the flap's own paper. It has been tried on one model.
+crease stays in the flap's own paper. Only its roots on the crane have been
+checked, against where the owner placed the hinge by eye. On the kabuto it
+finds three roots the flap turns about, two of them with an end where no
+edges cross (measured for #575).
 
 ```bash
 stack run senbazuru-material-study -- --flap-root build/fold-material
