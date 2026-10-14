@@ -532,7 +532,8 @@ megaparsec's error bundle is converted once, using its first error:
 
 Outputs (**SKETCH**; each line and column computed with `python3`). The first and
 third are the quarter fold above with a mistake typed in, the second is the
-[crane wing](#example-sources-checked-against-their-fixtures) with its `°` left off:
+[crane wing](#example-sources-checked-against-their-fixtures)'s fold as first planned,
+at folded y = 1/4, with its `°` left off:
 
 ```text
 senbazuru: quarter.foldseq:7:20: "left" names a direction on the page; a material edge is named by compass: edge north, east, south or west
@@ -892,10 +893,11 @@ print([(i, e) for i, e in enumerate(E) if set(e) <= {8, 9, 10}], "faces_vertices
 
 **Crane wing** (M4, M6). `start folded` keeps the file's folded state and names its
 *stacking*, which layer lies over which
-([glossary-additions](glossary-additions.md#running-a-sequence)). `settle` asks the
-material study to bend the result
-([glossary-additions](glossary-additions.md#material)); 07 owns those words. This
-is the version [decisions §7](decisions.md#7-examples) records.
+([glossary-additions](glossary-additions.md#running-a-sequence)). This is the version
+[decisions §7](decisions.md#7-examples) records, which folds the wing about its
+[root](../docs/glossary.md#origami). Its `settle`, which asks the material study to bend
+the result ([glossary-additions](glossary-additions.md#material)), is in 07, written for
+the fold at folded y = 1/4 until #560 re-derives it at the root.
 
 ```text
 foldseq 1
@@ -906,21 +908,11 @@ start folded {
   layers (1/4, 1/5) above (3/8, 5/9)     # UNVERIFIED: must leave exactly the tail-tucked stacking
   layers (4/9, 3/8) above (1/4, 1/5)
 }
-material { stiffness illustrative }
 
 step wing "Fold the underneath wing away from you until it stands straight out." {
-  # Folded y = 1/4, with bands in eighths of a wing 1/4 long. Owner decision 42
-  # (decided 2026-10-13) moves the step to the wing's root, and #560 re-derives
-  # it there: the fold before M4, the settle before M6.
-  expect refused FlapCovered { fold in front 90° corner north-west to midpoint of edge north }   # UNVERIFIED kind
-  fold behind 90° corner north-west to midpoint of edge north
-  settle {
-    refine side moving 3
-    rest at rigid-pose 1/3
-    hold closed side stationary
-    hold band moving 0..1/32 at rigid-pose 1/3    # UNVERIFIED: equals CraneSpread's root-strip pins
-    grip band moving 7/32.. arc-grip 30° 20°      # UNVERIFIED: equals CraneSpread's grip pins
-  }
+  let wing-root = perpendicular to [corner north-west, midpoint of edge north] through corner north-east
+  expect refused FlapCovered { fold in front 90° wing-root moving corner north-west }   # UNVERIFIED kind
+  fold behind 90° wing-root moving corner north-west
 }
 ```
 
@@ -930,51 +922,45 @@ def seg(p, a, b): t = max(0, min(1, ((p[0]-a[0])*(b[0]-a[0]) + (p[1]-a[1])*(b[1]
 def rings(r): return list(zip([V[k] for k in r], [V[k] for k in r[1:]+r[:1]]))
 inside = lambda p, r: sum((a[1] > p[1]) != (b[1] > p[1]) and p[0] < a[0]+(p[1]-a[1])*(b[0]-a[0])/(b[1]-a[1]) for a, b in rings(r)) % 2
 for p in [(19/20, 1/3), (1/4, 1/5), (3/8, 5/9), (4/9, 3/8)]: print(p, [(i, round(min(seg(p, a, b) for a, b in rings(r)), 3)) for i, r in enumerate(F) if inside(p, r)])
-print([i for i, r in enumerate(F) if 2 in r], V[2], V[28], "edges_foldAngle" in f)'
-python3 PRDs/research/scripts/layer-selection-analyse.py fold examples/crane.fold | grep -E '^faces|^v (2|28) '
-python3 PRDs/research/scripts/layer-selection-analyse.py line examples/crane.fold 0,0.25 2,0.25 0.02,0.97 | grep -E 'seed_faces|component_faces'
+print([i for i, r in enumerate(F) if 2 in r], V[2], V[28], V[57], "edges_foldAngle" in f)'
+python3 PRDs/research/scripts/layer-selection-analyse.py fold examples/crane.fold | grep -E '^faces|^v (2|28|57) '
+python3 PRDs/research/scripts/layer-selection-analyse.py line examples/crane.fold 0,0.3758485593336277 2,0.3758485593336277 0.02,0.97 | grep -E 'seed_faces|component_faces'
 ```
 
 The anchor's comment is checked by the command above; the comments marked
-**UNVERIFIED** are not, and the step's first comment records owner decision 42. The
-*tail-tucked stacking* is the one of the fixture's five
+**UNVERIFIED** are not. The *tail-tucked stacking* is the one of the fixture's five
 layer orders that puts all eight tail faces between the two sides of the body,
 index 2
 ([CraneWing.hs:135-138](../study/fold-material/CraneWing.hs#L135-L138);
-[several stackings](../docs/notes/several-stackings.md)). *CraneSpread's root strip*
-is the strip of wing beside the hinge that the study holds at a fixed angle
-([CraneSpread.hs:8](../study/fold-material/CraneSpread.hs#L8)).
+[several stackings](../docs/notes/several-stackings.md)).
 
 - **Every typed point is inside exactly one face.** The anchor is in face 0, 0.05
   from its boundary. The relation points are in tail face 10 (0.027), body face 27
   (0.049) and body face 29 (0.049).
 - **The named points are vertices.** `corner north-west` is vertex 2 at
   (5.886846565772426e-15, 0.9999999999999996). `midpoint of edge north` lands on vertex 28 at
-  (0.49999999999998834, 1). Resolution to a vertex allows a tolerance, and sheet
-  lengths are measured from the file's own box
+  (0.49999999999998834, 1), and `corner north-east` on vertex 57 at
+  (0.9999999999999385, 0.9999999999999869). Resolution to a vertex allows a tolerance,
+  and sheet lengths are measured from the file's own box
   ([D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot)).
-- **The fold line is folded y = 1/4.** The file has no `edges_foldAngle`, so
+- **The fold line is the wing's root.** The file has no `edges_foldAngle`, so
   `start folded` folds it from its assignments, having no angles to keep
   ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)). The
-  research script puts vertex 2 at (1, 4.6e-14) and vertex 28 at (1, 0.5). Its
-  *closure error*, the worst disagreement between two faces about where a shared
-  vertex lies, is 3.0e-13. The line bringing vertex 2 onto vertex 28 is y = 1/4.
+  research script puts vertex 2 at (1, 4.6e-14), vertex 28 at (1, 0.5) and vertex 57,
+  the tip of the crane's head, at (0.646447, 0.375849). Its *closure error*, the worst
+  disagreement between two faces about where a shared vertex lies, is 3.0e-13. The
+  line through vertices 2 and 28 is x = 1, and the line at right angles to it through
+  vertex 57 is y = 0.375849, the wing's root, 1 − (√2/4)(1 + 2 sin 22.5°) =
+  0.3758485593336277, the height the command above draws it at
+  ([decisions C102](decisions.md#changes-since-draft-v2)).
 - **The flap, the paper that turns, is the wing.** Faces 2, 3, 6 and 7 hold vertex
   2. The script's [seed](glossary-additions.md#references) (0.02, 0.97), a point
   inside the wing rather than on a crease, selects the faces still joined to it once
-  the paper is cut along the line: `[2, 3, 6, 7]`
-  ([gap-layer-selective-folds](research/gap-layer-selective-folds.md) "Re-deriving
-  CraneWing by rule (script)"). That is Python evidence, not Haskell
+  the paper is cut along the line: `[2, 3, 6, 7, 32, 34, 35, 38]`, the wing's four
+  faces and the four triangles folded inside it between its widest point, folded
+  y = 0.324, where its sides are creased to them, and its root
+  ([02's check P](02-language-semantics.md#check-p)). That is Python evidence, not Haskell
   ([D8](decisions.md#d8-folding-some-layers)).
-- **The `material` and `settle` lines.** `stiffness illustrative` is
-  `Bending 1 0.2`, the stiffness `CraneSpread` builds its hinges with
-  ([CraneSpread.hs:121](../study/fold-material/CraneSpread.hs#L121)).
-  `refine side moving 3` refines the wing at level 3, one of the two levels
-  `craneSpreadWith` accepts ([:99-100](../study/fold-material/CraneSpread.hs#L99-L100)).
-  `rest at rigid-pose 1/3` rests every active crease at its angle a third of the way
-  through this 90° fold, the wing at 30°; with no rest line here or in the
-  `material` block, the settle is refused as `SettleNoRest`
-  ([D14](decisions.md#d14-material-consumption)).
 - **The expected kind is `FlapCovered`, not `FlapEndpointOrder`.** The selection
   rule refuses a fold when a stationary face is nearer than the flap on the side it
   turns towards, and it runs before `Flap`'s sweep
@@ -988,8 +974,8 @@ is the strip of wing beside the hinge that the study holds at a fixed angle
   refused at all, and as `FlapCovered`, which rests on the inference that the other
   wing lies on this wing's reader side
   ([gap-layer-selective-folds](research/gap-layer-selective-folds.md) finding 14);
-  the sense as seen ([02](02-language-semantics.md)); and every `settle` equivalence,
-  07's first M6 test.
+  and that the runner turns the wing as the study's build does, which
+  [02 §6.3](02-language-semantics.md#63-which-layers) records.
 
 ## Acceptance criteria
 
