@@ -286,7 +286,7 @@ spec = describe "naming paper on a flat state" $ do
     -- that M4's sequence folds. The crane is folded by its file's own
     -- angles, since a run cannot start folded yet. Corner north-west and the
     -- midpoint of edge north fold to (1, 0) and (1, 1/2), so L runs up
-    -- x = 1, and corner north-east, the tail's tip, folds to the root's
+    -- x = 1, and corner north-east, the tip of the head, folds to the root's
     -- height, which in exact arithmetic is 1 - (sqrt 2 / 4)(1 + 2 sin 22.5
     -- degrees) (decisions C102); the file's coordinates put it within 2e-14
     -- of that. The root runs from x = 0.87585 to 1.12415

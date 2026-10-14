@@ -267,7 +267,7 @@ findRoot prepared = do
 --
 -- Where no two edges cross, there is nothing to make exact. The run jumped
 -- there because other paper ended, not because the flap's edge met new
--- paper: at the crane neck's second end, and at one end of two of the
+-- paper: at the crane tail's second end, and at one end of two of the
 -- kabuto's roots, only edges along one line pass.
 exactEnd :: Sheet -> Double -> V2 -> Maybe V2
 exactEnd sheet scale found = case crossings of

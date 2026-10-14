@@ -60,34 +60,37 @@ point found stands, and the root says so. The run jumped there because other
 paper ended, not because the flap's edge met new paper. `CraneWing.wingRoot`
 refuses a root that is not exact at both ends.
 
-Each flap is named by the corner of the flat sheet at its tip. The folded tip
+Each flap is named by the corner of the flat sheet at its tip. Corner (1, 1)
+is the neck, which carries the head: ten crease vertices lie within 0.35 of it
+on the flat sheet, against one at corner (0, 0), the tail. Earlier versions
+of this note had the two the other way round. The folded tip
 alone would not say which flap: both wings end at folded (1, 0).
 
 | Sheet corner | Flap | Root | Turns about it |
 | --- | --- | --- | --- |
 | (0, 1) and (1, 0) | a wing | (0.87585, 0.375849) to (1.12415, 0.375849), the neck and tail bases | yes, 90°, the wing's 8 faces |
-| (0, 0) | the neck | (1.12415, 0.375849) to (0.72284, 0.26152), the second end as probed | no: 64 faces stay joined to the tip, and the sweep refuses from the start of the turn |
-| (1, 1) | the tail | none: its edge never meets other paper | — |
+| (0, 0) | the tail | (1.12415, 0.375849) to (0.72284, 0.26152), the second end as probed | no: 64 faces stay joined to the tip, and the sweep refuses from the start of the turn |
+| (1, 1) | the neck, with the head | none: its edge never meets other paper | — |
 
 The wing's root is the line the owner chose by eye, y = 0.376, to three
 decimals. An independent union of the faces' shadows finds the same two reflex
 corners in the folded outline, to 1e-9. They lie where the wing's edges meet
-the tail's line x − y = 1/2 and the neck's line x + y = 3/2, at the height the
-sheet's corner (1, 1), the tail's tip, folds to, y* = 1 − (√2/4)(1 + 2 sin
+the neck's line x − y = 1/2 and the tail's line x + y = 3/2, at the height the
+sheet's corner (1, 1), the tip of the head, folds to, y* = 1 − (√2/4)(1 + 2 sin
 22.5°) ≈ 0.3758485593. So the ends are (1/2 + y*, y*) and (3/2 − y*, y*).
 Crossing the folded edges finds them within 1.3e-13: at each end 16 edges
 pass, eight along each line, and their 64 crossings are averaged. Probing
-alone had them 1.1e-9 and 1.4e-9 low. In two runs, searching the tail's edge
+alone had them 1.1e-9 and 1.4e-9 low. In two runs, searching the neck's edge
 in full, which finds nothing, took 0.35 and 0.36 CPU seconds, and finding a
 wing's root and checking the turn took 8.2 to 8.4, most of it folding and
 solving the layer order again. Making the ends exact adds about 25
 microseconds.
 
 **Where it stops.** The neck and the tail are reverse-folded: they leave the
-body between its layers. On one side the neck's edge meets the same visible
+body between its layers. On one side the tail's edge meets the same visible
 corner as the wing's. On the other it runs inside the body, where the outline
 shows nothing, so the rule's second end lands on the head, where no edges
-cross, and the turn check refuses it. The tail's edge never meets visible
+cross, and the turn check refuses it. The neck's edge never meets visible
 paper at all. So the rule finds roots that show in the outline, and refuses,
 rather than guesses, roots hidden between layers. Finding those needs the
 outline of the flap's own layers against their neighbours in the stack, not

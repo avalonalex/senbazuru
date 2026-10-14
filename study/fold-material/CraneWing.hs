@@ -89,7 +89,7 @@ studyHinge = 0.25
 -- 'FlapRoot.findRoot' from the wing's tip at sheet corner (0, 1) rather than
 -- typed in (decision 35). A root not made exact at both ends, where folded
 -- edges cross, is refused, so this one lies within 1e-13 of the height that
--- sheet corner (1, 1), the tail's tip, folds to: the line a sequence names by
+-- sheet corner (1, 1), the tip of the head, folds to: the line a sequence names by
 -- O4, the fold through a point at right angles to a line (owner decision 43).
 -- 'buildCraneWingAt' creases along a level line, so a root whose ends are not
 -- level to a millionth of the sheet is refused too. The rule keeps a root only
