@@ -17,8 +17,11 @@
 -- flap's edge meets the paper beside it, and there the end jumps out into that
 -- paper. The two points just before the first jump on each side are the
 -- root's ends, so its direction comes from the corners, not from the lines
--- probed. 'turnAbout' then creases the root through every layer, takes the
--- paper still joined to the tip, and checks that it turns.
+-- probed. Probing finds each end only to within a few hairs, so 'exactEnd'
+-- moves it onto the point where the folded edges meeting there cross, if any
+-- do, and the 'Root' says which ends it moved. 'turnAbout' then creases the
+-- root through every layer, takes the paper still joined to the tip, and
+-- checks that it turns.
 module FlapRoot (Prepared (..), prepare, Turn (..), turnAbout, Root (..), findRoot, writeFlapRoot) where
 
 import Control.Monad (when)
@@ -26,8 +29,9 @@ import Data.Aeson (encode, object, (.=))
 import Data.Aeson.Types (Pair)
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
-import Data.List (partition, sortOn)
+import Data.List (partition, sortOn, tails)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe, isJust)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -36,7 +40,7 @@ import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Polygon (clipSegment, distanceOutside)
+import Senbazuru.Geometry.Polygon (centroid, clipSegment, cross2, distanceOutside, distanceToSegment, edges)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap
 import Senbazuru.Origami.Flat (Panel (..), Sheet (..), flatSheet)
@@ -188,8 +192,13 @@ data Root = Root
   { -- | The direction the probing lines advance in: from the tip towards the
     -- middle of the folded model.
     rootAxis :: !V2,
-    -- | The root's two ends, and how far along the axis each was found.
+    -- | The root's two ends.
     rootEnds :: !(V2, V2),
+    -- | Whether each end was made exact, where folded edges cross
+    -- ('exactEnd'), rather than left where probing found it.
+    rootExact :: !(Bool, Bool),
+    -- | How far along the axis probing found each end, before it was made
+    -- exact.
     rootDistances :: !(Double, Double)
   }
 
@@ -197,7 +206,8 @@ data Root = Root
 -- middle of the model, every 1/400 of the model's span. On each side, bisect
 -- each step until the doubles run out to see whether the run's end jumped
 -- within it, and stop at the first that did. A continuous edge changes the
--- end by less and less as the step narrows; a jump does not.
+-- end by less and less as the step narrows; a jump does not. Each end found
+-- is then made exact where folded edges cross there ('exactEnd').
 --
 -- The rule reads the first jump as the flap's edge meeting the paper beside
 -- it, and on the crane's wings that is what it is. But the end also jumps
@@ -205,7 +215,8 @@ data Root = Root
 -- protrusion ends, and this cannot tell those apart. A step in the flap's own
 -- paper would put the root nearer the tip than the real one, and the turn
 -- check would still pass: the crease stays in the flap's paper either way.
--- It has been tried on one model.
+-- Only its roots on the crane have been checked, against where the owner
+-- placed the hinge by eye.
 findRoot :: Prepared -> Either Text Root
 findRoot prepared = do
   let sheet = preparedSheet prepared
@@ -233,9 +244,45 @@ findRoot prepared = do
         Nothing -> Left "lost the paper at a root's end"
   lowAt <- firstJump fst
   highAt <- firstJump snd
-  low <- corner fst lowAt
-  high <- corner snd highAt
-  pure (Root axis (low, high) (lowAt, highAt))
+  probedLow <- corner fst lowAt
+  probedHigh <- corner snd highAt
+  let low = exactEnd sheet scale probedLow
+      high = exactEnd sheet scale probedHigh
+  pure (Root axis (fromMaybe probedLow low, fromMaybe probedHigh high) (isJust low, isJust high) (lowAt, highAt))
+
+-- | A root's end, made exact, if it is a corner where folded edges cross.
+-- Probing finds the end only to within a few hairs. 'runThrough' merges runs
+-- of paper across gaps of a hair, and near a corner the gap opens only as
+-- fast as the angle there allows, so the narrower the angle, the further off
+-- the end: the crane wing's came out 1.1e-9 and 1.4e-9 low, a hair being
+-- 1e-9. Both edges meeting at the corner pass within about a hair of the end
+-- found, though. So take every folded edge passing within ten hairs of it,
+-- and cross each pair, solving a + t u = c + s v for the point. Keep the
+-- crossings no further off than the jump the probe looks for, and average
+-- them. Edges of several layers along one line are parallel only to
+-- rounding, and such a pair could cross anywhere along it, so a pair counts
+-- only if it is clearly not parallel: the sine of its angle above 1e-6.
+-- Edges meeting at less than about 0.06 degrees are probed further off than
+-- the jump, and their end is not made exact.
+--
+-- Where no two edges cross, there is nothing to make exact. The run jumped
+-- there because other paper ended, not because the flap's edge met new
+-- paper: at the crane tail's second end, and at one end of two of the
+-- kabuto's roots, only edges along one line pass.
+exactEnd :: Sheet -> Double -> V2 -> Maybe V2
+exactEnd sheet scale found = case crossings of
+  [] -> Nothing
+  points -> Just (centroid points)
+  where
+    nearby = [e | p <- sheetPanels sheet, e <- edges (panelRing p), distanceToSegment e found <= 10 * sheetHair sheet]
+    crossings = [p | e : rest <- tails nearby, f <- rest, Just p <- [crossing e f], norm (p `minus` found) <= 1e-6 * scale]
+    crossing (a, b) (c, d)
+      | abs skew <= 1e-6 * norm u * norm v = Nothing
+      | otherwise = Just (a `plus` scaled (cross2 (c `minus` a) v / skew) u)
+      where
+        u = b `minus` a
+        v = d `minus` c
+        skew = cross2 u v
 
 -- | For each corner of the crane's sheet, find the flap's root and turn about
 -- it; then, for the wing, probe lines square to its axis from its tip inwards.
@@ -273,12 +320,12 @@ writeFlapRoot destination = do
       pure (object (("distance" .= h) : either (\e -> ["refused" .= e]) (\((V2 ax ay, V2 bx by), t) -> ("ends" .= [[ax, ay], [bx, by]]) : turnJson t) row))
     describeRoot root =
       let (V2 ax ay, V2 bx by) = rootEnds root
-       in "root from " <> show (ax, ay) <> " to " <> show (bx, by) <> ", found at " <> show (rootDistances root) <> " along " <> show (v2x (rootAxis root), v2y (rootAxis root))
+       in "root from " <> show (ax, ay) <> " to " <> show (bx, by) <> " (exact: " <> show (rootExact root) <> "), probed at " <> show (rootDistances root) <> " along " <> show (v2x (rootAxis root), v2y (rootAxis root))
     describeTurn t = "hinge " <> show (turnHinge t) <> ", flap " <> show (turnFlapFaces t) <> " faces reaching " <> show (turnFlapAlong t) <> " along a crease " <> show (turnLength t) <> " long, " <> either (("no turn: " <>) . T.unpack) show (turnResult t)
     rootJson root =
       let (V2 ax ay, V2 bx by) = rootEnds root
           (d1, d2) = rootDistances root
-       in ["root" .= [[ax, ay], [bx, by]], "rootDistances" .= [d1, d2], "axis" .= [v2x (rootAxis root), v2y (rootAxis root)]]
+       in ["root" .= [[ax, ay], [bx, by]], "rootExact" .= [fst (rootExact root), snd (rootExact root)], "rootDistances" .= [d1, d2], "axis" .= [v2x (rootAxis root), v2y (rootAxis root)]]
     turnJson :: Turn -> [Pair]
     turnJson t =
       ["hingeSegments" .= turnHinge t, "flapFaces" .= turnFlapFaces t, "flapAlong" .= [fst (turnFlapAlong t), snd (turnFlapAlong t)], "creaseLength" .= turnLength t]
