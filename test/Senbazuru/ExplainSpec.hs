@@ -24,17 +24,19 @@
 -- function; under one method they are pinned by inference, and nothing but a
 -- test now says which instance a nested error reaches.
 --
--- And how an id or a vector is written: as numbers, never as the Haskell
--- 'show' gives, @FaceId {unFaceId = 0}@. The ids are records, so 'tshow' of
--- an id itself prints the record, and a message has to take the number out
--- first ("Senbazuru.Explain"). 'SurfaceError' printed eleven ids and a vector
--- the Haskell way until #581, so 'carriesAnId' lists every constructor of it
--- and of 'PaperMeshError' that carries one.
+-- And how an id or a vector is written: as numbers, never as the record
+-- Haskell's derived 'show' writes, @FaceId {unFaceId = 0}@ ("Senbazuru.Explain"
+-- says why). 'SurfaceError' and 'PaperMeshError' printed twelve ids and two
+-- vectors that way until #582, so 'idMessages' samples every constructor of
+-- both, with the study's messages the same fix touched, and holds each to the
+-- numbers it was given.
 module Senbazuru.ExplainSpec (spec) where
 
+import ContactDiscovery (DiscoveryError (AmbiguousReferenceOrder))
 import Data.Char (isAlphaNum, isUpper)
 import Data.Text (Text)
 import Data.Text qualified as T
+import FoldBending (BendingError (InvalidRestAngle, MissingRestAngle, UnexpectedRestAngle, UnsupportedCrease))
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (LoadError (..), SaveError (..))
 import Senbazuru.Fold.Query (FoldError (..))
@@ -42,12 +44,14 @@ import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Import.Segments (ImportError (..))
-import Senbazuru.Origami.Flat (FlatError (..))
 -- Qualified, not because the modules are large but because three of them spell
 -- the same fault: 'NotFlat' is a constructor of both CheckError and
 -- StackingError, and 'FrameGeometry' of both CheckError and FoldingError. That
 -- is not an accident to be worked around -- it is the duplication this class
 -- was introduced to make visible.
+
+import Senbazuru.Origami.Flap (FlapError (..))
+import Senbazuru.Origami.Flat (FlatError (..))
 import Senbazuru.Origami.FlatFold qualified as Check
 import Senbazuru.Origami.Folding qualified as Fold
 import Senbazuru.Origami.Stacking qualified as Stack
@@ -59,6 +63,7 @@ import Senbazuru.Render.Steps (StepError (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..), TakenBecause (..), WriteProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
 import Senbazuru.Sequence.Syntax (Span (..))
+import SurfaceContact (ContactError (UnknownContactPanel))
 import Test.Hspec
 
 -- | One error of each type in the library, already turned into words.
@@ -102,30 +107,94 @@ everyType =
     ("RunOptionError, no states", explain NoStates)
   ]
 
--- | Every message of 'SurfaceError' and 'PaperMeshError' that names a vertex,
--- an edge, a face or a vector, each id a different number so that a message
--- naming the wrong one would show it.
-carriesAnId :: [(String, Text)]
-carriesAnId =
-  [ ("SurfaceNonFinite", explain (SurfaceNonFinite (VertexId 3))),
-    ("SurfaceMaterialNotFlat", explain (SurfaceMaterialNotFlat (VertexId 4))),
-    ("SurfaceMissingMaterial", explain (SurfaceMissingMaterial (VertexId 5))),
-    ("SurfaceInvalidMaterialPoint", explain (SurfaceInvalidMaterialPoint (VertexId 6))),
-    ("SurfaceBadDirection", explain (SurfaceBadDirection (V3 0 0 (0 / 0)))),
-    ("SurfaceBadLayerPair", explain (SurfaceBadLayerPair (FaceId 7) (FaceId 8))),
-    ("SurfaceUnknownRefinementPanel", explain (SurfaceUnknownRefinementPanel (FaceId 9))),
-    ("SurfaceNonConvex", explain (SurfaceNonConvex (FaceId 10))),
-    ("SurfaceNonPlanar", explain (SurfaceNonPlanar (FaceId 11))),
-    ("SurfaceDegenerateFan", explain (SurfaceDegenerateFan (FaceId 12))),
-    ("SurfaceJoinedCut", explain (SurfaceJoinedCut (EdgeId 13))),
-    ("SurfaceMissingVertex", explain (SurfaceMissingVertex (VertexId 14))),
-    ("PaperNotPlanar", explain (PaperNotPlanar (FaceId 15))),
-    ("PaperUnresolved", explain (PaperUnresolved [FaceId 16, FaceId 17])),
-    ("PaperMissingPoint", explain (PaperMissingPoint (FaceId 18) (V2 0.25 0.5)))
+-- | Every constructor of 'SurfaceError' and 'PaperMeshError', and the study's
+-- messages the same fix touched, each with the numbers its message must show.
+-- The ids are all different, so a message that printed one id twice, or none,
+-- leaves a number out. 'surfaceName' and 'paperName' match without a
+-- catch-all, so that a constructor added to either type without a sample here
+-- at least warns there, as "Senbazuru.Sequence.ErrorSpec" does for its types.
+idMessages :: [(String, Text, [Text])]
+idMessages =
+  [("SurfaceError " <> surfaceName e, explain e, shown) | (e, shown) <- surfaceSamples]
+    <> [("PaperMeshError " <> paperName e, explain e, shown) | (e, shown) <- paperSamples]
+    <> [ ("BendingError MissingRestAngle", explain (MissingRestAngle (EdgeId 23)), ["23"]),
+         ("BendingError UnexpectedRestAngle", explain (UnexpectedRestAngle (EdgeId 24)), ["24"]),
+         ("BendingError InvalidRestAngle", explain (InvalidRestAngle (EdgeId 25) 4), ["25", "4.0"]),
+         ("BendingError UnsupportedCrease", explain (UnsupportedCrease (EdgeId 26)), ["26"]),
+         ("ContactError UnknownContactPanel", explain (UnknownContactPanel (FaceId 27)), ["27"]),
+         ("DiscoveryError AmbiguousReferenceOrder", explain (AmbiguousReferenceOrder (FaceId 28) (FaceId 29)), ["28", "29"])
+       ]
+
+surfaceSamples :: [(SurfaceError, [Text])]
+surfaceSamples =
+  [ (SurfaceFrameError NoVertices, []),
+    (SurfaceNonFinite (VertexId 3), ["3"]),
+    (SurfaceMaterialMismatch, []),
+    (SurfaceMaterialNotFlat (VertexId 4), ["4"]),
+    (SurfaceMissingMaterial (VertexId 5), ["5"]),
+    (SurfaceInvalidMaterialCoordinates, []),
+    (SurfaceMaterialCount 6 7, ["6", "7"]),
+    (SurfaceInvalidMaterialPoint (VertexId 8), ["8"]),
+    (SurfaceBadThickness (-1), ["-1.0"]),
+    (SurfaceBadDirection (V3 0 0 (0 / 0)), ["(0.0, 0.0, NaN)"]),
+    (SurfaceBadLayerPair (FaceId 9) (FaceId 10), ["9", "10"]),
+    (SurfaceBadRefinement 11, ["11"]),
+    (SurfaceUnknownRefinementPanel (FaceId 12), ["12"]),
+    (SurfaceNonConvex (FaceId 13), ["13"]),
+    (SurfaceNonPlanar (FaceId 14), ["14"]),
+    (SurfaceDegenerateFan (FaceId 15), ["15"]),
+    (SurfaceJoinedCut (EdgeId 16), ["16"]),
+    (SurfaceMissingVertex (VertexId 17), ["17"])
   ]
 
+paperSamples :: [(PaperMeshError, [Text])]
+paperSamples =
+  [ (PaperSurfaceError (SurfaceNonConvex (FaceId 18)), ["18"]),
+    (PaperOrderError NoVertices, []),
+    (PaperNotPlanar (FaceId 19), ["19"]),
+    (PaperUnresolved [FaceId 20, FaceId 21], ["20", "21"]),
+    (PaperMissingPoint (FaceId 22) (V2 0.25 0.5), ["22", "(0.250000, 0.500000)"]),
+    (PaperBadPrecision (-1), ["-1.0"])
+  ]
+
+surfaceName :: SurfaceError -> String
+surfaceName = \case
+  SurfaceFrameError {} -> "SurfaceFrameError"
+  SurfaceNonFinite {} -> "SurfaceNonFinite"
+  SurfaceMaterialMismatch -> "SurfaceMaterialMismatch"
+  SurfaceMaterialNotFlat {} -> "SurfaceMaterialNotFlat"
+  SurfaceMissingMaterial {} -> "SurfaceMissingMaterial"
+  SurfaceInvalidMaterialCoordinates -> "SurfaceInvalidMaterialCoordinates"
+  SurfaceMaterialCount {} -> "SurfaceMaterialCount"
+  SurfaceInvalidMaterialPoint {} -> "SurfaceInvalidMaterialPoint"
+  SurfaceBadThickness {} -> "SurfaceBadThickness"
+  SurfaceBadDirection {} -> "SurfaceBadDirection"
+  SurfaceBadLayerPair {} -> "SurfaceBadLayerPair"
+  SurfaceBadRefinement {} -> "SurfaceBadRefinement"
+  SurfaceUnknownRefinementPanel {} -> "SurfaceUnknownRefinementPanel"
+  SurfaceNonConvex {} -> "SurfaceNonConvex"
+  SurfaceNonPlanar {} -> "SurfaceNonPlanar"
+  SurfaceDegenerateFan {} -> "SurfaceDegenerateFan"
+  SurfaceJoinedCut {} -> "SurfaceJoinedCut"
+  SurfaceMissingVertex {} -> "SurfaceMissingVertex"
+
+paperName :: PaperMeshError -> String
+paperName = \case
+  PaperSurfaceError {} -> "PaperSurfaceError"
+  PaperOrderError {} -> "PaperOrderError"
+  PaperNotPlanar {} -> "PaperNotPlanar"
+  PaperUnresolved {} -> "PaperUnresolved"
+  PaperMissingPoint {} -> "PaperMissingPoint"
+  PaperBadPrecision {} -> "PaperBadPrecision"
+
+-- | Every message the shape rules hold: one of each library type, and every
+-- one that names an id.
+allMessages :: [(String, Text)]
+allMessages = everyType <> [(name, msg) | (name, msg, _) <- idMessages]
+
 -- | Whether a message holds a record as Haskell's derived 'show' writes one:
--- an opening brace, a field name and an equals sign.
+-- an opening brace, a field name and an equals sign. A brace alone is not
+-- enough, since a sequence's own text, quoted in a message, has braces.
 showsARecord :: Text -> Bool
 showsARecord msg = any field (drop 1 (T.splitOn "{" msg))
   where
@@ -136,28 +205,39 @@ spec :: Spec
 spec = do
   describe "the shape every message keeps" $ do
     it "says something" $
-      [name | (name, msg) <- everyType, T.null msg] `shouldBe` []
+      [name | (name, msg) <- allMessages, T.null msg] `shouldBe` []
 
     it "does not open with a capital, so it can follow a colon" $
-      [name | (name, msg) <- everyType, opensWithCapital msg] `shouldBe` []
+      [name | (name, msg) <- allMessages, opensWithCapital msg] `shouldBe` []
 
     it "ends without a full stop, so it can be followed by one" $
-      [name | (name, msg) <- everyType, "." `T.isSuffixOf` msg] `shouldBe` []
+      [name | (name, msg) <- allMessages, "." `T.isSuffixOf` msg] `shouldBe` []
 
-  -- Turns red if any of the fifteen went back to 'tshow' of the id itself.
-  -- The two pinned word for word say what each prints instead.
+  -- The first turns red if any message printed an id or a vector with
+  -- 'tshow' of the value itself; the second if one printed the wrong id, the
+  -- same id twice, or none. The pins say what is printed instead, the last
+  -- on the path #579's fold takes to a sequence's author.
   describe "an id or a vector in a message" $ do
     it "is written as numbers, not as a Haskell record" $
-      [name | (name, msg) <- carriesAnId, showsARecord msg] `shouldBe` []
+      [name | (name, msg) <- allMessages, showsARecord msg] `shouldBe` []
 
-    it "names a face by its number, and a vector by its parts" $ do
-      explain (SurfaceNonConvex (FaceId 10)) `shouldBe` "surface panel 10 must be convex to triangulate by a fan"
+    it "shows each number it was given" $
+      [name | (name, msg, shown) <- idMessages, not (all (`T.isInfixOf` msg) shown)] `shouldBe` []
+
+    it "names a face by its number, and a vector by its parts, through a run too" $ do
+      explain (SurfaceNonConvex (FaceId 13)) `shouldBe` "surface panel 13 must be convex to triangulate by a fan"
       explain (SurfaceBadDirection (V3 0 0 (0 / 0))) `shouldBe` "layer requirements need a finite nonzero direction, got (0.0, 0.0, NaN)"
+      explain (StepRefused 1 Nothing NoSpan (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 0)))))
+        `shouldBe` "step 1: surface panel 0 must be convex to triangulate by a fan"
 
-    it "recognises the record it is looking for" $ do
-      showsARecord "surface panel FaceId {unFaceId = 10} must be convex" `shouldBe` True
-      showsARecord "got V3 {v3x = 0.0, v3y = 0.0, v3z = NaN}" `shouldBe` True
-      showsARecord "expect refused FlapCovered { fold … }" `shouldBe` False
+    -- Each case turns red if the detector dropped one of its tests: the brace,
+    -- the equals sign, or the field name before it, which tells a record
+    -- from a sequence's own @{ mark p = centre }@.
+    it "recognises a record, and not a sequence's braces" $ do
+      map showsARecord ["surface panel FaceId {unFaceId = 10} must be convex", "got V3 {v3x = 0.0, v3y = 0.0, v3z = NaN}", "panels [FaceId {unFaceId = 1}]"]
+        `shouldBe` [True, True, True]
+      map showsARecord ["expect refused FlapCovered { fold … }", "step one { mark p = centre }", "the original z = 0 sheet"]
+        `shouldBe` [False, False, False]
 
   describe "an error nested inside another" $ do
     it "is quoted through the same method, whatever the inner type" $ do

@@ -69,7 +69,7 @@ instance Explain PaperMeshError where
     PaperNotPlanar (FaceId f) -> "panel " <> tshow f <> " needs a planar surface for the visible glTF scene"
     PaperUnresolved fs -> "cannot resolve coplanar visibility for panels " <> tshow (map unFaceId fs) <> "; provide their layer order or export --all-layers to inspect the complete geometry"
     PaperBadPrecision value -> "paper visibility needs a finite positive coordinate quantum, received " <> tshow value
-    PaperMissingPoint (FaceId f) (V2 x y) -> "a clipped corner (" <> num x <> ", " <> num y <> ") could not be attached to material panel " <> tshow f
+    PaperMissingPoint (FaceId f) (V2 x y) -> "a clipped corner, at (" <> num x <> ", " <> num y <> ") in the plane of its coplanar panels, could not be attached to material panel " <> tshow f
 
 completePaper :: Surface material -> Either PaperMeshError [PaperPiece]
 completePaper sheet = map whole <$> first PaperSurfaceError (surfaceFaces sheet)

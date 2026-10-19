@@ -184,8 +184,10 @@ live.** One class, one method, in `Senbazuru.Explain`. **The compiler does not
 enforce this** — a class demands an instance only where `explain` is called —
 so a type nothing prints today gets an instance anyway, because it is one
 `Left` away from being printed and the alternative is `show`. `num` is for a
-quantity we measured; `tshow` is for an id, a count, or a number the *reader*
-gave us. The header of `Senbazuru.Explain` has the rest.
+quantity we measured; `tshow` is for the number inside an id (match on
+`FaceId f` and say `tshow f`, since `tshow` of the id itself prints a Haskell
+record), a count, or a number the *reader* gave us. The header of
+`Senbazuru.Explain` has the rest.
 
 **Two unit systems, never mixed.** Shape *coordinates* are in model units;
 stroke *widths, dash lengths and displacements* are in page units and are never

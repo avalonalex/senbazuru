@@ -164,7 +164,7 @@ instance Explain SurfaceError where
     SurfaceInvalidMaterialPoint (VertexId v) -> "senbazuru:material_coords vertex " <> tshow v <> " needs exactly two finite coordinates"
     SurfaceBadThickness t -> "physical thickness must be a finite nonnegative distance, got " <> tshow t
     SurfaceBadDirection (V3 x y z) -> "layer requirements need a finite nonzero direction, got (" <> tshow x <> ", " <> tshow y <> ", " <> tshow z <> ")"
-    SurfaceBadLayerPair (FaceId a) (FaceId b) -> "layer requirement " <> tshow a <> " / " <> tshow b <> " must name two distinct surface panels"
+    SurfaceBadLayerPair (FaceId a) (FaceId b) -> "a layer requirement between panels " <> tshow a <> " and " <> tshow b <> " must name two distinct surface panels"
     SurfaceBadRefinement n -> "surface subdivision level must be between 0 and 5, got " <> tshow n
     SurfaceNonConvex (FaceId f) -> "surface panel " <> tshow f <> " must be convex to triangulate by a fan"
     SurfaceUnknownRefinementPanel (FaceId f) -> "refinement refers to absent panel " <> tshow f
