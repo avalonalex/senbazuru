@@ -274,19 +274,22 @@ replacingFrame index frame f
         }
 
 -- | Index into @vertices_*@ arrays.
+--
+-- The three ids derive 'Show' through the newtype, so an id shows as its
+-- number, @12@, wherever it is shown: in an error message through 'tshow', in
+-- a list or another value's derived 'Show', and in a failing test. Derived the
+-- stock way it would show as a record, @VertexId {unVertexId = 12}@, which is
+-- how eleven surface messages printed their ids until #582.
 newtype VertexId = VertexId {unVertexId :: Int}
-  deriving stock (Show)
-  deriving newtype (Eq, Ord, FromJSON, ToJSON)
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
--- | Index into @edges_*@ arrays.
+-- | Index into @edges_*@ arrays. Shows as its number, as 'VertexId' does.
 newtype EdgeId = EdgeId {unEdgeId :: Int}
-  deriving stock (Show)
-  deriving newtype (Eq, Ord, FromJSON, ToJSON)
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
--- | Index into @faces_*@ arrays.
+-- | Index into @faces_*@ arrays. Shows as its number, as 'VertexId' does.
 newtype FaceId = FaceId {unFaceId :: Int}
-  deriving stock (Show)
-  deriving newtype (Eq, Ord, FromJSON, ToJSON)
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
 -- | How the paper behaves along an edge.
 --

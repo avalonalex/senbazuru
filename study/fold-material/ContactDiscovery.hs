@@ -43,7 +43,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import FoldContact (ContactRow (..), contactTolerance)
 import Senbazuru.Explain (Explain (..), num, tshow)
-import Senbazuru.Fold.Types (FaceId)
+import Senbazuru.Fold.Types (FaceId (..))
 import Senbazuru.Geometry.V3 (V3)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact qualified as Panel
@@ -120,7 +120,7 @@ instance Explain DiscoveryError where
     Sweep.SweepClear -> "hinge motion is clear"
 
 pairName :: FaceId -> FaceId -> Text
-pairName a b = "panels " <> tshow a <> " and " <> tshow b
+pairName (FaceId a) (FaceId b) = "panels " <> tshow a <> " and " <> tshow b
 
 -- | Inputs are numerical clearance, model direction, source-panel ownership
 -- and a separated reference mesh. No authored lower/upper pairs are consumed.

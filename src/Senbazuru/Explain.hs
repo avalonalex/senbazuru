@@ -102,10 +102,13 @@ num x = T.pack (showGFloat (Just 6) x "")
 
 -- | Whatever the reader gave us, back as they would recognise it.
 --
--- Most uses are the @Int@ unwrapped from a @VertexId@, @EdgeId@ or @FaceId@ —
--- the messages match on @'Senbazuru.Fold.Types.VertexId' v@ and then say
--- @tshow v@, because a reader chasing a fault wants @vertex 12@ and not
--- @vertex (VertexId 12)@.
+-- Most uses are a @VertexId@, @EdgeId@ or @FaceId@, because a reader chasing
+-- a fault wants @vertex 12@. The ids derive 'Show' through the newtype, so
+-- 'tshow' of an id is its number, and so is a message that matches on
+-- @'Senbazuru.Fold.Types.VertexId' v@ and says @tshow v@, as many do. Until
+-- #582 the ids derived 'Show' as records, and eleven surface messages printed
+-- @VertexId {unVertexId = 12}@. A 'Senbazuru.Geometry.V2' or @V3@ still shows
+-- as a record, so a point is written by its parts.
 --
 -- It is also right for a 'Double' the /user/ supplied. A coordinate outside
 -- glTF's range is printed with 'tshow' so the reader can match it to the file;

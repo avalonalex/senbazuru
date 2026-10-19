@@ -155,23 +155,23 @@ surfaceLayerRequirements = layerRequirements
 instance Explain SurfaceError where
   explain = \case
     SurfaceFrameError err -> explain err
-    SurfaceNonFinite vid -> "surface vertex " <> tshow vid <> " needs finite coordinates"
+    SurfaceNonFinite (VertexId v) -> "surface vertex " <> tshow v <> " needs finite coordinates"
     SurfaceMaterialMismatch -> "the material pattern and folded surface must use the same vertex, edge and panel ids"
-    SurfaceMaterialNotFlat vid -> "material vertex " <> tshow vid <> " must lie in the original z = 0 sheet"
-    SurfaceMissingMaterial vid -> "surface vertex " <> tshow vid <> " has no original-sheet coordinates; material measurements need the source pattern"
+    SurfaceMaterialNotFlat (VertexId v) -> "material vertex " <> tshow v <> " must lie in the original z = 0 sheet"
+    SurfaceMissingMaterial (VertexId v) -> "surface vertex " <> tshow v <> " has no original-sheet coordinates; material measurements need the source pattern"
     SurfaceInvalidMaterialCoordinates -> "senbazuru:material_coords must be an array of two-coordinate material points"
     SurfaceMaterialCount expected actual -> "senbazuru:material_coords needs " <> tshow expected <> " points, one per surface vertex, but has " <> tshow actual
-    SurfaceInvalidMaterialPoint vid -> "senbazuru:material_coords vertex " <> tshow vid <> " needs exactly two finite coordinates"
+    SurfaceInvalidMaterialPoint (VertexId v) -> "senbazuru:material_coords vertex " <> tshow v <> " needs exactly two finite coordinates"
     SurfaceBadThickness t -> "physical thickness must be a finite nonnegative distance, got " <> tshow t
-    SurfaceBadDirection v -> "layer requirements need a finite nonzero direction, got " <> tshow v
-    SurfaceBadLayerPair a b -> "layer requirement " <> tshow a <> " / " <> tshow b <> " must name two distinct surface panels"
+    SurfaceBadDirection (V3 x y z) -> "layer requirements need a finite nonzero direction, got (" <> tshow x <> ", " <> tshow y <> ", " <> tshow z <> ")"
+    SurfaceBadLayerPair (FaceId a) (FaceId b) -> "a layer requirement between panels " <> tshow a <> " and " <> tshow b <> " must name two distinct surface panels"
     SurfaceBadRefinement n -> "surface subdivision level must be between 0 and 5, got " <> tshow n
-    SurfaceNonConvex fid -> "surface panel " <> tshow fid <> " must be convex to triangulate by a fan"
-    SurfaceUnknownRefinementPanel fid -> "refinement refers to absent panel " <> tshow fid
-    SurfaceNonPlanar fid -> "surface panel " <> tshow fid <> " must be planar to subdivide as a rigid panel"
-    SurfaceDegenerateFan fid -> "surface panel " <> tshow fid <> " has a zero-area or unrepresentable triangle in its first-corner fan"
-    SurfaceJoinedCut eid -> "cut edge " <> tshow eid <> " still shares vertices between panels; split the cut topology before refining it"
-    SurfaceMissingVertex vid -> "surface topology refers to missing vertex " <> tshow vid
+    SurfaceNonConvex (FaceId f) -> "surface panel " <> tshow f <> " must be convex to triangulate by a fan"
+    SurfaceUnknownRefinementPanel (FaceId f) -> "refinement refers to absent panel " <> tshow f
+    SurfaceNonPlanar (FaceId f) -> "surface panel " <> tshow f <> " must be planar to subdivide as a rigid panel"
+    SurfaceDegenerateFan (FaceId f) -> "surface panel " <> tshow f <> " has a zero-area or unrepresentable triangle in its first-corner fan"
+    SurfaceJoinedCut (EdgeId e) -> "cut edge " <> tshow e <> " still shares vertices between panels; split the cut topology before refining it"
+    SurfaceMissingVertex (VertexId v) -> "surface topology refers to missing vertex " <> tshow v
 
 -- | Read already prepared faces. A caller needing to trace absent faces first
 -- uses Fold.Crossings.withPlanarFaces; a crease-pattern drawing deliberately
