@@ -157,20 +157,21 @@ mapCranePocket sheet = do
     points = surfaceSamples sheet
     indexed = zip (map VertexId [0 ..]) points
     material = M.fromList [(v, sampleMaterial p) | (v, p) <- indexed]
+    point (V2 x y) = "(" <> tshow x <> ", " <> tshow y <> ")"
     landmark target = case [v | (v, p) <- indexed, norm (sampleMaterial p ^-^ target) < 1e-9] of
       [v] -> Right v
-      _ -> Left (PocketError ("expected one material landmark at " <> tshow target))
+      _ -> Left (PocketError ("expected one material landmark at " <> point target))
     classify centre face
       | centre `elem` faceVertexIds face = Right (faceId face, BodyCore)
       | otherwise = do
-          ps <- traverse (\v -> maybe (Left (PocketError ("missing material vertex " <> tshow v))) Right (M.lookup v material)) (faceVertexIds face)
+          ps <- traverse (\v -> maybe (Left (PocketError ("missing material vertex " <> tshow (unVertexId v)))) Right (M.lookup v material)) (faceVertexIds face)
           let left = all (\(V2 x _) -> x <= 0.5 + 1e-9) ps
               right = all (\(V2 x _) -> x >= 0.5 - 1e-9) ps
               bottom = all (\(V2 _ y) -> y <= 0.5 + 1e-9) ps
               top = all (\(V2 _ y) -> y >= 0.5 - 1e-9) ps
           case [r | (r, yes) <- [(WingA, left && top), (WingB, right && bottom), (Tail, left && bottom), (NeckHead, right && top)], yes] of
             [r] -> Right (faceId face, r)
-            _ -> Left (PocketError ("panel " <> tshow (faceId face) <> " crosses the material sector boundaries"))
+            _ -> Left (PocketError ("panel " <> tshow (unFaceId (faceId face)) <> " crosses the material sector boundaries"))
 
 regionFaces :: PocketMap -> Region -> [FaceId]
 regionFaces study r = M.keys (M.filter (== r) (pocketRegions study))

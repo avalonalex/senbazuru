@@ -108,10 +108,10 @@ data BendingError
 instance Explain BendingError where
   explain InvalidBending = "bending needs finite positive stiffnesses and packet angle magnitudes between 0 and pi"
   explain (SurfaceBendingFailure err) = explain err
-  explain (MissingRestAngle eid) = "crease " <> tshow eid <> " needs an explicit signed rest angle; its current pose is not a rest-angle control"
-  explain (UnexpectedRestAngle eid) = "rest angle names " <> tshow eid <> ", which is not an active interior crease of this surface"
-  explain (InvalidRestAngle eid angle) = "crease " <> tshow eid <> " needs a finite rest angle in [-pi, pi] matching its mountain/valley sign, got " <> tshow angle
-  explain (UnsupportedCrease eid) = "crease " <> tshow eid <> " must join two panels and appear as shared edges of the refined mesh"
+  explain (MissingRestAngle (EdgeId e)) = "crease " <> tshow e <> " needs an explicit signed rest angle; its current pose is not a rest-angle control"
+  explain (UnexpectedRestAngle (EdgeId e)) = "rest angle names crease " <> tshow e <> ", which is not an active interior crease of this surface"
+  explain (InvalidRestAngle (EdgeId e) angle) = "crease " <> tshow e <> " needs a finite rest angle in [-pi, pi] matching its mountain/valley sign, got " <> tshow angle
+  explain (UnsupportedCrease (EdgeId e)) = "crease " <> tshow e <> " must join two panels and appear as shared edges of the refined mesh"
   explain (AmbiguousCreaseSegment a b) = "mesh edge " <> tshow a <> "–" <> tshow b <> " belongs to more than one source crease"
   explain (MissingHingeVertex i) = "bending hinge refers to missing material vertex " <> tshow i
   explain (InvalidMaterialTriangle i) = "bending triangle " <> tshow i <> " needs finite, counterclockwise material coordinates and positive area"

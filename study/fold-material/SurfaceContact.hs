@@ -116,7 +116,7 @@ instance Explain ContactError where
   explain InvalidContactClearance = "surface contact needs a finite nonnegative numerical clearance"
   explain InvalidContactDirection = "surface contact needs a finite nonzero material direction"
   explain InvalidContactOwners = "surface contact needs a nonempty mesh and one source-panel owner per triangle"
-  explain (UnknownContactPanel fid) = "surface contact order names an absent panel " <> tshow fid
+  explain (UnknownContactPanel (FaceId f)) = "surface contact order names an absent panel " <> tshow f
   explain CyclicContactOrder = "surface contact lower/upper requirements contain a cycle"
   explain ChangedContactMaterial = "surface contact correction must preserve its prepared triangle ids and original-sheet coordinates"
   explain (InvalidContactTriangle i) = "surface contact triangle " <> tshow i <> " needs finite positions and nonzero area"
