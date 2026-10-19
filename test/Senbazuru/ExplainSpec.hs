@@ -27,9 +27,10 @@
 -- And how an id or a vector is written: as numbers, never as the record
 -- Haskell's derived 'show' writes, @FaceId {unFaceId = 0}@ ("Senbazuru.Explain"
 -- says why). 'SurfaceError' and 'PaperMeshError' printed twelve ids and two
--- vectors that way until #582, so 'idMessages' samples every constructor of
--- both, with the study's messages the same fix touched, and holds each to the
--- numbers it was given.
+-- vectors that way until #582, which also made the ids show as their numbers,
+-- so an id can no longer print as a record anywhere; a vector still can.
+-- 'idMessages' samples every constructor of both types, with the study's
+-- messages the same fix touched, and holds each to the numbers it was given.
 module Senbazuru.ExplainSpec (spec) where
 
 import ContactDiscovery (DiscoveryError (AmbiguousReferenceOrder))
@@ -213,11 +214,17 @@ spec = do
     it "ends without a full stop, so it can be followed by one" $
       [name | (name, msg) <- allMessages, "." `T.isSuffixOf` msg] `shouldBe` []
 
-  -- The first turns red if any message printed an id or a vector with
-  -- 'tshow' of the value itself; the second if one printed the wrong id, the
-  -- same id twice, or none. The pins say what is printed instead, the last
-  -- on the path #579's fold takes to a sequence's author.
+  -- The first turns red if the ids went back to showing as records; the
+  -- second if a message printed a vector, or any other record, with 'tshow'
+  -- of the value itself; the third if one printed the wrong id, the same id
+  -- twice, or none. The pins say what is printed instead, the last on the
+  -- path #579's fold takes to a sequence's author.
   describe "an id or a vector in a message" $ do
+    it "shows an id as its number, inside any value" $ do
+      show (VertexId 3, EdgeId 4, FaceId 5) `shouldBe` "(3,4,5)"
+      show [FaceId 1, FaceId 2] `shouldBe` "[1,2]"
+      show (SurfaceNonConvex (FaceId 13)) `shouldBe` "SurfaceNonConvex 13"
+
     it "is written as numbers, not as a Haskell record" $
       [name | (name, msg) <- allMessages, showsARecord msg] `shouldBe` []
 
