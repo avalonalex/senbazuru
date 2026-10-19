@@ -1213,7 +1213,10 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
   ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused),
   [C8](decisions.md#changes-since-draft-v2)).
 - **What it does.** Runs the inner move against the current state, and requires a
-  refusal whose kind is KIND (§12), at any nesting depth.
+  refusal whose kind is KIND (§12), however deeply the library's error is wrapped:
+  a turn refused because folding tore at a vertex matches `TornAt`. The inner move
+  is a move, never another `expect refused`, which the checker refuses as
+  `NestedExpectRefused` ([owner decision 50](decisions.md#9-owner-decisions)).
 - **What it leaves behind.** An unchanged state, **no move record and no state**. A
   refusal claims nothing about a route taken, and every consumer of records (page,
   animation, settle) would otherwise have to skip it. Its outcome is kept in the
@@ -1249,7 +1252,9 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
     join, that face, 44, lies face down, +90 is accepted and −90 refused (decisions'
     appendix command 16) [ran].
 - **Its refusals.** If the inner move is accepted: `RefusalNotRaised`. If it is
-  refused by another name: `RefusedDifferently`, naming both.
+  refused by another name: `RefusedDifferently`, naming both. If it is refused by
+  a refusal with no kind, such as a move not run yet, that refusal is passed on as
+  itself. None of the three can be expected (owner decisions 49 and 50).
 
 ## 10. Assurance
 
@@ -1416,7 +1421,11 @@ step 2 (kite): (1/2, 0.207): a typed point 1.07e-4 sheet lengths from (internal 
 
 **Table** (**SKETCH**). Names that exist in code are cited. The rest are proposals
 for [05](05-prd-library-additions.md) and [04](04-prd-sequence-source-and-cli.md) to
-finalise, and they are what `expect refused` matches. `MoveFailure` wraps the
+finalise, and they are what `expect refused` matches. A library refusal not in the
+table, such as `FlapSurface` or `DegenerateFace`, has no kind: no valid sequence
+reaches it, or it reaches one only through a gap the checker or the sheet's start
+should close, so it is not a refusal of the paper, and a run passes it on as itself
+([owner decision 49](decisions.md#9-owner-decisions)). `MoveFailure` wraps the
 selection, macro, stacking and library errors. Every sequence-level problem type
 lives in `Sequence.Error` with its `Explain` instance, which is also where
 `expect refused` finds its kind names ([D20](decisions.md#d20-errors),
@@ -1434,7 +1443,8 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `NotASingleMacro`, `NotAFigure`, `HingeOfSeveralMoves` | `StaticProblem` | `continue`, `unfold`/`repeat`, or `hinge of` naming the wrong kind of step | the name |
 | `TurnsNoPaper` | `StaticProblem` | `unfold` naming a step that turns no paper, so has no angle change to reverse (§6.4) | the name |
 | `RepeatUnmappable` | `StaticProblem` | `repeat` over a step containing `model` or `top N`, or an isometry point that is a construction | the move |
-| `UnknownRefusalKind` | `StaticProblem` | an `expect refused` KIND not in this table | KIND |
+| `UnknownRefusalKind` | `StaticProblem` | an `expect refused` KIND that no refusal of a move has (`refusalKinds`) | KIND |
+| `NestedExpectRefused` | `StaticProblem` | an `expect refused` holding another ([owner decision 50](decisions.md#9-owner-decisions)) | the inner KIND |
 | `SheetHasNoVertices`, `SheetAlreadyFolded` | `SheetProblem`, in `SheetRefused` | key frame empty; `frameKind` `FoldedForm`, meaning z relief or the `foldedForm` class ([`Query.hs:459-463`](../src/Senbazuru/Fold/Query.hs#L459-L463)) | path; `file_frames` count, or the z span or class |
 | `WriteMissingAngles`, `WriteNonFiniteAngle` | `WriteProblem`, in `WriteRefused` | a state to write without explicit `edges_foldAngle` (§11); a non-finite angle ([05](05-prd-library-additions.md)) | the state; the edge, internal |
 | `NearMiss` | `ResolveProblem` | a typed literal in a position slot, near a vertex but not on it | literal; internal vertex; distance |
@@ -1471,7 +1481,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `RepeatNotSymmetric`, `CheckpointOutlineDiffers` | `MoveFailure` | §9 | the first differing crease, hinge turn or outline point |
 | `UnfoldChangedSince` | `MoveFailure` | §6.4: a later move changed a crease the unfold would turn back | the crease's material segment |
 | `NotModelled` | `MoveFailure`, reaching the CLI through `runRefusal` from a run that returned `Right` | §9 | the quoted text |
-| `RefusalNotRaised`, `RefusedDifferently` | `MoveFailure` | §9 | the kinds |
+| `RefusalNotRaised`, `RefusedDifferently` | `MoveFailure` | §9; no kind, so not expectable ([owner decision 50](decisions.md#9-owner-decisions)) | the kinds |
 | `NoRoute` | `PoseError` | `recordPoseAt` on a route-less record | the evidence value |
 | `NotAProperRotation` | `MoveFailure` | a presentation `Rigid` that `isProperRotation` rejects. The language cannot build one, so the check is tested directly on a mirror and on `diag(2, 1/2, 1)` ([05](05-prd-library-additions.md)) | det |
 | `SettleOnNoMove`, `SettleStartNotFlat`, `SettleNoPose`, `SettleNoRest`, `NoDifference` | `SettleStepError`, in `Sequence.Material`, which wraps the solver's own `SettleError` as `SettleFailed` ([D14](decisions.md#d14-material-consumption), [C6](decisions.md#changes-since-draft-v2)) | [07](07-prd-material-consumption.md#settlespec-and-settleinput-two-contracts) | — |

@@ -272,6 +272,11 @@ data StaticProblem
     ParameterOutOfRange Rational Bound Bound
   | -- | @expect refused KIND@ with a kind that names no refusal.
     UnknownRefusalKind RefusalKind
+  | -- | An @expect refused@ whose move is another @expect refused@, here with
+    -- the inner one's kind. It expects a move to be refused, and the inner
+    -- one is no move: run, it is refused only as an expectation not met, a
+    -- refusal no @expect refused@ can name (owner decision 50).
+    NestedExpectRefused RefusalKind
   | -- | @continue NAME@, where the named step is not exactly one macro-move.
     NotASingleMacro Name
   | -- | @unfold NAME@ or @repeat NAME@, where the named step draws no picture
@@ -349,6 +354,8 @@ instance Explain StaticProblem where
     ParameterOutOfRange a lower upper ->
       exactNumber a <> "° is out of range: it must be " <> lowerWords lower <> " and " <> upperWords upper
     UnknownRefusalKind (RefusalKind kind) -> quote kind <> " is not a kind of refusal"
+    NestedExpectRefused (RefusalKind kind) ->
+      "an expect refused holds another, expect refused " <> kind <> "; an expect refused holds the move it expects to be refused"
     NotASingleMacro (Name name) ->
       quote name <> " cannot be continued: a step can be continued only if it is exactly one macro-move"
     NotAFigure (Name name) ->
@@ -795,7 +802,11 @@ refusalKinds =
 -- by: a reference that names no paper, a selection, or the library's own
 -- refusal of a turn or a fold. A refusal of the text, the sequence or the
 -- sheet has none, since no move is made, and neither does a move not run yet,
--- which says nothing about the paper.
+-- which says nothing about the paper. Nor does a library refusal that is not
+-- one of the paper (owner decision 49), or an expect refused not met (owner
+-- decision 50); each is passed on as itself. Every kind given here is in
+-- 'refusalKinds', and "Senbazuru.Sequence.ErrorSpec" holds every
+-- constructor to that.
 refusalKindOf :: SequenceError -> Maybe RefusalKind
 refusalKindOf =
   fmap RefusalKind . \case
@@ -822,8 +833,8 @@ refusalKindOf =
         SegmentStraddles {} -> "SegmentStraddles"
         NothingSelected -> "NothingSelected"
         ExistingHingeFlat {} -> "ExistingHingeFlat"
-      FlapRefused err -> Just (flapKind err)
-      FoldingRefused err -> Just (foldingKind err)
+      FlapRefused err -> flapKind err
+      FoldingRefused err -> foldingKind err
       -- The runner's own fault, not the paper's: nothing an author could
       -- expect.
       CreasingRefused {} -> Nothing
@@ -834,49 +845,60 @@ refusalKindOf =
       -- A stop, not a refusal of the paper: no expect refused can name it,
       -- so one wrapped round it passes it on and the run stops there.
       NotModelledStop {} -> Nothing
-      RefusalNotRaised {} -> Just "RefusalNotRaised"
-      RefusedDifferently {} -> Just "RefusedDifferently"
+      -- An expect refused round another is refused before anything runs
+      -- (owner decision 50), so these two are raised only by an expect
+      -- refused standing alone, and nothing can expect them.
+      RefusalNotRaised {} -> Nothing
+      RefusedDifferently {} -> Nothing
     _ -> Nothing
   where
+    -- The library's refusals of a turn and a fold. Those with no kind are
+    -- not refusals of the paper (owner decision 49): no valid sequence
+    -- reaches them, or reaches them only through a gap the checker or the
+    -- sheet's start should close, such as a turn of 400 degrees, a fold line
+    -- a hair from a vertex, or a face the mesh cannot split into triangles.
+    -- Like a move not run yet, such a refusal is passed on as itself. Each
+    -- constructor is named, with no catch-all, so that a new one has to be
+    -- placed on one side or the other.
     flapKind = \case
       FlapFolding err -> foldingKind err
-      FlapGeometry {} -> "FlapGeometry"
-      FlapSurface {} -> "FlapSurface"
-      FlapSweep {} -> "FlapSweep"
-      FlapMissingCrease {} -> "FlapMissingCrease"
-      FlapNotHinge {} -> "FlapNotHinge"
-      FlapWrongSide {} -> "FlapWrongSide"
-      FlapCoupled {} -> "FlapCoupled"
-      FlapMovingNotFlat {} -> "FlapMovingNotFlat"
-      FlapMovesBothWays {} -> "FlapMovesBothWays"
-      FlapEmptyHinge -> "FlapEmptyHinge"
-      FlapDuplicateCrease {} -> "FlapDuplicateCrease"
-      FlapNotBoundary {} -> "FlapNotBoundary"
-      FlapUnalignedCrease {} -> "FlapUnalignedCrease"
-      FlapMissingFace {} -> "FlapMissingFace"
-      FlapMissingOwner {} -> "FlapMissingOwner"
-      FlapMissingVertex {} -> "FlapMissingVertex"
-      FlapStartMismatch -> "FlapStartMismatch"
-      FlapInvalidTravel {} -> "FlapInvalidTravel"
-      FlapInvalidTurn {} -> "FlapInvalidTurn"
-      FlapInvalidProgress {} -> "FlapInvalidProgress"
-      FlapPathMismatch {} -> "FlapPathMismatch"
-      FlapCollision {} -> "FlapCollision"
-      FlapUnresolved {} -> "FlapUnresolved"
-      FlapEndpointOrder {} -> "FlapEndpointOrder"
-      FlapStackOrder {} -> "FlapStackOrder"
+      FlapGeometry {} -> Nothing
+      FlapSurface {} -> Nothing
+      FlapSweep {} -> Nothing
+      FlapMissingCrease {} -> Nothing
+      FlapNotHinge {} -> Just "FlapNotHinge"
+      FlapWrongSide {} -> Nothing
+      FlapCoupled {} -> Just "FlapCoupled"
+      FlapMovingNotFlat {} -> Just "FlapMovingNotFlat"
+      FlapMovesBothWays {} -> Just "FlapMovesBothWays"
+      FlapEmptyHinge -> Nothing
+      FlapDuplicateCrease {} -> Nothing
+      FlapNotBoundary {} -> Just "FlapNotBoundary"
+      FlapUnalignedCrease {} -> Just "FlapUnalignedCrease"
+      FlapMissingFace {} -> Nothing
+      FlapMissingOwner {} -> Nothing
+      FlapMissingVertex {} -> Nothing
+      FlapStartMismatch -> Just "FlapStartMismatch"
+      FlapInvalidTravel {} -> Nothing
+      FlapInvalidTurn {} -> Nothing
+      FlapInvalidProgress {} -> Nothing
+      FlapPathMismatch {} -> Nothing
+      FlapCollision {} -> Just "FlapCollision"
+      FlapUnresolved {} -> Just "FlapUnresolved"
+      FlapEndpointOrder {} -> Just "FlapEndpointOrder"
+      FlapStackOrder {} -> Just "FlapStackOrder"
     foldingKind = \case
-      FrameGeometry {} -> "FrameGeometry"
-      AlreadyFolded {} -> "AlreadyFolded"
-      NoFaces -> "NoFaces"
-      DegenerateFace {} -> "DegenerateFace"
-      FaceEdgeMissing {} -> "FaceEdgeMissing"
-      DuplicateEdge {} -> "DuplicateEdge"
-      DisconnectedFace {} -> "DisconnectedFace"
-      NonFiniteAngle {} -> "NonFiniteAngle"
-      TornAt {} -> "TornAt"
-      AngleWithoutPaper {} -> "AngleWithoutPaper"
-      AngleNotAchieved {} -> "AngleNotAchieved"
+      FrameGeometry {} -> Nothing
+      AlreadyFolded {} -> Nothing
+      NoFaces -> Nothing
+      DegenerateFace {} -> Nothing
+      FaceEdgeMissing {} -> Nothing
+      DuplicateEdge {} -> Nothing
+      DisconnectedFace {} -> Nothing
+      NonFiniteAngle {} -> Nothing
+      TornAt {} -> Just "TornAt"
+      AngleWithoutPaper {} -> Nothing
+      AngleNotAchieved {} -> Just "AngleNotAchieved"
 
 -- | Where the error is, or 'NoSpan' for a sequence that was never text.
 errorSpan :: SequenceError -> Span

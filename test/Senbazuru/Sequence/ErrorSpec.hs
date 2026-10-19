@@ -26,10 +26,16 @@
 -- __The list of refusal kinds__ is hand-written text that has to agree with
 -- constructors elsewhere in the library. Thirteen of its names exist as
 -- constructors today, and a test reads each one's spelling off a real value.
+-- And every kind the runner gives a refusal must be on it, or @expect
+-- refused@ could never name it (#580): every constructor of 'FlapError' and
+-- 'FoldingError' is sampled, labelled with no catch-all as above, and the 23
+-- that are not refusals of the paper give no kind (owner decision 49), as do
+-- the two an expect refused not met raises (owner decision 50).
 module Senbazuru.Sequence.ErrorSpec (spec) where
 
 import Data.Char (isAlphaNum, isUpper)
-import Data.List (nub)
+import Data.List (nub, sort)
+import Data.Maybe (isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..))
@@ -38,6 +44,8 @@ import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Folding (FoldingError (..))
+import Senbazuru.Origami.HingeSweep (SweepError (..))
+import Senbazuru.Origami.Surface (SurfaceError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Sequence.Error
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), RefusalKind (..), Span (..))
@@ -223,6 +231,155 @@ spec = do
             ]
       [show err | err <- raised, maybe True (`notElem` refusalKinds) (refusalKindOf err)] `shouldBe` []
 
+    -- Turns red if any library refusal were given a kind the list lacks,
+    -- which is how #580's 25 came to be reported but never nameable.
+    it "holds every kind the runner gives a library refusal" $
+      [label | (label, err) <- libraryRefusals, Just kind <- [refusalKindOf err], kind `notElem` refusalKinds] `shouldBe` []
+
+    -- Owner decisions 49 and 50, by name. Turns red if one of these were
+    -- given a kind again, or one of the paper's lost its kind.
+    it "gives no kind to a library refusal that is not one of the paper, or to an expectation not met" $
+      nub (sort [label | (label, err) <- libraryRefusals <> expectationsNotMet, isNothing (refusalKindOf err)])
+        `shouldBe` sort
+          [ "AlreadyFolded",
+            "AngleWithoutPaper",
+            "DegenerateFace",
+            "DisconnectedFace",
+            "DuplicateEdge",
+            "FaceEdgeMissing",
+            "FrameGeometry",
+            "NoFaces",
+            "NonFiniteAngle",
+            "FlapDuplicateCrease",
+            "FlapEmptyHinge",
+            "FlapGeometry",
+            "FlapInvalidProgress",
+            "FlapInvalidTravel",
+            "FlapInvalidTurn",
+            "FlapMissingCrease",
+            "FlapMissingFace",
+            "FlapMissingOwner",
+            "FlapMissingVertex",
+            "FlapPathMismatch",
+            "FlapSurface",
+            "FlapSweep",
+            "FlapWrongSide",
+            "RefusalNotRaised",
+            "RefusedDifferently"
+          ]
+
+-- | Every library refusal of a turn or a fold, as a run raises it, labelled
+-- by its constructor: each 'FlapError', each 'FoldingError', and each
+-- 'FoldingError' again inside a flap, where it reaches a run too.
+libraryRefusals :: [(String, SequenceError)]
+libraryRefusals =
+  [(sampledFlap e, stepRefusal (FlapRefused e)) | e <- flapSamples]
+    <> [(sampledFolding e, stepRefusal (FoldingRefused e)) | e <- foldingSamples]
+    <> [(sampledFolding e, stepRefusal (FlapRefused (FlapFolding e))) | e <- foldingSamples]
+
+-- | The two refusals an expect refused raises when its move is not refused
+-- as it said.
+expectationsNotMet :: [(String, SequenceError)]
+expectationsNotMet =
+  [ ("RefusalNotRaised", stepRefusal (RefusalNotRaised (RefusalKind "NoSolution"))),
+    ("RefusedDifferently", stepRefusal (RefusedDifferently (RefusalKind "NoSolution") (RefusalKind "SeedMissing")))
+  ]
+
+stepRefusal :: MoveFailure -> SequenceError
+stepRefusal = StepRefused 1 Nothing NoSpan
+
+flapSamples :: [FlapError]
+flapSamples =
+  [ FlapFolding (TornAt (VertexId 0) 0),
+    FlapGeometry NoVertices,
+    FlapSurface (SurfaceNonConvex (FaceId 0)),
+    FlapSweep InvalidSweepAxis,
+    FlapMissingCrease (EdgeId 0),
+    FlapNotHinge (EdgeId 0),
+    FlapWrongSide (EdgeId 0) (FaceId 0),
+    FlapCoupled (EdgeId 0) [],
+    FlapMovingNotFlat (FaceId 0) 0,
+    FlapMovesBothWays (FaceId 0) (FaceId 1),
+    FlapEmptyHinge,
+    FlapDuplicateCrease (EdgeId 0),
+    FlapNotBoundary (EdgeId 0),
+    FlapUnalignedCrease (EdgeId 0),
+    FlapMissingFace (FaceId 0),
+    FlapMissingOwner 0,
+    FlapMissingVertex (VertexId 0),
+    FlapStartMismatch,
+    FlapInvalidTravel 400,
+    FlapInvalidTurn 400,
+    FlapInvalidProgress 2,
+    FlapPathMismatch (VertexId 0),
+    FlapCollision 0 [],
+    FlapUnresolved 0 1 [],
+    FlapEndpointOrder 0 NoVertices,
+    FlapStackOrder NoVertices
+  ]
+
+foldingSamples :: [FoldingError]
+foldingSamples =
+  [ FrameGeometry NoVertices,
+    AlreadyFolded 1,
+    NoFaces,
+    DegenerateFace (FaceId 0),
+    FaceEdgeMissing (FaceId 0) (VertexId 0) (VertexId 1),
+    DuplicateEdge (EdgeId 0) (EdgeId 1),
+    DisconnectedFace (FaceId 0),
+    NonFiniteAngle (EdgeId 0) (0 / 0),
+    TornAt (VertexId 0) 0,
+    AngleWithoutPaper (EdgeId 0) 90,
+    AngleNotAchieved (EdgeId 0) 0
+  ]
+
+-- | A flap refusal's constructor, by a match with no catch-all, so that one
+-- added to 'FlapError' without a sample warns here. A flap's folding refusal
+-- is labelled by the folding refusal inside it, which is what gives its kind.
+sampledFlap :: FlapError -> String
+sampledFlap = \case
+  FlapFolding err -> sampledFolding err
+  FlapGeometry {} -> "FlapGeometry"
+  FlapSurface {} -> "FlapSurface"
+  FlapSweep {} -> "FlapSweep"
+  FlapMissingCrease {} -> "FlapMissingCrease"
+  FlapNotHinge {} -> "FlapNotHinge"
+  FlapWrongSide {} -> "FlapWrongSide"
+  FlapCoupled {} -> "FlapCoupled"
+  FlapMovingNotFlat {} -> "FlapMovingNotFlat"
+  FlapMovesBothWays {} -> "FlapMovesBothWays"
+  FlapEmptyHinge -> "FlapEmptyHinge"
+  FlapDuplicateCrease {} -> "FlapDuplicateCrease"
+  FlapNotBoundary {} -> "FlapNotBoundary"
+  FlapUnalignedCrease {} -> "FlapUnalignedCrease"
+  FlapMissingFace {} -> "FlapMissingFace"
+  FlapMissingOwner {} -> "FlapMissingOwner"
+  FlapMissingVertex {} -> "FlapMissingVertex"
+  FlapStartMismatch -> "FlapStartMismatch"
+  FlapInvalidTravel {} -> "FlapInvalidTravel"
+  FlapInvalidTurn {} -> "FlapInvalidTurn"
+  FlapInvalidProgress {} -> "FlapInvalidProgress"
+  FlapPathMismatch {} -> "FlapPathMismatch"
+  FlapCollision {} -> "FlapCollision"
+  FlapUnresolved {} -> "FlapUnresolved"
+  FlapEndpointOrder {} -> "FlapEndpointOrder"
+  FlapStackOrder {} -> "FlapStackOrder"
+
+-- | A folding refusal's constructor, by a match with no catch-all.
+sampledFolding :: FoldingError -> String
+sampledFolding = \case
+  FrameGeometry {} -> "FrameGeometry"
+  AlreadyFolded {} -> "AlreadyFolded"
+  NoFaces -> "NoFaces"
+  DegenerateFace {} -> "DegenerateFace"
+  FaceEdgeMissing {} -> "FaceEdgeMissing"
+  DuplicateEdge {} -> "DuplicateEdge"
+  DisconnectedFace {} -> "DisconnectedFace"
+  NonFiniteAngle {} -> "NonFiniteAngle"
+  TornAt {} -> "TornAt"
+  AngleWithoutPaper {} -> "AngleWithoutPaper"
+  AngleNotAchieved {} -> "AngleNotAchieved"
+
 -- | The constructor name of each refusal in 'refusalKinds' that already
 -- exists in the library, read from a real value.
 constructorsOfToday :: [Text]
@@ -293,6 +450,7 @@ staticSamples =
     NotQuarters 0,
     ParameterOutOfRange 200 (Exclusive 0) (Inclusive 180),
     UnknownRefusalKind (RefusalKind "FlapCoverd"),
+    NestedExpectRefused (RefusalKind "NoSolution"),
     NotASingleMacro "base",
     NotAFigure "names",
     TurnsNoPaper "flipped",
@@ -345,6 +503,7 @@ sampledStatic = \case
   NotQuarters {} -> "NotQuarters"
   ParameterOutOfRange {} -> "ParameterOutOfRange"
   UnknownRefusalKind {} -> "UnknownRefusalKind"
+  NestedExpectRefused {} -> "NestedExpectRefused"
   NotASingleMacro {} -> "NotASingleMacro"
   NotAFigure {} -> "NotAFigure"
   TurnsNoPaper {} -> "TurnsNoPaper"

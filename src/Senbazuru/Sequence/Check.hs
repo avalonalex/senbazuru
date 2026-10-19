@@ -386,6 +386,9 @@ checkMove = \case
   NotModelled what -> pure (NotModelled what)
   ExpectRefused kind inner -> do
     unless (kind `elem` refusalKinds) (refuse (UnknownRefusalKind kind))
+    case inner of
+      ExpectRefused innerKind _ -> refuse (NestedExpectRefused innerKind)
+      _ -> pure ()
     -- The names are put back afterwards: what is in here never happens.
     before <- lift get
     checkedInner <- checkMove inner
