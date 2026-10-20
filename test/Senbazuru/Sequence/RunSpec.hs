@@ -1210,30 +1210,102 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- crease the half fold turned about no longer lies on one line. Taking its
   -- first piece, the fold at right angles to it ran up x = 1/4 or along
   -- y = 1/4, by which way the half fold's line had been written. So it is
-  -- refused, naming every piece where it lies, with a kind an expect refused
-  -- can name (owner decision 52). Turns red if a bent hinge gave a line,
-  -- written either way, alone or inside another, or the carried piece went
-  -- unnamed.
+  -- refused with a kind an expect refused can name, naming every piece where
+  -- the paper lies, in sheet lengths, the same however the crease was
+  -- written (owner decision 52), on a sheet two long as on the unit square.
+  -- Turns red if a bent hinge gave a line, alone or inside another, if it
+  -- had no kind, if a piece went unnamed or the order followed the writing,
+  -- or if the pieces were not in sheet lengths.
   it "refuses a hinge a later fold has bent, however its crease was written" $ do
-    let bentThen halfLine lineFrom = onSquare (Just (at (1 / 2) (3 / 8))) ColouredUp $ do
+    let bentThen onSheet halfLine lineFrom = onSheet $ do
           step_ "Pre-crease x = 1/4." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 4) 0) (at (1 / 4) 1)) FlapOfFirstArgument (Just (corner SouthWest))))
           step_ "Pre-crease y = 1/4." (move (FoldAndUnfold ValleyFold (Segment (at 0 (1 / 4)) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner SouthWest))))
           half <- step "half" "Fold the top half down." (move (Fold ValleyFold ToFlat halfLine FlapOfFirstArgument (Just (corner NorthEast))))
           step_ "Unfold it." (unfold [half])
           step_ "Fold the north-east corner down." (move (Fold ValleyFold ToFlat (Segment (at (1 / 4) 1) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner NorthEast))))
           step_ "Fold along the half crease, or across it." (move (Fold ValleyFold ToFlat (lineFrom half) FlapOfFirstArgument (Just (corner SouthWest))))
-        carried (a, b) = sort [roundTo a, roundTo b] == [(0.75, 0.25), (0.75, 0.5)]
-        roundTo (V2 x y) = (fromIntegral (round (x * 1e9) :: Integer) / 1e9 :: Double, fromIntegral (round (y * 1e9) :: Integer) / 1e9 :: Double)
-        bent err =
-          refusalKindOf err == Just (RefusalKind "HingeNotStraight") && case err of
-            ResolveRefused _ _ _ (InsideLine "hinge of half" (HingeNotStraight (Name "half") pieces)) -> any carried pieces
-            ResolveRefused _ _ _ (HingeNotStraight (Name "half") pieces) -> any carried pieces
-            _ -> False
-    forM_ [Segment (MidpointOfEdge West) (MidpointOfEdge East), Segment (MidpointOfEdge East) (MidpointOfEdge West)] $ \halfLine ->
-      forM_ [\half -> PerpendicularThrough (hingeOf half) (at (1 / 4) (1 / 4)), hingeOf] $ \lineFrom ->
-        case bentThen halfLine lineFrom of
-          Left err | bent err -> pure ()
-          other -> expectationFailure ("expected the bent hinge refused, got " <> either (show . explain) (const "a run") other)
+        unitSquare = onSquare (Just (at (1 / 2) (3 / 8))) ColouredUp
+        twoLong = runOn (M.singleton "two.fold" squareSheet {keyFrame = emptyFrame {verticesCoords = [[0, 0], [2, 0], [2, 2], [0, 2]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 4)) | i <- [0 .. 3]], edgesAssignment = replicate 4 Border}}) . sequenceOf (header "A square two long" (sheetFile "two.fold") (Just (at (1 / 2) (3 / 8))))
+        piecesOf = \case
+          ResolveRefused _ _ _ (InsideLine "hinge of half" (HingeNotStraight (Name "half") pieces)) -> Just pieces
+          ResolveRefused _ _ _ (HingeNotStraight (Name "half") pieces) -> Just pieces
+          _ -> Nothing
+        named = [(V2 0 0.5, V2 0.25 0.5), (V2 0.25 0.5, V2 0.75 0.5), (V2 0.75 0.25, V2 0.75 0.5)]
+        samePieces pieces = length pieces == length named && and (zipWith (\(a, b) (c, d) -> norm (a ^-^ c) < 1e-12 && norm (b ^-^ d) < 1e-12) pieces named)
+    forM_ [unitSquare, twoLong] $ \onSheet ->
+      forM_ [Segment (MidpointOfEdge West) (MidpointOfEdge East), Segment (MidpointOfEdge East) (MidpointOfEdge West)] $ \halfLine ->
+        forM_ [\half -> PerpendicularThrough (hingeOf half) (at (1 / 4) (1 / 4)), hingeOf] $ \lineFrom ->
+          case bentThen onSheet halfLine lineFrom of
+            Left err
+              | refusalKindOf err == Just (RefusalKind "HingeNotStraight"),
+                Just pieces <- piecesOf err,
+                samePieces pieces ->
+                  pure ()
+            other -> expectationFailure ("expected the bent hinge refused, naming its pieces, got " <> either (show . explain) (const "a run") other)
+
+  -- The half crease cut by a later fold 2e-9 off vertical, whose short piece
+  -- is tilted by that much: a hair, within the tolerance, so the crease
+  -- still lies on one line, which a fold along it then finds the folded
+  -- paper's creases do not share. The first piece's line made that depend on
+  -- how the crease was written: accepted written west to east, and refused
+  -- as bent, or as crossing folded paper, written east to west. Turns red if
+  -- the outcome depended on the writing.
+  it "judges a hinge a hair off one line the same way however its crease was written" $ do
+    let nearlyStraight halfLine = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp $ do
+          half <- step "half" "Fold the top half down." (move (Fold ValleyFold ToFlat halfLine FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Unfold it." (unfold [half])
+          step_ "Fold the east strip over, a hair off north." (move (Fold ValleyFold ToFlat (Segment (at (9 / 10) 0) (at (450000001 / 500000000) 1)) FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Fold along the half crease." (move (Fold ValleyFold ToFlat (hingeOf half) FlapOfFirstArgument (Just (corner SouthWest))))
+        outcome = either (fmap (\(RefusalKind kind) -> kind) . refusalKindOf) (const (Just "a run"))
+    map (outcome . nearlyStraight) [Segment (MidpointOfEdge West) (MidpointOfEdge East), Segment (MidpointOfEdge East) (MidpointOfEdge West)]
+      `shouldBe` replicate 2 (Just "FlapUnalignedCrease")
+
+  -- The square folded in half and unfolded, then folded at right angles to
+  -- that hinge through the centre, which creases the line up the middle.
+  -- The hinge's line points east whichever way the half fold's line was
+  -- written, so the new crease, and every record, is the same. Turns red if
+  -- the hinge's line pointed the way its crease was written.
+  it "folds at right angles to a hinge the same way however its crease was written" $ do
+    let across halfLine = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp $ do
+          half <- step "half" "Fold the top half down." (move (Fold ValleyFold ToFlat halfLine FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Unfold it." (unfold [half])
+          step_ "Fold the right half behind." (move (Fold MountainFold ToFlat (PerpendicularThrough (hingeOf half) centre) FlapOfFirstArgument (Just (corner SouthEast))))
+    westToEast <- right (across (Segment (MidpointOfEdge West) (MidpointOfEdge East)))
+    eastToWest <- right (across (Segment (MidpointOfEdge East) (MidpointOfEdge West)))
+    map facts (drop 2 (runRecords eastToWest)) `shouldBe` map facts (drop 2 (runRecords westToEast))
+
+  -- A crease made through two layers lies on one line only while they are
+  -- stacked. The square's diagonal folded, its corner folded over through
+  -- both layers as step q, then both unfolded: q's crease runs along
+  -- x = 3/4 below the diagonal and y = 3/4 above it, with no later fold, and
+  -- is refused naming both. And a hinge made through two layers and bent
+  -- with both still stacked has each of its two stretches twice, one a
+  -- layer, which are named once each. Turns red if layers lying apart gave a
+  -- line, or a stretch were named once a layer.
+  it "refuses a hinge made through layers that no longer lie together, naming each stretch once" $ do
+    let opened = onSquare (Just (at (1 / 2) (1 / 8))) ColouredUp $ do
+          step_ "Pre-crease x = 3/4." (move (FoldAndUnfold ValleyFold (Segment (at (3 / 4) 0) (at (3 / 4) 1)) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Pre-crease y = 3/4." (move (FoldAndUnfold ValleyFold (Segment (at 0 (3 / 4)) (at 1 (3 / 4))) FlapOfFirstArgument (Just (corner NorthWest))))
+          d <- step "d" "Fold along the diagonal." (move (Fold ValleyFold ToFlat (Segment (corner SouthWest) (corner NorthEast)) FlapOfFirstArgument (Just (corner NorthWest))))
+          q <- step "q" "Fold the corner over, both layers." (move (Fold ValleyFold ToFlat (Segment (at (3 / 4) 0) (at (3 / 4) (3 / 4))) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Unfold it." (unfold [q])
+          step_ "Unfold the diagonal." (unfold [d])
+          step_ "Along the hinge." (move (Fold ValleyFold ToFlat (hingeOf q) FlapOfFirstArgument (Just (corner SouthEast))))
+        stacked = onSquare (Just (at (1 / 8) (3 / 8))) ColouredUp $ do
+          step_ "Pre-crease x = 1/2." (move (FoldAndUnfold ValleyFold (Segment (MidpointOfEdge South) (MidpointOfEdge North)) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Pre-crease one slant." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 4) 1) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Pre-crease its mirror." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 4) 0) (at 1 (3 / 4))) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Fold the top half down." (move (Fold ValleyFold ToFlat (Segment (MidpointOfEdge West) (MidpointOfEdge East)) FlapOfFirstArgument (Just (corner NorthEast))))
+          q <- step "q" "Fold the right half over, both layers." (move (Fold ValleyFold ToFlat (Segment (at (1 / 2) 0) (at (1 / 2) (1 / 2))) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Unfold it." (unfold [q])
+          step_ "Fold the corner up, both layers." (move (Fold ValleyFold ToFlat (Segment (at (1 / 4) 0) (at (3 / 4) (1 / 2))) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Along the hinge." (move (Fold ValleyFold ToFlat (hingeOf q) FlapOfFirstArgument (Just (corner SouthEast))))
+        pieces = \case
+          Left (ResolveRefused _ _ _ (HingeNotStraight (Name "q") named)) -> Just named
+          _ -> Nothing
+        near' named expected = length named == length expected && and (zipWith (\(a, b) (c, d) -> norm (a ^-^ c) < 1e-12 && norm (b ^-^ d) < 1e-12) named expected)
+    fmap (`near'` [(V2 0 0.75, V2 0.75 0.75), (V2 0.75 0, V2 0.75 0.75)]) (pieces opened) `shouldBe` Just True
+    fmap (`near'` [(V2 0.25 0.25, V2 0.5 0.25), (V2 0.5 0.25, V2 0.5 0.5)]) (pieces stacked) `shouldBe` Just True
 
   -- A point typed 1/2000 above the middle of the south side is that far from
   -- (1/2, 0), the end of the crease each fold here makes, and is near no

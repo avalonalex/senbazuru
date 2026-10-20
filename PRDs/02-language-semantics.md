@@ -487,7 +487,7 @@ text, never by the anchor
 | `P to L` | O7, with L2 ⊥ L | puts P on L with the fold line parallel to L: "fold the corner to the crease" | 1; P on L refused | the side containing P |
 | `edge S` | — | the line through its current segments, only if they are collinear within `Fold.Faces.tolerance` (§4.6) | 1 | needs a `moving` seed |
 | `crease [P, Q]` | Lucero's O3, the one he adds | runs along existing creases from vertex P to vertex Q | 1 | needs a `moving` seed |
-| `hinge of NAME` | — | runs along the segments NAME's single move turned about | 1 | needs a `moving` seed |
+| `hinge of NAME` | — | runs along the segments NAME's single move turned about. Usable as a line only while they are collinear; otherwise refused as `HingeNotStraight`, naming them where the paper lies ([owner decision 52](decisions.md#9-owner-decisions)) | 1 | needs a `moving` seed |
 | `crease of NAME` | — | runs along the segments NAME created, which may be none. Usable as a line only when they are collinear now | 1 | needs a `moving` seed |
 | `model [(x1, y1), (x2, y2)]` | escape | runs between two points in the current model's coordinates as seen. Flat states only, recorded as "not a landmark", and it depends on the anchor | 1 | needs a `moving` seed |
 
@@ -526,11 +526,7 @@ worked out first where the paper now lies; each line of `L1 to L2` is an edge or
 the `let` line that names it, and chooses L, not the fold. A refusal of a line
 inside another is that line's: it names the line, with any `let` name written out,
 and has the line's own refusal kind, so `expect refused NeedsNearest` matches an L
-with two answers. `hinge of NAME` is refused as `HingeNotStraight`, naming each
-piece where it lies, while a later fold has bent the crease it names, so that its
-pieces no longer lie on one line: taking any one piece's line would make the fold
-depend on which way the author wrote the crease
-([owner decision 52](decisions.md#9-owner-decisions)).
+with two answers.
 
 ### 4.4 Resolution by slot
 
