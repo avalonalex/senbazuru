@@ -530,6 +530,13 @@ data ResolveProblem
     -- where no piece of the sheet's outline lies along that side: each
     -- piece's ends where they lie, in sheet lengths.
     EdgeNotStraight Compass [(V2, V2)]
+  | -- | @hinge of NAME@, where a later fold has carried part of the crease the
+    -- named step turned about off its line, so that the crease's pieces lie
+    -- on more than one line now: each piece's ends where they lie, in sheet
+    -- lengths. No one line is the hinge then, and taking any piece's would
+    -- make the fold depend on which way the author wrote the crease (owner
+    -- decision 52).
+    HingeNotStraight Name [(V2, V2)]
   | -- | A construction with more than one answer on the paper, and no
     -- @nearest P@ to choose: every answer, those on no paper included.
     NeedsNearest [CandidateLine]
@@ -589,6 +596,12 @@ instance Explain ResolveProblem where
         <> T.intercalate ", " [point a <> " to " <> point b | (a, b) <- pieces]
         <> "; name the line by two points, such as "
         <> cornersOf side
+    HingeNotStraight (Name name) pieces ->
+      "\"hinge of "
+        <> name
+        <> "\" does not lie on one line now, since a later fold has moved part of its crease: its pieces run "
+        <> T.intercalate ", " [point a <> " to " <> point b | (a, b) <- pieces]
+        <> "; name the line by two points"
     NeedsNearest answers -> "the construction has " <> tshow (length (filter candidateOnPaper answers)) <> " answers on the paper; add nearest P to choose one of them: " <> listed answers
     NearestAmbiguous at answers -> point at <> " lies as near to more than one answer; choose a point nearer one of them: " <> listed answers
     NearestDisagrees at taken because pointed ->
@@ -821,7 +834,7 @@ refusalKinds =
   map RefusalKind . concat $
     [ -- naming paper against a state
       ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree", "NoCornerThere", "HingeOfNotOneMove"],
-      ["EdgeNotStraight", "CreaseNotStraight", "EmptyCrease", "ConstructionInTheAir"],
+      ["EdgeNotStraight", "CreaseNotStraight", "HingeNotStraight", "EmptyCrease", "ConstructionInTheAir"],
       ["NoSolution", "NeedsNearest", "NearestAmbiguous", "NearestDisagrees", "DegenerateConstruction", "NoCreaseThere"],
       ["MarkOnSeveralLayers", "EndTie", "LandmarkAmbiguous"],
       -- choosing which paper moves
@@ -899,6 +912,7 @@ refusalKindOf =
       NoSolution {} -> Just "NoSolution"
       HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
       EdgeNotStraight {} -> Just "EdgeNotStraight"
+      HingeNotStraight {} -> Just "HingeNotStraight"
       NeedsNearest {} -> Just "NeedsNearest"
       NearestAmbiguous {} -> Just "NearestAmbiguous"
       NearestDisagrees {} -> Just "NearestDisagrees"

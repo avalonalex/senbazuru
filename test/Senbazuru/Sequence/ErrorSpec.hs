@@ -282,6 +282,7 @@ resolveSamples =
     NoSolution (NoCreaseAlong Nothing),
     HingeOfNotOneMove "c1" 0,
     EdgeNotStraight South [],
+    HingeNotStraight "half" [],
     NeedsNearest [],
     NearestAmbiguous (V2 0 0) [],
     NearestDisagrees (V2 0 0) (CandidateLine (V2 0 0) (V2 0 1) True) OnlyOnPaper (CandidateLine (V2 0 0) (V2 1 0) False),

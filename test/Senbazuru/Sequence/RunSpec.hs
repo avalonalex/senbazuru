@@ -1205,11 +1205,15 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- Pre-creases across x = 1/4 and y = 1/4 so the last fold runs along
   -- creases the paper has; the square folded in half across its middle and
   -- unfolded; then the north-east corner folded over, which carries the
-  -- east end of that crease round to run north-south. The crease the half
-  -- fold turned about no longer lies on one line. Taking its first piece,
-  -- the fold at right angles to it ran up x = 1/4 or along y = 1/4, by which
-  -- way the half fold's line had been written. Turns red if a bent hinge
-  -- gave a line, written either way, alone or inside another.
+  -- east end of that crease round to run north-south: its piece from
+  -- (3/4, 1/2) to (1, 1/2) now runs from (3/4, 1/2) to (3/4, 1/4). The
+  -- crease the half fold turned about no longer lies on one line. Taking its
+  -- first piece, the fold at right angles to it ran up x = 1/4 or along
+  -- y = 1/4, by which way the half fold's line had been written. So it is
+  -- refused, naming every piece where it lies, with a kind an expect refused
+  -- can name (owner decision 52). Turns red if a bent hinge gave a line,
+  -- written either way, alone or inside another, or the carried piece went
+  -- unnamed.
   it "refuses a hinge a later fold has bent, however its crease was written" $ do
     let bentThen halfLine lineFrom = onSquare (Just (at (1 / 2) (3 / 8))) ColouredUp $ do
           step_ "Pre-crease x = 1/4." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 4) 0) (at (1 / 4) 1)) FlapOfFirstArgument (Just (corner SouthWest))))
@@ -1218,10 +1222,13 @@ creasing = describe "a fold along a line where no crease runs" $ do
           step_ "Unfold it." (unfold [half])
           step_ "Fold the north-east corner down." (move (Fold ValleyFold ToFlat (Segment (at (1 / 4) 1) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner NorthEast))))
           step_ "Fold along the half crease, or across it." (move (Fold ValleyFold ToFlat (lineFrom half) FlapOfFirstArgument (Just (corner SouthWest))))
-        bent = \case
-          ResolveRefused _ _ _ (InsideLine _ (NotRunYet what)) -> "bent" `T.isInfixOf` what
-          ResolveRefused _ _ _ (NotRunYet what) -> "bent" `T.isInfixOf` what
-          _ -> False
+        carried (a, b) = sort [roundTo a, roundTo b] == [(0.75, 0.25), (0.75, 0.5)]
+        roundTo (V2 x y) = (fromIntegral (round (x * 1e9) :: Integer) / 1e9 :: Double, fromIntegral (round (y * 1e9) :: Integer) / 1e9 :: Double)
+        bent err =
+          refusalKindOf err == Just (RefusalKind "HingeNotStraight") && case err of
+            ResolveRefused _ _ _ (InsideLine "hinge of half" (HingeNotStraight (Name "half") pieces)) -> any carried pieces
+            ResolveRefused _ _ _ (HingeNotStraight (Name "half") pieces) -> any carried pieces
+            _ -> False
     forM_ [Segment (MidpointOfEdge West) (MidpointOfEdge East), Segment (MidpointOfEdge East) (MidpointOfEdge West)] $ \halfLine ->
       forM_ [\half -> PerpendicularThrough (hingeOf half) (at (1 / 4) (1 / 4)), hingeOf] $ \lineFrom ->
         case bentThen halfLine lineFrom of

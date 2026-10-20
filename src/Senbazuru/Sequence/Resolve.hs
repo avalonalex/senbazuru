@@ -528,17 +528,26 @@ straddles st (FoldLine origin direction) (a, b) =
 -- piece must lie on the first's line, within the sheet's tolerance. A later
 -- fold that turned part of the crease leaves no one line to name, and taking
 -- the first piece's would make the line depend on which way the author wrote
--- the crease, so that is refused.
+-- the crease, so that is refused, with every piece where it lies (owner
+-- decision 52).
 hingeLine :: FlatState -> Name -> [EdgeId] -> Either ResolveProblem FoldLine
-hingeLine st (Name name) = \case
+hingeLine st name = \case
   [] -> Left (NoSolution (NoCreaseAlong Nothing))
   piece : rest -> do
     line@(FoldLine origin direction) <- lineAlong st piece
     let off v = maybe 0 (\p -> abs (cross2 direction (p ^-^ origin))) (IM.lookup v (flatPlaced st))
         ends = [v | (e, a, b, _) <- flatEdges st, e `elem` rest, v <- [a, b]]
+        lying =
+          [ (toSheetLengths st p, toSheetLengths st q)
+            | e <- piece : rest,
+              (e', a, b, _) <- flatEdges st,
+              e' == e,
+              Just p <- [IM.lookup a (flatPlaced st)],
+              Just q <- [IM.lookup b (flatPlaced st)]
+          ]
     if all ((<= flatRoom st) . off) ends
       then Right line
-      else Left (NotRunYet ("\"hinge of " <> name <> "\", whose crease a later fold has bent,"))
+      else Left (HingeNotStraight name lying)
 
 -- | The fold line along an edge, where the paper now lies: how @hinge of
 -- NAME@ names a line, by a crease the named move turned about.
