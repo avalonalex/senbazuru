@@ -76,8 +76,8 @@
 -- == Not yet
 --
 -- Refused as not run yet: a new crease on folded paper, which creases through
--- its layers (milestone M4); @hinge of NAME@ inside another line, and
--- @L1 to L2@ between lines other than an edge and @[P, Q]@; layer words; and
+-- its layers (milestone M4); @L1 to L2@ between lines other than an edge
+-- and @[P, Q]@; layer words; and
 -- every move but @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@ and
 -- @anchor@, @mark@ among them.
 --
@@ -598,14 +598,14 @@ foldMove settings place named arriving kind sense amount line layers seed = do
   seen <- first (resolvingAt place (prettyLine line)) (flatState found)
   -- @hinge of NAME@ is the line the named step's one move turned about: the
   -- recorded crease, where the paper now lies, found on the paper as it is
-  -- now, since a later move may have creased it ('piecesNow').
-  foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
-    HingeOf name -> case M.findWithDefault [] name named of
-      [earlier] -> case concatMap (piecesNow (theWorking given) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)) of
-        e : _ -> lineAlong seen e
-        [] -> Left NoSolution
-      records -> Left (HingeOfNotOneMove name (length records))
-    _ -> foldLine (runNearMissBand settings) seen line
+  -- now, since a later move may have creased it ('piecesNow'). The resolver
+  -- asks for it wherever it stands, alone or inside another line.
+  let hingeNamed name = case M.findWithDefault [] name named of
+        [earlier] -> case concatMap (piecesNow (theWorking given) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)) of
+          e : _ -> lineAlong seen e
+          [] -> Left NoSolution
+        records -> Left (HingeOfNotOneMove name (length records))
+  foldAt <- first (resolvingAt place (prettyLine line)) (foldLine (runNearMissBand settings) hingeNamed seen line)
   let towardIn st = case sense of
         ValleyFold -> frontOf st
         MountainFold -> opposite (frontOf st)

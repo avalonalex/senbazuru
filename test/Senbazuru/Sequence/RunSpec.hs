@@ -1060,6 +1060,35 @@ creasing = describe "a fold along a line where no crease runs" $ do
       Left (StepRefused _ _ _ (Selecting SeedMissing)) -> pure ()
       other -> expectationFailure ("expected the line refused as saying no side moves, got " <> either (show . explain) (const "a run") other)
 
+  -- The line laid onto another here, the middle across onto the middle up,
+  -- has two answers, the diagonals, so L needs a nearest P. The refusal is
+  -- named as L's, says where the nearest goes, and keeps its kind, so that
+  -- expect refused NeedsNearest still matches it (#570). Turns red if L's
+  -- refusal were reported as the whole line's, or lost its kind.
+  it "names the line inside it when that line is refused, keeping its refusal's kind" $ do
+    let crossing = LineOnto (Segment (at 0 (1 / 2)) (at 1 (1 / 2))) (Segment (at (1 / 2) 0) (at (1 / 2) 1)) Nothing
+    case upTheMiddle (at (1 / 4) (1 / 4)) (PerpendicularThrough crossing (at (1 / 4) (1 / 4))) (Just (corner SouthEast)) of
+      Left err@(ResolveRefused _ _ written (InsideLine inner (NeedsNearest answers))) -> do
+        (written, inner, length answers) `shouldBe` ("perpendicular to ([(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)]) through (1/4, 1/4)", "[(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)]", 2)
+        refusalKindOf err `shouldBe` Just (RefusalKind "NeedsNearest")
+        explain err `shouldSatisfy` T.isInfixOf "the line inside it, [(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)], is refused, and a nearest P for it goes inside its parentheses: the construction has 2 answers"
+      other -> expectationFailure ("expected L refused as needing a nearest P, got " <> either (show . explain) (const "a run") other)
+
+  -- The square folded in half across its middle and unfolded, then folded
+  -- at right angles to that hinge through the centre, which is the line up
+  -- the middle: a hinge inside another line is found as one standing alone
+  -- is (#570). Turns red if a hinge inside another line were refused, or
+  -- found other than from the run's records.
+  it "folds at right angles to a hinge as along the same line through two points" $ do
+    let afterHalf third = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp $ do
+          half <- step "half" "Fold the top half down." (move (Fold ValleyFold ToFlat (Segment (MidpointOfEdge West) (MidpointOfEdge East)) FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Unfold it." (unfold [half])
+          step_ "Fold the right half behind." (move (Fold MountainFold ToFlat (third half) FlapOfFirstArgument (Just (corner SouthEast))))
+    o4Run <- right (afterHalf (\half -> PerpendicularThrough (hingeOf half) centre))
+    twoRun <- right (afterHalf (const (Segment (MidpointOfEdge South) (MidpointOfEdge North))))
+    length (runRecords o4Run) `shouldBe` 3
+    map facts (runRecords o4Run) `shouldBe` map facts (runRecords twoRun)
+
   -- A point typed 1/2000 above the middle of the south side is that far from
   -- (1/2, 0), the end of the crease each fold here makes, and is near no
   -- vertex the paper had before. So each fold runs at every anchor, and

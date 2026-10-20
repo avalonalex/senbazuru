@@ -516,6 +516,13 @@ through layers has the same restriction
    needed ([decision 41](decisions.md#9-owner-decisions)).
 4. Accept exactly one.
 
+**A line inside another** ([C111](decisions.md#changes-since-draft-v2)). The L of
+`perpendicular to L through P`, like the line inside any form that holds one, is
+any line in the table, `hinge of NAME` included, worked out first where the paper
+now lies. A `nearest` that L needs goes inside L's parentheses and chooses L, not
+the fold. A refusal of L is L's: it names L as written, and has L's own refusal
+kind, so `expect refused NeedsNearest` matches an L with two answers.
+
 ### 4.4 Resolution by slot
 
 A point resolves by the *slot* it fills, never by its spelling
@@ -1426,6 +1433,9 @@ compares them state by state.
   reads `header` instead of `step N`
   ([03](03-prd-embedded-dsl.md#refusals-from-a-built-sequence)).
 - Ids appear as "(internal edge 37)", so an author knows they did not write them.
+- A refusal of a line standing inside another names that line after the whole
+  reference's text, "the line inside it, L, is refused: …", and has the kind of
+  the refusal it wraps ([C111](decisions.md#changes-since-draft-v2)).
 
 `SequenceError` (**SKETCH**, [decisions §5](decisions.md#5-type-sketch)) has six
 constructors, and the table's *Carried by* column names what each holds:

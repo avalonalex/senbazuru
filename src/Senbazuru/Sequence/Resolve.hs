@@ -85,6 +85,7 @@ module Senbazuru.Sequence.Resolve
 where
 
 import Control.Monad (unless, when)
+import Data.Bifunctor (first)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.IntSet (IntSet)
@@ -101,6 +102,7 @@ import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..))
+import Senbazuru.Sequence.Pretty (prettyLine)
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, lengthInSheetLengths, sheetLengthOf)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
@@ -273,14 +275,17 @@ carryLine motion (FoldLine origin direction) =
 --   to L where L now lies. Only L's direction counts, so P may lie on L. L
 --   is any line named here, worked out first: where it is an @L1 to L2@
 --   with two answers, the @nearest@ inside L's parentheses chooses L, and
---   the fold runs at right angles to the answer it points at.
+--   the fold runs at right angles to the answer it points at;
+-- * @hinge of NAME@, by the lookup given. Finding a hinge needs the run's
+--   earlier records, which this module does not hold, so the runner hands in
+--   how to find one, alone or inside another line alike.
 --
--- @hinge of NAME@ is not named here. Finding a hinge needs the run's earlier
--- records, so "Senbazuru.Sequence.Run" finds one standing alone before it
--- asks this function, which meets a hinge only inside another line and
--- refuses it there as not run yet.
-foldLine :: Double -> FlatState -> Line -> Either ResolveProblem FoldLine
-foldLine band st = \case
+-- A line standing inside another, such as L above, is refused as itself
+-- ('InsideLine'), naming it: the whole line's text would point the author at
+-- the wrong part. Every form that holds a line asks for it through @inner@,
+-- so that the next form to nest one cannot forget to.
+foldLine :: Double -> (Name -> Either ResolveProblem FoldLine) -> FlatState -> Line -> Either ResolveProblem FoldLine
+foldLine band hinges st = \case
   Segment p q -> do
     (a, b) <- two p q
     pure (FoldLine a (unit (b ^-^ a)))
@@ -295,7 +300,7 @@ foldLine band st = \case
     s2 <- operand l2
     lineOnto band st s1 s2 nearest
   PerpendicularThrough l p -> do
-    d <- lineDirection <$> foldLine band st l
+    d <- lineDirection <$> inner l
     c <- positionOf band st p
     pure (FoldLine c (perpendicular d))
   PointToLineThrough {} -> notYet "\"P to L through Q\""
@@ -303,12 +308,13 @@ foldLine band st = \case
   PointToLinePerpendicular {} -> notYet "\"P to L1 perpendicular to L2\""
   PointToLine {} -> notYet "\"P to L\""
   ExistingCrease {} -> notYet "\"crease [P, Q]\""
-  HingeOf _ -> notYet "\"hinge of NAME\" inside another line"
+  HingeOf name -> hinges name
   CreaseOf _ -> notYet "\"crease of NAME\""
   ModelSegment {} -> notYet "\"model [...]\""
   LineNamed (Name name) -> notYet ("the line " <> name)
   where
     notYet = Left . NotRunYet
+    inner l = first (InsideLine (prettyLine l)) (foldLine band hinges st l)
     two p q = do
       a <- positionOf band st p
       b <- positionOf band st q

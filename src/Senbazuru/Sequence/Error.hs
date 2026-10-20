@@ -543,6 +543,13 @@ data ResolveProblem
   | -- | @hinge of NAME@ names the hinge of the named step's one move; that
     -- step made this many.
     HingeOfNotOneMove Name Int
+  | -- | A line standing inside another, such as the L of @perpendicular to L
+    -- through P@, refused: that line as written, and why. The refusal names
+    -- it because the whole line's text would point the author at the wrong
+    -- part, and a @nearest@ that L needs goes inside L's parentheses, not
+    -- after the whole line. Its kind is the inner refusal's (#570): an
+    -- @expect refused@ names what went wrong, not where.
+    InsideLine Text ResolveProblem
   | -- | A form of reference this runner does not resolve yet.
     NotRunYet Text
   deriving stock (Eq, Show)
@@ -592,6 +599,15 @@ instance Explain ResolveProblem where
           -- The other crosses no paper, and no wording can fold along it.
           OnlyOnPaper -> ""
           LaysStretchOntoStretch -> ", or write the second line as the stretch the first should land on"
+    InsideLine written problem ->
+      "the line inside it, "
+        <> written
+        <> ", is refused"
+        <> case problem of
+          NeedsNearest {} -> ", and a nearest P for it goes inside its parentheses"
+          _ -> ""
+        <> ": "
+        <> explain problem
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
@@ -803,25 +819,13 @@ refusalKinds =
 -- one of the paper (owner decision 49), or an expect refused not met (owner
 -- decision 50); each is passed on as itself. A kind given is its own
 -- constructor's name and is in 'refusalKinds': "Senbazuru.Sequence.ErrorSpec"
--- samples one refusal of every constructor here and holds each to that.
+-- samples one refusal of every constructor here and holds each to that. The
+-- one exception is a line inside another, 'InsideLine', which has no kind of
+-- its own and takes the kind of the refusal it wraps.
 refusalKindOf :: SequenceError -> Maybe RefusalKind
 refusalKindOf =
   fmap RefusalKind . \case
-    ResolveRefused _ _ _ problem -> case problem of
-      NearMiss {} -> Just "NearMiss"
-      NotInOneFace {} -> Just "NotInOneFace"
-      OffThePaper {} -> Just "OffThePaper"
-      PlacementsDisagree {} -> Just "PlacementsDisagree"
-      NoCornerThere {} -> Just "NoCornerThere"
-      ConstructionInTheAir {} -> Just "ConstructionInTheAir"
-      DegenerateConstruction -> Just "DegenerateConstruction"
-      NoSolution -> Just "NoSolution"
-      HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
-      EdgeNotStraight {} -> Just "EdgeNotStraight"
-      NeedsNearest {} -> Just "NeedsNearest"
-      NearestAmbiguous {} -> Just "NearestAmbiguous"
-      NearestDisagrees {} -> Just "NearestDisagrees"
-      NotRunYet {} -> Nothing
+    ResolveRefused _ _ _ problem -> resolveKind problem
     StepRefused _ _ _ failure -> case failure of
       Selecting err -> Just $ case err of
         SeedMissing -> "SeedMissing"
@@ -848,6 +852,24 @@ refusalKindOf =
       RefusedDifferently {} -> Nothing
     _ -> Nothing
   where
+    -- A reference's refusals. A line inside another takes its own
+    -- refusal's kind.
+    resolveKind = \case
+      NearMiss {} -> Just "NearMiss"
+      NotInOneFace {} -> Just "NotInOneFace"
+      OffThePaper {} -> Just "OffThePaper"
+      PlacementsDisagree {} -> Just "PlacementsDisagree"
+      NoCornerThere {} -> Just "NoCornerThere"
+      ConstructionInTheAir {} -> Just "ConstructionInTheAir"
+      DegenerateConstruction -> Just "DegenerateConstruction"
+      NoSolution -> Just "NoSolution"
+      HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
+      EdgeNotStraight {} -> Just "EdgeNotStraight"
+      NeedsNearest {} -> Just "NeedsNearest"
+      NearestAmbiguous {} -> Just "NearestAmbiguous"
+      NearestDisagrees {} -> Just "NearestDisagrees"
+      InsideLine _ inner -> resolveKind inner
+      NotRunYet {} -> Nothing
     -- The library's refusals of a turn and a fold. Those with no kind are
     -- not refusals of the paper (owner decision 49): no valid sequence
     -- reaches them, or reaches them only through a gap to be closed before

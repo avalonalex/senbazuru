@@ -243,10 +243,13 @@ noKind =
 -- | One refusal of every constructor 'refusalKindOf' looks at, as a run
 -- raises it: a label, the constructor whose name its kind must be, and the
 -- refusal. A folding refusal reaches a run inside a flap's too, and there
--- takes the folding refusal's kind.
+-- takes the folding refusal's kind; and every reference's refusal reaches
+-- it as a line's inside another's, once and twice over, where it keeps its
+-- own kind (#570).
 everyRefusal :: [(String, String, SequenceError)]
 everyRefusal =
   [(named p, named p, ResolveRefused InHeader NoSpan "" p) | p <- resolveSamples]
+    <> [(depth <> named p, named p, ResolveRefused InHeader NoSpan "" (wrap p)) | p <- resolveSamples, (depth, wrap) <- [("InsideLine ", InsideLine "edge east"), ("InsideLine twice ", InsideLine "edge east" . InsideLine "edge west")]]
     <> [(named e, named e, stepRefusal (Selecting e)) | e <- selectionSamples]
     <> [(named f, named f, stepRefusal f) | f <- moveSamples]
     <> [(named e, named e, stepRefusal (FlapRefused e)) | e <- flapSamples]
