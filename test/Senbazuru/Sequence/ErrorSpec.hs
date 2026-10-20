@@ -95,6 +95,13 @@ spec = do
     it "spells a number exactly, as the printer does" $
       explain (RatioOutOfRange (158 / 100)) `shouldBe` "fraction 79/50 is outside 0 to 1"
 
+  -- Turns red if the line were not named, or the hint about a nearest P
+  -- were given to every refusal inside another line, or to none (#570).
+  describe "a refusal of a line inside another" $
+    it "names that line, and asks for a nearest P only where that line needs one" $ do
+      explain (InsideLine "edge east" DegenerateConstruction) `shouldBe` "the line inside it, \"edge east\", is refused: " <> explain DegenerateConstruction
+      explain (InsideLine "edge east" (NeedsNearest [])) `shouldSatisfy` T.isInfixOf "\"edge east\", is refused, and a nearest P for it goes right after it, where it is written, not after the whole line: "
+
   describe "a parse problem" $ do
     it "is its hint, when it has one" $
       explain (problemAt NoSpan (FoundWord "90") ["an angle"] (Just (NeedsUnit 90)))
@@ -243,10 +250,14 @@ noKind =
 -- | One refusal of every constructor 'refusalKindOf' looks at, as a run
 -- raises it: a label, the constructor whose name its kind must be, and the
 -- refusal. A folding refusal reaches a run inside a flap's too, and there
--- takes the folding refusal's kind.
+-- takes the folding refusal's kind; and every reference's refusal reaches
+-- it as a line's inside another's, once and twice over, where it keeps its
+-- own kind (#570).
 everyRefusal :: [(String, String, SequenceError)]
 everyRefusal =
   [(named p, named p, ResolveRefused InHeader NoSpan "" p) | p <- resolveSamples]
+    <> [("InsideLine " <> named p, named p, ResolveRefused InHeader NoSpan "" (InsideLine "edge east" p)) | p <- resolveSamples]
+    <> [("InsideLine twice " <> named p, named p, ResolveRefused InHeader NoSpan "" (InsideLine "edge east" (InsideLine "edge west" p))) | p <- resolveSamples]
     <> [(named e, named e, stepRefusal (Selecting e)) | e <- selectionSamples]
     <> [(named f, named f, stepRefusal f) | f <- moveSamples]
     <> [(named e, named e, stepRefusal (FlapRefused e)) | e <- flapSamples]

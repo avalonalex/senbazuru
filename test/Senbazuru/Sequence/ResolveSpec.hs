@@ -82,7 +82,7 @@ spec = describe "naming paper on a flat state" $ do
   -- The first fold of the blintz: O2 of (1, 0) and (1/2, 1/2) is x - y = 1/2,
   -- which runs along edge 8 and nothing else.
   it "lays the blintz's first corner onto the centre about edge 8" $ do
-    line <- right (foldLine 1e-3 start (Onto (CornerOf SouthEast) Centre))
+    line <- right (lineOn start (Onto (CornerOf SouthEast) Centre))
     near (linePoint line) (V2 0.75 0.25) `shouldBe` True
     hingeAlong start line `shouldBe` Right [EdgeId 8]
 
@@ -92,7 +92,7 @@ spec = describe "naming paper on a flat state" $ do
   it "finds a folded corner where it now is, and the next fold's hinge from there" $ do
     corner <- right (positionOf 1e-3 afterFirst (CornerOf SouthEast))
     near corner (V2 0.5 0.5) `shouldBe` True
-    line <- right (foldLine 1e-3 afterFirst (Onto (CornerOf NorthEast) Centre))
+    line <- right (lineOn afterFirst (Onto (CornerOf NorthEast) Centre))
     hingeAlong afterFirst line `shouldBe` Right [EdgeId 9]
 
   describe "refuses a fold line" $ do
@@ -101,21 +101,21 @@ spec = describe "naming paper on a flat state" $ do
     -- paper first (chordsAcross), so the hinge is asked for only once nothing
     -- is crossed.
     it "that crosses paper where no crease runs" $ do
-      line <- right (foldLine 1e-3 start (Segment (CornerOf SouthWest) (CornerOf NorthEast)))
+      line <- right (lineOn start (Segment (CornerOf SouthWest) (CornerOf NorthEast)))
       crossedFaces start line `shouldBe` [FaceId 0, FaceId 1, FaceId 3]
       case hingeAlong start line of
         Left (NotRunYet _) -> pure ()
         other -> expectationFailure ("expected the crossed paper refused, got " <> show other)
 
     it "that runs along no crease" $ do
-      line <- right (foldLine 1e-3 start (Segment (CornerOf SouthWest) (CornerOf SouthEast)))
+      line <- right (lineOn start (Segment (CornerOf SouthWest) (CornerOf SouthEast)))
       hingeAlong start line `shouldBe` Left NoSolution
 
     it "whose two points are one" $
-      foldLine 1e-3 start (Onto Centre Centre) `shouldBe` Left DegenerateConstruction
+      lineOn start (Onto Centre Centre) `shouldBe` Left DegenerateConstruction
 
     it "of a form not run yet" $
-      foldLine 1e-3 start (CreaseOf (Name "c1")) `shouldBe` Left (NotRunYet "\"crease of NAME\"")
+      lineOn start (CreaseOf (Name "c1")) `shouldBe` Left (NotRunYet "\"crease of NAME\"")
 
   -- edge S is the line the sheet's side lies along now. PRD 02 §4.6's
   -- worked case: once corner south-east is folded to the centre, edge
@@ -123,10 +123,10 @@ spec = describe "naming paper on a flat state" $ do
   -- its west half, and the side names no line. Edge north is untouched.
   describe "names an edge as a line" $ do
     it "along the side, while the side lies straight" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (EdgeOf South))
+      FoldLine p d <- right (lineOn start (EdgeOf South))
       onLine p d (V2 0 0) `shouldBe` True
       onLine p d (V2 1 0) `shouldBe` True
-      FoldLine q e <- right (foldLine 1e-3 afterFirst (EdgeOf North))
+      FoldLine q e <- right (lineOn afterFirst (EdgeOf North))
       onLine q e (V2 0 1) `shouldBe` True
       onLine q e (V2 1 1) `shouldBe` True
 
@@ -135,10 +135,10 @@ spec = describe "naming paper on a flat state" $ do
     it "and refuses a side of the box no edge of the sheet lies along" $ do
       let diamond = squareSheet {keyFrame = (keyFrame squareSheet) {verticesCoords = [[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]}}
       st <- right (sheetState diamond) >>= flatOf . workingPattern
-      foldLine 1e-3 st (EdgeOf North) `shouldBe` Left (EdgeNotStraight North [])
+      lineOn st (EdgeOf North) `shouldBe` Left (EdgeNotStraight North [])
 
     it "and refuses one a fold has bent, naming its pieces" $
-      case foldLine 1e-3 afterFirst (EdgeOf South) of
+      case lineOn afterFirst (EdgeOf South) of
         Left (EdgeNotStraight South pieces) -> do
           length pieces `shouldBe` 2
           any (samePiece (V2 0.5 0, V2 0.5 0.5)) pieces `shouldBe` True
@@ -150,7 +150,7 @@ spec = describe "naming paper on a flat state" $ do
   describe "lays a line onto a line" $ do
     -- Edges west and east are parallel: one answer, midway, at x = 1/2.
     it "midway between two parallel lines" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
+      FoldLine p d <- right (lineOn start (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
       onLine p d (V2 0.5 0) `shouldBe` True
       onLine p d (V2 0.5 1) `shouldBe` True
 
@@ -158,7 +158,7 @@ spec = describe "naming paper on a flat state" $ do
     -- halving the angles there, one runs off the paper from the corner and is
     -- never taken; the other is the diagonal to corner north-west.
     it "on the line halving their angle that crosses paper" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (EdgeOf South) (EdgeOf East) Nothing))
+      FoldLine p d <- right (lineOn start (LineOnto (EdgeOf South) (EdgeOf East) Nothing))
       onLine p d (V2 0 1) `shouldBe` True
       onLine p d (V2 1 0) `shouldBe` True
 
@@ -168,7 +168,7 @@ spec = describe "naming paper on a flat state" $ do
     -- is set aside, and the diagonal is the only answer left. Turns red if
     -- answers crossing no paper were kept, which would ask for nearest.
     it "never on an answer that crosses no paper" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (Segment (AtSheet (3 / 4) 0) (CornerOf SouthEast)) (Segment (MidpointOfEdge East) (CornerOf NorthEast)) Nothing))
+      FoldLine p d <- right (lineOn start (LineOnto (Segment (AtSheet (3 / 4) 0) (CornerOf SouthEast)) (Segment (MidpointOfEdge East) (CornerOf NorthEast)) Nothing))
       onLine p d (V2 0 1) `shouldBe` True
       onLine p d (V2 1 0) `shouldBe` True
 
@@ -178,7 +178,7 @@ spec = describe "naming paper on a flat state" $ do
     -- second stretch is not. Turns red if the preference were dropped, which
     -- would ask for nearest.
     it "on the answer that lays one stretch onto the other, when both cross paper" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (LineOnto (Segment (MidpointOfEdge West) Centre) (Segment Centre (MidpointOfEdge North)) Nothing))
+      FoldLine p d <- right (lineOn start (LineOnto (Segment (MidpointOfEdge West) Centre) (Segment Centre (MidpointOfEdge North)) Nothing))
       onLine p d (V2 0 1) `shouldBe` True
       onLine p d (V2 1 0) `shouldBe` True
 
@@ -192,12 +192,12 @@ spec = describe "naming paper on a flat state" $ do
       let halves = LineOnto (Segment (MidpointOfEdge West) Centre) (Segment Centre (MidpointOfEdge North)) . Just
       mapM_
         ( \p -> do
-            FoldLine o d <- right (foldLine 1e-3 start (halves p))
+            FoldLine o d <- right (lineOn start (halves p))
             onLine o d (V2 0 1) `shouldBe` True
             onLine o d (V2 1 0) `shouldBe` True
         )
         [CornerOf NorthWest, MidpointOfEdge South]
-      case foldLine 1e-3 start (halves (CornerOf SouthWest)) of
+      case lineOn start (halves (CornerOf SouthWest)) of
         Left (NearestDisagrees at taken LaysStretchOntoStretch pointed) -> do
           at `shouldBe` V2 0 0
           (candidateOnPaper taken, candidateOnPaper pointed) `shouldBe` (True, True)
@@ -213,7 +213,7 @@ spec = describe "naming paper on a flat state" $ do
     -- with that answer marked as crossing no paper. Turns red if answers off
     -- the paper were left out of the comparison.
     it "refuses a nearest P lying nearer an answer that crosses no paper" $
-      case foldLine 1e-3 start (LineOnto (Segment (AtSheet (5 / 8) 0) (AtSheet 1 (3 / 4))) (Segment (AtSheet (3 / 8) 0) (AtSheet 0 (3 / 4))) (Just (CornerOf SouthWest))) of
+      case lineOn start (LineOnto (Segment (AtSheet (5 / 8) 0) (AtSheet 1 (3 / 4))) (Segment (AtSheet (3 / 8) 0) (AtSheet 0 (3 / 4))) (Just (CornerOf SouthWest))) of
         Left (NearestDisagrees _ taken OnlyOnPaper pointed) -> do
           (candidateOnPaper taken, candidateOnPaper pointed) `shouldBe` (True, False)
           candidateAlong taken `shouldSatisfy` near (V2 0 1)
@@ -225,25 +225,25 @@ spec = describe "naming paper on a flat state" $ do
     -- the diagonal, and a P off the paper is refused, not passed over. Turns
     -- red if nearest were resolved only when the rules needed it.
     it "refuses a nearest P off the paper even where it is not needed" $
-      foldLine 1e-3 start (LineOnto (EdgeOf South) (EdgeOf East) (Just (AtSheet 2 2))) `shouldBe` Left (OffThePaper (V2 2 2))
+      lineOn start (LineOnto (EdgeOf South) (EdgeOf East) (Just (AtSheet 2 2))) `shouldBe` Left (OffThePaper (V2 2 2))
 
     -- The midlines cross at the centre, and each diagonal lays one onto the
     -- other: two answers, so nearest P chooses, and the centre, on both,
     -- cannot.
     it "asks nearest P to choose between two answers, and refuses a point as near to both" $ do
       let midlines = LineOnto (Segment (MidpointOfEdge West) (MidpointOfEdge East)) (Segment (MidpointOfEdge South) (MidpointOfEdge North))
-      case foldLine 1e-3 start (midlines Nothing) of
+      case lineOn start (midlines Nothing) of
         Left (NeedsNearest answers) -> map candidateOnPaper answers `shouldBe` [True, True]
         other -> expectationFailure ("expected nearest asked for, got " <> show other)
-      FoldLine p d <- right (foldLine 1e-3 start (midlines (Just (CornerOf NorthEast))))
+      FoldLine p d <- right (lineOn start (midlines (Just (CornerOf NorthEast))))
       onLine p d (V2 0 0) `shouldBe` True
       onLine p d (V2 1 1) `shouldBe` True
-      case foldLine 1e-3 start (midlines (Just Centre)) of
+      case lineOn start (midlines (Just Centre)) of
         Left (NearestAmbiguous at answers) -> (at, length answers) `shouldBe` (V2 0.5 0.5, 2)
         other -> expectationFailure ("expected the centre refused as near to both, got " <> show other)
 
     it "and refuses two lines that are one" $
-      foldLine 1e-3 start (LineOnto (EdgeOf South) (Segment (CornerOf SouthWest) (CornerOf SouthEast)) Nothing) `shouldBe` Left DegenerateConstruction
+      lineOn start (LineOnto (EdgeOf South) (Segment (CornerOf SouthWest) (CornerOf SouthEast)) Nothing) `shouldBe` Left DegenerateConstruction
 
   -- perpendicular to L through P, Huzita-Hatori's fourth construction.
   describe "draws a line through a point at right angles to a line" $ do
@@ -251,7 +251,7 @@ spec = describe "naming paper on a flat state" $ do
     -- north has not moved, so the line is x = 1/2. Turns red if P were taken
     -- where it lay on the sheet, (1, 0), giving x = 1.
     it "through where the point is now" $ do
-      FoldLine p d <- right (foldLine 1e-3 afterFirst (PerpendicularThrough (EdgeOf North) (CornerOf SouthEast)))
+      FoldLine p d <- right (lineOn afterFirst (PerpendicularThrough (EdgeOf North) (CornerOf SouthEast)))
       onLine p d (V2 0.5 0) `shouldBe` True
       onLine p d (V2 0.5 1) `shouldBe` True
 
@@ -260,7 +260,7 @@ spec = describe "naming paper on a flat state" $ do
     -- across it through the centre is x + y = 1. Turns red if L were taken
     -- where it lay, along x = 1, giving y = 1/2.
     it "across the line where it lies now" $ do
-      FoldLine p d <- right (foldLine 1e-3 afterFirst (PerpendicularThrough (Segment (CornerOf SouthEast) (CornerOf NorthEast)) Centre))
+      FoldLine p d <- right (lineOn afterFirst (PerpendicularThrough (Segment (CornerOf SouthEast) (CornerOf NorthEast)) Centre))
       onLine p d (V2 0 1) `shouldBe` True
       onLine p d (V2 1 0) `shouldBe` True
 
@@ -268,7 +268,7 @@ spec = describe "naming paper on a flat state" $ do
     -- to corner north-east folds along x + y = 1, which runs through the
     -- centre, and the line at right angles to it there is the diagonal y = x.
     it "across a point laid onto a point, through a point on that line" $ do
-      FoldLine p d <- right (foldLine 1e-3 start (PerpendicularThrough (Onto (CornerOf SouthWest) (CornerOf NorthEast)) Centre))
+      FoldLine p d <- right (lineOn start (PerpendicularThrough (Onto (CornerOf SouthWest) (CornerOf NorthEast)) Centre))
       onLine p d (V2 0 0) `shouldBe` True
       onLine p d (V2 1 1) `shouldBe` True
 
@@ -278,7 +278,7 @@ spec = describe "naming paper on a flat state" $ do
     -- through (1/4, 1/4) is x + y = 1/2: the nearest chooses L, not the fold.
     it "across the answer a nearest inside L chooses" $ do
       let midlines = LineOnto (Segment (MidpointOfEdge West) (MidpointOfEdge East)) (Segment (MidpointOfEdge South) (MidpointOfEdge North)) (Just (AtSheet (3 / 4) (3 / 4)))
-      FoldLine p d <- right (foldLine 1e-3 start (PerpendicularThrough midlines (AtSheet (1 / 4) (1 / 4))))
+      FoldLine p d <- right (lineOn start (PerpendicularThrough midlines (AtSheet (1 / 4) (1 / 4))))
       onLine p d (V2 0.5 0) `shouldBe` True
       onLine p d (V2 0 0.5) `shouldBe` True
 
@@ -294,17 +294,32 @@ spec = describe "naming paper on a flat state" $ do
     it "names the crane wing's root from two corners and the midpoint of edge north" $ do
       crane <- loadFoldFile "examples/crane.fold" >>= right
       folded <- flatOf (keyFrame crane)
-      FoldLine p d <- right (foldLine 1e-3 folded (PerpendicularThrough (Segment (CornerOf NorthWest) (MidpointOfEdge North)) (CornerOf NorthEast)))
+      FoldLine p d <- right (lineOn folded (PerpendicularThrough (Segment (CornerOf NorthWest) (MidpointOfEdge North)) (CornerOf NorthEast)))
       let root = 1 - (sqrt 2 / 4) * (1 + 2 * sin (pi / 8))
       onLine p d (V2 0.87585 root) `shouldBe` True
       onLine p d (V2 1.12415 root) `shouldBe` True
 
-    -- A run finds a hinge standing alone itself, from its earlier records,
-    -- so this function meets one only inside another line.
-    it "and refuses a hinge for L, a point off the paper, and an L whose two points are one" $ do
-      foldLine 1e-3 start (PerpendicularThrough (HingeOf (Name "c1")) Centre) `shouldBe` Left (NotRunYet "\"hinge of NAME\" inside another line")
-      foldLine 1e-3 start (PerpendicularThrough (EdgeOf South) (AtSheet 2 2)) `shouldBe` Left (OffThePaper (V2 2 2))
-      foldLine 1e-3 start (PerpendicularThrough (Onto Centre Centre) Centre) `shouldBe` Left DegenerateConstruction
+    -- L's own refusal is refused as L's, and so is either line's of L1 to
+    -- L2, each named as printed (#570); P's is not L's, and stays the whole
+    -- line's, as does L1 to L2's own. Turns red if a line's refusal inside
+    -- another were passed on unnamed, or the whole line's named as a part.
+    it "and refuses a point off the paper, and names a line inside another when that line is refused" $ do
+      lineOn start (PerpendicularThrough (EdgeOf South) (AtSheet 2 2)) `shouldBe` Left (OffThePaper (V2 2 2))
+      lineOn start (PerpendicularThrough (Onto Centre Centre) Centre) `shouldBe` Left (InsideLine "centre to centre" DegenerateConstruction)
+      lineOn start (LineOnto (Segment Centre Centre) (EdgeOf East) Nothing) `shouldBe` Left (InsideLine "[centre, centre]" DegenerateConstruction)
+      lineOn start (LineOnto (EdgeOf East) (Segment (CornerOf SouthEast) (CornerOf NorthEast)) Nothing) `shouldBe` Left DegenerateConstruction
+
+    -- A hinge is the creases the runner's lookup finds for it, laid on the
+    -- state given, inside another line as alone (#570): here the blintz's
+    -- crease across corner south-east, so the line at right angles to it
+    -- through the centre is the diagonal through corners north-west and
+    -- south-east; and a run with no such step. Turns red if a hinge inside
+    -- another line were refused without asking the lookup, or laid anywhere
+    -- but along its crease.
+    it "finds a hinge for L by the lookup it is given" $ do
+      FoldLine p d <- right (foldLine 1e-3 (const (Right [EdgeId 8])) start (PerpendicularThrough (HingeOf (Name "c1")) Centre))
+      (onLine p d (V2 0 1), onLine p d (V2 1 0)) `shouldBe` (True, True)
+      lineOn start (PerpendicularThrough (HingeOf (Name "c1")) Centre) `shouldBe` Left (InsideLine "hinge of c1" (HingeOfNotOneMove (Name "c1") 0))
 
   -- An L is one face that is not convex. A line from its east edge rising
   -- westward leaves the long arm through its top, passes over the notch,
@@ -380,6 +395,15 @@ spec = describe "naming paper on a flat state" $ do
     near p q = norm (p ^-^ q) < 1e-12
     onLine p d x = abs (cross2 d (x ^-^ p)) < 1e-12
     samePiece (a, b) (c, e) = (near a c && near b e) || (near a e && near b c)
+
+-- | A fold line named on a flat state, by a run with no earlier steps.
+lineOn :: FlatState -> Line -> Either ResolveProblem FoldLine
+lineOn = foldLine 1e-3 noHinges
+
+-- | The hinge lookup of a run with no earlier steps, as the runner answers
+-- for a name that turned no paper.
+noHinges :: Name -> Either ResolveProblem [EdgeId]
+noHinges name = Left (HingeOfNotOneMove name 0)
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure

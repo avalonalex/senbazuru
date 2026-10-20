@@ -76,10 +76,10 @@
 -- == Not yet
 --
 -- Refused as not run yet: a new crease on folded paper, which creases through
--- its layers (milestone M4); @hinge of NAME@ inside another line, and
--- @L1 to L2@ between lines other than an edge and @[P, Q]@; layer words; and
--- every move but @fold@, @pre-crease@, @unfold@, @turn over@, @rotate@ and
--- @anchor@, @mark@ among them.
+-- its layers (milestone M4); @hinge of NAME@ on a crease a later fold has
+-- bent; @L1 to L2@ between lines other than an edge and @[P, Q]@; layer
+-- words; and every move but @fold@, @pre-crease@, @unfold@, @turn over@,
+-- @rotate@ and @anchor@, @mark@ among them.
 --
 -- A re-anchoring onto a face that does not lie flat is refused as
 -- @ReanchorNotFlat@ (PRDs\/02-language-semantics.md, §2.3), since then no
@@ -596,16 +596,21 @@ foldMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> MoveKin
 foldMove settings place named arriving kind sense amount line layers seed = do
   (given, found) <- first (refusedAt place . FoldingRefused) (foldNow arriving)
   seen <- first (resolvingAt place (prettyLine line)) (flatState found)
-  -- @hinge of NAME@ is the line the named step's one move turned about: the
-  -- recorded crease, where the paper now lies, found on the paper as it is
-  -- now, since a later move may have creased it ('piecesNow').
-  foldAt <- first (resolvingAt place (prettyLine line)) $ case line of
-    HingeOf name -> case M.findWithDefault [] name named of
-      [earlier] -> case concatMap (piecesNow (theWorking given) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)) of
-        e : _ -> lineAlong seen e
-        [] -> Left NoSolution
-      records -> Left (HingeOfNotOneMove name (length records))
-    _ -> foldLine (runNearMissBand settings) seen line
+  -- @hinge of NAME@ is the line the named step's one move that turned paper
+  -- turned about: the recorded crease, found on the paper as it is now,
+  -- since a later move may have creased it ('piecesNow'). A turn-over, a
+  -- rotate or an anchor in the same step turns no paper and has no hinge,
+  -- as the checker counts. The resolver asks for it wherever it stands,
+  -- alone or inside another line, and lays it where the paper now lies.
+  let hingeNamed name = case filter turnedPaper (M.findWithDefault [] name named) of
+        [earlier] -> Right (concatMap (piecesNow (theWorking given) (surfaceFrame (recordBefore earlier))) (concatMap snd (recordHinge earlier)))
+        records -> Left (HingeOfNotOneMove name (length records))
+      turnedPaper record = case recordKind record of
+        Turn -> True
+        Precrease -> True
+        Presentation _ -> False
+        Anchoring -> False
+  foldAt <- first (resolvingAt place (prettyLine line)) (foldLine (runNearMissBand settings) hingeNamed seen line)
   let towardIn st = case sense of
         ValleyFold -> frontOf st
         MountainFold -> opposite (frontOf st)

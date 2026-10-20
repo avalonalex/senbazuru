@@ -516,6 +516,17 @@ through layers has the same restriction
    needed ([decision 41](decisions.md#9-owner-decisions)).
 4. Accept exactly one.
 
+**A line inside another** ([C111](decisions.md#changes-since-draft-v2)). The L of
+`perpendicular to L through P` is any line in the table, `hinge of NAME` included,
+worked out first where the paper now lies; each line of `L1 to L2` is an edge or
+`[P, Q]`. A `nearest` that L needs goes right after L, inside its parentheses or on
+the `let` line that names it, and chooses L, not the fold. A refusal of a line
+inside another is that line's: it names the line, with any `let` name written out,
+and has the line's own refusal kind, so `expect refused NeedsNearest` matches an L
+with two answers. `hinge of NAME` is refused while a later fold has bent the crease
+it names, so that its pieces no longer lie on one line: taking any one piece's line
+would make the fold depend on which way the author wrote the crease.
+
 ### 4.4 Resolution by slot
 
 A point resolves by the *slot* it fills, never by its spelling
@@ -1426,6 +1437,9 @@ compares them state by state.
   reads `header` instead of `step N`
   ([03](03-prd-embedded-dsl.md#refusals-from-a-built-sequence)).
 - Ids appear as "(internal edge 37)", so an author knows they did not write them.
+- A refusal of a line standing inside another names that line after the whole
+  reference's text, "the line inside it, L, is refused: …", and has the kind of
+  the refusal it wraps ([C111](decisions.md#changes-since-draft-v2)).
 
 `SequenceError` (**SKETCH**, [decisions §5](decisions.md#5-type-sketch)) has six
 constructors, and the table's *Carried by* column names what each holds:

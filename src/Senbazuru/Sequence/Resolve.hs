@@ -65,6 +65,7 @@ module Senbazuru.Sequence.Resolve
     foldLine,
     carryLine,
     lineAlong,
+    hingeLine,
     hingeAlong,
     crossedFaces,
     chordsAcross,
@@ -85,6 +86,7 @@ module Senbazuru.Sequence.Resolve
 where
 
 import Control.Monad (unless, when)
+import Data.Bifunctor (first)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.IntSet (IntSet)
@@ -101,6 +103,7 @@ import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..))
+import Senbazuru.Sequence.Pretty (prettyLine)
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, lengthInSheetLengths, sheetLengthOf)
 import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
@@ -273,14 +276,18 @@ carryLine motion (FoldLine origin direction) =
 --   to L where L now lies. Only L's direction counts, so P may lie on L. L
 --   is any line named here, worked out first: where it is an @L1 to L2@
 --   with two answers, the @nearest@ inside L's parentheses chooses L, and
---   the fold runs at right angles to the answer it points at.
+--   the fold runs at right angles to the answer it points at;
+-- * @hinge of NAME@, along the creases the lookup given finds for it
+--   ('hingeLine'). Finding them needs the run's earlier records, which this
+--   module does not hold, so the runner hands in how, and this function lays
+--   them on the state it is given, alone or inside another line alike.
 --
--- @hinge of NAME@ is not named here. Finding a hinge needs the run's earlier
--- records, so "Senbazuru.Sequence.Run" finds one standing alone before it
--- asks this function, which meets a hinge only inside another line and
--- refuses it there as not run yet.
-foldLine :: Double -> FlatState -> Line -> Either ResolveProblem FoldLine
-foldLine band st = \case
+-- A line standing inside another, L above or either line of @L1 to L2@, is
+-- refused as itself ('InsideLine'), naming it: the whole line's text would
+-- point the author at the wrong part. Each of those is worked out through
+-- @within@, so that the next line form to hold one can name it the same way.
+foldLine :: Double -> (Name -> Either ResolveProblem [EdgeId]) -> FlatState -> Line -> Either ResolveProblem FoldLine
+foldLine band hinges st = \case
   Segment p q -> do
     (a, b) <- two p q
     pure (FoldLine a (unit (b ^-^ a)))
@@ -295,7 +302,7 @@ foldLine band st = \case
     s2 <- operand l2
     lineOnto band st s1 s2 nearest
   PerpendicularThrough l p -> do
-    d <- lineDirection <$> foldLine band st l
+    d <- lineDirection <$> inner l
     c <- positionOf band st p
     pure (FoldLine c (perpendicular d))
   PointToLineThrough {} -> notYet "\"P to L through Q\""
@@ -303,21 +310,23 @@ foldLine band st = \case
   PointToLinePerpendicular {} -> notYet "\"P to L1 perpendicular to L2\""
   PointToLine {} -> notYet "\"P to L\""
   ExistingCrease {} -> notYet "\"crease [P, Q]\""
-  HingeOf _ -> notYet "\"hinge of NAME\" inside another line"
+  HingeOf name -> hinges name >>= hingeLine st name
   CreaseOf _ -> notYet "\"crease of NAME\""
   ModelSegment {} -> notYet "\"model [...]\""
   LineNamed (Name name) -> notYet ("the line " <> name)
   where
     notYet = Left . NotRunYet
+    within l = first (InsideLine (prettyLine l))
+    inner l = within l (foldLine band hinges st l)
     two p q = do
       a <- positionOf band st p
       b <- positionOf band st q
       if norm (b ^-^ a) <= flatRoom st then Left DegenerateConstruction else Right (a, b)
     -- A line that L1 to L2 lays onto another needs a stretch, not just a
     -- direction: which way round it maps decides between two answers.
-    operand = \case
-      EdgeOf side -> edgeNow st side
-      Segment p q -> two p q
+    operand l = case l of
+      EdgeOf side -> within l (edgeNow st side)
+      Segment p q -> within l (two p q)
       _ -> notYet "\"L1 to L2\" between lines other than an edge and [P, Q]"
 
 -- | The pieces of the sheet's outline along side S, as the working pattern
@@ -507,6 +516,23 @@ straddles :: FlatState -> FoldLine -> (V2, V2) -> Bool
 straddles st (FoldLine origin direction) (a, b) =
   let side p = cross2 direction (p ^-^ origin)
    in (side a > flatRoom st && side b < negate (flatRoom st)) || (side a < negate (flatRoom st) && side b > flatRoom st)
+
+-- | The line @hinge of NAME@ names: the one the creases its move turned
+-- about lie along now, given as the runner finds them on the paper. Every
+-- piece must lie on the first's line, within the sheet's tolerance. A later
+-- fold that turned part of the crease leaves no one line to name, and taking
+-- the first piece's would make the line depend on which way the author wrote
+-- the crease, so that is refused.
+hingeLine :: FlatState -> Name -> [EdgeId] -> Either ResolveProblem FoldLine
+hingeLine st (Name name) = \case
+  [] -> Left NoSolution
+  piece : rest -> do
+    line@(FoldLine origin direction) <- lineAlong st piece
+    let off v = maybe 0 (\p -> abs (cross2 direction (p ^-^ origin))) (IM.lookup v (flatPlaced st))
+        ends = [v | (e, a, b, _) <- flatEdges st, e `elem` rest, v <- [a, b]]
+    if all ((<= flatRoom st) . off) ends
+      then Right line
+      else Left (NotRunYet ("\"hinge of " <> name <> "\", whose crease a later fold has bent,"))
 
 -- | The fold line along an edge, where the paper now lies: how @hinge of
 -- NAME@ names a line, by a crease the named move turned about.
