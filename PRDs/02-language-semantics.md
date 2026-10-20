@@ -283,7 +283,11 @@ refusing:
 
 1. The new anchor face is the stationary face beside the hinge with the largest
    material area. Ties go to the lowest, then leftmost, material vertex mean, never
-   to face id. Its vertex mean becomes the anchor. The runner records it, and
+   to face id. Its vertex mean becomes the anchor. A face that is not convex can
+   have its vertex mean outside it or on its outline; then the anchor is the vertex
+   mean of the face's largest *ear*, a corner whose triangle with its two
+   neighbours lies inside the face, by the same ties
+   ([C110](decisions.md#changes-since-draft-v2)). The runner records it, and
    `--report` prints it.
 2. Read h, that face's placement in the current raw fold, before any reordering.
 3. Set anchor placement := anchor placement `after` h.
@@ -318,7 +322,9 @@ Re-anchoring is what
 crease, where it no longer fills a region slot. So after creasing, if the anchor
 point is not strictly inside one face, the anchor moves to the vertex mean of the
 largest face that contains the old point in its closed polygon and that this move
-does not turn. Ties go to the lowest, then leftmost, vertex mean. Creasing moves no
+does not turn. Ties go to the lowest, then leftmost, vertex mean, and a face that
+does not hold its own vertex mean gives its largest ear's, as in rule 1 above.
+Creasing moves no
 paper, so anchor placement is unchanged, and the record notes the move.
 
 *Example* [reasoned, with the areas and vertex means checked by python3 using

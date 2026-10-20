@@ -68,6 +68,21 @@ boxOverlap (Box2 ax0 ay0 ax1 ay1) (Box2 bx0 by0 bx1 by1) =
 unitSquare :: [V2]
 unitSquare = [V2 0 0, V2 1 0, V2 1 1, V2 0 1]
 
+-- | A ring star-shaped about the origin: three to nine corners at increasing
+-- angles, each in its own slice of the turn, at radii from 1 to 3. Simple,
+-- and often not convex.
+starRing :: Gen [V2]
+starRing = do
+  n <- choose (3, 9 :: Int)
+  sequence
+    [ do
+        t <- choose (0, 0.9)
+        r <- choose (1, 3)
+        let angle = 2 * pi * (fromIntegral k + t) / fromIntegral n
+        pure (r *^ V2 (cos angle) (sin angle))
+      | k <- [0 .. n - 1]
+    ]
+
 -- | Close enough, for numbers that came out of a few multiplications.
 near :: Double -> Double -> Bool
 near a b = abs (a - b) < 1e-9
@@ -264,6 +279,34 @@ spec = do
           pieces = subtractConvex 1e-12 repeated unitSquare
       and [near 0 (abs (signedArea (clipConvex p q))) | (p : rest) <- tails pieces, q <- rest]
         `shouldBe` True
+
+  describe "ears" $ do
+    -- Issue #579's L: its six corners average to (0.3, 0.5), its own inside
+    -- corner, which is on the outline and so no point inside it. Its ears are
+    -- the four outer corners but (0.6, 0), whose triangle has the inside
+    -- corner on its long side. Turns red if a reflex corner, a corner whose
+    -- triangle holds another, or a corner touching one were taken.
+    it "finds the ears of an L, each with its mean inside it, where the mean of all six is not" $ do
+      let l = [V2 0 0, V2 0.6 0, V2 0.6 1, V2 0.3 1, V2 0.3 0.5, V2 0 0.5]
+          found = ears 1e-9 l
+      insideRing 1e-9 l (centroid l) `shouldBe` False
+      [i | (i, _, _) <- found] `shouldBe` [0, 2, 3, 5]
+      [insideRing 1e-9 l at | (_, _, at) <- found] `shouldBe` replicate 4 True
+
+    -- The second ring's corner 1 turns the ring's way by a rounding error, a
+    -- triangle 1e-12 high. Turns red if the height were not held to the
+    -- tolerance, or not asked at all, which lets a reflex corner in too.
+    it "takes no corner on a straight run, rounding included" $ do
+      [i | (i, _, _) <- ears 1e-9 [V2 0 0, V2 0.5 0, V2 1 0, V2 1 1, V2 0 1]] `shouldBe` [0, 2, 3, 4]
+      [i | (i, _, _) <- ears 1e-9 [V2 0 0, V2 0.5 (-1e-12), V2 1 0, V2 1 1, V2 0 1]] `shouldBe` [0, 2, 3, 4]
+
+    -- A ring star-shaped about the origin is simple, and every simple ring
+    -- has at least two ears (the two ears theorem). Turns red if ears were
+    -- missed, or an ear's mean could fall outside the ring.
+    it "gives a simple ring at least two ears, each with its mean inside it" $
+      forAll starRing $ \ring ->
+        let found = ears 1e-9 ring
+         in (length found >= 2, and [insideRing 0 ring at | (_, _, at) <- found]) === (True, True)
 
   describe "isConvex" $ do
     it "accepts a square and a triangle" $ do

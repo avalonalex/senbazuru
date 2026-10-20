@@ -53,6 +53,7 @@ module Senbazuru.Geometry.Polygon
     signedArea,
     centroid,
     isConvex,
+    ears,
 
     -- * Clipping
     clipConvex,
@@ -161,6 +162,39 @@ edges ps = zip ps (drop 1 ps <> take 1 ps)
 -- of a folded model that comes out clockwise has been turned over.
 signedArea :: [V2] -> Double
 signedArea ps = 0.5 * sum [cross2 a b | (a, b) <- edges ps]
+
+-- | The /ears/ of a simple ring, each with its corner's index, its area and
+-- the mean of its three corners. An ear is a corner whose triangle with its
+-- two neighbours lies inside the ring: the corner turns the ring's way, its
+-- triangle more than the tolerance high at it, and no other corner lies in
+-- the triangle or within the tolerance of its outline. The tolerance is a
+-- distance. One test, the height, turns away a corner turning the other way,
+-- whose height is negative, and one on a straight run, rounding included.
+--
+-- A point is often wanted inside a ring that is not convex, whose mean of
+-- corners can lie outside it or on its outline: the L of issue #579 has its
+-- inside corner as the mean of its six. An ear's mean is inside its triangle,
+-- which is inside the ring,
+-- and every simple ring of three or more corners has at least two ears (the
+-- two ears theorem), so one is always there to give.
+ears :: Double -> [V2] -> [(Int, Double, V2)]
+ears clearance ring =
+  [ (i, area, centroid triangle)
+    | (i, (a, b, c)) <- zip [0 ..] (zip3 (lastFirst ring) ring (drop 1 ring <> take 1 ring)),
+      let turn = way * cross2 (b ^-^ a) (c ^-^ b)
+          area = 0.5 * turn
+          triangle = [a, b, c]
+          base = norm (c ^-^ a),
+      base > 0,
+      turn / base > clearance,
+      not (any (near triangle) (othersThan i))
+  ]
+  where
+    n = length ring
+    way = signum (signedArea ring)
+    lastFirst ps = drop (n - 1) ps <> take (n - 1) ps
+    othersThan i = [p | (j, p) <- zip [0 ..] ring, j `notElem` [(i - 1) `mod` n, i, (i + 1) `mod` n]]
+    near triangle p = insideRing 0 triangle p || any ((<= clearance) . (`distanceToSegment` p)) (edges triangle)
 
 -- | The mean of the corners.
 --

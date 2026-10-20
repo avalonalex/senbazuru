@@ -192,7 +192,7 @@ import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVertices, ringEdges)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
-import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, edges, insideRing, signedArea)
+import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, ears, edges, insideRing, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear, rotationAboutDegrees)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
@@ -748,7 +748,12 @@ creaseAcross place line state folded flat foldAt letter = case crossedFaces flat
 -- | Move the anchor to one of the faces given, which folding then holds
 -- still: the vertex mean of the largest, ties to the lowest vertex mean and
 -- then the leftmost, as 'sheetState' picks the default anchor
--- (PRDs\/02-language-semantics.md, §2.3). Two moves ask for it: a new crease
+-- (PRDs\/02-language-semantics.md, §2.3). A face that is not convex can have
+-- its vertex mean outside it, or on its outline, and the start refuses such a
+-- default and asks the author for an anchor. A run has no one to ask, so it
+-- takes the mean of the face's largest ear instead ('ears'), by the same
+-- rule, and the move goes on to whatever the paper does next (#579). Two
+-- moves ask for it: a new crease
 -- through the anchor, from the faces around it that the move does not turn
 -- (decisions C19), and a move that turns the anchor's paper, from the faces
 -- beside its hinge that it holds still (owner decision 3). 'reanchorAt' does
@@ -763,7 +768,12 @@ reanchor place state folded still = do
   case defaultAnchor room measured of
     Just (i, face, _, mean)
       | insideRing room (ring face) mean -> reanchorAt place state folded i mean
-      | otherwise -> Left (refusedAt place (MoveNotRunYet "an anchor moved to a face that does not hold its own vertex mean,"))
+      -- Only a face that is not convex can leave its vertex mean outside it
+      -- or on its outline. Then the mean of its largest ear is inside it,
+      -- chosen by the same rule.
+      | otherwise -> case defaultAnchor room [(k, face, area, at) | (k, area, at) <- ears room (ring face)] of
+          Just (_, _, _, inEar) | insideRing room (ring face) inEar -> reanchorAt place state folded i inEar
+          _ -> Left (refusedAt place (MoveNotRunYet "an anchor moved to a face that holds neither its own vertex mean nor an ear's,"))
     Nothing -> Left (refusedAt place (JoinBroken "no face was left to hold still"))
 
 -- | Hold face @i@ of the working pattern still from now on, with the anchor

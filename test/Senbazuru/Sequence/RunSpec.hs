@@ -22,7 +22,7 @@ import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
 import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..), SweepSettings (..))
 import Senbazuru.Origami.Step (motionsBetween, wholeModelMotion)
-import Senbazuru.Origami.Surface (surfaceFrame)
+import Senbazuru.Origami.Surface (SurfaceError (..), surfaceFrame)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
@@ -778,6 +778,32 @@ reanchoring = describe "re-anchoring" $ do
     case (reverse heldFrames, reverse movedFrames) of
       (heldLast : _, movedLast : _) -> sameModel heldLast movedLast `shouldBe` True
       _ -> expectationFailure "expected written states"
+
+  -- Issue #579's sheet: two by one, its top-left corner creased off, so the
+  -- rest is one face that is not convex, and a fold up x = 0.6 leaves an L
+  -- west of it. Anchored inside the L, the fold turns other paper, and the
+  -- turn's mesh refuses the L. Anchored east of the line, the fold turns the
+  -- anchor's paper and re-anchors onto the L, whose vertex mean is its own
+  -- inside corner; the anchor goes to its largest ear's mean instead, and the
+  -- same turn refuses the L the same way. Turns red if re-anchoring refused
+  -- the L itself, as it did, so that which refusal the fold got depended on
+  -- the anchor.
+  it "refuses a fold onto a face that is not convex the same way at either anchor" $ do
+    let lSheet =
+          emptyFrame
+            { verticesCoords = [[0, 0], [2, 0], [2, 1], [0, 1], [0, 0.5], [0.3, 0.5], [0.3, 1]],
+              edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 6), (6, 3), (3, 4), (4, 0), (4, 5), (5, 6)]],
+              edgesAssignment = replicate 6 Border ++ [Valley, Valley]
+            }
+        sheets = M.singleton "l.fold" squareSheet {keyFrame = lSheet}
+        folded heldAt =
+          checkSequence (sequenceOf (header "An L-shaped face" (sheetFile "l.fold") (Just heldAt)) (step_ "Fold the right part behind." (move (Fold MountainFold ToFlat (Segment (at (3 / 10) 0) (at (3 / 10) (1 / 2))) FlapOfFirstArgument (Just (at (2 / 5) (3 / 10)))))))
+            >>= runSequence defaultRunSettings sheets . elaborate
+        refusedAs = \case
+          Left (StepRefused 1 _ _ failure) -> Just failure
+          _ -> Nothing
+    map (refusedAs . folded) [at (1 / 20) (1 / 20), at (3 / 4) (1 / 4)]
+      `shouldBe` replicate 2 (Just (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 0)))))
 
   -- Re-anchoring twice, onto paper turned about axes 45° apart, on the
   -- square base. The diagonal fold lays the lower right half behind; the
