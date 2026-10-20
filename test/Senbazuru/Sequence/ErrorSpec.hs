@@ -279,7 +279,7 @@ resolveSamples =
     NoCornerThere SouthWest,
     ConstructionInTheAir 0,
     DegenerateConstruction,
-    NoSolution,
+    NoSolution (NoCreaseAlong Nothing),
     HingeOfNotOneMove "c1" 0,
     EdgeNotStraight South [],
     NeedsNearest [],
@@ -289,7 +289,7 @@ resolveSamples =
   ]
 
 selectionSamples :: [SelectionError]
-selectionSamples = [SeedMissing, SeedOnTheLine (V2 0 0), SeedSplit (V2 0 0), SegmentStraddles (V2 0 0) (V2 1 0), NothingSelected, ExistingHingeFlat (EdgeId 0)]
+selectionSamples = [SeedMissing [], SeedOnTheLine (V2 0 0), SeedSplit (V2 0 0), SegmentStraddles (V2 0 0) (V2 1 0), NothingSelected, ExistingHingeFlat (EdgeId 0)]
 
 -- | Every 'MoveFailure' but the three that wrap another type's refusal,
 -- which are sampled by that type.

@@ -26,7 +26,8 @@ import Senbazuru.Origami.Surface (SurfaceError (..), surfaceFrame)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
-import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
+import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), Unsolved (..), refusalKindOf)
+import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), ResolvedReference (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordResolved, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
@@ -108,11 +109,17 @@ running = describe "running a sequence" $ do
       other -> expectationFailure ("expected one record, got " <> show (length other))
 
   -- moving P picks the paper for a line that does not say which side moves.
+  -- Without one, the refusal offers a seed for each flap the fold can move
+  -- (#571): the mean of the corner triangle beyond the crease, and the
+  -- centre of the square, lower first, each to six places. Turns red if a
+  -- flap's seed were missing, or not its largest face's.
   it "folds the side named by moving P, and refuses a line with none" $ do
     let alongEdge8 = Segment (MidpointOfEdge South) (MidpointOfEdge East)
     run <- right (runOn (oneStep (move (Fold MountainFold ToFlat alongEdge8 FlapOfFirstArgument (Just (CornerOf SouthEast))))))
     map (concatMap snd . recordHinge) (runRecords run) `shouldBe` [[EdgeId 8]]
-    refusal (runOn (oneStep (fold mountain alongEdge8))) `shouldBe` Just (Selecting SeedMissing)
+    case refusal (runOn (oneStep (fold mountain alongEdge8))) of
+      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` [V2 0.833333 0.166667, V2 0.5 0.5]
+      other -> expectationFailure ("expected the line refused with a seed for each side, got " <> show other)
 
   describe "refuses" $ do
     it "a sheet it was not given" $
@@ -1057,8 +1064,99 @@ creasing = describe "a fold along a line where no crease runs" $ do
       facts o4Record `shouldBe` facts twoRecord
       renderRunReport o4Run `shouldContain` ["  line perpendicular to edge south through centre: through (0.5, 0.5), along (0, 1)"]
     case upTheMiddle (at (1 / 4) (1 / 4)) o4 Nothing of
-      Left (StepRefused _ _ _ (Selecting SeedMissing)) -> pure ()
+      Left (StepRefused _ _ _ (Selecting (SeedMissing _))) -> pure ()
       other -> expectationFailure ("expected the line refused as saying no side moves, got " <> either (show . explain) (const "a run") other)
+
+  -- An F crease lies flat and has no direction to fold, so a fold along one
+  -- is refused whichever side moves (ExistingHingeFlat), and the refusal of
+  -- a fold along it with no seed offers none, and says that none helps.
+  -- Turns red if a seed were offered from which the fold does not run, or
+  -- the words still asked for one.
+  it "offers no seed where no seed makes the fold run" $ do
+    let flatMiddle = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.5], [1, 0.5]], edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 5), (5, 2), (2, 3), (3, 4), (4, 0), (4, 5)]], edgesAssignment = replicate 6 Border ++ [Flat]}
+        alongMiddle seed = runOn (M.singleton "flat-middle.fold" squareSheet {keyFrame = flatMiddle}) (sequenceOf (header "A flat crease" (sheetFile "flat-middle.fold") (Just (at (1 / 4) (1 / 4)))) (step_ "Fold along the flat crease." (move (Fold ValleyFold ToFlat (Segment (at 0 (1 / 2)) (at 1 (1 / 2))) FlapOfFirstArgument seed))))
+    case alongMiddle Nothing of
+      Left err@(StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
+        seeds `shouldBe` []
+        explain err `shouldSatisfy` T.isSuffixOf "this line does not say which side moves, and no moving P makes it fold"
+      other -> expectationFailure ("expected the line refused with no seed to offer, got " <> either (show . explain) (const "a run") other)
+    case alongMiddle (Just (at (1 / 2) (3 / 4))) of
+      Left (StepRefused _ _ _ (Selecting (ExistingHingeFlat _))) -> pure ()
+      other -> expectationFailure ("expected the flat crease refused, got " <> either (show . explain) (const "a run") other)
+
+  -- A line an eighth up the square that does not say which side moves is
+  -- refused with a seed for each flap, which the message prints in the
+  -- language's own numbers (#571): (0.5, 0.0625) below the line and
+  -- (0.5, 0.5625) above it. Each, copied from the message into the source
+  -- as moving P, parses and folds. Turns red if a seed were printed in a
+  -- form the language cannot read, such as 6.25e-2, if one were missing, or
+  -- if one were offered from which the fold does not run.
+  it "offers a seed for each flap, each of which folds as the message prints it" $ do
+    let source seed = T.unlines ["foldseq 1", "sheet square", "anchor (1/4, 3/4)", "step {", "  fold valley [(0, 1/8), (1, 1/8)]" <> seed, "}"]
+        runText text = parseSequence "seeds.foldseq" text >>= checkSequence >>= runSequence defaultRunSettings M.empty . elaborate
+    case runText (source "") of
+      Left err@(StepRefused _ _ _ (Selecting (SeedMissing _))) -> do
+        let printed = [T.takeWhile (/= ')') piece | piece <- drop 1 (T.splitOn "(" (snd (T.breakOn "such as " (explain err))))]
+        printed `shouldBe` ["0.5, 0.0625", "0.5, 0.5625"]
+        forM_ printed $ \seed -> right (runText (source (" moving (" <> seed <> ")"))) >>= void . one . runRecords
+      other -> expectationFailure ("expected the line refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
+
+  -- The square pre-creased a quarter up, anchored in the strip below, then
+  -- folded up its middle with no seed. Each half is a flap of two faces, the
+  -- strip's quarter and the rest; the anchor's face is listed first. Each
+  -- flap offers its larger face's seed, by the anchor's rule. Turns red if a
+  -- flap offered the first face listed, or the smaller.
+  it "offers each flap's largest face's seed" $ do
+    let upTheMiddle' = onSquare (Just (at (1 / 8) (1 / 8))) ColouredUp $ do
+          step_ "Pre-crease a quarter up." (move (FoldAndUnfold ValleyFold (Segment (at 0 (1 / 4)) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Fold up the middle." (move (Fold ValleyFold ToFlat (Segment (at (1 / 2) 0) (at (1 / 2) 1)) FlapOfFirstArgument Nothing))
+    case upTheMiddle' of
+      Left (StepRefused 2 _ _ (Selecting (SeedMissing seeds))) -> seeds `shouldBe` [V2 0.25 0.625, V2 0.75 0.625]
+      other -> expectationFailure ("expected the line refused with a seed for each half, got " <> either (show . explain) (const "a run") other)
+
+  -- The blintz with its south-east corner folded behind to the centre, then
+  -- folded behind along the corner's crease with no seed. Both flaps lie on
+  -- one side of the line as the paper lies now. A fold from the centre is
+  -- refused by its layer order, and from the corner flap it unfolds the
+  -- corner, so only the corner's seed is offered. Turns red if seeds were
+  -- told apart by the side they lie on, or offered without the fold being
+  -- run from them.
+  it "offers only the seeds from which the fold runs, on folded paper" $ do
+    blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
+    let corner' seed =
+          runOn
+            (M.singleton "examples/blintz-base.fold" blintzSheet)
+            ( sequenceOf (header "The blintz" (sheetFile "examples/blintz-base.fold") (Just centre)) $ do
+                step_ "Fold the corner behind." (move (Fold MountainFold ToFlat (Onto (corner SouthEast) Centre) FlapOfFirstArgument Nothing))
+                step_ "Fold behind along its crease." (move (Fold MountainFold ToFlat (Segment (MidpointOfEdge South) (MidpointOfEdge East)) FlapOfFirstArgument seed))
+            )
+    case corner' Nothing of
+      Left (StepRefused 2 _ _ (Selecting (SeedMissing seeds))) -> do
+        seeds `shouldBe` [V2 0.833333 0.166667]
+        right (corner' (Just (at (833333 / 1000000) (166667 / 1000000)))) >>= \run -> length (runRecords run) `shouldBe` 2
+      other -> expectationFailure ("expected the line refused with the corner's seed, got " <> either (show . explain) (const "a run") other)
+
+  -- The square folded along a diagonal leaves rounding in where its edges
+  -- lie, a few times 1e-16; a line shown to the author is not. Turns red if
+  -- a line along the folded paper's outline were shown with that residue.
+  it "names a line that crosses no paper without the folding's rounding" $ do
+    let diagonalThen = onSquare (Just (at (1 / 8) (7 / 8))) ColouredUp $ do
+          step_ "Fold along the diagonal." (move (Fold ValleyFold ToFlat (Segment (corner SouthWest) (corner NorthEast)) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Fold along the south edge." (move (Fold ValleyFold ToFlat (edge South) FlapOfFirstArgument (Just (at (1 / 8) (7 / 8)))))
+    case diagonalThen of
+      Left err@(ResolveRefused _ _ _ (NoSolution (NoCreaseAlong (Just _)))) -> explain err `shouldSatisfy` T.isInfixOf "the fold line is the line through (0.000000, 0.500000) along (0.000000, 1.000000), which crosses no paper"
+      other -> expectationFailure ("expected the folded edge refused as crossing no paper, got " <> either (show . explain) (const "a run") other)
+
+  -- Two lines 1.5e-9 apart, just over the sheet's tolerance, lay onto each
+  -- other only along the line between them, which lies within the
+  -- tolerance of the south side and so crosses no paper (02 §4.3, rule 2).
+  -- Turns red if that answer were refused as a line along no crease, which
+  -- the construction never looked for.
+  it "refuses a construction whose one answer crosses no paper as having none on the paper" $ do
+    let hairApart = onSquare (Just (at (1 / 2) (1 / 2))) ColouredUp (step_ "Fold edge south onto a line a hair above it." (move (Fold ValleyFold ToFlat (LineOnto (edge South) (Segment (at (1 / 4) (3 / 2000000000)) (at (3 / 4) (3 / 2000000000))) Nothing) FlapOfFirstArgument Nothing)))
+    case hairApart of
+      Left (ResolveRefused _ _ _ (NoSolution (NoAnswerOnPaper [CandidateLine _ _ False]))) -> pure ()
+      other -> expectationFailure ("expected no answer on the paper, got " <> either (show . explain) (const "a run") other)
 
   -- The line laid onto another here, the middle across onto the middle up,
   -- has two answers, the diagonals, so L needs a nearest P. The refusal is

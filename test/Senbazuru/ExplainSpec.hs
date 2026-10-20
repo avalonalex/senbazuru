@@ -38,7 +38,7 @@ import Data.Char (isAlphaNum, isUpper)
 import Data.Text (Text)
 import Data.Text qualified as T
 import FoldBending (BendingError (InvalidRestAngle, MissingRestAngle, UnexpectedRestAngle, UnsupportedCrease))
-import Senbazuru.Explain (Explain (..))
+import Senbazuru.Explain (Explain (..), decimal, num)
 import Senbazuru.Fold.Load (LoadError (..), SaveError (..))
 import Senbazuru.Fold.Query (FoldError (..))
 import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
@@ -100,7 +100,8 @@ everyType =
     ("SequenceError, a state", explain (WriteRefused 2 (WriteNonFinite "senbazuru:material_coords[3]" (0 / 0)))),
     ("WriteProblem", explain (WriteMissingAngles 12 11)),
     ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
-    ("SelectionError", explain SeedMissing),
+    ("SelectionError", explain (SeedMissing [V2 0.5 0.25, V2 0.5 0.75])),
+    ("SelectionError", explain (SeedMissing [])),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
     ("StaticProblem", explain EmptyStep),
     ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),
@@ -236,6 +237,14 @@ spec = do
       explain (SurfaceBadDirection (V3 0 0 (0 / 0))) `shouldBe` "layer requirements need a finite nonzero direction, got (0.0, 0.0, NaN)"
       explain (StepRefused 1 Nothing NoSpan (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 0)))))
         `shouldBe` "step 1: surface panel 0 must be convex to triangulate by a fan"
+
+    -- A quarter turn of (1, 0) is (-0.0, 1), and a reader should not be
+    -- shown a sign on nothing. A coordinate to type back in has no exponent:
+    -- the sequence language cannot read one. Turns red if a zero kept its
+    -- sign, or a coordinate under 0.1 were written as num writes it.
+    it "writes a zero without a sign, and a coordinate without an exponent" $ do
+      (num (-0.0), decimal (-0.0)) `shouldBe` ("0.000000", "0")
+      map decimal [0.0625, 1 / 12, 5 / 6, 1] `shouldBe` ["0.0625", "0.083333", "0.833333", "1"]
 
     -- Each case turns red if the detector dropped one of its tests: the brace,
     -- the equals sign, or the field name before it, which tells a record

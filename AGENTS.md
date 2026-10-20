@@ -382,9 +382,10 @@ write.
   face's edge is judged by `Geometry.Polygon.distanceOutside` at its midpoint,
   never by clipping, which has no tolerance to call a hair inside and a hair
   outside the same answer.
-- **`-0.0 == 0.0` is `True`** but they format differently, and a y-flip makes
-  them. `formatNumber` normalises; `Render.Gltf` rounds through an `Integer`,
-  which has no sign to keep.
+- **`-0.0 == 0.0` is `True`** but they format differently, and a y-flip or a
+  quarter turn makes them. `formatNumber` normalises, and so do `Explain.num`
+  and `decimal` for messages; `Render.Gltf` rounds through an `Integer`, which
+  has no sign to keep. `x + 0` does not help: the optimiser removes it.
 - **Creasing is about faces, not the sheet.** A crease's end has to meet
   something, and that is a question about the drawing — the argument is in
   `Fold.Creasing`'s header; do not restate it. Through the layers, the test is

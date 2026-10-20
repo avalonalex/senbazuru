@@ -17,7 +17,7 @@ import Senbazuru.Origami.Folding (foldFrameWith)
 import Senbazuru.Origami.Surface (surfaceFrame)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
-import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), TakenBecause (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), TakenBecause (..), Unsolved (..))
 import Senbazuru.Sequence.Record (Run (..), recordAfter, recordAngles)
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, squareSheet, workingPattern)
@@ -109,7 +109,7 @@ spec = describe "naming paper on a flat state" $ do
 
     it "that runs along no crease" $ do
       line <- right (lineOn start (Segment (CornerOf SouthWest) (CornerOf SouthEast)))
-      hingeAlong start line `shouldBe` Left NoSolution
+      hingeAlong start line `shouldBe` Left (NoSolution (NoCreaseAlong (Just (CandidateLine (V2 0.5 0) (V2 1 0) False))))
 
     it "whose two points are one" $
       lineOn start (Onto Centre Centre) `shouldBe` Left DegenerateConstruction

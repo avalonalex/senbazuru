@@ -170,11 +170,9 @@ import Data.Aeson.KeyMap qualified as KM
 import Data.IntMap.Strict qualified as IM
 import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Numeric (showFFloat)
-import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Explain (Explain (..), decimal, tshow)
 import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
@@ -878,11 +876,3 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
     internal noun ids = "(internal " <> noun <> (if length ids == 1 then "" else "s") <> " " <> T.intercalate ", " (map tshow ids) <> ")"
     point (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
     stopped = ["stopped: " <> explain refusal | Just refusal <- [runRefusal run]]
-
--- | A number rounded to six places, with no trailing zeros and no negative
--- zero: the same text on every platform.
-decimal :: Double -> Text
-decimal x =
-  let rounded = fromIntegral (round (x * 1e6) :: Integer) / 1e6 :: Double
-      shown = T.pack (showFFloat Nothing (if rounded == 0 then 0 else rounded) "")
-   in fromMaybe shown (T.stripSuffix ".0" shown)

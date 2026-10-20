@@ -65,7 +65,9 @@ module Senbazuru.Geometry.Polygon
     isConvex,
     ears,
     pointInside,
+    pointsInside,
     largestLowestLeftmost,
+    inPreferredOrder,
 
     -- * Clipping
     clipConvex,
@@ -81,7 +83,7 @@ module Senbazuru.Geometry.Polygon
   )
 where
 
-import Data.List (find, foldl')
+import Data.List (delete, find, foldl')
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.VectorSpace
 
@@ -239,6 +241,13 @@ pointInside clearance ring
   where
     mean = centroid ring
 
+-- | Each ring that has a point inside it ('pointInside'), with its area and
+-- that point, for choosing among them by 'largestLowestLeftmost'. A ring with
+-- no such point is left out. The anchor is chosen among a sheet's faces this
+-- way, and so is a seed among a flap's.
+pointsInside :: Double -> [(a, [V2])] -> [(a, Double, V2)]
+pointsInside clearance rings = [(a, abs (signedArea ring), at) | (a, ring) <- rings, Just at <- [pointInside clearance ring]]
+
 -- | The largest of some measured things, and among those of one size the one
 -- at the lowest point, and then the leftmost. Each comes with its size and
 -- its point. A tie in size is a billionth of the largest; a tie in height or
@@ -257,6 +266,14 @@ largestLowestLeftmost room measured = case measured of
         low = [m | m@(_, _, V2 _ y) <- largest, y <= lowest + room]
         leftmost = minimum [x | (_, _, V2 x _) <- low]
      in find (\(_, _, V2 x _) -> x <= leftmost + room) low
+
+-- | Every one of some measured things, in the order 'largestLowestLeftmost'
+-- would take them: the one it takes, then the one it takes from the rest,
+-- and so on.
+inPreferredOrder :: (Eq a) => Double -> [(a, Double, V2)] -> [(a, Double, V2)]
+inPreferredOrder room measured = case largestLowestLeftmost room measured of
+  Nothing -> []
+  Just taken -> taken : inPreferredOrder room (delete taken measured)
 
 -- | The mean of the corners.
 --

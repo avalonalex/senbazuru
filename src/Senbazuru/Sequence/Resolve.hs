@@ -81,6 +81,7 @@ module Senbazuru.Sequence.Resolve
     seedFaces,
     Selection (..),
     flapOf,
+    seedsByFlap,
     hingeStretches,
   )
 where
@@ -91,18 +92,18 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (minimumBy, nub, sortOn)
+import Data.List (minimumBy, nub, sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, perpendicular)
-import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, insideRing, pointInside)
+import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, inPreferredOrder, insideRing, pointInside, pointsInside)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
-import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..))
+import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..), Unsolved (..))
 import Senbazuru.Sequence.Pretty (prettyLine)
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, lengthInSheetLengths, sheetLengthOf)
@@ -419,7 +420,7 @@ lineOnto band st (a1, b1) (a2, b2) nearest = do
                 (_, pointed) : _ -> Left (NearestDisagrees (toSheetLengths st p) (candidateOf st taken) because (candidateOf st pointed))
                 [] -> Right taken
   case (onPaper, preferred) of
-    ([], _) -> Left NoSolution
+    ([], _) -> Left (NoSolution (NoAnswerOnPaper listed))
     ([only], _) -> agreeing OnlyOnPaper only
     (_, [only]) -> agreeing LaysStretchOntoStretch only
     (several, _) -> case near of
@@ -451,11 +452,16 @@ candidateOf st line = let (through, along) = lineAsSeen st line in CandidateLine
 
 -- | A line as a person is shown it, the same however it was found: in sheet
 -- lengths, through its point nearest the middle of the paper, and pointing
--- east, or north for a line running north-south.
+-- east, or north for a line running north-south. A part within 1e-12 of 0 is
+-- shown as 0: on folded paper it is rounding left by the folding, such as
+-- @-2.220446e-16@, and a quarter turn makes a @-0.0@.
 lineAsSeen :: FlatState -> FoldLine -> (V2, V2)
 lineAsSeen st (FoldLine origin direction) =
   let middle = maybe origin boxCentre (boxFromPoints (IM.elems (flatPlaced st)))
-   in (toSheetLengths st (origin ^+^ (dot (middle ^-^ origin) direction *^ direction)), eastOrNorth direction)
+   in (zeroed (toSheetLengths st (origin ^+^ (dot (middle ^-^ origin) direction *^ direction))), zeroed (eastOrNorth direction))
+  where
+    zeroed (V2 x y) = V2 (nothing x) (nothing y)
+    nothing v = if abs v <= 1e-12 then 0 else v
 
 -- | A line's direction turned to point east, or north for a line running
 -- north-south, so that one line always reads one way. A line within a hair of
@@ -525,7 +531,7 @@ straddles st (FoldLine origin direction) (a, b) =
 -- the crease, so that is refused.
 hingeLine :: FlatState -> Name -> [EdgeId] -> Either ResolveProblem FoldLine
 hingeLine st (Name name) = \case
-  [] -> Left NoSolution
+  [] -> Left (NoSolution (NoCreaseAlong Nothing))
   piece : rest -> do
     line@(FoldLine origin direction) <- lineAlong st piece
     let off v = maybe 0 (\p -> abs (cross2 direction (p ^-^ origin))) (IM.lookup v (flatPlaced st))
@@ -542,7 +548,7 @@ lineAlong st edge = case [(a, b) | (e, a, b, _) <- flatEdges st, e == edge] of
     | Just p <- IM.lookup a (flatPlaced st),
       Just q <- IM.lookup b (flatPlaced st) ->
         if norm (q ^-^ p) <= flatRoom st then Left DegenerateConstruction else Right (FoldLine p ((1 / norm (q ^-^ p)) *^ (q ^-^ p)))
-  _ -> Left NoSolution
+  _ -> Left (NoSolution (NoCreaseAlong Nothing))
 
 -- | The creases lying along the fold line: the candidates a fold turns
 -- about. Refused if the line runs along no crease, or if it crosses a face
@@ -564,7 +570,7 @@ hingeAlong st line@(FoldLine origin direction) = do
       room = flatRoom st
   unless (null (crossedFaces st line)) (Left (NotRunYet "a fold whose line crosses paper where no crease runs, which needs a new crease,"))
   case [e | (e, a, b, letter) <- flatEdges st, letter `notElem` [Border, Cut, Join], abs (side a) <= room, abs (side b) <= room] of
-    [] -> Left NoSolution
+    [] -> Left (NoSolution (NoCreaseAlong (Just (candidateOf st line))))
     hinge -> Right hinge
 
 -- | The faces a line crosses: those with corners strictly on both sides of
@@ -672,6 +678,28 @@ data Selection = Selection
     selectionSide :: !FaceId
   }
   deriving stock (Eq, Show)
+
+-- | The seeds a refusal asking which side moves can offer, flap by flap
+-- (PRDs\/02-language-semantics.md, §12): for each flap the line borders, the
+-- points that, written as @moving P@, choose it, in sheet lengths, best
+-- first. A face offers the point the anchor would take in it
+-- ('pointsInside', owner decision 51), and belongs to the flap 'flapOf'
+-- chooses from that point. On folded paper a side of the line can hold
+-- several flaps, each a different fold, so the flaps are told apart by the
+-- faces that move, not by the side they lie on. Within a flap, the largest
+-- face's point comes first ('inPreferredOrder'). Whether the fold then runs
+-- from one is the turn's question, which the runner asks.
+seedsByFlap :: FlatState -> FoldLine -> [EdgeId] -> [[V2]]
+seedsByFlap st line candidates =
+  [ [toSheetLengths st m | (_, _, m) <- inPreferredOrder (flatRoom st) [(f, size, m) | (f, size, m, moving') <- choosing, moving' == moving]]
+    | moving <- nub [moving' | (_, _, _, moving') <- choosing]
+  ]
+  where
+    choosing =
+      [ (f, size, m, sort (selectionMoving selection))
+        | (f, size, m) <- pointsInside (flatRoom st) [(f, ringOf st ring) | (f, ring) <- flatFaces st],
+          Right selection <- [flapOf st line candidates m [f]]
+      ]
 
 -- | The flap containing the seed: the faces still joined to the seed's faces
 -- once every candidate crease along the line is cut. The hinge is the
