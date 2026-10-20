@@ -78,6 +78,7 @@ module Senbazuru.Sequence.Error
     -- * A reference no paper answers
     ResolveProblem (..),
     CandidateLine (..),
+    Unsolved (..),
     TakenBecause (..),
 
     -- * A state that cannot be written
@@ -103,7 +104,7 @@ import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Numeric (showHex)
-import Senbazuru.Explain (Explain (..), num, tshow)
+import Senbazuru.Explain (Explain (..), decimal, num, tshow)
 import Senbazuru.Fold.Load (LoadError)
 import Senbazuru.Fold.Query (FoldError)
 import Senbazuru.Fold.Types (EdgeId (..))
@@ -522,12 +523,9 @@ data ResolveProblem
   | -- | A construction whose two points coincide, which pins down no line,
     -- or whose two lines do.
     DegenerateConstruction
-  | -- | A fold line that runs along no crease on the paper: each line it
-    -- could have been, those crossing no paper included (02 §12), or none
-    -- where there was no line to give. A line that crosses no paper is said
-    -- to, rather than blamed on the creases: it only touches the paper, or
-    -- runs along its outline.
-    NoSolution [CandidateLine]
+  | -- | No fold line to turn about, and why, with the lines it could have
+    -- been (02 §12).
+    NoSolution Unsolved
   | -- | @edge S@ as a line, where its pieces do not lie on one line now, or
     -- where no piece of the sheet's outline lies along that side: each
     -- piece's ends where they lie, in sheet lengths.
@@ -581,10 +579,7 @@ instance Explain ResolveProblem where
     NoCornerThere corner -> "the sheet has no " <> cornerWords corner <> " corner; its outline is not a rectangle, so name the point another way"
     ConstructionInTheAir relief -> "a construction needs the paper lying flat, and it stands " <> num relief <> " out of the plane"
     DegenerateConstruction -> "the construction's two points are one point, or its two lines one line, which fixes no fold line"
-    NoSolution answers -> case answers of
-      [] -> "the fold line runs along no crease on the paper"
-      [line] -> "the fold line is " <> explain line <> ", and no crease runs along it"
-      _ -> "the construction has no answer on the paper: " <> listed answers
+    NoSolution why -> explain why
     HingeOfNotOneMove (Name name) made -> "\"hinge of " <> name <> "\" needs a step that turned paper about one hinge, and " <> name <> " made " <> tshow made <> " such turns"
     EdgeNotStraight side [] -> "no piece of the sheet's outline lies along edge " <> compassWords side <> "; name the line by two points, such as " <> cornersOf side
     EdgeNotStraight side pieces ->
@@ -641,10 +636,11 @@ instance Explain ResolveProblem where
         NorthEast -> "north-east"
         NorthWest -> "north-west"
 
--- | One answer of a construction that has several, where the paper lies now,
--- in sheet lengths: a point on the line, the line's direction, and whether it
--- crosses paper. An answer that crosses none is never taken, and is listed so
--- that an author who expected it sees why.
+-- | A fold line as an author reads it, where the paper lies now, in sheet
+-- lengths: a point on the line, the line's direction, and whether it crosses
+-- paper. One answer of a construction that has several, or the one line a
+-- refusal is about. An answer that crosses none is never taken, and is
+-- listed so that an author who expected it sees why.
 data CandidateLine = CandidateLine
   { candidateThrough :: !V2,
     candidateAlong :: !V2,
@@ -655,6 +651,23 @@ data CandidateLine = CandidateLine
 instance Explain CandidateLine where
   explain (CandidateLine (V2 x y) (V2 dx dy) onPaper) =
     "the line through (" <> num x <> ", " <> num y <> ") along (" <> num dx <> ", " <> num dy <> ")" <> if onPaper then "" else ", which crosses no paper"
+
+-- | Why a fold line has no crease to turn about.
+data Unsolved
+  = -- | The line runs along no crease on the paper: the line, where there was
+    -- one to give. One that crosses no paper says so, since it only touches
+    -- the paper or runs along its outline, and no crease could run there.
+    NoCreaseAlong (Maybe CandidateLine)
+  | -- | No answer of the construction crosses the paper (02 §4.3, rule 2):
+    -- every answer, each saying it crosses none.
+    NoAnswerOnPaper [CandidateLine]
+  deriving stock (Eq, Show)
+
+instance Explain Unsolved where
+  explain = \case
+    NoCreaseAlong Nothing -> "the fold line runs along no crease on the paper"
+    NoCreaseAlong (Just line) -> "the fold line is " <> explain line <> ", and no crease runs along it"
+    NoAnswerOnPaper answers -> "the construction has no answer that crosses the paper: " <> T.intercalate "; " (map explain answers)
 
 -- | Why a construction took an answer before reading any @nearest P@.
 data TakenBecause
@@ -730,8 +743,10 @@ data MoveFailure
 -- | Why the paper a fold moves cannot be chosen.
 data SelectionError
   = -- | A line that is not an alignment fold, such as @[P, Q]@, says nothing
-    -- about which side moves, and no @moving P@ said it: with a point on
-    -- each side that would, in sheet lengths, where a side has one (02 §12).
+    -- about which side moves, and no @moving P@ said it: with a seed for each
+    -- flap the fold can move, in sheet lengths, as the message prints it, so
+    -- that each, written in as @moving P@, folds (02 §12). None if no seed
+    -- makes it fold.
     SeedMissing [V2]
   | -- | The seed, in sheet lengths, lies on the fold line, so it is on both
     -- sides.
@@ -766,13 +781,11 @@ instance Explain MoveFailure where
 
 instance Explain SelectionError where
   explain = \case
+    SeedMissing [] -> "this line does not say which side moves, and no moving P makes it fold"
     SeedMissing seeds ->
-      "this line does not say which side moves; add moving P, a point on the paper that moves"
-        <> case seeds of
-          [] -> ""
-          [one] -> ", such as " <> point one
-          [one, other] -> ", such as " <> point one <> " for one side or " <> point other <> " for the other"
-          _ -> ", such as " <> oneOf (map point seeds)
+      "this line does not say which side moves; add moving P, a point on the paper that moves, such as "
+        <> oneOf (map written seeds)
+        <> if length seeds > 1 then ", one for each flap the fold can move" else ""
     SeedOnTheLine at -> "the paper that moves is named by " <> point at <> ", which lies on the fold line and so on both sides of it"
     SeedSplit at -> point at <> " is a corner where paper on both sides of the fold line meets, so it does not say which side moves"
     SegmentStraddles a b -> "the first line runs from " <> point a <> " to " <> point b <> ", across the fold line, so it does not say which side moves; add moving P, a point on the paper that moves"
@@ -780,6 +793,9 @@ instance Explain SelectionError where
     ExistingHingeFlat (EdgeId e) -> "(internal edge " <> tshow e <> ") lies flat as an F crease, which has no direction to fold"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
+      -- A seed is for the author to type back in, in the language's own
+      -- numbers, which have no exponent.
+      written (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
 
 -- | The names @expect refused@ may use, from the design's catalogue of
 -- refusals (@PRDs\/02-language-semantics.md@, §12). Only refusals that

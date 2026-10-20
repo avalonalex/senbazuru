@@ -51,13 +51,15 @@
 module Senbazuru.Explain
   ( Explain (..),
     num,
+    decimal,
     tshow,
   )
 where
 
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Numeric (showGFloat)
+import Numeric (showFFloat, showGFloat)
 
 -- | An error that can say what it is, in words for a person at a terminal.
 --
@@ -105,6 +107,17 @@ class Explain e where
 -- was written, so the test is a comparison, which nothing rewrites.
 num :: Double -> Text
 num x = T.pack (showGFloat (Just 6) (if x == 0 then 0 else x) "")
+
+-- | A coordinate for the reader to type back in: rounded to six places,
+-- with no exponent, no trailing zeros and no negative zero, so that it is
+-- the sequence language's own number syntax and the same text on every
+-- platform. Not for a measured quantity, which 'num' prints: there a value
+-- under @1e-6@ would print as @0@ and hide what was measured.
+decimal :: Double -> Text
+decimal x =
+  let rounded = fromIntegral (round (x * 1e6) :: Integer) / 1e6 :: Double
+      shown = T.pack (showFFloat Nothing (if rounded == 0 then 0 else rounded) "")
+   in fromMaybe shown (T.stripSuffix ".0" shown)
 
 -- | Whatever the reader gave us, back as they would recognise it.
 --

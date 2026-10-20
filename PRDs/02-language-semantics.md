@@ -508,6 +508,9 @@ through layers has the same restriction
 2. Set aside any whose line crosses no paper. It is listed in the message and the
    record but never chosen, so an author who expected that answer sees why it was
    not taken ([E2](research/E2-references-and-persistent-naming.md) finding 10).
+   A form with one answer, such as `[P, Q]` or `edge S`, keeps it, and is refused
+   only if no crease runs along it, the message saying whether it crosses paper
+   ([C112](decisions.md#changes-since-draft-v2)).
 3. If more than one solution on the paper remains, require `nearest P`. A
    `nearest P` written where the rules already leave one, by the paper or by
    O3's preference, must agree with them: a P lying nearer another solution,
@@ -1489,11 +1492,11 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `OffThePaper`, `PlacementsDisagree` | `ResolveProblem` | a position on no face; faces placing it apart | the point; the distance |
 | `EdgeNotStraight`, `CreaseNotStraight`, `EmptyCrease` | `ResolveProblem` | `edge S` or `crease of NAME` not collinear now; `crease of` a step that made none | the segments' current ends |
 | `ConstructionInTheAir` | `ResolveProblem` | a construction or `model` on a state that is not flat | the construction |
-| `NoSolution`, `NeedsNearest`, `NearestAmbiguous`, `DegenerateConstruction` | `ResolveProblem` | 0 solutions; ≥2 without `nearest`; `nearest` leaving 0 or ≥2; coincident inputs | every candidate line, off-paper ones included |
+| `NoSolution`, `NeedsNearest`, `NearestAmbiguous`, `DegenerateConstruction` | `ResolveProblem` | no solution on the paper, or a line along which no crease runs; ≥2 without `nearest`; `nearest` leaving 0 or ≥2; coincident inputs | every candidate line, off-paper ones included |
 | `NearestDisagrees` | `ResolveProblem` | `nearest P` where the rules already took one answer, and P lies nearer another, one crossing no paper included (decision 41) | P; the answer taken and why; the answer P lies nearer |
 | `NoCreaseThere` | `ResolveProblem` | `crease [P, Q]` with no existing edges along it, or a gap | the uncovered stretch |
 | `MarkOnSeveralLayers`, `EndTie`, `LandmarkAmbiguous` | `ResolveProblem` | §4.5; `EndTie` §4.2 | the candidate material points |
-| `SeedMissing` | `SelectionError` | a non-alignment line with no `moving P` | both sides, each with a working seed |
+| `SeedMissing` | `SelectionError` | a non-alignment line with no `moving P` | a seed for each flap the fold can move, each one the fold runs from as printed, in numbers the language reads; on paper of one layer, both sides ([C112](decisions.md#changes-since-draft-v2)) |
 | `SeedOnTheLine`, `SegmentStraddles`, `SeedSplit` | `SelectionError` | §4.4; §4.3 | the seed or segment; the components |
 | `UnorderedOverlap`, `DepthChangesAlong` | `SelectionError` | overlap on the line with no accepted order; a depth that changes along the line | internal faces; a point |
 | `SelectionCoupled`, `NoUncoupledFlap` | `SelectionError` | the restricted cut stays joined; `top flap` coupled at every N | the joining face, as a material point |

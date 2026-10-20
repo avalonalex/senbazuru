@@ -195,7 +195,7 @@ import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVertices, ringEdges)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
-import Senbazuru.Geometry.Polygon (distanceToSegment, edges, insideRing, largestLowestLeftmost, pointInside, signedArea)
+import Senbazuru.Geometry.Polygon (distanceToSegment, edges, insideRing, largestLowestLeftmost, pointsInside, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear, rotationAboutDegrees)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
@@ -211,7 +211,7 @@ import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.SheetLengths (inSheetLengths)
-import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point (AtSheet), Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
 
 -- | The paper between two moves of a run: the working pattern and the anchor.
 -- Opaque; the header says what each is and why.
@@ -375,7 +375,7 @@ sheetState file = do
 -- or there are none.
 anchorIn :: Double -> ([VertexId] -> [V2]) -> [(Int, [VertexId])] -> Maybe (Int, V2)
 anchorIn room ring faces =
-  (\(i, _, at) -> (i, at)) <$> largestLowestLeftmost room [(i, abs (signedArea (ring face)), at) | (i, face) <- faces, Just at <- [pointInside room (ring face)]]
+  (\(i, _, at) -> (i, at)) <$> largestLowestLeftmost room (pointsInside room [(i, ring face) | (i, face) <- faces])
 
 -- | The list with its @i@th item moved to the front: the anchor's face put
 -- first, since folding holds its first face still.
@@ -636,6 +636,23 @@ foldMove settings place named arriving kind sense amount line layers seed = do
               m <- first (resolvingAt place (prettyPoint p)) (materialPoint flat' p)
               picked <- first (resolvingAt place (prettyPoint p)) (seedFaces flat' m)
               pure (m, picked, prettyPoint p)
+            -- With no seed, the refusal offers one for each flap the line
+            -- borders that the fold can move (02 §12): of that flap's seeds,
+            -- best first, the first from which this very move runs, rounded
+            -- as the message prints it, so that it can be written in. A
+            -- refusal of the point itself tries the next; any other is the
+            -- flap's, which every seed in it would meet. Worked out only if
+            -- the refusal is read.
+            foldsFrom = \case
+              [] -> Nothing
+              V2 x y : rest ->
+                let written = AtSheet (sixPlaces x) (sixPlaces y)
+                 in case foldMove settings place named arriving kind sense amount line layers (Just written) of
+                      Right _ -> Just (V2 (fromRational (sixPlaces x)) (fromRational (sixPlaces y)))
+                      Left (ResolveRefused _ _ text _) | text == prettyPoint written -> foldsFrom rest
+                      Left _ -> Nothing
+            sixPlaces v = toRational (round (v * 1e6) :: Integer) / 1e6
+            offered = sortOn (\(V2 x y) -> (y, x)) [s | flap <- seedsByFlap flat' at candidates, Just s <- [foldsFrom flap]]
         (m, picked, seedWords) <- case (layers, seed, line) of
           (FlapOfFirstArgument, Just p, _) -> pointSeed p
           (FlapOfFirstArgument, Nothing, Onto p _) -> pointSeed p
@@ -644,7 +661,7 @@ foldMove settings place named arriving kind sense amount line layers seed = do
             when (straddles flat' at (a, b)) (Left (refusedAt place (Selecting (SegmentStraddles (toSheetLengths flat' a) (toSheetLengths flat' b)))))
             picked <- first (resolvingAt place (prettyLine l1)) (seedFaces flat' m)
             pure (m, picked, prettyLine l1)
-          (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting (SeedMissing (seedsEitherSide flat' at candidates))))
+          (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting (SeedMissing offered)))
           (_, _, _) -> Left (refusedAt place (MoveNotRunYet "choosing which layers to fold"))
         selection <- first (refusedAt place . Selecting) (flapOf flat' at candidates m picked)
         pure (m, seedWords, selection)

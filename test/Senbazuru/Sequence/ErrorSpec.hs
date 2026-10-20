@@ -279,7 +279,7 @@ resolveSamples =
     NoCornerThere SouthWest,
     ConstructionInTheAir 0,
     DegenerateConstruction,
-    NoSolution [],
+    NoSolution (NoCreaseAlong Nothing),
     HingeOfNotOneMove "c1" 0,
     EdgeNotStraight South [],
     NeedsNearest [],
