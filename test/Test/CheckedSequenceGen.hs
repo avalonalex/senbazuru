@@ -378,6 +378,9 @@ togetherG depth = do
 
 -- | What an @expect refused@ holds never happens, so whatever it defines is
 -- forgotten afterwards. The names it took stay taken, which costs nothing.
+-- It holds a move, never another expect refused, directly or inside a
+-- together (owner decision 50), so an inner one drawn is replaced by the move
+-- it holds.
 expectG :: Int -> G Move
 expectG depth = do
   kind <- pick refusalKinds
@@ -385,7 +388,12 @@ expectG depth = do
   inner <- moveG (depth - 1)
   used <- gets scopeUsed
   put before {scopeUsed = used}
-  pure (ExpectRefused kind inner)
+  pure (ExpectRefused kind (unnested inner))
+  where
+    unnested = \case
+      ExpectRefused _ held -> unnested held
+      Together members -> Together (map (fmap unnested) members)
+      other -> other
 
 specG :: G StackingSpec
 specG = choice [(1, pure StackingFirst), (2, Relations <$> someOf (LayerAbove <$> pointG 1 <*> pointG 1))]

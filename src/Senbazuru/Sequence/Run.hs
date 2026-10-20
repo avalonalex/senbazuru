@@ -26,8 +26,9 @@
 -- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
 -- leaves the state as it was and no record, since it moved no paper; the run
 -- keeps the outcome. A move that is made instead, or refused as another kind,
--- refuses the run. A move not run yet says nothing about the paper, so its
--- refusal is passed on as itself.
+-- refuses the run. A refusal with no kind is passed on as itself: a move not
+-- run yet, which says nothing about the paper, and a refusal that is not one
+-- of the paper (owner decision 49), such as a turn of 400 degrees.
 --
 -- == A fold, move by move
 --
@@ -550,8 +551,8 @@ runMove settings place named state surface = \case
   CoreUnfold names -> moved <$> foldM (undoOne settings place) (state, []) (reverse (concat [M.findWithDefault [] name named | name <- names]))
   -- The inner move runs against this state, and must be refused as the kind
   -- given; it leaves the state as it was and no record, since it moved no
-  -- paper. A move not run yet says nothing about the paper, so its refusal
-  -- is passed on as itself.
+  -- paper. A refusal with no kind, such as a move not run yet, is passed on
+  -- as itself.
   CoreExpectRefused kind inner -> case inner of
     Nothing -> Left (refusedAt place (RefusalNotRaised kind))
     Just (CoreMove origin core) -> case runMove settings place {placeOrigin = origin} named state surface core of
