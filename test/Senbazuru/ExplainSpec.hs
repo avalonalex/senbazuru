@@ -100,7 +100,7 @@ everyType =
     ("SequenceError, a state", explain (WriteRefused 2 (WriteNonFinite "senbazuru:material_coords[3]" (0 / 0)))),
     ("WriteProblem", explain (WriteMissingAngles 12 11)),
     ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
-    ("SelectionError", explain SeedMissing),
+    ("SelectionError", explain (SeedMissing [V2 0.5 0.25, V2 0.5 0.75])),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
     ("StaticProblem", explain EmptyStep),
     ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),
@@ -236,6 +236,13 @@ spec = do
       explain (SurfaceBadDirection (V3 0 0 (0 / 0))) `shouldBe` "layer requirements need a finite nonzero direction, got (0.0, 0.0, NaN)"
       explain (StepRefused 1 Nothing NoSpan (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 0)))))
         `shouldBe` "step 1: surface panel 0 must be convex to triangulate by a fan"
+
+    -- A line at right angles to edge south runs along (-0.0, 1), and a
+    -- reader should not be shown a sign on nothing. Turns red if a measured
+    -- zero kept its sign.
+    it "writes a zero without a sign" $
+      explain (NoSolution [CandidateLine (V2 1 0.5) (V2 (-0.0) 1) False])
+        `shouldBe` "the fold line is the line through (1.000000, 0.500000) along (0.000000, 1.000000), which crosses no paper, and no crease runs along it"
 
     -- Each case turns red if the detector dropped one of its tests: the brace,
     -- the equals sign, or the field name before it, which tells a record

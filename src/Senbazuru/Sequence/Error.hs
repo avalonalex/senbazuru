@@ -522,8 +522,12 @@ data ResolveProblem
   | -- | A construction whose two points coincide, which pins down no line,
     -- or whose two lines do.
     DegenerateConstruction
-  | -- | A fold line that runs along no crease on the paper.
-    NoSolution
+  | -- | A fold line that runs along no crease on the paper: each line it
+    -- could have been, those crossing no paper included (02 §12), or none
+    -- where there was no line to give. A line that crosses no paper is said
+    -- to, rather than blamed on the creases: it only touches the paper, or
+    -- runs along its outline.
+    NoSolution [CandidateLine]
   | -- | @edge S@ as a line, where its pieces do not lie on one line now, or
     -- where no piece of the sheet's outline lies along that side: each
     -- piece's ends where they lie, in sheet lengths.
@@ -577,7 +581,10 @@ instance Explain ResolveProblem where
     NoCornerThere corner -> "the sheet has no " <> cornerWords corner <> " corner; its outline is not a rectangle, so name the point another way"
     ConstructionInTheAir relief -> "a construction needs the paper lying flat, and it stands " <> num relief <> " out of the plane"
     DegenerateConstruction -> "the construction's two points are one point, or its two lines one line, which fixes no fold line"
-    NoSolution -> "the fold line runs along no crease on the paper"
+    NoSolution answers -> case answers of
+      [] -> "the fold line runs along no crease on the paper"
+      [line] -> "the fold line is " <> explain line <> ", and no crease runs along it"
+      _ -> "the construction has no answer on the paper: " <> listed answers
     HingeOfNotOneMove (Name name) made -> "\"hinge of " <> name <> "\" needs a step that turned paper about one hinge, and " <> name <> " made " <> tshow made <> " such turns"
     EdgeNotStraight side [] -> "no piece of the sheet's outline lies along edge " <> compassWords side <> "; name the line by two points, such as " <> cornersOf side
     EdgeNotStraight side pieces ->
@@ -723,8 +730,9 @@ data MoveFailure
 -- | Why the paper a fold moves cannot be chosen.
 data SelectionError
   = -- | A line that is not an alignment fold, such as @[P, Q]@, says nothing
-    -- about which side moves, and no @moving P@ said it.
-    SeedMissing
+    -- about which side moves, and no @moving P@ said it: with a point on
+    -- each side that would, in sheet lengths, where a side has one (02 §12).
+    SeedMissing [V2]
   | -- | The seed, in sheet lengths, lies on the fold line, so it is on both
     -- sides.
     SeedOnTheLine V2
@@ -758,7 +766,13 @@ instance Explain MoveFailure where
 
 instance Explain SelectionError where
   explain = \case
-    SeedMissing -> "this line does not say which side moves; add moving P, a point on the paper that moves"
+    SeedMissing seeds ->
+      "this line does not say which side moves; add moving P, a point on the paper that moves"
+        <> case seeds of
+          [] -> ""
+          [one] -> ", such as " <> point one
+          [one, other] -> ", such as " <> point one <> " for one side or " <> point other <> " for the other"
+          _ -> ", such as " <> oneOf (map point seeds)
     SeedOnTheLine at -> "the paper that moves is named by " <> point at <> ", which lies on the fold line and so on both sides of it"
     SeedSplit at -> point at <> " is a corner where paper on both sides of the fold line meets, so it does not say which side moves"
     SegmentStraddles a b -> "the first line runs from " <> point a <> " to " <> point b <> ", across the fold line, so it does not say which side moves; add moving P, a point on the paper that moves"
@@ -832,7 +846,7 @@ refusalKindOf =
     ResolveRefused _ _ _ problem -> resolveKind problem
     StepRefused _ _ _ failure -> case failure of
       Selecting err -> Just $ case err of
-        SeedMissing -> "SeedMissing"
+        SeedMissing {} -> "SeedMissing"
         SeedOnTheLine {} -> "SeedOnTheLine"
         SeedSplit {} -> "SeedSplit"
         SegmentStraddles {} -> "SegmentStraddles"
@@ -866,7 +880,7 @@ refusalKindOf =
       NoCornerThere {} -> Just "NoCornerThere"
       ConstructionInTheAir {} -> Just "ConstructionInTheAir"
       DegenerateConstruction -> Just "DegenerateConstruction"
-      NoSolution -> Just "NoSolution"
+      NoSolution {} -> Just "NoSolution"
       HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
       EdgeNotStraight {} -> Just "EdgeNotStraight"
       NeedsNearest {} -> Just "NeedsNearest"

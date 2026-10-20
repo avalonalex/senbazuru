@@ -10,7 +10,7 @@ import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
 import Data.Text qualified as T
-import Senbazuru.Explain (explain)
+import Senbazuru.Explain (explain, num)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
@@ -108,11 +108,17 @@ running = describe "running a sequence" $ do
       other -> expectationFailure ("expected one record, got " <> show (length other))
 
   -- moving P picks the paper for a line that does not say which side moves.
+  -- Without one, the refusal offers a seed for each side (#571): the mean of
+  -- the corner triangle beyond the crease, and the centre of the square
+  -- held still, lower first. Turns red if a side's seed were missing, or
+  -- not the largest face's on its side.
   it "folds the side named by moving P, and refuses a line with none" $ do
     let alongEdge8 = Segment (MidpointOfEdge South) (MidpointOfEdge East)
     run <- right (runOn (oneStep (move (Fold MountainFold ToFlat alongEdge8 FlapOfFirstArgument (Just (CornerOf SouthEast))))))
     map (concatMap snd . recordHinge) (runRecords run) `shouldBe` [[EdgeId 8]]
-    refusal (runOn (oneStep (fold mountain alongEdge8))) `shouldBe` Just (Selecting SeedMissing)
+    case refusal (runOn (oneStep (fold mountain alongEdge8))) of
+      Just (Selecting (SeedMissing seeds)) -> (length seeds, and (zipWith (\a b -> norm (a ^-^ b) < 1e-12) seeds [V2 (5 / 6) (1 / 6), V2 0.5 0.5])) `shouldBe` (2, True)
+      other -> expectationFailure ("expected the line refused with a seed for each side, got " <> show other)
 
   describe "refuses" $ do
     it "a sheet it was not given" $
@@ -1057,8 +1063,38 @@ creasing = describe "a fold along a line where no crease runs" $ do
       facts o4Record `shouldBe` facts twoRecord
       renderRunReport o4Run `shouldContain` ["  line perpendicular to edge south through centre: through (0.5, 0.5), along (0, 1)"]
     case upTheMiddle (at (1 / 4) (1 / 4)) o4 Nothing of
-      Left (StepRefused _ _ _ (Selecting SeedMissing)) -> pure ()
+      Left (StepRefused _ _ _ (Selecting (SeedMissing _))) -> pure ()
       other -> expectationFailure ("expected the line refused as saying no side moves, got " <> either (show . explain) (const "a run") other)
+
+  -- An F crease lies flat and has no direction to fold, so a fold along one
+  -- is refused whichever side moves (ExistingHingeFlat), and the refusal of
+  -- a fold along it with no seed offers none. Turns red if a seed were
+  -- offered that names paper the fold cannot move.
+  it "offers no seed for a side whose paper cannot fold" $ do
+    let flatMiddle = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.5], [1, 0.5]], edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 5), (5, 2), (2, 3), (3, 4), (4, 0), (4, 5)]], edgesAssignment = replicate 6 Border ++ [Flat]}
+        alongMiddle seed = runOn (M.singleton "flat-middle.fold" squareSheet {keyFrame = flatMiddle}) (sequenceOf (header "A flat crease" (sheetFile "flat-middle.fold") (Just (at (1 / 4) (1 / 4)))) (step_ "Fold along the flat crease." (move (Fold ValleyFold ToFlat (Segment (at 0 (1 / 2)) (at 1 (1 / 2))) FlapOfFirstArgument seed))))
+    case alongMiddle Nothing of
+      Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> seeds `shouldBe` []
+      other -> expectationFailure ("expected the line refused with no seed to offer, got " <> either (show . explain) (const "a run") other)
+    case alongMiddle (Just (at (1 / 2) (3 / 4))) of
+      Left (StepRefused _ _ _ (Selecting (ExistingHingeFlat _))) -> pure ()
+      other -> expectationFailure ("expected the flat crease refused, got " <> either (show . explain) (const "a run") other)
+
+  -- A line across the square's middle that does not say which side moves
+  -- is refused with a seed for each side, which the message prints (#571):
+  -- one below the line and one above it, and each, written in as printed,
+  -- folds. Turns red if a side's seed were missing, both were on one side,
+  -- or one were printed so that it named no paper or a point on the line.
+  it "offers a seed for each side of a line that does not say which moves, each of which folds" $ do
+    let across seed = onSquare (Just (at (1 / 4) (1 / 8))) ColouredUp (step_ "Fold along the middle." (move (Fold ValleyFold ToFlat (Segment (at 0 (1 / 2)) (at 1 (1 / 2))) FlapOfFirstArgument seed)))
+        printed v = toRational (round (v * 1e6) :: Integer) / 1e6
+    case across Nothing of
+      Left err@(StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
+        [compare y 0.5 | V2 _ y <- seeds] `shouldBe` [LT, GT]
+        forM_ seeds $ \(V2 x y) -> do
+          explain err `shouldSatisfy` T.isInfixOf ("(" <> num x <> ", " <> num y <> ")")
+          right (across (Just (at (printed x) (printed y)))) >>= void . one . runRecords
+      other -> expectationFailure ("expected the line refused with a seed for each side, got " <> either (show . explain) (const "a run") other)
 
   -- The line laid onto another here, the middle across onto the middle up,
   -- has two answers, the diagonals, so L needs a nearest P. The refusal is

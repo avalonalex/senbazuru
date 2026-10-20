@@ -109,7 +109,7 @@ spec = describe "naming paper on a flat state" $ do
 
     it "that runs along no crease" $ do
       line <- right (lineOn start (Segment (CornerOf SouthWest) (CornerOf SouthEast)))
-      hingeAlong start line `shouldBe` Left NoSolution
+      hingeAlong start line `shouldBe` Left (NoSolution [CandidateLine (V2 0.5 0) (V2 1 0) False])
 
     it "whose two points are one" $
       lineOn start (Onto Centre Centre) `shouldBe` Left DegenerateConstruction

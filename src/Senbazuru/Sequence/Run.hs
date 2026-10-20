@@ -644,7 +644,7 @@ foldMove settings place named arriving kind sense amount line layers seed = do
             when (straddles flat' at (a, b)) (Left (refusedAt place (Selecting (SegmentStraddles (toSheetLengths flat' a) (toSheetLengths flat' b)))))
             picked <- first (resolvingAt place (prettyLine l1)) (seedFaces flat' m)
             pure (m, picked, prettyLine l1)
-          (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting SeedMissing))
+          (FlapOfFirstArgument, Nothing, _) -> Left (refusedAt place (Selecting (SeedMissing (seedsEitherSide flat' at candidates))))
           (_, _, _) -> Left (refusedAt place (MoveNotRunYet "choosing which layers to fold"))
         selection <- first (refusedAt place . Selecting) (flapOf flat' at candidates m picked)
         pure (m, seedWords, selection)

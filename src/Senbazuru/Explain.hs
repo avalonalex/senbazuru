@@ -97,8 +97,14 @@ class Explain e where
 -- "Senbazuru.Render.Svg"'s @formatNumber@, which exists to keep golden files
 -- byte-identical and answers a different question: nothing compares two error
 -- messages for equality.
+--
+-- __No negative zero.__ @-0.0 == 0.0@, but it prints as @-0.000000@, and a
+-- quarter turn makes one: turning @(1, 0)@ gives @(-0.0, 1)@. So a zero is
+-- printed as the zero without a sign. By IEEE's rules adding 0 would do it
+-- too, but the optimised build printed @-0.000000@ through @x + 0@ when this
+-- was written, so the test is a comparison, which nothing rewrites.
 num :: Double -> Text
-num x = T.pack (showGFloat (Just 6) x "")
+num x = T.pack (showGFloat (Just 6) (if x == 0 then 0 else x) "")
 
 -- | Whatever the reader gave us, back as they would recognise it.
 --
