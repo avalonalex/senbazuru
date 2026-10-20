@@ -68,6 +68,47 @@ boxOverlap (Box2 ax0 ay0 ax1 ay1) (Box2 bx0 by0 bx1 by1) =
 unitSquare :: [V2]
 unitSquare = [V2 0 0, V2 1 0, V2 1 1, V2 0 1]
 
+-- | A simple ring, often not convex: three to nine corners at increasing
+-- angles round the origin, each in its own slice of the turn, at radii from 1
+-- to 3. With four or more corners, consecutive corners are less than half a
+-- turn apart, so the ring is star-shaped about the origin, which makes it
+-- simple. Three corners are a triangle, simple however they fall, though the
+-- origin can lie outside it and it can run clockwise.
+starRing :: Gen [V2]
+starRing = do
+  n <- choose (3, 9 :: Int)
+  sequence
+    [ do
+        t <- choose (0, 0.9)
+        r <- choose (1, 3)
+        let angle = 2 * pi * (fromIntegral k + t) / fromIntegral n
+        pure (r *^ V2 (cos angle) (sin angle))
+      | k <- [0 .. n - 1]
+    ]
+
+-- | An L-shaped ring: arms 1 to 3 long and 0.05 to 1 wide, turned any way,
+-- moved anywhere within 10 of the origin, and starting at any corner. Its
+-- mean of corners is off it, in the square its arms leave empty, whenever
+-- each arm is at least twice as long as the other is wide, which is most of
+-- the time.
+lRing :: Gen [V2]
+lRing = do
+  long <- choose (1, 3)
+  tall <- choose (1, 3)
+  wide <- choose (0.05, 1)
+  high <- choose (0.05, 1)
+  angle <- choose (0, 2 * pi)
+  shift <- V2 <$> choose (-10, 10) <*> choose (-10, 10)
+  start <- choose (0, 5)
+  let turned (V2 x y) = V2 (x * cos angle - y * sin angle) (x * sin angle + y * cos angle) ^+^ shift
+      placed = map turned [V2 0 0, V2 long 0, V2 long high, V2 wide high, V2 wide tall, V2 0 tall]
+  pure (drop start placed <> take start placed)
+
+-- | Issue #579's L-shaped face: a rectangle 0.6 by 1 with its top-left
+-- quarter, 0.3 by 0.5, missing.
+lShape :: [V2]
+lShape = [V2 0 0, V2 0.6 0, V2 0.6 1, V2 0.3 1, V2 0.3 0.5, V2 0 0.5]
+
 -- | Close enough, for numbers that came out of a few multiplications.
 near :: Double -> Double -> Bool
 near a b = abs (a - b) < 1e-9
@@ -264,6 +305,105 @@ spec = do
           pieces = subtractConvex 1e-12 repeated unitSquare
       and [near 0 (abs (signedArea (clipConvex p q))) | (p : rest) <- tails pieces, q <- rest]
         `shouldBe` True
+
+  describe "ears" $ do
+    -- Issue #579's L: its six corners average to (0.3, 0.5), its own inside
+    -- corner, which is on the outline and so no point inside it. Its ears are
+    -- the four outer corners but (0.6, 0), whose triangle has the inside
+    -- corner on its long side. Turns red if a reflex corner, or a corner whose
+    -- triangle touches another, were taken.
+    it "finds the ears of an L, each with its mean inside it, where the mean of all six is not" $ do
+      let found = ears 1e-9 lShape
+      insideRing 1e-9 lShape (centroid lShape) `shouldBe` False
+      [i | (i, _, _) <- found] `shouldBe` [0, 2, 3, 5]
+      [insideRing 1e-9 lShape at | (_, _, at) <- found] `shouldBe` replicate 4 True
+
+    -- A dart: corner 3's triangle holds the reflex corner (1, 1) strictly
+    -- inside it, where the L's corner 1 has its blocker on the outline. Turns
+    -- red if a corner inside a triangle did not count against it.
+    it "takes no corner whose triangle holds another" $
+      [i | (i, _, _) <- ears 1e-9 [V2 0 0, V2 1 1, V2 2 0, V2 1 2]] `shouldBe` [0, 2]
+
+    -- The L wound clockwise, numbered from its other end, has the same four
+    -- ears, at corners 5, 3, 2 and 0 of the first numbering. Turns red if
+    -- ears took every ring to run anticlockwise, which finds only the inside
+    -- corner of a clockwise L.
+    it "finds the same ears in a ring wound clockwise" $
+      [(i, size) | (i, size, _) <- ears 1e-9 (reverse lShape)] `shouldBe` [(0, 0.075), (2, 0.075), (3, 0.15), (5, 0.15)]
+
+    -- An L a half by one with a quarter by a half missing, moved 1e8 along
+    -- both axes, which every corner survives exactly. Its area measured from
+    -- the origin rounds to 0, which would give it no way to turn; from its
+    -- first corner it is 0.375. Turns red if the winding were measured from
+    -- the origin.
+    it "finds the ears of a ring far from the origin" $
+      [i | (i, _, _) <- ears 1e-9 [p ^+^ V2 1e8 1e8 | p <- [V2 0 0, V2 0.5 0, V2 0.5 1, V2 0.25 1, V2 0.25 0.5, V2 0 0.5]]] `shouldBe` [0, 2, 3, 5]
+
+    -- The second ring's corner 1 turns the ring's way by a rounding error, a
+    -- triangle 1e-12 high. Turns red if the height were not held to the
+    -- tolerance, or not asked at all, which lets a reflex corner in too.
+    it "takes no corner on a straight run, rounding included" $ do
+      [i | (i, _, _) <- ears 1e-9 [V2 0 0, V2 0.5 0, V2 1 0, V2 1 1, V2 0 1]] `shouldBe` [0, 2, 3, 4]
+      [i | (i, _, _) <- ears 1e-9 [V2 0 0, V2 0.5 (-1e-12), V2 1 0, V2 1 1, V2 0 1]] `shouldBe` [0, 2, 3, 4]
+
+    -- A square 400 across whose bottom dips 1e-7 at corner 1, with the
+    -- tolerance a sheet that size has, a billionth of its diagonal. Corner 1's
+    -- triangle is 1e-7 high, under the tolerance, but 2e-5 in area, over it.
+    -- Turns red if the tolerance were held against the area rather than the
+    -- height.
+    it "measures a corner's turn by its height, not its area" $
+      [i | (i, _, _) <- ears 5.66e-7 [V2 0 0, V2 200 (-1e-7), V2 400 0, V2 400 400, V2 0 400]] `shouldBe` [0, 2, 3, 4]
+
+    -- An hourglass, one ring that touches itself at (1, 1) and passes it
+    -- twice, as corners 2 and 5; the second ring passes it again 1e-12 away,
+    -- within the tolerance. Turns red if the second pass counted against the
+    -- triangles that have the first as a corner, which leaves no ears, or if
+    -- only a second pass at exactly the same point were let off.
+    it "keeps the ears of a ring that touches itself at a corner" $
+      [[i | (i, _, _) <- ears 1e-9 [V2 0 0, V2 2 0, V2 1 1, V2 2 2, V2 0 2, pinch]] | pinch <- [V2 1 1, V2 1 (1 + 1e-12)]] `shouldBe` [[0, 1, 3, 4], [0, 1, 3, 4]]
+
+    -- Every simple ring of four or more corners has at least two ears (the
+    -- two ears theorem), and a triangle three. Turns red if ears were missed,
+    -- in a ring wound either way, or an ear's mean could fall outside the
+    -- ring or within the tolerance of its outline.
+    it "gives a simple ring at least two ears either way round, each with its mean inside it" $
+      forAll starRing $ \ring ->
+        let found = ears 1e-9 ring
+         in (length found >= 2, length (ears 1e-9 (reverse ring)) == length found, and [insideRing 1e-9 ring at | (_, _, at) <- found]) === (True, True, True)
+
+  describe "pointInside" $ do
+    -- Turns red if the mean of the corners were passed over when it is
+    -- inside.
+    it "gives the mean of a convex ring's corners" $
+      pointInside 1e-9 unitSquare `shouldBe` Just (V2 0.5 0.5)
+
+    -- The L's mean of corners is its inside corner. Its two largest ears,
+    -- corners 0 and 2, tie at 0.15, and corner 0's mean is the lower. Turns
+    -- red if the mean of the corners were taken, or the tie went the other
+    -- way.
+    it "gives the largest ear's mean where the mean of the corners is on the outline" $
+      fmap (\(V2 x y) -> near x 0.2 && near y (1 / 6)) (pointInside 1e-9 lShape) `shouldBe` Just True
+
+    -- A square with a spike 99 long and 0.2 wide at its base on top. The
+    -- spike's tip is the largest ear by far, but its mean, (0.5, 34), is
+    -- under 0.1 from the spike's sides; so is the mean of all seven corners.
+    -- Corners 0 and 1 tie next, and corner 0's mean is the further left,
+    -- whichever comes first round the ring. Turns red if the largest ear were
+    -- chosen before its mean was checked, or a tie went to the first listed.
+    it "passes over an ear whose mean is too near the outline" $ do
+      let spiked = [V2 0 0, V2 1 0, V2 1 1, V2 0.6 1, V2 0.5 100, V2 0.4 1, V2 0 1]
+      [fmap (\(V2 x y) -> near x (1 / 3) && near y (1 / 3)) (pointInside 0.1 ring) | ring <- [spiked, reverse spiked]] `shouldBe` [Just True, Just True]
+
+    -- Most of these Ls have their mean of corners off them, so the point is
+    -- an ear's, and the coverage check holds the generator to that. Turns red
+    -- if an L could have no point found in it, or the point depended on
+    -- which way the ring was wound.
+    it "finds a point in every L, the same wound either way" $
+      checkCoverage . forAll lRing $ \ring ->
+        cover 50 (not (insideRing 1e-9 ring (centroid ring))) "mean of corners off the L" $
+          case (pointInside 1e-9 ring, pointInside 1e-9 (reverse ring)) of
+            (Just p, Just q) -> counterexample (show (p, q)) (norm (p ^-^ q) < 1e-12)
+            missing -> counterexample (show missing) False
 
   describe "isConvex" $ do
     it "accepts a square and a triangle" $ do
