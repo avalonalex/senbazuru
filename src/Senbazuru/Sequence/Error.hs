@@ -51,7 +51,7 @@
 -- A sequence can say that it expects a move to be refused, and how:
 -- @expect refused FlapCovered { … }@. The checker has to tell a real kind from
 -- a typo before any paper exists to refuse anything, so the names are listed
--- here, in 'refusalKinds', from the design's catalogue of refusals. Most of
+-- here, in 'refusalKinds', from the design's catalogue of refusals. Many of
 -- them name a refusal whose code is not written yet; each gains its producer
 -- at the milestone that folds that kind of move.
 module Senbazuru.Sequence.Error
@@ -272,10 +272,11 @@ data StaticProblem
     ParameterOutOfRange Rational Bound Bound
   | -- | @expect refused KIND@ with a kind that names no refusal.
     UnknownRefusalKind RefusalKind
-  | -- | An @expect refused@ whose move is another @expect refused@, here with
-    -- the inner one's kind. It expects a move to be refused, and the inner
-    -- one is no move: run, it is refused only as an expectation not met, a
-    -- refusal no @expect refused@ can name (owner decision 50).
+  | -- | An @expect refused@ holding another, directly or inside a
+    -- @together@: here the inner one's kind. It could never pass: whatever
+    -- the inner one does, the outer sees no refusal it can name, since a met
+    -- expectation is no refusal, one not met has no kind, and any other
+    -- refusal with none is passed on as itself (owner decision 50).
     NestedExpectRefused RefusalKind
   | -- | @continue NAME@, where the named step is not exactly one macro-move.
     NotASingleMacro Name
@@ -355,7 +356,7 @@ instance Explain StaticProblem where
       exactNumber a <> "° is out of range: it must be " <> lowerWords lower <> " and " <> upperWords upper
     UnknownRefusalKind (RefusalKind kind) -> quote kind <> " is not a kind of refusal"
     NestedExpectRefused (RefusalKind kind) ->
-      "an expect refused holds another, expect refused " <> kind <> "; an expect refused holds the move it expects to be refused"
+      quote ("expect refused " <> kind) <> " is inside another expect refused, which holds only the move it expects to be refused"
     NotASingleMacro (Name name) ->
       quote name <> " cannot be continued: a step can be continued only if it is exactly one macro-move"
     NotAFigure (Name name) ->
@@ -804,9 +805,9 @@ refusalKinds =
 -- sheet has none, since no move is made, and neither does a move not run yet,
 -- which says nothing about the paper. Nor does a library refusal that is not
 -- one of the paper (owner decision 49), or an expect refused not met (owner
--- decision 50); each is passed on as itself. Every kind given here is in
--- 'refusalKinds', and "Senbazuru.Sequence.ErrorSpec" holds every
--- constructor to that.
+-- decision 50); each is passed on as itself. A kind given is its own
+-- constructor's name and is in 'refusalKinds': "Senbazuru.Sequence.ErrorSpec"
+-- samples one refusal of every constructor here and holds each to that.
 refusalKindOf :: SequenceError -> Maybe RefusalKind
 refusalKindOf =
   fmap RefusalKind . \case
@@ -845,21 +846,21 @@ refusalKindOf =
       -- A stop, not a refusal of the paper: no expect refused can name it,
       -- so one wrapped round it passes it on and the run stops there.
       NotModelledStop {} -> Nothing
-      -- An expect refused round another is refused before anything runs
-      -- (owner decision 50), so these two are raised only by an expect
-      -- refused standing alone, and nothing can expect them.
+      -- No kind (owner decision 50): only an expect refused could expect
+      -- one of these, and one inside another is refused before it runs.
       RefusalNotRaised {} -> Nothing
       RefusedDifferently {} -> Nothing
     _ -> Nothing
   where
     -- The library's refusals of a turn and a fold. Those with no kind are
     -- not refusals of the paper (owner decision 49): no valid sequence
-    -- reaches them, or reaches them only through a gap the checker or the
-    -- sheet's start should close, such as a turn of 400 degrees, a fold line
-    -- a hair from a vertex, or a face the mesh cannot split into triangles.
-    -- Like a move not run yet, such a refusal is passed on as itself. Each
-    -- constructor is named, with no catch-all, so that a new one has to be
-    -- placed on one side or the other.
+    -- reaches them, or reaches them only through a gap to be closed before
+    -- the turn, by the checker, the resolver or the sheet's start: a turn of
+    -- 400 degrees or of none, a fold line a hair from a vertex, a face the
+    -- mesh cannot split into triangles (#579, #583 to #586). Like a move not
+    -- run yet, such a refusal is passed on as itself. Each constructor is
+    -- named, with no catch-all, so that a new one warns until it is placed
+    -- on one side or the other.
     flapKind = \case
       FlapFolding err -> foldingKind err
       FlapGeometry {} -> Nothing

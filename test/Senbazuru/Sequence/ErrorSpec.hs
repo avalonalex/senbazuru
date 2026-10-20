@@ -24,18 +24,19 @@
 -- character for character, location included.
 --
 -- __The list of refusal kinds__ is hand-written text that has to agree with
--- constructors elsewhere in the library. Thirteen of its names exist as
+-- constructors elsewhere in the library. Some of its names exist as
 -- constructors today, and a test reads each one's spelling off a real value.
 -- And every kind the runner gives a refusal must be on it, or @expect
--- refused@ could never name it (#580): every constructor of 'FlapError' and
--- 'FoldingError' is sampled, labelled with no catch-all as above, and the 23
--- that are not refusals of the paper give no kind (owner decision 49), as do
--- the two an expect refused not met raises (owner decision 50).
+-- refused@ could never name it (#580). 'everyRefusal' holds one refusal of
+-- each constructor 'refusalKindOf' looks at, and each must have its own
+-- constructor's name as its kind, or none where the design lets no author
+-- expect it (owner decisions 49 and 50). 'refusalKindOf' matches each of
+-- those types with no catch-all, so a constructor added later warns there;
+-- its sample goes here, which is again a reminder and not a guarantee.
 module Senbazuru.Sequence.ErrorSpec (spec) where
 
 import Data.Char (isAlphaNum, isUpper)
-import Data.List (nub, sort)
-import Data.Maybe (isNothing)
+import Data.List (nub)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..))
@@ -180,118 +181,122 @@ spec = do
     it "holds the kinds the design's own examples expect" $
       filter (`notElem` refusalKinds) (map RefusalKind ["FlapCovered", "FlapEndpointOrder", "ExistingHingeFlat"]) `shouldBe` []
 
-    -- Thirteen of the names are constructors that exist today. Reading the
+    -- Some of the names are constructors that exist today. Reading the
     -- spelling off a real value means a renamed constructor fails here, not
     -- months later when a sequence expects a refusal that can no longer be
     -- named.
     it "spells today's constructors as the library does" $
       filter (`notElem` refusalKinds) (map RefusalKind constructorsOfToday) `shouldBe` []
 
-    -- What the runner raises, by refusalKindOf, has to be spelled as this list
-    -- spells it, or expect refused could name a kind that never matches. One
-    -- refusal of each kind on the list the runner can raise today.
-    it "is how the runner names each refusal it can raise" $ do
-      let resolve = ResolveRefused InHeader NoSpan ""
-          step = StepRefused 1 Nothing NoSpan
-          raised =
-            [ resolve (NearMiss (0, 0) 0 (V2 0 0) 0),
-              resolve (NotInOneFace (V2 0 0) 0),
-              resolve (OffThePaper (V2 0 0)),
-              resolve (PlacementsDisagree (V2 0 0) 0),
-              resolve (NoCornerThere SouthWest),
-              resolve (ConstructionInTheAir 0),
-              resolve DegenerateConstruction,
-              resolve NoSolution,
-              resolve (HingeOfNotOneMove "c1" 0),
-              resolve (EdgeNotStraight South []),
-              resolve (NeedsNearest []),
-              resolve (NearestAmbiguous (V2 0 0) []),
-              resolve (NearestDisagrees (V2 0 0) (CandidateLine (V2 0 0) (V2 0 1) True) OnlyOnPaper (CandidateLine (V2 0 0) (V2 1 0) False)),
-              step (Selecting SeedMissing),
-              step (Selecting (SeedOnTheLine (V2 0 0))),
-              step (Selecting (SeedSplit (V2 0 0))),
-              step (Selecting (SegmentStraddles (V2 0 0) (V2 1 0))),
-              step (Selecting NothingSelected),
-              step (Selecting (ExistingHingeFlat (EdgeId 0))),
-              step (FlapRefused (FlapCoupled (EdgeId 0) [])),
-              step (FlapRefused (FlapNotHinge (EdgeId 0))),
-              step (FlapRefused (FlapNotBoundary (EdgeId 0))),
-              step (FlapRefused (FlapUnalignedCrease (EdgeId 0))),
-              step (FlapRefused (FlapEndpointOrder 0 (ImpossibleStacking (FaceId 0)))),
-              step (FlapRefused (FlapStackOrder (ImpossibleStacking (FaceId 0)))),
-              step (FlapRefused FlapStartMismatch),
-              step (FlapRefused (FlapMovingNotFlat (FaceId 0) 0)),
-              step (FlapRefused (FlapMovesBothWays (FaceId 0) (FaceId 1))),
-              step (FlapRefused (FlapCollision 0 [])),
-              step (FlapRefused (FlapUnresolved 0 1 [])),
-              step (FoldingRefused (TornAt (VertexId 0) 0)),
-              step (FoldingRefused (AngleNotAchieved (EdgeId 0) 0)),
-              step (JoinBroken ""),
-              step (UnfoldChangedSince (EdgeId 0))
-            ]
-      [show err | err <- raised, maybe True (`notElem` refusalKinds) (refusalKindOf err)] `shouldBe` []
+    -- Turns red if a kind is given to the wrong refusal or misspelled, if a
+    -- refusal named in 'noKind' were given one again or another lost its own,
+    -- or if a kind given is missing from the list, which is how #580's 25
+    -- came to be reported but never nameable.
+    it "gives each refusal its own constructor's name as its kind, or none, and only kinds on the list" $ do
+      [label | (label, named, err) <- everyRefusal, refusalKindOf err /= kindOf named] `shouldBe` []
+      [label | (label, _, err) <- everyRefusal, Just kind <- [refusalKindOf err], kind `notElem` refusalKinds] `shouldBe` []
 
-    -- Turns red if any library refusal were given a kind the list lacks,
-    -- which is how #580's 25 came to be reported but never nameable.
-    it "holds every kind the runner gives a library refusal" $
-      [label | (label, err) <- libraryRefusals, Just kind <- [refusalKindOf err], kind `notElem` refusalKinds] `shouldBe` []
+-- | The kind a refusal of this constructor has: its name, unless it is one
+-- the design lets no author expect.
+kindOf :: String -> Maybe RefusalKind
+kindOf named
+  | named `elem` noKind = Nothing
+  | otherwise = Just (RefusalKind (T.pack named))
 
-    -- Owner decisions 49 and 50, by name. Turns red if one of these were
-    -- given a kind again, or one of the paper's lost its kind.
-    it "gives no kind to a library refusal that is not one of the paper, or to an expectation not met" $
-      nub (sort [label | (label, err) <- libraryRefusals <> expectationsNotMet, isNothing (refusalKindOf err)])
-        `shouldBe` sort
-          [ "AlreadyFolded",
-            "AngleWithoutPaper",
-            "DegenerateFace",
-            "DisconnectedFace",
-            "DuplicateEdge",
-            "FaceEdgeMissing",
-            "FrameGeometry",
-            "NoFaces",
-            "NonFiniteAngle",
-            "FlapDuplicateCrease",
-            "FlapEmptyHinge",
-            "FlapGeometry",
-            "FlapInvalidProgress",
-            "FlapInvalidTravel",
-            "FlapInvalidTurn",
-            "FlapMissingCrease",
-            "FlapMissingFace",
-            "FlapMissingOwner",
-            "FlapMissingVertex",
-            "FlapPathMismatch",
-            "FlapSurface",
-            "FlapSweep",
-            "FlapWrongSide",
-            "RefusalNotRaised",
-            "RefusedDifferently"
-          ]
-
--- | Every library refusal of a turn or a fold, as a run raises it, labelled
--- by its constructor: each 'FlapError', each 'FoldingError', and each
--- 'FoldingError' again inside a flap, where it reaches a run too.
-libraryRefusals :: [(String, SequenceError)]
-libraryRefusals =
-  [(sampledFlap e, stepRefusal (FlapRefused e)) | e <- flapSamples]
-    <> [(sampledFolding e, stepRefusal (FoldingRefused e)) | e <- foldingSamples]
-    <> [(sampledFolding e, stepRefusal (FlapRefused (FlapFolding e))) | e <- foldingSamples]
-
--- | The two refusals an expect refused raises when its move is not refused
--- as it said.
-expectationsNotMet :: [(String, SequenceError)]
-expectationsNotMet =
-  [ ("RefusalNotRaised", stepRefusal (RefusalNotRaised (RefusalKind "NoSolution"))),
-    ("RefusedDifferently", stepRefusal (RefusedDifferently (RefusalKind "NoSolution") (RefusalKind "SeedMissing")))
+-- | The refusals with no kind: a reference or a move not run yet, the
+-- runner's own creasing and a step not modelled, which had none before #580;
+-- owner decision 49's 23 library refusals that are not refusals of the paper;
+-- and decision 50's two expectations not met.
+noKind :: [String]
+noKind =
+  [ "NotRunYet",
+    "MoveNotRunYet",
+    "CreasingRefused",
+    "NotModelledStop",
+    "AlreadyFolded",
+    "AngleWithoutPaper",
+    "DegenerateFace",
+    "DisconnectedFace",
+    "DuplicateEdge",
+    "FaceEdgeMissing",
+    "FrameGeometry",
+    "NoFaces",
+    "NonFiniteAngle",
+    "FlapDuplicateCrease",
+    "FlapEmptyHinge",
+    "FlapGeometry",
+    "FlapInvalidProgress",
+    "FlapInvalidTravel",
+    "FlapInvalidTurn",
+    "FlapMissingCrease",
+    "FlapMissingFace",
+    "FlapMissingOwner",
+    "FlapMissingVertex",
+    "FlapPathMismatch",
+    "FlapSurface",
+    "FlapSweep",
+    "FlapWrongSide",
+    "RefusalNotRaised",
+    "RefusedDifferently"
   ]
+
+-- | One refusal of every constructor 'refusalKindOf' looks at, as a run
+-- raises it: a label, the constructor whose name its kind must be, and the
+-- refusal. A folding refusal reaches a run inside a flap's too, and there
+-- takes the folding refusal's kind.
+everyRefusal :: [(String, String, SequenceError)]
+everyRefusal =
+  [(named p, named p, ResolveRefused InHeader NoSpan "" p) | p <- resolveSamples]
+    <> [(named e, named e, stepRefusal (Selecting e)) | e <- selectionSamples]
+    <> [(named f, named f, stepRefusal f) | f <- moveSamples]
+    <> [(named e, named e, stepRefusal (FlapRefused e)) | e <- flapSamples]
+    <> [(named e, named e, stepRefusal (FoldingRefused e)) | e <- foldingSamples]
+    <> [("FlapFolding " <> named e, named e, stepRefusal (FlapRefused (FlapFolding e))) | e <- foldingSamples]
+  where
+    named :: (Show a) => a -> String
+    named = takeWhile isAlphaNum . show
 
 stepRefusal :: MoveFailure -> SequenceError
 stepRefusal = StepRefused 1 Nothing NoSpan
 
+resolveSamples :: [ResolveProblem]
+resolveSamples =
+  [ NearMiss (0, 0) 0 (V2 0 0) 0,
+    NotInOneFace (V2 0 0) 0,
+    OffThePaper (V2 0 0),
+    PlacementsDisagree (V2 0 0) 0,
+    NoCornerThere SouthWest,
+    ConstructionInTheAir 0,
+    DegenerateConstruction,
+    NoSolution,
+    HingeOfNotOneMove "c1" 0,
+    EdgeNotStraight South [],
+    NeedsNearest [],
+    NearestAmbiguous (V2 0 0) [],
+    NearestDisagrees (V2 0 0) (CandidateLine (V2 0 0) (V2 0 1) True) OnlyOnPaper (CandidateLine (V2 0 0) (V2 1 0) False),
+    NotRunYet "\"meet\""
+  ]
+
+selectionSamples :: [SelectionError]
+selectionSamples = [SeedMissing, SeedOnTheLine (V2 0 0), SeedSplit (V2 0 0), SegmentStraddles (V2 0 0) (V2 1 0), NothingSelected, ExistingHingeFlat (EdgeId 0)]
+
+-- | Every 'MoveFailure' but the three that wrap another type's refusal,
+-- which are sampled by that type.
+moveSamples :: [MoveFailure]
+moveSamples =
+  [ ReanchorNotFlat (V2 0 0) 30,
+    CreasingRefused NoVertices,
+    JoinBroken "",
+    UnfoldChangedSince (EdgeId 0),
+    MoveNotRunYet "\"turn over\"",
+    NotModelledStop "an inside reverse fold",
+    RefusalNotRaised (RefusalKind "NoSolution"),
+    RefusedDifferently (RefusalKind "NoSolution") (RefusalKind "SeedMissing")
+  ]
+
 flapSamples :: [FlapError]
 flapSamples =
-  [ FlapFolding (TornAt (VertexId 0) 0),
-    FlapGeometry NoVertices,
+  [ FlapGeometry NoVertices,
     FlapSurface (SurfaceNonConvex (FaceId 0)),
     FlapSweep InvalidSweepAxis,
     FlapMissingCrease (EdgeId 0),
@@ -327,58 +332,11 @@ foldingSamples =
     FaceEdgeMissing (FaceId 0) (VertexId 0) (VertexId 1),
     DuplicateEdge (EdgeId 0) (EdgeId 1),
     DisconnectedFace (FaceId 0),
-    NonFiniteAngle (EdgeId 0) (0 / 0),
+    NonFiniteAngle (EdgeId 0) (1 / 0),
     TornAt (VertexId 0) 0,
     AngleWithoutPaper (EdgeId 0) 90,
     AngleNotAchieved (EdgeId 0) 0
   ]
-
--- | A flap refusal's constructor, by a match with no catch-all, so that one
--- added to 'FlapError' without a sample warns here. A flap's folding refusal
--- is labelled by the folding refusal inside it, which is what gives its kind.
-sampledFlap :: FlapError -> String
-sampledFlap = \case
-  FlapFolding err -> sampledFolding err
-  FlapGeometry {} -> "FlapGeometry"
-  FlapSurface {} -> "FlapSurface"
-  FlapSweep {} -> "FlapSweep"
-  FlapMissingCrease {} -> "FlapMissingCrease"
-  FlapNotHinge {} -> "FlapNotHinge"
-  FlapWrongSide {} -> "FlapWrongSide"
-  FlapCoupled {} -> "FlapCoupled"
-  FlapMovingNotFlat {} -> "FlapMovingNotFlat"
-  FlapMovesBothWays {} -> "FlapMovesBothWays"
-  FlapEmptyHinge -> "FlapEmptyHinge"
-  FlapDuplicateCrease {} -> "FlapDuplicateCrease"
-  FlapNotBoundary {} -> "FlapNotBoundary"
-  FlapUnalignedCrease {} -> "FlapUnalignedCrease"
-  FlapMissingFace {} -> "FlapMissingFace"
-  FlapMissingOwner {} -> "FlapMissingOwner"
-  FlapMissingVertex {} -> "FlapMissingVertex"
-  FlapStartMismatch -> "FlapStartMismatch"
-  FlapInvalidTravel {} -> "FlapInvalidTravel"
-  FlapInvalidTurn {} -> "FlapInvalidTurn"
-  FlapInvalidProgress {} -> "FlapInvalidProgress"
-  FlapPathMismatch {} -> "FlapPathMismatch"
-  FlapCollision {} -> "FlapCollision"
-  FlapUnresolved {} -> "FlapUnresolved"
-  FlapEndpointOrder {} -> "FlapEndpointOrder"
-  FlapStackOrder {} -> "FlapStackOrder"
-
--- | A folding refusal's constructor, by a match with no catch-all.
-sampledFolding :: FoldingError -> String
-sampledFolding = \case
-  FrameGeometry {} -> "FrameGeometry"
-  AlreadyFolded {} -> "AlreadyFolded"
-  NoFaces -> "NoFaces"
-  DegenerateFace {} -> "DegenerateFace"
-  FaceEdgeMissing {} -> "FaceEdgeMissing"
-  DuplicateEdge {} -> "DuplicateEdge"
-  DisconnectedFace {} -> "DisconnectedFace"
-  NonFiniteAngle {} -> "NonFiniteAngle"
-  TornAt {} -> "TornAt"
-  AngleWithoutPaper {} -> "AngleWithoutPaper"
-  AngleNotAchieved {} -> "AngleNotAchieved"
 
 -- | The constructor name of each refusal in 'refusalKinds' that already
 -- exists in the library, read from a real value.

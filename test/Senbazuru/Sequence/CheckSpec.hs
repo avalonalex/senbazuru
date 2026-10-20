@@ -392,7 +392,11 @@ refusals =
     ("an in-between pose that is the end pose", ["step { rabbit-ear at centre until 90° sample 45° 90° }"], InStep 1 Nothing, ParameterOutOfRange 90 (Exclusive 0) (Exclusive 90)),
     ("a continue taken past flat", ["step m { collapse at centre until 90° }", "step { continue m until 181° }"], InStep 2 Nothing, ParameterOutOfRange 181 (Exclusive 0) (Inclusive 180)),
     ("a kind of refusal there is none of", ["step { expect refused FlapCoverd { " <> aFold <> " } }"], InStep 1 Nothing, UnknownRefusalKind (RefusalKind "FlapCoverd")),
-    ("an expect refused round another", ["step { expect refused NoSolution { expect refused NoSolution { " <> aFold <> " } } }"], InStep 1 Nothing, NestedExpectRefused (RefusalKind "NoSolution")),
+    ("an expect refused round another", ["step { expect refused NoSolution { expect refused SeedMissing { " <> aFold <> " } } }"], InStep 1 Nothing, NestedExpectRefused (RefusalKind "SeedMissing")),
+    ("an expect refused round another inside a together", ["step { expect refused NoSolution { together { " <> aFold <> "; expect refused SeedMissing { " <> aFold <> " } } } }"], InStep 1 Nothing, NestedExpectRefused (RefusalKind "SeedMissing")),
+    -- Asked before the kind: the outer one names no kind, and it is the
+    -- nesting that is reported.
+    ("an expect refused of an expectation not met, round another", ["step { expect refused RefusalNotRaised { expect refused SeedMissing { " <> aFold <> " } } }"], InStep 1 Nothing, NestedExpectRefused (RefusalKind "SeedMissing")),
     ("continuing a step that is a plain fold", ["step f { " <> aFold <> " }", "step { continue f until 90° }"], InStep 2 Nothing, NotASingleMacro "f"),
     ("continuing a step of two macro-moves", ["step two { together { collapse at centre until 90°; petal top flap until 90° } }", "step { continue two until 120° }"], InStep 2 Nothing, NotASingleMacro "two"),
     ("the hinge of a step that turned paper twice", ["step two { " <> aFold <> "; fold valley corner north-east to centre }", "step { fold valley hinge of two moving centre }"], InStep 2 Nothing, HingeOfSeveralMoves "two"),

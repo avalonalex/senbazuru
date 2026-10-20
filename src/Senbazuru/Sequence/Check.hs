@@ -385,15 +385,27 @@ checkMove = \case
   Checkpoint path spec -> Checkpoint path <$> checkSpec spec
   NotModelled what -> pure (NotModelled what)
   ExpectRefused kind inner -> do
+    -- Asked before the kind, so that an expect refused written round
+    -- another is told so, whatever kind it names.
+    case expectationsIn inner of
+      innerKind : _ -> refuse (NestedExpectRefused innerKind)
+      [] -> pure ()
     unless (kind `elem` refusalKinds) (refuse (UnknownRefusalKind kind))
-    case inner of
-      ExpectRefused innerKind _ -> refuse (NestedExpectRefused innerKind)
-      _ -> pure ()
     -- The names are put back afterwards: what is in here never happens.
     before <- lift get
     checkedInner <- checkMove inner
     lift (put before)
     pure (ExpectRefused kind checkedInner)
+
+-- | The kinds of the @expect refused@ moves a move is, or holds inside a
+-- @together@, outermost first. An @expect refused@ holds the move it expects
+-- to be refused, never one of these (owner decision 50): whatever the inner
+-- one did, the outer would see no refusal it could name.
+expectationsIn :: Move -> [RefusalKind]
+expectationsIn = \case
+  ExpectRefused kind _ -> [kind]
+  Together members -> concatMap (expectationsIn . locValue) members
+  _ -> []
 
 -- | A fold's angle is unsigned. Text cannot spell a negative one.
 checkAmount :: Amount -> Check ()
