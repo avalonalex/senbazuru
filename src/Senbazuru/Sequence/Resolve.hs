@@ -95,7 +95,7 @@ import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, perpendicular)
-import Senbazuru.Geometry.Polygon (centroid, cross2, distanceToSegment, edges, insideRing)
+import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, insideRing, pointInside)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -460,33 +460,45 @@ eastOrNorth direction@(V2 dx dy) =
 -- | The seed of @L1 to L2@ with no @moving@ point, and L1's stretch where it
 -- lies now. The moving side is the one holding L1, and a run keeps a seed it
 -- can name again in a region slot, which a point on L1 is not: so the seed
--- is the vertex mean of the face beside L1's longest piece, ties going to the
+-- is a point inside the face beside L1's longest piece, ties going to the
 -- lowest piece, then the leftmost (PRDs\/02-language-semantics.md, §6.3). So
 -- far L1 has pieces only when it is an edge of the sheet.
 --
+-- The point is the one the anchor would take in that face ('pointInside',
+-- owner decision 51): its vertex mean, or the mean of its largest ear where a
+-- face that is not convex leaves its vertex mean on a crease or off the face.
+-- A piece whose face has no such point is passed over.
+--
 -- A tie is within the sheet's tolerance, in a length, a height or a distance
--- across, so that rounding cannot decide one: the rule 'Run.defaultAnchor'
--- follows for the anchor.
+-- across, so that rounding cannot decide one, as the anchor's rule does.
 firstLineSeed :: FlatState -> Line -> Either ResolveProblem (V2, (V2, V2))
 firstLineSeed st = \case
   EdgeOf side -> do
     stretch <- edgeNow st side
     let room = flatRoom st
-        pieces = [(a, b, norm (q ^-^ p), 0.5 *^ (p ^+^ q)) | (_, a, b) <- edgePieces st side, Just p <- [IM.lookup a (flatMaterial st)], Just q <- [IM.lookup b (flatMaterial st)]]
+        beside a b = [ringOf st ring | (_, ring) <- flatFaces st, (x, y) <- edges ring, (x, y) `elem` [(a, b), (b, a)]]
+        pieces =
+          [ (seed, norm (q ^-^ p), 0.5 *^ (p ^+^ q))
+            | (_, a, b) <- edgePieces st side,
+              Just p <- [IM.lookup a (flatMaterial st)],
+              Just q <- [IM.lookup b (flatMaterial st)],
+              ring : _ <- [beside a b],
+              Just seed <- [pointInside room ring]
+          ]
         chosen = case pieces of
           [] -> []
           _ ->
-            let longest = maximum [l | (_, _, l, _) <- pieces]
-                long = [piece | piece@(_, _, l, _) <- pieces, l >= longest - room]
-                lowest = minimum [y | (_, _, _, V2 _ y) <- long]
-                low = [piece | piece@(_, _, _, V2 _ y) <- long, y <= lowest + room]
-                leftmost = minimum [x | (_, _, _, V2 x _) <- low]
-             in [(a, b) | (a, b, _, V2 x _) <- low, x <= leftmost + room]
+            let longest = maximum [l | (_, l, _) <- pieces]
+                long = [piece | piece@(_, l, _) <- pieces, l >= longest - room]
+                lowest = minimum [y | (_, _, V2 _ y) <- long]
+                low = [piece | piece@(_, _, V2 _ y) <- long, y <= lowest + room]
+                leftmost = minimum [x | (_, _, V2 x _) <- low]
+             in [seed | (seed, _, V2 x _) <- low, x <= leftmost + room]
     case chosen of
-      (a, b) : _
-        | ring : _ <- [ring | (_, ring) <- flatFaces st, (x, y) <- zip ring (drop 1 ring ++ take 1 ring), (x, y) `elem` [(a, b), (b, a)]] ->
-            Right (centroid (ringOf st ring), stretch)
-      _ -> Left (EdgeNotStraight side [])
+      seed : _ -> Right (seed, stretch)
+      []
+        | null (edgePieces st side) -> Left (EdgeNotStraight side [])
+        | otherwise -> Left (NotRunYet "a seed for \"L1 to L2\" where no face along L1 has a point found clear of its outline,")
   _ -> Left (NotRunYet "which side of \"L1 to L2\" moves, when L1 is not an edge of the sheet, without moving P,")
 
 -- | Whether a stretch lies on both sides of a fold line, beyond the sheet's

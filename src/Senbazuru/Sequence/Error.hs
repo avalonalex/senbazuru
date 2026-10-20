@@ -466,10 +466,11 @@ data SheetProblem
   | -- | @start folded@, which keeps the file's angles and chooses a stacking,
     -- is not run yet.
     StartFoldedNotRunYet
-  | -- | The default anchor, the vertex mean of the sheet's largest face, is
-    -- not strictly inside that face, which happens only when the face is not
-    -- convex.
-    DefaultAnchorOutside V2
+  | -- | No face has a point found clear of its outline by the sheet's
+    -- tolerance, neither its vertex mean nor an ear's
+    -- ('Senbazuru.Geometry.Polygon.pointInside'), so there is nowhere for the
+    -- default anchor. It is refused before a header @anchor@ is read.
+    NoRoomForAnchor
   deriving stock (Eq, Show)
 
 -- | How a key frame shows it is folded: by leaving the plane, with how far,
@@ -494,12 +495,7 @@ instance Explain SheetProblem where
     SheetDoesNotFold err -> "laid flat, it will not fold: " <> explain err
     SheetNoSurface err -> "laid flat, it makes no surface: " <> explain err
     StartFoldedNotRunYet -> "\"start folded\", which starts from the file's own angles, cannot be run yet"
-    DefaultAnchorOutside (V2 x y) ->
-      "the default anchor, ("
-        <> num x
-        <> ", "
-        <> num y
-        <> "), the vertex mean of the largest face, is not inside that face, which is not convex; name the anchor with anchor P"
+    NoRoomForAnchor -> "no face has a point clear of its outline by the sheet's tolerance, a billionth of its diagonal, to hold the anchor"
 
 -- | Why a reference names no paper, or no one place on it. Points are in
 -- /sheet lengths/, the author's units: the sheet's bounding box has its

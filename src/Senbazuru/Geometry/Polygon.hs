@@ -38,6 +38,16 @@
 -- restriction costs little here, and 'isConvex' is how a caller checks before
 -- trusting the answer.
 --
+-- == Two questions asked of any simple polygon
+--
+-- Whether a point is inside ('insideRing'), and which point is ('pointInside').
+-- The mean of the corners does not answer the second for a polygon that is
+-- not convex: on an L it can fall in the empty quarter, or on the inside
+-- corner. The mean of an /ear/'s corners does ('ears'): a corner whose two
+-- neighbours are joined by a segment through the inside of the polygon, so
+-- that the triangle it cuts off lies inside. Every simple polygon of four or
+-- more corners has two.
+--
 -- Nothing in this module knows about paper. Coordinates are plain 'V2', and the
 -- polygons are lists of corners in order, closed implicitly.
 module Senbazuru.Geometry.Polygon
@@ -54,6 +64,8 @@ module Senbazuru.Geometry.Polygon
     centroid,
     isConvex,
     ears,
+    pointInside,
+    largestLowestLeftmost,
 
     -- * Clipping
     clipConvex,
@@ -69,7 +81,7 @@ module Senbazuru.Geometry.Polygon
   )
 where
 
-import Data.List (foldl')
+import Data.List (find, foldl')
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.VectorSpace
 
@@ -164,19 +176,29 @@ signedArea :: [V2] -> Double
 signedArea ps = 0.5 * sum [cross2 a b | (a, b) <- edges ps]
 
 -- | The /ears/ of a simple ring, each with its corner's index, its area and
--- the mean of its three corners. An ear is a corner whose triangle with its
--- two neighbours lies inside the ring: the corner turns the ring's way, its
--- triangle more than the tolerance high at it, and no other corner lies in
--- the triangle or within the tolerance of its outline. The tolerance is a
--- distance. One test, the height, turns away a corner turning the other way,
--- whose height is negative, and one on a straight run, rounding included.
+-- the mean of its three corners.
 --
--- A point is often wanted inside a ring that is not convex, whose mean of
--- corners can lie outside it or on its outline: the L of issue #579 has its
--- inside corner as the mean of its six. An ear's mean is inside its triangle,
--- which is inside the ring,
--- and every simple ring of three or more corners has at least two ears (the
--- two ears theorem), so one is always there to give.
+-- An ear is a corner whose two neighbours are joined by a segment through the
+-- inside of the ring, touching the outline only at its own two ends
+-- (Meisters, 1975), so that cutting off the corner's triangle leaves a simple
+-- ring with one corner fewer. The test is the usual one for a simple ring:
+-- the corner turns the ring's way, and no other corner lies in its triangle
+-- or on the triangle's outline. A triangle passes it at all three corners and
+-- has three ears here, though its neighbours are joined by its own side.
+--
+-- The tolerance is a distance. The corner must turn by more than it: its
+-- triangle more than that high at it, which turns away a corner turning the
+-- other way and one on a straight run, rounding included. No other corner may
+-- come within it of the triangle, except at the triangle's own corners, where
+-- a ring that touches itself passes a second time.
+--
+-- Every simple ring of four or more corners has at least two ears that do not
+-- overlap (the two ears theorem, Meisters 1975). The list can still be empty
+-- here, for a ring whose corners all turn by less than the tolerance.
+--
+-- Which way the ring turns is the sign of its area measured from its first
+-- corner rather than from the origin, so that rounding in the products of
+-- large coordinates cannot decide it for a small ring far from the origin.
 ears :: Double -> [V2] -> [(Int, Double, V2)]
 ears clearance ring =
   [ (i, area, centroid triangle)
@@ -187,14 +209,54 @@ ears clearance ring =
           base = norm (c ^-^ a),
       base > 0,
       turn / base > clearance,
-      not (any (near triangle) (othersThan i))
+      not (any (blocks triangle) ring)
   ]
   where
     n = length ring
-    way = signum (signedArea ring)
+    way = case ring of
+      first : _ -> signum (signedArea [p ^-^ first | p <- ring])
+      [] -> 0
     lastFirst ps = drop (n - 1) ps <> take (n - 1) ps
-    othersThan i = [p | (j, p) <- zip [0 ..] ring, j `notElem` [(i - 1) `mod` n, i, (i + 1) `mod` n]]
-    near triangle p = insideRing 0 triangle p || any ((<= clearance) . (`distanceToSegment` p)) (edges triangle)
+    blocks triangle p =
+      all ((> clearance) . norm . (p ^-^)) triangle
+        && (insideRing 0 triangle p || any ((<= clearance) . (`distanceToSegment` p)) (edges triangle))
+
+-- | A point inside the ring, clear of its outline by more than the given
+-- distance: the mean of its corners if that is clear, and otherwise the mean
+-- of an ear's corners ('ears'). Of the ears whose means are clear, the
+-- largest is taken, by 'largestLowestLeftmost'. 'Nothing' if none of these
+-- points is clear.
+--
+-- A ring that is not convex can have the mean of its corners outside it, or
+-- on its outline: an L whose arms are as wide as each other has it at its
+-- own inside corner. An ear's mean is inside its triangle, which is inside
+-- the ring, but it can still lie nearer the outline than the tolerance, so
+-- every ear is checked before the largest is chosen, not after.
+pointInside :: Double -> [V2] -> Maybe V2
+pointInside clearance ring
+  | insideRing clearance ring mean = Just mean
+  | otherwise = (\(_, _, at) -> at) <$> largestLowestLeftmost clearance [ear | ear@(_, _, at) <- ears clearance ring, insideRing clearance ring at]
+  where
+    mean = centroid ring
+
+-- | The largest of some measured things, and among those of one size the one
+-- at the lowest point, and then the leftmost. Each comes with its size and
+-- its point. A tie in size is a billionth of the largest; a tie in height or
+-- across is the distance given. Both are there so that a rounding error in a
+-- size or a point cannot decide which is taken. 'Nothing' for none.
+--
+-- One rule for choosing among faces and among a face's ears ('pointInside'),
+-- so that the two cannot drift apart.
+largestLowestLeftmost :: Double -> [(a, Double, V2)] -> Maybe (a, Double, V2)
+largestLowestLeftmost room measured = case measured of
+  [] -> Nothing
+  _ ->
+    let biggest = maximum [size | (_, size, _) <- measured]
+        largest = [m | m@(_, size, _) <- measured, size >= biggest - 1e-9 * biggest]
+        lowest = minimum [y | (_, _, V2 _ y) <- largest]
+        low = [m | m@(_, _, V2 _ y) <- largest, y <= lowest + room]
+        leftmost = minimum [x | (_, _, V2 x _) <- low]
+     in find (\(_, _, V2 x _) -> x <= leftmost + room) low
 
 -- | The mean of the corners.
 --

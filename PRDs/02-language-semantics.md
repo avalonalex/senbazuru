@@ -265,10 +265,25 @@ vertex mean, not an area centroid
 ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs),
 [C20](decisions.md#changes-since-draft-v2)). The two agree on triangles and squares,
 which are all this file's examples use, but not on a general quadrilateral. A header
-line `anchor P`, a region slot, overrides the default. A default vertex mean that is
-not strictly inside its own face is refused, asking for `anchor P`; the vertex mean
-of a convex face always lies inside it, so only a non-convex face can meet this
-[reasoned]. Two fixtures [py]:
+line `anchor P`, a region slot, overrides the default.
+
+A face that is not convex can have its vertex mean outside it or on its outline.
+Then the point taken is the vertex mean of the face's largest *ear*: a corner whose
+two neighbours are joined by a segment through the inside of the face
+([glossary](../docs/glossary.md#geometry)), so that the ear's triangle, and its
+mean, are inside the face. Ears tie as faces do, by area, then the lowest mean, then
+the leftmost. A face where neither its vertex mean nor any ear's is clear of its
+outline by the sheet's tolerance is passed over, and a sheet whose every face is
+passed over is refused as `NoRoomForAnchor`. The vertex mean of a convex face lies
+strictly inside it, so ears matter only for a face that is not convex, or one whose
+vertex mean is within the tolerance of its outline [reasoned].
+
+Every place a run chooses a point in a face follows this one rule
+(`Geometry.Polygon.pointInside`): the default, re-anchoring (rule 1 below), an
+anchor a new crease passes through, and the seed of `L1 to L2` (§6.3)
+([owner decision 51](decisions.md#9-owner-decisions),
+[C110](decisions.md#changes-since-draft-v2)). An earlier rule refused such a
+default and asked for `anchor P` (G13). Two fixtures [py]:
 
 - **Blintz.** The central square has area 1/2 and each corner 1/8. The default is
   (1/2, 1/2), the same as `anchor centre`.
@@ -283,12 +298,8 @@ refusing:
 
 1. The new anchor face is the stationary face beside the hinge with the largest
    material area. Ties go to the lowest, then leftmost, material vertex mean, never
-   to face id. Its vertex mean becomes the anchor. A face that is not convex can
-   have its vertex mean outside it or on its outline; then the anchor is the vertex
-   mean of the face's largest *ear*, a corner whose triangle with its two
-   neighbours lies inside the face, by the same ties
-   ([C110](decisions.md#changes-since-draft-v2)). The runner records it, and
-   `--report` prints it.
+   to face id. Its vertex mean becomes the anchor, or its largest ear's, as for the
+   default. The runner records it, and `--report` prints it.
 2. Read h, that face's placement in the current raw fold, before any reordering.
 3. Set anchor placement := anchor placement `after` h.
 4. Put that face first, re-map orders and requirement pairs to the new face ids,
@@ -323,9 +334,9 @@ crease, where it no longer fills a region slot. So after creasing, if the anchor
 point is not strictly inside one face, the anchor moves to the vertex mean of the
 largest face that contains the old point in its closed polygon and that this move
 does not turn. Ties go to the lowest, then leftmost, vertex mean, and a face that
-does not hold its own vertex mean gives its largest ear's, as in rule 1 above.
-Creasing moves no
-paper, so anchor placement is unchanged, and the record notes the move.
+does not hold its own vertex mean gives its largest ear's, as for the default.
+Creasing moves no paper, so anchor placement is unchanged, and the record notes the
+move.
 
 *Example* [reasoned, with the areas and vertex means checked by python3 using
 `fractions`; **UNVERIFIED** as runner output]. `sheet square` with no `anchor` line
@@ -821,8 +832,11 @@ implement it are [05](05-prd-library-additions.md)'s.
 ([D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot),
 [C68](decisions.md#changes-since-draft-v2)). An alignment fold's seed is its first
 argument, but L1 is a line, not a point, and `unfold` (§6.4) re-resolves a recorded
-seed in a region slot. So the record keeps the vertex mean of the face beside L1's
-longest current material segment, ties to the lowest, then leftmost, segment.
+seed in a region slot. So the record keeps a point inside the face beside L1's
+longest current material segment, ties to the lowest, then leftmost, segment. The
+point is the one the anchor would take in that face (§2.3): its vertex mean, or its
+largest ear's where the vertex mean is not inside it. A segment whose face has
+neither is passed over ([owner decision 51](decisions.md#9-owner-decisions)).
 
 - *Example* [py, [check Q](#check-q)]. On §1's step `quarter`, edge north's segments
   are edges 4 and 5, each 1/2 long. The leftmost is edge 5, beside face 2, ring
@@ -1535,7 +1549,7 @@ cites them.
 
 | # | Question | Decided rule | Decision | Stated in |
 | --- | --- | --- | --- | --- |
-| G1 | An anchor that a new crease passes through | the anchor moves to the vertex mean of the largest face containing it that the move does not turn. The draft also said 09's authoring test meets this; it does not, because that test writes `anchor (3/4, 1/4)` | [D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs) | §2.3 |
+| G1 | An anchor that a new crease passes through | the anchor moves to the vertex mean of the largest face containing it that the move does not turn, or to its largest ear's ([owner decision 51](decisions.md#9-owner-decisions)). The draft also said 09's authoring test meets this; it does not, because that test writes `anchor (3/4, 1/4)` | [D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs) | §2.3 |
 | G2 | The moving side for O5, O6 and O7 | the side containing P; O6 is refused if Q lies on the other side | [D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot) | §4.3 |
 | G3 | The direction of `turned k/4`, and the axis of `white side up` | anticlockwise on the sheet as the file draws it; `left-right` | [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [D5](decisions.md#d5-presentation-and-the-readers-side) | §9, §5.1 |
 | G4 | `repeat` of a move that adds no crease, where comparing creases compares nothing | each hinge segment's material image must also turn by the same net angle change | [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused) | §9 |
@@ -1547,7 +1561,7 @@ cites them.
 | G10 | `sample` values at or beyond A, or at or below `reached` | refused | [D9](decisions.md#d9-macro-moves-as-named-angle-relations) | §8.5, §12 |
 | G11 | Compass names on a sheet whose outline is not its bounding box | `corner X` needs a boundary vertex at that corner of the box, and `edge S` boundary edges covering that side; `centre` and `(u, v)` are always defined | [D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot) | §4.1 |
 | G12 | A step holding only `expect refused` | it writes no state and is not a figure | [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [D24](decisions.md#d24-states-figures-and-their-numbers) | §9 |
-| G13 | A default anchor, a vertex mean, not strictly inside its non-convex face | refused, asking for `anchor P` | [D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs) | §2.3 |
+| G13 | A default anchor, a vertex mean, not strictly inside its non-convex face | refused, asking for `anchor P`. **Withdrawn** by [owner decision 51](decisions.md#9-owner-decisions): the anchor is the mean of the face's largest ear instead ([C110](decisions.md#changes-since-draft-v2)) | [D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs) | §2.3 |
 | G14 | Refusals from `sheetState` and from the writer | `SequenceError` gains `SheetRefused` and `WriteRefused` | [D20](decisions.md#d20-errors) | §2.2, §12 |
 
 ## 15. Open questions for the owner

@@ -779,15 +779,17 @@ reanchoring = describe "re-anchoring" $ do
       (heldLast : _, movedLast : _) -> sameModel heldLast movedLast `shouldBe` True
       _ -> expectationFailure "expected written states"
 
-  -- Issue #579's sheet: two by one, its top-left corner creased off, so the
-  -- rest is one face that is not convex, and a fold up x = 0.6 leaves an L
-  -- west of it. Anchored inside the L, the fold turns other paper, and the
-  -- turn's mesh refuses the L. Anchored east of the line, the fold turns the
-  -- anchor's paper and re-anchors onto the L, whose vertex mean is its own
-  -- inside corner; the anchor goes to its largest ear's mean instead, and the
-  -- same turn refuses the L the same way. Turns red if re-anchoring refused
-  -- the L itself, as it did, so that which refusal the fold got depended on
-  -- the anchor.
+  -- Issue #579's sheet: two by one in the file's units, its top-left corner
+  -- creased off, so the rest is one face that is not convex. The fold's line
+  -- is 3/10 of a sheet length from the west edge, x = 0.6 in the file, and
+  -- leaves an L west of it. Anchored inside the L, the fold turns other
+  -- paper, and the turn's mesh refuses the L. Anchored east of the line, the
+  -- fold turns the anchor's paper and re-anchors onto the L, whose vertex
+  -- mean is its own inside corner; the anchor goes to a point inside the L
+  -- instead, and the same turn refuses the L the same way. Which point no
+  -- run can show while every turn refuses such a face (#586). Turns red if
+  -- re-anchoring refused the L itself, as it did, so that which refusal the
+  -- fold got depended on the anchor.
   it "refuses a fold onto a face that is not convex the same way at either anchor" $ do
     let lSheet =
           emptyFrame
@@ -804,6 +806,30 @@ reanchoring = describe "re-anchoring" $ do
           _ -> Nothing
     map (refusedAs . folded) [at (1 / 20) (1 / 20), at (3 / 4) (1 / 4)]
       `shouldBe` replicate 2 (Just (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 0)))))
+
+  -- A square with creases from (0, 0.1) to (0.9, 0.1) to (0.9, 1), folding
+  -- edge east or edge west to a line. Folding the east edge creases x = 0.8
+  -- first, and the face beside the east edge is then an L whose vertex mean,
+  -- (0.9, 11/30), lies on the crease x = 0.9: as a seed it named no one face.
+  -- The seed is now a point inside that face (owner decision 51), and the
+  -- fold goes on to the turn, which refuses a panel that is not convex as it
+  -- does folding the west edge. Turns red if the seed were the vertex mean.
+  it "refuses folding either edge to a line the same way, where the face holding the seed is not convex" $ do
+    let creased =
+          emptyFrame
+            { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.1], [0.9, 0.1], [0.9, 1]],
+              edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 6), (6, 3), (3, 4), (4, 0), (4, 5), (5, 6)]],
+              edgesAssignment = replicate 6 Border ++ [Valley, Valley]
+            }
+        sheets = M.singleton "creased.fold" squareSheet {keyFrame = creased}
+        edgeTo side x =
+          checkSequence (sequenceOf (header "Creased" (sheetFile "creased.fold") Nothing) (step_ "Fold the edge to the line." (move (Fold ValleyFold ToFlat (LineOnto (EdgeOf side) (Segment (at x 0) (at x 1)) Nothing) FlapOfFirstArgument Nothing))))
+            >>= runSequence defaultRunSettings sheets . elaborate
+        refusedAs = \case
+          Left (StepRefused 1 _ _ failure) -> Just failure
+          _ -> Nothing
+    [refusedAs (edgeTo East (3 / 5)), refusedAs (edgeTo West (1 / 5))]
+      `shouldBe` replicate 2 (Just (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 2)))))
 
   -- Re-anchoring twice, onto paper turned about axes 45° apart, on the
   -- square base. The diagonal fold lays the lower right half behind; the
@@ -1346,15 +1372,31 @@ starting = describe "the state a run starts from" $ do
         other -> expectationFailure ("expected a relief refusal, got " <> show other)
       sheetState (withKey (\f -> f {frameClasses = ["foldedForm"]}) squareSheet) `shouldBe` Left (SheetAlreadyFolded ByClass)
 
-    -- An L whose arms are a tenth wide: its corners average to a point in
-    -- the empty quarter. Turns red if the anchor were taken without asking
-    -- whether it lies on paper.
-    it "whose default anchor falls outside its only face" $ do
-      let l = [[0, 0], [1, 0], [1, 0.1], [0.1, 0.1], [0.1, 1], [0, 1]]
-          frame = emptyFrame {verticesCoords = l, edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 6)) | i <- [0 .. 5]], edgesAssignment = replicate 6 Border, facesVertices = [map VertexId [0 .. 5]]}
-      case sheetState (withKey (const frame) squareSheet) of
-        Left (DefaultAnchorOutside (V2 x y)) -> (x, y) `shouldSatisfy` (\(a, b) -> abs (a - 2.2 / 6) < 1e-12 && abs (b - 2.2 / 6) < 1e-12)
-        other -> expectationFailure ("expected the anchor refused, got " <> show other)
+    -- An L whose arms are a tenth wide: its corners average to (11/30,
+    -- 11/30), in the empty quarter. Its ears are the corners at the ends of
+    -- its arms; those at (1, 0) and (0, 1) are the largest and tie, and the
+    -- first's mean, (2/3, 1/30), is the lower (owner decision 51). Turns red
+    -- if the anchor were taken without asking whether it lies on paper, or
+    -- were refused, as it was before.
+    it "anchors a face whose vertex mean is off it at its largest ear's mean" $ do
+      state <- right (sheetState (withKey (const thinL) squareSheet))
+      case stateAnchor state of
+        MaterialPoint (V2 x y) -> (x, y) `shouldSatisfy` (\(a, b) -> abs (a - 2 / 3) < 1e-12 && abs (b - 1 / 30) < 1e-12)
+
+    -- The same L with an anchor in its header, in the arm up the west side,
+    -- turned over. Turns red if the start refused the default before reading
+    -- the header's anchor, as it did when a default off its face was refused.
+    it "runs from a header's anchor on a face whose vertex mean is off it" $ do
+      let onThinL = sequenceOf (header "A thin L" (sheetFile "thin-l.fold") (Just (at (1 / 20) (1 / 2)))) (step_ "Turn it over." (turnOver LeftRight))
+      run <- right (checkSequence onThinL >>= runSequence defaultRunSettings (M.singleton "thin-l.fold" (withKey (const thinL) squareSheet)) . elaborate)
+      map recordAnchor (runRecords run) `shouldBe` [(MaterialPoint (V2 (1 / 20) (1 / 2)), MaterialPoint (V2 (1 / 20) (1 / 2)))]
+
+    -- A sheet 1.5e-9 high, its tolerance a billionth of its diagonal, about
+    -- 1e-9: its vertex mean is 0.75e-9 from its long sides, and its ears'
+    -- means 0.5e-9. Turns red if a point too near the outline were taken.
+    it "with no point in any face clear of its outline" $ do
+      let thin = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 1.5e-9], [0, 1.5e-9]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 4)) | i <- [0 .. 3]], edgesAssignment = replicate 4 Border}
+      sheetState (withKey (const thin) squareSheet) `shouldBe` Left NoRoomForAnchor
 
     -- The same question on a face that is not convex but whose mean is on
     -- paper: a thick arm three long and a short one, the mean (7/6, 2/5) in
@@ -1384,6 +1426,7 @@ starting = describe "the state a run starts from" $ do
         squareSheet
     squareWith ring = withKey (\f -> f {facesVertices = [map VertexId ring]}) squareSheet
     withKey change file = file {keyFrame = change (keyFrame file)}
+    thinL = emptyFrame {verticesCoords = [[0, 0], [1, 0], [1, 0.1], [0.1, 0.1], [0.1, 1], [0, 1]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 6)) | i <- [0 .. 5]], edgesAssignment = replicate 6 Border, facesVertices = [map VertexId [0 .. 5]]}
 
 -- | A face's ring on the sheet, from the frame's own vertices.
 ringOf :: Frame -> Int -> IO [V2]

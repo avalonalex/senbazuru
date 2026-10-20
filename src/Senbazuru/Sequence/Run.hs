@@ -148,11 +148,14 @@
 --   has none, and every face's ring runs anticlockwise on the sheet, so that a
 --   face's normal points the way the file's +z does.
 -- * __The anchor, by default.__ The vertex mean, the average of the corners,
---   of the largest face, ties to the lowest and then the leftmost vertex mean,
---   a tie being close enough that rounding could have made the difference.
+--   of the largest face, ties to the lowest and then the leftmost point, a
+--   tie being close enough that rounding could have made the difference.
 --   That face is put first, because folding holds its first face still. A
---   vertex mean of a face that is not convex can lie outside it, and is
---   refused: the author names the anchor instead.
+--   face that is not convex can have its vertex mean outside it or on its
+--   outline, and then the anchor is the mean of its largest /ear/ instead: a
+--   corner whose two neighbours are joined by a segment through the inside of
+--   the face ('pointInside', owner decision 51). Re-anchoring chooses by the
+--   same rule.
 --
 -- == The number that looks arbitrary
 --
@@ -179,7 +182,7 @@ where
 import Control.Monad (foldM, unless, when)
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.List (find, nub, sort, sortOn)
+import Data.List (nub, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
@@ -192,7 +195,7 @@ import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVertices, ringEdges)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
-import Senbazuru.Geometry.Polygon (centroid, distanceToSegment, ears, edges, insideRing, signedArea)
+import Senbazuru.Geometry.Polygon (distanceToSegment, edges, insideRing, largestLowestLeftmost, pointInside, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear, rotationAboutDegrees)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
@@ -315,7 +318,7 @@ stateAnchor = theAnchor
 
 -- | The state a run starts from, given the file the header's @sheet@ names:
 -- its key frame laid flat, with its creases' letters kept, its faces traced
--- and wound anticlockwise, and the largest face's vertex mean as the anchor.
+-- and wound anticlockwise, and the anchor in the largest face ('anchorIn').
 -- The header says why each.
 sheetState :: FoldFile -> Either SheetProblem FoldState
 sheetState file = do
@@ -330,12 +333,11 @@ sheetState file = do
   room <- first SheetNotAPattern (tolerance <$> sheetOf planar)
   let ring = ringOn material
       faces = [if signedArea (ring face) < 0 then reverse face else face | face <- facesVertices planar]
-      measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 :: Int ..] faces]
-  (index, anchor) <- case defaultAnchor room measured of
-    Just (i, face, _, mean)
-      | insideRing room (ring face) mean -> Right (i, mean)
-      | otherwise -> Left (DefaultAnchorOutside mean)
-    Nothing -> Left SheetHasNoFaces
+  (index, anchor) <- case anchorIn room ring (zip [0 ..] faces) of
+    Just found -> Right found
+    Nothing
+      | null faces -> Left SheetHasNoFaces
+      | otherwise -> Left NoRoomForAnchor
   let angles = edgesFoldAngle planar
       letters = zipWith intent (edgesAssignment planar) (angles ++ repeat 0)
   pure
@@ -363,22 +365,17 @@ sheetState file = do
         | angle > atRest -> Valley
       _ -> letter
 
--- | The face whose vertex mean is the default anchor, numbered, with its area
--- and vertex mean: the largest face, and among faces of one area the lowest
--- vertex mean and then the leftmost. A tie is a billionth of the largest area,
--- or the sheet's own tolerance in a height or a distance across, so that a
--- rounding error in an area or a mean cannot decide one. 'Nothing' for a
--- sheet with no faces.
-defaultAnchor :: Double -> [(Int, [VertexId], Double, V2)] -> Maybe (Int, [VertexId], Double, V2)
-defaultAnchor room measured = case measured of
-  [] -> Nothing
-  _ ->
-    let biggest = maximum [area | (_, _, area, _) <- measured]
-        largest = [m | m@(_, _, area, _) <- measured, area >= biggest - 1e-9 * biggest]
-        lowest = minimum [y | (_, _, _, V2 _ y) <- largest]
-        low = [m | m@(_, _, _, V2 _ y) <- largest, y <= lowest + room]
-        leftmost = minimum [x | (_, _, _, V2 x _) <- low]
-     in find (\(_, _, _, V2 x _) -> x <= leftmost + room) low
+-- | Where the anchor goes among the faces given, numbered: in the largest,
+-- at the point 'pointInside' gives it, which is the face's vertex mean when
+-- that is inside it, and among faces of one area in the one whose point is
+-- lowest and then leftmost ('largestLowestLeftmost'). A tie is a billionth of
+-- the largest area, or the sheet's own tolerance in a height or a distance
+-- across, so that a rounding error cannot decide one. A face 'pointInside'
+-- finds no point in is passed over. 'Nothing' if every face is passed over,
+-- or there are none.
+anchorIn :: Double -> ([VertexId] -> [V2]) -> [(Int, [VertexId])] -> Maybe (Int, V2)
+anchorIn room ring faces =
+  (\(i, _, at) -> (i, at)) <$> largestLowestLeftmost room [(i, abs (signedArea (ring face)), at) | (i, face) <- faces, Just at <- [pointInside room (ring face)]]
 
 -- | The list with its @i@th item moved to the front: the anchor's face put
 -- first, since folding holds its first face still.
@@ -746,35 +743,24 @@ creaseAcross place line state folded flat foldAt letter = case crossedFaces flat
     MaterialPoint anchor = theAnchor state
 
 -- | Move the anchor to one of the faces given, which folding then holds
--- still: the vertex mean of the largest, ties to the lowest vertex mean and
--- then the leftmost, as 'sheetState' picks the default anchor
--- (PRDs\/02-language-semantics.md, §2.3). A face that is not convex can have
--- its vertex mean outside it, or on its outline, and the start refuses such a
--- default and asks the author for an anchor. A run has no one to ask, so it
--- takes the mean of the face's largest ear instead ('ears'), by the same
--- rule, and the move goes on to whatever the paper does next (#579). Two
--- moves ask for it: a new crease
--- through the anchor, from the faces around it that the move does not turn
--- (decisions C19), and a move that turns the anchor's paper, from the faces
--- beside its hinge that it holds still (owner decision 3). 'reanchorAt' does
--- the rest.
+-- still, chosen as 'sheetState' chooses the default anchor ('anchorIn',
+-- PRDs\/02-language-semantics.md, §2.3): in the largest face, at its vertex
+-- mean, or at the mean of its largest ear where a face that is not convex
+-- leaves its vertex mean outside it or on its outline (owner decision 51).
+-- Two moves ask for it: a new crease through the anchor, from the faces
+-- around it that the move does not turn (decisions C19), and a move that
+-- turns the anchor's paper, from the faces beside its hinge that it holds
+-- still (owner decision 3). 'reanchorAt' does the rest.
 reanchor :: Here -> FoldState -> Folded -> [FaceId] -> Either SequenceError (FoldState, Folded, Rigid)
 reanchor place state folded still = do
   let working = theWorking state
       material = materialPoints working
-      ring = ringOn material
-      measured = [(i, face, abs (signedArea (ring face)), centroid (ring face)) | (i, face) <- zip [0 ..] (facesVertices working), FaceId i `elem` still]
-      room = toleranceOf (IM.elems material)
-  case defaultAnchor room measured of
-    Just (i, face, _, mean)
-      | insideRing room (ring face) mean -> reanchorAt place state folded i mean
-      -- Only a face that is not convex can leave its vertex mean outside it
-      -- or on its outline. Then the mean of its largest ear is inside it,
-      -- chosen by the same rule.
-      | otherwise -> case defaultAnchor room [(k, face, area, at) | (k, area, at) <- ears room (ring face)] of
-          Just (_, _, _, inEar) | insideRing room (ring face) inEar -> reanchorAt place state folded i inEar
-          _ -> Left (refusedAt place (MoveNotRunYet "an anchor moved to a face that holds neither its own vertex mean nor an ear's,"))
-    Nothing -> Left (refusedAt place (JoinBroken "no face was left to hold still"))
+      faces = [(i, face) | (i, face) <- zip [0 ..] (facesVertices working), FaceId i `elem` still]
+  case anchorIn (toleranceOf (IM.elems material)) (ringOn material) faces of
+    Just (i, at) -> reanchorAt place state folded i at
+    Nothing
+      | null faces -> Left (refusedAt place (JoinBroken "no face was left to hold still"))
+      | otherwise -> Left (refusedAt place (MoveNotRunYet "an anchor moved to faces with no point found clear of their outlines,"))
 
 -- | Hold face @i@ of the working pattern still from now on, with the anchor
 -- at the material point given, which lies in it. The fold handed back is the

@@ -352,6 +352,21 @@ spec = describe "naming paper on a flat state" $ do
     -- Off the paper altogether is said as that, not as lying between faces.
     regionFace start (V2 2 2) `shouldBe` Left (OffThePaper (V2 2 2))
 
+  -- A square with creases from (0, 0.1) to (0.9, 0.1) to (0.9, 1): the face
+  -- beside the east edge is an L, and its vertex mean, (19/30, 11/30), lies
+  -- in the other face. Its two largest ears, at (0, 0) and (1, 1), tie, and
+  -- the first's mean, (1/3, 1/30), is the lower (owner decision 51). Turns red
+  -- if the seed were the L's vertex mean.
+  it "seeds edge east inside the face beside it, though that face is not convex" $ do
+    let creased =
+          emptyFrame
+            { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.1], [0.9, 0.1], [0.9, 1]],
+              edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 6), (6, 3), (3, 4), (4, 0), (4, 5), (5, 6)]],
+              edgesAssignment = replicate 6 Border ++ [Valley, Valley]
+            }
+    st <- right (sheetState squareSheet {keyFrame = creased}) >>= flatOf . workingPattern
+    fmap fst (firstLineSeed st (EdgeOf East)) `shouldSatisfy` either (const False) (near (V2 (1 / 3) (1 / 30)))
+
   -- Corner south-east turned to -90 stands out of the plane.
   it "refuses paper that does not lie flat" $ do
     paper90 <- workingPattern <$> right (sheetState blintz)

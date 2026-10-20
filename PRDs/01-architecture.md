@@ -1017,7 +1017,9 @@ The record this move produces (**SKETCH** values):
 corner coordinates) of the face beside L1's longest current material segment, ties
 to the lowest, then the leftmost
 ([D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot),
-[C68](decisions.md#changes-since-draft-v2)). Edge north's segments, edges 4 and 5,
+[C68](decisions.md#changes-since-draft-v2)), or the mean of the face's largest ear
+where a face that is not convex does not hold its vertex mean
+([02 §6.3](02-language-semantics.md#63-which-layers), owner decision 51). Edge north's segments, edges 4 and 5,
 are both ½ long; edge 5, from (½, 1) to (0, 1), is the leftmost, and its face is F2
 `[8,6,3,7]`, whose vertex mean is (1/4, 3/4) [py]. A seed must fill a region slot,
 strictly inside one face, because `unfold` resolves it again later. A point on edge
