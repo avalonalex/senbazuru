@@ -95,6 +95,15 @@ spec = do
     it "spells a number exactly, as the printer does" $
       explain (RatioOutOfRange (158 / 100)) `shouldBe` "fraction 79/50 is outside 0 to 1"
 
+  -- The pieces are where the paper lies, so the words ask for the line
+  -- another way rather than by the printed numbers, which are written as an
+  -- author writes numbers. Turns red if the words named a cause, printed an
+  -- exponent, or asked for two points (owner decision 52).
+  describe "a hinge that does not lie on one line" $
+    it "names its pieces as the paper lies, in an author's numbers, and asks for the line another way" $
+      explain (HingeNotStraight "half" [(V2 0 0.0625, V2 0.5 0.0625), (V2 0.5 0.0625, V2 0.5 0)])
+        `shouldBe` "\"hinge of half\" does not lie on one line now: as the paper lies, its pieces run (0, 0.0625) to (0.5, 0.0625), (0.5, 0.0625) to (0.5, 0); name the line another way"
+
   -- Turns red if the line were not named, or the hint about a nearest P
   -- were given to every refusal inside another line, or to none (#570).
   describe "a refusal of a line inside another" $
@@ -282,6 +291,7 @@ resolveSamples =
     NoSolution (NoCreaseAlong Nothing),
     HingeOfNotOneMove "c1" 0,
     EdgeNotStraight South [],
+    HingeNotStraight "half" [],
     NeedsNearest [],
     NearestAmbiguous (V2 0 0) [],
     NearestDisagrees (V2 0 0) (CandidateLine (V2 0 0) (V2 0 1) True) OnlyOnPaper (CandidateLine (V2 0 0) (V2 1 0) False),

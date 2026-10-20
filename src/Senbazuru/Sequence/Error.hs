@@ -530,6 +530,15 @@ data ResolveProblem
     -- where no piece of the sheet's outline lies along that side: each
     -- piece's ends where they lie, in sheet lengths.
     EdgeNotStraight Compass [(V2, V2)]
+  | -- | @hinge of NAME@, where the crease the named step turned about lies on
+    -- more than one line now: each piece's ends where the paper lies now, in
+    -- sheet lengths, each piece once. Part of the paper it runs through has
+    -- moved since, by a later fold or by unfolding layers it was made
+    -- through. No one line is the hinge then, and taking any piece's would
+    -- make the fold depend on which way the author wrote the crease (owner
+    -- decision 52). The ends are where the paper lies, not sheet points to
+    -- type, so the words ask for the line another way.
+    HingeNotStraight Name [(V2, V2)]
   | -- | A construction with more than one answer on the paper, and no
     -- @nearest P@ to choose: every answer, those on no paper included.
     NeedsNearest [CandidateLine]
@@ -586,9 +595,15 @@ instance Explain ResolveProblem where
       "edge "
         <> compassWords side
         <> " does not lie on one line now: its pieces run "
-        <> T.intercalate ", " [point a <> " to " <> point b | (a, b) <- pieces]
+        <> stretches pieces
         <> "; name the line by two points, such as "
         <> cornersOf side
+    HingeNotStraight (Name name) [] -> quote ("hinge of " <> name) <> " does not lie on one line now; name the line another way"
+    HingeNotStraight (Name name) pieces ->
+      quote ("hinge of " <> name)
+        <> " does not lie on one line now: as the paper lies, its pieces run "
+        <> stretches pieces
+        <> "; name the line another way"
     NeedsNearest answers -> "the construction has " <> tshow (length (filter candidateOnPaper answers)) <> " answers on the paper; add nearest P to choose one of them: " <> listed answers
     NearestAmbiguous at answers -> point at <> " lies as near to more than one answer; choose a point nearer one of them: " <> listed answers
     NearestDisagrees at taken because pointed ->
@@ -616,6 +631,10 @@ instance Explain ResolveProblem where
     NotRunYet what -> what <> " cannot be run yet"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
+      -- Pieces of a line, by their ends, in the numbers an author writes:
+      -- no exponent, and no rounding left by the folding.
+      stretches pieces = T.intercalate ", " [typed a <> " to " <> typed b | (a, b) <- pieces]
+      typed (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
       listed = T.intercalate "; " . map explain
       compassWords = \case
         North -> "north"
@@ -821,7 +840,7 @@ refusalKinds =
   map RefusalKind . concat $
     [ -- naming paper against a state
       ["NearMiss", "VertexMiss", "TwoVerticesWithin", "NotInOneFace", "OffThePaper", "PlacementsDisagree", "NoCornerThere", "HingeOfNotOneMove"],
-      ["EdgeNotStraight", "CreaseNotStraight", "EmptyCrease", "ConstructionInTheAir"],
+      ["EdgeNotStraight", "CreaseNotStraight", "HingeNotStraight", "EmptyCrease", "ConstructionInTheAir"],
       ["NoSolution", "NeedsNearest", "NearestAmbiguous", "NearestDisagrees", "DegenerateConstruction", "NoCreaseThere"],
       ["MarkOnSeveralLayers", "EndTie", "LandmarkAmbiguous"],
       -- choosing which paper moves
@@ -899,6 +918,7 @@ refusalKindOf =
       NoSolution {} -> Just "NoSolution"
       HingeOfNotOneMove {} -> Just "HingeOfNotOneMove"
       EdgeNotStraight {} -> Just "EdgeNotStraight"
+      HingeNotStraight {} -> Just "HingeNotStraight"
       NeedsNearest {} -> Just "NeedsNearest"
       NearestAmbiguous {} -> Just "NearestAmbiguous"
       NearestDisagrees {} -> Just "NearestDisagrees"

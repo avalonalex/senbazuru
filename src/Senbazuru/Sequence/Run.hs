@@ -76,10 +76,9 @@
 -- == Not yet
 --
 -- Refused as not run yet: a new crease on folded paper, which creases through
--- its layers (milestone M4); @hinge of NAME@ on a crease a later fold has
--- bent; @L1 to L2@ between lines other than an edge and @[P, Q]@; layer
--- words; and every move but @fold@, @pre-crease@, @unfold@, @turn over@,
--- @rotate@ and @anchor@, @mark@ among them.
+-- its layers (milestone M4); @L1 to L2@ between lines other than an edge
+-- and @[P, Q]@; layer words; and every move but @fold@, @pre-crease@,
+-- @unfold@, @turn over@, @rotate@ and @anchor@, @mark@ among them.
 --
 -- A re-anchoring onto a face that does not lie flat is refused as
 -- @ReanchorNotFlat@ (PRDs\/02-language-semantics.md, §2.3), since then no

@@ -64,7 +64,6 @@ module Senbazuru.Sequence.Resolve
     FoldLine (..),
     foldLine,
     carryLine,
-    lineAlong,
     hingeLine,
     hingeAlong,
     crossedFaces,
@@ -92,7 +91,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (minimumBy, nub, sort, sortOn)
+import Data.List (minimumBy, nub, nubBy, sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
 import Senbazuru.Fold.Faces (toleranceOf)
@@ -524,31 +523,41 @@ straddles st (FoldLine origin direction) (a, b) =
    in (side a > flatRoom st && side b < negate (flatRoom st)) || (side a < negate (flatRoom st) && side b > flatRoom st)
 
 -- | The line @hinge of NAME@ names: the one the creases its move turned
--- about lie along now, given as the runner finds them on the paper. Every
--- piece must lie on the first's line, within the sheet's tolerance. A later
--- fold that turned part of the crease leaves no one line to name, and taking
--- the first piece's would make the line depend on which way the author wrote
--- the crease, so that is refused.
+-- about lie along now, given as the runner finds them on the paper. It is
+-- the longest piece's line, and every piece must lie on it, within the
+-- sheet's tolerance, as 'edgeNow' measures an edge. The first piece's line
+-- would not do: which piece is first depends on which way the crease was
+-- written, and a short one tilted by rounding gives another line, or refuses
+-- a straight crease. For the same reason the line points east, or north
+-- ('eastOrNorth'), whichever way its pieces run. A crease whose pieces lie
+-- on more than one line has no one line to name, and is refused with every
+-- piece where it lies, in an order that does not depend on how it was written
+-- (owner decision 52). It comes about wherever part of the paper the crease
+-- runs through has moved since: a later fold carrying part of it away, or a
+-- crease made through several layers, which lay on one line only while they
+-- were stacked.
 hingeLine :: FlatState -> Name -> [EdgeId] -> Either ResolveProblem FoldLine
-hingeLine st (Name name) = \case
-  [] -> Left (NoSolution (NoCreaseAlong Nothing))
-  piece : rest -> do
-    line@(FoldLine origin direction) <- lineAlong st piece
-    let off v = maybe 0 (\p -> abs (cross2 direction (p ^-^ origin))) (IM.lookup v (flatPlaced st))
-        ends = [v | (e, a, b, _) <- flatEdges st, e `elem` rest, v <- [a, b]]
-    if all ((<= flatRoom st) . off) ends
-      then Right line
-      else Left (NotRunYet ("\"hinge of " <> name <> "\", whose crease a later fold has bent,"))
-
--- | The fold line along an edge, where the paper now lies: how @hinge of
--- NAME@ names a line, by a crease the named move turned about.
-lineAlong :: FlatState -> EdgeId -> Either ResolveProblem FoldLine
-lineAlong st edge = case [(a, b) | (e, a, b, _) <- flatEdges st, e == edge] of
-  (a, b) : _
-    | Just p <- IM.lookup a (flatPlaced st),
-      Just q <- IM.lookup b (flatPlaced st) ->
-        if norm (q ^-^ p) <= flatRoom st then Left DegenerateConstruction else Right (FoldLine p ((1 / norm (q ^-^ p)) *^ (q ^-^ p)))
-  _ -> Left (NoSolution (NoCreaseAlong Nothing))
+hingeLine st name hinge =
+  case sortOn (\(p, q) -> negate (norm (q ^-^ p))) pieces of
+    [] -> Left (NoSolution (NoCreaseAlong Nothing))
+    (p, q) : _
+      | norm (q ^-^ p) <= flatRoom st -> Left DegenerateConstruction
+      | otherwise ->
+          let direction = (1 / norm (q ^-^ p)) *^ (q ^-^ p)
+              off x = abs (cross2 direction (x ^-^ p))
+           in if all (\(a, b) -> off a <= flatRoom st && off b <= flatRoom st) pieces
+                then Right (FoldLine p (eastOrNorth direction))
+                else Left (HingeNotStraight name (asRead pieces))
+  where
+    pieces = [(p, q) | e <- hinge, (e', a, b, _) <- flatEdges st, e' == e, Just p <- [IM.lookup a (flatPlaced st)], Just q <- [IM.lookup b (flatPlaced st)]]
+    -- Each piece once, though layers lying together give it twice, with its
+    -- ends in order and the pieces in order, all in sheet lengths. The order
+    -- is by a grid of a billionth of a sheet length, so rounding cannot
+    -- decide it.
+    asRead lying = nubBy (\x y -> keys x == keys y) (sortOn keys [ordered (toSheetLengths st a, toSheetLengths st b) | (a, b) <- lying])
+    ordered (a, b) = if key a <= key b then (a, b) else (b, a)
+    keys (a, b) = (key a, key b)
+    key (V2 x y) = (round (x * 1e9) :: Integer, round (y * 1e9) :: Integer)
 
 -- | The creases lying along the fold line: the candidates a fold turns
 -- about. Refused if the line runs along no crease, or if it crosses a face

@@ -487,7 +487,7 @@ text, never by the anchor
 | `P to L` | O7, with L2 ⊥ L | puts P on L with the fold line parallel to L: "fold the corner to the crease" | 1; P on L refused | the side containing P |
 | `edge S` | — | the line through its current segments, only if they are collinear within `Fold.Faces.tolerance` (§4.6) | 1 | needs a `moving` seed |
 | `crease [P, Q]` | Lucero's O3, the one he adds | runs along existing creases from vertex P to vertex Q | 1 | needs a `moving` seed |
-| `hinge of NAME` | — | runs along the segments NAME's single move turned about | 1 | needs a `moving` seed |
+| `hinge of NAME` | — | runs along the segments NAME's single move turned about. Usable as a line only while they are collinear; otherwise refused as `HingeNotStraight`, naming them where the paper lies ([owner decision 52](decisions.md#9-owner-decisions)) | 1 | needs a `moving` seed |
 | `crease of NAME` | — | runs along the segments NAME created, which may be none. Usable as a line only when they are collinear now | 1 | needs a `moving` seed |
 | `model [(x1, y1), (x2, y2)]` | escape | runs between two points in the current model's coordinates as seen. Flat states only, recorded as "not a landmark", and it depends on the anchor | 1 | needs a `moving` seed |
 
@@ -526,9 +526,7 @@ worked out first where the paper now lies; each line of `L1 to L2` is an edge or
 the `let` line that names it, and chooses L, not the fold. A refusal of a line
 inside another is that line's: it names the line, with any `let` name written out,
 and has the line's own refusal kind, so `expect refused NeedsNearest` matches an L
-with two answers. `hinge of NAME` is refused while a later fold has bent the crease
-it names, so that its pieces no longer lie on one line: taking any one piece's line
-would make the fold depend on which way the author wrote the crease.
+with two answers.
 
 ### 4.4 Resolution by slot
 
@@ -1490,7 +1488,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `VertexMiss`, `TwoVerticesWithin` | `ResolveProblem` | vertex slot: no vertex, or two, within tolerance | nearest vertices; distances |
 | `NotInOneFace` | `ResolveProblem` | region slot on a crease or vertex | the point; face count; where it appears as seen |
 | `OffThePaper`, `PlacementsDisagree` | `ResolveProblem` | a position on no face; faces placing it apart | the point; the distance |
-| `EdgeNotStraight`, `CreaseNotStraight`, `EmptyCrease` | `ResolveProblem` | `edge S` or `crease of NAME` not collinear now; `crease of` a step that made none | the segments' current ends |
+| `EdgeNotStraight`, `CreaseNotStraight`, `HingeNotStraight`, `EmptyCrease` | `ResolveProblem` | `edge S`, `crease of NAME` or `hinge of NAME` not collinear now ([owner decision 52](decisions.md#9-owner-decisions)); `crease of` a step that made none | the segments' current ends |
 | `ConstructionInTheAir` | `ResolveProblem` | a construction or `model` on a state that is not flat | the construction |
 | `NoSolution`, `NeedsNearest`, `NearestAmbiguous`, `DegenerateConstruction` | `ResolveProblem` | no solution on the paper, or a line along which no crease runs; ≥2 without `nearest`; `nearest` leaving 0 or ≥2; coincident inputs | every candidate line, off-paper ones included |
 | `NearestDisagrees` | `ResolveProblem` | `nearest P` where the rules already took one answer, and P lies nearer another, one crossing no paper included (decision 41) | P; the answer taken and why; the answer P lies nearer |
