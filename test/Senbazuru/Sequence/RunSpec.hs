@@ -1071,23 +1071,64 @@ creasing = describe "a fold along a line where no crease runs" $ do
       Left err@(ResolveRefused _ _ written (InsideLine inner (NeedsNearest answers))) -> do
         (written, inner, length answers) `shouldBe` ("perpendicular to ([(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)]) through (1/4, 1/4)", "[(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)]", 2)
         refusalKindOf err `shouldBe` Just (RefusalKind "NeedsNearest")
-        explain err `shouldSatisfy` T.isInfixOf "the line inside it, [(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)], is refused, and a nearest P for it goes inside its parentheses: the construction has 2 answers"
+        explain err `shouldSatisfy` T.isInfixOf "the line inside it, \"[(0, 1/2), (1, 1/2)] to [(1/2, 0), (1/2, 1)]\", is refused, and a nearest P for it goes right after it, where it is written, not after the whole line: the construction has 2 answers"
       other -> expectationFailure ("expected L refused as needing a nearest P, got " <> either (show . explain) (const "a run") other)
 
   -- The square folded in half across its middle and unfolded, then folded
   -- at right angles to that hinge through the centre, which is the line up
   -- the middle: a hinge inside another line is found as one standing alone
-  -- is (#570). Turns red if a hinge inside another line were refused, or
-  -- found other than from the run's records.
+  -- is (#570). The step that folds in half also turns the paper over, which
+  -- turns no paper about a hinge, so the step still has one hinge. Turns
+  -- red if a hinge inside another line were refused, or laid in a direction
+  -- other than its crease's, or if a turn-over counted as a second hinge.
   it "folds at right angles to a hinge as along the same line through two points" $ do
-    let afterHalf third = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp $ do
-          half <- step "half" "Fold the top half down." (move (Fold ValleyFold ToFlat (Segment (MidpointOfEdge West) (MidpointOfEdge East)) FlapOfFirstArgument (Just (corner NorthEast))))
+    let afterHalf lineFrom = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp $ do
+          half <- step "half" "Fold the top half down, and turn the paper over." $ do
+            move (Fold ValleyFold ToFlat (Segment (MidpointOfEdge West) (MidpointOfEdge East)) FlapOfFirstArgument (Just (corner NorthEast)))
+            turnOver LeftRight
           step_ "Unfold it." (unfold [half])
-          step_ "Fold the right half behind." (move (Fold MountainFold ToFlat (third half) FlapOfFirstArgument (Just (corner SouthEast))))
+          step_ "Fold the right half behind." (move (Fold MountainFold ToFlat (lineFrom half) FlapOfFirstArgument (Just (corner SouthEast))))
     o4Run <- right (afterHalf (\half -> PerpendicularThrough (hingeOf half) centre))
     twoRun <- right (afterHalf (const (Segment (MidpointOfEdge South) (MidpointOfEdge North))))
-    length (runRecords o4Run) `shouldBe` 3
+    length (runRecords o4Run) `shouldBe` 4
     map facts (runRecords o4Run) `shouldBe` map facts (runRecords twoRun)
+
+  -- A step that only turns the paper over turned no paper about a hinge,
+  -- and is refused as having made none, not as a line along no crease.
+  -- Turns red if its turn-over were taken for a move with a hinge.
+  it "refuses the hinge of a step that turned no paper" $ do
+    let overThen = onSquare (Just (at (1 / 4) (1 / 4))) ColouredUp $ do
+          flipped <- step "flipped" "Turn the paper over." (turnOver LeftRight)
+          step_ "Fold the right half behind." (move (Fold MountainFold ToFlat (PerpendicularThrough (hingeOf flipped) centre) FlapOfFirstArgument (Just (corner SouthEast))))
+    case overThen of
+      Left (ResolveRefused _ _ _ (InsideLine "hinge of flipped" (HingeOfNotOneMove (Name "flipped") 0))) -> pure ()
+      other -> expectationFailure ("expected the hinge refused as of no turn, got " <> either (show . explain) (const "a run") other)
+
+  -- Pre-creases across x = 1/4 and y = 1/4 so the last fold runs along
+  -- creases the paper has; the square folded in half across its middle and
+  -- unfolded; then the north-east corner folded over, which carries the
+  -- east end of that crease round to run north-south. The crease the half
+  -- fold turned about no longer lies on one line. Taking its first piece,
+  -- the fold at right angles to it ran up x = 1/4 or along y = 1/4, by which
+  -- way the half fold's line had been written. Turns red if a bent hinge
+  -- gave a line, written either way, alone or inside another.
+  it "refuses a hinge a later fold has bent, however its crease was written" $ do
+    let bentThen halfLine lineFrom = onSquare (Just (at (1 / 2) (3 / 8))) ColouredUp $ do
+          step_ "Pre-crease x = 1/4." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 4) 0) (at (1 / 4) 1)) FlapOfFirstArgument (Just (corner SouthWest))))
+          step_ "Pre-crease y = 1/4." (move (FoldAndUnfold ValleyFold (Segment (at 0 (1 / 4)) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner SouthWest))))
+          half <- step "half" "Fold the top half down." (move (Fold ValleyFold ToFlat halfLine FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Unfold it." (unfold [half])
+          step_ "Fold the north-east corner down." (move (Fold ValleyFold ToFlat (Segment (at (1 / 4) 1) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner NorthEast))))
+          step_ "Fold along the half crease, or across it." (move (Fold ValleyFold ToFlat (lineFrom half) FlapOfFirstArgument (Just (corner SouthWest))))
+        bent = \case
+          ResolveRefused _ _ _ (InsideLine _ (NotRunYet what)) -> "bent" `T.isInfixOf` what
+          ResolveRefused _ _ _ (NotRunYet what) -> "bent" `T.isInfixOf` what
+          _ -> False
+    forM_ [Segment (MidpointOfEdge West) (MidpointOfEdge East), Segment (MidpointOfEdge East) (MidpointOfEdge West)] $ \halfLine ->
+      forM_ [\half -> PerpendicularThrough (hingeOf half) (at (1 / 4) (1 / 4)), hingeOf] $ \lineFrom ->
+        case bentThen halfLine lineFrom of
+          Left err | bent err -> pure ()
+          other -> expectationFailure ("expected the bent hinge refused, got " <> either (show . explain) (const "a run") other)
 
   -- A point typed 1/2000 above the middle of the south side is that far from
   -- (1/2, 0), the end of the crease each fold here makes, and is near no
