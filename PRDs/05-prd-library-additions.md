@@ -88,10 +88,12 @@ Each line is something a runner cannot do with today's exports.
 - **Step inference refuses a growing graph and counts a turn-over as a motion**
   ([`Step.hs:94-96`](../src/Senbazuru/Origami/Step.hs#L94-L96),
   [`:30-34`](../src/Senbazuru/Origami/Step.hs#L30-L34)).
-- **Flap gives positions, not per-face motions, and hides its stationary face**
+- **Flap gives positions, not per-face motions, and hid its stationary face**
   ([`Flap.hs:416-420`](../src/Senbazuru/Origami/Flap.hs#L416-L420),
-  [`:76-89`](../src/Senbazuru/Origami/Flap.hs#L76-L89)).
-- **Flap's travel sign depends on that hidden face.** Travel is the change in the
+  [`:76-89`](../src/Senbazuru/Origami/Flap.hs#L76-L89)), until #344 (2026-09-23)
+  exported it as `flapStationaryFace`
+  ([`Flap.hs:92`](../src/Senbazuru/Origami/Flap.hs#L92), now exported).
+- **Flap's travel sign depends on that face.** Travel is the change in the
   *first* listed segment's angle, and each other segment's sign follows its own
   stationary face's ring ([`Flap.hs:14-16`](../src/Senbazuru/Origami/Flap.hs#L14-L16),
   [`:284-301`](../src/Senbazuru/Origami/Flap.hs#L284-L301)), so a caller holding
@@ -458,8 +460,8 @@ flapAt checked progress = routeSurface <$> flapPoseAt checked progress
 ([glossary-additions](glossary-additions.md#running-a-sequence),
 [D14](decisions.md#d14-material-consumption));
 `FlapMotion` stores it ([`Flap.hs:115`](../src/Senbazuru/Origami/Flap.hs#L115),
-chosen at [`:270`](../src/Senbazuru/Origami/Flap.hs#L270)) and nothing exports
-it. Animation keys and `rigid-pose` grips need one rigid motion per face along
+chosen at [`:270`](../src/Senbazuru/Origami/Flap.hs#L270)), and #344 (2026-09-23)
+exports it as `flapStationaryFace` ([`Flap.hs:92`](../src/Senbazuru/Origami/Flap.hs#L92)). Animation keys and `rigid-pose` grips need one rigid motion per face along
 the route ([D10](decisions.md#d10-assurance-as-evidence-values)); `surfaceAt` computes them
 ([`:471`](../src/Senbazuru/Origami/Flap.hs#L471)) and discards them, and
 re-deriving them adds a `foldFrameWith` call to the roughly seven a checked step

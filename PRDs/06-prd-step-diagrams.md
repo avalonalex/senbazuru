@@ -33,7 +33,7 @@ turn-over, or cope with a crease graph that grows between steps.
 
 This PRD adds `stepPageWith`, taking a typed `StepNote` beside each frame.
 `stepPage` becomes `stepPageWith` with notes that reproduce today exactly, so its
-23 call lines and every tracked golden are untouched. `Diagram` gains arrow heads
+call lines and every tracked golden are untouched. `Diagram` gains arrow heads
 and bodies (defaults emit today's bytes) and one shape, `Symbol`. `Layout` places
 captions. `Render.Sequence` builds the notes from a run's *move records*, one per
 checked move ([glossary](glossary-additions.md#running-a-sequence)), beside the
@@ -119,7 +119,8 @@ is seen ([`Style.hs:54-62`](../src/Senbazuru/Diagram/Style.hs#L54-L62)).
 ### What changing the API would cost
 
 `grep -rn "stepPage\b" --include='*.hs' src app test study`, less the export,
-imports, signature, definition and comments, leaves 23 call lines in 15 files:
+imports, signature, definition and comments, left 23 call lines in 15 files on
+2026-09-15 at `568dcb6`:
 
 | Arrows on (`True`) | Arrows off (`False`) |
 | --- | --- |
@@ -170,7 +171,7 @@ imports, signature, definition and comments, leaves 23 call lines in 15 files:
 - **R-06-2.** `stepPage`'s signature is unchanged and it is `stepPage theme budget
   grid view arrows = stepPageWith theme budget grid view . map (\f -> (f, noteFor
   arrows))`, `noteFor True = inferNote`, `noteFor False = silentNote`. One
-  implementation; none of the 23 call lines is edited.
+  implementation; none of its call lines is edited.
 - **R-06-3.** `StepError` is unchanged
   ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)), so the CLI's match
   at [`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977) compiles
@@ -660,16 +661,16 @@ with `gh issue view 94`) is amended at M0
 [`Cli.hs:5-8`](../app/Senbazuru/Cli.hs#L5-L8);
 [D13](decisions.md#d13-the-run-verb-and-io)); `pageSide` carries the tested logic.
 
-### Goldens that must stay byte-identical (the 33 tracked at `568dcb6`)
+### Goldens that must stay byte-identical (`git ls-files test/golden`)
 
 | Group | Goldens (producer) | What here could move them |
 | --- | --- | --- |
-| Step pages with arrows (12) | `quarter-fold-steps.svg` (`SvgSpec.hs:392`); `quarter-fold-step-1.svg` (`:384`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:295`, `:315`, `:325`); `checked-blintz.svg` (`BlintzSequenceSpec.hs:139`); `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
+| Step pages with arrows (14) | `quarter-fold-steps.svg` (`SvgSpec.hs:392`); `bird-base-sequence-arrows.svg` (`:402`); `quarter-fold-sequence-steps.svg` (`WriteSpec.hs:127`); `quarter-fold-step-1.svg` (`:384`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:295`, `:315`, `:325`); `checked-blintz.svg` (`BlintzSequenceSpec.hs:139`); `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
 | Step pages without arrows (4) | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` (`BirdSequenceSpec.hs:84`); `frog-sequence.svg` (`BasicBaseSpec.hs:220`); `bent-strip.svg` (`WingBendingSpec.hs:102`) | `silentNote`; the trailing gutter and the captioned gutter; basis choice |
 | Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:346-507`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill` |
-| GLB (3) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:617`, `:622`, `:627`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
+| GLB (4) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:617`, `:622`, `:627`); `blintz-sequence-final.glb` (`WriteSpec.hs:206`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
 
-These are the 33 tracked on 2026-09-15 at `568dcb6`. Ten more have been tracked since, 43 at `7af4c92`: `blintz.foldseq`, `every-construct.foldseq` and `quarter-fold.foldseq` (#290); `run-refused-check.txt` and `run-refused-parse.txt` (#341); `quarter-fold-sequence-steps.svg` (#512); `blintz-expected-report.txt` and `quarter-fold-report.txt` (#513); `blintz-sequence-final.glb` (#514); and `bird-base-sequence-arrows.svg` (#522). [D16](decisions.md#d16-testing-and-acceptance)'s check reads `test/golden/` whole, so it holds them all; this table groups only the first 33.
+The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten tracked between then and `7af4c92`: `quarter-fold-sequence-steps.svg` (#512) and `bird-base-sequence-arrows.svg` (#522), drawn by `stepPage` with arrows, and `blintz-sequence-final.glb` (#514). The other seven are not grouped: `blintz.foldseq`, `every-construct.foldseq` and `quarter-fold.foldseq` (#290); `run-refused-check.txt` and `run-refused-parse.txt` (#341); and `blintz-expected-report.txt` and `quarter-fold-report.txt` (#513). [D16](decisions.md#d16-testing-and-acceptance)'s check reads `test/golden/` whole, so it covers every one, grouped or not.
 
 ### New goldens
 

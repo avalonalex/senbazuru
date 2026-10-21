@@ -78,11 +78,13 @@ instance Explain SpreadError where explain (SpreadError message) = message
 
 -- | The study controls are deliberately small: root 30 degrees, extra grip
 -- rotation 0..20 degrees, refinement 3 or 4 (eight or sixteen spans per wing).
--- With the hinge at 1/4 ('studyHinge') both levels put mesh lines exactly at
--- the ends of the 1/8-span root and tip strips. At the wing's root (y = 0.376)
--- they do not: the root strip is the base, which ends on the join at the
--- widest point ('rootStrip'), and the tip grip stops at the last mesh line
--- short of the eighth, y = 0.0406 against 0.047.
+-- With the hinge below the wing's widest point, as at 1/4 ('studyHinge'), both
+-- levels put mesh lines exactly where the root strip and the tip grip end,
+-- each an eighth of the length from the hinge to the tip. Above it, as at the
+-- wing's root ('wingRoot'), the tip side ends on the join along the widest
+-- point, so its mesh lines fall at fractions of that instead. At the root the
+-- root strip is the base, which ends on the join ('rootStrip'), and the tip
+-- grip stops at the last mesh line short of the eighth, y = 0.0406 of 0.047.
 craneSpread :: Frame -> Int -> Double -> Either SpreadError CraneSpread
 craneSpread = craneSpreadWith WingOnly
 
@@ -105,13 +107,13 @@ spreadControls level degrees =
 
 -- | Spread a wing already built. The held strips and the bend are measured
 -- from its hinge line, as fractions of the wing's length from there, except
--- the root strip where the base is longer than an eighth ('rootStrip').
+-- the root strip ('rootStrip').
 craneSpreadFromWing :: SpreadRefinement -> CraneWing -> Int -> Double -> Either SpreadError CraneSpread
 craneSpreadFromWing selection wing level degrees = do
   spreadControls level degrees
-  -- Above the widest point the base between the join and the hinge is held,
-  -- as the root strip or within it ('rootStrip'). Without the join the base is
-  -- no panel of its own, and the start already has layers out of order.
+  -- Above the widest point the root strip holds all of the base between the
+  -- join and the hinge ('rootStrip'). Without the join the base is no panel of
+  -- its own, and the start already has layers out of order.
   when (craneHingeY wing > craneWidest wing + 1e-9 && not (craneJoined wing)) $
     Left (SpreadError "a wing creased above its widest point needs the join along it to be spread; build it with buildCraneWingAt")
   sheet <- checked (surfaceFromFolded (craneStart wing))
@@ -149,12 +151,15 @@ craneSpreadFromWing selection wing level degrees = do
   pure (CraneSpread sheet refined base {samples = moved} pins body moving hinges orders grip)
 
 -- | The held root strip's length along the wing from its hinge: an eighth of
--- the wing, or all of the base between the hinge and the wing's widest point,
--- whichever is longer. The base is longer only once the hinge is above 8/7 of
--- the widest point's height: on the crane, whose widest point is at
--- y = 0.3244, above y = 0.3708, as at the wing's root (y = 0.376). Between the
--- two the eighth is longer, and the strip reaches past the widest point. The
--- base is four layers deep, and the studies turn it as one piece
+-- the length from the hinge to the tip, or all of the base between the hinge
+-- and the wing's widest point, whichever is longer. With the tip at y = 0, the
+-- hinge at y = h and the widest point at y = w, the base is longer when
+-- h - w > h/8, that is when h > 8w/7: on the crane, where w = 0.3244, when the
+-- hinge is above y = 0.3708, as at the wing's root ('wingRoot'). Between w and
+-- 8w/7 the eighth is longer, but the strip holds only the mesh vertices it
+-- covers, and at refinement 3 those end on the join at the widest point all
+-- the same (at refinement 4, below about y = 0.348, one mesh line past it).
+-- The base is four layers deep, and the studies turn it as one piece
 -- ('CraneWing').
 rootStrip :: CraneWing -> Double
 rootStrip wing = max (craneHingeY wing / 8) (craneHingeY wing - craneWidest wing)
