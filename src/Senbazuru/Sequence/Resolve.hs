@@ -80,7 +80,7 @@ module Senbazuru.Sequence.Resolve
     seedFaces,
     Selection (..),
     flapOf,
-    seedsByFlap,
+    seedForEachFlap,
     hingeStretches,
   )
 where
@@ -94,6 +94,9 @@ import Data.IntSet qualified as IS
 import Data.List (minimumBy, nub, nubBy, sort, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
+import Data.Ratio (approxRational, denominator)
+import Data.Text (Text)
+import Senbazuru.Explain (decimal)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, perpendicular)
@@ -103,10 +106,10 @@ import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Folding (Folded (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), ResolveProblem (..), SelectionError (..), TakenBecause (..), Unsolved (..))
-import Senbazuru.Sequence.Pretty (prettyLine)
+import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record (MaterialPoint (..), MaterialSegment (..))
 import Senbazuru.Sequence.SheetLengths (fromSheetLengths, inSheetLengths, lengthInSheetLengths, sheetLengthOf)
-import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..))
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Line (..), Name (..), Point (..), exactNumber)
 
 -- | A flat state, measured once for naming paper on it: where each vertex was
 -- on the sheet and where it is now, how each face is placed, which creases
@@ -688,27 +691,56 @@ data Selection = Selection
   }
   deriving stock (Eq, Show)
 
--- | The seeds a refusal asking which side moves can offer, flap by flap
--- (PRDs\/02-language-semantics.md, §12): for each flap the line borders, the
--- faces that move, and the points that, written as @moving P@, choose it, in
--- sheet lengths, best first. A face offers the point the anchor would take in it
--- ('pointsInside', owner decision 51), and belongs to the flap 'flapOf'
--- chooses from that point. On folded paper a side of the line can hold
--- several flaps, each a different fold, so the flaps are told apart by the
--- faces that move, not by the side they lie on. Within a flap, the largest
--- face's point comes first ('inPreferredOrder'). Whether the fold then runs
--- from one is the turn's question, which the runner asks.
-seedsByFlap :: FlatState -> FoldLine -> [EdgeId] -> [([FaceId], [V2])]
-seedsByFlap st line candidates =
-  [ (moving, [toSheetLengths st m | (_, _, m) <- inPreferredOrder (flatRoom st) [(f, size, m) | (f, size, m, moving') <- choosing, moving' == moving]])
-    | moving <- nub [moving' | (_, _, _, moving') <- choosing]
-  ]
+-- | The seed a refusal asking which side moves offers for each flap the line
+-- borders (PRDs\/02-language-semantics.md, §12), written as the author would
+-- write it (owner decision 53), lowest and then leftmost first.
+--
+-- A face offers the point the anchor would take in it ('pointsInside', owner
+-- decision 51), and belongs to the flap 'flapOf' chooses from that point. On
+-- folded paper a side of the line can hold several flaps, each a different
+-- fold, so the flaps are told apart by the faces that move, not by the side
+-- they lie on. A flap's seed is the first of: a sheet corner or the centre,
+-- lowest and then leftmost; else one of its faces' points, the largest face's
+-- first ('inPreferredOrder'), each coordinate an exact fraction with a
+-- denominator of 64 or less where one lies within the sheet's tolerance of
+-- it, else to six places. Each is kept only if it chooses that very flap as
+-- written, since a name, or a point once rounded, can lie in another; a flap
+-- too thin for six places at every point is offered nothing. The text is
+-- worked out from the point it names, so the two cannot disagree.
+--
+-- Whether the fold then runs from it is the turn's question, which the runner
+-- asks. Every point a flap is chosen from turns the same faces about the same
+-- hinge, so a refusal once the flap is chosen is the flap's.
+seedForEachFlap :: FlatState -> FoldLine -> [EdgeId] -> [(Point, Text)]
+seedForEachFlap st line candidates =
+  -- Every seed is given the same size, so they are taken lowest and then
+  -- leftmost.
+  [seed | (seed, _, _) <- inPreferredOrder room [(seed, 0, m) | moving <- flaps, (seed, m) <- take 1 (seedsOf moving)]]
   where
+    room = flatRoom st
     choosing =
       [ (f, size, m, sort (selectionMoving selection))
-        | (f, size, m) <- pointsInside (flatRoom st) [(f, ringOf st ring) | (f, ring) <- flatFaces st],
+        | (f, size, m) <- pointsInside room [(f, ringOf st ring) | (f, ring) <- flatFaces st],
           Right selection <- [flapOf st line candidates m [f]]
       ]
+    flaps = nub [moving | (_, _, _, moving) <- choosing]
+    pointsOf moving = [toSheetLengths st m | (_, _, m) <- inPreferredOrder room [(f, size, m) | (f, size, m, moving') <- choosing, moving' == moving]]
+    seedsOf moving =
+      [ ((p, written), m)
+        | (p, written) <- map named [CornerOf SouthWest, CornerOf SouthEast, Centre, CornerOf NorthWest, CornerOf NorthEast] ++ map numbered (pointsOf moving),
+          Right m <- [materialPoint st p],
+          Right picked <- [seedFaces st m],
+          Right selection <- [flapOf st line candidates m picked],
+          sort (selectionMoving selection) == moving
+      ]
+    named p = (p, prettyPoint p)
+    numbered (V2 x y) =
+      let (u, across) = coordinate x
+          (v, up) = coordinate y
+       in (AtSheet u v, "(" <> across <> ", " <> up <> ")")
+    coordinate c = case approxRational c (room / sheetLength st) of
+      r | denominator r <= 64 -> (r, exactNumber r)
+      _ -> let r = toRational (round (c * 1e6) :: Integer) / 1e6 in (r, decimal (fromRational r))
 
 -- | The flap containing the seed: the faces still joined to the seed's faces
 -- once every candidate crease along the line is cut. The hinge is the

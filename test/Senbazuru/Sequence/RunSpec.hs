@@ -112,14 +112,16 @@ running = describe "running a sequence" $ do
   -- Without one, the refusal offers a seed for each flap the fold can move
   -- (#571), as the author would write it (owner decision 53): the corner
   -- beyond the crease, and for the rest of the blintz its lowest, then
-  -- leftmost, corner. Turns red if a flap's seed were missing, or a corner
-  -- were offered for a flap it does not name.
+  -- leftmost, corner, the flaps too taken lowest and then leftmost by the
+  -- seed offered. Turns red if a flap's seed were missing, a corner were
+  -- offered for a flap it does not name, or the flaps were ordered by their
+  -- faces' points rather than by the seeds the message shows.
   it "folds the side named by moving P, and refuses a line with none" $ do
     let alongEdge8 = Segment (MidpointOfEdge South) (MidpointOfEdge East)
     run <- right (runOn (oneStep (move (Fold MountainFold ToFlat alongEdge8 FlapOfFirstArgument (Just (CornerOf SouthEast))))))
     map (concatMap snd . recordHinge) (runRecords run) `shouldBe` [[EdgeId 8]]
     case refusal (runOn (oneStep (fold mountain alongEdge8))) of
-      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` ["corner south-east", "corner south-west"]
+      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` ["corner south-west", "corner south-east"]
       other -> expectationFailure ("expected the line refused with a seed for each side, got " <> show other)
 
   describe "refuses" $ do
@@ -1105,22 +1107,37 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- An octagon has no corner of its box to name, and its centre lies on a
   -- fold up the middle, so each flap's seed is a number (owner decision 53).
   -- Pre-creased a quarter up, each half is a flap of two faces, and offers
-  -- its larger face's point, an exact fraction. With its corners 0.29 in,
-  -- no fraction with a denominator of 64 or less fits, so the point is
-  -- given to six places, and written in it folds. Turns red if a flap
-  -- offered its smaller face's point, a fraction that does not fit, or a
-  -- number from which the fold does not run.
-  it "offers a flap's seed as an exact fraction, or else to six places, where no corner or the centre names it" $ do
+  -- its larger face's point, whose coordinates are exact fractions. With its
+  -- corners 0.29 in, no fraction with a denominator of 64 or less fits its x,
+  -- which is given to six places, while its y is still 1/2. Each, copied from
+  -- the message into the source as moving P, parses and folds. Turns red if
+  -- a flap offered its smaller face's point, a fraction that does not fit, a
+  -- coordinate to six places that has a fraction, or a seed that does not
+  -- parse, or does not fold, as printed.
+  it "offers a flap's seed with each coordinate an exact fraction where one fits, else to six places" $ do
     let octagon a = emptyFrame {verticesCoords = [[a, 0], [1 - a, 0], [1, a], [1, 1 - a], [1 - a, 1], [a, 1], [0, 1 - a], [0, a]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 8)) | i <- [0 .. 7]], edgesAssignment = replicate 8 Border}
-        onOctagon a = runOn (M.singleton "octagon.fold" squareSheet {keyFrame = octagon a}) . sequenceOf (header "An octagon" (sheetFile "octagon.fold") (Just (at (1 / 4) (3 / 4))))
-        upTheMiddle' seed = step_ "Fold up the middle." (move (Fold ValleyFold ToFlat (Segment (at (1 / 2) 0) (at (1 / 2) 1)) FlapOfFirstArgument seed))
-        offered = \case
-          Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> Just seeds
-          _ -> Nothing
-    offered (onOctagon 0.3 (step_ "Pre-crease a quarter up." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 10) (1 / 4)) (at (9 / 10) (1 / 4))) FlapOfFirstArgument (Just (at (1 / 2) (1 / 8))))) >> upTheMiddle' Nothing))
-      `shouldBe` Just ["(9/40, 7/12)", "(31/40, 7/12)"]
-    offered (onOctagon 0.29 (upTheMiddle' Nothing)) `shouldBe` Just ["(0.263333, 0.5)", "(0.736667, 0.5)"]
-    right (onOctagon 0.29 (upTheMiddle' (Just (at (263333 / 1000000) (1 / 2))))) >>= void . one . runRecords
+        source steps seed = T.unlines (["foldseq 1", "sheet \"octagon.fold\"", "anchor (1/4, 3/4)"] ++ steps ++ ["step {", "  fold valley [(1/2, 0), (1/2, 1)]" <> seed, "}"])
+        runText a text = parseSequence "octagon.foldseq" text >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "octagon.fold" squareSheet {keyFrame = octagon a}) . elaborate
+        offersEach a steps expected = case runText a (source steps "") of
+          Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
+            seeds `shouldBe` expected
+            forM_ seeds $ \seed -> void (right (runText a (source steps (" moving " <> seed))))
+          other -> expectationFailure ("expected the fold up the middle refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
+    offersEach 0.3 ["step {", "  pre-crease valley [(1/10, 1/4), (9/10, 1/4)] moving (1/2, 1/8)", "}"] ["(9/40, 7/12)", "(31/40, 7/12)"]
+    offersEach 0.29 [] ["(0.263333, 1/2)", "(0.736667, 1/2)"]
+
+  -- A line 2e-7 below the top of a sheet a third as tall as it is wide cuts
+  -- off a sliver whose point, to six places, lies below the line, in the
+  -- paper beneath, and no fraction fits it. Written in, that number would
+  -- fold the paper beneath, so it is not offered for the sliver, and the
+  -- paper beneath is offered by name. Turns red if a number were offered
+  -- without asking which flap it chooses.
+  it "offers no number for a flap that, once rounded, it would not choose" $ do
+    let low = emptyFrame {verticesCoords = [[0.1, 0], [0.9, 0], [1, 0.1], [1, 0.7 / 3], [0.9, 1 / 3], [0.1, 1 / 3], [0, 0.7 / 3], [0, 0.1]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 8)) | i <- [0 .. 7]], edgesAssignment = replicate 8 Border}
+        nearTop = 4999997 / 15000000
+    case runOn (M.singleton "low.fold" squareSheet {keyFrame = low}) (sequenceOf (header "A low octagon" (sheetFile "low.fold") (Just (at (1 / 2) (1 / 6)))) (step_ "Fold near the top." (move (Fold ValleyFold ToFlat (Segment (at (1 / 2) nearTop) (at (3 / 5) nearTop)) FlapOfFirstArgument Nothing)))) of
+      Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> seeds `shouldBe` ["centre"]
+      other -> expectationFailure ("expected the fold near the top refused with the paper beneath's seed, got " <> either (show . explain) (const "a run") other)
 
   -- The blintz with its south-east corner folded behind to the centre, then
   -- folded behind along the corner's crease with no seed. Both flaps lie on

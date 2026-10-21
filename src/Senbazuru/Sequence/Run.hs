@@ -180,15 +180,15 @@ where
 
 import Control.Monad (foldM, unless, when)
 import Data.Bifunctor (first)
+import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
 import Data.List (nub, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Ratio ((%))
 import Data.Set qualified as S
 import Data.Text (Text)
-import Senbazuru.Explain (decimal, explain)
+import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
@@ -211,7 +211,7 @@ import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.SheetLengths (inSheetLengths)
-import Senbazuru.Sequence.Syntax (Amount (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point (..), Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
+import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
 
 -- | The paper between two moves of a run: the working pattern and the anchor.
 -- Opaque; the header says what each is and why.
@@ -637,41 +637,11 @@ foldMove settings place named arriving kind sense amount line layers seed = do
               picked <- first (resolvingAt place (prettyPoint p)) (seedFaces flat' m)
               pure (m, picked, prettyPoint p)
             -- With no seed, the refusal offers one for each flap the line
-            -- borders that the fold can move (02 §12), as the author would
-            -- write it (owner decision 53): a sheet corner or the centre that
-            -- names that flap, lowest and then leftmost first; else one of
-            -- the flap's seeds, best first, as an exact fraction where one
-            -- with a denominator of 64 or less lies within a billionth of a
-            -- sheet length, else to six places. The first of these from which
-            -- this very move runs is offered, printed so that it can be
-            -- written in. A refusal of the point itself tries the next; any
-            -- other is the flap's, which every point that names it would
-            -- meet. Worked out only if the refusal is read.
-            foldsFrom = \case
-              [] -> Nothing
-              (point, written) : rest -> case foldMove settings place named arriving kind sense amount line layers (Just point) of
-                Right _ -> Just written
-                Left (ResolveRefused _ _ text _) | text == prettyPoint point -> foldsFrom rest
-                Left _ -> Nothing
-            namesFor moving =
-              [ (p, prettyPoint p)
-                | p <- [CornerOf SouthWest, CornerOf SouthEast, Centre, CornerOf NorthWest, CornerOf NorthEast],
-                  Right m <- [materialPoint flat' p],
-                  Right picked <- [seedFaces flat' m],
-                  Right selection <- [flapOf flat' at candidates m picked],
-                  sort (selectionMoving selection) == moving
-              ]
-            numbersFor (V2 x y) =
-              [(AtSheet fx fy, prettyPoint (AtSheet fx fy)) | Just fx <- [simplest x], Just fy <- [simplest y]]
-                ++ [(AtSheet (sixPlaces x) (sixPlaces y), "(" <> decimal x <> ", " <> decimal y <> ")")]
-            simplest v = listToMaybe [n % d | d <- [1 .. 64], let n = round (v * fromIntegral d), abs (fromRational (n % d) - v) <= 1e-9]
-            sixPlaces v = toRational (round (v * 1e6) :: Integer) / 1e6
-            offered =
-              map snd . sortOn fst $
-                [ ((y, x), written)
-                  | (moving, seeds@(V2 x y : _)) <- seedsByFlap flat' at candidates,
-                    Just written <- [foldsFrom (namesFor moving ++ concatMap numbersFor seeds)]
-                ]
+            -- borders that the fold can move (02 §12): the flap's seed,
+            -- written as the author would write it ('seedForEachFlap', owner
+            -- decision 53), if this very move runs from it. Worked out only
+            -- if the refusal is read.
+            offered = [written | (p, written) <- seedForEachFlap flat' at candidates, isRight (foldMove settings place named arriving kind sense amount line layers (Just p))]
         (m, picked, seedWords) <- case (layers, seed, line) of
           (FlapOfFirstArgument, Just p, _) -> pointSeed p
           (FlapOfFirstArgument, Nothing, Onto p _) -> pointSeed p
