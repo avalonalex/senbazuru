@@ -33,7 +33,7 @@ turn-over, or cope with a crease graph that grows between steps.
 
 This PRD adds `stepPageWith`, taking a typed `StepNote` beside each frame.
 `stepPage` becomes `stepPageWith` with notes that reproduce today exactly, so its
-23 call lines and all 33 tracked goldens are untouched. `Diagram` gains arrow heads
+23 call lines and every tracked golden are untouched. `Diagram` gains arrow heads
 and bodies (defaults emit today's bytes) and one shape, `Symbol`. `Layout` places
 captions. `Render.Sequence` builds the notes from a run's *move records*, one per
 checked move ([glossary](glossary-additions.md#running-a-sequence)), beside the
@@ -134,7 +134,7 @@ imports, signature, definition and comments, leaves 23 call lines in 15 files:
    a move is about to make, drawn on the figure before it), turn-over, rotate and
    repeat marks.
 2. Kinds, lines and marks come from move records, never from guessing at frames.
-3. `render --steps`, every gallery and all 33 goldens stay byte-identical.
+3. `render --steps`, every gallery and every tracked golden stay byte-identical.
 4. A view flag changes how a step is drawn, never what it means.
 
 ## Non-goals
@@ -660,7 +660,7 @@ with `gh issue view 94`) is amended at M0
 [`Cli.hs:5-8`](../app/Senbazuru/Cli.hs#L5-L8);
 [D13](decisions.md#d13-the-run-verb-and-io)); `pageSide` carries the tested logic.
 
-### Goldens that must stay byte-identical (all 33, `git ls-files test/golden`)
+### Goldens that must stay byte-identical (the 33 tracked at `568dcb6`)
 
 | Group | Goldens (producer) | What here could move them |
 | --- | --- | --- |
@@ -668,6 +668,8 @@ with `gh issue view 94`) is amended at M0
 | Step pages without arrows (4) | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` (`BirdSequenceSpec.hs:84`); `frog-sequence.svg` (`BasicBaseSpec.hs:220`); `bent-strip.svg` (`WingBendingSpec.hs:102`) | `silentNote`; the trailing gutter and the captioned gutter; basis choice |
 | Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:346-507`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill` |
 | GLB (3) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:617`, `:622`, `:627`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
+
+These are the 33 tracked on 2026-09-15 at `568dcb6`. Ten more have been tracked since, 43 at `7af4c92`: `blintz.foldseq`, `every-construct.foldseq` and `quarter-fold.foldseq` (#290); `run-refused-check.txt` and `run-refused-parse.txt` (#341); `quarter-fold-sequence-steps.svg` (#512); `blintz-expected-report.txt` and `quarter-fold-report.txt` (#513); `blintz-sequence-final.glb` (#514); and `bird-base-sequence-arrows.svg` (#522). [D16](decisions.md#d16-testing-and-acceptance)'s check reads `test/golden/` whole, so it holds them all; this table groups only the first 33.
 
 ### New goldens
 

@@ -21,7 +21,7 @@ motion, appearance and lines. This PRD owns them and four pieces of work:
 
 1. **Fidelity metadata.** New output modes say where they sit, in glTF
    `extras.senbazuru.fidelity` and in an SVG `<desc>`. Default outputs and the
-   33 tracked goldens do not change.
+   tracked goldens do not change.
 2. **M7a, a smooth-shaded GLB mode.** Lighting normals split at *feature edges*
    (every edge that is not a `J` join,
    [glossary-additions](glossary-additions.md#realistic-rendering)), and texture
@@ -164,7 +164,7 @@ discarded exist as `foldedPlacements`
 ## Goals
 
 1. Every new output mode records its fidelity on four axes; default outputs and
-   the 33 goldens (`git ls-files test/golden | wc -l`) stay byte-identical.
+   the tracked goldens (`git ls-files test/golden`) stay byte-identical.
 2. Bent meshes shade smoothly in any glTF viewer, positions and material
    references unchanged (M7a).
 3. An SVG line drawing of any surface whose hidden lines agree with the contact

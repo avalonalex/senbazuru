@@ -51,9 +51,10 @@ is rewritten before review.
 
 ### 1.2 Tracked goldens stay byte-identical
 
-There are 33 (`git ls-files test/golden | wc -l`), grouped by what could move
-them in
-[06](06-prd-step-diagrams.md#goldens-that-must-stay-byte-identical-all-33-git-ls-files-testgolden).
+There were 33 on 2026-09-15 at `568dcb6` (`git ls-files test/golden | wc -l`),
+grouped by what could move them in
+[06](06-prd-step-diagrams.md#goldens-that-must-stay-byte-identical-the-33-tracked-at-568dcb6),
+and 43 at `7af4c92`; the check reads them all.
 On the committed branch:
 
 ```bash

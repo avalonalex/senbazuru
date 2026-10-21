@@ -198,9 +198,10 @@ with a circular arc, and starts every free wing vertex on that arc
   active crease needs one ([`FoldBending.hs:180-185`](../study/fold-material/FoldBending.hs#L180-L185)),
   and M, V or U at angle 0 is active ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)),
   so a precrease, whose crease is U, would get a spring pulling flat paper shut.
-- **The stationary side is not exported**: `stationaryFace` is a field
-  ([`Flap.hs:115`](../src/Senbazuru/Origami/Flap.hs#L115)), not an export
-  ([`:76-89`](../src/Senbazuru/Origami/Flap.hs#L76-L89)).
+- **The stationary side was not exported** when this was written: `stationaryFace`
+  was a field of the motion, not an export. #344 (2026-09-23) exported it as
+  `flapStationaryFace` ([`Flap.hs:92`](../src/Senbazuru/Origami/Flap.hs#L92)), the
+  M2 part of [05](05-prd-library-additions.md)'s L4, so this one no longer holds.
 - **Pins are keyed by mesh vertex id.** A *pin* is one mesh vertex together with
   the exact position a hold or grip fixes it at; `spreadPins` is `CraneSpread`'s
   map from mesh vertex id to that position
@@ -369,7 +370,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 
 | ID | Requirement |
 | --- | --- |
-| R-07-39 | Seven stages in order, one PR each; 33 goldens and the study's accepted/rejected controls unchanged. |
+| R-07-39 | Seven stages in order, one PR each; the tracked goldens and the study's accepted/rejected controls unchanged. |
 | R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
 | R-07-41 | `run --settle` counts a mesh's refined triangles before solving and refuses it above its budget. The PR that builds `run --settle` sets that budget from 3–5 compiled runs on the crane fixtures it must settle, and any later change is made the same way; default CI settles ≤ 392 triangles, never a crane fixture (owner decision 12, decided 2026-10-12). |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
@@ -955,7 +956,7 @@ messages show format only; they were not taken from a run.
 | AC-12 | Bird records → `Certified` ×4; the same macros on `square-base.fold` → `NoCertificateFor`; a wrong-branch (`False`) call → `Refused`, never `Sampled`; each entry's sample poses equal `175 * fraction` exactly (R-07-36–38) | keying by macro name only; mapping `Refused` to `Sampled`; a pose written as an absolute angle |
 | AC-13 | More refined triangles than the budget → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
 | AC-14 | `material { size 15cm; thickness 0.1mm }` stores exactly 1/1500 on `crane.fold` (s = 1 in `Double`, R-07-24); a built `mm` frame with s = 100 → `UnitMismatch` (R-07-24–26) | using the refined mesh's extent; ignoring `frame_unit` |
-| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); the gallery's `[True, True, True, False]` ([`CraneSpreadGallery.hs:139`](../study/fold-material/CraneSpreadGallery.hs#L139)) unchanged (R-07-39) | a stage altering an energy or tolerance |
+| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); and the four controls' `accepted` in the crane-spreading gallery's `checks.json` (`stack run senbazuru-material-study -- --crane-spreading DIR`) equal what it writes on `origin/main`, the stage's base (R-07-39, [owner decision 56](decisions.md#9-owner-decisions)). On 2026-10-21 at `7af4c92` they were `rigid` and `curved` accepted, `fine` unaccepted, not converging at the wing's root (#469), and `crossed-grip` refused, in 1011 CPU seconds [ran] | a stage altering an energy or tolerance |
 | AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external program, as AGENTS.md defines one, or reads such a program's output (R-07-43) | a test shelling out to a simulator |
 | AC-17 | One example value per constructor of `SettleStepError`, `SettleError`, `Reason` and `Refused`, produced by a function that matches each type with no wildcard, and an `explain` golden for each; a property over the examples checks that no message contains a Haskell constructor name or record syntax (R-07-45) | a constructor added without an example (an incomplete-pattern warning, which the cold `stack clean && stack build --test` shows; there is no `-Werror`); a message built with `show` |
 
