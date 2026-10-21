@@ -862,8 +862,10 @@ the answer has stopped depending on the mesh"
 At the root the meshes and their costs differ ([C101](decisions.md#changes-since-draft-v2)):
 the crane-spreading gallery's meshes have 1,188 and 4,324 triangles at
 [refinement](glossary-additions.md#material) 3 and 4, against 392 and 1,192 at y = 1/4,
-and the finer does not converge
-([#469](https://github.com/avalonalex/senbazuru/issues/469)). But the gallery's wing
+and whether the finer converged turned on rounding
+([#469](https://github.com/avalonalex/senbazuru/issues/469)) until
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([C117](decisions.md#changes-since-draft-v2)). But the gallery's wing
 has a join along its widest point that no move writes, and the same fold without it
 has 932 and 3,300 ([C102](decisions.md#changes-since-draft-v2)).
 392 (5.76 CPU s, one run at y = 1/4) is the default-CI ceiling for settles on
@@ -957,7 +959,7 @@ messages show format only; they were not taken from a run.
 | AC-12 | Bird records → `Certified` ×4; the same macros on `square-base.fold` → `NoCertificateFor`; a wrong-branch (`False`) call → `Refused`, never `Sampled`; each entry's sample poses equal `175 * fraction` exactly (R-07-36–38) | keying by macro name only; mapping `Refused` to `Sampled`; a pose written as an absolute angle |
 | AC-13 | More refined triangles than the budget → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
 | AC-14 | `material { size 15cm; thickness 0.1mm }` stores exactly 1/1500 on `crane.fold` (s = 1 in `Double`, R-07-24); a built `mm` frame with s = 100 → `UnitMismatch` (R-07-24–26) | using the refined mesh's extent; ignoring `frame_unit` |
-| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); and the crane-spreading gallery (`stack run senbazuru-material-study -- --crane-spreading DIR`), run at the PR's head and at its merge base (`git merge-base origin/main HEAD`), writes in `checks.json` the same `panelEnergy` for `curved` and for `fine` to six significant digits, with `rigid` accepted and `crossed-grip` rejected at both (R-07-39, [owner decision 57](decisions.md#9-owner-decisions)). Whether `curved` and `fine` converge, and their edge errors, are reported, not compared: they change when arithmetic moves the fold by about 1e-13 (#566) | a stage altering an energy or tolerance |
+| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); and the crane-spreading gallery (`stack run senbazuru-material-study -- --crane-spreading DIR`), run at the PR's head and at its merge base (`git merge-base origin/main HEAD`), writes in `checks.json` the same `panelEnergy` for `curved` and for `fine` to six significant digits, with `rigid` accepted and `crossed-grip` rejected at both (R-07-39, [owner decision 57](decisions.md#9-owner-decisions)). Whether `curved` and `fine` converge, and their edge errors, are reported, not compared: until #566's fix their convergence changed when arithmetic moved the fold by about 1e-13 | a stage altering an energy or tolerance |
 | AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external program, as AGENTS.md defines one, or reads such a program's output (R-07-43) | a test shelling out to a simulator |
 | AC-17 | One example value per constructor of `SettleStepError`, `SettleError`, `Reason` and `Refused`, produced by a function that matches each type with no wildcard, and an `explain` golden for each; a property over the examples checks that no message contains a Haskell constructor name or record syntax (R-07-45) | a constructor added without an example (an incomplete-pattern warning, which the cold `stack clean && stack build --test` shows; there is no `-Werror`); a message built with `show` |
 

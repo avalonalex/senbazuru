@@ -125,8 +125,7 @@ writeCraneSpread destination = do
       comparisons = [object ["geometry" .= refinement a b, "relativeEnergyChange" .= (abs (eb - ea) / ea)] | ((a, ea), (b, eb)) <- zip bent (drop 1 bent)]
       compared = spreadFigure baseline
       -- Drawn only when both meshes are accepted: a figure of the curved wing
-      -- alone would be drawn larger, and set the page's scale. At the wing's
-      -- root the finer mesh does not converge (#469).
+      -- alone would be drawn larger, and set the page's scale.
       refined = if length bent == 2 then Just (spreadFigure (map fst bent)) else Nothing
       -- The page's drawings are these figures. The measurements are written
       -- before any is refused, at the scale of those that drew.
@@ -134,9 +133,10 @@ writeCraneSpread destination = do
       document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
   -- Refused only after the measurements are written, so a control that fails
-  -- can still be read. The finer mesh is reported either way (#469).
+  -- can still be read. The finer mesh is held to acceptance again: whether it
+  -- converged turned on rounding (#469) until #566's fix to the contact clip.
   let acceptedAs wanted = or [accepted | (stem, _, accepted, _, _, _) <- runs, stem == wanted]
-  unless (acceptedAs "rigid" && acceptedAs "curved" && not (acceptedAs "crossed-grip")) (die "Unexpected crane control result; refusing to publish the gallery")
+  unless (acceptedAs "rigid" && acceptedAs "curved" && acceptedAs "fine" && not (acceptedAs "crossed-grip")) (die "Unexpected crane control result; refusing to publish the gallery")
   drawing <- either (die . T.unpack) pure compared
   TIO.writeFile (output </> "comparison.svg") (figureSvg drawing)
   forM_ refined $ \figure' -> do
