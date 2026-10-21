@@ -17,8 +17,9 @@ Hold every body vertex at its original position. The wing turns from its
 root, the line from the base of the neck to the base of the tail, folded
 y = 0.37585, which the study finds by rule ([flap-roots.md](flap-roots.md);
 owner decisions 34 and 35). Hold the wing's base, between its widest point and
-the root, at 30 degrees from its resting plane, and the final eighth of its
-length at 50 degrees. Place those grips by integrating a circular arc through
+the root, at 30 degrees from its resting plane, and the mesh vertices within the
+final eighth of its length at 50 degrees; at the root the last mesh line in that
+eighth is at y = 0.0406, short of where the eighth ends, 0.047. Place those grips by integrating a circular arc through
 the paper between; this supplies an initial guess and exact grip positions.
 The paper between is then free to relax under material-length, crease-angle,
 panel-bending and contact terms. The circular arc is not imposed on its free

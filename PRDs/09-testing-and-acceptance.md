@@ -51,9 +51,10 @@ is rewritten before review.
 
 ### 1.2 Tracked goldens stay byte-identical
 
-There are 33 (`git ls-files test/golden | wc -l`), grouped by what could move
-them in
-[06](06-prd-step-diagrams.md#goldens-that-must-stay-byte-identical-all-33-git-ls-files-testgolden).
+There are 43 at `7af4c92` (`git ls-files test/golden | wc -l`), and the check reads
+all of them;
+[06](06-prd-step-diagrams.md#goldens-that-must-stay-byte-identical-git-ls-files-testgolden)
+groups 36 by what could move them.
 On the committed branch:
 
 ```bash
@@ -61,7 +62,7 @@ git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/   # mus
 git diff --name-only --diff-filter=A  origin/main...HEAD -- test/golden/   # the goldens this PR adds
 ```
 
-Both print nothing on this branch today. They are
+Both printed nothing on 2026-09-15 at `568dcb6`. They are
 [D16](decisions.md#d16-testing-and-acceptance)'s check
 ([C53](decisions.md#changes-since-draft-v2)). They replace draft v2's
 `git diff --name-only origin/main -- test/golden/`, which mixes added with
@@ -493,7 +494,8 @@ run before and after, compiled rather than in GHCi
 
 ### 6.3 `beforeAll`, not `runIO`, and a slow job
 
-Fourteen spec files build fixtures in `runIO` (`grep -rl runIO test | wc -l`),
+Fourteen spec files built fixtures in `runIO` on 2026-09-15 at `568dcb6`, and 20
+do at `7af4c92` (`grep -rl runIO test | wc -l`),
 such as [`BlintzSequenceSpec.hs:31`](../test/BlintzSequenceSpec.hs#L31) and
 [`CraneWingSpec.hs:33`](../test/CraneWingSpec.hs#L33). `beforeAll` runs only when
 an item under it runs, as the crane-material specs rely on

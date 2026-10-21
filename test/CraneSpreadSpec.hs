@@ -62,10 +62,15 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     let paired = zip (samples mesh) (samples (spreadMesh rigid))
     maximum (0 : [norm (position a ^-^ position b) | (a, b) <- paired]) `shouldSatisfy` (> 0.02)
 
-  -- Above the wing's widest point the held root strip is the whole base
-  -- between it and the hinge, four layers deep, turned 30 degrees as one
-  -- piece. About 1/4 it is the eighth of the wing next to the hinge.
-  it "holds the whole base at the root when the hinge is above the widest point" $ \source -> do
+  -- With the hinge at y = 0.376, the tests' stand-in for the wing's root, the
+  -- base between the widest point and the hinge is longer than an eighth of
+  -- the length from the hinge to the tip, so the root strip is the whole base
+  -- ('rootStrip'), held where the flat base lands turned 30 degrees as one
+  -- piece. With the hinge at 1/4 the root strip's length is the eighth. Turns
+  -- red if the root strip took the eighth where the base is longer, if a base
+  -- vertex were not held or not turned with the rest, or if a wing without the
+  -- join could be spread.
+  it "holds the whole base with the hinge at the root, and sizes the root strip as an eighth at 1/4" $ \source -> do
     quarter <- right (buildCraneWing source)
     rootStrip quarter `shouldBe` 0.25 / 8
     wing <- right (buildCraneWingAt 0.376 source)

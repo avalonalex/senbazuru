@@ -164,7 +164,7 @@ of an eighth of the tip side and the hinge's y minus 0.324, the folded y where t
 wing is widest ([`CraneSpread.hs:146-147`](../study/fold-material/CraneSpread.hs#L146-L147),
 [`CraneWing.hs:13`](../study/fold-material/CraneWing.hs#L13)). At y = 1/4 the
 second is negative, so `rootLength` is 1/32
-([`CraneSpreadSpec.hs:69-70`](../test/CraneSpreadSpec.hs#L69-L70)) and
+([`CraneSpreadSpec.hs:74-75`](../test/CraneSpreadSpec.hs#L74-L75)) and
 `rootLength / hingeY` is 1/8: the root strip is the tip side's first 1/32. At the
 wing's root the second is the larger ([decisions §10](decisions.md#10-corrections)
 item 43). The *grip* ([glossary-additions](glossary-additions.md#material)) is the
@@ -172,7 +172,7 @@ tip side's last 1/32, where `fraction` is at least 7/8
 ([`CraneSpread.hs:129`](../study/fold-material/CraneSpread.hs#L129)). `bentPoint`
 ([`CraneSpread.hs:149-168`](../study/fold-material/CraneSpread.hs#L149-L168))
 turns the root strip rigidly by 30° and the grip rigidly a further 0°–20°
-([`CraneSpread.hs:99`](../study/fold-material/CraneSpread.hs#L99)), joins the two
+([`CraneSpread.hs:105`](../study/fold-material/CraneSpread.hs#L105)), joins the two
 with a circular arc, and starts every free wing vertex on that arc
 ([`CraneSpread.hs:130`](../study/fold-material/CraneSpread.hs#L130)). One run on
 2026-09-13 ([spreading-connected-wing.md:63-67](../docs/notes/spreading-connected-wing.md)):
@@ -198,9 +198,11 @@ with a circular arc, and starts every free wing vertex on that arc
   active crease needs one ([`FoldBending.hs:180-185`](../study/fold-material/FoldBending.hs#L180-L185)),
   and M, V or U at angle 0 is active ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)),
   so a precrease, whose crease is U, would get a spring pulling flat paper shut.
-- **The stationary side is not exported**: `stationaryFace` is a field
-  ([`Flap.hs:115`](../src/Senbazuru/Origami/Flap.hs#L115)), not an export
-  ([`:76-89`](../src/Senbazuru/Origami/Flap.hs#L76-L89)).
+- **The stationary side is exported now.** It was a field of the motion until
+  #344 (2026-09-23) exported it as `flapStationaryFace`
+  ([`Flap.hs:92`](../src/Senbazuru/Origami/Flap.hs#L92)). The rest of
+  [05](05-prd-library-additions.md)'s L4, `flapPoseAt` and `RoutePose`, is not
+  built yet.
 - **Pins are keyed by mesh vertex id.** A *pin* is one mesh vertex together with
   the exact position a hold or grip fixes it at; `spreadPins` is `CraneSpread`'s
   map from mesh vertex id to that position
@@ -369,7 +371,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 
 | ID | Requirement |
 | --- | --- |
-| R-07-39 | Seven stages in order, one PR each; 33 goldens and the study's accepted/rejected controls unchanged. |
+| R-07-39 | Seven stages in order, one PR each; the tracked goldens and the study's accepted/rejected controls unchanged. |
 | R-07-40 | M6's crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job. Restated 2026-09-29, when the owner withdrew its gate on #208 ([decisions §10](decisions.md#10-corrections) row 39). |
 | R-07-41 | `run --settle` counts a mesh's refined triangles before solving and refuses it above its budget. The PR that builds `run --settle` sets that budget from 3–5 compiled runs on the crane fixtures it must settle, and any later change is made the same way; default CI settles ≤ 392 triangles, never a crane fixture (owner decision 12, decided 2026-10-12). |
 | R-07-42 | Modules listed as staying in the study do not graduate. |
@@ -955,7 +957,7 @@ messages show format only; they were not taken from a run.
 | AC-12 | Bird records → `Certified` ×4; the same macros on `square-base.fold` → `NoCertificateFor`; a wrong-branch (`False`) call → `Refused`, never `Sampled`; each entry's sample poses equal `175 * fraction` exactly (R-07-36–38) | keying by macro name only; mapping `Refused` to `Sampled`; a pose written as an absolute angle |
 | AC-13 | More refined triangles than the budget → `TriangleBudget` before any `relax*` call (R-07-41) | counting after solving |
 | AC-14 | `material { size 15cm; thickness 0.1mm }` stores exactly 1/1500 on `crane.fold` (s = 1 in `Double`, R-07-24); a built `mm` frame with s = 100 → `UnitMismatch` (R-07-24–26) | using the refined mesh's extent; ignoring `frame_unit` |
-| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); the gallery's `[True, True, True, False]` ([`CraneSpreadGallery.hs:139`](../study/fold-material/CraneSpreadGallery.hs#L139)) unchanged (R-07-39) | a stage altering an energy or tolerance |
+| AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); and the crane-spreading gallery (`stack run senbazuru-material-study -- --crane-spreading DIR`), run at the PR's head and at its merge base (`git merge-base origin/main HEAD`), writes in `checks.json` the same `panelEnergy` for `curved` and for `fine` to six significant digits, with `rigid` accepted and `crossed-grip` rejected at both (R-07-39, [owner decision 57](decisions.md#9-owner-decisions)). Whether `curved` and `fine` converge, and their edge errors, are reported, not compared: they change when arithmetic moves the fold by about 1e-13 (#566) | a stage altering an energy or tolerance |
 | AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external program, as AGENTS.md defines one, or reads such a program's output (R-07-43) | a test shelling out to a simulator |
 | AC-17 | One example value per constructor of `SettleStepError`, `SettleError`, `Reason` and `Refused`, produced by a function that matches each type with no wildcard, and an `explain` golden for each; a property over the examples checks that no message contains a Haskell constructor name or record syntax (R-07-45) | a constructor added without an example (an incomplete-pattern warning, which the cold `stack clean && stack build --test` shows; there is no `-Werror`); a message built with `show` |
 

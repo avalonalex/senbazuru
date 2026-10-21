@@ -476,7 +476,7 @@ The full crane remains one sheet. Its body, other wing and tucked tail are
 held exactly. The selected wing turns from its root, the line from the base of
 the neck to the base of the tail, found by the root rule (`--flap-root`, owner
 decisions 34 and 35). Its base, between its widest point and the root, is held
-at 30 degrees; its tip grip, the last eighth of its length, is held at either
+at 30 degrees; its tip grip, the mesh vertices within the last eighth of its length, is held at either
 30 degrees (rigid baseline) or 50 degrees (curved wing). The paper between can
 bend.
 

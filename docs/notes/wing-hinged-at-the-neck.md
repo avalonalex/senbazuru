@@ -31,7 +31,7 @@ The wing-root study (see [wing-root-holds.md](wing-root-holds.md)) now runs two
 of its controls at both hinges. The held control fixes the strip beside the
 hinge at 30°; at the root that strip is the whole base. The flat-preference
 control releases it and gives the hinge's springs a rest angle of zero. Every
-control grips the outer eighth of its wing at 50° about its own hinge, so the
+control grips the mesh vertices within the outer eighth of its wing at 50° about its own hinge, so the
 two hinges hold their tips in different places: compare the shapes, not where
 the tips are.
 
