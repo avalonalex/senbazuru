@@ -100,7 +100,7 @@ import Senbazuru.Explain (decimal)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (Box (..), V2 (..), boxCentre, boxFromPoints, perpendicular)
-import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, inPreferredOrder, insideRing, pointInside, pointsInside)
+import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, inPreferredOrder, insideRing, largestLowestLeftmost, pointInside, pointsInside)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, zSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -236,6 +236,17 @@ placedAt st m = case [flat (applyRigid placement (V3 x y 0)) | (FaceId f, ring) 
     V2 x y = m
     flat (V3 a b _) = V2 a b
     holds ring = holdsPoint st ring m
+
+-- | Whether folding placed two faces together: whether their placements take
+-- the sheet's box to the same place, within the sheet's tolerance. Faces that
+-- lie together are one piece of paper, however many creases cross it flat.
+liesWith :: FlatState -> FaceId -> FaceId -> Bool
+liesWith st (FaceId f) (FaceId g) = case (IM.lookup f (flatPlacements st), IM.lookup g (flatPlacements st)) of
+  (Just a, Just b) -> all (\p -> norm (applyRigid a p ^-^ applyRigid b p) <= flatRoom st) corners
+  _ -> False
+  where
+    Box (V2 x0 y0) (V2 x1 y1) = flatBox st
+    corners = [V3 x0 y0 0, V3 x1 y0 0, V3 x0 y1 0]
 
 -- | Whether a face's outline holds the point, edges and corners included,
 -- within the sheet's tolerance.
@@ -693,18 +704,18 @@ data Selection = Selection
 
 -- | The seed a refusal asking which side moves offers for each flap the line
 -- borders (PRDs\/02-language-semantics.md, §12), written as the author would
--- write it (owner decisions 53 and 54), lowest and then leftmost first.
+-- write it (owner decisions 53 and 55), lowest and then leftmost first.
 --
 -- A face offers the point the anchor would take in it ('pointsInside', owner
 -- decision 51), and belongs to the flap 'flapOf' chooses from that point. On
 -- folded paper a side of the line can hold several flaps, each a different
 -- fold, so the flaps are told apart by the faces that move, not by the side
 -- they lie on. A flap's seed is the first of: a sheet corner or the centre,
--- those lying in the flap's largest face first (owner decision 54), each
--- group lowest and then leftmost; else one of its faces' points, the largest
--- face's first ('inPreferredOrder'), each coordinate an exact fraction with a
--- denominator of 64 or less where one lies within the sheet's tolerance of
--- it, else to six places. Each is kept only if it chooses that very flap as
+-- those lying in the flap's largest piece of paper first (owner decision 55),
+-- each group lowest and then leftmost; else one of its faces' points, the
+-- largest face's first ('inPreferredOrder'), each coordinate an exact
+-- fraction with a denominator of 64 or less where one lies within the sheet's
+-- tolerance of it, else to six places. Each is kept only if it chooses that very flap as
 -- written, since a name, or a point once rounded, can lie in another; a flap
 -- too thin for six places at every point is offered nothing. The text is
 -- worked out from the point it names, so the two cannot disagree.
@@ -719,33 +730,39 @@ seedForEachFlap st line candidates =
   [seed | (seed, _, _) <- inPreferredOrder room [(seed, 0, m) | moving <- flaps, (seed, m) <- take 1 (seedsOf moving)]]
   where
     room = flatRoom st
-    -- Each face with its ring, its size, the point inside it, and the faces
-    -- of the flap chosen from that point.
     choosing =
-      [ (face, size, m, sort (selectionMoving selection))
-        | (face@(f, _), size, m) <- pointsInside room [((f, ring), ring) | (f, ring) <- rings],
+      [ (f, size, m, sort (selectionMoving selection))
+        | (f, size, m) <- pointsInside room [(f, ringOf st ring) | (f, ring) <- flatFaces st],
           Right selection <- [flapOf st line candidates m [f]]
       ]
-    rings = [(f, ringOf st ring) | (f, ring) <- flatFaces st]
     flaps = nub [moving | (_, _, _, moving) <- choosing]
     seedsOf moving =
-      let ranked = inPreferredOrder room [(face, size, m) | (face, size, m, moving') <- choosing, moving' == moving]
+      let ranked = inPreferredOrder room [(f, size, m) | (f, size, m, moving') <- choosing, moving' == moving]
+          largest = largestPiece ranked
+          inLargest p = case materialPoint st p >>= seedFaces st of
+            Right picked -> any (`elem` largest) picked
+            Left _ -> False
+          (inside, outside) = partition inLargest [CornerOf SouthWest, CornerOf SouthEast, Centre, CornerOf NorthWest, CornerOf NorthEast]
        in [ ((p, written), m)
-            | (p, written) <- map named (namesFirstIn ranked) ++ [numbered (toSheetLengths st m) | (_, _, m) <- ranked],
+            | (p, written) <- map named (inside ++ outside) ++ [numbered (toSheetLengths st m) | (_, _, m) <- ranked],
               Right m <- [materialPoint st p],
               Right picked <- [seedFaces st m],
               Right selection <- [flapOf st line candidates m picked],
               sort (selectionMoving selection) == moving
           ]
-    -- The corners and the centre, those in the flap's largest face first: a
-    -- corner folded in lies in a small face, and names the flap only through
-    -- the crease that joins that face to it (owner decision 54).
-    namesFirstIn ranked =
-      let inLargest p = case (materialPoint st p, ranked) of
-            (Right m, ((_, ring), _, _) : _) -> holdsPoint st ring m
-            _ -> False
-          (inside, outside) = partition inLargest [CornerOf SouthWest, CornerOf SouthEast, Centre, CornerOf NorthWest, CornerOf NorthEast]
-       in inside ++ outside
+    -- The faces of the flap's largest piece of paper: its faces grouped by
+    -- whether folding placed them together ('liesWith'), the piece of the
+    -- greatest area taken, ties lowest and then leftmost by its largest
+    -- face's point. A corner folded in is a piece of its own, and names the
+    -- flap only through the crease that joins it on (owner decision 55).
+    largestPiece ranked =
+      let measured = [(piece, sum [size | (f, size, _) <- ranked, f `elem` piece], m) | piece <- piecesOf [f | (f, _, _) <- ranked], m <- take 1 [m | (f, _, m) <- ranked, f `elem` piece]]
+       in maybe [] (\(piece, _, _) -> piece) (largestLowestLeftmost room measured)
+    piecesOf = \case
+      [] -> []
+      f : rest ->
+        let piece = f : filter (liesWith st f) rest
+         in piece : piecesOf (filter (`notElem` piece) rest)
     named p = (p, prettyPoint p)
     numbered (V2 x y) =
       let (u, across) = coordinate x

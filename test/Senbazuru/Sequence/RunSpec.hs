@@ -110,18 +110,19 @@ running = describe "running a sequence" $ do
 
   -- moving P picks the paper for a line that does not say which side moves.
   -- Without one, the refusal offers a seed for each flap the fold can move
-  -- (#571), as the author would write it (owner decisions 53 and 54): the
-  -- corner beyond the crease, and for the rest of the blintz the centre,
-  -- which lies in its largest face, the diamond, where its corners lie in
-  -- the small triangles. Turns red if a flap's seed were missing, a corner
-  -- were offered for a flap it does not name, or the corners were tried
-  -- lowest first whatever face they lie in.
+  -- (#571), as the author would write it (owner decisions 53 and 55): the
+  -- corner beyond the crease, and for the rest of the blintz its lowest, then
+  -- leftmost, corner. Nothing is folded, so the rest is one piece of paper,
+  -- and every corner of it is in that piece. Turns red if a flap's seed were
+  -- missing, if the names were taken from the largest face rather than the
+  -- largest piece of paper (the centre's diamond), or if the flaps were
+  -- listed by their faces' points rather than by the names offered.
   it "folds the side named by moving P, and refuses a line with none" $ do
     let alongEdge8 = Segment (MidpointOfEdge South) (MidpointOfEdge East)
     run <- right (runOn (oneStep (move (Fold MountainFold ToFlat alongEdge8 FlapOfFirstArgument (Just (CornerOf SouthEast))))))
     map (concatMap snd . recordHinge) (runRecords run) `shouldBe` [[EdgeId 8]]
     case refusal (runOn (oneStep (fold mountain alongEdge8))) of
-      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` ["corner south-east", "centre"]
+      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` ["corner south-west", "corner south-east"]
       other -> expectationFailure ("expected the line refused with a seed for each side, got " <> show other)
 
   describe "refuses" $ do
@@ -990,7 +991,19 @@ reanchoringOntoStandingPaper = describe "re-anchoring onto paper standing up" $ 
 -- crease's letter is the fold's sense seen from the coloured side.
 creasing :: Spec
 creasing = describe "a fold along a line where no crease runs" $ do
+  blintzSheet <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
   let runOn sheets sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
+      -- A source's lines, then a fold along a line with no seed: refused,
+      -- offering these seeds, each of which, copied from the message into
+      -- the source as moving P, parses and folds.
+      offersEach sheets earlier along expected =
+        let source seed = T.unlines (earlier ++ ["step {", "  fold valley " <> along <> seed, "}"])
+            runText text = parseSequence "seeds.foldseq" text >>= runOn sheets
+         in case runText (source "") of
+              Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
+                seeds `shouldBe` expected
+                forM_ seeds $ \seed -> void (right (runText (source (" moving " <> seed))))
+              other -> expectationFailure ("expected " <> T.unpack along <> " refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
       onSquare anchorAt side = runOn M.empty . sequenceOf ((header "A square" sheetSquare anchorAt) {hSide = side})
       corner = CornerOf
       ends (MaterialSegment (MaterialPoint a) (MaterialPoint b), edges, letter) = ([a, b], edges, letter)
@@ -1104,33 +1117,39 @@ creasing = describe "a fold along a line where no crease runs" $ do
         forM_ seeds $ \seed -> right (runText (source (" moving " <> seed))) >>= void . one . runRecords
       other -> expectationFailure ("expected the line refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
 
-  -- Where several names pick one flap, those in the flap's largest face come
-  -- first (owner decision 54), and the flaps are listed lowest and then
-  -- leftmost by the names offered. On the plain square a flap is one face,
-  -- so its lowest corner is offered, not the centre beside it. A fold from
-  -- (1/4, 0) to (1, 3/4) cuts off a triangle whose own point lies lower than
-  -- the rest's, yet the rest is offered first, by corner south-west. On the
-  -- blintz with its corners folded behind, the body's corners lie in the
-  -- small triangles folded in, and the centre in the diamond. Each name,
-  -- copied from the message into the source as moving P, parses and folds.
-  -- Turns red if the corners were tried lowest first whatever face they lie
-  -- in, if the centre were tried first, or if the flaps were listed by their
-  -- faces' points.
-  it "offers a name in the flap's largest face first, and lists the flaps by the names offered" $ do
-    blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
-    let runText text = parseSequence "names.foldseq" text >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" blintzSheet) . elaborate
-        offersEach earlier along expected = do
-          let source seed = T.unlines (earlier ++ ["step {", "  fold valley " <> along <> seed, "}"])
-          case runText (source "") of
-            Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
-              seeds `shouldBe` expected
-              forM_ seeds $ \seed -> void (right (runText (source (" moving " <> seed))))
-            other -> expectationFailure ("expected " <> T.unpack along <> " refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
+  -- Where several names pick one flap, those in the flap's largest piece of
+  -- paper come first, faces folding placed together being one piece (owner
+  -- decision 55), and the flaps are listed lowest and then leftmost by the
+  -- names offered. Flat paper is one piece, so a crease across it changes
+  -- nothing: the square folded at y = 3/4 offers its lowest corner, not the
+  -- centre, pre-creased a quarter up or not. A fold from (1/4, 0) to (1, 3/4)
+  -- cuts off a triangle whose own point lies lower than the rest's, yet the
+  -- rest is offered first, by corner south-west. A corner folded in is a
+  -- piece of its own: with corner south-west folded to the centre, the lower
+  -- half is offered by corner south-east, and the blintz with its corners
+  -- folded behind by the centre, its midlines pre-creased or not. With one
+  -- midline pre-creased the centre lies on a crease, in no one face, so no
+  -- name in the largest piece picks the flap, and the rest are tried: the
+  -- corner folded in. Turns red if the corners were tried lowest first
+  -- whatever piece they lie in, if the centre were tried first, if the
+  -- largest face stood for the largest piece, if the names outside it were
+  -- not tried, or if the flaps were listed by their faces' points.
+  it "offers a name in the flap's largest piece of paper first, and lists the flaps by the names offered" $ do
+    let onSheets = M.singleton "examples/blintz-base.fold" blintzSheet
         square = ["foldseq 1", "sheet square", "anchor (1/4, 1/4)"]
-        blintzFolded = ["foldseq 1", "sheet \"examples/blintz-base.fold\"", "anchor centre"] ++ [row | corner' <- ["south-east", "north-east", "north-west", "south-west"], row <- ["step {", "  fold mountain corner " <> corner' <> " to centre", "}"]]
-    offersEach square "[(0, 3/4), (1, 3/4)]" ["corner south-west", "corner north-west"]
-    offersEach square "[(1/4, 0), (1, 3/4)]" ["corner south-west", "corner south-east"]
-    offersEach blintzFolded "[midpoint of edge north, midpoint of edge east]" ["centre"]
+        quarterUp = ["step {", "  pre-crease valley [(0, 1/4), (1, 1/4)] moving (1/2, 1/8)", "}"]
+        -- Folding through layers is M4's, so the line is creased first.
+        cornerIn = ["foldseq 1", "sheet square", "anchor (3/4, 3/4)", "step {", "  pre-crease valley [(0, 3/4), (1, 3/4)] moving (1/2, 7/8)", "}", "step {", "  fold valley corner south-west to centre", "}"]
+        blintzWith anchorAt creases = ["foldseq 1", "sheet \"examples/blintz-base.fold\"", "anchor " <> anchorAt] ++ creases ++ concat [["step {", "  fold mountain corner " <> corner' <> " to centre", "}"] | corner' <- ["south-east", "north-east", "north-west", "south-west"]]
+        midline crease = ["step {", "  pre-crease valley " <> crease, "}"]
+        northEast = "[midpoint of edge north, midpoint of edge east]"
+    offersEach onSheets square "[(0, 3/4), (1, 3/4)]" ["corner south-west", "corner north-west"]
+    offersEach onSheets (square ++ quarterUp) "[(0, 3/4), (1, 3/4)]" ["corner south-west", "corner north-west"]
+    offersEach onSheets square "[(1/4, 0), (1, 3/4)]" ["corner south-west", "corner south-east"]
+    offersEach onSheets cornerIn "[(0, 3/4), (1, 3/4)]" ["corner south-east", "corner north-west"]
+    offersEach onSheets (blintzWith "centre" []) northEast ["centre"]
+    offersEach onSheets (blintzWith "(3/8, 5/8)" (midline "edge west to edge east" ++ midline "edge south to edge north")) northEast ["centre"]
+    offersEach onSheets (blintzWith "(3/8, 5/8)" (midline "edge west to edge east")) northEast ["corner south-west"]
 
   -- An octagon has no corner of its box to name, and its centre lies on a
   -- fold up the middle, so each flap's seed is a number (owner decision 53).
@@ -1144,15 +1163,11 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- parse, or does not fold, as printed.
   it "offers a flap's seed with each coordinate an exact fraction where one fits, else to six places" $ do
     let octagon a = emptyFrame {verticesCoords = [[a, 0], [1 - a, 0], [1, a], [1, 1 - a], [1 - a, 1], [a, 1], [0, 1 - a], [0, a]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 8)) | i <- [0 .. 7]], edgesAssignment = replicate 8 Border}
-        source steps seed = T.unlines (["foldseq 1", "sheet \"octagon.fold\"", "anchor (1/4, 3/4)"] ++ steps ++ ["step {", "  fold valley [(1/2, 0), (1/2, 1)]" <> seed, "}"])
-        runText a text = parseSequence "octagon.foldseq" text >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "octagon.fold" squareSheet {keyFrame = octagon a}) . elaborate
-        offersEach a steps expected = case runText a (source steps "") of
-          Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
-            seeds `shouldBe` expected
-            forM_ seeds $ \seed -> void (right (runText a (source steps (" moving " <> seed))))
-          other -> expectationFailure ("expected the fold up the middle refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
-    offersEach 0.3 ["step {", "  pre-crease valley [(1/10, 1/4), (9/10, 1/4)] moving (1/2, 1/8)", "}"] ["(9/40, 7/12)", "(31/40, 7/12)"]
-    offersEach 0.29 [] ["(0.263333, 1/2)", "(0.736667, 1/2)"]
+        onOctagon a = M.singleton "octagon.fold" squareSheet {keyFrame = octagon a}
+        opening = ["foldseq 1", "sheet \"octagon.fold\"", "anchor (1/4, 3/4)"]
+        middle = "[(1/2, 0), (1/2, 1)]"
+    offersEach (onOctagon 0.3) (opening ++ ["step {", "  pre-crease valley [(1/10, 1/4), (9/10, 1/4)] moving (1/2, 1/8)", "}"]) middle ["(9/40, 7/12)", "(31/40, 7/12)"]
+    offersEach (onOctagon 0.29) opening middle ["(0.263333, 1/2)", "(0.736667, 1/2)"]
 
   -- A line 2e-7 below the top of a sheet a third as tall as it is wide cuts
   -- off a sliver whose point, to six places, lies below the line, in the
@@ -1175,7 +1190,6 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- told apart by the side they lie on, or offered without the fold being
   -- run from them.
   it "offers only the seeds from which the fold runs, on folded paper" $ do
-    blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
     let corner' seed =
           runOn
             (M.singleton "examples/blintz-base.fold" blintzSheet)
@@ -1423,7 +1437,6 @@ creasing = describe "a fold along a line where no crease runs" $ do
   -- square's south-east half, so the anchor moves to the vertex mean of its
   -- north-west half, (0, 1/2), (1/4, 1/4), (3/4, 3/4), (1/2, 1).
   it "moves the blintz's anchor off a diagonal through its centre" $ do
-    blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
     run <- right (runOn (M.singleton "examples/blintz-base.fold" blintzSheet) (sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just Centre)) (step_ "Fold the bottom-right corner over." (move (Fold ValleyFold ToFlat (Segment (corner SouthWest) (corner NorthEast)) FlapOfFirstArgument (Just (corner SouthEast)))))))
     record <- one (runRecords run)
     case recordAnchor record of
