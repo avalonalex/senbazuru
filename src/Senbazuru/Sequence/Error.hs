@@ -763,10 +763,10 @@ data MoveFailure
 data SelectionError
   = -- | A line that is not an alignment fold, such as @[P, Q]@, says nothing
     -- about which side moves, and no @moving P@ said it: with a seed for each
-    -- flap the fold can move, in sheet lengths, as the message prints it, so
-    -- that each, written in as @moving P@, folds (02 §12). None if no seed
-    -- makes it fold.
-    SeedMissing [V2]
+    -- flap the fold can move, written as the author would write it, a sheet
+    -- corner, the centre or a point, so that each, written in as @moving P@,
+    -- folds (02 §12, owner decision 53). None if no seed makes it fold.
+    SeedMissing [Text]
   | -- | The seed, in sheet lengths, lies on the fold line, so it is on both
     -- sides.
     SeedOnTheLine V2
@@ -803,7 +803,7 @@ instance Explain SelectionError where
     SeedMissing [] -> "this line does not say which side moves, and no moving P makes it fold"
     SeedMissing seeds ->
       "this line does not say which side moves; add moving P, a point on the paper that moves, such as "
-        <> oneOf (map written seeds)
+        <> oneOf seeds
         <> if length seeds > 1 then ", one for each flap the fold can move" else ""
     SeedOnTheLine at -> "the paper that moves is named by " <> point at <> ", which lies on the fold line and so on both sides of it"
     SeedSplit at -> point at <> " is a corner where paper on both sides of the fold line meets, so it does not say which side moves"
@@ -812,9 +812,6 @@ instance Explain SelectionError where
     ExistingHingeFlat (EdgeId e) -> "(internal edge " <> tshow e <> ") lies flat as an F crease, which has no direction to fold"
     where
       point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
-      -- A seed is for the author to type back in, in the language's own
-      -- numbers, which have no exponent.
-      written (V2 x y) = "(" <> decimal x <> ", " <> decimal y <> ")"
 
 -- | The names @expect refused@ may use, from the design's catalogue of
 -- refusals (@PRDs\/02-language-semantics.md@, §12). Only refusals that
