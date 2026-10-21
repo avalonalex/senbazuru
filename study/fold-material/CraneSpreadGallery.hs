@@ -133,8 +133,8 @@ writeCraneSpread destination = do
       document = object ["runs" .= [report scale | (_, _, _, _, report, _) <- runs], "refinement" .= comparisons, "screenThresholds" .= fmap thresholdsJson scale]
   BL.writeFile (output </> "checks.json") (encode document)
   -- Refused only after the measurements are written, so a control that fails
-  -- can still be read. The finer mesh is held to acceptance again since #566
-  -- fixed the contact derivative that kept it from converging (#469).
+  -- can still be read. The finer mesh is held to acceptance again: whether it
+  -- converged turned on rounding (#469) until #566's fix to the contact clip.
   let acceptedAs wanted = or [accepted | (stem, _, accepted, _, _, _) <- runs, stem == wanted]
   unless (acceptedAs "rigid" && acceptedAs "curved" && acceptedAs "fine" && not (acceptedAs "crossed-grip")) (die "Unexpected crane control result; refusing to publish the gallery")
   drawing <- either (die . T.unpack) pure compared

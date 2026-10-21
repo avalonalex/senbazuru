@@ -862,9 +862,10 @@ the answer has stopped depending on the mesh"
 At the root the meshes and their costs differ ([C101](decisions.md#changes-since-draft-v2)):
 the crane-spreading gallery's meshes have 1,188 and 4,324 triangles at
 [refinement](glossary-additions.md#material) 3 and 4, against 392 and 1,192 at y = 1/4,
-and the finer did not converge
-([#469](https://github.com/avalonalex/senbazuru/issues/469)) until #566 fixed a
-contact derivative ([C117](decisions.md#changes-since-draft-v2)). But the gallery's wing
+and whether the finer converged turned on rounding
+([#469](https://github.com/avalonalex/senbazuru/issues/469)) until
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([C117](decisions.md#changes-since-draft-v2)). But the gallery's wing
 has a join along its widest point that no move writes, and the same fold without it
 has 932 and 3,300 ([C102](decisions.md#changes-since-draft-v2)).
 392 (5.76 CPU s, one run at y = 1/4) is the default-CI ceiling for settles on

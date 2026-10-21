@@ -95,14 +95,15 @@ spec = describe "open-flap contact correction" $ do
     minimum (map contactGap reversed) `shouldBe` (-0.6)
 
   -- Stacked triangles whose edges nearly coincide in projection, as the crane
-  -- wing's layers do: the upper triangle's corner lies 5e-15 from the lower
-  -- one's edge, inside the snap, and the next corner 1e-13 beyond it. The
-  -- snapped distance is the constant 0, so the crossing between them does not
-  -- differentiate through a rounding residue. Turns red if the snap kept the
-  -- distance's derivative, which gives this pair a gradient of about 3e12
-  -- (#566).
+  -- wing's layers do. The lower triangle's edge along y = 0 has length 1, so
+  -- the clip's cross product is the plain distance: the upper triangle's
+  -- corner lies 5e-13 from the edge, inside the 1e-12 snap, and the next
+  -- corner 1e-11 beyond it. The crossing between them is pinned to the
+  -- snapped corner and has no derivative. Turns red if the snap kept the
+  -- distance's derivative (a gradient of 3.0e10) or if its band were narrowed
+  -- to the 1e-14 it was before #566 (2.7e10).
   it "gives a corner snapped onto a clip line no derivative off it" $ do
-    let mesh = pairMesh [V3 0 0 0, V3 1 0 0, V3 0 1 0, V3 0.3 5e-15 0.4, V3 0.6 (-1e-13) 0.7, V3 0.5 0.5 0.6]
+    let mesh = pairMesh [V3 0 0 0, V3 1 0 0, V3 0 1 0, V3 0.3 5e-13 0.4, V3 0.6 (-1e-11) 0.7, V3 0.5 0.5 0.6]
     rows <- prepare 0 mesh >>= \model -> right (Contact.orderedContacts model mesh)
     rows `shouldSatisfy` (not . null)
     maximum [norm g | row <- rows, (_, g) <- contactGradient row] `shouldSatisfy` (< 10)

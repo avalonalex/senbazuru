@@ -83,6 +83,14 @@ were cheap. The first ones carry the cost: one of the first four, at 31.18°,
 does not converge. The solves are not timed one by one, so how the time
 divides among them is not measured.
 
+Those runs were made at `a8d69c7`. On 2026-10-21 all nine solves converge, the
+one at 31.18° included, and find the same 28.394°: in 90.8 CPU seconds at
+`0bdd02f`, and in 92.3 with #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), one run each.
+So the 31.18° solve converged before that fix. At least four commits between
+them change the code the quick tier runs (#485, #573, #575 and #539), and which
+one changed it was not isolated.
+
 For scale: one released control in the research galleries costs 3,902 CPU
 seconds for its three solves, and the whole crane-internal gallery 7,965. A
 single held solve at a known angle takes 7.5.

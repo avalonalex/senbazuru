@@ -492,8 +492,8 @@ refinements converge, and the page compares them; the gallery refuses to
 publish if either is not accepted. The incompatible control pushes an upper grip
 through its lower partner; its diagnostic FOLD is excluded from the model
 selector. Regular controls allow twenty iterations per penalty stage; the
-incompatible grip allows two. Generation took 326 CPU seconds in one run on
-2026-10-21, half of it the finer solve.
+incompatible grip allows two. Generation took 345 to 356 CPU seconds in three
+runs on 2026-10-21, about half of it the finer solve.
 
 Acceptance checks material lengths, held positions, original crease angles,
 all triangle contacts and retained source orders. The coplanar seam check uses
