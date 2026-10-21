@@ -765,7 +765,8 @@ data SelectionError
     -- about which side moves, and no @moving P@ said it: with a seed for each
     -- flap the fold can move, written as the author would write it, a sheet
     -- corner, the centre or a point, so that each, written in as @moving P@,
-    -- folds (02 §12, owner decision 53). None if no seed makes it fold.
+    -- folds (02 §12, owner decisions 53 and 55). None if no seed makes it
+    -- fold.
     SeedMissing [Text]
   | -- | The seed, in sheet lengths, lies on the fold line, so it is on both
     -- sides.

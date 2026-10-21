@@ -639,8 +639,8 @@ foldMove settings place named arriving kind sense amount line layers seed = do
             -- With no seed, the refusal offers one for each flap the line
             -- borders that the fold can move (02 §12): the flap's seed,
             -- written as the author would write it ('seedForEachFlap', owner
-            -- decision 53), if this very move runs from it. Worked out only
-            -- if the refusal is read.
+            -- decisions 53 and 55), if this very move runs from it. Worked
+            -- out only if the refusal is read.
             offered = [written | (p, written) <- seedForEachFlap flat' at candidates, isRight (foldMove settings place named arriving kind sense amount line layers (Just p))]
         (m, picked, seedWords) <- case (layers, seed, line) of
           (FlapOfFirstArgument, Just p, _) -> pointSeed p
