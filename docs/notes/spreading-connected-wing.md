@@ -50,13 +50,18 @@ The rigid and curved endpoints are accepted. They keep one material component,
 grip position errors are exactly zero. The curved wing's most compressed and
 stretched directions have strains of -4.42e-7 and 2.84e-7.
 
-The finer mesh does not converge: its solve ran 43 iterations without passing
-its stopping test. With 40 and 100 iterations allowed per penalty stage, it
-ran 63 and 123, and its energy and errors stopped changing, so the shape is
-settled and the stopping test is what fails
-([#469](https://github.com/avalonalex/senbazuru/issues/469)). It passes every
-contact check, but an unconverged solve is not accepted, so the page has no
-two-resolution comparison at the root.
+On 2026-10-02 the finer mesh did not converge: its solve ran 43 iterations
+without passing its stopping test. With 40 and 100 iterations allowed per
+penalty stage, it ran 63 and 123, and its energy and errors stopped changing,
+so the shape was settled and the stopping test was what failed
+([#469](https://github.com/avalonalex/senbazuru/issues/469)). The cause was a
+contact derivative, not the mesh
+([a snapped value has no derivative](snapped-values-have-no-derivative.md),
+[#566](https://github.com/avalonalex/senbazuru/issues/566)). With it fixed, one
+run on 2026-10-21 gives the curved grip converged in 20 iterations and 8.0 CPU
+seconds, panel energy 0.0131811732, and the finer mesh converged in 37
+iterations and 158 CPU seconds, panel energy 0.0133058368, accepted. The page
+has its two-resolution comparison again: the energy changes by 0.95%.
 
 At y = 1/4, measured on 2026-09-13, the wing had four panels: 392 triangles
 with eight spans and 1,192 with sixteen.

@@ -129,7 +129,7 @@ if (change) {
   document.querySelector('#refinement').textContent = !fine ? 'The finer mesh was not solved, so there is no comparison.'
     : 'The finer mesh is not accepted. It fails the ' + failing.join(', ') + (failing.length > 1 ? ' checks' : ' check') + ' after ' + fine.iterations + ' iterations, with edge error ' +
       percent(fine.maxRelativeEdgeError) + ' and contact ' + (fine.contact.passed ? 'passing' : 'failing') +
-      ', so there is no comparison at this hinge. Its shape is kept as a diagnostic FOLD; #469 tracks its convergence.';
+      ', so there is no comparison at this hinge. Its shape is kept as a diagnostic FOLD.';
 }
 </script>
 </html>

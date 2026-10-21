@@ -385,7 +385,15 @@ clippedSeparation i base moving = case base of
   where
     clip ps (a, b) =
       let distance p = crossXY (sub b a) (sub p a)
-          snap d = if abs (value d) < 1e-14 then d {value = 0} else d
+          -- A corner within 1e-14 of the line is on it, and stays on it as
+          -- the mesh moves: the snapped distance is the constant 0, its
+          -- derivative dropped with its value. Keeping the derivative of a
+          -- rounding residue looks harmless and is not. Where stacked
+          -- layers' edges nearly coincide, the crossing below then
+          -- differentiates as -d'(p) / d(q) against a d(q) of about 1e-13,
+          -- giving contact gradients of 1e12 that the solver's linear system
+          -- cannot take (#566).
+          snap d = if abs (value d) < 1e-14 then 0 else d
           edge (p, q)
             | value dp >= 0 && value dq >= 0 = [q]
             | value dp < 0 && value dq < 0 = []

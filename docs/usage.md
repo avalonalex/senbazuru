@@ -487,14 +487,13 @@ level finer are not measured (owner decision 27), and its body core, held,
 has no readings. The 50-degree grip runs at two refinements, with the
 same physical held strips, but the finer one has 4,324 triangles, not four
 times 1,188: it is not the coarser mesh split into four, so it cannot count as
-the curved grip made again (owner decision 29). At the wing's root the finer
-solve does not converge
-([#469](https://github.com/avalonalex/senbazuru/issues/469)): it is reported
-as a diagnostic, and the page has no two-resolution comparison. The incompatible control pushes an upper grip
+the curved grip made again (owner decision 29). At the wing's root both
+refinements converge, and the page compares them; the gallery refuses to
+publish if either is not accepted. The incompatible control pushes an upper grip
 through its lower partner; its diagnostic FOLD is excluded from the model
 selector. Regular controls allow twenty iterations per penalty stage; the
-incompatible grip allows two. Generation takes about twenty minutes, nearly
-all of it the finer solve.
+incompatible grip allows two. Generation took 326 CPU seconds in one run on
+2026-10-21, half of it the finer solve.
 
 Acceptance checks material lengths, held positions, original crease angles,
 all triangle contacts and retained source orders. The coplanar seam check uses
