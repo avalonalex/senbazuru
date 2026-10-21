@@ -110,15 +110,16 @@ running = describe "running a sequence" $ do
 
   -- moving P picks the paper for a line that does not say which side moves.
   -- Without one, the refusal offers a seed for each flap the fold can move
-  -- (#571): the mean of the corner triangle beyond the crease, and the
-  -- centre of the square, lower first, each to six places. Turns red if a
-  -- flap's seed were missing, or not its largest face's.
+  -- (#571), as the author would write it (owner decision 53): the corner
+  -- beyond the crease, and for the rest of the blintz its lowest, then
+  -- leftmost, corner. Turns red if a flap's seed were missing, or a corner
+  -- were offered for a flap it does not name.
   it "folds the side named by moving P, and refuses a line with none" $ do
     let alongEdge8 = Segment (MidpointOfEdge South) (MidpointOfEdge East)
     run <- right (runOn (oneStep (move (Fold MountainFold ToFlat alongEdge8 FlapOfFirstArgument (Just (CornerOf SouthEast))))))
     map (concatMap snd . recordHinge) (runRecords run) `shouldBe` [[EdgeId 8]]
     case refusal (runOn (oneStep (fold mountain alongEdge8))) of
-      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` [V2 0.833333 0.166667, V2 0.5 0.5]
+      Just (Selecting (SeedMissing seeds)) -> seeds `shouldBe` ["corner south-east", "corner south-west"]
       other -> expectationFailure ("expected the line refused with a seed for each side, got " <> show other)
 
   describe "refuses" $ do
@@ -1085,40 +1086,47 @@ creasing = describe "a fold along a line where no crease runs" $ do
       other -> expectationFailure ("expected the flat crease refused, got " <> either (show . explain) (const "a run") other)
 
   -- A line an eighth up the square that does not say which side moves is
-  -- refused with a seed for each flap, which the message prints in the
-  -- language's own numbers (#571): (0.5, 0.0625) below the line and
-  -- (0.5, 0.5625) above it. Each, copied from the message into the source
-  -- as moving P, parses and folds. Turns red if a seed were printed in a
-  -- form the language cannot read, such as 6.25e-2, if one were missing, or
-  -- if one were offered from which the fold does not run.
+  -- refused with a seed for each flap, as the author would write it (#571,
+  -- owner decision 53): corner south-west below the line, and the centre
+  -- above it, which comes before the corners above it. Each, copied from the
+  -- message into the source as moving P, parses and folds. Turns red if a
+  -- seed were printed in a form the language cannot read, if one were
+  -- missing, or if one were offered from which the fold does not run.
   it "offers a seed for each flap, each of which folds as the message prints it" $ do
     let source seed = T.unlines ["foldseq 1", "sheet square", "anchor (1/4, 3/4)", "step {", "  fold valley [(0, 1/8), (1, 1/8)]" <> seed, "}"]
         runText text = parseSequence "seeds.foldseq" text >>= checkSequence >>= runSequence defaultRunSettings M.empty . elaborate
     case runText (source "") of
-      Left err@(StepRefused _ _ _ (Selecting (SeedMissing _))) -> do
-        let printed = [T.takeWhile (/= ')') piece | piece <- drop 1 (T.splitOn "(" (snd (T.breakOn "such as " (explain err))))]
-        printed `shouldBe` ["0.5, 0.0625", "0.5, 0.5625"]
-        forM_ printed $ \seed -> right (runText (source (" moving (" <> seed <> ")"))) >>= void . one . runRecords
+      Left err@(StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> do
+        seeds `shouldBe` ["corner south-west", "centre"]
+        explain err `shouldSatisfy` T.isInfixOf "such as corner south-west or centre, one for each flap the fold can move"
+        forM_ seeds $ \seed -> right (runText (source (" moving " <> seed))) >>= void . one . runRecords
       other -> expectationFailure ("expected the line refused with a seed for each flap, got " <> either (show . explain) (const "a run") other)
 
-  -- The square pre-creased a quarter up, anchored in the strip below, then
-  -- folded up its middle with no seed. Each half is a flap of two faces, the
-  -- strip's quarter and the rest; the anchor's face is listed first. Each
-  -- flap offers its larger face's seed, by the anchor's rule. Turns red if a
-  -- flap offered the first face listed, or the smaller.
-  it "offers each flap's largest face's seed" $ do
-    let upTheMiddle' = onSquare (Just (at (1 / 8) (1 / 8))) ColouredUp $ do
-          step_ "Pre-crease a quarter up." (move (FoldAndUnfold ValleyFold (Segment (at 0 (1 / 4)) (at 1 (1 / 4))) FlapOfFirstArgument (Just (corner NorthEast))))
-          step_ "Fold up the middle." (move (Fold ValleyFold ToFlat (Segment (at (1 / 2) 0) (at (1 / 2) 1)) FlapOfFirstArgument Nothing))
-    case upTheMiddle' of
-      Left (StepRefused 2 _ _ (Selecting (SeedMissing seeds))) -> seeds `shouldBe` [V2 0.25 0.625, V2 0.75 0.625]
-      other -> expectationFailure ("expected the line refused with a seed for each half, got " <> either (show . explain) (const "a run") other)
+  -- An octagon has no corner of its box to name, and its centre lies on a
+  -- fold up the middle, so each flap's seed is a number (owner decision 53).
+  -- Pre-creased a quarter up, each half is a flap of two faces, and offers
+  -- its larger face's point, an exact fraction. With its corners 0.29 in,
+  -- no fraction with a denominator of 64 or less fits, so the point is
+  -- given to six places, and written in it folds. Turns red if a flap
+  -- offered its smaller face's point, a fraction that does not fit, or a
+  -- number from which the fold does not run.
+  it "offers a flap's seed as an exact fraction, or else to six places, where no corner or the centre names it" $ do
+    let octagon a = emptyFrame {verticesCoords = [[a, 0], [1 - a, 0], [1, a], [1, 1 - a], [1 - a, 1], [a, 1], [0, 1 - a], [0, a]], edgesVertices = [(VertexId i, VertexId ((i + 1) `mod` 8)) | i <- [0 .. 7]], edgesAssignment = replicate 8 Border}
+        onOctagon a = runOn (M.singleton "octagon.fold" squareSheet {keyFrame = octagon a}) . sequenceOf (header "An octagon" (sheetFile "octagon.fold") (Just (at (1 / 4) (3 / 4))))
+        upTheMiddle' seed = step_ "Fold up the middle." (move (Fold ValleyFold ToFlat (Segment (at (1 / 2) 0) (at (1 / 2) 1)) FlapOfFirstArgument seed))
+        offered = \case
+          Left (StepRefused _ _ _ (Selecting (SeedMissing seeds))) -> Just seeds
+          _ -> Nothing
+    offered (onOctagon 0.3 (step_ "Pre-crease a quarter up." (move (FoldAndUnfold ValleyFold (Segment (at (1 / 10) (1 / 4)) (at (9 / 10) (1 / 4))) FlapOfFirstArgument (Just (at (1 / 2) (1 / 8))))) >> upTheMiddle' Nothing))
+      `shouldBe` Just ["(9/40, 7/12)", "(31/40, 7/12)"]
+    offered (onOctagon 0.29 (upTheMiddle' Nothing)) `shouldBe` Just ["(0.263333, 0.5)", "(0.736667, 0.5)"]
+    right (onOctagon 0.29 (upTheMiddle' (Just (at (263333 / 1000000) (1 / 2))))) >>= void . one . runRecords
 
   -- The blintz with its south-east corner folded behind to the centre, then
   -- folded behind along the corner's crease with no seed. Both flaps lie on
   -- one side of the line as the paper lies now. A fold from the centre is
   -- refused by its layer order, and from the corner flap it unfolds the
-  -- corner, so only the corner's seed is offered. Turns red if seeds were
+  -- corner, so only the corner is offered, by name. Turns red if seeds were
   -- told apart by the side they lie on, or offered without the fold being
   -- run from them.
   it "offers only the seeds from which the fold runs, on folded paper" $ do
@@ -1132,8 +1140,8 @@ creasing = describe "a fold along a line where no crease runs" $ do
             )
     case corner' Nothing of
       Left (StepRefused 2 _ _ (Selecting (SeedMissing seeds))) -> do
-        seeds `shouldBe` [V2 0.833333 0.166667]
-        right (corner' (Just (at (833333 / 1000000) (166667 / 1000000)))) >>= \run -> length (runRecords run) `shouldBe` 2
+        seeds `shouldBe` ["corner south-east"]
+        right (corner' (Just (corner SouthEast))) >>= \run -> length (runRecords run) `shouldBe` 2
       other -> expectationFailure ("expected the line refused with the corner's seed, got " <> either (show . explain) (const "a run") other)
 
   -- The square folded along a diagonal leaves rounding in where its edges

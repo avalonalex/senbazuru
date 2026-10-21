@@ -100,7 +100,7 @@ everyType =
     ("SequenceError, a state", explain (WriteRefused 2 (WriteNonFinite "senbazuru:material_coords[3]" (0 / 0)))),
     ("WriteProblem", explain (WriteMissingAngles 12 11)),
     ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
-    ("SelectionError", explain (SeedMissing [V2 0.5 0.25, V2 0.5 0.75])),
+    ("SelectionError", explain (SeedMissing ["corner south-west", "centre"])),
     ("SelectionError", explain (SeedMissing [])),
     ("ParseProblem", explain (ParseProblem NoSpan FoundEnd ["a step"] Nothing)),
     ("StaticProblem", explain EmptyStep),

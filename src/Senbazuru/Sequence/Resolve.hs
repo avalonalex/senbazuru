@@ -690,17 +690,17 @@ data Selection = Selection
 
 -- | The seeds a refusal asking which side moves can offer, flap by flap
 -- (PRDs\/02-language-semantics.md, §12): for each flap the line borders, the
--- points that, written as @moving P@, choose it, in sheet lengths, best
--- first. A face offers the point the anchor would take in it
+-- faces that move, and the points that, written as @moving P@, choose it, in
+-- sheet lengths, best first. A face offers the point the anchor would take in it
 -- ('pointsInside', owner decision 51), and belongs to the flap 'flapOf'
 -- chooses from that point. On folded paper a side of the line can hold
 -- several flaps, each a different fold, so the flaps are told apart by the
 -- faces that move, not by the side they lie on. Within a flap, the largest
 -- face's point comes first ('inPreferredOrder'). Whether the fold then runs
 -- from one is the turn's question, which the runner asks.
-seedsByFlap :: FlatState -> FoldLine -> [EdgeId] -> [[V2]]
+seedsByFlap :: FlatState -> FoldLine -> [EdgeId] -> [([FaceId], [V2])]
 seedsByFlap st line candidates =
-  [ [toSheetLengths st m | (_, _, m) <- inPreferredOrder (flatRoom st) [(f, size, m) | (f, size, m, moving') <- choosing, moving' == moving]]
+  [ (moving, [toSheetLengths st m | (_, _, m) <- inPreferredOrder (flatRoom st) [(f, size, m) | (f, size, m, moving') <- choosing, moving' == moving]])
     | moving <- nub [moving' | (_, _, _, moving') <- choosing]
   ]
   where
