@@ -63,7 +63,11 @@ fixed, three runs on 2026-10-21 give the curved grip converged in 21 iterations
 and 8.8 to 9.2 CPU seconds, panel energy 0.0131811728, and the finer mesh
 converged in 39 iterations and 175 to 184 CPU seconds, panel energy
 0.0133058371, accepted. The page has its two-resolution comparison again: the
-energy changes by 0.946%.
+energy changes by 0.946%. Measured again on 2026-10-22, one run, with the clip's
+band set as a distance (owner decision 62): the curved grip converges in 20
+iterations and 9.0 CPU seconds at panel energy 0.0131811732, and the finer mesh
+in 37 iterations and 172 CPU seconds at 0.0133058368, accepted; the comparison
+is still 0.946%.
 
 At y = 1/4, measured on 2026-09-13, the wing had four panels: 392 triangles
 with eight spans and 1,192 with sixteen.

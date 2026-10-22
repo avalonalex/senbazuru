@@ -158,7 +158,8 @@ read the Haddock module headers; for the domain, start with
 | [internal-crease-diagnostic.md](internal-crease-diagnostic.md) | Holding shared crease lines improves convergence, but equilibrium, contact tolerance and valid paper remain separate checks |
 | [spreading-connected-wing.md](spreading-connected-wing.md) | A held curved wing on the existing crane preserves the body, material creases and tail order |
 | [coupled-touching-layer-solve.md](coupled-touching-layer-solve.md) | Coupled preconditioning resolves a fine touching-mesh stall; original residuals and refinement still judge the result |
-| [snap-edges-along-a-clip-line.md](snap-edges-along-a-clip-line.md) | An edge lying almost along a clip line crosses it with a huge true derivative; snapping corners within 1e-12 of the line onto it, as a distance, lets the crane wing's controls converge at every hinge position probed |
+| [snap-edges-along-a-clip-line.md](snap-edges-along-a-clip-line.md) | An edge lying almost along a clip line crosses it with a huge true derivative; snapping corners within 1e-12 of the line onto it, measured as a distance, lets the crane wing's `curved` and released-strip controls converge at all 19 hinge positions probed |
+| [snap-band-edge.md](snap-band-edge.md) | A snapped corner counts as inside, so the band's edge is a jump in the contact penalty; it, not an unforeseen contact, stalled the released strip |
 | [held-wing-bending.md](held-wing-bending.md) | Exact root and grip controls bend an uncreased wing; a known strip and three mesh resolutions check the static solve |
 | [connected-paper-surface.md](connected-paper-surface.md) | One material surface can support sharp folds and later bending; thickness, display offsets and the controls that open a pocket have separate roles |
 | [panel-contact-and-order.md](panel-contact-and-order.md) | Rigid panels need separate crossing and order checks; upright flaps and shared crease contact need both |

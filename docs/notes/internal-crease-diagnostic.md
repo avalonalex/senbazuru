@@ -78,8 +78,9 @@ at y = 1/4, built the same way. The original is its "flat preference, nearby
 body free" control, and its row is unchanged wherever that gallery reports it;
 it records no iteration count. The whole-patch-held reference is its "released
 strip, flat preference" control. It still passes, with an original-angle error
-of `6.21e-8` rather than `7.48e-8`. The other rows' controls now run only at the
-wing's root.
+of `6.21e-8` rather than `7.48e-8`, and of `6.18e-8` measured again on
+2026-10-22 with the clip's band set as a distance (owner decision 62). The other
+rows' controls now run only at the wing's root.
 
 Zero reversed orders does not imply zero intersections. The original's smallest
 active signed contact gap is `-3.91e-8` model units, inside the independent
