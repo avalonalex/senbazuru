@@ -1,5 +1,11 @@
 # Remember the side of a first encounter
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 Start the opposing-flap sheet at 145° / 105°. The middle panel is below each
 flap, but the flaps themselves have no overlapping footprints when viewed
 along the model's vertical direction. Their geometry supplies two relationships,

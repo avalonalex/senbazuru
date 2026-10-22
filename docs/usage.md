@@ -1979,6 +1979,15 @@ line-search candidate and refused trial; returned checkpoint FOLDs and wire
 SVGs distinguish these from the actual endpoint. No physical motion or
 whole-crane inflation is certified. See [the result](notes/recovered-body-subdivision.md).
 
+Every gallery below this one reads a saved `body-subdivision` archive and
+checks the run it recorded, including that correction 2 took a quarter of its
+full proposal (the archive's `scale` field, 0.25). Since #566's fix to the
+contact clip (2026-10-21), a new run takes that quarter step at correction 1 and
+correction 2 at about 2.4e-7 of its proposal, so those galleries refuse
+a newly made archive with `changed archive field: "scale"`. Their sections and
+notes record runs made before the fix (owner decision 60,
+[#605](https://github.com/avalonalex/senbazuru/issues/605)).
+
 ### Saved body contact diagnosis
 
 ```bash

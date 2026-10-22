@@ -1,5 +1,12 @@
 # An intersection hidden in the body drawing
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 The [larger-opening experiment](body-larger-opening.md) adds 21.77 drawing
 pixels of body depth, but triangles 2 and 39 intersect along **0.23175 px**.
 That exceeds its provisional 0.1 px screen. [#395](https://github.com/avalonalex/senbazuru/issues/395)

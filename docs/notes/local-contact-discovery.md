@@ -1,5 +1,11 @@
 # Discover nearby parts of bending paper
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 An uncreased strip can curl until its returning end meets its beginning.
 Both ends still belong to one source panel, the region between deliberate
 crease lines. `LocalContactDiscovery` distinguishes material triangles within

@@ -1,5 +1,12 @@
 # Two distances at the final body-contact refusal
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 The [ten-correction run](body-short-corrections.md) ends with a passing
 **1/32768** trial. The next larger fraction, **1/16384**, is refused because
 triangles **46–70** cross. This inspection uses their saved positions and the

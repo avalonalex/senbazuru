@@ -64,6 +64,35 @@ cost: length and contact penalties at that point are `4520.616` and `4899.322`,
 compared with crease/panel costs `0.007214` and `0.024755`. Failing geometry
 dominates this result, not the previously deferred passive-energy percentage.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), on a
+body-patch archive regenerated with the fix. Iteration 0 is unchanged, so the
+`0.0156515` worst penetration and the initial contact costs further down still
+hold, and crossing still first appears in the 0→1 correction. Every later saved
+point differs:
+
+| Mesh | Saved iteration | Maximum length error | Crossing pairs | Reversed pairs |
+| --- | ---: | ---: | ---: | ---: |
+| Coarse | 1 | 1.74889% | 45 | 57 |
+| Coarse | 40 | 4.05520% | 22 | 28 |
+| Coarse | 160 | 0.00016577% | 0 | 0 |
+| Refined | 1 | 1.84827% | 116 | 158 |
+| Refined | 40 | 4.77549% | 101 | 249 |
+| Refined | 160 | 0.08031% | 53 | 71 |
+
+The coarse run now recovers sooner. It still stalls from 121→122, moving no
+vertex more than `8.452e-9` sheet units while its length error is `4.817e-4`
+(0.048%) and six pairs cross, but it then moves `8.303e-4` by 125, and iteration
+**140**, not 160, is now the first saved point that passes both length and
+contact checks. The refined run still fails at 160, though far less strained:
+its length and contact penalties there are `0.8016` and `0.3471`, against
+crease and panel costs of `0.02239` and `0.10141`, so failing geometry still
+dominates, by a much smaller margin. It has no touching pairs without a declared
+order at iteration 40, where it had seven. The other refined details above, the
+panel-cost jump at iteration 2 and the worst edge and worst reversed pair at
+160, all differ in the regenerated run. Every saved interval still lowers the
+total at its own weight, as the next paragraph explains.
+
 A **penalty** assigns a cost to violating lengths or contact. This solver
 increases length weight from `100` to `10,000`, `1,000,000` and `100,000,000`
 over four blocks of forty corrections; contact weight is always 100 times

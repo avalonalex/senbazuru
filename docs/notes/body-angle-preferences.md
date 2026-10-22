@@ -146,6 +146,28 @@ painting one face after another needs an order without one. The gallery keeps
 their complete-sheet GLBs instead, as it does for any accepted mesh whose
 stable view fails.
 
+Measured again on 2026-10-21, just before and just after #566's fix to the
+contact clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)).
+The run made just before the fix, at `0bdd02f`, already no longer matched the
+table above, for reasons other than the fix
+([#608](https://github.com/avalonalex/senbazuru/issues/608)): its trials took
+71, 74 and 101 iterations, and the 170-degree one stopped unconverged and both
+policies refused it. The fix changes three things:
+
+| Free-patch trial | Accepted, before / after | Stable 3D view, before / after | Base-check sides above the angle's energy, before / after |
+| --- | --- | --- | --- |
+| Original | yes / yes | yes / yes | 1.71%, 1.35% / 1.71%, 1.34% |
+| Weaker | yes / yes | yes / no | 1.72%, 1.35% / 1.71%, 1.34% |
+| Open preference | no / yes | no / yes | 1.67%, 1.31% / 1.66%, 1.30% |
+
+With the fix the 170-degree trial converges, in 74 iterations, and both policies
+accept it, so all three pass again. The weaker trial's stable view is now
+refused: the export reports that its layer orders run in a circle through face
+0, and why is not yet known
+([#610](https://github.com/avalonalex/senbazuru/issues/610)). So the 3D selector
+shows the 170-degree trial where it showed the weaker one. The y = 1/4 section
+above was not measured again: the gallery now runs only at the root.
+
 Every run also measures how far each trial's paper lies from the fixed-body
 reference's, at its farthest point: the comparison owner decision 39 keeps,
 so that the quick tier's held body stays a label

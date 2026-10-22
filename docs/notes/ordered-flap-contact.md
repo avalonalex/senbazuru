@@ -1,5 +1,12 @@
 # A declared order can stop two flaps from crossing
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports. The 65° and 100°
+control, which no gallery runs, was not measured again.
+
 Take a unit square with parallel creases at 0.3 and 0.7 of its width. The
 outside strips are flaps; the middle strip joins them. Ask both creases to
 prefer 150°. Each flap can reach that angle without stretching, but the two

@@ -1,5 +1,12 @@
 # Construct a separated start before applying the body barrier
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 [#379](https://github.com/avalonalex/senbazuru/issues/379) tests initialization
 under the [bounded comparison decision](body-barrier-comparison.md). It starts
 from the authenticated `body-fourth-pair/start.fold`: 87 material vertices,

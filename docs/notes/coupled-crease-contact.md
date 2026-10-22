@@ -1,5 +1,11 @@
 # Contact when both panels bend
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [previous experiment](nonnegative-crease-contact.md) keeps the lower paper
 fixed. Its upper partner can bend, but every contact is measured against a
 known stationary shape. Release the lower interior too: now both sides of a

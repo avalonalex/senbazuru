@@ -1,5 +1,11 @@
 # Refining unequal panels under one solver policy
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [original refinement grid](unequal-crease-refinement.md) stopped at a
 numerical failure on its finest length mesh. The [solver comparison](fine-crease-solver.md)
 resolved that case with an extra length-penalty stage and an exchange of two

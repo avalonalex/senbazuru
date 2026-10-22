@@ -68,6 +68,15 @@ improving mesh agreement, not proof of a continuum limit or calibrated paper
 physics. The gallery publishes these comparisons and the final equilibrium
 reports in `checks.json`.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): all three
+resolutions still converge and pass. The table's triangles, edge errors and
+energies, the eleven iterations and the refinement figures are unchanged at
+the precision given. The final linear residuals are now `9.56e-10`, `2.30e-9`
+and `7.90e-9`, where they were `7.71e-10`, `1.03e-8` and `1.23e-7`, and full
+proposed movements are still below `3.2e-8`. The two halves now settle within
+`8.1e-16` of each other, where they were within `1e-13`.
+
 The initially penetrating guess still corrects to a passing endpoint. Lifting
 only the upper grip still opens a real gap. Holding it underneath the lower
 grip still fails, even though that control's inner linear solve succeeds:

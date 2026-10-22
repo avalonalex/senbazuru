@@ -71,6 +71,16 @@ reduced-force controls have 6,291 and 7,677 reversed order reports respectively.
 No control stops a penalty stage because of a failed line search before
 reaching equilibrium.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): two rows of
+this table are controls the [crane-root gallery](wing-root-holds.md) still runs
+at y = 1/4, built the same way. The original is its "flat preference, nearby
+body free" control, and its row is unchanged wherever that gallery reports it;
+it records no iteration count. The whole-patch-held reference is its "released
+strip, flat preference" control. It still passes, with an original-angle error
+of `6.21e-8` rather than `7.48e-8`. The other rows' controls now run only at the
+wing's root.
+
 Zero reversed orders does not imply zero intersections. The original's smallest
 active signed contact gap is `-3.91e-8` model units, inside the independent
 order check's `1e-7` tolerance. The original and continued endpoints nevertheless
@@ -187,6 +197,12 @@ controls the sides end 1.71% and 1.35% above the angle's bending energy,
 at 27.383° and 29.383°. The two reduced-force controls' sides do not
 converge; they are compared all the same, as decision 36 says, and also end
 higher.
+
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the fix
+changes no verdict in this section. The base check still passes for the
+original and held controls; the original's side at 29.383° now ends 1.34%
+above its angle's bending energy, against 1.35%.
 
 Every complete run also measures how far each control's paper lies from the
 whole patch held, at its farthest point: the comparison owner decision 39

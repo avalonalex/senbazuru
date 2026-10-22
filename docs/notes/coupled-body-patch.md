@@ -65,6 +65,19 @@ count; the important result is that the geometric checks fail. The four solves
 took about 52 CPU seconds together. This is a bounded failure to retain, not a
 reason to launch a larger crane solve or another cost-convergence sweep.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the closed
+reference and the 10° control give the values above. The coarse 5° control
+still passes the checks without settling. Its largest relative length error is
+now `1.66e-6` (was `1.62e-6`) and its body depth `0.036194`; its tail and neck
+landmarks move `0.001096` and `0.001050`, and its panel cost is `0.00060711`.
+The refined trial still fails the contact/order check and exhausts its budget,
+but is much less strained: 0.0803% maximum length error (was 4.01%), 53
+crossing triangle pairs (was 124) and 71 reversed-order pairs (was 333). Its
+crease and panel costs, `0.022390` and `0.10141`, are now both higher than the
+coarse 5° control's, so "lower crease cost" above describes the earlier run
+only.
+
 The gallery separates accepted paper from diagnostic wire views, which show
 hidden layers. Only the closed reference gets an accepted GLB/paper preview.
 Side, top and underside drawings use fixed cameras and 600 pixels per original

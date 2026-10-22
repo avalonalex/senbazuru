@@ -1,5 +1,12 @@
 # The saved angle direction fails arithmetic, not its selected constraints
 
+**After the clip fix, 2026-10-21:** the fixture audited here was saved before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)). The same
+construction now has 1,205 inequalities
+([body-angle-contact](body-angle-contact.md)). The audit reads only the fixture,
+so it repeats as it stands.
+
 [#387](https://github.com/avalonalex/senbazuru/issues/387) audits the first
 refused direction from [contact-aware angle construction](body-angle-contact.md).
 That attempt never changed the body. Its archive contains fourteen numerical

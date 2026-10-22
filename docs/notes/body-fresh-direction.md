@@ -1,5 +1,12 @@
 # A fresh direction after contact repair still takes a tiny step
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 [The preceding repair](body-contact-restoration.md) makes the saved 1/128
 trial pass geometry. From those repaired vertices, **one fresh material
 direction selects 1/256**, lowering actual cost by **0.029073%**. Its next larger

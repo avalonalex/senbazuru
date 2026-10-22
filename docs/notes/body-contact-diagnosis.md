@@ -1,5 +1,12 @@
 # A shallow crossing still crosses
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 The [subdivided body patch](recovered-body-subdivision.md) starts from valid
 geometry but develops three reported crossings at correction 2.
 [#323](https://github.com/avalonalex/senbazuru/issues/323) inspects the saved

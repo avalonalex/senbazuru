@@ -1,5 +1,11 @@
 # Two different reasons for a stalled fine-mesh solve
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [refinement study](unequal-crease-refinement.md) found two failures on the
 same 128-triangle sheet. Its matched and contact-off controls nearly stopped
 moving, but missed the relative edge-length cap. The upper bend preference

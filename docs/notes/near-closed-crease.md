@@ -1,5 +1,11 @@
 # Near a plane is not on its intersection line
 
+**Not measured again after the clip fix, 2026-10-21:** the saved endpoints this
+note rechecks were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), and the
+recheck was not run again.
+
 The [crane diagnosis](internal-crease-diagnostic.md) reports crossings beside
 two nearly closed folds. Before changing the material model, use one shared
 crease between two bending rectangles whose geometry has a known answer.

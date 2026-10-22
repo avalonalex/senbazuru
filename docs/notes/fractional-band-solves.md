@@ -1,5 +1,11 @@
 # Fractional band turns in small coupled solves
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [prescribed-bend comparison](band-boundary-fractions.md) removes a
 boundary-energy drift on a known cylinder. A solved sheet has additional
 constraints: its outer edges and a strip beside the shared crease are held,

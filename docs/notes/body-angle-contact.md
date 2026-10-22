@@ -81,6 +81,14 @@ stored pose. An existing contact-exchange alternative was evaluated only on
 that small control and also failed its checks. The body used the predeclared
 original method once, with no parameter retry or tolerance change.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the linear
+problem has 1,205 inequalities, because one more overlap corner appears (719
+overlap-corner bounds). The method returns the same direction, after the same
+34 inner iterations with the same 12 working constraints and the same
+common-bound prediction, and original-row verification refuses it as before.
+The run still stops before its first geometry trial.
+
 The returned joined mesh is exactly the saved start. Its body depth remains
 `0.0254940`; relative edge errors remain below `2.2e-11`; the same shape has
 four coarse or eighteen subdivided crossing pairs. There is no new opening,

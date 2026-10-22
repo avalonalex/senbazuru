@@ -1,5 +1,12 @@
 # Judge saved body errors at drawing scale
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 [#389](https://github.com/avalonalex/senbazuru/issues/389) follows the owner's
 2026-09-26 direction: a plausible origami illustration may tolerate numerical
 errors. More solver precision is useful when it changes the picture or enables

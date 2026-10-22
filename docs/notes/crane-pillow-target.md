@@ -1,5 +1,11 @@
 # A pillow-shaped visual target for the whole crane
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 The owner found [the first whole-crane drawing](whole-crane-candidate.md)
 broken and identified both the viewing angle and unfinished body opening.
 [#399](https://github.com/avalonalex/senbazuru/issues/399) compares further

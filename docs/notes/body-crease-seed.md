@@ -1,5 +1,11 @@
 # Compatible crease angles can still put paper through paper
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 [#383](https://github.com/avalonalex/senbazuru/issues/383) changes how the body
 study gets its starting shape. The two previous constructions moved vertices
 of a [saved flexible pose](body-feasible-initialization.md), without obtaining

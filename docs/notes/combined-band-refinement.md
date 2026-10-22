@@ -1,5 +1,12 @@
 # One numerical policy for the whole band grid
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes, apart from CPU times. A
+few of its exported FOLDs lose layer orders between faces that only touch along
+an edge ([#609](https://github.com/avalonalex/senbazuru/issues/609)).
+
 The [contact replay](several-contact-exchanges.md) repairs the two middle
 meshes, and [stronger length enforcement](fine-band-length-enforcement.md)
 repairs the fine contact-off solves. Those isolated results use different

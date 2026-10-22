@@ -111,6 +111,15 @@ them at 1×/2× size, and download the selected SVG. The original SVGs, complete
 meshes and contact measurements remain unchanged. See
 [the drawing note](../../docs/notes/crane-book-drawing.md).
 
+Of the body galleries below, `--body-larger-opening` and its view,
+`--body-intersection-context`, `--body-visible-layers`,
+`--body-visual-tolerances`, `--body-fourth-pair`, `--body-contact-14-55`,
+`--body-overlap-restoration`, `--body-initialization` and `--body-feasibility`
+need a `body-subdivision` archive made before #566's fix to the contact clip,
+directly or through another archive made from it; one made since is refused, as
+[Recovered body subdivision](#recovered-body-subdivision) explains.
+`--body-crease-seed`, `--body-angle-contact` and `--body-angle-audit` read none.
+
 To try one larger opening from the recovered 5° body seed:
 
 ```bash
@@ -1080,6 +1089,19 @@ It copies original controls and exports full proposals/refusals separately
 from returned checkpoints. This solve is opt-in, outside the CI suite.
 See [usage](../../docs/usage.md#recovered-body-subdivision) and
 [the study note](../../docs/notes/recovered-body-subdivision.md).
+
+Every gallery that reads a `body-subdivision` archive, directly or through
+another gallery's archive made from it, checks that its correction 2 was taken
+at a quarter of its full proposal (the archive's `scale` field, 0.25). That is
+every body gallery documented after this one, and `--body-larger-opening`,
+`--body-larger-opening-view`, `--body-intersection-context`,
+`--body-visible-layers`, `--body-visual-tolerances`, `--body-fourth-pair`,
+`--body-contact-14-55`, `--body-overlap-restoration`, `--body-initialization`
+and `--body-feasibility` above. A run made since #566's fix to the contact clip
+(2026-10-21) takes its first quarter step at correction 1 and correction 2 at
+about 2.4e-7, so they refuse it with `changed archive field: "scale"`; their
+notes record runs made before the fix (owner decision 60,
+[the subdivision note](../../docs/notes/recovered-body-subdivision.md)).
 
 `--body-contact SOURCE_DIRECTORY OUTPUT_DIRECTORY` inspects the saved
 subdivision correction 1→2 and its three crossing pairs without new solves.

@@ -1,5 +1,11 @@
 # A reference pose can supply contact order
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 The previous opposing-flap control declared three relationships: the middle
 panel below both flaps, and the left flap below the right. We can recover those
 relationships from a suitable starting shape. Set the crease angles to 145°

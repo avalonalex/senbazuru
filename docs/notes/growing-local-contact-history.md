@@ -1,5 +1,11 @@
 # Learn contact partners before they meet
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 Run `stack run senbazuru-material-study -- --bending build/fold-material` and
 select **Curled panel · growing contact history**. Both pictures start with the
 same uncreased strip: sixteen spans (successive rectangular pieces along the

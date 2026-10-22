@@ -1,5 +1,11 @@
 # Resist a layer reversal before its shadows overlap
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 Two triangles can remain separated in 3D while violating a retained above/below
 relationship. Take a lower triangle at `(0,0,0)`, `(1,0,0)`, `(0,1,0)` and an
 upper triangle at `(x,0,-0.05)`, `(x+1,0,-0.05)`, `(x,1,-0.05)`. The second is

@@ -1,5 +1,12 @@
 # Geometry checks stop the body correction at a boundary
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 The [saved-direction replay](body-correction-replay.md) found one shortened
 correction that lowered cost and passed the existing geometry checks. Could
 later corrections keep doing that? [#327](https://github.com/avalonalex/senbazuru/issues/327)

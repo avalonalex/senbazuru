@@ -81,11 +81,25 @@ gradient of 2.4e10, and ends at ±1e-9 give 8e7. The band works because it is
 wider than the rounding that separates coincident edges. A fold whose
 coincident edges land more than 1e-12 apart would bring the problem back.
 
-The clip is shared. Its gradients reach the solves of 26 study galleries and
-its values another 42, and only the crane-spreading gallery and the quick tier
-were run again with the band at 1e-12. Every other study's recorded results
-predate 2026-10-21. [#605](https://github.com/avalonalex/senbazuru/issues/605)
-lists those galleries, the notes that report them, and the body galleries'
-archive readers, which pin facts of runs made before the fix. Owner decisions 58
-and 59 ([#566](https://github.com/avalonalex/senbazuru/issues/566)) set how far
-the fix reaches and how wide the band is.
+Not every control converges more reliably with the band. The crane-root
+gallery's released strip ([wing-root-holds](wing-root-holds.md)), hinged at
+y = 1/4, converged before the fix at its own hinge and at eight positions moved
+from it by up to 1e-11. With the fix it converges at seven of those nine, and
+its own hinge is one of the two that fail (GHCi probes on 2026-10-21, one run
+each). Its large rows are smaller with the band, at most 2.3e8 at its own hinge,
+and none is penetrating where it fails, so the mechanism above does not explain
+it. [#607](https://github.com/avalonalex/senbazuru/issues/607) is to find what
+does.
+
+The clip is shared. Its gradients reach the solves of 26 study galleries and its
+values another 42. On 2026-10-21 every one of them that can still run was run
+twice, just before and just after the fix, and each note whose figures the fix
+changed says so in a dated paragraph
+([#605](https://github.com/avalonalex/senbazuru/issues/605),
+[C118](../../PRDs/decisions.md#changes-since-draft-v2)). The body galleries
+below `--body-subdivision` cannot run: they refuse a body-subdivision archive
+made since the fix, and their notes are kept as a record of the runs made before
+it ([the subdivision note](recovered-body-subdivision.md), owner decision 60).
+Owner decisions 58 and 59
+([#566](https://github.com/avalonalex/senbazuru/issues/566)) set how far the fix
+reaches and how wide the band is.

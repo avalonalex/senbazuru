@@ -1,5 +1,13 @@
 # Plausible illustrations set the next material milestone
 
+**Recorded before the clip fix, 2026-10-21:** the runs this note cites from
+the subdivided body patch onward were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60). The other
+runs it cites were made again on that date with the same results, except where
+their own notes say otherwise.
+
 Owner decision, 2026-09-20, after [#314](https://github.com/avalonalex/senbazuru/pull/314):
 prioritize a plausible spread wing and opened crane body. Defer further work
 whose only benefit is closer agreement between internal bending costs. Return

@@ -1,5 +1,12 @@
 # Adding the missing overlap guards
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 Adding the six 55–93 overlap guards lets the new direction accept **1/8**,
 compared with **1/128** for the saved control, without repairing either selected
 shape. It reduces total cost by **0.390833%**, versus **0.028072%**, while all

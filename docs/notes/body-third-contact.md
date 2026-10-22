@@ -1,5 +1,12 @@
 # A third pair in the body correction
 
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
+
 The [two-pair comparison](body-contact-pairs.md) could take 1/8 of its proposed
 correction, but pair **46–70** crossed at 1/4. This experiment adds that pair's
 contact inequalities at exactly the same saved blocked shape. It preserves the

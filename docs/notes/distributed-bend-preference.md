@@ -1,5 +1,12 @@
 # Asking a region of paper to bend
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes, apart from CPU times. A
+few of its exported FOLDs lose layer orders between faces that only touch along
+an edge ([#609](https://github.com/avalonalex/senbazuru/issues/609)).
+
 The [six-mesh line-load study](two-direction-crease-refinement.md) asks the
 upper panel to turn at three material lines. Refining the mesh leaves each
 requested angle unchanged, but narrows the triangles that must carry that

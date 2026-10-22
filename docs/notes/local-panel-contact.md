@@ -1,5 +1,11 @@
 # One panel can meet itself
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 Take an uncreased strip, one model unit long and 0.3 wide, and curl it back
 towards its starting edge. All its triangles belong to one panel: a panel is
 the paper between deliberate crease lines. Saying that this panel is above

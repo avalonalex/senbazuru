@@ -46,6 +46,25 @@ by at most `0.000145` model units; total crease-plus-panel bending energy
 changes by about 2.57%. The root angle's remaining 0.83-degree change is a
 reason to retain the refinement comparison, not claim a mesh-independent value.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the
+released strip with its 30° preference no longer converges with forty
+iterations per penalty stage, so the gallery no longer accepts it, and only
+four of the five fixed-body controls pass. Convergence is the only check it
+fails: its root still turns 31.27°, its relative edge error is 1.26e-6
+against 8.06e-7, its original crease-angle error is 1.90e-6 radians, its
+holds are exact and its contacts pass. So the finding above, that the weaker
+spring turns further (31.45° against 31.27°), now sets an accepted endpoint
+against one that has not settled. The finer mesh's edge error is 3.50e-7,
+against 3.64e-7. Every other value above is unchanged at the precision shown.
+
+Whether the released strip converges now depends on exactly where the root line
+lies. GHCi probes on 2026-10-21, one run each, moved the gallery's root line, at
+y = 1/4, by 0, ±1e-13, ±3e-13, ±1e-12 and ±1e-11 sheet lengths. Before the fix
+the released strip converged at all nine positions. With it, it converges at
+seven, and the gallery's own position is one of the two that fail
+([#607](https://github.com/avalonalex/senbazuru/issues/607)).
+
 The generated side profiles follow the wing's middle into the body, selecting
 one layer by source-panel ownership and its original normal. They use actual
 mesh positions at one scale; changing shading or hiding a line cannot change
