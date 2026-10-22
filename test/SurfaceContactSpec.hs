@@ -96,14 +96,24 @@ spec = describe "open-flap contact correction" $ do
 
   -- Stacked triangles whose edges nearly coincide in projection, as the crane
   -- wing's layers do. The lower triangle's edge along y = 0 has length 1, so
-  -- the clip's cross product is the plain distance: the upper triangle's
-  -- corner lies 5e-13 from the edge, inside the 1e-12 snap, and the next
-  -- corner 1e-11 beyond it. The crossing between them is pinned to the
-  -- snapped corner and has no derivative. Turns red if the snap kept the
+  -- the band is 1e-12 either way: the upper triangle's corner lies 5e-13
+  -- from the edge, inside the snap, and the next corner 1e-11 beyond it. The
+  -- crossing between them is pinned to the snapped corner and has no
+  -- derivative. Turns red if the snap kept the
   -- distance's derivative (a gradient of 3.0e10) or if its band were narrowed
   -- to the 1e-14 it was before #566 (2.7e10).
   it "gives a corner snapped onto a clip line no derivative off it" $ do
     let mesh = pairMesh [V3 0 0 0, V3 1 0 0, V3 0 1 0, V3 0.3 5e-13 0.4, V3 0.6 (-1e-11) 0.7, V3 0.5 0.5 0.6]
+    rows <- prepare 0 mesh >>= \model -> right (Contact.orderedContacts model mesh)
+    rows `shouldSatisfy` (not . null)
+    maximum [norm g | row <- rows, (_, g) <- contactGradient row] `shouldSatisfy` (< 10)
+
+  -- The same pair scaled so the clip edge has length 2: the corner lies 7e-13
+  -- from it as a distance, within the band, but its cross product is 1.4e-12.
+  -- Turns red if the band were 1e-12 of the cross product, as before #607
+  -- (a gradient of 2.6e10), or if the snap kept the derivative (3.0e10).
+  it "measures the snap band as a distance from the clip line" $ do
+    let mesh = pairMesh [V3 0 0 0, V3 2 0 0, V3 0 2 0, V3 0.6 7e-13 0.4, V3 1.2 (-1e-11) 0.7, V3 1.0 1.0 0.6]
     rows <- prepare 0 mesh >>= \model -> right (Contact.orderedContacts model mesh)
     rows `shouldSatisfy` (not . null)
     maximum [norm g | row <- rows, (_, g) <- contactGradient row] `shouldSatisfy` (< 10)

@@ -31,12 +31,10 @@ solve puts them a few times 1e-13 off each other's lines, on either side.
 So the clip snaps. A corner nearer the line than a band is on it, and its
 distance is the constant 0, with no derivative. An edge with both ends in the
 band does not cross the line. An edge with one end in the band crosses at that
-end, and the crossing has no derivative. The band is 1e-12. It is measured in
-the quantity the clip computes, a cross product: the clipping side's length
-times the corner's distance. Dividing by the length first, so that the band is a
-distance, is what `Senbazuru.Origami.Contact.clipBy` does. On the crane wing its
-band came out narrower than 1e-12, and 2 of the nine hinges below kept rows with
-gradients near 7e9.
+end, and the crossing has no derivative. The band is 1e-12 as a distance from
+the line, as in `Senbazuru.Origami.Contact.clipBy`. The clip computes a cross
+product, the clipping side's length times the corner's distance, so the number
+it compares against is 1e-12 times that length.
 
 ## On the crane wing
 
@@ -60,12 +58,15 @@ from `wingRoot` by d = 0, ±1e-13, ±3e-13, ±1e-12 and ±1e-11 (GHCi probes on
 | band 1e-14, derivative kept (before #566) | 5 of 9 | 25 at d = 0 (largest 1.3e12, none penetrating); 52 at d = +1e-13 (16 penetrating, largest 2.4e9) |
 | band 1e-14, derivative dropped | 9 of 9 | 1 to 16 at every hinge, largest 4.9e9 to 3.3e11, none penetrating |
 | band 1e-12, derivative dropped | 9 of 9 | none; the largest gradient is 6.6 |
+| band 1e-12 as a distance, derivative dropped (since #607) | 9 of 9 | 8 rows near 7e9 at 2 of the 9, none penetrating |
 
-The middle row was the first fix tried. It converged at every hinge, but only
+The second row was the first fix tried. It converged at every hinge, but only
 because no remaining row was penetrating at the end: less luck, not none. The
 finer mesh, `fine`, solved at d = 0 and +1e-13, kept 17 and 5 such rows, up to
-3e10, under that rule. With the band at 1e-12 it has none (largest 6.2), and
-both converge.
+3e10, under that rule. The third row, a band of 1e-12 of the cross product
+(owner decision 59), left no row above 1e3 there, and `fine` none either
+(largest 6.2). It turned out to break another control, and the fourth row
+replaced it (below).
 
 Holding `t` fixed while differentiating would bound every gradient: the
 crossing would move with its edge but not along it. On the crane wing the
@@ -81,15 +82,20 @@ gradient of 2.4e10, and ends at ±1e-9 give 8e7. The band works because it is
 wider than the rounding that separates coincident edges. A fold whose
 coincident edges land more than 1e-12 apart would bring the problem back.
 
-Not every control converges more reliably with the band. The crane-root
-gallery's released strip ([wing-root-holds](wing-root-holds.md)), hinged at
-y = 1/4, converged before the fix at its own hinge and at eight positions moved
-from it by up to 1e-11. With the fix it converges at seven of those nine, and
-its own hinge is one of the two that fail (GHCi probes on 2026-10-21, one run
-each). Its large rows are smaller with the band, at most 2.3e8 at its own hinge,
-and none is penetrating where it fails, so the mechanism above does not explain
-it. [#607](https://github.com/avalonalex/senbazuru/issues/607) is to find what
-does.
+Fewer large rows did not mean more reliable convergence. The crane-root
+gallery's released strip ([wing-root-holds](wing-root-holds.md)), hinged at y =
+1/4, converged at all 19 positions probed within 1e-9 of its own hinge before
+the fix, and at only 14 with the band at 1e-12 of the cross product (GHCi probes
+on 2026-10-22, one run each). It stalls for a different reason than `curved`
+did. The solver adds a contact row to its linear step only once the row
+penetrates. Rows sitting about 8e-10 clear of contact were left out, so the full
+step drove them to −1.7e-7, and the line search accepted almost none of it, step
+after step. Which rows sit just clear depends on where the band puts their
+corners. With the band as a distance, the released strip converges at all 19
+positions and `curved` still at all 19, as with 1e-13 or 1e-14
+([#607](https://github.com/avalonalex/senbazuru/issues/607), owner decision 62).
+Changing the solver to add the rows a step would carry into contact fixed the
+released strip but broke crease correction and the body patch.
 
 The clip is shared. Its gradients reach the solves of 26 study galleries and its
 values another 42. On 2026-10-21 every one of them that can still run was run
@@ -102,4 +108,8 @@ made since the fix, and their notes are kept as a record of the runs made before
 it ([the subdivision note](recovered-body-subdivision.md), owner decision 60).
 Owner decisions 58 and 59
 ([#566](https://github.com/avalonalex/senbazuru/issues/566)) set how far the fix
-reaches and how wide the band is.
+reaches and the band's first width, and owner decision 62
+([#607](https://github.com/avalonalex/senbazuru/issues/607)) made it a distance.
+The galleries' dated paragraphs from 2026-10-21 were measured with the first
+width; [#613](https://github.com/avalonalex/senbazuru/issues/613) measures them
+again with this one.

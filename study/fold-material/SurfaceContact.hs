@@ -386,18 +386,25 @@ clippedSeparation i base moving = case base of
     clip ps (a, b) =
       let distance p = crossXY (sub b a) (sub p a)
           -- `distance` is a cross product: the clipping side's length times
-          -- the corner's distance from its line. Under 1e-12 the corner is on
-          -- the line, and its distance is the literal 0, whose derivative is
-          -- empty. Where stacked layers' edges nearly coincide, the crane
-          -- wing's corners sit a few times 1e-13 off each other's lines, on
-          -- either side. An edge with both ends that close crosses the line
-          -- at t = dp / (dp - dq), which slides the whole length of the edge
-          -- when either end moves by 1e-13: its true derivative reaches
-          -- 1e12, and the solver's linear system cannot take it (#566).
-          -- Snapping both ends removes the crossing; snapping one, with no
-          -- derivative, pins it to that end. A crossing whose ends are both
-          -- past the band still differentiates as about 1 / (dp - dq).
-          snap d = if abs (value d) < 1e-12 then 0 else d
+          -- the corner's distance from its line. A corner within 1e-12 of the
+          -- line, as a distance, is on it, so the band below is 1e-12 times
+          -- that length, the same distance at every refinement, as in
+          -- `Senbazuru.Origami.Contact.clipBy`. Its distance is then the
+          -- literal 0, whose derivative is empty. Where stacked layers' edges
+          -- nearly coincide, the crane wing's corners sit a few times 1e-13
+          -- off each other's lines, on either side. An edge with both ends
+          -- that close crosses the line at t = dp / (dp - dq), which slides
+          -- the whole length of the edge when either end moves by 1e-13: its
+          -- true derivative reaches 1e12, and the solver's linear system
+          -- cannot take it (#566). Snapping both ends removes the crossing;
+          -- snapping one, with no derivative, pins it to that end. A crossing
+          -- whose ends are both past the band still differentiates as about
+          -- 1 / (dp - dq). The band's width was chosen by convergence, not by
+          -- the size of those derivatives: 1e-12 as a cross product left
+          -- crane-root's released strip converging at 14 of 19 hinge offsets,
+          -- and this band at 19 (#607).
+          sideLength = let (x, y, _) = sub b a in sqrt (value x * value x + value y * value y)
+          snap d = if abs (value d) < 1e-12 * sideLength then 0 else d
           edge (p, q)
             | value dp >= 0 && value dq >= 0 = [q]
             | value dp < 0 && value dq < 0 = []

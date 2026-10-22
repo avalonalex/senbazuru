@@ -65,6 +65,13 @@ the released strip converged at all nine positions. With it, it converges at
 seven, and the gallery's own position is one of the two that fail
 ([#607](https://github.com/avalonalex/senbazuru/issues/607)).
 
+Measured again on 2026-10-22, with the clip's band set as a distance (owner
+decision 62, [snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)):
+the released strip converges again and the gallery accepts it, with relative
+edge error 8.06e-7 and original crease-angle error 1.96e-7, and its root still
+turns 31.27°. Probed the same way at 19 positions within 1e-9 of its own hinge,
+it converges at all 19. Every other control's verdict above is unchanged.
+
 The generated side profiles follow the wing's middle into the body, selecting
 one layer by source-panel ownership and its original normal. They use actual
 mesh positions at one scale; changing shading or hiding a line cannot change
