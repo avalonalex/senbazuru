@@ -46,6 +46,23 @@ by at most `0.000145` model units; total crease-plus-panel bending energy
 changes by about 2.57%. The root angle's remaining 0.83-degree change is a
 reason to retain the refinement comparison, not claim a mesh-independent value.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the
+released strip with its 30° preference no longer converges with forty
+iterations per penalty stage, so the gallery no longer accepts it, and only
+four of the five fixed-body controls pass. Convergence is the only check it
+fails: its root still turns 31.27°, its relative edge error is 1.26e-6
+against 8.06e-7, its original crease-angle error is 1.90e-6 radians, its
+holds are exact and its contacts pass. Its turn is now a diagnostic, so the
+weaker spring's larger turn is compared with an endpoint that has not
+settled. The finer mesh's edge error is 3.50e-7, against 3.64e-7. Every
+other value above is unchanged at the precision shown. Whether the released
+strip converges turns on the hinge's position: moved by up to 1e-11 either
+way, it converges at seven of nine positions with the fix and at all nine
+before it. At the gallery's own hinge the earlier run's last proposed movement
+was `9.95e-8`, just inside the `1e-7` limit
+([#607](https://github.com/avalonalex/senbazuru/issues/607)).
+
 The generated side profiles follow the wing's middle into the body, selecting
 one layer by source-panel ownership and its original normal. They use actual
 mesh positions at one scale; changing shading or hiding a line cannot change

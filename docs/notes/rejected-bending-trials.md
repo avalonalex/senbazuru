@@ -19,6 +19,18 @@ The rejection table now records the first failed check for each trial:
 | Witnessed triangle collapse | 0 |
 | Motion bounds unresolved | 1 |
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the build
+just before the fix still gives the counts above. With the fix, two change:
+
+| First refusal | Before the fix | After |
+| --- | ---: | ---: |
+| Energy did not decrease | 388 | 359 |
+| Contact discovery or history | 20 | 19 |
+
+The other four are unchanged. The fixed run also accepts one path fewer; the
+paragraph on ending a stage early, below, gives the numbers.
+
 A witness is a particular pose where the checker found a crossing. Unresolved
 means that its work limit ran out without proving separation or finding such a
 pose. These outcomes must remain separate: increasing the checker budget might
@@ -59,6 +71,16 @@ accepted paths and maximum relative length error `6.56e-8`. Its 31 recorded
 energy refusals come from a stationarity check: refusal alone does not
 mean failure when the full proposed correction and material constraints already
 meet the stopping rules. Earlier endpoint-only modes retain their behavior.
+
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the closing
+run now finishes after 28 numerical iterations with 24 accepted paths, not 29
+and 25. Its first 24 paths are unchanged. At iteration 25 every step fraction is
+now refused, so the four stages are blocked at iterations 25 to 28 rather than
+26 to 29. The 25th path, which the earlier build accepted, moved no vertex
+more than `3.4e-12`, and the endpoint still has about 1.13% edge-length error.
+The opening is unchanged: three accepted paths at `6.56e-8`, with 31 energy
+refusals.
 
 `SweptRelaxation` keeps counts and only the first and last rejected trial in
 each of six categories: at most twelve trial records, each with two meshes,

@@ -64,6 +64,38 @@ cost: length and contact penalties at that point are `4520.616` and `4899.322`,
 compared with crease/panel costs `0.007214` and `0.024755`. Failing geometry
 dominates this result, not the previously deferred passive-energy percentage.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), on a
+body-patch archive regenerated with the fix. The starting guesses do not
+change, so the iteration-0 rows, the `0.0156515` worst penetration and the
+initial contact costs below still hold, and crossing still first appears in
+the 0→1 correction. Every later saved point differs:
+
+| Mesh | Saved iteration | Maximum length error | Crossing pairs | Reversed pairs |
+| --- | ---: | ---: | ---: | ---: |
+| Coarse | 1 | 1.74889% | 45 | 57 |
+| Coarse | 40 | 4.05520% | 22 | 28 |
+| Coarse | 160 | 0.00016577% | 0 | 0 |
+| Refined | 1 | 1.84827% | 116 | 158 |
+| Refined | 40 | 4.77549% | 101 | 249 |
+| Refined | 160 | 0.08031% | 53 | 71 |
+
+The coarse run still stalls before it recovers, but earlier: from 121→122 the
+largest vertex moves `8.452e-9` sheet units while the length error is
+`4.817e-4` and six pairs cross. It then moves `8.303e-4` by 125, and iteration
+**140** is now the first saved point that passes both length and contact
+checks, so the 130→140 interval brackets the recovery; 160 passes too. The
+refined run has no touching pairs without a declared order at iteration 40.
+Its panel cost jumps from `0.001373` at iteration 1 to `0.097935` at 2, with
+length error 11.3086%. At 160 it still fails, far less strained: the worst
+length edge is vertices 15–70, on the edge between original faces 4 and 10,
+lengthened by `3.994e-5` from `0.04972809`. The worst reversed pair is
+triangles 46 and 71, from wing-collar faces 8 and 10, penetrating `5.434e-6`.
+Length and contact penalties there are `0.8016` and `0.3471`, against
+crease/panel costs `0.02239` and `0.10141`, so failing geometry still dominates,
+by a much smaller margin. Every saved interval still lowers the total at its
+own weight, in the sense explained next.
+
 A **penalty** assigns a cost to violating lengths or contact. This solver
 increases length weight from `100` to `10,000`, `1,000,000` and `100,000,000`
 over four blocks of forty corrections; contact weight is always 100 times

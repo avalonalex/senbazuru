@@ -80,6 +80,10 @@ still differentiates as about `1 / (dp - dq)`: ends at 1.1e-12 and −1e-11 give
 gradient of 2.4e10, and ends at ±1e-9 give 8e7. The band works because it is
 wider than the rounding that separates coincident edges. A fold whose
 coincident edges land more than 1e-12 apart would bring the problem back.
+One already does. The crane-root gallery's released strip, hinged at y = 1/4,
+still ends with rows of gradient up to 5.4e8, and with its hinge moved by up to
+1e-11 it converges at seven of nine positions
+([#607](https://github.com/avalonalex/senbazuru/issues/607)).
 
 The clip is shared. Its gradients reach the solves of 26 study galleries and
 its values another 42, and only the crane-spreading gallery and the quick tier

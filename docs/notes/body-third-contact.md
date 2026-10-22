@@ -1,5 +1,14 @@
 # A third pair in the body correction
 
+*Recorded before 2026-10-21's fix to the contact clip
+([#566](https://github.com/avalonalex/senbazuru/issues/566),
+[snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)). With the fix
+the body chain regenerates only as far as `--body-subdivision`, whose
+continuation makes the same three crossings one correction earlier, and every
+gallery that reads its archive refuses the new one. The runs here are kept as a
+record and cannot be repeated as they stand (owner decision 60,
+[#605](https://github.com/avalonalex/senbazuru/issues/605)).*
+
 The [two-pair comparison](body-contact-pairs.md) could take 1/8 of its proposed
 correction, but pair **46–70** crossed at 1/4. This experiment adds that pair's
 contact inequalities at exactly the same saved blocked shape. It preserves the

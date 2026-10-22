@@ -1,5 +1,14 @@
 # Construct a separated start before applying the body barrier
 
+*Recorded before 2026-10-21's fix to the contact clip
+([#566](https://github.com/avalonalex/senbazuru/issues/566),
+[snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)). With the fix
+the body chain regenerates only as far as `--body-subdivision`, whose
+continuation makes the same three crossings one correction earlier, and every
+gallery that reads its archive refuses the new one. The runs here are kept as a
+record and cannot be repeated as they stand (owner decision 60,
+[#605](https://github.com/avalonalex/senbazuru/issues/605)).*
+
 [#379](https://github.com/avalonalex/senbazuru/issues/379) tests initialization
 under the [bounded comparison decision](body-barrier-comparison.md). It starts
 from the authenticated `body-fourth-pair/start.fold`: 87 material vertices,

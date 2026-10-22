@@ -1,5 +1,14 @@
 # Adding the missing overlap guards
 
+*Recorded before 2026-10-21's fix to the contact clip
+([#566](https://github.com/avalonalex/senbazuru/issues/566),
+[snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)). With the fix
+the body chain regenerates only as far as `--body-subdivision`, whose
+continuation makes the same three crossings one correction earlier, and every
+gallery that reads its archive refuses the new one. The runs here are kept as a
+record and cannot be repeated as they stand (owner decision 60,
+[#605](https://github.com/avalonalex/senbazuru/issues/605)).*
+
 Adding the six 55–93 overlap guards lets the new direction accept **1/8**,
 compared with **1/128** for the saved control, without repairing either selected
 shape. It reduces total cost by **0.390833%**, versus **0.028072%**, while all

@@ -76,6 +76,15 @@ give the following results (lengths are relative edge errors):
 | Penalty iterations | 32–34 | 79–80 |
 | Constrained iterations | 20 | 45 |
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the penalty
+baseline's contact forces come from that clip. On 64 triangles its minimum gap
+is now `-8.421e-11`, not `-8.431e-11`, and on 32 triangles it takes 31–34
+iterations, not 32–34; its length errors are unchanged at the precision given.
+The constrained solve does its own exact clipping and never uses that one. Its
+rows above, every iterate it records and its FOLDs, GLBs and gap plots are
+unchanged.
+
 All six constrained endpoints retain shared material and exact holds. They
 pass the authored-angle cap of `1e-5` radians and the whole-sheet contact check
 at its unchanged `1e-7` distance tolerance. Every recorded constrained iterate

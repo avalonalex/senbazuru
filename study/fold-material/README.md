@@ -1081,6 +1081,13 @@ from returned checkpoints. This solve is opt-in, outside the CI suite.
 See [usage](../../docs/usage.md#recovered-body-subdivision) and
 [the study note](../../docs/notes/recovered-body-subdivision.md).
 
+Every gallery that reads a `body-subdivision` archive, the ones below and
+`--body-larger-opening`, `--body-visible-layers` and `--body-visual-tolerances`,
+checks that its correction 2 was taken at scale 0.25. A run made since #566's
+fix to the contact clip (2026-10-21) takes correction 2 at about 2.4e-7, so they
+refuse it with `changed archive field: "scale"`; their notes record runs made
+before the fix (owner decision 60).
+
 `--body-contact SOURCE_DIRECTORY OUTPUT_DIRECTORY` inspects the saved
 subdivision correction 1→2 and its three crossing pairs without new solves.
 It exports exact intersection sections, the solver's contact witnesses, unchanged

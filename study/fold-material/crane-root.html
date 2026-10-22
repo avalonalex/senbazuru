@@ -167,8 +167,10 @@ paperScreen.show(document.querySelector('#screen'), data.runs, run => run.accept
 const flat = data.runs.find(run => run.id === 'flat');
 const released = data.runs.find(run => run.id === 'released');
 const weaker = data.runs.find(run => run.id === 'weaker');
-document.querySelector('#finding').textContent = 'Releasing the held strip gives a root turn of ' + angle(released) +
-  '; weakening its spring gives ' + angle(weaker) + '. A flat-angle preference gives ' + angle(flat) +
+// A turn from an endpoint that is not accepted is said so, not quoted bare.
+const turn = run => angle(run) + (run.accepted ? '' : ' (not accepted)');
+document.querySelector('#finding').textContent = 'Releasing the held strip gives a root turn of ' + turn(released) +
+  '; weakening its spring gives ' + turn(weaker) + '. A flat-angle preference gives ' + turn(flat) +
   '. The sharp turn remains substantial with these body and tip holds.';
 const shown = flat.visibleGlbAvailable ? flat : data.runs.find(run => run.visibleGlbAvailable);
 if (shown) document.querySelector('#viewer').src = 'crane-root/index.html?model=' + shown.id + '.glb&angle=other-corner&side=below';

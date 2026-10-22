@@ -1,5 +1,14 @@
 # Change the body contact method before repairing another pair
 
+*Recorded before 2026-10-21's fix to the contact clip
+([#566](https://github.com/avalonalex/senbazuru/issues/566),
+[snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)). With the fix
+the body chain regenerates only as far as `--body-subdivision`, whose
+continuation makes the same three crossings one correction earlier, and every
+gallery that reads its archive refuses the new one. The runs here are kept as a
+record and cannot be repeated as they stand (owner decision 60,
+[#605](https://github.com/avalonalex/senbazuru/issues/605)).*
+
 Owner direction, **2026-09-24**, after merged
 [#375](https://github.com/avalonalex/senbazuru/pull/375): pause further repairs
 chosen one triangle pair at a time. The body study has supplied the

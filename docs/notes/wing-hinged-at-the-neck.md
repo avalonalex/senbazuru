@@ -62,6 +62,14 @@ At the root the flat preference's root turn is θ itself, because the base is he
 at θ; at 1/4 it is where a free solve settled. The two dashed curves in the
 side profile almost coincide.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): all four
+controls are still accepted, and two crease errors change at the precision
+shown. The flat preference at y = 1/4 has a maximum crease error of 6.2e-8
+radians, against 7.5e-8, and the held root at y = 0.37585 one of 8.4e-7,
+against 8.3e-7. The search still settles at 28.38°, and the energies in the
+next table are unchanged.
+
 The energy fixes θ to about a degree, not to 0.05°, which is only the width
 of the search's last bracket. Against the least energy found, at 28.38°:
 
