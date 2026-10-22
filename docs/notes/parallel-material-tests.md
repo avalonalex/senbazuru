@@ -1,5 +1,11 @@
 # Run independent material tests on several CPUs
 
+**Not measured again after the clip fix, 2026-10-21:** the timings below include
+specs whose solves [#566](https://github.com/avalonalex/senbazuru/issues/566)'s
+fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) changed, and
+they were not taken again.
+
 The [#330 CI run](https://github.com/avalonalex/senbazuru/actions/runs/35813111052)
 spent 19m36s in its build/test job: 1m36s setting up the toolchain, 3m31s
 compiling and 14m23s in `stack test`. Hspec itself reported 840.9406 seconds

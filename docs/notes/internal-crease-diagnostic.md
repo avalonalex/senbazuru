@@ -73,9 +73,11 @@ reaching equilibrium.
 
 Measured again on 2026-10-21, after #566's fix to the contact clip
 ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): two rows of
-this table are controls the crane-root gallery still runs at y = 1/4. The
-original is its `body` control, and its row is unchanged. The whole-patch-held
-reference is its `flat` control. It still passes, with an original-angle error
+this table are controls the [crane-root gallery](wing-root-holds.md) still runs
+at y = 1/4, built the same way. The original is its "flat preference, nearby
+body free" control, and its row is unchanged wherever that gallery reports it;
+it records no iteration count. The whole-patch-held reference is its "released
+strip, flat preference" control. It still passes, with an original-angle error
 of `6.21e-8` rather than `7.48e-8`. The other rows' controls now run only at the
 wing's root.
 

@@ -28,8 +28,8 @@ just before the fix still gives the counts above. With the fix, two change:
 | Energy did not decrease | 388 | 359 |
 | Contact discovery or history | 20 | 19 |
 
-The other four are unchanged. The fixed run also accepts one path fewer; the
-paragraph on ending a stage early, below, gives the numbers.
+The other four are unchanged. The run with the fix also accepts one path
+fewer; the second dated paragraph below gives the numbers.
 
 A witness is a particular pose where the checker found a crossing. Unresolved
 means that its work limit ran out without proving separation or finding such a
@@ -77,8 +77,8 @@ Measured again on 2026-10-21, after #566's fix to the contact clip
 run now finishes after 28 numerical iterations with 24 accepted paths, not 29
 and 25. Its first 24 paths are unchanged. At iteration 25 every step fraction is
 now refused, so the four stages are blocked at iterations 25 to 28 rather than
-26 to 29. The 25th path, which the earlier build accepted, moved no vertex
-more than `3.4e-12`, and the endpoint still has about 1.13% edge-length error.
+26 to 29. The 25th path, which the earlier build accepted, moved no vertex more
+than about `3.4e-12`, and the endpoint still has about 1.13% edge-length error.
 The opening is unchanged: three accepted paths at `6.56e-8`, with 31 energy
 refusals.
 

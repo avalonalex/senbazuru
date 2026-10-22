@@ -56,6 +56,14 @@ for every region of this whole-crane deformation. All proposals, refusals,
 angles and separate energies remain in `run.json` and `checks.json`.
 No second solve, parameter sweep or tolerance change follows this result.
 
+Measured again on 2026-10-21, after #566's fix to the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the run gives
+the nineteen moves and the refused correction 20 described above, with the same
+745% and 431 px. The run made just before the fix did not. It accepted a
+twentieth move, taking 2⁻³⁰ of its full proposal and moving no vertex more than
+`5.6e-10`, and then refused correction 21. Which way that last step falls is a
+matter of rounding.
+
 The ordinary illustration audit still refuses the candidate. For review, a
 separate depth preview clips each projected triangle by the portions of other
 triangles actually nearer the camera. At an intersection, which triangle is

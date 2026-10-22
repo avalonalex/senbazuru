@@ -1296,6 +1296,12 @@ than restarting the old strained opening guess. New vertices share the old
 triangles' planes, so refinement initially preserves the shape exactly.
 Material and physical creases stay tied to the original sheet.
 
+Everything after the subdivision in this section reads its saved archive, and
+records runs made before #566's fix to the contact clip (2026-10-21). An archive
+made since takes its first quarter step one correction earlier, and the
+galleries that follow refuse it
+([usage](usage.md#recovered-body-subdivision), owner decision 60).
+
 The [opt-in command](usage.md#recovered-body-subdivision) permits one bounded
 continuation only if the seed passes geometry. It retains full proposals as
 well as shortened line-search steps: a tiny accepted correction alone cannot

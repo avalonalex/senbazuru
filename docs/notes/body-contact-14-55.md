@@ -1,13 +1,11 @@
 # A guarded gap can still lengthen an intersection
 
-*Recorded before 2026-10-21's fix to the contact clip
-([#566](https://github.com/avalonalex/senbazuru/issues/566),
-[snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)). With the fix
-the body chain regenerates only as far as `--body-subdivision`, whose
-continuation makes the same three crossings one correction earlier, and every
-gallery that reads its archive refuses the new one. The runs here are kept as a
-record and cannot be repeated as they stand (owner decision 60,
-[#605](https://github.com/avalonalex/senbazuru/issues/605)).*
+**Recorded before the clip fix, 2026-10-21:** these runs were made before
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip and cannot be repeated as they stand. Their gallery reads
+`--body-subdivision`'s archive or one made from it, and a body-subdivision
+archive made since the fix is refused; [the subdivision
+note](recovered-body-subdivision.md) says why (owner decision 60).
 
 The saved **1/4** correction is refused because triangles **14–55** intersect
 along a segment longer than `1e-7` sheet units. Both triangles already extend

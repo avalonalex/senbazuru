@@ -1,5 +1,12 @@
 # When the two panels want different shapes
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes, apart from CPU times. A
+few of its exported FOLDs lose layer orders between faces that only touch along
+an edge ([#609](https://github.com/avalonalex/senbazuru/issues/609)).
+
 The [symmetric experiment](coupled-crease-contact.md) lets both interiors bend,
 but equal conditions leave their surfaces almost coincident. Change only the
 upper panel's grip or add an explicit bend preference. Does it separate from

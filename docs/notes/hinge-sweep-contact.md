@@ -1,5 +1,11 @@
 # Check the route, not just its endpoints
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 Start the opposing-flap sheet at 145° / 105° and rotate the right flap one full
 turn around its crease. The endpoint is the starting pose again. Both pass all
 276 independent triangle-pair checks, yet the route passes through the other

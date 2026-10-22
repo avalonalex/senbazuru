@@ -1,5 +1,11 @@
 # A decision point for length and width refinement
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [8×1 study](band-refinement-8.md) reduces the latest length-refinement
 shape change, but its opening and separate bending energies still move.
 Before enlarging the crane body patch, add `8×2` under the same policy:

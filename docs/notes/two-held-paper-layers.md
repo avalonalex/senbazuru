@@ -1,5 +1,11 @@
 # Two touching layers must remain two pieces of material
 
+**Checked after the clip fix, 2026-10-21:** comparing runs made just before and
+just after [#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to
+the contact clip
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), the fix
+changes none of the figures below that the gallery reports.
+
 Start with a diamond whose corners are `(-1,0)`, `(0,-0.3)`, `(1,0)` and
 `(0,0.3)`. Fold its left half onto its right half along `x=0`. The resulting
 triangle contains two layers of the same connected sheet. A point originally

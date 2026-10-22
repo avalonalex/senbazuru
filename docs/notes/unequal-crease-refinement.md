@@ -1,5 +1,12 @@
 # Refining the same unequal-panel experiment
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes, apart from CPU times. A
+few of its exported FOLDs lose layer orders between faces that only touch along
+an edge ([#609](https://github.com/avalonalex/senbazuru/issues/609)).
+
 The [unequal controls](unequal-crease-controls.md) produced nearly touching
 paper at 32 triangles, but separation at 64. Both meshes had only three rows
 across the width. Is the difference caused by that sparse width, and does

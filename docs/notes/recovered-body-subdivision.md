@@ -88,10 +88,16 @@ The expensive opening solve stays opt-in, outside CI.
 
 Measured again on 2026-10-21, after #566's fix to the contact clip
 ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), from a
-body-patch archive regenerated with the fix. The seed still passes: length
-error `1.65766e-6`, crease cost `0.0119862`, and panel cost doubling from
+body-patch archive regenerated with the fix. The seed still passes, with length
+error `1.65766e-6` (was `1.62098e-6`), and its panel cost still doubles, from
 `0.000607109` to `0.00121422`. The continuation again installs all forty
-corrections without converging, by a different path:
+corrections without converging, but the almost motionless first correction
+described above is gone. The new run starts with what the run above did second:
+its corrections 1 to 4 take the same step fractions as the earlier 2 to 5 (1/4,
+2⁻²², 1/16 and 1/8 of the full proposal), with full proposals that agree to
+about three digits, and the two runs part only at the new correction 5. So the
+new correction 2 is the earlier correction 3, and it moves only about
+`4.84e-10`; that is why the table's first two corrections read alike.
 
 | State | Length error | Crossing pairs | Reversed pairs | Body depth |
 | --- | ---: | ---: | ---: | ---: |
@@ -102,24 +108,18 @@ corrections without converging, by a different path:
 | New correction 40 | 0.00043834% | 4 | 0 | 0.0363595 |
 | Original refined endpoint, rerun | 0.08031% | 53 | 71 | 0.0591970 |
 
-The first two corrections trade places. Correction 1 now takes a quarter of
-its full proposal (step fraction 0.25) and makes the same three crossing
-pairs, 14–55, 22–63 and 46–70, that the run above made at correction 2.
-Correction 2 is the almost motionless one: its full proposal of `0.00203179`
-is halved 22 times, to a step fraction of `2.38e-7`, and moves about
-`4.84e-10`. Corrections 7 and 8 are the candidates over the length limit,
-correction 7 reaching 0.00138683%. At correction 40 the pairs are 14–55,
-22–63, 71–80 and a fourth, 39–116, from faces 7/38. There are 606 refusals, all
-because cost did not decrease, and the last full proposed movement is
-`3.06957e-5`, about 307 times the equilibrium limit. The largest displacement
-from the seed is `0.000923888` (0.554 px) and body depth rises by
-`0.000165301`. Crease/panel costs finish at `0.0113442`/`0.00106646`,
-length/contact penalties at `0.0000831116`/`0.00000295722`, and total cost
-falls by 5.4409%.
+Correction 1 makes the same three crossing pairs, 14–55, 22–63 and 46–70, that
+the run above made at correction 2. Corrections 7 and 8 are the candidates over
+the length limit, correction 7 reaching 0.00138683%. At correction 40 four
+pairs cross: 14–55, 22–63, 71–80 and 39–116, the last between original crane
+faces 7 and 38. There are 606 refusals, all because cost did not decrease. The
+last full proposed movement is `3.06957e-5`, about 307 times the equilibrium
+limit, and total cost falls by 5.4409%.
 
 A fresh chain stops here. `readCorrectionArchive`, in
 `study/fold-material/BodyCorrectionArchive.hs`, checks that correction 2 was
-taken at step fraction 0.25, as it was in the run this note records. The new
+taken at step fraction 0.25 (the archive's `scale` field), as it was in the run
+this note records. The new
 trace has `2.38e-7` there, so `--body-contact` refuses the regenerated archive
 with `changed archive field: "scale"`. Every gallery that reads this archive
 goes through the same check, and the galleries below them read archives these
@@ -128,8 +128,9 @@ diagnosis](body-contact-diagnosis.md) on, describe the run made before the fix
 and are kept as that record (owner decision 60,
 [#605](https://github.com/avalonalex/senbazuru/issues/605)).
 
-The [contact diagnosis](body-contact-diagnosis.md) inspects **correction 1→2
-and its three crossing pairs from the saved trace**, without new solves. Locate the intersections and
+In the run before the fix, the [contact diagnosis](body-contact-diagnosis.md)
+inspects **correction 1→2 and its three crossing pairs from the saved trace**,
+without new solves. Locate the intersections and
 compare them with the directional contact samples and tolerances; determine
 why a descending candidate with small order gaps fails the independent
 crossing check. Do not relax that check or call the current endpoint settled.

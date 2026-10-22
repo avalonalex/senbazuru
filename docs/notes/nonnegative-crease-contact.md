@@ -83,7 +83,8 @@ is now `-8.421e-11`, not `-8.431e-11`, and on 32 triangles it takes 31–34
 iterations, not 32–34; its length errors are unchanged at the precision given.
 The constrained solve does its own exact clipping and never uses that one. Its
 rows above, every iterate it records and its FOLDs, GLBs and gap plots are
-unchanged.
+unchanged; only the gallery's count of that clip's contact rows at its
+endpoint moves, from 627 to 635 on 64 triangles.
 
 All six constrained endpoints retain shared material and exact holds. They
 pass the authored-angle cap of `1e-5` radians and the whole-sheet contact check

@@ -1,5 +1,11 @@
 # Judge the drawing at the size it will be used
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [8×2 band comparison](band-refinement-8x2.md) passes the paper checks but
 misses the material-study refinement targets. That does not tell us whether
 the difference matters in an illustration. Its 37.74% change in maximum

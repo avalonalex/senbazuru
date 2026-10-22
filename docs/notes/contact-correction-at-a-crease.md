@@ -78,12 +78,12 @@ the diagnostic JSON instead of disappearing behind a final failure label.
 
 Measured again on 2026-10-21, after #566's fix to the contact clip
 ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): on 64
-triangles the touching, penetrating and tiny starts now end at a minimum gap
-of `-8.421e-11`, not `-8.431e-11`, and on 32 triangles they converge in 31–34
+triangles the touching, penetrating and tiny starts now end at a minimum gap of
+`-8.421e-11`, not `-8.431e-11`, and on 32 triangles they converge in 31–34
 iterations, not 32–34. Every other value above is unchanged at the precision
-given, and every pass and failure is the same. The conflicting hold on 64
-triangles still fails, but it stops after 70 iterations rather than 100, at an
-endpoint up to `5.65e-4` sheet lengths from the old one.
+given, and every pass and failure is the same. The conflicting holds still fail:
+on 32 triangles after 30 iterations rather than 26, and on 64 after 70 rather
+than 100, at an endpoint up to `5.65e-4` sheet lengths from the old one.
 
 Contact reduces the ordinary `0.002` penetration by more than twenty million
 times at both resolutions. Yet **every stored endpoint still has a negative

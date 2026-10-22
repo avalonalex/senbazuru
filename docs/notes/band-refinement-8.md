@@ -1,5 +1,11 @@
 # One more length doubling for the band
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [common-policy grid](combined-band-refinement.md) accepts all constrained
 endpoints, but its second length doubling changes the band shape more than
 the first. Add `8×1` while keeping width fixed. Compare matched holds, the

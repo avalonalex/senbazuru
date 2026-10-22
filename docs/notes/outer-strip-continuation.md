@@ -1,5 +1,11 @@
 # More iterations at the same length weight
 
+**Checked after the clip fix, 2026-10-21:** runs made just before and just after
+[#566](https://github.com/avalonalex/senbazuru/issues/566)'s fix to the contact
+clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)) give
+identical reports from the gallery this note describes; only their CPU times
+differ.
+
 The [outer-strip experiment](outer-strip-refinement.md) left two endpoints
 unfinished. Their final local quadratic solves converged and their full
 proposed steps were accepted, but all 40 iterations at length weight `1e10`

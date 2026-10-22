@@ -1,5 +1,11 @@
 # Counting crossings on paper that touches itself
 
+**Unaffected by the clip fix, 2026-10-21:** every count here comes from the
+library's `Senbazuru.Origami.Contact` and the other checkers below, run on a
+committed fixture. None of them uses the material study's clip, which
+[#566](https://github.com/avalonalex/senbazuru/issues/566) changed
+([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)).
+
 A folded crane body at rest is paper lying on paper. The material study gives
 paper no [thickness](../glossary.md#this-project), so wherever one layer rests
 on another, a corner or an edge of the upper triangle lies in the plane of the

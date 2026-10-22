@@ -89,8 +89,8 @@ Measured again on 2026-10-21, after #566's fix to the contact clip
 ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)): the closing
 run still stalls with about 1.13% edge-length error, but after 24 accepted
 corrections rather than 25. The build just before the fix still gives 25, and
-the first 24 are unchanged. The 25th moved no vertex more than `3.4e-12`, so
-losing it moves the endpoint by no more than that. The opening still settles
+the first 24 are unchanged. The 25th moved no vertex more than about `3.4e-12`,
+so losing it moves the endpoint by no more than that. The opening still settles
 after three checked corrections at `6.56e-8`.
 
 This increment is [#168](https://github.com/avalonalex/senbazuru/issues/168).
