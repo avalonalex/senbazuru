@@ -256,8 +256,8 @@ sentence is the one `ThroughLayersSpec` pins and `docs/usage.md` quotes
 | [#114](https://github.com/avalonalex/senbazuru/issues/114) fold radii | open | amend | M0, M6; R | `--thickness` and face lifting are gone; rewritten at M6. |
 | [#195](https://github.com/avalonalex/senbazuru/issues/195) curved wing | open | advance | M6 | Crane spreading re-expressed through records. |
 | [#206](https://github.com/avalonalex/senbazuru/issues/206) root visibility | open, bug | depend | M6, M7b | Settled GLBs add a visible scene only when it exports; W1 may use its 4,312-triangle mesh as a failing case. |
-| [#208](https://github.com/avalonalex/senbazuru/issues/208) study CI cost | closed | — | — | Closed by #331's parallel test workers. Its value-only line search never landed and gates nothing ([decisions §10](decisions.md#10-corrections) row 39). |
-| [#441](https://github.com/avalonalex/senbazuru/issues/441) value-only line search | open | untouched | — | An optimisation, not a gate: energies without gradients for the line search, from #208's profile. |
+| [#208](https://github.com/avalonalex/senbazuru/issues/208) study CI cost | closed | — | — | Closed by #331's parallel test workers. Its value-only line search did not land there and gates nothing ([decisions §10](decisions.md#10-corrections) row 39); #441 added it later. |
+| [#441](https://github.com/avalonalex/senbazuru/issues/441) value-only line search | closed by #620 | — | — | An optimisation, not a gate: energies without gradients for the line search, from #208's profile. Done, with every line-search energy unchanged. |
 
 **#60 closes at M4** ([C54](decisions.md#changes-since-draft-v2)). Its amended
 done-when ([01 §4](01-architecture.md#4-recorded-text-this-design-changes),

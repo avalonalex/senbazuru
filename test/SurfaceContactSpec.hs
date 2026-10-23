@@ -1,7 +1,9 @@
 module SurfaceContactSpec (spec) where
 
 import ContactExample
+import Control.Exception (evaluate)
 import Control.Monad (forM_)
+import Data.Int (Int64)
 import Data.IntMap.Strict qualified as IM
 import Data.List (sort)
 import FoldBending
@@ -15,6 +17,7 @@ import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Contact
 import Senbazuru.Origami.Surface
 import SurfaceContact qualified as Contact
+import System.Mem (getAllocationCounter)
 import Test.Hspec
 
 spec :: Spec
@@ -120,6 +123,34 @@ spec = describe "open-flap contact correction" $ do
     rows `shouldSatisfy` (not . null)
     maximum [norm g | row <- rows, (_, g) <- contactGradient row] `shouldSatisfy` (< 10)
 
+  -- The line search judges a try by 'orderedGaps' and keeps it only once
+  -- 'orderedContacts' has measured it in full, so the two must give the same
+  -- gaps, bit for bit and in the same order. Turns red if either drops the
+  -- clearance or reorders its gaps.
+  it "gives the same gaps without derivatives as with them" $ do
+    fixture <- right (opposingFlaps 1)
+    let examples = [(exampleContact fixture, refinedMesh (exampleRefined fixture))]
+    pairs <- mapM (\(clearance, mesh) -> (,mesh) <$> prepare clearance mesh) [(0, contained), (0.05, crossing)]
+    forM_ (examples ++ pairs) $ \(model, mesh) -> do
+      gaps <- right (Contact.orderedGaps model mesh)
+      rows <- right (Contact.orderedContacts model mesh)
+      gaps `shouldSatisfy` (not . null)
+      gaps `shouldBe` map contactGap rows
+
+  -- The line search's tries are cheap only because 'orderedGaps' builds no
+  -- derivative map, which rests on D's derivative field being lazy. Nothing
+  -- else would notice if that were lost: every result stays the same. Here
+  -- the gaps take 21% of the full measurement's allocation (2026-10-23).
+  -- Turns red if the field is made strict again, or if 'orderedGaps' checks
+  -- derivatives.
+  it "measures gaps without building their derivatives" $ do
+    fixture <- right (opposingFlaps 1)
+    let model = exampleContact fixture
+        mesh = refinedMesh (exampleRefined fixture)
+    gapsBytes <- allocated (right (Contact.orderedGaps model mesh) >>= evaluate . sum)
+    fullBytes <- allocated (right (Contact.orderedContacts model mesh) >>= evaluate . sum . map contactGap)
+    2 * gapsBytes `shouldSatisfy` (< fullBytes)
+
   it "gives the same gaps when the sheet and its material direction rotate together" $ do
     let rotate (V3 x y z) = V3 z x y
         moved = mapPositions (\p -> rotate p ^+^ V3 3 (-2) 5) crossing
@@ -210,3 +241,10 @@ finalMesh result = case reverse (checkpoints result) of
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
+
+allocated :: IO a -> IO Int64
+allocated action = do
+  start <- getAllocationCounter
+  _ <- action
+  finish <- getAllocationCounter
+  pure (start - finish)

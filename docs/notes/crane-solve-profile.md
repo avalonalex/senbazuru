@@ -47,21 +47,21 @@ contact's derivatives once each, to write their equations. The other 1,325
 measurements never read a derivative: they are the line search's tries, its
 starting penalty, the stopping test and the setup's checks, and in every step
 the starting penalty and the stopping test measure the same positions as the
-step's own measurement. A measurement whose derivatives go unread still costs
-what a full one does, 0.041% of the run each, because `D` keeps its derivative
-in a strict field:
+step's own measurement. A measurement whose derivatives went unread still cost
+what a full one did, 0.041% of the run each, because `D` kept its derivative in
+a strict field:
 
 ```haskell
 data D = D {value :: !Double, derivative :: !(IM.IntMap V3)}
 ```
 
-Computing a value builds its derivative too. Removing that one `!` and changing
+Computing a value built its derivative too. Removing that one `!` and changing
 nothing else, the same program allocated 367.9 GB rather than 615.8 and took
 86.4 to 86.8 CPU seconds over three runs, with the same base angle to all 17
 digits printed and the same verdicts. [strict-fields](strict-fields.md) is the
 other side of this trade. [#441](https://github.com/avalonalex/senbazuru/issues/441)
-proposes measuring gaps without derivatives in the line search, and reusing a
-measurement rather than repeating it.
+proposed measuring gaps without derivatives in the line search, and reusing a
+measurement rather than repeating it; it was done later (below).
 
 **The clip measured each corner twice.** Clipping one triangle's shadow by a
 side of another asks how far each corner is from the side's line, and each
@@ -106,6 +106,38 @@ allocated, three runs of each, interleaved, with the same results:
 | --- | --- | --- |
 | The settles and checks | 108.8 to 109.0 s, 571.3 GB | 86.6 to 86.7 s, 431.7 GB |
 | Building the creased wing (`craneRootAt`) ten times | 74.0 to 74.2 s, 132.2 GB | 4.88 to 4.90 s, 24.2 GB |
+
+[#441](https://github.com/avalonalex/senbazuru/issues/441) then made the line
+search's tries read gaps alone. A contact *row* is one corner's gap with its
+derivatives. With `D`'s derivative field lazy, `SurfaceContact.orderedGaps`
+computes the gaps without building a single derivative map, and the line search
+judges each try by them. The try it keeps is measured in full, so that a
+non-finite derivative still refuses it, and those rows are the next step's own:
+its starting penalty comes from them, and so does its stopping test when that
+test reads the penalty's own rows. A kept try is still measured twice, by its
+gaps and then in full; what the gaps save is the full measurement of every try
+refused. Every penalty the line search computes is unchanged, bit for bit: a
+trace of two settles, 53 steps and 230 refused tries, prints the same before and
+after. Measured on 2026-10-23, three runs of each, interleaved, with the same
+results:
+
+| Program, at `-O1` | `main` at `8e9850f` | With #441 |
+| --- | --- | --- |
+| The settles and checks | 80.3 to 81.5 s, 431.7 GB | 36.6 to 37.0 s, 150.6 GB |
+| The crane-internal gallery's short trial, #208's profiling driver | 348.0 to 351.6 s, 1,735 GB | 167.6 to 169.5 s, 615 GB |
+
+`main` here is the same code the #618 table above timed at 86.6 to 86.7
+seconds the evening before; only figures timed together compare. A heap profile
+by type finds the program's largest live heap unchanged, 168 MB in the final
+contact check, while during the settles the heap now peaks at 44 MB rather than
+90.
+
+Profiled again, the settles and checks spend 33% of their time and 44% of their
+allocation measuring contact, 262 times in full and 437 times by gaps alone, and
+the largest single function is now the factorising of the linear equations, at
+23% of the time. The driver, profiled the same way, spends 43% of its time and
+56% of its allocation measuring contact, 668 times in full and 1,535 by gaps
+alone, and 30% of its time factorising.
 
 Owner decision 61 ([#606](https://github.com/avalonalex/senbazuru/issues/606))
 asks that one model's whole `senbazuru run` finish within ten minutes of wall

@@ -89,6 +89,7 @@ suite), with formatting, HLint 3.10 and JavaScript checks clean.
 The next material question is the matched-hold passive-energy change: refining
 the rest of the panel changed it by about 8.99%, even without the extra outer
 bend. Compare those costs by material region using the saved four-mesh
-endpoints before adding another solve. Performance work stays separate, and
-#441 carries the solver's line-search cost; `4×2`, default bending-rule
-changes, and the material/illustration acceptance decisions remain separate.
+endpoints before adding another solve. Performance work stays separate: #441
+made the material solver's line search cheaper, not this coupled solver's, and
+`4×2`, default bending-rule changes, and the material/illustration acceptance
+decisions remain separate.

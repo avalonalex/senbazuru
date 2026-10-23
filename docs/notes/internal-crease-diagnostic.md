@@ -106,10 +106,12 @@ inside contact evaluation, and 31% inside sparse factorization, which rewrites
 the coupled linear equations into a form solved by substitution. Contact evaluation computes
 both a gap and its derivatives, which say how that gap changes when vertices
 move. The scalar energy checks in a line search do not need those derivatives,
-but currently pay for them. A value-only evaluation is a bounded performance
-follow-up under [#441](https://github.com/avalonalex/senbazuru/issues/441), with
-energy equality and unchanged accepted/rejected controls required before any
-speed claim.
+but at the time paid for them. A value-only evaluation was left as a bounded
+performance follow-up under [#441](https://github.com/avalonalex/senbazuru/issues/441),
+with energy equality and unchanged accepted/rejected controls required before any
+speed claim. It was added there, measured on 2026-10-23 with every line-search
+energy the same bit for bit and every control's outcome unchanged
+([crane-solve-profile](crane-solve-profile.md)).
 
 The complete short profiling process, including setup and diagnostics, reports
 65.14 seconds of mutator time (excluding garbage collection) and 281 GB of total
