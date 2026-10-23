@@ -877,6 +877,20 @@ default render is byte-identical, and
 the view of #104's second bullet, draws the visible boundary and silhouette, as a
 new golden (27 silhouette candidates before visibility).
 
+### Layers lifted off the stack, later
+
+[06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds) fans a flat
+figure on the page: each corner is drawn a small step toward the lower left for
+every sheet lying over it, so folds stay joined and raw edges peek out. Owner
+decision 67 ([decisions §9](decisions.md#9-owner-decisions), decided 2026-10-23)
+gives the GLB the same idea later, as an item of this file, not of M7a or M7b. A
+flat-folded GLB's complete scene keeps coincident layers today; the lift would
+move each corner off the stack by the sheets under it, so the layers separate in
+depth without tearing at their folds. Its size, whether the visible scene needs
+it, and how its fidelity metadata says it is a drawing convention rather than the
+paper's thickness are open
+([#624](https://github.com/avalonalex/senbazuru/issues/624)).
+
 ### What stays research
 
 Thickness offsets, fillets and crease radii at vertices; animated flexible routes;
