@@ -60,8 +60,8 @@ nothing else, the same program allocated 367.9 GB rather than 615.8 and took
 86.4 to 86.8 CPU seconds over three runs, with the same base angle to all 17
 digits printed and the same verdicts. [strict-fields](strict-fields.md) is the
 other side of this trade. [#441](https://github.com/avalonalex/senbazuru/issues/441)
-proposes measuring gaps without derivatives in the line search, and reusing a
-measurement rather than repeating it.
+proposed measuring gaps without derivatives in the line search, and reusing a
+measurement rather than repeating it; it was done later (below).
 
 **The clip measured each corner twice.** Clipping one triangle's shadow by a
 side of another asks how far each corner is from the side's line, and each
@@ -106,6 +106,28 @@ allocated, three runs of each, interleaved, with the same results:
 | --- | --- | --- |
 | The settles and checks | 108.8 to 109.0 s, 571.3 GB | 86.6 to 86.7 s, 431.7 GB |
 | Building the creased wing (`craneRootAt`) ten times | 74.0 to 74.2 s, 132.2 GB | 4.88 to 4.90 s, 24.2 GB |
+
+[#441](https://github.com/avalonalex/senbazuru/issues/441) then made the line
+search's tries read gaps alone. With `D`'s derivative field lazy, the gaps
+`SurfaceContact.orderedGaps` returns are computed without building a single
+derivative map, and each try is judged by them. The try kept is measured in
+full, so that a non-finite derivative still refuses it, and its rows serve as
+the next step's own. A step's starting energy comes from its own rows, the
+stopping test reads the rows the last try left, and a try whose proposal keeps
+the contact state is not measured a second time. Every energy the line search
+computes is unchanged, bit for bit: a trace of two settles, 53 steps and 230
+refused tries, prints the same before and after. Measured on 2026-10-22, three
+runs of each, interleaved, with the same results:
+
+| Program, at `-O1` | `main` at `8e9850f` | With #441 |
+| --- | --- | --- |
+| The settles and checks | 80.1 to 80.5 s, 431.7 GB | 42.7 to 42.8 s, 152.5 GB |
+
+The largest residency the runs sampled rose from 107 MB to 143, since a step now
+keeps the rows its last try measured. Profiled again, the same program spends
+33% of its time and 43% of its allocation measuring contact, 262 times in full
+and 437 times by gaps alone, and factorising the linear equations is now the
+largest single part, at 23%.
 
 Owner decision 61 ([#606](https://github.com/avalonalex/senbazuru/issues/606))
 asks that one model's whole `senbazuru run` finish within ten minutes of wall

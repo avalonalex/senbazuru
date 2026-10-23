@@ -120,6 +120,20 @@ spec = describe "open-flap contact correction" $ do
     rows `shouldSatisfy` (not . null)
     maximum [norm g | row <- rows, (_, g) <- contactGradient row] `shouldSatisfy` (< 10)
 
+  -- The line search judges a try by 'orderedGaps' and keeps it only once
+  -- 'orderedContacts' has measured it in full, so the two must give the same
+  -- gaps, bit for bit and in the same order. Turns red if either drops the
+  -- clearance or reorders its gaps.
+  it "gives the same gaps without derivatives as with them" $ do
+    fixture <- right (opposingFlaps 1)
+    let examples = [(exampleContact fixture, refinedMesh (exampleRefined fixture))]
+    pairs <- mapM (\(clearance, mesh) -> (,mesh) <$> prepare clearance mesh) [(0, contained), (0.05, crossing)]
+    forM_ (examples ++ pairs) $ \(model, mesh) -> do
+      gaps <- right (Contact.orderedGaps model mesh)
+      rows <- right (Contact.orderedContacts model mesh)
+      gaps `shouldSatisfy` (not . null)
+      gaps `shouldBe` map contactGap rows
+
   it "gives the same gaps when the sheet and its material direction rotate together" $ do
     let rotate (V3 x y z) = V3 z x y
         moved = mapPositions (\p -> rotate p ^+^ V3 3 (-2) 5) crossing

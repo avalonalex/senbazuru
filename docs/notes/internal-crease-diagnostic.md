@@ -109,7 +109,8 @@ move. The scalar energy checks in a line search do not need those derivatives,
 but currently pay for them. A value-only evaluation is a bounded performance
 follow-up under [#441](https://github.com/avalonalex/senbazuru/issues/441), with
 energy equality and unchanged accepted/rejected controls required before any
-speed claim.
+speed claim. It was added under #441, with every line-search energy the same bit
+for bit ([crane-solve-profile](crane-solve-profile.md)).
 
 The complete short profiling process, including setup and diagnostics, reports
 65.14 seconds of mutator time (excluding garbage collection) and 281 GB of total

@@ -246,9 +246,9 @@ factorising (rewriting each iteration's sparse linear system so it can be solved
 Each iteration ends in a *line search*
 ([glossary-additions](glossary-additions.md#material)), which tries step lengths
 and needs only the energy at each try; contact evaluation computes derivatives
-there too. #208 proposed value-only evaluation, which skips them; it never
-landed, and [#441](https://github.com/avalonalex/senbazuru/issues/441) now
-carries it as an optimisation, not a gate.
+there too. #208 proposed value-only evaluation, which skips them; it did not
+land there, and [#441](https://github.com/avalonalex/senbazuru/issues/441)
+added it later, as an optimisation, not a gate.
 Solving old and new crane side by side would
 double the costliest groups (gap-study finding 20).
 

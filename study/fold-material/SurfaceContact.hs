@@ -46,6 +46,7 @@ module SurfaceContact
     prepareContact,
     prepareTriangleContact,
     orderedContacts,
+    orderedGaps,
     ContactWitness (..),
     contactWitnesses,
     orderedBarrierContacts,
@@ -198,6 +199,15 @@ orderedContacts model mesh = do
   polygons <- contactPolygons model mesh
   pure [contactRow clearance gap | (_, _, clearance, _, _, gaps) <- polygons, gap <- gaps]
 
+-- | The gaps of 'orderedContacts', in its order, without their derivatives.
+-- Only the gaps are checked to be finite: checking a derivative builds it.
+-- A caller that keeps a result must measure it with 'orderedContacts' too,
+-- so that a non-finite derivative still refuses it (#441).
+orderedGaps :: OrderedContact -> MaterialMesh -> Either ContactError [Double]
+orderedGaps model mesh = do
+  polygons <- contactPolygonsWith (finite . value) model mesh
+  pure [value gap - clearance | (_, _, clearance, _, _, gaps) <- polygons, gap <- gaps]
+
 contactWitnesses :: OrderedContact -> MaterialMesh -> Either ContactError [ContactWitness]
 contactWitnesses model@(OrderedContact (u, v, axis) _ _ _) mesh = do
   polygons <- contactPolygons model mesh
@@ -215,7 +225,12 @@ contactRow clearance gap = ContactRow (value gap - clearance) (IM.toList (deriva
 -- The boolean records which triangle supplied heights. Keep the projected
 -- polygon lazy for the ordinary solver, which consumes only gaps/derivatives.
 contactPolygons :: OrderedContact -> MaterialMesh -> Either ContactError [(Int, Int, Double, Bool, [Point], [D])]
-contactPolygons (OrderedContact basis topology material pairs) mesh = do
+contactPolygons = contactPolygonsWith validD
+
+-- | 'contactPolygons' with the test each gap must pass, so that 'orderedGaps'
+-- can test values alone.
+contactPolygonsWith :: (D -> Bool) -> OrderedContact -> MaterialMesh -> Either ContactError [(Int, Int, Double, Bool, [Point], [D])]
+contactPolygonsWith valid (OrderedContact basis topology material pairs) mesh = do
   unless (triangles mesh == topology && map sampleMaterial (samples mesh) == material) (Left ChangedContactMaterial)
   projected <- projectMesh basis mesh
   let triangle i = maybe (Left (InvalidContactTriangle i)) Right (IM.lookup i projected)
@@ -235,7 +250,7 @@ contactPolygons (OrderedContact basis topology material pairs) mesh = do
                     else do
                       (ps, ds) <- clippedSeparation j upper lower
                       pure (ps, map negate ds)
-        unless (all validD gaps) (Left (NonFiniteContact i j))
+        unless (all valid gaps) (Left (NonFiniteContact i j))
         pure (i, j, clearance, lowerBase, points, gaps)
   mapM pair pairs
 
@@ -438,7 +453,13 @@ zOf (_, _, z) = z
 -- The ordinary product and quotient rules, carrying sparse derivatives for
 -- at most the six vertices of a contact pair. Branch predicates inspect only
 -- the value; derivatives describe the currently selected clipping features.
-data D = D {value :: !Double, derivative :: !(IM.IntMap V3)}
+--
+-- The derivative is deliberately lazy, unlike every field around it. Much of
+-- what is computed here is read only for its value: every gap 'orderedGaps'
+-- returns, and a corner's distance from a line it does not cross. A strict
+-- field would build every map anyway, and the maps are most of the solve's
+-- allocation (docs/notes/crane-solve-profile.md, #441).
+data D = D {value :: !Double, derivative :: IM.IntMap V3}
 
 instance Num D where
   D a da + D b db = D (a + b) (IM.unionWith (^+^) da db)
