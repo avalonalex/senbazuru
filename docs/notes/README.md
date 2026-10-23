@@ -182,6 +182,8 @@ read the Haddock module headers; for the domain, start with
 | [shrinking.md](shrinking.md) | A property test is only as useful as its counterexample is small |
 | [folds.md](folds.md) | `foldl` builds a tower, `foldl'` flattens it, `foldr` produces lazily |
 | [strict-fields.md](strict-fields.md) | `foldl'` forces only to WHNF, so lazy fields leak anyway — measured |
+| [crane-solve-profile.md](crane-solve-profile.md) | The crane solve's time goes to measuring contact, mostly derivatives that are built and never read; a lazy field cut allocation by 40% — profiled |
+| [profiling-study-code.md](profiling-study-code.md) | Profile the study through a small program, because one gallery module cannot be compiled for profiling on Apple silicon |
 | [parallel-material-tests.md](parallel-material-tests.md) | Independent solver tests can share CI CPUs while retaining every acceptance check |
 
 ## Material mesh
