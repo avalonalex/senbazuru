@@ -468,8 +468,12 @@ checkOrders mapError scale faces orders = mapM_ check orders
         _ : _ -> do
           let n = polygonNormal (faceCorners fixed)
               group = filter (coplanarFaces scale fixed) faces
-              members = map faceId group
-              relevant = [o | o <- orders, orderFace o `elem` members, orderRelativeTo o `elem` members]
+              -- A set, not a list: this filters every order, once per order.
+              -- With `elem` on a list, the crane quick tier's `craneRootAt`,
+              -- which creases the wing, took 7.3 CPU seconds; with a set,
+              -- 2.7 (#618).
+              members = S.fromList (map faceId group)
+              relevant = [o | o <- orders, S.member (orderFace o) members, S.member (orderRelativeTo o) members]
           _ <- first mapError (layerDepths n group relevant)
           pure ()
 

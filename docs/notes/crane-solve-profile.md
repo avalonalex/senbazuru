@@ -85,6 +85,20 @@ the quick tier then checks it again for its report, 4.6% and 4.7% of the time.
 Building the creased wing checks its layer orders by scanning lists of face ids,
 9% of the time, once per run.
 
+[#618](https://github.com/avalonalex/senbazuru/issues/618) removed these three.
+The clip now measures each corner once, the accept functions take the contact
+report their callers already have, and the layer-order check keeps its faces in
+a set. Measured on 2026-10-22, in CPU seconds and bytes allocated, three runs
+each, with the same results:
+
+| Program, at `-O1` | `main` at `29170c0` | With #618 |
+| --- | --- | --- |
+| The settles and checks | 103.7 to 104.3 s, 571.3 GB | 83.7 to 85.8 s, 442.1 GB |
+| `craneRootAt` alone, ten times | 72.6 to 73.1 s, 132.2 GB | 26.4 to 27.5 s, 127.4 GB |
+
+`main` had changed since the table above: #614, which set the clip's band as a
+distance, took the program from 615.8 GB to 571.3.
+
 None of these is the language. What hid the cost is that a line like
 `crossXY (x, y, _) (a, b, _) = x * b - y * a` reads as arithmetic on numbers,
 while `D`'s `Num` instance makes each operator build maps; operator overloading

@@ -32,7 +32,8 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     fixture <- right (craneSpread source 3 20)
     result <- right (solveSpread (Settings 20 1e-5) fixture)
     mesh <- right (finalMesh result)
-    accepted <- right (spreadAccepted fixture result mesh)
+    contact <- right (spreadCheck fixture mesh)
+    accepted <- right (spreadAccepted fixture result mesh contact)
     accepted `shouldBe` True
     S.size (spreadMoving fixture) `shouldBe` 4
     componentCount mesh `shouldBe` 1
@@ -102,7 +103,8 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     fixture <- right (craneSpread source 3 0)
     result <- right (solveSpread (Settings 20 1e-5) fixture)
     mesh <- right (finalMesh result)
-    right (spreadAccepted fixture result mesh) `shouldReturn` True
+    contact <- right (spreadCheck fixture mesh)
+    right (spreadAccepted fixture result mesh contact) `shouldReturn` True
     maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples (spreadMesh fixture))) `shouldSatisfy` (< 1e-8)
 
   it "refuses an upper grip pushed through its partner even if the linear solve succeeds" $ \source -> do
@@ -111,7 +113,8 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     reversedOrders initial `shouldSatisfy` (not . null)
     result <- right (solveSpread (Settings 2 1e-5) fixture)
     mesh <- right (finalMesh result)
-    right (spreadAccepted fixture result mesh) `shouldReturn` False
+    final <- right (spreadCheck fixture mesh)
+    right (spreadAccepted fixture result mesh final) `shouldReturn` False
     spreadHeldError fixture mesh `shouldBe` 0
 
   -- The rigid wing's start is its solution to within 1e-8 (above), and a

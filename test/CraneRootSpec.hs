@@ -131,7 +131,8 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     let fixture = rootSpread study
     result <- right (solveSpread (Settings 40 1e-5) fixture)
     mesh <- right (finalMesh result)
-    right (rootAccepted study result mesh) `shouldReturn` True
+    contact <- right (spreadCheck fixture mesh)
+    right (rootAccepted study result mesh contact) `shouldReturn` True
     spreadHeldError fixture mesh `shouldBe` 0
     rootBodyMovement study mesh `shouldBe` 0
     maxLengthError mesh `shouldSatisfy` (< 1e-6)
@@ -141,8 +142,8 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     right (originalCreaseError study mesh) >>= (`shouldSatisfy` (< 1e-5))
     -- A small root residual is NOT the success gate: the original held-root
     -- acceptance would reject this deliberately different material preference.
-    right (spreadAccepted fixture result mesh) `shouldReturn` False
-    right (rootAccepted study result {converged = False} mesh) `shouldReturn` False
+    right (spreadAccepted fixture result mesh contact) `shouldReturn` False
+    right (rootAccepted study result {converged = False} mesh contact) `shouldReturn` False
     profile <- right (rootProfile study mesh)
     length profile `shouldSatisfy` (> 8)
     exported <- right (spreadSurface fixture mesh)
@@ -157,7 +158,8 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     reversedOrders contact `shouldSatisfy` (not . null)
     result <- right (solveSpread (Settings 2 1e-5) fixture)
     mesh <- right (finalMesh result)
-    right (rootAccepted study result mesh) `shouldReturn` False
+    final <- right (spreadCheck fixture mesh)
+    right (rootAccepted study result mesh final) `shouldReturn` False
     spreadHeldError fixture mesh `shouldBe` 0
 
   -- Owner decision 36: a side refuses the reused angle only by ending with

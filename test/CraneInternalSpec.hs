@@ -67,7 +67,7 @@ spec = parallel $ do
       contactPassed report `shouldBe` False
       reversedOrders report `shouldSatisfy` (not . null)
       fullInternalForces study `shouldBe` False
-      right (internalAccepted bad (Relaxation [] True Nothing) (spreadMesh fixture)) `shouldReturn` False
+      right (internalAccepted bad (Relaxation [] True Nothing) (spreadMesh fixture) report) `shouldReturn` False
 
     -- Owner decision 37: the creases are found by rule, so the same rule must
     -- give the 1/4 study's creases back and find the root's four. The fixed

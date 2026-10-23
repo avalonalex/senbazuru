@@ -40,8 +40,8 @@ main = do
   study <- either (die . show) pure (craneRootAt hinge source 3 FlatRoot)
   centre <- either (die . show) pure (startingTurn study)
   (found, _) <- either (die . show) pure (searchNear (spreadSolve (Settings 40 1e-5)) centre study)
-  accepted <- either (die . show) pure (rootAccepted (baseStudy found) (baseResult found) (baseMesh found))
   contact <- either (die . show) pure (spreadCheck (rootSpread (baseStudy found)) (baseMesh found))
+  accepted <- either (die . show) pure (rootAccepted (baseStudy found) (baseResult found) (baseMesh found) contact)
   -- Compared with itself only so that the whole check is run.
   print (baseDegrees found, accepted, contact == contact)
 ```
