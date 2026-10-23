@@ -58,12 +58,23 @@ spring turns further (31.45° against 31.27°), now sets an accepted endpoint
 against one that has not settled. The finer mesh's edge error is 3.50e-7,
 against 3.64e-7. Every other value above is unchanged at the precision shown.
 
-Whether the released strip converges now depends on exactly where the root line
-lies. GHCi probes on 2026-10-21, one run each, moved the gallery's root line, at
-y = 1/4, by 0, ±1e-13, ±3e-13, ±1e-12 and ±1e-11 sheet lengths. Before the fix
-the released strip converged at all nine positions. With it, it converges at
-seven, and the gallery's own position is one of the two that fail
-([#607](https://github.com/avalonalex/senbazuru/issues/607)).
+With that clip, whether the released strip converged depended on exactly where
+the root line lay. GHCi probes on 2026-10-21, one run each, moved the gallery's
+root line, at y = 1/4, by 0, ±1e-13, ±3e-13, ±1e-12 and ±1e-11 sheet lengths.
+Before the fix the released strip converged at all nine positions. With it, it
+converged at seven, and the gallery's own position was one of the two that
+failed ([#607](https://github.com/avalonalex/senbazuru/issues/607)).
+
+Measured again on 2026-10-22, with the clip's band set as a distance (owner
+decision 62, [snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)):
+the released strip converges again and the gallery accepts it, with relative
+edge error 8.06e-7 and original crease-angle error 1.96e-7, and its root still
+turns 31.27°, so the weaker spring's larger turn is again a comparison of two
+accepted endpoints. Probed the same way at 19 positions within 1e-9 of its own
+hinge, it converges at all 19. What had held it was the band's edge, a jump in
+the contact penalty, not the root material
+([snap-band-edge](snap-band-edge.md)). Every other control's verdict above is
+unchanged, and the finer mesh's edge error is 3.72e-7.
 
 The generated side profiles follow the wing's middle into the body, selecting
 one layer by source-panel ownership and its original normal. They use actual

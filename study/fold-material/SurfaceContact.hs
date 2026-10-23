@@ -384,20 +384,24 @@ clippedSeparation i base moving = case base of
   _ -> Left (InvalidContactTriangle i)
   where
     clip ps (a, b) =
-      let distance p = crossXY (sub b a) (sub p a)
-          -- `distance` is a cross product: the clipping side's length times
-          -- the corner's distance from its line. Under 1e-12 the corner is on
-          -- the line, and its distance is the literal 0, whose derivative is
-          -- empty. Where stacked layers' edges nearly coincide, the crane
-          -- wing's corners sit a few times 1e-13 off each other's lines, on
-          -- either side. An edge with both ends that close crosses the line
-          -- at t = dp / (dp - dq), which slides the whole length of the edge
-          -- when either end moves by 1e-13: its true derivative reaches
-          -- 1e12, and the solver's linear system cannot take it (#566).
-          -- Snapping both ends removes the crossing; snapping one, with no
-          -- derivative, pins it to that end. A crossing whose ends are both
-          -- past the band still differentiates as about 1 / (dp - dq).
-          snap d = if abs (value d) < 1e-12 then 0 else d
+      let side = sub b a
+          distance p = crossXY side (sub p a)
+          -- `distance` is a cross product: the side's projected length times
+          -- the corner's distance from its line. A corner within 1e-12 of the
+          -- line, as a distance, is snapped onto it: its distance is the
+          -- literal 0, whose derivative is empty. That is the test
+          -- `Senbazuru.Origami.Contact.clipBy` makes by dividing by the length.
+          -- An edge with both ends snapped does not cross the line, and one
+          -- with one end snapped crosses at that end, with no derivative.
+          -- Unsnapped, an edge lying almost along the line crosses it at
+          -- t = dp / (dp - dq), whose derivative, about 1 / (dp - dq), reached
+          -- 1e12 on the crane wing (#566). The band's edge is itself a jump:
+          -- a snapped corner counts as inside, so an overlap of no area
+          -- appears there at full depth (#617). Its width was chosen by
+          -- convergence; see docs/notes/snap-edges-along-a-clip-line.md and
+          -- docs/notes/snap-band-edge.md.
+          sideLength = let (x, y, _) = side in norm (V2 (value x) (value y))
+          snap d = if abs (value d) < 1e-12 * sideLength then 0 else d
           edge (p, q)
             | value dp >= 0 && value dq >= 0 = [q]
             | value dp < 0 && value dq < 0 = []

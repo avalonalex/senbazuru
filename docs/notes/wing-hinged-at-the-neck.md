@@ -68,7 +68,10 @@ controls are still accepted, and two crease errors change at the precision
 shown. The flat preference at y = 1/4 has a maximum crease error of 6.2e-8
 radians, against 7.5e-8, and the held root at y = 0.37585 one of 8.4e-7,
 against 8.3e-7. The search still settles at 28.38°, and the energies in the
-next table are unchanged.
+next table are unchanged. Measured again on 2026-10-22, with the clip's band set
+as a distance (owner decision 62): the held root at y = 0.37585 has a crease
+error of 8.2e-7, and the other figures here are unchanged at the precision
+shown.
 
 The energy fixes θ to about a degree, not to 0.05°, which is only the width
 of the search's last bracket. Against the least energy found, at 28.38°:
