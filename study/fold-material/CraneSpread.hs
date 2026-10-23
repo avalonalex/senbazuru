@@ -228,9 +228,11 @@ spreadAngleError fixture mesh = do
   errors <- mapM (\h -> abs . (`angleError` hingeRest h) . fst <$> checked (hingeAngle h points)) [h | h <- spreadHinges fixture, SurfaceCrease _ <- [hingeRole h]]
   pure (maximum (0 : errors))
 
-spreadAccepted :: CraneSpread -> Relaxation -> MaterialMesh -> Either SpreadError Bool
-spreadAccepted fixture result mesh = do
-  report <- spreadCheck fixture mesh
+-- | @report@ must be 'spreadCheck' of @fixture@ on @mesh@, which is also the
+-- only check that @mesh@ keeps the fixture's material. Callers pass the one
+-- they already have rather than check twice (#618).
+spreadAccepted :: CraneSpread -> Relaxation -> MaterialMesh -> ContactCheck -> Either SpreadError Bool
+spreadAccepted fixture result mesh report = do
   angles <- spreadAngleError fixture mesh
   pure (converged result && maxLengthError mesh <= 1e-5 && spreadHeldError fixture mesh == 0 && angles < 1e-5 && contactPassed report)
 

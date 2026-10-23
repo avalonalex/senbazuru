@@ -84,7 +84,8 @@ writeBodyPatchSubdivision source destination = do
         Just (Left err) -> pure ([], object ["ran" .= True, "accepted" .= False, "failure" .= explain err])
         Just (Right (run, audit)) -> do
           endpoint <- checked (finalMesh run)
-          accepted <- checked (patchAccepted fine run endpoint)
+          endpointContact <- checked (spreadCheck (patchSpread fine) endpoint)
+          let accepted = patchAccepted fine run endpoint endpointContact
           snapshots <- forM (checkpoints run) $ \p -> writeState output ("step-" ++ show (completedIterations p)) ("Continuation checkpoint " <> T.pack (show (completedIterations p))) fine (SavedPoint (completedIterations p) (checkpointMesh p))
           let trace = map stepValue (solverSteps audit)
           BL.writeFile (output </> "trace.json") (encode trace)

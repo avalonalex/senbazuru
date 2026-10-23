@@ -40,8 +40,8 @@ main = do
   study <- either (die . show) pure (craneRootAt hinge source 3 FlatRoot)
   centre <- either (die . show) pure (startingTurn study)
   (found, _) <- either (die . show) pure (searchNear (spreadSolve (Settings 40 1e-5)) centre study)
-  accepted <- either (die . show) pure (rootAccepted (baseStudy found) (baseResult found) (baseMesh found))
   contact <- either (die . show) pure (spreadCheck (rootSpread (baseStudy found)) (baseMesh found))
+  accepted <- either (die . show) pure (rootAccepted (baseStudy found) (baseResult found) (baseMesh found) contact)
   -- Compared with itself only so that the whole check is run.
   print (baseDegrees found, accepted, contact == contact)
 ```
@@ -77,10 +77,49 @@ stack exec -- ghc -O1 -rtsopts \
 /tmp/solve-prof/plain-run +RTS -s -RTS
 ```
 
+Building the creased wing is timed by a second program, saved as
+`/tmp/solve-prof/WingBuild.hs` and built the same way. It calls `craneRootAt`
+ten times, after loading the crane and finding its wing's root once, which
+alone takes about 0.6 CPU seconds:
+
+```haskell
+module Main (main) where
+
+import CraneRoot (CraneRoot (..), RootControl (..), craneRootAt)
+import CraneSpread (CraneSpread (..))
+import CraneWing (wingRoot)
+import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Types (keyFrame)
+import Senbazuru.Origami.Surface (Mesh (..))
+import System.Exit (die)
+
+-- Build the quick tier's creased wing and its study, ten times, and nothing
+-- more: the layer-order checks run inside craneRootAt.
+main :: IO ()
+main = do
+  file <- loadFoldFile "examples/crane.fold" >>= either (die . show) pure
+  let source = keyFrame file
+  hinge <- either (die . show) pure (wingRoot source)
+  counts <- mapM (\k -> either (die . show) (pure . length . samples . spreadMesh . rootSpread) (craneRootAt (hinge + 0 * fromIntegral (k :: Int)) source 3 FlatRoot)) [1 .. 10]
+  print counts
+```
+
+`hinge + 0 * fromIntegral k` looks like a typo, and it is what makes the ten
+calls ten. Without `k` the call does not depend on the loop, and GHC computes it
+once: the program then allocates 7.3 GB in about a second rather than 24.2 GB in
+4.9 (2026-10-22).
+
 To try a change to one module without editing the checkout, put the changed
 copy in a directory of its own and name that directory first, as in
 `-i/tmp/solve-prof/variant -istudy/fold-material`, with an `-odir` of its own.
-GHC takes the first module of each name it finds.
+GHC takes the first module of each name it finds. For a module of the library,
+add `-isrc` after the variant's directory, so the library is compiled from
+source rather than taken from the build.
+
+Before [#618](https://github.com/avalonalex/senbazuru/issues/618),
+`rootAccepted` checked contact itself and took no report. To repeat the profile
+in [crane-solve-profile](crane-solve-profile.md) at `806e55a`, drop `contact`
+from its call there.
 
 [internal-crease-diagnostic](internal-crease-diagnostic.md) profiled another
 crane solve the same way, with cost centres on every binding and the ordinary

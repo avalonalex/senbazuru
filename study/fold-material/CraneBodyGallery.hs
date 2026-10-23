@@ -91,12 +91,12 @@ writeCraneBody destination = do
     mesh <- checked (finalMesh result)
     _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
     settled <- getCPUTime
-    (strictValid, valid) <- checked (bodyAccepted study result mesh)
+    contact <- checked (spreadCheck fixture mesh)
+    (strictValid, valid) <- checked (bodyAccepted study result mesh contact)
     let passed = case set of Checked check -> checkPassed check; _ -> True
         strict = strictValid && passed
         accepted = valid && passed
         seconds = fromIntegral (settled - start) / 1e12 + (if stem == "fixed" then fromIntegral (searchEnd - searchStart) / 1e12 else 0)
-    contact <- checked (spreadCheck fixture mesh)
     (selectedError, retainedError) <- checked (bodyAngleErrors study mesh)
     angles <- checked (bodyAngles study mesh)
     roots <- checked (rootAngles root mesh)

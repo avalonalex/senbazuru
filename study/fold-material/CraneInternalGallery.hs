@@ -158,7 +158,7 @@ runInternalTrial prepared key destination = do
   _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
   settled <- getCPUTime
   contact <- checked (spreadCheck fixture mesh)
-  valid <- checked (internalAccepted study result mesh)
+  valid <- checked (internalAccepted study result mesh contact)
   let accepted = valid && case base of Checked check -> checkPassed check; _ -> True
       seconds = fromIntegral (settled - start) / 1e12 + (if control == FixedPatch then preparedSeconds prepared else 0)
   angles <- checked (originalCreaseError root mesh)

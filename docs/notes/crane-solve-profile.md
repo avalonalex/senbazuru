@@ -24,7 +24,7 @@ the functions it names call:
 | …of which arithmetic on the derivative type `D`, with the vector sums inside its maps | 47% | 70% |
 | Factorising the linear equations, 263 times | 7.6% | 6.9% |
 | Conjugate gradients | 0.9% | 1.5% |
-| Checking the final shape's contact, which runs twice | 9.3% | 4.2% |
+| Checking the final shape's contact, which ran twice | 9.3% | 4.2% |
 | Building the creased wing, mostly checking its layer orders | 9.1% | 2.4% |
 | Everything else | 8% | 4.5% |
 
@@ -63,7 +63,7 @@ other side of this trade. [#441](https://github.com/avalonalex/senbazuru/issues/
 proposes measuring gaps without derivatives in the line search, and reusing a
 measurement rather than repeating it.
 
-**The clip measures each corner twice.** Clipping one triangle's shadow by a
+**The clip measured each corner twice.** Clipping one triangle's shadow by a
 side of another asks how far each corner is from the side's line, and each
 corner is the end of one edge and the start of the next. Measured once per
 corner, the program allocated 486.1 GB and took 96.8 to 97.6 seconds, with the
@@ -80,10 +80,10 @@ A map keyed by vertex lets two triangles that share a vertex add their
 contributions to it. [#615](https://github.com/avalonalex/senbazuru/issues/615)
 proposes fixed slots instead.
 
-**Two checks repeat work.** `rootAccepted` checks the final shape's contact, and
-the quick tier then checks it again for its report, 4.6% and 4.7% of the time.
-Building the creased wing checks its layer orders by scanning lists of face ids,
-9% of the time, once per run.
+**Two checks repeated work.** `rootAccepted` checked the final shape's contact,
+and the quick tier then checked it again for its report, 4.6% and 4.7% of the
+time. Building the creased wing checked its layer orders once for every order,
+scanning all of them each time: 9% of the time, once per run.
 
 None of these is the language. What hid the cost is that a line like
 `crossXY (x, y, _) (a, b, _) = x * b - y * a` reads as arithmetic on numbers,
@@ -91,6 +91,21 @@ while `D`'s `Num` instance makes each operator build maps; operator overloading
 would hide that in any language that has it. Laziness is the one part particular
 to Haskell, and here it is the cheapest lever. The profiler is how to see all of
 them, and each is a change to this code.
+
+[#618](https://github.com/avalonalex/senbazuru/issues/618) removed the three
+repeats. The clip now measures each corner once, every accept function takes the
+contact report its caller already has, and the layer-order check runs once per
+face rather than once per order, with the faces in a set. `main` had changed
+since the profile above: [#614](https://github.com/avalonalex/senbazuru/pull/614),
+which set the clip's band as a distance, took the program from 615.8 GB to
+571.3. Measured on 2026-10-22 with the programs in
+[profiling-study-code](profiling-study-code.md), in CPU seconds and bytes
+allocated, three runs of each, interleaved, with the same results:
+
+| Program, at `-O1` | `main` at `29170c0` | With #618 |
+| --- | --- | --- |
+| The settles and checks | 108.8 to 109.0 s, 571.3 GB | 86.6 to 86.7 s, 431.7 GB |
+| Building the creased wing (`craneRootAt`) ten times | 74.0 to 74.2 s, 132.2 GB | 4.88 to 4.90 s, 24.2 GB |
 
 Owner decision 61 ([#606](https://github.com/avalonalex/senbazuru/issues/606))
 asks that one model's whole `senbazuru run` finish within ten minutes of wall

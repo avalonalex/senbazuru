@@ -68,7 +68,7 @@ writeCraneSpread destination = do
     _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
     settled <- getCPUTime
     contact <- checked (spreadCheck fixture mesh)
-    accepted <- checked (spreadAccepted fixture result mesh)
+    accepted <- checked (spreadAccepted fixture result mesh contact)
     _ <- evaluate accepted
     inspected <- getCPUTime
     -- The gallery draws exactly the controls it accepts.

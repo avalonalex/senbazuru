@@ -79,8 +79,8 @@ writeCraneQuick destination references = do
       result = baseResult found
       theta = baseDegrees found
       held = ["the body", "the wing's base, turned as one piece at " <> T.pack (showFFloat (Just 3) theta "°")]
-  accepted <- checked (rootAccepted root result mesh)
   contact <- checked (spreadCheck fixture mesh)
+  accepted <- checked (rootAccepted root result mesh contact)
   sheet <- checked (spreadSurface fixture mesh)
   let drawing = spreadFigure [sheet]
       own = if accepted then either (const Nothing) Just drawing else Nothing

@@ -40,6 +40,7 @@ import Senbazuru.Explain (explain, tshow)
 import Senbazuru.Fold.Query (Crease (..))
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Origami.Contact (ContactCheck)
 import Senbazuru.Origami.Surface
 import SurfaceContact qualified as Contact
 
@@ -101,9 +102,12 @@ internalRequirements study
 fullInternalForces :: InternalStudy -> Bool
 fullInternalForces study = internalControl study `notElem` [InternalForces, HeldLinesInternalForces]
 
-internalAccepted :: InternalStudy -> Relaxation -> MaterialMesh -> Either SpreadError Bool
-internalAccepted study result mesh = do
-  valid <- rootAccepted (internalRoot study) result mesh
+-- | @contact@ must be 'spreadCheck' of @rootSpread (internalRoot study)@ on
+-- @mesh@, the whole sheet's orders, not the subset 'internalRequirements'
+-- may solve with ('rootAccepted').
+internalAccepted :: InternalStudy -> Relaxation -> MaterialMesh -> ContactCheck -> Either SpreadError Bool
+internalAccepted study result mesh contact = do
+  valid <- rootAccepted (internalRoot study) result mesh contact
   pure (internalAcceptable study && valid)
 
 -- | Whether 'internalAccepted' could accept this control at all, whatever its

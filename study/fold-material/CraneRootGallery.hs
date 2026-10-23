@@ -98,8 +98,8 @@ writeCraneRoot destination = do
     let fixture = rootSpread study
     _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
     settled <- getCPUTime
-    accepted <- checked (rootAccepted study result mesh)
     contact <- checked (spreadCheck fixture mesh)
+    accepted <- checked (rootAccepted study result mesh contact)
     angles <- checked (rootAngles study mesh)
     creaseError <- checked (originalCreaseError study mesh)
     (creaseEnergy, panelEnergy) <- checked (bendingEnergy (spreadHinges fixture) mesh)

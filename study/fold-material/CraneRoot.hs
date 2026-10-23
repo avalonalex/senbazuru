@@ -48,7 +48,7 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2)
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Contact (contactPassed)
+import Senbazuru.Origami.Contact (ContactCheck, contactPassed)
 import Senbazuru.Origami.Surface
 
 data RootControl = HeldRoot | ReleasedRoot | WeakerRoot | FlatRoot | FreeBody
@@ -172,9 +172,12 @@ rootProfile study mesh = do
 -- | A root spring need not achieve its preferred angle. Preserve the other
 -- crease angles instead, and retain the earlier length/contact/hold gates.
 -- Solver convergence is separate: a plausible endpoint can still be unsettled.
-rootAccepted :: CraneRoot -> Relaxation -> MaterialMesh -> Either SpreadError Bool
-rootAccepted study result mesh = do
-  contact <- spreadCheck fixture mesh
+--
+-- @contact@ must be 'spreadCheck' of @rootSpread study@ on @mesh@, which is
+-- also the only check that @mesh@ keeps the fixture's material. Callers pass
+-- the one they already have rather than check twice (#618).
+rootAccepted :: CraneRoot -> Relaxation -> MaterialMesh -> ContactCheck -> Either SpreadError Bool
+rootAccepted study result mesh contact = do
   creases <- originalCreaseError study mesh
   pure (converged result && maxLengthError mesh <= 1e-5 && spreadHeldError fixture mesh == 0 && creases < 1e-5 && contactPassed contact)
   where
