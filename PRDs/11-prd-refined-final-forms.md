@@ -877,6 +877,10 @@ single stiffness preset. Each is a row in
   1,192-triangle cap, is withdrawn. The shape track needs 2,000–6,000. The study's
   galleries state their own budget; the library caps stay until F4 measures, by
   the same rule.
+- A settle in a model's sequence counts toward that model's whole run, which
+  owner decisions 61 and 64 hold to 10 minutes of wall clock on the owner's Mac
+  ([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed)); the
+  study's galleries are exempt.
 
 ### 9. Why not a general shell FEA code
 

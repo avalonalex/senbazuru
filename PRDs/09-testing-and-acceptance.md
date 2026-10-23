@@ -346,10 +346,10 @@ order; "row N" is row N of
 | M3 | [06](06-prd-step-diagrams.md#requirements) R-06-1…23, A1…A17, new goldens; 05 L5 (R-05-16…20). Row 12 (`stepPageWith`). R-06-23 (a step's `sample` poses are figures of their own) lands here, but only macro-moves carry `sample`, so nothing exercises it before M5 ([06 "Risks"](06-prd-step-diagrams.md#risks)) |
 | M4 | 05 L6…L12 (R-05-21…40). Rows 15, 17, 18 |
 | M5 | 05 L13 (R-05-41…43) |
-| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16…AC-18. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
+| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
 | M7a | [08](08-prd-realistic-rendering.md#requirements) R-08-1…11; [A-1…A-10](08-prd-realistic-rendering.md#acceptance-criteria) |
 | M7b | 08 R-08-12…31; A-11…A-23. 05 L15 (R-05-48…49: `foldedWalk`, [D19](decisions.md#d19-realistic-rendering)) |
-| M8 | 07 R-07-39, R-07-41's `run --settle` cap, R-07-42; AC-13, AC-15, AC-18 |
+| M8 | 07 R-07-39, R-07-41's `run --settle` cap, R-07-42; AC-13, AC-15 |
 
 | # | Stated here | Red when |
 | --- | --- | --- |
@@ -374,12 +374,15 @@ order; "row N" is row N of
 | M5 (a) | `collapse at centre` on a crane's [precreased](glossary-additions.md#origami) centre: what it must do is open before M5, since a pre-crease's crease is U and has no intent to match ([02 §8.2](02-language-semantics.md#82-collapse)) | the first match taken silently |
 | M5 (b) | One match, needing no `keeping`, on `square-base.fold` and `bird-base.fold` ([02 §8.2](02-language-semantics.md#82-collapse)) | a single match still demands `keeping` |
 | M5 (c) | Bird route records match `CheckedBird`'s stages within §7's formula tolerance, slow job | a role's formula or its sign changes |
+| M5 (d) | §6.4's timed run, the crane from a square now running to step 24, recorded in the PR, not CI | a macro move's check that takes the crane past 10 minutes |
 | M6 (a) | Each default-CI [settle](glossary-additions.md#material) asserts its refined triangle count ≤ 392 (R-07-41's default-CI part) | a default spec refines further |
 | M6 (b) | §6.3's placement | a crane-sized fixture outside `describe "slow"` |
 | M6 (c) | The crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job (R-07-40) | the equivalence PR solves a crane in the default job |
+| M6 (d) | §6.4's timed run, with the crane-wing sequence's settle, recorded in the PR, not CI | a settle refined a level further that takes the crane past 10 minutes |
 | M7a (a) | A-10's validator run and screenshot go in the PR, since no CI job runs an external program (R-07-43) | a CI job runs the validator |
 | M7b (a) | A-13 on the 4,312-triangle mesh and A-15's measurement run in the slow job (§6.3) | either runs in the default job |
 | M7b (b) | The manual parts of A-12 and A-23 go in the PR, not CI | a CI job opens a viewer or Blender |
+| M8 (a) | §6.4's timed run, with `run --settle` settling, recorded in the PR, not CI | a `run --settle` triangle budget (R-07-41) that admits a mesh taking the crane past 10 minutes |
 
 ## 5. The whole crane parses and checks
 
@@ -448,11 +451,10 @@ this file is folded from its assignments.
 A budget is counted work, identical on every machine given identical bits, as
 `Budget` argues for stacking guesses
 ([`Stacking.hs:151-165`](../src/Senbazuru/Origami/Stacking.hs#L151-L165)).
-Seconds appear only as CI job timeouts and in one acceptance target, timed by
-hand and never read by the code: a model's whole run within 10 minutes of wall
-clock ([owner decision 61](decisions.md#9-owner-decisions),
-[07 AC-18](07-prd-material-consumption.md#acceptance-criteria)). Each move
-record carries a `StepCost` (**SKETCH**) that `--report` prints:
+No limit the code checks is in seconds. Seconds appear in CI job timeouts, in
+§6.3's rule moving spec files with a test of 10 s or more into the slow job, and
+in one acceptance target timed by hand, §6.4's. Each move record carries a
+`StepCost` (**SKETCH**) that `--report` prints:
 
 | Count | Limit | On reaching it |
 | --- | --- | --- |
@@ -514,8 +516,8 @@ with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
    `-threaded` without `-N`, so without `+RTS -N4` the specs marked `parallel`
    share one core. hspec 2.11.12 is pinned with both flags (finding 9). The slow
    job runs beside the default job, not after it, and takes the same `changes`
-   gate; its PR sets `timeout-minutes` on both, since in CI seconds appear only as
-   job timeouts (§6.1), and updates `ci.yml`'s comment that counts the jobs.
+   gate; its PR sets `timeout-minutes` on both, since a job's timeout is the only
+   limit CI puts on time (§6.1), and updates `ci.yml`'s comment that counts the jobs.
 4. Existing `runIO` specs stay as they are until their recipe's deletion PR (§9)
    ([D16](decisions.md#d16-testing-and-acceptance),
    [C71](decisions.md#changes-since-draft-v2)), except as item 5 says.
@@ -548,6 +550,42 @@ Required means listed in `main`'s branch protection, which today lists `build
 and test`, `ormolu` and `hlint` and which no pull request can change: once the
 PR adding the job has merged, the owner lists it under the `name:` that PR
 gives it, and row 15 is marked landed then.
+
+### 6.4 One model's whole run, timed
+
+[Owner decisions 61 and 64](decisions.md#9-owner-decisions) (decided 2026-10-21
+and 2026-10-23) set one target in time: a model's whole run, from its sequence
+source's text to every frame, settle and drawing, finishes within 10 minutes of
+wall clock on the owner's Mac, an Apple M1 Max with 10 cores. It is an acceptance
+target timed by hand, not a limit: no code compares a time with it, and §6.1's
+counted budgets stay what the code checks.
+
+The crane is the test case, and no milestone runs it whole. The crane from a
+square, `examples/traditional-crane.foldseq`, stops at step 4 until M5's macro
+moves, and at step 24, "Swivel the tail up", after them, since swivel and reverse
+folds stay `not modelled` ([02 §8](02-language-semantics.md#8-macro-moves)). So
+the crane's time is the sum of its two sources' times: the crane-wing sequence of
+[decisions §7](decisions.md#7-examples), with the settle
+[§10 item 43](decisions.md#10-corrections) re-derives, and the crane from a square
+as far as it runs.
+
+- **What is timed.** For each source, the commands that write its sequence file,
+  its step page and every settle's files, with each output written once and each
+  settle solved once. From M6 to M8 `run` skips settles (R-07-10) and only
+  `senbazuru-material-study --sequence SOURCE DIR` settles; from M8 `run --settle`
+  does.
+- **How.** `/usr/bin/time -p` on binaries built at the commit under test. Other
+  work running beside a run can only slow it, so one run within 10 minutes passes
+  whatever the load. A run over it fails acceptance only if 3–5 more, the count
+  §6.2 and R-07-41 use, made with no other build or study running, are all over
+  it too. The PR records each command line, the commit, each binary's RTS options
+  (the study is not built `-threaded`, and `senbazuru` is built
+  `-threaded -with-rtsopts=-N`) and the load average at each start.
+- **When.** At M6, at M8, at each milestone that makes more of the crane run, M5
+  first, and in each PR that adds a settle to a model's sequence in `examples/`,
+  which then times that model.
+- **Exempt.** The study's research galleries: every `senbazuru-material-study`
+  mode but `--sequence`.
 
 ## 7. Angle equality
 
