@@ -873,6 +873,11 @@ fixtures smaller than the crane; a settle on a crane fixture runs in the slow jo
 whatever its size, and builds its fixtures in `beforeAll`
 ([glossary-additions](glossary-additions.md#code-and-tests)).
 Budgets count refined triangles before solving, never seconds.
+[Owner decisions 61 and 64](decisions.md#9-owner-decisions) add one target in
+time, an acceptance target rather than a limit the code checks: a model's whole
+run, settles included, within 10 minutes of wall clock on the owner's Mac, timed
+by hand as [09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed)
+says.
 
 ### External tools
 
