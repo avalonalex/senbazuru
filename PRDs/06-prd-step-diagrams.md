@@ -34,7 +34,8 @@ turn-over, or cope with a crease graph that grows between steps.
 This PRD adds `stepPageWith`, taking a typed `StepNote` beside each frame.
 `stepPage` becomes `stepPageWith` with notes that reproduce today exactly, so its
 call lines and every tracked golden are untouched. `Diagram` gains arrow heads
-and bodies (defaults emit today's bytes) and one shape, `Symbol`. `Layout` places
+and bodies (defaults emit today's bytes) and two shapes, `Symbol` and `Fanned`
+(§10). `Layout` places
 captions. `Render.Sequence` builds the notes from a run's *move records*, one per
 checked move ([glossary](glossary-additions.md#running-a-sequence)), beside the
 states `Sequence.Record.writtenStates` gives, the same states the written file
@@ -43,9 +44,10 @@ Milestone M3 (`run -o x.svg`, the book-style page;
 [10 §1](10-roadmap-risks-questions.md#1-milestones)).
 
 That page also *fans* the layers of each flat figure (§10, owner decisions 65 and
-66). Each corner of the paper is drawn a small step toward the lower left for
-every sheet lying over it, so hidden layers peek out from under the top one while
-folds stay joined. `render` fans only when asked, so its bytes do not change.
+66). Each vertex of the paper is drawn toward the page's lower left, a fixed
+page-unit distance for each sheet lying over it, so the sheets under a flap peek
+out from it while every fold stays one line. `render` fans only when asked, so
+its bytes do not change.
 
 ## Problem and evidence
 
@@ -142,9 +144,10 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
 2. Kinds, lines and marks come from move records, never from guessing at frames.
 3. `render --steps`, every gallery and every tracked golden stay byte-identical.
 4. A view flag changes how a step is drawn, never what it means.
-5. A figure of a flat fold shows how its paper is stacked: hidden layers peek
-   out from under the top one, joined at their folds, and the top one stays where
-   it lies (§10).
+5. On a page drawn from a run, or by `render --fan`, a figure of a flat fold shows
+   how its paper is stacked: the sheets under a flap peek out from it, joined at
+   their folds, and a face with nothing over any of its vertices stays where it
+   lies (§10).
 
 ## Non-goals
 
@@ -167,10 +170,11 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
    every valley and mountain head swaps, captions stay, and `run` warns once.
 3. **A `render --steps --arrows` user** on an existing file gets today's bytes.
 4. **The author** runs `senbazuru run helmet.foldseq -o helmet.svg`. Under each
-   flap of the helmet base the raw edges of the sheets below show as fine lines a
-   step or three apart, and each fold is one line. `render helmet.fold --steps
-   --fan` draws the same figures from the written file.
-4. **A study gallery author** keeps `stepPage`, or switches to `stepPageWith` to
+   flap of the helmet base the edges of the sheets below show as fine lines 1.5 to
+   4.5 page units apart, and each fold is one line. `run helmet.foldseq -o
+   helmet.fold`, then `render helmet.fold --steps --fan`, draws the same paper
+   without captions (§9).
+5. **A study gallery author** keeps `stepPage`, or switches to `stepPageWith` to
    state kinds by hand.
 
 ## Requirements
@@ -207,6 +211,9 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
   compiler cannot flag: [`LayoutSpec.hs:32-35`](../test/Senbazuru/Diagram/LayoutSpec.hs#L32-L35),
   [`:42-44`](../test/Senbazuru/Diagram/LayoutSpec.hs#L42-L44),
   [`CreasePatternSpec.hs:394`](../test/Senbazuru/Render/CreasePatternSpec.hs#L394).
+  The PR adding `Fanned` (R-06-28) does the same for it, and for `unwrap`
+  ([`CreasePatternSpec.hs:124-126`](../test/Senbazuru/Render/CreasePatternSpec.hs#L124-L126)),
+  which passes through `Offset` only.
 
 **Views**
 
@@ -308,28 +315,50 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
   [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)).
 
 **Fanned layers** (§10; owner decisions 65 and 66,
-[decisions §9](decisions.md#9-owner-decisions))
+[decisions §9](decisions.md#9-owner-decisions); the numbers and names marked
+**SKETCH** are this record's, not the owner's)
 
-- **R-06-24.** On a flat figure with face orders, each corner's fan count is the
-  least, over the faces meeting it, of the number of faces drawn in front of that
-  face, as the page is seen, that cover it at every point near enough to the
-  corner, capped at 6. The corner is drawn its count times 1.5 page units toward
-  the page's lower left, (−1, +1)/√2 in page axes (the cap, the step and the
-  direction all **SKETCH**).
-- **R-06-25.** A fanned figure is painted as the offset view paints: faces whole,
-  back to front in `paintOrder`, each fill then its edges at `themeBuriedWidth`;
-  then `Origami.Visible`'s drawing at full weight, each stretch moved as its face
-  is. Arrows, fold-here lines, `Symbol`s, `Label`s and captions are placed on
-  true positions and are not fanned.
-- **R-06-26.** A figure that is not flat, has no face orders, or has no single
-  order to paint in is drawn unfanned, and the page is still drawn.
-- **R-06-27.** `Shape` gains `Fanned [V2] Shape` (**SKETCH**): the shape with its
-  *i*-th point, counted through its rings in order, moved by the *i*-th page-unit
-  displacement. `shapePoints` returns the unmoved points, as for `Offset`, and
-  `Render.Svg` applies the displacements after projection.
-- **R-06-28.** `run -o x.svg` fans every flat figure. `render` gains `--fan`
-  (**SKETCH**) for `--fold` and `--steps` and refuses it with `--offset`; without
-  it, `render`'s output is today's.
+- **R-06-24.** A flat figure's fan counts come from 05 L16's `fanCounts`, for the
+  side the page is seen from. A vertex's count is the least, over the faces with
+  a corner at it, of the fewest faces nearer the viewer than that face over any
+  point of it near the vertex.
+- **R-06-25.** A fanned figure draws each vertex min(count, 6) × 1.5 page units
+  toward the page's lower left, (−1, +1)/√2 in page axes, since page y grows
+  downwards (the cap and the step **SKETCH**). Arrows, fold-here lines, `Symbol`s,
+  `Label`s and captions are placed on true positions and are not fanned.
+- **R-06-26.** A figure is drawn unfanned, and the page is still drawn (R-06-3),
+  when it is not flat, has no face orders, is seen edge-on, or when its fan counts
+  or its visible form cannot be had: an unordered pair, a cycle, a twist with no
+  order to paint in, a concave face.
+- **R-06-27.** A fanned figure is painted by the offset view's painter
+  ([`CreasePattern.hs:277-422`](../src/Senbazuru/Render/CreasePattern.hs#L277-L422))
+  with a displacement per point instead of per layer. It paints layer by layer
+  from `layerDepths`, at most two merged fills per layer, then the layer's
+  creases at `themeBuriedWidth` (a third of a crease's width), then the layer's
+  full-weight stretches from `Origami.Visible.formSheetEdges`. A point moves by
+  its own vertex's displacement. A point along a stretch, or a merged ring's
+  point that is no vertex, moves by the displacements of the two vertices of the
+  face edge it lies on, mixed by where it lies between them. The offset view is
+  the case where every point of a face moves by its layer times `layerStep`.
+- **R-06-28.** `Shape` gains `Fanned` (**SKETCH**): a polyline or a fill whose
+  every point is paired with its own page-unit displacement, so the two cannot
+  fall out of step. `Offset d s` is `Fanned` with every displacement `d`, and both
+  emit the same bytes. `shapePoints` returns the points alone and
+  `mapShapePoints` moves only the points, as for `Offset`. `Render.Svg` keeps
+  each displacement with its own point when it drops a ring shorter than three
+  points or turns a ring round.
+- **R-06-29.** The theme carries the choice. `themeLayerOffset` becomes
+  `themeLayers`, one of laid flat, offset by a distance, or fanned by a step and
+  a cap (**SKETCH**), so no theme asks for both. `run -o x.svg` passes a fanning
+  theme to `stepPageWith`, whose signature (R-06-1) and `stepPage`'s call lines
+  (R-06-2) do not change; `--no-fan` ([04](04-prd-sequence-source-and-cli.md)
+  R-04-27, **SKETCH**) passes an unfanned one. `render --fan` (**SKETCH**) fans
+  every flat folded frame `render` draws: `--fold`, a folded frame chosen by
+  `--frame`, and `--steps`. It is refused with `--offset`, does nothing under
+  `--no-fill` (which asks for no layer order, as for `--offset`), and is refused
+  with W1's `--lines` as `--offset` is ([08](08-prd-realistic-rendering.md)
+  R-08-21). Every golden of this file but this section's two new ones is drawn
+  unfanned.
 
 ## Design
 
@@ -427,6 +456,7 @@ so the group's `fill="none"` holds.
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant
 data Glyph = TurnOverLoop !V2 | RotateMark !Int | RepeatMark !Int !Int | EdgeOnMark
 data Shape = … | Symbol !Stroke !Double !V2 !Glyph   -- stroke, page-unit size, model anchor, glyph
+           | Fanned …                               -- points paired with page-unit displacements (§10, R-06-28)
 ```
 
 A symbol is sized in page units because a loop sized to the model would change
@@ -657,83 +687,110 @@ A flat fold puts sheets exactly on top of one another, so a figure that draws
 every sheet where it lies draws one outline over several layers. The helmet
 base's last state, the end of `helmet.foldseq`, has six faces in four layers and
 is drawn as one square. A reader cannot see which edges are folds and which are
-*raw edges*, the edges of the sheet itself, or how many sheets a flap holds.
+the paper's own edges, its [border](../docs/glossary.md#the-fold-format), or how
+many sheets a flap holds.
 
 Szinger's Foldinator ([3OSME paper, 2001](https://zingman.com/origami/foldinator3OSMEpaper.php))
 draws aligned layers "systematically offset so that the viewer can read the
-diagram". In its figures a fold stays one joined line, the raw edges underneath
-peek out on one side, and the point where layers meet stays together. The owner
-prefers that look (owner decision 65, [decisions §9](decisions.md#9-owner-decisions)),
-and `run -o x.svg` draws it (R-06-24–28). This *fanning* departs from a true
-projection; the paper's coordinates are not touched.
+diagram". In its figures a fold stays one joined line, the border of the sheets
+underneath peeks out on one side, and the point where layers meet stays
+together. The owner prefers that look (owner decision 65,
+[decisions §9](decisions.md#9-owner-decisions)), and `run -o x.svg` draws it
+(R-06-24–29). This *fanning* departs from a true projection; the paper's
+coordinates are not touched.
 
-**The rule.** Take a flat state and its face orders (its
-[layer order](../docs/glossary.md#origami)). For each corner of the
-paper, and each face meeting that corner, count the faces drawn in front of that
-face, as the page is seen, that cover it at every point near enough to the
-corner. The least of those counts over the faces meeting the corner is the
-corner's *fan count* ([glossary](glossary-additions.md#step-pages)), capped at
-6. The corner is drawn its fan count times the *fan step*, 1.5 page units, toward
-the page's lower left (both numbers **SKETCH**). Three things follow.
+**One figure, worked through.** Number the helmet base's last state as its run
+writes it (`file_frames[3]`). Its nine vertices lie at only four places, since
+folding brings several onto one point. The sheet's four corners all land on the
+model's tip, (1, 0), as vertices 0 to 3. Over them, as the page is seen, lie 0,
+3, 0 and 2 sheets. So the tip is drawn at three places: where it lies, and 3 and
+4.5 page units toward the lower left, the corners of the two buried sheets
+peeking out. The sheet's centre, vertex 5 at (0.5, 0.5), is a vertex of all six
+faces; the top faces have nothing over them, so it stays where it lies, the point
+where the layers meet.
 
-- **A fold stays one line.** The two faces a fold joins share its corners, so
+**The rule** (R-06-24, R-06-25; [05](05-prd-library-additions.md) L16 computes
+it). For each vertex, and each face with a corner there, count the fewest faces
+nearer the viewer than that face over any point of it near the vertex. The least
+of those counts is the vertex's *fan count*
+([glossary](glossary-additions.md#step-pages)). Each vertex is drawn its count,
+at most 6, times 1.5 page units toward the lower left. Three things follow.
+
+- **A fold stays one line.** The two faces a fold joins share its vertices, so
   both draw them at one place. The offset view (`render --offset`) moves each
   face by its own layer instead, and draws a shared crease twice
   ([`CreasePattern.hs:36-77`](../src/Senbazuru/Render/CreasePattern.hs#L36-L77)).
-- **What nothing covers stays put.** A corner with no sheet over it has count 0,
-  so a face whose corners are all uncovered is drawn exactly where it lies, and
-  the arrows, fold-here lines and marks placed on true positions still sit on
-  it. A visible face with one covered corner leans toward that corner, by at most
-  6 steps there.
-- **Raw edges peek out.** Two sheets whose raw corners lie at one point are two
-  corners, each with its own count, so the deeper one is drawn a step further
-  out.
+- **A face with nothing over any of its vertices stays put.** Taking the least
+  over a vertex's faces gives it 0 when any of them is uncovered there. A face
+  with one covered vertex leans toward it (Risks).
+- **The border underneath peeks out.** Two sheets whose corners lie at one point
+  are two vertices, each with its own count.
 
-**The count is not `layerDepths`' depth, read the other way.** `layerDepths`
-counts the layers *under* a face, and the offset view moves a face by that, so
-its top layer moves furthest
-([`Layers.hs:91-112`](../src/Senbazuru/Origami/Layers.hs#L91-L112)). Calling it
-with the view reversed gives the order to count in, but not the count: its depth
-is the longest chain of faces over a face anywhere, so a face partly under one
-flap gets 1 even at corners the flap does not reach. A prototype that used it
-moved paper nothing covers in the helmet's third figure; counting at each corner
-fixed that.
+**Why the fewest, over any point.** Near a vertex the faces over a face can
+differ from one side of a line through the vertex to the other. At the helmet's
+tip the diagonal x + y = 1 cuts face 0's corner in two, and three faces lie over
+each half, but only one, face 4, over both. Counting only faces that cover the
+whole corner would give the tip 1. Counting at one point beside it, as the first
+prototype did, depends on which side that point falls, and there it falls on the
+diagonal.
 
-The counts, from a scratch prototype in Python over `layerDepths`' orders, run
-on 2026-10-23:
+**Not the layer number.** `layerDepths` gives each face its
+[layer number](../docs/glossary.md#origami), the longest chain of faces below it,
+and the offset view moves a face by that, so its top layer moves furthest
+([`Layers.hs:91-112`](../src/Senbazuru/Origami/Layers.hs#L91-L112)). Read the
+other way, it is the longest chain over a face anywhere, so a face partly under
+one flap gets 1 even at vertices the flap does not reach; on the crane that chain
+is 31 where no point holds more than 24 sheets
+([layer-numbers](../docs/notes/layer-numbers.md)). On the helmet's state 2 it
+would give vertices 1 and 3 counts of 3 and 2, where their fan counts are 1 and
+0 (A18).
+05's L9 already counts faces at a point for the same reason.
 
-| State | Faces | Corners | Corners by sheets over them |
+The counts, from a scratch prototype in Python run on 2026-10-23. For each face
+at a vertex it tested 40 points of that face 1e-4 from the vertex, across the
+corner, against every face nearer the viewer:
+
+| State | Faces | Vertices | Vertices by fan count |
 | --- | ---: | ---: | --- |
 | Helmet base, `helmet.foldseq`'s last state | 6 | 9 | 0: 5 · 1: 2 · 2: 1 · 3: 1 |
 | Square base, `examples/square-base.fold` folded | 8 | 9 | 0: 4 · 1: 2 · 2: 2 · 3: 1 |
-| Bird base, `bird-base-sequence.fold` `file_frames[15]` | 16 | 13 | 0: 7 · 1: 1 · 2: 3 · 3: 2 |
-| Crane, `examples/crane.fold` folded | 72 | 58 | 0: 17 · 1–6: 26 · 7–17: 15 |
+| Bird base, `bird-base-sequence.fold` `file_frames[15]` | 16 | 13 | 0: 7 · 2: 4 · 3: 2 |
+| Crane, `examples/crane.fold` folded | 72 | 58 | 0: 17 · 1–6: 27 · 7–15: 14 |
 
-**The cap.** Uncapped, the crane's deepest corner, under 17 sheets, would move
-25.5 page units, twice the default gutter of 11.9 (0.1 of a 118.75-unit figure,
-[§8](#8-captions-and-the-gutter)). At 6 the largest move is 9 page units, 6.4
-along each page axis, which stays inside the gutter, and in the prototype the
-crane read no worse for it.
+**The cap.** Uncapped, the crane's deepest vertex, under 15 sheets, would move
+22.5 page units. At 6 the largest move is 9 page units, 6.4 along each page axis.
+On the CLI's default page, 400 by 400 with three columns (§8), the gutter holds
+that up to five rows of figures, or six with owner decision 7's captioned gutter.
+At six rows uncaptioned the gutter is 5.66 page units, and at seven captioned
+5.78, so on a longer page the fan reaches the next cell (Risks). The owner saw the
+prototype uncapped. The cap is this record's choice, made afterwards, and a capped
+crane drawn then read no busier.
 
-**The direction is `layerStep`'s.** Relative to the top, deeper sheets lie toward
-the lower left, as they do in the offset view
-([`Style.hs:291-336`](../src/Senbazuru/Diagram/Style.hs#L291-L336)). In page axes
-that is (−1, +1)/√2. **The + is not a sign slip:** page y grows downwards.
+**The direction.** Deeper sheets are drawn toward the lower left of the sheets
+over them, as in the offset view, whose `layerStep` moves each upper layer up and
+to the right ([`Style.hs:291-336`](../src/Senbazuru/Diagram/Style.hs#L291-L336)).
+The fan needs the direction without the offset view's step, which is `Nothing`
+whenever no offset is asked for, so the unit direction becomes a constant both
+use. In page axes it is (−1, +1)/√2. **The + is not a sign slip:** page y grows
+downwards.
 
-**Painting.** As the offset view paints: every face whole, back to front in
-`paintOrder`, its fill and then its edges at `themeBuriedWidth`; then the drawing
-`Origami.Visible` gives, at full weight, each stretch moved as the face it
-belongs to, its points moved in proportion between its two corners. A figure
-that is not flat, has no face orders, or has no single order to paint in (a
-twist, [`Visible.hs:15-19`](../src/Senbazuru/Origami/Visible.hs#L15-L19)) is drawn
-unfanned, as today. The page never fails because a figure cannot fan, just as
-R-06-3 makes every note drawable.
+**One painter.** A fanned figure is painted by the offset view's painter, with a
+displacement for each point instead of for each layer (R-06-27). So it keeps that
+painter's merged fills, which the Fill contract needs, and paints each layer's
+full-weight stretches with that layer
+([`CreasePattern.hs:39-75`](../src/Senbazuru/Render/CreasePattern.hs#L39-L75)).
+The painter's layers also decide faces that only overlap once fanned, which no
+face order covers. On the helmet's state 2 it draws face 4 over face 2. The
+prototype painted them the other way round, which made the pale wedge in its
+figures.
 
-**Where.** `run -o x.svg` fans every flat figure. `render` fans only when asked,
-with `--fan` (**SKETCH**) for `--fold` and `--steps`. It refuses `--fan` with
-`--offset`, since the two answer one question in two ways. Without the flag,
-`render` writes today's bytes, so every tracked golden stays byte-identical
-(Goal 3; owner decision 66). The GLB gets the same idea later, as a
+**Where** (R-06-29; owner decision 66). `run -o x.svg` fans unless `--no-fan`
+says not to. `render` fans only when asked, with `--fan`, so its output and every
+tracked golden stay as they are. The default theme stays unfanned for the reason
+it gives ([`Style.hs:234-237`](../src/Senbazuru/Diagram/Style.hs#L234-L237)): a
+drawing that moved paper unasked would misplace it. A page from a run is asked
+for, follows a book's convention, and leaves a face with nothing over any of its
+vertices where it lies. The GLB gets the same idea later, as a
 [PRD 08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack-later) item
 (owner decision 67).
 
@@ -756,9 +813,10 @@ with `--fan` (**SKETCH**) for `--fold` and `--steps`. It refuses `--fan` with
 | Sample poses written to the file but left off the page | The page would no longer draw exactly the states the file holds ([D24](decisions.md#d24-states-figures-and-their-numbers)) |
 | The offset view's layers on the step page | Each layer moves whole, so every fold splits into two lines, the top layer moves furthest, and arrows are refused beside it (owner decision 65) |
 | Drawing each flat state slightly unfolded | A state is its fold angles (AGENTS.md), and opening every crease to 97% of its angle tears seven of eight fixtures (`TornAt`: the crane, the square, waterbomb, bird, fish and helmet bases and `kabuto.fold`; run 2026-10-23). Only `blintz-base.fold` folds, its four creases meeting at no vertex inside the sheet |
-| A face's depth from `layerDepths` as its count | The longest chain over a face anywhere, so paper nothing covers moves; the prototype moved the helmet's third figure (§10) |
-| Counting the sheets under a corner | The top layer moves furthest, and it is the layer the reader sees |
-| Fanning `render --fold` and `--steps` by default too | About a dozen tracked SVG goldens of folded paper change, against Goal 3 (owner decision 66) |
+| A face's layer number as its count | The longest chain over the face anywhere, so paper nothing covers moves: on the helmet's state 2, vertices 1 and 3 get 3 and 2 where their fan counts are 1 and 0 (§10, A18) |
+| Counting a covering face only where it covers the whole face near the vertex | The helmet's tip gets 1, though three sheets lie over its corner on either side of the diagonal through it (§10) |
+| Counting the sheets under a vertex | The top layer moves furthest, and it is the layer the reader sees |
+| Fanning `render --fold` and `--steps` by default too | Up to 22 of the 32 tracked SVG goldens could change, against Goal 3 (owner decision 66; counted in [decisions C121](decisions.md#changes-since-draft-v2)) |
 
 ## Acceptance criteria
 
@@ -783,11 +841,14 @@ with `--fan` (**SKETCH**) for `--fold` and `--steps`. It refuses `--fan` with
 | A15 | `stepPageWith` on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
 | A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none | labelling ignores `Visible` |
 | A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |
-| A18 | On the helmet base's last state and the folded square base, the fan counts are §10's table's, every corner nothing covers has count 0, and each edge two faces share has one page displacement at each end in both faces | the count is a face's `layerDepths` depth, or counts the sheets under a corner; a face is moved whole |
+| A18 | On the helmet base's last state, a fanned figure draws vertex 1 4.5 and vertex 3 3 page units toward the lower left of where they lie, and vertices 0, 2, 4, 5 and 8 where they lie; on its state 2, vertices 1, 7 and 8 1.5 page units out and the rest where they lie; each fold's two faces draw its vertices at one page position | the count is a face's layer number (state 2 moves vertex 1 4.5 and vertex 3 3); a covering face counts only where it covers the whole corner (the tip moves 1.5); a face is moved whole; the direction's sign is flipped |
 | A19 | A fanned figure emits equal page bytes at model sizes 1 and 400, extending A4 | the fan step is in model units |
-| A20 | Under `View (Just bottomUp) 0`, the folded square base's counts are those of the paper as seen from below | the counts are read from the top whatever the view |
-| A21 | A page holding the folded square twist among flat figures draws every figure, the twist unfanned | a figure that cannot fan fails the page |
-| A22 | On the folded crane no corner's count exceeds 6 and no corner moves more than 9 page units | the cap is dropped: 15 of its 58 corners have 7 to 17 sheets over them |
+| A20 | Under `View (Just bottomUp) 0`, the helmet base's last state fans by 05 L16's counts seen from −z (vertices 0 and 2 by 2, vertex 3 and vertices 6 and 7 by 1) | the counts are read from the top whatever the view |
+| A21 | A page holding the folded square twist and a figure seen edge-on among flat figures draws every figure, those two unfanned | a figure that cannot fan fails the page |
+| A22 | On the folded crane no vertex moves more than the cap times the fan step | the cap is dropped: 14 of its 58 vertices had 7 to 15 sheets over them on 2026-10-23 |
+| A23 | On the helmet run's page, the fanned page's `Arrow`, `Symbol`, `Label` and fold-here shapes equal the unfanned page's | a mark is fanned |
+| A24 | `Fanned` with every displacement `d` emits the bytes `Offset d` emits, for a polyline and for a fill of two rings, one clockwise | the two drift apart, or a turned-round ring loses its points' displacements |
+| A25 | `stepPage`, and `stepPageWith` with `defaultTheme`, emit no `Fanned` shape on any input of this file | an unfanned theme fans |
 
 `run`'s warning is CLI behaviour, checked by hand (the CLI is untested by design,
 [`Cli.hs:5-8`](../app/Senbazuru/Cli.hs#L5-L8);
@@ -799,7 +860,7 @@ with `--fan` (**SKETCH**) for `--fold` and `--steps`. It refuses `--fan` with
 | --- | --- | --- |
 | Step pages with arrows (14) | `quarter-fold-steps.svg` (`SvgSpec.hs:392`); `bird-base-sequence-arrows.svg` (`:402`); `quarter-fold-sequence-steps.svg` (`WriteSpec.hs:127`); `quarter-fold-step-1.svg` (`:384`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:295`, `:315`, `:325`); `checked-blintz.svg` (`BlintzSequenceSpec.hs:139`); `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
 | Step pages without arrows (4) | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` (`BirdSequenceSpec.hs:84`); `frog-sequence.svg` (`BasicBaseSpec.hs:220`); `bent-strip.svg` (`WingBendingSpec.hs:102`) | `silentNote`; the trailing gutter and the captioned gutter; basis choice |
-| Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:346-507`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill` |
+| Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:346-507`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill`; the painter the offset view shares with fanned figures (R-06-27), for the three `-offset` goldens |
 | GLB (4) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:617`, `:622`, `:627`); `blintz-sequence-final.glb` (`WriteSpec.hs:206`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
 
 The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten tracked between then and `7af4c92`: `quarter-fold-sequence-steps.svg` (#512) and `bird-base-sequence-arrows.svg` (#522), drawn by `stepPage` with arrows, and `blintz-sequence-final.glb` (#514). The other seven are not grouped: `blintz.foldseq`, `every-construct.foldseq` and `quarter-fold.foldseq` (#290); `run-refused-check.txt` and `run-refused-parse.txt` (#341); and `blintz-expected-report.txt` and `quarter-fold-report.txt` (#513). [D16](decisions.md#d16-testing-and-acceptance)'s check reads `test/golden/` whole, so it covers every one, grouped or not.
@@ -813,8 +874,8 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | `quarter-fold-turn-over-steps.svg` | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
 | `quarter-fold-growing-steps.svg` | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
 | `diagonal-precrease-steps.svg` | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
-| `helmet-fanned-steps.svg` | `run helmet.foldseq -o x.svg`'s page (R-06-28) | a fold drawn as two lines; the top layer moved; a raw edge under a flap not shown |
-| `crane-folded-fanned.svg` | `render examples/crane.fold --fold --fan` | as A22; a buried sheet drawn at full weight |
+| `helmet-fanned-steps.svg` | The helmet run's `stepNotes` through `stepPageWith` with a fanning theme (R-06-29) | a fold drawn as two lines; a face with nothing over any of its vertices moved; a buried sheet's border not shown; face 2 of state 2 drawn over face 4 |
+| `crane-folded-fanned.svg` | `creasePatternAuto` with a fanning theme on `examples/crane.fold` | as A22; a buried sheet drawn at full weight |
 | Quarter-fold test 1 and 2 pages | Owned by [09](09-testing-and-acceptance.md) ([D16](decisions.md#d16-testing-and-acceptance)) | as stated there |
 
 ## Dependencies
@@ -822,6 +883,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | On | For |
 | --- | --- |
 | M2 ([02](02-language-semantics.md), [04](04-prd-sequence-source-and-cli.md)) | Records carrying `recordPresentation` and `recordPlacement`, each before and after, with `displayBefore` and `displayAfter` computed from them ([D14](decisions.md#d14-material-consumption)); `Run` and `writtenStates` in `Sequence.Record` ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)); the state-rule writer; presentation axes; which turn a `turn over` or `rotate` record was (below the table) |
+| [05](05-prd-library-additions.md) L16 | `fanCounts`, and stretches that keep the face edge they lie on, at M3 (§10) |
 | [05](05-prd-library-additions.md) | `motionsAcross`, `creasesToCome`, `fitRigid` and `Step` classification with the `Origami.Step` header rewrite ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 13, written out in [01 §4.13](01-architecture.md#413-srcsenbazuruorigamistephs30-34)) |
 | M0 ([10 §1](10-roadmap-risks-questions.md#1-milestones)) | Amended done-when of [#36](https://github.com/avalonalex/senbazuru/issues/36) (reflection as turn-over cannot be met) and #94 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 7; [§10](decisions.md#10-corrections) items 2 and 3) |
 | Issues | Closes #36, #94 at M3; follows #95 (M2); advances #48 via `noteLayers`; relates to [#60](https://github.com/avalonalex/senbazuru/issues/60), [#97](https://github.com/avalonalex/senbazuru/issues/97) |
@@ -873,18 +935,45 @@ half turn, would have drawn a mark the author did not write.
 - **Marks with paper in the air** go unlabelled: `Origami.Visible` works on
   flat-folded models ([`Visible.hs:1-8`](../src/Senbazuru/Origami/Visible.hs#L1-L8)).
 - **`noteLayers`** is drawn by nothing until #48.
-- **Fanned figures look busy on deep models.** The owner, on the prototype: "a
-  bit more realistic, although visually a bit busy". The crane has 41 of its 58
-  corners under paper. An idea to try, not decided: fan only the paper the last
-  *N* moves turned, which each record names (`recordMoving`), and draw the rest
-  unfanned.
-- **Leaning visible paper.** A visible face with a covered corner is drawn
-  leaning by up to 9 page units there, and fold-here lines on true positions sit
-  that far off its edge.
-- **Seams.** Where a raw edge lies along another layer's fold, the two fills stop
-  abutting once one corner moves, and the background shows as a hairline (the
-  prototype's helmet figures). One fix is to paint the unfanned silhouette in
-  paper colour under everything; **UNVERIFIED**.
+- **Fanned figures look busy.** The owner, on the prototype: "Fan from the fold
+  looks a bit more realistic, although visually a bit busy, but we can figure out
+  how to fix in the future (maybe only fan out for the last N steps?)". One
+  reading of that idea, this record's and not decided: fan only the paper turned
+  by the moves of the last *N* steps. Each record names its moving faces
+  (`recordMoving`) in its own numbering, so a later figure would find them by
+  material point ([D22](decisions.md#d22-figures-holding-several-moves)).
+- **Leaning visible paper.** A face with nothing over some of its vertices but
+  something over another is drawn leaning toward the covered one. On the
+  prototype's crane, 7 faces have uncovered points on edges that move, one by 2.9
+  page units. A fold-here line on true positions then sits that far from the edge
+  it marks.
+- **Long pages and captions.** The fan is a fixed page length and the gutter a
+  fraction of the figure, so past five rows of three figures (six with captions)
+  the fan can reach the next cell (§10). `Layout` was rewritten once to stop step
+  numbers doing that ([`Layout.hs:38-45`](../src/Senbazuru/Diagram/Layout.hs#L38-L45)).
+  On any page, a figure that fills its box can fan its lowest vertices into its own
+  caption's gutter: by 1.06 page units on the helmet's second and third figures.
+  Owner decision 7, still open, sizes the captioned gutter for 14-unit type alone.
+- **Faces turned inside out.** On small figures the fan is large beside a thin
+  face. On the folded crane drawn 56.6 page units across, the size of 16 to 18
+  figures on the default page, face 61 turns over; at 33.8, the size of the
+  traditional crane's 29 figures, three turn over and one crosses itself. The scale
+  is known only in `Render.Svg`, so a guard there, such as drawing a figure
+  unfanned when a fanned ring would turn over, is **UNVERIFIED**; the M3 PR tries
+  it on that 29-figure page.
+- **What `Origami.Visible` keeps.** A stretch carries only its two ends and the
+  strongest assignment of the creases along it, so moving it as its face moves
+  needs the face edge it lies on, which 05 L16 adds. Where a top face's fold lies
+  along a buried sheet's border, as 15 of the crane's 99 folds do, the stretch is
+  drawn at border weight while that border fans away.
+- **Hidden lines shown.** Visibility is judged on the model as it lies. Once
+  faces move by different amounts, a stretch's end that met another face's edge
+  leaves it, and the full-weight line runs over paper painted in front of it: on
+  the folded crane, face 10's mountain edge runs 3.4 page units into face 1. The
+  offset view accepts the same trade
+  ([`CreasePattern.hs:404-415`](../src/Senbazuru/Render/CreasePattern.hs#L404-L415)).
+  Clipping each stretch against the fanned faces painted after it would remove
+  it; **UNVERIFIED**, and a rasterised crane page would check it.
 
 ## Open questions for the owner ([10 §6](10-roadmap-risks-questions.md#6-owner-decisions))
 
@@ -903,9 +992,11 @@ Each has a recommended default in [decisions §9](decisions.md#9-owner-decisions
   a `sheet square as diamond` start: it decides whether `RotateMark` ever shows an
   odd k. Default: trigonometry, with the platform bits stated. Before M2.
 - **65–67**, decided 2026-10-23 as recommended: flat figures fan from their folds
-  (§10); fanned by default on `run -o x.svg` only, by a flag on `render`; and the
-  GLB's version later, in [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack-later).
-  Open, not a decision: which figures fan, if fanning everything proves busy.
+  (§10); fanned by default on `run -o x.svg`, by a flag on `render`; and the GLB's
+  version later, in [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack-later).
+  Left open by the owner: how to make fanned figures less busy (Risks).
+- **7**, still open, now also bears on the fan, which can reach into a captioned
+  gutter (Risks).
 
 ## Research links
 

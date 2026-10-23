@@ -51,7 +51,7 @@ two of them are *contracts*, boundaries between separately owned code
    never by an id. Both front ends share this value, so it is not numbered as a
    contract.
 2. **Contract 1, the move record.** A pure *runner* performs the moves, using the
-   library's existing checking code plus fifteen small additions, and returns one
+   library's existing checking code plus sixteen small additions, and returns one
    [move record](glossary-additions.md#running-a-sequence) per move.
 3. **Contract 2, the settle input.** The material study takes one record, never a
    file, resolves the points an author holds still and moves against it, and hands
@@ -80,7 +80,7 @@ before milestone M8; until then it comes from the study
 | [02 Language semantics](02-language-semantics.md) | The specification both front ends share, down to the refusal catalogue |
 | [03 Embedded DSL](03-prd-embedded-dsl.md) | Feature 1: the `Build` monad, typed references, loops, GHCi |
 | [04 Sequence source and `run`](04-prd-sequence-source-and-cli.md) | Feature 2: grammar, printer, error display, the `run` verb, checked examples |
-| [05 Library additions](05-prd-library-additions.md) | The fifteen fold-solver additions L1–L15, none changing an existing output |
+| [05 Library additions](05-prd-library-additions.md) | The sixteen fold-solver additions L1–L16, none changing an existing output |
 | [06 Step diagrams](06-prd-step-diagrams.md) | Step notes, arrow kinds, turn-over marks, captions; which *goldens* (checked-in outputs compared byte for byte) may move |
 | [07 Material consumption](07-prd-material-consumption.md) | Feature 3a: `settle` blocks, holds and grips, rest angles, moving the solver into the library |
 | [08 Realistic rendering](08-prd-realistic-rendering.md) | Feature 3b: fidelity axes, a smooth-shaded GLB mode, animation, an exact line drawing |

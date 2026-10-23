@@ -880,16 +880,35 @@ new golden (27 silhouette candidates before visibility).
 ### Layers lifted off the stack, later
 
 [06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds) fans a flat
-figure on the page: each corner is drawn a small step toward the lower left for
-every sheet lying over it, so folds stay joined and raw edges peek out. Owner
-decision 67 ([decisions §9](decisions.md#9-owner-decisions), decided 2026-10-23)
-gives the GLB the same idea later, as an item of this file, not of M7a or M7b. A
-flat-folded GLB's complete scene keeps coincident layers today; the lift would
-move each corner off the stack by the sheets under it, so the layers separate in
-depth without tearing at their folds. Its size, whether the visible scene needs
-it, and how its fidelity metadata says it is a drawing convention rather than the
-paper's thickness are open
-([#624](https://github.com/avalonalex/senbazuru/issues/624)).
+figure on the page: each vertex is drawn toward the page's lower left once for
+each sheet lying over it, so folds stay one line and the border of the sheets
+underneath peeks out. Owner decision 67
+([decisions §9](decisions.md#9-owner-decisions), decided 2026-10-23) gives the GLB
+the same idea later, as an item of this file, after M7a and outside M7a's and
+M7b's requirements.
+
+The GLB once did something like it, and the change was undone. The first glTF
+exporter lifted each flat-folded face by its layer number. That opened gaps at
+shared creases, and calling it `--thickness` confused a drawing convention with
+a property of the sheet ([paper-thickness](../docs/notes/paper-thickness.md)).
+Today every corner in both scenes has height zero
+([visible-paper-mesh](../docs/notes/visible-paper-mesh.md)).
+
+A later lift would move each *vertex* rather than each face. It would lift a
+vertex by the sheets under it, which is 05 L16's fan count seen from below, so a
+fold's two faces, sharing its vertices, stay joined. That answers the gaps at
+creases. It counts the sheets under a vertex where the page counts those over
+it. The page keeps the paper the reader sees in place; a GLB has no one side the
+reader sees, and lifting from the bottom up puts each sheet where thickness
+would.
+
+Still open, for [#624](https://github.com/avalonalex/senbazuru/issues/624):
+- the lift's size;
+- whether the visible scene, which already hides buried paper, needs it;
+- how its fidelity metadata says it is a drawing convention, not the paper's
+  thickness, the old exporter's second mistake.
+
+A twist needs no painting order in 3D, so it would lift as any flat state does.
 
 ### What stays research
 

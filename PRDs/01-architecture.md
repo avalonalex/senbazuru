@@ -708,6 +708,24 @@ Replacement: the item's title gains the "Complete:" prefix item 1 already uses
 In `docs/roadmap.md`, item 2 becomes "**Complete: a vocabulary of folds** (#60)",
 and the same two sentences replace §4.16's.
 
+### 4.19 `AGENTS.md:192-195` and `:372-376`
+
+This lands in the M3 PR adding `Fanned`
+([06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds), R-06-28).
+
+Current (`AGENTS.md:192-195`): "`Arrow`, `Label` and `Offset` need both and are
+finished by the backend after projection." Replacement:
+
+> `Arrow`, `Label`, `Offset`, `Symbol` and `Fanned` need both and are finished by
+> the backend after projection.
+
+Current (`AGENTS.md:372-376`): "… so a flat model is drawn by visible regions
+(`Origami.Visible`) and `paintOrder` remains for paper in the air." Replacement:
+
+> … so a flat model is drawn by visible regions (`Origami.Visible`) and
+> `paintOrder` remains for paper in the air. The offset view and a fanned figure
+> paint whole faces a layer at a time, each layer's visible stretches with it.
+
 ## 5. One move, end to end: quarter fold, step 2
 
 This is the second move of #60's folding-equivalence test (§4.3). Each number

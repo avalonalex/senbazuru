@@ -502,7 +502,7 @@ produces.
 | M0 | nothing | decisions recorded in `docs/`, issues amended, glossary rows moved in |
 | M1 | `senbazuru run --check SOURCE` | refusals that need no geometry, at `path:line:col`; a Haskell `Sequence` printed as source; a source handed to `render` refused as a sequence source, not FOLD |
 | M2 | `run -o x.fold`, `-o x.glb`, `--report` | sequence files of checked rigid states (blintz, helmet); the final state as today's two-colour GLB; each move's evidence |
-| M3 | `run -o x.svg` | a book-style step page: captions, arrows from move records, turn-over symbols, fold-here lines |
+| M3 | `run -o x.svg`; `render --fan` | a book-style step page: captions, arrows from move records, turn-over symbols, fold-here lines, and flat figures with their layers fanned from their folds |
 | M4 | folds through some layers; `start folded`, `checkpoint`, `repeat` | the first part of the crane-wing recipe as a sequence source; the quarter fold authored from `sheet square`, which closes [#60](https://github.com/avalonalex/senbazuru/issues/60) |
 | M5 | `collapse`, `rabbit-ear`, `petal` | the bird base, and the crane's opening from a square |
 | M6 | `senbazuru-material-study --sequence SOURCE DIR` | the first bent paper from a sequence source: settled illustrations beside the rigid outputs |

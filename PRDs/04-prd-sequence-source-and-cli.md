@@ -122,7 +122,7 @@ Each requirement points at the design section that details it.
 | R-04-24 | `--report` writes `Sequence.Record.renderRunReport :: Run -> [Text]` to stderr under a heading naming the source, as `check` formats its report ([Cli.hs:1076-1080](../app/Senbazuru/Cli.hs#L1076-L1080)). It prints each `expect refused` outcome too, which has no record and is kept on its step in the `Run` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). |
 | R-04-25 | `--layer-budget N` reaches `runSequence` and the renderer for every geometric output. |
 | R-04-26 | `--frame N` goes only with `.glb`. It counts as every verb does, frame 0 being the key frame, so `--frame N` selects state N − 1, which is `file_frames[N − 1]` ([D13](decisions.md#d13-the-run-verb-and-io), [D24](decisions.md#d24-states-figures-and-their-numbers)); `bird-base-sequence.fold`'s states are read the same way ([usage.md:1841-1842](../docs/usage.md)). With no `--frame` it selects the last state. `0` and values past the state count are refused, naming the count. |
-| R-04-27 | `--columns`, `--view`, `--width` and `--height` go only with `.svg`, with `render`'s defaults. `--all-layers` goes only with `.glb`. `--author` and `--description` go only with `.fold`, because they fill `file_author` and `file_description`, which only the sequence file has ([D4](decisions.md#d4-written-frames-follow-the-state-rule)). |
+| R-04-27 | `--columns`, `--view`, `--width`, `--height` and `--no-fan` (**SKETCH**, owner decision 66: the page fans its flat figures unless told not to, [06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds)) go only with `.svg`, with `render`'s defaults. `--all-layers` goes only with `.glb`. `--author` and `--description` go only with `.fold`, because they fill `file_author` and `file_description`, which only the sequence file has ([D4](decisions.md#d4-written-frames-follow-the-state-rule)). |
 | R-04-28 | Any refusal exits nonzero. At a `not modelled` move, `runSequence` returns `Right` a `Run` whose `runStop` names the step and which holds every record and state before it. `run` writes those states, then prints `runRefusal`'s `StepRefused … NotModelled` and exits nonzero, so the work up to the gap is kept ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). Every other refusal returns no partial run. |
 | R-04-29 | The library adds megaparsec, parser-combinators and transformers, and the executable adds `containers` and `filepath` ([bounds](#dependencies-in-the-cabal-file)). |
 | R-04-30 | The flag rules of R-04-22, R-04-23, R-04-26 and R-04-27, and the output lines of R-04-16, are pure functions in `Sequence.RunPlan` that the CLI only calls. `Sequence.RunPlan` holds its own option types and imports no `Render.*` module ([The `run` verb](#the-run-verb), [D13](decisions.md#d13-the-run-verb-and-io)). |
@@ -641,7 +641,7 @@ text looks like FOLD, and `refusalLines` adds which verbs read it.
 ```text
 senbazuru run SOURCE [-o OUT.fold|OUT.svg|OUT.glb] [--layer-budget N] [--report]
                      [--frame N] [--all-layers] [--columns N] [--view NAME]
-                     [--width PT] [--height PT] [--author TEXT] [--description TEXT]
+                     [--width PT] [--height PT] [--no-fan] [--author TEXT] [--description TEXT]
 senbazuru run SOURCE --check
 ```
 
