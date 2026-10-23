@@ -36,7 +36,7 @@ import FoldRelaxation
 import Senbazuru.Explain (explain)
 import Senbazuru.Fold.Query (Crease (..))
 import Senbazuru.Fold.Types
-import Senbazuru.Origami.Contact (contactPassed)
+import Senbazuru.Origami.Contact (ContactCheck, contactPassed)
 import Senbazuru.Origami.Surface
 
 data BodyControl = OriginalPreferences | WeakerBody | OpenBody
@@ -108,9 +108,12 @@ bodyAngleErrors study mesh = do
 -- | Return strict-original and selective-preference acceptance for the SAME
 -- endpoint. Selected preferences have no exact angle gate; all other checks
 -- remain required, including solver equilibrium and whole-sheet contact.
-bodyAccepted :: CraneBody -> Relaxation -> MaterialMesh -> Either SpreadError (Bool, Bool)
-bodyAccepted study result mesh = do
-  contact <- spreadCheck fixture mesh
+--
+-- @contact@ must be 'spreadCheck' of @rootSpread (bodyRoot study)@ on @mesh@,
+-- which is also the only check that @mesh@ keeps the fixture's material.
+-- Callers pass the one they already have rather than check twice (#618).
+bodyAccepted :: CraneBody -> Relaxation -> MaterialMesh -> ContactCheck -> Either SpreadError (Bool, Bool)
+bodyAccepted study result mesh contact = do
   (selected, retained) <- bodyAngleErrors study mesh
   let accepted = converged result && maxLengthError mesh <= 1e-5 && spreadHeldError fixture mesh == 0 && retained < 1e-5 && contactPassed contact
   pure (accepted && selected < 1e-5, accepted)

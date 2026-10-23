@@ -102,6 +102,9 @@ internalRequirements study
 fullInternalForces :: InternalStudy -> Bool
 fullInternalForces study = internalControl study `notElem` [InternalForces, HeldLinesInternalForces]
 
+-- | @contact@ must be 'spreadCheck' of @rootSpread (internalRoot study)@ on
+-- @mesh@, the whole sheet's orders, not the subset 'internalRequirements'
+-- may solve with ('rootAccepted').
 internalAccepted :: InternalStudy -> Relaxation -> MaterialMesh -> ContactCheck -> Either SpreadError Bool
 internalAccepted study result mesh contact = do
   valid <- rootAccepted (internalRoot study) result mesh contact

@@ -93,12 +93,17 @@ spec = beforeAll load $ describe "coupled crane body specimen" $ do
     let fixture = patchSpread study
     result <- right (solveSpread (Settings 2 1e-5) fixture)
     mesh <- right (finalMesh result)
-    right (patchAccepted study result mesh) `shouldReturn` True
-    right (patchAccepted study result {converged = False} mesh) `shouldReturn` False
+    contact <- right (spreadCheck fixture mesh)
+    patchAccepted study result mesh contact `shouldBe` True
+    patchAccepted study result {converged = False} mesh contact `shouldBe` False
+    -- Every other gate passes here, so only the contact report can refuse.
+    patchAccepted study result mesh contact {crossingPanels = [("a", "b")]} `shouldBe` False
     let moved = mesh {samples = [p {position = position p ^+^ V3 0.01 0 0} | p <- samples mesh]}
         stretched = mesh {samples = [p {position = 1.01 *^ position p} | p <- samples mesh]}
-    right (patchAccepted study result moved) `shouldReturn` False
-    right (patchAccepted study result stretched) `shouldReturn` False
+    movedContact <- right (spreadCheck fixture moved)
+    stretchedContact <- right (spreadCheck fixture stretched)
+    patchAccepted study result moved movedContact `shouldBe` False
+    patchAccepted study result stretched stretchedContact `shouldBe` False
 
   it "refuses changed material and controls outside the declared small experiment" $ \atlas -> do
     bodyPatch atlas 2 5 `shouldSatisfy` isLeft

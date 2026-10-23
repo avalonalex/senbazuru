@@ -402,13 +402,15 @@ clippedSeparation i base moving = case base of
           -- docs/notes/snap-band-edge.md.
           sideLength = let (x, y, _) = side in norm (V2 (value x) (value y))
           snap d = if abs (value d) < 1e-12 * sideLength then 0 else d
+          -- Every corner ends one edge and starts the next. Measure each
+          -- corner's distance once, before pairing them into edges: a distance
+          -- is a `D`, whose arithmetic builds derivative maps (#618).
+          measured = [(p, snap (distance p)) | p <- ps]
           edge ((p, dp), (q, dq))
             | value dp >= 0 && value dq >= 0 = [q]
             | value dp < 0 && value dq < 0 = []
             | otherwise = let hit = add p (scale (dp / (dp - dq)) (sub q p)) in if value dq >= 0 then [hit, q] else [hit]
-       in -- Every corner ends one edge and starts the next, so measure each
-          -- corner's distance once, before pairing them into edges (#618).
-          concatMap edge (ring [(p, snap (distance p)) | p <- ps])
+       in concatMap edge (ring measured)
 
 ring :: [a] -> [(a, a)]
 ring xs = zip xs (drop 1 xs ++ take 1 xs)

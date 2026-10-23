@@ -58,7 +58,8 @@ writeBodyGeometry source destination = do
   hFlush stdout
   (run, audit) <- checked (traceCheckedPinnedContact geometry (Settings 40 1e-5) (spreadPins fixture) (spreadHinges fixture) contact start)
   endpoint <- checked (finalMesh run)
-  accepted <- checked (patchAccepted study run endpoint)
+  endpointContact <- checked (spreadCheck fixture endpoint)
+  let accepted = patchAccepted study run endpoint endpointContact
   let steps = solverSteps audit
       -- The following starts, followed by the final returned mesh, are the
       -- authoritative outcomes even if a stationary trial was not installed.

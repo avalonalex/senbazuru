@@ -172,8 +172,10 @@ rootProfile study mesh = do
 -- | A root spring need not achieve its preferred angle. Preserve the other
 -- crease angles instead, and retain the earlier length/contact/hold gates.
 -- Solver convergence is separate: a plausible endpoint can still be unsettled.
--- @contact@ is 'spreadCheck' of this study's fixture on @mesh@. Every caller
--- reports it too, so it is passed in rather than checked a second time (#618).
+--
+-- @contact@ must be 'spreadCheck' of @rootSpread study@ on @mesh@, which is
+-- also the only check that @mesh@ keeps the fixture's material. Callers pass
+-- the one they already have rather than check twice (#618).
 rootAccepted :: CraneRoot -> Relaxation -> MaterialMesh -> ContactCheck -> Either SpreadError Bool
 rootAccepted study result mesh contact = do
   creases <- originalCreaseError study mesh

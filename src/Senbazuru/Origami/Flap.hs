@@ -459,19 +459,21 @@ checkEndpointOrder motion report progress = do
 -- Check each plane independently. A paper-relative order rotates with its
 -- panels, so using world z would miss contradictory orders on an upright stack.
 checkOrders :: (FoldError -> FlapError) -> Double -> [Face] -> [FaceOrder] -> Either FlapError ()
-checkOrders mapError scale faces orders = mapM_ check orders
+checkOrders mapError scale faces orders = mapM_ check (nub (map orderRelativeTo orders))
   where
-    check order = case find ((== orderRelativeTo order) . faceId) faces of
-      Nothing -> Left (FlapMissingFace (orderRelativeTo order))
+    -- A check reads nothing of an order but the face it is relative to, so
+    -- orders sharing that face used to repeat one check: on the crane's
+    -- creased wing, 6,630 checks of 402 faces (#618). Each face is checked
+    -- once, in the order the orders first name it, so the first to fail is
+    -- still the face of the first order that would have.
+    check face = case find ((== face) . faceId) faces of
+      Nothing -> Left (FlapMissingFace face)
       Just fixed -> case faceCorners fixed of
         [] -> Left (FlapMissingFace (faceId fixed))
         _ : _ -> do
           let n = polygonNormal (faceCorners fixed)
               group = filter (coplanarFaces scale fixed) faces
-              -- A set, not a list: this filters every order, once per order.
-              -- With `elem` on a list, the crane quick tier's `craneRootAt`,
-              -- which creases the wing, took 7.3 CPU seconds; with a set,
-              -- 2.7 (#618).
+              -- A set: every order is tested against it.
               members = S.fromList (map faceId group)
               relevant = [o | o <- orders, S.member (orderFace o) members, S.member (orderRelativeTo o) members]
           _ <- first mapError (layerDepths n group relevant)

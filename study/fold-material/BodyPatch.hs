@@ -39,7 +39,7 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..), polygonNormal)
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Contact (contactPassed)
+import Senbazuru.Origami.Contact (ContactCheck, contactPassed)
 import Senbazuru.Origami.Surface
 
 data BodyPatch = BodyPatch
@@ -128,11 +128,14 @@ bodyPatch atlas level degrees = do
   pure (BodyPatch fixture chosen [fid | (sourceId, fid) <- M.toList faceMap, S.member sourceId core] sourceEdges used marks degrees level)
 
 -- | Soft original-angle preferences may change. All geometric and numerical
--- endpoint checks remain required. spreadCheck also checks material identity.
-patchAccepted :: BodyPatch -> Relaxation -> MaterialMesh -> Either SpreadError Bool
-patchAccepted study result mesh = do
-  contact <- spreadCheck fixture mesh
-  pure (converged result && maxLengthError mesh <= 1e-5 && componentCount mesh == 1 && spreadHeldError fixture mesh == 0 && contactPassed contact)
+-- endpoint checks remain required.
+--
+-- @contact@ must be 'spreadCheck' of @patchSpread study@ on @mesh@, which is
+-- also the only check that @mesh@ keeps the fixture's material. Callers pass
+-- the one they already have rather than check twice (#618).
+patchAccepted :: BodyPatch -> Relaxation -> MaterialMesh -> ContactCheck -> Bool
+patchAccepted study result mesh contact =
+  converged result && maxLengthError mesh <= 1e-5 && componentCount mesh == 1 && spreadHeldError fixture mesh == 0 && contactPassed contact
   where
     fixture = patchSpread study
 

@@ -66,8 +66,8 @@ writeBodyPatch destination = do
     mesh <- checked (finalMesh result)
     _ <- evaluate (maxLengthError mesh + if converged result then 1 else 0)
     stop <- getCPUTime
-    accepted <- checked (patchAccepted study result mesh)
     contact <- checked (spreadCheck fixture mesh)
+    let accepted = patchAccepted study result mesh contact
     angles <- checked (patchAngles study mesh)
     marks <- checked (patchLandmarks study mesh)
     (crease, panel) <- checked (bendingEnergy (spreadHinges fixture) mesh)

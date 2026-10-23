@@ -105,6 +105,8 @@ spec = parallel $ beforeAll load $ describe "spreading the connected crane wing"
     mesh <- right (finalMesh result)
     contact <- right (spreadCheck fixture mesh)
     right (spreadAccepted fixture result mesh contact) `shouldReturn` True
+    -- Every other gate passes here, so only the contact report can refuse.
+    right (spreadAccepted fixture result mesh contact {reversedOrders = [("a", "b", 0.1)]}) `shouldReturn` False
     maximum (0 : zipWith (\a b -> norm (position a ^-^ position b)) (samples mesh) (samples (spreadMesh fixture))) `shouldSatisfy` (< 1e-8)
 
   it "refuses an upper grip pushed through its partner even if the linear solve succeeds" $ \source -> do

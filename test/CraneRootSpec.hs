@@ -133,6 +133,8 @@ spec = parallel $ beforeAll load $ describe "the crane wing-to-body transition" 
     mesh <- right (finalMesh result)
     contact <- right (spreadCheck fixture mesh)
     right (rootAccepted study result mesh contact) `shouldReturn` True
+    -- Every other gate passes here, so only the contact report can refuse.
+    right (rootAccepted study result mesh contact {crossingPanels = [("a", "b")]}) `shouldReturn` False
     spreadHeldError fixture mesh `shouldBe` 0
     rootBodyMovement study mesh `shouldBe` 0
     maxLengthError mesh `shouldSatisfy` (< 1e-6)

@@ -66,10 +66,13 @@ spec = parallel $ beforeAll load $ describe "selected crane body angle preferenc
         changedOther = study {bodyOriginalHinges = map (shift (\h -> hingeRole h == SurfaceCrease (EdgeId 5))) (bodyOriginalHinges study)}
     -- Perturb only the reference targets, leaving one verified physical mesh
     -- and its solver result identical. This isolates which angle gate applies.
-    right (bodyAccepted study result mesh) `shouldReturn` (True, True)
-    right (bodyAccepted changedSelected result mesh) `shouldReturn` (False, True)
-    right (bodyAccepted changedOther result mesh) `shouldReturn` (False, False)
-    right (bodyAccepted changedSelected result {converged = False} mesh) `shouldReturn` (False, False)
+    contact <- right (spreadCheck (rootSpread (bodyRoot study)) mesh)
+    right (bodyAccepted study result mesh contact) `shouldReturn` (True, True)
+    right (bodyAccepted changedSelected result mesh contact) `shouldReturn` (False, True)
+    right (bodyAccepted changedOther result mesh contact) `shouldReturn` (False, False)
+    right (bodyAccepted changedSelected result {converged = False} mesh contact) `shouldReturn` (False, False)
+    -- Every other gate passes here, so only the contact report can refuse.
+    right (bodyAccepted study result mesh contact {unorderedContacts = [("a", "b")]}) `shouldReturn` (False, False)
 
   -- Owner decision 37: the pocket map gives the opening creases beside the
   -- released patch wherever the hinge is. At the root the patch is eight
@@ -88,7 +91,7 @@ spec = parallel $ beforeAll load $ describe "selected crane body angle preferenc
         invalid = study {bodyRoot = root {rootSpread = crossed}}
     contact <- right (spreadCheck crossed (spreadMesh crossed))
     reversedOrders contact `shouldSatisfy` (not . null)
-    right (bodyAccepted invalid (heldResult studies) (spreadMesh crossed)) `shouldReturn` (False, False)
+    right (bodyAccepted invalid (heldResult studies) (spreadMesh crossed) contact) `shouldReturn` (False, False)
 
 data Studies = Studies
   { originalBody :: CraneBody,
