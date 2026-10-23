@@ -346,10 +346,10 @@ order; "row N" is row N of
 | M3 | [06](06-prd-step-diagrams.md#requirements) R-06-1…23, A1…A17, new goldens; 05 L5 (R-05-16…20). Row 12 (`stepPageWith`). R-06-23 (a step's `sample` poses are figures of their own) lands here, but only macro-moves carry `sample`, so nothing exercises it before M5 ([06 "Risks"](06-prd-step-diagrams.md#risks)) |
 | M4 | 05 L6…L12 (R-05-21…40). Rows 15, 17, 18 |
 | M5 | 05 L13 (R-05-41…43) |
-| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
+| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16…AC-18. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
 | M7a | [08](08-prd-realistic-rendering.md#requirements) R-08-1…11; [A-1…A-10](08-prd-realistic-rendering.md#acceptance-criteria) |
 | M7b | 08 R-08-12…31; A-11…A-23. 05 L15 (R-05-48…49: `foldedWalk`, [D19](decisions.md#d19-realistic-rendering)) |
-| M8 | 07 R-07-39, R-07-41's `run --settle` cap, R-07-42; AC-13, AC-15 |
+| M8 | 07 R-07-39, R-07-41's `run --settle` cap, R-07-42; AC-13, AC-15, AC-18 |
 
 | # | Stated here | Red when |
 | --- | --- | --- |
@@ -448,8 +448,11 @@ this file is folded from its assignments.
 A budget is counted work, identical on every machine given identical bits, as
 `Budget` argues for stacking guesses
 ([`Stacking.hs:151-165`](../src/Senbazuru/Origami/Stacking.hs#L151-L165)).
-Seconds appear only as CI job timeouts. Each move record carries a `StepCost`
-(**SKETCH**) that `--report` prints:
+Seconds appear only as CI job timeouts and in one acceptance target, timed by
+hand and never read by the code: a model's whole run within 10 minutes of wall
+clock ([owner decision 61](decisions.md#9-owner-decisions),
+[07 AC-18](07-prd-material-consumption.md#acceptance-criteria)). Each move
+record carries a `StepCost` (**SKETCH**) that `--report` prints:
 
 | Count | Limit | On reaching it |
 | --- | --- | --- |
@@ -511,8 +514,8 @@ with an uncommitted `beforeAll` action writing to stderr under a zero-match run.
    `-threaded` without `-N`, so without `+RTS -N4` the specs marked `parallel`
    share one core. hspec 2.11.12 is pinned with both flags (finding 9). The slow
    job runs beside the default job, not after it, and takes the same `changes`
-   gate; its PR sets `timeout-minutes` on both, since seconds appear only as CI
-   job timeouts, and updates `ci.yml`'s comment that counts the jobs.
+   gate; its PR sets `timeout-minutes` on both, since in CI seconds appear only as
+   job timeouts (§6.1), and updates `ci.yml`'s comment that counts the jobs.
 4. Existing `runIO` specs stay as they are until their recipe's deletion PR (§9)
    ([D16](decisions.md#d16-testing-and-acceptance),
    [C71](decisions.md#changes-since-draft-v2)), except as item 5 says.

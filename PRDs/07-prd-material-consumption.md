@@ -873,6 +873,13 @@ fixtures smaller than the crane; a settle on a crane fixture runs in the slow jo
 whatever its size, and builds its fixtures in `beforeAll`
 ([glossary-additions](glossary-additions.md#code-and-tests)).
 Budgets count refined triangles before solving, never seconds.
+The record sets one time, as an acceptance target rather than a guard: a model's
+whole run, from its sequence source's text to every frame, settle and drawing,
+finishes within 10 minutes of wall clock on the owner's Mac, an Apple M1 Max with
+10 cores, with the crane as the test case and the research galleries exempt
+([owner decision 61](decisions.md#9-owner-decisions), decided 2026-10-21). AC-18
+times it. Nothing in the code reads a clock, and a run over the target is a
+failure to fix, never a reason to raise it.
 
 ### External tools
 
@@ -962,6 +969,7 @@ messages show format only; they were not taken from a run.
 | AC-15 | Each graduation PR: `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing, the check of [D16](decisions.md#d16-testing-and-acceptance) (it printed nothing on 2026-09-15 at `568dcb6`, where `git ls-files test/golden \| wc -l` printed 33); and the crane-spreading gallery (`stack run senbazuru-material-study -- --crane-spreading DIR`), run at the PR's head and at its merge base (`git merge-base origin/main HEAD`), writes in `checks.json` the same `panelEnergy` for `curved` and for `fine` to six significant digits, with `rigid` accepted and `crossed-grip` rejected at both (R-07-39, [owner decision 57](decisions.md#9-owner-decisions)). Whether `curved` and `fine` converge, and their edge errors, are reported, not compared: until #566's fix their convergence changed when arithmetic moved the fold by about 1e-13 | a stage altering an energy or tolerance |
 | AC-16 | No workflow in `.github/workflows` or spec in `test/` runs an external program, as AGENTS.md defines one, or reads such a program's output (R-07-43) | a test shelling out to a simulator |
 | AC-17 | One example value per constructor of `SettleStepError`, `SettleError`, `Reason` and `Refused`, produced by a function that matches each type with no wildcard, and an `explain` golden for each; a property over the examples checks that no message contains a Haskell constructor name or record syntax (R-07-45) | a constructor added without an example (an incomplete-pattern warning, which the cold `stack clean && stack build --test` shows; there is no `-Werror`); a message built with `show` |
+| AC-18 | The crane's whole run finishes within 10 minutes of wall clock ([owner decision 61](decisions.md#9-owner-decisions)), from its sequence source's text to three outputs: the sequence file holding every frame, the step page, and every settle's files. It is timed on the owner's Mac (an Apple M1 Max, 10 cores) with no build or study running beside it, by `/usr/bin/time -p` on binaries already built, and the slowest of three runs must be within the limit; the load average is recorded with each. Until M8 `run` skips settles (R-07-10), so the time is that of `senbazuru run` writing the sequence file and the step page added to that of `senbazuru-material-study --sequence SOURCE DIR`; from M8 `run --settle` settles, and the time is `run`'s alone. At M6 and M8 the source is the crane-wing sequence of [decisions §7](decisions.md#7-examples), the crane's sequence that M6 settles; each PR that adds a settle to a sequence times that sequence. The research galleries are exempt | a settle, mesh or check that takes the run past 10 minutes, a failure to fix rather than a reason to raise the limit |
 
 ## Dependencies
 
