@@ -102,7 +102,7 @@ import Data.Bifunctor (second)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl')
 import Data.Map.Strict qualified as M
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Text (Text)
 import FoldBending
 import FoldContact
@@ -483,7 +483,8 @@ relaxSweptWith barrier settings motionSettings hinges reference mesh = do
       case Motion.correctionOutcome report of
         Motion.CorrectionClear -> Right report
         _ -> Left (UnsafeCorrection report)
-    policy = ContactPolicy (Just measure) energy (gapsOf energy) propose True True False
+    -- Without a barrier the energy is the stopping test's own measurement.
+    policy = ContactPolicy (if isNothing barrier then Nothing else Just measure) energy (gapsOf energy) propose True True False
     energy state@(learned, _) current = case barrier of
       Nothing -> measure state current
       Just activation -> either (Left . LocalDiscoveryFailure) Right (Local.localBarrierContacts activation learned current)
@@ -498,15 +499,17 @@ relaxSweptWith barrier settings motionSettings hinges reference mesh = do
 -- a fixed mode returns that mode, and growing local contact returns its reference.
 data ContactPolicy state = ContactPolicy
   { -- The stopping test's rows. 'Nothing' takes them from 'energyContacts',
-    -- so that a step reuses rows it already holds rather than measuring the
-    -- same positions again (#441).
+    -- so that a step reuses energy rows it already holds rather than
+    -- measuring the same positions again (#441).
     measureContacts :: Maybe (state -> MaterialMesh -> Either RelaxError [ContactRow]),
     energyContacts :: state -> MaterialMesh -> Either RelaxError [ContactRow],
     -- The gaps of 'energyContacts' alone, for the line search's tries, which
-    -- read nothing else: no derivative is built for them (#441).
+    -- read nothing else. A mode may find them without building a derivative,
+    -- as 'SurfaceOrder' does; 'gapsOf' takes them from the full rows (#441).
     energyGaps :: state -> MaterialMesh -> Either RelaxError [Double],
-    -- 'Nothing' keeps the state, so the energy already found for the
-    -- candidate stands and is not measured again (#441).
+    -- 'Nothing' keeps the state: the kept try is then measured in full under
+    -- the state its gaps were judged by, and a failure there is not the
+    -- proposal's (#441).
     proposeContacts :: Int -> state -> MaterialMesh -> MaterialMesh -> Either RelaxError (Maybe state),
     retainTrials :: !Bool,
     stopOnFailedSearch :: !Bool,
@@ -534,7 +537,7 @@ fixedPolicy = ContactPolicy Nothing measure gaps (\_ _ _ _ -> Right Nothing) Fal
         (rows, 0) -> Right rows
         (_, count) -> Left (UncheckablePacket count)
 
--- | The gaps of a contact measurement, for a mode with no cheaper path.
+-- | The gaps of a contact measurement, for a mode not yet given a cheaper path.
 gapsOf :: (state -> MaterialMesh -> Either RelaxError [ContactRow]) -> state -> MaterialMesh -> Either RelaxError [Double]
 gapsOf rows state mesh = map contactGap <$> rows state mesh
 
@@ -584,9 +587,8 @@ relaxWithPins pins policy offset initial bending settings original = do
   mapM_ validatePin (IM.toList pins)
   mapM_ validateSample (zip [0 ..] (samples original))
   mapM_ validateTriangle (zip [0 ..] (triangles original))
-  initialRows <- contacts initial vertices Nothing
   edges <- mapM materialEdge (meshEdges original)
-  advance edges 0 initial vertices (alsoEnergy initialRows Nothing) [] emptyDiagnostics
+  advance edges 0 initial vertices Nothing [] emptyDiagnostics
   where
     vertices = IM.fromList [(i, sample {position = IM.findWithDefault (position sample) i pins}) | (i, sample) <- zip [0 ..] (samples original)]
     validatePin (i, V3 x y z)
@@ -611,20 +613,22 @@ relaxWithPins pins policy offset initial bending settings original = do
     meshFrom current = original {samples = IM.elems current}
     -- Rows from 'energyContacts' at this state and these positions: @known@
     -- when an earlier measurement holds them, measured now otherwise.
-    energyAt state current = maybe (energyContacts policy state (meshFrom current)) Right
-    contacts state current known = case measureContacts policy of
-      Nothing -> energyAt state current known
-      Just measure -> measure state (meshFrom current)
-    -- The stopping test's rows are energy rows too when the policy measures
-    -- by its energy.
-    alsoEnergy rows known = if isNothing (measureContacts policy) then Just rows else known
+    energyAt state current known = case known of
+      Just rows -> Right rows
+      Nothing -> energyContacts policy state (meshFrom current)
+    -- The stopping test's rows, and the energy rows a step may reuse: the same
+    -- rows when the policy's stopping test reads its energy rows.
+    stopping state current known = case measureContacts policy of
+      Nothing -> (\rows -> (rows, Just rows)) <$> energyAt state current known
+      Just measure -> (,known) <$> measure state (meshFrom current)
     angularRows current = case bending of
       Nothing -> Right []
       Just (hinges, _) -> either (Left . BendingFailure) Right (bendingRows hinges (meshFrom current))
     -- @known@ holds 'energyContacts' rows already measured at this state and
-    -- these positions, by the previous step's tries or the start's check.
+    -- these positions: the previous step's kept try, or its own rows when it
+    -- kept none.
     advance edges count state current known history diagnostics = do
-      contactRows <- contacts state current known
+      (contactRows, knownStep) <- stopping state current known
       let mesh = meshFrom current
           residual = maxLengthError mesh
           constraintsMet = residual <= lengthTolerance settings && all ((>= negate contactTolerance) . contactGap) contactRows
@@ -634,7 +638,7 @@ relaxWithPins pins policy offset initial bending settings original = do
       (next, nextState, stationary, accepted, trials, check, knownNext) <-
         if exhausted || (isNothing bending && constraintsMet)
           then Right (current, state, False, False, emptyDiagnostics, Nothing, Nothing)
-          else coordinatedStep edges contactRows count state current (alsoEnergy contactRows known)
+          else coordinatedStep edges contactRows count state current knownStep
       let warmingUp = maybe False ((< 1e8) . snd) bending
           done = if isNothing bending then constraintsMet else stationary && (warmingUp || constraintsMet)
           blocked = stopOnFailedSearch policy && not exhausted && not done && not accepted
@@ -647,7 +651,9 @@ relaxWithPins pins policy offset initial bending settings original = do
           diagnostics' = mergeDiagnostics diagnostics (mergeDiagnostics trials block)
       if done || exhausted || blocked
         then Right (Relaxation (reverse (if blocked then Checkpoint (count + 1) mesh residual : history' else history')) done check, state, diagnostics')
-        else advance edges (count + 1) nextState next knownNext history' diagnostics'
+        else -- Forced each step: left lazy, it holds every step's line-search
+        -- result, and with it the rows each kept, until the stage returns.
+          diagnostics' `seq` advance edges (count + 1) nextState next knownNext history' diagnostics'
     coordinatedStep edges contactRows count state current known = do
       forceRows <- energyAt state current known
       lengthRows <- mapM (edgeRow current) edges
@@ -727,13 +733,13 @@ relaxWithPins pins policy offset initial bending settings original = do
                   Right after | after >= before -> reject False EnergyDidNotDecrease (Just after)
                   Right beforeProposal -> case proposed of
                     Left err -> reject False (TrialProposalFailed err) (Just beforeProposal)
-                    Right Nothing -> case measured state candidate of
-                      Left err -> reject False (TrialEvaluationFailed err) Nothing
-                      Right (_, rows) -> (candidate, state, True, earlier, Just scale, Just beforeProposal, reverse refused, Just rows)
-                    Right (Just candidateState) -> case measured candidateState candidate of
-                      Left err -> reject True (TrialEvaluationFailed err) Nothing
-                      Right (after, rows) | after < before -> (candidate, candidateState, True, earlier, Just scale, Just after, reverse refused, Just rows)
-                      Right (after, _) -> reject True EnergyDidNotDecrease (Just after)
+                    Right kept ->
+                      let candidateState = fromMaybe state kept
+                          includesProposed = isJust kept
+                       in case measured candidateState candidate of
+                            Left err -> reject includesProposed (TrialEvaluationFailed err) Nothing
+                            Right (after, rows) | after < before -> (candidate, candidateState, True, earlier, Just scale, Just after, reverse refused, Just rows)
+                            Right (after, _) -> reject includesProposed EnergyDidNotDecrease (Just after)
           (next, nextState, accepted, diagnostics, acceptedScale, afterEnergy, refusals, knownNext) = attempt 1 30 emptyDiagnostics []
       let movement = maximum (0 : map norm (IM.elems correction))
           equilibrium = EquilibriumCheck linearReport movement factored

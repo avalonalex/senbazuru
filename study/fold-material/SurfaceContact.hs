@@ -195,18 +195,16 @@ data ContactWitness = ContactWitness
 -- | Return separation MINUS numerical clearance, with positional gradients.
 -- A negative residual asks the solver to separate the panels further.
 orderedContacts :: OrderedContact -> MaterialMesh -> Either ContactError [ContactRow]
-orderedContacts model mesh = do
-  polygons <- contactPolygons model mesh
-  pure [contactRow clearance gap | (_, _, clearance, _, _, gaps) <- polygons, gap <- gaps]
+orderedContacts model mesh =
+  concat <$> contactPolygonsWith validD (\(_, _, clearance, _, _, gaps) -> map (contactRow clearance) gaps) model mesh
 
 -- | The gaps of 'orderedContacts', in its order, without their derivatives.
 -- Only the gaps are checked to be finite: checking a derivative builds it.
 -- A caller that keeps a result must measure it with 'orderedContacts' too,
 -- so that a non-finite derivative still refuses it (#441).
 orderedGaps :: OrderedContact -> MaterialMesh -> Either ContactError [Double]
-orderedGaps model mesh = do
-  polygons <- contactPolygonsWith (finite . value) model mesh
-  pure [value gap - clearance | (_, _, clearance, _, _, gaps) <- polygons, gap <- gaps]
+orderedGaps model mesh =
+  concat <$> contactPolygonsWith (finite . value) (\(_, _, clearance, _, _, gaps) -> [value gap - clearance | gap <- gaps]) model mesh
 
 contactWitnesses :: OrderedContact -> MaterialMesh -> Either ContactError [ContactWitness]
 contactWitnesses model@(OrderedContact (u, v, axis) _ _ _) mesh = do
@@ -225,12 +223,15 @@ contactRow clearance gap = ContactRow (value gap - clearance) (IM.toList (deriva
 -- The boolean records which triangle supplied heights. Keep the projected
 -- polygon lazy for the ordinary solver, which consumes only gaps/derivatives.
 contactPolygons :: OrderedContact -> MaterialMesh -> Either ContactError [(Int, Int, Double, Bool, [Point], [D])]
-contactPolygons = contactPolygonsWith validD
+contactPolygons model mesh = concat <$> contactPolygonsWith validD pure model mesh
 
 -- | 'contactPolygons' with the test each gap must pass, so that 'orderedGaps'
--- can test values alone.
-contactPolygonsWith :: (D -> Bool) -> OrderedContact -> MaterialMesh -> Either ContactError [(Int, Int, Double, Bool, [Point], [D])]
-contactPolygonsWith valid (OrderedContact basis topology material pairs) mesh = do
+-- can test values alone, and with what to keep of each pair. What is kept is
+-- forced as each pair is clipped. Kept whole until the last pair is done, a
+-- pair's points and gaps would hold the clip's intermediate values, and with
+-- them every lazy derivative (#441).
+contactPolygonsWith :: (D -> Bool) -> ((Int, Int, Double, Bool, [Point], [D]) -> [kept]) -> OrderedContact -> MaterialMesh -> Either ContactError [[kept]]
+contactPolygonsWith valid finish (OrderedContact basis topology material pairs) mesh = do
   unless (triangles mesh == topology && map sampleMaterial (samples mesh) == material) (Left ChangedContactMaterial)
   projected <- projectMesh basis mesh
   let triangle i = maybe (Left (InvalidContactTriangle i)) Right (IM.lookup i projected)
@@ -251,7 +252,8 @@ contactPolygonsWith valid (OrderedContact basis topology material pairs) mesh = 
                       (ps, ds) <- clippedSeparation j upper lower
                       pure (ps, map negate ds)
         unless (all valid gaps) (Left (NonFiniteContact i j))
-        pure (i, j, clearance, lowerBase, points, gaps)
+        let kept = finish (i, j, clearance, lowerBase, points, gaps)
+        foldr seq () kept `seq` pure kept
   mapM pair pairs
 
 -- | Smoothly activate a distance barrier before a directional order fails.

@@ -245,9 +245,9 @@ evaluating contact rows (the energy terms for layers pressing together) and 31%
 factorising (rewriting each iteration's sparse linear system so it can be solved).
 Each iteration ends in a *line search*
 ([glossary-additions](glossary-additions.md#material)), which tries step lengths
-and needs only the energy at each try; contact evaluation computes derivatives
+and needs only the energy at each try; contact evaluation computed derivatives
 there too. #208 proposed value-only evaluation, which skips them; it did not
-land there, and [#441](https://github.com/avalonalex/senbazuru/issues/441)
+land under #208, and [#441](https://github.com/avalonalex/senbazuru/issues/441)
 added it later, as an optimisation, not a gate.
 Solving old and new crane side by side would
 double the costliest groups (gap-study finding 20).
@@ -971,7 +971,7 @@ messages show format only; they were not taken from a run.
 | `recordPoseAt`, `flapPoseAt`, stationary face, per-layer intent from `creaseLayersThrough AtRest` ([05](05-prd-library-additions.md)) | grips, rest, `side stationary`, AC-7 |
 | M5 `CheckedMacro`, `macroPoseAt`, bird route | registry; `rigid-pose` on macros |
 | [04](04-prd-sequence-source-and-cli.md) grammar and flags; [08](08-prd-realistic-rendering.md) two-scene GLB, fidelity extras, `<desc>`, [W1](glossary-additions.md#realistic-rendering) (exact line drawing); [09](09-testing-and-acceptance.md) slow job | text, output, CI |
-| [#441](https://github.com/avalonalex/senbazuru/issues/441) | an optimisation, not a gate: value-only evaluation in the line search |
+| [#441](https://github.com/avalonalex/senbazuru/issues/441) | an optimisation, not a gate: value-only evaluation in the line search; done |
 | [#195](https://github.com/avalonalex/senbazuru/issues/195), [#114](https://github.com/avalonalex/senbazuru/issues/114) (rewritten at M6, [10](10-roadmap-risks-questions.md)), [#206](https://github.com/avalonalex/senbazuru/issues/206), [#53](https://github.com/avalonalex/senbazuru/issues/53), [#73](https://github.com/avalonalex/senbazuru/issues/73) | follow-ups, fallback, oracle, file keys |
 
 Order: M4 → M6 → M8; M5 before the bird registry entries ([10](10-roadmap-risks-questions.md)).

@@ -992,8 +992,8 @@ checked coupled angles.
    No opened endpoint is accepted yet, and removing the surrounding crane's
    loads makes this a specimen rather than a whole-crane deformation.
    The short compiled profile pointed to contact derivatives and sparse
-   factorization; the line search has evaluated gaps without derivatives since
-   [#441](https://github.com/avalonalex/senbazuru/issues/441)
+   factorization; since [#441](https://github.com/avalonalex/senbazuru/issues/441)
+   the crane settles' line search judges its tries by gaps alone
    ([crane-solve-profile](notes/crane-solve-profile.md)).
    The full coupled crane follows the small patch only after its geometry
    and visible result are accepted; measure attachment response rather than
