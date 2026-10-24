@@ -1324,9 +1324,8 @@ lying over it, the *fan count*
 ([glossary-additions](glossary-additions.md#step-pages); owner decision 65). The
 count is a fact about the folded state and the side it is seen from, not about a
 page, so it lives here, where L9 counts the faces over a point. (08's lifted GLB
-does not use it: lifting each vertex by such a count crosses paper where a fold
-wraps round inner sheets, so that GLB lifts faces by layer instead, owner
-decision 68.) It is not the [layer number](../docs/glossary.md#origami), for L9's
+does not use it; [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack)
+says why.) It is not the [layer number](../docs/glossary.md#origami), for L9's
 reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 
 **Semantics.**

@@ -790,11 +790,10 @@ tracked golden stay as they are. The default theme stays unfanned for the reason
 it gives ([`Style.hs:234-237`](../src/Senbazuru/Diagram/Style.hs#L234-L237)): a
 drawing that moved paper unasked would misplace it. A page from a run is asked
 for, follows a book's convention, and leaves a face with nothing over any of its
-vertices where it lies. The GLB shows its stack another way, lifting each face
-by its layer and drawing each fold as a strip
+vertices where it lies. The GLB shows its stack another way, lifting flat pieces
+by their layers with folds drawn as strips
 ([PRD 08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack), owner
-decisions 67 to 69): lifting each vertex by such a count crossed paper in 3D
-where a fold wraps round inner sheets.
+decisions 67 to 69).
 
 ### 11. Rejected alternatives
 
@@ -846,7 +845,7 @@ where a fold wraps round inner sheets.
 | A18 | On the helmet base's last state, a fanned figure draws vertex 1 4.5 and vertex 3 3 page units toward the lower left of where they lie, and vertices 0, 2, 4, 5 and 8 where they lie; on its state 2, vertices 1, 7 and 8 1.5 page units out and the rest where they lie; each fold's two faces draw its vertices at one page position | the count is a face's layer number (state 2 moves vertex 1 4.5 and vertex 3 3); a covering face counts only where it covers the whole corner (the tip moves 1.5); a face is moved whole; the direction's sign is flipped |
 | A19 | A fanned figure emits equal page bytes at model sizes 1 and 400, extending A4 | the fan step is in model units |
 | A20 | Under `View (Just bottomUp) 0`, the helmet base's last state fans by 05 L16's counts seen from −z (vertices 0 and 2 by 2, vertex 3 and vertices 6 and 7 by 1) | the counts are read from the top whatever the view |
-| A21 | A page holding the folded square twist and a figure seen edge-on among flat figures draws every figure, those two unfanned | a figure that cannot fan fails the page |
+| A21 | A page holding the folded `thirds-pinwheel.fold`, a twist whose orders run in a circle, and a figure seen edge-on among flat figures draws every figure, those two unfanned (`squaretwist.fold` is paper in the air, so it would not test the twist) | a figure that cannot fan fails the page |
 | A22 | On the folded crane no vertex moves more than the cap times the fan step | the cap is dropped: 14 of its 58 vertices had 7 to 15 sheets over them on 2026-10-23 |
 | A23 | On the helmet run's page, the fanned page's `Arrow`, `Symbol`, `Label` and fold-here shapes equal the unfanned page's | a mark is fanned |
 | A24 | `Fanned` with every displacement `d` emits the bytes `Offset d` emits, for a polyline and for a fill of two rings, one clockwise | the two drift apart, or a turned-round ring loses its points' displacements |

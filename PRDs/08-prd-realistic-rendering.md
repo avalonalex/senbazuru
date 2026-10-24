@@ -245,9 +245,9 @@ inputs such as `puffed-square.fold`. **No bent paper is reachable from the
 4. **A maintainer** reads `<desc>` or `extras.senbazuru.fidelity` before
    trusting a screenshot, and adds `--lines mesh` to see the triangulation.
 5. **An author** runs `senbazuru export crane.fold --fold --lift -o crane.glb`
-   and turns the crane over in a viewer. Its Complete paper scene shows the
-   wings and neck as stacks of sheets joined by their folds, with no flicker; its
-   extras say the layers are spaced for display (after M7a).
+   and turns the crane over in a viewer. The file's one scene, the complete paper
+   lifted, shows the wings and neck as stacks of sheets joined at their folds by
+   strips; its extras say the layers are spaced for display (after M7a).
 
 ## Requirements
 
@@ -404,38 +404,50 @@ inputs such as `puffed-square.fold`. **No bent paper is reachable from the
 
 ### Lifted layers (after M7a)
 
-Owner decisions 67 to 69 ([decisions §9](decisions.md#9-owner-decisions)); the
-numbers and names marked **SKETCH** are this record's.
+Owner decisions 67 to 69 ([decisions §9](decisions.md#9-owner-decisions)) chose
+the lift by layer, with folds drawn as strips, asked for by a flag; the rest of
+this section is this record's, its planned names and numbers marked **SKETCH**.
 
-- **R-08-32.** `export --lift` and `run -o x.glb --lift` (**SKETCH**) write the
-  Complete paper scene lifted. Without the flag every output is byte-identical
-  to today's. `--lift` goes only with `.glb`.
-- **R-08-33.** In the lifted scene each face of a flat state moves along the
-  model's +z by its layer number, `layerDepths` seen from +z (the layers under
-  it), times the lift step, 1/250 of the model's span (**SKETCH**). Each face
-  carries its own copy of its corners.
-- **R-08-34.** A fold whose two faces lie on different layers is drawn as a
-  *fold strip*: the quadrilateral joining the fold edge's copy in each face. It
-  shows outward the side of the paper its upper face shows upward, and inward the
-  other side, written twice as a face is. Two faces on one layer, as at an edge
-  lying flat, keep their shared edge and get no strip.
-- **R-08-35.** `--lift` is refused, by name, for a state that is not flat
-  (`LiftNeedsFlatState`) or has no single layer order, as a twist has none
-  (`LiftNeedsLayerOrder`; both **SKETCH**, each with an `Explain` instance).
-- **R-08-36.** The Visible paper scene is not lifted: it holds no buried paper to
-  separate.
-- **R-08-37.** A lifted file carries a fidelity record (R-08-1) whose geometry
-  level is the producer's (`run` and `export --fold` say rigid panels; `export` of
-  a file as it stands says *as read*, the level R-08-3 adds when first written),
-  and which says the layers are spaced for display: a
-  `display` entry giving the lift step as a fraction of the span, and that folds
-  are drawn as strips (**SKETCH**). Its `frame` keeps the unlifted positions, so
-  reloading the file gives the paper, not the picture. Strip triangles are in
-  primitives of their own, whose `extras.materialEdges` names each one's fold
-  edge.
-- **R-08-38.** `GlbOptions` gains the lift (**SKETCH**). Every entry point that
-  writes a GLB takes it beside `--layer-budget` (AGENTS.md), since the layer
-  numbers come from the same stacking.
+- **R-08-32.** `export --lift` and `run -o x.glb --lift` (**SKETCH**) write one
+  scene, the Complete paper scene lifted, as `--all-layers` writes that scene
+  alone. Without the flag every output is byte-identical to today's. `--lift`
+  goes only with `.glb`.
+- **R-08-33.** The faces of a flat state are joined into *flat pieces* across
+  every interior edge lying at angle 0, so paper that is not bent moves as one.
+  Each piece is lifted whole along the model's +z by its
+  [layer number](../docs/glossary.md#origami), the longest chain of pieces under
+  it, not a count of them, times the lift step: 1/250 of the model's span, the
+  largest extent `Render.Gltf` packs positions by (**SKETCH**). A piece lies over
+  another wherever one of its faces lies over one of the other's in the recorded
+  orders, seen from +z.
+- **R-08-34.** Each fold, whose two faces lie in different pieces, is drawn as a
+  [fold strip](glossary-additions.md#realistic-rendering): the quadrilateral
+  joining the fold edge's two lifted copies. Every strip is one colour on both
+  sides (**SKETCH**), since the strips of folds nested along one line lie in one
+  plane.
+- **R-08-35.** A state that is not flat, or whose pieces' orders run in a circle,
+  as a twist's do, is written unlifted: the Complete paper scene as today, with
+  the reason recorded (R-08-37) and printed once to standard error.
+- **R-08-36.** `Render.PaperMesh` computes the lift, beside `completePaper`:
+  `liftedPaper` (**SKETCH**) returns the lifted faces and the strips, each strip
+  with its fold's edge id, in model coordinates, or the reason it cannot. So the
+  lift is tested on its pieces, not by decoding a GLB.
+- **R-08-37.** A lifted file carries a fidelity record (R-08-1) on the four axes.
+  Its geometry level is rigid panels for `export --fold` and for a state carrying
+  a run's `senbazuru:assurance`, and *as read* otherwise (the level R-08-3 adds
+  when first written), so `run -o x.glb --lift` writes the bytes `export --lift`
+  writes of its `.fold` (04 A13). Beside `frame`, as R-08-12 puts `lineLift`,
+  `extras.senbazuru.layerLift` (**SKETCH**) gives the step as a fraction of the
+  span, or the reason the state was not lifted. The `frame` keeps the unlifted
+  positions and records the face orders the lift used; the mesh's extras give
+  each position's lift in steps (`materialLift`, **SKETCH**), so every position is
+  its weighted frame position plus its lift. A strip primitive names its fold
+  edge (`materialEdges`, **SKETCH**) where a face primitive names its faces.
+- **R-08-38.** `renderGlbWith` (**SKETCH**) joins `renderSurfaceGlbWith`, taking
+  `GlbOptions`, which gains the lift by record update as `plainGlb` intends; it
+  takes the `Budget` as every entry point does (AGENTS.md), since the lift
+  solves the layer order. `export` and `run` reach it through the CLI's one GLB
+  path.
 
 ## Design
 
@@ -924,62 +936,91 @@ A flat-folded GLB's Complete paper scene keeps every layer at height 0, so a
 viewer cannot tell which is in front and buried creases bleed through. The
 Visible paper scene avoids that by drawing only exposed paper
 ([visible-paper-mesh](../docs/notes/visible-paper-mesh.md)), and so shows
-nothing of the stack. Owner decision 67 gave the GLB a way to show the stack
-later, as an item of this file; decisions 68 and 69 (2026-10-23) chose how, and
-that it is asked for, not the default (R-08-32–38).
+nothing of the stack. Owner decision 67 gave the GLB a way to show the stack, as
+an item of this file after M7a; decisions 68 and 69 (2026-10-23) chose how, and
+that it is asked for (R-08-32–38).
 
-**The rule.** Each face is lifted whole by its
-[layer number](../docs/glossary.md#origami), the longest chain of faces under
-it, and each fold whose faces end up at different heights is drawn as a strip
-joining them. Three things follow.
+**The rule.** Cut the paper at its folds into flat pieces, lift each piece whole
+by its layer number, and draw each fold as a strip joining its two pieces. That
+is the first step of PRD 11's *cut-and-stitch start*
+([glossary](glossary-additions.md#refined-final-forms),
+[11 §3.4](11-prd-refined-final-forms.md#34-an-admissible-start)), drawn rather
+than stitched, and in 3D what the SVG offset view does on the page: it moves each
+face by its layer number and draws a fold's crease twice
+([`CreasePattern.hs:39-77`](../src/Senbazuru/Render/CreasePattern.hs#L39-L77)).
+The strip is what joins those two copies here.
 
 - **Nothing crosses.** `layerDepths` strictly increases along every recorded
-  layer order ([`Layers.hs:91-112`](../src/Senbazuru/Origami/Layers.hs#L91-L112)),
-  so a face over another is higher wherever the two overlap.
-- **Faces stay flat.** Each moves whole.
-- **Folds stay closed.** A strip runs along the fold line between its two
-  faces. A face whose layer lies between theirs cannot cross that line, since in
-  the folded state it would pass through the fold, so no strip cuts a face.
+  layer order ([`Layers.hs:91-112`](../src/Senbazuru/Origami/Layers.hs#L91-L112);
+  [layer-numbers](../docs/notes/layer-numbers.md)), so a piece over another is
+  higher wherever the orders relate them. The solver relates every overlapping
+  pair; a file's own orders are used as given, and a pair it leaves out stays at
+  one height.
+- **Pieces stay flat and whole.** Faces joined at an edge lying flat move
+  together. Lifted alone, they would open slits: 14 of the crane's 20 edges lying
+  flat join faces on different layers, up to 8 apart.
+- **No strip cuts a piece.** A piece whose layer lies between a fold's two
+  pieces cannot cross the fold line, since in the folded state it would pass
+  through the fold. It may touch the strip, which a drawing allows and a solver's
+  start (11 §3.4) does not.
 
 **Why not lift each vertex.** Decision 67 first sketched lifting each vertex by
-the sheets under it, 05 L16's fan count seen from below, so that a fold's two
-faces would share its vertices. Where a fold wraps round inner sheets, though,
-it joins a bottom sheet to a top one: both come down to the fold's single height
-while the sheets inside stay up, and paper passes through paper. A scratch
-prototype sampled each face and counted face pairs where the one recorded as
-over the other was lower somewhere:
+the sheets under it, so that a fold's two faces would share its vertices. The
+record had already shown that impossible: a crease that *wraps* a layer, with
+the layer between its two faces right up to the crease, cannot be thickened by
+heights alone, and the crane has 60 such creases
+([X3](research/X3-crane-opening.md) finding 1; glossary
+[creep](glossary-additions.md#refined-final-forms)). On the helmet base's last
+state, numbered as 06 §10 numbers it, four sheets lie over the triangle (0.5, 0),
+(1, 0), (0.5, 0.5): face 0 at the bottom, faces 4 and 5, and face 1 on top.
+Faces 0 and 1 are one sheet folded along the side x = 1/2, round faces 4 and 5.
+Nothing lies under that fold's ends, vertices 4 and 5, so both stay at 0 and
+face 1 comes down to the table along that side, while faces 4 and 5's own fold
+there ends at vertex 7, which has face 0 under it and is lifted 1. Near (0.5, 0)
+face 1 then lies below face 5, which it is over. A scratch prototype run on
+2026-10-23 sampled 55 points of every triangle of every face and counted pairs
+where the face recorded as over the other was lower somewhere:
 
-| State | Faces | Crossing pairs, each vertex lifted | Deepest crossing |
+| State | Faces | Crossing pairs, each vertex lifted | Deepest crossing, in lift steps |
 | --- | ---: | ---: | --- |
-| Helmet base, `helmet.foldseq`'s last state | 6 | 4 | 0.83 sheets |
+| Helmet base, `helmet.foldseq`'s last state | 6 | 4 | 0.83 |
 | Square base, `examples/square-base.fold` folded | 8 | 0 | — |
-| `examples/kabuto.fold` folded | 18 | 62 | 2.67 sheets |
-| Crane, `examples/crane.fold` folded | 72 | 235 | 9.22 sheets |
+| `examples/kabuto.fold` folded | 18 | 62 | 2.67 |
+| Crane, `examples/crane.fold` folded | 72 | 235 | 9.22 |
 
-It also bent 31 of the crane's 32 faces that have more than three corners. On
-the same four states the layer lift put no two faces of one layer over each
-other, and no strip crossed a face. Of the crane's 99 folds, 48 span more than
-one layer.
+That lift also bent 31 of the crane's 32 faces with more than three corners. On
+the same four states the lift by pieces, run the same day, put no two faces of one
+piece over each other, gave the crane's 72 faces 52 pieces in an order with no
+circle, put every one of its 99 folds between different pieces, and crossed no
+piece with a strip.
 
-**The old exporter, answered.** The first glTF exporter also lifted faces by
-their layer numbers, and was removed because it opened gaps at shared creases
-and because naming it `--thickness` confused a drawing convention with a
-property of the sheet ([paper-thickness](../docs/notes/paper-thickness.md)). The
-strips close the gaps. The fidelity record (R-08-37) says the spacing is for
-display, and the file's `frame` keeps the paper's true positions. A strip is not
-a *fillet*: it is a flat quadrilateral drawn where the paper turns, not a
-modelled bend.
+**One colour for strips.** Folds nested along one line, the inner ones wrapped
+by the outer, give strips in one vertical plane. On the crane, with layers taken
+per face, 89 pairs of strips overlapped there, 58 of them in different colours
+by the rule of which side shows outward (#626's code review, 2026-10-23). A
+viewer flickers between coincident triangles of different colours and shows
+nothing amiss between those of one. Drawing a strip as a bend round the layers it
+wraps, which would separate them, is *creep*, research (11 §3.4).
+
+**The old exporter, answered.** The first glTF exporter lifted faces by their
+layer numbers and was removed for three reasons
+([paper-thickness](../docs/notes/paper-thickness.md)). It opened gaps at shared
+creases; the strips close them. Calling it `--thickness` confused a drawing
+convention with a property of the sheet; the fidelity record and `layerLift`
+(R-08-37) say the spacing is for display, and the file's `frame` keeps the
+paper's positions and records the orders used. It invented a height for each
+flap of a twist; a twist is written unlifted (R-08-35), as the owner's option put
+it. A strip is not a *fillet*: it is a flat quadrilateral drawn where the paper
+turns, not a modelled bend.
 
 **Its cost in height.** A layer number is a longest chain, not a count at one
-point, so the crane stands 32 layers tall, 12.4% of its span at the sketched
-step, where no point of it holds more than 24 sheets (05 L9). A lift by sheets
-at each point would be shorter, and is what crossed.
+point, so the crane's top piece is lifted 34 steps, 13.6% of its span at the
+sketched step, where no point of it holds more than 24 sheets (05 L9).
 
-**Where.** Only the Complete paper scene is lifted, and only when asked: the
-default output keeps every byte and carries no fidelity record (R-08-4; owner
-decision 69). The lift is refused for a twist, whose flaps have no single order
-([`Visible.hs:15-19`](../src/Senbazuru/Origami/Visible.hs#L15-L19)), and for
-paper in the air, rather than written unlifted under a flag that asked for it.
+**Where.** `--lift` writes the lifted scene alone, because a viewer shows only
+the default scene or, as Blender does, imports every scene into one, so an
+unlifted Visible paper scene beside it would either hide the lift or sit inside
+it. A state the lift cannot draw is written unlifted and says so.
 
 ### What stays research
 
@@ -1017,11 +1058,13 @@ how sheen or translucency looks on paper; W2 (milestone R,
 | A-22 | **G1 midpoint refold, added in M5's PR:** on a `Sampled` macro fixture and `keyDensity` that PR names, the midpoint refold tears with subdivision disabled and passes with it; the PR shows the tear. No `Sampled` route exists before M5, so which fixture and density is **UNVERIFIED** | check made at the route's middle p |
 | A-23 | Animated blintz GLB, and the animated quarter fold of [09 §2.2](09-testing-and-acceptance.md#22-test-1-folding-equivalence-m2)'s three-state sequence: validator 0/0; Blender imports the animation; three.js plays it with no face changing shape (manual); static exports byte-identical; `docs/tour.md` and the `Render.Gltf` header state the nested-node interpolation and its 180° rule. Together these are #56's done-when, with nested nodes replacing its approach | a non-unit quaternion; a `STEP` rotation channel; the interpolation caveat missing from either document |
 | A-24 | Without `--lift`, `export` and `run -o x.glb` write `quarter-fold-folded.glb`, `crane-folded.glb` and `blintz-sequence-final.glb` byte for byte | the lift or its record reaches a default output |
-| A-25 | On the lifted folded quarter fold and crane, for every recorded face order, the face over is at least one lift step higher than the face under it | a face is lifted by the sheets under its corners (decision 67's sketch) or by the layers over it |
-| A-26 | On the lifted crane, each of its 99 folds, which all join faces on different layers, has one strip whose corners are the fold edge's two copies (48 of them span more than one layer), and no edge lying flat has one; on the crane and `kabuto.fold` no strip's interior crosses a face whose layer lies between the strip's two | a strip is drawn at an edge lying flat, or missing at a fold |
-| A-27 | `--lift` on the folded square twist is `LiftNeedsLayerOrder`, and on `simple.fold`, paper in the air, `LiftNeedsFlatState` | a twist is lifted in a guessed order; a state is written unlifted under the flag |
-| A-28 | A lifted GLB's `frame` positions equal the unlifted export's, and its fidelity record names the display spacing | the frame carries lifted positions; the record is missing |
-| A-29 | The Khronos validator reports no errors or warnings on the lifted crane, and a screenshot from three.js shows it, both in the PR (no CI job runs an external program, R-07-43) | a strip's winding or an index is wrong |
+| A-25 | On `liftedPaper` of the folded quarter fold and crane, for every recorded face order, the face over is at least one lift step higher than the face under it | a face is lifted by the sheets under its corners (decision 67's sketch) or by the layers over it |
+| A-26 | On `liftedPaper` of the folded crane, every edge lying flat joins two faces at one height; every fold has one strip, whose corners are the fold edge's two lifted copies; no strip's interior crosses a face whose piece lies between its two; all strips are one colour | faces are lifted alone, opening a slit at an edge lying flat (14 of the crane's 20 did, 2026-10-23); a strip is missing; strips take two colours, so coincident ones flicker |
+| A-27 | `--lift` on `thirds-pinwheel.fold` folded, whose orders run in a circle, and on `simple.fold`, paper in the air, writes each unlifted with `layerLift` giving the reason | a twist is lifted in a guessed order, or refused |
+| A-28 | A lifted GLB's `frame` positions equal the unlifted export's and it carries the face orders used; every position equals its weighted frame position plus its `materialLift` times the step | the frame carries lifted positions; the lift cannot be read back |
+| A-29 | The Khronos validator reports no errors or warnings on the lifted crane, and three.js shows its one scene in a screenshot, both in the PR (no CI job runs an external program, R-07-43) | a strip's winding or an index is wrong; the lifted scene is not the one a viewer opens |
+| A-30 | `run -o x.glb --lift --frame N` writes the bytes `export --lift` writes of `run`'s `.fold` at `--frame N`, extending 04 A13 | the two record different geometry levels |
+| A-31 | `planRun` refuses `--lift` without `.glb`, extending 04 A15 | the flag is accepted where it does nothing |
 
 A-20's anchor, checked with exact fractions on `examples/blintz-base.fold`
 (`python3` with `fractions.Fraction`; the file records no `faces_vertices`, so the
@@ -1077,7 +1120,8 @@ recommended default, and [10 §6](10-roadmap-risks-questions.md#6-owner-decision
   2026-10-12: the slow job, a required check.
 - **67–69**, decided 2026-10-23 as recommended: the GLB lifts its layers later,
   as an item of this file (67); by layer, with folds drawn as strips, which
-  revised 67's sketch of lifting each vertex (68); and only when asked (69).
+  replaced 67's rule of lifting each vertex and kept its timing and place (68);
+  and only when asked (69).
 
 ## Research links
 
