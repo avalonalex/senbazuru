@@ -1323,10 +1323,10 @@ each vertex of a flat figure toward the page's lower left once for each sheet
 lying over it, the *fan count*
 ([glossary-additions](glossary-additions.md#step-pages); owner decision 65). The
 count is a fact about the folded state and the side it is seen from, not about a
-page, so it lives here, where L9 counts the faces over a point. 08's lifted GLB
-([#624](https://github.com/avalonalex/senbazuru/issues/624)) wants the same count
-seen from below, and `Render.Gltf` must not import `Render.CreasePattern`
-(AGENTS.md). It is not the [layer number](../docs/glossary.md#origami), for L9's
+page, so it lives here, where L9 counts the faces over a point. (08's lifted GLB
+does not use it: lifting each vertex by such a count crosses paper where a fold
+wraps round inner sheets, so that GLB lifts faces by layer instead, owner
+decision 68.) It is not the [layer number](../docs/glossary.md#origami), for L9's
 reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 
 **Semantics.**
@@ -1423,7 +1423,7 @@ The per-item tables are the criteria. Across all items:
 | L13 | L4's `RoutePose` | [#54](https://github.com/avalonalex/senbazuru/issues/54); [#55](https://github.com/avalonalex/senbazuru/issues/55) unblocked, not required |
 | L14 | — | — |
 | L15 | — | [#56](https://github.com/avalonalex/senbazuru/issues/56), which closes at M7b through [08](08-prd-realistic-rendering.md) |
-| L16 | — | [#623](https://github.com/avalonalex/senbazuru/issues/623) through 06 at M3; L9 builds on its cover; #624 |
+| L16 | — | [#623](https://github.com/avalonalex/senbazuru/issues/623) through 06 at M3; L9 builds on its cover |
 
 ## Risks
 

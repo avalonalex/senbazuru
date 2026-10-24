@@ -348,6 +348,7 @@ order; "row N" is row N of
 | M5 | 05 L13 (R-05-41…43) |
 | M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
 | M7a | [08](08-prd-realistic-rendering.md#requirements) R-08-1…11; [A-1…A-10](08-prd-realistic-rendering.md#acceptance-criteria) |
+| after M7a | 08 R-08-32…38; A-24…A-29: the lifted GLB (owner decisions 67 to 69, [#624](https://github.com/avalonalex/senbazuru/issues/624)) |
 | M7b | 08 R-08-12…31; A-11…A-23. 05 L15 (R-05-48…49: `foldedWalk`, [D19](decisions.md#d19-realistic-rendering)) |
 | M8 | 07 R-07-39, R-07-41's `run --settle` cap, R-07-42; AC-13, AC-15 |
 
@@ -380,6 +381,7 @@ order; "row N" is row N of
 | M6 (c) | The crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job (R-07-40) | the equivalence PR solves a crane in the default job |
 | M6 (d) | §6.4's timed run, with the crane-wing sequence's settle, recorded in the PR, not CI | a settle refined a level further that takes the crane past 10 minutes |
 | M7a (a) | A-10's validator run and screenshot go in the PR, since no CI job runs an external program (R-07-43) | a CI job runs the validator |
+| after M7a (a) | A-29's validator run and screenshot go in the PR, as M7a (a)'s do | a CI job runs the validator |
 | M7b (a) | A-13 on the 4,312-triangle mesh and A-15's measurement run in the slow job (§6.3) | either runs in the default job |
 | M7b (b) | The manual parts of A-12 and A-23 go in the PR, not CI | a CI job opens a viewer or Blender |
 | M8 (a) | §6.4's timed run, with `run --settle` settling, recorded in the PR, not CI | a `run --settle` triangle budget (R-07-41) that admits a mesh taking the crane past 10 minutes |

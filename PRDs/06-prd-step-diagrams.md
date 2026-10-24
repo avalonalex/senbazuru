@@ -790,9 +790,11 @@ tracked golden stay as they are. The default theme stays unfanned for the reason
 it gives ([`Style.hs:234-237`](../src/Senbazuru/Diagram/Style.hs#L234-L237)): a
 drawing that moved paper unasked would misplace it. A page from a run is asked
 for, follows a book's convention, and leaves a face with nothing over any of its
-vertices where it lies. The GLB gets the same idea later, as a
-[PRD 08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack-later) item
-(owner decision 67).
+vertices where it lies. The GLB shows its stack another way, lifting each face
+by its layer and drawing each fold as a strip
+([PRD 08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack), owner
+decisions 67 to 69): lifting each vertex by such a count crossed paper in 3D
+where a fold wraps round inner sheets.
 
 ### 11. Rejected alternatives
 
@@ -993,7 +995,8 @@ Each has a recommended default in [decisions §9](decisions.md#9-owner-decisions
   odd k. Default: trigonometry, with the platform bits stated. Before M2.
 - **65–67**, decided 2026-10-23 as recommended: flat figures fan from their folds
   (§10); fanned by default on `run -o x.svg`, by a flag on `render`; and the GLB's
-  version later, in [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack-later).
+  version later, in [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack),
+  which decisions 68 and 69 made a lift by layer, asked for by a flag.
   Left open by the owner: how to make fanned figures less busy (Risks).
 - **7**, still open, now also bears on the fan, which can reach into a captioned
   gutter (Risks).
