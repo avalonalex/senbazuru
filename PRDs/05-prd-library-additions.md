@@ -58,6 +58,7 @@ why.
 | [L13](#l13-origamimacro-checkedmacro-and-macroposeat) | `CheckedMacro`, `macroPoseAt` | `Origami.Macro` (new) | [D9](decisions.md#d9-macro-moves-as-named-angle-relations), [D10](decisions.md#d10-assurance-as-evidence-values) | M5 |
 | [L14](#l14-eq-on-flap-values-and-prepareflaptoward) | `Eq` on `FlapMotion` and `CheckedFlap`; `prepareFlapToward`, `Toward` | `Origami.Flap` | [D5](decisions.md#d5-presentation-and-the-readers-side), [D10](decisions.md#d10-assurance-as-evidence-values) | M2 |
 | [L15](#l15-foldedwalk) | `foldedWalk` | `Origami.Folding` | [D19](decisions.md#d19-realistic-rendering) | M7b |
+| [L16](#l16-fan-counts) | `fanCounts`; stretches that keep their face edge | `Origami.Visible` | [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) | M3 |
 
 ## Problem and evidence
 
@@ -1306,6 +1307,58 @@ from the same pass.
 
 **Milestone.** M7b, with G1 animation ([decisions §8](decisions.md#8-milestones)).
 
+---
+
+### L16. Fan counts
+
+**Module.** `Origami.Visible`, beside L9.
+
+```haskell
+-- SKETCH
+fanCounts :: Bool -> Frame -> [FaceOrder] -> Either CoverError [(VertexId, Int)]
+```
+
+**Why.** [06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds) draws
+each vertex of a flat figure toward the page's lower left once for each sheet
+lying over it, the *fan count*
+([glossary-additions](glossary-additions.md#step-pages); owner decision 65). The
+count is a fact about the folded state and the side it is seen from, not about a
+page, so it lives here, where L9 counts the faces over a point. 08's lifted GLB
+([#624](https://github.com/avalonalex/senbazuru/issues/624)) wants the same count
+seen from below, and `Render.Gltf` must not import `Render.CreasePattern`
+(AGENTS.md). It is not the [layer number](../docs/glossary.md#origami), for L9's
+reason: on the crane that chain is 31 where no point holds more than 24 sheets.
+
+**Semantics.**
+
+- **R-05-50.** For a vertex v and a face f with a corner at v, the faces over a
+  point of f near v are those whose closure holds v within `sheetHair` and whose
+  corner or interior at v holds the direction from v to that point. The sides
+  through v cut f's corner into sectors, each with one set of such faces, and f's
+  *cover* at v is the fewest faces nearer than f over any sector, "nearer" as
+  R-05-32 orders them for the viewer `fromAbove` names. v's fan count is the
+  least cover over the faces with a corner at v. No point is nudged to ask the
+  question ([`Visible.hs:556-558`](../src/Senbazuru/Origami/Visible.hs#L556-L558)).
+- **R-05-51.** An overlapping pair at a vertex with no recorded order is
+  `UnorderedCover`, and a cycle `CyclicCover`, each naming the vertex's position;
+  a frame that is not flat is `CoverFlat`.
+- **R-05-52.** Each stretch `formSheetEdges` gives also names the face edge it
+  lies along, by its two vertex ids, and where along that edge it starts and ends.
+  So 06 R-06-27 moves a stretch with its face without matching edges by tolerance.
+
+**Acceptance.**
+
+| Test | Turns red if |
+| --- | --- |
+| The helmet base's last state, the run of `helmet.foldseq` (`file_frames[3]`): counts by vertex 0, 3, 0, 2, 0, 0, 1, 1, 0 from +z and 2, 0, 2, 1, 0, 0, 1, 1, 0 from −z; its state 2 (`file_frames[2]`): 0, 1, 0, 0, 0, 0, 0, 1, 1 from +z (a scratch prototype, 2026-10-23) | the count is a face's layer number (state 2 then gives 0, 3, 0, 2, 0, 0, 0, 1, 1); a covering face counts only where it covers the whole corner (vertex 1 then gives 1); `fromAbove` is ignored |
+| Removing one order between overlapping faces at a vertex gives `UnorderedCover` | a missing order reads as "neither nearer" |
+| On the helmet's last state, every stretch's named edge holds both its ends within `sheetHair` | a stretch names its face but not the edge |
+
+**Outputs unchanged.** `nearness`, `visibleForm` and `orderedCover` keep their
+answers; `formSheetEdges`' stretches gain fields and keep their ends.
+
+**Milestone.** M3, before L9, which shares its point cover at M4.
+
 ## Errors
 
 Messages are **SKETCH**, pinned by a test when each lands. Ids in the new
@@ -1370,6 +1423,7 @@ The per-item tables are the criteria. Across all items:
 | L13 | L4's `RoutePose` | [#54](https://github.com/avalonalex/senbazuru/issues/54); [#55](https://github.com/avalonalex/senbazuru/issues/55) unblocked, not required |
 | L14 | — | — |
 | L15 | — | [#56](https://github.com/avalonalex/senbazuru/issues/56), which closes at M7b through [08](08-prd-realistic-rendering.md) |
+| L16 | — | [#623](https://github.com/avalonalex/senbazuru/issues/623) through 06 at M3; L9 builds on its cover; #624 |
 
 ## Risks
 
