@@ -289,6 +289,9 @@ schedules it.
 | 16 | `docs/roadmap.md:271-276`, `:1004-1009` | M0 |
 | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the follow-up PR fixing `LineStopsOnTheModel`, before M4 |
 | 18 | `README.md:213-219` roadmap item 2, `docs/roadmap.md` item 2 | the PR closing #60 (M4) |
+| 19 | `AGENTS.md:192-195`, `:372-376` | M3, the PR adding `Fanned` |
+| 20 | `docs/architecture.md:144`, `docs/tour.md:472`, `docs/notes/visible-paper-mesh.md:32-34`, `:50-51`, `docs/notes/paper-thickness.md:8`, `PaperMesh.hs:2-4` | the PR adding `--lift`, after M7a |
+| 21 | `AGENTS.md:312-315` | M6, the first PR adding a settle to a model's sequence source |
 
 ### 4.1 `docs/architecture.md:81-103`
 
@@ -754,18 +757,32 @@ This lands in the PR adding `--lift`, after M7a
 
 ### 4.21 `AGENTS.md:312-315`, "Testing"
 
-This lands in M6's acceptance PR, the first to time the crane's whole run
-([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed), row
-M6 (d)). After the paragraph "**Measure, do not reason about, performance.** …
-the header of `Senbazuru.Origami.Stacking` has the numbers.", add:
+This lands in the first PR that adds a settle to a model's sequence source, one
+saved outside `test/`
+([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed),
+"When"): an M6 PR, since before M6 the parser refuses settle blocks
+([07](07-prd-material-consumption.md#requirements) R-07-10), and the first the
+duty binds. The same PR writes `docs/notes/whole-run-timing.md` from §6.4's
+"What is timed", "How" and "Exempt", with the times it measured, and links it
+from `docs/notes/README.md`, so that the procedure outlasts the plan. Where the
+text below says "the crane-wing sequence", the PR writes that source's path,
+which M4 gives it. The `settle` link names the section the glossary's Settle row
+moves into with the settle code (row 10,
+[C97](decisions.md#changes-since-draft-v2)); if the row went elsewhere, the PR
+links it there. After the paragraph "**Measure, do not reason about,
+performance.** … the header of `Senbazuru.Origami.Stacking` has the numbers.",
+add:
 
-> **One model's whole run stays within 10 minutes** of wall clock on the
-> owner's Mac, from its sequence source's text to every frame, settle and
-> drawing; every `senbazuru-material-study` mode but `--sequence` is exempt
-> (owner decisions 61 and 64). A PR that adds a settle to a sequence in `examples/` times that model's
-> whole run and puts the times in the PR, as
-> `PRDs/09-testing-and-acceptance.md` §6.4 says. No code compares a time with
-> the target: the counted budgets stay what the code checks.
+> **Time a model's whole run in any PR that adds a
+> [settle](docs/glossary.md#material) to its sequence source**, any `.foldseq`
+> outside `test/`, and give the times under "How this is verified". The target
+> is 10 minutes of wall clock on the owner's Mac, an Apple M1 Max with 10 cores
+> (#606). The crane's whole run is two sources, timed and added: the crane-wing
+> sequence, and `examples/traditional-crane.foldseq` as far as it runs.
+> [`docs/notes/whole-run-timing.md`](docs/notes/whole-run-timing.md) says what
+> to time, how, and what a run over 10 minutes or on another machine means.
+> Never check the target in code: a limit in code counts work, as
+> `--layer-budget` counts the layer solver's guesses, never seconds.
 
 ## 5. One move, end to end: quarter fold, step 2
 

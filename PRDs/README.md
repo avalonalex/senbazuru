@@ -312,7 +312,7 @@ form of decision 4, still open; the questions
 
 ## Follow-ups
 
-- **This directory edits nothing else.** Eighteen recorded-text changes to
+- **This directory edits nothing else.** Twenty-one recorded-text changes to
   `AGENTS.md`, `README.md`, `docs/`, module headers, a spec's sentence and issue
   text are listed in [decisions §3](decisions.md#3-recorded-text-this-design-changes),
   written out in [01 §4](01-architecture.md#4-recorded-text-this-design-changes)
