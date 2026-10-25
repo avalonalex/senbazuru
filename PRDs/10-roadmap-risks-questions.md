@@ -204,6 +204,7 @@ gives the current text and the full replacement under the same row number. Row
 | before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point |
 | M4, the PR adding the slow job | 15 | `AGENTS.md:390-391` | "all three CI checks" names the slow job as a required check (owner decision 12, decided 2026-10-12) |
 | M4, the PR closing #60 | 18 | `README.md:213` roadmap item 2, `docs/roadmap.md` item 2 | the vocabulary exists |
+| M6, its acceptance PR | 21 | `AGENTS.md:312-315` | the whole-run target and the timing a PR that adds a settle owes |
 | after M7a, the PR adding `--lift` | 20 | `docs/architecture.md:144`, `docs/tour.md:472`, `docs/notes/visible-paper-mesh.md:32-34`, `:50-51`, `docs/notes/paper-thickness.md:8`, `PaperMesh.hs:2-4` | face lifting returns, asked for, by flat piece with strips |
 
 Row 16's two passages record the old order. Lines 82-87 put #97 before #95 and

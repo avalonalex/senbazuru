@@ -752,6 +752,21 @@ This lands in the PR adding `--lift`, after M7a
   `liftedPaper` does when asked; by default, the display mesh instead removes
   only paper buried …".
 
+### 4.21 `AGENTS.md:312-315`, "Testing"
+
+This lands in M6's acceptance PR, the first to time the crane's whole run
+([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed), row
+M6 (d)). After the paragraph "**Measure, do not reason about, performance.** …
+the header of `Senbazuru.Origami.Stacking` has the numbers.", add:
+
+> **One model's whole run stays within 10 minutes** of wall clock on the
+> owner's Mac, from its sequence source's text to every frame, settle and
+> drawing; every `senbazuru-material-study` mode but `--sequence` is exempt
+> (owner decisions 61 and 64). A PR that adds a settle to a sequence in `examples/` times that model's
+> whole run and puts the times in the PR, as
+> `PRDs/09-testing-and-acceptance.md` §6.4 says. No code compares a time with
+> the target: the counted budgets stay what the code checks.
+
 ## 5. One move, end to end: quarter fold, step 2
 
 This is the second move of #60's folding-equivalence test (§4.3). Each number

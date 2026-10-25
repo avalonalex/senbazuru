@@ -585,7 +585,8 @@ as far as it runs.
   `-threaded -with-rtsopts=-N`) and the load average at each start.
 - **When.** At M6, at M8, at each milestone that makes more of the crane run, M5
   first, and in each PR that adds a settle to a model's sequence in `examples/`,
-  which then times that model.
+  which then times that model. From M6, AGENTS.md states that last duty too
+  ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 21).
 - **Exempt.** The study's research galleries: every `senbazuru-material-study`
   mode but `--sequence`.
 
