@@ -670,6 +670,11 @@ routes:
 | Fold from the flat square with contact on | One fold stops at 179.2–179.4° with layers one thickness apart ([H7](research/H7-tooling.md) finding 13); the double fold has reached about 110° | Double fold to 175° with adaptive stiffness |
 | Heights only, from the layer order | **Impossible** on the crane (above) | — |
 
+[08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack)'s lifted GLB
+draws the first route's lift without the stitching, as a display convention
+(owner decisions 68 and 69): there a piece may touch a fold's strip, which an
+admissible start may not.
+
 Airbag simulation meets the same problem and builds its start geometrically,
 fold by fold, with outer layers on a larger circumference ([Y6](research/Y6-fea-oracle.md)).
 A thickness floor ramped up from small, the counterpart of the airbag industry's

@@ -342,12 +342,13 @@ order; "row N" is row N of
 | --- | --- |
 | M0 | Rows 1–10 and 16 |
 | M1 | [03](03-prd-embedded-dsl.md#requirements) R-03-1…10, 12…14; A-1…A-5, A-7. [04](04-prd-sequence-source-and-cli.md#requirements) R-04-1…19, 23, 29, 30; [A1…A10, A12, A14, A15's `--check` rows, A17](04-prd-sequence-source-and-cli.md#acceptance-criteria) |
-| M2 | 03 R-03-11, A-6. [05](05-prd-library-additions.md) L1 (R-05-4, 5), L2 (R-05-6…9), L3 (R-05-10…13), [L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)'s `flapStationaryFace` (R-05-14); L14 (R-05-44…47: `prepareFlapToward`, and `Eq` on `FlapMotion` and `CheckedFlap`: [D5](decisions.md#d5-presentation-and-the-readers-side), [D10](decisions.md#d10-assurance-as-evidence-values)); R-05-1…3 per PR. 04 R-04-20…22, 24…28 (R-04-22's and R-04-27's `.svg` parts with M3); A11, A13, the rest of A15, A16, A18, A19. Rows 11, 12 (`runSequence`), 13 |
+| M2 | 03 R-03-11, A-6. [05](05-prd-library-additions.md) L1 (R-05-4, 5), L2 (R-05-6…9), L3 (R-05-10…13), [L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)'s `flapStationaryFace` (R-05-14); L14 (R-05-44…47: `prepareFlapToward`, and `Eq` on `FlapMotion` and `CheckedFlap`: [D5](decisions.md#d5-presentation-and-the-readers-side), [D10](decisions.md#d10-assurance-as-evidence-values)); R-05-1…3 per PR. 04 R-04-20…22, 24…28 (R-04-22's and R-04-27's `.svg` parts with M3, R-04-27's `--lift` part after M7a); A11, A13, the rest of A15, A16, A18, A19. Rows 11, 12 (`runSequence`), 13 |
 | M3 | [06](06-prd-step-diagrams.md#requirements) R-06-1…29, A1…A25, new goldens; 05 L5 (R-05-16…20) and L16 (R-05-50…52). Row 12 (`stepPageWith`). R-06-23 (a step's `sample` poses are figures of their own) lands here, but only macro-moves carry `sample`, so nothing exercises it before M5 ([06 "Risks"](06-prd-step-diagrams.md#risks)) |
 | M4 | 05 L6…L12 (R-05-21…40). Rows 15, 17, 18 |
 | M5 | 05 L13 (R-05-41…43) |
 | M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
 | M7a | [08](08-prd-realistic-rendering.md#requirements) R-08-1…11; [A-1…A-10](08-prd-realistic-rendering.md#acceptance-criteria) |
+| after M7a | 08 R-08-32…38; A-24…A-31: the lifted GLB (owner decisions 67 to 69, [#624](https://github.com/avalonalex/senbazuru/issues/624)); 04 R-04-27's `--lift` part |
 | M7b | 08 R-08-12…31; A-11…A-23. 05 L15 (R-05-48…49: `foldedWalk`, [D19](decisions.md#d19-realistic-rendering)) |
 | M8 | 07 R-07-39, R-07-41's `run --settle` cap, R-07-42; AC-13, AC-15 |
 
@@ -380,6 +381,7 @@ order; "row N" is row N of
 | M6 (c) | The crane equivalence PR compares resolved pin sets without solving, and solves once in the slow job (R-07-40) | the equivalence PR solves a crane in the default job |
 | M6 (d) | §6.4's timed run, with the crane-wing sequence's settle, recorded in the PR, not CI | a settle refined a level further that takes the crane past 10 minutes |
 | M7a (a) | A-10's validator run and screenshot go in the PR, since no CI job runs an external program (R-07-43) | a CI job runs the validator |
+| after M7a (a) | A-29's validator run and screenshot go in the PR, as M7a (a)'s do | a CI job runs the validator |
 | M7b (a) | A-13 on the 4,312-triangle mesh and A-15's measurement run in the slow job (§6.3) | either runs in the default job |
 | M7b (b) | The manual parts of A-12 and A-23 go in the PR, not CI | a CI job opens a viewer or Blender |
 | M8 (a) | §6.4's timed run, with `run --settle` settling, recorded in the PR, not CI | a `run --settle` triangle budget (R-07-41) that admits a mesh taking the crane past 10 minutes |

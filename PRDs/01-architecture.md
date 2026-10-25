@@ -468,7 +468,7 @@ Current: a four-row table (`resolveAssignments`, `foldAnglesOf`,
 | [#36](https://github.com/avalonalex/senbazuru/issues/36) | Done-when 1: a pair "reflecting every vertex through the sheet's plane produces a turn-over arrow". Approach: arrow kind "from the assignment that changed". | "A pair related by one whole-model proper rigid motion is a presentation change: no inferred arrow, and a sequence's `turn over` places a `Symbol`. A reflection is the mirror model." Approach: "Arrow kind comes from the move record; one motion can change a `V` and an `M` crease together (quarter-fold step 2 sets edge 9 to +180 and edge 11 to −180)." |
 | [#94](https://github.com/avalonalex/senbazuru/issues/94) | "`frame_title` and `frame_description` are decoded into `Frame` and nothing reads them"; done-when: the quarter fold "given titles, draws them under the figures", and the single-frame `render --arrows` page "draws the title too". | "The CLI reads `frame_title` for `info`, the page title and the glTF title (`Cli.hs:1095`, `:993`, `:888`), but nothing draws it under a figure. A file cannot say whether its titles name states, as the fixture's "Step 2: folded in half" does, or give instructions, as a written sequence file's do: there a state's `frame_title` is the caption of the step leaving it. So `render --steps` never draws `frame_title`, and every page it draws stays byte-identical, `quarter-fold-steps.svg` included. Captions come from step notes." Done when: "`run -o x.svg` draws each step's caption under the figure of the state the step starts from, and the `closing` caption under the last figure, pinned by a new golden; every tracked golden stays byte-identical. Closes at M3." ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page), [C35](decisions.md#changes-since-draft-v2)) |
 | [#104](https://github.com/avalonalex/senbazuru/issues/104) | Cites `docs/notes/inflate-outside-draw-inside.md`; done-when 1 asks `render examples/puffed-square.fold --view iso --hide-flat` to draw "the dome's outline"; done-when 3 lets two examples change "except for any edge that is a silhouette". | "Default `render` output is byte-identical; `render examples/puffed-square.fold --view front --hide-flat --lines features` draws the visible boundary and silhouette, as a new golden." A *silhouette* is an edge between a face turned towards the reader and one turned away, of any assignment: the file's 320 edges are 40 `B` and 280 `F` (`jq`), so a rule limited to `J` edges finds none of its 27 candidates from the front. From `--view iso` no face of the file turns away, so done-when 1 cannot be met; from `--view front`, the view of done-when 2, 90 of 200 faces do ([08](08-prd-realistic-rendering.md#104-amended), [D19](decisions.md#d19-realistic-rendering)). The cited note does not exist (`ls`). M7b advances the issue without closing it. |
-| [#114](https://github.com/avalonalex/senbazuru/issues/114) | "Both numbers already exist: `Origami.Layers.layerDepths` and `--thickness`"; the export "lifts each face by its layer number". | "`--thickness` and face lifting were removed (`docs/notes/paper-thickness.md:8`, `docs/architecture.md:144`), and a second bend rounded over a first stretches 200% (`docs/notes/two-bends-need-more-than-radii.md:55`): thickness as geometry is research." Full rewrite at M6. |
+| [#114](https://github.com/avalonalex/senbazuru/issues/114) | "Both numbers already exist: `Origami.Layers.layerDepths` and `--thickness`"; the export "lifts each face by its layer number". | "`--thickness` was removed, and face lifting returns only as an asked-for display convention, `--lift` ([08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack), owner decisions 68 and 69; `docs/notes/paper-thickness.md:8`, `docs/architecture.md:144`), and a second bend rounded over a first stretches 200% (`docs/notes/two-bends-need-more-than-radii.md:55`): thickness as geometry is research." Full rewrite at M6. |
 | [#56](https://github.com/avalonalex/senbazuru/issues/56) | Transforms are what `spanningWalk` "computes and currently discards"; step 1, "Expose the per-face `Rigid`s". | "`foldFrameWith` returns them as `foldedPlacements` (`Folding.hs:323`), used by `Flap` and `ThroughLayers`. Keys come from checked routes via `recordPoseAt`, over one node hierarchy per checkpoint interval, on that interval's final cut pattern, with each face's parent and crossing edge taken from `Origami.Folding`'s own walk. Closes at M7b." ([D19](decisions.md#d19-realistic-rendering)) |
 | [#64](https://github.com/avalonalex/senbazuru/issues/64) | "**Inflate the body** is *outside the model*, not merely hard." | "Opening a body is a stated future goal (`README.md:158-164`, #106); what lies outside the rigid model is bending and pressure, not opening." |
 
@@ -725,6 +725,32 @@ Current (`AGENTS.md:372-376`): "… so a flat model is drawn by visible regions
 > … so a flat model is drawn by visible regions (`Origami.Visible`) and
 > `paintOrder` remains for paper in the air. The offset view and a fanned figure
 > paint whole faces a layer at a time, each layer's visible stretches with it.
+
+### 4.20 The notes and headers that say face lifting is gone
+
+This lands in the PR adding `--lift`, after M7a
+([08](08-prd-realistic-rendering.md#lifted-layers-after-m7a), R-08-32–38).
+
+- `docs/architecture.md:144`, `Render.Gltf`'s row: "material references and no
+  face displacement" becomes "material references; face displacement only
+  under `--lift`, a display convention".
+- `docs/tour.md:472`: "The former `--thickness` option and independent face
+  lifting are removed." becomes "The former `--thickness` option is removed;
+  `--lift` lifts flat pieces by their layers, folds drawn as strips, and says so
+  in the file."
+- `docs/notes/visible-paper-mesh.md:32-34`: after "Independent per-face lifting
+  has been removed", add "; `--lift` brings back a lift by flat piece, with
+  strips at the folds, as a scene of its own". At `:50-51`, a strip primitive
+  carries `materialEdges` where a face primitive carries `materialFaces`, and the
+  mesh's `materialLift` gives each position's lift.
+- `docs/notes/paper-thickness.md:8`: after "That approach has been removed.", add
+  "It returns, asked for, as `--lift`: by flat piece rather than by face, with
+  strips closing the folds, recorded as display spacing (PRD 08)."
+- `src/Senbazuru/Render/PaperMesh.hs:2-4`: "Moving each panel to give it a
+  different depth tears shared creases." becomes "Moving each panel to give it a
+  different depth tears shared creases unless strips close them, which
+  `liftedPaper` does when asked; by default, the display mesh instead removes
+  only paper buried …".
 
 ## 5. One move, end to end: quarter fold, step 2
 
