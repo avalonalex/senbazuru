@@ -281,7 +281,7 @@ schedules it.
 | 8 | `AGENTS.md` "Third-party material" | M0 |
 | 9 | `docs/notes/no-sequence-solver.md` | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
 | 10 | `docs/glossary.md` | M0, first PR |
-| 11 | `AGENTS.md:173-177` | with M2 |
+| 11 | `AGENTS.md:173-177`, `SheetLengths.hs:31-32` | two PRs: sheet lengths with M2, physical lengths in M6's PR first converting a `material` length |
 | 12 | `AGENTS.md:229-233` | two PRs: `runSequence` at M2, `stepPageWith` at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | the M2 PR classifying presentation changes |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
@@ -538,12 +538,46 @@ into its section.
 
 ### 4.11 `AGENTS.md:173-177`, "Two unit systems"
 
-Append:
+This lands in two PRs. The first, with M2, was #531, closing #505, which put the
+sheet-length conversion in `Sequence.SheetLengths` rather than in `Sequence.Run`
+as planned ([C88](decisions.md#changes-since-draft-v2)). Since then
+`AGENTS.md:196-201` reads:
 
-> Sequences add *sheet lengths* (the sheet box's larger side is 1) and *physical
-> lengths* (the `material` block). Each becomes model units in exactly one place:
-> sheet lengths when `Sequence.Run` resolves a reference, physical lengths when
-> `Sequence.Material` resolves a settle.
+> Sequences add *sheet lengths*, the units an author names paper in (the sheet
+> box's longer side is 1), and *physical lengths*, which arrive with the
+> `material` block at M6. Each is converted to and from model units in exactly
+> one place: sheet lengths in `Senbazuru.Sequence.SheetLengths`, which the
+> resolver, the runner and the run report all call, and physical lengths in the
+> one place the material block brings. Header of
+> `Senbazuru.Sequence.SheetLengths`.
+
+The second is M6's PR that first converts a `material` block's `size` or
+`thickness` to model units
+([07](07-prd-material-consumption.md#the-material-block-and-physical-units),
+R-07-24, AC-14). A PR that only lets the parser accept `material` blocks, or
+adds one holding only `stiffness`, converts no length and does not land it. That
+PR replaces the text quoted above with:
+
+> Sequences add *sheet lengths*, the units an author names paper in (the sheet
+> box's longer side is 1), and *physical lengths*, which a sequence's `material`
+> block gives, each with its unit. Each is converted to and from model units in
+> exactly one place: sheet lengths in `Senbazuru.Sequence.SheetLengths`, which
+> the resolver, the runner and the run report all call, and physical lengths in
+> `Senbazuru.Sequence.Material`, when it resolves a settle. Headers of
+> `Senbazuru.Sequence.SheetLengths` and `Senbazuru.Sequence.Material`.
+
+and, in `src/Senbazuru/Sequence/SheetLengths.hs:31-32`, "Physical lengths,
+millimetres of real paper, arrive with the material study (milestone M6), and
+are to be converted in one place of their own." with "Physical lengths, given in
+a sequence's `material` block, are converted in one place of their own,
+`Senbazuru.Sequence.Material`."
+
+The module's name and the clause "when it resolves a settle" are a **SKETCH**,
+the record's plan ([decisions §5](decisions.md#5-type-sketch)'s type sketch, 07's
+`SettleStepError`). The PR writes the name it builds and the callers as built,
+as #531 did for sheet lengths, and says where the module lives if it is the
+material study's, in `study/fold-material/` until M8
+([D15](decisions.md#d15-graduation-from-study-to-library) stage 7).
 
 ### 4.12 `AGENTS.md:229-233`, the `--layer-budget` list
 

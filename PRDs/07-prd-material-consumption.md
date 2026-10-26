@@ -341,7 +341,7 @@ now decides them as written ([C42](decisions.md#changes-since-draft-v2)).
 
 | ID | Requirement |
 | --- | --- |
-| R-07-24 | Physical lengths only in `material { … }`, with unit suffixes; model value = physical ÷ sheet size × s, as a `Rational`, where s is the larger side of the sheet's box as the resolver records it in `Double`, converted with `toRational`. |
+| R-07-24 | Physical lengths only in `material { … }`, with unit suffixes; model value = physical ÷ sheet size × s, as a `Rational`, where s is the larger side of the sheet's box in `Double`, `Sequence.SheetLengths.sheetLengthOf` as the resolver also uses it, converted with `toRational`. |
 | R-07-25 | A physical `frame_unit` (any FOLD value but `unit`, [fold-reference.md:58](../docs/fold-reference.md)) disagreeing with `sheet` → `UnitMismatch`. |
 | R-07-26 | Thickness is stored, not interpreted; `--report` says so. |
 | R-07-27 | Display parameters (fidelity modes, exaggeration, colours, camera, textures) are render options, never sequence data: [04](04-prd-sequence-source-and-cli.md)'s `materialitem` has no production for them, so writing one is 04's parse error. |
@@ -718,10 +718,11 @@ stored by `withPhysicalThickness`, whose header says no renderer or contact chec
 interprets it ([`Surface.hs:298-304`](../src/Senbazuru/Origami/Surface.hs#L298-L304)),
 and copied to GLB `physicalThickness` ([`Gltf.hs:277`](../src/Senbazuru/Render/Gltf.hs#L277)).
 `thickness 0.1` is a parse error ([04](04-prd-sequence-source-and-cli.md)).
-Row 11 of [01 §4](01-architecture.md#4-recorded-text-this-design-changes) appends
-to AGENTS.md "Two unit systems" that physical lengths "become model units in
-exactly one place", when `Sequence.Material` resolves a settle. 01 lands that row
-with M2, before the block exists at M6.
+Row 11 of [01 §4](01-architecture.md#4-recorded-text-this-design-changes) names
+in AGENTS.md "Two unit systems" the one place physical lengths become model
+units: `Sequence.Material`, when it resolves a settle. Its sheet-length half
+landed with M2 (#505); this half lands in the PR that first converts a
+`material` block's length.
 
 `frame_unit` is decoded ([`Types.hs:148-149`](../src/Senbazuru/Fold/Types.hs#L148-L149)).
 `for f in examples/*.fold; do jq -r '.frame_unit // empty' "$f"; done | sort | uniq -c`
