@@ -616,7 +616,7 @@ the fixed-body reference's at its farthest point: `heldComparison` in
 `checks.json`, in sheet units, at 600 px per sheet unit and at the page's
 drawing scale, and the last column of the page's comparison table. It is the
 comparison owner decision 39 keeps, so that the
-[quick tier](#a-spread-crane-in-under-a-minute-the-quick-tier)'s held body stays
+[quick tier](#one-spread-crane-body-held-the-quick-tier)'s held body stays
 a label and not a change of shape. Only an accepted trial's distance answers
 that; the incompatible grip's measures its forced grip. It compares endpoints
 already solved, and adds no solve.
@@ -668,15 +668,16 @@ maps but none of the trials' endpoints, so it has no scale they are drawn at,
 and the comparison is in sheet units and at 600 px per sheet unit. A single
 control's run records no comparison.
 
-### A spread crane in under a minute: the quick tier
+### One spread crane, body held: the quick tier
 
 ```bash
 stack run senbazuru-material-study -- --crane-quick build/fold-material
 ```
 
-`crane-quick/` holds one crane with a wing spread from its root, settled in
-about 40 seconds where the galleries above take hours: `quick.fold`,
-`quick.svg`, `quick.glb` and `checks.json`. It is the flat-preference
+`crane-quick/` holds one crane with a wing spread from its root: `quick.fold`,
+`quick.svg`, `quick.glb` and `checks.json`. Once the study is built, the command
+takes under a minute on an Apple M1 Max, where each gallery above takes longer
+([its cost](notes/quick-tier.md#what-it-costs)). It is the flat-preference
 control at the wing's root, which holds the body still (owner decision 39).
 The wing's base turns as one piece at the angle of least bending energy
 within 5° of the turn the control's root starts at, to 0.5°; an answer at

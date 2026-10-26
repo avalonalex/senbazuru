@@ -1,5 +1,5 @@
 -- | The quick tier for the crane with a wing spread (#474): a settled shape in
--- under a minute, where the research galleries take hours.
+-- under a minute, where the research galleries take much longer.
 --
 -- It is the flat-preference control at the wing's root, which holds the
 -- crane's body still while the wing spreads. The wing's base, four layers deep
@@ -14,7 +14,7 @@
 -- names the body and the turned base as held, so it claims a true solve of
 -- held paper and no more. At the root a held solve and a released one differ
 -- by 0.0003 px at 600 px per sheet unit, for 7.5 CPU seconds against 1,046
--- (#474).
+-- (#474, measured before #619 and #620).
 --
 -- Given the FOLD endpoints of the research galleries' released controls, it
 -- also measures how far its own endpoint lies from each, in pixels at the
