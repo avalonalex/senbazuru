@@ -281,7 +281,7 @@ schedules it.
 | 8 | `AGENTS.md` "Third-party material" | M0 |
 | 9 | `docs/notes/no-sequence-solver.md` | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
 | 10 | `docs/glossary.md` | M0, first PR |
-| 11 | `AGENTS.md:173-177` | with M2 |
+| 11 | `AGENTS.md:173-177` | two PRs: sheet lengths with M2 (#505, landed), physical lengths in M6's PR adding `material` blocks |
 | 12 | `AGENTS.md:229-233` | two PRs: `runSequence` at M2, `stepPageWith` at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | the M2 PR classifying presentation changes |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
@@ -538,12 +538,28 @@ into its section.
 
 ### 4.11 `AGENTS.md:173-177`, "Two unit systems"
 
-Append:
+This lands in two PRs. The first, with M2, was #505, which put the sheet-length
+conversion in `Sequence.SheetLengths` rather than in `Sequence.Run` as planned
+([C88](decisions.md#changes-since-draft-v2)). Since then `AGENTS.md:196-201`
+reads:
 
-> Sequences add *sheet lengths* (the sheet box's larger side is 1) and *physical
-> lengths* (the `material` block). Each becomes model units in exactly one place:
-> sheet lengths when `Sequence.Run` resolves a reference, physical lengths when
-> `Sequence.Material` resolves a settle.
+> Sequences add *sheet lengths*, the units an author names paper in (the sheet
+> box's longer side is 1), and *physical lengths*, which arrive with the
+> `material` block at M6. Each is converted to and from model units in exactly
+> one place: sheet lengths in `Senbazuru.Sequence.SheetLengths`, which the
+> resolver, the runner and the run report all call, and physical lengths in the
+> one place the material block brings. Header of
+> `Senbazuru.Sequence.SheetLengths`.
+
+The second is M6's PR that adds `material` blocks
+([07](07-prd-material-consumption.md#the-material-block-and-physical-units),
+R-07-24). It replaces "which arrive with the `material` block at M6" with "which
+a sequence's `material` block gives, each with its unit", "in the one place the
+material block brings" with "in `Senbazuru.Sequence.Material`, when it resolves
+a settle", and "Header of `Senbazuru.Sequence.SheetLengths`." with "Headers of
+`Senbazuru.Sequence.SheetLengths` and `Senbazuru.Sequence.Material`." The module
+is the study's until M8 and the library's after, under the same name
+([D15](decisions.md#d15-graduation-from-study-to-library)).
 
 ### 4.12 `AGENTS.md:229-233`, the `--layer-budget` list
 

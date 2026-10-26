@@ -346,7 +346,7 @@ order; "row N" is row N of
 | M3 | [06](06-prd-step-diagrams.md#requirements) R-06-1…29, A1…A25, new goldens; 05 L5 (R-05-16…20) and L16 (R-05-50…52). Rows 12 (`stepPageWith`) and 19. R-06-23 (a step's `sample` poses are figures of their own) lands here, but only macro-moves carry `sample`, so nothing exercises it before M5 ([06 "Risks"](06-prd-step-diagrams.md#risks)) |
 | M4 | 05 L6…L12 (R-05-21…40). Rows 15, 17, 18 |
 | M5 | 05 L13 (R-05-41…43) |
-| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b. Row 21 |
+| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b. Rows 11 (physical lengths) and 21 |
 | M7a | [08](08-prd-realistic-rendering.md#requirements) R-08-1…11; [A-1…A-10](08-prd-realistic-rendering.md#acceptance-criteria) |
 | after M7a | 08 R-08-32…38; A-24…A-31: the lifted GLB (owner decisions 67 to 69, [#624](https://github.com/avalonalex/senbazuru/issues/624)); 04 R-04-27's `--lift` part. Row 20 |
 | M7b | 08 R-08-12…31; A-11…A-23. 05 L15 (R-05-48…49: `foldedWalk`, [D19](decisions.md#d19-realistic-rendering)) |
