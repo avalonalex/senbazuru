@@ -3,8 +3,8 @@
 The study's crane galleries settle a spread wing in hours. Each runs several
 controls, many with the crane's body free to move, and each released control
 searches or checks the angle of the wing's base. A reader who wants to see
-one spread crane needs one settled shape. The quick tier gives one in about
-three CPU minutes, by holding paper that the model leaves free, and saying so.
+one spread crane needs one settled shape. The quick tier gives one in about 40
+seconds, by holding paper that the model leaves free, and saying so.
 
 ```bash
 stack run senbazuru-material-study -- --crane-quick build/fold-material
@@ -90,6 +90,16 @@ one at 31.18° included, and find the same 28.394°: in 90.8 CPU seconds at
 So the 31.18° solve converged before that fix. At least four commits between
 them change the code the quick tier runs (#485, #573, #575 and #539), and which
 one changed it was not isolated.
+
+#619 and #620 then cut that cost by about two thirds. #619 removed work the
+solve repeated, and #620 judged each try of the line search by its contact gaps
+alone, without derivatives. On 2026-10-25, at `5523e5a`, five runs on an Apple
+M1 Max with 10 cores took 30.90 to 30.99 CPU seconds for the nine solves, and
+39.17 to 39.38 seconds of wall clock for the whole command, exports included.
+Each found 28.394° and was accepted. They ran one after another under
+`/usr/bin/time -p`, on the compiled study, with nothing else built or run; the
+one-minute load average was 1.5 to 4.3 at their starts. No code the quick tier
+runs changed between `b21b96e`, where #620 merged, and `5523e5a`.
 
 For scale: one released control in the research galleries costs 3,902 CPU
 seconds for its three solves, and the whole crane-internal gallery 7,965. A

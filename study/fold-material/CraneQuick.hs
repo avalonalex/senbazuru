@@ -1,5 +1,5 @@
 -- | The quick tier for the crane with a wing spread (#474): a settled shape in
--- a minute or two, where the research galleries take hours.
+-- under a minute, where the research galleries take hours.
 --
 -- It is the flat-preference control at the wing's root, which holds the
 -- crane's body still while the wing spreads. The wing's base, four layers deep
@@ -85,9 +85,9 @@ writeCraneQuick destination references = do
   let drawing = spreadFigure [sheet]
       own = if accepted then either (const Nothing) Just drawing else Nothing
   (_, screened) <- either (die . T.unpack) pure (screenKeys fixture contact (isJust own) mesh)
-  -- The solve's own outputs go first: it took minutes, and a reference that
-  -- will not compare must not cost them. The GLB, which can be refused, goes
-  -- last.
+  -- The solve's own outputs go first: it took most of the run, and a
+  -- reference that will not compare must not cost them. The GLB, which can be
+  -- refused, goes last.
   BL.writeFile (output </> "quick.fold") (encode (FoldFile (Just 1.2) (Just "senbazuru quick tier") Nothing (Just title) Nothing [] (materialFrame sheet) []))
   forM_ own $ \figure' -> TIO.writeFile (output </> "quick.svg") (figureSvg figure')
   let measured =
@@ -125,7 +125,7 @@ writeCraneQuick destination references = do
 -- mesh: the largest distance between matching vertices, in sheet units and in
 -- pixels at the quick tier's drawing scale and at the screen's 600. A
 -- reference that cannot be read, or lies on another mesh, is recorded as not
--- compared rather than ending the run: by then the solve has taken minutes.
+-- compared rather than ending the run: by then the solve has taken most of it.
 compareWith :: Maybe PageScale -> Surface V2 -> FilePath -> IO Value
 compareWith scale sheet path = do
   loaded <- loadFoldFile path
