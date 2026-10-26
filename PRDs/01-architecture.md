@@ -281,7 +281,7 @@ schedules it.
 | 8 | `AGENTS.md` "Third-party material" | M0 |
 | 9 | `docs/notes/no-sequence-solver.md` | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
 | 10 | `docs/glossary.md` | M0, first PR |
-| 11 | `AGENTS.md:173-177` | with M2 |
+| 11 | `AGENTS.md:173-177`, `SheetLengths.hs:31-32` | two PRs: sheet lengths with M2, physical lengths in M6's PR first converting a `material` length |
 | 12 | `AGENTS.md:229-233` | two PRs: `runSequence` at M2, `stepPageWith` at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | the M2 PR classifying presentation changes |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
@@ -538,12 +538,46 @@ into its section.
 
 ### 4.11 `AGENTS.md:173-177`, "Two unit systems"
 
-Append:
+This lands in two PRs. The first, with M2, was #531, closing #505, which put the
+sheet-length conversion in `Sequence.SheetLengths` rather than in `Sequence.Run`
+as planned ([C88](decisions.md#changes-since-draft-v2)). Since then
+`AGENTS.md:196-201` reads:
 
-> Sequences add *sheet lengths* (the sheet box's larger side is 1) and *physical
-> lengths* (the `material` block). Each becomes model units in exactly one place:
-> sheet lengths when `Sequence.Run` resolves a reference, physical lengths when
-> `Sequence.Material` resolves a settle.
+> Sequences add *sheet lengths*, the units an author names paper in (the sheet
+> box's longer side is 1), and *physical lengths*, which arrive with the
+> `material` block at M6. Each is converted to and from model units in exactly
+> one place: sheet lengths in `Senbazuru.Sequence.SheetLengths`, which the
+> resolver, the runner and the run report all call, and physical lengths in the
+> one place the material block brings. Header of
+> `Senbazuru.Sequence.SheetLengths`.
+
+The second is M6's PR that first converts a `material` block's `size` or
+`thickness` to model units
+([07](07-prd-material-consumption.md#the-material-block-and-physical-units),
+R-07-24, AC-14). A PR that only lets the parser accept `material` blocks, or
+adds one holding only `stiffness`, converts no length and does not land it. That
+PR replaces the text quoted above with:
+
+> Sequences add *sheet lengths*, the units an author names paper in (the sheet
+> box's longer side is 1), and *physical lengths*, which a sequence's `material`
+> block gives, each with its unit. Each is converted to and from model units in
+> exactly one place: sheet lengths in `Senbazuru.Sequence.SheetLengths`, which
+> the resolver, the runner and the run report all call, and physical lengths in
+> `Senbazuru.Sequence.Material`, when it resolves a settle. Headers of
+> `Senbazuru.Sequence.SheetLengths` and `Senbazuru.Sequence.Material`.
+
+and, in `src/Senbazuru/Sequence/SheetLengths.hs:31-32`, "Physical lengths,
+millimetres of real paper, arrive with the material study (milestone M6), and
+are to be converted in one place of their own." with "Physical lengths, given in
+a sequence's `material` block, are converted in one place of their own,
+`Senbazuru.Sequence.Material`."
+
+The module's name and the clause "when it resolves a settle" are a **SKETCH**,
+the record's plan ([decisions §5](decisions.md#5-type-sketch)'s type sketch, 07's
+`SettleStepError`). The PR writes the name it builds and the callers as built,
+as #531 did for sheet lengths, and says where the module lives if it is the
+material study's, in `study/fold-material/` until M8
+([D15](decisions.md#d15-graduation-from-study-to-library) stage 7).
 
 ### 4.12 `AGENTS.md:229-233`, the `--layer-budget` list
 
@@ -757,32 +791,35 @@ This lands in the PR adding `--lift`, after M7a
 
 ### 4.21 `AGENTS.md:312-315`, "Testing"
 
-This lands in the first PR that adds a settle to a model's sequence source, one
-saved outside `test/`
-([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed),
-"When"): an M6 PR, since before M6 the parser refuses settle blocks
-([07](07-prd-material-consumption.md#requirements) R-07-10), and the first the
-duty binds. The same PR writes `docs/notes/whole-run-timing.md` from §6.4's
-"What is timed", "How" and "Exempt", with the times it measured, and links it
-from `docs/notes/README.md`, so that the procedure outlasts the plan. Where the
-text below says "the crane-wing sequence", the PR writes that source's path,
-which M4 gives it. The `settle` link names the section the glossary's Settle row
-moves into with the settle code (row 10,
-[C97](decisions.md#changes-since-draft-v2)); if the row went elsewhere, the PR
-links it there. After the paragraph "**Measure, do not reason about,
-performance.** … the header of `Senbazuru.Origami.Stacking` has the numbers.",
-add:
+This lands in the first PR that adds a settle to a model's sequence source
+([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed) "When";
+owner decisions 70, 72 and 73): an M6 PR, since before M6 the parser refuses
+settle blocks ([07](07-prd-material-consumption.md#requirements) R-07-10), and
+the PR from which every PR that adds work owes the timing. The same PR writes
+`docs/notes/whole-run-timing.md` from §6.4's "What is timed", "How", "When" and
+"Exempt", with the times it measured, and links it from `docs/notes/README.md`,
+so that the procedure outlasts the plan. Where the text below says "the
+crane-wing sequence", the PR writes that source's path, which M4 gives it. The
+`settle` link names the section the glossary's Settle row moves into with the
+settle code (row 10, [C97](decisions.md#changes-since-draft-v2)); if the row
+went elsewhere, the PR links it there. After the paragraph "**Measure, do not
+reason about, performance.** … the header of `Senbazuru.Origami.Stacking` has
+the numbers.", add:
 
-> **Time a model's whole run in any PR that adds a
-> [settle](docs/glossary.md#material) to its sequence source**, any `.foldseq`
-> outside `test/`, and give the times under "How this is verified". The target
-> is 10 minutes of wall clock on the owner's Mac, an Apple M1 Max with 10 cores
-> (#606). The crane's whole run is two sources, timed and added: the crane-wing
-> sequence, and `examples/traditional-crane.foldseq` as far as it runs.
-> [`docs/notes/whole-run-timing.md`](docs/notes/whole-run-timing.md) says what
-> to time, how, and what a run over 10 minutes or on another machine means.
-> Never check the target in code: a limit in code counts work, as
-> `--layer-budget` counts the layer solver's guesses, never seconds.
+> **Time a model's whole run in any PR that adds work to it**, and give the
+> times under "How this is verified". Four kinds of change add work: adding a
+> [settle](docs/glossary.md#material) to a model's sequence source (any
+> `.foldseq` outside `test/`) or making one finer, by adding, raising or
+> widening a `refine` item; changing `run --settle`'s triangle budget; making
+> more of a model's source run, a new source included; and changing the code a
+> settle is solved with. Other code changes owe none (#628). The target is 10
+> minutes of wall clock on the owner's Mac, an Apple M1 Max with 10 cores
+> (#606), and the crane's whole run is two sources, timed and added: the
+> crane-wing sequence, and `examples/traditional-crane.foldseq` as far as it
+> runs. [`docs/notes/whole-run-timing.md`](docs/notes/whole-run-timing.md) says
+> what to time, how, and what a run over 10 minutes or on another machine
+> means. Never check the target in code: a limit in code counts guesses or
+> triangles, as `--layer-budget` and `run --settle`'s budget do, never seconds.
 
 ## 5. One move, end to end: quarter fold, step 2
 
