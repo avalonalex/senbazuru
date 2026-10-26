@@ -1,10 +1,12 @@
 # A quick tier holds the body
 
-The study's crane galleries settle a spread wing in hours. Each runs several
+The study's crane galleries settled a spread wing in hours when this note was
+written, on 2026-10-03. Each runs several
 controls, many with the crane's body free to move, and each released control
 searches or checks the angle of the wing's base. A reader who wants to see
-one spread crane needs one settled shape. The quick tier gives one in about
-three CPU minutes, by holding paper that the model leaves free, and saying so.
+one spread crane needs one settled shape. The quick tier gives one in under a
+minute ([what it costs](#what-it-costs)), by holding paper that the model leaves
+free, and saying so.
 
 ```bash
 stack run senbazuru-material-study -- --crane-quick build/fold-material
@@ -75,25 +77,44 @@ held solve moves by:
 
 ## What it costs
 
-Three runs: 183.3, 198.2 and 200.1 CPU seconds for the solves, nine each,
-finding 28.394°; about four minutes of wall clock with the exports. Searching to
-0.05° instead took 14 solves and 218 to 221 CPU seconds, so the last five
-solves, near the least and starting from a neighbour already close to it,
-were cheap. The first ones carry the cost: one of the first four, at 31.18°,
-does not converge. The solves are not timed one by one, so how the time
-divides among them is not measured.
+On 2026-10-25 five runs took 39.17 to 39.38 seconds of wall clock each, on an
+Apple M1 Max, and each found 28.394° and was accepted. The study runs on one
+core, so its CPU time is its wall clock: user and sys came within 0.03 seconds
+of real in every run. Of those 39 seconds, 30.90 to 30.99 were the nine solves,
+the only part the run times itself (`solveCpuSeconds` in `checks.json`). The
+rest loads the crane and builds its wing, checks contact, screens the result and
+writes the three files, none of it timed apart. The runs went one after another
+under `/usr/bin/time -p`, with no other build or study running, on a binary
+built on 2026-10-23 from #620's code, which `5523e5a`'s equals.
 
-Those runs were made at `a8d69c7`. On 2026-10-21 all nine solves converge, the
-one at 31.18° included, and find the same 28.394°: in 90.8 CPU seconds at
-`0bdd02f`, and in 92.3 with #566's fix to the contact clip
-([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)), one run each.
-So the 31.18° solve converged before that fix. At least four commits between
-them change the code the quick tier runs (#485, #573, #575 and #539), and which
-one changed it was not isolated.
+It cost more at first. At `a8d69c7`, on 2026-10-03, three runs took 183.3, 198.2
+and 200.1 CPU seconds for the solves, nine each, finding 28.394°; about four
+minutes of wall clock with the exports. Searching to 0.05° instead took 14
+solves and 218 to 221 CPU seconds, so the last five solves, near the least and
+starting from a neighbour already close to it, were cheap. The first ones
+carried the cost: one of the first four, at 31.18°, did not converge. The
+solves were not timed one by one, so how the time divided among them was not
+measured.
 
-For scale: one released control in the research galleries costs 3,902 CPU
-seconds for its three solves, and the whole crane-internal gallery 7,965. A
-single held solve at a known angle takes 7.5.
+On 2026-10-21 all nine solves converged, the one at 31.18° included, and found
+the same 28.394°: in 90.8 CPU seconds at `0bdd02f`, and in 92.3 with #566's fix
+to the contact clip ([snap-edges-along-a-clip-line](snap-edges-along-a-clip-line.md)),
+one run each. So the 31.18° solve converged before that fix. At least four
+commits between `a8d69c7` and `0bdd02f` change the code the quick tier runs
+(#485, #573, #575 and #539), and which one changed it was not isolated.
+
+From those 92.3 seconds to the 31 of 2026-10-25 is a cut of about two thirds.
+Three merged changes touch the code the quick tier runs in between: #614, #619
+and #620. #619 and #620 were the speedups, the first removing work the solve
+and its checks repeated, the second judging each step the solver tries by its
+contact gaps alone. Timed side by side with the code before each, at `-O1`, they
+left the quick tier's settles and checks at 0.80 and then 0.46 of what they were
+([crane-solve-profile](crane-solve-profile.md)). #614's effect was measured only
+on allocation.
+
+Measured before #619 and #620, for scale: one released control in the research
+galleries cost 3,902 CPU seconds for its three solves, and the whole
+crane-internal gallery 7,965. A single held solve at a known angle took 7.5.
 
 The body galleries keep the comparison that matters most on every run: how
 far their own held control's paper lies from each released control's
