@@ -344,9 +344,9 @@ order; "row N" is row N of
 | M1 | [03](03-prd-embedded-dsl.md#requirements) R-03-1…10, 12…14; A-1…A-5, A-7. [04](04-prd-sequence-source-and-cli.md#requirements) R-04-1…19, 23, 29, 30; [A1…A10, A12, A14, A15's `--check` rows, A17](04-prd-sequence-source-and-cli.md#acceptance-criteria) |
 | M2 | 03 R-03-11, A-6. [05](05-prd-library-additions.md) L1 (R-05-4, 5), L2 (R-05-6…9), L3 (R-05-10…13), [L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)'s `flapStationaryFace` (R-05-14); L14 (R-05-44…47: `prepareFlapToward`, and `Eq` on `FlapMotion` and `CheckedFlap`: [D5](decisions.md#d5-presentation-and-the-readers-side), [D10](decisions.md#d10-assurance-as-evidence-values)); R-05-1…3 per PR. 04 R-04-20…22, 24…28 (R-04-22's and R-04-27's `.svg` parts with M3, R-04-27's `--lift` part after M7a); A11, A13, the rest of A15, A16, A18, A19. Rows 11, 12 (`runSequence`), 13 |
 | M3 | [06](06-prd-step-diagrams.md#requirements) R-06-1…29, A1…A25, new goldens; 05 L5 (R-05-16…20) and L16 (R-05-50…52). Rows 12 (`stepPageWith`) and 19. R-06-23 (a step's `sample` poses are figures of their own) lands here, but only macro-moves carry `sample`, so nothing exercises it before M5 ([06 "Risks"](06-prd-step-diagrams.md#risks)) |
-| M4 | 05 L6…L12 (R-05-21…40). Rows 15, 17, 18 |
+| M4 | 05 L6…L12 (R-05-21…40). Rows 15, 17, 18, and 21 unless an earlier PR lands it |
 | M5 | 05 L13 (R-05-41…43) |
-| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b. Row 21 |
+| M6 | [07](07-prd-material-consumption.md#requirements) R-07-1…38, 40, 43…45, and R-07-41's default-CI part; AC-1…AC-12, AC-14, AC-16, AC-17. 04 A2's crane-wing golden. 05 L4's `flapPoseAt` (R-05-15) lands with its first consumer, here or M7b |
 | M7a | [08](08-prd-realistic-rendering.md#requirements) R-08-1…11; [A-1…A-10](08-prd-realistic-rendering.md#acceptance-criteria) |
 | after M7a | 08 R-08-32…38; A-24…A-31: the lifted GLB (owner decisions 67 to 69, [#624](https://github.com/avalonalex/senbazuru/issues/624)); 04 R-04-27's `--lift` part. Row 20 |
 | M7b | 08 R-08-12…31; A-11…A-23. 05 L15 (R-05-48…49: `foldedWalk`, [D19](decisions.md#d19-realistic-rendering)) |
@@ -588,12 +588,19 @@ as far as it runs.
   every time. A time from another machine is recorded as such and is evidence
   only; the target is timed on the owner's Mac.
 - **When.** At M6, at M8, at each milestone that makes more of the crane run, M5
-  first, and in each PR that adds a settle to a model's sequence source, any
-  `.foldseq` outside `test/`, which then times that model, the crane by both its
-  sources. The first such PR comes at M6, since before it the parser refuses
-  settle blocks (R-07-10). It adds that duty to AGENTS.md and writes this
+  first, and in each PR that adds work to a model's whole run, which then times
+  that model, the crane by both its sources (owner decision 70, decided
+  2026-10-25). A PR adds work when it makes more of a model's sequence source
+  run, a new source included, whether by editing the source or by code that runs
+  more of it; adds a settle to one, or refines one further by adding or raising
+  a `refine` item; or changes `run --settle`'s triangle budget (R-07-41). A
+  model's sequence source is any `.foldseq` outside `test/`. A change that adds
+  no work, such as a solver refactor, owes no timing. The first PR this binds
+  outside a milestone's own timing adds the duty to AGENTS.md and writes this
   procedure into a note, `docs/notes/whole-run-timing.md`
-  ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 21).
+  ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 21); on
+  the plan that is M4's crane-wing equivalence PR. No checkbox in the PR
+  template asks for the timing (owner decision 71).
 - **Exempt.** The study's research galleries: every `senbazuru-material-study`
   mode but `--sequence`.
 
