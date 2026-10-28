@@ -1,9 +1,15 @@
 # 05 — Library additions the runner needs
 
-Written 2026-09-15 against `568dcb6`. Nothing here is implemented. Code links
-are to lines read at that commit. [00](00-overview.md) starts the series;
-[02](02-language-semantics.md) owns what a move *means*; this file owns the
-changes to `src/Senbazuru/` that let a program perform it.
+Written 2026-09-15 against `568dcb6`, when nothing here was implemented. Built
+since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
+`flapStationaryFace`, in #344; and L5's `insideRing`, in #491. `flapPoseAt` and
+`Origami.Route` wait for `flapPoseAt`'s first consumer
+([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
+that commit, except those added on 2026-10-27, in the **Milestone** lines,
+R-05-52 and [Errors](#errors), which are to `4fe19a5`.
+[00](00-overview.md) starts the series; [02](02-language-semantics.md) owns what
+a move *means*; this file owns the changes to `src/Senbazuru/` that let a
+program perform it.
 
 Decisions are cited from [decisions.md](decisions.md), the current decision
 record; where this file and that record disagree, the record wins. The decisions
@@ -134,11 +140,18 @@ Each line is something a runner cannot do with today's exports.
 
 ## Users and scenarios
 
-Users: `Sequence.Run` (every item); `Render.Sequence` (L3, L5,
-[06](06-prd-step-diagrams.md)); the study consumer and animated glTF (L4, L13,
-L15, [07](07-prd-material-consumption.md), [08](08-prd-realistic-rendering.md));
-`senbazuru crease --folded` ([`Cli.hs:870`](../app/Senbazuru/Cli.hs#L870)),
-unchanged except L6's wording.
+Users: `Sequence.Run` (every item); `Render.Sequence` (L3,
+[06](06-prd-step-diagrams.md)); `Render.Steps` (L5, at M3: `motionsAcross`
+for the arrows `render --steps --arrows` infers on a file, and `creasesToCome`
+for `InferFoldLines` (**SKETCH**), fold-here lines inferred only for a
+`stepPageWith` caller that asks for them with a kind, S28 in
+[#642](https://github.com/avalonalex/senbazuru/issues/642); `render --steps`
+itself draws no fold-here lines, and a run's page takes its arrows from move
+records ([06](06-prd-step-diagrams.md)) and, by owner decision 74, its
+fold-here lines from their hinges); the study consumer and animated glTF
+(L4, L13, L15, [07](07-prd-material-consumption.md),
+[08](08-prd-realistic-rendering.md)); `senbazuru crease --folded`
+([`Cli.hs:870`](../app/Senbazuru/Cli.hs#L870)), unchanged except L6's wording.
 
 The scenario using most of them is "fold the top flap down along this line" on a
 *flat state*, every face in one plane
@@ -206,8 +219,12 @@ M or V at angle 0 on edges 8–11 of the key frame and 9, 11 of frame 1.
 - **R-05-5.** τ = 1e-10°, equal to both literals, so migrating either later
   changes no comparison ([D4](decisions.md#d4-written-frames-follow-the-state-rule),
   [C29](decisions.md#changes-since-draft-v2)).
-- Total, so `NaN` becomes `F`. The writer refuses non-finite angles first
-  ([#58](https://github.com/avalonalex/senbazuru/issues/58) item 3).
+- Total, so `NaN` becomes `F`. This line planned that the writer refuse
+  non-finite angles first
+  ([#58](https://github.com/avalonalex/senbazuru/issues/58) item 3). Built
+  otherwise: `writtenStates` checks no angle for finiteness, and
+  `encodeFoldFile` refuses a non-finite one as `NotFinite` (#510,
+  [D4](decisions.md#d4-written-frames-follow-the-state-rule)).
 
 **The line that looks wrong.** The writer writes `F` with its angle as *exactly*
 0, even when the working angle was 5e-11 ([02](02-language-semantics.md)). That
@@ -228,6 +245,11 @@ its exact `d > 0` test, agreeing with the rule: it reads 0 and falls back to
 
 **Outputs unchanged.** Nothing existing calls it. Migrating the two literals
 ([01 §4.6](01-architecture.md#46-111)) at τ = 1e-10 is a rename.
+
+**Milestone.** M2, before the writer ([decisions
+§8](decisions.md#8-milestones)). Built in #490, `atRest`
+([`Query.hs:447`](../src/Senbazuru/Fold/Query.hs#L447)), and #509,
+`assignmentAtRest` ([`:462`](../src/Senbazuru/Fold/Query.hs#L462)).
 
 ---
 
@@ -331,7 +353,10 @@ whole model. `CraneWing` reorders for the same reason
 constructions on the flat sheet, and today's `creaseAllAlong` writes such a crease
 at ±180, already folded, with no ids to find it by (see
 [Problem and evidence](#problem-and-evidence)), which leaves `Flap` nothing to
-turn and nothing to name.
+turn and nothing to name. Built in #517: `creaseAllAlongWith`
+([`Creasing.hs:168`](../src/Senbazuru/Fold/Creasing.hs#L168)) and
+`withPlanarFacesTracked`
+([`Crossings.hs:170`](../src/Senbazuru/Fold/Crossings.hs#L170)).
 
 ---
 
@@ -433,7 +458,10 @@ PR keeps it and `quarter-fold-steps.svg` byte-identical and compares
 [C70](decisions.md#changes-since-draft-v2),
 [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages)).
 
-**Milestone.** M2.
+**Milestone.** M2. Built in #523: `isProperRotation` and `fitRigid`
+([`Rigid.hs:292`](../src/Senbazuru/Geometry/Rigid.hs#L292),
+[`:342`](../src/Senbazuru/Geometry/Rigid.hs#L342)) and `wholeModelMotion`
+([`Step.hs:117`](../src/Senbazuru/Origami/Step.hs#L117)).
 
 ---
 
@@ -503,9 +531,11 @@ through it (`checked-flap`, `checked-flat-flap`, `checked-stack-flap`,
 `checked-aligned-stack`, `checked-blintz`, `checked-helmet`, `checked-crane`)
 do not move.
 
-**Milestone.** `flapStationaryFace` and `Origami.Route` at M2, for records
-([decisions §8](decisions.md#8-milestones)); `flapPoseAt` with its first consumer,
-M6 or M7b.
+**Milestone.** `flapStationaryFace` at M2, for records
+([decisions §8](decisions.md#8-milestones)), built in #344
+([`Flap.hs:423`](../src/Senbazuru/Origami/Flap.hs#L423)); `flapPoseAt` with its
+first consumer, M6 or M7b, and `Origami.Route` with it, since nothing else makes
+a `RoutePose` ([C90](decisions.md#changes-since-draft-v2)).
 
 ---
 
@@ -1230,7 +1260,12 @@ and #368.
 over the same preparation, and no existing output reaches it.
 
 **Milestone.** M2 ([decisions §8](decisions.md#8-milestones)): records derive `Eq`
-from their first PR, and M2's runner turns hinges.
+from their first PR, and M2's runner turns hinges. Built before the runner, in
+#344 and #368; #532 then gave `CheckedFlap` a third field, the refolds made
+preparing and checking it, which `Eq` compares too
+([`Flap.hs:134`](../src/Senbazuru/Origami/Flap.hs#L134)). The runner turns
+hinges through `prepareFlapToward`
+([`Run.hs:694`](../src/Senbazuru/Sequence/Run.hs#L694)).
 
 ---
 
@@ -1311,7 +1346,7 @@ from the same pass.
 
 ### L16. Fan counts
 
-**Module.** `Origami.Visible`, beside L9.
+**Module.** `Origami.Visible`, where L9 goes at M4.
 
 ```haskell
 -- SKETCH
@@ -1323,7 +1358,9 @@ each vertex of a flat figure toward the page's lower left once for each sheet
 lying over it, the *fan count*
 ([glossary-additions](glossary-additions.md#step-pages); owner decision 65). The
 count is a fact about the folded state and the side it is seen from, not about a
-page, so it lives here, where L9 counts the faces over a point. (08's lifted GLB
+page, so it lives here, where L9 is to count the faces over a point. L9 is M4
+work, so at M3 neither that count nor its `CoverError` exists, and L16, which
+comes first, defines the `CoverError` it returns (R-05-51). (08's lifted GLB
 does not use it; [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack)
 says why.) It is not the [layer number](../docs/glossary.md#origami), for L9's
 reason: on the crane that chain is 31 where no point holds more than 24 sheets.
@@ -1344,6 +1381,9 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 - **R-05-52.** Each stretch `formSheetEdges` gives also names the face edge it
   lies along, by its two vertex ids, and where along that edge it starts and ends.
   So 06 R-06-27 moves a stretch with its face without matching edges by tolerance.
+  `formSheetEdges` has a second producer, `Render.Shadows.liftForm`
+  ([`Shadows.hs:175`](../src/Senbazuru/Render/Shadows.hs#L175)), which must pass
+  the new fields through.
 
 **Acceptance.**
 
@@ -1353,20 +1393,25 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 | Removing one order between overlapping faces at a vertex gives `UnorderedCover` | a missing order reads as "neither nearer" |
 | On the helmet's last state, every stretch's named edge holds both its ends within `sheetHair` | a stretch names its face but not the edge |
 
-**Outputs unchanged.** `nearness`, `visibleForm` and `orderedCover` keep their
-answers; `formSheetEdges`' stretches gain fields and keep their ends.
+**Outputs unchanged.** `nearness` and `visibleForm` keep their answers
+(`orderedCover` is L9's, at M4); `formSheetEdges`' stretches gain fields and
+keep their ends, through `liftForm` too.
 
 **Milestone.** M3, before L9, which shares its point cover at M4.
 
 ## Errors
 
 Messages are **SKETCH**, pinned by a test when each lands. Ids in the new
-messages are written "(internal face 99)", as [D20](decisions.md#d20-errors) asks,
-because the runner wraps these errors and never rewords them, so the library's
-words are what a sequence author reads. **Existing library messages keep their
-words in v1**, L6's included, so `FlapError` ids reach authors bare: changing them
-would move sentences pinned by specs and quoted in docs, and is a follow-up issue
-([D20](decisions.md#d20-errors), [C67](decisions.md#changes-since-draft-v2)).
+messages are written "(internal face 99)", as [D20](decisions.md#d20-errors)
+asks, because the runner wraps these errors and never rewords them, so the
+library's words are what a sequence author reads. L5's are the exception: at M3
+they reach someone running `render --steps` on a file, whose ids are the file's
+own, so they print bare, as `FoldError`'s messages do
+([`Query.hs:243`](../src/Senbazuru/Fold/Query.hs#L243)). **Existing library
+messages keep their words in v1**, L6's included, so `FlapError` ids reach
+authors bare: changing them would move sentences pinned by specs and quoted in
+docs, and is a follow-up issue ([D20](decisions.md#d20-errors),
+[C67](decisions.md#changes-since-draft-v2)).
 
 | Type or constructor | Module | Example message |
 | --- | --- | --- |
@@ -1380,7 +1425,7 @@ would move sentences pinned by specs and quoted in docs, and is a follow-up issu
 | `SelectionError` | `Origami.ThroughLayers` | per the research refusal list |
 | `CoverError` (3) | `Origami.Visible` | "(internal faces 1 and 2) overlap at (0.75, 0.25) with no layer order between them" |
 | `RelationOnOneFace`, `RelationNotOverlapping`, `RelationsContradict` | `Origami.Stacking` | "(internal faces 10 and 27) do not overlap, so no layer order relates them" |
-| `MaterialCoordinatesMissing`, `VerticesNotAPrefix`, `AddedVertexOffPaper` | `Fold.Query` (`FoldError`) | "(internal vertex 7) of the later frame lies on no edge and in no face of the earlier one" |
+| `MaterialCoordinatesMissing`, `VerticesNotAPrefix`, `AddedVertexOffPaper` | `Fold.Query` (`FoldError`) | "vertex 7 of the later frame lies on no edge and in no face of the earlier one" |
 | `MacroError` | `Origami.Macro` | "parameter 181 is outside the checked range 0 to 180" |
 | `FlapMovingNotFlat f s` | `Origami.Flap` | "(internal face 3), which moves beside the hinge, does not lie flat, and a turn towards +z or -z is read only from moving faces that do: its corners span 0.500000 in z" |
 | `FlapMovesBothWays a b` | `Origami.Flap` | "(internal faces 5 and 0) both move beside the hinge but lie on opposite sides of its line, so one turn would set one off towards +z and the other towards -z, and which way to turn cannot be read" |

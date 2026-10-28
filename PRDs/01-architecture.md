@@ -87,19 +87,21 @@ module imports a `study/` module is a `grep` of `src/` for each
    (§2.3).
 3. **Only `Sequence.Material` imports `Material.*`**, so a sequence that settles
    nothing needs no solver.
-4. **Renderers see two `Sequence` modules, `Sequence.Record` and `Sequence.Error`**
-   ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). A renderer
-   drawing a run needs the run and the type of its refusals, and neither module
-   imports a parser, a checker or the runner. So `Run` is defined in
-   `Sequence.Record`: [06](06-prd-step-diagrams.md) R-06-20's
-   `Render.Sequence.stepNotes :: Run -> Either WriteProblem [(Frame, StepNote)]`
-   needs it, and `Sequence.Record` cannot import `Sequence.Run`, which imports
-   `Sequence.Record`. `Run` holds what a reader of a run needs: the start state,
-   every record, each step's outcome, the closing caption and the stop, if any. It
-   does not hold the runner's abstract
-   [`FoldState`](glossary-additions.md#running-a-sequence): nothing that reads a
-   run needs the working pattern, and a renderer able to reach it could come to
-   depend on it.
+4. **Renderers see two `Sequence` modules, `Sequence.Record` and
+   `Sequence.Error`**
+   ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). A
+   renderer drawing a run needs the run and the type of its refusals, and
+   neither module imports a parser, a checker or the runner. So `Run` is defined
+   in `Sequence.Record`: [06](06-prd-step-diagrams.md) R-06-20's
+   `Render.Sequence.stepNotes :: Run -> Either SequenceError [(Frame,
+   StepNote)]` (**SKETCH**; it shares `writtenStates`' refusals,
+   [C77](decisions.md#changes-since-draft-v2)) needs it, and `Sequence.Record`
+   cannot import `Sequence.Run`, which imports `Sequence.Record`. `Run` holds
+   what a reader of a run needs: the start state, every record, each step's
+   outcome, the closing caption and the stop, if any. It does not hold the
+   runner's abstract [`FoldState`](glossary-additions.md#running-a-sequence):
+   nothing that reads a run needs the working pattern, and a renderer able to
+   reach it could come to depend on it.
 5. **I/O stays in `Fold.Load`** ([architecture.md:182-185](../docs/architecture.md)).
    `readSequenceText :: FilePath -> IO (Either LoadError Text)` imports no
    `Sequence` module. `app/` loads the source and every `sheet` and `checkpoint`
@@ -121,16 +123,19 @@ imports one on a higher level.
 | 1 | `Sequence.Syntax` | the tree, spans, `canonical`, `stripSpans`, `sourceFiles` |
 | 2 | `Sequence.Error` | `SequenceError` and every sequence-level problem type with its `Explain` instance; `RefusalKind`; `sourceLocation`, `excerpt` |
 | 3 | `Sequence.Build`, `Sequence.Parse`, `Sequence.Pretty`, `Sequence.Check`, `Sequence.Elaborate` | the two front ends and the static passes |
-| 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord` with `hingeTurn` and `recordAngles`, `MaterialPoint` and `MaterialSegment` (until an error at level 2 needs them, [C75](decisions.md#changes-since-draft-v2)), `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose` |
+| 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord` with `hingeTurn` and `recordAngles`, `MaterialPoint` and `MaterialSegment` (until an error at level 2 needs them, [C75](decisions.md#changes-since-draft-v2)), `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose`. `recordPoseAt` and `RoutePose` wait for `Origami.Route`, which lands with `flapPoseAt` ([C90](decisions.md#changes-since-draft-v2)) |
 | 5 | `Sequence.Run` | `FoldState`, `sheetState`, `RunSettings`, `runSequence` |
 | 6 | `Sequence.Write`, `Sequence.RunPlan`, `Sequence.Material` | the file writer; the `run` verb's flag rules; the settle consumer, in the study until M8 |
 
 `SequenceError` sits at level 2, below both front ends, because `parseSequence`,
-`checkSequence` and `runSequence` all return it.
-`writtenStates :: Run -> Either WriteProblem [WrittenState]` applies the
-[state rule](glossary-additions.md#the-fold-format) and each state's display once.
-`Sequence.Write` and `Render.Sequence.stepNotes` both call it, so the page draws
-exactly the frames the file holds by construction, not because a test checks it.
+`checkSequence` and `runSequence` all return it. `writtenStates :: Run -> Either
+SequenceError [WrittenState]`
+([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713)) applies the [state
+rule](glossary-additions.md#the-fold-format) and each state's display once, and
+refuses a state it cannot write as `WriteRefused`, with the state's number and a
+`WriteProblem` ([C77](decisions.md#changes-since-draft-v2)). `Sequence.Write`
+and `Render.Sequence.stepNotes` both call it, so the page draws exactly the
+frames the file holds by construction, not because a test checks it.
 
 ## 2. What crosses the boundaries
 
@@ -164,7 +169,7 @@ material consumer. [D14](decisions.md#d14-material-consumption) decides the reco
 | **Unpresented.** `recordBefore` and `recordAfter` are raw `foldFrameWith` geometry of the [working pattern](glossary-additions.md#running-a-sequence), with the [anchor](glossary-additions.md#running-a-sequence)'s face unmoved. The record keeps [presentation](glossary-additions.md#running-a-sequence) and [anchor placement](glossary-additions.md#running-a-sequence) as separate (before, after) pairs, `recordPresentation` and `recordPlacement`. `displayBefore` and `displayAfter` compose them, placement first and then presentation, and only writers and renderers apply them. | The study reads each `faceOrders` entry, which of two overlapping faces lies above the other, by whether its reference face's normal points to +z ([`CraneSpread.hs:137`](../study/fold-material/CraneSpread.hs#L137)), and solves contact along +z ([`:172`](../study/fold-material/CraneSpread.hs#L172)). A record presented turned over would flip every normal's z, so every above-or-below would be read backwards. The display is kept as two pairs because a `turn over` changes presentation between its before and after, a re-anchoring fold changes placement, and animation needs the two as separate nodes; one display field could not say which display a turn-over's before-state had ([D14](decisions.md#d14-material-consumption), [C46](decisions.md#changes-since-draft-v2)). |
 | **One numbering.** Every id is in `recordBefore`'s numbering, which `recordAfter` shares (faces compared as `map sort facesVertices`, [`Surface.hs:207`](../src/Senbazuru/Origami/Surface.hs#L207)). For a fold that creases, `recordBefore` is the cut, creased, unturned state. A flap turn never re-cuts; a move kind that re-cuts after moving must be split or record a mapping. | `CraneSpread` refines that state and looks hinge ids up in it ([gap-study-consumption-contract](research/gap-study-consumption-contract.md) "(a) What the study takes from a move today"). |
 | **Nothing stored twice.** Orders and layer requirements are read from the surfaces. | `Surface` holds both ([`Surface.hs:115-123`](../src/Senbazuru/Origami/Surface.hs#L115-L123)). |
-| **Evidence is a value:** one of the [route evidence](glossary-additions.md#assurance) constructors `NoMotion`, `Presented`, `StateOnly`, `Sampled CheckedMacro SampleReport` or `SweptHinge CheckedFlap`. `recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose` gives the model at a pose: `PoseRef` is `PoseBefore`, `PoseAfter` or `PoseOnRoute r`, a `Rational` fraction r of the way along the checked route ([02 §10](02-language-semantics.md#10-assurance)). `RoutePose` holds that pose's angles, surface and face placements; it lives in a new `Origami.Route`, which `Sequence.Record` re-exports, because `Origami.Flap` may not import `Sequence.*` ([05 L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)). `PoseError` is `NoRoute`, or the `FlapError` or `MacroError` of rebuilding a pose; `recordPoseAt` refuses `PoseOnRoute` as `NoRoute` for the first three constructors, which have no checked route ([D10](decisions.md#d10-assurance-as-evidence-values)). | A Boolean gives no pose; `CheckedFlap` is opaque ([`Flap.hs:43-44`](../src/Senbazuru/Origami/Flap.hs#L43-L44)). |
+| **Evidence is a value:** one of the [route evidence](glossary-additions.md#assurance) constructors `NoMotion`, `Presented`, `StateOnly`, `Sampled CheckedMacro SampleReport` or `SweptHinge CheckedFlap`. `recordPoseAt :: MoveRecord -> PoseRef -> Either PoseError RoutePose` gives the model at a pose: `PoseRef` is `PoseBefore`, `PoseAfter` or `PoseOnRoute r`, a `Rational` fraction r of the way along the checked route ([02 §10](02-language-semantics.md#10-assurance)). `RoutePose` holds that pose's angles, surface and face placements; it lives in a new `Origami.Route`, which `Sequence.Record` re-exports, because `Origami.Flap` may not import `Sequence.*` ([05 L4](05-prd-library-additions.md#l4-flapstationaryface-flapposeat-and-routepose)). `PoseError` is `NoRoute`, or the `FlapError` or `MacroError` of rebuilding a pose; `recordPoseAt` refuses `PoseOnRoute` as `NoRoute` for the first three constructors, which have no checked route ([D10](decisions.md#d10-assurance-as-evidence-values)). `recordPoseAt`, `PoseRef`, `PoseError`, `RoutePose` and `Origami.Route` are not built: the module lands with `flapPoseAt`, the only maker of a `RoutePose`, at M6 or M7b ([C90](decisions.md#changes-since-draft-v2)). A pre-crease's arrow, which needs its fold's end, does not wait for them: the `Precrease` record keeps its folded surface behind one accessor (**SKETCH** `recordFoldedPose`, S18c in [#640](https://github.com/avalonalex/senbazuru/issues/640)), the decision record's choice, not the owner's. | A Boolean gives no pose; `CheckedFlap` is opaque ([`Flap.hs:43-44`](../src/Senbazuru/Origami/Flap.hs#L43-L44)). |
 | **Intent survives.** Surfaces handed to the solver keep [intent assignments](glossary-additions.md#the-fold-format); only `Sequence.Write` applies the [state rule](glossary-additions.md#the-fold-format). | A crease about to fold still lies at 0. Written `F`, it would drop out of `surfaceFeatures`, which keeps an `F` edge only at a nonzero angle ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278)), and the bending solver would treat it as a bend inside a panel, not a crease ([`FoldBending.hs:163-174`](../study/fold-material/FoldBending.hs#L163-L174)). |
 
 **Records derive `Eq`** ([D10](decisions.md#d10-assurance-as-evidence-values),
@@ -251,11 +256,19 @@ line styles. That goes against "`Senbazuru.Diagram` must not know what FOLD is"
 exception. The new arrows do not widen it:
 
 - `ArrowPath` gains head and body shapes that know no assignment.
-- `Render.Sequence` gives each arrow its record's kind, such as the move's *sense*
-  (valley or mountain, as the author wrote it), and only `Diagram.Style.arrowFor`
-  ([`Style.hs:364-372`](../src/Senbazuru/Diagram/Style.hs#L364-L372)) turns a kind
-  into a head and a body ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page),
-  [06](06-prd-step-diagrams.md)).
+- `Render.Sequence` gives each arrow its record's kind, such as the move's
+  *sense* (valley or mountain, as the author wrote it), and only
+  `Diagram.Style.arrowFor`
+  ([`Style.hs:364-372`](../src/Senbazuru/Diagram/Style.hs#L364-L372)) turns a
+  kind into a head and a body
+  ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page),
+  [06](06-prd-step-diagrams.md)). The record's `MoveKind`
+  ([`Record.hs:260`](../src/Senbazuru/Sequence/Record.hs#L260)) does not hold
+  that kind: `Turn` covers a fold and its unfold alike, and `Precrease` carries
+  no sense. The sense as written survives only in the move `recordOrigin` keeps,
+  and `Sequence.Record` exports no `Sense`, `PageAxis` or `Turning`; how a
+  renderer reads them is for S17
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) to decide.
 
 `Render.Gltf` still consumes `Origami.Surface`
 ([architecture.md:262-268](../docs/architecture.md)).
@@ -469,7 +482,7 @@ Current: a four-row table (`resolveAssignments`, `foldAnglesOf`,
 | Issue | Current | Replacement |
 | --- | --- | --- |
 | [#36](https://github.com/avalonalex/senbazuru/issues/36) | Done-when 1: a pair "reflecting every vertex through the sheet's plane produces a turn-over arrow". Approach: arrow kind "from the assignment that changed". | "A pair related by one whole-model proper rigid motion is a presentation change: no inferred arrow, and a sequence's `turn over` places a `Symbol`. A reflection is the mirror model." Approach: "Arrow kind comes from the move record; one motion can change a `V` and an `M` crease together (quarter-fold step 2 sets edge 9 to +180 and edge 11 to −180)." |
-| [#94](https://github.com/avalonalex/senbazuru/issues/94) | "`frame_title` and `frame_description` are decoded into `Frame` and nothing reads them"; done-when: the quarter fold "given titles, draws them under the figures", and the single-frame `render --arrows` page "draws the title too". | "The CLI reads `frame_title` for `info`, the page title and the glTF title (`Cli.hs:1095`, `:993`, `:888`), but nothing draws it under a figure. A file cannot say whether its titles name states, as the fixture's "Step 2: folded in half" does, or give instructions, as a written sequence file's do: there a state's `frame_title` is the caption of the step leaving it. So `render --steps` never draws `frame_title`, and every page it draws stays byte-identical, `quarter-fold-steps.svg` included. Captions come from step notes." Done when: "`run -o x.svg` draws each step's caption under the figure of the state the step starts from, and the `closing` caption under the last figure, pinned by a new golden; every tracked golden stays byte-identical. Closes at M3." ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page), [C35](decisions.md#changes-since-draft-v2)) |
+| [#94](https://github.com/avalonalex/senbazuru/issues/94) | "`frame_title` and `frame_description` are decoded into `Frame` and nothing reads them"; approach: "Draw `frame_title` under each figure" in a page-unit band, and a title too long for its cell "is truncated with an ellipsis"; done-when: the quarter fold "given titles, draws them under the figures", and the single-frame `render --arrows` page "draws the title too". | "The CLI reads `frame_title` for `info`, a single-frame `render` page's title and the glTF title (`Cli.hs:1150`, `:1048`, `:945`), but nothing draws it under a figure; `render --steps` titles its page with `file_title` (`:1035`). A file cannot say whether its titles name states, as the fixture's "Step 2: folded in half" does, or give instructions, as a written sequence file's do: there a state's `frame_title` is the caption of the step leaving it. So `render --steps` never draws `frame_title`, and every page it draws stays byte-identical, `quarter-fold-steps.svg` included. Captions come from step notes." Approach: the page-unit band goes, since 06 §11 rejects it, and so does the ellipsis, since overflow is owner decision 7, which S1 of #635 asks again; `frame_description` stays unread. Done when: "`run -o x.svg` draws each step's caption under the figure of the state the step starts from, and the `closing` caption under the last figure, pinned by two new goldens in S37 (#643): `blintz-sequence-steps.svg` for step captions, and `quarter-fold-run-steps.svg` for the `closing` caption, which `blintz.foldseq` lacks; every tracked golden stays byte-identical. Closes at M3." ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page), [C35](decisions.md#changes-since-draft-v2)) |
 | [#104](https://github.com/avalonalex/senbazuru/issues/104) | Cites `docs/notes/inflate-outside-draw-inside.md`; done-when 1 asks `render examples/puffed-square.fold --view iso --hide-flat` to draw "the dome's outline"; done-when 3 lets two examples change "except for any edge that is a silhouette". | "Default `render` output is byte-identical; `render examples/puffed-square.fold --view front --hide-flat --lines features` draws the visible boundary and silhouette, as a new golden." A *silhouette* is an edge between a face turned towards the reader and one turned away, of any assignment: the file's 320 edges are 40 `B` and 280 `F` (`jq`), so a rule limited to `J` edges finds none of its 27 candidates from the front. From `--view iso` no face of the file turns away, so done-when 1 cannot be met; from `--view front`, the view of done-when 2, 90 of 200 faces do ([08](08-prd-realistic-rendering.md#104-amended), [D19](decisions.md#d19-realistic-rendering)). The cited note does not exist (`ls`). M7b advances the issue without closing it. |
 | [#114](https://github.com/avalonalex/senbazuru/issues/114) | "Both numbers already exist: `Origami.Layers.layerDepths` and `--thickness`"; the export "lifts each face by its layer number". | "`--thickness` was removed, and face lifting returns only as an asked-for display convention, `--lift` ([08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack), owner decisions 68 and 69; `docs/notes/paper-thickness.md:8`, `docs/architecture.md:144`), and a second bend rounded over a first stretches 200% (`docs/notes/two-bends-need-more-than-radii.md:55`): thickness as geometry is research." Full rewrite at M6. |
 | [#56](https://github.com/avalonalex/senbazuru/issues/56) | Transforms are what `spanningWalk` "computes and currently discards"; step 1, "Expose the per-face `Rigid`s". | "`foldFrameWith` returns them as `foldedPlacements` (`Folding.hs:323`), used by `Flap` and `ThroughLayers`. Keys come from checked routes via `recordPoseAt`, over one node hierarchy per checkpoint interval, on that interval's final cut pattern, with each face's parent and crossing edge taken from `Origami.Folding`'s own walk. Closes at M7b." ([D19](decisions.md#d19-realistic-rendering)) |
@@ -582,8 +595,9 @@ material study's, in `study/fold-material/` until M8
 ### 4.12 `AGENTS.md:229-233`, the `--layer-budget` list
 
 Add `runSequence` to "`creasePatternFrom`, `creasePatternAuto`, `surfaceDiagram`,
-`stepPage`, `renderGlb` and `renderSurfaceGlb`". `stepPageWith` joins the list at
-M3, since its signature also takes a `Budget`.
+`stepPage`, `renderGlb` and `renderSurfaceGlb`". `stepPageWith` and `runPage`
+(**SKETCH**, `Render.Sequence`) join the list at M3, since their signatures also
+take a `Budget`.
 
 ### 4.13 `src/Senbazuru/Origami/Step.hs:30-34`
 
@@ -1163,19 +1177,22 @@ fixture, which writes `M V M M` in every frame, including on creases still at an
 0 [jq]; hence #60's comparison by the state rule and its new golden.
 
 **The page note** sits on the second figure, which draws state 1: this move's
-caption, which is state 1's `frame_title`, and one valley arrow from this record. It
-reads as a valley because flat frames default to a top-down view from the reader's
-side ([`CreasePattern.hs:521-524`](../src/Senbazuru/Render/CreasePattern.hs#L521-L524)).
+caption, which is state 1's `frame_title`, and one valley arrow from this
+record. It reads as a valley because flat frames default to a top-down view from
+the reader's side
+([`CreasePattern.hs:521-524`](../src/Senbazuru/Render/CreasePattern.hs#L521-L524)).
 `Render.Sequence.stepNotes` reads the same three frames from `writtenStates`
-(§1.3), and [06](06-prd-step-diagrams.md#2-from-a-run-to-notes) draws this note's
-arrow as `GivenArrows` (R-06-16): one arrow per connected moving group, from
-`motionsBetween` over the record's before surface under `displayBefore` and its
-after surface under `displayAfter`, with the record's kind
+(§1.3), and [06](06-prd-step-diagrams.md#2-from-a-run-to-notes) draws this
+note's arrow as `GivenArrows` (R-06-16): one arrow per connected moving group,
+from `motionsBetween` over the record's before surface under `displayBefore` and
+its after surface under `displayAfter`, with the record's kind
 ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). There is no
-presentation mark and no crease to come. Both frames share vertex ids and edges, so
-`motionsBetween` applies: vertices 2, 3 and 6 move [jq], in the connected faces F1
-and F2, making one motion and one arrow. The third figure carries the closing
-caption and no arrow.
+presentation mark and no crease to come. Its fold-here line comes from the
+record's hinge instead ([owner decision 74](decisions.md#9-owner-decisions)):
+edges 9 and 11, which in state 1 both lie along (½, ½)–(1, ½) [jq]. Both frames
+share vertex ids and edges, so `motionsBetween` applies: vertices 2, 3 and 6
+move [jq], in the connected faces F1 and F2, making one motion and one arrow.
+The third figure carries the closing caption and no arrow.
 
 ### 5.10 Commands behind the numbers
 

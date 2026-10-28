@@ -339,24 +339,28 @@ Creasing moves no paper, so anchor placement is unchanged, and the record notes 
 move.
 
 *Example* [reasoned, with the areas and vertex means checked by python3 using
-`fractions`; **UNVERIFIED** as runner output]. `sheet square` with no `anchor` line
-has its default anchor at (1/2, 1/2), the centre of its one face. The crane opening
-of [decisions §7](decisions.md#7-examples) has a step `diagonals` whose first move
-creases `[corner south-west, corner north-east]`, through that point, and turns the
-half containing corner south-east. That step creases both of its diagonals in one
-batch (§6.5), so after creasing the sheet is four triangles of area 1/4 meeting at
-(1/2, 1/2). The first move leaves two of them unturned: the west triangle (0, 0),
-(1/2, 1/2), (0, 1), with vertex mean (1/6, 1/2), and the north triangle (0, 1),
-(1/2, 1/2), (1, 1), with vertex mean (1/2, 5/6). The lower one wins, so the anchor
-moves to (1/6, 1/2). **That is not a slip for (1/3, 2/3).** (1/3, 2/3) is the vertex
-mean of the half-square triangle (0, 0), (1, 1), (0, 1), which would be the unturned
-face only if the first diagonal were creased on its own. The second move turns the
-half containing corner south-west, which includes the west triangle, so it re-anchors
-by the rule above. The stationary north and east triangles tie on area, and the
-east one's vertex mean (5/6, 1/2) is lower. Neither §1's source nor
-[09 §2.3](09-testing-and-acceptance.md#23-test-2-authoring-from-sheet-square-m3-and-m4)'s
-authoring test meets this rule: both write `anchor (3/4, 1/4)`, which no crease of
-theirs passes through.
+`fractions`; **UNVERIFIED** as runner output]. `sheet square` with no `anchor`
+line has its default anchor at (1/2, 1/2), the centre of its one face. The crane
+opening of [decisions §7](decisions.md#7-examples) has a step `diagonals` whose
+first move creases `[corner south-west, corner north-east]`, through that point,
+and turns the half containing corner south-east. From M4 that step creases both
+of its diagonals in one batch (§6.5, [owner decision
+77](decisions.md#9-owner-decisions)), so after creasing the sheet is four
+triangles of area 1/4 meeting at (1/2, 1/2). The first move leaves two of them
+unturned: the west triangle (0, 0), (1/2, 1/2), (0, 1), with vertex mean (1/6,
+1/2), and the north triangle (0, 1), (1/2, 1/2), (1, 1), with vertex mean (1/2,
+5/6). The lower one wins, so the anchor moves to (1/6, 1/2). **That is not a
+slip for (1/3, 2/3).** (1/3, 2/3) is the vertex mean of the half-square triangle
+(0, 0), (1, 1), (0, 1), which would be the unturned face only if the first
+diagonal were creased on its own. The second move turns the half containing
+corner south-west, which includes the west triangle, so it re-anchors by the
+rule above. The stationary north and east triangles tie on area, and the east
+one's vertex mean (5/6, 1/2) is lower. Neither §1's source nor [09
+§2.3](09-testing-and-acceptance.md#23-test-2-authoring-from-sheet-square-m3-and-m4)'s
+authoring test meets this rule: both write `anchor (3/4, 1/4)`, which no crease
+of theirs passes through. Until M4 the runner creases move by move, so on a
+plain square it moves the anchor to (1/3, 2/3) and then to (1/2, 5/6)
+([`RunSpec.hs:305-311`](../test/Senbazuru/Sequence/RunSpec.hs#L305-L311)).
 
 ### 2.4 The seven invariants
 
@@ -559,17 +563,41 @@ Worked cases [py, checks [B](#check-b), [S](#check-s), [C](#check-c)]:
 
 ### 4.5 Landmarks: `mark`, `let`, step names
 
-- **`mark A = POINT [in face containing S]`.** POINT is evaluated to a folded
-  position, and the distinct material points of every face there are collected. If
-  more than one is found, the mark is refused (`MarkOnSeveralLayers`) unless S picks
-  exactly one. The chosen material point is pinned and labelled on figures while
-  visible ([06](06-prd-step-diagrams.md)).
+- **`mark A = POINT [in face containing S]`.** A point named on the sheet (a
+  corner, an edge's midpoint, `centre`, `(u, v)`, or a point between two of
+  them, §4.2) names one material point, and the mark pins it. The resolver
+  works each such form out on the sheet
+  ([`Resolve.hs:163-201`](../src/Senbazuru/Sequence/Resolve.hs#L163-L201)), so
+  it says which paper is meant wherever that paper now lies. A point measured
+  where the paper lies now (`meet`, from M4) is only a place, and several
+  layers can lie there. It is taken to its folded position and the distinct
+  material points of every face there are collected, as
+  [D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot)
+  does for any folded position filling a material slot (next bullet). If more
+  than one is found, the mark is refused (`MarkOnSeveralLayers`) unless S picks
+  exactly one. The chosen material point is pinned and labelled on figures
+  while visible ([06](06-prd-step-diagrams.md)). That a sheet form pins its
+  own paper is the decision record's reading of D2, not the owner's
+  ([C126](decisions.md#changes-since-draft-v2)).
 
-  *Example* [jq]. After step `quarter`, `meet edge east edge south` is folded
-  (1, 0), where material vertices 0, 1, 2 and 3 all lie. So
-  `mark A = meet edge east edge south` is refused, listing those four corners. With
-  `in face containing (3/4, 1/4)` it picks face 0, whose only material point there
-  is vertex 1, corner south-east.
+  *Example* [jq], from M4. After step `quarter`, `corner south-east`, vertex 1,
+  still lies at (1, 0), since neither step moves it, and the other three
+  corners have been folded onto it. So `meet edge east edge south` is (1, 0),
+  where material vertices 0, 1, 2 and 3 all lie, and
+  `mark A = meet edge east edge south` is refused, listing those four corners.
+  With `in face containing (3/4, 1/4)` it picks face 0, whose only material
+  point there is vertex 1, corner south-east.
+
+  M3 runs `mark` with the point forms the resolver already evaluates on the
+  sheet ([owner decision 75](decisions.md#9-owner-decisions)), so at M3
+  `mark A = corner south-east` pins vertex 1, corner south-east, and
+  `MarkOnSeveralLayers` has no case. Until S20
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner
+  refuses `mark` as not run yet
+  ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`
+  ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174)), and a mark
+  used as a reference ([`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)),
+  stay not run yet until M4.
 - **A slot needing a material point, filled by a folded position**
   ([D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot)).
   `anchor meet L1 L2` fills a region slot with a point found in current positions.
@@ -927,22 +955,36 @@ A *step* may hold several moves, all drawn on one figure: the state the step
 starts from ([D24](decisions.md#d24-states-figures-and-their-numbers),
 [glossary-additions](glossary-additions.md#words-the-prds-narrow)).
 
-- **Honesty** ([D22](decisions.md#d22-figures-holding-several-moves)). Moves run in
-  order, and each is checked. The step's figure draws the state
-  before its first move, so move *k* is accepted only if the paper it moves is still
-  where that drawing shows it, compared by material identity. In practice none of
-  that paper may have been left somewhere else by moves 1 to *k* − 1. Otherwise
-  the move is refused as `MoveLeavesFigure`, with a hint to start a new `step`.
+- **Honesty** ([D22](decisions.md#d22-figures-holding-several-moves)). Moves run
+  in order, and each is checked. The step's figure draws the state before its
+  first move, so move *k* is accepted only if the paper it moves is still where
+  that drawing shows it, compared by material identity. In practice none of that
+  paper may have been left somewhere else by moves 1 to *k* − 1. Otherwise the
+  move is refused as `MoveLeavesFigure`, with a hint to start a new `step`.
+  Nothing raises it yet: `expect refused` accepts the name
+  ([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)), but it has no
+  constructor until S19
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)), so `expect
+  refused MoveLeavesFigure` cannot be met. What may follow a `turn over` or
+  `rotate` in the same step is pending S1
+  ([#635](https://github.com/avalonalex/senbazuru/issues/635)).
   - A pre-crease is one move here, like any other, and it puts its paper back:
     the crane's two diagonal pre-creases share a figure although their moving
     triangles overlap.
   - All four blintz corners in one step pass.
   - "Fold the corner to the centre, then fold that flap in half" fails.
-- **Batching stays inside one step**
+- **Batching stays inside one step, from M4**
   ([D22](decisions.md#d22-figures-holding-several-moves),
-  [C16](decisions.md#changes-since-draft-v2)). Consecutive moves of one step whose
-  lines resolve on the step's start state share one `creaseAllAlongWith` call,
-  because re-cutting is the cost (AGENTS.md, "A move that changes a pattern").
+  [C16](decisions.md#changes-since-draft-v2); [owner decision
+  77](decisions.md#9-owner-decisions),
+  [#646](https://github.com/avalonalex/senbazuru/issues/646)). Consecutive moves
+  of one step whose lines resolve on the step's start state share one
+  `creaseAllAlongWith` call, because re-cutting is the cost (AGENTS.md, "A move
+  that changes a pattern"). Until M4 the runner creases move by move, one call
+  for each ([`Run.hs:627`](../src/Senbazuru/Sequence/Run.hs#L627),
+  [`:735`](../src/Senbazuru/Sequence/Run.hs#L735)), and refuses a new crease, as
+  not run yet, once any crease of the paper is folded
+  ([`Run.hs:731-733`](../src/Senbazuru/Sequence/Run.hs#L731-L733)).
   - In the crane opening of [decisions §7](decisions.md#7-examples), step
     `diagonals` creases its two diagonals in one batch. Step `midlines` is another
     batch, because the step "Turn over." lies between the two steps.
@@ -1253,8 +1295,10 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
 - **What it leaves behind.** An unchanged state, **no move record and no state**. A
   refusal claims nothing about a route taken, and every consumer of records (page,
   animation, settle) would otherwise have to skip it. Its outcome is kept in the
-  `Run`, on its step, and printed by `--report`; it is not written to the sequence
-  file ([D18](decisions.md#d18-non-goals)).
+  `Run`'s `runExpected`, with its step and move, not in the step's outcome, and
+  printed by `--report`; it is not written to the sequence file
+  ([D18](decisions.md#d18-non-goals),
+  [C96](decisions.md#changes-since-draft-v2)).
 - **A step of nothing else.** A step whose moves are all `expect refused` writes no
   state and is not a figure
   ([D24](decisions.md#d24-states-figures-and-their-numbers)).
@@ -1302,7 +1346,7 @@ which value.
 | `Sampled CheckedMacro SampleReport` | a coupled route checked at sample poses; `CheckedMacro` is opaque |
 | `StateOnly` | end state checked, route not |
 | `Presented` | only presentation changed |
-| `NoMotion` | no paper moved: a move that creases without turning, `anchor P`, or `mark` |
+| `NoMotion` | no paper moved: `anchor P` or `mark`. No move of v1 creases without turning (§6.1) |
 
 - **Weakest** ([D10](decisions.md#d10-assurance-as-evidence-values)). A step's state
   carries the weakest evidence of its moves, in the order
@@ -1360,11 +1404,19 @@ writing what each crease will be at the end of the sequence.
   violation, measured with a prebuilt binary from 2026-09-07.
 
 **Every emitted frame** has explicit `edges_foldAngle` (otherwise the writer
-refuses, as `WriteMissingAngles`, §12), no non-finite number (`WriteNonFiniteAngle`),
-never uses U, and never writes M or V at 0. The material consumer reads intent from
-records, never from written F/M/V ([07](07-prd-material-consumption.md)).
-`Sequence.Record.writtenStates` applies these rules and the displays once, and both
-the writer and the page call it, so the page draws exactly the states the file holds
+refuses, as `WriteMissingAngles`, §12), no non-finite number (`encodeFoldFile`
+refuses one in `vertices_coords` or `edges_foldAngle` as `NotFinite`, #510,
+[`Load.hs:260-267`](../src/Senbazuru/Fold/Load.hs#L260-L267), and the writer one
+in `senbazuru:material_coords`, which the encoder cannot see, as
+`WriteNonFinite`, [C96](decisions.md#changes-since-draft-v2)), never uses U, and
+never writes M or V at 0. The material consumer reads intent from records, never
+from written F/M/V ([07](07-prd-material-consumption.md)).
+`Sequence.Record.writtenStates` applies these rules and the displays once,
+except the non-finite check on positions and angles, which is
+`encodeFoldFile`'s: `writtenStates` checks no angle for finiteness
+([D4](decisions.md#d4-written-frames-follow-the-state-rule),
+[D20](decisions.md#d20-errors)). Both the writer and the page call it, so the
+page draws exactly the states the file holds
 ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)).
 
 **Layout.**
@@ -1405,7 +1457,10 @@ and top-level unknown keys are not copied, a stated omission until #73.
 - A state's `frame_title` is the caption of the next step that writes a state: the
   step *leaving* it. The last state's is `closing`, which the source writes after
   the last step and the tree stores as `hClosing`
-  ([D12](decisions.md#d12-the-text-syntax)). A sample state has no caption.
+  ([D12](decisions.md#d12-the-text-syntax)), or, on a run stopped at
+  `not modelled`, the stopped step's
+  ([`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)). A sample state
+  has no caption.
 - Its `senbazuru:assurance` is the evidence of the step that *produced* it, and is
   absent on state 0. Absent is not empty.
 
@@ -1483,7 +1538,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `UnknownRefusalKind` | `StaticProblem` | an `expect refused` KIND that no refusal of a move has (`refusalKinds`) | KIND |
 | `NestedExpectRefused` | `StaticProblem` | an `expect refused` holding another, directly or inside a `together` ([owner decision 50](decisions.md#9-owner-decisions)) | the inner KIND |
 | `SheetHasNoVertices`, `SheetAlreadyFolded` | `SheetProblem`, in `SheetRefused` | key frame empty; `frameKind` `FoldedForm`, meaning z relief or the `foldedForm` class ([`Query.hs:459-463`](../src/Senbazuru/Fold/Query.hs#L459-L463)) | path; `file_frames` count, or the z span or class |
-| `WriteMissingAngles`, `WriteNonFiniteAngle` | `WriteProblem`, in `WriteRefused` | a state to write without explicit `edges_foldAngle` (§11); a non-finite angle ([05](05-prd-library-additions.md)) | the state; the edge, internal |
+| `WriteMissingAngles`, `WriteNonFinite` | `WriteProblem` ([`Error.hs:710-716`](../src/Senbazuru/Sequence/Error.hs#L710-L716)), in `WriteRefused` | a state to write without explicit `edges_foldAngle` (§11); a non-finite number in `senbazuru:material_coords` ([`Record.hs:788`](../src/Senbazuru/Sequence/Record.hs#L788)). A non-finite angle or coordinate is `encodeFoldFile`'s `NotFinite`, a `SaveError` ([`Load.hs:260-267`](../src/Senbazuru/Fold/Load.hs#L260-L267)) | the state; the edge and angle counts, or where the number is and the number |
 | `NearMiss` | `ResolveProblem` | a typed literal in a position slot, near a vertex but not on it | literal; internal vertex; distance |
 | `VertexMiss`, `TwoVerticesWithin` | `ResolveProblem` | vertex slot: no vertex, or two, within tolerance | nearest vertices; distances |
 | `NotInOneFace` | `ResolveProblem` | region slot on a crease or vertex | the point; face count; where it appears as seen |
@@ -1514,7 +1569,7 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `LineStopsOnTheModel` | `ThroughError` ([`ThroughLayers.hs:155`](../src/Senbazuru/Origami/ThroughLayers.hs#L155)) in `MoveFailure` | a line end inside a face while creasing through layers | the point given, after the flag-leak fix ([05](05-prd-library-additions.md)) |
 | `ReanchorNotFlat` | `MoveFailure` | §2.3 | the face, as a material point |
 | `JoinBroken` | `MoveFailure` | invariant 6 | which quantity differed, and by how much |
-| `MoveLeavesFigure` | `MoveFailure` | §6.5 | the move; a material point; "start a new step" |
+| `MoveLeavesFigure` | `MoveFailure`, from S19 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) | §6.5 | the move; a point of the paper; "start a new step". The point cannot be a `MaterialPoint` while that type lives in `Sequence.Record`, which imports `Sequence.Error` ([`Record.hs:187`](../src/Senbazuru/Sequence/Record.hs#L187), [`:193`](../src/Senbazuru/Sequence/Record.hs#L193)): S19 moves the type below, as [C75](decisions.md#changes-since-draft-v2) plans, or holds a `V2` in sheet lengths, as `ReanchorNotFlat` does ([C96](decisions.md#changes-since-draft-v2)) |
 | `RepeatNotSymmetric`, `CheckpointOutlineDiffers` | `MoveFailure` | §9 | the first differing crease, hinge turn or outline point |
 | `UnfoldChangedSince` | `MoveFailure` | §6.4: a later move changed a crease the unfold would turn back | the crease's material segment |
 | `NotModelled` | `MoveFailure`, reaching the CLI through `runRefusal` from a run that returned `Right` | §9 | the quoted text |

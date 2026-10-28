@@ -344,7 +344,7 @@ value paired with its `Span`.
 | **`fold and unfold`** | `and` is not a sense, so one token decides. It takes no angle, because `FoldAndUnfold` has no field for one. |
 | **A step named like a keyword**, such as `step front` or `step collapse` | Refused: reserved words are never names, even where only a name could appear. So the bird example's steps are `square-base`, `first-petal` and `second-petal`. |
 | **`closing`** | Written after the last step, the order in which the page draws it, though it is stored in `Header` as `hClosing`. |
-| **`expect refused`** | A `Move`, written inside a step before the fold it contrasts with, so both run against one state. It produces no move record and no state; its outcome is kept on its step in the `Run`, and `--report` prints it ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). |
+| **`expect refused`** | A `Move`, written inside a step before the fold it contrasts with, so both run against one state. It produces no move record and no state; its outcome is kept in the `Run`'s `runExpected`, with its step and move, not in the step's outcome, and `--report` prints it ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [C96](decisions.md#changes-since-draft-v2)). |
 | **`midpoint of edge north`**: `MidpointOf Point Point` needs two points, and an edge is not one | **Refinement:** `MidpointOfEdge Compass`. `fraction r along edge S` is refused, because nothing says which end r counts from. |
 | **`checkpoint … { stacking first }`**: a `Checkpoint` holding `[Relation]` cannot say it | **Refinement:** `data StackingSpec = Relations [Relation] \| StackingFirst`, used by both `StartFolded StackingSpec` and `Checkpoint FilePath StackingSpec`. `stacking first` stands alone in its block, so no value mixes the two. |
 | **A step with no caption** | Allowed: `stepCaption :: Maybe Text`, and the printer leaves it out. |
@@ -648,7 +648,7 @@ senbazuru run SOURCE --check
 | Output | Library path |
 | --- | --- |
 | none, or `.fold` | `writeSequence header run`, then `encodeFoldFile` through `writeDocument` ([Cli.hs:897-903](../app/Senbazuru/Cli.hs#L897-L903)). The frames are laid out as [D4](decisions.md#d4-written-frames-follow-the-state-rule) decides and [02 §11](02-language-semantics.md#11-written-frames) walks through: a key frame holding only metadata, then state k as `file_frames[k]` ([D24](decisions.md#d24-states-figures-and-their-numbers)). For the quarter fold, `file_frames` holds state 0, the flat start; state 1, after `half`; and state 2, after `quarter`. So `--frame 2` selects state 1, the state after `half`. |
-| `.svg` | `stepNotes run`, which returns `Either WriteProblem [(Frame, StepNote)]`, then `stepPageWith theme budget grid view` ([06](06-prd-step-diagrams.md)), then `renderSvg`; `app/` turns the plan's view name into a `View`. `stepNotes` and `writeSequence` both read `Sequence.Record.writtenStates`, so the page draws exactly the states the `.fold` holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). The page is titled with the file title, as `render --steps` does ([Cli.hs:980](../app/Senbazuru/Cli.hs#L980)). |
+| `.svg` | `stepNotes run` (**SKETCH**), which returns `Either SequenceError [(Frame, StepNote)]`, sharing `writtenStates`' refusals ([C77](decisions.md#changes-since-draft-v2)), then `stepPageWith theme budget grid view` ([06](06-prd-step-diagrams.md)), then `renderSvg`; `app/` turns the plan's view name into a `View`. `stepNotes` and `writeSequence` both read `Sequence.Record.writtenStates`, so the page draws exactly the states the `.fold` holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). The page is titled with the file title, as `render --steps` does ([Cli.hs:980](../app/Senbazuru/Cli.hs#L980)). |
 | `.glb` | The chosen state, through `renderGlb budget mode title frame` ([Gltf.hs:227](../src/Senbazuru/Render/Gltf.hs#L227)) with `export`'s title rule ([Cli.hs:888](../app/Senbazuru/Cli.hs#L888)). `app/` maps the plan's `GlbScenes` to `VisiblePaper`, or to `CompletePaper` with `--all-layers`, as `export` chooses its mode ([Cli.hs:885](../app/Senbazuru/Cli.hs#L885)). 08's modes add flags later. |
 
 **Flag rules are library functions with their own types.** The CLI is untested, so
@@ -658,12 +658,14 @@ what `run` accepts and how it prints a refusal live in `Sequence.RunPlan`, at le
 [the module layers](decisions.md#2-shape):
 
 ```haskell
--- SKETCH (Senbazuru.Sequence.RunPlan)
+-- Senbazuru.Sequence.RunPlan as built, but for PlanSvg and PageFlags: SKETCH, S23 (#641).
+-- Until then planRun refuses -o x.svg as PageNotYet (RunPlan.hs:173).
 data RunOptions = RunOptions { ... }   -- every flag as given; each is a Maybe or a Bool
-data Plan = PlanCheck | PlanFold (Maybe FilePath) Budget FileMeta
+data Plan = PlanCheck | PlanFold (Maybe FilePath) Budget FileHeader   -- Sequence.Write's
           | PlanSvg FilePath Budget PageFlags | PlanGlb FilePath Budget (Maybe Int) GlbScenes
 data PageFlags = PageFlags { flagColumns :: Int, flagViewName :: Maybe Text
-                           , flagWidth :: Double, flagHeight :: Double }
+                           , flagWidth :: Double, flagHeight :: Double
+                           , flagFan :: Bool }   -- False for --no-fan (R-04-27, C121; S40, #644)
 data GlbScenes = GlbVisibleAndComplete | GlbCompleteOnly   -- app/ maps it to ExportMode
 planRun :: RunOptions -> Either RunOptionError Plan       -- R-04-22, 23, 27; --frame 0
 chooseState :: Maybe Int -> Int -> Either RunOptionError Int   -- state N - 1 for --frame N, checked against the count
@@ -722,7 +724,9 @@ Choices that could look arbitrary:
   at `--frame N`.** Both call `renderGlb` on the same frame with the same title rule.
 - **`--report` goes to stderr**, so it composes with FOLD on stdout. Under a
   heading per move it lists one fact per line. An `expect refused` move has no
-  record, so its line comes from its step's outcome in the `Run`:
+  record, so its line comes from the `Run`'s `runExpected`, which holds each
+  expected refusal with its step, move and kind, not from the step's outcome
+  ([C96](decisions.md#changes-since-draft-v2)):
 
   | Report line | Where it comes from |
   | --- | --- |
@@ -732,7 +736,7 @@ Choices that could look arbitrary:
   | Re-anchors: where the paper held still changes | `recordAnchor` ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)) |
   | Stacking choice | `recordStacking` ([D11](decisions.md#d11-stacking-choices-are-relations)) |
   | Work counts | `recordCost` |
-  | An expected refusal: the kind asked for and the kind raised | the step's outcome in `runSteps` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
+  | An expected refusal: the kind asked for and the kind raised | `runExpected`, with its step and move ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [C96](decisions.md#changes-since-draft-v2)) |
 
   If a `material` block gives a thickness, the report says it is stored but not
   used, because thickness is not modelled as geometry
