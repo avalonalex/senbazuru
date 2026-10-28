@@ -69,6 +69,15 @@ Both printed nothing on 2026-09-15 at `568dcb6`. They are
 changed files, compares with the working tree (where a new golden not yet
 `git add`ed is invisible), and shows commits `main` gained since the branch.
 
+The two commands read only `test/golden/`, and two goldens lie outside it.
+`goldenFoldFile` compares the blintz run's written file with
+`examples/blintz-sequence.fold`
+([`WriteSpec.hs:119`](../test/Senbazuru/Sequence/WriteSpec.hs#L119)), and the
+study's bird sequence with `examples/bird-base-sequence.fold`
+([`BirdSequenceSpec.hs:43`](../test/BirdSequenceSpec.hs#L43)). The same two
+commands with the pathspec `'examples/*-sequence.fold'` in place of
+`test/golden/` list a change to either.
+
 | A golden change that is… | Caught by |
 | --- | --- |
 | not accepted | `stack test`: `goldenText`/`goldenBytes` ([`Golden.hs:38`](../test/Test/Golden.hs#L38), [`:83`](../test/Test/Golden.hs#L83)) write `X.actual.svg`/`.glb`, which git ignores ([`.gitignore:10-11`](../.gitignore#L10-L11)), and name the first difference |
@@ -91,11 +100,13 @@ reader's side) makes `Origami.Step` treat a whole-model rigid motion as a
 *presentation change*, which gets no arrow
 ([05 L3](05-prd-library-additions.md#l3-fitrigid-proper-rotations-and-the-whole-model-classification)).
 Its acceptance: `render --steps --arrows` is byte-identical on every multi-frame
-file in `examples/`. There are two (§11 command 1):
+file in `examples/`. There were two at `568dcb6` (§11 command 1), and #512
+added a third, M2's `blintz-sequence.fold`:
 
 | File | `file_frames` | States | Drawn with arrows by a golden today? |
 | --- | ---: | ---: | --- |
 | `bird-base-sequence.fold` | 16 | 16: its key frame has no vertices | no: its goldens pass `False` ([`BirdSequenceSpec.hs:79`](../test/BirdSequenceSpec.hs#L79)) |
+| `blintz-sequence.fold` | 6 | 6: its key frame has no vertices | no: S2 ([#636](https://github.com/avalonalex/senbazuru/issues/636)) pins it, as `blintz-sequence-arrows.svg` (**SKETCH** name) |
 | `quarter-fold-steps.fold` | 2 | 3: its key frame is the first state | yes: `quarter-fold-steps.svg` ([`SvgSpec.hs:392`](../test/Senbazuru/Render/SvgSpec.hs#L392)), from `test/fixtures/quarter-fold-steps.fold`, identical to the `examples/` copy by `cmp` |
 
 So the check has three parts:
@@ -112,7 +123,11 @@ So the check has three parts:
    from a worktree at the merge base and from the branch, then `cmp`, for every
    multi-frame file tracked at the merge base. (Not run for this PRD: it needs
    05 L3's code, which is not written yet.)
-3. A multi-frame file added later has no "before"; its own golden pins it (E7).
+3. A multi-frame file added later has no "before", so a golden of its own must
+   pin its `render --steps --arrows` page. E7 does not: it pins the run's page,
+   drawn from step notes. For `blintz-sequence.fold`, S2
+   ([#636](https://github.com/avalonalex/senbazuru/issues/636)) adds that
+   golden.
 
 05 L3's Python pre-check found no consecutive pair of states in either file (0 of
 15, 0 of 2) that keeps every distance while something moves, so none *can*
@@ -273,29 +288,41 @@ T1–T2 true on all three.
 merged: the later of the two ([D16](decisions.md#d16-testing-and-acceptance),
 [decisions §8](decisions.md#8-milestones),
 [C49](decisions.md#changes-since-draft-v2)). From a bare square, step 2 creases
-both layers of a flat-folded state, which needs `creaseLayersThrough`
-([05 L8](05-prd-library-additions.md#l8-creaselayersthrough), milestone M4); the
-page needs `motionsAcross`
-([05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test),
-milestone M3). [#60](https://github.com/avalonalex/senbazuru/issues/60) closes in
-that PR, M4's last.
+both layers of a flat-folded state, which needs `creaseLayersThrough` ([05
+L8](05-prd-library-additions.md#l8-creaselayersthrough), milestone M4); the page
+needs M3. Drawn as test 1's is, by `stepPage` over the written frames, it needs
+`motionsAcross` ([05
+L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test));
+drawn from the run's step notes, it takes its arrows from the move records
+instead ([06](06-prd-step-diagrams.md)).
+[#60](https://github.com/avalonalex/senbazuru/issues/60) closes in that PR, M4's
+last.
 
 ## 3. End to end: E1–E10 on the blintz
 
-The default-CI end-to-end test runs [00](00-overview.md#the-problem-in-one-example)'s
-blintz: four corners folded behind to the centre, then the first reopened. Every
-move turns about existing creases 8–11, the four lines cutting off the corners,
-(½, 0)–(1, ½) round to (0, ½)–(½, 0) (§11 command 5). Nothing creases through
-layers. Creasing through layers maps a crease's folded position back to material
-coordinates through each face's rotation (`applyRigid (inverse placement)`), which
-puts `cos` and `sin` bits into the material coordinates the GLB's JSON stores raw
+The default-CI end-to-end test runs
+[00](00-overview.md#the-problem-in-one-example)'s blintz: four corners folded
+behind to the centre, then the first reopened. Every move turns about existing
+creases 8–11, the four lines cutting off the corners, (½, 0)–(1, ½) round to (0,
+½)–(½, 0) (§11 command 5). Nothing creases through layers. Creasing through
+layers maps a crease's folded position back to material coordinates through each
+face's rotation (`applyRigid (inverse placement)`), which puts `cos` and `sin`
+bits into the material coordinates the GLB's JSON stores raw
 ([gap-sequence-cost-and-test-budget](research/gap-sequence-cost-and-test-budget.md)
-finding 15); the blintz's stay the source's exact numbers (§8). Files (**SKETCH**
-names): the source `blintz.foldseq` at the repository root, where 00 saves it; its
-written `examples/blintz-sequence.fold`, with provenance "generated by senbazuru"
-in `examples/README.md`;
-`test/golden/blintz-sequence-steps.svg` and `blintz-sequence-final.glb`. The run
-is built once in `beforeAll` (§6.3). Corner direction is owner decision 8.
+finding 15); the blintz's stay the source's exact numbers (§8). Files
+(**SKETCH** names): the source `blintz.foldseq` at the repository root, where 00
+saves it; its written `examples/blintz-sequence.fold`, with provenance
+"generated by senbazuru" in `examples/README.md`;
+`test/golden/blintz-sequence-steps.svg`, E7's page, drawn unfanned with
+`defaultTheme`, as `--no-fan` (**SKETCH**) draws it (the decision record's
+choice, not the owner's, [C126](decisions.md#changes-since-draft-v2)), and
+`blintz-sequence-final.glb`. The run is not built once: `BlintzRunSpec`,
+`RecordSpec` and `WriteSpec` each build it in `runIO`
+([`BlintzRunSpec.hs:56`](../test/Senbazuru/Sequence/BlintzRunSpec.hs#L56)), as
+every run spec builds its fixtures, where §6.3 asks for `beforeAll`
+([C98](decisions.md#changes-since-draft-v2);
+[#547](https://github.com/avalonalex/senbazuru/issues/547) is open). Corner
+direction is owner decision 8.
 
 **Why the source is not in `examples/`.** A `sheet` path is relative to the
 source's own directory ([D13](decisions.md#d13-the-run-verb-and-io),

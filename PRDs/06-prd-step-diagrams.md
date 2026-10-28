@@ -112,7 +112,7 @@ down therefore records a fold the viewer sees as a valley as a mountain.
 | --- | --- | --- |
 | Mountain versus valley arrow | The second fold (figures 2 → 3 above, top half down) is one motion, yet edge 9 (`V`) goes 0 → +180 **and** edge 11 (`M`) goes 0 → −180 (`jq`). Both are one valley fold seen from above. Edge 11 ending at −180 under a valley fold looks like a typo and is not: the faces it joins, 2 and 3, were turned by the first fold and lie upside down (signed areas −0.25 in state 1, the fixture's `file_frames[0]`: their corners run clockwise seen from above, so they show their backs; `python3`). "Kind from the assignment that changed" ([#36](https://github.com/avalonalex/senbazuru/issues/36)) gives both answers. | [gap-step-annotation-channel](research/gap-step-annotation-channel.md) "B. What the fixture and goldens show", finding 10 |
 | Fold and unfold (*precrease*, [glossary](glossary-additions.md#origami)) | Positions end where they started, so no motion is found | [`Step.hs:137-142`](../src/Senbazuru/Origami/Step.hs#L137-L142); research finding 2 |
-| Turn over ([glossary](glossary-additions.md#origami)) | [#95](https://github.com/avalonalex/senbazuru/issues/95)'s half turn about x = 0 moves figure 3 from x∈[0.5, 1] to x∈[−1, −0.5], doubling the page's shared *extent* (the model region the page shows, [glossary](../docs/glossary.md#this-project)) and halving every figure. About the box centre, inference still draws a spurious arrow of up to 0.0975 model units on the bird sequence. | research "C. Turning over and the single camera", findings 12–13 (`python3`) |
+| Turn over ([glossary](glossary-additions.md#origami)) | [#95](https://github.com/avalonalex/senbazuru/issues/95)'s half turn about x = 0 moves figure 3 from x∈[0.5, 1] to x∈[−1, −0.5], doubling the page's shared *extent* (the model region the page shows, [glossary](../docs/glossary.md#this-project)) and halving every figure. About the box centre, inference drew a spurious arrow of up to 0.0975 model units on the bird sequence until 05 L3 ([#523](https://github.com/avalonalex/senbazuru/issues/523)): `motionsBetween` now finds no motion between two frames that one proper rigid motion maps onto each other ([`Step.hs:102-109`](../src/Senbazuru/Origami/Step.hs#L102-L109)), so inference draws nothing for a turn-over, neither an arrow nor a loop. | research "C. Turning over and the single camera", findings 12–13 (`python3`) |
 | A crease graph that grows | `motionsBetween` refuses frames whose `edges_vertices` differ ([`Step.hs:94-96`](../src/Senbazuru/Origami/Step.hs#L94-L96)). *Backfilling* (every frame carrying the final graph) shows creases too early: the golden's figure 1 draws y = 0.5, the **second** fold, half valley-dashed (`M 69.375 100 L 128.75 100`, edge 9) and half mountain (edge 11). | research finding 9 |
 | Caption | `frame_title` names states: "Step 1: the flat sheet", "Step 2: folded in half", "Step 3: folded in half again" (`jq`). An instruction belongs to the figure **before** the fold ([`Step.hs:17-21`](../src/Senbazuru/Origami/Step.hs#L17-L21)). | research finding 11 |
 | Several instructions, one figure | "Fold and unfold both diagonals" is one figure; a *step* holds several *moves* ([glossary](glossary-additions.md#words-the-prds-narrow)) | [D22](decisions.md#d22-figures-holding-several-moves), [02 §6.5](02-language-semantics.md#65-figures-holding-several-moves) |
@@ -135,12 +135,28 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
 
 (The research note's list omits `FlapGallery.hs:92`.)
 
+At `4fe19a5` the same grep again leaves 23 call lines in 15 files, but not the
+same 15. `BlintzGallery` and `HelmetGallery` no longer call `stepPage`:
+`SequenceGallery`'s `pageSvg` draws both pages, with arrows
+([`SequenceGallery.hs:150`](../study/fold-material/SequenceGallery.hs#L150)),
+and `BlintzRunSpec` and `HelmetRunSpec` draw `checked-blintz.svg` and
+`checked-helmet.svg` through it. The other new line is `WriteSpec`'s page,
+also with arrows
+([`WriteSpec.hs:126`](../test/Senbazuru/Sequence/WriteSpec.hs#L126)). Some of
+the table's other lines have moved since `568dcb6`; they are left as measured
+then.
+
 ## Goals
 
 1. A page drawn from a sequence reads like a book: captions, arrows of the right
-   kind per move, [fold-here lines](glossary-additions.md#step-pages) (the creases
-   a move is about to make, drawn on the figure before it), turn-over, rotate and
-   repeat marks.
+   kind per move, [fold-here lines](glossary-additions.md#step-pages) (the line
+   a move is about to fold along, drawn on the figure before it), turn-over,
+   rotate and repeat marks. On a page drawn from a run, the fold-here lines are
+   every fold's and pre-crease's hinge (`recordHinge`), whether or not the paper
+   is already creased there: the blintz run's sheet is creased along every fold
+   it makes, so its six written states all have 12 edges. Inference on
+   `render --steps` takes them from `creasesToCome` (05 L5; owner decision 74,
+   [decisions §9](decisions.md#9-owner-decisions)).
 2. Kinds, lines and marks come from move records, never from guessing at frames.
 3. `render --steps`, every gallery and every tracked golden stay byte-identical.
 4. A view flag changes how a step is drawn, never what it means.
@@ -153,7 +169,11 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
 
 - Persisting notes in FOLD (until [#73](https://github.com/avalonalex/senbazuru/issues/73); [D18](decisions.md#d18-non-goals), [00](00-overview.md#non-goals)); `render --steps` drawing `frame_title` ([§9](#9-frame_title-and-assurance-point-opposite-ways)).
 - Drawing an `expect refused` outcome: it produces no record and no state, and `run --report` prints it ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)).
-- Font metrics, wrapping or truncation (owner decision 7, [decisions §9](decisions.md#9-owner-decisions), [10 §6](10-roadmap-risks-questions.md#6-owner-decisions)); repeat leaders crossing cells.
+- Font metrics, wrapping or truncation (owner decision 7, pending S1
+  ([#635](https://github.com/avalonalex/senbazuru/issues/635)); [decisions
+  §9](decisions.md#9-owner-decisions), [10
+  §6](10-roadmap-risks-questions.md#6-owner-decisions)); repeat leaders crossing
+  cells.
 - Drawing x-ray lines ([#48](https://github.com/avalonalex/senbazuru/issues/48)) or cut-aways ([#49](https://github.com/avalonalex/senbazuru/issues/49)); the note only carries their input.
 - Settled illustrations on step pages ([D14](decisions.md#d14-material-consumption), [07](07-prd-material-consumption.md)); line drawing of bent surfaces ([08](08-prd-realistic-rendering.md)).
 
@@ -189,11 +209,18 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
   arrows))`, `noteFor True = inferNote`, `noteFor False = silentNote`. One
   implementation; none of its call lines is edited.
 - **R-06-3.** `StepError` is unchanged
-  ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)), so the CLI's match
-  at [`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977) compiles
+  ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)), so the CLI's
+  match at [`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977) compiles
   ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). Every note is
-  drawable; the only new failures are `motionsAcross`'s and `creasesToCome`'s
-  `FoldError` constructors ([05](05-prd-library-additions.md)).
+  drawable. The new failures are not only `motionsAcross`'s and
+  `creasesToCome`'s `FoldError` constructors
+  ([05](05-prd-library-additions.md)): a page drawn from a run also calls
+  `motionsBetween` (R-06-16), and reading a frame's material through
+  `surfaceFromFrame` fails with a `SurfaceError`
+  ([`Surface.hs:125`](../src/Senbazuru/Origami/Surface.hs#L125)), which no
+  `FoldError` can carry: `Origami.Surface` imports `Fold.Query`, so `Fold.Query`
+  cannot import it. How a run's page reports them is
+  [#641](https://github.com/avalonalex/senbazuru/issues/641)'s to settle.
 - **R-06-4.** A presentation mark places a `Symbol` and suppresses inference on that
   pair only. `stepPageWith` never transforms a coordinate: frames arrive presented.
 
@@ -208,12 +235,30 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
   model-space anchor. `shapePoints` returns only the anchor; `mapShapePoints`
   moves only the anchor.
 - **R-06-7.** The PR adding `Symbol` updates by hand the wildcard matchers the
-  compiler cannot flag: [`LayoutSpec.hs:32-35`](../test/Senbazuru/Diagram/LayoutSpec.hs#L32-L35),
+  compiler cannot flag:
+  [`LayoutSpec.hs:32-35`](../test/Senbazuru/Diagram/LayoutSpec.hs#L32-L35),
   [`:42-44`](../test/Senbazuru/Diagram/LayoutSpec.hs#L42-L44),
   [`CreasePatternSpec.hs:394`](../test/Senbazuru/Render/CreasePatternSpec.hs#L394).
   The PR adding `Fanned` (R-06-28) does the same for it, and for `unwrap`
   ([`CreasePatternSpec.hs:124-126`](../test/Senbazuru/Render/CreasePatternSpec.hs#L124-L126)),
-  which passes through `Offset` only.
+  which passes through `Offset` only. The matchers the compiler can flag are
+  flagged only weakly: `-Wall` reports a missing constructor as an
+  `-Wincomplete-patterns` warning, nothing sets `-Werror`
+  ([`senbazuru.cabal:145-153`](../senbazuru.cabal#L145-L153)), and Stack prints
+  the warning only on a build from `stack clean` ([AGENTS.md](../AGENTS.md),
+  "Style"), so each of these PRs builds from there. Two kinds of matcher that
+  never warn are missing from the lists above. The list comprehensions that keep
+  only `Offset`s, at
+  [`CreasePatternSpec.hs:259`](../test/Senbazuru/Render/CreasePatternSpec.hs#L259),
+  [`:281`](../test/Senbazuru/Render/CreasePatternSpec.hs#L281),
+  [`:302`](../test/Senbazuru/Render/CreasePatternSpec.hs#L302),
+  [`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329) and
+  [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99), pass over a
+  `Fanned` drawn in place of an `Offset`; the PR adding `Fanned` updates them.
+  `LayoutSpec`'s `labels` (above) and `StepsSpec`'s `labelsOf`
+  ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) cannot
+  see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions
+  update them.
 
 **Views**
 
@@ -221,7 +266,12 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
   `FromOppositeSide` or `EdgeOn` as `basisForward`'s z is negative, positive or
   zero. `EdgeOn` means the camera looks along the sheet's plane, as `front` and
   `side` do, so a flat sheet projects to a line. `pageSide :: View -> [Frame] ->
-  Either StepError SeenFrom` shares `stepPageWith`'s basis choice.
+  Either StepError SeenFrom` shares `stepPageWith`'s basis choice. The test is
+  not new: `Render.CreasePattern` already makes it, privately, as `seenFromAbove
+  :: Basis -> Bool`, `basisForward`'s z ≤ 0
+  ([`CreasePattern.hs:431-432`](../src/Senbazuru/Render/CreasePattern.hs#L431-L432)),
+  which counts edge-on as above. Rewritten over `seenFrom`, it keeps that
+  answer.
 - **R-06-9.** Stated kinds are drawn as seen: from the opposite side valley and
   mountain swap, in arrow heads and fold-here dashes alike; unfold and push do not
   change; edge-on draws the stated kind and puts an `EdgeOnMark` on each figure.
@@ -256,22 +306,36 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
 
 **Several moves**
 
-- **R-06-16.** For each moving record of a step, in order, `Render.Sequence` gives
-  that record's arrows, with the record's kind, from `motionsBetween` over its
-  before surface under `displayBefore` and its after surface under `displayAfter`.
-  Those are the record's presentation composed with its anchor placement, before
-  and after the move, which the record keeps as separate fields and applies to its
-  unpresented surfaces
-  ([D14](decisions.md#d14-material-consumption);
-  [01 §2.2](01-architecture.md#22-contract-1-moverecord)). A move whose moving
-  paper is two groups joined only through still paper gets one arrow per group, as
-  `motionsBetween` already splits them
+- **R-06-16.** For each moving record of a step, in order, `Render.Sequence`
+  gives that record's arrows, with the kind of its move as written, from
+  `motionsBetween` over its before surface under `displayBefore` and its after
+  surface under `displayAfter`. Those are the record's presentation composed
+  with its anchor placement, before and after the move, which the record keeps
+  as separate fields and applies to its unpresented surfaces
+  ([D14](decisions.md#d14-material-consumption); [01
+  §2.2](01-architecture.md#22-contract-1-moverecord)). That kind is not the
+  record's `MoveKind`
+  ([`Record.hs:260`](../src/Senbazuru/Sequence/Record.hs#L260)), which holds no
+  sense: `Turn` covers a fold and an unfold alike, and `Precrease` carries none.
+  The sense as written is kept only in `recordOrigin`, and `Sequence.Record`
+  exports no `Sense`, `PageAxis` or `Turning`; how a page reads them is S17's
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)). A move whose
+  moving paper is two groups joined only through still paper gets one arrow per
+  group, as `motionsBetween` already splits them
   ([`Step.hs:175-192`](../src/Senbazuru/Origami/Step.hs#L175-L192);
-  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). A pre-crease's before
-  and after surfaces are one flat state, so its arrows come from its route: the
-  arrow out from its before surface to `recordPoseAt r (PoseOnRoute 1)`, the folded
-  pose at the route's end, both under `displayBefore`, and the unfold arrow the
-  same pair reversed.
+  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). A pre-crease's
+  before and after surfaces are one flat state, so its arrows come from its
+  folded surface: the arrow out from its before surface to the surface its fold
+  reached, both under `displayBefore`, and the unfold arrow the same pair
+  reversed. The runner has that surface, as the after of the turn's record
+  ([`Run.hs:697-699`](../src/Senbazuru/Sequence/Run.hs#L697-L699)), until
+  `asPrecrease` sets the after to the before
+  ([`Record.hs:518`](../src/Senbazuru/Sequence/Record.hs#L518)). By this
+  record's choice, not the owner's, the `Precrease` record keeps it behind one
+  accessor (**SKETCH** `recordFoldedPose`; S18c,
+  [#640](https://github.com/avalonalex/senbazuru/issues/640)). `recordPoseAt`,
+  `PoseOnRoute` and `Origami.Route` do not exist ([decisions
+  C90](decisions.md#changes-since-draft-v2)).
 - **R-06-17.** A pre-crease draws its fold arrow, with the sense the author wrote,
   its unfold arrow and one fold-here line, although its figure's frames are
   identical in position ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
@@ -291,20 +355,35 @@ imports, signature, definition and comments, left 23 call lines in 15 files on
   a caption is laid out with a gutter of at least 42/340 of a figure,
   `max (gridGutter grid) (42/340)` (**SKETCH**, §8); a page with no caption uses
   `gridGutter` ([`Layout.hs:73`](../src/Senbazuru/Diagram/Layout.hs#L73)) as given,
-  so no existing page changes.
+  so no existing page changes. That bound clears 14-unit type, the theme's
+  label size, only on pages of one or two rows: on the default 400 × 400
+  three-column page of square figures, it leaves 13.49 page units below each
+  figure at three rows and 10.12 at four (`python3` on `gridOf`'s and
+  `fitBox`'s formulas, trailing gutter included). Owner decision 7 is pending
+  S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)).
 
 **Pages from a run**
 
-- **R-06-20.** `Render.Sequence.stepNotes :: Run -> Either WriteProblem [(Frame, StepNote)]`
-  returns exactly the frames `Sequence.Write` writes to `file_frames`, in order,
-  because both take them from `Sequence.Record.writtenStates`
+- **R-06-20.** `Render.Sequence.stepNotes :: Run -> Either SequenceError
+  [(Frame, StepNote)]` returns exactly the frames `Sequence.Write` writes to
+  `file_frames`, in order, because both take them from
+  `Sequence.Record.writtenStates`
   ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). It is not
-  total: it shares `writtenStates`' refusals, `WriteMissingAngles` and
-  `WriteNonFiniteAngle` ([D4](decisions.md#d4-written-frames-follow-the-state-rule)).
+  total: it shares `writtenStates`' refusals
+  ([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713)), each a
+  `WriteRefused` naming the state, with `WriteMissingAngles` or
+  `WriteNonFinite`, the second for a material coordinate that is not finite
+  ([`Record.hs:788`](../src/Senbazuru/Sequence/Record.hs#L788);
+  [D4](decisions.md#d4-written-frames-follow-the-state-rule)).
 - **R-06-21.** Figure *j* draws state *j* − 1 and its note follows
   [§2](#2-from-a-run-to-notes). Its caption is the caption of the step that starts
-  from that state, which is the state's `frame_title`, or `closing` on the last
-  figure ([D24](decisions.md#d24-states-figures-and-their-numbers)).
+  from that state, which is the state's `frame_title`: on the last figure,
+  `closing` ([D24](decisions.md#d24-states-figures-and-their-numbers)), or on a
+  run stopped at `not modelled`, the caption of the step it stopped at
+  ([`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)). That step's
+  moves made before the stop keep their records in `runRecords`
+  ([`Run.hs:513`](../src/Senbazuru/Sequence/Run.hs#L513)), though no state
+  shows their paper, so the page drops them.
 - **R-06-22.** A `mark` is labelled on each flat figure where `Origami.Visible`
   shows its material point.
 - **R-06-23.** A step's authored `sample` poses are figures of their own, after the
@@ -385,7 +464,7 @@ data StepNote = StepNote
     noteRepeat       :: !(Maybe (Int, Int)),   -- figure numbers, from 1 as Layout counts
     noteLayers       :: !(Maybe [[V3]]),       -- selected layers' rings at before positions (#48, #49)
     noteFoldLines    :: !FoldLines,
-    noteMarks        :: ![(Text, V3)] }
+    noteMarks        :: ![(Text, V2)] }       -- label and material point (owner decision 75)
 inferNote, silentNote :: StepNote            -- InferArrows / NoArrows; every other field empty
 data SeenFrom = FromReadersSide | FromOppositeSide | EdgeOn
 ```
@@ -396,11 +475,22 @@ through its one basis as `withArrows` projects a motion
 ([`CreasePattern.hs:592-604`](../src/Senbazuru/Render/CreasePattern.hs#L592-L604)).
 `inferNote` carries `NoFoldLines`: equal graphs have no creases to come, and a
 default that could draw them is one more thing to leak into today's bytes.
-`noteMarks` holds each mark's label and position, because M3 includes marks and
-[D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot) labels a
-mark on each figure where it is visible
-([D7](decisions.md#d7-a-typed-step-note-reaches-the-page);
-[02 §4.5](02-language-semantics.md#45-landmarks-mark-let-step-names)).
+`noteMarks` holds each mark's label and [material
+point](glossary-additions.md#references), where the mark lay on the flat sheet,
+because M3 includes marks (owner decision 75) and
+[D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot) labels
+a mark on each figure where it is visible
+([D7](decisions.md#d7-a-typed-step-note-reaches-the-page); [02
+§4.5](02-language-semantics.md#45-landmarks-mark-let-step-names)). A position
+would not do: two faces folded onto one point share it, and only a material
+point says which of them the mark is on.
+
+`TurnedOver` and `Rotated` are placeholders. `Sequence.Record` already exports
+constructors of those names, `Presenting`'s
+([`Record.hs:286-291`](../src/Senbazuru/Sequence/Record.hs#L286-L291)), and
+`Render.Sequence` imports both modules, so the PR that adds `PresentationChange`
+names them otherwise (the M3 plan sketches `PageTurnedOver` and `PageRotated`,
+[#642](https://github.com/avalonalex/senbazuru/issues/642)).
 
 ### 2. From a run to notes
 
@@ -422,35 +512,58 @@ numbers part, which is why messages say "step N (name)" and never "figure N".
 row 7). It reads the `Run` that `Sequence.Record` defines, the records and each
 step's outcome, never the runner's working state, and takes its frames from
 `Sequence.Record.writtenStates`, which `Sequence.Write` also calls. So R-06-20
-holds by construction, and `stepNotes` returns `Either WriteProblem` because
-`writtenStates` can refuse
+holds by construction, and `stepNotes` returns `Either SequenceError` because
+`writtenStates` can refuse, with that type
+([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713)): a state it cannot
+write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)).
 
 | Step holds | Note on the figure of the state the step starts from |
 | --- | --- |
-| Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each record's new creases at `recordBefore` positions (the record's surface before the move) under `displayBefore`, with that record's kind |
-| A move that creases and turns nothing (`NoMotion`) | Its fold-here line only |
-| `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, and an unfold arrow back, both along the fold's route (R-06-16, owner decision 14) |
-| `turn over` / `rotate` | `notePresentation`, derived because no record stores an axis. The direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); the axis point is the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). Which turn it was is read from the record; see [Dependencies](#dependencies) |
-| A fold then a turn | The fold's arrows and the turn's mark |
-| `repeat A..B` | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
-| `checkpoint` | `NoArrows`: the pair breaks the *prefix rule*, under which each frame's vertex list begins with the previous frame's, with equal material coordinates, so ids carry over ([D6](decisions.md#d6-crease-graphs-grow-between-frames), [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused); [05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test), [02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) |
+| Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each fold's hinge (`recordHinge`), whether or not the move creased it, at `recordBefore` positions (the record's surface before the move) under `displayBefore`, styled by the move's sense as seen (owner decision 74, §6). An unfold draws none |
+| `anchor P` (an `Anchoring` record, evidence `NoMotion`) | No arrow and no fold-here line: it moves no paper, has no hinge and creases nothing, and the model stays where it stood on the page ([`Record.hs:551-556`](../src/Senbazuru/Sequence/Record.hs#L551-L556), [`Run.hs:568-571`](../src/Senbazuru/Sequence/Run.hs#L568-L571)) |
+| `mark` | Caption, `NoArrows`: a mark moves no paper. It is labelled through `noteMarks` (§1) on the figures R-06-22 names. M3 runs `mark` for the point forms the resolver already evaluates on the sheet (owner decision 75); until S20 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner refuses it as not run yet ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`, and a mark used as a reference, stay not run yet until M4 ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174), [`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)) |
+| `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, to its folded pose (§7), and an unfold arrow back, both along the fold's route (R-06-16, owner decision 14); and its hinge's fold-here line, as a fold's (owner decision 74) |
+| `turn over` / `rotate` | `notePresentation`. The record keeps the turn as written (`Presenting`, [C82](decisions.md#changes-since-draft-v2)), so the direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); see [Dependencies](#dependencies). No record stores the axis point: the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). The runner finds it with its private `middleOf` ([`Run.hs:299`](../src/Senbazuru/Sequence/Run.hs#L299)) and does not export `turnOverAbout`; how the page gets the point is S18b's ([#640](https://github.com/avalonalex/senbazuru/issues/640)) |
+| A fold then a turn | The fold's arrows and the turn's mark. What may follow the turn in the same step is pending S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)) |
+| `repeat A..B` (M4, [decisions §8](decisions.md#8-milestones)) | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
+| `checkpoint` (M4) | `NoArrows`: the pair breaks the *prefix rule*, under which each frame's vertex list begins with the previous frame's, with equal material coordinates, so ids carry over ([D6](decisions.md#d6-crease-graphs-grow-between-frames), [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused); [05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test), [02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) |
 | `not modelled` | Caption, `NoArrows`. The run stops there and keeps every state before it, so this is the last figure ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
 | `expect refused` | Nothing. It is a move inside a step that produces no record and no state; its outcome is kept on the step in the `Run` and printed by `run --report`, never drawn. A step whose moves are all `expect refused` writes no state, so it has no figure and its caption is drawn nowhere ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [D24](decisions.md#d24-states-figures-and-their-numbers)) |
-| A macro's authored `sample` poses | Nothing on this figure. Each pose is a state and a figure of its own, between this figure and the end state's, with no caption and `NoArrows` (R-06-23). A macro with no `sample` adds no figure: the interior poses the runner also checks, `RunSettings.macroChecks` of them, are evidence, not states ([D9](decisions.md#d9-macro-moves-as-named-angle-relations)) |
+| A macro's authored `sample` poses (M5) | Nothing on this figure. Each pose is a state and a figure of its own, between this figure and the end state's, with no caption and `NoArrows` (R-06-23). A macro with no `sample` adds no figure: the interior poses the runner also checks, `RunSettings.macroChecks` of them, are evidence, not states ([D9](decisions.md#d9-macro-moves-as-named-angle-relations)) |
+
+**A record's kind is not an arrow's kind.** `MoveKind` is `Turn`, `Precrease`,
+`Presentation` or `Anchoring`
+([`Record.hs:260-278`](../src/Senbazuru/Sequence/Record.hs#L260-L278)). `Turn`
+covers a fold and an unfold alike, and `Precrease` carries no sense, so neither
+says whether an arrow is valley, mountain or unfold. The sense as written is
+kept only in `recordOrigin`, and `Sequence.Record` exports no `Sense`,
+`PageAxis` or `Turning`
+([`:110-165`](../src/Senbazuru/Sequence/Record.hs#L110-L165)). How the page
+reads them is S17's to decide
+([#640](https://github.com/avalonalex/senbazuru/issues/640)).
 
 ### 3. Arrow heads, bodies and `Symbol`
 
 The heads follow Robert Lang's diagramming conventions as summarised in research
-finding 20: solid head = valley (today's), hollow one-sided head = mountain, hollow
-two-sided head = unfold, cleft tail = push. Emission, **SKETCH**, with
-`headLength` clamped as at [`Svg.hs:225`](../src/Senbazuru/Render/Svg.hs#L225):
-`SolidHead` is today's filled triangle path byte for byte; `HollowHalfHead` is a
-single barb, one stroked open line from the tip back to a point one head-length
-back and 0.4 of it to one side of the shaft (in `Svg.hs`'s names, `tip` to
-`base + half·across`, [`:217-227`](../src/Senbazuru/Render/Svg.hs#L217-L227));
-`HollowDoubleHead` is a stroked closed triangle. Neither hollow head sets `fill`,
-so the group's `fill="none"` holds.
+finding 20: solid head = valley (today's), hollow one-sided head = mountain,
+hollow two-sided head = unfold, cleft tail = push. Nothing at M3 pushes paper
+in: the parser refuses `sink` as a move the language cannot express yet
+([`Parse.hs:260`](../src/Senbazuru/Sequence/Parse.hs#L260)). So `PushArrow` (§1)
+and `CleftTail` have no producer, and they move with push and sink to
+[#648](https://github.com/avalonalex/senbazuru/issues/648). Emission,
+**SKETCH**, with `headLength` clamped as at
+[`Svg.hs:225`](../src/Senbazuru/Render/Svg.hs#L225): `SolidHead` is today's
+filled triangle path byte for byte; `HollowHalfHead` is a single barb, a stroked
+open line back from the tip to a point one head-length back and 0.4 of it to one
+side of the shaft (in `Svg.hs`'s names, `tip` to `base + half·across`,
+[`:217-227`](../src/Senbazuru/Render/Svg.hs#L217-L227)). The curve stops at
+`base` ([`:226`](../src/Senbazuru/Render/Svg.hs#L226),
+[`:231`](../src/Senbazuru/Render/Svg.hs#L231)), where the filled head takes
+over, so a barb alone would leave the shaft's last head-length undrawn. The open
+line therefore starts at `base` and runs through `tip` to the barb's end.
+`HollowDoubleHead` is a stroked closed triangle. Neither hollow head sets
+`fill`, so the group's `fill="none"` holds.
 
 ```haskell
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant
@@ -477,9 +590,20 @@ because its one caller translates
 
 `-Wincomplete-patterns` flags `shapePoints`, `mapShapePoints`, `shapeToSvg` and
 `CreasePatternSpec`'s `kind`
-([`:103-111`](../test/Senbazuru/Render/CreasePatternSpec.hs#L103-L111)). It cannot
-flag the three wildcards of R-06-7; `isArrow` there would silently pass a loop
-drawn in place of an arrow.
+([`:103-111`](../test/Senbazuru/Render/CreasePatternSpec.hs#L103-L111)), but
+only as a warning: `-Wall` turns it on, the cabal file sets no `-Werror`
+([`senbazuru.cabal:145-153`](../senbazuru.cabal#L145-L153)), and a warning
+prints only when its module is compiled, which only a clean build guarantees
+(AGENTS.md, "Style"). It cannot flag the three wildcards of R-06-7; `isArrow`
+there would silently pass a loop drawn in place of an arrow. Nor can it flag a
+pattern used as a filter. The comprehensions that keep `Offset` alone
+([`CreasePatternSpec.hs:259`](../test/Senbazuru/Render/CreasePatternSpec.hs#L259),
+[`:281`](../test/Senbazuru/Render/CreasePatternSpec.hs#L281),
+[`:302`](../test/Senbazuru/Render/CreasePatternSpec.hs#L302),
+[`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329);
+[`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99)) skip a
+`Fanned` shape, and `StepsSpec`'s `labelsOf` and `LayoutSpec`'s `labels` match a
+bare `Label`, so they miss a caption raised by `Offset` (R-06-18).
 
 ### 4. Which side the page is seen from
 
@@ -494,7 +618,7 @@ that vector's z is negative:
 | `bottom` ([`:120-121`](../src/Senbazuru/Render/Camera.hs#L120-L121)) | (0, 0, 1) | opposite |
 | `iso` ([`:135-136`](../src/Senbazuru/Render/Camera.hs#L135-L136)) | (−1, 1, −1) | reader's side |
 | `front`, `side` ([`:140-145`](../src/Senbazuru/Render/Camera.hs#L140-L145)) | (0, 1, 0), (−1, 0, 0) | edge-on |
-| Blintz and crane galleries ([`BlintzGallery.hs:38`](../study/fold-material/BlintzGallery.hs#L38), [`CraneGallery.hs:37`](../study/fold-material/CraneGallery.hs#L37)) | (−1, 0, 1), (−1, 1, √2) | opposite |
+| Blintz and crane galleries (its `galleryViewDirection`, [`BlintzGallery.hs:25`](../study/fold-material/BlintzGallery.hs#L25); [`CraneGallery.hs:37`](../study/fold-material/CraneGallery.hs#L37)) | (−1, 0, 1), (−1, 1, √2) | opposite |
 
 A roll leaves `basisForward` alone
 ([`Camera.hs:227-235`](../src/Senbazuru/Render/Camera.hs#L227-L235)), so rolling
@@ -503,8 +627,20 @@ reader's side and only drawn as seen: if "valley" meant "as the camera sees it",
 one source would write different FOLD signs under `--view bottom` and `--view top`,
 which [D5](decisions.md#d5-presentation-and-the-readers-side) forbids
 ([02 §5.4](02-language-semantics.md#54-render-options-never-change-meaning)). The
-gallery row shows the opposite side is not hypothetical: two existing galleries
-already draw from it.
+gallery row shows the opposite side is not hypothetical, and those two galleries
+are not alone: underside views in the basic-base, petal and bird galleries draw
+from it too
+([`BasicBaseGallery.hs:59`](../study/fold-material/BasicBaseGallery.hs#L59),
+[`PetalGallery.hs:44`](../study/fold-material/PetalGallery.hs#L44),
+[`Main.hs:264`](../study/fold-material/Main.hs#L264)), and so does the golden
+`bird-sequence-bottom.svg`
+([`BirdSequenceSpec.hs:71-72`](../test/BirdSequenceSpec.hs#L71-L72)).
+
+`SeenFrom` is not a new question. `CreasePattern` already asks it, privately, as
+`seenFromAbove`
+([`CreasePattern.hs:431-432`](../src/Senbazuru/Render/CreasePattern.hs#L431-L432)),
+a `Bool` that counts edge-on as above; `SeenFrom` gives edge-on an answer of its
+own.
 
 ### 5. Turn-over and rotate marks, and the page extent
 
@@ -565,17 +701,25 @@ figure: a leader to other figures would cross cells, and `Layout` exists so a ma
 
 A run's frames gain creases between figures. `motionsAcross` matches vertices by
 *material coordinates* (where each point lies on the unfolded sheet, which never
-changes) and `creasesToCome` returns new creases at `before` positions; both are in
-[05](05-prd-library-additions.md) and decided in
-[D6](decisions.md#d6-crease-graphs-grow-between-frames). `motionsBetween` stays in
-use whenever graphs are equal (R-06-14), which keeps the 12 arrow-bearing goldens
-structurally unchanged: all pass `motionsBetween` today. One behaviour changes from
-refusal to drawing: `render --steps --arrows` on a growing file with
-`senbazuru:material_coords`, refused today with `FramesDiffer`.
+changes) and `creasesToCome` returns new creases at `before` positions; both are
+in [05](05-prd-library-additions.md) and decided in
+[D6](decisions.md#d6-crease-graphs-grow-between-frames). `motionsBetween` stays
+in use whenever graphs are equal (R-06-14), which keeps the 14 arrow-bearing
+goldens structurally unchanged: all pass `motionsBetween` today. One behaviour
+changes from refusal to drawing: `render --steps --arrows` on a growing file
+with `senbazuru:material_coords`, refused today with `FramesDiffer`.
 
 Fold-here lines are styled by the kind as seen because the quarter fixture's second
 fold makes a `V` and an `M` crease in one valley fold; styling by assignment
 reproduces the half-and-half line of the existing golden.
+
+**Where a run page's lines come from** (owner decision 74). Not from the creases
+a move adds: a run that folds along creases its sheet already has adds none, and
+the blintz run is one, all six of its states having 12 edges (`jq` on
+`examples/blintz-sequence.fold`). Every fold and pre-crease draws its hinge
+(`recordHinge`) at the before positions, styled by the move's sense as seen, and
+an unfold draws none. `creasesToCome` stays the source for inference on `render
+--steps`.
 
 ### 7. Figures holding several moves
 
@@ -583,22 +727,34 @@ reproduces the half-and-half line of the existing golden.
 south-east`" on `sheet square`, where `in front` means a valley as seen
 ([02 §5.1](02-language-semantics.md#51-the-readers-side)): the moving triangle
 (0, 0), (1, 0), (1, 1) has corner mean (2/3, 1/3); folded flat across y = x it
-lands on (1/3, 2/3) (`python3` arithmetic, **UNVERIFIED** through `foldFrameWith`
-until M2's runner exists).
+lands on (1/3, 2/3) (`python3` arithmetic). `RunSpec` runs this pre-crease
+([`RunSpec.hs:285-287`](../test/Senbazuru/Sequence/RunSpec.hs#L285-L287)) but
+checks no folded position, since the record keeps none, so the numbers stay
+**UNVERIFIED** through the runner until S18c
+([#640](https://github.com/avalonalex/senbazuru/issues/640)) pins them.
 
 The figure's before and after frames are identical, so inference draws nothing.
 The move's one record draws a valley arrow (2/3, 1/3) → (1/3, 2/3) and an unfold
 arrow back. `arrowFor` bows "always to the same side" of its own direction
-([`Style.hs:356-358`](../src/Senbazuru/Diagram/Style.hs#L356-L358), `sideways` at
-[`:384`](../src/Senbazuru/Diagram/Style.hs#L384)), so the reversed arrow bows the
-other way and the pair reads as out and back. One valley-dashed fold-here line lies
-on the diagonal. [D22](decisions.md#d22-figures-holding-several-moves) admits a
-move to a figure only if its moving paper is where the figure draws it, and a
-pre-crease is one move there like any other
-([02 §6.5](02-language-semantics.md#65-figures-holding-several-moves)). That makes
-the fold arrow true on the drawn state. The unfold arrow is drawn from the route's
-end, the folded pose at `PoseOnRoute 1`, back to where the paper started
-(R-06-16).
+([`Style.hs:356-358`](../src/Senbazuru/Diagram/Style.hs#L356-L358), `sideways`
+at [`:384`](../src/Senbazuru/Diagram/Style.hs#L384)), so the reversed arrow bows
+the other way and the pair reads as out and back. One valley-dashed fold-here
+line lies on the diagonal. [D22](decisions.md#d22-figures-holding-several-moves)
+admits a move to a figure only if its moving paper is where the figure draws it,
+and a pre-crease is one move there like any other ([02
+§6.5](02-language-semantics.md#65-figures-holding-several-moves)). That makes
+the fold arrow true on the drawn state. The runner does not check this yet:
+`MoveLeavesFigure`, the refusal D22 names, is a name `expect refused` accepts
+([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)) with no constructor
+until S19 ([#640](https://github.com/avalonalex/senbazuru/issues/640)). The
+unfold arrow is drawn from the folded pose back to where the paper started
+(R-06-16). The runner computes that pose, the turned record
+([`Run.hs:697-699`](../src/Senbazuru/Sequence/Run.hs#L697-L699)), and
+`asPrecrease` discards it
+([`Record.hs:518`](../src/Senbazuru/Sequence/Record.hs#L518)). S18c has the
+`Precrease` record keep it behind one accessor (**SKETCH** `recordFoldedPose`),
+a choice of this record's own, since `recordPoseAt` and `PoseOnRoute` do not
+exist ([C90](decisions.md#changes-since-draft-v2)).
 
 ### 8. Captions and the gutter
 
@@ -624,19 +780,27 @@ a row make a page box 3.2 figure-widths wide:
 | CLI default, 400 × 400, margin 16 ([`Svg.hs:97-106`](../src/Senbazuru/Render/Svg.hs#L97-L106)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
 | `renderSteps` test page, 400 × 200, margin 10 | 380 × 180 | 380 / 3.2 = 118.75 | 11.875 | 14 |
 
-The second scale is the golden's 118.75 above, so captions overlap their figure on
-both default pages. On a three-column CLI page a gutter of g figures is
-g × 368 / (3 + 2g) page units, which reaches 14 only when g ≥ 42/340 ≈ 0.124.
-A `python3` check for this reconciliation: at g = 42/340 the CLI page's scale is
-113.33 and its gutter 14.00 units; the `renderSteps` page's scale is 117.03 and its
-gutter 14.46, since its own bound is 42/352. Width limits the scale on both pages,
-with or without a trailing gutter.
+The second scale is the golden's 118.75 above, so captions overlap their figure
+on both default pages. On a three-column CLI page a gutter of g figures is g ×
+368 / (3 + 2g) page units, which reaches 14 only when g ≥ 42/340 ≈ 0.124. A
+`python3` check for this reconciliation: at g = 42/340 the CLI page's scale is
+113.33 and its gutter 14.00 units; the `renderSteps` page's scale is 117.03 and
+its gutter 14.46, since its own bound is 42/352. Width limits the scale on both
+pages, with or without a trailing gutter. That is a fact about one row of three.
+On the CLI page it holds for two such rows as well, but from three rows on
+height limits the scale instead: at g = 42/340, with the trailing gutter and a
+square sheet, the gutter is 13.49 units at three rows, 10.12 at four and 5.06 at
+eight (`python3` on the same formulas). So 42/340 clears 14-unit type only on
+CLI pages of one or two rows, pending S1
+([#635](https://github.com/avalonalex/senbazuru/issues/635)).
 
 **The recommended default.** Owner decision 7
 ([decisions §9](decisions.md#9-owner-decisions)) recommends exactly that bound:
 captioned pages get a gutter of at least 42/340 of a figure (R-06-19), uncaptioned
 pages keep the gutter they are given, and overflow across cells is accepted and
-stated. It is still the owner's to decide before M3.
+stated. It is still the owner's to decide before M3: pending S1
+([#635](https://github.com/avalonalex/senbazuru/issues/635)),
+which asks it with pages of several rows.
 
 **Overflow.** The same render measures "Fold the left half behind, onto the right."
 at about 236.5 units of ink against a stride (one figure plus one gutter,
@@ -657,29 +821,43 @@ conditional for the same reason: it changes the scale.
 
 ### 9. `frame_title` and assurance point opposite ways
 
-A state's `frame_title` is the caption of the step leaving it, the next step that
-writes a state (`closing` on the last), and its `senbazuru:assurance` is the
-evidence of the step that produced it
+A state's `frame_title` is the caption of the step leaving it, the next step
+that writes a state (`closing` on the last, or the stopped step's caption on a
+run stopped at `not modelled`,
+[`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)), and its
+`senbazuru:assurance` is the evidence of the step that produced it
 ([D4](decisions.md#d4-written-frames-follow-the-state-rule),
 [D24](decisions.md#d24-states-figures-and-their-numbers);
-[caption](glossary-additions.md#step-pages),
-[02 §11](02-language-semantics.md#11-written-frames)). A book puts the caption with
-the arrow, on the figure before, and `run -o x.svg` does the same.
+[caption](glossary-additions.md#step-pages), [02
+§11](02-language-semantics.md#11-written-frames)). A book puts the caption with
+the arrow, on the figure before, and `run -o x.svg` does the same. So state 0 of
+`examples/blintz-sequence.fold` carries step 1's instruction, and whatever shows
+a state's title shows that: `info`, a single-frame `render` and a glTF's title
+([`Cli.hs:1150`](../app/Senbazuru/Cli.hs#L1150),
+[`:1048`](../app/Senbazuru/Cli.hs#L1048),
+[`:945`](../app/Senbazuru/Cli.hs#L945)). It reads as an off-by-one and is not;
+this record accepts it, and S25
+([#641](https://github.com/avalonalex/senbazuru/issues/641)) documents it.
 
 A file cannot say which convention its titles follow. The fixture puts "Step 2:
 folded in half" on the half-folded state; a sequence file written from the
-quarter-fold source ([04](04-prd-sequence-source-and-cli.md#a-first-source-read-line-by-line))
-puts "Fold the top half down in front, onto the bottom." there. Whichever
-convention `render` assumed, one of those files would get the wrong words under its
+quarter-fold source
+([04](04-prd-sequence-source-and-cli.md#a-first-source-read-line-by-line)) puts
+"Fold the top half down in front, onto the bottom." there. Whichever convention
+`render` assumed, one of those files would get the wrong words under its
 figures, and drawing anything at all would move `quarter-fold-steps.svg`. So
 `render --steps` never draws `frame_title`
 ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
 [#94](https://github.com/avalonalex/senbazuru/issues/94) closes at M3 through
-`run -o x.svg`; its done-when (fixture titles drawn under `render`'s figures, read
-with `gh issue view 94`) is amended at M0
+`run -o x.svg`, with S37
+([#643](https://github.com/avalonalex/senbazuru/issues/643)); its done-when
+(fixture titles drawn under `render`'s figures, read with `gh issue view 94`)
+was amended on 2026-10-27, in [a
+comment](https://github.com/avalonalex/senbazuru/issues/94#issuecomment-6458546438)
+that S0b of [#635](https://github.com/avalonalex/senbazuru/issues/635) posted
 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 7 and
-[§10](decisions.md#10-corrections) item 3, written out in
-[01 §4.7](01-architecture.md#47-corrections-to-six-issues)).
+[§10](decisions.md#10-corrections) item 3, written out in [01
+§4.7](01-architecture.md#47-corrections-to-six-issues)).
 
 ### 10. Layers fanned from their folds
 
@@ -744,7 +922,8 @@ is 31 where no point holds more than 24 sheets
 ([layer-numbers](../docs/notes/layer-numbers.md)). On the helmet's state 2 it
 would give vertices 1 and 3 counts of 3 and 2, where their fan counts are 1 and
 0 (A18).
-05's L9 already counts faces at a point for the same reason.
+05's L9 is to count faces at a point for the same reason, but it is M4 work:
+neither it nor its `CoverError` exists yet.
 
 The counts, from a scratch prototype in Python run on 2026-10-23. For each face
 at a vertex it tested 40 points of that face 1e-4 from the vertex, across the
@@ -810,7 +989,7 @@ decisions 67 to 69).
 | A page-unit band below figures (#94) | `Layout` has no page units; the recorded bug |
 | One arrow with heads at both ends for a pre-crease | `ArrowPath` has one head, and a pre-crease's two arrows have two kinds: its sense out, unfold back ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)) |
 | One display field per record, applied to both surfaces | It cannot give a `Presented` record's before display, nor keep presentation apart from anchor placement, which animation needs as separate nodes ([D14](decisions.md#d14-material-consumption)) |
-| A total `stepNotes` | It calls `writtenStates`, which refuses a frame with missing or non-finite angles ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)) |
+| A total `stepNotes` | It calls `writtenStates`, which refuses a state with missing angles or a non-finite material coordinate, as `WriteRefused` ([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713), [`:788`](../src/Senbazuru/Sequence/Record.hs#L788); [D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)) |
 | Sample poses written to the file but left off the page | The page would no longer draw exactly the states the file holds ([D24](decisions.md#d24-states-figures-and-their-numbers)) |
 | The offset view's layers on the step page | Each layer moves whole, so every fold splits into two lines, the top layer moves furthest, and arrows are refused beside it (owner decision 65) |
 | Drawing each flat state slightly unfolded | A state is its fold angles (AGENTS.md), and opening every crease to 97% of its angle tears seven of eight fixtures (`TornAt`: the crane, the square, waterbomb, bird, fish and helmet bases and `kabuto.fold`; run 2026-10-23). Only `blintz-base.fold` folds, its four creases meeting at no vertex inside the sheet |
@@ -859,7 +1038,7 @@ decisions 67 to 69).
 
 | Group | Goldens (producer) | What here could move them |
 | --- | --- | --- |
-| Step pages with arrows (14) | `quarter-fold-steps.svg` (`SvgSpec.hs:392`); `bird-base-sequence-arrows.svg` (`:402`); `quarter-fold-sequence-steps.svg` (`WriteSpec.hs:127`); `quarter-fold-step-1.svg` (`:384`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:295`, `:315`, `:325`); `checked-blintz.svg` (`BlintzSequenceSpec.hs:139`); `checked-helmet.svg` (`HelmetSequenceSpec.hs:187`); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
+| Step pages with arrows (14) | `quarter-fold-steps.svg` (`SvgSpec.hs:392`); `bird-base-sequence-arrows.svg` (`:402`); `quarter-fold-sequence-steps.svg` (`WriteSpec.hs:127`); `quarter-fold-step-1.svg` (`:384`, `withArrows` on one frame); `checked-flap.svg`, `checked-flat-flap.svg`, `checked-stack-flap.svg`, `checked-aligned-stack.svg` (`FlapSpec.hs:295`, `:315`, `:325`); `checked-blintz.svg` (`BlintzRunSpec.hs:180`, through `SequenceGallery.pageSvg`); `checked-helmet.svg` (`HelmetRunSpec.hs:293`, the same way); `checked-crane.svg` (`CraneWingSpec.hs:173`); `checked-petal.svg` (`CheckedPetalSpec.hs:138`); `checked-bird-above.svg`, `checked-bird-below.svg` (`CheckedBirdSpec.hs:173`) | `ArrowPath` defaults; `inferNote`; the `motionsBetween`/`motionsAcross` choice |
 | Step pages without arrows (4) | `bird-sequence-iso.svg`, `bird-sequence-bottom.svg` (`BirdSequenceSpec.hs:84`); `frog-sequence.svg` (`BasicBaseSpec.hs:220`); `bent-strip.svg` (`WingBendingSpec.hs:102`) | `silentNote`; the trailing gutter and the captioned gutter; basis choice |
 | Single figures (14) | `unit-square`, `diagonal-cp`, `bird-base`, `bird-base-folded`, `quarter-fold`, `quarter-fold-folded`, `letter-fold-folded`, `crane-folded`, `kabuto-underside`, `quarter-fold-offset`, `letter-fold-offset`, `simple-iso-offset`, `simple-iso`, `squaretwist-iso` (`.svg`, `SvgSpec.hs:346-507`) | `shapeToSvg` for `Label`, `Offset`, `Polyline`, `Fill`; the painter the offset view shares with fanned figures (R-06-27), for the three `-offset` goldens |
 | GLB (4) | `quarter-fold-folded.glb`, `crane-folded.glb`, `simple.glb` (`GltfSpec.hs:617`, `:622`, `:627`); `blintz-sequence-final.glb` (`WriteSpec.hs:206`) | nothing here reaches `Render.Gltf`; listed so a stray import shows |
@@ -870,14 +1049,19 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 
 | Golden | Input | Red if |
 | --- | --- | --- |
-| `quarter-fold-steps-noted.svg` | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2; the `renderSteps` page | the mountain head reverts to solid; captions go in a model-unit band (the page rescales); the trailing gutter is missing; the gutter is below owner decision 7's 42/340, if that default is taken |
-| `quarter-fold-steps-noted-bottom.svg` | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
-| `quarter-fold-turn-over-steps.svg` | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
-| `quarter-fold-growing-steps.svg` | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
-| `diagonal-precrease-steps.svg` | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
-| `helmet-fanned-steps.svg` | The helmet run's `stepNotes` through `stepPageWith` with a fanning theme (R-06-29) | a fold drawn as two lines; a face with nothing over any of its vertices moved; a buried sheet's border not shown; face 2 of state 2 drawn over face 4 |
-| `crane-folded-fanned.svg` | `creasePatternAuto` with a fanning theme on `examples/crane.fold` | as A22; a buried sheet drawn at full weight |
-| Quarter-fold test 1 and 2 pages | Owned by [09](09-testing-and-acceptance.md) ([D16](decisions.md#d16-testing-and-acceptance)) | as stated there |
+| `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2; the `renderSteps` page | the mountain head reverts to solid; captions go in a model-unit band (the page rescales); the trailing gutter is missing; the gutter is below owner decision 7's 42/340, if that default is taken |
+| `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
+| `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
+| `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
+| `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
+| `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `stepPageWith` over the blintz run's `stepNotes` with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of this record's own | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |
+| `quarter-fold-run-steps.svg` (**SKETCH** name; S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | The quarter-fold run (`test/fixtures/quarter-fold.foldseq`), drawn as `blintz-sequence-steps.svg` is | "Folded into quarters.", its `closing` caption, is not under figure 3; `blintz.foldseq` has no `closing` line, so no other golden pins it |
+| `crane-folded-fanned.svg` (S38, [#644](https://github.com/avalonalex/senbazuru/issues/644)) | `renderFoldedWith` with a fanning theme and `topDown` on `test/fixtures/crane.fold`, as `crane-folded.svg` is made ([`SvgSpec.hs:85-93`](../test/Senbazuru/Render/SvgSpec.hs#L85-L93), [`:432`](../test/Senbazuru/Render/SvgSpec.hs#L432)) | as A22; a buried sheet drawn at full weight |
+| `helmet-fanned-steps.svg` (S40, [#644](https://github.com/avalonalex/senbazuru/issues/644)) | The helmet run's `stepNotes` through `stepPageWith` with a fanning theme (R-06-29) | a fold drawn as two lines; a face with nothing over any of its vertices moved; a buried sheet's border not shown; face 2 of state 2 drawn over face 4 |
+
+Quarter-fold test 1's page, `quarter-fold-sequence-steps.svg`, has been tracked
+since #512 and is grouped above; test 2's page comes at M4
+([decisions §8](decisions.md#8-milestones)).
 
 ## Dependencies
 
@@ -886,8 +1070,8 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | M2 ([02](02-language-semantics.md), [04](04-prd-sequence-source-and-cli.md)) | Records carrying `recordPresentation` and `recordPlacement`, each before and after, with `displayBefore` and `displayAfter` computed from them ([D14](decisions.md#d14-material-consumption)); `Run` and `writtenStates` in `Sequence.Record` ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)); the state-rule writer; presentation axes; which turn a `turn over` or `rotate` record was (below the table) |
 | [05](05-prd-library-additions.md) L16 | `fanCounts`, and stretches that keep the face edge they lie on, at M3 (§10) |
 | [05](05-prd-library-additions.md) | `motionsAcross`, `creasesToCome`, `fitRigid` and `Step` classification with the `Origami.Step` header rewrite ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 13, written out in [01 §4.13](01-architecture.md#413-srcsenbazuruorigamistephs30-34)) |
-| M0 ([10 §1](10-roadmap-risks-questions.md#1-milestones)) | Amended done-when of [#36](https://github.com/avalonalex/senbazuru/issues/36) (reflection as turn-over cannot be met) and #94 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 7; [§10](decisions.md#10-corrections) items 2 and 3) |
-| Issues | Closes #36, #94 at M3; follows #95 (M2); advances #48 via `noteLayers`; relates to [#60](https://github.com/avalonalex/senbazuru/issues/60), [#97](https://github.com/avalonalex/senbazuru/issues/97) |
+| M0 ([10 §1](10-roadmap-risks-questions.md#1-milestones)) | Amended done-when of [#36](https://github.com/avalonalex/senbazuru/issues/36) (reflection as turn-over cannot be met) and #94 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 7; [§10](decisions.md#10-corrections) items 2 and 3). Met 2026-10-27 by S0b's comments on [#36](https://github.com/avalonalex/senbazuru/issues/36#issuecomment-6458546164) and [#94](https://github.com/avalonalex/senbazuru/issues/94#issuecomment-6458546438) ([#635](https://github.com/avalonalex/senbazuru/issues/635)) |
+| Issues | Closes #36 (S35) and #94 (S37) at M3; follows #95 (M2); advances #48 via `noteLayers`, which S32b ([#643](https://github.com/avalonalex/senbazuru/issues/643)) fills with each turn's and pre-crease's moving faces, from `recordMoving` ([`Record.hs:423`](../src/Senbazuru/Sequence/Record.hs#L423)); relates to [#60](https://github.com/avalonalex/senbazuru/issues/60), [#97](https://github.com/avalonalex/senbazuru/issues/97) |
 
 **Which turn a `turn over` or `rotate` record was.**
 [D14](decisions.md#d14-material-consumption) settles what this section used to leave
@@ -923,12 +1107,23 @@ half turn, would have drawn a mark the author did not write.
 ## Risks
 
 - **Captions collide** with their own figure on both default pages unless owner
-  decision 7's default gutter is taken, and long captions overflow across cells
-  under any choice (§8); a golden records markup, not glyphs, so it catches
-  neither.
+  decision 7's default gutter is taken, and on CLI pages of three rows or more
+  even then; long captions overflow across cells under any choice (§8; pending
+  S1, [#635](https://github.com/avalonalex/senbazuru/issues/635)). A golden
+  records markup, not glyphs, so it catches neither.
 - **Silent matchers** ignore `Symbol` (R-06-7); A9 guards the worst one.
-- **Float noise.** Extents agree only within tolerance; eighth turns carry trig bits
-  into written coordinates (owner decision 10; research finding 16).
+- **Edge-on pages overlap.** On a page seen along the paper's plane, as `--view
+  front` sees flat paper (R-06-8), every figure is 0 tall, so `Layout`'s row
+  stride, (1 + g) times the shared box's height
+  ([`Layout.hs:121`](../src/Senbazuru/Diagram/Layout.hs#L121)), is 0, and a
+  three-column page draws figure 4 over figure 1. This record states it rather
+  than moving it: S29
+  ([#642](https://github.com/avalonalex/senbazuru/issues/642)) says so in
+  usage.md, and [#647](https://github.com/avalonalex/senbazuru/issues/647) fixes
+  it after M3.
+- **Float noise.** Extents agree only within tolerance; an odd eighth turn
+  carries the rounding of √½ into written coordinates, though no platform
+  trigonometry (owner decision 10, decided 2026-10-11; research finding 16).
 - **`motionsAcross` byte identity** on equal graphs is argued, not run (research
   "Unverified"); R-06-14 avoids depending on it.
 - **Sample figures** are decided (R-06-23) but cannot be drawn until M5's macros
@@ -950,11 +1145,14 @@ half turn, would have drawn a mark the author did not write.
   it marks.
 - **Long pages and captions.** The fan is a fixed page length and the gutter a
   fraction of the figure, so past five rows of three figures (six with captions)
-  the fan can reach the next cell (§10). `Layout` was rewritten once to stop step
-  numbers doing that ([`Layout.hs:38-45`](../src/Senbazuru/Diagram/Layout.hs#L38-L45)).
-  On any page, a figure that fills its box can fan its lowest vertices into its own
+  the fan can reach the next cell (§10). `Layout` was rewritten once to stop
+  step numbers doing that
+  ([`Layout.hs:38-45`](../src/Senbazuru/Diagram/Layout.hs#L38-L45)). On any
+  page, a figure that fills its box can fan its lowest vertices into its own
   caption's gutter: by 1.06 page units on the helmet's second and third figures.
-  Owner decision 7, still open, sizes the captioned gutter for 14-unit type alone.
+  Owner decision 7, still open, sizes the captioned gutter for 14-unit type
+  alone, on pages of one or two rows (§8; pending S1,
+  [#635](https://github.com/avalonalex/senbazuru/issues/635)).
 - **Faces turned inside out.** On small figures the fan is large beside a thin
   face. On the folded crane drawn 56.6 page units across, the size of 16 to 18
   figures on the default page, face 61 turns over; at 33.8, the size of the
@@ -980,23 +1178,48 @@ half turn, would have drawn a mark the author did not write.
 
 Each has a recommended default in [decisions §9](decisions.md#9-owner-decisions).
 
-- **7.** Caption overlap and overflow. Default: captioned pages get a gutter of at
-  least 42/340 ≈ 0.124 (§8), uncaptioned pages are unchanged, and overflow across
-  cells is accepted and stated. Otherwise: accept overlap (unreadable pages),
-  squash with SVG `textLength` or truncate by estimated width (widths without font
-  metrics), or refuse (some sequences cannot be drawn). Before M3.
-- **9.** Does `examples/quarter-fold-steps.fold` migrate to the state rule, moving
-  `quarter-fold-steps.svg` and `quarter-fold-step-1.svg`, or stay as the
-  regression? Default: it stays, and the state-rule page is a new golden. Before
-  M2.
+- **7.** Caption overlap and overflow, pending S1
+  ([#635](https://github.com/avalonalex/senbazuru/issues/635)), which asks it
+  with measured pages. Default: captioned pages get a gutter of at least 42/340
+  ≈ 0.124 (§8), which clears 14-unit type only on pages of one or two rows,
+  uncaptioned pages are unchanged, and overflow across cells is accepted and
+  stated. Otherwise: accept overlap (unreadable pages), squash with SVG
+  `textLength` or truncate by estimated width (widths without font metrics), or
+  refuse (some sequences cannot be drawn). Before M3.
+- **9.** Does `examples/quarter-fold-steps.fold` migrate to the state rule,
+  moving `quarter-fold-steps.svg` and `quarter-fold-step-1.svg`, or stay as the
+  regression? **Decided 2026-10-06** as recommended: it stays, and the
+  state-rule page is a new golden.
 - **10.** Eighth-turn presentation by trig (platform bits in written coordinates) or
   a `sheet square as diamond` start: it decides whether `RotateMark` ever shows an
-  odd k. Default: trigonometry, with the platform bits stated. Before M2.
+  odd k. **Decided 2026-10-11** ([C91](decisions.md#changes-since-draft-v2)):
+  trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, which IEEE 754 rounds
+  correctly, so an eighth turn adds no platform bits of its own.
 - **65–67**, decided 2026-10-23 as recommended: flat figures fan from their folds
   (§10); fanned by default on `run -o x.svg`, by a flag on `render`; and the GLB's
   version later, in [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack),
   which decisions 68 and 69 made a lift by layer, asked for by a flag.
   Left open by the owner: how to make fanned figures less busy (Risks).
+- **74–77**, decided 2026-10-26 as recommended ([the questions and
+  answers](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6458083132)).
+  74: a run page's fold-here lines come from every fold's and pre-crease's hinge
+  (`recordHinge`) at the before positions, styled by the move's sense as seen,
+  and `creasesToCome` stays the source for inference on `render --steps` (§2,
+  §6). 75: M3 runs `mark`, pinned by the point forms the resolver already
+  evaluates on the sheet, and a mark note holds a material point; `meet`, and a
+  mark used as a reference, stay not run yet until M4 (§1, §2). 76: `run -o
+  x.svg` ships early, as S23 after S22, and each later PR adds one thing to its
+  page, such as captions or arrows, held by S22's structural test until E7 pins
+  the page. 77: batching a step's creases
+  ([D22](decisions.md#d22-figures-holding-several-moves), [02
+  §6.5](02-language-semantics.md#65-figures-holding-several-moves)) waits for M4
+  ([#646](https://github.com/avalonalex/senbazuru/issues/646)).
+- **What may follow a turn-over or rotate in one step**, pending S1
+  ([#635](https://github.com/avalonalex/senbazuru/issues/635)), which asks it
+  and gives it the next free number. Default: a step may end with one turn-over
+  or rotate, and any move after one in the same step, a second turn-over or
+  rotate included, is refused as `MoveLeavesFigure`. It bears on §2's "a fold
+  then a turn" row and on D22.
 - **7**, still open, now also bears on the fan, which can reach into a captioned
   gutter (Risks).
 

@@ -200,12 +200,12 @@ its way.
 | 4 | [#95](https://github.com/avalonalex/senbazuru/issues/95) | turn over is presentation about a model-intrinsic axis ([D5](#d5-presentation-and-the-readers-side)) | M0: landed in part, as a comment on #95, 2026-10-06, the body left as it was; 01 §4.4's top-bottom map and some of its done-when have not landed, and #95 closed with #533 on 2026-10-11, so they cannot land there |
 | 5 | [#97](https://github.com/avalonalex/senbazuru/issues/97) | note named `docs/notes/sequences.md`; "scheme" retired; closes at M2 | M0: landed in part, as a comment on #97, 2026-10-06: the decision, and that #97 closes at M2, which it did with #501, 2026-10-07. `docs/notes/sequences.md`, which rows 3, 9 and 16 cite, was never written, so "scheme" is not retired, and with #97 closed the note has no issue |
 | 6 | [#111](https://github.com/avalonalex/senbazuru/issues/111) | add the writer's at-rest rule and the two `1e-10` thresholds ([`Surface.hs:278`](../src/Senbazuru/Origami/Surface.hs#L278), [`StudyCase.hs:208`](../study/fold-material/StudyCase.hs#L208)) that should read `Fold.Query.atRest` | M0: landed as a comment on #111, 2026-10-07, the body's table left as it was |
-| 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§10](#10-corrections)); #104's done-when names `--view front` ([D19](#d19-realistic-rendering)) | M0 |
+| 7 | #36, #94, #104, #114, #56, #64 | premise and done-when corrections ([§10](#10-corrections)); #104's done-when names `--view front` ([D19](#d19-realistic-rendering)) | M0: landed in part, as comments on #36 and #94, 2026-10-27, the bodies left as they were ([#36's](https://github.com/avalonalex/senbazuru/issues/36#issuecomment-6458546164), [#94's](https://github.com/avalonalex/senbazuru/issues/94#issuecomment-6458546438)), in 01 §4.7's words with S0b's corrections ([#635](https://github.com/avalonalex/senbazuru/issues/635)), among them that captions come from step notes, never `frame_title`, and that push and sink move to #648; #104, #114, #56 and #64 have not landed |
 | 8 | `AGENTS.md` "Third-party material" | running an external program is not vendoring ([D17](#d17-third-party-and-external-tools)) | M0: landed with #550, 2026-10-12, in 01 §4.8's words, and scoped with #552, 2026-10-12 ([C100](#changes-since-draft-v2)) |
 | 9 | `docs/notes/no-sequence-solver.md` | the vocabulary is formal now; searching it stays a non-goal | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96); not landed, and 01 §4.9's text cites `docs/notes/sequences.md`, which was never written |
 | 10 | `docs/glossary.md` | move glossary-additions rows in; fix rest angle (`:19`, `:86`) and flat-folded (`:21`) | M0, first PR: landed in part. Since #278, 2026-09-19, rows move in one term at a time with the code that uses it (C97), and many built terms have not moved, among them route evidence, seed and join check; the fixes to rest angle and flat-folded have not landed |
 | 11 | `AGENTS.md:173-177` "Two unit systems"; `src/Senbazuru/Sequence/SheetLengths.hs:31-32`, at M6 | sheet lengths and physical lengths, each converted in one named place | M2, M6: the M2 half landed with #505, 2026-10-11, the one place for sheet lengths being `Sequence.SheetLengths` (C88); the M6 half, naming the one place for physical lengths, has not, and lands in M6's PR that first converts a `material` block's `size` or `thickness` to model units (01 §4.11, [C125](#changes-since-draft-v2)) |
-| 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2 and `stepPageWith` at M3 | M2, M3: the M2 half landed with #501, 2026-10-07; `stepPageWith` joins the list at M3 |
+| 12 | `AGENTS.md:229-233`, the `--layer-budget` list | add `runSequence` at M2, and `stepPageWith` and `runPage` (**SKETCH**, a run's page) at M3 | M2, M3: the M2 half landed with #501, 2026-10-07; `stepPageWith` and `runPage` join the list at M3 |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change, tested as "some vertex moves" ([D5](#d5-presentation-and-the-readers-side)) | the M2 PR classifying presentation: landed with 05 L3 (#95), 2026-10-09 |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences | the recipe deletion PRs: the blintz's landed with #503, 2026-10-10 (the architecture paragraph rewritten, the recipe and its header gone; C87); the helmet's with #534, 2026-10-11, the same way (C92) |
 | 15 | `AGENTS.md:390-391` "all three CI checks" | name the slow job as a required check (owner decision 12, decided 2026-10-12) | the M4 PR adding the slow job, then the owner listing that job in `main`'s branch protection, which no pull request can change |
@@ -513,11 +513,14 @@ table in the next version of this record.
   B, C, J pass through; otherwise M below −τ, V above τ, F between. When the
   writer writes F it writes the angle as exactly 0, so no written frame has F at a
   nonzero angle and `Stacking.creaseDirections`'s exact test agrees with the rule.
-- **Every emitted frame** has explicit `edges_foldAngle` (else `WriteMissingAngles`),
-  no non-finite number (else `WriteNonFiniteAngle`, #58 item 3), never U, never M
-  or V at 0. (Built otherwise: `encodeFoldFile` refuses any non-finite number as
-  `NotFinite`, #510, and the writer a non-finite material coordinate as
-  `WriteNonFinite`, [C96](#changes-since-draft-v2).)
+- **Every emitted frame** has explicit `edges_foldAngle` (else
+  `WriteMissingAngles`), no non-finite number (#58 item 3), never U, never M or
+  V at 0. (Built otherwise, with no `WriteNonFiniteAngle`, the refusal this
+  bullet planned: `writtenStates` refuses a non-finite material coordinate as
+  `WriteNonFinite` ([`Record.hs:788`](../src/Senbazuru/Sequence/Record.hs#L788))
+  and checks no angle for finiteness, and `encodeFoldFile` refuses any
+  non-finite number, an angle included, as `NotFinite`, #510,
+  [C96](#changes-since-draft-v2).)
 - **Layout.** A metadata-only key frame; then `file_frames` holding the states of
   [D24](#d24-states-figures-and-their-numbers): the starting state, then for each
   step that writes one its authored `sample` poses in parameter order and its end
@@ -537,9 +540,11 @@ table in the next version of this record.
   `file_description`. The sheet's `file_classes` and top-level unknown keys are not
   copied, a stated omission until #73.
 - **Captions and assurance point in opposite directions, on purpose.** A state's
-  `frame_title` is the caption of the step *leaving* it (the `closing` caption on
-  the last state); its `senbazuru:assurance` is the evidence of the step that
-  *produced* it, absent on the first state.
+  `frame_title` is the caption of the step *leaving* it (the `closing` caption
+  on the last state, or on a run stopped at `not modelled` the stopped step's,
+  [`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)); its
+  `senbazuru:assurance` is the evidence of the step that *produced* it, absent
+  on the first state.
 - **Worked example** ([02 §11](02-language-semantics.md#11-written-frames)) [prd]:
   on the quarter fold, edges 8–11 are `M V M M` in every fixture frame, but the
   written assignments are `F F F F`, `M F M F`, `M V M M`, because edges 9 and 11
@@ -712,7 +717,10 @@ table in the next version of this record.
   a new non-convex `Geometry.Polygon.insideRing`. `motionCreases` reports `after`
   edges; an unmatched edge is new, never "changed".
 - `creasesToCome :: Frame -> Frame -> Either FoldError [(EdgeId, V3, V3)]` gives
-  the new creases at `before` positions, for fold-here lines.
+  the new creases at `before` positions, for the fold-here lines a page infers
+  from frames, as on `render --steps`; a run's page draws each fold's and
+  pre-crease's hinge (`recordHinge`) at its before positions instead (owner
+  decision 74).
 - `motionsBetween` is unchanged and still used whenever the two graphs are equal,
   so no existing page takes the new path.
 - A `checkpoint` may remove creases, so it breaks the prefix rule and starts a new
@@ -739,35 +747,59 @@ table in the next version of this record.
   `stepPageWith` over `noteFor arrows` (`inferNote` or `silentNote`), so its
   call lines are untouched
   ([06](06-prd-step-diagrams.md#what-changing-the-api-would-cost)) [prd].
-- **`StepError` is unchanged** ([C37](#changes-since-draft-v2)). It is a record of
-  a frame index and a `FoldError`
-  ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)) and the CLI takes
-  it apart by pattern ([`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977))
-  [code]. Every note is drawable; the only new failures are `motionsAcross`'s and
-  `creasesToCome`'s `FoldError`s, which fit.
-- **`StepNote`** (**SKETCH**): caption; arrows (`InferArrows`,
-  `InferArrowsAs kind`, `GivenArrows [..]`, `NoArrows`); a presentation mark
-  (`TurnedOver` axis point and direction, or `Rotated` signed eighths), which
-  places a `Symbol` and suppresses inference on that pair only; a repeat range;
-  selected layers (for #48); fold-here lines; and marks, `noteMarks :: [(Text, V3)]`,
-  added because M3 includes marks and D2 labels a visible mark
-  ([C33](#changes-since-draft-v2)). Frames arrive presented, and `stepPageWith`
-  never transforms a coordinate.
+- **`StepError` is unchanged** ([C37](#changes-since-draft-v2)). It is a record
+  of a frame index and a `FoldError`
+  ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)) and the CLI
+  takes it apart by pattern
+  ([`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977)) [code]. Every note is
+  drawable. `motionsAcross`'s and `creasesToCome`'s `FoldError`s fit, but they
+  are not the only new failures: a run's page also calls `motionsBetween`, and a
+  material point read through `surfaceFromFrame` can fail with `SurfaceError`
+  ([`Surface.hs:125`](../src/Senbazuru/Origami/Surface.hs#L125)), which no
+  `FoldError` can hold, since `Origami.Surface` imports `Fold.Query` [code]. How
+  each reaches a page's refusal is M3's to settle (S5 in #638, S22 in
+  #641).
+- **`StepNote`** (**SKETCH**): caption; arrows (`InferArrows`, `InferArrowsAs
+  kind`, `GivenArrows [..]`, `NoArrows`); a presentation mark (`TurnedOver` axis
+  point and direction, or `Rotated` signed eighths; names that clash in
+  `Render.Sequence`, which imports `Render.Steps` and `Sequence.Record`, with
+  `Presenting`'s constructors, which `Sequence.Record` exports
+  ([`Record.hs:286-291`](../src/Senbazuru/Sequence/Record.hs#L286-L291)), so S21
+  in #641 names the page's own), which places a `Symbol` and suppresses
+  inference on that pair only; a repeat range; selected layers (for #48);
+  fold-here lines; and marks, `noteMarks`, each a label and a material point,
+  since a position cannot say which of two coincident faces a mark is on (owner
+  decision 75, where this said `[(Text, V3)]`), added because M3 includes marks
+  and D2 labels a visible mark ([C33](#changes-since-draft-v2)). Frames arrive
+  presented, and `stepPageWith` never transforms a coordinate.
 - **Arrows come from records.** For each moving record of a step, in order,
   `Render.Sequence` gives that record's arrows with the record's kind, from
-  `motionsBetween` over its before surface under its before display and its after
-  surface under its after display ([D14](#d14-material-consumption)). A move whose
-  moving paper is two groups joined only through still paper gets one arrow per
-  group, as `motionsBetween` already splits them
+  `motionsBetween` over its before surface under its before display and its
+  after surface under its after display ([D14](#d14-material-consumption)). The
+  kind meant is valley, mountain or unfold, which `MoveKind`
+  ([`Record.hs:260`](../src/Senbazuru/Sequence/Record.hs#L260)) does not give:
+  its `Turn` is a fold and an unfold alike, and its `Precrease` carries no
+  sense. The sense as written is kept only in `recordOrigin`, and
+  `Sequence.Record` exports no `Sense`, `PageAxis` or `Turning` [code]; how a
+  renderer reads them is S17's to decide (#640). A move whose moving paper is
+  two groups joined only through still paper gets one arrow per group, as
+  `motionsBetween` already splits them
   ([`Step.hs:175-192`](../src/Senbazuru/Origami/Step.hs#L175-L192))
   ([C36](#changes-since-draft-v2)). A pre-crease's before and after surfaces are
-  one flat state, so its arrows come from its route: the fold arrow from its
-  before surface to `recordPoseAt r (PoseOnRoute 1)`, the folded pose at the
-  route's end, both under its before display, and the unfold arrow the same pair
-  reversed. The fold arrow takes the sense the author wrote, as every fold arrow
-  does ([01 §3.3](01-architecture.md#33-diagramstyle-imports-foldtypes)); the
-  crease has none to give ([D12](#d12-the-text-syntax)). With one fold-here line,
-  that is what the figure draws, although its frames are identical.
+  one flat state, so its arrows come from its folded surface: the fold arrow
+  from its before surface to its folded surface, both under its before display,
+  and the unfold arrow the same pair reversed. The runner computes that surface
+  ([`Run.hs:697-699`](../src/Senbazuru/Sequence/Run.hs#L697-L699)) and
+  `asPrecrease` discards it
+  ([`Record.hs:518`](../src/Senbazuru/Sequence/Record.hs#L518)) [code]. By this
+  record's choice, made beside owner decisions 74 to 77, the `Precrease` record
+  keeps it behind one accessor (**SKETCH** `recordFoldedPose`, S18c in #640).
+  `recordPoseAt r (PoseOnRoute 1)`, which this paragraph named, waits with
+  `Origami.Route` for a producer ([C90](#changes-since-draft-v2)). The fold
+  arrow takes the sense the author wrote, as every fold arrow does ([01
+  §3.3](01-architecture.md#33-diagramstyle-imports-foldtypes)); the crease has
+  none to give ([D12](#d12-the-text-syntax)). With one fold-here line, that is
+  what the figure draws, although its frames are identical.
 - **Kinds on the page.** `seenFrom :: Basis -> SeenFrom` is `FromReadersSide`,
   `FromOppositeSide` or `EdgeOn` as `basisForward`'s z is negative, positive or
   zero. From the opposite side, valley and mountain swap in heads and dashes alike;
@@ -792,27 +824,39 @@ table in the next version of this record.
 - **Captions** are `Label`s placed by `Layout` one gutter below each cell's shared
   box, raised by a page-unit `Offset`; a trailing gutter joins the page box only
   when some figure has a caption, so uncaptioned pages keep their bytes.
-- **Which states get which notes** is [D24](#d24-states-figures-and-their-numbers):
-  a step's caption and arrows go on the state it leaves from; an authored `sample`
-  pose is its own figure with no caption and no arrows; `expect refused` adds
-  nothing. `stepNotes :: Run -> [(Frame, StepNote)]` returns exactly the frames
-  `Sequence.Write` writes, because both read `Sequence.Record.writtenStates`
-  ([D23](#d23-the-sequence-modules-and-where-run-lives)).
+- **Which states get which notes** is
+  [D24](#d24-states-figures-and-their-numbers): a step's caption and arrows go
+  on the state it leaves from; an authored `sample` pose is its own figure with
+  no caption and no arrows; `expect refused` adds nothing. `stepNotes :: Run ->
+  Either SequenceError [(Frame, StepNote)]` (**SKETCH**) returns exactly the
+  frames `Sequence.Write` writes, because both read
+  `Sequence.Record.writtenStates`
+  ([D23](#d23-the-sequence-modules-and-where-run-lives)), and is not total for
+  the same reason: `writtenStates` returns `Either SequenceError`
+  ([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713)).
 - **`render --steps` never draws `frame_title`.** A file cannot say whether its
   titles name states (the fixture's "Step 2: folded in half") or instructions (a
   written sequence file), and drawing either moves `quarter-fold-steps.svg`. #94
-  closes at M3 through `run -o x.svg`, with its done-when amended at M0
-  ([C35](#changes-since-draft-v2)).
+  closes at M3 through `run -o x.svg`, with its done-when amended, not at M0 but
+  in a comment on #94 on 2026-10-27 ([C35](#changes-since-draft-v2),
+  [§3](#3-recorded-text-this-design-changes) row 7).
 - **Rejected.** A `Bool` beside the notes; changing `stepPage`'s arity; a sum-type
   `StepError`; presentation applied inside the page; kind from the changed
   assignment (one quarter-fold motion changes edge 9 to +180 and edge 11 to −180);
   checking a stated kind against an inferred one; a page-unit caption band.
 - **Residue.** Captions overlap their own figure on both default pages: the
   three-column CLI page's gutter is 11.5 page units against 14-unit type, and a
-  gutter clears the type only when g ≥ 42/340 ≈ 0.124 of a figure
-  ([06 §8](06-prd-step-diagrams.md#8-captions-and-the-gutter)) [prd]. Long
-  captions overflow across cells, and the backend has no font metrics. Owner
-  decision 7.
+  gutter clears the type only when g ≥ 42/340 ≈ 0.124 of a figure ([06
+  §8](06-prd-step-diagrams.md#8-captions-and-the-gutter)) [prd]. Long captions
+  overflow across cells, and the backend has no font metrics. Owner decision 7.
+  The 42/340 bound holds only on pages of one or two rows: on the default 400 ×
+  400 three-column page, a captioned gutter of 42/340 leaves at least 14 page
+  units below each figure at one or two rows (exactly 14 once a row holds three
+  figures), 13.49 at three rows, 10.12 at four and 5.06 at eight, by `gridOf`'s
+  and `fitBox`'s arithmetic for a square sheet with the trailing gutter
+  ([`Layout.hs:107`](../src/Senbazuru/Diagram/Layout.hs#L107),
+  [`Geometry.hs:193`](../src/Senbazuru/Geometry.hs#L193); `python3`) [ran]. The
+  rule is pending S1 (#635).
 
 ### D8. Folding some layers
 
@@ -1129,13 +1173,15 @@ The decisions:
 ### D13. The run verb and I/O
 
 - **What.** `senbazuru run SOURCE`, with output chosen by the lowercased `-o`
-  extension: `.fold` (the sequence file; stdout when there is no `-o`), `.svg` (the
-  step page; `--columns`, `--view`, `--width`, `--height`, with `render`'s
-  defaults), `.glb` (one state; `--frame`, `--all-layers`, and after M7a `--lift`, owner decision 69). `--check` parses and
-  checks only, opens no sheet and refuses every geometric flag. `--report` writes
-  each move's evidence, resolved references, new creases, re-anchors, stacking
-  choice and work counts to stderr. `--layer-budget` reaches `runSequence` and the
-  renderer for every geometric output. `--author` and `--description` go only with
+  extension: `.fold` (the sequence file; stdout when there is no `-o`), `.svg`
+  (the step page; `--columns`, `--view`, `--width`, `--height` and `--no-fan`
+  (**SKETCH**, owner decision 66, [C121](#changes-since-draft-v2)), with
+  `render`'s defaults), `.glb` (one state; `--frame`, `--all-layers`, and after
+  M7a `--lift`, owner decision 69). `--check` parses and checks only, opens no
+  sheet and refuses every geometric flag. `--report` writes each move's
+  evidence, resolved references, new creases, re-anchors, stacking choice and
+  work counts to stderr. `--layer-budget` reaches `runSequence` and the renderer
+  for every geometric output. `--author` and `--description` go only with
   `.fold`. Any other extension is refused before any file is read.
 - **`--frame N` counts as every verb already does** ([C59](#changes-since-draft-v2)).
   `allFrames f = keyFrame f : otherFrames f`
@@ -1433,11 +1479,13 @@ accepted and rejected controls stay unchanged at each
 
   v2's clauses ("every written edge inside exactly one fixture edge", "every
   unmatched fixture vertex lies on a written edge") are false on correct frames:
-  on hand-built frames of the three states, its edge clause fails on states 0 and
-  1, its vertex clause on state 0, and T1 and T2 hold on all three [py]. The test
-  **lands with the later of M3 and M4** ([C49](#changes-since-draft-v2)): step 2
-  creases both layers of a flat-folded state, which needs `creaseLayersThrough`
-  (M4), and the page needs `motionsAcross` (M3).
+  on hand-built frames of the three states, its edge clause fails on states 0
+  and 1, its vertex clause on state 0, and T1 and T2 hold on all three [py]. The
+  test **lands with the later of M3 and M4** ([C49](#changes-since-draft-v2)):
+  step 2 creases both layers of a flat-folded state, which needs
+  `creaseLayersThrough` (M4), and the page needs M3: `motionsAcross` if
+  `stepPage` draws it over the written frames, while a page drawn from step
+  notes takes its arrows from records.
 - **End to end, E1–E10, on the blintz** in default CI
   ([09 §3](09-testing-and-acceptance.md#3-end-to-end-e1e10-on-the-blintz)). Every
   move turns about existing creases, so no trigonometry reaches GLB JSON. E10
@@ -1674,18 +1722,20 @@ accepted and rejected controls stay unchanged at each
   `expect refused` finds its kind names. `SettleStepError`, `SettleError`, the
   verdict's `Reason` and the registry's `Refused` get instances too, so `explain`
   stays the one answer to how a refusal is printed.
-- **`SequenceError`** (**SKETCH**, [C11](#changes-since-draft-v2)):
-  `ParseFailed ParseProblem` · `StaticRefused Place Span StaticProblem`, where
-  `data Place = InHeader | InStep Int (Maybe Name)`, because a Haskell-built sequence
-  has no location and the step is the only place its author can look ·
-  `SheetRefused Span Text SheetProblem` (`SheetHasNoVertices`,
-  `SheetAlreadyFolded`) · `ResolveRefused Int (Maybe Name) Span Text ResolveProblem`
-  · `StepRefused Int (Maybe Name) Span MoveFailure` · `WriteRefused Int WriteProblem`
-  (`WriteMissingAngles`, `WriteNonFiniteAngle`). v2's sketch had no constructor for
-  `sheetState`'s or the writer's refusals, and no step on `StaticRefused`. As built
-  ([C96](#changes-since-draft-v2)): `SheetRefused` holds a `FilePath`, `ResolveRefused`
-  a `Place`, and the writer's non-finite refusal is `WriteNonFinite`, for a material
-  coordinate.
+- **`SequenceError`** (**SKETCH**, [C11](#changes-since-draft-v2)): `ParseFailed
+  ParseProblem` · `StaticRefused Place Span StaticProblem`, where `data Place =
+  InHeader | InStep Int (Maybe Name)`, because a Haskell-built sequence has no
+  location and the step is the only place its author can look · `SheetRefused
+  Span Text SheetProblem` (`SheetHasNoVertices`, `SheetAlreadyFolded`) ·
+  `ResolveRefused Int (Maybe Name) Span Text ResolveProblem` · `StepRefused Int
+  (Maybe Name) Span MoveFailure` · `WriteRefused Int WriteProblem`
+  (`WriteMissingAngles`, `WriteNonFiniteAngle`). v2's sketch had no constructor
+  for `sheetState`'s or the writer's refusals, and no step on `StaticRefused`.
+  As built ([C96](#changes-since-draft-v2)): `SheetRefused` holds a `FilePath`,
+  `ResolveRefused` a `Place`, and the writer's non-finite refusal is
+  `WriteNonFinite`, for a material coordinate. No `WriteNonFiniteAngle` exists:
+  `writtenStates` checks no angle for finiteness, and `encodeFoldFile` refuses a
+  non-finite one as `NotFinite` (#510).
 - **Message shape.** A `SequenceError` message is "step N (name)", then the author's
   reference as the printer spells it, then the nested `explain` unchanged. It carries
   no location; `sourceLocation :: SequenceError -> Maybe Text` gives `path:line:col`
@@ -1792,15 +1842,26 @@ one drawn state. A step's moves are all drawn on one figure, the state the step
 starts from; that is the figure the heading means.
 
 - **Honesty.** A step's moves run in order, each checked. Their figure draws the
-  state before the step's first move, so move k is accepted only if every material
-  point of its moving paper is where that drawing shows it, compared by material
-  identity; in practice no earlier move of the step left that paper somewhere
-  else. Otherwise `MoveLeavesFigure`, with a hint to start a new `step`. A
-  pre-crease is one move here, like any other ([D12](#d12-the-text-syntax)), and
-  it puts its paper back, so the crane's two diagonal pre-creases share a figure
-  although their moving triangles overlap. All four blintz corners in one step
-  pass; "fold the corner to the centre, then fold that flap in half" fails.
-- **Batching stays inside one step** ([C16](#changes-since-draft-v2)). Consecutive
+  state before the step's first move, so move k is accepted only if every
+  material point of its moving paper is where that drawing shows it, compared by
+  material identity; in practice no earlier move of the step left that paper
+  somewhere else. Otherwise `MoveLeavesFigure`, with a hint to start a new
+  `step`. That kind is not built: `expect refused` accepts its name
+  ([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)), but it has no
+  constructor, so that expectation cannot be met until S19 (#640) builds one,
+  which cannot hold a `MaterialPoint` as [§5](#5-type-sketch) sketches. A
+  turn-over or rotate moves no paper, so this rule cannot refuse one; what may
+  follow one in the same step is pending S1 (#635). A pre-crease is one move
+  here, like any other ([D12](#d12-the-text-syntax)), and it puts its paper
+  back, so the crane's two diagonal pre-creases share a figure although their
+  moving triangles overlap. All four blintz corners in one step pass; "fold the
+  corner to the centre, then fold that flap in half" fails.
+- **Batching stays inside one step** ([C16](#changes-since-draft-v2)), and waits
+  for M4 (owner decision 77, #646): the runner creases move by move
+  ([`Run.hs:627`](../src/Senbazuru/Sequence/Run.hs#L627),
+  [`:735`](../src/Senbazuru/Sequence/Run.hs#L735)), and refuses to crease paper
+  once any of its creases is folded
+  ([`:731-733`](../src/Senbazuru/Sequence/Run.hs#L731-L733)) [code]. Consecutive
   moves of one step whose lines resolve on the step's start state share one
   `creaseAllAlongWith` call, because re-cutting is the cost (AGENTS.md "A move that
   changes a pattern"). In the crane opening of [§7](#7-examples), step `diagonals`'
@@ -1834,29 +1895,44 @@ starts from; that is the figure the heading means.
 - **What.** `Sequence.*` is layered inside its family, with no cycles
   ([C3](#changes-since-draft-v2)):
 
-  | Level | Modules | Holds |
-  | --- | --- | --- |
-  | 1 | `Sequence.Syntax` | the tree (including `RefusalKind`, which `ExpectRefused` holds), spans, `canonical`, `stripSpans`, `sourceFiles` |
-  | 2 | `Sequence.Error` | `SequenceError` and every sequence-level problem type with its `Explain` instance; the catalogue of kinds a `RefusalKind` may name; `sourceLocation`, `excerpt` |
-  | 3 | `Sequence.Build`, `Sequence.Parse`, `Sequence.Pretty`, `Sequence.Check`, `Sequence.Elaborate` | the front ends and the static passes |
-  | 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord` with `hingeTurn` and `recordAngles`, `MaterialPoint` and `MaterialSegment` (until an error at level 2 needs them, [C75](#changes-since-draft-v2)), `MacroBinding`, `recordPoseAt`, `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports `RoutePose` |
-  | 5 | `Sequence.Run` | `FoldState`, `sheetState`, `RunSettings`, `runSequence` |
-  | 6 | `Sequence.Write`, `Sequence.RunPlan`, `Sequence.Material` | the file writer, the flag rules, the settle consumer |
+  | Level | Modules | Holds | | --- | --- | --- | | 1 | `Sequence.Syntax` | the
+  tree (including `RefusalKind`, which `ExpectRefused` holds), spans,
+  `canonical`, `stripSpans`, `sourceFiles` | | 2 | `Sequence.Error` |
+  `SequenceError` and every sequence-level problem type with its `Explain`
+  instance; the catalogue of kinds a `RefusalKind` may name; `sourceLocation`,
+  `excerpt` | | 3 | `Sequence.Build`, `Sequence.Parse`, `Sequence.Pretty`,
+  `Sequence.Check`, `Sequence.Elaborate` | the front ends and the static passes
+  | | 4 | `Sequence.Record` | `RouteEvidence`, `MoveRecord` with `hingeTurn` and
+  `recordAngles`, `MaterialPoint` and `MaterialSegment` (until an error at level
+  2 needs them, [C75](#changes-since-draft-v2)), `MacroBinding`, `recordPoseAt`,
+  `Run`, `writtenStates`, `runRefusal`, `renderRunReport`; re-exports
+  `RoutePose` (not built: `recordPoseAt` and `RoutePose` wait for
+  `Origami.Route`, [C90](#changes-since-draft-v2); a pre-crease's folded pose is
+  its record's own instead, **SKETCH** `recordFoldedPose`, S18c in #640) | | 5 |
+  `Sequence.Run` | `FoldState`, `sheetState`, `RunSettings`, `runSequence` | | 6
+  | `Sequence.Write`, `Sequence.RunPlan`, `Sequence.Material` | the file writer,
+  the flag rules, the settle consumer |
 
   Built besides at M2 ([C96](#changes-since-draft-v2)): `Sequence.Resolve` at level 5
   beside `Sequence.Run`, and `Sequence.SheetLengths` below `Sequence.Record`;
   `docs/architecture.md` keeps the module map.
 
 - **`Run` is defined in `Sequence.Record`**, and it holds what a reader of a run
-  needs: the start state (surface and display), every record, each step's outcome
-  (name, caption, which records, authored samples, expected refusals), the closing
-  caption and the stop, if any. **It does not hold `FoldState`.** (Built: expected
-  refusals are the run's, each with its step, [C96](#changes-since-draft-v2).)
-- **`writtenStates :: Run -> Either WriteProblem [WrittenState]`** (built: `Either SequenceError`,
-  [C77](#changes-since-draft-v2)) applies the state
-  rule and the displays once, and both `Sequence.Write` and
-  `Render.Sequence.stepNotes` call it, so "the page draws exactly the frames the file
-  holds" (R-06-20) holds by construction rather than by a test.
+  needs: the start state (surface and display), every record, each step's
+  outcome (name, caption, which records, authored samples, expected refusals),
+  the closing caption and the stop, if any. **It does not hold `FoldState`.**
+  (Built: a step's outcome holds its number, name, caption, end state,
+  presentation and placement
+  ([`Record.hs:639-648`](../src/Senbazuru/Sequence/Record.hs#L639-L648)) and no
+  records, which a reader finds by `recordStep`; expected refusals are the
+  run's, each with its step, [C96](#changes-since-draft-v2); and samples are not
+  built [code].)
+- **`writtenStates :: Run -> Either WriteProblem [WrittenState]`** (built:
+  `Either SequenceError`, [C77](#changes-since-draft-v2)) applies the state rule
+  and the displays once, and both `Sequence.Write` and
+  `Render.Sequence.stepNotes` (**SKETCH**, S22 in #641) call it, so "the page
+  draws exactly the frames the file holds" (R-06-20) holds by construction
+  rather than by a test.
 - **Why.** Renderers may import one sequence module
   ([01 §1.2](01-architecture.md#12-rules) rule 4), and `stepNotes :: Run -> …`
   needs `Run` (R-06-20); `Sequence.Record` cannot import `Sequence.Run`, which
@@ -1870,8 +1946,10 @@ starts from; that is the figure the heading means.
   `.Internal` module exporting constructors, which the repository has no precedent
   for (`find src -path '*Internal*'` finds nothing [ran]); `Render.*` importing
   `Sequence.Write`.
-- **Residue.** `stepNotes` returns `Either WriteProblem [(Frame, StepNote)]`, where
-  v2 and 06 had it total, because it shares `writtenStates`' refusals.
+- **Residue.** `stepNotes` returns `Either SequenceError [(Frame, StepNote)]`
+  (**SKETCH**), where v2 and 06 had it total, because it shares `writtenStates`'
+  refusals, which are `SequenceError`s
+  ([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713), C77).
 
 ### D24. States, figures and their numbers
 
@@ -1892,8 +1970,10 @@ state after `half`. The page has three figures; figure 1 draws the sheet with st
 - **Figures** are states: figure j draws state j − 1, numbered from 1 as `Layout`
   numbers figures.
 - **Captions and arrows go on the state a step starts from.** So a state's
-  `frame_title` is the caption of the next step that writes a state, and the last
-  state's is `closing`. Sample states carry no caption and no arrows.
+  `frame_title` is the caption of the next step that writes a state, and the
+  last state's is `closing`, or on a run stopped at `not modelled` the stopped
+  step's ([`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)). Sample
+  states carry no caption and no arrows.
 - **Step numbers** in messages, reports and `recordStep` count steps in source
   order from 1, including steps that write nothing. A figure number and a step
   number differ once any step writes samples or nothing, which is why messages say
@@ -2009,7 +2089,9 @@ data MoveFailure
   | NotAProperRotation Double                                     -- built: NotModelled as NotModelledStop (C76); NotAProperRotation as PresentationImproper (C81), dropped (C95)
                                                                  -- built: ReanchorNotFlat V2 Double, the new anchor in sheet lengths and its face's tilt in degrees; UnfoldChangedSince
                                                                  -- EdgeId; added: CreasingRefused FoldError, MoveNotRunYet Text (C96). Not built yet: ThroughRefused, which will clash
-                                                                 -- with Origami.ThroughLayers' constructor of that name, as NotModelled did (C76)
+                                                                 -- with Origami.ThroughLayers' constructor of that name, as NotModelled did (C76); nor MoveLeavesFigure, which
+                                                                 -- cannot hold a MaterialPoint while Sequence.Record, which imports Sequence.Error, defines that type: S19 (#640)
+                                                                 -- either moves MaterialPoint below Sequence.Error (C75) or gives it a V2 in sheet lengths, as ReanchorNotFlat has
 sourceLocation :: SequenceError -> Maybe Text
 excerpt :: Text -> SequenceError -> Maybe Text
 
@@ -2081,7 +2163,7 @@ runSequence :: Budget -> RunSettings -> Map FilePath Frame -> Elaborated -> Eith
 
 -- Senbazuru.Sequence.Write, Render.Sequence
 writeSequence :: FileHeader -> Run -> Either SequenceError FoldFile
-stepNotes :: Run -> Either WriteProblem [(Frame, StepNote)]
+stepNotes :: Run -> Either SequenceError [(Frame, StepNote)]          -- SequenceError, as writtenStates returns (C77)
 
 -- Senbazuru.Sequence.Material (study until M8), Material.Settle (M8)
 data SettleSpec = SettleSpec { refinement :: (SettleRegion, Int), stiffness :: Bending, rest :: RestAngles
@@ -2304,7 +2386,7 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 | M0 | Decisions on record | [§3](#3-recorded-text-this-design-changes) rows 1–10 and 16; `docs/notes/sequences.md`; glossary rows moved in; the issues of [§10](#10-corrections) filed | amends #60, #95, #97, #111, #36, #94, #104, #114, #56, #64, #96 |
 | M1 | Language without geometry | `Sequence.Syntax`, `Error`, `Build`, `Parse`, `Pretty`, `Check`, `Elaborate`; `Fold.Load.readSequenceText`; the `decodeFile` refusal; `Sequence.RunPlan` for `--check`; `run --check`; round-trip property; whole-crane parse-and-check test; row 2 | advances #60 |
 | M2 | Rigid runner on flat states and existing creases | `sheetState`; references on flat states; `fold`, `unfold`, `pre-crease` along constructions on the flat sheet and along existing creases of flat-folded states; 05 L1 (`atRest`), L2 (`creaseAllAlongWith`), L3 (`fitRigid`, some-vertex classification), L4's `flapStationaryFace` (`Origami.Route` with its producer instead, C90), L14 (`prepareFlapToward`, `Eq`); presentation; anchors; `Sequence.Record` with `writtenStates`; the writer; `run -o .fold`, `.glb`; `--report`; `expect refused`; `not modelled`; the bird arrows golden pinned before L3; blintz and helmet equivalence; quarter-fold test 1; E1–E6, E8–E10; rows 11 (sheet lengths), 12 (`runSequence`), 13 | closes #95, #97; advances #60; #58 item 3 |
-| M3 | Step pages that read like a book | `StepNote`, `stepPageWith`, arrow heads, `Symbol`, captions, 05 L5 (`motionsAcross`, `creasesToCome`), steps of several moves, marks, fanned layers (owner decisions 65 and 66); `run -o .svg`; E7; rows 12 (`stepPageWith`) and 19 | closes #36, #94; advances #48 |
+| M3 | Step pages that read like a book | `StepNote`, `stepPageWith`, arrow heads, `Symbol`, captions, 05 L5 (`motionsAcross`, `creasesToCome`), steps of several moves, marks, fanned layers (owner decisions 65 and 66); `run -o .svg`; E7; rows 12 (`stepPageWith`, `runPage`) and 19 | closes #36, #94; advances #48, through `noteLayers` (**SKETCH**), filled from `recordMoving` (S32b, #643) |
 | M4 | Folding some layers | 05 L6 (before the runner wraps `ThroughError`), L7–L12; selectors; `stackingWhere`; `start folded`, `checkpoint`, `repeat`; the slow job, with the slow study spec files moved into it, and the crane-wing prefix in it, at the wing's root (owner decision 42, decided 2026-10-13; #560), compared as 09 §9's `CraneWing` row says (owner decisions 43, 44, 47 and 48; C104 to C107); quarter-fold test 2 and its page; rows 15, 17, 18 | closes #60; advances #54; revisits #70; related #110 |
 | M5 | Coupled macros | collapse with `keeping`, rabbit ear, petal, `continue`, `together`, `sample`, `pose`; 05 L13 (`CheckedMacro`, `macroPoseAt`); the study's certificate registry; bird route; crane opening | advances #54, #61; #55 unblocked, not required |
 | M6 | Study consumes records | `Sequence.Material` in the study; `settle` and `material` blocks; settled illustrations and failure scope; crane spreading re-expressed, pin-set equivalence first; `senbazuru-material-study --sequence SOURCE DIR`; 05 L4's `flapPoseAt` here or at M7b, with its first consumer; rows 11 (physical lengths) and 21 | advances #195; #114 rewritten |
@@ -2321,8 +2403,10 @@ derived at M5 with the runner; the four `keeping` candidates are the refusal tes
 - Row 2 merges no later than M1's `Sequence.Parse` PR.
 - `Fold.Query.atRest` and #111's table amendment land before M2's writer.
 - 05 L6 lands before M4's runner wraps `ThroughError`.
-- Quarter-fold test 2 needs M3's `motionsAcross` and M4's `creaseLayersThrough`, so
-  #60 closes in M4's last PR, after M3 has merged ([C54](#changes-since-draft-v2)).
+- Quarter-fold test 2 needs M4's `creaseLayersThrough`, and its page needs M3:
+  `motionsAcross` if `stepPage` draws it over the written frames, while a page
+  drawn from step notes takes its arrows from records. So #60 closes in M4's
+  last PR, after M3 has merged ([C54](#changes-since-draft-v2)).
 
 ## 9. Owner decisions
 
@@ -2341,8 +2425,8 @@ decision 51 by the code review of #588, decision 52 by #591, decision 53 by
 59 by #566, decision 60 by #605, decision 61 by the owner while #605's galleries
 ran, decision 62 by #607, decision 63 by the code review of #614, decision 64
 by the code review of #621, decisions 65 to 67 by #623, decisions 68 and 69 by
-#624, decisions 70 and 71 by the code review of #627, and decisions 72 and 73 by
-the code review of #632.
+#624, decisions 70 and 71 by the code review of #627, decisions 72 and 73 by
+the code review of #632, and decisions 74 to 77 while planning M3 (#635).
 
 | # | Decision | Recommended default | If decided otherwise | Before |
 | --- | --- | --- | --- | --- |
@@ -2419,6 +2503,10 @@ the code review of #632.
 | 71 | Whether the PR template asks for the timing ([#629](https://github.com/avalonalex/senbazuru/issues/629)): no CI job checks it, by decision 61, and none of `.github/pull_request_template.md`'s four checkboxes names it ([the question as asked](https://github.com/avalonalex/senbazuru/issues/629#issuecomment-6405435035)) | **decided 2026-10-25**: as recommended, "no checkbox": a checkbox would reach almost no PR. No PR body before #632 keeps the template's checklist as written, and two, #161 and #163, carry a reworded copy of its four items; row 21's AGENTS.md line asks for the times under "How this is verified", which every merged PR body has. The question said 1 of 324 PRs (#139) kept the checklist, where #139 matched only the prose "`make check` passes all 952 tests" ([the correction](https://github.com/avalonalex/senbazuru/issues/629#issuecomment-6405798736)) | a checkbox through its own recorded-text row, landing with row 21, reaching only PRs whose body starts from the template: GitHub's web form, or `gh pr create` without `--fill` or `--body` | issue #629, recorded in #632 ([C124](#changes-since-draft-v2)) |
 | 72 | When decision 70's per-PR timings start ([#628](https://github.com/avalonalex/senbazuru/issues/628)). #632 had read decision 70 as binding every M4 and M5 PR that adds or extends a model's source, landing row 21 in M4's crane-wing PR, where decision 70's question framed the gap after M8 and #628 had said the AGENTS.md line comes from M6 ([the question as asked](https://github.com/avalonalex/senbazuru/issues/628#issuecomment-6405798536)) | **decided 2026-10-25**: as recommended, "from M6": per-PR timings start with the first PR that adds a settle, and the AGENTS.md line lands in that PR; before M6 every model's run takes about a second, and M5's macro moves are timed by row M5 (d) ([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed)) | from now, the line landing in its own PR straight after #632; or as #632 had it, binding from now with the line in the first PR that owes it, on the plan M4's crane-wing PR | the code review of #632, recorded in #632 ([C124](#changes-since-draft-v2)) |
 | 73 | Whether a change to the settle solver owes a timing ([#628](https://github.com/avalonalex/senbazuru/issues/628)). Decision 70's answer kept code-only changes out because "the profiling rule covers them", a premise of the question that was false: AGENTS.md's profiling paragraph says how to measure, and requires no PR to, so after M8 a slower solver would meet only CI's job timeout ([the question as asked](https://github.com/avalonalex/senbazuru/issues/628#issuecomment-6405798536)) | **decided 2026-10-25**: as recommended, "solver changes too": a PR that changes the code a settle is solved with, the study's `--sequence` solver from M6 to M8 and `run --settle`'s after, owes a timing of each model that settles; other code changes stay out, among them refactors elsewhere, new move checks and drawing ([09 §6.4](09-testing-and-acceptance.md#64-one-models-whole-run-timed)) | keep code-only changes out, so that a slower solver shows up only when a later PR that adds work times the model, or at a milestone | the code review of #632, recorded in #632 ([C124](#changes-since-draft-v2)) |
+| 74 | Where a run page's [fold-here lines](glossary-additions.md#step-pages) come from ([#635](https://github.com/avalonalex/senbazuru/issues/635)). 06 took them only from the creases a move adds, each record's `recordNewCreases`, but the blintz, helmet and quarter-fold sheets already carry every crease their runs fold along, so on that rule their pages would draw none: each of the blintz run's six written states has the sheet's 12 edges ([the question as asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6458083132)) | **decided 2026-10-26**: as recommended, "every fold's hinge": every fold and pre-crease draws its hinge, `recordHinge`, on the figure before it, at the before positions, styled by the move's mountain or valley as seen, the way books draw them; `render --steps` keeps inferring them from new creases, with 05 L5's `creasesToCome` (**SKETCH**) the source for that inference ([06 §2](06-prd-step-diagrams.md#2-from-a-run-to-notes)) | only new creases, as 06 was written: a run page draws a fold-here line only where a move creases fresh paper, so the blintz, helmet and quarter-fold runs draw none | issue #635, recorded in #649 ([C126](#changes-since-draft-v2)) |
+| 75 | Whether M3 runs `mark`, which pins a named point of paper so that a run's pages can label it ([#635](https://github.com/avalonalex/senbazuru/issues/635)). The runner refuses `mark` as not run yet (`Run.hs:584`), and the resolver refuses `meet`, which 02 §4.5's example of a mark used, because it is measured where the paper lies now (`Resolve.hs:174`) ([the question as asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6458083132)) | **decided 2026-10-26**: as recommended, "yes, sheet points only": M3 runs `mark`, pinned by the point forms the resolver already evaluates on the sheet, and labels it on the figures where that paper shows. A mark note (06 §1's `noteMarks`, **SKETCH**) holds a [material point](glossary-additions.md#references), since a position cannot say which of two coincident faces a mark is on. `meet`, and a mark used as a reference, stay not run yet until M4, so 02 §4.5's example marks `corner south-east` ([02 §4.5](02-language-semantics.md#45-landmarks-mark-let-step-names)) | defer to M4: two fewer PRs, labels drawn only from notes written by hand for `render --steps`, and run pages labelling nothing until M4 | issue #635, recorded in #649 ([C126](#changes-since-draft-v2)) |
+| 76 | When `run -o x.svg` ships ([#635](https://github.com/avalonalex/senbazuru/issues/635)). `run` refuses it today as `PageNotYet` (`RunPlan.hs:173`), and the notes its page draws come in many M3 PRs ([the question as asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6458083132)) | **decided 2026-10-26**: as recommended, "early": `run -o x.svg` ships as S23 (#641), after S22, drawing a sequence's page with plain notes, and each later PR adds one mark to it: captions, arrows, loops, fold-here lines. Until E7's golden pins the page (S37, #643), S22's structural test holds it: the run's page with every note made silent equals the page `stepPage` draws without arrows over the written frames | when complete: `run -o x.svg` lands only once every note exists, about 35 PRs in, so no page changes under authors in between | issue #635, recorded in #649 ([C126](#changes-since-draft-v2)) |
+| 77 | Whether M3 batches a step's creases ([#635](https://github.com/avalonalex/senbazuru/issues/635)). D22, 02 §6.5 and C16 put consecutive moves of one step whose lines resolve on the step's start state into one `creaseAllAlongWith` call, while M2's runner creases move by move (`Run.hs:627`, `:735`) ([the question as asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6458083132)) | **decided 2026-10-26**: as recommended, "defer to M4", where creasing through layers reworks the same call. [#646](https://github.com/avalonalex/senbazuru/issues/646) holds the work, and its done-when is the equivalence test: the crane opening's two diagonal pre-creases, batched, give the same result as creasing them move by move ([D22](#d22-figures-holding-several-moves)) | build at M3: a PR now, saving one re-cut per step at M3, which M4 then reworks | issue #635, recorded in #649 ([C126](#changes-since-draft-v2)) |
 
 Questions the PRD files raised that this record decides rather than leaves open: a
 step body's own builder type ([C22](#changes-since-draft-v2)); constructor names that
@@ -2599,6 +2687,12 @@ a gap found while deciding. *Evidence checked* is what was re-read or run for th
 record. *Files affected* are the PRD files [§11](#11-file-plan-and-writing-rules)
 lists edits for.
 
+An M3 PR takes the next free C number at its last rebase before merging, and
+cites it only within its own diff until then ([C126](#changes-since-draft-v2)).
+M3's PRs run side by side, so a PR that finds its number taken when it rebases
+renumbers inside its own diff, and no `(Cn)` already on `main` changes. Rebase
+order decides the numbers, whatever order the plan gives the PRs.
+
 | # | Change | Proposed where | Evidence checked | Verdict | Files affected |
 | --- | --- | --- | --- | --- | --- |
 | C1 | Three new pieces, two of them contracts (the `Sequence` value is shared, not a contract) | 00 "What connecting them means"; 01 §2 | v2 §1 says three contracts, its picture labels two | adopted-modified | README, 00, 01 |
@@ -2726,6 +2820,7 @@ lists edits for.
 | C123 | Row 21 carries the timing a PR adding a settle owes into AGENTS.md ([#622](https://github.com/avalonalex/senbazuru/issues/622)), for owner decisions 61 and 64. 09 §6.4 asks each PR that adds a settle to a model's sequence to time that model's whole run, a duty that outlasts the milestones, but agents work from AGENTS.md, whose "Testing" section did not mention it, so a settle added after M8 would go untimed (#621's code review). 01 §4.21 writes the line and 10 §3 schedules it. **This record's choices, not the owner's:** AGENTS.md as the line's home; a note the landing PR writes as the procedure's, since AGENTS.md points into `PRDs/` nowhere and the plan is written for its milestones; the landing PR; the wording; reading "a model's sequence" as any `.foldseq` outside `test/`; and, in 09 §6.4, the machine and the `real` clock recorded, the reruns a run over 10 minutes owes, a time from another machine as evidence only, and a settle no command solves left out. **Corrected in #627's code review:** the trigger said "in `examples/`", where the repository's model sequences, the crane-wing source among them, sit at its root; the landing PR was "M6's acceptance PR, the first to time the crane", where M5 may time it first and an earlier M6 PR may add a settle; the line did not name the crane, whose time is two sources added, which is what decision 64 decided; and it credited the owner with the record's list of exempt study modes | #622; #621's and #627's code reviews | `AGENTS.md:288-315`, its "Testing" section, and `:36-39`, "This file points at headers", read at eae7917 [code]. `git ls-files '*.foldseq'` at 186b206: `blintz.foldseq` and `helmet.foldseq` at the root, `examples/traditional-crane.foldseq` the only one in `examples/`, and four under `test/` [ran]. §3 rows 8, 11, 12, 15 and 19 for the form of a row that lands text in AGENTS.md; 09 §6.4 and 09 §4's rows M5 (d), M6 (d) and M8 (a); R-07-10, R-07-40 and 07 AC-1; R-04-6 and 09 §3's "Why the source is not in `examples/`"; 10 §2's edges M4 → M5 and M4 → M6; decisions 61 and 64 [prd] | adopted; trigger widened by [C124](#changes-since-draft-v2) | 01, 09, 10, README |
 | C124 | Owner decisions 70 to 73 ([#628](https://github.com/avalonalex/senbazuru/issues/628), [#629](https://github.com/avalonalex/senbazuru/issues/629); decided 2026-10-25; questions and answers [70](https://github.com/avalonalex/senbazuru/issues/628#issuecomment-6405434831), [71](https://github.com/avalonalex/senbazuru/issues/629#issuecomment-6405435035), [72 and 73](https://github.com/avalonalex/senbazuru/issues/628#issuecomment-6405798536), and the [correction to 71's](https://github.com/avalonalex/senbazuru/issues/629#issuecomment-6405798736)) say which PRs owe a whole-run timing. From the first PR that adds a settle to a model's sequence source, at M6, each PR that adds work to a model's run owes one: adding a settle or making one finer, changing `run --settle`'s triangle budget, making more of a model's source run, or changing the code a settle is solved with; other code changes owe none. Decision 64 had named only an added settle, while 09 §4's red-when cells M6 (d) and M8 (a) named a refined settle and a raised budget. Row 21 still lands in that first M6 PR. Its AGENTS.md line names the four kinds of change, and the note it writes carries 09 §6.4's "When" with the edge cases. No checkbox goes in the PR template (decision 71). **This record's choices, not the owner's:** a new model source counted as more of a model running, and code that runs more of a source counted too, the owner's own example being swivel folds; making a settle finer read as adding, raising or widening a `refine` item, so that a `hold`, `grip` or `rest` edit owes none; the crane's two sources counted wherever they are saved, since the quarter fold's §7 source was saved under `test/`; a source that repeats part of another, such as §7's crane opening, timed as a model of its own; a refused source timed as its refused run; the milestone clause read as the crane from a square, M5 first; and the line's wording. **Corrected in #632's code review:** #632 first read decision 70 as binding every M4 and M5 PR and landed row 21 in M4's crane-wing PR, which decision 72 replaces; decision 70's question gave "the profiling rule covers them" as the reason to leave code-only changes out, where that rule requires no measurement, which decision 73 answers; and decision 71's question, and this row's first version, said 1 of 324 PR bodies kept the template's checklist (#139), where #139 matched only prose and none keeps it as written | #628, #629; #627's and #632's code reviews | `gh pr list --repo avalonalex/senbazuru --state all --limit 400 --json number,body`, the 324 PRs before #632: none of the template's four checklist lines in any body; `- [x]` lists only in #161 and #163, rewording its four items; "`make check` passes" only in #139's "passes all 952 tests"; "How this is verified" in every body but #372's, closed unmerged [ran]. `run` on `blintz.foldseq` 0.06 s, `helmet.foldseq` 0.01 s and `examples/traditional-crane.foldseq`, refused at step 4, 0.03 s, one run each under `/usr/bin/time -p` with other work running, in #632's code review [ran]. `AGENTS.md:312-315`, the profiling paragraph; `git ls-files '*.foldseq'`, `test/fixtures/quarter-fold.foldseq` among them [code]. 09 §4's rows M5 (d), M6 (d) and M8 (a), §6.4 and §9's `CraneWing` row; R-07-10 and R-07-41; 04's `settleitem` production; §7's quarter fold and crane opening; decisions 61 and 64 [prd] | adopted (owner decisions 70 to 73) | 01, 09, 10 |
 | C125 | Row 11's second half is scheduled ([#630](https://github.com/avalonalex/senbazuru/issues/630)). Row 11 changes AGENTS.md's "Two unit systems" in two halves. #531, closing #505, landed the first with M2, putting sheet lengths in `Sequence.SheetLengths` (C88), and since then AGENTS.md says physical lengths "arrive with the `material` block at M6" and are converted "in the one place the material block brings". The second half was scheduled nowhere: 10 §3 listed row 11 only at M2, no M6 row of §8, 10 §1 or 09 §4 named it, 01 §4.11 still gave the text planned before #531, and 07 said 01 lands the row with M2. Now 01 §4.11 quotes the landed text and writes out the M6 replacement, and the same PR's change to `SheetLengths.hs:31-32`, whose header says the same thing; 10 §3 schedules both in M6's PR that first converts a `material` block's `size` or `thickness` to model units, and its intro says row 11 lands in two PRs; the M6 rows of §8, 10 §1 and 09 §4 name the half, and their M2 rows the other; and 07 says so. R-07-24's s, which it had the resolver record, is now `sheetLengthOf`, which the resolver calls since #531, so that the one place for sheet lengths stays one. **This record's choices, not the owner's:** the landing PR, named by the first conversion of a length rather than by the blocks, since the parser can accept `material` blocks alone and the first planned one, `stiffness illustrative`, holds no length; the replacement's wording; and the module's name kept as a SKETCH that the PR fills as built. **Corrected in #634's code review:** the landing PR was "the PR adding `material` blocks", and #505, an issue, was called the PR that landed the first half | #630; #627's and #634's code reviews | `AGENTS.md:196-201` and `src/Senbazuru/Sequence/SheetLengths.hs:31-32` at 5523e5a; `Parse.hs:552`'s `notYet "material"`, apart from `settle`'s at `:693`; `Resolve.hs:156`'s `sheetLengthOf`; no module under `study/` named `Senbazuru.*` [code]. 07 R-07-24, AC-14 and its crane-wing `material { stiffness illustrative }`; `UnitMismatch` in 07's `SettleStepError` sketch; §5's type sketch, `Senbazuru.Sequence.Material (study until M8)`; D15 stage 7; 10 §3, §8, 10 §1 and 09 §4 [prd] | adopted | 01, 07, 09, 10 |
+| C126 | Owner decisions 74 to 77 ([#635](https://github.com/avalonalex/senbazuru/issues/635); decided 2026-10-26; [questions and answers](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6458083132)), asked while planning M3, and the statements about the code that M2 made false, corrected before M3's PRs build on them. **The decisions.** A run page's fold-here lines come from every fold's and pre-crease's hinge, `recordHinge`, drawn at the before positions and styled by the move's sense as seen, and 05 L5's `creasesToCome` (**SKETCH**) stays the source for inference on `render --steps` (74): by 06's rule, new creases only, a run that folds along creases its sheet already has draws none, and the blintz run is one. M3 runs `mark`, pinned by the point forms the resolver already evaluates on the sheet, and a mark note holds a material point, since a position cannot say which of two coincident faces a mark is on; `meet`, and a mark used as a reference, stay not run yet until M4, and 02 §4.5's example, which used `meet`, marks `corner south-east` (75). `run -o x.svg` ships early, as S23 after S22, each later PR adding one mark to its page, and, until E7's golden pins the page, S22's structural test holds it: the run's page with every note made silent equals the page `stepPage` draws without arrows over the written frames (76). Batching a step's creases (D22, 02 §6.5, C16) waits for M4, where creasing through layers reworks the same call, and #646 holds it (77). §9 gains rows 74–77, and 06's open questions list them. **This record's choices, not the owner's:** a written state's `frame_title` is the caption of the step that leaves it, so state 0 of `examples/blintz-sequence.fold` carries step 1's instruction, which looks like an off-by-one and is not; `export`, `run -o x.glb`, `info` and a single-frame `render` all show it, and it is accepted, for S25 to document; a `Precrease` record keeps the folded surface the runner computes and `asPrecrease` discards, behind one accessor (S18c); E7's `blintz-sequence-steps.svg` is drawn unfanned, with `defaultTheme`, the `--no-fan` (**SKETCH**) page; and edge-on pages overlap, since `Layout`'s row stride is (1 + g) times a figure height of zero, so on a three-column page of flat paper seen edge-on figure 4 is drawn over figure 1, which S29 states in usage.md and #647 holds. **C numbers.** The rule above this table: an M3 PR takes the next free C number at its last rebase before merging, and cites it only within its own diff until then, since M3's PRs run side by side and would each have taken C126. **What M2 made false**, each corrected in place, with no acceptance criterion's wording changed and no line number re-anchored. Types and failures, in 01, 02, 04, 06, D4, D7, D20, D23 and §5: `stepNotes` (**SKETCH**) returns `Either SequenceError`, as `writtenStates` does, not `Either WriteProblem` or a total list, and no `WriteNonFiniteAngle` exists; a run page also fails with `motionsBetween`'s and `surfaceFromFrame`'s errors; and 01 §4.7's #94 text follows S0b's comment. What a record holds, in 01, 02, 06, D7, D22, D23 and glossary additions: arrow kinds come from the records, whose `MoveKind` holds no sense; a pre-crease's arrow cannot go to `recordPoseAt`, which does not exist (C90); a step's outcome holds no records or samples; a run stopped at `not modelled` ends on the stopped step's caption, and its page drops that step's partial records; `MoveLeavesFigure` has no constructor, for S19 to build; 06 §1's `TurnedOver` and `Rotated` clash with `Sequence.Record`'s, for S21 to rename; 06 §2's `NoMotion` row becomes an anchoring row and a `mark` row is added, its turn-over row reads the turn as written, and its repeat, checkpoint and sample rows are marked M4 and M5; 06's New goldens table lists nine M3 goldens, E7's among them, each with its PR; and 06's arrow-bearing golden count, its producers, its turn-over arrow, `SeenFrom`, its reliance on `-Wincomplete-patterns`, `HollowHalfHead`, open questions 9 and 10 and §7's UNVERIFIED are put right. In 05: its header and its status lines for L1–L4 and L14 say what is built, and L16's and 06 §10's use of L9, which is M4 work, is put right. In 04 and D13: the sketch's `FileMeta` is `FileHeader`, and `--no-fan` joins D13's flags. In 09: E7's theme, `runIO` in place of `beforeAll`, §1.3's three multi-frame examples, and §1.2's two `examples/*-sequence.fold` goldens. In 09, 10 and §8: quarter-fold test 2's page needs `motionsAcross` only when drawn over the written frames. In §8 and 06: #48 advances through `noteLayers` (**SKETCH**), which `recordMoving` can fill (S32b). §3 row 12 also adds `runPage` (**SKETCH**) to AGENTS.md's `--layer-budget` list at M3. Glossary additions gain a *Fold-here line* row, and their *Creases to come* row is corrected. §3 row 7 marks #36 and #94 amended by S0b's comments. **Pending S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)):** owner decision 7, since its 42/340 gutter clears 14-unit type only on pages of one or two rows, and what may follow a turn-over or rotate in one step; the passages that depend on them say so | #635, while planning M3 | `Sequence.Record` at 4fe19a5: `MoveKind` and `Presenting` (`Record.hs:260`, `:286-291`), `asPrecrease` (`:518`), `StepOutcome` (`:639-648`), `writtenStates` (`:713`, `:723`) and `writtenFrame`'s `WriteNonFinite` (`:788`); `Sequence.Run`: a stopped run's records (`Run.hs:513`), `mark` refused as not run yet (`:584`), creasing move by move (`:627`, `:735`) and refusing a crease across folded paper (`:731-733`), and the pre-crease's turned record (`:697-699`); `MoveLeavesFigure` among `expect refused`'s names (`Error.hs:860`); `meet` refused (`Resolve.hs:174`); `PageNotYet` (`RunPlan.hs:173`); `SurfaceError` (`Surface.hs:125`); `motionsBetween` (`Step.hs:102-109`); `seenFromAbove` (`CreasePattern.hs:431-432`); the arrow's curve (`Svg.hs:226`, `:231`); `formSheetEdges` (`Shadows.hs:175`); `gridOf`'s stride (`Layout.hs:121`); `galleryViewDirection` (`BlintzGallery.hs:25`); `frame_title` and `file_title` in the CLI (`Cli.hs:835`, `:945`, `:1035`, `:1048`, `:1150`); `SvgSpec.hs:85-93`, `WriteSpec.hs:119`, `BirdSequenceSpec.hs:43` [code]. `jq` on `examples/blintz-sequence.fold`: six states, each with the 12 edges `examples/blintz-base.fold` has, and state 0's `frame_title` step 1's caption [ran]. The gap below a figure on the default 400 × 400 page of three columns with its 16-unit margin, a captioned gutter of 42/340 and D7's trailing gutter, by `gridOf`'s and `fitBox`'s arithmetic in `python3`: 14 page units at one or two rows of three, 13.49 at three rows, 10.12 at four and 5.06 at eight [ran]. The questions and answers on #635 and S0b's comments on #36 and #94, read with `gh api` [ran]. 06 §2's table, §6, New goldens, R-06-16 and R-06-20; D7, D22 and D23; 02 §4.5 and §6.5; 09's E7 and §1.3; 01 §4.7 [prd] | adopted (owner decisions 74 to 77) | 01, 02, 04, 05, 06, 09, 10, glossary additions |
 
 ## Proposals not adopted
 

@@ -265,7 +265,7 @@ Each has a recommended default, decided with its consequences in
 | 4 | Stiffness of a *precrease* (a crease folded, unfolded, lying flat) in a settle | Its crease, `U` at 0, settles as a crease spring resting at 0 | M6 |
 | 5 | SVG "wireframe": feature lines only, or mesh triangles too | `--lines features`; `--lines mesh` adds triangle edges | M7b |
 | 6 | Textures: content and source | None; M7a ships normals and texture coordinates only | after M7a |
-| 7 | Captions overlapping or overflowing their figure | Captioned pages get a gutter of at least 42/340 ≈ 0.124 of a figure; uncaptioned pages keep their bytes; overflow across cells is stated | M3 |
+| 7 | Captions overlapping or overflowing their figure | Captioned pages get a gutter of at least 42/340 ≈ 0.124 of a figure, which leaves room for 14-unit type on the default three-column page only at one or two rows, pending S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)); uncaptioned pages keep their bytes; overflow across cells is stated | M3 |
 | 8 | Blintz (corners folded to the centre): behind, as the recipe does, or in front, as the study's `cases.json` does | **Decided 2026-10-06** as recommended: behind, as the recipe does | M2's blintz PR |
 | 9 | Whether `examples/quarter-fold-steps.fold` moves to the state rule | **Decided 2026-10-06** as recommended: it stays as the regression; the state-rule page is a new golden | M2 |
 | 10 | Eighth turns (`rotate 1/8`) by trigonometry, or a `sheet square as diamond` start | **Decided 2026-10-11**: trigonometry, with cos 45° and sin 45° both `sqrt 0.5`, so an eighth turn adds no platform bits of its own, while folded positions keep folding's (09 §8) ([C91](decisions.md#changes-since-draft-v2)) | M2 |
