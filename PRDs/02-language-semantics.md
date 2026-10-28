@@ -563,22 +563,37 @@ Worked cases [py, checks [B](#check-b), [S](#check-s), [C](#check-c)]:
 
 ### 4.5 Landmarks: `mark`, `let`, step names
 
-- **`mark A = POINT [in face containing S]`.** POINT is evaluated to a folded
-  position, and the distinct material points of every face there are collected. If
-  more than one is found, the mark is refused (`MarkOnSeveralLayers`) unless S picks
-  exactly one. The chosen material point is pinned and labelled on figures while
-  visible ([06](06-prd-step-diagrams.md)).
+- **`mark A = POINT [in face containing S]`.** A point named on the sheet (a
+  corner, an edge's midpoint, `centre`, `(u, v)`, or a point between two of
+  them, §4.2) names one material point, and the mark pins it. The resolver
+  works each such form out on the sheet
+  ([`Resolve.hs:163-201`](../src/Senbazuru/Sequence/Resolve.hs#L163-L201)), so
+  it says which paper is meant wherever that paper now lies. A point measured
+  where the paper lies now (`meet`, from M4) is only a place, and several
+  layers can lie there. It is taken to its folded position and the distinct
+  material points of every face there are collected, as
+  [D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot)
+  does for any folded position filling a material slot (next bullet). If more
+  than one is found, the mark is refused (`MarkOnSeveralLayers`) unless S picks
+  exactly one. The chosen material point is pinned and labelled on figures
+  while visible ([06](06-prd-step-diagrams.md)). That a sheet form pins its
+  own paper is the decision record's reading of D2, not the owner's
+  ([C126](decisions.md#changes-since-draft-v2)).
 
-  *Example* [jq]. After step `quarter`, `corner south-east` is folded to
-  (1, 0), where material vertices 0, 1, 2 and 3 all lie. So
-  `mark A = corner south-east` is refused, listing those four corners. With
-  `in face containing (3/4, 1/4)` it picks face 0, whose only material point there
-  is vertex 1, corner south-east.
+  *Example* [jq], from M4. After step `quarter`, `corner south-east`, vertex 1,
+  still lies at (1, 0), since neither step moves it, and the other three
+  corners have been folded onto it. So `meet edge east edge south` is (1, 0),
+  where material vertices 0, 1, 2 and 3 all lie, and
+  `mark A = meet edge east edge south` is refused, listing those four corners.
+  With `in face containing (3/4, 1/4)` it picks face 0, whose only material
+  point there is vertex 1, corner south-east.
 
   M3 runs `mark` with the point forms the resolver already evaluates on the
-  sheet ([owner decision 75](decisions.md#9-owner-decisions)); until S20
+  sheet ([owner decision 75](decisions.md#9-owner-decisions)), so at M3
+  `mark A = corner south-east` pins vertex 1, corner south-east, and
+  `MarkOnSeveralLayers` has no case. Until S20
   ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner
-  refuses it as not run yet
+  refuses `mark` as not run yet
   ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`
   ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174)), and a mark
   used as a reference ([`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)),
@@ -1280,8 +1295,10 @@ That is why the hinge turns are compared too: the recipe turns edges 8 and 9 bot
 - **What it leaves behind.** An unchanged state, **no move record and no state**. A
   refusal claims nothing about a route taken, and every consumer of records (page,
   animation, settle) would otherwise have to skip it. Its outcome is kept in the
-  `Run`, on its step, and printed by `--report`; it is not written to the sequence
-  file ([D18](decisions.md#d18-non-goals)).
+  `Run`'s `runExpected`, with its step and move, not in the step's outcome, and
+  printed by `--report`; it is not written to the sequence file
+  ([D18](decisions.md#d18-non-goals),
+  [C96](decisions.md#changes-since-draft-v2)).
 - **A step of nothing else.** A step whose moves are all `expect refused` writes no
   state and is not a figure
   ([D24](decisions.md#d24-states-figures-and-their-numbers)).
@@ -1329,7 +1346,7 @@ which value.
 | `Sampled CheckedMacro SampleReport` | a coupled route checked at sample poses; `CheckedMacro` is opaque |
 | `StateOnly` | end state checked, route not |
 | `Presented` | only presentation changed |
-| `NoMotion` | no paper moved: a move that creases without turning, `anchor P`, or `mark` |
+| `NoMotion` | no paper moved: `anchor P` or `mark`. No move of v1 creases without turning (§6.1) |
 
 - **Weakest** ([D10](decisions.md#d10-assurance-as-evidence-values)). A step's state
   carries the weakest evidence of its moves, in the order
@@ -1394,9 +1411,13 @@ in `senbazuru:material_coords`, which the encoder cannot see, as
 `WriteNonFinite`, [C96](decisions.md#changes-since-draft-v2)), never uses U, and
 never writes M or V at 0. The material consumer reads intent from records, never
 from written F/M/V ([07](07-prd-material-consumption.md)).
-`Sequence.Record.writtenStates` applies these rules and the displays once, and
-both the writer and the page call it, so the page draws exactly the states the
-file holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)).
+`Sequence.Record.writtenStates` applies these rules and the displays once,
+except the non-finite check on positions and angles, which is
+`encodeFoldFile`'s: `writtenStates` checks no angle for finiteness
+([D4](decisions.md#d4-written-frames-follow-the-state-rule),
+[D20](decisions.md#d20-errors)). Both the writer and the page call it, so the
+page draws exactly the states the file holds
+([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)).
 
 **Layout.**
 
@@ -1436,7 +1457,10 @@ and top-level unknown keys are not copied, a stated omission until #73.
 - A state's `frame_title` is the caption of the next step that writes a state: the
   step *leaving* it. The last state's is `closing`, which the source writes after
   the last step and the tree stores as `hClosing`
-  ([D12](decisions.md#d12-the-text-syntax)). A sample state has no caption.
+  ([D12](decisions.md#d12-the-text-syntax)), or, on a run stopped at
+  `not modelled`, the stopped step's
+  ([`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)). A sample state
+  has no caption.
 - Its `senbazuru:assurance` is the evidence of the step that *produced* it, and is
   absent on state 0. Absent is not empty.
 

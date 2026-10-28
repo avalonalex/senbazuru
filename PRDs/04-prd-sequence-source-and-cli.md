@@ -344,7 +344,7 @@ value paired with its `Span`.
 | **`fold and unfold`** | `and` is not a sense, so one token decides. It takes no angle, because `FoldAndUnfold` has no field for one. |
 | **A step named like a keyword**, such as `step front` or `step collapse` | Refused: reserved words are never names, even where only a name could appear. So the bird example's steps are `square-base`, `first-petal` and `second-petal`. |
 | **`closing`** | Written after the last step, the order in which the page draws it, though it is stored in `Header` as `hClosing`. |
-| **`expect refused`** | A `Move`, written inside a step before the fold it contrasts with, so both run against one state. It produces no move record and no state; its outcome is kept on its step in the `Run`, and `--report` prints it ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). |
+| **`expect refused`** | A `Move`, written inside a step before the fold it contrasts with, so both run against one state. It produces no move record and no state; its outcome is kept in the `Run`'s `runExpected`, with its step and move, not in the step's outcome, and `--report` prints it ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [C96](decisions.md#changes-since-draft-v2)). |
 | **`midpoint of edge north`**: `MidpointOf Point Point` needs two points, and an edge is not one | **Refinement:** `MidpointOfEdge Compass`. `fraction r along edge S` is refused, because nothing says which end r counts from. |
 | **`checkpoint … { stacking first }`**: a `Checkpoint` holding `[Relation]` cannot say it | **Refinement:** `data StackingSpec = Relations [Relation] \| StackingFirst`, used by both `StartFolded StackingSpec` and `Checkpoint FilePath StackingSpec`. `stacking first` stands alone in its block, so no value mixes the two. |
 | **A step with no caption** | Allowed: `stepCaption :: Maybe Text`, and the printer leaves it out. |
@@ -724,7 +724,9 @@ Choices that could look arbitrary:
   at `--frame N`.** Both call `renderGlb` on the same frame with the same title rule.
 - **`--report` goes to stderr**, so it composes with FOLD on stdout. Under a
   heading per move it lists one fact per line. An `expect refused` move has no
-  record, so its line comes from its step's outcome in the `Run`:
+  record, so its line comes from the `Run`'s `runExpected`, which holds each
+  expected refusal with its step, move and kind, not from the step's outcome
+  ([C96](decisions.md#changes-since-draft-v2)):
 
   | Report line | Where it comes from |
   | --- | --- |
@@ -734,7 +736,7 @@ Choices that could look arbitrary:
   | Re-anchors: where the paper held still changes | `recordAnchor` ([D3](decisions.md#d3-the-runner-owns-the-state-its-start-and-the-handoffs)) |
   | Stacking choice | `recordStacking` ([D11](decisions.md#d11-stacking-choices-are-relations)) |
   | Work counts | `recordCost` |
-  | An expected refusal: the kind asked for and the kind raised | the step's outcome in `runSteps` ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
+  | An expected refusal: the kind asked for and the kind raised | `runExpected`, with its step and move ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [C96](decisions.md#changes-since-draft-v2)) |
 
   If a `material` block gives a thickness, the report says it is stored but not
   used, because thickness is not modelled as geometry

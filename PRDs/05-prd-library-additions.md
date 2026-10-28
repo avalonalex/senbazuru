@@ -5,7 +5,8 @@ since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
 `flapStationaryFace`, in #344; and L5's `insideRing`, in #491. `flapPoseAt` and
 `Origami.Route` wait for `flapPoseAt`'s first consumer
 ([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
-that commit; the links in those **Milestone** lines are to `4fe19a5`.
+that commit, except those added on 2026-10-27, in the **Milestone** lines,
+R-05-52 and [Errors](#errors), which are to `4fe19a5`.
 [00](00-overview.md) starts the series; [02](02-language-semantics.md) owns what
 a move *means*; this file owns the changes to `src/Senbazuru/` that let a
 program perform it.
@@ -140,10 +141,14 @@ Each line is something a runner cannot do with today's exports.
 ## Users and scenarios
 
 Users: `Sequence.Run` (every item); `Render.Sequence` (L3,
-[06](06-prd-step-diagrams.md)); `Render.Steps` (L5: at M3, the arrows and
-fold-here lines `render --steps` infers on a file, since a run's page takes its
-arrows from move records ([06](06-prd-step-diagrams.md)) and, by owner decision
-74, its fold-here lines from their hinges); the study consumer and animated glTF
+[06](06-prd-step-diagrams.md)); `Render.Steps` (L5, at M3: `motionsAcross`
+for the arrows `render --steps --arrows` infers on a file, and `creasesToCome`
+for `InferFoldLines` (**SKETCH**), fold-here lines inferred only for a
+`stepPageWith` caller that asks for them with a kind, S28 in
+[#642](https://github.com/avalonalex/senbazuru/issues/642); `render --steps`
+itself draws no fold-here lines, and a run's page takes its arrows from move
+records ([06](06-prd-step-diagrams.md)) and, by owner decision 74, its
+fold-here lines from their hinges); the study consumer and animated glTF
 (L4, L13, L15, [07](07-prd-material-consumption.md),
 [08](08-prd-realistic-rendering.md)); `senbazuru crease --folded`
 ([`Cli.hs:870`](../app/Senbazuru/Cli.hs#L870)), unchanged except L6's wording.
@@ -214,8 +219,12 @@ M or V at angle 0 on edges 8–11 of the key frame and 9, 11 of frame 1.
 - **R-05-5.** τ = 1e-10°, equal to both literals, so migrating either later
   changes no comparison ([D4](decisions.md#d4-written-frames-follow-the-state-rule),
   [C29](decisions.md#changes-since-draft-v2)).
-- Total, so `NaN` becomes `F`. The writer refuses non-finite angles first
-  ([#58](https://github.com/avalonalex/senbazuru/issues/58) item 3).
+- Total, so `NaN` becomes `F`. This line planned that the writer refuse
+  non-finite angles first
+  ([#58](https://github.com/avalonalex/senbazuru/issues/58) item 3). Built
+  otherwise: `writtenStates` checks no angle for finiteness, and
+  `encodeFoldFile` refuses a non-finite one as `NotFinite` (#510,
+  [D4](decisions.md#d4-written-frames-follow-the-state-rule)).
 
 **The line that looks wrong.** The writer writes `F` with its angle as *exactly*
 0, even when the working angle was 5e-11 ([02](02-language-semantics.md)). That
