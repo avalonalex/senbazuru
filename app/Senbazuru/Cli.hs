@@ -93,8 +93,9 @@ data Command
   | Export ExportOptions
   | Crease CreaseOptions
   | Fold FoldOptions
-  | -- | Not @Run@: the runner's result type will be called that, and the two
-    -- would clash wherever both are imported.
+  | -- | Not @Run@: that is the runner's result type, in
+    -- "Senbazuru.Sequence.Record", and the two would clash wherever both are
+    -- imported.
     RunSource RunOptions
   deriving stock (Eq, Show)
 

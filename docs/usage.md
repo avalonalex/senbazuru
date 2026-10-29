@@ -43,7 +43,8 @@ senbazuru info   FILE [--fold] [--layer-budget N]
 senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
                       [--folded] [--frame N] [-o OUT.fold]
 senbazuru fold   FILE [--frame N] [--stacking N[,N...]] [--layer-budget N] [-o OUT.fold]
-senbazuru run    SOURCE [--check] [-o OUT.fold|OUT.glb] [OPTIONS]
+senbazuru run    SOURCE [-o OUT.fold|OUT.glb] [OPTIONS]
+senbazuru run    SOURCE --check
 ```
 
 Working from source, reach the executable in any of three ways:

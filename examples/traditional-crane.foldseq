@@ -4,7 +4,7 @@ sheet square
 coloured side up
 
 # The traditional crane in the book's 28 steps, from a plain square. The test
-# suite parses, checks, expands and reprints it, and `run` stops at step 4. So
+# suite parses, checks, expands and reprints it, and `run` refuses step 4. So
 # every sense, seed, `keeping` pair, `model` coordinate and repeat's turn below
 # is UNVERIFIED: each is reasoned from the square base, and the runner will
 # derive the real ones at milestones M4 and M5 (PRDs/09-testing-and-acceptance.md
