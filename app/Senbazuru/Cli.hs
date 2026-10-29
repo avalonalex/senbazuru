@@ -93,8 +93,9 @@ data Command
   | Export ExportOptions
   | Crease CreaseOptions
   | Fold FoldOptions
-  | -- | Not @Run@: the runner's result type will be called that, and the two
-    -- would clash wherever both are imported.
+  | -- | Not @Run@: that is the runner's result type, in
+    -- "Senbazuru.Sequence.Record", and the two would clash wherever both are
+    -- imported.
     RunSource RunOptions
   deriving stock (Eq, Show)
 
@@ -266,7 +267,9 @@ commandParser =
           "run"
           ( info
               (RunSource <$> runOptions)
-              (progDesc "Check a fold sequence source (running one arrives with the runner)")
+              ( progDesc
+                  "Run a fold sequence source and write its states as FOLD, or one as a 3D model (no .svg page yet); --check only checks it"
+              )
           )
     )
 

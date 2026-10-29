@@ -259,8 +259,11 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   expands the shorthand, is on that level too and imports `Sequence.Check` for
   `Checked`: it can be handed nothing that has not been checked, which is what
   lets it be total. `Sequence.RunPlan` sits at the top of the family, level 6
-  in the design's layering, though it needs only the checker, the error type
-  and the tree so far; it imports no `Render.*` module, which is why its plan
+  in the design's layering, and folds nothing itself. It imports the checker,
+  the error type and the tree; `Explain`, for its refusals' words;
+  `Sequence.Write`, on the same level, for `FileHeader`, what a written file
+  says about itself; and `Origami.Stacking` only for `Budget`, the layer budget
+  a plan hands the run. It imports no `Render.*` module, which is why its plan
   will hold a view's name rather than a view. `Sequence.Record`, level 4, is
   the first of the family to know paper: a move record holds surfaces and the
   checked turn that made them, so it imports `Origami.Flap` and

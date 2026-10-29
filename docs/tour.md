@@ -1044,13 +1044,31 @@ It catches what needs no paper to see: a name used before anything defines
 it, a point's name where a line belongs, a step that does nothing, a turn of
 nine eighths. The refusal points at the line, as a compiler would.
 
-What it does not do yet is fold. Running a sequence, to a FOLD file, a page
-of steps or a 3D model, needs the runner, and `run` without `--check` says so
-rather than pretending. The crane above is there to show the language can
-write down a whole model first: of its 28 steps, the first runner will fold
-nine, and the rest wait on folding some layers of folded paper, on the moves
-that turn several creases at once, and on five moves the language has no word
-for yet. [usage.md](usage.md#run) has the flags.
+Without `--check`, `run` folds. It opens the sheet the source names, folds
+the paper move by move, and writes every state it reaches as one FOLD file,
+to standard output or to the `.fold` that `-o` names, or one state as a 3D
+model to a `.glb`. A page of steps, `.svg`, is the one output it does not
+write yet: write the `.fold` and draw it with `render --steps`. The crane
+does not get far:
+
+```console
+$ senbazuru run examples/traditional-crane.foldseq
+senbazuru: examples/traditional-crane.foldseq:23:3: step 4 (square-base): a macro move cannot be run yet
+   |
+23 |   collapse at centre keeping [corner south-east, corner north-west] flat until 180°
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
+
+Of its 28 steps, the runner makes the first three, two pairs of
+[pre-creases](glossary.md#origami) and a turn-over, and refuses the fourth,
+which [collapses](glossary.md#origami) the creased square into a square
+[base](glossary.md#origami): a macro move, one that turns several creases at
+once, and the runner makes none yet. Refused there, `run` writes nothing. The
+crane is there to show the language can write down a whole model first, and
+the rest of it waits on macro moves, on folding some layers of folded paper,
+on repeating an earlier step turned about the centre, and on five moves the
+language has no word for yet.
+[usage.md](usage.md#run) has the flags.
 
 ## Fold-material experiment
 
