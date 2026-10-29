@@ -124,8 +124,9 @@ labelsOf d = [show' t | Label _ _ _ t <- diagramShapes d]
 -- middle, the centre of its bounding box (@middleOf@ in
 -- "Senbazuru.Sequence.Run"). Seen from straight above or below, a left-right
 -- turn-over mirrors the drawing across the line through that centre along the
--- model's y axis, and a half turn spins it about the centre: either sends the
--- model's box onto itself. So the figure after the turn is drawn in the box of
+-- model's y axis, a top-bottom one across the line along its x axis, and a
+-- half turn spins it about the centre: each sends the model's box onto
+-- itself. So the figure after the turn is drawn in the box of
 -- the figure before it, and the page's box, which covers every figure's box
 -- and sets the scale, stays where it was.
 --
@@ -137,9 +138,14 @@ labelsOf d = [show' t | Label _ _ _ t <- diagramShapes d]
 -- there, which A8 checks the bird for.
 --
 -- The turns ('turns') are the quarter fold, a square folded in half and in
--- half again, turned over and turned half round, and the bird: a state of
--- @examples/bird-base-sequence.fold@ part way through a petal fold (see
--- docs/glossary.md), so not flat, turned over.
+-- half again, turned over and turned half round; the same square folded in
+-- half only, turned over top to bottom and turned half round; and the bird: a
+-- state of @examples/bird-base-sequence.fold@ part way through a petal fold
+-- (see docs/glossary.md), so not flat, turned over. The quarter fold is a
+-- square whose middle is the run's anchor, so a turn about the anchor, or a
+-- quarter turn, draws it in the same box; the half-folded sheet is half as
+-- wide as it is high, and its middle, (3/4, 1/2), is not the anchor,
+-- (3/4, 1/4), so either turns it off its box.
 turning :: Spec
 turning = beforeAll turns . describe "a turn-over or half turn on the page" $ do
   -- Red when a turn's axis misses the middle of the model's box across the
@@ -149,14 +155,16 @@ turning = beforeAll turns . describe "a turn-over or half turn on the page" $ do
   -- quarter fold the mean is (0.8333, 0.1667) and the middle (0.75, 0.25),
   -- since four of its nine vertices, the sheet's corners, lie on one corner of
   -- the folded square. A flat square, as in RunSpec, cannot tell the two
-  -- apart: its mean and its middle are both (1/2, 1/2).
+  -- apart: its mean and its middle are both (1/2, 1/2). Red too, on the
+  -- half-folded sheet, when a turn is about the anchor rather than the
+  -- middle, or when @rotate 4/8 turn@ turns a quarter turn.
   it "keeps each figure's box, the page's box and its scale, from above and below at every quarter-turn roll (A7)" $ \inputs ->
     concat <$> forM [(t, v, q) | t <- everyTurn inputs, v <- [("top", topDown), ("bottom", bottomUp)], q <- [0 .. 3]] missesFor
       `shouldReturn` []
 
   -- Guards the example above, which would pass if a turn drew the model
   -- exactly as before. Each turn moves some vertex.
-  it "moves the drawing in each of those turns" $ \inputs ->
+  it "moves some vertex in each of those turns" $ \inputs ->
     [(turnName t, frameVertices (turnFrom t) /= frameVertices (turnTo t)) | t <- everyTurn inputs]
       `shouldBe` [(turnName t, True) | t <- everyTurn inputs]
 
@@ -167,12 +175,24 @@ turning = beforeAll turns . describe "a turn-over or half turn on the page" $ do
   -- compares sizes, which do not depend on where the box lies, so a turn
   -- about the wrong point is A7's to catch, not this one's.
   it "changes the bird's box seen isometrically, 0.4142 by 0.6118 to 0.9981 by 0.3335 (A8)" $ \inputs -> do
-    let iso = View (Just isometric) 0
-        bird = birdTurnedOver inputs
+    let bird = birdTurnedOver inputs
     from <- boxSize <$> figureBox iso (turnFrom bird)
     to <- boxSize <$> figureBox iso (turnTo bird)
     let within (V2 w h) (ew, eh) = abs (w - ew) <= 1e-4 && abs (h - eh) <= 1e-4
-    (within from (0.4142, 0.6118), within to (0.9981, 0.3335)) `shouldBe` (True, True)
+    (from, to) `shouldSatisfy` \(f, t) -> within f (0.4142, 0.6118) && within t (0.9981, 0.3335)
+
+  -- The figures above are each read from a page of their own, so they
+  -- cannot see one figure fitted to another. This page holds both. Red when
+  -- the page re-fits a figure after a turn to the box of the one before it,
+  -- which would leave the page's box what it is with the state before the
+  -- turn drawn twice (A8's second red case).
+  it "draws the bird after its turn in its own box, on a page with the bird before it (A8)" $ \inputs -> do
+    let bird = birdTurnedOver inputs
+    twice <- diagramExtent <$> pageOf iso [turnFrom bird, turnFrom bird]
+    turned <- diagramExtent <$> pageOf iso [turnFrom bird, turnTo bird]
+    (twice, turned) `shouldSatisfy` \(a, b) -> not (boxesNear 1e-4 a b)
+  where
+    iso = View (Just isometric) 0
 
 -- | A turn to draw: the frames a page shows before it, the state it starts
 -- from and the state it ends in.
@@ -183,42 +203,47 @@ data Turn = Turn
     turnTo :: Frame
   }
 
--- | The three turns A7 names, made once for every example that uses them.
+-- | The turns A7 names, made once for every example that uses them.
 data Turns = Turns
   { quarterTurnedOver :: Turn,
     quarterHalfTurned :: Turn,
+    halfTurnedOver :: Turn,
+    halfHalfTurned :: Turn,
     birdTurnedOver :: Turn
   }
 
 everyTurn :: Turns -> [Turn]
-everyTurn inputs = [quarterTurnedOver inputs, quarterHalfTurned inputs, birdTurnedOver inputs]
+everyTurn inputs = map ($ inputs) [quarterTurnedOver, quarterHalfTurned, halfTurnedOver, halfHalfTurned, birdTurnedOver]
 
--- | The quarter fold run with a turn as one more step, and the bird's
--- @file_frames[13]@ ("Second petal · underside · close sides · hinge 150°",
--- @render --frame 14@) turned over by the runner's own rule. The quarter fold
--- is built from 'quarterFold', not read from
--- @test/golden/quarter-fold.foldseq@, which is the printer's golden output.
+-- | The quarter fold run with a turn as one more step, the same after its
+-- first step only, and the bird's @file_frames[13]@ ("Second petal ·
+-- underside · close sides · hinge 150°", @render --frame 14@) turned over by
+-- the runner's own rule. The quarter fold is built from 'quarterFold', not
+-- read from @test/golden/quarter-fold.foldseq@, which is the printer's golden
+-- output.
 turns :: IO Turns
 turns = do
   quarterPaper <- loadFoldFile quarterSheet >>= right
-  let ran name moves = do
-        let sequence' = quarterFold {seqSteps = seqSteps quarterFold <> seqSteps (sequenceOf (seqHeader quarterFold) (step_ "Turn the model." moves))}
+  let -- The quarter fold's first @kept@ steps, then the turn.
+      ran name kept moves = do
+        let sequence' = quarterFold {seqSteps = take kept (seqSteps quarterFold) <> seqSteps (sequenceOf (seqHeader quarterFold) (step_ "Turn the model." moves))}
         run <- right (checkSequence sequence' >>= runSequence defaultRunSettings (M.singleton quarterSheet quarterPaper) . elaborate)
         states <- right (writtenStates run)
-        -- The sheet, folded in half, in quarters, then turned.
-        case map stateFrame states of
-          [start, half, quarter, turned] -> pure (Turn name [start, half] quarter turned)
-          other -> fail ("expected four states, got " <> show (length other))
-  overTurn <- ran "the quarter fold turned over left-right" (turnOver LeftRight)
-  halfTurn <- ran "the quarter fold turned half a turn clockwise" (rotate 4 Clockwise)
+        case splitAt kept (map stateFrame states) of
+          (earlier, [from, turned]) -> pure (Turn name earlier from turned)
+          _ -> fail ("expected " <> show (kept + 2) <> " states, got " <> show (length states))
+  overTurn <- ran "the quarter fold turned over left-right" 2 (turnOver LeftRight)
+  halfTurn <- ran "the quarter fold turned half a turn clockwise" 2 (rotate 4 Clockwise)
+  halfOver <- ran "the sheet folded in half, turned over top-bottom" 1 (turnOver TopBottom)
+  halfHalf <- ran "the sheet folded in half, turned half a turn clockwise" 1 (rotate 4 Clockwise)
   bird <- loadFoldFile "examples/bird-base-sequence.fold" >>= right
   (earlier, petal) <- case splitAt 13 (otherFrames bird) of
     (frames, frame : _) -> pure (frames, frame)
     _ -> fail "the bird has fewer than 14 file_frames"
-  corners <- right (frameVertices petal)
-  let over = turnOverAbout LeftRight corners
-      turned = petal {verticesCoords = [[x, y, z] | V3 x y z <- map (applyRigid over) corners]}
-  pure (Turns overTurn halfTurn (Turn "the bird's file_frames[13] turned over left-right" earlier petal turned))
+  points <- right (frameVertices petal)
+  let over = turnOverAbout LeftRight points
+      turned = petal {verticesCoords = [[x, y, z] | V3 x y z <- map (applyRigid over) points]}
+  pure (Turns overTurn halfTurn halfOver halfHalf (Turn "the bird's file_frames[13] turned over left-right" earlier petal turned))
   where
     quarterSheet = "examples/quarter-fold-steps.fold"
 

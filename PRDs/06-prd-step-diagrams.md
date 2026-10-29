@@ -295,13 +295,13 @@ then.
   is drawn as if the axis were page-vertical (§5,
   [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
 - **R-06-12.** On `top` and `bottom` pages with roll a multiple of 90°, a turn-over
-  or half turn keeps each figure's extent, the page union (the one box covering
-  every figure's extent, which sets the scale,
-  [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112)) and the
-  scale within 1e-12 × `modelSpan` (the model's size). Nothing is asserted for
-  other views or rolls. `StepsSpec` tests it on today's `stepPage`, as A7 and
-  A8 ([decisions C129](decisions.md#changes-since-draft-v2)), comparing the
-  scale within 1e-12 of itself, since a scale is page units per model unit.
+  or half turn keeps each figure's extent and the page union (the one box
+  covering every figure's extent, which sets the scale,
+  [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112)) within
+  1e-12 × `modelSpan` (the model's size), and the scale within 1e-12 of itself,
+  since a scale is page units per model unit. Nothing is asserted for other
+  views or rolls. `StepsSpec` tests it on today's `stepPage`, as A7 and A8
+  ([decisions C129](decisions.md#changes-since-draft-v2)).
 - **R-06-13.** Rotate marks show signed eighths; repeat marks show a figure range;
   both are `Symbol`s inside their figure.
 
@@ -1105,7 +1105,7 @@ decisions 67 to 69).
 | A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268) | a hollow head or loop is sized in model units |
 | A5 | `seenFrom` gives §4's table for the five named views and two gallery bases, and a roll of 1 radian changes nothing | `z > 0` is read as the reader's side |
 | A6 | Under `View (Just bottomUp) 0` the same notes draw `HollowHalfHead` where `top` draws `SolidHead`, with dashes swapped too | inversion reaches heads but not dashes |
-| A7 | With and without a turn-over, figure extents and page box agree within 1e-12 × span on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0 or the corner mean |
+| A7 | With and without a turn-over or `rotate 4/8 turn`, figure extents and page box agree within 1e-12 × span, and the scale within 1e-12 of itself, on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold, the same sheet folded in half only, and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0, the corner mean or the run's anchor; a half turn turns a quarter turn |
 | A8 | On `iso`, bird `file_frames[13]`'s extent changes across the turn (0.4142 × 0.6118 → 0.9981 × 0.3335, within 1e-4) | the turn is computed about a page axis, or the page re-fits figures after a turn, so the `iso` extent stays equal |
 | A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn` | inference is not suppressed on the marked pair |
 | A10 | On each single-move figure of the blintz sequence (M2), `GivenArrows` from its record equal `InferArrowsAs` ends within 1e-12 × span | `displayBefore` or `displayAfter` is not applied, or record ids are not in `recordBefore`'s numbering |
