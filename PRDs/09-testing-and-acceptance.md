@@ -106,7 +106,7 @@ added a third, M2's `blintz-sequence.fold`:
 | File | `file_frames` | States | Drawn with arrows by a golden today? |
 | --- | ---: | ---: | --- |
 | `bird-base-sequence.fold` | 16 | 16: its key frame has no vertices | yes, since #522: `bird-base-sequence-arrows.svg` ([`SvgSpec.hs:402`](../test/Senbazuru/Render/SvgSpec.hs#L402)); the study's own goldens pass `False` ([`BirdSequenceSpec.hs:79`](../test/BirdSequenceSpec.hs#L79)) |
-| `blintz-sequence.fold` | 6 | 6: its key frame has no vertices | no: S2 ([#636](https://github.com/avalonalex/senbazuru/issues/636)) pins it, as `blintz-sequence-arrows.svg` (**SKETCH** name) |
+| `blintz-sequence.fold` | 6 | 6: its key frame has no vertices | yes, since S2 ([#636](https://github.com/avalonalex/senbazuru/issues/636)): `blintz-sequence-arrows.svg` ([`SvgSpec.hs:416`](../test/Senbazuru/Render/SvgSpec.hs#L416)); `checked-blintz.svg` draws the same run as the study gallery's eleven figures, from the gallery's camera |
 | `quarter-fold-steps.fold` | 2 | 3: its key frame is the first state | yes: `quarter-fold-steps.svg` ([`SvgSpec.hs:392`](../test/Senbazuru/Render/SvgSpec.hs#L392)), from `test/fixtures/quarter-fold-steps.fold`, identical to the `examples/` copy by `cmp` |
 
 So the check has three parts:
@@ -127,8 +127,16 @@ So the check has three parts:
 3. A multi-frame file added later has no "before", so a golden of its own must
    pin its `render --steps --arrows` page. E7 does not: it pins the run's page,
    drawn from step notes. For `blintz-sequence.fold`, S2
-   ([#636](https://github.com/avalonalex/senbazuru/issues/636)) adds that
-   golden.
+   ([#636](https://github.com/avalonalex/senbazuru/issues/636)) added that
+   golden, `blintz-sequence-arrows.svg`, before any M3 change to `stepPage`
+   ([C128](decisions.md#changes-since-draft-v2)). It draws an arrow on each of
+   figures 1 to 5, one per corner folded or reopened. **Red when**, as in part
+   1, a pair is classified as presentation and loses its arrow. S2's PR,
+   [#651](https://github.com/avalonalex/senbazuru/pull/651), also holds a
+   "before" for part 2 that M3's PRs can compare against, in its body and its
+   commit message: the SHA-256 of `render --steps --arrows` on all three
+   files, at the default view, `--view front` and `--view bottom`, from
+   `4fe19a5`'s code.
 
 05 L3's Python pre-check found no consecutive pair of states in either file (0 of
 15, 0 of 2) that keeps every distance while something moves, so none *can*

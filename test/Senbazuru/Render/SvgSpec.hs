@@ -401,6 +401,20 @@ spec = do
       renderSteps "examples/bird-base-sequence.fold"
         >>= goldenText "test/golden/bird-base-sequence-arrows.svg"
 
+    -- The blintz run's six states, as the runner wrote them to
+    -- examples/blintz-sequence.fold (#512): a square whose four corners are
+    -- folded behind to its centre one at a time, then the first reopened.
+    -- They go through the same 'stepPage' call `render --steps --arrows`
+    -- makes. checked-blintz.svg draws the same run, but as a study gallery:
+    -- eleven figures from the gallery's own camera. So this is the only
+    -- golden pinning the file's own page, pinned before M3 reroutes
+    -- 'stepPage' (#636, PRD 09 section 1.3). Every pair folds or unfolds one
+    -- corner, so none is a presentation change and all five arrows stay.
+    -- Turns red if a fold is taken for a turn-over.
+    it "renders the blintz run's written states with every inferred arrow" $
+      renderSteps "examples/blintz-sequence.fold"
+        >>= goldenText "test/golden/blintz-sequence-arrows.svg"
+
     -- These two are 3D folded forms. Before the camera existed they rendered as
     -- flattened top-down projections; these goldens pin the isometric view that
     -- replaced that. They also pin the folded-form notation: every edge solid,
