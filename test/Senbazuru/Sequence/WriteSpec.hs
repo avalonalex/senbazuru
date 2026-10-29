@@ -205,28 +205,32 @@ spec = describe "writing a run as a sequence file" $ do
     -- renumbered a vertex, as writing them in the order a fresh trace of the
     -- faces met them would, or if a state were written with an earlier
     -- state's material coordinates, one point short for each new vertex.
-    it "keeps each state's vertices as the first of the next's, on the same paper" $ \(_, states) ->
+    -- Both need a pair that adds vertices, which the first line asks for
+    -- here rather than leaving it to the counts above.
+    it "keeps each state's vertices as the first of the next's, on the same paper" $ \(_, states) -> do
+      [() | (earlier, later) <- pairs states, length (verticesCoords later) > length (verticesCoords earlier)] `shouldNotBe` []
       forM_ (pairs states) $ \(earlier, later) -> do
-        length (verticesCoords later) `shouldSatisfy` (>= length (verticesCoords earlier))
         was <- materialOf earlier
         now <- materialOf later
         (length was, length now) `shouldBe` (length (verticesCoords earlier), length (verticesCoords later))
         take (length was) now `shouldBe` was
 
-    -- Both steps crease, by their records, so each adds edges. Turns red if
-    -- a step's state lost the crease the step drew, as handing on the paper
-    -- from before the creasing would.
-    it "adds edges at each step, since each creases" $ \(run, states) -> do
+    -- The counts above say each state has more edges than the one before;
+    -- this says why, from the run's own records: both steps crease. Turns
+    -- red if a move's record lost the creases its move drew, as a
+    -- pre-crease's record would if 'asPrecrease' cleared them. The written
+    -- states do not read the records' creases, so the counts stay green then.
+    it "records new creases at both steps" $ \(run, _) ->
       [recordStep record | record <- runRecords run, not (null (recordNewCreases record))] `shouldBe` [1, 2]
-      forM_ (pairs states) $ \(earlier, later) -> length (edgesVertices later) `shouldSatisfy` (> length (edgesVertices earlier))
 
   -- PRD 09 §2.3's test 2 is test 1 run from sheet square, with the same
   -- anchor and steps. Its second step creases folded paper, which waits for
   -- M4; its first runs now. The midline cuts the south and north edges and
-  -- halves the square: 6 vertices, 7 edges and 2 faces, as 09 worked out on
-  -- hand-built frames, and 09 now cites this test for them. Turns red if a
-  -- state were written from the paper as its step found it, an off-by-one
-  -- between states and steps, which would write (4, 4, 1) twice.
+  -- halves the square: 6 vertices and 7 edges, as 09 worked out on
+  -- hand-built frames, and 2 faces; 09 now cites this test for all three.
+  -- Turns red if a state were written from the paper as its step found it,
+  -- an off-by-one between states and steps, which would write (4, 4, 1)
+  -- twice.
   it "writes test 2's state 1 as 09 §2.3 counts it: 6 vertices, 7 edges, 2 faces" $ do
     file <- right (written testTwoFirstStep)
     map counts (otherFrames file) `shouldBe` [(4, 4, 1), (6, 7, 2)]
@@ -284,7 +288,7 @@ spec = describe "writing a run as a sequence file" $ do
 
   it "says it is FOLD 1.2, made by senbazuru, a diagram, titled as the sequence is" $ do
     (fileSpec quarter, fileCreator quarter, fileClasses quarter, fileTitle quarter) `shouldBe` (Just 1.2, Just "senbazuru", ["diagrams"], Just "A square folded into quarters")
-    authored <- right (checkSequence quarterFold >>= runSequence defaultRunSettings sheets . elaborate >>= writeSequence (FileHeader (Just "A. Folder") (Just "Two folds.")))
+    authored <- right (ran quarterFold >>= writeSequence (FileHeader (Just "A. Folder") (Just "Two folds.")))
     (fileAuthor authored, fileDescription authored) `shouldBe` (Just "A. Folder", Just "Two folds.")
   where
     pad = \case
