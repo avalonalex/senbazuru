@@ -271,13 +271,14 @@ section (e), which paraphrases a public step list, <https://origami.me/crane/>;
 that list itself was not consulted. The captions are our own words, not the
 list's or any book's.
 
-It is not yet a file anything runs. The test suite parses it, checks it,
-expands it and prints it back, which shows the language can say every step
-before most of them can be folded. Its senses, seeds, `keeping` pair, `model`
-coordinates and the turns its repeats use are reasoned from the square base
-and marked unverified in the file; the runner will settle them as it learns
-to fold each kind of move. Its last step names `crane.fold`, the finished
-crease pattern above, by a path read from this folder.
+`run` makes its first three steps and refuses the fourth, the collapse into
+a square base, a macro move it cannot make yet. The test suite parses it,
+checks it, expands it and prints it back, which shows the language can say
+every step before most of them can be folded. Its senses, seeds, `keeping`
+pair, `model` coordinates and the turns its repeats use are reasoned from the
+square base and marked unverified in the file; the runner will settle them as
+it learns to fold each kind of move. Its last step names `crane.fold`, the
+finished crease pattern above, by a path read from this folder.
 
 ```bash
 stack test --ta='--match "the traditional crane"'

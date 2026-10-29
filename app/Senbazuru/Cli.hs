@@ -266,7 +266,9 @@ commandParser =
           "run"
           ( info
               (RunSource <$> runOptions)
-              (progDesc "Check a fold sequence source (running one arrives with the runner)")
+              ( progDesc
+                  "Run a fold sequence source and write its states as FOLD, or one as a 3D model (no .svg page yet); --check only checks it"
+              )
           )
     )
 

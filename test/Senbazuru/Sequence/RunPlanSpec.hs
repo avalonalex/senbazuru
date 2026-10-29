@@ -5,7 +5,11 @@
 -- __The flag rules__ are tested one flag at a time, by name: each flag that
 -- @--check@ has nothing to do with is refused alone, and several together are
 -- all named, in the order @run --help@ lists them. Without @--check@ the verb
--- refuses to pretend it can run a sequence.
+-- runs the sequence and writes what @-o@'s extension names, and the tests
+-- check the plan it makes: a sequence file to standard output or to a
+-- @.fold@, or one state to a @.glb@, the last unless @--frame@ names another;
+-- a page of steps, @.svg@, refused until step notes exist, as is an extension
+-- it does not write; and each flag that shapes another output refused by name.
 --
 -- __What it prints__ for a refusal is compared with goldens: a parse error and
 -- a static refusal, each with its location, message and excerpt, exactly as a
