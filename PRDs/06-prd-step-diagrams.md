@@ -356,10 +356,11 @@ then.
   [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112),
   [`:137`](../src/Senbazuru/Diagram/Layout.hs#L137)), left-aligned with the
   cell, at the theme's label size. Each is wrapped at word boundaries into lines
-  no wider on the page than its figure, w × s page units for a figure w model
-  units wide drawn at scale s, by an estimated advance of 0.55 em a character,
-  since the backend has no font metrics; a word longer than a line keeps a line
-  of its own. Line k, counted from 0, is a `Label` at the box's bottom-left
+  no wider on the page than the shared box, the same for every figure on the
+  page: w × s page units for a box w model units wide drawn at scale s. Widths
+  are estimated at 0.55 em a character, an em being the type size, so 7.7 page
+  units at 14, since the backend has no font metrics; a word longer than a line
+  keeps a line of its own. Line k, counted from 0, is a `Label` at the box's bottom-left
   corner, moved down a + k p page units by an `Offset`, with a and p as in
   R-06-19 (owner decision 7, decided 2026-10-28; §8).
 - **R-06-19.** `gridOf`'s output is unchanged, and a page with no caption is laid
@@ -799,9 +800,10 @@ keep that gutter, and each row is followed by a band, b_r = a + (L_r − 1) p + 
 page units, holding its captions' lines (R-06-19). Line k of a caption has its
 baseline a + k p page units below its figure's box, an `Offset` from the box's
 bottom-left corner, so the two-unit rule holds: the anchor is in model units and
-the drop in page units. A caption is wrapped to its figure's width, never the
-stride, so the column gutter, 11.5 page units on the default page, is slack
-before a line could reach its neighbour.
+the drop in page units. A caption is wrapped to the shared box's width, never the
+stride and never the folded figure's own smaller width, so the column gutter,
+11.5 page units on the default page, is slack before a line could reach its
+neighbour.
 
 **The font, measured.** `rsvg-convert` draws `sans-serif` as Helvetica on this
 Mac, though `fc-match sans-serif` names Verdana: Pango, which draws its text,
@@ -835,15 +837,27 @@ d = 14 holds the descent, at most 3.2, and about 10.8 before the next row, whose
 numbers sit 0.12 of a figure below its top
 ([`Layout.hs:155`](../src/Senbazuru/Diagram/Layout.hs#L155)). A row of one-line
 captions gets a band of 32 page units, and a row with a six-line caption one of
-116, about a figure's height on the default page.
+116, about a figure's height on the default page. The fan is not the only thing
+below the box: the turn-over loop is a page-unit `Symbol` at the lower end of its
+figure's extent (§5, [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)),
+so the part of it that hangs below shares the band's top with a caption's first
+line, which runs under the figure's middle once it is half a figure long. The loop's size is not set yet, so
+a = 18 does not account for it; S24 and S29
+([#642](https://github.com/avalonalex/senbazuru/issues/642)) set a for the
+larger of the two, or keep the loop inside the box.
 
 **The scale.** `Layout` has no page units ([§11](#11-rejected-alternatives)), so
 the bands reach it in model units, b_r / s, from the caller that knows the page.
-`run -o x.svg` with no `--height` makes the page as tall as its rows need. Its
-width sets the scale: s = (W − 2m) / (w (c + (c − 1) g)) for c columns of
-figures w model units wide, 115 on the default page, and the page is 2m + s × R
-× h + Σ b_r tall for R rows of figures h high. S1's prototype pages were 648.8
-page units tall at 9 figures and 1620.8 at 24. With `--height` given, the
+That caller asks `Render.Svg.pageTransform`
+([`Svg.hs:118-125`](../src/Senbazuru/Render/Svg.hs#L118-L125)) for the scale,
+which exists so that no caller fits the box again, rather than restating the
+arithmetic. `run -o x.svg` with no `--height` makes the page as tall as its rows
+need, so its width sets the scale: s = (W − 2m) / (w (c + (c − 1) g)) for c
+columns in use, at most the figure count, of figures w model units wide, 115 on
+the default page, and the page is 2m + s × R × h + Σ b_r tall for R rows of
+figures h high. S1's prototype pages, drawn with a = 15, were 648.8 page units
+tall at 9 figures and 1620.8 at 24; at a = 18 each band is 3 page units taller,
+which makes 657.8 and 1644.8. With `--height` given, the
 figures shrink to fit. The wrap width then depends on the scale, so the scale is
 a fixed point, and S24 chooses how to find it, as it chooses which function
 takes the page's width.
@@ -1103,6 +1117,11 @@ decisions 67 to 69).
 | A23 | On the helmet run's page, the fanned page's `Arrow`, `Symbol`, `Label` and fold-here shapes equal the unfanned page's | a mark is fanned |
 | A24 | `Fanned` with every displacement `d` emits the bytes `Offset d` emits, for a polyline and for a fill of two rings, one clockwise | the two drift apart, or a turned-round ring loses its points' displacements |
 | A25 | `stepPage`, and `stepPageWith` with `defaultTheme`, emit no `Fanned` shape on any input of this file | an unfanned theme fans |
+
+A12's last two clauses state owner decision 7's earlier default, a trailing
+gutter and a captioned gutter of at least 42/340. Decision 7 replaced it with
+R-06-19's bands, and S24 ([#641](https://github.com/avalonalex/senbazuru/issues/641))
+restates A12 to match ([decisions C127](decisions.md#changes-since-draft-v2)).
 
 `run`'s warning is CLI behaviour, checked by hand (the CLI is untested by design,
 [`Cli.hs:5-8`](../app/Senbazuru/Cli.hs#L5-L8);
