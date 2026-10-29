@@ -965,9 +965,11 @@ starts from ([D24](decisions.md#d24-states-figures-and-their-numbers),
   ([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)), but it has no
   constructor until S19
   ([#640](https://github.com/avalonalex/senbazuru/issues/640)), so `expect
-  refused MoveLeavesFigure` cannot be met. What may follow a `turn over` or
-  `rotate` in the same step is pending S1
-  ([#635](https://github.com/avalonalex/senbazuru/issues/635)).
+  refused MoveLeavesFigure` cannot be met. A step may end with one `turn over`
+  or `rotate`, and any move after it in the same step is refused, a second
+  turn-over or rotate, `anchor` and `mark` included, by an error S19
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) names (owner
+  decision 78, [decisions §9](decisions.md#9-owner-decisions)).
   - A pre-crease is one move here, like any other, and it puts its paper back:
     the crane's two diagonal pre-creases share a figure although their moving
     triangles overlap.
