@@ -1,6 +1,7 @@
 -- | A run written as a sequence file (PRDs\/02-language-semantics.md, §11):
 -- the quarter fold against the fixture its author folded by hand, state by
--- state, as PRD 09's test 1 compares it; the blintz's six states; and the
+-- state, as PRD 09's test 1 compares it; the blintz's six states; a run from
+-- a plain square whose crease graph grows, against D6's prefix rule; and the
 -- rules every written frame keeps.
 module Senbazuru.Sequence.WriteSpec (spec) where
 
@@ -29,7 +30,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (SequenceError)
-import Senbazuru.Sequence.Record (Run (..), WrittenState (..), writtenStates)
+import Senbazuru.Sequence.Record (Run (..), WrittenState (..), recordNewCreases, recordStep, writtenStates)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), Point (..), RefusalKind (..), Sense (..), Sequence)
 import Senbazuru.Sequence.Write
@@ -45,8 +46,15 @@ spec = describe "writing a run as a sequence file" $ do
   quarterSheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
   blintzSheet <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
   let sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet)]
+      ran :: Sequence -> Either SequenceError Run
+      ran sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
       written :: Sequence -> Either SequenceError FoldFile
-      written sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate >>= writeSequence noFileHeader
+      written sequence' = ran sequence' >>= writeSequence noFileHeader
+      -- A run, and the states its file holds.
+      grown = do
+        run <- right (ran growing)
+        file <- right (writeSequence noFileHeader run)
+        pure (run, otherFrames file)
   quarter <- runIO (right (written quarterFold))
   blintzFile <- runIO (right (written blintz))
 
@@ -169,6 +177,64 @@ spec = describe "writing a run as a sequence file" $ do
         [_, _, opened, again] -> (verticesCoords again, edgesFoldAngle again) `shouldBe` (verticesCoords opened, edgesFoldAngle opened)
         frames -> expectationFailure ("expected four states, got " <> show (length frames))
 
+  -- D6 (PRDs/decisions.md): a run's crease graph grows from one state to the
+  -- next, and a state's vertex ids are the first ids of the next, each the
+  -- same point of paper. That is the prefix rule, by which #638's
+  -- motionsAcross, not built yet, will pair two states. It holds because
+  -- cutting and creasing never renumber a vertex. This run creases a plain
+  -- square at both steps: the diagonal from corner south-west to corner
+  -- north-east, then the vertical midline, which cuts the south and north
+  -- edges and crosses the diagonal at (1/2, 1/2). Its anchor is written so
+  -- that neither step moves the anchor's paper, and the run never
+  -- re-anchors. Built in beforeAll, as 09 §6.3 asks of a new run, so a
+  -- refusal fails these items and no others.
+  describe "a crease graph that grows, as D6's prefix rule needs" . beforeAll grown $ do
+    -- Worked by hand, then run. The diagonal joins two corners the square
+    -- has: one edge more, and two faces. The midline adds three vertices,
+    -- cuts the south edge, the north edge and the diagonal in two, is two
+    -- edges itself, and halves both faces. Turns red if a crease were
+    -- written before the step that makes it, as backfilling the last crease
+    -- graph into every state would (D6's rejected choice), or if the midline
+    -- did not cut the diagonal.
+    it "writes 4, 4, 1, then 4, 5, 2, then 7, 10, 4 vertices, edges and faces" $ \(_, states) ->
+      map counts states `shouldBe` [(4, 4, 1), (4, 5, 2), (7, 10, 4)]
+
+    -- Material coordinates only, exactly: positions move whenever paper
+    -- turns, and the rule is about ids and paper, each kept vertex carried
+    -- through as the same value. Turns red if creasing or the writer
+    -- renumbered a vertex, as writing them in the order a fresh trace of the
+    -- faces met them would, or if a state were written with an earlier
+    -- state's material coordinates, one point short for each new vertex.
+    -- Both need a pair that adds vertices, which the first line asks for
+    -- here rather than leaving it to the counts above.
+    it "keeps each state's vertices as the first of the next's, on the same paper" $ \(_, states) -> do
+      [() | (earlier, later) <- pairs states, length (verticesCoords later) > length (verticesCoords earlier)] `shouldNotBe` []
+      forM_ (pairs states) $ \(earlier, later) -> do
+        was <- materialOf earlier
+        now <- materialOf later
+        (length was, length now) `shouldBe` (length (verticesCoords earlier), length (verticesCoords later))
+        take (length was) now `shouldBe` was
+
+    -- The counts above say each state has more edges than the one before;
+    -- this says why, from the run's own records: both steps crease. Turns
+    -- red if a move's record lost the creases its move drew, as a
+    -- pre-crease's record would if 'asPrecrease' cleared them. The written
+    -- states do not read the records' creases, so the counts stay green then.
+    it "records new creases at both steps" $ \(run, _) ->
+      [recordStep record | record <- runRecords run, not (null (recordNewCreases record))] `shouldBe` [1, 2]
+
+  -- PRD 09 §2.3's test 2 is test 1 run from sheet square, with the same
+  -- anchor and steps. Its second step creases folded paper, which waits for
+  -- M4; its first runs now. The midline cuts the south and north edges and
+  -- halves the square: 6 vertices and 7 edges, as 09 worked out on
+  -- hand-built frames, and 2 faces; 09 now cites this test for all three.
+  -- Turns red if a state were written from the paper as its step found it,
+  -- an off-by-one between states and steps, which would write (4, 4, 1)
+  -- twice.
+  it "writes test 2's state 1 as 09 §2.3 counts it: 6 vertices, 7 edges, 2 faces" $ do
+    file <- right (written testTwoFirstStep)
+    map counts (otherFrames file) `shouldBe` [(4, 4, 1), (6, 7, 2)]
+
   -- Two of the rules no run reaches yet: every run so far ends its flat
   -- creases at exactly 0, and no move turns the sheet face down. So these
   -- hand writtenStates a start state made to need them.
@@ -222,7 +288,7 @@ spec = describe "writing a run as a sequence file" $ do
 
   it "says it is FOLD 1.2, made by senbazuru, a diagram, titled as the sequence is" $ do
     (fileSpec quarter, fileCreator quarter, fileClasses quarter, fileTitle quarter) `shouldBe` (Just 1.2, Just "senbazuru", ["diagrams"], Just "A square folded into quarters")
-    authored <- right (checkSequence quarterFold >>= runSequence defaultRunSettings sheets . elaborate >>= writeSequence (FileHeader (Just "A. Folder") (Just "Two folds.")))
+    authored <- right (ran quarterFold >>= writeSequence (FileHeader (Just "A. Folder") (Just "Two folds.")))
     (fileAuthor authored, fileDescription authored) `shouldBe` (Just "A. Folder", Just "Two folds.")
   where
     pad = \case
@@ -238,6 +304,20 @@ spec = describe "writing a run as a sequence file" $ do
       _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
       _ <- step "quarter" "Fold the top half down in front, onto the bottom." second
       pure ()
+    -- A line through two points says nothing of which side moves, so the
+    -- pre-crease names the paper it moves (otherwise SeedMissing).
+    growing = sequenceOf (header "A square creased twice" sheetSquare (Just (at (3 / 4) (1 / 4)))) $ do
+      step_ "Crease the diagonal from the bottom-left corner to the top-right." (move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf NorthWest))))
+      step_ "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+    pairs states = zip states (drop 1 states)
+    testTwoFirstStep = sequenceOf (header "A square folded in half" sheetSquare (Just (at (3 / 4) (1 / 4)))) $ do
+      _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
+      pure ()
+    counts frame = (length (verticesCoords frame), length (edgesVertices frame), length (facesVertices frame))
+    materialOf :: Frame -> IO [(Double, Double)]
+    materialOf frame = case fromJSON <$> KM.lookup "senbazuru:material_coords" (frameExtras frame) of
+      Just (Success points) -> pure points
+      _ -> fail "a written state without two-coordinate material points"
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
