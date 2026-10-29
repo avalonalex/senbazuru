@@ -173,9 +173,8 @@ then.
 
 - Persisting notes in FOLD (until [#73](https://github.com/avalonalex/senbazuru/issues/73); [D18](decisions.md#d18-non-goals), [00](00-overview.md#non-goals)); `render --steps` drawing `frame_title` ([§9](#9-frame_title-and-assurance-point-opposite-ways)).
 - Drawing an `expect refused` outcome: it produces no record and no state, and `run --report` prints it ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)).
-- Font metrics, wrapping or truncation (owner decision 7, pending S1
-  ([#635](https://github.com/avalonalex/senbazuru/issues/635)); [decisions
-  §9](decisions.md#9-owner-decisions), [10
+- Font metrics and truncation: captions wrap by an estimated width instead
+  (owner decision 7, §8; [decisions §9](decisions.md#9-owner-decisions), [10
   §6](10-roadmap-risks-questions.md#6-owner-decisions)); repeat leaders crossing
   cells.
 - Drawing x-ray lines ([#48](https://github.com/avalonalex/senbazuru/issues/48)) or cut-aways ([#49](https://github.com/avalonalex/senbazuru/issues/49)); the note only carries their input.
@@ -352,23 +351,29 @@ then.
 
 **Captions**
 
-- **R-06-18.** Captions are `Label`s placed by `Layout`: baseline one gutter below
-  the cell's shared box (the union of every figure's extent, in which each figure
-  is centred, [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112),
-  [`:137`](../src/Senbazuru/Diagram/Layout.hs#L137)), raised by a page-unit
-  `Offset` for descenders, left-aligned with the cell.
-- **R-06-19.** `gridOf`'s output is unchanged; a trailing gutter joins the page box
-  only when some figure has a caption. Under owner decision 7's recommended default
-  ([decisions §9](decisions.md#9-owner-decisions)), a page on which some figure has
-  a caption is laid out with a gutter of at least 42/340 of a figure,
-  `max (gridGutter grid) (42/340)` (**SKETCH**, §8); a page with no caption uses
-  `gridGutter` ([`Layout.hs:73`](../src/Senbazuru/Diagram/Layout.hs#L73)) as given,
-  so no existing page changes. That bound clears 14-unit type, the theme's
-  label size, only on pages of one or two rows: on the default 400 × 400
-  three-column page of square figures, it leaves 13.49 page units below each
-  figure at three rows and 10.12 at four (`python3` on `gridOf`'s and
-  `fitBox`'s formulas, trailing gutter included). Owner decision 7 is pending
-  S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)).
+- **R-06-18.** Captions are `Label`s placed by `Layout` under the cell's shared
+  box (the union of every figure's extent, in which each figure is centred,
+  [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112),
+  [`:137`](../src/Senbazuru/Diagram/Layout.hs#L137)), left-aligned with the
+  cell, at the theme's label size. Each is wrapped at word boundaries into lines
+  no wider on the page than its figure, w × s page units for a figure w model
+  units wide drawn at scale s, by an estimated advance of 0.55 em a character,
+  since the backend has no font metrics; a word longer than a line keeps a line
+  of its own. Line k, counted from 0, is a `Label` at the box's bottom-left
+  corner, moved down a + k p page units by an `Offset`, with a and p as in
+  R-06-19 (owner decision 7, decided 2026-10-28; §8).
+- **R-06-19.** `gridOf`'s output is unchanged, and a page with no caption is laid
+  out as today: its rows are `gridGutter`
+  ([`Layout.hs:73`](../src/Senbazuru/Diagram/Layout.hs#L73)) of a figure apart,
+  with no trailing gutter, so no existing page changes. On a page where some
+  figure has a caption, columns stay `gridGutter` apart, and below each row r,
+  the last included, lies a band of b_r = a + (L_r − 1) p + d page units in
+  place of the gutter. L_r is the most lines any caption in row r wraps to, and
+  1 for a row with none; p = 1.2 × the type size is the line pitch; a = 18 is
+  the first baseline's drop below the figure's box; and d = 14 holds the
+  descent and the gap before the next row (**SKETCH** constants, §8). `Layout`
+  has no page units, so it takes each band in model units, b_r / s, from the
+  caller that knows the page's scale s (§8).
 
 **Pages from a run**
 
@@ -537,7 +542,7 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 | `mark` | Caption, `NoArrows`: a mark moves no paper. It is labelled through `noteMarks` (§1) on the figures R-06-22 names. M3 runs `mark` for the point forms the resolver already evaluates on the sheet (owner decision 75); until S20 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner refuses it as not run yet ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`, and a mark used as a reference, stay not run yet until M4 ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174), [`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)) |
 | `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, from its before surface to its folded surface (§7), and an unfold arrow back, the same pair reversed, both under `displayBefore` (R-06-16, owner decision 14); and its hinge's fold-here line, as a fold's (owner decision 74) |
 | `turn over` / `rotate` | `notePresentation`. The record keeps the turn as written (`Presenting`, [C82](decisions.md#changes-since-draft-v2)), so the direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); see [Dependencies](#dependencies). No record stores the axis point: the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). The runner finds it with its private `middleOf` ([`Run.hs:299`](../src/Senbazuru/Sequence/Run.hs#L299)) and does not export `turnOverAbout`; how the page gets the point is S18b's ([#640](https://github.com/avalonalex/senbazuru/issues/640)) |
-| A fold then a turn | The fold's arrows and the turn's mark. What may follow the turn in the same step is pending S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)) |
+| A fold then a turn | The fold's arrows and the turn's mark. A step may end with one turn-over or rotate, and nothing may follow it in the same step (owner decision 78), so a figure carries at most one presentation mark |
 | `repeat A..B` (M4, [decisions §8](decisions.md#8-milestones)) | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
 | `checkpoint` (M4) | `NoArrows`: the pair breaks the *prefix rule*, under which each frame's vertex list begins with the previous frame's, with equal material coordinates, so ids carry over ([D6](decisions.md#d6-crease-graphs-grow-between-frames), [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused); [05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test), [02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) |
 | `not modelled` | Caption, `NoArrows`. The run stops there and keeps every state before it, so this is the last figure ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
@@ -616,7 +621,7 @@ pattern used as a filter. The comprehensions that keep `Offset` alone
 [`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329);
 [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99)) skip a
 `Fanned` shape, and `StepsSpec`'s `labelsOf` and `LayoutSpec`'s `labels` match a
-bare `Label`, so they miss a caption raised by `Offset` (R-06-18).
+bare `Label`, so they miss a caption line moved by an `Offset` (R-06-18).
 
 ### 4. Which side the page is seen from
 
@@ -776,66 +781,109 @@ do not exist ([C90](decisions.md#changes-since-draft-v2)).
 
 ### 8. Captions and the gutter
 
+Owner decision 7, decided 2026-10-28 ([decisions
+§9](decisions.md#9-owner-decisions); [the question as
+asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6486583488)),
+wraps each caption under its figure and spaces each captioned row for its
+longest caption, in page units (R-06-18, R-06-19). Pages with no caption are
+untouched. The pages the owner chose from, the scratch programs that drew them
+and the command behind every number below are in [S1's secret
+gist](https://gist.github.com/avalonalex/fd14965f924ea96426f10ec708ecc1b3),
+built from main at f1f217d with `rsvg-convert` 2.62.3.
+
 **Placement.** A cell is a figure's shared box plus a *gutter*, 0.1 of a figure's
 size by default ([`Layout.hs:95`](../src/Senbazuru/Diagram/Layout.hs#L95),
 [`:121`](../src/Senbazuru/Diagram/Layout.hs#L121);
-[glossary](glossary-additions.md#step-pages)). The caption's baseline sits one
-gutter below the shared box, the top of the next row's box, raised by a page-unit
-`Offset` of 0.25 × type size, 3.5 units at size 14 (**SKETCH** constant). One
-`rsvg-convert -z 10` render on this Mac of the caption below at 14 units of
-`sans-serif`, which `fc-match` resolves to Verdana, scanned with `python3`, puts
-ink 3.0–3.1 units below the baseline (at 0.1-unit resolution), so the raise clears
-it by about 0.4. Glyphs grow upward into the gutter: never into another row, but
-into their own figure when the gutter is thinner than the type, the trade the
-numbers already make ([`Layout.hs:42-45`](../src/Senbazuru/Diagram/Layout.hs#L42-L45)).
+[glossary](glossary-additions.md#step-pages)). On a captioned page the columns
+keep that gutter, and each row is followed by a band, b_r = a + (L_r − 1) p + d
+page units, holding its captions' lines (R-06-19). Line k of a caption has its
+baseline a + k p page units below its figure's box, an `Offset` from the box's
+bottom-left corner, so the two-unit rule holds: the anchor is in model units and
+the drop in page units. A caption is wrapped to its figure's width, never the
+stride, so the column gutter, 11.5 page units on the default page, is slack
+before a line could reach its neighbour.
 
-**Overlap** (`python3`, following `gridOf` and `fitBox`,
-[`Geometry.hs:193-213`](../src/Senbazuru/Geometry.hs#L193-L213)). Three figures in
-a row make a page box 3.2 figure-widths wide:
+**The font, measured.** `rsvg-convert` draws `sans-serif` as Helvetica on this
+Mac, though `fc-match sans-serif` names Verdana: Pango, which draws its text,
+asks macOS for fonts by default, and only with `PANGOCAIRO_BACKEND=fc` does it ask
+fontconfig and get Verdana. "Fold the left half behind, onto the right." measures
+236.5 units of ink at 14 units in both `sans-serif` and `Helvetica`, and 276.2 in
+`Verdana`, or in `sans-serif` under the fontconfig backend, the widest of the six
+sans-serif families
+measured here (Arial 236.8, Tahoma 242.5, Trebuchet MS 252.8, Geneva 267.0). An
+earlier version of this section gave the 236.5 as Verdana's. Ink runs 10.2 units
+above the baseline, 10.8 in Verdana, and 3.0 to 3.2 below it (the gist's
+`ink.py`, which renders one line at 4× and scans its alpha channel).
+
+**The estimate.** Over the crane source's 29 captions, ink runs 0.40 to 0.47 em a
+character in Helvetica and 0.47 to 0.53 in Verdana. Wrapped greedily at 0.55 em,
+the 48 distinct captions of the crane, blintz, quarter-fold and S1's scratch runs
+make 176 lines at a figure's 115 page units, the widest 97.2 in Helvetica and
+108.8 in Verdana, and 69 lines at the page's 368, the widest 297.5 and 340.5. At
+115 units a caption takes 2 to 6 lines. The estimate stands in for font metrics,
+which the backend does not have
+([`Svg.hs:187-190`](../src/Senbazuru/Render/Svg.hs#L187-L190)), and errs wide on
+purpose: a line broken too early costs a little room, and one broken too late
+overruns.
+
+**The band's constants** (**SKETCH**, S24's to tune,
+[#641](https://github.com/avalonalex/senbazuru/issues/641)). The pitch p is 1.2 ×
+14 = 16.8. The first baseline's drop a = 18 puts the top of a first line's ink,
+at most 10.8 above its baseline, 7.2 below the figure's box, clear of the fan's
+largest move, 6.4 page units down (§10); S1's pages used 15. The last term
+d = 14 holds the descent, at most 3.2, and about 10.8 before the next row, whose
+numbers sit 0.12 of a figure below its top
+([`Layout.hs:155`](../src/Senbazuru/Diagram/Layout.hs#L155)). A row of one-line
+captions gets a band of 32 page units, and a row with a six-line caption one of
+116, about a figure's height on the default page.
+
+**The scale.** `Layout` has no page units ([§11](#11-rejected-alternatives)), so
+the bands reach it in model units, b_r / s, from the caller that knows the page.
+`run -o x.svg` with no `--height` makes the page as tall as its rows need. Its
+width sets the scale: s = (W − 2m) / (w (c + (c − 1) g)) for c columns of
+figures w model units wide, 115 on the default page, and the page is 2m + s × R
+× h + Σ b_r tall for R rows of figures h high. S1's prototype pages were 648.8
+page units tall at 9 figures and 1620.8 at 24. With `--height` given, the
+figures shrink to fit. The wrap width then depends on the scale, so the scale is
+a fixed point, and S24 chooses how to find it, as it chooses which function
+takes the page's width.
+
+**What the earlier default measured.** Until the decision, the recommended
+default was one line per caption under a captioned gutter of max g (42/340),
+with overflow accepted. By `gridOf`'s and `fitBox`'s formulas
+([`Geometry.hs:193-213`](../src/Senbazuru/Geometry.hs#L193-L213)), three figures
+in a row make a page box 3.2 figure-widths wide:
 
 | Page | Content | Scale | Gutter on page | Type ([`Style.hs:227`](../src/Senbazuru/Diagram/Style.hs#L227)) |
 | --- | --- | --- | --- | --- |
 | CLI default, 400 × 400, margin 16 ([`Svg.hs:97-106`](../src/Senbazuru/Render/Svg.hs#L97-L106)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
 | `renderSteps` test page, 400 × 200, margin 10 | 380 × 180 | 380 / 3.2 = 118.75 | 11.875 | 14 |
 
-The second scale is the golden's 118.75 above, so captions overlap their figure
-on both default pages. On a three-column CLI page a gutter of g figures is g ×
-368 / (3 + 2g) page units, which reaches 14 only when g ≥ 42/340 ≈ 0.124. A
-`python3` check for this reconciliation: at g = 42/340 the CLI page's scale is
-113.33 and its gutter 14.00 units; the `renderSteps` page's scale is 117.03 and
-its gutter 14.46, since its own bound is 42/352. Width limits the scale on both
-pages, with or without a trailing gutter. That is a fact about one row of three.
-On the CLI page it holds for two such rows as well, but from three rows on
-height limits the scale instead: at g = 42/340, with the trailing gutter and a
-square sheet, the gutter is 13.49 units at three rows, 10.12 at four and 5.06 at
-eight (`python3` on the same formulas). So 42/340 clears 14-unit type only on
-CLI pages of one or two rows, pending S1
-([#635](https://github.com/avalonalex/senbazuru/issues/635)).
+On both default pages a gutter of 0.1 left 14-unit type overlapping its
+figure. On a three-column CLI page a gutter of g figures is g × 368 / (3 + 2g)
+page units, which reaches 14 only when g ≥ 42/340 ≈ 0.124: at g = 42/340 the CLI
+page's scale is 113.33 and its gutter 14.00 units, and the `renderSteps` page's
+scale 117.03 and its gutter 14.46, since its own bound is 42/352. That held for
+one or two rows of three. From three rows on height limits the scale instead,
+and with the trailing gutter and a square sheet the gutter is 13.49 units at
+three rows, 10.12 at four and 5.06 at eight. The pages' SVG agrees: the stride,
+from figure 1's number to figure 4's, is 127.333 units at two rows, 122.666 at
+three and 46 at eight. Overflow was worse. The stride at one or two rows is 127.33 page units,
+against which the five captions E7's blintz page would carry measure 143.0 to
+298.8 in Helvetica. Of the crane source's 29 captions, 8 fit at one or two rows,
+six of them "Turn the … over.", 2 at three and none at four; in Verdana, 1. So
+on S1's pages captions ran into each other at every row count.
 
-**The recommended default.** Owner decision 7
-([decisions §9](decisions.md#9-owner-decisions)) recommends exactly that bound:
-captioned pages get a gutter of at least 42/340 of a figure (R-06-19), uncaptioned
-pages keep the gutter they are given, and overflow across cells is accepted and
-stated. It is still the owner's to decide before M3: pending S1
-([#635](https://github.com/avalonalex/senbazuru/issues/635)),
-which asks it with pages of several rows.
-
-**Overflow.** The same render measures "Fold the left half behind, onto the right."
-at about 236.5 units of ink against a stride (one figure plus one gutter,
-[`Layout.hs:119-121`](../src/Senbazuru/Diagram/Layout.hs#L119-L121)) of
-1.1 × 115 = 126.5, so it spills across the next figure; the backend has no font
-metrics ([`Svg.hs:187-190`](../src/Senbazuru/Render/Svg.hs#L187-L190)) to wrap or
-truncate by, which is why the default accepts overflow rather than guessing widths.
-
-**Why the trailing gutter is conditional.** It makes a one-row page box 1.1 tall;
-`fitBox` centres the box, so every y moves, including figure 1's number label at
+**Why the bands are conditional.** Space under the last row changes the page box.
+A trailing gutter of 0.1 would make a one-row page box 1.1 tall; `fitBox`
+centres the box, so every y would move, including figure 1's number label at
 `y="54.875"`: the figure's top edge, 40.625 (margin 10 plus (180 − 118.75)/2 of
 vertical centring), plus the label's drop, 0.12 of the figure's height
 ([`Layout.hs:155`](../src/Senbazuru/Diagram/Layout.hs#L155); not the 0.1 gutter).
 [`LayoutSpec.hs:85`](../test/Senbazuru/Diagram/LayoutSpec.hs#L85) pins only the
 horizontal case, a one-figure page exactly one figure wide; the vertical one is
-pinned by the goldens (`y="54.875"`) and by A12. The wider captioned gutter is
-conditional for the same reason: it changes the scale.
+pinned by the goldens (`y="54.875"`) and by A12. A band does the same and changes
+the scale besides, so a page with no caption gets neither.
 
 ### 9. `frame_title` and assurance point opposite ways
 
@@ -956,12 +1004,12 @@ corner, against every face nearer the viewer:
 
 **The cap.** Uncapped, the crane's deepest vertex, under 15 sheets, would move
 22.5 page units. At 6 the largest move is 9 page units, 6.4 along each page axis.
-On the CLI's default page, 400 by 400 with three columns (§8), the gutter holds
-that up to five rows of figures, or six with owner decision 7's captioned gutter
-at its default of 42/340, pending S1
-([#635](https://github.com/avalonalex/senbazuru/issues/635)). At six rows
-uncaptioned the gutter is 5.66 page units, and at seven captioned 5.78, so on a
-longer page the fan reaches the next cell (Risks). The owner saw the
+On the CLI's default page, 400 by 400 with three columns (§8), an uncaptioned
+page's gutter holds that up to five rows of figures; at six rows it is 5.66 page
+units, so on a longer page the fan reaches the next cell (Risks). A captioned
+page's bands are in page units, the top of a first caption line's ink 7.2 below
+its figure's box, so there the fan stays clear of the captions at any row count
+(owner decision 7, §8). The owner saw the
 prototype uncapped. The cap is this record's choice, made afterwards, and a capped
 crane drawn then read no busier.
 
@@ -1006,7 +1054,13 @@ decisions 67 to 69).
 | Kind from the changed assignment (#36) | Ambiguous per motion |
 | Checking a stated kind against an inferred one | Inference trusts winding as written, which a backwards-wound file breaks (AGENTS.md gotchas); records are already checked |
 | Backfilling future creases | Figure 1 would show the second fold |
-| A page-unit band below figures (#94) | `Layout` has no page units; the recorded bug |
+| A caption band sized inside `Layout` (#94) | `Layout` has no page units, so a band sized there is fixed in model units and right at one scale only, the recorded bug. Owner decision 7's band is sized in page units by the caller that knows the scale (§8) |
+| One line per caption under a captioned gutter of max g (42/340), overflow accepted | The earlier recommended default. Captions ran into each other at every row count on S1's pages: the stride is 127.33 page units and E7's captions 143 to 299 wide. The gutter cleared 14-unit type only at one or two rows (owner decision 7, §8) |
+| The captions as a numbered list below the grid | `Layout` would not change, but the reader matches numbers instead of reading under each figure (owner decision 7) |
+| A gutter that grows with the row count | It keeps the type off its figure, but not captions off each other along a row (§8) |
+| SVG 2's `inline-size` | `rsvg-convert` 2.62.3 ignores it and draws one line (S1's gist) |
+| SVG `textLength` | It would squash the crane's longest caption, 446.2 units of ink, into 127, a little over a quarter of its width |
+| Truncation with an ellipsis | It drops the end of an instruction |
 | One arrow with heads at both ends for a pre-crease | `ArrowPath` has one head, and a pre-crease's two arrows have two kinds: its sense out, unfold back ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)) |
 | One display field per record, applied to both surfaces | It cannot give a `Presented` record's before display, nor keep presentation apart from anchor placement, which animation needs as separate nodes ([D14](decisions.md#d14-material-consumption)) |
 | A total `stepNotes` | It calls `writtenStates`, which refuses a state with missing angles or a non-finite material coordinate, as `WriteRefused` ([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713), [`:788`](../src/Senbazuru/Sequence/Record.hs#L788); [D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)) |
@@ -1069,7 +1123,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 
 | Golden | Input | Red if |
 | --- | --- | --- |
-| `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2; the `renderSteps` page | the mountain head reverts to solid; captions go in a model-unit band (the page rescales); the trailing gutter is missing; the gutter is below owner decision 7's 42/340, if that default is taken |
+| `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2; the `renderSteps` page | the mountain head reverts to solid; a caption is not wrapped to its figure's width by owner decision 7's estimate; a captioned row's band is not in page units, so it changes with the scale; the last row has no band |
 | `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
 | `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
 | `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
@@ -1126,11 +1180,11 @@ half turn, would have drawn a mark the author did not write.
 
 ## Risks
 
-- **Captions collide** with their own figure on both default pages unless owner
-  decision 7's default gutter is taken, and on CLI pages of three rows or more
-  even then; long captions overflow across cells under any choice (§8; pending
-  S1, [#635](https://github.com/avalonalex/senbazuru/issues/635)). A golden
-  records markup, not glyphs, so it catches neither.
+- **Captions are wrapped by an estimate.** With no font metrics, a caption is
+  wrapped at 0.55 em a character (owner decision 7, §8). A font wider than
+  Verdana, or a line of wide letters, can overrun its figure into the column
+  gutter, and a word longer than a line overflows. A golden records markup, not
+  glyphs, so it catches neither.
 - **Silent matchers** ignore `Symbol` (R-06-7); A9 guards the worst one.
 - **Edge-on pages overlap.** On a page seen along the paper's plane, as `--view
   front` sees flat paper (R-06-8), every figure is 0 tall, so `Layout`'s row
@@ -1163,16 +1217,14 @@ half turn, would have drawn a mark the author did not write.
   prototype's crane, 7 faces have uncovered points on edges that move, one by 2.9
   page units. A fold-here line on true positions then sits that far from the edge
   it marks.
-- **Long pages and captions.** The fan is a fixed page length and the gutter a
-  fraction of the figure, so past five rows of three figures (six with captions)
-  the fan can reach the next cell (§10). `Layout` was rewritten once to stop
-  step numbers doing that
-  ([`Layout.hs:38-45`](../src/Senbazuru/Diagram/Layout.hs#L38-L45)). On any
-  page, a figure that fills its box can fan its lowest vertices into its own
-  caption's gutter: by 1.06 page units on the helmet's second and third figures.
-  Owner decision 7, still open, sizes the captioned gutter for 14-unit type
-  alone, on pages of one or two rows (§8; pending S1,
-  [#635](https://github.com/avalonalex/senbazuru/issues/635)).
+- **Long pages.** The fan is a fixed page length and the gutter a fraction of
+  the figure, so past five rows of three uncaptioned figures the fan can reach
+  the next cell (§10). `Layout` was rewritten once to stop step numbers doing
+  that ([`Layout.hs:38-45`](../src/Senbazuru/Diagram/Layout.hs#L38-L45)). On any
+  page, a figure that fills its box can fan its lowest vertices below it: by
+  1.06 page units on the helmet's second and third figures. A captioned page's
+  bands are in page units and clear the fan's largest move (§8), so the risk is
+  only on pages with no caption.
 - **Faces turned inside out.** On small figures the fan is large beside a thin
   face. On the folded crane drawn 56.6 page units across, the size of 16 to 18
   figures on the default page, face 61 turns over; at 33.8, the size of the
@@ -1197,18 +1249,16 @@ half turn, would have drawn a mark the author did not write.
 ## Open questions for the owner ([10 §6](10-roadmap-risks-questions.md#6-owner-decisions))
 
 Each has a recommended default in
-[decisions §9](decisions.md#9-owner-decisions), except the question of what may
-follow a turn-over or rotate in one step, whose default S1
-([#635](https://github.com/avalonalex/senbazuru/issues/635)) proposes.
+[decisions §9](decisions.md#9-owner-decisions).
 
-- **7.** Caption overlap and overflow, pending S1
-  ([#635](https://github.com/avalonalex/senbazuru/issues/635)), which asks it
-  with measured pages. Default: captioned pages get a gutter of at least 42/340
-  ≈ 0.124 (§8), which clears 14-unit type only on pages of one or two rows,
-  uncaptioned pages are unchanged, and overflow across cells is accepted and
-  stated. Otherwise: accept overlap (unreadable pages), squash with SVG
-  `textLength` or truncate by estimated width (widths without font metrics), or
-  refuse (some sequences cannot be drawn). Before M3.
+- **7.** Caption overlap and overflow. **Decided 2026-10-28** as recommended,
+  after S1 ([#635](https://github.com/avalonalex/senbazuru/issues/635)) asked it
+  again with pages of 3, 6, 9 and 24 captioned figures ([the question as
+  asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6486583488)):
+  each caption wraps under its figure by an estimated width, and each captioned
+  row is spaced for its longest caption in page units (§8, R-06-18, R-06-19). The earlier recommended default, a captioned gutter of at
+  least 42/340 with overflow accepted, was not taken: captions ran into each
+  other on every page S1 drew.
 - **9.** Does `examples/quarter-fold-steps.fold` migrate to the state rule,
   moving `quarter-fold-steps.svg` and `quarter-fold-step-1.svg`, or stay as the
   regression? **Decided 2026-10-06** as recommended: it stays, and the
@@ -1241,15 +1291,14 @@ follow a turn-over or rotate in one step, whose default S1
   ([D22](decisions.md#d22-figures-holding-several-moves), [02
   §6.5](02-language-semantics.md#65-figures-holding-several-moves)) waits for M4
   ([#646](https://github.com/avalonalex/senbazuru/issues/646)).
-- **What may follow a turn-over or rotate in one step**, pending S1
-  ([#635](https://github.com/avalonalex/senbazuru/issues/635)), which asks it
-  and gives it the next free number. Default, which S1 proposes: a step may end
-  with one turn-over or rotate, and any move after one in the same step, a
-  second turn-over or rotate included, is refused, by an error S19
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) names. It bears
-  on §2's "a fold then a turn" row and on D22.
-- **7**, still open, now also bears on the fan, which can reach into a captioned
-  gutter (Risks).
+- **78**, what may follow a turn-over or rotate in one step, **decided
+  2026-10-28** as recommended ([the question as
+  asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6486583488)):
+  a step may end with one turn-over or rotate, and any move after it in the
+  same step is refused, a second turn-over or rotate, `anchor` and `mark`
+  included, by an error S19
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) names. It
+  settles §2's "a fold then a turn" row and D22's.
 
 ## Research links
 
