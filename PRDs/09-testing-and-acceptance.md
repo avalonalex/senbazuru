@@ -262,9 +262,17 @@ does (M5, **UNVERIFIED**).
 Under [D6](decisions.md#d6-crease-graphs-grow-between-frames) a crease graph grows
 between frames, so a crease first appears in the frame of the move that makes it, and the
 run writes coarser crease graphs than the fixture's: 4 vertices, 4 edges, 1 face;
-then 6, 7, 2; then 9, 12, 4. Those counts come from hand-built frames (§11 command
-4), **UNVERIFIED** as runner output; the ids differ too (the fixture's vertex 4 is
-(½, 0), 5 is (1, ½)).
+then 6, 7, 2; then 9, 12, 4. The vertex and edge counts come from hand-built frames
+(§11 command 4), which print no faces. States 0 and 1 are runner output, faces
+included: `WriteSpec`'s test "writes test 2's state 1 as 09 §2.3 counts it" runs
+step 1 alone and gets 4, 4, 1 and 6, 7, 2. State 2's counts stay **UNVERIFIED** as
+runner output until M4, since its step creases folded paper. The ids differ from the
+fixture's too: the runner's state 1 numbers (½, 1) as vertex 4 and (½, 0) as vertex
+5, where the fixture's vertex 4 is (½, 0) and 5 is (1, ½). Between the run's own
+states the ids carry over, by D6's prefix rule: each state's vertices are the first
+of the next's, with equal material coordinates. `WriteSpec`'s "a crease graph that
+grows, as D6's prefix rule needs" checks it on a run from `sheet square` that
+creases at both its steps.
 
 Frames are compared by *material identity*, which piece of paper each vertex and
 edge is ([material point](glossary-additions.md#references)). The fixture's
