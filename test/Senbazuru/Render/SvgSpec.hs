@@ -22,7 +22,7 @@ import Senbazuru.Geometry
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Stacking (defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (Basis, bottomUp, defaultView, isometric, topDown)
+import Senbazuru.Render.Camera (Basis, bottomUp, defaultView, frontOn, isometric, sideOn, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
 import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg
@@ -62,6 +62,20 @@ drawFrame theme notation basis fr =
   case creasePatternFrom theme defaultBudget notation basis fr of
     Left err -> fail ("render failed: " <> T.unpack (renderFoldError err))
     Right d -> pure (renderSvg testPage d)
+
+-- | A whole page at 'testPage', around the lines of its one group: what a
+-- drawing seen edge-on comes to, short enough to write out in full.
+edgeOnPage :: [Text] -> Text
+edgeOnPage body =
+  T.unlines $
+    [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"200\" viewBox=\"0 0 200 200\">",
+      "  <title>fixture</title>",
+      "  <rect x=\"0\" y=\"0\" width=\"200\" height=\"200\" fill=\"#ffffff\"/>",
+      "  <g fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\">"
+    ]
+      <> body
+      <> ["  </g>", "</svg>"]
 
 -- | Read a fixture through the loader the CLI uses, so that a fixture in a
 -- format other than FOLD needs no harness of its own.
@@ -437,6 +451,38 @@ spec = do
     it "renders letter-fold.fold after folding it" $
       renderFolded topDown "test/fixtures/letter-fold.fold"
         >>= goldenText "test/golden/letter-fold-folded.svg"
+
+    -- Seen edge-on, as --view front and --view side look, the folded letter is
+    -- a line and neither side of the paper shows, so which panels get painted
+    -- is a choice: Render.CreasePattern counts edge-on as above. These are the
+    -- pages main drew before that rule was rewritten over
+    -- Render.Camera.seenFrom, written out here rather than as golden files,
+    -- since PRD 06's A2 allows only the goldens its table lists. Counting
+    -- edge-on as below paints other panels from the front, and both pages in
+    -- the underside's colour, #e5ded1, so both turn red.
+    it "draws the folded letter fold edge-on as seen from above, from the front and the side" $ do
+      renderFolded frontOn "test/fixtures/letter-fold.fold"
+        >>= ( `shouldBe`
+                edgeOnPage
+                  [ "    <path d=\"M 10 100 L 10 100 L 40 100 L 40 100 Z M 190 100 L 190 100 L 40 100 L 40 100 Z\" fill=\"#faf8f3\"/>",
+                    "    <path d=\"M 40 100 L 40 100\" stroke=\"#1a1a1a\" stroke-width=\"1\"/>",
+                    "    <path d=\"M 10 100 L 190 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>",
+                    "    <path d=\"M 190 100 L 190 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>",
+                    "    <path d=\"M 190 100 L 10 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>",
+                    "    <path d=\"M 10 100 L 10 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>"
+                  ]
+            )
+      renderFolded sideOn "test/fixtures/letter-fold.fold"
+        >>= ( `shouldBe`
+                edgeOnPage
+                  [ "    <path d=\"M 10 100 L 10 100 L 190 100 L 190 100 Z M 10 100 L 10 100 L 190 100 L 190 100 Z\" fill=\"#faf8f3\"/>",
+                    "    <path d=\"M 10 100 L 190 100\" stroke=\"#1a1a1a\" stroke-width=\"1\"/>",
+                    "    <path d=\"M 10 100 L 10 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>",
+                    "    <path d=\"M 10 100 L 190 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>",
+                    "    <path d=\"M 190 100 L 190 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>",
+                    "    <path d=\"M 190 100 L 10 100\" stroke=\"#1a1a1a\" stroke-width=\"1.6\"/>"
+                  ]
+            )
 
     -- The first real model: the traditional crane from Flat-Folder's corpus,
     -- 72 faces folded flat and stacked by the solver. The table says it has
