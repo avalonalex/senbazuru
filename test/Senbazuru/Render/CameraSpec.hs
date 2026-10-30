@@ -253,8 +253,10 @@ spec = do
     it "is not changed by a roll of 1 radian (A5)" $
       -- A roll turns the drawing on the page and keeps basisForward, so it can
       -- never turn a valley seen from in front into one seen from behind. Red
-      -- if turnedBy moved basisForward. A seenFrom reading basisUp instead is
-      -- the table's to catch: at top its z is 0.
+      -- only if a roll changed the sign of basisForward's z on one of these
+      -- cameras, as setting it to basisUp does at top, whose up has z 0. A roll
+      -- that moved basisForward and kept that sign would pass here. A seenFrom
+      -- reading basisUp instead is the table's to catch.
       [seenFrom (turnedBy 1 b) | b <- cameras] `shouldBe` map seenFrom cameras
   where
     -- The blintz gallery's camera, then the crane gallery's. A direction

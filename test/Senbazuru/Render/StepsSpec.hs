@@ -112,16 +112,19 @@ spec = do
     it "sees the bird from the opposite side under bottom, and from the reader's side by default" $ do
       -- The bird is not flat, so with no view named the page looks at it
       -- isometrically, from above. A pageSide that ignored the view's camera
-      -- would see it from the reader's side under bottom and front too.
+      -- would see it from the reader's side under bottom and front too. Both
+      -- cameras a page chooses for itself look from above, so the default line
+      -- pins that, not which frames chose between them.
       bird <- allFrames <$> (loadFoldFile "examples/bird-base-sequence.fold" >>= right)
       pageSide (View (Just bottomUp) 0) bird `shouldBe` Right FromOppositeSide
       pageSide defaultView bird `shouldBe` Right FromReadersSide
       pageSide (View (Just frontOn) 0) bird `shouldBe` Right EdgeOn
 
     it "refuses a frame whose vertices cannot be read, naming it as stepPage does" $ do
-      -- The camera is chosen from every frame's vertices, so without them
-      -- there is no side to give. Counted among the file's frames, metadata
-      -- frame and all, as the page counts them above.
+      -- The camera is chosen from every frame's vertices, as stepPage chooses
+      -- it, so a frame it cannot read is refused here too, though the side
+      -- would not need it. Counted among the file's frames, metadata frame and
+      -- all, as the page counts them above.
       let broken = flatSheet {verticesCoords = [[0]]}
       pageSide defaultView [emptyFrame, flatSheet, broken]
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))

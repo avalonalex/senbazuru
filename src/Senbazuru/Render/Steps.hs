@@ -30,9 +30,13 @@
 -- however you are looking at either.
 --
 -- Which side of the paper the page shows ('pageSide') is read off that same
--- camera, and the camera is chosen in one place ('pageCamera'). A second
--- choice, made from a different list of frames, would agree with the first on
--- every test that names its view and disagree on a file that does not.
+-- camera, chosen in one place ('pageCamera'). Today no file can change the
+-- answer: a view that names a camera gets that camera's side, and the two
+-- cameras a page chooses for itself, from above and isometric, both look down
+-- onto the reader's side. The one place still matters. 'pageSide' refuses
+-- exactly the frames choosing the camera refuses, and a default that one day
+-- looked from below or edge-on could not split the page from the side it
+-- reports.
 module Senbazuru.Render.Steps
   ( stepPage,
     pageSide,
@@ -130,8 +134,9 @@ stepPage theme budget grid view arrows frames = do
 -- camera sees, so under @--view bottom@ a page is seen from the opposite side
 -- however its frames lie.
 --
--- A frame whose vertices cannot be read is refused here as 'stepPage' refuses
--- it, naming the same frame, since the camera cannot be chosen without them. A
+-- A frame whose vertices cannot be read is refused, naming the frame
+-- 'stepPage' would name, because the camera is chosen from every frame's
+-- vertices. The side itself does not need them, as the module header says. A
 -- frame 'stepPage' cannot draw for another reason still has a side. A list
 -- with no geometry in it has no page, and is given the side of the view's own
 -- camera, or of 'topDown' when the view names none.
