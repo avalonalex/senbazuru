@@ -175,6 +175,9 @@ module Senbazuru.Sequence.Run
     RunSettings (..),
     defaultRunSettings,
     runSequence,
+
+    -- * The turn a turn-over makes
+    turnOverAbout,
   )
 where
 

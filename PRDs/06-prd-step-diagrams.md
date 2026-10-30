@@ -295,11 +295,13 @@ then.
   is drawn as if the axis were page-vertical (§5,
   [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
 - **R-06-12.** On `top` and `bottom` pages with roll a multiple of 90°, a turn-over
-  or half turn keeps each figure's extent, the page union (the one box covering
-  every figure's extent, which sets the scale,
-  [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112)) and the
-  scale within 1e-12 × `modelSpan` (the model's size). Nothing is asserted for
-  other views or rolls.
+  or half turn keeps each figure's extent and the page union (the one box
+  covering every figure's extent, which sets the scale,
+  [`Layout.hs:110-112`](../src/Senbazuru/Diagram/Layout.hs#L110-L112)) within
+  1e-12 × `modelSpan` (the model's size), and the scale within 1e-12 of itself,
+  since a scale is page units per model unit. Nothing is asserted for other
+  views or rolls. `StepsSpec` tests it on today's `stepPage`, as A7 and A8
+  ([decisions C129](decisions.md#changes-since-draft-v2)).
 - **R-06-13.** Rotate marks show signed eighths; repeat marks show a figure range;
   both are `Symbol`s inside their figure.
 
@@ -542,7 +544,7 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 | `anchor P` (an `Anchoring` record, evidence `NoMotion`) | No arrow and no fold-here line: it moves no paper, has no hinge and creases nothing, and the model stays where it stood on the page ([`Record.hs:551-556`](../src/Senbazuru/Sequence/Record.hs#L551-L556), [`Run.hs:568-571`](../src/Senbazuru/Sequence/Run.hs#L568-L571)) |
 | `mark` | Caption, `NoArrows`: a mark moves no paper. It is labelled through `noteMarks` (§1) on the figures R-06-22 names. M3 runs `mark` for the point forms the resolver already evaluates on the sheet (owner decision 75); until S20 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner refuses it as not run yet ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`, and a mark used as a reference, stay not run yet until M4 ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174), [`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)) |
 | `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, from its before surface to its folded surface (§7), and an unfold arrow back, the same pair reversed, both under `displayBefore` (R-06-16, owner decision 14); and its hinge's fold-here line, as a fold's (owner decision 74) |
-| `turn over` / `rotate` | `notePresentation`. The record keeps the turn as written (`Presenting`, [C82](decisions.md#changes-since-draft-v2)), so the direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); see [Dependencies](#dependencies). No record stores the axis point: the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). The runner finds it with its private `middleOf` ([`Run.hs:299`](../src/Senbazuru/Sequence/Run.hs#L299)) and does not export `turnOverAbout`; how the page gets the point is S18b's ([#640](https://github.com/avalonalex/senbazuru/issues/640)) |
+| `turn over` / `rotate` | `notePresentation`. The record keeps the turn as written (`Presenting`, [C82](decisions.md#changes-since-draft-v2)), so the direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); see [Dependencies](#dependencies). No record stores the axis point: the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)). The runner finds it with its private `middleOf` ([`Run.hs:302`](../src/Senbazuru/Sequence/Run.hs#L302)) and exports `turnOverAbout` for `StepsSpec`'s turn tests, A7 and A8 ([decisions C129](decisions.md#changes-since-draft-v2)); how the page gets the point is S18b's ([#640](https://github.com/avalonalex/senbazuru/issues/640)) |
 | A fold then a turn | The fold's arrows and the turn's mark. A step may end with one turn-over or rotate, and nothing may follow it in the same step (owner decision 78), so a figure carries at most one presentation mark |
 | `repeat A..B` (M4, [decisions §8](decisions.md#8-milestones)) | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
 | `checkpoint` (M4) | `NoArrows`: the pair breaks the *prefix rule*, under which each frame's vertex list begins with the previous frame's, with equal material coordinates, so ids carry over ([D6](decisions.md#d6-crease-graphs-grow-between-frames), [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused); [05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test), [02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) |
@@ -709,6 +711,11 @@ diagonal on the page, and a mirror across a diagonal swaps the figure's width an
 height, which changes a non-square figure's box. Under `iso` the projection is not
 symmetric about the axis at all. For the same reason R-06-12 leaves out `rotate` by
 a quarter turn: it swaps a non-square figure's width and height on every page.
+
+`StepsSpec` asserts the "yes" rows through `stepPage`, on `top` and `bottom` at
+rolls of 0°, 90°, 180° and 270° (A7), and the `iso` row's change (A8), which a
+page of the one figure gave on 2026-10-28 as 0.41421 × 0.61183 before and
+0.99810 × 0.33353 after ([decisions C129](decisions.md#changes-since-draft-v2)).
 
 **Rotate and repeat.** `RotateMark k` draws k/8 in a circle with an arrow in the
 turning sense; `RepeatMark a b` a box holding the range (Lang). Both sit inside the
@@ -1098,7 +1105,7 @@ decisions 67 to 69).
 | A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268) | a hollow head or loop is sized in model units |
 | A5 | `seenFrom` gives §4's table for the five named views and two gallery bases, and a roll of 1 radian changes nothing | `z > 0` is read as the reader's side |
 | A6 | Under `View (Just bottomUp) 0` the same notes draw `HollowHalfHead` where `top` draws `SolidHead`, with dashes swapped too | inversion reaches heads but not dashes |
-| A7 | With and without a turn-over, figure extents and page box agree within 1e-12 × span on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0 or the corner mean |
+| A7 | With and without a turn-over or `rotate 4/8 turn`, figure extents and page box agree within 1e-12 × span, and the scale within 1e-12 of itself, on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold, the same sheet folded in half only, and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0, the corner mean or the run's anchor; a half turn turns a quarter turn |
 | A8 | On `iso`, bird `file_frames[13]`'s extent changes across the turn (0.4142 × 0.6118 → 0.9981 × 0.3335, within 1e-4) | the turn is computed about a page axis, or the page re-fits figures after a turn, so the `iso` extent stays equal |
 | A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn` | inference is not suppressed on the marked pair |
 | A10 | On each single-move figure of the blintz sequence (M2), `GivenArrows` from its record equal `InferArrowsAs` ends within 1e-12 × span | `displayBefore` or `displayAfter` is not applied, or record ids are not in `recordBefore`'s numbering |
