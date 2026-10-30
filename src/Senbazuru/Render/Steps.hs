@@ -28,8 +28,14 @@
 -- The /notation/ is still chosen per frame, and that is not the same question:
 -- a crease pattern's creases are instructions and a folded form's are edges,
 -- however you are looking at either.
+--
+-- Which side of the paper the page shows ('pageSide') is read off that same
+-- camera, and the camera is chosen in one place ('pageCamera'). A second
+-- choice, made from a different list of frames, would agree with the first on
+-- every test that names its view and disagree on a file that does not.
 module Senbazuru.Render.Steps
   ( stepPage,
+    pageSide,
     StepError (..),
   )
 where
@@ -41,9 +47,10 @@ import Senbazuru.Diagram.Style (Theme)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
+import Senbazuru.Geometry.V3 (V3)
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (View)
+import Senbazuru.Render.Camera (Basis, SeenFrom, View, seenFrom)
 import Senbazuru.Render.CreasePattern
   ( basisFor,
     creasePatternFrom,
@@ -99,22 +106,13 @@ stepPage ::
   [Frame] ->
   Either StepError (Maybe Diagram)
 stepPage theme budget grid view arrows frames = do
-  -- Numbered by their place in the file, so an error can name the frame someone
-  -- would have to go and look at, and then by their place in the sequence, so
-  -- "the next step" skips over a metadata-only key frame rather than tripping
-  -- on it.
-  resolved <- traverse withVertices [(i, fr) | (i, fr) <- zip [0 ..] frames, hasGeometry fr]
-  let basis = basisFor view (concatMap (\(_, _, verts) -> verts) resolved)
-      order = [fr | (_, fr, _) <- resolved]
+  (resolved, basis) <- pageCamera view frames
+  -- Numbered by their place in the sequence too, so "the next step" skips
+  -- over a metadata-only key frame rather than tripping on it.
+  let order = [fr | (_, fr, _) <- resolved]
   figures <- traverse (figure basis order) (zip [0 ..] resolved)
   pure (gridOf grid figures)
   where
-    hasGeometry fr = not (null (verticesCoords fr))
-
-    withVertices (i, fr) = do
-      verts <- first (StepError i) (frameVertices fr)
-      pure (i, fr, verts)
-
     figure basis order (position, (i, fr, verts)) = do
       d <-
         first
@@ -127,3 +125,31 @@ stepPage theme budget grid view arrows frames = do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withArrows theme basis motions d)
         _ -> pure d
+
+-- | Which side of the paper a page of these frames shows: the side its one
+-- camera sees, so under @--view bottom@ a page is seen from the opposite side
+-- however its frames lie.
+--
+-- A frame whose vertices cannot be read is refused here as 'stepPage' refuses
+-- it, naming the same frame, since the camera cannot be chosen without them. A
+-- frame 'stepPage' cannot draw for another reason still has a side. A list
+-- with no geometry in it has no page, and is given the side of the view's own
+-- camera, or of 'topDown' when the view names none.
+pageSide :: View -> [Frame] -> Either StepError SeenFrom
+pageSide view frames = seenFrom . snd <$> pageCamera view frames
+
+-- | The frames a page draws and the one camera it draws them through.
+--
+-- Each frame that holds geometry comes with its place in the file, so an error
+-- can name the frame someone would have to go and look at, and with its
+-- vertices. The camera is chosen from every frame's vertices together.
+pageCamera :: View -> [Frame] -> Either StepError ([(Int, Frame, [V3])], Basis)
+pageCamera view frames = do
+  resolved <- traverse withVertices [(i, fr) | (i, fr) <- zip [0 ..] frames, hasGeometry fr]
+  pure (resolved, basisFor view (concatMap (\(_, _, verts) -> verts) resolved))
+  where
+    hasGeometry fr = not (null (verticesCoords fr))
+
+    withVertices (i, fr) = do
+      verts <- first (StepError i) (frameVertices fr)
+      pure (i, fr, verts)

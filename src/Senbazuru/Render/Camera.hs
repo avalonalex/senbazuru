@@ -29,6 +29,22 @@
 --
 -- Projecting is then two dot products, and the result feeds the existing 2D
 -- pipeline unchanged.
+--
+-- == Which side is seen
+--
+-- Paper has two sides, and a page has to know which one it shows, because a
+-- valley fold seen from behind is a mountain fold. 'seenFrom' answers from the
+-- sign of @forward@'s @z@ and nothing else. The camera looks /along/ @forward@,
+-- so a negative @z@ looks down onto the @+z@ side, the side a run's states keep
+-- towards the reader, and a positive one looks up at the other side.
+--
+-- Zero is a third answer, not a tie to break. 'frontOn' and 'sideOn' look along
+-- the sheet's plane, so flat paper projects to a line and neither side shows.
+-- "Senbazuru.Render.CreasePattern" still has to paint some faces there, and
+-- counts edge-on as above, which is harmless when nobody can see the faces. A
+-- fold's kind is different: drawn as seen, it is swapped from behind and kept
+-- from in front, and from edge-on either choice would be a guess. A 'Bool'
+-- would make that guess without saying so.
 module Senbazuru.Render.Camera
   ( -- * Viewing bases
     Basis,
@@ -51,6 +67,10 @@ module Senbazuru.Render.Camera
     View (..),
     defaultView,
     turnedBy,
+
+    -- * Which side is seen
+    SeenFrom (..),
+    seenFrom,
 
     -- * Projection
     project,
@@ -233,6 +253,30 @@ turnedBy angle b
           basisUp = (sin angle *^ basisRight b) ^+^ (cos angle *^ basisUp b),
           basisForward = basisForward b
         }
+
+-- | Which side of the paper a camera sees. See the module header for why
+-- edge-on is an answer of its own.
+data SeenFrom
+  = -- | The @+z@ side, which 'topDown' and 'isometric' see.
+    FromReadersSide
+  | -- | The @-z@ side, which 'bottomUp' sees.
+    FromOppositeSide
+  | -- | Neither: the camera looks along the sheet's plane, as 'frontOn' and
+    -- 'sideOn' do, and flat paper shows as a line.
+    EdgeOn
+  deriving stock (Eq, Show)
+
+-- | Which side a basis sees, from the way it looks and nothing else.
+--
+-- A roll ('turnedBy') leaves 'basisForward' alone, so turning a drawing on the
+-- page never changes the answer. @-0@ compares equal to @0@, so it is edge-on
+-- too, and no basis holds a NaN: 'basisFrom' refuses one and 'turnedBy' keeps
+-- 'basisForward'.
+seenFrom :: Basis -> SeenFrom
+seenFrom b = case compare (v3z (basisForward b)) 0 of
+  LT -> FromReadersSide
+  GT -> FromOppositeSide
+  EQ -> EdgeOn
 
 -- | Flatten a point onto the page.
 project :: Basis -> V3 -> V2

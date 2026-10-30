@@ -134,7 +134,7 @@ import Senbazuru.Origami.Stacking (Budget, defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Surface (Surface, surfaceFrame)
 import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
-import Senbazuru.Render.Camera (Basis, View (..), basisForward, isometric, project, topDown, turnedBy)
+import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), basisForward, isometric, project, seenFrom, topDown, turnedBy)
 import Senbazuru.Render.Projected (projectedForm)
 
 -- | Render one frame as a crease pattern, seen from directly above.
@@ -423,13 +423,13 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
 
 -- | Is the viewer on the @+z@ side of the model?
 --
--- 'basisForward' points the way the camera looks, so the viewer is the other
--- way. A model lying flat in a plane is seen from above when the camera looks
--- down at it, and a camera exactly edge on — which shows a flat model as a line
--- — is counted as above, because the answer has to be one or the other and
--- there is nothing to see either way.
+-- Not @== FromReadersSide@, which reads the same and is not: a camera exactly
+-- edge on, which shows a flat model as a line, counts as above here, because
+-- the faces have to be painted from one side or the other and there is nothing
+-- to see either way. 'seenFrom' keeps edge-on apart for the marks that have to
+-- know.
 seenFromAbove :: Basis -> Bool
-seenFromAbove basis = v3z (basisForward basis) <= 0
+seenFromAbove basis = seenFrom basis /= FromOppositeSide
 
 -- | The paper that shows and the lines that are not buried.
 --

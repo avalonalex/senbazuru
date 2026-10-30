@@ -7,7 +7,7 @@
 -- check what projection is supposed to preserve.
 module Senbazuru.Render.CameraSpec (spec) where
 
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3
 import Senbazuru.Geometry.VectorSpace
@@ -229,3 +229,35 @@ spec = do
       -- covers the views someone remembered, and a new one added to the module
       -- and forgotten here would be exactly the one nobody checked.
       [b | (name, b) <- views, name /= "top"] `shouldSatisfy` notElem topDown
+
+  describe "seenFrom" $ do
+    it "gives each named view the side PRD 06 §4 gives it (A5)" $
+      -- The camera looks along basisForward, so a negative z looks down onto
+      -- +z. Reading a positive z as the reader's side swaps top and bottom.
+      -- Taken from views, as above, so a new view fails here until it has a row.
+      [(name, seenFrom b) | (name, b) <- views]
+        `shouldBe` [ ("top", FromReadersSide),
+                     ("bottom", FromOppositeSide),
+                     ("iso", FromReadersSide),
+                     ("front", EdgeOn),
+                     ("side", EdgeOn)
+                   ]
+
+    it "sees the blintz and crane galleries from the opposite side (A5)" $
+      -- Built as the galleries build them, basisFrom with z up
+      -- (study/fold-material/SequenceGallery.hs and CraneGallery.hs). Both
+      -- look up at the sheet from below it, so the opposite side is a page
+      -- this project already draws, not a corner case.
+      map seenFrom galleries `shouldBe` [FromOppositeSide, FromOppositeSide]
+
+    it "is not changed by a roll of 1 radian (A5)" $
+      -- A roll turns the drawing on the page and keeps basisForward, so it can
+      -- never turn a valley seen from in front into one seen from behind. Red
+      -- if turnedBy moved basisForward. A seenFrom reading basisUp instead is
+      -- the table's to catch: at top its z is 0.
+      [seenFrom (turnedBy 1 b) | b <- cameras] `shouldBe` map seenFrom cameras
+  where
+    -- The blintz gallery's camera, then the crane gallery's. A direction
+    -- basisFrom refused would leave the list short, and the test above red.
+    galleries = mapMaybe (`basisFrom` V3 0 0 1) [V3 (-1) 0 1, V3 (-1) 1 (sqrt 2)]
+    cameras = map snd views <> galleries

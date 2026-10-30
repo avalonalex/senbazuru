@@ -15,12 +15,12 @@ import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
-import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..), VertexId (..), emptyFrame)
+import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..), VertexId (..), allFrames, emptyFrame)
 import Senbazuru.Geometry (Box (..), Transform (..), V2 (..), boxSize)
 import Senbazuru.Geometry.Rigid (applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Origami.Stacking (defaultBudget)
-import Senbazuru.Render.Camera (Basis, View (..), bottomUp, defaultView, isometric, topDown)
+import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), bottomUp, defaultView, frontOn, isometric, topDown)
 import Senbazuru.Render.Steps
 import Senbazuru.Render.Svg (defaultPage, pageTransform)
 import Senbazuru.Sequence.Build (rotate, sequenceOf, step_, turnOver)
@@ -106,6 +106,24 @@ spec = do
       -- file, so the skipped metadata frame still occupies number zero.
       let broken = flatSheet {verticesCoords = [[0]]}
       page [emptyFrame, flatSheet, broken]
+        `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
+
+  describe "which side a page shows" $ do
+    it "sees the bird from the opposite side under bottom, and from the reader's side by default" $ do
+      -- The bird is not flat, so with no view named the page looks at it
+      -- isometrically, from above. A pageSide that ignored the view's camera
+      -- would see it from the reader's side under bottom and front too.
+      bird <- allFrames <$> (loadFoldFile "examples/bird-base-sequence.fold" >>= right)
+      pageSide (View (Just bottomUp) 0) bird `shouldBe` Right FromOppositeSide
+      pageSide defaultView bird `shouldBe` Right FromReadersSide
+      pageSide (View (Just frontOn) 0) bird `shouldBe` Right EdgeOn
+
+    it "refuses a frame whose vertices cannot be read, naming it as stepPage does" $ do
+      -- The camera is chosen from every frame's vertices, so without them
+      -- there is no side to give. Counted among the file's frames, metadata
+      -- frame and all, as the page counts them above.
+      let broken = flatSheet {verticesCoords = [[0]]}
+      pageSide defaultView [emptyFrame, flatSheet, broken]
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
 
   turning
