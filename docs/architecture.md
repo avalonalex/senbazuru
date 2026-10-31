@@ -122,7 +122,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
-| `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures. |
+| `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures, each drawn with its *step note*, what it carries besides the paper (`stepPageWith`). `stepPage` gives every figure the same note, and never draws a frame's title. |
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form, and the rigid motion that placed each face. |
