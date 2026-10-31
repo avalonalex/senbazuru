@@ -43,7 +43,7 @@ senbazuru info   FILE [--fold] [--layer-budget N]
 senbazuru crease FILE --from X,Y --to X,Y (--mountain|--valley|--flat|--unassigned)
                       [--folded] [--frame N] [-o OUT.fold]
 senbazuru fold   FILE [--frame N] [--stacking N[,N...]] [--layer-budget N] [-o OUT.fold]
-senbazuru run    SOURCE [-o OUT.fold|OUT.glb] [OPTIONS]
+senbazuru run    SOURCE [-o OUT.fold|OUT.svg|OUT.glb] [OPTIONS]
 senbazuru run    SOURCE --check
 ```
 
@@ -1825,6 +1825,7 @@ extension.
 
 ```bash
 stack run -- run blintz.foldseq -o blintz.fold --report
+stack run -- run blintz.foldseq -o blintz.svg
 stack run -- run blintz.foldseq -o blintz.glb --frame 6
 stack run -- run blintz.foldseq > blintz.fold
 ```
@@ -1840,8 +1841,30 @@ stack run -- run blintz.foldseq > blintz.fold
   another, counted the same way, so `--frame 1` is the sheet laid flat. It
   is the same file `export --frame N` makes from the written `.fold`, byte for
   byte. `--all-layers` writes only the complete paper, as for `export`.
-- **`.svg`**, a page of steps, is not written yet. Write `.fold` and draw it
-  with `render --steps`.
+- **`.svg`**: the *page of steps*, one numbered figure for each state the
+  run writes, in order, so figure k is state k − 1 and `--frame k` of the
+  written `.fold`. A step whose moves were all `expect refused` moved no
+  paper, writes no state and has no figure. The page is what `render --steps`
+  draws of the written `.fold`, byte for byte, titled with the source's
+  `title`, and it takes `render`'s page flags with `render`'s defaults:
+  `--columns N`, figures across the page (3); `--view NAME`, where to look
+  from (chosen from the geometry); and `--width PT` and `--height PT` (400
+  each). A width or height of 32 or less is refused: the page keeps a margin
+  of 16 on each side, and anything smaller leaves no room to draw in. With
+  `--view bottom` the page shows the paper from the side opposite the
+  [reader's side](glossary.md#fold-sequences), and `run` warns once. A state
+  the page cannot draw is refused by the step that ended at it, never by its
+  figure's number:
+  `step 2 (quarter): the page cannot draw the state it ends at: …`.
+
+  The page draws the paper and the figure numbers, and nothing else yet. Not
+  drawn so far:
+  - captions, a step's instruction under the figure it starts from (#641);
+  - fold arrows, fold-here lines, pre-crease arrows, turn-over loops, rotate
+    marks and mark labels (#643);
+  - layers fanned apart from their folds (#644);
+  - repeat and checkpoint marks (milestone M4);
+  - sample figures (milestone M5).
 
 Each flag goes only with the output it shapes, and is refused with any other,
 so that a flag never silently does nothing:
@@ -1874,14 +1897,19 @@ blintz.foldseq
 
 An `expect refused` move has no record, and the report is where its outcome
 shows; the work of its refused attempt is not counted. `--layer-budget N` bounds the layer solver, as it does for `render`
-and `export`. With `-o .glb` it bounds the solve that stacks the chosen state.
-With `.fold` it changes nothing yet: it is handed to the run, but no move
-chooses among layer orders until milestone M4.
+and `export`, and `run` hands it to the run and to the page or the model it
+writes. It changes nothing yet. No move chooses among layer orders until
+milestone M4, and the page and the model look for a layer order only for a
+state that carries none, while a run writes each state with the layer order
+its moves checked, and the sheet laid flat with no paper over other paper. A
+budget of 1 writes the blintz's, the helmet's and the quarter fold's pages,
+and their models at frames 1 to 3, byte for byte as the default does.
 
 The `sheet` path is read relative to the source's own directory, so a
 sequence reads the same sheet wherever `run` is started from. A run that
-reaches `not modelled` still writes the states before it, then says where it
-stopped and exits nonzero, so the work up to the gap is kept:
+reaches `not modelled` still writes the states before it, as a sequence
+file, a page or a model, then says where it stopped and exits nonzero, so the
+work up to the gap is kept:
 
 ```text
 senbazuru: quarter-stop.foldseq:10:3: step 2 (quarter): "fold in quarters" is not modelled, so the run stops here and keeps the moves before it

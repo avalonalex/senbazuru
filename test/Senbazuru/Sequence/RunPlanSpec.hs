@@ -7,9 +7,9 @@
 -- all named, in the order @run --help@ lists them. Without @--check@ the verb
 -- runs the sequence and writes what @-o@'s extension names, and the tests
 -- check the plan it makes: a sequence file to standard output or to a
--- @.fold@, or one state to a @.glb@, the last unless @--frame@ names another;
--- a page of steps, @.svg@, refused until step notes exist, as is an extension
--- it does not write; and each flag that shapes another output refused by name.
+-- @.fold@, a page of steps to a @.svg@ with its flags as given, or one state
+-- to a @.glb@, the last unless @--frame@ names another; an extension it does
+-- not write refused; and each flag that shapes another output refused by name.
 --
 -- __What it prints__ for a refusal is compared with goldens: a parse error and
 -- a static refusal, each with its location, message and excerpt, exactly as a
@@ -21,6 +21,7 @@ import Data.Foldable (for_)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Load (LoadError (..))
 import Senbazuru.Origami.Stacking (Budget (..), defaultBudget)
 import Senbazuru.Sequence.Build
@@ -63,13 +64,23 @@ spec = do
         planRun running {runOutput = Just "OUT.FOLD"} `shouldBe` Right (PlanFold (Just "OUT.FOLD") defaultBudget noFileHeader)
         planRun running {runOutput = Just "Out.Glb"} `shouldBe` Right (PlanGlb "Out.Glb" defaultBudget Nothing GlbVisibleAndComplete)
 
-      it "refuses an extension it does not write, and a page of steps until step notes exist" $ do
+      -- Each page flag lands in its own field, as given, and none given is
+      -- every field Nothing, for the command line to fill from the page's
+      -- defaults. Swapping --width and --height, or filling a default here,
+      -- turns this red.
+      it "writes a page of steps to a .svg, with the page's flags as given" $ do
+        planRun running {runOutput = Just "out.svg"} `shouldBe` Right (PlanSvg "out.svg" defaultBudget (PageFlags Nothing Nothing Nothing Nothing))
+        planRun running {runOutput = Just "out.svg", runColumns = Just 2, runView = Just "bottom", runWidth = Just 300, runHeight = Just 200}
+          `shouldBe` Right (PlanSvg "out.svg" defaultBudget (PageFlags (Just 2) (Just "bottom") (Just 300) (Just 200)))
+
+      it "refuses an extension it does not write, and says which it does" $ do
         planRun running {runOutput = Just "out.png"} `shouldBe` Left (UnknownOutput "out.png")
         planRun running {runOutput = Just "out"} `shouldBe` Left (UnknownOutput "out")
-        planRun running {runOutput = Just "OUT.SVG"} `shouldBe` Left PageNotYet
+        explain (UnknownOutput "out.png") `shouldBe` "-o out.png: run writes .fold, a sequence file, .svg, a page of steps, or .glb, one state as a model"
 
       it "holds the --layer-budget given, whichever it writes" $ do
         planRun running {runLayerBudget = Just 7} `shouldBe` Right (PlanFold Nothing (Budget 7) noFileHeader)
+        planRun running {runOutput = Just "X.SVG", runLayerBudget = Just 7} `shouldBe` Right (PlanSvg "X.SVG" (Budget 7) (PageFlags Nothing Nothing Nothing Nothing))
         planRun running {runOutput = Just "out.glb", runLayerBudget = Just 7} `shouldBe` Right (PlanGlb "out.glb" (Budget 7) Nothing GlbVisibleAndComplete)
 
     describe "refuses a flag that shapes another output (A15)" $ do
@@ -80,9 +91,19 @@ spec = do
       it "--author and --description, except with .fold" $
         planRun running {runOutput = Just "out.glb", runAuthor = Just "A.", runDescription = Just "D."} `shouldBe` Left (NotWithOutput "-o .glb" ["--author", "--description"])
 
-      it "the page's flags, which no output takes until the page" $ do
+      -- Each alone, so that a rule dropping one of the four is red by name,
+      -- and then all four, in the order the help lists them.
+      describe "with .svg, each flag of another output" $ do
+        for_ [flag | flag@(name, _) <- eachFlag, name `elem` ["--frame", "--all-layers", "--author", "--description"]] $ \(name, given) ->
+          it name $ planRun (given running {runOutput = Just "out.svg"}) `shouldBe` Left (NotWithOutput "-o .svg" [T.pack name])
+        it "all four at once" $
+          planRun running {runOutput = Just "out.svg", runFrame = Just 2, runAllLayers = True, runAuthor = Just "A.", runDescription = Just "D."}
+            `shouldBe` Left (NotWithOutput "-o .svg" ["--frame", "--all-layers", "--author", "--description"])
+
+      it "the page's flags, except with .svg" $ do
         planRun running {runColumns = Just 3, runView = Just "iso"} `shouldBe` Left (NotWithOutput "a sequence file" ["--columns", "--view"])
         planRun running {runOutput = Just "out.glb", runWidth = Just 400, runHeight = Just 400} `shouldBe` Left (NotWithOutput "-o .glb" ["--width", "--height"])
+        planRun running {runOutput = Just "out.fold", runColumns = Just 3} `shouldBe` Left (NotWithOutput "-o .fold" ["--columns"])
 
   -- PRD 04's A16: --frame N is state N - 1, frame 0 being the key frame.
   describe "chooseState" $ do
@@ -108,6 +129,13 @@ spec = do
     it "says one step and one move without a plural" $
       fmap (checkSummary "one.foldseq") (parseSequence "one.foldseq" "foldseq 1\nsheet square\nstep { turn over left-right }\n" >>= checkSequence)
         `shouldBe` Right "one.foldseq: 1 step, 1 move, checked without geometry"
+
+  -- R-06-10: the line a page seen from behind gets, naming the view when
+  -- one was given.
+  describe "oppositeSideWarning" $
+    it "says the page shows the side opposite the reader's" $ do
+      oppositeSideWarning (Just "bottom") `shouldBe` "warning: --view bottom shows the paper from the side opposite the reader's side, as if the model had been turned over"
+      oppositeSideWarning Nothing `shouldBe` "warning: the page shows the paper from the side opposite the reader's side, as if the model had been turned over"
 
   describe "refusalLines" $ do
     it "shows a parse error with its place, its message and the line it is on" $ do

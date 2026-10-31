@@ -52,6 +52,7 @@ stack run -- render examples/bird-base.cp --fold -o bird-base.svg
 stack run -- check examples/crane.fold
 stack run -- export examples/crane.fold --fold -o crane.glb
 stack run -- fold examples/crane.fold -o crane-folded.fold
+stack run -- run helmet.foldseq -o helmet.svg
 ```
 
 `stack test` runs the suite, including the material-study checks. Every flag
@@ -124,6 +125,10 @@ surface that the glTF exporter lets you turn over.
   removed.
 - **Opens the stack out**, infers the arrows, and lays a sequence out as one
   numbered page at one scale.
+- **Folds a sequence you write.** A `.foldseq` file says how a model is folded,
+  one step at a time, naming the paper by where it lies on the flat sheet.
+  `run` folds it move by move and writes every state it reaches as one FOLD
+  file, or draws them as a page of steps, a figure for each state.
 - **Exports a 3D model.** glTF (`.glb`), both sides of the paper in their two
   colours. Two scenes share the same material positions: exposed paper for
   stable viewing and the complete sheet for inspection. Creases stay joined;

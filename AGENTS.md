@@ -77,6 +77,7 @@ stack run -- info examples/squaretwist.fold
 stack run -- check examples/crane.fold
 stack run -- crease examples/quarter-fold.fold --from 0,0 --to 1,1 --valley -o creased.fold
 stack run -- crease examples/diagonal-cp.fold --folded --from 0,0.5 --to 0.5,0 --valley
+stack run -- run helmet.foldseq -o helmet.svg
 stack ghci senbazuru:lib    # REPL with the library loaded
 
 make fmt                    # ormolu, in place

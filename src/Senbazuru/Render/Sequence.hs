@@ -8,8 +8,8 @@
 -- the two: 'stepNotes' gives each state the run writes a note, and 'runPage'
 -- draws them. The first is the channel later work fills (a caption, arrows
 -- read from a move's record), so it is a function of its own that a test can
--- hold to the file a run writes; the second is the one composition the
--- command line and a golden test are to call (#641's S23 and S37), so they
+-- hold to the file a run writes; the second is the one composition that
+-- @run -o x.svg@ calls and a golden test is to call (#643's S37), so the two
 -- cannot draw the page two ways.
 --
 -- It is a module of its own because of what it may import. It is the first
