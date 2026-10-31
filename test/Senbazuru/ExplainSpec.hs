@@ -63,7 +63,7 @@ import Senbazuru.Render.PaperMesh (PaperMeshError (..))
 import Senbazuru.Render.Steps (StepError (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..), TakenBecause (..), WriteProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
-import Senbazuru.Sequence.Syntax (Span (..))
+import Senbazuru.Sequence.Syntax (Name (..), Span (..))
 import SurfaceContact (ContactError (UnknownContactPanel))
 import Test.Hspec
 
@@ -98,6 +98,7 @@ everyType =
     ("SequenceError, a reference", explain (ResolveRefused (InStep 2 Nothing) NoSpan "corner north-east" (OffThePaper (V2 2 2)))),
     ("SequenceError, a move", explain (StepRefused 5 Nothing NoSpan (UnfoldChangedSince (EdgeId 8)))),
     ("SequenceError, a state", explain (WriteRefused 2 (WriteNonFinite "senbazuru:material_coords[3]" (0 / 0)))),
+    ("SequenceError, a page", explain (PageRefused 2 (Just (3, Just (Name "crane"))) (GaveUpStacking 1))),
     ("WriteProblem", explain (WriteMissingAngles 12 11)),
     ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
     ("SelectionError", explain (SeedMissing ["corner south-west", "centre"])),
@@ -237,6 +238,18 @@ spec = do
       explain (SurfaceBadDirection (V3 0 0 (0 / 0))) `shouldBe` "layer requirements need a finite nonzero direction, got (0.0, 0.0, NaN)"
       explain (StepRefused 1 Nothing NoSpan (FlapRefused (FlapSurface (SurfaceNonConvex (FaceId 0)))))
         `shouldBe` "step 1: surface panel 0 must be convex to triangulate by a fan"
+
+    -- D24: a refused page names the step that ended at the state, as a move
+    -- refused there would, and never a figure, whose number a step with no
+    -- state shifts. State 0 was made by no step, and is named as the writer
+    -- names a state.
+    it "names a page's refusal by its step, or state 0 by its number" $ do
+      explain (PageRefused 2 (Just (3, Just (Name "crane"))) (FaceOrderSelf (FaceId 4)))
+        `shouldBe` "step 3 (crane): the page cannot draw the state it ends at: " <> explain (FaceOrderSelf (FaceId 4))
+      explain (PageRefused 2 (Just (3, Nothing)) (FaceOrderSelf (FaceId 4)))
+        `shouldBe` "step 3: the page cannot draw the state it ends at: " <> explain (FaceOrderSelf (FaceId 4))
+      explain (PageRefused 0 Nothing (FaceOrderSelf (FaceId 4)))
+        `shouldBe` "state 0: the page cannot draw it: " <> explain (FaceOrderSelf (FaceId 4))
 
     -- A quarter turn of (1, 0) is (-0.0, 1), and a reader should not be
     -- shown a sign on nothing. A coordinate to type back in has no exponent:
