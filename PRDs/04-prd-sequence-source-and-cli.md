@@ -648,7 +648,7 @@ senbazuru run SOURCE --check
 | Output | Library path |
 | --- | --- |
 | none, or `.fold` | `writeSequence header run`, then `encodeFoldFile` through `writeDocument` ([Cli.hs:897-903](../app/Senbazuru/Cli.hs#L897-L903)). The frames are laid out as [D4](decisions.md#d4-written-frames-follow-the-state-rule) decides and [02 §11](02-language-semantics.md#11-written-frames) walks through: a key frame holding only metadata, then state k as `file_frames[k]` ([D24](decisions.md#d24-states-figures-and-their-numbers)). For the quarter fold, `file_frames` holds state 0, the flat start; state 1, after `half`; and state 2, after `quarter`. So `--frame 2` selects state 1, the state after `half`. |
-| `.svg` | `stepNotes run` (built by S22, [C132](decisions.md#changes-since-draft-v2)), which returns `Either SequenceError [(Frame, StepNote)]`, sharing `writtenStates`' refusals ([C77](decisions.md#changes-since-draft-v2)), then `stepPageWith theme budget grid view` ([06](06-prd-step-diagrams.md)), then `renderSvg`; `app/` turns the plan's view name into a `View`. `stepNotes` and `writeSequence` both read `Sequence.Record.writtenStates`, so the page draws exactly the states the `.fold` holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). The page is titled with the file title, as `render --steps` does ([Cli.hs:980](../app/Senbazuru/Cli.hs#L980)). |
+| `.svg` | `runPage theme budget grid view run` (built by S23, [C133](decisions.md#changes-since-draft-v2)), which is `stepNotes run` (built by S22, [C132](decisions.md#changes-since-draft-v2)), returning `Either SequenceError [(Frame, StepNote)]` and sharing `writtenStates`' refusals ([C77](decisions.md#changes-since-draft-v2)), then `stepPageWith theme budget grid view` ([06](06-prd-step-diagrams.md)), then `renderSvg`; `app/` turns the plan's view name into a `View` and fills each page flag not given from `defaultPage` and `defaultGrid`. `stepNotes` and `writeSequence` both read `Sequence.Record.writtenStates`, so the page draws exactly the states the `.fold` holds ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)). The page is titled with the file title, as `render --steps` does ([Cli.hs:980](../app/Senbazuru/Cli.hs#L980)). |
 | `.glb` | The chosen state, through `renderGlb budget mode title frame` ([Gltf.hs:227](../src/Senbazuru/Render/Gltf.hs#L227)) with `export`'s title rule ([Cli.hs:888](../app/Senbazuru/Cli.hs#L888)). `app/` maps the plan's `GlbScenes` to `VisiblePaper`, or to `CompletePaper` with `--all-layers`, as `export` chooses its mode ([Cli.hs:885](../app/Senbazuru/Cli.hs#L885)). 08's modes add flags later. |
 
 **Flag rules are library functions with their own types.** The CLI is untested, so
@@ -658,14 +658,15 @@ what `run` accepts and how it prints a refusal live in `Sequence.RunPlan`, at le
 [the module layers](decisions.md#2-shape):
 
 ```haskell
--- Senbazuru.Sequence.RunPlan as built, but for PlanSvg and PageFlags: SKETCH, S23 (#641).
--- Until then planRun refuses -o x.svg as PageNotYet (RunPlan.hs:173).
+-- Senbazuru.Sequence.RunPlan as built (PlanSvg and PageFlags by S23, C133), but for
+-- flagFan: SKETCH, S40 (#644).
 data RunOptions = RunOptions { ... }   -- every flag as given; each is a Maybe or a Bool
 data Plan = PlanCheck | PlanFold (Maybe FilePath) Budget FileHeader   -- Sequence.Write's
           | PlanSvg FilePath Budget PageFlags | PlanGlb FilePath Budget (Maybe Int) GlbScenes
-data PageFlags = PageFlags { flagColumns :: Int, flagViewName :: Maybe Text
-                           , flagWidth :: Double, flagHeight :: Double
+data PageFlags = PageFlags { flagColumns :: Maybe Int, flagViewName :: Maybe Text
+                           , flagWidth :: Maybe Double, flagHeight :: Maybe Double
                            , flagFan :: Bool }   -- False for --no-fan (R-04-27, C121; S40, #644)
+-- Each page flag as given: app/ fills the defaults from defaultPage and defaultGrid (C133).
 data GlbScenes = GlbVisibleAndComplete | GlbCompleteOnly   -- app/ maps it to ExportMode
 planRun :: RunOptions -> Either RunOptionError Plan       -- R-04-22, 23, 27; --frame 0
 chooseState :: Maybe Int -> Int -> Either RunOptionError Int   -- state N - 1 for --frame N, checked against the count
@@ -695,7 +696,11 @@ Choices that could look arbitrary:
 - **Flags are parsed with `optional`.** So `run` can tell a typed `--columns 3` from
   the default 3, and refuse it when `-o` is `.glb`. The defaults are `render`'s:
   400 × 400, 3 columns, and the view chosen from the geometry
-  ([Cli.hs:645-699](../app/Senbazuru/Cli.hs#L645-L699)). The budget's default and
+  ([Cli.hs:645-699](../app/Senbazuru/Cli.hs#L645-L699)). `run` reads them from
+  `defaultPage` and `defaultGrid`, for its help as well as its page; `render`
+  keeps its own literals, a second copy that changing would change `render`'s
+  help (R-04-21). A `run` page side of 32 or less, twice the page's margin, is
+  refused as it is read ([C133](decisions.md#changes-since-draft-v2)). The budget's default and
   its refusal of anything below 1 are
   [Cli.hs:401-423](../app/Senbazuru/Cli.hs#L401-L423)'s.
 - **`--frame` is refused with `.fold` and `.svg`.** Both hold every state, which is
