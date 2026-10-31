@@ -218,10 +218,12 @@ with every open issue tiered by how hard it is.
 2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output came first, since nothing else can be built without it, and the
    first move is built: `crease` draws a line on a pattern, or through the
-   layers of a folded model, and writes the result out. What is missing is the
-   rest of the vocabulary — turning the model over, rotating a flap, and the
-   named moves a book uses — and a way to write a whole sequence down. Not a
-   sequence *solver*; see above.
+   layers of a folded model, and writes the result out. A whole sequence can
+   now be written down, as a `.foldseq` source that `run` folds move by move:
+   folds, pre-creases, unfolding, turning the model over and turning it round.
+   What is missing is the rest of the vocabulary — rotating a flap, and the
+   named moves a book uses, which a source can name but `run` refuses as not
+   run yet. Not a sequence *solver*; see above.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
 3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**

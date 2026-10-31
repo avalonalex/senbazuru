@@ -681,13 +681,13 @@ renderOptions =
     <*> frameOption
     <*> option
       auto
-      (long "width" <> metavar "PT" <> value 400 <> showDefault <> help "Page width")
+      (long "width" <> metavar "PT" <> value (pageWidth defaultPage) <> showDefault <> help "Page width")
     <*> option
       auto
-      (long "height" <> metavar "PT" <> value 400 <> showDefault <> help "Page height")
+      (long "height" <> metavar "PT" <> value (pageHeight defaultPage) <> showDefault <> help "Page height")
     <*> option
       auto
-      (long "margin" <> metavar "PT" <> value 16 <> showDefault <> help "Page margin")
+      (long "margin" <> metavar "PT" <> value (pageMargin defaultPage) <> showDefault <> help "Page margin")
     <*> switch
       (long "transparent" <> help "Omit the white background rectangle")
     <*> switch
@@ -723,7 +723,7 @@ renderOptions =
       (atLeastOne =<< auto)
       ( long "columns"
           <> metavar "N"
-          <> value 3
+          <> value (gridColumns (defaultGrid defaultTheme))
           <> showDefault
           <> help "Figures across the page, with --steps"
       )
@@ -853,8 +853,8 @@ runSequenceSource options = case planRun options of
           PlanSvg output budget flags -> do
             view <- viewNamed (flagViewName flags)
             done <- runChecked source budget checked
-            -- A flag not given is the page's own default, the value render's
-            -- flag of the same name defaults to.
+            -- A flag not given is the page's own default, which render's flag of
+            -- the same name defaults to as well.
             let grid = (defaultGrid defaultTheme) {gridColumns = fromMaybe (gridColumns (defaultGrid defaultTheme)) (flagColumns flags)}
                 page =
                   defaultPage

@@ -24,10 +24,12 @@
 -- 'PageFlags' holds each page flag as given, a 'Maybe', and the command line
 -- fills in the defaults. They are "Senbazuru.Render.Svg"'s @defaultPage@ and
 -- "Senbazuru.Diagram.Layout"'s @defaultGrid@, which this module, a level
--- below rendering, may not import (PRDs\/decisions.md, §2 row 6). Filling them
--- here would mean writing 400 and 3 a second time, where nothing would notice
--- the two copies drift. For the same reason the plan holds @--view@'s name and
--- not a view.
+-- below rendering, may not import (PRDs\/decisions.md, §2 row 6), and from
+-- which @render@ reads its own. Filling them here would mean writing 400 and 3
+-- a second time, where nothing would notice the two copies drift. For the
+-- same reason the plan holds @--view@'s name and not a view, which the
+-- command line looks up, or leaves to "Senbazuru.Render.Camera"'s
+-- @defaultView@ when none is given.
 --
 -- == Why these messages may name flags
 --

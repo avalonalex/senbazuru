@@ -1860,10 +1860,15 @@ stack run -- run blintz.foldseq > blintz.fold
   The page draws the paper and the figure numbers, and nothing else yet. Not
   drawn so far:
   - captions, a step's instruction under the figure it starts from (#641);
-  - fold arrows, fold-here lines, pre-crease arrows, turn-over loops, rotate
-    marks and mark labels (#643);
-  - layers fanned apart from their folds (#644);
-  - repeat and checkpoint marks (milestone M4);
+  - [fold arrows](glossary.md#origami); fold-here lines, the dashed line on
+    the figure before a fold showing where it falls; the arrows of a
+    [pre-crease](glossary.md#origami); the loop and the mark a book draws for
+    turning the model over or round, a change of
+    [presentation](glossary.md#fold-sequences); and the labels of points a
+    source names with `mark` (#643);
+  - layers fanned apart, so that sheets stacked by a fold show side by side
+    (#644);
+  - the mark for a `repeat` of earlier steps (milestone M4);
   - sample figures (milestone M5).
 
 Each flag goes only with the output it shapes, and is refused with any other,
