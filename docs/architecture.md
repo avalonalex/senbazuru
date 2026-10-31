@@ -123,7 +123,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale. |
 | `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures, each drawn with its *step note*, what it carries besides the paper (`stepPageWith`). `stepPage` gives every figure the same note, and never draws a frame's title. |
-| `Senbazuru.Render.Sequence` | A run as a page of steps. `stepNotes` gives each state the run writes, exactly the frames its file holds, a note, silent for now, and `runPage` draws them with `stepPageWith`, so figures follow states, not steps, and a step that writes no state has no figure. A figure the page cannot draw is refused as the step that ended at its state, never by its figure's number. The first `Render` module to import from `Sequence.*`, and it may take only `Sequence.Record` and `Sequence.Error`. |
+| `Senbazuru.Render.Sequence` | A run as a page of steps. `stepNotes` gives each state the run writes, exactly the frames its file holds, a note, silent for now, and `runPage` draws them with `stepPageWith`, so figures follow states, not steps, and a step that writes no state has no figure. A figure the page cannot draw is refused as the step that ended at its state, or as state 0 for the sheet, never by its figure's number. The first `Render` module to import from `Sequence.*`, and it may take only `Sequence.Record` and `Sequence.Error`. |
 | `Senbazuru.Origami.Flat` | A model folded flat, as convex polygons in one plane. Shared by the two modules that reason about layers. |
 | `Senbazuru.Origami.FlatFold` | Maekawa's and Kawasaki's theorems, vertex by vertex. |
 | `Senbazuru.Origami.Folding` | Crease pattern + fold angles → folded form, and the rigid motion that placed each face. |
@@ -287,7 +287,8 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   reading the same function, draws exactly what the file holds.
 - A `Render.*` module may import only `Sequence.Record` and `Sequence.Error`
   of `Sequence.*`: the run it draws and the type of its refusals. So nothing
-  that draws can reach the runner or the writer, and nothing a run or a
+  that draws can reach the runner or the writer. No `Sequence.*` module
+  imports `Render.*` (PRDs/decisions.md, §2 row 6), so nothing a run or a
   written file depends on can take a camera. `Render.Sequence` is the first
   that imports either. `Sequence.Error` in turn imports no `Render.*` module,
   so a page the run cannot draw is refused as a `SequenceError` that

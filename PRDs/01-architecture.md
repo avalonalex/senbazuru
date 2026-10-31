@@ -94,7 +94,7 @@ module imports a `study/` module is a `grep` of `src/` for each
    neither module imports a parser, a checker or the runner. So `Run` is defined
    in `Sequence.Record`: [06](06-prd-step-diagrams.md) R-06-20's
    `Render.Sequence.stepNotes :: Run -> Either SequenceError [(Frame,
-   StepNote)]` (**SKETCH**; it shares `writtenStates`' refusals,
+   StepNote)]` (built by S22, [C132](decisions.md#changes-since-draft-v2); it shares `writtenStates`' refusals,
    [C77](decisions.md#changes-since-draft-v2)) needs it, and `Sequence.Record`
    cannot import `Sequence.Run`, which imports `Sequence.Record`. `Run` holds
    what a reader of a run needs: the start state, every record, each step's
@@ -596,7 +596,7 @@ material study's, in `study/fold-material/` until M8
 
 Add `runSequence` to "`creasePatternFrom`, `creasePatternAuto`, `surfaceDiagram`,
 `stepPage`, `renderGlb` and `renderSurfaceGlb`". `stepPageWith` and `runPage`
-(**SKETCH**, `Render.Sequence`) join the list at M3, since their signatures also
+(`Render.Sequence`, built by S22, [C132](decisions.md#changes-since-draft-v2)) join the list at M3, since their signatures also
 take a `Budget`.
 
 ### 4.13 `src/Senbazuru/Origami/Step.hs:30-34`

@@ -8,8 +8,9 @@
 -- the two: 'stepNotes' gives each state the run writes a note, and 'runPage'
 -- draws them. The first is the channel later work fills (a caption, arrows
 -- read from a move's record), so it is a function of its own that a test can
--- hold to the file a run writes; the second is the one composition a command
--- line and a golden test both call, so they cannot draw the page two ways.
+-- hold to the file a run writes; the second is the one composition the
+-- command line and a golden test are to call (#641's S23 and S37), so they
+-- cannot draw the page two ways.
 --
 -- It is a module of its own because of what it may import. It is the first
 -- @Render@ module to know about fold sequences at all, and from them it may

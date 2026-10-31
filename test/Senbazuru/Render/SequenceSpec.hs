@@ -40,10 +40,10 @@ data Runs = Runs
     -- | The quarter fold with @anchor P@ as a step between its two folds.
     holdingRun :: Run,
     -- | Built by hand: the blintz's sheet laid flat, as a run starts it, as
-    -- state 0, a step that writes it again, a step that writes no state, and
-    -- a step that writes the crane folded, with no layer order, so drawing it
-    -- has to work one out. One guess is not enough (StackingSpec, "the
-    -- budget").
+    -- state 0, a step that writes it again, two steps that write no state,
+    -- and a step that writes the crane folded, with no layer order, so
+    -- drawing it has to work one out. One guess is not enough (StackingSpec,
+    -- "the budget").
     craneRun :: Run
   }
 
@@ -57,7 +57,7 @@ runs = do
   laid <- right (sheetState blintzSheet) >>= right . foldFrameWith . workingPattern >>= right . surfaceFromFolded
   folded <- right (foldFrameWith (keyFrame crane)) >>= right . surfaceFromFolded
   let outcome n name end = StepOutcome n (Just (Name name)) Nothing end identity identity
-      craneSteps = [outcome 1 "open" (Just laid), outcome 2 "refused" Nothing, outcome 3 "crane" (Just folded)]
+      craneSteps = [outcome 1 "open" (Just laid), outcome 2 "refused" Nothing, outcome 3 "refused again" Nothing, outcome 4 "crane" (Just folded)]
   Runs
     <$> ran quarterFold
     <*> ran blintz
@@ -84,10 +84,12 @@ spec = describe "a run's page" . beforeAll runs $ do
       fmap (map fst) (stepNotes run) `shouldBe` fmap otherFrames (writeSequence noFileHeader run)
       fmap length (stepNotes run) `shouldSatisfy` either (const False) (> 0)
 
-  -- Kept for the rest of M3, while notes gain fields: with every note made
-  -- silent, a run's page is what render --steps draws of its file, so the
-  -- paper and the layout hold whatever the notes add. Turns red if a figure
-  -- were drawn from anything but its state, or laid out another way.
+  -- Owner decision 76's structural test, kept for the rest of M3 while notes
+  -- gain fields: with every note made silent, a run's page is what
+  -- render --steps draws of its file. Both sides are stepPageWith, so it
+  -- does not hold the page's layout; it turns red if stepNotes' frames are
+  -- not the file's, as A11 does, or if render --steps stops drawing a frame
+  -- with a silent note (noteFor False), which A11 cannot see.
   it "draws, with every note made silent, what render --steps draws of its file" $ \r ->
     forM_ [("quarter" :: String, quarterRun r), ("blintz", blintzRun r)] $ \(name, run) -> do
       notes <- right (stepNotes run)
@@ -97,11 +99,11 @@ spec = describe "a run's page" . beforeAll runs $ do
       (name, silenced) `shouldBe` (name, plain)
       (name, fmap isJust plain) `shouldBe` (name, Right True)
 
-  -- The composition the command line and S37's golden both call, at the
-  -- defaults and with each of the theme, the grid and the view changed.
+  -- The composition the command line (S23) and S37's golden are to call, at
+  -- the defaults and with each of the theme, the grid and the view changed.
   -- Turns red if runPage drew notes of its own rather than stepNotes', or
   -- dropped any of the three for a default; the last line is what makes
-  -- dropping one show, since each changes the quarter fold's page.
+  -- dropping one show, since each changes both runs' pages.
   it "is stepPageWith over stepNotes, with the theme, grid and view it is given" $ \r ->
     forM_ [quarterRun r, blintzRun r] $ \run -> do
       notes <- right (stepNotes run)
@@ -141,24 +143,26 @@ spec = describe "a run's page" . beforeAll runs $ do
       _ -> expectationFailure ("expected four figures, got " <> show (length notes))
 
   -- A figure the page cannot draw is named by the step that ended at its
-  -- state. In the crane run that is state 2, the third figure, which step 3
-  -- ended at, because step 2 wrote no state: so a refusal naming the state's
-  -- number, the figure's, or the step before or after would each be red.
-  -- With the default budget the same run draws, so the refusal is the
-  -- budget's.
+  -- state. In the crane run that is state 2, the third figure, which step 4
+  -- ended at, because steps 2 and 3 wrote no state: the three numbers
+  -- differ, so a refusal naming the step by the state's number or the
+  -- figure's, or naming the state before or after, would each be red. With
+  -- one step writing no state, the figure's number and the step's would
+  -- agree and the second would pass. With the default budget the same run
+  -- draws, so the refusal is the budget's.
   describe "a figure the page cannot draw" $ do
     it "is refused as the step that ended at its state" $ \r -> do
       runPage defaultTheme (Budget 1) grid defaultView (craneRun r)
-        `shouldBe` Left (PageRefused 2 (Just (3, Just (Name "crane"))) (GaveUpStacking 1))
+        `shouldBe` Left (PageRefused 2 (Just (4, Just (Name "crane"))) (GaveUpStacking 1))
       fmap isJust (runPage defaultTheme defaultBudget grid defaultView (craneRun r)) `shouldBe` Right True
 
     it "is refused as state 0 when it is the sheet, which no step made" $ \r -> do
-      let folded = [end | StepOutcome {outcomeEnd = Just end, outcomeStep = 3} <- runSteps (craneRun r)]
+      let folded = [end | StepOutcome {outcomeEnd = Just end, outcomeStep = 4} <- runSteps (craneRun r)]
       case folded of
         [end] ->
           runPage defaultTheme (Budget 1) grid defaultView (craneRun r) {runStart = end, runSteps = []}
             `shouldBe` Left (PageRefused 0 Nothing (GaveUpStacking 1))
-        _ -> expectationFailure "expected the crane run's step 3 to write the folded crane"
+        _ -> expectationFailure "expected the crane run's step 4 to write the folded crane"
   where
     grid = defaultGrid defaultTheme
     -- The defaults, then each of the three changed alone.
