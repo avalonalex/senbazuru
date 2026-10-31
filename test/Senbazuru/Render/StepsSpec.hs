@@ -108,6 +108,74 @@ spec = do
       page [emptyFrame, flatSheet, broken]
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
 
+  describe "what each figure's note draws" $ do
+    -- The quarter fold's first fold, from the flat sheet to the half-folded
+    -- state, which test/golden/quarter-fold-step-1.svg draws with its one
+    -- arrow. Red if either note draws what the other one should.
+    it "draws one arrow for inferNote and none for silentNote on the quarter fold's first fold" $ do
+      frames <- take 2 <$> quarterFrames "test/fixtures/quarter-fold-steps.fold"
+      let arrowsWith note = fmap (fmap arrowsOf) (pageWith top [(fr, note) | fr <- frames])
+      (arrowsWith inferNote, arrowsWith silentNote) `shouldBe` (Right (Just 1), Right (Just 0))
+
+    -- A1 of PRDs/06-prd-step-diagrams.md. It holds by construction while
+    -- stepPage is stepPageWith over noteFor of its Bool, so it is red only
+    -- when stepPage's page is not that one: drawn some other way, or with the
+    -- note for the other Bool. It cannot see a fault in noteFor itself, which
+    -- both of its sides use. What each note draws is the business of the
+    -- examples around it.
+    it "draws stepPage's page as stepPageWith with noteFor on every figure (A1)" $ do
+      quarter <- quarterFrames "examples/quarter-fold-steps.fold"
+      bird <- allFrames <$> (loadFoldFile "examples/bird-base-sequence.fold" >>= right)
+      let pages :: [(String, [Frame])]
+          pages = [("the quarter fold", quarter), ("the bird", bird), ("the spec's sheets", [flatSheet, solidSheet])]
+      [ (name, arrows)
+        | (name, frames) <- pages,
+          arrows <- [False, True],
+          stepPage defaultTheme defaultBudget grid defaultView arrows frames
+            /= stepPageWith defaultTheme defaultBudget grid defaultView [(fr, noteFor arrows) | fr <- frames]
+        ]
+        `shouldBe` []
+
+    -- What stepPage's Bool asks for. Red if noteFor gave inferNote whatever
+    -- its Bool, which A1 cannot see since both of its sides pick their notes
+    -- with noteFor, and if stepPage handed noteFor the opposite Bool, which
+    -- A1 sees too.
+    it "draws the quarter fold's two arrows with arrows asked for, and none without" $ do
+      frames <- quarterFrames "test/fixtures/quarter-fold-steps.fold"
+      let arrowsWith arrows = fmap (fmap arrowsOf) (stepPage defaultTheme defaultBudget grid top arrows frames)
+      (arrowsWith True, arrowsWith False) `shouldBe` (Right (Just 2), Right (Just 0))
+
+    -- A frame with no geometry is skipped together with its note, so every
+    -- other note stays on its own frame. Red if the notes were matched by
+    -- their place in the list to the frames left after skipping: a would get
+    -- the empty frame's inferNote and b the silentNote meant for a, so the
+    -- page would draw the fold from a to b and not the one from b to c.
+    it "skips a frame with no geometry together with its note" $ do
+      (a, b, c) <- quarterThree
+      pageWith top [(emptyFrame, inferNote), (a, silentNote), (b, inferNote), (c, silentNote)]
+        `shouldBe` pageWith top [(a, silentNote), (b, inferNote), (c, silentNote)]
+
+    -- Guards the example above, which would pass if the notes that mismatch
+    -- hands out, inferNote, silentNote and inferNote, drew the same page as
+    -- the right ones.
+    it "draws another page with the notes matching by place would give" $ do
+      (a, b, c) <- quarterThree
+      pageWith top [(a, inferNote), (b, silentNote), (c, inferNote)]
+        `shouldNotBe` pageWith top [(a, silentNote), (b, inferNote), (c, silentNote)]
+
+    -- The flat sheet and the creased one have different creases, which
+    -- motionsBetween refuses to compare. So inferring the arrows between them
+    -- is refused, naming the figure whose note asked by its place in the
+    -- list, the skipped frame counted, while a silent note on that figure
+    -- draws the page. Red if arrows were worked out for every figure and
+    -- dropped where a note says none.
+    it "refuses only the arrows a note asks for, naming its frame by its place in the list" $ do
+      let creased = flatSheet {edgesVertices = edgesVertices flatSheet <> [(VertexId 0, VertexId 2)], edgesAssignment = edgesAssignment flatSheet <> [Valley]}
+      pageWith defaultView [(emptyFrame, silentNote), (flatSheet, inferNote), (creased, silentNote)]
+        `shouldBe` Left (StepError 1 (FramesDiffer "edges_vertices" 4 5))
+      fmap (fmap labelsOf) (pageWith defaultView [(emptyFrame, inferNote), (flatSheet, silentNote), (creased, inferNote)])
+        `shouldBe` Right (Just ["1", "2"])
+
   describe "which side a page shows" $ do
     it "sees the bird from the opposite side under bottom, and from the reader's side by default" $ do
       -- The bird is not flat, so with no view named the page looks at it
@@ -135,6 +203,28 @@ labelsOf :: Diagram -> [String]
 labelsOf d = [show' t | Label _ _ _ t <- diagramShapes d]
   where
     show' = filter (/= '"') . show
+
+arrowsOf :: Diagram -> Int
+arrowsOf d = length [() | Arrow _ <- diagramShapes d]
+
+-- | A page of notes, drawn as 'page' draws its frames.
+pageWith :: View -> [(Frame, StepNote)] -> Either StepError (Maybe Diagram)
+pageWith = stepPageWith defaultTheme defaultBudget grid
+
+-- | Looking straight down, as test/golden/quarter-fold-step-1.svg does.
+top :: View
+top = View (Just topDown) 0
+
+-- | Every frame of a copy of the quarter fold: the flat sheet, folded in
+-- half, folded in half again.
+quarterFrames :: FilePath -> IO [Frame]
+quarterFrames path = allFrames <$> (loadFoldFile path >>= right)
+
+quarterThree :: IO (Frame, Frame, Frame)
+quarterThree =
+  quarterFrames "test/fixtures/quarter-fold-steps.fold" >>= \case
+    [a, b, c] -> pure (a, b, c)
+    frames -> fail ("expected the quarter fold's 3 frames, got " <> show (length frames))
 
 -- | What a turn does to a page: R-06-12, A7 and A8 of
 -- PRDs/06-prd-step-diagrams.md.

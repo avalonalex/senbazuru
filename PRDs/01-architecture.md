@@ -295,7 +295,7 @@ schedules it.
 | 9 | `docs/notes/no-sequence-solver.md` | M0, with [#96](https://github.com/avalonalex/senbazuru/issues/96) |
 | 10 | `docs/glossary.md` | M0, first PR |
 | 11 | `AGENTS.md:173-177`, `SheetLengths.hs:31-32` | two PRs: sheet lengths with M2, physical lengths in M6's PR first converting a `material` length |
-| 12 | `AGENTS.md:229-233` | two PRs: `runSequence` at M2, `stepPageWith` at M3 |
+| 12 | `AGENTS.md:229-233` | three PRs: `runSequence` at M2; at M3, `stepPageWith` with S21 and `runPage` with S22 ([#641](https://github.com/avalonalex/senbazuru/issues/641)) |
 | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | the M2 PR classifying presentation changes |
 | 14 | `docs/architecture.md:288-297`; `BlintzSequence.hs`, `HelmetSequence.hs` headers | the recipe deletion PRs (M2 or later) |
 | 15 | `AGENTS.md:390-391`, "all three CI checks" | the M4 PR adding the slow job, then the owner listing that job in `main`'s branch protection |
