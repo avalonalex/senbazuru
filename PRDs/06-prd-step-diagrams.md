@@ -507,9 +507,9 @@ constructors of those names, `Presenting`'s
 ([`Record.hs:286-291`](../src/Senbazuru/Sequence/Record.hs#L286-L291)), and
 `Render.Sequence` imports both modules, so S21
 ([#641](https://github.com/avalonalex/senbazuru/issues/641)) names them
-`PageTurnedOver` and `PageRotated` ([C131](decisions.md#changes-since-draft-v2)), and S29
-([#642](https://github.com/avalonalex/senbazuru/issues/642)), which adds
-`PresentationChange`, first uses them.
+`PageTurnedOver` and `PageRotated` ([C131](decisions.md#changes-since-draft-v2)). S29
+([#642](https://github.com/avalonalex/senbazuru/issues/642)) adds
+`PresentationChange` with `PageTurnedOver`, and S30 adds `PageRotated`.
 
 ### 2. From a run to notes
 
@@ -1098,7 +1098,7 @@ decisions 67 to 69).
 
 | # | Criterion | Red if |
 | --- | --- | --- |
-| A1 | `stepPage t b g v x fs == stepPageWith t b g v (map (\f -> (f, noteFor x)) fs)` for both `x` on the quarter fixture, `bird-base-sequence.fold` and `StepsSpec`'s sheets, a wiring check that holds by construction while `stepPage` delegates (R-06-2). Beside it, on the quarter fixture's first two frames under `top`, `inferNote` draws one `Arrow` and `silentNote` none, and a frame skipped for having no geometry takes its note with it ([C131](decisions.md#changes-since-draft-v2)) | `stepPage` draws its page some other way; a note draws what the other should; notes are matched by place to the frames left after skipping. A default leaking into `inferNote` or `silentNote`, e.g. `InferFoldLines`, shows on none of these fixtures, whose crease graphs never grow, so the PR adding a field draws both notes on a pair where that field would draw |
+| A1 | `stepPage t b g v x fs == stepPageWith t b g v (map (\f -> (f, noteFor x)) fs)` for both `x` on the quarter fixture, `bird-base-sequence.fold` and `StepsSpec`'s sheets, a wiring check that holds by construction while `stepPage` is `stepPageWith` over `noteFor` of its `Bool` (R-06-2). Beside it, on the quarter fixture under `top`, `inferNote` draws one `Arrow` on its first fold and `silentNote` none, `stepPage` draws its two arrows with `True` and none with `False`, and a frame skipped for having no geometry takes its note with it ([C131](decisions.md#changes-since-draft-v2)) | `stepPage` draws its page some other way, or with the other `Bool`'s note; `noteFor` ignores its `Bool`, which both sides of the equality use; a note draws what the other should; notes are matched by place to the frames left after skipping. A default leaking into `inferNote` or `silentNote`, e.g. `InferFoldLines`, shows on none of these fixtures, whose crease graphs never grow, so the PR adding a field draws both notes on a pair where that field would draw |
 | A2 | On the committed branch, `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing and the same command with `--diff-filter=A` lists exactly the new goldens below ([D16](decisions.md#d16-testing-and-acceptance); [09 §1.2](09-testing-and-acceptance.md#12-tracked-goldens-stay-byte-identical)). Both print nothing today (run 2026-09-15) | `SolidHead` emission reorders an attribute; a gutter appears without a caption; a golden is added that this table does not list |
 | A3 | `quarter-fold-steps.svg` and the pinned `bird-base-sequence-arrows.svg` stay byte-identical, with the by-hand `cmp` of `render --steps --arrows` on both multi-frame files in `examples/`, as [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages) sets out | presentation classification ([05](05-prd-library-additions.md)) fires on a real fold |
 | A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268) | a hollow head or loop is sized in model units |

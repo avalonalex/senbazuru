@@ -53,18 +53,21 @@
 -- Nothing here reads a frame's @frame_title@, so @render --steps@ never draws
 -- one, because a file cannot say what its titles are.
 -- @examples/quarter-fold-steps.fold@ titles its half-folded state \"Step 2:
--- folded in half\", naming the state, while the file @run@ writes from
--- @test/fixtures/quarter-fold.foldseq@ titles the same state with the next
--- instruction, \"Fold the top half down in front, onto the bottom.\" Drawn
--- under its figure, one of the two would be wrong whichever this assumed.
+-- folded in half\", naming the state, while a run of the same fold from its
+-- source, @test/fixtures/quarter-fold.foldseq@, titles that state with the
+-- next instruction, step @quarter@'s caption, \"Fold the top half down in
+-- front, onto the bottom.\" Drawn under its figure, one of the two would be
+-- wrong whichever this assumed.
 -- Words under a figure have to arrive in its note, from a caller that knows
 -- which kind its titles are.
 --
--- The note's constructor is not exported. Every note starts as 'inferNote' or
--- 'silentNote' and changes the fields it means to, so a field added later is
--- filled, for every caller that does not set it, by those two definitions and
--- nowhere else. A default that changed the pages drawn today could only be
--- there.
+-- The note's constructor is not exported. Every note made outside this
+-- module starts as 'inferNote' or 'silentNote' and changes the fields it
+-- means to, so a field added later is filled, for every caller that does not
+-- set it, by those two definitions. Every page the command line and the
+-- studies draw comes through 'stepPage', whose notes 'noteFor' picks from the
+-- same two, so a default that changed those pages would have to be in one of
+-- the three.
 module Senbazuru.Render.Steps
   ( -- * A page of steps
     stepPageWith,

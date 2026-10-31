@@ -118,9 +118,11 @@ spec = do
       (arrowsWith inferNote, arrowsWith silentNote) `shouldBe` (Right (Just 1), Right (Just 0))
 
     -- A1 of PRDs/06-prd-step-diagrams.md. It holds by construction while
-    -- stepPage hands its frames to stepPageWith, so it is red only if
-    -- stepPage is given a way of drawing of its own that disagrees. What each
-    -- note draws is the business of the examples around it.
+    -- stepPage is stepPageWith over noteFor of its Bool, so it is red only
+    -- when stepPage's page is not that one: drawn some other way, or with the
+    -- note for the other Bool. It cannot see a fault in noteFor itself, which
+    -- both of its sides use. What each note draws is the business of the
+    -- examples around it.
     it "draws stepPage's page as stepPageWith with noteFor on every figure (A1)" $ do
       quarter <- quarterFrames "examples/quarter-fold-steps.fold"
       bird <- allFrames <$> (loadFoldFile "examples/bird-base-sequence.fold" >>= right)
@@ -134,9 +136,10 @@ spec = do
         ]
         `shouldBe` []
 
-    -- What stepPage's Bool asks for, which A1 cannot see, since both of its
-    -- sides pick their notes with noteFor. Red if noteFor gave inferNote
-    -- whatever its Bool, or stepPage handed it the opposite one.
+    -- What stepPage's Bool asks for. Red if noteFor gave inferNote whatever
+    -- its Bool, which A1 cannot see since both of its sides pick their notes
+    -- with noteFor, and if stepPage handed noteFor the opposite Bool, which
+    -- A1 sees too.
     it "draws the quarter fold's two arrows with arrows asked for, and none without" $ do
       frames <- quarterFrames "test/fixtures/quarter-fold-steps.fold"
       let arrowsWith arrows = fmap (fmap arrowsOf) (stepPage defaultTheme defaultBudget grid top arrows frames)
@@ -144,16 +147,18 @@ spec = do
 
     -- A frame with no geometry is skipped together with its note, so every
     -- other note stays on its own frame. Red if the notes were matched by
-    -- their place in the list to the frames left after skipping, which puts
-    -- the arrow from b to c on a instead.
+    -- their place in the list to the frames left after skipping: a would get
+    -- the empty frame's inferNote and b the silentNote meant for a, so the
+    -- page would draw the fold from a to b and not the one from b to c.
     it "skips a frame with no geometry together with its note" $ do
       (a, b, c) <- quarterThree
       pageWith top [(emptyFrame, inferNote), (a, silentNote), (b, inferNote), (c, silentNote)]
         `shouldBe` pageWith top [(a, silentNote), (b, inferNote), (c, silentNote)]
 
-    -- Guards the example above, which would pass if moving the arrow to the
-    -- figure before it drew the same page.
-    it "draws another page when every note moves one figure earlier" $ do
+    -- Guards the example above, which would pass if the notes that mismatch
+    -- hands out, inferNote, silentNote and inferNote, drew the same page as
+    -- the right ones.
+    it "draws another page with the notes matching by place would give" $ do
       (a, b, c) <- quarterThree
       pageWith top [(a, inferNote), (b, silentNote), (c, inferNote)]
         `shouldNotBe` pageWith top [(a, silentNote), (b, inferNote), (c, silentNote)]

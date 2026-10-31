@@ -181,7 +181,7 @@ numbers the rows, and [01 §4](01-architecture.md#4-recorded-text-this-design-ch
 gives the current text and the full replacement under the same row number. Row
 12 lands in three PRs: M2 adds `runSequence` to the list, and at M3 S21 adds
 `stepPageWith` and S22 `runPage` ([#641](https://github.com/avalonalex/senbazuru/issues/641); [C65](decisions.md#changes-since-draft-v2),
-[C126](decisions.md#changes-since-draft-v2), [C131](decisions.md#changes-since-draft-v2)). So does row 11:
+[C126](decisions.md#changes-since-draft-v2), [C131](decisions.md#changes-since-draft-v2)). Row 11 lands in two:
 sheet lengths with M2, and physical lengths in M6's PR that first converts a
 `material` block's length ([C125](decisions.md#changes-since-draft-v2)).
 
