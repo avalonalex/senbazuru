@@ -15,8 +15,8 @@
 -- one line, folding no paper. Without @--check@ it runs the sequence and
 -- writes what @-o@ names, by its extension: a sequence file, @.fold@, or to
 -- standard output with no @-o@; or one state as a 3D model, @.glb@. A page of
--- steps, @.svg@, waits for the step notes it is drawn from (milestone M3), and
--- is refused by saying so. Each flag goes only with the output it shapes,
+-- steps, @.svg@, is not written yet (milestone M3), and is refused by saying
+-- so. Each flag goes only with the output it shapes,
 -- and is refused with any other, so that a flag never silently does nothing.
 --
 -- == Why these messages may name flags
@@ -122,7 +122,7 @@ data RunOptionError
     NotWithCheck [Text]
   | -- | An @-o@ whose extension names nothing @run@ writes: the path.
     UnknownOutput FilePath
-  | -- | @-o@ a page of steps, which waits for step notes.
+  | -- | @-o@ a page of steps, which @run@ does not write yet.
     PageNotYet
   | -- | Flags that shape another output than the one @-o@ names: the
     -- output, then the flags, in the order @run --help@ lists them.

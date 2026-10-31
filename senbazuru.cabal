@@ -192,6 +192,7 @@ library
     Senbazuru.Render.Gltf
     Senbazuru.Render.PaperMesh
     Senbazuru.Render.Projected
+    Senbazuru.Render.Sequence
     Senbazuru.Render.Shadows
     Senbazuru.Render.Steps
     Senbazuru.Render.Svg
@@ -474,6 +475,7 @@ test-suite senbazuru-test
     Senbazuru.Render.CreasePatternSpec
     Senbazuru.Render.GltfSpec
     Senbazuru.Render.ProjectedSpec
+    Senbazuru.Render.SequenceSpec
     Senbazuru.Render.StepsSpec
     Senbazuru.Render.SvgSpec
     Senbazuru.Sequence.BlintzRunSpec

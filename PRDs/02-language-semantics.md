@@ -1504,7 +1504,10 @@ constructors, and the table's *Carried by* column names what each holds:
 `ParseFailed` a `ParseProblem`; `StaticRefused` a `StaticProblem`; `SheetRefused`,
 with the sheet path as written, a `SheetProblem`; `ResolveRefused` a
 `ResolveProblem`; `StepRefused` a `MoveFailure`; and `WriteRefused`, with the state
-number, a `WriteProblem`.
+number, a `WriteProblem`. As built it has a seventh, `PageRefused`, a page of
+steps that cannot draw a state, with the state number, the step that ended at
+it and that step's name, and a `FoldError`
+([C132](decisions.md#changes-since-draft-v2)).
 
 The example below (**SKETCH**) is a hypothetical step on `bird-base.fold`:
 

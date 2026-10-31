@@ -225,7 +225,10 @@ then.
   cannot import it. How each reaches a page's refusal is M3's to settle, by S5
   ([#638](https://github.com/avalonalex/senbazuru/issues/638)) and S22
   ([#641](https://github.com/avalonalex/senbazuru/issues/641)), as
-  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) says.
+  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) says. S22 settled the
+  paper's as `PageRefused`, named by the step that ended at the state
+  ([C132](decisions.md#changes-since-draft-v2)); `motionsBetween`'s falls to
+  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)), and `SurfaceError`'s to S5.
 - **R-06-4.** A presentation mark places a `Symbol` and suppresses inference on that
   pair only. `stepPageWith` never transforms a coordinate: frames arrive presented.
 

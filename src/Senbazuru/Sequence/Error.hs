@@ -135,6 +135,11 @@ data SequenceError
   | -- | A state a run reached cannot be written: its number, counted from 0,
     -- as @file_frames@ numbers it, and why.
     WriteRefused Int WriteProblem
+  | -- | The page of steps cannot draw a state a run wrote: its number,
+    -- counted as 'WriteRefused' counts it, the step that ended at it, with
+    -- that step's name, or 'Nothing' for state 0, which no step made, and why.
+    -- Named by step and not by figure, as "Senbazuru.Render.Sequence" says.
+    PageRefused Int (Maybe (Int, Maybe Name)) FoldError
   deriving stock (Eq, Show)
 
 -- | Where in a sequence a static problem is, in words an author can use
@@ -323,6 +328,8 @@ instance Explain SequenceError where
     ResolveRefused place _ written problem -> placeWords place <> ": " <> written <> ": " <> explain problem
     StepRefused n name _ failure -> placeWords (InStep n name) <> ": " <> explain failure
     WriteRefused k problem -> "state " <> tshow k <> ": " <> explain problem
+    PageRefused k Nothing why -> "state " <> tshow k <> ": the page cannot draw it: " <> explain why
+    PageRefused _ (Just (n, name)) why -> placeWords (InStep n name) <> ": the page cannot draw the state it ends at: " <> explain why
     where
       placeWords = \case
         InHeader -> "header"
@@ -980,6 +987,7 @@ errorSpan = \case
   ResolveRefused _ sp _ _ -> sp
   StepRefused _ _ sp _ -> sp
   WriteRefused {} -> NoSpan
+  PageRefused {} -> NoSpan
 
 -- | @path:line:col@ of where the error starts, counted from 1, with a column
 -- counting characters and a tab counting as one. 'Nothing' for 'NoSpan'.

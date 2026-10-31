@@ -688,8 +688,8 @@ data WrittenState = WrittenState
 
 -- | Every state a run reached, as written frames, in order: state 0, the
 -- start, then the end of each step that writes one. The writer writes these
--- and the page of steps will draw them, so the page shows exactly what the
--- file holds (PRDs\/02-language-semantics.md, §11).
+-- and the page of steps draws them ("Senbazuru.Render.Sequence"), so the page
+-- shows exactly what the file holds (PRDs\/02-language-semantics.md, §11).
 --
 -- Each frame follows the /state rule/ ('assignmentAtRest'): its creases are
 -- lettered by the angle they are at, and an @F@ crease's angle is written as
