@@ -1840,8 +1840,8 @@ stack run -- run blintz.foldseq > blintz.fold
   another, counted the same way, so `--frame 1` is the sheet laid flat. It
   is the same file `export --frame N` makes from the written `.fold`, byte for
   byte. `--all-layers` writes only the complete paper, as for `export`.
-- **`.svg`**, a page of steps, is not written yet: it waits for the step
-  notes it is drawn from. Write `.fold` and draw it with `render --steps`.
+- **`.svg`**, a page of steps, is not written yet. Write `.fold` and draw it
+  with `render --steps`.
 
 Each flag goes only with the output it shapes, and is refused with any other,
 so that a flag never silently does nothing:
