@@ -179,9 +179,9 @@ crease made at rest. So M2 carries
 Each row edits text outside `PRDs/`. [decisions §3](decisions.md#3-recorded-text-this-design-changes)
 numbers the rows, and [01 §4](01-architecture.md#4-recorded-text-this-design-changes)
 gives the current text and the full replacement under the same row number. Row
-12 lands in two PRs: M2 adds `runSequence` to the list and M3 adds
-`stepPageWith` and `runPage` ([C65](decisions.md#changes-since-draft-v2),
-[C126](decisions.md#changes-since-draft-v2)). So does row 11:
+12 lands in three PRs: M2 adds `runSequence` to the list, and at M3 S21 adds
+`stepPageWith` and S22 `runPage` ([#641](https://github.com/avalonalex/senbazuru/issues/641); [C65](decisions.md#changes-since-draft-v2),
+[C126](decisions.md#changes-since-draft-v2), [C131](decisions.md#changes-since-draft-v2)). Row 11 lands in two:
 sheet lengths with M2, and physical lengths in M6's PR that first converts a
 `material` block's length ([C125](decisions.md#changes-since-draft-v2)).
 
@@ -201,7 +201,8 @@ sheet lengths with M2, and physical lengths in M6's PR that first converts a
 | M2 | 11 | `AGENTS.md:173-177` | sheet lengths converted in one place, `Sequence.SheetLengths` |
 | M2 | 12 | `AGENTS.md:229-233` | add `runSequence` to the `--layer-budget` list |
 | M2, the presentation-classification PR | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change |
-| M3 | 12 | `AGENTS.md:229-233` | `stepPageWith` and `runPage` join that list |
+| M3, S21 | 12 | `AGENTS.md:229-233` | `stepPageWith` joins that list |
+| M3, S22 | 12 | `AGENTS.md:229-233` | `runPage` joins that list |
 | M3, the PR adding `Fanned` | 19 | `AGENTS.md:192-195`, `:372-376` | `Symbol` and `Fanned` need both units; offset and fanned figures paint a layer at a time |
 | M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
 | before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point |
