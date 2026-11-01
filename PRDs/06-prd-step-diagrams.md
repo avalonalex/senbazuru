@@ -339,9 +339,9 @@ then.
   ([`Record.hs:260`](../src/Senbazuru/Sequence/Record.hs#L260)), which holds no
   [sense](glossary-additions.md#running-a-sequence) (valley or mountain):
   `Turn` covers a fold and an unfold alike, and `Precrease` carries none.
-  The sense as written is kept only in `recordOrigin`, and `Sequence.Record`
-  exports no `Sense`, `PageAxis` or `Turning`; how a page reads them is S17's
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)). A move whose
+  S17 ([#640](https://github.com/avalonalex/senbazuru/issues/640), [C138](decisions.md#changes-since-draft-v2)) settled how a
+  page reads it: `Sequence.Record` gives `recordSense`, the sense as written,
+  and `recordUnfolds`, and re-exports `Sense`, `PageAxis` and `Turning`. A move whose
   moving paper is two groups joined only through still paper gets one arrow per
   group, as `motionsBetween` already splits them
   ([`Step.hs:175-192`](../src/Senbazuru/Origami/Step.hs#L175-L192);
@@ -574,12 +574,13 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 `Presentation` or `Anchoring`
 ([`Record.hs:260-278`](../src/Senbazuru/Sequence/Record.hs#L260-L278)). `Turn`
 covers a fold and an unfold alike, and `Precrease` carries no sense, so neither
-says whether an arrow is valley, mountain or unfold. The sense as written is
-kept only in `recordOrigin`, and `Sequence.Record` exports no `Sense`,
-`PageAxis` or `Turning`
-([`:110-165`](../src/Senbazuru/Sequence/Record.hs#L110-L165)). How the page
-reads them is S17's to decide
-([#640](https://github.com/avalonalex/senbazuru/issues/640)).
+says whether an arrow is valley, mountain or unfold. S17
+([#640](https://github.com/avalonalex/senbazuru/issues/640), [C138](decisions.md#changes-since-draft-v2)) gives a record's
+sense as written, `recordSense`, and whether it turns a step back,
+`recordUnfolds`, and `Sequence.Record` re-exports `Sense`, `PageAxis` and
+`Turning`. The sense is the written one, as the reader sees it, not the raw
+sense a crease is lettered by, so a valley fold after a turn-over is a valley
+arrow though its crease is `M`.
 
 ### 3. Arrow heads, bodies and `Symbol`
 
