@@ -167,7 +167,7 @@ data Theme = Theme
     themeArrowWidth :: !Double,
     -- | Page units, tip to base.
     themeArrowHead :: !Double,
-    -- | Page units: the type size of a step number.
+    -- | Page units: the type size of a step number and of a caption.
     themeLabelSize :: !Double,
     -- | How far the arc's midpoint stands off the straight line between the
     -- arrow's ends, as a fraction of the distance it spans. Zero would be a
