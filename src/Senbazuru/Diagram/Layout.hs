@@ -46,8 +46,8 @@
 --
 -- == Captions, and the one place page units reach the layout
 --
--- A /caption/ is a line or two of text under a figure, a step's instruction
--- on a book's page ('gridOfCaptioned'). It is wrapped at word boundaries to
+-- A /caption/ is text under a figure (docs\/glossary.md, Caption), set by
+-- 'gridOfCaptioned'. It is wrapped at word boundaries to
 -- the width of the box every figure is centred in, the same for every figure,
 -- and each line is a 'Label' at that box's bottom-left corner, moved down by
 -- an 'Offset' in page units. Text is sized in page units and a figure in
@@ -86,6 +86,7 @@ module Senbazuru.Diagram.Layout
   )
 where
 
+import Data.Char (isSpace)
 import Data.List (foldl')
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -143,9 +144,7 @@ defaultGrid theme =
 gridOf :: Grid -> [Diagram] -> Maybe Diagram
 gridOf grid figures = arrange grid evenRows figures
   where
-    count = length figures
-    rowCount = (count + columns - 1) `div` columns
-    columns = max 1 (gridColumns grid)
+    rowCount = rowCountOf grid (length figures)
 
     -- One figure plus one gutter apart, and the page ends at the last row's
     -- bottom, with no trailing gutter. Written as the layout always wrote it,
@@ -193,9 +192,8 @@ gridOfCaptioned theme grid (PageScale scale) captioned
   | otherwise = arrange grid bandedRows figures
   where
     figures = map fst captioned
-    columns = max 1 (gridColumns grid)
-    count = length figures
-    rowCount = (count + columns - 1) `div` columns
+    columns = columnsOf grid
+    rowCount = rowCountOf grid (length figures)
     size = themeLabelSize theme
     pitch = 1.2 * size
 
@@ -224,6 +222,9 @@ gridOfCaptioned theme grid (PageScale scale) captioned
         -- it, and the band below each.
         below r = foldl' (+) 0 [h + b | b <- take r bands]
 
+        -- The drop is a positive y, and that is not a sign slip beside the
+        -- negated row offsets: an 'Offset' is in page axes, whose y grows
+        -- down the page, while model y grows up it.
         linesAt ls corner =
           [ Offset (V2 0 (captionDrop + fromIntegral k * pitch)) (Label (themeInk theme) size corner line)
             | (k, line) <- zip [0 :: Int ..] ls
@@ -232,7 +233,8 @@ gridOfCaptioned theme grid (PageScale scale) captioned
 -- | How far the first line's baseline sits below its figure's box, in page
 -- units: far enough that the line's ink, at most 10.8 above the baseline at
 -- the default type size, clears a fanned figure's largest move of 6.4
--- (PRDs\/06 §8). A sketch, as is 'captionGap'.
+-- (PRDs\/06 §8). Set with 'captionGap' by S24 at 06's figures (C134); the
+-- turn-over loop, whose size is not set yet, may need more (S29).
 captionDrop :: Double
 captionDrop = 18
 
@@ -243,7 +245,19 @@ captionGap = 14
 
 -- | The words of a caption. One with none is no caption.
 captionWords :: Maybe Text -> [Text]
-captionWords = maybe [] T.words
+captionWords = maybe [] wordsOf
+
+-- | The words of a text: what lies between the places a line may break.
+--
+-- Not 'T.words', which breaks at every character 'isSpace' admits, a
+-- non-breaking space among them, so a caption that joins 90 to degrees with
+-- one would be split exactly where its author asked it not to be, and the
+-- space lost when the words are joined again. A non-breaking space stays inside its word, and
+-- a word of nothing but such spaces is no word.
+wordsOf :: Text -> [Text]
+wordsOf = filter (not . T.all isSpace) . T.split breaks
+  where
+    breaks c = isSpace c && c `notElem` ['\x00A0', '\x2007', '\x202F']
 
 -- | A caption broken at word boundaries into lines no wider than the given
 -- width, both in page units, for type of the given size.
@@ -252,9 +266,9 @@ captionWords = maybe [] T.words
 -- a line's width estimated at 0.55 of the type size per character, spaces
 -- included, since nothing here knows the font. A word longer than a line
 -- keeps a line of its own. Runs of spaces count as one, and a caption of none
--- but spaces has no lines.
+-- but spaces has no lines. A non-breaking space is part of its word.
 wrapCaption :: Double -> Double -> Text -> [Text]
-wrapCaption size width caption = go (T.words caption)
+wrapCaption size width caption = go (wordsOf caption)
   where
     fits n = fromIntegral n * 0.55 * size <= width
     go = \case
@@ -263,6 +277,16 @@ wrapCaption size width caption = go (T.words caption)
     fill line = \case
       word : rest | fits (T.length line + 1 + T.length word) -> fill (line <> " " <> word) rest
       rest -> (line, rest)
+
+-- | Figures across a row: the grid's columns, and at least one.
+columnsOf :: Grid -> Int
+columnsOf grid = max 1 (gridColumns grid)
+
+-- | How many rows the given number of figures fills.
+rowCountOf :: Grid -> Int -> Int
+rowCountOf grid count = (count + columns - 1) `div` columns
+  where
+    columns = columnsOf grid
 
 -- | How a page's rows stack, given the box every figure is centred in.
 data Rows = Rows
@@ -285,9 +309,8 @@ arrange grid rowsFor figures = case map diagramExtent figures of
       shared = foldl' unionBox e es
       rows = rowsFor shared
   where
-    columns = max 1 (gridColumns grid)
-    count = length figures
-    used = min columns count
+    columns = columnsOf grid
+    used = min columns (length figures)
 
     -- One figure plus one gutter, across. The gutter is a fraction of the
     -- figure and of nothing else, which is what its documentation says.

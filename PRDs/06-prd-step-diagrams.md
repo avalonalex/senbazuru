@@ -265,9 +265,9 @@ then.
   [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99), pass over a
   `Fanned` drawn in place of an `Offset`; the PR adding `Fanned` updates them.
   `LayoutSpec`'s `labels` (above) and `StepsSpec`'s `labelsOf`
-  ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) cannot
-  see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions
-  update them.
+  ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) could
+  not see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions
+  update them. S24 updated `labels` (C134); `labelsOf` is S25's.
 
 **Views**
 
@@ -628,8 +628,9 @@ pattern used as a filter. The comprehensions that keep `Offset` alone
 [`:302`](../test/Senbazuru/Render/CreasePatternSpec.hs#L302),
 [`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329);
 [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99)) skip a
-`Fanned` shape, and `StepsSpec`'s `labelsOf` and `LayoutSpec`'s `labels` match a
-bare `Label`, so they miss a caption line moved by an `Offset` (R-06-18).
+`Fanned` shape, and `StepsSpec`'s `labelsOf` matches a bare `Label`, so it misses
+a caption line moved by an `Offset` (R-06-18); `LayoutSpec`'s `labels` sees one
+since S24 (C134).
 
 ### 4. Which side the page is seen from
 
