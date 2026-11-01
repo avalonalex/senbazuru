@@ -5,6 +5,11 @@
 -- came from does not matter to these rules; what 'hingeTurn' makes of it
 -- does, and so the records here are made by this test, not taken from the
 -- run.
+--
+-- The sense a page reads ('recordSense', 'recordUnfolds') is the other way
+-- round: it comes from the move a run made the record for, so those tests
+-- take the run's own records, and hold each sense to the way its own checked
+-- turn moved the paper.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
 import Control.Monad (forM_)
@@ -14,22 +19,25 @@ import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Rigid (identity)
-import Senbazuru.Geometry.V3 (modelSpan)
+import Senbazuru.Geometry.Rigid (applyRigid, identity)
+import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, flapAt)
 import Senbazuru.Origami.Surface
+import Senbazuru.Sequence.Build (header, move, sequenceOf, sheetSquare, step_, turnOver)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate
+import Senbazuru.Sequence.Error (SequenceError)
 import Senbazuru.Sequence.Record
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
-import Senbazuru.Sequence.Syntax (Move (..), Name (..))
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Layers (..), Line (..), Move (..), Name (..), Point (..), Sequence)
 import Test.Hspec
-import Test.SequenceExamples (blintz, blintzCaptions)
+import Test.SequenceExamples (blintz, blintzCaptions, quarterFold)
 
 spec :: Spec
 spec = describe "a move record" $ do
   source <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
+  quarterSheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
   elaborated <- runIO (right (elaborate <$> checkSequence blintz))
   turns <- runIO (right (runSequence defaultRunSettings (M.singleton "examples/blintz-base.fold" source) elaborated) >>= mapM turnOf . runRecords)
   let places = [(step, elaboratedName s, elaboratedCaption s, coreOrigin m) | (step, s) <- zip [1 ..] (elaboratedSteps elaborated), m <- elaboratedMoves s]
@@ -116,6 +124,36 @@ spec = describe "a move record" $ do
   -- seed were dropped.
   it "keeps the paper it moved under the seed that picked it out" $
     map recordMoving records `shouldBe` [[(MaterialPoint corner, [FaceId f])] | (corner, f) <- zip corners movingFaces]
+  -- 01 §3.3 and D7: each arrow is drawn with its record's kind, which a page
+  -- reads from the record, never from the move as written, whose type it may
+  -- not import. Each sense is held to the way the record's own checked turn
+  -- carried the paper as the reader sees it, so a sense that disagreed with
+  -- the turn the runner made turns these red, as would one read from the
+  -- crease's letter or the paper's raw angle.
+  describe "the sense a page reads" $ do
+    it "gives the quarter fold mountain then valley, and the blintz four mountains then an unfold" $ do
+      quarter <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) quarterFold)
+      blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
+      map recordSense (runRecords quarter) `shouldBe` [Just MountainFold, Just ValleyFold]
+      map recordUnfolds (runRecords quarter) `shouldBe` [False, False]
+      map recordSense (runRecords blintzRun) `shouldBe` replicate 4 (Just MountainFold) <> [Nothing]
+      map recordUnfolds (runRecords blintzRun) `shouldBe` replicate 4 False <> [True]
+
+    it "gives a pre-crease the sense written, and a turn-over none" $ do
+      crane <- right (runOn M.empty craneOpening)
+      map recordSense (runRecords crane) `shouldBe` [Just ValleyFold, Just ValleyFold, Nothing, Just MountainFold, Just ValleyFold]
+      map recordUnfolds (runRecords crane) `shouldBe` replicate 5 False
+
+    it "agrees with the way each record's own turn carried the paper, as the reader sees it" $ do
+      quarter <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) quarterFold)
+      blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
+      crane <- right (runOn M.empty craneOpening)
+      let sensed = [r | run <- [quarter, blintzRun, crane], r <- runRecords run, Just _ <- [recordSense r]]
+      length sensed `shouldBe` 2 + 4 + 4
+      forM_ sensed $ \record -> do
+        moved <- towardsReader record
+        (recordStep record, recordMoveIndex record, recordSense record, fmap signum moved)
+          `shouldBe` (recordStep record, recordMoveIndex record, recordSense record, Just (if recordSense record == Just ValleyFold then 1 else -1))
   where
     -- The fixture's corners, in the order both blintzes fold them; the
     -- creases that cut each one off (edges 8 to 11 of
@@ -127,7 +165,7 @@ spec = describe "a move record" $ do
     movingFaces = [2, 3, 4, 1, 2]
     travels = [-180, -180, -180, -180, 180]
     segment a b = MaterialSegment (MaterialPoint a) (MaterialPoint b)
-    isFold move = case move of
+    isFold written = case written of
       Fold {} -> True
       _ -> False
 
@@ -139,3 +177,33 @@ turnOf record = case recordEvidence record of
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
+
+-- | Run a sequence on the sheets it names.
+runOn :: M.Map FilePath FoldFile -> Sequence -> Either SequenceError Run
+runOn sheets sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
+
+-- | The crane's opening on a plain square: both diagonals pre-creased in
+-- front, a turn-over, then both midlines in front.
+craneOpening :: Sequence
+craneOpening = sequenceOf (header "A square" sheetSquare Nothing) $ do
+  step_ "Crease both diagonals." $ do
+    move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast)))
+    move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthEast) (CornerOf NorthWest)) FlapOfFirstArgument (Just (CornerOf SouthWest)))
+  step_ "Turn the paper over." (turnOver LeftRight)
+  step_ "Crease both midlines." $ do
+    move (FoldAndUnfold MountainFold (LineOnto (EdgeOf South) (EdgeOf North) Nothing) FlapOfFirstArgument Nothing)
+    move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf West) (EdgeOf East) Nothing) FlapOfFirstArgument Nothing)
+
+-- | Which way a record's own checked turn carried the paper, as the reader
+-- sees it: the total change in z, under the record's display before, of the
+-- paper halfway through the turn. Positive is towards the reader, which a
+-- valley fold lifts its paper to, and negative away, behind the paper, where
+-- a mountain fold takes it. 'Nothing' for a record with no turn.
+towardsReader :: MoveRecord -> IO (Maybe Double)
+towardsReader record = case recordEvidence record of
+  SweptHinge turn -> do
+    start <- right (flapAt turn 0)
+    halfway <- right (flapAt turn 0.5)
+    let zs surface = [z | [x, y, z0] <- verticesCoords (surfaceFrame surface), let V3 _ _ z = applyRigid (displayBefore record) (V3 x y z0)]
+    pure (Just (sum (zipWith (-) (zs halfway) (zs start))))
+  _ -> pure Nothing
