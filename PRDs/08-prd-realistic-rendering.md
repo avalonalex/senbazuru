@@ -120,8 +120,8 @@ each backend consumes, and the layering rule", finding 3).
 ### Nothing records what an output claims
 
 `Page`'s one text field, `pageTitle`, becomes `<title>`
-([`Svg.hs:82-95`](../src/Senbazuru/Render/Svg.hs#L82-L95),
-[`:153-155`](../src/Senbazuru/Render/Svg.hs#L153-L155)). A settled wing's GLB cannot say it is an illustrative
+([`Page.hs:45-59`](../src/Senbazuru/Diagram/Page.hs#L45-L59),
+[`Svg.hs:113-115`](../src/Senbazuru/Render/Svg.hs#L113-L115)). A settled wing's GLB cannot say it is an illustrative
 zero-thickness solve. The project made this mistake once: a display spacing named
 `--thickness` shipped and was removed
 ([paper-thickness.md](../docs/notes/paper-thickness.md)).
@@ -257,7 +257,7 @@ inputs such as `puffed-square.fold`. **No bent paper is reachable from the
   lines ([D19](decisions.md#d19-realistic-rendering)): the M7a GLB mode, crease-line and animated GLBs, W1 SVGs, and the settled
   files of [07](07-prd-material-consumption.md). glTF writes
   `extras.senbazuru.fidelity` beside `frame`; SVG writes `<desc>`.
-- **R-08-2.** `Render.Svg.Page` gains `pageDescription :: Maybe Text`, `Nothing`
+- **R-08-2.** `Diagram.Page.Page` (in `Render.Svg` until S25a, [C135](decisions.md#changes-since-draft-v2)) gains `pageDescription :: Maybe Text`, `Nothing`
   in `defaultPage`; `renderSvg` emits `<desc>` right after `<title>`, through
   `escapeXml`, only when it is `Just`.
 - **R-08-3.** Levels are one closed type rendered by one function for both

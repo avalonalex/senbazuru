@@ -160,7 +160,7 @@ gridOf grid figures = arrange grid evenRows figures
         dy = (1 + gridGutter grid) * h
 
 -- | Page units per model unit: the scale the page draws a layout at, as
--- "Senbazuru.Render.Svg"'s @pageTransform@ reports it. Positive and finite,
+-- "Senbazuru.Diagram.Page"'s @pageTransform@ reports it. Positive and finite,
 -- which 'pageScale' checks once, so that the layout never divides a band by
 -- zero or by something that is not a number.
 newtype PageScale = PageScale Double

@@ -67,7 +67,9 @@ One direction of flow, no cycles:
      v
  Diagram                             Senbazuru.Diagram
      |                               backend-independent: shapes + strokes
-     |  Senbazuru.Render.Svg         + Senbazuru.Geometry for the page transform
+     |                               + Senbazuru.Diagram.Page: the canvas, and
+     |                                 the transform that fits a diagram onto it
+     |  Senbazuru.Render.Svg
      v
  SVG text
 ```
@@ -121,6 +123,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Fold.Creasing` | Draws new creases on a pattern: the one operation that changes a crease pattern rather than reading one. Adds the lines and hands the frame straight back to `Fold.Crossings` — once for the whole batch, because that handing back is nearly all the cost. `creaseAllAlongWith` draws them flat for their letters, as the `crease` verb does, or at rest, as a fold sequence does, and says which edges each became. |
 | `Senbazuru.Diagram` | The drawing IR: `Shape`, `Stroke`, `Diagram`. |
 | `Senbazuru.Diagram.Style` | Every decision about how diagrams *look*. |
+| `Senbazuru.Diagram.Page` | The canvas a diagram is drawn on, in page units (`Page`), and the transform that fits a diagram's extent inside its margin (`pageTransform`), whose scale is how large the page draws the model. Not the SVG writer's, because a PDF backend would draw on the same page and a page of steps needs the scale before anything is written; `Render.Svg` re-exports it. |
 | `Senbazuru.Diagram.Layout` | Several figures on one page, at one shared scale, and captions under them (`gridOfCaptioned`). A caption's room is in page units, so the caption layout takes the page's scale from its caller: the one place page units reach the layout. A page with no caption is laid out exactly as before. |
 | `Senbazuru.Render.Steps` | A whole folding sequence as one page of figures, each drawn with its *step note*, what it carries besides the paper (`stepPageWith`). `stepPage` gives every figure the same note, and never draws a frame's title. |
 | `Senbazuru.Render.Sequence` | A run as a page of steps. `stepNotes` gives each state the run writes, exactly the frames its file holds, a note, silent for now, and `runPage` draws them with `stepPageWith`, so figures follow states, not steps, and a step that writes no state has no figure. A figure the page cannot draw is refused as the step that ended at its state, or as state 0 for the sheet, never by its figure's number. The first `Render` module to import from `Sequence.*`, and it may take only `Sequence.Record` and `Sequence.Error`. |
@@ -140,7 +143,7 @@ somebody wrote by hand. Where that boundary sits is a layering rule,
 | `Senbazuru.Render.CreasePattern` | FOLD frame → `Diagram`, and which view to use. |
 | `Senbazuru.Render.Shadows` | What a view of open panels is judged by: each face's shadow and depth, the hair in the model and the speck in the picture, near and far from supplied orders, the coverage check, and lifting the visible form back onto the camera plane. Shared by `Render.Projected` and the study's `IllustrationVisibility`, whose copies of these fell behind production twice; the library imports no study code. |
 | `Senbazuru.Render.Projected` | Convex open panels → viewing relations over their overlapping shadows → the existing flat visible-region machinery. Temporary projected frames never become material exports. Decides each pair of panels; the rest of how it judges a view is `Render.Shadows`. |
-| `Senbazuru.Render.Svg` | `Diagram` → SVG text. |
+| `Senbazuru.Render.Svg` | `Diagram` → SVG text, on a `Diagram.Page`, which it re-exports. |
 | `Senbazuru.Render.PaperMesh` | Shared surface → complete panels or exposed pieces on both sides of each plane. Clipped corners retain weighted material vertex references. |
 | `Senbazuru.Render.Gltf` | Shared surface → glTF binary with visible and complete scenes, material references and no face displacement. The FOLD entry point prepares faces and constructs a surface. Records a fidelity record only when its caller says where the positions came from. |
 | `Senbazuru.Render.Fidelity` | What an output claims about how true to paper it is, on four axes: geometry, motion, appearance and lines. A level exists only once something writes it. Default outputs carry no record. |
@@ -264,9 +267,10 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   the error type and the tree; `Explain`, for its refusals' words;
   `Sequence.Write`, on the same level, for `FileHeader`, what a written file
   says about itself; and `Origami.Stacking` only for `Budget`, the layer budget
-  a plan hands the run. It imports no `Render.*` module, which is why its plan
-  holds a view's name rather than a view, and the page's other flags as given,
-  for `app/` to fill in from the page's own defaults. `Sequence.Record`, level 4, is
+  a plan hands the run. It imports no `Render.*` or `Diagram.*` module
+  (PRDs/decisions.md, §2 row 6), which is why its plan holds a view's name
+  rather than a view, and the page's other flags as given, for `app/` to fill
+  in from `Diagram.Page`'s and `Diagram.Layout`'s defaults. `Sequence.Record`, level 4, is
   the first of the family to know paper: a move record holds surfaces and the
   checked turn that made them, so it imports `Origami.Flap` and
   `Origami.Surface`, and `Sequence.Elaborate` for the move a record came from.

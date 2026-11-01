@@ -30,15 +30,22 @@
 -- would let invisible numerical noise choose different visible bytes again.
 -- This preserves winding, subpath order and all geometry; open strokes and
 -- arrows retain their meaningful endpoints.
+--
+-- == The page is not this module's
+--
+-- How big the canvas is, and how a diagram is fitted onto it, are
+-- "Senbazuru.Diagram.Page"'s, because neither is about SVG and a page of
+-- steps needs the page's scale before anything is written. This module
+-- re-exports them, so a caller that writes SVG imports only this.
 module Senbazuru.Render.Svg
-  ( -- * Page setup
+  ( -- * Page setup, from "Senbazuru.Diagram.Page"
     Page (..),
     defaultPage,
     pageContentBox,
+    pageTransform,
 
     -- * Rendering
     renderSvg,
-    pageTransform,
 
     -- * Formatting internals, exposed for testing
     formatNumber,
@@ -62,12 +69,11 @@ import Senbazuru.Diagram
     Shape (..),
     Stroke (..),
   )
+import Senbazuru.Diagram.Page (Page (..), defaultPage, pageContentBox, pageTransform)
 import Senbazuru.Geometry
-  ( Box (..),
-    Transform,
+  ( Transform,
     V2 (..),
     applyTransform,
-    fitBox,
     movedBy,
     norm,
     normalize,
@@ -77,52 +83,6 @@ import Senbazuru.Geometry
     (^-^),
   )
 import Senbazuru.Geometry.Polygon (signedArea)
-
--- | The canvas the diagram is drawn onto. All values are in page units.
-data Page = Page
-  { pageWidth :: !Double,
-    pageHeight :: !Double,
-    -- | Blank border kept on all four sides. Diagrams that touch the edge of
-    -- their frame look cramped, and crease patterns in particular have a heavy
-    -- outline right at the boundary.
-    pageMargin :: !Double,
-    -- | 'Nothing' leaves the SVG transparent, which is what you want when
-    -- embedding it in a page that has its own background.
-    pageBackground :: !(Maybe Colour),
-    -- | Emitted as @\<title\>@: the accessible name of the image.
-    pageTitle :: !(Maybe Text)
-  }
-  deriving stock (Eq, Show)
-
--- | A 400x400 canvas with a 16-unit margin and a white background.
-defaultPage :: Page
-defaultPage =
-  Page
-    { pageWidth = 400,
-      pageHeight = 400,
-      pageMargin = 16,
-      pageBackground = Just (Colour "#ffffff"),
-      pageTitle = Nothing
-    }
-
--- | The region of the page the drawing may occupy, i.e. the page inset by its
--- margin.
-pageContentBox :: Page -> Box
-pageContentBox p =
-  Box
-    (V2 m m)
-    (V2 (pageWidth p - m) (pageHeight p - m))
-  where
-    m = pageMargin p
-
--- | The transform 'renderSvg' draws a diagram on a page with, from model
--- units to page units: the diagram's extent fitted into the page's content
--- box ('fitBox'). Its scale is the size the page draws the model at, in page
--- units per model unit. A caller that needs that size asks here rather than
--- fitting the box again, so that its answer stays the renderer's own if the
--- renderer ever lays a page out differently.
-pageTransform :: Page -> Diagram -> Transform
-pageTransform page d = fitBox (diagramExtent d) (pageContentBox page)
 
 -- | Render a diagram as a standalone SVG document.
 renderSvg :: Page -> Diagram -> Text
@@ -337,8 +297,8 @@ attrNum k = attr k . formatNumber
 --   Normalising here removes a genuinely confusing source of golden churn.
 --
 -- Non-finite values collapse to @0@: they cannot appear given the guards in
--- 'fitBox', and silently writing @NaN@ into an attribute would produce an SVG
--- that fails to render with no clue why.
+-- 'Senbazuru.Geometry.fitBox', and silently writing @NaN@ into an attribute
+-- would produce an SVG that fails to render with no clue why.
 formatNumber :: Double -> Text
 formatNumber x
   | isNaN x || isInfinite x = "0"
