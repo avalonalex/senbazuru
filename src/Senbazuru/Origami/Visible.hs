@@ -98,15 +98,21 @@
 -- border, the stronger line. And two neighbouring stretches are joined only
 -- when they name the same edge: a face with two edges along one line, a
 -- straight corner, which tracing can leave where one crease ends on another,
--- gives a stretch for each.
+-- gives a stretch for each. That splits what was one line of 'formSheetEdges'
+-- into two that abut, so a drawing made from it, the offset view among them,
+-- draws such a line as two strokes; 'formEdges' still joins them.
 --
 -- No edge is named, 'Nothing', in two cases, and the sheet named tells them
 -- apart. Where there is paper on neither side there is no sheet to name either.
 -- And where two overlapping faces have no order between them, the face found
 -- nearest along a stretch can be one whose middle the stretch crosses, which
--- has no edge there; the sheet is then named, and the edge is not. When every
--- overlapping pair of faces is ordered, a named sheet always has an edge along
--- its stretch.
+-- has no edge there; the sheet is then named, and the edge is not. A file
+-- whose faces disagree with its edges gives the same: the edge is looked for
+-- among the file's edges by the face's own ring, so a side of a ring that
+-- @edges_vertices@ does not list is no edge. When every overlapping pair of
+-- faces is ordered and every side of every face is an edge of the file, as in
+-- every frame tracing gives, a named sheet always has an edge along its
+-- stretch.
 --
 -- == What this does not do
 --
@@ -198,7 +204,8 @@ data VisibleEdge = VisibleEdge
 data VisibleForm = VisibleForm
   { formRegions :: ![Region],
     formEdges :: ![VisibleEdge],
-    -- | The same stretches, cut wherever the sheet behind them changes, and
+    -- | The same stretches, cut wherever the sheet behind them, or the edge
+    -- of it they lie along, changes, and
     -- each labelled with that sheet: the face whose paper lies nearest the
     -- viewer along it, or 'Nothing' where there is paper on neither side.
     --
@@ -214,17 +221,18 @@ data VisibleForm = VisibleForm
   deriving stock (Eq, Show)
 
 -- | A stretch of 'formSheetEdges': a visible stretch of edge cut wherever the
--- sheet behind it changes, with that sheet and the edge of it the stretch lies
--- along.
+-- sheet behind it, or the edge of that sheet it lies along, changes, with
+-- that sheet and that edge.
 data SheetEdge = SheetEdge
   { -- | The face whose paper lies nearest the viewer along the stretch, or
     -- 'Nothing' where there is paper on neither side.
     sheetEdgeFace :: !(Maybe FaceId),
     sheetEdgeLine :: !VisibleEdge,
     -- | The edge of that face the stretch lies along, and where along it, or
-    -- 'Nothing' when there is none: no face, or a face whose middle the
-    -- stretch crosses, which only two overlapping faces with no order between
-    -- them can give. The module header has the two cases.
+    -- 'Nothing' when there is none: no face, or a face with no edge of the
+    -- file along the stretch, which two overlapping faces with no order
+    -- between them give, as does a face whose ring the file's edges do not
+    -- follow. The module header has the cases.
     sheetEdgeSpan :: !(Maybe EdgeSpan)
   }
   deriving stock (Eq, Show)

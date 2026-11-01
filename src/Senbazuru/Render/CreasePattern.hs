@@ -387,7 +387,9 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
           -- bucketed in one pass for the reason the creases are.
           --
           -- From 'formSheetEdges' rather than 'formEdges', which is the same
-          -- answer joined up across the changes of sheet this needs to keep.
+          -- answer joined up across the changes of sheet this needs to keep,
+          -- and across a face's straight corner, which this therefore draws as
+          -- two abutting strokes.
           modelByLayer seen =
             IM.fromListWith
               (flip (<>))

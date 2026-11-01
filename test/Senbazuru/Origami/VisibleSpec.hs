@@ -328,6 +328,11 @@ spec = do
         Right v -> do
           formRegions v `shouldBe` []
           length (formEdges v) `shouldBe` 4
+          -- No faces, so no stretch has a sheet to name, and none names an
+          -- edge either: the first of the cases with no edge. Red if an edge
+          -- were named where no sheet is.
+          map sheetEdgeFace (formSheetEdges v) `shouldBe` replicate 4 Nothing
+          map sheetEdgeSpan (formSheetEdges v) `shouldBe` replicate 4 Nothing
 
   -- R-05-52: each stretch of formSheetEdges names the face edge it lies
   -- along, so a drawing that moves the sheets apart can move a point partway
@@ -341,7 +346,8 @@ spec = do
     -- edge named is that sheet's own. Red if the code named the right face's
     -- wrong edge, snapped a fraction to the nearer vertex (the letter fold
     -- below makes sure some stretch ends inside its edge), swapped the two
-    -- fractions, or named another face's edge along the same line.
+    -- fractions, named another face's edge along the same line, or listed an
+    -- edge's two vertices against the order edges_vertices gives them.
     it "names an edge of the sheet named, whose fractions give the stretch's ends" $ \helmet -> do
       fixtures <- mapM (\(name, side) -> (,) (name <> " " <> sideName side) <$> framed side name) everyFlatFixture
       let cases = fixtures <> [("the helmet base " <> sideName side, (side, helmet)) | side <- [True, False]]
@@ -354,6 +360,7 @@ spec = do
           (Just _, Nothing) -> expectationFailure (name <> ": a named sheet with no edge along " <> show e)
           (Just f, Just sp) -> do
             (name, isEdgeOf fr f (spanFrom sp, spanTo sp)) `shouldBe` (name, True)
+            (name, (spanFrom sp, spanTo sp) `elem` edgesVertices fr) `shouldBe` (name, True)
             let line = sheetEdgeLine e
             (name, flatten (visibleFrom line), pointOf at sp (spanStart sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
             (name, flatten (visibleTo line), pointOf at sp (spanEnd sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)

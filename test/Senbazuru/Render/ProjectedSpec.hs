@@ -23,7 +23,7 @@ spec = describe "projected open-fold visibility" $ do
   -- R-05-52 through the lift: a stretch keeps the edge it lies along and its
   -- fractions, and they still find its ends once the form is put on the
   -- camera plane, since projection is linear. Red if liftForm dropped the
-  -- spans, or the fractions were measured on the flattened copy's own edges.
+  -- spans.
   it "keeps the edge each stretch lies along, and its fractions, through the lift" $
     forM_ [(topDown, panels [rectangle 0 10 0 1 const, rectangle 0 1 0 1 (\_ _ -> 2)]), (isometric, panels [rectangle 0 1 0 1 (\_ _ -> 0), rectangle 0 1 0 1 (\_ _ -> 1)])] $ \(basis, fr) -> do
       seen <- visible basis fr []
