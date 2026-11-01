@@ -377,9 +377,12 @@ then.
   place of the gutter. L_r is the most lines any caption in row r wraps to, and
   1 for a row with none; p = 1.2 × the type size is the line pitch; a = 18 is
   the first baseline's drop below the figure's box; and d = 14 holds the
-  descent and the gap before the next row (**SKETCH** constants, §8). `Layout`
-  has no page units, so it takes each band in model units, b_r / s, from the
-  caller that knows the page's scale s (§8).
+  descent and the gap before the next row (constants set by S24,
+  [C134](decisions.md#changes-since-draft-v2), §8). `Layout` has no page units
+  of its own, so it takes the page's scale s, as a `PageScale`, from the caller
+  that knows the page, and turns each band into model units, b_r / s, itself:
+  the wrap that decides L_r needs s too, and the rows the bands follow are the
+  layout's own (`gridOfCaptioned`, built by S24, C134; §8).
 
 **Pages from a run**
 
@@ -837,8 +840,9 @@ which the backend does not have
 purpose: a line broken too early costs a little room, and one broken too late
 overruns.
 
-**The band's constants** (**SKETCH**, S24's to tune,
-[#641](https://github.com/avalonalex/senbazuru/issues/641)). The pitch p is 1.2 ×
+**The band's constants** (set by S24,
+[#641](https://github.com/avalonalex/senbazuru/issues/641),
+[C134](decisions.md#changes-since-draft-v2)). The pitch p is 1.2 ×
 14 = 16.8. The first baseline's drop a = 18 puts the top of a first line's ink,
 at most 10.8 above its baseline, 7.2 below the figure's box, clear of the fan's
 largest move, 6.4 page units down (§10); S1's pages used 15. The last term
@@ -851,13 +855,15 @@ below the box: the turn-over loop is a page-unit `Symbol` at the lower end of it
 figure's extent (§5, [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)),
 so the part of it that hangs below shares the band's top with a caption's first
 line, which runs under the figure's middle once it is half a figure long. The loop's size is not set yet, so
-a = 18 does not account for it; S24 and S29
-([#642](https://github.com/avalonalex/senbazuru/issues/642)) set a for the
-larger of the two, or keep the loop inside the box.
+a = 18 does not account for it, and S24 left a at 18; S29
+([#642](https://github.com/avalonalex/senbazuru/issues/642)), which sets the
+loop's size, sets a for the larger of the two or keeps the loop inside the box
+([C134](decisions.md#changes-since-draft-v2)).
 
-**The scale.** `Layout` has no page units ([§11](#11-rejected-alternatives)), so
-the bands reach it in model units, b_r / s, from the caller that knows the page.
-That caller asks `Render.Svg.pageTransform`
+**The scale.** `Layout` has no page units of its own
+([§11](#11-rejected-alternatives)), so the caller that knows the page hands it
+the scale, a `PageScale`, and `Layout` turns each band into model units, b_r /
+s, itself (S24, [C134](decisions.md#changes-since-draft-v2)). The caller asks `Render.Svg.pageTransform`
 ([`Svg.hs:118-125`](../src/Senbazuru/Render/Svg.hs#L118-L125)) for the scale,
 which exists so that no caller fits the box again, rather than restating the
 arithmetic. `run -o x.svg` with no `--height` makes the page as tall as its rows
@@ -868,8 +874,18 @@ figures h high. S1's prototype pages, drawn with a = 15, were 648.8 page units
 tall at 9 figures and 1620.8 at 24; at a = 18 each band is 3 page units taller,
 which makes 657.8 and 1644.8. With `--height` given, the
 figures shrink to fit. The wrap width then depends on the scale, so the scale is
-a fixed point, and S24 chooses how to find it, as it chooses which function
-takes the page's width.
+a fixed point. S24 chose how to find it and S25 builds it (C134): start at the
+scale the width alone sets, then, until the bands stop changing, wrap at the
+current scale and take the largest scale a page H tall allows for those bands:
+the smaller of the width's scale and (H − 2m − Σ b_r) / (R h). The bands only grow
+as the scale falls, so this ends, and `pageTransform` confirms the answer. A
+page too short for its bands at any scale is refused. On S24's prototype, the
+blintz's five captions under unit squares with a sixth figure uncaptioned, a
+400 × 400 page settles at 84.8 in three tries, a 350-tall one at 9.4 in four,
+and a 300-tall one is refused, its bands 299.2 page units against 268 of
+content. Iterating `pageTransform` instead, s ← the scale of the page laid out
+at s, converges only geometrically: 42 steps to within 1e-12 at 400, and not
+there after 199 at 350.
 
 **What the earlier default measured.** Until the decision, the recommended
 default was one line per caption under a captioned gutter of max g (42/340),
@@ -1077,7 +1093,7 @@ decisions 67 to 69).
 | Kind from the changed assignment (#36) | Ambiguous per motion |
 | Checking a stated kind against an inferred one | Inference trusts winding as written, which a backwards-wound file breaks (AGENTS.md gotchas); records are already checked |
 | Backfilling future creases | Figure 1 would show the second fold |
-| A caption band sized inside `Layout` (#94) | `Layout` has no page units, so a band sized there is fixed in model units and right at one scale only, the recorded bug. Owner decision 7's band is sized in page units by the caller that knows the scale (§8) |
+| A caption band sized inside `Layout` in model units (#94) | `Layout` has no page units of its own, so a band sized there is fixed in model units and right at one scale only, the recorded bug. Owner decision 7's band is sized in page units, turned into model units by the scale the caller that knows the page hands `Layout` (§8, [C134](decisions.md#changes-since-draft-v2)) |
 | One line per caption under a captioned gutter of max g (42/340), overflow accepted | The earlier recommended default. Captions ran into each other at every row count on S1's pages: the stride is 127.33 page units and E7's captions 143 to 299 wide. The gutter cleared 14-unit type only at one or two rows (owner decision 7, §8) |
 | The captions as a numbered list below the grid | `Layout` would not change, but the reader matches numbers instead of reading under each figure (owner decision 7) |
 | A gutter that grows with the row count | It keeps the type off its figure, but not captions off each other along a row (§8) |
@@ -1112,7 +1128,7 @@ decisions 67 to 69).
 | A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn` | inference is not suppressed on the marked pair |
 | A10 | On each single-move figure of the blintz sequence (M2), `GivenArrows` from its record equal `InferArrowsAs` ends within 1e-12 × span | `displayBefore` or `displayAfter` is not applied, or record ids are not in `recordBefore`'s numbering |
 | A11 | For the quarter-fold run, `fmap (map fst) (stepNotes run)` equals the `file_frames` of `writeSequence`'s file, both `Right`. In review: `Render.Sequence` imports `Sequence.Record` and `Sequence.Error` and no other sequence module, and no `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`. Sharing `writtenStates` makes the frames equal by construction; the test guards what the construction does not, `stepNotes` dropping or reordering states | `stepNotes` filters `writtenStates` (for example drops sample states) or rebuilds frames without the [state rule](glossary-additions.md#the-fold-format); `Render.Sequence` imports `Sequence.Write` or `Sequence.Run`; a `View` reaches the runner, the writer or `stepNotes` |
-| A12 | `LayoutSpec`: for 1–60 captioned figures no caption anchor lies below its cell; the page box's height includes a trailing gutter exactly when a caption exists; under owner decision 7's default, the gutter is at least 42/340 exactly when a caption exists | the gutter is added unconditionally; a captioned page keeps a 0.1 gutter; an uncaptioned page's gutter changes |
+| A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | `motionsAcross` visits rings in another order |
 | A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g` | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
 | A15 | `stepPageWith` on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
@@ -1127,10 +1143,10 @@ decisions 67 to 69).
 | A24 | `Fanned` with every displacement `d` emits the bytes `Offset d` emits, for a polyline and for a fill of two rings, one clockwise | the two drift apart, or a turned-round ring loses its points' displacements |
 | A25 | `stepPage`, and `stepPageWith` with `defaultTheme`, emit no `Fanned` shape on any input of this file | an unfanned theme fans |
 
-A12's last two clauses state owner decision 7's earlier default, a trailing
-gutter and a captioned gutter of at least 42/340. Decision 7 replaced it with
-R-06-19's bands, and S24 ([#641](https://github.com/avalonalex/senbazuru/issues/641))
-restates A12 to match ([decisions C127](decisions.md#changes-since-draft-v2)).
+A12 stated owner decision 7's earlier default, a trailing gutter and a
+captioned gutter of at least 42/340, until S24
+([#641](https://github.com/avalonalex/senbazuru/issues/641)) restated it to
+R-06-19's bands ([decisions C127, C134](decisions.md#changes-since-draft-v2)).
 
 `run`'s warning is CLI behaviour, checked by hand (the CLI is untested by design,
 [`Cli.hs:5-8`](../app/Senbazuru/Cli.hs#L5-L8);
