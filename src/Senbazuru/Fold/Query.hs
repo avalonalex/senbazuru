@@ -228,8 +228,9 @@ data FoldError
     -- and length of each.
     ArrayLengthMismatch Text Int Text Int
   | -- | Where a frame's paper lay on the unfolded sheet is not known: it has
-    -- no @senbazuru:material_coords@, and it is not a flat crease pattern,
-    -- whose own positions would be that.
+    -- no @senbazuru:material_coords@, and it is not a crease pattern lying
+    -- exactly at @z = 0@, whose own x, y would be that. A pattern flat at
+    -- some other height is flat (see 'frameKind') but is not read this way.
     MaterialCoordinatesMissing
   | -- | Its @senbazuru:material_coords@ is not a list of points.
     MaterialCoordinatesUnreadable
@@ -436,7 +437,7 @@ instance Explain FoldError where
         <> "; FOLD requires parallel arrays to line up"
     MaterialCoordinatesMissing ->
       "where its paper lay on the unfolded sheet is not known: it has no"
-        <> " senbazuru:material_coords, and it is not a flat crease pattern"
+        <> " senbazuru:material_coords, and it is not a crease pattern lying at z = 0"
     MaterialCoordinatesUnreadable ->
       "its senbazuru:material_coords is not a list of points"
     MaterialCoordinatesCount vertices points ->

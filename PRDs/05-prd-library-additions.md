@@ -590,8 +590,12 @@ on material points.
   of `after` at `before`'s position for it. The edge is tried first, since
   `insideRing` calls a point within the hair of a face's boundary outside it;
   the face's three corners are the three spanning the largest triangle on the
-  sheet; and a `before` that records no faces has them traced on its material
-  points by `withPlanarFaces`.
+  sheet; the face is the first whose ring holds the point, the only one on
+  faces that tile the sheet; and a `before` that records no faces has them
+  traced on its material points by `withPlanarFaces`, as a crease pattern
+  whatever its class, and only for an added vertex on no `before` edge, so a
+  `before` whose faces cannot be traced still places every vertex its edges
+  hold.
 - **R-05-19.** Movement uses [`Step.hs:141`](../src/Senbazuru/Origami/Step.hs#L141)'s
   tolerance; faces and groups are `after`'s
   ([`:180-192`](../src/Senbazuru/Origami/Step.hs#L180-L192)). `motionCreases`
