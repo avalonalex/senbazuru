@@ -57,7 +57,7 @@ family the only rule is no cycles: today `Origami.Flap` imports `Origami.Folding
 | 4 | siblings `Diagram.*` and `Origami.*` | `Diagram.*`: rows 1–2, but from `Fold.Types` only `Assignment`, §3.3's exception. `Origami.*`: rows 1 and 3 | neither family imports the other; `Diagram.*` imports only `Geometry` and, in `Diagram.Style`, `Fold.Types`; `Origami.*` reaches row 3 only through `Fold.{Query,Crossings,Creasing}` |
 | 5 | `Material.*` (M8) | rows 1–3, `Origami.*` | — |
 | 6 | `Sequence.*` (M1–M6) | rows 1 and 3, `Origami.*`; `Material.*` only from `Sequence.Material`; inside the family, §1.3's levels | — |
-| 7 | `Render.*` | rows 1–5, and from `Sequence.*` only `Sequence.Record` and `Sequence.Error` | `Render.*` imports only rows 1, 3 and 4 and its own family; `Render.Svg` imports only `Diagram`, `Geometry` and `Geometry.Polygon`; `Render.Gltf` does not import `Render.CreasePattern` |
+| 7 | `Render.*` | rows 1–5, and from `Sequence.*` only `Sequence.Record` and `Sequence.Error` | `Render.*` imports only rows 1, 3 and 4 and its own family; `Render.Svg` imports only `Diagram`, `Diagram.Page`, `Geometry` and `Geometry.Polygon`; `Render.Gltf` does not import `Render.CreasePattern` |
 | 8 | `app/` | the library | every verb reads its input through `withFoldFile` ([`Cli.hs:784-789`](../app/Senbazuru/Cli.hs#L784-L789)) |
 
 Rows 1, 3, 4 and 7 of *Checked today* are the output of this loop, run at

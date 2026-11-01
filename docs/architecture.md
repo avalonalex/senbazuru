@@ -267,9 +267,10 @@ docs/notes/        one idea per file: theorems, algorithms, techniques
   the error type and the tree; `Explain`, for its refusals' words;
   `Sequence.Write`, on the same level, for `FileHeader`, what a written file
   says about itself; and `Origami.Stacking` only for `Budget`, the layer budget
-  a plan hands the run. It imports no `Render.*` module, which is why its plan
-  holds a view's name rather than a view, and the page's other flags as given,
-  for `app/` to fill in from the page's own defaults. `Sequence.Record`, level 4, is
+  a plan hands the run. It imports no `Render.*` or `Diagram.*` module
+  (PRDs/decisions.md, §2 row 6), which is why its plan holds a view's name
+  rather than a view, and the page's other flags as given, for `app/` to fill
+  in from `Diagram.Page`'s and `Diagram.Layout`'s defaults. `Sequence.Record`, level 4, is
   the first of the family to know paper: a move record holds surfaces and the
   checked turn that made them, so it imports `Origami.Flap` and
   `Origami.Surface`, and `Sequence.Elaborate` for the move a record came from.

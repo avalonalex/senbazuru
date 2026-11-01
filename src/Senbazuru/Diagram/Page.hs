@@ -2,11 +2,12 @@
 -- Module      : Senbazuru.Diagram.Page
 -- Description : The canvas a diagram is drawn on, and how a diagram is fitted onto it.
 --
--- A 'Diagram' is in model units, whatever size the file happened to use, and a
--- page is in page units, the units a stroke width and a type size are given in
--- ("Senbazuru.Diagram" has the two-unit rule). This module is where the two
--- meet: a 'Page' says how big the canvas is, and 'pageTransform' says how a
--- diagram is scaled and moved onto it.
+-- A 'Diagram' places its shapes in model units, whatever size the file
+-- happened to use, and a page is in page units, the units its stroke widths,
+-- type sizes and nudges are already given in ("Senbazuru.Diagram" has the
+-- two-unit rule). This module is where the two meet: a 'Page' says how big
+-- the canvas is, and 'pageTransform' says how a diagram's shapes are scaled
+-- and moved onto it.
 --
 -- == Why a module of its own
 --

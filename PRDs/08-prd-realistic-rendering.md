@@ -120,8 +120,8 @@ each backend consumes, and the layering rule", finding 3).
 ### Nothing records what an output claims
 
 `Page`'s one text field, `pageTitle`, becomes `<title>`
-([`Svg.hs:82-95`](../src/Senbazuru/Render/Svg.hs#L82-L95),
-[`:153-155`](../src/Senbazuru/Render/Svg.hs#L153-L155)). A settled wing's GLB cannot say it is an illustrative
+([`Page.hs:45-59`](../src/Senbazuru/Diagram/Page.hs#L45-L59),
+[`Svg.hs:113-115`](../src/Senbazuru/Render/Svg.hs#L113-L115)). A settled wing's GLB cannot say it is an illustrative
 zero-thickness solve. The project made this mistake once: a display spacing named
 `--thickness` shipped and was removed
 ([paper-thickness.md](../docs/notes/paper-thickness.md)).

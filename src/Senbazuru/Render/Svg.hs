@@ -297,8 +297,8 @@ attrNum k = attr k . formatNumber
 --   Normalising here removes a genuinely confusing source of golden churn.
 --
 -- Non-finite values collapse to @0@: they cannot appear given the guards in
--- 'fitBox', and silently writing @NaN@ into an attribute would produce an SVG
--- that fails to render with no clue why.
+-- 'Senbazuru.Geometry.fitBox', and silently writing @NaN@ into an attribute
+-- would produce an SVG that fails to render with no clue why.
 formatNumber :: Double -> Text
 formatNumber x
   | isNaN x || isInfinite x = "0"

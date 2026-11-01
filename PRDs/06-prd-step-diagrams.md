@@ -865,7 +865,7 @@ loop's size, sets a for the larger of the two or keeps the loop inside the box
 ([§11](#11-rejected-alternatives)), so the caller that knows the page hands it
 the scale, a `PageScale`, and `Layout` turns each band into model units, b_r /
 s, itself (S24, [C134](decisions.md#changes-since-draft-v2)). The caller asks `Diagram.Page.pageTransform`
-([`Page.hs:81-88`](../src/Senbazuru/Diagram/Page.hs#L81-L88); moved there from
+([`Page.hs:82-89`](../src/Senbazuru/Diagram/Page.hs#L82-L89); moved there from
 `Render.Svg` by S25a, [C135](decisions.md#changes-since-draft-v2)) for the scale,
 which exists so that no caller fits the box again, rather than restating the
 arithmetic. `run -o x.svg` with no `--height` makes the page as tall as its rows
@@ -897,7 +897,7 @@ in a row make a page box 3.2 figure-widths wide:
 
 | Page | Content | Scale | Gutter on page | Type ([`Style.hs:227`](../src/Senbazuru/Diagram/Style.hs#L227)) |
 | --- | --- | --- | --- | --- |
-| CLI default, 400 × 400, margin 16 ([`Page.hs:60-69`](../src/Senbazuru/Diagram/Page.hs#L60-L69)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
+| CLI default, 400 × 400, margin 16 ([`Page.hs:61-70`](../src/Senbazuru/Diagram/Page.hs#L61-L70)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
 | `renderSteps` test page, 400 × 200, margin 10 | 380 × 180 | 380 / 3.2 = 118.75 | 11.875 | 14 |
 
 On both default pages a gutter of 0.1 left 14-unit type overlapping its
@@ -1275,10 +1275,12 @@ half turn, would have drawn a mark the author did not write.
 - **Faces turned inside out.** On small figures the fan is large beside a thin
   face. On the folded crane drawn 56.6 page units across, the size of 16 to 18
   figures on the default page, face 61 turns over; at 33.8, the size of the
-  traditional crane's 29 figures, three turn over and one crosses itself. The scale
-  is known only in `Render.Svg`, so a guard there, such as drawing a figure
-  unfanned when a fanned ring would turn over, is **UNVERIFIED**; the M3 PR tries
-  it on that 29-figure page.
+  traditional crane's 29 figures, three turn over and one crosses itself. A guard
+  such as drawing a figure unfanned when a fanned ring would turn over needs the
+  page's scale, which `Diagram.Page.pageTransform` gives before anything is
+  written (in `Render.Svg` until S25a,
+  [C135](decisions.md#changes-since-draft-v2)); the guard is **UNVERIFIED**, and
+  the M3 PR tries it on that 29-figure page.
 - **What `Origami.Visible` keeps.** A stretch carries only its two ends and the
   strongest assignment of the creases along it, so moving it as its face moves
   needs the face edge it lies on, which 05 L16 adds. Where a top face's fold lies
