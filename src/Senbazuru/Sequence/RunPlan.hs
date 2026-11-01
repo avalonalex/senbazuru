@@ -22,7 +22,7 @@
 -- == Why the page's flags reach the plan unfilled
 --
 -- 'PageFlags' holds each page flag as given, a 'Maybe', and the command line
--- fills in the defaults. They are "Senbazuru.Render.Svg"'s @defaultPage@ and
+-- fills in the defaults. They are "Senbazuru.Diagram.Page"'s @defaultPage@ and
 -- "Senbazuru.Diagram.Layout"'s @defaultGrid@, which this module, a level
 -- below rendering, may not import (PRDs\/decisions.md, §2 row 6), and from
 -- which @render@ reads its own. Filling them here would mean writing 400 and 3

@@ -864,8 +864,9 @@ loop's size, sets a for the larger of the two or keeps the loop inside the box
 **The scale.** `Layout` has no page units of its own
 ([§11](#11-rejected-alternatives)), so the caller that knows the page hands it
 the scale, a `PageScale`, and `Layout` turns each band into model units, b_r /
-s, itself (S24, [C134](decisions.md#changes-since-draft-v2)). The caller asks `Render.Svg.pageTransform`
-([`Svg.hs:118-125`](../src/Senbazuru/Render/Svg.hs#L118-L125)) for the scale,
+s, itself (S24, [C134](decisions.md#changes-since-draft-v2)). The caller asks `Diagram.Page.pageTransform`
+([`Page.hs:81-88`](../src/Senbazuru/Diagram/Page.hs#L81-L88); moved there from
+`Render.Svg` by S25a, [C135](decisions.md#changes-since-draft-v2)) for the scale,
 which exists so that no caller fits the box again, rather than restating the
 arithmetic. `run -o x.svg` with no `--height` makes the page as tall as its rows
 need, so its width sets the scale: s = (W − 2m) / (w (c + (c − 1) g)) for c
@@ -896,7 +897,7 @@ in a row make a page box 3.2 figure-widths wide:
 
 | Page | Content | Scale | Gutter on page | Type ([`Style.hs:227`](../src/Senbazuru/Diagram/Style.hs#L227)) |
 | --- | --- | --- | --- | --- |
-| CLI default, 400 × 400, margin 16 ([`Svg.hs:97-106`](../src/Senbazuru/Render/Svg.hs#L97-L106)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
+| CLI default, 400 × 400, margin 16 ([`Page.hs:60-69`](../src/Senbazuru/Diagram/Page.hs#L60-L69)), `--columns 3` | 368 × 368 | 368 / 3.2 = 115 | 11.5 | 14 |
 | `renderSteps` test page, 400 × 200, margin 10 | 380 × 180 | 380 / 3.2 = 118.75 | 11.875 | 14 |
 
 On both default pages a gutter of 0.1 left 14-unit type overlapping its

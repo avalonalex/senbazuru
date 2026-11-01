@@ -158,6 +158,7 @@ library
   exposed-modules:
     Senbazuru.Diagram
     Senbazuru.Diagram.Layout
+    Senbazuru.Diagram.Page
     Senbazuru.Diagram.Style
     Senbazuru.Explain
     Senbazuru.Fold.Creasing
