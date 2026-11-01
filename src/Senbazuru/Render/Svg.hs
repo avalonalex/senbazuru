@@ -62,7 +62,8 @@ import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as TB
 import Numeric (showFFloat)
 import Senbazuru.Diagram
-  ( ArrowPath (..),
+  ( ArrowHead (..),
+    ArrowPath (..),
     Colour (..),
     Dash (..),
     Diagram (..),
@@ -74,6 +75,7 @@ import Senbazuru.Geometry
   ( Transform,
     V2 (..),
     applyTransform,
+    dot,
     movedBy,
     norm,
     normalize,
@@ -135,8 +137,9 @@ renderSvg page d =
 -- a polygon is unstroked (SVG's initial @stroke@ is @none@, and the group does
 -- not change it) and a polyline is unfilled.
 --
--- An 'Arrow' is two elements rather than one, because its head is filled and its
--- curve is stroked.
+-- An 'Arrow' is two elements rather than one: a solid head is filled and its
+-- curve is stroked, and a hollow head is stroked without the dash the curve
+-- may have, since a head drawn in dashes would not read as one.
 --
 -- An 'Offset' emits no element of its own. It moves the /transform/ rather than
 -- the points, which is what makes its displacement a page-unit one: the shape
@@ -182,9 +185,16 @@ shapeToSvg toPage (Arrow a) =
     -- short motion on a large sheet can be shorter than one: unclamped, the
     -- curve is pulled back past its own start and drawn backwards underneath a
     -- head that swallows it.
-    headLength = min (arrowHead a) (0.5 * norm (tip ^-^ from))
+    headLength = min (arrowHeadLength a) (0.5 * norm (tip ^-^ from))
     base = tip ^-^ (headLength *^ along)
     half = 0.4 * headLength
+
+    -- The barb of a one-sided head goes out on the side the arrow bows to,
+    -- the outside of the curve. 'across' is square to the curve at the tip,
+    -- and the control point lies on the tangent there, so the chord alone
+    -- says which way along 'across' that side is.
+    bowSide = if dot across (tip ^-^ from) < 0 then -1 else 1
+    barb = base ^+^ ((bowSide * half) *^ across)
 
     curve =
       "    <path"
@@ -194,13 +204,30 @@ shapeToSvg toPage (Arrow a) =
         <> dashAttr (strokeDash (arrowStroke a))
         <> "/>\n"
 
-    head' =
+    head' = case arrowHead a of
+      SolidHead ->
+        "    <path"
+          <> attr
+            "d"
+            ( pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z"
+            )
+          <> attr "fill" (colourText (strokeColour (arrowStroke a)))
+          <> "/>\n"
+      -- Half of the double head's outline, from the end of the curve, which
+      -- stops at the base, through the tip and out to the barb: a barb drawn
+      -- from the tip alone would leave the last head-length of the shaft
+      -- undrawn.
+      HollowHalfHead -> hollow (pathData [base, tip, barb] <> " Z")
+      -- Closed, so its back edge runs across the end of the curve.
+      HollowDoubleHead -> hollow (pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z")
+
+    -- No fill attribute, so the group's fill="none" holds and the head stays
+    -- open.
+    hollow d =
       "    <path"
-        <> attr
-          "d"
-          ( pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z"
-          )
-        <> attr "fill" (colourText (strokeColour (arrowStroke a)))
+        <> attr "d" d
+        <> attr "stroke" (colourText (strokeColour (arrowStroke a)))
+        <> attrNum "stroke-width" (strokeWidth (arrowStroke a))
         <> "/>\n"
 shapeToSvg toPage (Fill (Colour c) rings)
   -- Two points enclose no area, so a ring of them would paint nothing.
