@@ -1383,7 +1383,11 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
   So 06 R-06-27 moves a stretch with its face without matching edges by tolerance.
   `formSheetEdges` has a second producer, `Render.Shadows.liftForm`
   ([`Shadows.hs:175`](../src/Senbazuru/Render/Shadows.hs#L175)), which must pass
-  the new fields through.
+  the new fields through. Built by S10 of [#637](https://github.com/avalonalex/senbazuru/issues/637)
+  ([C137](decisions.md#changes-since-draft-v2)): each element of `formSheetEdges` is a `SheetEdge`, whose
+  `sheetEdgeSpan` is an `EdgeSpan`, the edge's two vertex ids as
+  `edges_vertices` lists them and the two fractions, or `Nothing` where the sheet
+  named has no edge along the stretch.
 
 **Acceptance.**
 
