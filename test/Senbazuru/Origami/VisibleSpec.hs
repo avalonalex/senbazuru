@@ -20,11 +20,14 @@ module Senbazuru.Origami.VisibleSpec (spec) where
 import Control.Monad (forM_)
 import Data.ByteString qualified as BS
 import Data.List (sort, tails)
-import Senbazuru.Fold.Load (decodeFoldFile)
-import Senbazuru.Fold.Query (FoldError (..), frameFaces)
+import Data.Map.Strict qualified as M
+import Senbazuru.Fold.Load (decodeFoldFile, loadFoldFile, readSequenceText)
+import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaces, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
+    FaceId (..),
     FaceOrder,
+    FoldFile (..),
     Frame (..),
     VertexId (..),
     emptyFrame,
@@ -34,11 +37,16 @@ import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (clipConvex, cross2, signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace
-import Senbazuru.Origami.Flat (FlatError (..))
+import Senbazuru.Origami.Flat (FlatError (..), Sheet (..), flatSheet)
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Layers (paintOrder)
 import Senbazuru.Origami.Stacking (solveStacking)
 import Senbazuru.Origami.Visible
+import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Elaborate (elaborate)
+import Senbazuru.Sequence.Parse (parseSequence)
+import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
+import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
 import Test.Hspec
 
 -- | The key frame of a fixture, as the file gives it.
@@ -116,6 +124,73 @@ everyFlatFixture =
 
 sideName :: Bool -> String
 sideName fromAbove = if fromAbove then "from above" else "from below"
+
+-- | A folded fixture with the layer order senbazuru works out written into it,
+-- and the side it is to be seen from.
+framed :: Bool -> String -> IO (Bool, Frame)
+framed side name = do
+  folded <- foldedFixture name
+  os <- orders folded
+  pure (side, folded {faceOrders = os})
+
+-- | The helmet base's last state, as the run of @helmet.foldseq@ writes it:
+-- @file_frames[3]@, its faces ordered by the run.
+helmetLast :: IO Frame
+helmetLast = do
+  sheet <- loadFoldFile "examples/helmet-base.fold" >>= right
+  source <- readSequenceText "helmet.foldseq" >>= right
+  run <- right (parseSequence "helmet.foldseq" source >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "examples/helmet-base.fold" sheet) . elaborate)
+  file <- right (writeSequence noFileHeader run)
+  case drop 3 (otherFrames file) of
+    st : _ -> pure st
+    [] -> fail "the helmet run wrote fewer than four states"
+
+right :: (Show e) => Either e a -> IO a
+right = either (fail . show) pure
+
+-- | Each vertex of a frame where it lies, by id.
+positionsOf :: Frame -> IO (M.Map VertexId V2)
+positionsOf fr = do
+  vs <- right (frameVertices fr)
+  pure (M.fromList (zip (map VertexId [0 ..]) (map flatten vs)))
+
+-- | The point a fraction of the way along a span's edge.
+pointOf :: M.Map VertexId V2 -> EdgeSpan -> Double -> V2
+pointOf at sp t = p ^+^ (t *^ (q ^-^ p))
+  where
+    p = M.findWithDefault (V2 (0 / 0) 0) (spanFrom sp) at
+    q = M.findWithDefault (V2 (0 / 0) 0) (spanTo sp) at
+
+-- | Whether a fraction lies well inside its edge, neither end.
+inside :: Double -> Bool
+inside t = t > 0.01 && t < 0.99
+
+-- | Whether two vertices are neighbours around a face's ring, either way.
+isEdgeOf :: Frame -> FaceId -> (VertexId, VertexId) -> Bool
+isEdgeOf fr (FaceId f) (u, v) = case drop f (facesVertices fr) of
+  ring : _ -> any (\(a, b) -> (a, b) == (u, v) || (a, b) == (v, u)) (zip ring (drop 1 ring <> take 1 ring))
+  [] -> False
+
+-- | The assignment the frame gives the edge between two vertices.
+assignmentOf :: Frame -> (VertexId, VertexId) -> Maybe Assignment
+assignmentOf fr (u, v) = case [a | ((a', b'), a) <- zip (edgesVertices fr) (edgesAssignment fr), (a', b') == (u, v) || (a', b') == (v, u)] of
+  a : _ -> Just a
+  [] -> Nothing
+
+-- | A face's corners where they lie, in the plane.
+faceRing :: Frame -> FaceId -> IO [V2]
+faceRing fr f = do
+  faces <- right (frameFaces fr)
+  case [map flatten (faceCorners face) | face <- faces, faceId face == f] of
+    ring : _ -> pure ring
+    [] -> fail ("no face " <> show f)
+
+-- | How far inside a convex ring a point is: the least distance to any of
+-- its edges' lines, negative outside, whichever way the ring winds.
+howFarInside :: [V2] -> V2 -> Double
+howFarInside ring p = minimum [turn * cross2 (b ^-^ a) (p ^-^ a) / norm (b ^-^ a) | (a, b) <- zip ring (drop 1 ring <> take 1 ring), norm (b ^-^ a) > 1e-12]
+  where
+    turn = if signedArea ring > 0 then 1 else -1
 
 spec :: Spec
 spec = do
@@ -253,6 +328,99 @@ spec = do
         Right v -> do
           formRegions v `shouldBe` []
           length (formEdges v) `shouldBe` 4
+
+  -- R-05-52: each stretch of formSheetEdges names the face edge it lies
+  -- along, so a drawing that moves the sheets apart can move a point partway
+  -- along a stretch with that edge, by fractions rather than by matching
+  -- coordinates afterwards.
+  describe "the edge each stretch lies along" $ beforeAll helmetLast $ do
+    -- Read the named edge at the two fractions and get the stretch's two
+    -- ends, within the folded form's hair, on every flat fixture from both
+    -- sides and on the helmet base's last state. Every named sheet has an
+    -- edge there, since these frames order every overlapping pair, and the
+    -- edge named is that sheet's own. Red if the code named the right face's
+    -- wrong edge, snapped a fraction to the nearer vertex (the letter fold
+    -- below makes sure some stretch ends inside its edge), swapped the two
+    -- fractions, or named another face's edge along the same line.
+    it "names an edge of the sheet named, whose fractions give the stretch's ends" $ \helmet -> do
+      fixtures <- mapM (\(name, side) -> (,) (name <> " " <> sideName side) <$> framed side name) everyFlatFixture
+      let cases = fixtures <> [("the helmet base " <> sideName side, (side, helmet)) | side <- [True, False]]
+      forM_ cases $ \(name, (side, fr)) -> do
+        v <- right (visibleForm side fr (faceOrders fr))
+        hair <- sheetHair <$> right (flatSheet fr)
+        at <- positionsOf fr
+        forM_ (formSheetEdges v) $ \e -> case (sheetEdgeFace e, sheetEdgeSpan e) of
+          (Nothing, _) -> pure ()
+          (Just _, Nothing) -> expectationFailure (name <> ": a named sheet with no edge along " <> show e)
+          (Just f, Just sp) -> do
+            (name, isEdgeOf fr f (spanFrom sp, spanTo sp)) `shouldBe` (name, True)
+            let line = sheetEdgeLine e
+            (name, flatten (visibleFrom line), pointOf at sp (spanStart sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
+            (name, flatten (visibleTo line), pointOf at sp (spanEnd sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
+
+    -- The letter fold's unequal panels leave a stretch that stops partway
+    -- along its edge, so a fraction there is neither 0 nor 1. Without one, a
+    -- fraction snapped to the nearer vertex would pass the test above.
+    it "has a stretch on the letter fold that ends inside its edge" $ \_ -> do
+      (_, fr) <- framed True "letter-fold"
+      v <- right (visibleForm True fr (faceOrders fr))
+      [sp | e <- formSheetEdges v, Just sp <- [sheetEdgeSpan e], inside (spanStart sp) || inside (spanEnd sp)]
+        `shouldSatisfy` (not . null)
+
+    -- Where a top face's fold lies along the border of a layer buried under
+    -- it, the stretch names the fold, its own face's edge, though it is drawn
+    -- as the border, the stronger line. The crane has such stretches from
+    -- above. Red if the code named whichever crease along the line came
+    -- first, or the strongest, which is the buried border.
+    it "names the fold, not the buried border, where a fold lies along one" $ \_ -> do
+      (_, fr) <- framed True "crane"
+      v <- right (visibleForm True fr (faceOrders fr))
+      let foldsDrawnAsBorder =
+            [ sp
+              | e <- formSheetEdges v,
+                visibleAssignment (sheetEdgeLine e) == Border,
+                Just sp <- [sheetEdgeSpan e],
+                assignmentOf fr (spanFrom sp, spanTo sp) `elem` [Just Mountain, Just Valley]
+            ]
+      length foldsDrawnAsBorder `shouldSatisfy` (> 0)
+
+    -- A face with two edges along one line, a straight corner, which tracing
+    -- can leave where one crease ends on another, gives a stretch for each
+    -- edge, though the ordinary drawing joins them into one line. No fixture
+    -- has one, so this frame is built for it: a square whose bottom side is
+    -- two edges, through a vertex at its middle. Red if stretches were joined
+    -- whatever edge they name, which would hand a fanned drawing one stretch
+    -- moving with one edge for the length of two.
+    it "gives each of two edges along one line a stretch of its own" $ \_ -> do
+      let corner =
+            emptyFrame
+              { verticesCoords = [[0, 0], [0.5, 0], [1, 0], [1, 1], [0, 1]],
+                facesVertices = [map VertexId [0, 1, 2, 3, 4]],
+                edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]],
+                edgesAssignment = replicate 5 Border
+              }
+      v <- right (visibleForm True corner [])
+      length (formEdges v) `shouldBe` 4
+      [(spanFrom sp, spanTo sp, spanStart sp, spanEnd sp) | e <- formSheetEdges v, Just sp <- [sheetEdgeSpan e], spanFrom sp `elem` [VertexId 0, VertexId 1], spanTo sp `elem` [VertexId 1, VertexId 2]]
+        `shouldBe` [(VertexId 0, VertexId 1, 0, 1), (VertexId 1, VertexId 2, 0, 1)]
+
+    -- With the letter fold's orders dropped, the face found nearest along one
+    -- stretch is a face whose middle that stretch crosses, so it has no edge
+    -- there, and the stretch names the sheet and no edge. Red if an edge of
+    -- that face were named anyway.
+    it "names no edge where the sheet named has none along the stretch, with orders missing" $ \_ -> do
+      (_, fr) <- framed True "letter-fold"
+      v <- right (visibleForm True fr [])
+      let edgeless = [e | e <- formSheetEdges v, Just _ <- [sheetEdgeFace e], Nothing <- [sheetEdgeSpan e]]
+      length edgeless `shouldBe` 1
+      forM_ edgeless $ \e -> case sheetEdgeFace e of
+        Just f -> do
+          ring <- faceRing fr f
+          let line = sheetEdgeLine e
+              mid = 0.5 *^ (flatten (visibleFrom line) ^+^ flatten (visibleTo line))
+          -- Well inside the face: the stretch crosses its middle.
+          howFarInside ring mid `shouldSatisfy` (> 1e-6)
+        Nothing -> pure ()
 
   describe "what it declines" $ do
     it "declines a model with paper still in the air" $ do

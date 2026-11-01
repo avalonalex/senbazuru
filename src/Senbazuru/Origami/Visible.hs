@@ -81,6 +81,33 @@
 -- first means such stretches are literally the same interval of the same line,
 -- and the eight edges of the quarter fold come back as four.
 --
+-- == Which edge a stretch lies along
+--
+-- A drawing that moves the sheets apart, as a fanned figure moves each corner
+-- by the layers over it, moves a stretch with the sheet it belongs to, and a
+-- point partway along a stretch has to move with the face edge under it rather
+-- than with whatever happens to be nearby. So each stretch of 'formSheetEdges'
+-- also names that edge, by the two vertices the file gives it, and says how far
+-- along it, from the first vertex to the second, the stretch starts and ends
+-- ('EdgeSpan'). Naming it here, where the stretch is found, is what spares a
+-- drawing from matching stretches to edges by tolerance afterwards.
+--
+-- The edge named is an edge of the sheet named, the face nearest the viewer
+-- along the stretch. Where a top face is folded along the border of a layer
+-- buried under it, the stretch is that face's fold, though it is drawn as the
+-- border, the stronger line. And two neighbouring stretches are joined only
+-- when they name the same edge: a face with two edges along one line, a
+-- straight corner, which tracing can leave where one crease ends on another,
+-- gives a stretch for each.
+--
+-- No edge is named, 'Nothing', in two cases, and the sheet named tells them
+-- apart. Where there is paper on neither side there is no sheet to name either.
+-- And where two overlapping faces have no order between them, the face found
+-- nearest along a stretch can be one whose middle the stretch crosses, which
+-- has no edge there; the sheet is then named, and the edge is not. When every
+-- overlapping pair of faces is ordered, a named sheet always has an edge along
+-- its stretch.
+--
 -- == What this does not do
 --
 -- Only models folded flat, for the reason "Senbazuru.Origami.Flat" gives.
@@ -102,6 +129,8 @@ module Senbazuru.Origami.Visible
     VisibleForm (..),
     Region (..),
     VisibleEdge (..),
+    SheetEdge (..),
+    EdgeSpan (..),
     visibleForm,
   )
 where
@@ -109,7 +138,7 @@ where
 import Control.Monad (foldM)
 import Data.List (foldl', sort)
 import Data.Map.Strict qualified as M
-import Senbazuru.Fold.Query (Crease (..), FoldError (..))
+import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId,
@@ -180,7 +209,40 @@ data VisibleForm = VisibleForm
     -- 'formEdges' is deliberately joined up across the boundaries where it
     -- changes. A drawing that /moves/ the sheets apart does have to ask, and
     -- gets a stretch per sheet here.
-    formSheetEdges :: ![(Maybe FaceId, VisibleEdge)]
+    formSheetEdges :: ![SheetEdge]
+  }
+  deriving stock (Eq, Show)
+
+-- | A stretch of 'formSheetEdges': a visible stretch of edge cut wherever the
+-- sheet behind it changes, with that sheet and the edge of it the stretch lies
+-- along.
+data SheetEdge = SheetEdge
+  { -- | The face whose paper lies nearest the viewer along the stretch, or
+    -- 'Nothing' where there is paper on neither side.
+    sheetEdgeFace :: !(Maybe FaceId),
+    sheetEdgeLine :: !VisibleEdge,
+    -- | The edge of that face the stretch lies along, and where along it, or
+    -- 'Nothing' when there is none: no face, or a face whose middle the
+    -- stretch crosses, which only two overlapping faces with no order between
+    -- them can give. The module header has the two cases.
+    sheetEdgeSpan :: !(Maybe EdgeSpan)
+  }
+  deriving stock (Eq, Show)
+
+-- | Where a stretch lies on one edge of the file: the edge, by its two
+-- vertices in the order @edges_vertices@ lists them, and how far from the
+-- first vertex to the second the stretch starts and ends, 0 at the first and 1
+-- at the second.
+--
+-- Fractions rather than points, because a fraction of an edge survives
+-- anything that moves the edge's two ends: a projection onto a page, or a
+-- fanned drawing moving each end by its own amount. A point partway along is
+-- the same fraction of the moved edge.
+data EdgeSpan = EdgeSpan
+  { spanFrom :: !VertexId,
+    spanTo :: !VertexId,
+    spanStart :: !Double,
+    spanEnd :: !Double
   }
   deriving stock (Eq, Show)
 
@@ -205,7 +267,7 @@ visibleForm fromAbove fr orders = do
     VisibleForm
       { formRegions = regionsOf fromAbove sheet nearer,
         formEdges = edgesOf shown,
-        formSheetEdges = sheetEdgesOf shown
+        formSheetEdges = sheetEdgesOf (sheetFaces sheet) shown
       }
 
 -- | \"Is the first face nearer the viewer than the second?\", from
@@ -376,15 +438,56 @@ edgesOf shown =
       (assignment, s0, s1) <- joinRuns [(a, s0, s1) | ((a, _), s0, s1) <- ss]
   ]
 
--- | The same, cut at every change of sheet as well, and labelled with it.
+-- | The same, cut at every change of sheet as well, and labelled with it and
+-- with the edge of it each stretch lies along.
+--
+-- Joined on the edge too, so that a stretch never runs on from one edge of a
+-- face to another lying along the same line. The edge is found before the
+-- join, stretch by stretch, since the line was cut at every crease's ends and
+-- a stretch therefore lies within one crease of each it touches; its fractions
+-- are worked out after, from where the joined stretch starts and ends.
 sheetEdgesOf ::
+  [Face] ->
   [(Track, [((Assignment, Maybe FaceId), Double, Double)])] ->
-  [(Maybe FaceId, VisibleEdge)]
-sheetEdgesOf shown =
-  [ (nearest, lineOn track assignment s0 s1)
+  [SheetEdge]
+sheetEdgesOf faces shown =
+  [ SheetEdge
+      { sheetEdgeFace = nearest,
+        sheetEdgeLine = lineOn track assignment s0 s1,
+        sheetEdgeSpan = spanOn s0 s1 <$> along'
+      }
     | (track, ss) <- shown,
-      ((assignment, nearest), s0, s1) <- joinRuns ss
+      ((assignment, nearest, along'), s0, s1) <-
+        joinRuns [((assignment, nearest, edgeAlong track nearest s0 s1), s0, s1) | ((assignment, nearest), s0, s1) <- ss]
   ]
+  where
+    -- Each face's edges, either way round, as the pairs of vertices its ring
+    -- runs between.
+    edgesOfFace = M.fromList [(faceId f, ringEdges (faceVertexIds f)) | f <- faces]
+    ringEdges vs = concat [[(u, v), (v, u)] | (u, v) <- zip vs (drop 1 vs <> take 1 vs)]
+
+    -- The crease along this stretch that is an edge of the face named. The
+    -- stretch's middle lies within it: the line was cut at its ends.
+    edgeAlong track nearest s0 s1 = do
+      f <- nearest
+      edges <- M.lookup f edgesOfFace
+      case [c | c <- trackCreases track, trackCreaseLo c <= mid, mid <= trackCreaseHi c, (trackCreaseFrom c, trackCreaseTo c) `elem` edges] of
+        c : _ -> Just c
+        [] -> Nothing
+      where
+        mid = 0.5 * (s0 + s1)
+
+    -- Where along the crease the stretch's ends are, as fractions of the way
+    -- from its first vertex to its second.
+    spanOn s0 s1 c =
+      EdgeSpan
+        { spanFrom = trackCreaseFrom c,
+          spanTo = trackCreaseTo c,
+          spanStart = fraction s0,
+          spanEnd = fraction s1
+        }
+      where
+        fraction s = (s - trackCreaseAtFrom c) / (trackCreaseAtTo c - trackCreaseAtFrom c)
 
 -- | Put back together the neighbouring stretches a cut turned out not to
 -- separate.
@@ -415,8 +518,24 @@ data Track = Track
     -- | The @z@ the model lies at, carried so that a stretch worked out along
     -- this line can be put back into space without the sheet in hand.
     trackPlane :: !Double,
-    trackCreases :: ![(Assignment, Double, Double)]
+    trackCreases :: ![TrackCrease]
   }
+
+-- | One crease lying along a track: its assignment, its two vertices as the
+-- file lists them, and how far along the track each lies.
+data TrackCrease = TrackCrease
+  { trackCreaseAssignment :: !Assignment,
+    trackCreaseFrom :: !VertexId,
+    trackCreaseTo :: !VertexId,
+    trackCreaseAtFrom :: !Double,
+    trackCreaseAtTo :: !Double
+  }
+  deriving stock (Eq)
+
+-- | Where a crease starts and stops along its track, whichever way it runs.
+trackCreaseLo, trackCreaseHi :: TrackCrease -> Double
+trackCreaseLo c = min (trackCreaseAtFrom c) (trackCreaseAtTo c)
+trackCreaseHi c = max (trackCreaseAtFrom c) (trackCreaseAtTo c)
 
 -- | One stretch of a track, as a line in space.
 lineOn :: Track -> Assignment -> Double -> Double -> VisibleEdge
@@ -450,7 +569,7 @@ tracks :: Double -> Double -> (VertexId -> V2) -> [Crease] -> [Track]
 tracks hair plane at = foldl' add [] . concatMap segment
   where
     segment c = case normalize (q ^-^ p) of
-      Just direction | norm (q ^-^ p) > hair -> [(creaseAssignment c, p, q, direction)]
+      Just direction | norm (q ^-^ p) > hair -> [(c, p, q, direction)]
       _ -> []
       where
         p = at (creaseFrom c)
@@ -464,11 +583,19 @@ tracks hair plane at = foldl' add [] . concatMap segment
 
     lies (_, p, q, _) t = abs (offset t p) <= hair && abs (offset t q) <= hair
 
-    record t (assignment, p, q, _) =
-      t {trackCreases = trackCreases t <> [(assignment, min sp sq, max sp sq)]}
-      where
-        sp = along t p
-        sq = along t q
+    record t (c, p, q, _) =
+      t
+        { trackCreases =
+            trackCreases t
+              <> [ TrackCrease
+                     { trackCreaseAssignment = creaseAssignment c,
+                       trackCreaseFrom = creaseFrom c,
+                       trackCreaseTo = creaseTo c,
+                       trackCreaseAtFrom = along t p,
+                       trackCreaseAtTo = along t q
+                     }
+                 ]
+        }
 
 -- | Cut a track into the stretches over which nothing can change.
 --
@@ -480,13 +607,13 @@ tracks hair plane at = foldl' add [] . concatMap segment
 -- Only stretches with a crease along them come back, since a stretch of bare
 -- line is not an edge of anything.
 stretches :: Double -> [(V2, V2)] -> Track -> [(Assignment, Double, Double)]
-stretches hair rims track = case concat [[lo, hi] | (_, lo, hi) <- trackCreases track] of
+stretches hair rims track = case concat [[trackCreaseLo c, trackCreaseHi c] | c <- trackCreases track] of
   [] -> []
   ends ->
-    [ (strongest [a | (a, lo, hi) <- trackCreases track, lo <= mid, mid <= hi], s0, s1)
+    [ (strongest [trackCreaseAssignment c | c <- under mid], s0, s1)
       | (s0, s1) <- zip cuts (drop 1 cuts),
         let mid = 0.5 * (s0 + s1),
-        any (\(_, lo, hi) -> lo <= mid && mid <= hi) (trackCreases track)
+        not (null (under mid))
     ]
     where
       -- Cuts beyond the creases would divide a stretch of line nobody draws.
@@ -516,6 +643,8 @@ stretches hair rims track = case concat [[lo, hi] | (_, lo, hi) <- trackCreases 
     -- folded form produces.
     thin [] = []
     thin (s : ss) = s : thin (dropWhile (\u -> u - s <= hair) ss)
+
+    under mid = [c | c <- trackCreases track, trackCreaseLo c <= mid, mid <= trackCreaseHi c]
 
 -- | Which assignment to draw a stretch with, when several creases lie along
 -- it.

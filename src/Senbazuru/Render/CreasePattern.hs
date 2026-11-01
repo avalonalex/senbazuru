@@ -133,7 +133,7 @@ import Senbazuru.Origami.Layers (layerDepths, layerOf, paintOrder, showsTopSide)
 import Senbazuru.Origami.Stacking (Budget, defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (Motion (..))
 import Senbazuru.Origami.Surface (Surface, surfaceFrame)
-import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..), visibleForm)
+import Senbazuru.Origami.Visible (Region (..), SheetEdge (..), VisibleEdge (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), basisForward, isometric, project, seenFrom, topDown, turnedBy)
 import Senbazuru.Render.Projected (projectedForm)
 
@@ -392,7 +392,7 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
             IM.fromListWith
               (flip (<>))
               [ (maybe 0 depthOf nearest, [shape])
-                | (nearest, e) <- sortOn (creaseOrder . visibleAssignment . snd) (formSheetEdges seen),
+                | SheetEdge nearest e _ <- sortOn (creaseOrder . visibleAssignment . sheetEdgeLine) (formSheetEdges seen),
                   -- A stretch with paper on neither side belongs to no sheet --
                   -- it is a crease bounding nothing -- so it is drawn where the
                   -- paper is.
