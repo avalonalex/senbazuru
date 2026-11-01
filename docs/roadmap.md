@@ -429,8 +429,10 @@ pieces of work.
   and the solve for compatible crease angles remain to be built.
 - **[#36](https://github.com/avalonalex/senbazuru/issues/36) the arrow vocabulary**, **[#48](https://github.com/avalonalex/senbazuru/issues/48) x-ray lines**,
   **[#94](https://github.com/avalonalex/senbazuru/issues/94) captions.** The drawing is easy; classifying a motion in
-  `Origami.Step` and scoping to the step are the work. Captions have no font
-  metrics to measure against, so truncation is by character count.
+  `Origami.Step` and scoping to the step are the work. Captions are drawn on
+  a run's page, wrapped by an estimated width, since there are no font
+  metrics to measure against, and never cut short; #94 closes with the
+  page's golden (#643).
 - **[#99](https://github.com/avalonalex/senbazuru/issues/99) SVG import.** Path parsing, transforms, and the colour
   conventions of two web tools to read before fixing ours.
 - **[#38](https://github.com/avalonalex/senbazuru/issues/38) assignment from a stacking**, **[#53](https://github.com/avalonalex/senbazuru/issues/53) reading a

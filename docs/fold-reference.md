@@ -51,7 +51,7 @@ The top-level object is **both** the file metadata **and** the first frame (the
 | Key | Type | Meaning | Status |
 | --- | --- | --- | --- |
 | `frame_author` | string | | decoded |
-| `frame_title` | string | | used (SVG `<title>`) |
+| `frame_title` | string | | used: a single-frame `render`'s SVG `<title>`; the `.glb` title from `export` and `run -o .glb`; `info`'s frame list; and, in a file `run` writes, the caption under that state's figure on `run -o .svg`'s page, the instruction of the step that leaves the state. `render --steps` never draws it |
 | `frame_description` | string | | decoded |
 | `frame_classes` | string[] | `creasePattern`, `foldedForm`, `graph`, `linkage` | used |
 | `frame_attributes` | string[] | `2D`, `3D`, `manifold`, `orientable`, `selfTouching`, … | decoded |

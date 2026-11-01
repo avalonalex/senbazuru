@@ -33,7 +33,11 @@ turn-over, or cope with a crease graph that grows between steps.
 
 This PRD adds `stepPageWith`, taking a typed `StepNote` beside each frame.
 `stepPage` becomes `stepPageWith` with notes that reproduce today exactly, so its
-call lines and every tracked golden are untouched. `Diagram` gains arrow heads
+call lines and every tracked golden are untouched. S25 split it in two
+([C136](decisions.md#changes-since-draft-v2)): `stepFigures` draws the figures, each with its note's caption, and
+`Diagram.Page.fitPage` lays them out with their captions under them, since a
+caption needs the page's scale, which `stepPageWith` was not given. Where this
+PRD says `stepPageWith`, read `stepFigures`, and for a run's page, `runPage`. `Diagram` gains arrow heads
 and bodies (defaults emit today's bytes) and two shapes, `Symbol` and `Fanned`
 (§10). `Layout` places
 captions. `Render.Sequence` builds the notes from a run's *move records*, one per
@@ -204,13 +208,19 @@ then.
 
 **Channel**
 
-- **R-06-1.** `Render.Steps` exports `stepPageWith :: Theme -> Budget -> Grid ->
-  View -> [(Frame, StepNote)] -> Either StepError (Maybe Diagram)`, with no `Bool`
-  beside the notes ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
+- **R-06-1.** `Render.Steps` exports `stepFigures :: Theme -> Budget -> View ->
+  [(Frame, StepNote)] -> Either StepError [(Diagram, Maybe Text)]`, with no `Bool`
+  beside the notes ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)):
+  each figure drawn with its note and paired with the note's caption, laid out
+  by its caller, with `gridOf` or, for a page with captions,
+  `Diagram.Page.fitPage`. S21 built `stepPageWith`, which laid the page out
+  itself; S25 replaced it, since it could not lay out a caption without the
+  page's scale ([C136](decisions.md#changes-since-draft-v2)).
 - **R-06-2.** `stepPage`'s signature is unchanged and it is `stepPage theme budget
-  grid view arrows = stepPageWith theme budget grid view . map (\f -> (f, noteFor
-  arrows))`, `noteFor True = inferNote`, `noteFor False = silentNote`. One
-  implementation; none of its call lines is edited.
+  grid view arrows = fmap (gridOf grid . map fst) . stepFigures theme budget view .
+  map (\f -> (f, noteFor arrows))`, `noteFor True = inferNote`, `noteFor False =
+  silentNote`, neither with a caption. One implementation; none of its call
+  lines is edited.
 - **R-06-3.** `StepError` is unchanged
   ([`Steps.hs:58-62`](../src/Senbazuru/Render/Steps.hs#L58-L62)), so the CLI's
   match at [`Cli.hs:969-977`](../app/Senbazuru/Cli.hs#L969-L977) compiles
@@ -230,7 +240,7 @@ then.
   ([C132](decisions.md#changes-since-draft-v2)); `motionsBetween`'s falls to
   S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)), and `SurfaceError`'s to S5.
 - **R-06-4.** A presentation mark places a `Symbol` and suppresses inference on that
-  pair only. `stepPageWith` never transforms a coordinate: frames arrive presented.
+  pair only. `stepFigures` never transforms a coordinate: frames arrive presented.
 
 **Diagram**
 
@@ -267,7 +277,7 @@ then.
   `LayoutSpec`'s `labels` (above) and `StepsSpec`'s `labelsOf`
   ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) could
   not see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions
-  update them. S24 updated `labels` (C134); `labelsOf` is S25's.
+  update them. S24 updated `labels` (C134), and S25 `labelsOf` ([C136](decisions.md#changes-since-draft-v2)).
 
 **Views**
 
@@ -275,7 +285,7 @@ then.
   `FromOppositeSide` or `EdgeOn` as `basisForward`'s z is negative, positive or
   zero. `EdgeOn` means the camera looks along the sheet's plane, as `front` and
   `side` do, so a flat sheet projects to a line. `pageSide :: View -> [Frame] ->
-  Either StepError SeenFrom` shares `stepPageWith`'s basis choice. The test is
+  Either StepError SeenFrom` shares `stepFigures`' basis choice. The test is
   not new: `Render.CreasePattern` already makes it, privately, as `seenFromAbove
   :: Basis -> Bool`, `basisForward`'s z ≤ 0
   ([`CreasePattern.hs:431-432`](../src/Senbazuru/Render/CreasePattern.hs#L431-L432)),
@@ -310,7 +320,7 @@ then.
 
 **Growing graphs**
 
-- **R-06-14.** For `InferArrows` and `InferArrowsAs`, `stepPageWith` calls
+- **R-06-14.** For `InferArrows` and `InferArrowsAs`, `stepFigures` calls
   `motionsBetween` when the graphs are equal and `motionsAcross` otherwise.
 - **R-06-15.** Fold-here lines go on the figure before the move, at `before`
   positions, styled by the note's kind as seen, never by the crease's assignment.
@@ -405,13 +415,16 @@ then.
   ([`Record.hs:723`](../src/Senbazuru/Sequence/Record.hs#L723)). That step's
   moves made before the stop keep their records in `runRecords`
   ([`Run.hs:513`](../src/Senbazuru/Sequence/Run.hs#L513)), though no state
-  shows their paper, so the page drops them.
+  shows their paper, so the page drops them. S25 draws the captions:
+  `stepNotes` takes each from its state's `frame_title`, so the rule lives
+  once, in `writtenStates` ([C136](decisions.md#changes-since-draft-v2)).
 - **R-06-22.** A `mark` is labelled on each flat figure where `Origami.Visible`
   shows its material point.
 - **R-06-23.** A step's authored `sample` poses are figures of their own, after the
   figure of the state the step starts from and before its end state's, in parameter
   order, each with no caption and `NoArrows`. A step that writes no state (every
-  move `expect refused`) has no figure
+  move `expect refused`) has no figure, and its caption is under none (S25,
+  [C136](decisions.md#changes-since-draft-v2))
   ([D24](decisions.md#d24-states-figures-and-their-numbers),
   [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)).
 
@@ -451,7 +464,7 @@ then.
 - **R-06-29.** The theme carries the choice. `themeLayerOffset` becomes
   `themeLayers`, one of laid flat, offset by a distance, or fanned by a step and
   a cap (**SKETCH**), so no theme asks for both. `run -o x.svg` passes a fanning
-  theme to `stepPageWith`, whose signature (R-06-1) and `stepPage`'s call lines
+  theme to `stepFigures`, whose signature (R-06-1) and `stepPage`'s call lines
   (R-06-2) do not change; `--no-fan` ([04](04-prd-sequence-source-and-cli.md)
   R-04-27, **SKETCH**) passes an unfanned one. `render --fan` (**SKETCH**) fans
   every flat folded frame `render` draws: `--fold`, a folded frame chosen by
@@ -628,9 +641,10 @@ pattern used as a filter. The comprehensions that keep `Offset` alone
 [`:302`](../test/Senbazuru/Render/CreasePatternSpec.hs#L302),
 [`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329);
 [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99)) skip a
-`Fanned` shape, and `StepsSpec`'s `labelsOf` matches a bare `Label`, so it misses
-a caption line moved by an `Offset` (R-06-18); `LayoutSpec`'s `labels` sees one
-since S24 (C134).
+`Fanned` shape. `StepsSpec`'s `labelsOf` matched a bare `Label`, so it missed a
+caption line moved by an `Offset` (R-06-18); `LayoutSpec`'s `labels` sees one
+since S24 (C134), and `labelsOf` since S25
+([C136](decisions.md#changes-since-draft-v2)).
 
 ### 4. Which side the page is seen from
 
@@ -754,7 +768,7 @@ unfold draws none: that is the decision record's reading of decision 74, which
 names folds and pre-creases, and S33
 ([#643](https://github.com/avalonalex/senbazuru/issues/643)) asks the owner to
 confirm it. `render --steps` draws no fold-here line, since `inferNote` carries
-`NoFoldLines` (§1, A1). `creasesToCome` is the source only for a `stepPageWith`
+`NoFoldLines` (§1, A1). `creasesToCome` is the source only for a `stepFigures`
 caller that states the kind, as `InferFoldLines` (S28,
 [#642](https://github.com/avalonalex/senbazuru/issues/642)).
 
@@ -876,12 +890,18 @@ figures h high. S1's prototype pages, drawn with a = 15, were 648.8 page units
 tall at 9 figures and 1620.8 at 24; at a = 18 each band is 3 page units taller,
 which makes 657.8 and 1644.8. With `--height` given, the
 figures shrink to fit. The wrap width then depends on the scale, so the scale is
-a fixed point. S24 chose how to find it and S25 builds it (C134): start at the
+a fixed point. S24 chose how to find it (C134) and S25 built it, as
+`Diagram.Page.fitPage` ([C136](decisions.md#changes-since-draft-v2)): start at the
 scale the width alone sets, then, until the bands stop changing, wrap at the
 current scale and take the largest scale a page H tall allows for those bands:
 the smaller of the width's scale and (H − 2m − Σ b_r) / (R h). The bands only grow
 as the scale falls, so this ends, and `pageTransform` confirms the answer. A
-page too short for its bands at any scale is refused. On S24's prototype, the
+page too short for its bands at any scale is refused. As built, a round stops
+when the bands' total no longer grows, which is the same stop while wrapping
+behaves as greedy wrapping does, and is also exactly the condition under which
+the page fits, so a page is never handed back that does not; a property test
+holds it to the largest scale that fits, and its refusals to pages no sampled
+scale fits. On S24's prototype, the
 blintz's five captions under unit squares with a sixth figure uncaptioned, a
 400 × 400 page settles at 84.8 in three tries, a 350-tall one at 9.4 in four,
 and a 300-tall one is refused, its bands 299.2 page units against 268 of
@@ -944,7 +964,8 @@ a state's title shows that: `info`, a single-frame `render` and a glTF's title
 [`:1048`](../app/Senbazuru/Cli.hs#L1048),
 [`:945`](../app/Senbazuru/Cli.hs#L945)). It reads as an off-by-one and is not;
 this record accepts it, and S25
-([#641](https://github.com/avalonalex/senbazuru/issues/641)) documents it.
+([#641](https://github.com/avalonalex/senbazuru/issues/641), [C136](decisions.md#changes-since-draft-v2)) documented it,
+in `docs/usage.md`, `docs/tour.md` and `docs/fold-reference.md`.
 
 A file cannot say which convention its titles follow. The fixture puts "Step 2:
 folded in half" on the half-folded state; a sequence file written from the
@@ -1119,7 +1140,7 @@ decisions 67 to 69).
 
 | # | Criterion | Red if |
 | --- | --- | --- |
-| A1 | `stepPage t b g v x fs == stepPageWith t b g v (map (\f -> (f, noteFor x)) fs)` for both `x` on the quarter fixture, `bird-base-sequence.fold` and `StepsSpec`'s sheets, a wiring check that holds by construction while `stepPage` is `stepPageWith` over `noteFor` of its `Bool` (R-06-2). Beside it, on the quarter fixture under `top`, `inferNote` draws one `Arrow` on its first fold and `silentNote` none, `stepPage` draws its two arrows with `True` and none with `False`, and a frame skipped for having no geometry takes its note with it ([C131](decisions.md#changes-since-draft-v2)) | `stepPage` draws its page some other way, or with the other `Bool`'s note; `noteFor` ignores its `Bool`, which both sides of the equality use; a note draws what the other should; notes are matched by place to the frames left after skipping. A default leaking into `inferNote` or `silentNote`, e.g. `InferFoldLines`, shows on none of these fixtures, whose crease graphs never grow, so the PR adding a field draws both notes on a pair where that field would draw |
+| A1 | `stepPage t b g v x fs == fmap (gridOf g . map fst) (stepFigures t b v (map (\f -> (f, noteFor x)) fs))` (restated by S25, [C136](decisions.md#changes-since-draft-v2)) for both `x` on the quarter fixture, `bird-base-sequence.fold` and `StepsSpec`'s sheets, a wiring check that holds by construction while `stepPage` is `gridOf` over `stepFigures` with `noteFor` of its `Bool` (R-06-2). Beside it, on the quarter fixture under `top`, `inferNote` draws one `Arrow` on its first fold and `silentNote` none, `stepPage` draws its two arrows with `True` and none with `False`, and a frame skipped for having no geometry takes its note with it ([C131](decisions.md#changes-since-draft-v2)) | `stepPage` draws its page some other way, or with the other `Bool`'s note; `noteFor` ignores its `Bool`, which both sides of the equality use; a note draws what the other should; notes are matched by place to the frames left after skipping. A default leaking into `inferNote` or `silentNote`, e.g. `InferFoldLines`, shows on none of these fixtures, whose crease graphs never grow, so the PR adding a field draws both notes on a pair where that field would draw |
 | A2 | On the committed branch, `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing and the same command with `--diff-filter=A` lists exactly the new goldens below ([D16](decisions.md#d16-testing-and-acceptance); [09 §1.2](09-testing-and-acceptance.md#12-tracked-goldens-stay-byte-identical)). Both print nothing today (run 2026-09-15) | `SolidHead` emission reorders an attribute; a gutter appears without a caption; a golden is added that this table does not list |
 | A3 | `quarter-fold-steps.svg` and the pinned `bird-base-sequence-arrows.svg` stay byte-identical, with the by-hand `cmp` of `render --steps --arrows` on both multi-frame files in `examples/`, as [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages) sets out | presentation classification ([05](05-prd-library-additions.md)) fires on a real fold |
 | A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268) | a hollow head or loop is sized in model units |
@@ -1133,7 +1154,7 @@ decisions 67 to 69).
 | A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | `motionsAcross` visits rings in another order |
 | A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g` | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
-| A15 | `stepPageWith` on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
+| A15 | `stepFigures`, laid out by `gridOf`, on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
 | A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none | labelling ignores `Visible` |
 | A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |
 | A18 | On the helmet base's last state, a fanned figure draws vertex 1 4.5 and vertex 3 3 page units toward the lower left of where they lie, and vertices 0, 2, 4, 5 and 8 where they lie; on its state 2, vertices 1, 7 and 8 1.5 page units out and the rest where they lie; each fold's two faces draw its vertices at one page position | the count is a face's layer number (state 2 moves vertex 1 4.5 and vertex 3 3); a covering face counts only where it covers the whole corner (the tip moves 1.5); a face is moved whole; the direction's sign is flipped |
@@ -1143,7 +1164,7 @@ decisions 67 to 69).
 | A22 | On the folded crane no vertex moves more than the cap times the fan step | the cap is dropped: 14 of its 58 vertices had 7 to 15 sheets over them on 2026-10-23 |
 | A23 | On the helmet run's page, the fanned page's `Arrow`, `Symbol`, `Label` and fold-here shapes equal the unfanned page's | a mark is fanned |
 | A24 | `Fanned` with every displacement `d` emits the bytes `Offset d` emits, for a polyline and for a fill of two rings, one clockwise | the two drift apart, or a turned-round ring loses its points' displacements |
-| A25 | `stepPage`, and `stepPageWith` with `defaultTheme`, emit no `Fanned` shape on any input of this file | an unfanned theme fans |
+| A25 | `stepPage`, and `stepFigures` with `defaultTheme`, emit no `Fanned` shape on any input of this file | an unfanned theme fans |
 
 A12 stated owner decision 7's earlier default, a trailing gutter and a
 captioned gutter of at least 42/340, until S24
@@ -1175,10 +1196,10 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
 | `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
 | `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
-| `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `stepPageWith` over the blintz run's `stepNotes` with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of the decision record's own, so that fanning can change without moving E7 | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |
+| `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `runPage` on the blintz run with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of the decision record's own, so that fanning can change without moving E7 | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |
 | `quarter-fold-run-steps.svg` (**SKETCH** name; S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | The quarter-fold run (`test/fixtures/quarter-fold.foldseq`), drawn as `blintz-sequence-steps.svg` is | "Folded into quarters.", its `closing` caption, is not under figure 3; `blintz.foldseq` has no `closing` line, so no other golden pins it |
 | `crane-folded-fanned.svg` (S38, [#644](https://github.com/avalonalex/senbazuru/issues/644)) | `renderFoldedWith` with a fanning theme and `topDown` on `test/fixtures/crane.fold`, as `crane-folded.svg` is made ([`SvgSpec.hs:85-93`](../test/Senbazuru/Render/SvgSpec.hs#L85-L93), [`:432`](../test/Senbazuru/Render/SvgSpec.hs#L432)) | as A22; a buried sheet drawn at full weight |
-| `helmet-fanned-steps.svg` (S40, [#644](https://github.com/avalonalex/senbazuru/issues/644)) | The helmet run's `stepNotes` through `stepPageWith` with a fanning theme (R-06-29) | a fold drawn as two lines; a face with nothing over any of its vertices moved; a buried sheet's border not shown; face 2 of state 2 drawn over face 4 |
+| `helmet-fanned-steps.svg` (S40, [#644](https://github.com/avalonalex/senbazuru/issues/644)) | The helmet run's page through `runPage` with a fanning theme (R-06-29) | a fold drawn as two lines; a face with nothing over any of its vertices moved; a buried sheet's border not shown; face 2 of state 2 drawn over face 4 |
 
 Quarter-fold test 1's page, `quarter-fold-sequence-steps.svg`, has been tracked
 since #512 and is grouped above; test 2's page comes at M4
@@ -1328,7 +1349,7 @@ Each has a recommended default in
   (`recordHinge`) at the before positions, styled by the move's sense as seen
   (§2, §6). The option as asked said `render --steps` keeps inferring them from
   new creases, but it draws none (§1); `creasesToCome` serves only a
-  `stepPageWith` caller that states the kind (S28,
+  `stepFigures` caller that states the kind (S28,
   [#642](https://github.com/avalonalex/senbazuru/issues/642)). 75: M3 runs
   `mark`, pinned by the point forms the resolver already evaluates on the
   sheet, and labels it on the figures where that paper shows; `meet`, and a

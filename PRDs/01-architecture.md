@@ -597,7 +597,8 @@ material study's, in `study/fold-material/` until M8
 Add `runSequence` to "`creasePatternFrom`, `creasePatternAuto`, `surfaceDiagram`,
 `stepPage`, `renderGlb` and `renderSurfaceGlb`". `stepPageWith` and `runPage`
 (`Render.Sequence`, built by S22, [C132](decisions.md#changes-since-draft-v2)) join the list at M3, since their signatures also
-take a `Budget`.
+take a `Budget`; S25 replaced `stepPageWith` with `stepFigures`, which takes
+its place in the list ([C136](decisions.md#changes-since-draft-v2)).
 
 ### 4.13 `src/Senbazuru/Origami/Step.hs:30-34`
 

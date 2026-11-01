@@ -128,7 +128,8 @@ surface that the glTF exporter lets you turn over.
 - **Folds a sequence you write.** A `.foldseq` file says how a model is folded,
   one step at a time, naming the paper by where it lies on the flat sheet.
   `run` folds it move by move and writes every state it reaches as one FOLD
-  file, or draws them as a page of steps, a figure for each state.
+  file, or draws them as a page of steps, a figure for each state with its
+  step's instruction under it.
 - **Exports a 3D model.** glTF (`.glb`), both sides of the paper in their two
   colours. Two scenes share the same material positions: exposed paper for
   stable viewing and the complete sheet for inspection. Creases stay joined;

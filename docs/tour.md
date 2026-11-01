@@ -1055,10 +1055,25 @@ stack run -- run helmet.foldseq -o helmet.svg
 
 The page has a figure for each state the run writes: the sheet, then the paper
 as each step left it, a turn-over included, except a step whose moves were all
-`expect refused`, which writes no state. It is the page `render --steps` draws
-of the `.fold`, byte for byte. It draws the paper and the figure numbers, and
-nothing else yet: the captions, the arrows and the marks a book prints beside
-each figure come one at a time ([usage.md](usage.md#run) lists them). The crane does not get far:
+`expect refused`, which writes no state. Each figure is drawn as
+`render --steps` draws that state of the `.fold`, and under it is its
+caption, the instruction of the step that starts from it, since that is the
+picture the reader folds it from. That reads as an off-by-one and is not: the
+sheet carries step 1's caption, and the last figure the source's `closing`
+line. The written file says the same, since a state's `frame_title` is its
+caption. `render --steps` never draws a `frame_title`, because a file cannot
+say whether its titles name their states, as
+`examples/quarter-fold-steps.fold`'s "Step 2: folded in half" does, or give
+the next instruction, as a run's do.
+
+A caption is wrapped at word boundaries to its figure's width on the page.
+Nothing here can measure the font, so a line's width is estimated at 0.55 of
+the type size a character, a little wide, so that a line breaks early rather
+than late. Under each row of figures is a band of page units tall enough for
+its longest caption, so with no `--height` the page grows as tall as its rows
+need, and with one the figures shrink until the captions fit. The arrows and
+the marks a book prints beside each figure come one at a time
+([usage.md](usage.md#run) lists them). The crane does not get far:
 
 ```console
 $ senbazuru run examples/traditional-crane.foldseq
