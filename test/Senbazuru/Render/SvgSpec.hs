@@ -28,6 +28,7 @@ import Senbazuru.Render.Steps (stepPage)
 import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
+import Test.QuickCheck
 
 -- | Render a fixture as a crease pattern, with a fixed page so the output does
 -- not depend on defaults changing.
@@ -149,6 +150,32 @@ renderSteps path = do
     Right Nothing -> fail "nothing to lay out"
     Right (Just d) -> pure (renderSvg testPage {pageWidth = 400} d)
 
+-- | XML 1.0's Char production, restated here from the specification rather
+-- than imported, so a test of the writer does not take the writer's word for
+-- what XML allows: tab, newline, carriage return, and U+0020 to U+D7FF,
+-- U+E000 to U+FFFD and U+10000 to U+10FFFF.
+xmlOneChar :: Char -> Bool
+xmlOneChar c = c `elem` ['\t', '\n', '\r'] || inRange '\x20' '\xD7FF' || inRange '\xE000' '\xFFFD' || inRange '\x10000' '\x10FFFF'
+  where
+    inRange lo hi = lo <= c && c <= hi
+
+-- | Every character outside XML 1.0's Char production that a 'Text' can
+-- hold, which has no surrogates.
+forbidden :: String
+forbidden = [c | c <- ['\x0' .. '\x1F'] <> ['\xFFFE', '\xFFFF'], c `notElem` ['\t', '\n', '\r']]
+
+-- | The five characters XML text cannot hold literally, which 'escapeXml'
+-- writes as entities.
+markup :: String
+markup = "&<>\"'"
+
+-- | Characters on the allowed side of each of the production's boundaries,
+-- and some a too-wide rule would catch: whitespace a caption may hold, DEL
+-- and a C1 control, which XML 1.0 allows, the replacement character itself,
+-- and the last characters of the planes.
+allowed :: String
+allowed = ['\t', '\n', '\r', ' ', 'a', '\x7F', '\x85', '\xA0', '\xD7FF', '\xE000', '\xFFFD', '\x10000', '\x1F600', '\x10FFFF']
+
 -- | Deliberately not 'defaultPage': a golden file should not churn because
 -- someone retunes the default margin.
 testPage :: Page
@@ -195,6 +222,37 @@ spec = do
     it "leaves ordinary text alone" $
       escapeXml "Yoshizawa" `shouldBe` "Yoshizawa"
 
+    -- Every character XML 1.0 cannot carry that a Text can hold: the C0
+    -- controls but tab, newline and carriage return, and U+FFFE and U+FFFF.
+    -- Each becomes one U+FFFD, in its place. Red if one were kept, which
+    -- makes the document not XML, or dropped, which hides that it was there.
+    it "replaces each character XML 1.0 cannot carry with U+FFFD" $
+      forM_ forbidden $ \c ->
+        (c, escapeXml (T.pack ['a', c, 'b'])) `shouldBe` (c, "a\xFFFD\&b")
+
+    -- Every character XML 1.0 can carry but the five the first test covers,
+    -- one by one: the whole of each range of the Char production, not only
+    -- the sides of its boundaries. Red if the replacement took more than it
+    -- must, at a boundary or inside a range. A surrogate is skipped before
+    -- it is made into text, since Text would turn it into U+FFFD itself.
+    it "keeps every character XML 1.0 can carry" $
+      take 5 [c | c <- [minBound .. maxBound], xmlOneChar c, c `notElem` markup, escapeXml (T.singleton c) /= T.singleton c]
+        `shouldBe` []
+
+    -- Whatever the text, what comes out is XML 1.0's: for text drawn from
+    -- every range the Char production draws a line through, no character
+    -- falls outside it.
+    it "writes only characters XML 1.0 can carry, whatever the text" $
+      forAll (T.pack <$> listOf (elements (forbidden <> allowed <> markup))) $ \t ->
+        T.all xmlOneChar (escapeXml t)
+
+    -- Text with nothing to escape or replace comes out as it went in. Drawn
+    -- from the allowed characters alone, so that every case tests it, where
+    -- mixed text would almost always hold something to change.
+    it "leaves text with nothing to escape as it is" $
+      forAll (T.pack <$> listOf (elements allowed)) $ \t ->
+        escapeXml t === t
+
   describe "renderSvg" $ do
     let square =
           diagramWithExtent
@@ -222,6 +280,18 @@ spec = do
       tScale toPage `shouldBe` V2 90 (-90)
       renderSvg testPage wide `shouldSatisfy` T.isInfixOf (T.unwords ["M", formatNumber x0, formatNumber y0, "L", formatNumber x1, formatNumber y1])
       renderSvg testPage wide `shouldSatisfy` T.isInfixOf "M 10 145 L 190 145"
+
+    -- A caption is drawn as a label and a file's title as the page's
+    -- title, so a control character in either reaches the document through
+    -- one of escapeXml's two text paths: in a caption, any but the white
+    -- space its wrap breaks at, vertical tab and form feed among it. Red if
+    -- either path skipped it.
+    it "writes a control character in a label or the title as U+FFFD" $ do
+      let bell = diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Label (Colour "#000000") 14 (V2 0 0) "Reopen\x7 it."]
+          out = renderSvg testPage {pageTitle = Just "A\x7 title"} bell
+      out `shouldSatisfy` T.isInfixOf "<title>A\xFFFD title</title>"
+      out `shouldSatisfy` T.isInfixOf ">Reopen\xFFFD it.</text>"
+      out `shouldSatisfy` T.all xmlOneChar
 
     it "flips the y axis, so model (0,0) is at the bottom of the page" $
       -- The content box is 10..190. Model y = 0 is the bottom of the extent, so
