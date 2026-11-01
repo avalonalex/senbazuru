@@ -164,8 +164,15 @@ xmlOneChar c = c `elem` ['\t', '\n', '\r'] || inRange '\x20' '\xD7FF' || inRange
 forbidden :: String
 forbidden = [c | c <- ['\x0' .. '\x1F'] <> ['\xFFFE', '\xFFFF'], c `notElem` ['\t', '\n', '\r']]
 
+-- | The five characters XML text cannot hold literally, which 'escapeXml'
+-- writes as entities.
+markup :: String
+markup = "&<>\"'"
+
 -- | Characters on the allowed side of each of the production's boundaries,
--- and some a too-wide rule would catch.
+-- and some a too-wide rule would catch: whitespace a caption may hold, DEL
+-- and a C1 control, which XML 1.0 allows, the replacement character itself,
+-- and the last characters of the planes.
 allowed :: String
 allowed = ['\t', '\n', '\r', ' ', 'a', '\x7F', '\x85', '\xA0', '\xD7FF', '\xE000', '\xFFFD', '\x10000', '\x1F600', '\x10FFFF']
 
@@ -223,23 +230,28 @@ spec = do
       forM_ forbidden $ \c ->
         (c, escapeXml (T.pack ['a', c, 'b'])) `shouldBe` (c, "a\xFFFD\&b")
 
-    -- The other side of each boundary of XML 1.0's Char production, and
-    -- characters a too-wide rule would catch: whitespace a caption may hold,
-    -- DEL and a C1 control, which XML 1.0 allows, the replacement character
-    -- itself, and the last characters of the planes. Red if the replacement
-    -- took more than it must.
+    -- Every character XML 1.0 can carry but the five the first test covers,
+    -- one by one: the whole of each range of the Char production, not only
+    -- the sides of its boundaries. Red if the replacement took more than it
+    -- must, at a boundary or inside a range. A surrogate is skipped before
+    -- it is made into text, since Text would turn it into U+FFFD itself.
     it "keeps every character XML 1.0 can carry" $
-      forM_ allowed $ \c ->
-        (c, escapeXml (T.singleton c)) `shouldBe` (c, T.singleton c)
+      take 5 [c | c <- [minBound .. maxBound], xmlOneChar c, c `notElem` markup, escapeXml (T.singleton c) /= T.singleton c]
+        `shouldBe` []
 
     -- Whatever the text, what comes out is XML 1.0's: for text drawn from
     -- every range the Char production draws a line through, no character
-    -- falls outside it, and text with nothing to escape comes out unchanged.
+    -- falls outside it.
     it "writes only characters XML 1.0 can carry, whatever the text" $
-      forAll (T.pack <$> listOf (elements (forbidden <> allowed <> "&<>\"'"))) $ \t ->
-        let out = escapeXml t
-         in T.all xmlOneChar out
-              .&&. (T.any (\c -> c `elem` forbidden || c `elem` ("&<>\"'" :: String)) t || out == t)
+      forAll (T.pack <$> listOf (elements (forbidden <> allowed <> markup))) $ \t ->
+        T.all xmlOneChar (escapeXml t)
+
+    -- Text with nothing to escape or replace comes out as it went in. Drawn
+    -- from the allowed characters alone, so that every case tests it, where
+    -- mixed text would almost always hold something to change.
+    it "leaves text with nothing to escape as it is" $
+      forAll (T.pack <$> listOf (elements allowed)) $ \t ->
+        escapeXml t === t
 
   describe "renderSvg" $ do
     let square =
@@ -271,7 +283,9 @@ spec = do
 
     -- A caption is drawn as a label and a file's title as the page's
     -- title, so a control character in either reaches the document through
-    -- one of escapeXml's two text paths. Red if either path skipped it.
+    -- one of escapeXml's two text paths: in a caption, any but the white
+    -- space its wrap breaks at, vertical tab and form feed among it. Red if
+    -- either path skipped it.
     it "writes a control character in a label or the title as U+FFFD" $ do
       let bell = diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Label (Colour "#000000") 14 (V2 0 0) "Reopen\x7 it."]
           out = renderSvg testPage {pageTitle = Just "A\x7 title"} bell

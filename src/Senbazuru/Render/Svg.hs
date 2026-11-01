@@ -324,7 +324,7 @@ formatNumber x
 -- Escaping is not enough for every character. XML 1.0 has no way to write the
 -- control characters below U+0020 other than tab, newline and carriage
 -- return, nor U+FFFE or U+FFFF ('xmlChar'), and a character reference does not
--- help, because @&#7;@ must name a character the document could hold too. A
+-- help, because @\&#7;@ must name a character the document could hold too. A
 -- @frame_title@ can hold one, and so can a caption a fold sequence's source
 -- writes with @\\u{7}@. A document holding one is not XML: a strict reader
 -- refuses the whole page. Replacing the character keeps the rest of the text
