@@ -2,8 +2,10 @@
 
 Written 2026-09-15 against `568dcb6`, when nothing here was implemented. Built
 since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
-`flapStationaryFace`, in #344; L5's `insideRing`, in #491; and L16's
-stretches that keep their face edge (R-05-52, `EdgeSpan`), in #667
+`flapStationaryFace`, in #344; L5's `insideRing`, in #491, and its placement
+(R-05-17, R-05-18, `placeOn`), in #669
+([C139](decisions.md#changes-since-draft-v2)); and L16's stretches that keep
+their face edge (R-05-52, `EdgeSpan`), in #667
 ([C137](decisions.md#changes-since-draft-v2)). `flapPoseAt` and
 `Origami.Route` wait for `flapPoseAt`'s first consumer
 ([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
@@ -582,6 +584,14 @@ on material points.
   ring (`insideRing`) takes that face's *affine map* (linear map plus shift) from
   material to position, built from three non-collinear corners, exact for a
   rigid face.
+- R-05-17 and R-05-18 are built by S5 of [#638](https://github.com/avalonalex/senbazuru/issues/638)
+  ([C139](decisions.md#changes-since-draft-v2)) as
+  `Origami.Step.placeOn :: Frame -> Frame -> Either FoldError [V3]`, every vertex
+  of `after` at `before`'s position for it. The edge is tried first, since
+  `insideRing` calls a point within the hair of a face's boundary outside it;
+  the face's three corners are the three spanning the largest triangle on the
+  sheet; and a `before` that records no faces has them traced on its material
+  points by `withPlanarFaces`.
 - **R-05-19.** Movement uses [`Step.hs:141`](../src/Senbazuru/Origami/Step.hs#L141)'s
   tolerance; faces and groups are `after`'s
   ([`:180-192`](../src/Senbazuru/Origami/Step.hs#L180-L192)). `motionCreases`
@@ -591,7 +601,11 @@ on material points.
   positions.
 
 **Refusals** (new `FoldError` constructors): `MaterialCoordinatesMissing`,
-`VerticesNotAPrefix VertexId`, `AddedVertexOffPaper VertexId`.
+`VerticesNotAPrefix VertexId`, `AddedVertexOffPaper VertexId`. Built with five
+more ([C139](decisions.md#changes-since-draft-v2)): `InNextFrame FoldError`,
+which says a refusal is about `after`, and the four ways reading material points
+can fail, `MaterialCoordinatesUnreadable`, `MaterialCoordinatesCount Int Int`,
+`MaterialPointInvalid VertexId` and `VertexNotFinite VertexId`.
 
 **Rejected.** Backfill, writing the final graph into every frame, which draws the
 crane's every crease on step 1 (same note, "(c)").
