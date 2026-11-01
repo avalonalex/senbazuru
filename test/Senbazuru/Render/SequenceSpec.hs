@@ -99,7 +99,7 @@ spec = describe "a run's page" . beforeAll runs $ do
       (name, silenced) `shouldBe` (name, plain)
       (name, fmap isJust plain) `shouldBe` (name, Right True)
 
-  -- The composition the command line (S23) and S37's golden are to call, at
+  -- The composition run -o x.svg calls, and S37's golden is to, at
   -- the defaults and with each of the theme, the grid and the view changed.
   -- Turns red if runPage drew notes of its own rather than stepNotes', or
   -- dropped any of the three for a default; the last line is what makes

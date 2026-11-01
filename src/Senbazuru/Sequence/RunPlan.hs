@@ -6,18 +6,30 @@
 -- prints. So everything about @senbazuru run@ worth testing lives here
 -- instead, as functions of plain values: which combinations of flags it
 -- accepts ('planRun'), the one line it prints for a checked source
--- ('checkSummary'), and the lines it prints for a refused one
--- ('refusalLines'). The command line only calls them.
+-- ('checkSummary'), the lines it prints for a refused one ('refusalLines'),
+-- and the warning a page seen from behind gets ('oppositeSideWarning'). The
+-- command line only calls them.
 --
 -- == What @run@ writes
 --
 -- @run SOURCE --check@ reads a source, parses it and checks it, and prints
 -- one line, folding no paper. Without @--check@ it runs the sequence and
 -- writes what @-o@ names, by its extension: a sequence file, @.fold@, or to
--- standard output with no @-o@; or one state as a 3D model, @.glb@. A page of
--- steps, @.svg@, is not written yet (milestone M3), and is refused by saying
--- so. Each flag goes only with the output it shapes,
--- and is refused with any other, so that a flag never silently does nothing.
+-- standard output with no @-o@; a page of steps, @.svg@; or one state as a
+-- 3D model, @.glb@. Each flag goes only with the output it shapes, and is
+-- refused with any other, so that a flag never silently does nothing.
+--
+-- == Why the page's flags reach the plan unfilled
+--
+-- 'PageFlags' holds each page flag as given, a 'Maybe', and the command line
+-- fills in the defaults. They are "Senbazuru.Render.Svg"'s @defaultPage@ and
+-- "Senbazuru.Diagram.Layout"'s @defaultGrid@, which this module, a level
+-- below rendering, may not import (PRDs\/decisions.md, §2 row 6), and from
+-- which @render@ reads its own. Filling them here would mean writing 400 and 3
+-- a second time, where nothing would notice the two copies drift. For the
+-- same reason the plan holds @--view@'s name and not a view, which the
+-- command line looks up, or leaves to "Senbazuru.Render.Camera"'s
+-- @defaultView@ when none is given.
 --
 -- == Why these messages may name flags
 --
@@ -32,6 +44,7 @@ module Senbazuru.Sequence.RunPlan
 
     -- * What to do
     Plan (..),
+    PageFlags (..),
     GlbScenes (..),
     RunOptionError (..),
     planRun,
@@ -40,6 +53,7 @@ module Senbazuru.Sequence.RunPlan
     -- * What to print
     checkSummary,
     refusalLines,
+    oppositeSideWarning,
   )
 where
 
@@ -103,9 +117,27 @@ data Plan
     -- standard output, with the layer budget and what the file says about
     -- itself.
     PlanFold (Maybe FilePath) Budget FileHeader
+  | -- | Run the sequence and write its page of steps: the path, the layer
+    -- budget, and the page's flags as given.
+    PlanSvg FilePath Budget PageFlags
   | -- | Run the sequence and write one state as a 3D model: the path, the
     -- layer budget, the @--frame@ given, if any, and which scenes.
     PlanGlb FilePath Budget (Maybe Int) GlbScenes
+  deriving stock (Eq, Show)
+
+-- | The page's flags, each as given, for the command line to fill in from the
+-- page's own defaults (see the module header). Not named @pageWidth@ and
+-- @pageHeight@, which are the page's own fields.
+data PageFlags = PageFlags
+  { -- | @--columns@: figures across the page.
+    flagColumns :: Maybe Int,
+    -- | @--view@, by name: where to look from.
+    flagViewName :: Maybe Text,
+    -- | @--width@, in page units.
+    flagWidth :: Maybe Double,
+    -- | @--height@, in page units.
+    flagHeight :: Maybe Double
+  }
   deriving stock (Eq, Show)
 
 -- | Which scenes a @.glb@ holds, as @export@ chooses them: the paper as seen
@@ -122,8 +154,6 @@ data RunOptionError
     NotWithCheck [Text]
   | -- | An @-o@ whose extension names nothing @run@ writes: the path.
     UnknownOutput FilePath
-  | -- | @-o@ a page of steps, which @run@ does not write yet.
-    PageNotYet
   | -- | Flags that shape another output than the one @-o@ names: the
     -- output, then the flags, in the order @run --help@ lists them.
     NotWithOutput Text [Text]
@@ -141,9 +171,7 @@ instance Explain RunOptionError where
     NotWithCheck flags ->
       "--check writes nothing, so it takes no " <> T.intercalate ", " flags
     UnknownOutput path ->
-      "-o " <> T.pack path <> ": run writes .fold, a sequence file, or .glb, one state as a model"
-    PageNotYet ->
-      "-o .svg, a page of steps, cannot be written by run yet; write .fold and draw it with render --steps"
+      "-o " <> T.pack path <> ": run writes .fold, a sequence file, .svg, a page of steps, or .glb, one state as a model"
     NotWithOutput output flags ->
       output <> " takes no " <> T.intercalate ", " flags
     NoSuchFrame n count ->
@@ -157,7 +185,7 @@ instance Explain RunOptionError where
 -- @OUT.FOLD@ is a FOLD file too. Then each flag that shapes some other
 -- output is refused by name: @--frame@ and @--all-layers@ go only with
 -- @.glb@, @--author@ and @--description@ only with @.fold@, and the page's
--- flags only with the page, which no output takes yet.
+-- flags only with @.svg@.
 planRun :: RunOptions -> Either RunOptionError Plan
 planRun options
   | runCheck options = case flagsGiven allFlags of
@@ -170,10 +198,13 @@ planRun options
         ".glb" -> case flagsGiven (pageFlags ++ foldFlags) of
           [] -> Right (PlanGlb path budget (runFrame options) (if runAllLayers options then GlbCompleteOnly else GlbVisibleAndComplete))
           flags -> Left (NotWithOutput "-o .glb" flags)
-        ".svg" -> Left PageNotYet
+        ".svg" -> case flagsGiven (glbFlags ++ foldFlags) of
+          [] -> Right (PlanSvg path budget page)
+          flags -> Left (NotWithOutput "-o .svg" flags)
         _ -> Left (UnknownOutput path)
   where
     budget = maybe defaultBudget Budget (runLayerBudget options)
+    page = PageFlags (runColumns options) (runView options) (runWidth options) (runHeight options)
     fold output = case flagsGiven (glbFlags ++ pageFlags) of
       [] -> Right (PlanFold output budget (FileHeader (runAuthor options) (runDescription options)))
       flags -> Left (NotWithOutput (maybe "a sequence file" (const "-o .fold") output) flags)
@@ -245,3 +276,19 @@ refusalLines source err =
            | ParseFailed problem <- [err],
              problemHint problem == Just LooksLikeFold
          ]
+
+-- | The line @run -o x.svg@ prints, once, when its page shows the paper from
+-- the side opposite the reader's side, without the @senbazuru: @ the command
+-- line puts before it. Given the @--view@ named, if any.
+--
+-- A warning and not a refusal: a page drawn from below is a picture someone
+-- may want, and it draws the states the run wrote, as every view does. What
+-- the reader is told is that it is not the side the instructions face, since
+-- a valley fold seen from there is a mountain fold. Which side a page shows is
+-- "Senbazuru.Render.Steps"' @pageSide@, which this module cannot import, so
+-- the command line asks it and calls this.
+oppositeSideWarning :: Maybe Text -> Text
+oppositeSideWarning view =
+  "warning: "
+    <> maybe "the page" ("--view " <>) view
+    <> " shows the paper from the side opposite the reader's side, as if the model had been turned over"

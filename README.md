@@ -52,6 +52,7 @@ stack run -- render examples/bird-base.cp --fold -o bird-base.svg
 stack run -- check examples/crane.fold
 stack run -- export examples/crane.fold --fold -o crane.glb
 stack run -- fold examples/crane.fold -o crane-folded.fold
+stack run -- run helmet.foldseq -o helmet.svg
 ```
 
 `stack test` runs the suite, including the material-study checks. Every flag
@@ -124,6 +125,10 @@ surface that the glTF exporter lets you turn over.
   removed.
 - **Opens the stack out**, infers the arrows, and lays a sequence out as one
   numbered page at one scale.
+- **Folds a sequence you write.** A `.foldseq` file says how a model is folded,
+  one step at a time, naming the paper by where it lies on the flat sheet.
+  `run` folds it move by move and writes every state it reaches as one FOLD
+  file, or draws them as a page of steps, a figure for each state.
 - **Exports a 3D model.** glTF (`.glb`), both sides of the paper in their two
   colours. Two scenes share the same material positions: exposed paper for
   stable viewing and the complete sheet for inspection. Creases stay joined;
@@ -213,10 +218,12 @@ with every open issue tiered by how hard it is.
 2. **[A vocabulary of folds, so a sequence can be authored.](https://github.com/avalonalex/senbazuru/issues/60)**
    FOLD output came first, since nothing else can be built without it, and the
    first move is built: `crease` draws a line on a pattern, or through the
-   layers of a folded model, and writes the result out. What is missing is the
-   rest of the vocabulary — turning the model over, rotating a flap, and the
-   named moves a book uses — and a way to write a whole sequence down. Not a
-   sequence *solver*; see above.
+   layers of a folded model, and writes the result out. A whole sequence can
+   now be written down, as a `.foldseq` source that `run` folds move by move:
+   folds, pre-creases, unfolding, turning the model over and turning it round.
+   What is missing is the rest of the vocabulary — rotating a flap, and the
+   named moves a book uses, which a source can name but `run` refuses as not
+   run yet. Not a sequence *solver*; see above.
    → [huzita-hatori](docs/notes/huzita-hatori.md),
    [round-trips](docs/notes/round-trips.md)
 3. **[Folding in three dimensions.](https://github.com/avalonalex/senbazuru/issues/55)**

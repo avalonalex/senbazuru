@@ -1046,10 +1046,19 @@ nine eighths. The refusal points at the line, as a compiler would.
 
 Without `--check`, `run` folds. It opens the sheet the source names, folds
 the paper move by move, and writes every state it reaches as one FOLD file,
-to standard output or to the `.fold` that `-o` names, or one state as a 3D
-model to a `.glb`. A page of steps, `.svg`, is the one output it does not
-write yet: write the `.fold` and draw it with `render --steps`. The crane
-does not get far:
+to standard output or to the `.fold` that `-o` names, or as a page of steps
+to a `.svg`, or one state as a 3D model to a `.glb`:
+
+```bash
+stack run -- run helmet.foldseq -o helmet.svg
+```
+
+The page has a figure for each state the run writes: the sheet, then the paper
+as each step left it, a turn-over included, except a step whose moves were all
+`expect refused`, which writes no state. It is the page `render --steps` draws
+of the `.fold`, byte for byte. It draws the paper and the figure numbers, and
+nothing else yet: the captions, the arrows and the marks a book prints beside
+each figure come one at a time ([usage.md](usage.md#run) lists them). The crane does not get far:
 
 ```console
 $ senbazuru run examples/traditional-crane.foldseq

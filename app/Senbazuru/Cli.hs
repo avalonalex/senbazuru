@@ -32,7 +32,7 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
-import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Explain (Explain (..), decimal, tshow)
 import Senbazuru.Fold.Creasing (creaseAlong)
 import Senbazuru.Fold.Load (LoadError (..), encodeFoldFile, loadFile, readSequenceText, saveFoldFile)
 import Senbazuru.Fold.Query (FoldError, FrameKind (..), frameKind, frameVertices)
@@ -68,18 +68,19 @@ import Senbazuru.Origami.Stacking
   )
 import Senbazuru.Origami.Step (Motion, motionsBetween)
 import Senbazuru.Origami.ThroughLayers (creaseThroughLayers)
-import Senbazuru.Render.Camera (Basis, View (..), namedView, viewNames)
+import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), defaultView, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Gltf (ExportMode (..), GltfError, renderGlb)
-import Senbazuru.Render.Steps (StepError (..), stepPage)
+import Senbazuru.Render.Sequence (runPage, stepNotes)
+import Senbazuru.Render.Steps (StepError (..), pageSide, stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import Senbazuru.Sequence.Check (checkSequence, checkedSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (SequenceError (..), SheetProblem (..))
 import Senbazuru.Sequence.Parse (parseSequence)
-import Senbazuru.Sequence.Record (renderRunReport, runRefusal)
+import Senbazuru.Sequence.Record (Run (..), renderRunReport, runRefusal)
 import Senbazuru.Sequence.Run (RunSettings (..), defaultRunSettings, runSequence)
-import Senbazuru.Sequence.RunPlan (GlbScenes (..), Plan (..), RunOptions (..), checkSummary, chooseState, planRun, refusalLines)
+import Senbazuru.Sequence.RunPlan (GlbScenes (..), PageFlags (..), Plan (..), RunOptions (..), checkSummary, chooseState, oppositeSideWarning, planRun, refusalLines)
 import Senbazuru.Sequence.Syntax (SourceFile (..), sourceFiles)
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
 import System.Exit (exitFailure)
@@ -268,7 +269,7 @@ commandParser =
           ( info
               (RunSource <$> runOptions)
               ( progDesc
-                  "Run a fold sequence source and write its states as FOLD, or one as a 3D model (no .svg page yet); --check only checks it"
+                  "Run a fold sequence source and write its states as FOLD, as a page of steps, or one as a 3D model; --check only checks it"
               )
           )
     )
@@ -472,6 +473,30 @@ nonNegative what unit d
   | d >= 0 && not (isNaN d) && not (isInfinite d) = pure d
   | otherwise = readerError (what <> " must be a non-negative number of " <> unit)
 
+-- | A side of @run@'s page, which has to be longer than the page's margins
+-- on both sides together.
+--
+-- The page keeps 'defaultPage''s margin, and a side no longer than two of
+-- them leaves 'Senbazuru.Geometry.fitBox' a box of no size or less to fit the
+-- figures into. A scale of zero draws every figure as a point, and a negative
+-- one draws it turned round, a half turn on the page, with no error either way.
+-- @render@ takes @--margin@ too, and keeps its own rule.
+pageLength :: String -> Double -> ReadM Double
+pageLength what d
+  -- A NaN fails the comparison, and so is refused with the rest.
+  | d > least && not (isInfinite d) = pure d
+  | otherwise =
+      readerError
+        ( what
+            <> " must be a number of points more than "
+            <> T.unpack (decimal least)
+            <> ", the page's margin of "
+            <> T.unpack (decimal (pageMargin defaultPage))
+            <> " on each side"
+        )
+  where
+    least = 2 * pageMargin defaultPage
+
 -- | Refuse an angle that is not a number.
 --
 -- `read` for a Double happily returns NaN, Infinity, and 1e400 — and every one
@@ -632,18 +657,18 @@ runOptions =
     <*> optional
       ( option
           (columnCount =<< auto)
-          (long "columns" <> metavar "N" <> help "With .svg, figures across the page (default: 3)")
+          (long "columns" <> metavar "N" <> help ("With .svg, figures across the page (default: " <> show (gridColumns (defaultGrid defaultTheme)) <> ")"))
       )
     <*> optional (option (maybeReader (\name -> T.pack name <$ namedView (T.pack name))) viewFlag)
     <*> optional
       ( option
-          (nonNegative "the page width" "points" =<< auto)
-          (long "width" <> metavar "PT" <> help "With .svg, the page width (default: 400)")
+          (pageLength "the page width" =<< auto)
+          (long "width" <> metavar "PT" <> help ("With .svg, the page width (default: " <> T.unpack (decimal (pageWidth defaultPage)) <> ")"))
       )
     <*> optional
       ( option
-          (nonNegative "the page height" "points" =<< auto)
-          (long "height" <> metavar "PT" <> help "With .svg, the page height (default: 400)")
+          (pageLength "the page height" =<< auto)
+          (long "height" <> metavar "PT" <> help ("With .svg, the page height (default: " <> T.unpack (decimal (pageHeight defaultPage)) <> ")"))
       )
     <*> optional (strOption (long "author" <> metavar "TEXT" <> help "With .fold, the file's author"))
     <*> optional (strOption (long "description" <> metavar "TEXT" <> help "With .fold, the file's description"))
@@ -656,13 +681,13 @@ renderOptions =
     <*> frameOption
     <*> option
       auto
-      (long "width" <> metavar "PT" <> value 400 <> showDefault <> help "Page width")
+      (long "width" <> metavar "PT" <> value (pageWidth defaultPage) <> showDefault <> help "Page width")
     <*> option
       auto
-      (long "height" <> metavar "PT" <> value 400 <> showDefault <> help "Page height")
+      (long "height" <> metavar "PT" <> value (pageHeight defaultPage) <> showDefault <> help "Page height")
     <*> option
       auto
-      (long "margin" <> metavar "PT" <> value 16 <> showDefault <> help "Page margin")
+      (long "margin" <> metavar "PT" <> value (pageMargin defaultPage) <> showDefault <> help "Page margin")
     <*> switch
       (long "transparent" <> help "Omit the white background rectangle")
     <*> switch
@@ -698,7 +723,7 @@ renderOptions =
       (atLeastOne =<< auto)
       ( long "columns"
           <> metavar "N"
-          <> value 3
+          <> value (gridColumns (defaultGrid defaultTheme))
           <> showDefault
           <> help "Figures across the page, with --steps"
       )
@@ -825,6 +850,27 @@ runSequenceSource options = case planRun options of
             file <- written source about done
             writeDocument output file
             finish source done
+          PlanSvg output budget flags -> do
+            view <- viewNamed (flagViewName flags)
+            done <- runChecked source budget checked
+            -- A flag not given is the page's own default, which render's flag of
+            -- the same name defaults to as well.
+            let grid = (defaultGrid defaultTheme) {gridColumns = fromMaybe (gridColumns (defaultGrid defaultTheme)) (flagColumns flags)}
+                page =
+                  defaultPage
+                    { pageWidth = fromMaybe (pageWidth defaultPage) (flagWidth flags),
+                      pageHeight = fromMaybe (pageHeight defaultPage) (flagHeight flags),
+                      -- The file's title, as render --steps titles a page.
+                      pageTitle = runTitle done
+                    }
+            drawn <- case runPage defaultTheme budget grid view done of
+              Left err -> dieLines (refusalLines source err)
+              Right Nothing -> die (T.pack path <> ": the run wrote no state with any geometry in it")
+              Right (Just d) -> pure d
+            when (sideOf view done == Just FromOppositeSide) $
+              hPutStrLn stderr ("senbazuru: " <> T.unpack (oppositeSideWarning (flagViewName flags)))
+            TIO.writeFile output (renderSvg page drawn)
+            finish source done
           PlanGlb output budget frame scenes -> do
             done <- runChecked source budget checked
             file <- written source noFileHeader done
@@ -858,6 +904,19 @@ runSequenceSource options = case planRun options of
         Right file -> pure (sourceWritten named, file)
     written source about done = either (dieLines . refusalLines source) pure (writeSequence about done)
     finish source done = maybe (pure ()) (dieLines . refusalLines source) (runRefusal done)
+    -- The view the plan names, checked against 'viewNames' when the flag was
+    -- read, so the refusal is for a name that came some other way.
+    viewNamed = \case
+      Nothing -> pure defaultView
+      Just name -> case namedView name of
+        Just basis -> pure (View (Just basis) 0)
+        Nothing -> die ("--view " <> name <> ": the views are " <> T.intercalate ", " viewNames)
+    -- Which side the page shows, asked of the frames it drew, through its one
+    -- camera. Asked after runPage, which reads the same frames through the
+    -- same camera and has refused any it cannot, so neither Nothing is reached.
+    sideOf view done = case stepNotes done of
+      Right notes -> either (const Nothing) Just (pageSide view (map fst notes))
+      Left _ -> Nothing
 
 -- | Fold one frame and write the folded shape out as a FOLD file.
 --
