@@ -128,8 +128,9 @@ spec = describe "a move record" $ do
   -- reads from the record, never from the move as written, whose type it may
   -- not import. Each sense is held to the way the record's own checked turn
   -- carried the paper as the reader sees it, so a sense that disagreed with
-  -- the turn the runner made turns these red, as would one read from the
-  -- crease's letter or the paper's raw angle.
+  -- the turn the runner made turns these red. None of these records leaves a
+  -- crease lettered V or M, so a sense read from the crease's letter is
+  -- caught by RunSpec's turn-over case, not here.
   describe "the sense a page reads" $ do
     it "gives the quarter fold mountain then valley, and the blintz four mountains then an unfold" $ do
       quarter <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) quarterFold)
@@ -139,15 +140,15 @@ spec = describe "a move record" $ do
       map recordSense (runRecords blintzRun) `shouldBe` replicate 4 (Just MountainFold) <> [Nothing]
       map recordUnfolds (runRecords blintzRun) `shouldBe` replicate 4 False <> [True]
 
-    it "gives a pre-crease the sense written, and a turn-over none" $ do
-      crane <- right (runOn M.empty craneOpening)
+    it "gives each pre-crease the sense written, and a turn-over none" $ do
+      crane <- right (runOn M.empty openingWithAMountain)
       map recordSense (runRecords crane) `shouldBe` [Just ValleyFold, Just ValleyFold, Nothing, Just MountainFold, Just ValleyFold]
       map recordUnfolds (runRecords crane) `shouldBe` replicate 5 False
 
     it "agrees with the way each record's own turn carried the paper, as the reader sees it" $ do
       quarter <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) quarterFold)
       blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
-      crane <- right (runOn M.empty craneOpening)
+      crane <- right (runOn M.empty openingWithAMountain)
       let sensed = [r | run <- [quarter, blintzRun, crane], r <- runRecords run, Just _ <- [recordSense r]]
       length sensed `shouldBe` 2 + 4 + 4
       forM_ sensed $ \record -> do
@@ -182,10 +183,12 @@ right = either (fail . show) pure
 runOn :: M.Map FilePath FoldFile -> Sequence -> Either SequenceError Run
 runOn sheets sequence' = checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate
 
--- | The crane's opening on a plain square: both diagonals pre-creased in
--- front, a turn-over, then both midlines in front.
-craneOpening :: Sequence
-craneOpening = sequenceOf (header "A square" sheetSquare Nothing) $ do
+-- | The crane's opening on a plain square with one sense changed, so that a
+-- pre-crease of each sense follows the turn-over: both diagonals pre-creased
+-- in front, a turn-over, then the south-to-north midline behind and the
+-- west-to-east one in front. The crane itself creases both midlines in front.
+openingWithAMountain :: Sequence
+openingWithAMountain = sequenceOf (header "A square" sheetSquare Nothing) $ do
   step_ "Crease both diagonals." $ do
     move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast)))
     move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthEast) (CornerOf NorthWest)) FlapOfFirstArgument (Just (CornerOf SouthWest)))

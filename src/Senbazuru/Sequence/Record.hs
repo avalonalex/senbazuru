@@ -102,7 +102,7 @@
 --
 -- == What a page reads as the move's kind
 --
--- A page draws a valley arrow, a mountain arrow or an unfold arrow, and
+-- A page is to draw a valley arrow, a mountain arrow or an unfold arrow, and
 -- 'MoveKind' cannot say which: its 'Turn' is a fold and an unfold alike, and a
 -- 'Precrease' carries no sense, since the crease it leaves is drawn flat. So a
 -- record also gives the move's /sense/ ('recordSense'), valley or mountain as
@@ -287,7 +287,8 @@ data MoveKind
   | -- | A pre-crease (owner decision 14): the paper is folded along a line
     -- and laid flat again, so it ends where it began, creased along the
     -- line. Its record keeps the fold's evidence, which was checked over its
-    -- whole path, and carries no sense, since a crease it draws has none.
+    -- whole path. The kind carries no sense, since a crease it draws has
+    -- none; the sense the author wrote is the record's 'recordSense'.
     Precrease
   | -- | A change of presentation (decisions D5): the whole model is shown
     -- turned, and no paper moves. Its two surfaces are one; its presentation

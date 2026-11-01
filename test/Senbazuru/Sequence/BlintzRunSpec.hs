@@ -41,7 +41,7 @@ import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (MoveFailure (..), ResolveProblem (..), SequenceError (..), refusalKindOf)
-import Senbazuru.Sequence.Record hiding (PageAxis (..), Sense (..), Turning (..))
+import Senbazuru.Sequence.Record hiding (Sense (..))
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
 import Senbazuru.Sequence.Syntax (Amount (..), Corner (..), Layers (..), Move (..), Name (..), RefusalKind (..), Sense (..), Sequence)
 import SequenceGallery (pageFile, pageStates, pageSvg, turnOf)
