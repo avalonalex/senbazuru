@@ -54,6 +54,7 @@ module Senbazuru.Diagram
     -- * Shapes
     Shape (..),
     ArrowPath (..),
+    ArrowHead (..),
     mapShapePoints,
     shapePoints,
     shapesBounds,
@@ -139,10 +140,31 @@ data ArrowPath = ArrowPath
     arrowFrom :: !V2,
     arrowVia :: !V2,
     arrowTo :: !V2,
+    -- | Which head the arrow ends in.
+    arrowHead :: !ArrowHead,
     -- | Page units: how long the head is from tip to base.
-    arrowHead :: !Double
+    arrowHeadLength :: !Double
   }
   deriving stock (Eq, Show)
+
+-- | The three heads an origami book puts on a fold arrow, which tell the reader
+-- what kind of fold it is: a solid head for a valley fold, a hollow head with
+-- one barb for a mountain fold, and a hollow head with two for unfolding.
+--
+-- A head, not a kind of fold, because this module knows nothing about folding:
+-- which kind of fold gets which head is "Senbazuru.Diagram.Style"'s
+-- @withKind@, and a valley fold seen from behind the paper is a mountain fold,
+-- which only the renderer, knowing which side it is looking at, can say.
+data ArrowHead
+  = -- | A filled triangle.
+    SolidHead
+  | -- | The outline of half a head: the end of the curve, the tip, and one
+    -- barb on the side the arrow bows to, the outside of the curve.
+    HollowHalfHead
+  | -- | The outline of a whole head, its back edge across the end of the
+    -- curve.
+    HollowDoubleHead
+  deriving stock (Eq, Show, Enum, Bounded)
 
 -- | A drawable primitive.
 --
@@ -189,7 +211,7 @@ data Shape
   | -- | An area filled with the given colour and not stroked, given as closed
     -- rings. The closing edge back to each ring's first point is implied.
     Fill !Colour ![[V2]]
-  | -- | A curved arrow with a solid head.
+  | -- | A curved arrow, ending in the head its path names.
     Arrow !ArrowPath
   | -- | A line of text: colour, size in __page units__, the model-space point
     -- its baseline starts at, and the text itself.

@@ -8,7 +8,7 @@ module Senbazuru.Diagram.StyleSpec (spec) where
 
 import Control.Monad (forM_)
 import Data.Maybe (mapMaybe)
-import Senbazuru.Diagram (Dash (..), Stroke (..))
+import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Dash (..), Stroke (..))
 import Senbazuru.Diagram.Style
 import Senbazuru.Fold.Types (Assignment (..))
 import Senbazuru.Geometry (V2 (..), norm)
@@ -33,6 +33,24 @@ spec = do
       forM_ everyAssignment $ \a ->
         fmap undashed (strokeFor defaultTheme CreasePatternNotation a)
           `shouldBe` fmap undashed (strokeFor defaultTheme FoldedFormNotation a)
+
+  describe "arrow heads" $ do
+    -- 06's A2: an arrow nobody gave a kind keeps the head every page has
+    -- drawn so far. Red if arrowFor set any other head.
+    it "gives an arrow a solid head unless it is given a kind" $
+      arrowHead plain `shouldBe` SolidHead
+
+    -- Lang's conventions. Red if withKind gave any two kinds each other's
+    -- heads.
+    it "gives each kind the head a book draws it with" $
+      [(k, arrowHead (withKind k plain)) | k <- [minBound .. maxBound]]
+        `shouldBe` [(ValleyArrow, SolidHead), (MountainArrow, HollowHalfHead), (UnfoldArrow, HollowDoubleHead)]
+
+    -- Red if a kind also moved the curve, or changed its ink or the head's
+    -- length.
+    it "changes nothing but the head" $
+      forM_ [minBound .. maxBound] $ \k ->
+        (k, (withKind k plain) {arrowHead = arrowHead plain}) `shouldBe` (k, plain)
 
   describe "layerStep" $ do
     it "is off in the default theme" $
@@ -65,3 +83,7 @@ spec = do
     everyAssignment = [minBound .. maxBound] :: [Assignment]
     strokesUnder notation = mapMaybe (strokeFor defaultTheme notation) everyAssignment
     undashed s = s {strokeDash = Dash []}
+
+-- | An arrow as 'arrowFor' makes one, across a unit square.
+plain :: ArrowPath
+plain = arrowFor defaultTheme (V2 0.25 0.5) (V2 0.75 0.5)

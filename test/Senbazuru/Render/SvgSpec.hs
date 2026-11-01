@@ -110,16 +110,40 @@ renderFoldedWith theme basis path = do
 -- | One arrow across a square model of the given size, so that two sizes can be
 -- compared for anything that ought not to depend on the model's scale.
 arrowDiagram :: Double -> Diagram
-arrowDiagram size =
-  diagramWithExtent
-    (Box (V2 0 0) (V2 size size))
-    [ Arrow
-        ( arrowFor
-            defaultTheme
-            (V2 (0.25 * size) (0.5 * size))
-            (V2 (0.75 * size) (0.5 * size))
-        )
-    ]
+arrowDiagram = arrowDiagramWith SolidHead
+
+-- | The same, ending in the given head.
+arrowDiagramWith :: ArrowHead -> Double -> Diagram
+arrowDiagramWith h size =
+  diagramWithExtent (Box (V2 0 0) (V2 size size)) [Arrow (arrowPathWith h size)]
+
+arrowPathWith :: ArrowHead -> Double -> ArrowPath
+arrowPathWith h size =
+  withHead h (arrowFor defaultTheme (V2 (0.25 * size) (0.5 * size)) (V2 (0.75 * size) (0.5 * size)))
+
+withHead :: ArrowHead -> ArrowPath -> ArrowPath
+withHead h a = a {arrowHead = h}
+
+-- | The last path of a page, which for one arrow is its head.
+headLine :: Text -> Text
+headLine = maybe "" fst . unsnocLines
+  where
+    unsnocLines out = case reverse (filter (T.isInfixOf "<path") (T.lines out)) of
+      l : rest -> Just (l, rest)
+      [] -> Nothing
+
+-- | Each path's points, as its @d@ attribute lists them, letters dropped.
+pathPointsOf :: Text -> [[V2]]
+pathPointsOf out = [pairs (numbers l) | l <- T.lines out, "<path" `T.isInfixOf` l]
+  where
+    numbers l = case T.splitOn "d=\"" l of
+      [_, rest] -> [read (T.unpack w) :: Double | w <- T.words (T.takeWhile (/= '"') rest), T.all (`elem` ("-.0123456789" :: String)) w]
+      _ -> []
+    pairs (x : y : rest) = V2 x y : pairs rest
+    pairs _ = []
+
+cross :: V2 -> V2 -> Double
+cross (V2 ax ay) (V2 bx by) = ax * by - ay * bx
 
 -- | Render one frame of a sequence with the arrows for the step it begins.
 renderStep :: Int -> FilePath -> IO Text
@@ -344,12 +368,51 @@ spec = do
       T.count "<path" out `shouldBe` 2
       T.count "fill=\"#1a1a1a\"" out `shouldBe` 1
 
-    it "keeps the arrowhead the same size however big the model is" $ do
-      -- The two-unit rule, in the one shape that needs both units at once. A
-      -- head measured in model units would be a speck on a large sheet and
-      -- would swallow a small one.
-      let headOf = filter (T.isInfixOf "fill=") . T.lines . renderSvg testPage
-      headOf (arrowDiagram 1) `shouldBe` headOf (arrowDiagram 400)
+    -- 06's A4. The two-unit rule, in the one shape that needs both units at
+    -- once: a head measured in model units would be a speck on a large sheet
+    -- and would swallow a small one. Whole pages, since a hollow head has no
+    -- fill to pick its line out by. Red if any head, or any part of one, were
+    -- sized in model units.
+    it "draws every head the same on the page however big the model is" $
+      forM_ [minBound .. maxBound] $ \h ->
+        (h, renderSvg testPage (arrowDiagramWith h 1)) `shouldBe` (h, renderSvg testPage (arrowDiagramWith h 400))
+
+    -- A hollow head is stroked like the curve and filled with nothing: the
+    -- group's fill="none" holds. Red if one were filled, or drawn in the
+    -- curve's dash.
+    it "draws a hollow head as an outline, in the curve's ink and width" $
+      forM_ [HollowHalfHead, HollowDoubleHead] $ \h -> do
+        let dashed = (arrowPathWith h 1) {arrowStroke = Stroke (Colour "#123456") 1.8 (Dash [3, 2])}
+            out = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Arrow dashed])
+        (h, T.count "fill=\"#123456\"" out) `shouldBe` (h, 0)
+        (h, length (filter (T.isInfixOf "<path") (T.lines out))) `shouldBe` (h, 2)
+        (h, headLine out) `shouldSatisfy` (\(_, l) -> all (`T.isInfixOf` l) ["stroke=\"#123456\"", "stroke-width=\"1.8\"", " Z\""])
+        (h, T.isInfixOf "stroke-dasharray" (headLine out)) `shouldBe` (h, False)
+
+    -- The heads' geometry, measured on the page from the path data rather than
+    -- pinned as bytes: the half head runs from the end of the curve to the tip
+    -- and out to one barb, square to the head's axis, on the side the arrow
+    -- bows to; the double head is the whole outline, its back edge centred on
+    -- the end of the curve. An arrow drawn the other way bows the other way on
+    -- the page, so the barb has to follow it. Red if the barb went to a fixed
+    -- side, inside the curve, or anywhere but 0.4 of a head-length from the
+    -- base, or the head were not 11 long.
+    it "puts the hollow heads where a book does, the barb outside the curve" $
+      forM_ [(V2 0.25 0.5, V2 0.75 0.5), (V2 0.75 0.5, V2 0.25 0.5)] $ \(from, to) -> do
+        let page h = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Arrow (withHead h (arrowFor defaultTheme from to))])
+        case (pathPointsOf (page HollowHalfHead), pathPointsOf (page HollowDoubleHead)) of
+          ([[start, via, end], [base, tip, barb]], [[_, _, end'], [tip', left, right]]) -> do
+            let axis = tip ^-^ base
+                bow = signum (cross (end ^-^ start) (via ^-^ start))
+            norm (base ^-^ end) `shouldSatisfy` (< 1e-3)
+            norm axis `shouldSatisfy` (\l -> abs (l - 11) < 1e-3)
+            norm (barb ^-^ base) `shouldSatisfy` (\l -> abs (l - 4.4) < 1e-3)
+            dot (barb ^-^ base) axis `shouldSatisfy` (\d -> abs d < 1e-2)
+            signum (cross (end ^-^ start) (barb ^-^ start)) `shouldBe` bow
+            tip' `shouldBe` tip
+            norm (0.5 *^ (left ^+^ right) ^-^ end') `shouldSatisfy` (< 1e-3)
+            norm (left ^-^ right) `shouldSatisfy` (\l -> abs (l - 8.8) < 1e-3)
+          other -> expectationFailure ("expected a curve and a head of three points each, got " <> show other)
 
     it "shrinks the head rather than drawing the arrow backwards" $ do
       -- The head is a fixed size in page units, and a small flap on a large
