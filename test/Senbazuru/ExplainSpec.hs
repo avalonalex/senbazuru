@@ -30,7 +30,8 @@
 -- vectors that way until #582, which also made the ids show as their numbers,
 -- so an id can no longer print as a record anywhere; a vector still can.
 -- 'idMessages' samples every constructor of both types, with the study's
--- messages the same fix touched, and holds each to the numbers it was given.
+-- messages the same fix touched and the eight 'FoldError' constructors
+-- placement added, and holds each to the numbers it was given.
 module Senbazuru.ExplainSpec (spec) where
 
 import ContactDiscovery (DiscoveryError (AmbiguousReferenceOrder))
@@ -116,8 +117,9 @@ everyType =
     ("RunPageError, the page's", explain (PageDoesNotFit FiguresHaveNoWidth))
   ]
 
--- | Every constructor of 'SurfaceError' and 'PaperMeshError', and the study's
--- messages the same fix touched, each with the numbers its message must show.
+-- | Every constructor of 'SurfaceError' and 'PaperMeshError', the study's
+-- messages the same fix touched, and placement's refusals, each with the
+-- numbers its message must show.
 -- The ids are all different, so a message that printed one id twice, or none,
 -- leaves a number out. 'surfaceName' and 'paperName' match without a
 -- catch-all, so that a constructor added to either type without a sample here
@@ -131,7 +133,16 @@ idMessages =
          ("BendingError InvalidRestAngle", explain (InvalidRestAngle (EdgeId 25) 4), ["25", "4.0"]),
          ("BendingError UnsupportedCrease", explain (UnsupportedCrease (EdgeId 26)), ["26"]),
          ("ContactError UnknownContactPanel", explain (UnknownContactPanel (FaceId 27)), ["27"]),
-         ("DiscoveryError AmbiguousReferenceOrder", explain (AmbiguousReferenceOrder (FaceId 28) (FaceId 29)), ["28", "29"])
+         ("DiscoveryError AmbiguousReferenceOrder", explain (AmbiguousReferenceOrder (FaceId 28) (FaceId 29)), ["28", "29"]),
+         -- 05 L5's refusals, from placing one frame's vertices on another's.
+         ("FoldError MaterialCoordinatesMissing", explain MaterialCoordinatesMissing, []),
+         ("FoldError MaterialCoordinatesUnreadable", explain MaterialCoordinatesUnreadable, []),
+         ("FoldError MaterialCoordinatesCount", explain (MaterialCoordinatesCount 30 31), ["30", "31"]),
+         ("FoldError MaterialPointInvalid", explain (MaterialPointInvalid (VertexId 32)), ["32"]),
+         ("FoldError VertexNotFinite", explain (VertexNotFinite (VertexId 33)), ["33"]),
+         ("FoldError VerticesNotAPrefix", explain (VerticesNotAPrefix (VertexId 34)), ["34"]),
+         ("FoldError AddedVertexOffPaper", explain (AddedVertexOffPaper (VertexId 35)), ["35"]),
+         ("FoldError InNextFrame", explain (InNextFrame (AddedVertexOffPaper (VertexId 36))), ["36"])
        ]
 
 surfaceSamples :: [(SurfaceError, [Text])]
@@ -298,13 +309,17 @@ spec = do
       explain (RunRefused run) `shouldBe` explain run
       explain (PageDoesNotFit (NoRoomAcross 30 16)) `shouldBe` explain (NoRoomAcross 30 16)
 
-    -- Three arms are deliberately not pass-through. Asserting the general rule
+    -- Some arms are deliberately not pass-through. Asserting the general rule
     -- and stopping there would leave a reader free to "simplify" these away.
+    -- The last says which of two frames a placement refused, since both
+    -- refuse for the same reasons.
     it "is prefixed where the outer error has something to add" $ do
       explain (CannotCrease NoVertices)
         `shouldSatisfy` T.isSuffixOf (explain NoVertices)
       explain (ImportFailed "a.cp" EmptyPattern)
         `shouldSatisfy` T.isSuffixOf (explain EmptyPattern)
+      explain (InNextFrame MaterialCoordinatesMissing)
+        `shouldBe` "the frame after it: " <> explain MaterialCoordinatesMissing
 
   -- The page's numbers are the reader's, through decimal, so a height of 300
   -- is not "300.000000"; the bands are measured, through num.

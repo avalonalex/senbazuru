@@ -6,8 +6,11 @@
 -- in the code knows which way a fold "usually" goes.
 module Senbazuru.Origami.StepSpec (spec) where
 
+import Data.Aeson (toJSON)
+import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
 import Data.Maybe (isJust)
+import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types
@@ -18,10 +21,14 @@ import Senbazuru.Fold.Types
     VertexId (..),
     allFrames,
     emptyFrame,
+    keyFrame,
   )
+import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace (norm, (^-^))
+import Senbazuru.Origami.Folding (foldFrame, foldFrameWith)
 import Senbazuru.Origami.Step
+import Senbazuru.Origami.Surface (materialFrame, surfaceFromFolded)
 import Test.Hspec
 
 steps :: IO [Frame]
@@ -63,6 +70,7 @@ flapsFolded =
 spec :: Spec
 spec = do
   presentation
+  placement
   describe "the folding sequence fixture" $ do
     it "sees the left half swing onto the right" $ do
       fs <- steps
@@ -173,3 +181,102 @@ presentation = describe "a turn of the whole model" $ do
         wholeModelMotion first' second `shouldBe` Right Nothing
         wholeModelMotion first' first' `shouldBe` Right Nothing
       _ -> expectationFailure "the sequence has fewer than two states"
+
+-- | 05 L5's placement (R-05-17, R-05-18): a later frame's vertices put where
+-- an earlier frame has its paper, for frames whose crease graph grew.
+placement :: Spec
+placement = describe "placing a later frame's vertices on an earlier frame" $ do
+  -- (a) 05 L2's batch creased at rest on the diagonal pattern: no paper
+  -- moves. Vertices 4, 5 and 6 lie on edges of the earlier frame and are
+  -- read along them; vertex 7 lies on none, at (1/4, 1/4) inside face
+  -- [0, 1, 3], and is placed through that face's map. Exact, since every
+  -- number is a quarter or a half. Red if an added vertex were looked for
+  -- only in a face: 'insideRing' calls a point on a face's edge outside it, so
+  -- vertices 4, 5 and 6 would be refused as off the paper.
+  it "places the at-rest batch exactly, on edges and inside a face" $ do
+    cp <- diagonalPattern
+    later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    placeOn cp later
+      `shouldBe` Right [V3 0 0 0, V3 1 0 0, V3 1 1 0, V3 0 1 0, V3 0 0.5 0, V3 0.5 0 0, V3 0.5 0.5 0, V3 0.25 0.25 0]
+
+  -- (b) The earlier frame is the diagonal pattern folded on its diagonal,
+  -- material points written in; the later frame creases the pattern at rest
+  -- along (1/2, 1)-(1, 1/2) and the other diagonal. The vertex added at
+  -- material (3/4, 3/4) is in the face the fold turned, which lies over the
+  -- held face, so it is placed at (1/4, 1/4). Red if the map of the face
+  -- held still, the identity, placed it at (3/4, 3/4).
+  it "places an added vertex where the fold turned its face" $ do
+    cp <- diagonalPattern
+    earlier <- right (foldFrameWith cp) >>= \folded -> materialFrame <$> right (surfaceFromFolded folded)
+    later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0.5 1, V2 1 0.5, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    placed <- right (placeOn earlier later)
+    earlierAt <- right (frameVertices earlier)
+    take 4 placed `shouldBe` earlierAt
+    case drop 7 placed of
+      [p] -> norm (p ^-^ V3 0.25 0.25 0) `shouldSatisfy` (< 1e-12)
+      other -> expectationFailure ("expected eight vertices, got " <> show (length placed) <> ": " <> show other)
+
+  -- An L-shaped face, which a crease that stops at another leaves: the
+  -- earlier frame, hand-written with no faces so that they are traced, is a
+  -- unit square creased along (0, 1/2)-(3/10, 1/2)-(3/10, 1). The later frame
+  -- creases it at rest along x = 9/20 and y = 3/4 from (3/10, 3/4), which
+  -- cross at (9/20, 3/4) in the arm of the L, on no earlier edge. Red if the
+  -- face holding it were found by a half-plane test, which calls the arm
+  -- outside the L and refuses the vertex as off the paper.
+  it "places a vertex in the arm of a face that is not convex" $ do
+    later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0.45 0, V2 0.45 1, Valley), (V2 0.3 0.75, V2 1 0.75, Valley)] lPattern)
+    placed <- right (placeOn lPattern later)
+    case drop 11 placed of
+      [p] -> norm (p ^-^ V3 0.45 0.75 0) `shouldSatisfy` (< 1e-12)
+      other -> expectationFailure ("expected twelve vertices, got " <> show (length placed) <> ": " <> show other)
+
+  -- Each refusal, from a named input. Red if a frame broken that way were
+  -- placed anyway, or refused for the wrong reason.
+  describe "what it refuses" $ do
+    it "refuses a frame whose paper's place on the sheet is not known, either one" $ do
+      cp <- diagonalPattern
+      folded <- right (foldFrame cp)
+      placeOn folded cp `shouldBe` Left MaterialCoordinatesMissing
+      placeOn cp folded `shouldBe` Left (InNextFrame MaterialCoordinatesMissing)
+
+    it "refuses a later frame that does not begin with the earlier one's vertices" $ do
+      cp <- diagonalPattern
+      let swapped = cp {verticesCoords = drop 1 (take 2 (verticesCoords cp)) <> take 1 (verticesCoords cp) <> drop 2 (verticesCoords cp)}
+      placeOn cp swapped `shouldBe` Left (VerticesNotAPrefix (VertexId 0))
+      -- The L's first four vertices are the square's, so the square stops
+      -- short of its vertex 4.
+      placeOn lPattern cp `shouldBe` Left (VerticesNotAPrefix (VertexId 4))
+
+    it "refuses an added vertex where the earlier frame has no paper" $ do
+      cp <- diagonalPattern
+      placeOn cp cp {verticesCoords = verticesCoords cp <> [[2, 2]]} `shouldBe` Left (AddedVertexOffPaper (VertexId 4))
+
+    it "refuses material points it cannot read, saying how" $ do
+      cp <- diagonalPattern
+      let withMaterial value = cp {frameExtras = KM.insert "senbazuru:material_coords" value (frameExtras cp)}
+      placeOn (withMaterial (toJSON ("corners" :: String))) cp `shouldBe` Left MaterialCoordinatesUnreadable
+      placeOn (withMaterial (toJSON [[0, 0], [1, 0], [1, 1 :: Double]])) cp `shouldBe` Left (MaterialCoordinatesCount 4 3)
+      placeOn (withMaterial (toJSON [[0, 0], [1, 0, 0], [1, 1], [0, 1 :: Double]])) cp `shouldBe` Left (MaterialPointInvalid (VertexId 1))
+      placeOn cp {verticesCoords = [0 / 0, 0] : drop 1 (verticesCoords cp)} cp `shouldBe` Left (VertexNotFinite (VertexId 0))
+
+-- | @examples/diagonal-cp.fold@: a unit square with one valley diagonal, from
+-- (0, 1) to (1, 0), and its two faces.
+diagonalPattern :: IO Frame
+diagonalPattern = do
+  bytes <- BS.readFile "examples/diagonal-cp.fold"
+  either (fail . ("decode failed: " <>)) (pure . keyFrame) (decodeFoldFile bytes)
+
+-- | A unit square creased along (0, 1/2)-(3/10, 1/2)-(3/10, 1), recording no
+-- faces: the larger of its two is an L.
+lPattern :: Frame
+lPattern =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0.5], [0.3, 0.5], [0.3, 1]],
+      edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 6), (6, 3), (3, 4), (4, 0), (4, 5), (5, 6)]],
+      edgesAssignment = replicate 6 Border <> [Valley, Valley],
+      edgesFoldAngle = replicate 8 0,
+      frameClasses = ["creasePattern"]
+    }
+
+right :: (Show e) => Either e a -> IO a
+right = either (fail . show) pure
