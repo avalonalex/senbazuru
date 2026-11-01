@@ -8,7 +8,7 @@
 -- stop. Nothing in the type says that, and it is the sort of rule a new
 -- instance breaks without anybody noticing until a message reads
 -- @cannot render foo.fold: The frame ...@. 'everyType' samples each type,
--- fifteen of them, with one constructor each and a few with two or three:
+-- twenty-four of them, with one constructor each and a few with two to six:
 -- enough to catch a whole instance written the wrong way, not enough to catch
 -- one new arm added to an existing one, and hand-maintained either way. Treat it as a worked statement
 -- of the rule rather than as a guard. The sequence language's three types are
@@ -38,6 +38,7 @@ import Data.Char (isAlphaNum, isUpper)
 import Data.Text (Text)
 import Data.Text qualified as T
 import FoldBending (BendingError (InvalidRestAngle, MissingRestAngle, UnexpectedRestAngle, UnsupportedCrease))
+import Senbazuru.Diagram.Page (PageFitError (..))
 import Senbazuru.Explain (Explain (..), decimal, num)
 import Senbazuru.Fold.Load (LoadError (..), SaveError (..))
 import Senbazuru.Fold.Query (FoldError (..))
@@ -45,14 +46,13 @@ import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Import.Segments (ImportError (..))
+import Senbazuru.Origami.Flap (FlapError (..))
+import Senbazuru.Origami.Flat (FlatError (..))
 -- Qualified, not because the modules are large but because three of them spell
 -- the same fault: 'NotFlat' is a constructor of both CheckError and
 -- StackingError, and 'FrameGeometry' of both CheckError and FoldingError. That
 -- is not an accident to be worked around -- it is the duplication this class
 -- was introduced to make visible.
-
-import Senbazuru.Origami.Flap (FlapError (..))
-import Senbazuru.Origami.Flat (FlatError (..))
 import Senbazuru.Origami.FlatFold qualified as Check
 import Senbazuru.Origami.Folding qualified as Fold
 import Senbazuru.Origami.Stacking qualified as Stack
@@ -60,6 +60,7 @@ import Senbazuru.Origami.Surface (SurfaceError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.PaperMesh (PaperMeshError (..))
+import Senbazuru.Render.Sequence (RunPageError (..))
 import Senbazuru.Render.Steps (StepError (..))
 import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), Found (..), MoveFailure (..), ParseProblem (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), StaticProblem (..), TakenBecause (..), WriteProblem (..))
 import Senbazuru.Sequence.RunPlan (RunOptionError (..))
@@ -107,7 +108,12 @@ everyType =
     ("StaticProblem", explain EmptyStep),
     ("RunOptionError", explain (NotWithCheck ["-o", "--report"])),
     ("RunOptionError, a frame", explain (NoSuchFrame 0 3)),
-    ("RunOptionError, no states", explain NoStates)
+    ("RunOptionError, no states", explain NoStates),
+    ("PageFitError, no room across", explain (NoRoomAcross 30 16)),
+    ("PageFitError, no width", explain FiguresHaveNoWidth),
+    ("PageFitError, too short", explain (TooShortForCaptions 300 16 299.2)),
+    ("RunPageError, the run's", explain (RunRefused (WriteRefused 2 (WriteMissingAngles 12 11)))),
+    ("RunPageError, the page's", explain (PageDoesNotFit FiguresHaveNoWidth))
   ]
 
 -- | Every constructor of 'SurfaceError' and 'PaperMeshError', and the study's
@@ -284,6 +290,14 @@ spec = do
       let inner = Fold.DegenerateFace (FaceId 7)
       explain (CannotFold inner) `shouldBe` explain inner
 
+    -- A run's page refuses for the run or for the page, and says each in
+    -- that one's own words; the CLI tells the two apart only to print the
+    -- run's at its source line.
+    it "reaches the run's or the page's instance where RunPageError wraps one" $ do
+      let run = WriteRefused 2 (WriteMissingAngles 12 11)
+      explain (RunRefused run) `shouldBe` explain run
+      explain (PageDoesNotFit (NoRoomAcross 30 16)) `shouldBe` explain (NoRoomAcross 30 16)
+
     -- Three arms are deliberately not pass-through. Asserting the general rule
     -- and stopping there would leave a reader free to "simplify" these away.
     it "is prefixed where the outer error has something to add" $ do
@@ -291,6 +305,13 @@ spec = do
         `shouldSatisfy` T.isSuffixOf (explain NoVertices)
       explain (ImportFailed "a.cp" EmptyPattern)
         `shouldSatisfy` T.isSuffixOf (explain EmptyPattern)
+
+  -- The page's numbers are the reader's, through decimal, so a height of 300
+  -- is not "300.000000"; the bands are measured, through num.
+  describe "a page too short for its captions" $
+    it "is told in the reader's numbers and the bands' measure" $
+      explain (TooShortForCaptions 300 16 299.2)
+        `shouldBe` "a page 300 tall is too short for its captions: however small its figures are drawn, their captions wrap to bands at least 299.200000 tall, and it has 268 inside its margins of 16"
 
   -- Nothing prints these two today: every caller of 'flatSheet' flattens a
   -- 'FlatError' into its own error first, and the CLI takes a 'StepError'

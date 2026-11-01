@@ -43,12 +43,24 @@
 -- A book prints more beside a figure than the paper: the arrow for the next
 -- fold, the step's instruction, a mark for turning the model over. Two frames
 -- cannot say most of that, so it reaches the page as a /step note/, one for
--- each figure, from whoever knows it ('stepPageWith'). A note says one thing so
--- far: whether to infer arrows to the next figure.
+-- each figure, from whoever knows it ('stepFigures'). A note says two things
+-- so far: whether to infer arrows to the next figure, and what caption to
+-- print under it.
 --
--- 'stepPage' is 'stepPageWith' with the same note on every figure, picked by
--- its 'Bool' ('noteFor'), rather than a second way of drawing the same page,
--- which would be free to drift from the first as the test suite's copy did.
+-- 'stepFigures' draws each figure with its note and hands it back with its
+-- caption, and lays out no page, because laying out a caption needs the
+-- scale the page draws at, which is the page's to know
+-- ("Senbazuru.Diagram.Page", @fitPage@) and which 'stepPage' does not take.
+-- So the drawing, the costly part, is done in one place and once, and two
+-- pages of the same figures differ only in how they are laid out: 'stepPage'
+-- lays them out with 'gridOf', and a run's page ("Senbazuru.Render.Sequence")
+-- fits them to a page with their captions under them.
+--
+-- 'stepPage' is 'stepFigures' with the same note on every figure, picked by
+-- its 'Bool' ('noteFor'), rather than a second way of drawing the same
+-- figures, which would be free to drift from the first as the test suite's
+-- copy did. 'noteFor' gives no figure a caption, so 'stepPage' has none to
+-- leave out.
 --
 -- Nothing here reads a frame's @frame_title@, so @render --steps@ never draws
 -- one, because a file cannot say what its titles are.
@@ -59,24 +71,25 @@
 -- front, onto the bottom.\" Drawn under its figure, one of the two would be
 -- wrong whichever this assumed.
 -- Words under a figure have to arrive in its note, from a caller that knows
--- which kind its titles are.
+-- which kind its titles are, as a run does ("Senbazuru.Render.Sequence").
 --
 -- The note's constructor is not exported. Every note made outside this
 -- module starts as 'inferNote' or 'silentNote' and changes the fields it
 -- means to, so a field added later is filled, for every caller that does not
--- set it, by those two definitions. Every page the command line and the
+-- set it, by those two definitions. Every page @render --steps@ and the
 -- studies draw comes through 'stepPage', whose notes 'noteFor' picks from the
--- same two, so a default that changed those pages would have to be in one of
--- the three.
+-- same two, and a run's page starts each of its notes from 'silentNote', so a
+-- default that changed those pages would have to be in one of the three.
 module Senbazuru.Render.Steps
   ( -- * A page of steps
-    stepPageWith,
     stepPage,
+    stepFigures,
     StepError (..),
 
     -- * What each figure carries
     StepNote,
     noteArrows,
+    noteCaption,
     Arrows (..),
     inferNote,
     silentNote,
@@ -88,6 +101,7 @@ module Senbazuru.Render.Steps
 where
 
 import Data.Bifunctor (first)
+import Data.Text (Text)
 import Senbazuru.Diagram (Diagram)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
 import Senbazuru.Diagram.Style (Theme)
@@ -133,9 +147,12 @@ instance Explain StepError where
 
 -- | What a figure carries besides the paper. See the module header for why
 -- its constructor is not exported.
-newtype StepNote = StepNote
+data StepNote = StepNote
   { -- | Whether the figure carries the fold that takes it to the next one.
-    noteArrows :: Arrows
+    noteArrows :: !Arrows,
+    -- | The words printed under the figure, if any: the instruction of the
+    -- step that starts from it.
+    noteCaption :: !(Maybe Text)
   }
   deriving stock (Eq, Show)
 
@@ -148,13 +165,13 @@ data Arrows
     NoArrows
   deriving stock (Eq, Show)
 
--- | Arrows inferred from the frames, and nothing else.
+-- | Arrows inferred from the frames, and nothing else: no caption.
 inferNote :: StepNote
-inferNote = StepNote {noteArrows = InferArrows}
+inferNote = StepNote {noteArrows = InferArrows, noteCaption = Nothing}
 
 -- | The paper and nothing else.
 silentNote :: StepNote
-silentNote = StepNote {noteArrows = NoArrows}
+silentNote = StepNote {noteArrows = NoArrows, noteCaption = Nothing}
 
 -- | The note 'stepPage' gives every figure: 'inferNote' with arrows asked for,
 -- 'silentNote' without.
@@ -162,52 +179,55 @@ noteFor :: Bool -> StepNote
 noteFor True = inferNote
 noteFor False = silentNote
 
--- | Every frame of a file as one page of numbered figures, each drawn with its
--- note.
+-- | Every frame of a file drawn as a figure, with its note, in order, each
+-- with the caption its note gives it: the figures of a page of steps, before
+-- they are laid out.
 --
--- 'Nothing' when the file has no frame with any geometry in it — which is not
--- the same as having no frames. FOLD keeps its file metadata in the same object
+-- Empty when the file has no frame with any geometry in it — which is not the
+-- same as having no frames. FOLD keeps its file metadata in the same object
 -- as the first frame, so a file that puts every step in @file_frames@ has a key
 -- frame holding a title and nothing else. That is not a step, and skipping it
 -- is why this takes frames rather than a count. Its note is skipped with it,
 -- so every other note stays with its own frame, and a frame that will not draw
 -- is still named by its place in the list.
-stepPageWith ::
+stepFigures ::
   Theme ->
   -- | How hard to look for a layer order, for the frames that need one.
   Budget ->
-  Grid ->
   -- | Where to look from and which way up, with the camera chosen from the
   -- whole sequence when the view does not name one.
   View ->
   [(Frame, StepNote)] ->
-  Either StepError (Maybe Diagram)
-stepPageWith theme budget grid view notes = do
+  Either StepError [(Diagram, Maybe Text)]
+stepFigures theme budget view notes = do
   (resolved, basis) <- pageCamera view notes
   -- Numbered by their place in the sequence too, so "the next step" skips
   -- over a metadata-only key frame rather than tripping on it.
   let order = [fr | (_, fr, _, _) <- resolved]
-  figures <- traverse (figure basis order) (zip [0 ..] resolved)
-  pure (gridOf grid figures)
+  traverse (figure basis order) (zip [0 ..] resolved)
   where
     figure basis order (position, (i, fr, note, verts)) = do
       d <-
         first
           (StepError i)
           (creasePatternFrom theme budget (defaultNotationFor (frameClasses fr) verts) basis fr)
-      case (noteArrows note, drop (position + 1) order) of
+      drawn <- case (noteArrows note, drop (position + 1) order) of
         -- The last figure of a sequence is the finished model, and a book draws
         -- no arrow on it, whatever its note asks for.
         (InferArrows, next : _) -> do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withArrows theme basis motions d)
         _ -> pure d
+      pure (drawn, noteCaption note)
 
--- | Every frame of a file as one page of numbered figures: 'stepPageWith' with
--- 'noteFor' on every figure.
+-- | Every frame of a file as one page of numbered figures: 'stepFigures' with
+-- 'noteFor' on every figure, laid out by 'gridOf'.
 --
 -- With @arrows@ set, each figure but the last also carries the fold that takes
 -- it to the next one, as a book draws it.
+--
+-- 'Nothing' when the file has no frame with any geometry in it, as
+-- 'stepFigures' says.
 stepPage ::
   Theme ->
   Budget ->
@@ -217,16 +237,16 @@ stepPage ::
   [Frame] ->
   Either StepError (Maybe Diagram)
 stepPage theme budget grid view arrows frames =
-  stepPageWith theme budget grid view [(fr, noteFor arrows) | fr <- frames]
+  gridOf grid . map fst <$> stepFigures theme budget view [(fr, noteFor arrows) | fr <- frames]
 
 -- | Which side of the paper a page of these frames shows: the side its one
 -- camera sees, so under @--view bottom@ a page is seen from the opposite side
 -- however its frames lie.
 --
 -- A frame whose vertices cannot be read is refused, naming the frame
--- 'stepPage' would name, because the camera is chosen from every frame's
+-- 'stepFigures' would name, because the camera is chosen from every frame's
 -- vertices. The side itself does not need them, as the module header says. A
--- frame 'stepPage' cannot draw for another reason still has a side. A list
+-- frame 'stepFigures' cannot draw for another reason still has a side. A list
 -- with no geometry in it has no page, and is given the side of the view's own
 -- camera, or of 'topDown' when the view names none.
 pageSide :: View -> [Frame] -> Either StepError SeenFrom

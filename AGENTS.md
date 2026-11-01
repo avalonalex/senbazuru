@@ -253,7 +253,7 @@ is cubic. Header of `Senbazuru.Fold.Creasing`.
 precedent. It must not import `Render.CreasePattern`; the policy both share,
 which layer order to use, is `Origami.Stacking.layerOrderFor`. **`--layer-budget`
 is a parameter of every entry point** — `creasePatternFrom`,
-`creasePatternAuto`, `surfaceDiagram`, `stepPage`, `stepPageWith`,
+`creasePatternAuto`, `surfaceDiagram`, `stepPage`, `stepFigures`,
 `runPage`, `renderGlb`, `renderSurfaceGlb`, `renderSurfaceGlbWith`, and
 `runSequence` through `RunSettings` — because it was a CLI flag that did nothing on `render` for
 exactly as long as it was not.

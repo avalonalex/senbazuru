@@ -31,6 +31,7 @@ import Numeric (showFFloat)
 import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
+import Senbazuru.Diagram.Page (FittedPage (..), Height (..))
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
 import Senbazuru.Explain (Explain (..), decimal, tshow)
 import Senbazuru.Fold.Creasing (creaseAlong)
@@ -71,7 +72,7 @@ import Senbazuru.Origami.ThroughLayers (creaseThroughLayers)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), defaultView, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
 import Senbazuru.Render.Gltf (ExportMode (..), GltfError, renderGlb)
-import Senbazuru.Render.Sequence (runPage, stepNotes)
+import Senbazuru.Render.Sequence (RunPageError (..), runPage, stepNotes)
 import Senbazuru.Render.Steps (StepError (..), pageSide, stepPage)
 import Senbazuru.Render.Svg (Page (..), defaultPage, renderSvg)
 import Senbazuru.Sequence.Check (checkSequence, checkedSequence)
@@ -668,7 +669,15 @@ runOptions =
     <*> optional
       ( option
           (pageLength "the page height" =<< auto)
-          (long "height" <> metavar "PT" <> help ("With .svg, the page height (default: " <> T.unpack (decimal (pageHeight defaultPage)) <> ")"))
+          ( long "height"
+              <> metavar "PT"
+              <> help
+                ( "With .svg, the page height, to which a page with captions shrinks its figures"
+                    <> " (default: as tall as its rows need with captions, "
+                    <> T.unpack (decimal (pageHeight defaultPage))
+                    <> " without)"
+                )
+          )
       )
     <*> optional (strOption (long "author" <> metavar "TEXT" <> help "With .fold, the file's author"))
     <*> optional (strOption (long "description" <> metavar "TEXT" <> help "With .fold, the file's description"))
@@ -854,7 +863,10 @@ runSequenceSource options = case planRun options of
             view <- viewNamed (flagViewName flags)
             done <- runChecked source budget checked
             -- A flag not given is the page's own default, which render's flag of
-            -- the same name defaults to as well.
+            -- the same name defaults to as well. With no --height, a page with
+            -- captions is as tall as its rows need, shorter or taller than the
+            -- default, and one without keeps the default's height, as
+            -- render --steps draws it.
             let grid = (defaultGrid defaultTheme) {gridColumns = fromMaybe (gridColumns (defaultGrid defaultTheme)) (flagColumns flags)}
                 page =
                   defaultPage
@@ -863,13 +875,15 @@ runSequenceSource options = case planRun options of
                       -- The file's title, as render --steps titles a page.
                       pageTitle = runTitle done
                     }
-            drawn <- case runPage defaultTheme budget grid view done of
-              Left err -> dieLines (refusalLines source err)
+                height = maybe HeightToFit (const HeightAsGiven) (flagHeight flags)
+            fitted <- case runPage defaultTheme budget grid view height page done of
+              Left (RunRefused err) -> dieLines (refusalLines source err)
+              Left (PageDoesNotFit err) -> die (T.pack path <> ": " <> explain err <> "; give a taller --height, or none")
               Right Nothing -> die (T.pack path <> ": the run wrote no state with any geometry in it")
-              Right (Just d) -> pure d
+              Right (Just f) -> pure f
             when (sideOf view done == Just FromOppositeSide) $
               hPutStrLn stderr ("senbazuru: " <> T.unpack (oppositeSideWarning (flagViewName flags)))
-            TIO.writeFile output (renderSvg page drawn)
+            TIO.writeFile output (renderSvg (fittedPage fitted) (fittedDiagram fitted))
             finish source done
           PlanGlb output budget frame scenes -> do
             done <- runChecked source budget checked

@@ -447,6 +447,7 @@ test-suite senbazuru-test
     FoldRelaxation
     FoldRelaxationSpec
     Senbazuru.Diagram.LayoutSpec
+    Senbazuru.Diagram.PageSpec
     Senbazuru.Diagram.StyleSpec
     Senbazuru.ExplainSpec
     Senbazuru.Fold.CreasingSpec

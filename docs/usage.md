@@ -138,7 +138,7 @@ format cannot say.
 | `--no-fill` | Draw every crease and fill nothing: a wireframe. Also the way to render a file whose layers cannot be stacked, since nothing then needs to know which is on top |
 | `--fold` | Fold the crease pattern along its fold angles and draw the result |
 | `--arrows` | Draw the fold that takes this frame to the next one |
-| `--steps` | Lay every frame out as one numbered page of figures, at one scale |
+| `--steps` | Lay every frame out as one numbered page of figures, at one scale. A frame's `frame_title` is never drawn under its figure: a file cannot say whether its titles name the state they sit on or give the next step's instruction, as a run's do |
 | `--columns N` | Figures across the page, with `--steps` (default `3`) |
 | `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |
 | `--layer-budget N` | How many guesses the layer solver may make in one component before giving up (default `1000`) |
@@ -1844,22 +1844,56 @@ stack run -- run blintz.foldseq > blintz.fold
 - **`.svg`**: the *page of steps*, one numbered figure for each state the
   run writes, in order, so figure k is state k − 1 and `--frame k` of the
   written `.fold`. A step whose moves were all `expect refused` moved no
-  paper, writes no state and has no figure. The page is what `render --steps`
-  draws of the written `.fold`, byte for byte, titled with the source's
-  `title`, and it takes `render`'s page flags with `render`'s defaults:
+  paper, writes no state and has no figure. Each figure is drawn as
+  `render --steps` draws that state of the written `.fold`, and the page is
+  titled with the source's `title`.
+
+  Under each figure is its [caption](glossary.md#origami), the instruction
+  of the step that starts from that state, because that is the picture the
+  reader folds it from. So the sheet, figure 1, carries step 1's caption, and
+  the last figure carries the source's `closing` line, or, for a run stopped
+  at `not modelled`, the caption of the step it stopped at. A step that
+  writes no state has its caption under no figure. The caption is the
+  state's `frame_title` in the written `.fold`, which is why a mid-sequence
+  state's title reads like the next instruction rather than a name for the
+  state; `info`, a single-frame `render` and an exported `.glb` show that
+  same title. A caption is wrapped at word boundaries to the width on the
+  page of the box every figure is centred in, the same for every figure, so
+  a folded figure's caption is no narrower than the sheet's, by an estimate
+  of 0.55 of the type size a character, since nothing here measures the
+  font; it is never cut short. A word longer than
+  a line keeps a line of its own and runs past it, and a font wider than the
+  estimate can run past it too.
+
+  The page takes `render`'s page flags, with `render`'s defaults:
   `--columns N`, figures across the page (3); `--view NAME`, where to look
-  from (chosen from the geometry); and `--width PT` and `--height PT` (400
-  each). A width or height of 32 or less is refused: the page keeps a margin
-  of 16 on each side, and anything smaller leaves no room to draw in. With
+  from (chosen from the geometry); `--width PT` (400); and `--height PT`.
+  With no `--height`, a page with captions is as tall as its rows need, the
+  figures as large as the width allows, and a page with none is 400 tall,
+  the page `render --steps` draws of the written file, byte for byte. With
+  `--height`, the figures shrink until the bands under their rows fit the
+  height. Only the height is fitted: shrinking a figure narrows its
+  captions' lines too, so on a page much shorter than its rows need a
+  caption can wrap a word to a line, its longer words running past the
+  figure into the next column. With no `--height` the captions wrap at the
+  width's scale, as wide as they can be. A page too short for its captions
+  however small its figures are drawn is refused, with the bands of the
+  last size it tried, which smaller figures only make taller:
+
+  ```text
+  senbazuru: blintz.foldseq: a page 300 tall is too short for its captions: however small its figures are drawn, their captions wrap to bands at least 299.200000 tall, and it has 268 inside its margins of 16; give a taller --height, or none
+  ```
+
+  A width or height of 32 or less is refused: the page keeps a margin of 16
+  on each side, and anything smaller leaves no room to draw in. With
   `--view bottom` the page shows the paper from the side opposite the
   [reader's side](glossary.md#fold-sequences), and `run` warns once. A state
   the page cannot draw is refused by the step that ended at it, never by its
   figure's number:
   `step 2 (quarter): the page cannot draw the state it ends at: …`.
 
-  The page draws the paper and the figure numbers, and nothing else yet. Not
-  drawn so far:
-  - captions, a step's instruction under the figure it starts from (#641);
+  The page draws the paper, the figure numbers and the captions, and nothing
+  else yet. Not drawn so far:
   - [fold arrows](glossary.md#origami); fold-here lines, the dashed line on
     the figure before a fold showing where it falls; the arrows of a
     [pre-crease](glossary.md#origami); the loop and the mark a book draws for

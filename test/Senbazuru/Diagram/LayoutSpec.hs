@@ -186,6 +186,32 @@ spec = do
       [t | Label _ _ _ t <- diagramShapes page] `shouldBe` ["1", "2", "3", "4"]
       length (labels page) `shouldBe` 4 + sum [length ts | (_, _, ts) <- captionLines page]
 
+  -- What the fit reads (Senbazuru.Diagram.Page): the same bands and lines
+  -- the layout draws, measured, so the two cannot disagree. Red if the
+  -- measure counted lines some other way than the layout, or measured the
+  -- figures' rows as anything but R rows of the shared box's height.
+  describe "captionedRows" $ do
+    it "measures the bands, lines and rows gridOfCaptioned lays out" $
+      forM_ [(n, s) | n <- [1 .. 60], s <- [100, 300]] $ \(n, s) -> do
+        page <- captionedPage s n
+        let figures = zip (map captionedFigure [0 .. n - 1]) (captionsFor n)
+            h = if n == 1 then 0.6 else 0.9
+            rowCount = length (rowsOf (captionsFor n))
+            expected = [18 + fromIntegral (longest row - 1) * 16.8 + 14 | row <- rowsOf (map (length . wrapped s) (captionsFor n))]
+            V2 _ tall = boxSize (diagramExtent page)
+        case captionedRows defaultTheme numbered (scaleOf s) figures of
+          Nothing -> expectationFailure "measured no rows"
+          Just rows -> do
+            (n, s, rowsBands rows) `shouldSatisfy` (\(_, _, bands) -> length bands == length expected && and (zipWith near1 bands expected))
+            rowsFigureHeight rows `shouldSatisfy` near1 (fromIntegral rowCount * h)
+            rowsCaptionLines rows `shouldBe` map (wrapped s) (captionsFor n)
+            -- The page is the rows and the bands, at that scale.
+            (n, s, tall) `shouldSatisfy` (\(_, _, t) -> near1 t (rowsFigureHeight rows + sum (rowsBands rows) / s))
+
+    it "has nothing to measure on a page with no figure, or no caption with a word" $ do
+      captionedRows defaultTheme numbered (scaleOf 100) [] `shouldBe` Nothing
+      captionedRows defaultTheme numbered (scaleOf 100) [(square 1, Nothing), (square 1, Just " \x00A0")] `shouldBe` Nothing
+
   describe "pageScale" $
     it "refuses a scale that is not positive and finite" $
       map (void . pageScale) [1, 1e-300, 0, -1, 0 / 0, 1 / 0] `shouldBe` [Just (), Just (), Nothing, Nothing, Nothing, Nothing]
@@ -243,12 +269,14 @@ rectangle w h =
 captionedPage :: Double -> Int -> IO Diagram
 captionedPage s n =
   maybe (fail "gridOfCaptioned laid out nothing") pure $
-    gridOfCaptioned defaultTheme numbered (scaleOf s) (zip (map figure [0 .. n - 1]) (captionsFor n))
-  where
-    figure i = case i `mod` 3 of
-      0 -> rectangle 1 0.6
-      1 -> rectangle 0.5 0.9
-      _ -> rectangle 0.8 0.3
+    gridOfCaptioned defaultTheme numbered (scaleOf s) (zip (map captionedFigure [0 .. n - 1]) (captionsFor n))
+
+-- | captionedPage's figure i.
+captionedFigure :: Int -> Diagram
+captionedFigure i = case i `mod` 3 of
+  0 -> rectangle 1 0.6
+  1 -> rectangle 0.5 0.9
+  _ -> rectangle 0.8 0.3
 
 -- | captionedPage's captions: 0 to 11 words, which wrap to 0 to 7 lines at
 -- s = 100 and 0 to 2 at s = 300, and every fourth row with none, so that
