@@ -238,7 +238,11 @@ then.
   [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) says. S22 settled the
   paper's as `PageRefused`, named by the step that ended at the state
   ([C132](decisions.md#changes-since-draft-v2)); `motionsBetween`'s falls to
-  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)), and `SurfaceError`'s to S5.
+  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)). S5 settled
+  `SurfaceError`'s: `placeOn` maps each by name to a `FoldError`, four of them
+  new, so it reaches a page as any `FoldError` does, and a refusal about the
+  later of two frames comes inside `InNextFrame`
+  ([C139](decisions.md#changes-since-draft-v2)).
 - **R-06-4.** A presentation mark places a `Symbol` and suppresses inference on that
   pair only. `stepFigures` never transforms a coordinate: frames arrive presented.
 

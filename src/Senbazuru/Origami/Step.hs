@@ -77,9 +77,10 @@
 -- it, so such a vertex is in no face at all.
 --
 -- The face that holds a material point is found by 'insideRing', which a face
--- that is not convex needs: an L-shaped face, which a crease that stops at
--- another leaves, holds points beyond the line of the edge that turns in, and
--- a half-plane test would call them outside it.
+-- that is not convex needs: an L-shaped face, which two creases leave where
+-- they meet end to end at a corner (a square creased from (0, 1/2) to
+-- (3/10, 1/2) and on to (3/10, 1)), holds points beyond the line of the edge
+-- that turns in, and a half-plane test would call them outside it.
 module Senbazuru.Origami.Step
   ( Motion (..),
     motionsBetween,
@@ -287,8 +288,11 @@ connectedGroups = go
 -- Refused when either frame's material points cannot be read, the second
 -- frame's refusals wrapped in 'InNextFrame'; when the later frame does not
 -- begin with the earlier frame's vertices at the same material points
--- ('VerticesNotAPrefix'); and when it adds a vertex on no edge and in no face
--- of the earlier one ('AddedVertexOffPaper').
+-- ('VerticesNotAPrefix'); when it adds a vertex on no edge and in no face of
+-- the earlier one ('AddedVertexOffPaper'); and, for an added vertex on no
+-- earlier edge, when the earlier frame records no faces and they cannot be
+-- traced (whatever 'withPlanarFaces' refuses, as it does a crease that stops
+-- in the middle of the paper).
 placeOn :: Frame -> Frame -> Either FoldError [V3]
 placeOn earlier later = do
   (positions, materials) <- materialOf earlier
@@ -296,11 +300,16 @@ placeOn earlier later = do
   prefixOf materials laterMaterials
   let hair = toleranceOf materials
       edges = edgesOn earlier materials positions
-  faces <- facesOn earlier materials positions edges hair
-  added <-
-    traverse
-      (\(i, m) -> maybe (Left (AddedVertexOffPaper (VertexId i))) Right (onEdge hair edges m <|> inFace hair faces m))
-      (zip [length materials ..] (drop (length materials) laterMaterials))
+      -- Worked out only for a vertex on no earlier edge, and then once, since
+      -- a binding is shared: a frame whose faces cannot be traced still places
+      -- every vertex its edges hold.
+      faces = facesOn earlier materials positions edges hair
+      place (i, m) = case onEdge hair edges m of
+        Just p -> Right p
+        Nothing -> do
+          rings <- faces
+          maybe (Left (AddedVertexOffPaper (VertexId i))) Right (inFace hair rings m)
+  added <- traverse place (zip [length materials ..] (drop (length materials) laterMaterials))
   pure (positions <> added)
 
 -- | A frame's vertices, where they are and where they lay on the sheet.
@@ -336,9 +345,14 @@ edgesOn earlier materials positions =
 -- records none, the faces tracing its creases on the sheet gives. Tracing may
 -- cut creases where they cross, adding corners the frame does not have, and
 -- each of those lies on an edge of it, so it is placed along that edge.
+--
+-- The drawing traced is classed a crease pattern, whatever the frame says it
+-- is: its coordinates are now the unfolded sheet's, and a folded form's class,
+-- which is about the coordinates it replaced, would have 'withPlanarFaces'
+-- refuse the sheet as folded.
 facesOn :: Frame -> [V2] -> [V3] -> [(V2, V2, V3, V3)] -> Double -> Either FoldError [[(V2, V3)]]
 facesOn earlier materials positions edges hair = do
-  let onSheet = earlier {verticesCoords = [[u, v] | V2 u v <- materials]}
+  let onSheet = earlier {verticesCoords = [[u, v] | V2 u v <- materials], frameClasses = ["creasePattern"]}
   traced <- if null (facesVertices earlier) then withPlanarFaces onSheet else pure onSheet
   tracedPoints <- frameVertices traced
   let sheetAt = IM.fromList (zip [0 ..] [V2 x y | V3 x y _ <- tracedPoints])
