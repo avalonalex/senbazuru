@@ -12,10 +12,12 @@ module Senbazuru.Diagram.PageSpec (spec) where
 import Control.Monad (forM_)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout
 import Senbazuru.Diagram.Page
 import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
+import Senbazuru.Explain (Explain (..))
 import Senbazuru.Geometry
 import Test.Hspec
 import Test.QuickCheck
@@ -23,26 +25,45 @@ import Test.QuickCheck
 spec :: Spec
 spec = describe "fitPage" $ do
   -- C134's prototype: at the default page's width the figures are drawn at
-  -- 368 / 3.2 = 115, and a page of a given height shrinks them until their
-  -- captions' bands fit, (368 - B) / 2 for two rows of unit squares.
+  -- 368 / 3.2 = 115, and a page H tall shrinks them until their captions'
+  -- bands fit: (H - 32 - B) / 2 for two rows of unit squares whose bands
+  -- total B. That is (368 - 2 x 99.2) / 2 = 84.8 at 400, the captions on
+  -- five lines, and (318 - 2 x 149.6) / 2 = 9.4 at 350, a word to a line,
+  -- eight; at 500 and
+  -- 600 the width's 115 binds first.
   it "shrinks the figures until their captions fit a page of a given height" $
     forM_ [(400, 84.8), (350, 9.4), (500, 115), (600, 115)] $ \(height, expected) -> do
       fitted <- fitOrFail HeightAsGiven defaultPage {pageHeight = height} blintzPage
       fittedPage fitted `shouldBe` defaultPage {pageHeight = height}
       (height, drawnScale fitted) `shouldSatisfy` (\(_, s) -> abs (s - expected) < 1e-9)
 
-  -- A band of 299.2 page units is wider than the 268 inside a page 300 tall
-  -- with margins of 16: the bands alone fill it, whatever the scale.
+  -- Two bands of 149.6 page units, 299.2 together, are taller than the 268
+  -- inside a page 300 tall with margins of 16: the bands alone fill it,
+  -- whatever the scale.
   it "refuses a page too short for its captions at any scale" $
     fitPage defaultTheme numbered HeightAsGiven defaultPage {pageHeight = 300} blintzPage
       `shouldSatisfy` \case
         Left (TooShortForCaptions 300 16 bands) -> abs (bands - 299.2) < 1e-9
         _ -> False
 
+  -- The bands a page is refused with are those of the round that ran out of
+  -- room, a lower bound: a page 150 tall is refused at the width's scale,
+  -- its bands 164.8, and one 200 tall, with 168 inside, more than 164.8, is
+  -- refused too, at the 299.2 smaller figures wrap to. Red if the refusal's
+  -- words claimed the first number is what a page needs.
+  it "refuses with the bands of the round that ran out of room, a lower bound" $ do
+    let refusedWith height = case fitPage defaultTheme numbered HeightAsGiven defaultPage {pageHeight = height} blintzPage of
+          Left (TooShortForCaptions _ _ bands) -> Just bands
+          _ -> Nothing
+    fmap (\b -> abs (b - 164.8) < 1e-9) (refusedWith 150) `shouldBe` Just True
+    fmap (\b -> abs (b - 299.2) < 1e-9) (refusedWith 200) `shouldBe` Just True
+    fmap (T.isInfixOf "bands at least 164.8") (either (Just . explain) (const Nothing) (fitPage defaultTheme numbered HeightAsGiven defaultPage {pageHeight = 150} blintzPage))
+      `shouldBe` Just True
+
   -- With no height given, the width sets the scale, 115, and the page is as
   -- tall as the rows need there: two rows of unit squares, each followed by
   -- a band for its four-line captions, 18 + 3 x 16.8 + 14.
-  it "grows a page to its rows when its height is not given" $ do
+  it "makes a page as tall as its rows need when its height is not given" $ do
     fitted <- fitOrFail HeightToFit defaultPage blintzPage
     pageHeight (fittedPage fitted) `shouldSatisfy` (\h -> abs (h - (2 * 16 + 115 * 2 + 2 * 82.4)) < 1e-9)
     drawnScale fitted `shouldSatisfy` (\s -> abs (s - 115) < 1e-9)
@@ -71,8 +92,22 @@ spec = describe "fitPage" $ do
   -- A sheet seen edge-on, from the front, is a line: its figures have no
   -- height, so they take no room from the captions, and only the width binds.
   it "leaves the width to bind when the figures have no height" $ do
-    fitted <- fitOrFail HeightAsGiven defaultPage [(rectangle 1 0, Just "Fold the left half behind, onto the right.")]
+    fitted <- fitOrFail HeightAsGiven defaultPage [edgeOn]
     drawnScale fitted `shouldSatisfy` (\s -> abs (s - 368) < 1e-9)
+
+  -- Such figures need no room, so bands that exactly fill a page leave them
+  -- enough: the page a height to fit makes, 64 tall for one one-line band
+  -- of 32, is a page of a given height that fits, and one a hair shorter is
+  -- not. Red if room had to be more than nothing whatever the figures.
+  it "fits figures with no height to a page their bands exactly fill" $ do
+    grown <- fitOrFail HeightToFit defaultPage [edgeOn]
+    pageHeight (fittedPage grown) `shouldBe` 64
+    fitted <- fitOrFail HeightAsGiven defaultPage {pageHeight = 64} [edgeOn]
+    drawnScale fitted `shouldSatisfy` (\s -> abs (s - 368) < 1e-9)
+    fitPage defaultTheme numbered HeightAsGiven defaultPage {pageHeight = 63.99} [edgeOn]
+      `shouldSatisfy` \case
+        Left (TooShortForCaptions {}) -> True
+        _ -> False
 
   -- Not a number fails every comparison, so a test of room > 0 refuses it
   -- where a test of room <= 0 would wave it through.
@@ -85,8 +120,10 @@ spec = describe "fitPage" $ do
   -- The module header's claim, on pages of 1 to 12 figures of three shapes,
   -- with captions of 0 to 14 words, some none, on pages 100 to 800 wide and
   -- 60 to 900 tall. Red if the loop stopped a round early (the page would
-  -- not fit), a round late or at a scale it was not solving for (a larger
-  -- one would), or refused a page some scale fits.
+  -- not fit), settled at a scale it was not solving for (a larger one
+  -- would), or refused a page some scale fits. Stopping a round late cannot
+  -- turn it red, and is no fault: at the stop the bands are the ones the
+  -- scale was solved for, so another round solves for the same scale.
   --
   -- checkCoverage holds the generator to reaching all three answers, so the
   -- property cannot pass by never meeting one of them. The floors sit well
@@ -125,6 +162,10 @@ spec = describe "fitPage" $ do
                       let tried = [widest * 2 ** (negate (fromIntegral k) / 8) | k <- [0 .. 400 :: Int]]
                        in counterexample ("fits at " <> show (filter fits tried)) (not (any fits tried))
                     other -> counterexample (show other) False
+
+-- | A sheet seen edge-on, a line with no height, under a one-line caption.
+edgeOn :: (Diagram, Maybe Text)
+edgeOn = (rectangle 1 0, Just "Fold the left half behind, onto the right.")
 
 -- | The page S24 prototyped on: the blintz's five captions under unit
 -- squares, and a sixth figure, half their size, with none.

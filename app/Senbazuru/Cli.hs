@@ -864,8 +864,9 @@ runSequenceSource options = case planRun options of
             done <- runChecked source budget checked
             -- A flag not given is the page's own default, which render's flag of
             -- the same name defaults to as well. With no --height, a page with
-            -- captions grows as tall as its rows need, and one without keeps
-            -- the default's height, as render --steps draws it.
+            -- captions is as tall as its rows need, shorter or taller than the
+            -- default, and one without keeps the default's height, as
+            -- render --steps draws it.
             let grid = (defaultGrid defaultTheme) {gridColumns = fromMaybe (gridColumns (defaultGrid defaultTheme)) (flagColumns flags)}
                 page =
                   defaultPage

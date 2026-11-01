@@ -1066,12 +1066,17 @@ say whether its titles name their states, as
 `examples/quarter-fold-steps.fold`'s "Step 2: folded in half" does, or give
 the next instruction, as a run's do.
 
-A caption is wrapped at word boundaries to its figure's width on the page.
-Nothing here can measure the font, so a line's width is estimated at 0.55 of
-the type size a character, a little wide, so that a line breaks early rather
-than late. Under each row of figures is a band of page units tall enough for
-its longest caption, so with no `--height` the page grows as tall as its rows
-need, and with one the figures shrink until the captions fit. The arrows and
+A caption is wrapped at word boundaries to the width on the page of the box
+every figure is centred in, the same for every figure, so a folded figure's
+caption is no narrower than the sheet's. Nothing here can measure the font,
+so a line's width is estimated at 0.55 of the type size a character, a
+little wide, so that a line breaks early rather than late. Nothing is ever
+cut short: a word longer than a line keeps a line of its own and runs past
+it, and a font wider than the estimate can run past it too. Under each row
+of figures is a band of page units tall enough for its longest caption, so
+with no `--height` the page is as tall as its rows need, which can be
+shorter than the 400 of a page without captions as well as taller, and with
+one the figures shrink until the bands fit. The arrows and
 the marks a book prints beside each figure come one at a time
 ([usage.md](usage.md#run) lists them). The crane does not get far:
 

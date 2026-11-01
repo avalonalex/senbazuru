@@ -1857,9 +1857,11 @@ stack run -- run blintz.foldseq > blintz.fold
   state's `frame_title` in the written `.fold`, which is why a mid-sequence
   state's title reads like the next instruction rather than a name for the
   state; `info`, a single-frame `render` and an exported `.glb` show that
-  same title. A caption is wrapped at word boundaries to its figure's width
-  on the page, by an estimate of 0.55 of the type size a character, since
-  nothing here measures the font; it is never cut short. A word longer than
+  same title. A caption is wrapped at word boundaries to the width on the
+  page of the box every figure is centred in, the same for every figure, so
+  a folded figure's caption is no narrower than the sheet's, by an estimate
+  of 0.55 of the type size a character, since nothing here measures the
+  font; it is never cut short. A word longer than
   a line keeps a line of its own and runs past it, and a font wider than the
   estimate can run past it too.
 
@@ -1869,11 +1871,17 @@ stack run -- run blintz.foldseq > blintz.fold
   With no `--height`, a page with captions is as tall as its rows need, the
   figures as large as the width allows, and a page with none is 400 tall,
   the page `render --steps` draws of the written file, byte for byte. With
-  `--height`, the figures shrink until their captions fit, and a page too
-  short for its captions however small its figures are drawn is refused:
+  `--height`, the figures shrink until the bands under their rows fit the
+  height. Only the height is fitted: shrinking a figure narrows its
+  captions' lines too, so on a page much shorter than its rows need a
+  caption can wrap a word to a line, its longer words running past the
+  figure into the next column. With no `--height` the captions wrap at the
+  width's scale, as wide as they can be. A page too short for its captions
+  however small its figures are drawn is refused, with the bands of the
+  last size it tried, which smaller figures only make taller:
 
   ```text
-  senbazuru: blintz.foldseq: a page 300 tall is too short for its captions: however small its figures are drawn, their captions wrap to bands 299.200000 tall, and it has 268 inside its margins of 16; give a taller --height, or none
+  senbazuru: blintz.foldseq: a page 300 tall is too short for its captions: however small its figures are drawn, their captions wrap to bands at least 299.200000 tall, and it has 268 inside its margins of 16; give a taller --height, or none
   ```
 
   A width or height of 32 or less is refused: the page keeps a margin of 16

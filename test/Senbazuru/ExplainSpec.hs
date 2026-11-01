@@ -38,12 +38,6 @@ import Data.Char (isAlphaNum, isUpper)
 import Data.Text (Text)
 import Data.Text qualified as T
 import FoldBending (BendingError (InvalidRestAngle, MissingRestAngle, UnexpectedRestAngle, UnsupportedCrease))
--- Qualified, not because the modules are large but because three of them spell
--- the same fault: 'NotFlat' is a constructor of both CheckError and
--- StackingError, and 'FrameGeometry' of both CheckError and FoldingError. That
--- is not an accident to be worked around -- it is the duplication this class
--- was introduced to make visible.
-
 import Senbazuru.Diagram.Page (PageFitError (..))
 import Senbazuru.Explain (Explain (..), decimal, num)
 import Senbazuru.Fold.Load (LoadError (..), SaveError (..))
@@ -54,6 +48,11 @@ import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Import.Segments (ImportError (..))
 import Senbazuru.Origami.Flap (FlapError (..))
 import Senbazuru.Origami.Flat (FlatError (..))
+-- Qualified, not because the modules are large but because three of them spell
+-- the same fault: 'NotFlat' is a constructor of both CheckError and
+-- StackingError, and 'FrameGeometry' of both CheckError and FoldingError. That
+-- is not an accident to be worked around -- it is the duplication this class
+-- was introduced to make visible.
 import Senbazuru.Origami.FlatFold qualified as Check
 import Senbazuru.Origami.Folding qualified as Fold
 import Senbazuru.Origami.Stacking qualified as Stack
@@ -312,7 +311,7 @@ spec = do
   describe "a page too short for its captions" $
     it "is told in the reader's numbers and the bands' measure" $
       explain (TooShortForCaptions 300 16 299.2)
-        `shouldBe` "a page 300 tall is too short for its captions: however small its figures are drawn, their captions wrap to bands 299.200000 tall, and it has 268 inside its margins of 16"
+        `shouldBe` "a page 300 tall is too short for its captions: however small its figures are drawn, their captions wrap to bands at least 299.200000 tall, and it has 268 inside its margins of 16"
 
   -- Nothing prints these two today: every caller of 'flatSheet' flattens a
   -- 'FlatError' into its own error first, and the CLI takes a 'StepError'

@@ -696,7 +696,9 @@ Choices that could look arbitrary:
 - **Flags are parsed with `optional`.** So `run` can tell a typed `--columns 3` from
   the default 3, and refuse it when `-o` is `.glb`. The defaults are `render`'s:
   400 × 400, 3 columns, and the view chosen from the geometry
-  ([Cli.hs:645-699](../app/Senbazuru/Cli.hs#L645-L699)). Both verbs read them
+  ([Cli.hs:645-699](../app/Senbazuru/Cli.hs#L645-L699)), except that with no
+  `--height` a `run` page with captions is as tall as its rows need, which is
+  also what `optional` tells apart (R-04-27, [C136](decisions.md#changes-since-draft-v2)). Both verbs read them
   from `defaultPage`, `defaultGrid` and `defaultView`, for their help as well
   as their pages, so there is one copy; `render`'s `--help` is unchanged by it
   (R-04-21). A `run` page side of 32 or less, twice the page's margin, is

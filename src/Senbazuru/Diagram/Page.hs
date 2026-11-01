@@ -64,8 +64,11 @@
 -- bands no smaller, and they can grow only so far: a caption has no more
 -- lines than words. Every scale at which the page fits is at or below each
 -- round's scale, by the same argument, so the one the rounds stop at is the
--- largest; and if a round's bands alone fill the page, no scale fits at all,
--- and the page is refused. The stopping test is the one that guarantees the
+-- largest; and if a round's bands leave the figures no room, no scale fits at
+-- all, and the page is refused, unless the figures have no height and need
+-- none. The bands it is refused with are a lower bound: drawn smaller, the
+-- captions wrap to more lines, so a page a little taller than they are can
+-- still be refused. The stopping test is the one that guarantees the
 -- page fits whichever way the wrap went: bands no taller than the ones the
 -- scale was solved for leave the figures their room.
 --
@@ -170,8 +173,8 @@ data FittedPage = FittedPage
   }
   deriving stock (Eq, Show)
 
--- | Why a page of captioned figures could not be fitted. Each holds the
--- numbers the reader needs to make a page that fits, in page units.
+-- | Why a page of captioned figures could not be fitted, with the numbers
+-- that say why, in page units.
 data PageFitError
   = -- | The page has no width inside its margins: its width and margin.
     NoRoomAcross !Double !Double
@@ -179,7 +182,9 @@ data PageFitError
     -- to be wrapped to.
     FiguresHaveNoWidth
   | -- | The page is too short for its captions at any scale: its height, its
-    -- margin, and the bands' total where no room was left for the figures.
+    -- margin, and the bands' total at the round where no room was left for
+    -- the figures. Drawn smaller, the captions only wrap to more lines, so
+    -- that total is a lower bound, not the height a page needs.
     TooShortForCaptions !Double !Double !Double
   deriving stock (Eq, Show)
 
@@ -197,7 +202,7 @@ instance Explain PageFitError where
     TooShortForCaptions height margin bands ->
       "a page "
         <> decimal height
-        <> " tall is too short for its captions: however small its figures are drawn, their captions wrap to bands "
+        <> " tall is too short for its captions: however small its figures are drawn, their captions wrap to bands at least "
         <> num bands
         <> " tall, and it has "
         <> decimal (height - 2 * margin)
@@ -249,15 +254,18 @@ fitPage theme grid height page captioned = case gridOf grid (map fst captioned) 
     settle widest = go widest
       where
         figures = maybe 0 rowsFigureHeight (rowsAt widest)
-        -- Room that is not a number fails the comparison, and is refused
-        -- with the rest.
         go scale
-          | room > 0, bandsAt next <= bands = Right next
-          | room > 0 = go next
+          | leaves, bandsAt next <= bands = Right next
+          | leaves = go next
           | otherwise = Left (TooShortForCaptions (pageHeight page) margin bands)
           where
             bands = bandsAt scale
             room = inside - bands
+            -- Whether the bands leave the figures room. Figures with no
+            -- height need none, so bands that exactly fill the page leave
+            -- them enough. Room that is not a number fails both comparisons,
+            -- and is refused with the rest.
+            leaves = room > 0 || (room == 0 && figures <= 0)
             -- Figures with no height take no room, and leave the width to
             -- bind.
             next = case pageScale (room / figures) of

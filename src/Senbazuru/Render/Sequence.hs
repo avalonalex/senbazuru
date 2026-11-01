@@ -36,9 +36,12 @@
 --
 -- A figure's note belongs with the step that starts from its state, which is
 -- where a book prints an instruction and the arrow for it: next to the picture
--- it starts from. Every note is 'silentNote' with a caption, so the page is
--- what @render --steps@ draws of the written file with words under its
--- figures. The arrows of an @anchor P@ step's figure stay 'NoArrows' when
+-- it starts from. Every note is 'silentNote' with its state's title as its
+-- caption, so each figure is the one @render --steps@ draws of that state of
+-- the written file. The page is @render --steps@' page only when no caption
+-- has a word: otherwise each row is followed by a band for its captions, so
+-- the rows stand further apart, the page is as tall as they need, and with
+-- a height given the figures are drawn smaller ("Senbazuru.Diagram.Page"). The arrows of an @anchor P@ step's figure stay 'NoArrows' when
 -- notes are filled from records, since that move turns no paper.
 --
 -- == A caption is its state's title

@@ -247,10 +247,13 @@ spec = describe "a run's page" . beforeAll runs $ do
           _ -> False
   where
     grid = defaultGrid defaultTheme
-    -- The defaults, then each of the five changed alone.
+    -- The defaults, then each of the five changed alone: the theme twice,
+    -- once in what draws the figures, the paper, and once in what sets the
+    -- captions, the type size, which only fitPage reads.
     settings =
       [ (defaultTheme, grid, defaultView, HeightToFit, defaultPage),
         (defaultTheme {themePaper = Nothing}, grid, defaultView, HeightToFit, defaultPage),
+        (defaultTheme {themeLabelSize = 10}, grid, defaultView, HeightToFit, defaultPage),
         (defaultTheme, grid {gridColumns = 2}, defaultView, HeightToFit, defaultPage),
         (defaultTheme, grid, View (Just bottomUp) 0, HeightToFit, defaultPage),
         (defaultTheme, grid, defaultView, HeightAsGiven, defaultPage),
